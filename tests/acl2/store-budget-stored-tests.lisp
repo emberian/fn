@@ -54,20 +54,20 @@
 (assert-event (natp 0))
 (assert-event (fn-held-listp (nth 4 *sbst-open*)))
 (assert-event (equal (nth 2 *sbst-open*) t))
-(assert-event (equal (nth 0 *sbst-open*) 648))
-(assert-event (equal (nth 1 *sbst-open*) 648))
+(assert-event (equal (nth 0 *sbst-open*) 808))
+(assert-event (equal (nth 1 *sbst-open*) 808))
 (assert-event (equal (nth 3 *sbst-open*) 0))
 
 ; The same through the store the host reads (fn-sbud-bytes-used over the
 ; kernel's records; fn-sbud-bytes-used-is-the-stored-octets).
 (defconst *sbst-store*
   (list nil nil (fn-sf-make :ready 2 nil (nth 4 *sbst-open*) nil nil nil 0)))
-(assert-event (equal (fn-sbud-bytes-used *sbst-store*) 648))
+(assert-event (equal (fn-sbud-bytes-used *sbst-store*) 808))
 ; The carried sum from a prefix cache agrees (fn-sbud-bytes-used-is-kernel-sum).
 (assert-event (equal (fn-sbud-bytes-extend
                       (cons 1 (fn-sbud-record-octets (take 1 (nth 4 *sbst-open*))))
                       (nth 4 *sbst-open*))
-                     648))
+                     808))
 ; A wire row still counts its encoding (fn-sbud-row-octets-of-wire-row).
 (assert-event (equal (fn-sbud-row-octets (car *sbst-ws*))
                      (len (fn-store-event-encode (car *sbst-ws*)))))
@@ -112,8 +112,8 @@
 
 (defconst *sbst-lie* (sbst-lying *sbst-ws*))
 (assert-event (equal (nth 0 *sbst-lie*) nil))
-(assert-event (equal (nth 1 *sbst-lie*) 652))
-(assert-event (equal (nth 2 *sbst-lie*) 648))
+(assert-event (equal (nth 1 *sbst-lie*) 892))
+(assert-event (equal (nth 2 *sbst-lie*) 888))
 ; The same refutation as a theorem over the arena's logical value (the two
 ; payloads the open sealed): the conclusion is false at these rows, so the
 ; theorem without its hypothesis fails.
@@ -146,13 +146,16 @@
 (defconst *sbst-cross-row* (car (nth 4 *sbst-cross*)))
 (assert-event (fn-held-p *sbst-cross-row*))
 (assert-event (equal (fn-sbud-row-memberships *sbst-cross-row*) 3))
-(assert-event (equal (fn-sbud-row-octets *sbst-cross-row*) (+ 4 960)))
-(assert-event (equal (nth 0 *sbst-cross*) 964))
-(assert-event (equal (nth 1 *sbst-cross*) 964))
+;; (and its header charge, lane heap-pool)
+(assert-event (equal (fn-sbud-row-octets *sbst-cross-row*)
+                     (+ 4 960 (fn-sbud-held-heap-charge *sbst-cross-row*))))
+(assert-event (equal (fn-sbud-row-octets *sbst-cross-row*) 1044))
+(assert-event (equal (nth 0 *sbst-cross*) 1044))
+(assert-event (equal (nth 1 *sbst-cross*) 1044))
 (assert-event (equal (nth 2 *sbst-cross*) t))
 (defconst *sbst-all-rows* (append (nth 4 *sbst-open*) (nth 4 *sbst-cross*)))
 (assert-event (equal (fn-sbud-record-memberships *sbst-all-rows*) 5))
-(assert-event (equal (fn-sbud-record-octets *sbst-all-rows*) 1612))
+(assert-event (equal (fn-sbud-record-octets *sbst-all-rows*) 1852))
 (assert-event (<= (* *fn-sbud-membership-octets*
                      (fn-sbud-record-memberships *sbst-all-rows*))
                   (fn-sbud-record-octets *sbst-all-rows*)))

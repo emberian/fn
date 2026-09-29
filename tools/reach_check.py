@@ -356,6 +356,17 @@ class Graph:
                     parts += sorted(by_logic.get((impl, logic), ()))
                 self.book_defs.setdefault(export, (
                     entry["file"], "(defabsstobj-export %s %s)" % (export, " ".join(parts))))
+        # A plain `defstobj' has no exports to read, but its creator is a
+        # function ACL2 defines and runs: it is what an abstract stobj's
+        # :creator executes (`:exec create-fn-arena$p'), so the edge from that
+        # export reaches it, and a theorem concluding of `(create-NAME)' is
+        # concluded of a reached function -- the premise audit's
+        # establishment by the creator (tools/premise_audit.py).
+        for sname, entry in self.stobjs.items():
+            if entry["exports"]:
+                continue
+            self.book_defs.setdefault("create-" + sname, (
+                entry["file"], "(defstobj-creator create-%s)" % sname))
         self.known = set(self.book_defs) | set(host_defs) | set(attached)
 
         bodies = {n: f for n, (_, f) in self.book_defs.items()}
@@ -873,14 +884,15 @@ def load_baseline() -> dict:
 
 
 PLACEHOLDER = "no one has said why that is right"
-DISPOSITIONS = ("SPEC", "HOST")
+DISPOSITIONS = ("SPEC", "HOST", "UNREACHABLE-IN-COMPOSITION")
 
 
 def unexplained(accepted: dict) -> list[str]:
     """Baselined orphans whose reason is not a disposition.
 
-    Each entry says SPEC (a model or specification theorem kept, and why) or
-    HOST (the packet that will host it); a bare acceptance is a flag nobody
+    Each entry says SPEC (a model or specification theorem kept, and why),
+    HOST (the packet that will host it) or UNREACHABLE-IN-COMPOSITION (AGENTS.md:
+    a branch the composed machine cannot reach); a bare acceptance is a flag nobody
     triaged (assurance-triage 2026-09-26 found 25 of 49 that way).
     """
     return sorted(key for key, reason in accepted.items()

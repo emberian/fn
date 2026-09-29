@@ -1,8 +1,12 @@
 # The node functionality F_node and its refinement
 
-Status: design, wave 4. No book in this document exists yet; every ACL2 form
-below is a *statement to be certified*, written against the definitions that
-do exist at `9321344`, with the names of those definitions used exactly. The
+Status: design, wave 4, written against `9321344`. What exists since:
+`books/ideal.lisp`, P0's skeleton (the state record, a shape-only
+`fn-ideal-statep`, and `fn-ideal-step`, whose `:octets` port is
+`fn-served-step` of `books/served.lisp` and whose other ports return a
+`(:todo port)` effect); and P1's served path as `fn-served-step`, which the
+reader host calls on each whole read. Every other ACL2 form below is a
+*statement to be certified*; a name that no book defines is a proposal. The
 prefixes `fn-ideal-`, `fn-dtn-` and `fn-sys-` are reserved here and must be
 registered in [`docs/prefixes.md`](../docs/prefixes.md) by the packet that
 first admits them (P0 below). Counts live in the generated ledger and nowhere
@@ -251,8 +255,8 @@ port. Nothing semantic is written twice.
           (fn-ideal-receipt-step s src request))))))   ; fn-relay-accept / fn-bp-prepare-receipt
 ```
 
-`fn-ideal-run` folds `fn-ideal-step` over an event list and collects
-effects: `(mv final (append effects...))`.
+The run (proposed, not yet defined) folds `fn-ideal-step` over an event
+list and collects effects: `(mv final (append effects...))`.
 
 Every subsystem machine is a projection. These are the commuting squares the
 book must prove; each is an equality with `fn-ideal-statep` as its only
@@ -335,7 +339,7 @@ the constrained function `fn-assume-policy-authorizedp`
 ```
 
 The reachable witness (assurance rule "Teeth ship with the theorem") is one
-`fn-ideal-run` over a trace that opens two connections, posts through the
+run of `fn-ideal-step` over a trace that opens two connections, posts through the
 store events, advances one connection, receives a bundle, emits a receipt,
 crashes with a `fn-sf-crash-imagep` choice, reopens, and reads again: every
 event kind once, every port once, mirroring the w2 owner witness and the
@@ -365,17 +369,16 @@ exactly this.
 Two facts about R fix the shape of the claim.
 
 1. The core is the theorem subject (review §5, "no wrapper laundering").
-   `host/reader-host.lisp:106-113` calls `fn-wire-next` and `fn-nntp-step`;
+   `host/reader-host.lisp`'s `fn-reader-chunk` calls `fn-served-step`;
    `host/store-node-host.lisp` calls `fn-sn-prepare`, `fn-sn-io`,
    `fn-sn-finish`, `fn-sn-open-observed`; `host/bp-receipt-host.lisp` calls
    `fn-bpr-accept-request`, `fn-bpr-prepare-receipt`, `fn-bpr-commit-receipt`,
    `fn-bpr-receipt-adu`; `host/workflow-host.lisp` calls
    `fn-bp-replay-journal` and `fn-bp-apply-journal-record`.
-2. The glue is not in a certified book. `fn-reader-chunk`
-   (`host/reader-host.lisp:104`) is `:mode :program` and the `while pending:`
-   loop in `tools/run_reader.py:222` iterates it. Together they compute
-   `fn-wire-drive`, but no theorem says so, which is precisely the
-   `pending_subject` note on the wire row of `planning/proof-events.json:256`.
+2. The glue is one call. `fn-reader-chunk` is `:mode :program` and hands
+   the whole read to `fn-served-step`, which consumes it: there is no
+   suffix to hand back and no Python `while pending:` loop (the design was
+   written against one in `tools/run_reader.py`, since removed).
 
 ### 2.2 The relation and the statement
 
@@ -384,8 +387,8 @@ correspond to the fields of `fn-ideal-statep`.
 
 | R component | F_node field |
 | --- | --- |
-| `fn-reader-wire`, `fn-reader-session`, the Python `pending` suffix | `(fn-ideal-conn-wire conn)`, `(fn-ideal-conn-session conn)`; `pending` is unconsumed input, not state |
-| `fn-reader-archive` (a snapshot at open) | `(fn-ideal-pinned-archive s conn)` |
+| the reader's connection state global, a served connection: `fn-served-conn-wire`, `fn-served-conn-session` (no unconsumed suffix survives a read) | `(fn-ideal-conn-wire conn)`, `(fn-ideal-conn-session conn)` |
+| `fn-served-conn-archive` of that connection (the archive pinned at open by `fn-reader-reset`) | `(fn-ideal-pinned-archive s conn)` |
 | on-disk records, frontier file, phase | `(fn-ideal-store s)` under `fn-snt-relation` |
 | workflow journal, receipt journal | `(fn-relay-sender ...)`, `(fn-relay-receiver ...)` via `fn-bp-replay-journal`, `fn-bprr-replay` |
 | BPA inventory | in flight in F_dtn (section 5.4), not in F_node |
@@ -393,37 +396,14 @@ correspond to the fields of `fn-ideal-statep`.
 The claim is a deterministic trace refinement, stated in three layers.
 
 Layer A (inside ACL2, the whole of the served path): the certified function
-the host calls per event equals the ideal step.
-
-```lisp
-;; books/ideal-node-host.lisp (P1): the loop of host/reader-host.lisp:104 and
-;; tools/run_reader.py:222, written once in logic mode, guard t, and then
-;; called from fn-reader-chunk instead of being re-implemented there.
-(defun fn-ideal-serve (s e) (declare (xargs :guard t)) (fn-ideal-step s e))
-
-(defthm fn-ideal-serve-is-the-ideal-step
-  (equal (fn-ideal-serve s e) (fn-ideal-step s e)))         ; by definition; named so, cited never
-```
-
-The theorem with content is the one that retires the `pending_subject` note:
-the reader's chunk loop, as an ACL2 function `fn-reader-drive` mirroring
-`fn-reader-chunk`'s body under the `while pending:` iteration, is
-`fn-wire-drive` followed by `fn-ideal-nntp-run`:
-
-```lisp
-(defthm fn-reader-drive-is-ideal-octets-step
-  (implies (and (fn-wire-statep wire) (fn-nntp-session-consistentp session archive)
-                (fn-wire-octet-listp octets))
-           (equal (fn-reader-drive wire session archive octets)
-                  (let* ((drive (fn-wire-drive wire octets))
-                         (run   (fn-ideal-nntp-run session archive (fn-wire-result-events drive))))
-                    (list (fn-wire-result-state drive) (mv-nth 0 run) (mv-nth 1 run))))))
-```
-
-Its proof is `fn-wire-drive-is-feed-proper` (`books/wire-invariants.lisp:512`)
-plus `fn-wire-next-strictly-consumes` (`:292`) for the measure, and the
-partition theorem `fn-wire-drive-partition-independence` (`:561`) makes the
-chunking irrelevant.
+the host calls per event equals the ideal step. For the reader port this
+landed with no separate host twin: `fn-ideal-step`'s `:octets` branch is
+`fn-served-step`, and `fn-reader-chunk` calls `fn-served-step` on the whole
+read. `fn-served-step` folds `fn-served-feed-byte` over the octets (one
+`fn-wire-feed-byte`, then `fn-served-dispatch-events` on the events it
+framed), and `fn-served-step-partition-independence` makes the chunking
+irrelevant. The lift to every other port is open: those ports of
+`fn-ideal-step` are stubs.
 
 Layer B (the host contract, A-HOST): the host feeds each port's bytes in
 order and unaltered, reports each I/O outcome honestly and once, and
@@ -487,8 +467,8 @@ arguments or constrained functions:
    signature on a statement no honest party issued: a forgery. The bound is
    a reduction, outside ACL2. The entry points are `policy-authorizedp` in
    `fn-bp-prepare-receipt` (`books/bp-workflow.lisp:433`) and `authorized` in
-   `fn-bpr-accept-request`; replacing the host boolean by a constrained
-   `fn-crypto-verify` is P6.
+   `fn-bpr-accept-request`, both still host booleans; replacing them by the
+   constrained `fn-sig-verify` of `books/crypto-seam.lisp` is P6.
 2. **Content identity by digest.** `fn-frame-digest` (`books/frame.lisp:68`)
    is a constrained function with no injectivity axiom. If F_node compares
    content by bytes and R compares by digest, S must hide collisions; the
@@ -583,13 +563,13 @@ the identity. Both simplifications are consequences of the design rule
 ## 3. The server-robustness theorem
 
 "Clients cannot crash us regardless of what they send" is five theorems
-about `fn-ideal-serve`. All five quantify over every state satisfying the
+about `fn-ideal-step`. All five quantify over every state satisfying the
 carried invariant and over every event without hypothesis: every octet
 list, every partition, every host observation sequence.
 
 ### 3.1 Totality: no guard violation on the served path
 
-ACL2 admits only total functions, so `(fn-ideal-serve s e)` has a value for
+ACL2 admits only total functions, so `(fn-ideal-step s e)` has a value for
 every `s` and `e`. The executable claim is stronger: with guard `t`
 verified, raw Common Lisp evaluation on any arguments computes that value
 without a guard violation (the ACL2 guard theorem). The theorem is over the
@@ -598,19 +578,19 @@ world, stated as an `assert-event` in the guard-audit book, in the style of
 
 ```lisp
 ;; tests/acl2/ideal-node-guards-tests.lisp (P2)
-(assert-event (equal (symbol-class 'fn-ideal-serve (w state)) :common-lisp-compliant))
-(assert-event (equal (guard 'fn-ideal-serve nil (w state)) *t*))
+(assert-event (equal (symbol-class 'fn-ideal-step (w state)) :common-lisp-compliant))
+(assert-event (equal (guard 'fn-ideal-step nil (w state)) *t*))
 
-;; The closure: every function reachable from fn-ideal-serve through
+;; The closure: every function reachable from fn-ideal-step through
 ;; unnormalized bodies is :common-lisp-compliant. fn-guard-closure-compliantp
 ;; is a :program-mode walker over (w state) using all-fnnames; it is itself
 ;; evidence-tooling, not a theorem subject.
-(assert-event (fn-guard-closure-compliantp '(fn-ideal-serve) (w state)))
+(assert-event (fn-guard-closure-compliantp '(fn-ideal-step) (w state)))
 ```
 
 And the ledger mirror, so `make check` fails when the closure regresses:
 `tools/ledger.py --check` gains the rule that every function in the
-source-level call graph of `fn-ideal-serve` has guard status `verified`
+source-level call graph of `fn-ideal-step` has guard status `verified`
 (not `default-guarded`). The six functions in `books/nntp.lisp` the ledger
 lists as default-guarded are either verified or shown unreachable from
 `fn-nntp-step` by this rule.
@@ -618,16 +598,14 @@ lists as default-guarded are either verified or shown unreachable from
 The logical half, with no hypothesis on the event:
 
 ```lisp
-(defthm fn-ideal-serve-is-total-and-typed
-  (and (implies (fn-ideal-statep s) (fn-ideal-statep (mv-nth 0 (fn-ideal-serve s e))))
-       (fn-ideal-effect-listp (mv-nth 1 (fn-ideal-serve s e)))))
+(defthm fn-ideal-step-is-total-and-typed
+  (and (implies (fn-ideal-statep s) (fn-ideal-statep (mv-nth 0 (fn-ideal-step s e))))
+       (fn-ideal-effect-listp (mv-nth 1 (fn-ideal-step s e)))))
 ```
 
-Its proof for the `:octets` case is `fn-wire-drive-preserves-statep`
-(`books/wire-invariants.lisp:544`), `fn-nntp-step-preserves-consistent-session`
-(`books/nntp-invariants.lisp:786`) lifted through `fn-ideal-nntp-run` by
-`fn-nntp-finite-trace-preserves-consistent-session` (`:817`), and
-`fn-nntp-step-effects-well-formed` (`books/nntp-effects.lisp:836`); for
+Its proof for the `:octets` case is the served path's own pair,
+`fn-served-step-preserves-connp` and `fn-served-step-effects-are-typed`
+(`books/served.lisp`), both proved over the function the host calls; for
 `:store`, `fn-snt-step-preserves-relation` (`books/store-node-traces.lisp:406`)
 and the resolution-trace sibling; for the sender, `fn-bp-step-preserves-state`
 (`books/bp-workflow-invariants.lisp:668`) and `fn-relay-sender-step-preserves-invp`
@@ -641,10 +619,10 @@ Following `books/article-work-budget.lisp` and
 same value and a natural, proved equal to the step, and a closed-form bound.
 
 ```lisp
-(defun fn-ideal-serve-cost (s e) ...)          ; counts fn-wire-feed-byte steps, fn-nntp-step
+(defun fn-ideal-step-cost (s e) ...)          ; counts fn-wire-feed-byte steps, fn-nntp-step
                                                ; work (fn-aw-*/fn-wm-* budgets), store step work
-(defthm fn-ideal-serve-cost-is-the-step
-  (equal (mv-nth 0 (fn-ideal-serve-with-cost s e)) (fn-ideal-serve s e)))
+(defthm fn-ideal-step-cost-is-the-step
+  (equal (mv-nth 0 (fn-ideal-step-with-cost s e)) (fn-ideal-step s e)))
 
 (defun fn-ideal-cost-bound (config n)          ; n = (fn-ideal-event-len e)
   (* *fn-ideal-cost-k*
@@ -654,9 +632,9 @@ same value and a natural, proved equal to the step, and a closed-form bound.
         (len (fn-ideal-config-groups config))
         (fn-ideal-config-capacity config))))
 
-(defthm fn-ideal-serve-cost-is-bounded
+(defthm fn-ideal-step-cost-is-bounded
   (implies (fn-ideal-statep s)
-           (<= (fn-ideal-serve-cost s e)
+           (<= (fn-ideal-step-cost s e)
                (fn-ideal-cost-bound (fn-ideal-config s) (fn-ideal-event-len e)))))
 ```
 
@@ -702,24 +680,24 @@ Per-principal accounting (C1-08) refines the bound; it does not create it.
 
 ```lisp
 (defthm fn-ideal-every-effect-is-typed
-  (implies (member-equal eff (mv-nth 1 (fn-ideal-serve s e)))
+  (implies (member-equal eff (mv-nth 1 (fn-ideal-step s e)))
            (fn-ideal-effectp eff)))                       ; no hypotheses on s or e
 
 (defun fn-ideal-outcome (s e)                              ; :accepted, :refused or :uncertain
-  (fn-ideal-outcome-of-effects (mv-nth 1 (fn-ideal-serve s e))))
+  (fn-ideal-outcome-of-effects (mv-nth 1 (fn-ideal-step s e))))
 
 (defthm fn-ideal-outcomes-are-three
   (member-equal (fn-ideal-outcome s e) '(:accepted :refused :uncertain)))
 
 (defthm fn-ideal-refusal-changes-no-committed-history
   (implies (and (fn-ideal-statep s) (equal (fn-ideal-outcome s e) :refused))
-           (equal (fn-ideal-history (mv-nth 0 (fn-ideal-serve s e)))
+           (equal (fn-ideal-history (mv-nth 0 (fn-ideal-step s e)))
                   (fn-ideal-history s))))
 
 (defthm fn-ideal-uncertain-iff-fenced
   (implies (fn-ideal-statep s)
            (iff (equal (fn-ideal-outcome s e) :uncertain)
-                (equal (fn-state-fenced (fn-ideal-archive (mv-nth 0 (fn-ideal-serve s e)))) t))))
+                (equal (fn-state-fenced (fn-ideal-archive (mv-nth 0 (fn-ideal-step s e)))) t))))
 ```
 
 The third is the assurance rule "three outcomes stay distinct all the way
@@ -739,17 +717,17 @@ For one connection, any octet stream, any partition into reads:
                 (fn-ideal-find-conn id (fn-ideal-conns s))
                 (fn-wire-octet-list-listp chunks))
            (equal (fn-ideal-replies id (mv-nth 1 (fn-ideal-run s (fn-ideal-octet-events id chunks))))
-                  (fn-ideal-replies id (mv-nth 1 (fn-ideal-serve s (list :octets id (fn-ideal-append-all chunks))))))))
+                  (fn-ideal-replies id (mv-nth 1 (fn-ideal-step s (list :octets id (fn-ideal-append-all chunks))))))))
 ```
 
-Proof: induction on `chunks` with `fn-wire-drive-partition-independence`
-(`books/wire-invariants.lisp:561`) for the wire half and the associativity of
-`fn-ideal-nntp-run` over `append`ed event lists (a lemma of the same shape as
-`fn-wire-feed-proper-append`, `books/wire.lisp:685`).
+Proof: induction on `chunks` with `fn-served-step-partition-independence`
+(`books/served.lisp`), which is already this law for one connection's reads
+(a read of `left` then `right` equals the read of their `append`, effects
+appended); what is open is only the run it is carried through.
 
-The reply stream is then, by the definition of `fn-ideal-octets-step`,
-`(fn-ideal-nntp-run session archive (fn-wire-result-events (fn-wire-drive wire octets)))`:
-`fn-nntp-step` on each framed command against the pinned archive. That
+The reply stream is then, by the definition of `fn-served-feed`,
+`fn-served-dispatch-events` on each framed command against the connection's
+pinned archive. That
 unfolding is a definition and is named `-unfolds`; it is cited nowhere. The
 content of "this is the RFC semantics" is the audit
 [nntp-audit](nntp-audit.md) plus the cursor and selection theorems already
@@ -789,8 +767,8 @@ connection names a completion consumed after its submission was taken,
 hence a record in the durable history). Together with 3.5 this is the whole
 "we implement the semantics" claim for readers: the reply stream of a
 connection is a function of its own octets and the version it pinned, and of
-nothing else. Open: the interleaving theorem itself over `fn-ideal-run`
-(M7), and that the completion a 240 names is the submission's own article
+nothing else. Open: the interleaving theorem itself over a run of
+`fn-ideal-step` (M7; `books/ideal.lisp` records it as an open statement), and that the completion a 240 names is the submission's own article
 rather than a control-channel post consumed in the same window (the host
 serializes; the book records only the ledger mark).
 
@@ -869,9 +847,9 @@ Verdict: each is a tooth only if its witness satisfies the shape clauses of
 the dropped recognizer and fails a semantic clause. A witness named
 "untyped" or "forged" that fails `true-listp` shows only that the recognizer
 has a shape clause. Recommendation (P7): beside every such witness, an
-`assert-event` of the shape recognizer (`fn-sf-phase-shapep` exists; define
-`fn-state-shapep`, `fn-node-shapep`, `fn-sn-shapep`, `fn-nntp-session-shapep`
-as the pure shape halves), so the ledger can check that the witness is
+`assert-event` of the shape recognizer (`fn-sf-phase-shapep`,
+`fn-state-shapep` and `fn-sn-shapep` exist; the node and NNTP-session pure
+shape halves are still to be defined), so the ledger can check that the witness is
 well-shaped; retire any witness that cannot be made so. The witnesses that
 already pass this rule are the model: `nnt-teeth-step-without-a-valid-cursor`
 (`*nnt-stale-cursor*`, a well-formed session whose cursor names an absent
@@ -950,31 +928,35 @@ violates A-HOST; keep them, since F_node must be total on those inputs
    initial state, preservation, the projection theorems of 1.3 and the
    witness trace. Cheap; the content is choosing fields so projections are
    accessors. Depends on nothing; the relay state exists.
-2. **M2 the served path in logic mode** (P1): `fn-reader-drive` and
-   `fn-reader-drive-is-ideal-octets-step`; `fn-reader-chunk` becomes a call
-   to it. Closes the wire `pending_subject`. Depends on M1.
-3. **M3 guard closure** (P2): `fn-guard-closure-compliantp`, the
+2. **M2 the served path in logic mode** (P1): landed as `fn-served-step`,
+   guard `t`, which `fn-reader-chunk` calls on the whole read; the
+   drive-equals-ideal-step theorem the design proposed is unnecessary
+   because no host loop remains to equate.
+3. **M3 guard closure** (P2): a program-mode closure walker, the
    `assert-event`s of 3.1, the `ledger.py --check` rule, and resolving the
    six default-guarded `fn-nntp-*` functions. Depends on M1.
-4. **M4 partition independence lifted** (P1): `fn-ideal-reply-stream-is-partition-independent`
-   and the `append` lemma for `fn-ideal-nntp-run`. Depends on M2.
+4. **M4 partition independence lifted** (P1): the per-connection law is
+   `fn-served-step-partition-independence`; its lift to the ideal run (3.5)
+   is open. Depends on M2.
 5. **M5 typed refusals** (P4): `*fn-ideal-refusals*`, the three theorems of
    3.4. Depends on M1.
-6. **M6 cost and size** (P3): the instrumented twin, `fn-ideal-cost-bound`,
-   `fn-ideal-size-bound`, `posp` charges, the one-per-work bounds for
+6. **M6 cost and size** (P3): the instrumented twin, the cost and size
+   bound functions of 3.2 and 3.3 (open statements in `books/ideal.lisp`),
+   `posp` charges, the one-per-work bounds for
    receipts and undertakings. Depends on M1; the wildmat and article budgets
    exist.
-7. **M7 isolation** (P1): `fn-ideal-connection-isolation` from the owner
-   keystones. Depends on M1; `w2/mutable-owner` and `w5/owner-post` have
+7. **M7 isolation** (P1): the connection-isolation theorem of 3.6 (an open
+   statement in `books/ideal.lisp`) from the owner keystones. Depends on M1; `w2/mutable-owner` and `w5/owner-post` have
    landed the owner keystones it lifts.
-8. **M8 A-HOST and A-DURABILITY applied** (P5): `fn-ideal-run` stated with
+8. **M8 A-HOST and A-DURABILITY applied** (P5): the run of `fn-ideal-step` stated with
    `fn-assume-host-events` on the event list; `:reopen` with
    `fn-sf-crash-imagep`; the first theorems in the tree that take an
    encapsulate as a hypothesis. Depends on M1.
 9. **M9 F_dtn and the composed system** (P5): section 5.4. Depends on M1, M8.
-10. **M10 the crypto seam** (P6, with C1-11): `fn-crypto-verify` encapsulate
-    replacing the host boolean; the functional-instance theorem that
-    F_node under the oracle equals F_node under `fn-crypto-verify` whenever
+10. **M10 the crypto seam** (P6, with C1-11): the seam's constrained
+    `fn-sig-verify` (`books/crypto-seam.lisp`) replacing the host boolean;
+    the functional-instance theorem that
+    F_node under the oracle equals F_node under `fn-sig-verify` whenever
     the two agree on the reachable set; the written simulator argument for
     the disagreement event. Depends on M9 and the substrate lane.
 
@@ -1079,11 +1061,13 @@ of delay, reorder, duplication, loss and injection.
 The three conjuncts are, respectively, `fn-bprl-authorized-receipt-evidence-matches-required`
 lifted; `fn-bprv-replayed-receipt-is-grounded` and
 `fn-bprv-evolving-output-is-node-grounded-when-idle` at the issuer, carried
-through the channel by `fn-dtn-deliverable`'s no-fabrication; and
+through the channel by F_dtn's no-fabrication (its delivery predicate,
+proposed above, is not yet defined); and
 `fn-bprl-release-preserves-archive-pin`. No hypothesis mentions delivery, so
 loss and delay are covered; the event list is arbitrary, so reorder is
-covered; injection is covered because an injected receipt fails
-`fn-sys-ideal-authorizedp`.
+covered; injection is covered because an injected receipt fails the
+composed system's ideal-authorization predicate (proposed; no `fn-sys-`
+definition exists yet).
 
 Duplicate delivery is idempotent on state and regenerates the receipt:
 
@@ -1111,13 +1095,13 @@ the substrate lane owns the crypto seam. Tiers follow the C1 packet table.
 
 | Order | Packet | Owner | Deliverable | Acceptance |
 | --- | --- | --- | --- | --- |
-| P0 | `books/ideal-node.lisp`, `ideal-node-invariants.lisp`, `tests/acl2/ideal-node-tests.lisp` | core lane, Opus implementation over this design | Section 1 as certified books; `fn-ideal-`, `fn-dtn-`, `fn-sys-` registered in `docs/prefixes.md` | Both books certify as Makefile roots; every projection theorem of 1.3 proved with `fn-ideal-statep` as sole hypothesis; the every-port witness trace runs under `fn-ideal-run` with `assert-event`s on each intermediate state; one `must-fail` per projection hypothesis with a well-shaped witness (4.2 rule); `ledger.py --check` green |
-| P1 | served path in logic mode | service integrator, Opus | `fn-reader-drive`, `fn-reader-drive-is-ideal-octets-step`, `fn-ideal-reply-stream-is-partition-independent`; `fn-reader-chunk` calls the logic-mode function | The wire `pending_subject` note deleted and `ledger.py --check` still green; `tests/test_reader_partitions.py` and `tests/interop_nntplib.py` byte-identical before and after; `host/reader-host.lisp` no longer contains protocol logic outside the call |
-| P2 | guard closure | assurance-tooling lane, Sonnet | `fn-guard-closure-compliantp`, `tests/acl2/ideal-node-guards-tests.lisp`, the `ledger.py` closure rule, the six `fn-nntp-*` resolutions | The guards book certifies; `ledger.py --check` fails on a synthetic regression (one callee set `:verify-guards nil`) and passes on the tree; the ledger row for `fn-ideal-serve` reads `verified` with closure size reported by the tool, not typed |
+| P0 | `books/ideal-node.lisp`, `ideal-node-invariants.lisp`, `tests/acl2/ideal-node-tests.lisp` | core lane, Opus implementation over this design | Section 1 as certified books; `fn-ideal-`, `fn-dtn-`, `fn-sys-` registered in `docs/prefixes.md` | Both books certify as Makefile roots; every projection theorem of 1.3 proved with `fn-ideal-statep` as sole hypothesis; the every-port witness trace runs under the run of `fn-ideal-step` with `assert-event`s on each intermediate state; one `must-fail` per projection hypothesis with a well-shaped witness (4.2 rule); `ledger.py --check` green |
+| P1 | served path in logic mode | service integrator, Opus | landed as `fn-served-step` with `fn-served-step-partition-independence`; `fn-reader-chunk` calls it on the whole read. Open: the lift to the ideal run (3.5) | The wire `pending_subject` note deleted and `ledger.py --check` still green; `tests/test_reader_partitions.py` and `tests/interop_nntplib.py` byte-identical before and after; `host/reader-host.lisp` no longer contains protocol logic outside the call |
+| P2 | guard closure | assurance-tooling lane, Sonnet | a program-mode closure walker, `tests/acl2/ideal-node-guards-tests.lisp`, the `ledger.py` closure rule, the six `fn-nntp-*` resolutions | The guards book certifies; `ledger.py --check` fails on a synthetic regression (one callee set `:verify-guards nil`) and passes on the tree; the ledger row for `fn-ideal-step` reads `verified` with closure size reported by the tool, not typed |
 | P3 | cost and size | core lane, Opus | 3.2 and 3.3 with `posp` charges and the one-per-work bounds | Theorems certified; the report sentence quotes `*fn-ideal-cost-k*`, the exponent, and the measured chunk cost from `tests/evidence/` in one sentence; no change to any served-path definition |
 | P4 | typed refusals | service integrator, Sonnet | `*fn-ideal-refusals*`, the theorems of 3.4, `unreachable-in-composition` marks of 4.5 | Every refusal reason in the enumeration is produced by a witness in the test book; `run_store.exit_code_for` and the reader map each `:refused`/`:uncertain` effect to the existing code table with a test per row |
-| P5 | F_dtn, composition, assumptions applied | core lane, Fable design then Opus proofs | `books/dtn-channel.lisp`, `books/system.lisp`, 5.4's theorems, M8 | `fn-sys-release-is-grounded-end-to-end` and `fn-sys-duplicate-delivery-is-idempotent` certified; a two-node witness with a reorder, a duplicate, a drop and an injection; `fn-assume-host-events` and `fn-sf-crash-imagep` appear as hypotheses of cited theorems; `tests/bp-dtn7` scenario SCN-007/008 runs unchanged |
-| P6 | crypto seam entry | substrate lane (C1-11), Fable | `fn-crypto-verify` encapsulate; the oracle/verify functional-instance theorem; the simulator argument as prose in this document's 2.3 with the reduction named | The host boolean is gone from `fn-bp-prepare-receipt` and `fn-bpr-accept-request` call sites; no `defaxiom`, no trust tag; the theorem that the two worlds agree on the reachable set certifies; the disagreement event is named `forgery` in the registry with status `deferred` until a scheme is selected (D09) |
+| P5 | F_dtn, composition, assumptions applied | core lane, Fable design then Opus proofs | `books/dtn-channel.lisp`, `books/system.lisp`, 5.4's theorems, M8 | the release-is-grounded and duplicate-delivery theorems of 5.4 certified; a two-node witness with a reorder, a duplicate, a drop and an injection; `fn-assume-host-events` and `fn-sf-crash-imagep` appear as hypotheses of cited theorems; `tests/bp-dtn7` scenario SCN-007/008 runs unchanged |
+| P6 | crypto seam entry | substrate lane (C1-11), Fable | `fn-sig-verify` (`books/crypto-seam.lisp`) at both call sites; the oracle/verify functional-instance theorem; the simulator argument as prose in this document's 2.3 with the reduction named | The host boolean is gone from `fn-bp-prepare-receipt` and `fn-bpr-accept-request` call sites; no `defaxiom`, no trust tag; the theorem that the two worlds agree on the reachable set certifies; the disagreement event is named `forgery` in the registry with status `deferred` until a scheme is selected (D09) |
 | P7 | strawman retirements | assurance-tooling lane, Sonnet | 4.1 renames and detector rule; 4.2 shape recognizers and witness `assert-event`s; 4.3 relabels; registry edits | Detector flags every theorem in 4.1's second list; every 4.2 witness has a passing shape `assert-event` or is removed; `proof-events.json` cites none of 4.1; `make check` green |
 
 P0 through P2 are sequential. P3, P4 and P7 run in parallel after P0. P5

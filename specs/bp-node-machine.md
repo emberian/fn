@@ -204,8 +204,10 @@ constraints and is dispatched, forwarded, delivered, expired, deleted and
 discarded by the same steps. **The machine keeps one list of held bundles and
 one BP transition authority** (§12, D-1): no second inbound machine, one
 pending proposal, one token frontier, one fence, records applied on
-`:durable`. Today's `fn-bpn-job` becomes the local-submission case of
-`fn-bpn-held`; its route leaves the record (§2.5).
+`:durable`. As built, a held bundle is a `fn-bpnf-held` row of
+`fn-bpnf-held-list` (`bp-node-foundation.lisp`); the outbound `fn-bpn-job`
+list, each job keeping its route, stays in the base machine state under
+`fn-bpnf-base`, so the two are not yet one list (§2.5).
 
 Inside that one list, four identities are separate fields and are never
 substituted for one another (§2.3): the **bundle identity** (RFC 9171
@@ -251,15 +253,15 @@ the node's configuration rows `owner-backoff N` and `retry-budget N` in
 `JOURNAL/bp-node-budgets`. ACL2 supplies the defaults (5000 ms, 3) and
 validates them (`fn-bpnp-configured-budgets`, `fn-bpnp-budgetsp`: frame
 naturals, budget at least 1); each deciding host event carries them as its
-optional last field (`fn-bpnp-budgeted-lengthp`). They are not a
-`fn-bpn-policy` field yet.
+optional last field (`fn-bpnp-budgeted-lengthp`). The policy record above
+is the design; no book defines it.
 
 The five budgets are distinct and each is checked by name:
 
 | Budget | Measure | Consumed by | Released by |
 | --- | --- | --- | --- |
 | live slots | `(len held)` + slots reserved by open plans ≤ `max-held` | kind 5; kind 15 (reserves one per planned child) | kind 11; kind 17; kind 18 (net `1 - (len ids)`) |
-| live bytes | `fn-bpn-held-octets` + octets reserved by open plans ≤ `max-octets` | same | same |
+| live bytes | `fn-bpnf-held-octets` + octets reserved by open plans ≤ `max-octets` | same | same |
 | staged space | slots and octets reserved by open plans ≤ `stage-slots`, `stage-octets` (a cap within the two above, not beside them) | kind 15 | kind 16 (reservation becomes live), kind 17 |
 | authoritative history | submission outcomes + receipt handoffs + conflict records ≤ `max-outcomes` | kind 5 with a submission, kind 7 creating a handoff, kind 14 | kind 12, under §2.4's retirement rule only |
 | journal authority | `remaining(s)` = `*fn-bpn-machine-max-records*` − (`next-token` − `generation-base`) | every record | rotation (§3.6) starts a new physical generation |
@@ -308,14 +310,14 @@ the invariant still holds. A failed forwarding result (kind 9, `:failed`, `:unce
 refusal other than `(:refused 1)`) is paid by the credit its kind 8
 reserved; this is N05's counterexample closed. A report is a kind 5 like
 any other and can spend only free credit, so it never consumes credit that
-closes accepted work. The keystones, in `-invariants`:
-
-- `fn-bpn-step-preserves-journal-debt-cover`: the inequality is preserved by
-  every event (a conjunct of T6's preservation, stated alone so its teeth
-  are its own).
-- `fn-bpn-debt-paying-record-is-never-refused-for-credit`: a proposal whose
-  record pays debt is never answered `:journal-exhausted` or `:capacity`
-  for journal credit.
+closes accepted work. The two step-level keystones (the inequality is
+preserved by every event; a proposal whose record pays debt is never
+answered `:journal-exhausted` or `:capacity` for journal credit) are not
+proved. What is proved is the admission arithmetic in `bp-node-debt.lisp`:
+`fn-bpnd-spend-admission-preserves-cover` (a `:spend` admission leaves the
+cover and the margin after its record) and
+`fn-bpnd-paying-admission-preserves-existing-cover` (a `:pay` admission
+keeps `fn-bpnd-coverp`).
 
 When a transition's record cannot be admitted, the answer is its refusal
 effect (`:capacity`) and nothing durable; `:journal-exhausted` and the fence
@@ -473,11 +475,12 @@ The assumption it rests on is a constrained function in
 (encapsulate (((fn-assume-bp-path-authentic * * *) => *)) ...)  ; boundary channel peer-name
 ```
 
-Keystones: `fn-bpaj-session-principal-is-selected-by-the-channel` (an
-admitted principal is the peer the channel selects, and the announced EID
-is among its allowed EIDs); `fn-bpaj-announced-eid-never-selects-a-peer`
-(for one channel, two announced EIDs that are both admitted give the same
-peer). This is the same trust statement as NNTP source-address admission
+Keystone: `fn-bpaj-announced-eid-never-selects-a-peer`
+(`bp-session-admission.lisp`: for one channel, two announced EIDs that are
+both admitted give the same peer). That an admitted principal is the peer
+the channel selects, with the announced EID among its `transport-bp` rows,
+is `fn-bpaj-session-principal`'s definition (the single loopback candidate,
+then the EID row check); no separate theorem states it. This is the same trust statement as NNTP source-address admission
 when the boundary and adversary are the same; it is not origin
 authentication, and an admitted hop is not evidence that the bundle's
 source or a receipt's issuer is that hop (RFC 9174 §4.6, RFC 9172 §2.2).
@@ -671,8 +674,10 @@ generation-base and next-token kept; sessions, routes, route-generation,
 waits, cursor, pending, issued, quiescing and fenced set to their restart
 values (nil, nil, 0, nil, the first class, nil, nil, nil, nil). Because it
 is a state, not a separate projection record, a fixed-point statement over
-it is well typed (T6). `fn-bpn-clear-inflight` erases every attempt and
-delivery marker, anchored or not; `fn-bpn-reanchor st obs` is §4.5's
+it is well typed (T6). Clearing every attempt and delivery marker, anchored
+or not, is the design's `clear-inflight`; as built, `fn-bpn-restart-step`
+applies `fn-bpn-resume-jobs`, which returns every `:attempting` job to
+`:queued`; `fn-bpn-reanchor st obs` is §4.5's
 re-anchoring. These three are the vocabulary of T6.
 
 ### 2.7 No whole-state revalidation on the served path
@@ -717,9 +722,11 @@ delivery, an attempt or an expiry carries one (F-L).
 | `(:author-report subject-id assertion reason sequence obs)` | the loop, after `:report-due` | §7.6 |
 | `(:restart records sequence-ready obs)` | the loop at open | §4.5 |
 
-`fn-bpn-machine-eventp` bounds `:restart`'s record list, `:bundle-received`'s
-octets by the transfer limit, `table` by `fn-bpn-route-listp`, and every
-session id and token by `fn-bpn-machine-u64p`.
+As built, `fn-bpn-machine-eventp` bounds `:restart`'s record list; the
+progress machine's `fn-bpnp-host-eventp` checks a `:progress` event's routes
+by `fn-bpnp-routesp` (an explicit `fn-bpnp-route-listp`, or `(:table
+table)`) and their count by `*fn-bpnp-max-routes*`, and each session id by
+`fn-bpnp-session-idp`.
 
 ### 3.2 Effects
 
@@ -727,7 +734,7 @@ session id and token by `fn-bpn-machine-u64p`.
 | --- | --- | --- |
 | `(:persist token record)` | publish this FNBS record under the ACL2-derived name, answer `:persist-result` | unchanged |
 | `(:receive-answer ingress disposition)` | the disposition of one `:bundle-received` | §9.2; `disposition` is `:stored`, `:duplicate`, `:observed`, `(:refused reason)` or `(:uncertain reason)` |
-| `(:deliver id delivery-token adu-class key payload ingress report-p)` | hand the ADU to the join for its class; answer `:deliver-result` | §9.3; `adu-class` is `:request` or `:receipt` (`fn-bpn-adu-class` over the ADU kind, `bp-adu.lisp:20-21`), anything else is `:refused :adu-class` without a `:deliver` |
+| `(:deliver id delivery-token adu-class key payload ingress report-p)` | hand the ADU to the join for its class; answer `:deliver-result` | §9.3; `adu-class` is `:request` or `:receipt` (`fn-bpah-held-class` over the decoded ADU, `bp-node-foundation.lisp`; the kinds are `bp-adu.lisp:20-21`), anything else is `:refused :adu-class` without a `:deliver` |
 | `(:cl-send cl peer-eid session attempt-token id image)` | offer `image` on `session` | answer `:forward-result` with the same attempt token and session |
 | `(:transport submission status)` | relay to the workflow when `submission` is a `:work` | statuses `fn-bp-transport-statusp` accepts today |
 | `(:report-due subject-id assertion reason)` | enabled and requested | §7.6 |
@@ -793,10 +800,14 @@ issued status, or missing lock/name precondition faults. `fn-bpnf-stored-
 frame-limit` supplies the bounded kind-5 physical read size. This join
 certified in the coherent A2/guard batch and still awaits a native caller.
 
-Every record is built by its constructor and read by selectors; no book and
-no theorem matches a record by list shape. `fn-bpn-rec-kind`,
-`fn-bpn-rec-token` are total over `fn-bpn-recordp`; each kind has its field
-selectors and a `-of-constructor` theorem.
+The design builds every record by a constructor and reads it by selectors,
+with a `-of-constructor` theorem per kind; the constructors in the table
+below are that design. As built, records are positional lists: the outbound
+lifecycle's are recognized by `fn-bpn-lifecycle-recordp` (kinds
+`fn-bpn-record-kindp`) and read by `fn-bpn-record-token` and
+`fn-bpn-record-key`; the received FNBS kinds have per-kind recognizers
+(`fn-bpnf-stored-recordp`, `fn-bpnf-family-recordp`,
+`fn-bpnf-conflict-recordp`), and held rows are read by `fn-bpn-nth`.
 
 | Kind | Constructor | Applied as |
 | --- | --- | --- |
@@ -929,25 +940,36 @@ selection write; selection written, barrier not answered; selection
 and a stale completion from the previous epoch delivered (its operation id
 is unknown, §9.1, and its token cannot match a newer attempt).
 
-**The six obligations**, slice E, in `books/bp-node-rotation.lisp` (new)
-beside A2's replay book:
+**The six obligations**, slice E, and what `books/bp-node-rotation.lisp`
+and its companions prove of each:
 
-1. `fn-bpn-checkpoint-replays-to-the-projection`: replaying a decoded
-   checkpoint gives exactly `(fn-bpn-durable-projection st)`.
-2. `fn-bpn-generation-authority-is-recoverable`: for every row of the cut
-   table, recovery selects the authority the table names, or faults.
-3. `fn-bpn-rotation-preserves-acknowledged-history`: every record answered
-   `:durable` before the selection is reflected in the recovered
-   projection (from 1 and the quiesce precondition).
-4. `fn-bpn-recovered-owed-work-has-a-continuation` (T6) holds of a state
-   recovered from a checkpoint: live entries, handoffs and plans continue.
-5. `fn-bpn-rotation-frontiers-are-monotone`: every logical frontier after
-   `:generation-selected` is at least its value before; none resets.
-6. `fn-bpn-rotation-is-affordable`: for every state satisfying §2.1's
-   budgets, the checkpoint's chunk count plus one, plus `D(s)` plus
-   `control-reserve`, is at most `*fn-bpn-machine-max-records*`, so a new
-   generation starts inside its own debt cover. A theorem over the policy
-   constants and the chunk bound.
+1. Replaying a decoded checkpoint gives the durable projection:
+   `fn-bpnr-recover-from-checkpoint-equals-full-recover` (recovery from the
+   published rotation checkpoint equals full recovery over the old
+   generation, with and without later rows) and
+   `fn-bpnrd-rotation-keeps-every-held-family` (the due rotation's
+   checkpoint recovers exactly the held rows, handoffs and arrival
+   frontier).
+2. For every row of the cut table, recovery selects the authority the table
+   names, or faults: `fn-bpnr-rotation-crash-recovers-old-or-new` covers the
+   replacement's crash cuts (old or new, never a mixture); the damaged rows
+   have no theorem.
+3. Every record answered `:durable` before the selection is reflected in
+   the recovered projection: follows from 1 and the quiesce precondition;
+   no separate theorem.
+4. T6's owed-work continuation for a state recovered from a checkpoint: not
+   proved.
+5. No logical frontier resets: `fn-bpnr-reopen-after-rotation-names-a-later-epoch`
+   (the reopen's epoch is after the rotation's) and
+   `fn-bpnr-next-generation-exceeds-selected`; no theorem covers every
+   frontier.
+6. Affordability (for every state within §2.1's budgets, the checkpoint's
+   chunk count plus one, plus `D(s)` plus `control-reserve`, is at most
+   `*fn-bpn-machine-max-records*`): not proved. What bounds the checkpoint
+   instead is `fn-bpnr-read-bound`, a function of the profile's held
+   capacity; `fn-bpnp-rotate-step` refuses a checkpoint over it, and
+   `fn-bpnp-step-rotation-resets-credit-only-on-durable` resets the record
+   count only on the matching durable answer.
 
 The publication facts it needs are the ones T6 needs (§6 of the review):
 the FNBS publisher's relation to the byte-store model, including the cut
@@ -1002,8 +1024,11 @@ RFC 9171 §5.6, with fn's rule that nothing is stored before it decodes.
    `(:refused :unsupported-block)`; "discard block if not processed" drops
    the block; otherwise it is kept as opaque immutable content. BPSec
    blocks (11, 12) are unsupported in the v0 profile and handled by the same
-   rule. `fn-bpn-blocks-supportedp` is the resulting predicate; `fn-bpb-bundlep`
-   is structural only and is not called semantic validity.
+   rule. This step is not built: `fn-bpn-receive-decision` does not read
+   the processing-control flags (`fn-bpb-flag-delete-if-unprocessable`,
+   `fn-bpb-flag-discard-if-unprocessable`), so every block that decodes is
+   kept. `fn-bpb-bundlep` is structural only and is not called semantic
+   validity.
 4. Identity and duplicate equivalence (F-E). `id = (fn-bpp-bundle-id
    primary (len payload))`. `fn-bpn-immutable-projection b` is the primary
    block, the payload block's data, and every block other than 6, 7 and 10
@@ -1018,8 +1043,9 @@ RFC 9171 §5.6, with fn's rule that nothing is stored before it decodes.
    digest's collision assumption). A fragment whose ADU key names a live
    reassembled bundle, or a reassembly still in the correlation index, is
    `:duplicate` (§7.2).
-5. Administrative record addressed here (`fn-bpp-administrativep` and
-   `fn-bpn-local-destinationp`), reached only when steps 1 to 4 admitted
+5. Administrative record addressed here (`fn-bpp-administrativep` and a
+   destination equal to this node's EID; as built, `fn-bpn-report-observe-held`
+   in `bp-report-observe.lisp` asks both of a held row), reached only when steps 1 to 4 admitted
    it and found no entry or outcome with `id` (T5 names that predicate):
    §7.6's parser; a decodable report yields `(:transport submission
    status)` for the correlation entry it names (§2.4), labelled a remote
@@ -1142,9 +1168,14 @@ re-tagged if still blocked. A wait never makes an entry ineligible for
 **Service.** The class served is the first class, starting at `cursor` and
 cycling, that has an eligible candidate; `cursor` then advances past it.
 Within the class the entry of **least arrival among eligible candidates**
-is chosen. So every class with an eligible candidate is served within four
-progress events (`fn-bpn-progress-serves-every-enabled-class-within-four`),
-and FIFO holds among eligible candidates, not among all.
+is chosen. So, by design, every class with an eligible candidate is served
+within four progress events, and FIFO holds among eligible candidates, not
+among all. As built, `fn-bpnp-progress-step` has no class cursor: it takes
+the least-arrival held row among the eligible ones (live, and blocked by no
+wait, credit or busy deferral: `fn-bpnp-oldest-eligible-with-credit`) and
+acts on it by its destination; a blocked older row never displaces an
+eligible newer one (`fn-bpnp-oldest-eligible-skips-blocked-older`, stated
+over two rows). The four-event bound has no theorem.
 
 1. **`:expire`.** Candidates: not deleted, `(fn-bpn-held-expiry h obs)` is
    `:expired`. Propose kind 10 `:lifetime-expired`; success effects
@@ -1184,18 +1215,28 @@ the marker, propose nothing, leave `:dispatch-pending` and set wait
 `(:after m)`, so class 3 redelivers after the backoff (BP-R17) and serves
 other entries meanwhile.
 
-**BP-R17, present (2026-09-24).** The busy half is in `fn-bpnp-step`: the
-seven-field `(:deliver-result epoch op key :busy detail obs)` clears the
-marker and sets the volatile wait `(:bpnp-wait key :busy n m)` with
-`m` = monotonic + `*fn-bpnp-owner-backoff*` (5000 ms); nothing is proposed
-and the row stays held and `:dispatch-pending`
-(`fn-bpnp-step-busy-delivery-defers`, `books/bp-node-busy-delivery.lisp`).
-Class 3 offers the row again once the reading reaches `m`
-(`fn-bpnp-busy-deferral-ends-at-its-reading`); at the kind-8 retry bound
-`*fn-bpnp-max-forward-retries*` the answer is `(:delivery-stranded key n)`
-and the row is not offered until recovery clears the wait
-(`fn-bpnp-busy-stranded-row-is-not-offered`). The count is volatile, like
-every wait: a restart gives a stranded row a fresh budget. `:uncertain`
+**BP-R17, present (2026-09-24; the count durable since 2026-09-25, lane
+bp-budgets-receipts).** The busy half is in `fn-bpnp-step`: the
+`(:deliver-result epoch op key :busy detail obs)` event, carrying the
+node's budgets as its optional last field, clears the marker and proposes
+the kind 20 that counts the deferral (the row's arrival and primary
+identity, count one more than its durable count); without journal credit
+the answer is the credit wait and nothing is issued
+(`fn-bpnp-step-busy-delivery-proposes-its-count`,
+`books/bp-node-busy-delivery.lisp`). The live persist arm and the ordered
+replay apply it through one function
+(`fn-bpnp-step-deferral-durable-applies-the-replay-function`). The row
+stays held and `:dispatch-pending` under the wait `(:bpnp-wait key :busy m
+b)`, `m` = monotonic + the configured `owner-backoff`. Class 3 offers the
+row again once the reading reaches `m`
+(`fn-bpnp-busy-deferral-ends-at-its-reading`); at the configured retry
+budget the row is stranded, never offered
+(`fn-bpnp-busy-stranded-row-is-not-offered`), and reported `(:delivery-stranded
+key n)` on every otherwise idle progress event
+(`fn-bpnp-progress-reports-a-stranded-row`) until the operator's kind-20
+resume changes its count. The count survives restart: recovery installs
+the live count (`fn-bpnp-busy-count-after-recovery-is-the-live-count`), so
+a restart gives a stranded row no fresh tries. `:uncertain`
 keeps its fence (the delivery-uncertain marker, recovery first) rather than
 the `(:after m)` wait this paragraph first named for it. Host:
 `fn-owner-app-plan-install` answers a `(:busy reason)` transit plan `:busy`,
@@ -1203,7 +1244,14 @@ the `(:after m)` wait this paragraph first named for it. Host:
 `:busy`, and `fnn-bpnode-dispatch-one` issues the busy event with its
 observation (host/native/bp-node.lisp).
 
-### 4.3 Forwarding: `fn-bpn-session-step`, `fn-bpn-resume-step`, `fn-bpn-forward-result-step`
+### 4.3 Forwarding: `:session`, `:resume`, `:forward-result`
+
+As built, held rows are forwarded by `fn-bpnp-step`'s `:session` and
+`:resume` arms, both through `fn-bpnp-routed-start`, and its
+`:forward-result` arm, `fn-bpnp-forward-result-propose-step`; the base
+jobs' own arms are `fn-bpn-contact-step`, `fn-bpn-start-one` and
+`fn-bpn-forward-result-step`. The design's step names below are not
+definitions.
 
 `fn-bpn-start-one st peer session obs`, called by a session open and by
 `:resume`, selects the entry of **least arrival among eligible forward
@@ -1401,7 +1449,11 @@ node.
   uncertain one is their answer (exit 3) and a refused one exit 2, although
   ACL2 has requeued the job exactly as under `serve`.
 
-### 4.4 Authoring: `fn-bpn-transmit-step`, `fn-bpn-report-step`
+### 4.4 Authoring: `:transmit`, `fn-bpn-report-step`
+
+As built, a local submission is the base machine's `:enqueue` event,
+`fn-bpn-enqueue-step`; the design's transmit step below is not a
+definition.
 
 `fn-bpn-transmit-step st submission destination sequence adu obs`:
 
@@ -2007,9 +2059,13 @@ OBS      = (fn-bpn-event-obs event)               ; nil for an event without one
 (HELD x) = (fn-bpn-find-held x (fn-bpn-machine-state-held st))
 ```
 
-The subject is `fn-bpn-step`; the host calls `fn-bpn-step-fast`
-(`fnn-bps-step`, `bp-service.lisp:113`, through the loop of §9.1), and
-`fn-bpn-step-fast-is-step` (§2.7) is the equation. Machine theorems live in
+The subject is `fn-bpn-step`. As built, the host calls `fn-bpnj-step`
+(`fnn-bps-foundation-step` in `host/native/bp-service.lisp`; `fnn-bps-step`
+wraps a base event as `(:base e)`); `fn-bpnj-step-delegates-every-other-event`
+equates it with `fn-bpnp-step` off its three job events, and
+`fn-bpnp-step-base-event-refines-fn-bpn-step` equates a base event's answer
+with `fn-bpn-step`'s on the base state when nothing is issued or
+delivery-uncertain. There is no separate fast step (§2.7). Machine theorems live in
 `books/bp-node-machine-invariants.lisp` and `-authorization.lisp`; T6's
 replay and recovery in `books/bp-node-replay.lisp` (new, slice A2); T4 in
 `books/bp-fragment-invariants.lisp` and `books/bp-fragment-fast.lisp` (new,
@@ -2018,6 +2074,19 @@ slice C1); the loop's correlation keystones in `books/bp-service-loop.lisp`
 `books/bp-node-rotation.lisp` (new, slice E); teeth in
 `tests/acl2/bp-node-machine-teeth-tests.lisp` (new), whose first rows are
 §11.1's.
+
+**Status of these statements (read from `dev`, 2026-09-29).** The received
+machine was built over `fn-bpnf-held` rows and `fn-bpnp-step`, not over the
+§2.2 record, so most statements below are the design, not proved as
+written. Defined under the names written: T4's three fragment equations
+(`fn-bpf-fragment-then-reassemble-is-identity`,
+`fn-bpf-fragment-fast-is-fragment`, `fn-bpf-reassemble-fast-is-reassemble`),
+T6's `fn-bpn-step-preserves-lifecycle-invariant`,
+`fn-bpn-trace-preserves-lifecycle-invariant` and
+`fn-bpn-step-cl-send-is-authorized-by-durable-attempt-record` over the base
+machine, and §9.2's `fn-tcl-late-refusal-gets-no-final-ack`. The design's
+helper names that no book defines are described in the prose below rather
+than cited.
 
 ### 5.0 The rule for teeth
 
@@ -2147,7 +2216,7 @@ Hypotheses removed as redundant (rule 4): the first revision's
 `fn-bpp-fragmentp` in the local-deletion theorem (a local whole bundle is
 deleted only by expiry, which is in the list, and an unsupported ADU class
 is a kind 7, not a deletion) and `(HELD id)` (implied by
-`fn-bpn-local-destinationp`, which is nil of nil). The first revision's
+the statement's local-destination conjunct, which is nil of nil). The first revision's
 tooth "a delivered entry is discarded, not deleted" is withdrawn: it does
 not satisfy the antecedent of a theorem about deletion records. Teeth:
 §11.1.
@@ -2181,7 +2250,7 @@ the evidence. `fn-clock-expiry-is-monotone-in-local-time`
 revision listed as positives of the first theorem are, restated exactly,
 the must-fails of the second: an anchored entry with a wall-less
 observation past its lifetime is deleted `:lifetime-expired` (asserting
-no-wall, kind, and every hypothesis but `fn-bpn-no-anchors-p`), and an
+no-wall, kind, and every hypothesis but the no-anchors one), and an
 unanchored entry with a confident wall past its lifetime is deleted
 `:lifetime-expired` (asserting no-anchors, kind, and every hypothesis but
 the wall's absence). Teeth: §11.1.
@@ -2263,9 +2332,10 @@ the wall's absence). Teeth: §11.1.
                   (fn-bpn-none-held-p (fn-bpn-rec-fragment-ids r) after)))))
 ```
 
-The first needs `fn-bpf-cut-covers` and
-`fn-bpf-reassemble-ok-agrees-with-every-fragment`, commented out in
-`bp-fragment-invariants.lisp` (`:427`, `:248`).
+The first needs the cut's coverage and
+`fn-bpf-reassemble-ok-agrees-with-every-fragment`, both now proved in
+`bp-fragment-invariants.lisp` (coverage as `fn-bpf-cut-covers-index` and
+`fn-bpf-cut-covers-range`, lifted to `fn-bpf-fragment-ok-covers-all`).
 
 Definitions the statements rest on: `fn-bpf-starts boundaries` is the
 list of child start offsets relative to the payload (`0` then each
@@ -2530,8 +2600,10 @@ predicate standing in for one:
 - `fn-bpn-cut-state live journal`: `live` with its issued record applied
   when `journal` contains it, and its proposal cleared.
 - A transmit's pending proposal carries the event's destination and the
-  content id of its ADU (`fn-bpn-pending-transmit-destination`,
-  `fn-bpn-pending-transmit-adu-id`), so the queue-acceptance theorem binds
+  content id of its ADU (as built, `fn-bpn-pending-record` is the whole
+  `:queued` record, whose job holds the destination peer and the bundle
+  authored from the ADU: `fn-bpn-enqueue-proposal-is-authorized`), so the
+  queue-acceptance theorem binds
   the durable answer to the submission, destination, ADU identity and
   persistence token of the request that asked for it, not merely to the
   presence of some outcome.
@@ -2550,7 +2622,7 @@ predicate standing in for one:
   does not.
 
 Hypothesis note: `fn-bpn-machine-eventp` on the restart event is redundant
-with `fn-bpn-restart-event`'s recognizer and is absent (rule 4). Teeth:
+with the statement's restart-event recognizer and is absent (rule 4). Teeth:
 §11.1, and the first revision's: a journal with a token gap is
 `(:restart-fault :lifecycle-record)`; a journal holding kind 3 is
 `(:restart-fault (:unsupported-schema 3 ...))`; a trace ending immediately
@@ -2562,19 +2634,26 @@ re-anchors to the larger; the four `must-fail`s of
 
 ### 5.7 Conditional progress (review §5.5)
 
-Safety is T1 to T6, and it holds for **every** environment: the first
-theorem of `books/bp-service-loop.lisp`,
-`fn-bps-run-preserves-the-loop-and-lifecycle-invariants`, has no
-environmental hypothesis, so nothing below weakens safety when a progress
-premise fails.
+Safety is T1 to T6, and it holds for **every** environment: the design's
+first loop theorem (the run preserves the loop and lifecycle invariants)
+has no environmental hypothesis, so nothing below weakens safety when a
+progress premise fails. Not built: there is no `books/bp-service-loop.lisp`,
+and of this section's lemmas only the contact half has a counterpart, over
+the base job driver rather than the loop:
+`fn-bpnj-contact-offers-a-ready-job-under-a-bp-contact`
+(`bp-node-job-offer-progress.lisp`, under A-BP-CONTACT's
+`fn-assume-bp-contact-asks`). What holds of the served step
+over every host event sequence is `fn-bpnp-host-trace-preserves-guard-premises`
+(from `fn-bpnp-step-preserves-guard-premises`), which also has no
+environmental hypothesis.
 
 Progress is a set of separate lemmas, one per way an obligation can wait,
 each with only the premises it needs (review-2 §5.7). Assumptions are
 constrained functions in `books/assumptions.lisp`; each relates the same
 trace, operation ids, obligation key and service index the conclusion
-uses, so the encapsulate constrains the environment `fn-bps-run` consumes,
-not a free boolean. Obligations are named by the stable keys of T6's
-`fn-bpn-owedp`. Bounds are in loop turns; §8.1 relates turns to elapsed
+uses, so the encapsulate constrains the environment the loop's run
+consumes, not a free boolean. Obligations are named by the stable keys of
+T6's owed-work predicate. Bounds are in loop turns; §8.1 relates turns to elapsed
 time and contact capacity for the deployable profile.
 
 ```lisp
@@ -3156,7 +3235,7 @@ active-set decision**; it never interprets a sender's private family plan.
 The **active set** `fn-bpn-active-set st key` for an ADU key is the held
 fragments with that key that are not deleted and not consumed, whose total
 ADU length and headers are coherent with each other
-(`fn-bpn-family-headers-coherentp`, T4), and whose ingress principals are
+(as built, equal `fn-bpnf-fragment-coherence-key`, `bp-node-fragment-family.lisp`; T4), and whose ingress principals are
 compatible (question 5: equal principals, recommended; the set is keyed by
 `(key . principal)`). Locally consumed or deleted entries are excluded; no
 ADU is globally blacklisted because one local copy was retired. The
@@ -3337,8 +3416,12 @@ can grow after planning (the Bundle Age encoding crosses a CBOR width
 boundary). Recommended (question 6): the plan's boundaries are chosen so
 that every child fits the MRU with the mutable blocks at their **worst-case
 encoded width** (Bundle Age at its 9-octet width, Hop Count at its maximum,
-Previous Node at this node's EID), and `fn-bpn-plan-child-image-bounded`
-states it; `start-one` still computes the actual image (§4.3 step 3) and a
+Previous Node at this node's EID). As built the question does not arise:
+the host fragments at send time, after SESS_INIT, by `fn-bpfs-plan` over
+the actual forwarding wire and the negotiated MRU, and every fragment fits
+(`fn-bpfs-plan-fragments-fit-mru`, `bp-fragment-send.lisp`); a fragment
+parent is re-cut at its own ADU offset and total by
+`fn-bpf-refragment-block`. In the design, `start-one` still computes the actual image (§4.3 step 3) and a
 child that exceeds a *smaller* session MRU than planned (a route change)
 is re-fragmented as a fragment parent under T4's re-fragmentation
 contract, never restored by unfragmenting.
@@ -3433,8 +3516,8 @@ deletion arms are not yet proved.
   whose next hop disappears is rerouted by kind 13 (§4.5, BP-R14).
 - No new delta kind in `books/config` (§12, D-3).
 - Landed 2026-09-25 in a different shape: the operator route table and
-  `fn-bprt-next-hop` of §4.7 (`books/bp-route.lisp`); the `fn-bpn-route`
-  record above remains unbuilt.
+  `fn-bprt-next-hop` of §4.7 (`books/bp-route.lisp`); the route record
+  above remains unbuilt.
 
 ### 7.6 Status reports (§12, D-6)
 
@@ -3466,8 +3549,12 @@ most 1,194 octets, so the round trip needs no separate size premise. D1a
 covers this codec and its exact wire vectors only; generation, correlation
 and consumption remain D1b/D2 work.
 
-Generation. `fn-bpn-policy-reports` defaults to nil in every image and every
-configuration (RFC 9171 §5.1: disabled by default); the lab and operator
+Generation. Reports are disabled by default (RFC 9171 §5.1). As built there
+is no policy record: the `bp-node` verb's reports argument defaults to 0,
+and `fnn-bpnode-delete-expired` passes it as the `:expire-held` event's
+flag to `fn-bpn-report-delete-propose-step`; only the deletion point
+generates (`fn-bpn-report-deleted-term`, when the subject requested
+deletion reports). In the design, the lab and operator
 configurations enable it explicitly, with the historical and journal
 budgets of §2.1 applying to report bundles like any other. When enabled and
 requested, generation at each of the four points is a SHOULD of RFC 9171
@@ -3481,9 +3568,11 @@ Reports are diagnostic evidence only and never necessary for application
 retry or release (§9.6). A report never requests reports.
 
 Consumption. §4.1 step 5 for received ones and §4.2's `:administrative`
-dispatch for locally authored ones; both use
-`fn-bpn-correlation-of-subject` (§2.4) to find the submission, including
-fragment subjects. What reports are for (review-2 §9): labelled **remote
+dispatch for locally authored ones; both use the correlation index (§2.4)
+to find the submission, including fragment subjects. As built,
+`fn-bpn-report-observe-held` correlates a received report by
+`fn-bpn-report-correlate-job`, which matches the subject's source, creation
+time and sequence against the base jobs. What reports are for (review-2 §9): labelled **remote
 observations** for the operator and for interoperability, never release
 authority and never a retry input. A report that says delivered does not
 disable the receipt deadline, a replayed report does not move it, and a
@@ -3539,13 +3628,14 @@ Repair, in `books/scheduler-runner.lisp` (new, slice A3):
    outcome. Only `:durable` releases `:submit` and charges the contact
    budget; `:refused` releases nothing and does not charge; `:uncertain`
    fences the workflow.
-4. The refinement theorem:
-   `fn-sched-runner-durable-branch-is-drive-attempt`: when the published
-   outcome is `:durable`, prepare-then-complete equals
-   `fn-sched-drive-attempt`, so every scheduler keystone applies to the
-   successful branch; refusal and uncertainty are stated separately
-   (`fn-sched-runner-refusal-releases-nothing`,
-   `fn-sched-runner-uncertain-fences`).
+4. The refinement theorem: when the published outcome is `:durable`,
+   prepare-then-complete equals `fn-sched-drive-attempt`, so every
+   scheduler keystone applies to the successful branch; refusal (releases
+   nothing) and uncertainty (fences) are stated separately.
+
+Not built: no `books/scheduler-runner.lisp` exists, none of the three
+theorems is proved, and `fn-sched-drive-attempt` still supplies the
+`:durable` completion itself (D1 stands).
 
 `fn-sched-step`'s `:contact-open`/`:contact-close` are inputs that return
 no effects (`scheduler.lisp:727-730`). Session management is the loop's
@@ -3613,7 +3703,9 @@ The first is the property the service needs: least arrival among entries
 that can run, not least arrival regardless. The second says an entry passed
 over is waiting on a route generation, a session MRU, or journal credit,
 and is reconsidered when that changes, not on every tick. The same pair is
-stated for each class of §4.2 (`fn-bpn-progress-selects-the-least-arrival-among-eligible`).
+stated for each class of §4.2. As built, neither pair is proved over the
+served step; `fn-bpnp-oldest-eligible-skips-blocked-older` states the
+progress selector's half for two rows (§4.2).
 A bundle's lifetime is not a bound on retries: nonprogress is bounded by
 the loop's yield rule (§9.1) and by journal admission (§2.1).
 
@@ -3729,14 +3821,22 @@ attempt token and session), a `:deliver` (its delivery token), a
 reception callback (its ingress, awaiting a `:receive-answer`). A1's
 keystones:
 
-- `fn-bps-step-preserves-correlation`.
-- `fn-bps-completion-releases-only-its-own-operation`: a completion with op
-  id `o` changes only the obligation `o` names and releases only the
-  effects the machine attached to it; an unknown `o` changes nothing.
-- `fn-bps-reception-answer-is-the-machines-disposition`: the disposition
-  the loop returns to the TCPCL callback for a transfer is the disposition
-  of the machine's `:receive-answer` for that transfer's ingress, and no
-  other (the subject §9.2's ACK mapping reads).
+- the step preserves correlation;
+- a completion with op id `o` changes only the obligation `o` names and
+  releases only the effects the machine attached to it; an unknown `o`
+  changes nothing;
+- the disposition the loop returns to the TCPCL callback for a transfer is
+  the disposition of the machine's `:receive-answer` for that transfer's
+  ingress, and no other (the subject §9.2's ACK mapping reads).
+
+Not built as a loop book. The foundation machine carries one issued
+operation named by epoch and operation id (`fn-bpnf-issued`): a completion
+whose epoch or id differs cannot match it
+(`fn-bpnf-stale-operation-cannot-match`), and an uncertain issued operation
+fences every step but recovery (`fn-bpnf-uncertain-issued-fences-every-step`).
+The callback disposition is `fn-bpnf-callback-result`
+(`bp-node-receive-boundary.lisp`), which accepts only the machine's single
+`:receive-answer` for that ingress and otherwise answers uncertain.
 
 `fnn-bps-step` (`bp-service.lisp:110-116`) stays the one call into the
 machine; `fnn-bps-drive-effects` (`:207`) is replaced by the loop's
@@ -3798,9 +3898,9 @@ at the next start (PKT-464).
                           (fn-tcl-delivery-plan-messages plan) xfer)))))
   ```
 
-  and its sender-side companion,
-  `fn-tcl-partial-acks-are-not-completion`: the sender's outcome is
-  `:outbound-sent` only on an END acknowledgement whose acknowledged length
+  and its sender-side companion, which holds by `fn-tcl-recv-ack`'s
+  definition (`tcpcl-session.lisp`) and has no theorem of its own: the
+  sender's outcome is `:outbound-sent` only on an END acknowledgement whose acknowledged length
   equals the transfer length; acknowledged prefixes never complete a
   bundle. A late capacity refusal is never a success ACK (BP-R10, N12).
 - The ACK is released when kind 5 is durable, before dispatch, delivery or
@@ -3832,17 +3932,21 @@ at the next start (PKT-464).
   delivery pass). Native: tests/test_native_source_corpus_bp.py (B
   SIGKILLed mid-receive, the relay restarted after B so its keepalive
   session is the only one; the verdict precedes that session's end).
-- At XFER_SEGMENT START with a Transfer Length Extension, the session calls
-  `fn-bpn-transfer-admissiblep` and refuses `No Resources` early when it
-  answers nil. Without the extension there is no early answer; the END
-  disposition decides.
+- At XFER_SEGMENT START with a Transfer Length Extension, the session
+  refuses early. As built this is `fn-tcl-ext-decision`: `Not Acceptable`
+  when the announced length exceeds the session's transfer MRU (and
+  `Extension Failure` for a malformed or unknown critical extension); the
+  design's `No Resources` answer from a machine budget query is not built.
+  Without the extension there is no early answer; the END disposition
+  decides.
 - The receive-evidence namespace is not written on this path; the kind-5
   record is the one authoritative receive record (§12, D-8).
 
 ### 9.3 Delivery, by ADU class
 
 - `:request`: under the owner mutex, the receiver join with
-  `fn-bpaj-admission` (§6) in place of `fn-bpaj-dispatch`'s `:submit` arm.
+  the §6 admission (built as `fn-bpaj-transit-plan`, `bp-transit-join.lisp`)
+  in place of `fn-bpaj-dispatch`'s `:submit` arm.
   Its result is the `:deliver-result`: `(:accepted rid)` (a new commit
   and receipt decision), `(:duplicate rid)` (bound to the existing
   accepted record), `(:returned rid)` (the join's `:return-receipt` from a
@@ -3909,14 +4013,16 @@ authoritative record, never the absence of an evictable one (the first
 revision defined it as "no carrier binding", which history eviction made
 true again, N01).
 
-- `fn-bpn-owed-handoffs st` (machine, slice A1) lists the `:owed` handoffs;
-  its keystone `fn-bpn-owed-handoff-ends-only-by-its-receipt-carrier` says
-  an `:owed` handoff changes only by the kind 5 of its own submission, and
-  no record of kind 11 or 12 removes it.
-- `books/bp-receipt-outbox.lisp` (new, slice A3, `fn-bprx-*`) builds the
-  receipt ADU for a handoff from FNRJ: `fn-bprx-receipt-adu fnrj rid` is
-  the committed receipt, and `fn-bprx-handoff-adu-is-the-committed-receipt`
-  its keystone; it computes no ownedness of its own.
+- The design's machine keystone: an `:owed` handoff changes only by the
+  kind 5 of its own submission, and no record of kind 11 or 12 removes it.
+  Not proved. As built, the stored handoff stays `:owed` and `(:handed-off
+  sequence)` is `fn-bpah-outbox-effective-status`'s projection (above).
+- The design's `books/bp-receipt-outbox.lisp` (slice A3) is not built. The
+  receipt ADU comes from FNRJ's replayed state (`fn-bprj-receipt-adu`,
+  `fn-bpr-receipt-adu`), and `fn-bpah-effective-handoff-binds-fnrj-replay-adu`
+  (`bp-handoff-status.lisp`) is the keystone: a handed-off projection binds
+  a durable job whose payload carries exactly that committed receipt ADU,
+  to the handoff's peer.
 - After every durable kind 7 that creates a handoff and at every recovery,
   the loop issues `(:transmit (:receipt rid trigger) source-eid sequence
   adu obs)` for each owed handoff, addressed to the request bundle's source
@@ -3986,8 +4092,12 @@ work and its stable retry terms, never over remote transport statuses**
 - the policy's attempt bound is not exhausted (exhaustion is its own
   outcome, `:retry-exhausted`, reported, not silently dropped).
 
-It reads no transport status, so no observation moves the deadline:
-`fn-bp-transport-observation-preserves-receipt-overdue` (T5). A report
+It reads no transport status, so no observation moves the deadline (T5's
+preservation theorem). Neither the predicate nor that theorem is built: as
+built, a retry is the operator's `bp-obligation request` for the work
+(`fn-workflow-request-plan`, then `fn-bprq-plan`), which issues
+`:retry-request` first only when a reopen marked the last attempt
+`:restart-observed`. A report
 that says delivered, a replayed report, and a report about an older
 attempt all leave it unchanged (N02). The first revision's whitelist
 (`:forwarded`, `:attempted`, `:bundle-created`) omitted `:delivered`, so a
@@ -4031,7 +4141,7 @@ last.
 | `w18/bp-lifecycle-assurance` | PRF-046's three keystones, byte-identical | delete; landing note names `f4d061d2 ec64c5d3 29c8d8b2 ff80403e 3a7ef781` |
 | `w19/bp-app-fast-invariant` | the fourteen `fn-bpaj-*-fast-is-checked` and `fn-bpaj-successful-replay-has-statep` | nothing left to take (`51a0b1a3` is `dev`'s `6708e238`); delete |
 | `w19/bp-authored-wire` | `fn-bpn-authored-wire-authorize-carries-reservation` and teeth, byte-identical | delete |
-| `w25/bp-obligation-vertical` (13 ahead) | since `9dd5e3a2` (merged `2788d4cb`, persvati `certify-20260922T184059Z-2797731`): `fn-bprl-release-record`, `fn-bprl-replay-records`, `fn-bprl-replay-journal` in `books/bp-release.lisp`, landed verbatim from `faf16519` because `host/bp-release-owner-host.lisp` calls the last and `host/native/build.lisp` loads that file | **slice A3 takes** `books/bp-release-store.lisp` (`fn-bprl-store-join` and its three theorems, from `faf16519`), `books/bp-release-owner.lisp` (`fn-bprl-owner-join` and three, `4c42ef73`), `host/native/bp-obligation.lisp` and the `host/bp-release-owner-host.lisp` additions (`4c42ef73`, `e13d9007`, `e342c187`), the `host/native/workflow.lisp` and `host/workflow-host.lisp` changes of `faf16519` and `4c42ef73`, and the tests `tests/test_bp_obligation_native.py`, the `test_bp_app_native.py` and `test_bp_service_native.py` additions, `9e21db92`'s `test_native_app_journal.py` cases; each re-derived against the machine of slice A, not merged. **Not A3's**: the Store event-order commits `d9816877 c6270e3e 2f9f36d7 38f337ab 9d5df71d e16f54b0 adf63066 4c7cbfe1` and the `store-node*`/`store-files` parts of `e342c187` edit `store-node`, `store-files`, `replay`, `store-events`, `node-retention-transitions`, which are T2/T4's books; they are an input to T4's brief (D-15, the contract below). `faf16519`'s `frame-journal`/`frame` edits are re-derived by A3 against T1's frame seam. The branch is deleted after A3's landing note names what it took |
+| `w25/bp-obligation-vertical` (13 ahead) | since `9dd5e3a2` (merged `2788d4cb`, persvati `certify-20260922T184059Z-2797731`): `fn-bprl-release-record`, `fn-bprl-replay-records`, `fn-bprl-replay-journal` in `books/bp-release.lisp`, landed verbatim from `faf16519` because `host/bp-release-owner-host.lisp` calls the last and `host/native/build.lisp` loads that file | **slice A3 takes** `books/bp-release-store.lisp` (the store join and its three theorems, from `faf16519`), `books/bp-release-owner.lisp` (the owner join and three, `4c42ef73`; as built neither book landed, and the release goes through the owner's `fn-owner-workflow-store-release`, called by `host/native/bp-obligation.lisp`), `host/native/bp-obligation.lisp` and the `host/bp-release-owner-host.lisp` additions (`4c42ef73`, `e13d9007`, `e342c187`), the `host/native/workflow.lisp` and `host/workflow-host.lisp` changes of `faf16519` and `4c42ef73`, and the tests `tests/test_bp_obligation_native.py`, the `test_bp_app_native.py` and `test_bp_service_native.py` additions, `9e21db92`'s `test_native_app_journal.py` cases; each re-derived against the machine of slice A, not merged. **Not A3's**: the Store event-order commits `d9816877 c6270e3e 2f9f36d7 38f337ab 9d5df71d e16f54b0 adf63066 4c7cbfe1` and the `store-node*`/`store-files` parts of `e342c187` edit `store-node`, `store-files`, `replay`, `store-events`, `node-retention-transitions`, which are T2/T4's books; they are an input to T4's brief (D-15, the contract below). `faf16519`'s `frame-journal`/`frame` edits are re-derived by A3 against T1's frame seam. The branch is deleted after A3's landing note names what it took |
 
 **The Store event-order contract** (D-15, review-2 Q3). T4 owns Store
 event order; A3 owns the release joins; the dependency between them is
@@ -4144,7 +4254,8 @@ projections.
 
 **A1: the machine (T12a). Fable. hbox. 8 to 10 lane-days.**
 - Edits: `books/bp-node-machine.lisp`, `-invariants`, `-authorization`,
-  `-codec` (kinds 5 to 14, retired 2 to 4), `books/tcpcl-session.lisp` (`fn-tcl-refuse-held-final`),
+  `-codec` (kinds 5 to 14, retired 2 to 4), `books/tcpcl-session.lisp` (the held-final refusal, landed as
+  `fn-tcl-delivery-plan` in `books/tcpcl-delivery.lisp`),
   new `books/bp-service-loop.lisp` (the minimal reducer and its correlation
   invariant, §9.1),
   `tests/acl2/bp-node-machine-tests.lisp`, `-authorization-tests.lisp`, new
@@ -4159,9 +4270,10 @@ projections.
   `owner` from the machine's books.
 - Theorems: T1 (both), T2, T3, T5's first two (the branch and the widened
   theorem), T6 except the replay,
-  recovery and physical-cut theorems, `fn-bpn-step-fast-is-step`, the
+  recovery and physical-cut theorems, the fast step's equation (no fast
+  step was built, §5), the
   eligible-selection pairs of §4.2 and §8, the class-service theorem, the
-  two journal-debt keystones (§2.1), `fn-bpn-owed-handoff-ends-only-by-its-receipt-carrier`,
+  two journal-debt keystones (§2.1), the owed-handoff ending keystone (§9.4),
   the loop's three correlation keystones (§9.1), the TCPCL final-ACK
   keystone and its sender companion (§9.2). Teeth per §5.0 and §11.1.
 - Order: (0) §11.1's A1 witnesses and must-fails, as `must-fail` and
@@ -4181,12 +4293,12 @@ projections.
   new `tests/acl2/bp-node-replay-tests.lisp`, `tools/native_cuts.py` (cuts
   re-targeted at FNBS kinds 5 to 14).
 - Include closure: `bp-node-records` about 20 books plus A1's machine.
-- Starts when A1's batch (1) merges. Theorems: T6's
-  `fn-bpn-durable-projection-is-replay-of-the-confirmed-journal` (one
-  epoch), `fn-bpn-recovery-is-normalized-replay-of-an-observed-journal`
-  (with its fixed point) and `fn-bpn-physical-cut-is-an-observed-journal`
-  (the FNBS publisher relation, including the cut after an uncertainty
-  callback), PRF-045 closed over the loop's reserve and recover. 3 to 5
+- Starts when A1's batch (1) merges. Theorems: T6's three (the durable
+  projection is the replay of the confirmed journal, one epoch; recovery is
+  the normalized replay of an observed journal, with its fixed point; a
+  physical cut is an observed journal, the FNBS publisher relation
+  including the cut after an uncertainty callback; none is proved as
+  written, and `books/bp-node-replay.lisp` was not created), PRF-045 closed over the loop's reserve and recover. 3 to 5
   lane-days.
 - Traces: BP-R02 (the recovery half), BP-R14's replay half (a removed route
   does not fault recovery), N06, N07.
@@ -4196,8 +4308,10 @@ projections.
   `books/bp-release-store.lisp` and `books/bp-release-owner.lisp` (from
   `w25/bp-obligation-vertical`, §10), new `books/bp-receipt-outbox.lisp`,
   new `books/scheduler-runner.lisp`, `books/bp-workflow.lisp`
-  (`fn-bp-receipt-overduep` and its preservation theorem only),
-  `books/bp-native-app.lisp` (`fn-bpaj-admission`, `fn-bpaj-ingress-peer`,
+  (the receipt-overdue predicate and its preservation theorem only; not
+  built),
+  `books/bp-native-app.lisp` (the §6 admission, landed as
+  `fn-bpaj-transit-plan` in `books/bp-transit-join.lisp`, `fn-bpaj-ingress-peer`,
   `fn-bpaj-session-principal`), `books/assumptions.lisp` (A-BP-PATH only), new
   `books/bp-native-app-invariants.lisp`, `host/native/bp-app.lisp`,
   `host/native/bp-obligation.lisp`, `host/bp-release-owner-host.lisp`,
@@ -4207,11 +4321,14 @@ projections.
 - Gated on T1's BP-receiver cluster being green for the `bp-native-app`
   edit; the outbox, runner and release parts start earlier.
 - Theorems: §6's two soundness theorems and §2.3's two session-principal
-  keystones, `fn-bprx-handoff-adu-is-the-committed-receipt`, T5's last two
-  (`fn-bpn-transport-observation-cannot-close-a-work`,
-  `fn-bp-transport-observation-preserves-receipt-overdue`),
-  `fn-bp-retry-request-adu-is-unchanged` (attempt n+1's request ADU equals
-  attempt n's), §8's three runner theorems, PRF-012's discharge over the
+  keystones, the outbox's committed-receipt keystone (landed as
+  `fn-bpah-effective-handoff-binds-fnrj-replay-adu`, §9.4), T5's last two
+  (a transport observation cannot close a work, landed at the workflow as
+  `fn-bp-transport-step-preserves-receipt`; the receipt-overdue
+  preservation, not built, §9.6), the unchanged retry request (attempt
+  n+1's request ADU equals attempt n's, landed as
+  `fn-bprq-request-adu-is-the-works-request`: the request ADU is the
+  work's, whatever the attempt), §8's three runner theorems, PRF-012's discharge over the
   release join's caller. Depends on D-15's Store contract from T4 for
   integration, not for development.
 - Traces: BP-R01, BP-R03, BP-R04, BP-R05, BP-R19, N01, N02 (workflow level,
@@ -4230,8 +4347,8 @@ projections.
 - Include closure: the loop includes the machine and `scheduler-peers`
   (about 27, with `bp-workflow`); `bp-routes` includes `peer-config`
   (about 15, with `config`).
-- Theorems: `fn-bps-run-preserves-the-loop-and-lifecycle-invariants` (no
-  environmental hypothesis), §5.7's five progress lemmas and the
+- Theorems: the loop's run preserves the loop and lifecycle invariants (no
+  environmental hypothesis; not built, §5.7), §5.7's five progress lemmas and the
   work-level composition; `bp-routes`' two keystones; reroute (kind 13)
   preservation.
 - Gate: three processes on one box, home, relay, destination, with
@@ -4262,10 +4379,11 @@ projections.
   codec widths nest at 2^24), `books/bp-fragment-invariants.lisp` (the two commented lemmas),
   new `books/bp-fragment-fast.lisp`, `tests/acl2/bp-fragment-tests.lisp`.
 - Theorems: T4's first five (inverse, the two fast equalities, whole-parent
-  restoration, re-fragmentation), `fn-bpn-plan-child-image-bounded` (§7.3)
-  and the limit composition (now
-  `fn-bpn-limits-compose-at-the-codec-widths`); the fix of D20 (a composing
-  `fn-bpn-refragment-primaries` beside `fn-bpf-fragment-block`). Traces:
+  restoration, re-fragmentation), the plan-child image bound (§7.3; not
+  built, since fragmentation moved to send time: `fn-bpfs-plan`) and the
+  limit composition (now `fn-bpn-limits-compose-at-the-codec-widths`); the
+  fix of D20 (landed as `fn-bpf-refragment-block`, which composes the
+  child's offset with the parent's and keeps its total). Traces:
   N09 (the contract half). No machine book is
   edited; `bp-limits` only includes the codec, so C1 runs beside A1, and
   if A1 changes `*fn-bpn-lifecycle-max-payload*` it re-certifies
@@ -4277,8 +4395,10 @@ projections.
   replacement), `books/bp-node-replay.lisp` (the four replay cases),
   the teeth book, `tests/test_bp_service_native.py`.
 - Theorems: T4's last two (coherent reassembly, replacement), T2's
-  local-deletion enumeration over fragments, `fn-bpn-family-conservedp`
-  preserved, the debt and reservation inequalities across kinds 15 to 18,
+  local-deletion enumeration over fragments, the plan family's
+  conservation preserved (§7.3; not built, since fragmentation moved to
+  send time; the receiving side's kind-18 replacement has
+  `fn-bpnf-family-apply-conserves-jobs`), the debt and reservation inequalities across kinds 15 to 18,
   T6 extended by the four kinds.
 - Traces: BP-R11, BP-R12, BP-R13, N09 (the machine half), N10, BP-R22 (measured on the native image:
   payload size and held-set size scaled independently, allocations, time,
@@ -4295,7 +4415,7 @@ inverse laws).
 **D1b: minimal deletion-report generation and consumption. Opus. landed by
 slice B's lane as its first batch (phase 4, when A1's machine books are
 free). 1 lane-day.** The deletion assertion at the `:expire` class and at
-`start-one`'s deletions (§4.2, §4.3) behind `fn-bpn-policy-reports`, and
+`start-one`'s deletions (§4.2, §4.3) behind the reports policy, and
 §4.1 step 5's consumption through the correlation index, with the teeth of
 §11.1's T5 row. This is what slice B's report-present gate (i) needs; the
 first revision had B's gate depend on generation that D2 scheduled after
@@ -4390,7 +4510,7 @@ their own labelled sections and are never counted as reachable.
 | T4 | `bp-fragment-tests` (C1), teeth book (C2) | 10 bytes cut at 3 and 7 reassemble to themselves; whole parent's three children unfragment to it; fragment parent at offset 100 of 300, payload 100 cut at 40: offsets 100 and 140, total 300; N10: offset-40 fragment arrives before offset-0, primary and extension blocks from offset 0; a complete cover at `max-held` reassembles | whole-parent hypothesis dropped (N09): a fragment parent's child does not unfragment to it; re-fragmentation's fragment-parent hypothesis: the proposed whole-parent negative also violates the retained extent bound, so withdraw it and prove the weakened theorem before removing the hypothesis; fast equality: `(:invalid :bounds)` inputs (total 0, overlap past total) answered identically by both; mutation: a reassembler taking the first-arrived fragment's header fails the offset-zero conjunct on N10's trace; boundary: incoherent headers (same key, different lifetime) are never combined |
 | T5 | teeth book (A1); `bp-workflow` tests (A3) | a correlated local deletion report yields only `:transport` and `:observed`, state unchanged; N11 satisfies the widened theorem (refusal and kind 14 only); N02: a work overdue at OBS stays overdue after a delivered observation | branch predicate weakened to `decodes-to-local-administrative-p` (N11): the effects contain a kind-14 `:persist`, refuting the first theorem; `decodes-to-local-administrative-p` dropped (widened theorem): the same octets with the administrative flag clear are stored, a kind 5 outside the class; contrast for the overdue theorem: the receipt event makes overdue false, so the function is not constant |
 | T6 queue acceptance | teeth book (A1) | durable branch: submission, destination, ADU id, token and answer all bound; duplicate branch from the outcome | kind dropped: a `:bundle-queue-refused` effect satisfies neither disjunct; a retry with a changed destination is `-refused :submission-conflict`, never accepted |
-| T6 replay and recovery | `bp-node-replay-tests` (A2) | one epoch with kinds 5, 6, 8, 9, 11; N06: issued record visible after the uncertainty callback recovers to the cut state; N07 | epoch hypothesis dropped (N07): a trace with a durable kind 8 then `:restart` differs from the replay of its confirmed journal (attempt cleared, anchor reset); observed-journal hypothesis dropped: a journal with a record never issued; mutation: a restart that omits `fn-bpn-clear-inflight` satisfies the two-sided equation and fails the fixed-point conjunct |
+| T6 replay and recovery | `bp-node-replay-tests` (A2) | one epoch with kinds 5, 6, 8, 9, 11; N06: issued record visible after the uncertainty callback recovers to the cut state; N07 | epoch hypothesis dropped (N07): a trace with a durable kind 8 then `:restart` differs from the replay of its confirmed journal (attempt cleared, anchor reset); observed-journal hypothesis dropped: a journal with a record never issued; mutation: a restart that omits the attempt clearing satisfies the two-sided equation and fails the fixed-point conjunct |
 | T6 physical publisher relation | `bp-node-replay-tests` (A2) and byte-publisher tests | N06 must construct a nonempty encoded FNBS frame in a byte-store state, establish the FNBS publisher relation, select an admissible byte crash cut, scan the resulting directory, and assert the physical theorem's full antecedent and conclusion; zero new events after recovering a nonempty journal is a separate positive. These remain open until executable and certified. | Select at least two distinct admissible crash cuts. A machine-level issued-record witness alone is not a physical-theorem positive; an externally supplied logical journal is not a byte-store witness. |
 | T6 re-anchoring, continuation | teeth book (A1) | N08: an unanchored entry with an attempt recovers with neither; N03's and N04's waiting entries are `blocked-with-wakeup` | `:restart-ready` dropped: a faulting restart (token gap) leaves the attempt; not-fenced dropped: a fenced state's owed entry is neither enabled nor waiting on a named wakeup; pending dropped: likewise while a proposal is pending |
 | Journal debt (§2.1) | teeth book (A1) | N05 split: `F = remaining - D - R - control-reserve`. At `F=1`, a kind-8 attempt is refused without durable mutation. At `F=2`, kind 8 and its failed kind 9 both complete and return free credit to zero above the margin. At `remaining = D + R + control-reserve`, a debt-paying discard remains admitted. Each positive asserts its full retained antecedent. These are open until the tests are executable and certified. | debt-paying hypothesis dropped: a kind 5 at that frontier is refused `:capacity`; mutation: the first revision's rule (failed results exempt, no reservation at kind 8) breaks the inequality. The old one-credit attempt is only a mutant counterexample. |
@@ -4521,7 +4641,8 @@ named.
 4. **The fast reassembler's domain** (T4). Options: equality with the
    reference over all inputs, `(:invalid :bounds)` included; or equality
    under `fn-bpf-inputsp` with the machine's validation boundary proved
-   (`fn-bpn-active-set-satisfies-inputsp`). Recommend: all inputs, so no
+   (the active set satisfies it). Landed as all inputs:
+   `fn-bpf-reassemble-fast-is-reassemble` has no hypothesis. Recommend: all inputs, so no
    caller's validation is load-bearing; the boundary form only if the
    lane measures `fn-bpf-inputsp` as superlinear and says so.
 5. **Fragments from different principals** (§7.2). Options: key the active
@@ -4532,8 +4653,8 @@ named.
    split over two paths from two peers never reassembles, which no v0
    topology does.
 6. **Send-time image growth** (§7.3). Options: plan children at the
-   mutable blocks' worst-case encoded width, proved by
-   `fn-bpn-plan-child-image-bounded`; or plan at the current width and
+   mutable blocks' worst-case encoded width, with a theorem bounding each
+   child's image; or plan at the current width and
    re-plan when a child outgrows the MRU. Recommend: the worst-case
    envelope (the plan stays immutable; at most a few octets per child),
    with re-fragmentation only for a session MRU smaller than planned.
@@ -4651,7 +4772,7 @@ the slice that closes it.
   or keeps the parent's total, so re-fragmenting through it with relative
   offsets yields children whose offset and total disagree with the ADU.
   It has no caller today (only `bp-fragment-invariants.lisp:437-453`).
-  Slice C1 (`fn-bpn-refragment-primaries`, T4).
+  Slice C1 (T4). Repaired by `fn-bpf-refragment-block`.
 - **D21** `books/bp-native-app.lisp:376-406`, `fn-bpaj-dispatch` takes no
   ingress or peer, nor does its twin `fn-bpaj-dispatch-fast`
   (`host/bp-native-app-host.lisp:114`), and `fnn-bpapp-accept-locked`
@@ -4664,8 +4785,9 @@ the slice that closes it.
   `:forwarded` are not retryable, restart leaves a `:delivered` work
   alone, and `fn-bp-request-retry` (`:615`, which would move it) has no
   host caller; a delivery report followed by a lost receipt strands the
-  work (review-2 §2.3, N02). Slice A3 (`fn-bp-receipt-overduep` over
-  unresolved work, and its native caller).
+  work (review-2 §2.3, N02). Slice A3 (a receipt-overdue predicate over
+  unresolved work, and its native caller; neither is built, so the defect
+  stands).
 
 The first draft's F7 (`host/bp-release-owner-host.lisp:8` calling a function
 no book defined) is closed on `dev` by `9dd5e3a2` (§10).

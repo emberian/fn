@@ -34,12 +34,12 @@
           (cons :state-history (fn-heap-store-history-octets profile))
           (cons :state-handles (* *fn-heap-handle-octets* tt))
           (cons :state-records (* 2 tt *fn-heap-record-octets*))
-          ;; the records' header columns (lane heap-bounds, B2): the header
-          ;; octets' cost, at most min(H, T x HDR) of them
+          ;; the records' header columns (lane heap-bounds, B2), charged to
+          ;; the history budget since lane heap-pool: 8 heap octets a
+          ;; charged octet, at most H of them
           (cons :state-record-headers
-                (* 2 (fn-heap-record-headers-octets
-                      profile (fn-bs-profile-max-history-octets profile)
-                      (fn-bs-profile-max-transactions profile))))
+                (* *fn-heap-charge-heap-octets*
+                   (nfix (fn-bs-profile-max-history-octets profile))))
           (cons :open-chunk-lists (* 2 *fn-heap-list-octets-per-octet* *fn-heap-open-list-copies*
                                      (fn-heap-open-chunk-bound profile ou)))
           (cons :open-suffix-vectors (* 2 ou))
