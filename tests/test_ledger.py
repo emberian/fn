@@ -368,6 +368,41 @@ class SuspectTests(unittest.TestCase):
         self.assertEqual(flagged, {})
 
 
+class CitedSuspectAdviceTests(unittest.TestCase):
+    """obstructions-6 item 52: the refusal says a `-by-definition` lemma is not cited."""
+
+    SOURCE = """(in-package "ACL2")
+        (defun step (s) (cons s s))
+        (defun inv (s) (consp s))
+        (defthm step-preserves-state (inv (step s)))
+        (defthm state-has-consp (implies (inv s) (consp s)))
+        (defthm NAME (consp (step s))
+          :hints (("Goal" :in-theory '(step-preserves-state state-has-consp))))
+    """
+
+    def refusal(self, name: str) -> str:
+        tree = tree_from({"books/a.lisp": self.SOURCE.replace("NAME", name)})
+        problems = ledger.check_theorem_event(tree, "PRF-1", name)
+        self.assertEqual(len(problems), 1, problems)
+        return problems[0]
+
+    def test_a_cited_by_definition_lemma_is_told_not_to_be_cited(self):
+        said = self.refusal("step-consp-by-definition")
+        self.assertIn("is SUSPECT", said)
+        self.assertIn("is never cited as an event", said)
+        self.assertIn("drop it from planning/proof-events.json", said)
+        self.assertIn("never cited", self.refusal("step-consp-unfolds"))
+
+    def test_another_cited_restatement_is_told_to_rename_and_not_cite(self):
+        said = self.refusal("step-consp")
+        self.assertIn("AND do not cite it as an event", said)
+
+    def test_agents_md_says_the_same(self):
+        text = " ".join((Path(__file__).resolve().parents[1] / "AGENTS.md").read_text().split())
+        self.assertIn("name those lemmas `-unfolds` or `-by-definition` and do not "
+                      "cite them as events", text)
+
+
 class RegistryTests(unittest.TestCase):
     SOURCES = {
         "books/a.lisp": '''(in-package "ACL2")
