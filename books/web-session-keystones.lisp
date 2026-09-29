@@ -399,6 +399,22 @@
                                   (fn-wss-after-authinfo fn-wss-signin-refused fn-wss-redeem-refused
                                    fn-wss-write fn-wss-flow fn-wss-reply-codes)))))
 
+(defthm fn-web-step-admits-no-session-but-by-281
+  ; KEYSTONE (PRF-339), stated of the step the host calls (host/web-host.lisp
+  ; fn-web-host-step, from host/native/web-host.lisp fnn-web-request for
+  ; every event): a session whose token the table did not hold, and which no
+  ; AUTHINFO answered 281 on the flow's connection for the flow's login made,
+  ; is not in the table the step returns.  fn-web-sessions-bound-by-281 is
+  ; the same property read from the new table.
+  (implies (and (not (member-equal (fn-wss-s-token s) (fn-wss-tokens sessions)))
+                (not (fn-wss-bound-by-281 s flow event fn-web-in)))
+           (not (member-equal s (car (cdr (fn-web-step config sessions flow event
+                                                        fn-web-in fn-web-out))))))
+  :hints (("Goal" :in-theory (disable fn-wss-begin fn-wss-k-signin fn-wss-k-redeem fn-wss-k-groups
+                                      fn-wss-k-group fn-wss-k-article fn-wss-k-submit
+                                      fn-wss-bound-by-281 fn-wss-trouble fn-wss-redirect)
+           :expand ((fn-web-step config sessions flow event fn-web-in fn-web-out)))))
+
 (defthm fn-web-sessions-bound-by-281
   ; KEYSTONE: a session the step's table holds whose token the table did
   ; not hold before was made by an AUTHINFO the node answered 281 (PASS's
