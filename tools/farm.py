@@ -95,7 +95,12 @@ HOSTS = {
     # other (tools/cert_cache_sync.py; `fetch` mirrors each run).  Until then
     # persvati ran w25 (1b4169e9) and every book certified twice.
     "persvati": {
-        "acl2": "/tank/fn/toolchains/w28/acl2-literal-4g",
+        # The CERTIFY launcher is the tls64k one too (coordinator decision
+        # 2026-09-29, batch BB): books/image-world* exhaust --tls-limit 16384
+        # once a lane's world sits on dev ("Thread local storage exhausted",
+        # persvati run-20260929T012533Z-3ad0).  A certifying SBCL is
+        # single-threaded; the node's own TLS limit is books/profile-limits'.
+        "acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
         # The same launcher at --tls-limit 65536: make check's host_check
         # loads the production world, which exhausts the 16384 default.
         "image_acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
@@ -103,7 +108,7 @@ HOSTS = {
         "wrap": "",
     },
     "hbox": {
-        "acl2": "/tank/fn/toolchains/w28/acl2-literal-4g",
+        "acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",  # see persvati's
         # The same ACL2 at --tls-limit 65536: the production world exhausts
         # SBCL's default thread-local storage (tools/hbox_native.sh IMAGE_ACL2;
         # packaging/release-tarball.sh FN_IMAGE_ACL2).
@@ -769,7 +774,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int | str,
               f"of {cached['books']} books from "
               f"{len(cached.get('origins') or {})} origin(s); certifying "
               f"{cached['certify']} ({cached['roots_installed']} of "
-              f"{cached['roots']} roots already certified at these bytes)",
+              f"{cached['roots']} roots already certified at these forms)",
               file=sys.stderr)
         if cached.get("certify") == 0 and cached.get("books"):
             print(all_from_cache_words(identifier, cached["books"]), file=sys.stderr)
@@ -1061,14 +1066,16 @@ def all_from_cache_words(identifier: str, books: int) -> str:
     """The loud line for a run that certified nothing: every book came from the cache.
 
     Lanes read such a run's green as "my change certified" (2026-09-27);
-    it means the cache already held a certificate for these exact bytes,
-    which is only a certification of the change if the change is in them.
+    it means the cache already held a certificate for these exact forms
+    (the key ignores comments and layout, as ACL2's book-hash does), which is
+    only a certification of the change if the change is in them.
     """
     return (f"{identifier}: ALL {books} BOOKS CAME FROM THE CACHE -- this run certified "
-            "NOTHING. Its green says the cache holds certificates for these exact bytes; "
-            "if you expected your change to be certified here, it is not in the bytes "
-            "you shipped (wrong tree, uncommitted edit, --affected-by naming another "
-            "book), or --recertify BOOK forces a fresh run")
+            "NOTHING. Its green says the cache holds certificates for these exact forms "
+            "(comments and layout are not part of the key, nor of ACL2's book-hash); "
+            "if you expected your change to be certified here, it is not in the forms "
+            "you shipped (wrong tree, uncommitted edit, a comment-only edit, "
+            "--affected-by naming another book), or --recertify BOOK forces a fresh run")
 
 
 # What a signal exit means on the farm.  earlyoom (hbox) sends SIGTERM to
