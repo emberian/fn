@@ -656,7 +656,6 @@ class SuspectCacheTests(unittest.TestCase):
 
 
 
-
 class ExportHygieneLintTests(unittest.TestCase):
     """What a book leaves enabled, judged by shape only."""
 
