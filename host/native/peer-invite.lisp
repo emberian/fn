@@ -469,7 +469,9 @@ keys and its token (a fresh CSPRNG token when token.bin is absent)."
                         name (fnn-admin-plan-reason plan)))
           (if (and control-path live
                    (funcall (fnn-olo-socket-present live) control-path))
-              (values (funcall (fnn-olo-admin live) control-path argv :live))
+              ;; The live owner's refusal detail (the reason word ACL2
+              ;; named over its table) goes to the status line.
+              (funcall (fnn-olo-admin live) control-path argv :live)
             (fnn-admin-execute root plan)))))))
 
 (defun fnn-pinv-execute (result)
@@ -482,9 +484,14 @@ keys and its token (a fresh CSPRNG token when token.bin is absent)."
          (control-path (and (fnn-octet-list-p control) (consp control)
                             (fnn-octets-string (fnn-octets control)))))
     (handler-case
-        (let ((code
+        (let* ((detail nil)
+               (code
                 (cond ((equal verb "genesis") (fnn-pinv-genesis (second words)))
-                      ((equal verb "login") (fnn-pinv-login result (rest words)))
+                      ((equal verb "login")
+                       (multiple-value-bind (exit live-detail)
+                           (fnn-pinv-login result (rest words))
+                         (setq detail live-detail)
+                         exit))
                       ((equal verb "keygen") (fnn-pinv-keygen (second words)))
                       ((null control-path)
                        (fnn-refuse "the configuration names no control socket"))
@@ -495,7 +502,8 @@ keys and its token (a fresh CSPRNG token when token.bin is absent)."
                       ((equal verb "confirm")
                        (fnn-pinv-confirm control-path (rest words)))
                       (t (fnn-fault "ACL2 returned an unknown peering verb")))))
-          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "peer")
+          (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "peer"
+                                    detail)
           code)
       (error (condition)
         (let ((code (fnn-exit-code-for condition)))
