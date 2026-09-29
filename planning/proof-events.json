@@ -356,7 +356,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-record-schema0-golden-octets-are-the-encoding"
+          "name": "fn-record-schema1-golden-octets-are-the-encoding"
         },
         {
           "kind": "theorem",
@@ -2581,6 +2581,11 @@
           "kind": "theorem",
           "name": "fn-tcl-delivery-events-imply-held-final",
           "note": "Keystone relating the event grammar to the native ordered :send collection and the exact fn-tcl-held-final-ackp planner premise. fn-tcl-delivery-eventsp-after-first-bundle preserves the grammar for each later completed transfer in the same batch."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-host-drive-bundle-has-held-final",
+          "note": "The host-called wrapper (host/native/tcpcl.lisp fnn-tcl-apply): fn-tcl-host-drive is fn-tcl-host-triple of fn-tcl-drive, and its event list satisfies the delivery gate at the first bundle boundary; the book books/tcpcl-delivery-invariants is in the image world since decision-keystones-5."
         }
       ]
     },
@@ -8270,7 +8275,7 @@
         {
           "kind": "theorem",
           "name": "fn-prof-offer-answer-is-the-reparse",
-          "note": "KEYSTONE. Subject fn-peer-decide-offer (served: fn-pgc-decide-offer = fn-pix-decide-offer = fn-peer-decide-offer, reached from host/owner-host.lisp fn-owner-chunk -> fn-own-read with the memory re-pinned by fn-own-conn-live-session). Teeth: tests/acl2/transit-hygiene-tests.lisp; native: tests/test_native_peering.py test_transit_hygiene_refused_offer_memory_and_relay_checks."
+          "note": "KEYSTONE. Subject fn-peer-decide-offer (served: fn-pgc-decide-offer, equal to fn-peer-decide-offer by fn-pgc-decide-offer-is-peer-decide-offer, reached from host/owner-host.lisp fn-owner-chunk -> fn-own-read with the memory re-pinned by fn-own-conn-live-session). Teeth: tests/acl2/transit-hygiene-tests.lisp; native: tests/test_native_peering.py test_transit_hygiene_refused_offer_memory_and_relay_checks."
         },
         {
           "kind": "theorem",
@@ -10949,7 +10954,17 @@
         {
           "kind": "theorem",
           "name": "fn-clkr-wall-reading-is-the-ns-decision",
-          "note": "host/native/io.lisp fnn-owner-wall-milliseconds (and fnn-store-prepare-observation) calls fn-otm-wall-reading over gettimeofday's seconds and microseconds at +fnn-owner-unix-dtn-offset-seconds+. Teeth: tests/acl2/clock-reading-tests.lisp (clkt-wall-reading-*: a 2026 reading and the second before the epoch; removal of integerp seconds, natp microseconds and the epoch offset)."
+          "note": "host/native/io.lisp fnn-owner-wall-milliseconds calls fn-otm-wall-reading over gettimeofday's seconds and microseconds; the DTN epoch is ACL2's constant *fn-otm-dtn-epoch-unix-seconds*. Teeth: tests/acl2/clock-reading-tests.lisp (clkt-wall-reading-*: a 2026 reading and the second before the epoch; removal of integerp seconds and natp microseconds)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clkr-monotonic-readings-are-the-ns-decision",
+          "note": "host/native/io.lisp fnn-monotonic-ms calls fn-otm-monotonic-ms over SBCL's tick counter and rate; host/native/bp.lisp fnn-bp-monotonic-now calls fn-otm-boottime-ms over CLOCK_BOOTTIME. Teeth: clkt-monotonic-* (positives for both; removal of each hypothesis)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clkr-wall-seconds-is-the-ns-decision",
+          "note": "host/native/io.lisp fnn-genesis-created-seconds (for fnn-genesis-octets) calls fn-otm-wall-seconds over gettimeofday's seconds and microseconds. Teeth: clkt-wall-seconds-* (5.25 s past the epoch is 5, the second before it 0; removal of integerp seconds and natp microseconds)."
         }
       ]
     },
@@ -16140,7 +16155,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-own-feed-peer-names-loop-is-rev-onto"
+          "name": "fn-cfg-peer-names-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
@@ -16848,6 +16863,163 @@
         {
           "kind": "theorem",
           "name": "fn-sbud-post-boundary-never-refuses-an-admitted-payloads-charge"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1022",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-stx-index-policy-agrees",
+          "note": "books/stx-index.lisp: fn-stx-index-policy-current of the index of an article list equals fn-pol-current over the lace of the store of the same articles under the same keyring. fn-stx-policies-of-add1 is the column's one-step equation."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1023",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pta-admitted-is-the-gate-over-the-rows",
+          "note": "books/peer-transit-authority.lisp: under fn-sn-indexedp and fn-rows-contexts-okp, :admitted iff an authority, fn-pol-admitp over fn-sn-lace-of-rows, and no poster fork (no recorded equivocator at the incarnation, no distinct statement at the slot)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pta-group-verdict-is-one-of-the-verdicts",
+          "note": "books/peer-transit-authority.lisp: every verdict is a member of the closed enumeration *fn-pta-verdicts*."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1024",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pta-decide-admits-iff-every-governed-group-admits",
+          "note": "books/peer-transit-authority.lisp: on a :want, the verdict beside the decision is :admitted iff some scoped group is governed and every governed scoped group's verdict is :admitted."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pta-groups-verdict-is-admitted-iff",
+          "note": "books/peer-transit-authority.lisp: the article-level verdict's specification, member by member over the scoped groups."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pta-decide-keeps-the-byte-decision-by-definition",
+          "note": "books/peer-transit-authority.lisp: the byte decision is fn-peer-decide-transfer-under's, unchanged (named -by-definition; not cited)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pta-verdict-only-on-want-by-definition",
+          "note": "books/peer-transit-authority.lisp: no verdict unless the bytes are wanted (named -by-definition; not cited)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1027",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-snc-node-lace-is-the-rows-lace",
+          "note": "books/store-node-correspondence.lisp: under fn-snc-correspondp and fn-rows-contexts-okp, fn-stx-lace of the node equals fn-sn-lace-of-rows of the indexed rows."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snc-initial-corresponds",
+          "note": "books/store-node-correspondence.lisp: fn-sn-initial satisfies fn-snc-correspondp (no articles, no rows)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snc-crash-preserves-correspondp-by-recomputation",
+          "note": "books/store-node-correspondence.lisp: a crash of a corresponding state corresponds (the empty node, no indexed row; -by-recomputation)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1016",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-dispatch-publication-authorize-admits-exactly-the-issued-pending-dispatch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-dispatch-record-epoch-and-op-are-frame-nats"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1017",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-forward-publication-authorize-admits-exactly-the-issued-pending-forward"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-forward-publication-frame-not-bad-implies-frame-nats"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1031",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-existing-sequence-reuses-exactly-the-keyed-jobs-sequence"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1032",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-evidence-next-result-name-names-exactly-the-next-record"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1035",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-configured-budgets-admits-exactly-the-frame-bounded-positive-budgets"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1036",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-delivery-plan-decides-exactly-by-the-held-final-ack-and-the-callback"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1037",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cat-msgid-seqs{correspondence-bl}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-seqs-is-cat-msgid-seqs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-msgid-saturatedp-is-the-outcome"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-index-health-is-the-build"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-clear-keyed-is-nil"
         }
       ]
     }

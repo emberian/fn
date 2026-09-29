@@ -24,7 +24,7 @@
 (include-book "must-fail-checked")
 
 ; The byte scanner consumes the shared Store-event dispatcher, so one
-; immutable namespace may contain a legacy article followed by retention
+; immutable namespace may contain an article followed by retention
 ; state.  These are real FNST frames, not already-decoded sibling values.
 (defconst *bsk-event-article*
   (fn-record-make 0 0 0 "<byte-scan@example.invalid>" '(65)
@@ -290,7 +290,7 @@
 (defconst *bsk-topic-unbound-anchor*
   (list :topic-anchor 1 1 1 *bsk-topic-source-id*
         (list 0 0 *bsk-topic-source-id* 0 0 *fn-hsig-profile-tag*)
-        1 *bsk-topic-root-id*))
+        1 *bsk-topic-root-id* 0))
 (assert-event (fn-th-topic-eventp *bsk-topic-unbound-anchor*))
 (assert-event (fn-store-event-p *bsk-topic-unbound-anchor*))
 (defun bsk-topic-anchor-frame ()

@@ -82,6 +82,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/frame \
 	books/frame-invariants \
 	tests/acl2/frame-tests \
+	tests/acl2/frame-journal-kinds-tests \
 	books/frame-trailer \
 	tests/acl2/frame-trailer-tests \
 	books/tcpcl-spool \
@@ -265,6 +266,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-init-publication-tests \
 	tests/acl2/store-host-boundary-tests \
 	tests/acl2/bp-node-host-sequence-tests \
+	books/bp-node-host-machine \
+	tests/acl2/bp-node-host-machine-tests \
 	tests/acl2/store-profile-facts-tests \
 	books/store-genesis \
 	tests/acl2/store-genesis-tests \
@@ -356,6 +359,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/byte-store-retention-publication \
 	tests/acl2/byte-store-retention-publication-tests \
 	books/byte-store-keystones \
+	tests/acl2/byte-store-node-witness-tests \
 	books/byte-store-observation \
 	tests/acl2/byte-store-observation-tests \
 	books/byte-store-observation-scan \
@@ -643,6 +647,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-fnbs-forward-codec-tests \
 	books/bp-fnbs-forward-publication \
 	tests/acl2/bp-fnbs-forward-replay-tests \
+	tests/acl2/bp-fnbs-forward-publication-tests \
 	books/bp-node-progress-invariants \
 	books/bp-node-progress-guards \
 	books/bp-node-progress-premises \
@@ -704,6 +709,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-dispatch \
 	books/bp-fnbs-dispatch-publication \
 	tests/acl2/bp-fnbs-dispatch-codec-tests \
+	tests/acl2/bp-fnbs-dispatch-publication-tests \
 	books/bp-report-observe \
 	tests/acl2/bp-report-observe-tests \
 	books/bp-report-guards \
@@ -742,6 +748,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-sequence-fidelity-tests \
 	books/bp-receive-evidence \
 	tests/acl2/bp-receive-evidence-tests \
+	books/bp-evidence-host-names \
+	tests/acl2/bp-evidence-host-names-tests \
 	tests/acl2/bp-node-machine-authorization-tests \
 	books/bp-fragment \
 	books/bp-fragment-invariants \
@@ -1134,7 +1142,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/msgid-pages \
 	tests/acl2/msgid-pages-tests \
 	books/msgid-pages-exec \
-	books/msgid-pages-catalog \
 	tests/acl2/msgid-pages-exec-tests \
 	books/owner-number-bound-join \
 	tests/acl2/owner-number-bound-join-tests \
@@ -1526,6 +1533,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/stx-index \
 	books/stx-node-lace \
 	books/stx-policy \
+	books/peer-transit-authority \
+	books/store-node-correspondence \
 	books/stx-epochs \
 	books/stx-authority \
 	books/stx-evidence-records \

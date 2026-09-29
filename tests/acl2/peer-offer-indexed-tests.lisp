@@ -30,17 +30,14 @@
 (assert-event (fn-midx-lookup "<a1@example.invalid>" *pix-t-trie*))
 (assert-event (not (fn-midx-lookup "<loop@example.invalid>" *pix-t-trie*)))
 
-(defun pix-step (event trie arts fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (fn-post-result-effects
-   (fn-pix-peer-step-pinned *pt-ps1* trie arts *pix-t-archive* nil nil
-                            *pt-inj* *pt-obs* *pt-obs* event fn-arena)))
 (defun pix-ref (event fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-post-result-effects
    (fn-peer-step-pinned *pt-ps1* *pix-t-archive* nil nil
                         *pt-inj* *pt-obs* *pt-obs* event fn-arena)))
 
+; The reference peer step over the witness node (the indexed copy was
+; deleted; fn-pgc-peer-arm is the served one, peer-guard-carried-tests).
 ; An offer of the held Message-ID is refused: IHAVE 435, CHECK 438.
 (include-book "arena-lift")
 ;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
@@ -49,34 +46,19 @@
 (bpr-lift fn-ocfg-step 2)
 (bpr-lift fn-pix-msgid-retrieval-indexed 5)
 (bpr-lift pix-ref 1)
-(bpr-lift pix-step 3)
-(assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "IHAVE <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
+(assert-event (equal (in-arena-pix-ref *sr-arena* (pt-cmd "IHAVE <a1@example.invalid>"))
                      (list (pt-reply "435 duplicate"))))
-(assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "CHECK <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
+(assert-event (equal (in-arena-pix-ref *sr-arena* (pt-cmd "CHECK <a1@example.invalid>"))
                      (list (pt-echo "438 " *pt-id1*))))
 ; An offer of an absent Message-ID is accepted: IHAVE 335, CHECK 238.
-(assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "IHAVE <loop@example.invalid>") *pix-t-trie* *pix-t-arts*)
+(assert-event (equal (in-arena-pix-ref *sr-arena* (pt-cmd "IHAVE <loop@example.invalid>"))
                      (list (pt-reply "335 send it; end with <CR-LF>.<CR-LF>")
                            (fn-nntp-begin-article-effect))))
-(assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "CHECK <loop@example.invalid>") *pix-t-trie* *pix-t-arts*)
+(assert-event (equal (in-arena-pix-ref *sr-arena* (pt-cmd "CHECK <loop@example.invalid>"))
                      (list (pt-echo "238 " *pt-idloop*))))
-; Each equals the reference step (fn-pix-peer-step-pinned-is-peer-step-pinned
-; on the witness).
-(assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "IHAVE <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
-                     (in-arena-pix-ref *sr-arena* (pt-cmd "IHAVE <a1@example.invalid>"))))
-(assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "CHECK <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
-                     (in-arena-pix-ref *sr-arena* (pt-cmd "CHECK <a1@example.invalid>"))))
-(assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "IHAVE <loop@example.invalid>") *pix-t-trie* *pix-t-arts*)
-                     (in-arena-pix-ref *sr-arena* (pt-cmd "IHAVE <loop@example.invalid>"))))
-(assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "CHECK <loop@example.invalid>") *pix-t-trie* *pix-t-arts*)
-                     (in-arena-pix-ref *sr-arena* (pt-cmd "CHECK <loop@example.invalid>"))))
-
-; The host's call runs compiled code: the copies are guard-verified.
+; The host's call runs compiled code: the history test is guard-verified.
 (assert-event
- (and (eq (symbol-class 'fn-pix-history-hasp (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-pix-decide-offer (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-pix-peer-command (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-pix-peer-step-pinned (w state)) :common-lisp-compliant)))
+ (eq (symbol-class 'fn-pix-history-hasp (w state)) :common-lisp-compliant))
 
 ; -----------------------------------------------------------------------------
 ; The keystone fn-pix-history-hasp-is-peer-history-hasp on the witness, and
@@ -96,14 +78,7 @@
 (must-fail-checked
  (assert-event (equal (fn-pix-history-hasp "<a1@example.invalid>" *pt-node1* nil *pix-t-arts*)
                       (fn-peer-history-hasp "<a1@example.invalid>" *pt-node1*))))
-; At the step: the same session with the wrong trie takes the held article
-; (335) where the reference refuses it (435).
-(assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "IHAVE <a1@example.invalid>") nil *pix-t-arts*)
-                     (list (pt-reply "335 send it; end with <CR-LF>.<CR-LF>")
-                           (fn-nntp-begin-article-effect))))
-(must-fail-checked
- (assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "IHAVE <a1@example.invalid>") nil *pix-t-arts*)
-                      (in-arena-pix-ref *sr-arena* (pt-cmd "IHAVE <a1@example.invalid>")))))
+; At the step: peer-guard-carried-tests (fn-pgc-peer-arm, the served arm).
 
 ; Node hypothesis: a node whose binding names a Message-ID no article has
 ; (fn-node-statep's binding-subset conjunct fails).  Trie and list agree
