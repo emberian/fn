@@ -365,6 +365,20 @@ online-reclaim-4 the reclaim path; carry-abandon retention's waiver).
 | **P11** | feed cursors and a bounded refused-offer ring | books/owner-feed (470), refused-offers (505) | `fn-scar-feed-span`, `fn-own-transit-outcome` | the feed's queue is the rows after the cursor | peering feed natives | "Not bounded" 4's peers × pending | 470 + 505 (wide; batch) | join-f2 (peer arm) |
 | **P12** | the figure's successor: books/heap-paged-figure (BASE + SUFFIX + C + CREDITS), `page-cache-octets` in the profile, the contract's M2 row rewritten, the operator docs | books/heap-store-figure (16), heap-breakdown, byte-store-frame (the profile field: wide), docs/resource-contract.md | `fn-heap-decide` (the launcher's figure) | `fn-heap-paged-figure-holds-every-store`, `fn-heap-paged-figure-is-independent-of-the-store` | init/launcher natives | the whole state term | 16 + the profile book's closure | limits-live-3 (the profile's policy set verb; the new field goes in with its edit) |
 
+P2's first READY (this lane, `books/msgid-pages.lisp`, PRF-957): the
+logical side, for every tag function: the indexed-access refinement
+`fn-mpx-confirm-is-the-records-for` (a nat-listp of candidates, ascending,
+below the length and complete, confirmed against the rows, is
+`fn-cei-article-records-for`) and the keystone
+`fn-mpx-records-is-the-records-for` (the home page merged with the
+overflow page, confirmed, under `fn-mpx-faithful`), restated against
+`fn-hist$a-msgid-records`; teeth `tests/acl2/msgid-pages-tests.lisp`
+(a colliding tag attached; found twice in order, once, never; overflow;
+a labelled stale entry; `table-okp` and `faithful-from` dropped in turn).
+Next: the executable pages over `pgs-mem` words with the BLAKE3 tag by
+functional instantiation and the suffix index; then the host switch of
+`fn-cat-view-find` first.
+
 Order of landing: P2 now (no live lane holds a new book; the host lines
 are one-line switches under the existing twins' theorems); P3 and P8 after
 composed-owner-5 reports; P4 and P5 after join-f2-5 and
