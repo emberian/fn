@@ -4457,10 +4457,14 @@ fresh and completion is still gated by the later SNAPSHOT durability program."
   "One source descriptor held through every bounded prefix-copy step.
 Caller establishes stable version ownership, and supplies CAPTURED-LIMIT for
 an appendable file.  Other files are immutable for this source writer lease."
-  (fnn-check-regular source t)
-  (let* ((fd (fnn-open source (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
-         (limit (or captured-limit (sb-posix:stat-size (fnn-fstat fd)))))
-    (unwind-protect (fnn-snapshot-copy-prefix fd limit destination)
+  (let ((fd (fnn-open source (logior sb-posix:o-rdonly +fnn-o-nofollow+))))
+    (unwind-protect
+         (let ((info (fnn-fstat fd)))
+           (unless (fnn-regular-p info)
+             (fnn-fault "refusing non-regular snapshot source: ~a" source))
+           (fnn-snapshot-copy-prefix fd
+                                     (or captured-limit (sb-posix:stat-size info))
+                                     destination))
       (fnn-close fd))))
 
 (defun fnn-command-store-bless-snapshot (dir)
