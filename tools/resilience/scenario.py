@@ -49,9 +49,10 @@ WITNESSES = ("post-accepted", "retry-reconciled", "read-completed",
              # by the other agent matched under the named normalization; a
              # Path loop refused; a second offer refused as held
              "relay-normalized", "loop-refused", "duplicate-refused",
-             "model-prepared", "model-published", "model-settled")
+             "model-prepared", "model-published", "model-settled",
+             "issued-read-held", "cancelled-read-settled", "retired-file-closed")
 REPLAY = ("exact", "timed", "image")
-CONTRACTS = ("local-commit-log", "acceptance-model")
+CONTRACTS = ("local-commit-log", "acceptance-model", "page-io-ownership")
 CANDIDATE_RULES = ("absent", "present", "either")
 # The routes a post's cut is reached by; the registry carries each route's
 # column where they differ (design §5: `operator post' and `store post' are
@@ -69,14 +70,16 @@ EXPECTED = ("consistent", "violation", "inconclusive", "no-witness", "harness-fa
 # `kill_form` the cut that already exists for a process death there, if any.
 PENDING_BOUNDARIES = {
     "page-read-outstanding": {
-        "note": "reader cancel, generation retire, then the read delivered",
+        "note": "issued read cancelled, immutable file incarnation retired, then completion discarded",
         "operations": ("read", "reader-snapshot"),
         "owner": "online-reclaim-8",
         "kill_form": None,
-        "coordinate": "none yet: the hold sits in fn-owner-chunk-span (host/native/owner.lisp) "
-                      "after the reader's snapshot and before the page's delivery; reader "
-                      "generations are reclaim's since the pin port (extent-identity finished "
-                      "at ef75e8f4e), so online-reclaim-8 adds the held form"},
+        "coordinate": "matching-image execution pending: source6a6302488 adds "
+                      "FN_NATIVE_PAGE_IO_HOLD=RELEASE-FILE after real issue/token/fd/buffer "
+                      "acquisition in fnn-extent-prefetch (host/native/extent.lisp). "
+                      "tools/resilience/adapters/page_io.py records cancelled-token "
+                      "settlement, blocked retired-file close and a distinct productive "
+                      "retained read; worker thread death is a separate pending claim"},
     "reclaim-candidate-selected": {
         "note": "a new independent hold before the destructive action",
         "operations": ("reclaim",),
