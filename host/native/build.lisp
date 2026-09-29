@@ -56,6 +56,11 @@
 ;; fn-splan-window and the gate calls fn-osch-next (books/owner-scheduler).
 (include-book "books/served-reply-buffer")
 (include-book "books/served-plan")
+;; Lane join-f2-13 (PRF-1020): the plan's cursor quantum, the host's
+;; continuation of a served OVER/XOVER range (fnn-owner-cursor-step calls
+;; fn-splan-cursor-step; fnn-owner-render-next asks fn-splan-at-cursorp).
+(include-book "books/served-plan-cursor")
+(include-book "books/response-plan-pins")
 (include-book "books/owner-scheduler")
 (include-book "books/owner-commit-class")
 ;; PKT-688 (4) slice 2 (PRF-267): the gate calls fn-ocs-next and the committer
@@ -254,6 +259,7 @@
 (include-book "books/bp-report-author")
 (include-book "books/bp-node-progress")
 (include-book "books/bp-node-progress-guards")
+(include-book "books/bp-node-job-offer-guards")
 ;; PKT-261: per-destination dispatch and the forward plan
 ;; (fnn-bpnode-dispatch-one, fnn-bpnode-forward-contact).
 (include-book "books/bp-node-forward-plan")
@@ -391,6 +397,9 @@
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
         (load "host/native/io.lisp")
+        ;; D40: the raw-dispatched entries, from the fn-interfaces table of
+        ;; this world (an unknown or unverified target stops the build).
+        (fnn-install-raw-dispatch)
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")
         ; DEFLATE (lib/libfn-deflate, vendored zlib; untrusted: ACL2's
