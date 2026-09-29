@@ -741,16 +741,16 @@
 ; RFC 4642 section 2.1 make it say, off the same policy.
 (assert-event (member-equal (fn-nntp-string-octets "AUTHINFO USER")
                             (fn-auth-capability-lines *fn-t-served-policy*
-                                                      nil nil t)))
+                                                      nil nil t nil)))
 (assert-event (member-equal (fn-nntp-string-octets "STARTTLS")
                             (fn-auth-capability-lines *fn-t-served-policy*
-                                                      nil nil t)))
+                                                      nil nil t nil)))
 (assert-event (not (member-equal (fn-nntp-string-octets "AUTHINFO USER")
                                  (fn-auth-capability-lines (fn-auth-open-config)
-                                                           nil nil t))))
+                                                           nil nil t nil))))
 (assert-event (not (member-equal (fn-nntp-string-octets "STARTTLS")
                                  (fn-auth-capability-lines (fn-auth-open-config)
-                                                           nil nil t))))
+                                                           nil nil t nil))))
 
 ; RFC 3977 section 5.1.2, on the same two connections.  The policy requires
 ; a login, so an unauthenticated connection may not POST and the greeting is
@@ -780,7 +780,7 @@
                                                     *fn-t-served-config*)
                                                    (fn-auth-postingp
                                                     (fn-served-conn-session
-                                                     *fn-t-served-peer*)))))))
+                                                     *fn-t-served-peer*))) nil))))
 (assert-event (member-equal
                (fn-nntp-string-octets "POST")
                (fn-auth-capability-lines
@@ -789,4 +789,4 @@
                      (fn-auth-postingp
                       (fn-served-conn-session
                        (fn-served-result-conn
-                        (in-arena-fn-t-served-login *sr-arena* *fn-t-served-peer*))))))))
+                        (in-arena-fn-t-served-login *sr-arena* *fn-t-served-peer*))))) nil)))

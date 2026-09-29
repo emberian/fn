@@ -318,7 +318,9 @@
 (assert-event
  (equal (fn-post-result-effects (sa-send (fn-post-result-session *sa-r2*) "CAPABILITIES"))
         (sa-block "101 capability list follows"
-                  (append *sa-reader-lines-posting* '("STARTTLS" "SASL SCRAM-SHA-256")))))
+                  (append *sa-reader-lines-posting*
+                          ; COMPRESS (RFC 8054) is offered once authenticated.
+                          '("STARTTLS" "SASL SCRAM-SHA-256" "COMPRESS DEFLATE")))))
 (assert-event
  (equal (fn-post-result-effects (sa-send (fn-post-result-session *sa-r2*)
                                          "AUTHINFO SASL SCRAM-SHA-256"))

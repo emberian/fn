@@ -195,6 +195,8 @@
                   (concatenate 'string "principal = \"" *fn-native-auth-test-principal* "\"")
                   (concatenate 'string "salt = \"" *fn-native-auth-test-salt* "\"")
                   (concatenate 'string "digest = \"" *fn-native-auth-test-digest* "\"")
+                  (concatenate 'string "scram_stored_key = \"" *fn-native-auth-test-stored* "\"")
+                  (concatenate 'string "scram_server_key = \"" *fn-native-auth-test-server* "\"")
                   "posting = false"
                   ""))))
 (defconst *fn-native-auth-test-129*
