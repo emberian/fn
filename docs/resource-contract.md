@@ -107,8 +107,9 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
   and the development preset refused at 2,681 MB under a 2 GB cap
   (heap-from-profile, hbox, 2026-09-26). The small preset's first-run
   reservation is 1,872 MB on the release image (1,906 MB on the image-floor
-  core; lane heap-bounds-2, `0b76e8f25`), which a 1,500 MB budget refuses by
-  name: the bar "the small profile fits 1.5 GB" is UNMET until **M2b**.
+  core; lane heap-bounds-2, merged 2026-09-29), which a 1,500 MB budget
+  refuses by name: planning/release-v6.6.0.md records the bar "the small
+  profile fits 1.5 GB" UNMET until **M2b**.
 - Exceeded: at start, `:machine-cannot-hold-profile` or
   `:machine-cannot-hold-threads`, exit 1 (`:refused`). At run time the cap is
   SBCL's: a `storage-condition` is re-signalled globally
@@ -204,10 +205,13 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
 - Bounded: nothing new; the ordering of two refusals. Under a stalled disk a
   POST is refused with the disk's reason (`440 ... the disk is stalled|slow
   (a write has waited N ms, deadline D ms)`), never with the memory reason.
-- Mechanism: fn-oas-refusal-line (pending) follows `fn-otm-admit-post`.
-- Evidence: PENDING, lane credits-stall `9a2e0b85e`. The cited event is an
-  `-unfolds` lemma (a definition restated), not a keystone; the keystone
-  that the stall is classified first is the time model's (**C1**).
+- Mechanism: `fn-oas-refusal-line` follows `fn-otm-admit-post`.
+- Evidence: THEOREM by name only (an event of PRF-377; lane credits-stall,
+  merged 2026-09-29): the cited event is an `-unfolds` lemma (a definition
+  restated), not a keystone; the keystone that the stall is classified
+  first is the time model's (**C1**). MEASURED: the lane's natives
+  (`tests.test_native_slow_disk` 10 of 10, `tests.test_native_owner_scheduler`
+  8 of 8, hbox).
 - Exceeded: as **C1**.
 - Not bounded: as **C1**.
 
@@ -565,11 +569,11 @@ class and quotes what has been measured with its scope.
   timed out); a page that is late past `read-dependency-ms` (5,000 ms) is
   `403 article temporarily unavailable`, never `430`/`423`; a restart forgets
   the previous clock domain.
-- Mechanism: fn-otb-issue, fn-otb-answer-early and fn-otb-complete (pending)
-  in the commit pipeline; the late-page bar has no host call site until A4.
-- Evidence: PENDING, lane time-bars `914726cb5` (PRF-384). Its natives are
-  classification, not timings: the held poster was told uncertain at
-  30.002 s.
+- Mechanism: `fn-otb-issue`, `fn-otb-answer-early` and `fn-otb-complete` in
+  the commit pipeline; the late-page bar has no host call site until A4.
+- Evidence: THEOREM (PRF-384; lane time-bars, merged 2026-09-29). Its
+  natives are classification, not timings: the held poster was told
+  uncertain at 30.002 s (hbox).
 - Exceeded: as **C1**.
 - Not bounded: as **C1**.
 
@@ -650,17 +654,24 @@ class and quotes what has been measured with its scope.
   overhead plus the record's octets plus the index rows), with the
   checkpoint's estimate proved an upper bound of its written size.
 
-**D5** — expiry and online compaction (landing).
-- Bounded: a per-group expiry policy releases through the one reclaim path
-  with every holder still in force (RET-008, lane expiry `f4beeb687`,
-  PRF-918); `store compact` on a live owner served as bounded batches off
-  the mutex (PKT-868, lane operations `baec98157`, PRF-908).
+**D5** — expiry releases only what no holder keeps; online compaction
+(landing in part).
+- Bounded: a per-group expiry policy releases through the one reclaim path,
+  and an article a holder keeps is never expired (RET-008, PRF-918; lane
+  expiry, merged 2026-09-29); `store compact` on a live owner served as
+  bounded batches off the mutex (PKT-868, lane operations `baec98157`,
+  PRF-908).
 - Mechanism: `store reclaim`, offline on this tree (it refuses while an
   owner runs: Q16, the R1 list); online reclaim is approved and not
   started in code (operations record, design 3b).
-- Evidence: PENDING.
+- Evidence: THEOREM for the policy (PRF-918: what the operator sets reads
+  back, the age instant stays within the keep and purge bounds, a held
+  article is not expired; none of its events is a work or space bound, so
+  this row cites it for the release path, not for a bound); PENDING for
+  online compaction.
 - Exceeded: as **D2**.
-- Not bounded: the transient of **D3**.
+- Not bounded: the transient of **D3**; expiry's own pass is offline on this
+  tree, so its work per step is the offline reclaim's.
 
 ## When reality exceeds the model
 
@@ -770,7 +781,7 @@ not on this tree yet; its citations are checked once they land.
 | M3 | `books/heap-breakdown`: `fn-heap-breakdown-sums-to-the-reservation`, `fn-heap-breakdown-is-inits-reservation` | PRF-375 | `planning/evidence/f8-reservation-2026-09-28.md` |  |
 | M4 | `books/heap-open-nursery`: `fn-heap-open-nursery-trigger-bounds`, `fn-heap-store-figure-holds-every-store-at-the-open-trigger` | PRF-364 | none |  |
 | M5 | `books/owner-article-slots`: `fn-oas-read-span-admits-within-the-slots`; `books/owner-article-held`: `fn-oah-read-span-leaves-the-others-article-mode`; `books/heap-store-figure`: `fn-heap-article-slots-are-held`, `fn-heap-article-slots-bounds` | PRF-377 | `planning/evidence/zero-copy-commit-2026-09-28.md` |  |
-| M5b | `books/owner-article-slots`: fn-oas-refusal-line-follows-the-disk-unfolds (pending) | none | `planning/evidence/credits-stall-2026-09-28.md` | lane/credits-stall 9a2e0b85e |
+| M5b | `books/owner-article-slots`: `fn-oas-refusal-line-follows-the-disk-unfolds` | PRF-377 | `planning/evidence/credits-stall-2026-09-28.md` |  |
 | M6 | `books/memory-credits`: `fn-mcr-transitions-keep-funded`, `fn-mcr-acquire-refuses-exactly-past-the-budget`, `fn-mcr-grow-within-the-reserve-is-admitted`, `fn-mcr-overdraw-is-within-the-completion-reserve`; `books/owner-credits`: `fn-mca-read-span-keeps-funded`, `fn-mca-commit-steps-keep-funded`, `fn-mca-initial-funds-exactly-the-articles` | PRF-380 | `planning/evidence/f8-reservation-2026-09-28.md`, `planning/evidence/credits-2026-09-28.md` |  |
 | M7 | `books/connection-budget`: `fn-cbud-run-decide-refuses-exactly-past-the-limit`, `fn-cbud-step-read-octets-is-bounded`, `fn-cbud-deltas-refusal-keeps-the-capacity-held` | PRF-223 | `planning/evidence/connection-multiplexing-2026-09-26.md` |  |
 | M8 | none (measured or open) | none | `planning/evidence/f8-reservation-2026-09-28.md` |  |
@@ -791,13 +802,13 @@ not on this tree yet; its citations are checked once they land.
 | T1 | `books/owner-tls-prefix`: `fn-own-read-tls-prefix-consumed-is-bounded`; `books/served-tls-prefix`: `fn-served-step-counted-consumed-is-bounded` | PRF-213, PRF-223 | `planning/evidence/connection-multiplexing-2026-09-26.md`, `planning/evidence/tls-reload-2026-09-26.md` |  |
 | C1 | `books/owner-time-model`: `fn-otm-stall-tells-no-member-its-outcome`, `fn-otm-shed-iff-slow`, `fn-otm-wait-stays-within-the-stall`, `fn-otm-f4w-stall-within-h`, `fn-otm-barrier-reader-bound`; `books/owner-batch`: `fn-owb-fence-failed-answers-uncertain` | PRF-311, PRF-255 | `planning/evidence/time-model-2026-09-27.md`, `planning/evidence/time-model-2-2026-09-27.md` |  |
 | C2 | `books/owner-time-model`: `fn-otm-health-disk-held-iff-stalled-or-full`; `books/native-health`: `fn-nh-exit-code-is-zero-or-past-the-outcome-codes` | PRF-358, PRF-172 | none |  |
-| C3 | `books/owner-time-bars`: fn-otb-a-member-is-answered-once (pending), fn-otb-a-late-completion-is-consumed-once (pending), fn-otb-a-deadline-keeps-the-io-owned (pending), fn-otb-a-late-page-is-unavailable-never-absent (pending) | PRF-384 | none | lane/time-bars 914726cb5 |
+| C3 | `books/owner-time-bars`: `fn-otb-a-member-is-answered-once`, `fn-otb-a-late-completion-is-consumed-once`, `fn-otb-a-deadline-keeps-the-io-owned`, `fn-otb-a-late-page-is-unavailable-never-absent` | PRF-384 | none |  |
 | C4 | `books/outcome-class`: `fn-outcome-code-separates-the-classes`, `fn-outcome-code-is-fenced-iff-fenced` | PRF-143 | none |  |
 | D1 | `books/store-capacity-vector`: `fn-cvec-roomp-is-within-the-profile`, `fn-cvec-held-row-within-its-figure`; `books/store-reclaim-pack`: `fn-rclp-events-keep-the-length` | PRF-138, PRF-119 | none |  |
 | D2 | `books/owner-time-model`: `fn-otm-admit-keeps-the-space-need`; `books/owner-time-journal-writer`: `fn-otm-jw-file-reads-agrees-or-gap` | PRF-359, PRF-360 | none |  |
 | D3 | `books/owner-checkpoint-writer`: `fn-ockp-decide-defers-by-the-estimate`; `books/store-maintenance-reserve`: `fn-smr-roomp-is-within-the-bound` | PRF-200, PRF-129 | none |  |
 | D4 | none (measured or open) | none | none |  |
-| D5 | none (measured or open) | none | `planning/evidence/expiry-q11-2026-09-28.md` | lane/expiry f4beeb687 (RET-008, PRF-918); lane/operations baec98157 (PKT-868, PRF-908) |
+| D5 | `books/expiry`: fn-xpy-releasablep-is-rule-or-expired-and-unheld (pending), fn-xpy-held-article-is-not-expired (pending) | PRF-918 | `planning/evidence/expiry-q11-2026-09-28.md` | lane/operations baec98157 (PKT-868, PRF-908: online compaction) |
 
 Constants the rows quote, read from the books that define them.
 
@@ -847,8 +858,8 @@ The outcome classes and their codes (`*fn-outcome-codes*`, books/outcome-class.l
 
 Counts.
 
-- Depth lint baseline (tools/depth_baseline.json): 193 debt entries (data-sized recursion on a host-called path with no bound), 184 bounded.
-- Named assumptions: 16 `A-*` rows in specs/failures.md, 15 encapsulates in books/assumptions.lisp.
+- Depth lint baseline (tools/depth_baseline.json): 193 debt entries (data-sized recursion on a host-called path with no bound), 186 bounded.
+- Named assumptions: 16 `A-*` rows in specs/failures.md, 13 encapsulates in books/assumptions.lisp.
 - The throughput gate's tolerance (tools/throughput_gate.py, planning/throughput-baseline.json): 25% over the baseline per operation, plaintext.
 
 <!-- END resource-contract -->
