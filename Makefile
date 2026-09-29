@@ -659,6 +659,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-receipt-send \
 	books/bp-fnbs-replay-append \
 	books/bp-node-rotation-codec \
+	tests/acl2/bp-node-rotation-codec-tests \
 	books/bp-node-rotation \
 	books/bp-node-rotation-slice \
 	books/bp-node-rotation-buffer \
