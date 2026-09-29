@@ -12589,6 +12589,27 @@
       ]
     },
     {
+      "id": "PRF-971",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nsst-absent-store-beside-an-init-stage-names-it"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nsst-absent-store-beside-an-import-stage-names-it"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nsst-store-outcome-without-a-stage-is-the-store-outcome"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nsst-result-hint-of-another-result-unfolds"
+        }
+      ]
+    },
+    {
       "id": "PRF-963",
       "events": [
         {

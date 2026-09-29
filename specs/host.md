@@ -1285,7 +1285,11 @@ documented outcome. On an **absent** store (none of the store's five entries
 beside `[store] path`), every verb that opens a store answers `refused` with
 exit 6 and ACL2's line naming `init`, never a fault (4): the decision is
 `fn-native-operator-store-outcome` over the host's `lstat` observation, made
-before any open (PRF-130). `init` creates the store (0), refuses an existing
+before any open (PRF-130). When an interrupted `init` or `import` left its
+stage (ROOT.init-* or ROOT.import-*) beside an absent store, those verbs refuse
+(1) by the stage's name instead, INTERRUPTED-INIT or INTERRUPTED-IMPORT, and
+ACL2's line names the stage to remove (`fn-nsst-store-outcome`, PRF-971,
+PKT-781), since `init` itself refuses while the stage remains. `init` creates the store (0), refuses an existing
 one (1) and, under a mission's `fn.toml`, takes group words only: a profile
 word is a usage error (5) whose line says what it accepts. On a **fenced**
 store (a writer lock held with no answering owner, a clone fence) `health`
