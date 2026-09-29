@@ -126,6 +126,33 @@ class BookHoleTests(unittest.TestCase):
             root = self.tree(directory, include_it=True)
             self.assertEqual(host_check.book_holes(("host/native/build.lisp",), root), [])
 
+    def test_raw_compliant_declaration_requires_its_actual_image_book(self):
+        # Export-request passed the old call-site check: the raw host calls
+        # its compliant function directly, but loading its definterface
+        # failed because the full image omitted the defining book.
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tree(directory, include_it=True)
+            (root / "books/export.lisp").write_text(
+                '(in-package "ACL2")\n(defun fn-export-request (x) x)\n')
+            (root / "host/interfaces.lisp").write_text(
+                '(definterface fn-export-request :class :common-lisp-compliant)\n')
+            build = root / "host/native/build.lisp"
+            build.write_text(build.read_text() + '\n(ld "host/interfaces.lisp")\n')
+            found = host_check.book_holes(("host/native/build.lisp",), root)
+            self.assertEqual(len(found), 1)
+            self.assertIn("host/interfaces.lisp:1: declared fn-export-request", found[0])
+            self.assertIn("books/export", found[0])
+            build.write_text('(include-book "books/export")\n' + build.read_text())
+            self.assertEqual(host_check.book_holes(("host/native/build.lisp",), root), [])
+
+    def test_declaration_outside_loaded_prefix_does_not_add_a_dependency(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tree(directory, include_it=True)
+            (root / "books/export.lisp").write_text('(defun fn-export-request (x) x)\n')
+            (root / "host/interfaces-extract.lisp").write_text(
+                '(definterface fn-export-request :class :common-lisp-compliant)\n')
+            self.assertEqual(host_check.book_holes(("host/native/build.lisp",), root), [])
+
 
 if __name__ == "__main__":
     unittest.main()
