@@ -995,10 +995,12 @@
                    (* 8 (+ (fn-heap-record-charge 250 *hft-hdr*)
                            (fn-heap-record-charge 28 300)
                            (fn-heap-record-charge 250 1350))))))
-; The long-header shape the 12 KiB constant was below: 59,296 octets
-; (59,296 twice is within 2 x 4,096 + 8 x 13,800, its charge 8 x 1,350 +
+; The long-header shape the 12 KiB constant was below: 51,360 octets
+; (51,360 twice is within 2 x 4,160 + 8 x 13,800, its charge 8 x 1,350 +
 ; 12 x 250 = 13,800 history octets beside its 3,072 of payload).
-(assert! (equal (fn-heap-record-retained-octets 250 1350) 59296))
+; THE SWITCH (PRF-1037): 4,096 fixed + 64 index words + 32 x 1,350 header
+; octets + 16 x 250 Message-ID octets (was 59,296 at 48 an octet).
+(assert! (equal (fn-heap-record-retained-octets 250 1350) 51360))
 (assert! (equal (fn-heap-record-charge 250 1350) 13800))
 ; Without the hypothesis: a record without its payload's octets (two
 ; elements) is charged nothing and retains its header's state: the
