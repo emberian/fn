@@ -7,6 +7,10 @@
 (include-book "../books/native-operator")
 (include-book "../books/native-operator-stage")
 
+; Row S3 (lane operability-2): maintenance verbs on the running owner, the
+; stopped store's status from its checkpoint header.
+(include-book "../books/owner-maintenance-request")
+
 (defun fn-native-operator-host-preflight (argv-octets)
   (declare (xargs :mode :program))
   (fn-native-operator-command-preflight argv-octets))

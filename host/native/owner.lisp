@@ -734,6 +734,12 @@ checkpoint's S, or NIL."
   (let* ((mode (fnn-store-open-mode store))
          (s (and (eq (first mode) :checkpoint) (second mode)))
          (result (fnn-owner-action 'fn-owner-recover-from-store-open max-connections)))
+    ;; A watermark past RFC 3977 section 6's bound is a damaged Store, refused
+    ;; by name (books/owner-number-bound.lisp fn-onb-open-okp); the node does
+    ;; not start on it.
+    (when (eq result :article-numbers-damaged)
+      (fnn-refuse "store ~a is damaged: an article-number watermark exceeds RFC 3977's bound (2147483647)"
+                  (fnn-store-root store)))
     (unless (eq result :recovering)
       (fnn-fault "owner rejected committed history"))
     (unless (eq (fnn-owner-core 'fn-owner-sco-note-durable s) :noted)
@@ -3391,10 +3397,15 @@ refused, not injected under a stale time (D10-a)."
                     ;; reason.lisp fn-nctrl-reason-word), a plain one the
                     ;; status alone.
                     (if (eq status :refused)
-                        (let ((reason (fnn-core-arena-state 'fn-owner-operator-refusal-reason
-                                                      (fnn-octet-list msgid)
-                                                      (mapcar #'fnn-octet-list groups)
-                                                      (fnn-octet-list payload))))
+                        ;; Row S10: a completion the Store refused names
+                        ;; the Store's word (books/owner-control-post-reason
+                        ;; fn-ocpr-reason, kept by fn-owner-control-outcome)
+                        ;; when the admission decision names none.
+                        (let ((reason (or (fnn-core-arena-state 'fn-owner-operator-refusal-reason
+                                                          (fnn-octet-list msgid)
+                                                          (mapcar #'fnn-octet-list groups)
+                                                          (fnn-octet-list payload))
+                                          (fnn-owner-core 'fn-owner-control-reason))))
                           (list :reason
                                 (fnn-core 'fn-native-control-host-refusal-status reason)
                                 reason))
@@ -3536,7 +3547,14 @@ EPIPE and the client saw a bare close)."
              (fnn-fault "owner returned malformed refusal log lines"))
            (dolist (line lines) (fnn-log-line line)))
          (let ((closing (fnn-core 'fn-splan-step-closep step))
-               (starttls (fnn-core 'fn-splan-step-handshake-owed step))
+               ;; T: a TLS handshake owed (382); :DEFLATE: the COMPRESS layer
+               ;; owed (206, RFC 8054), read off the session
+               ;; (host/owner-host.lisp fn-owner-compress-owed).
+               (starttls (or (and (fnn-core 'fn-splan-step-handshake-owed step) t)
+                             (let ((alg (fnn-owner-core 'fn-owner-compress-owed cid)))
+                               (unless (member alg '(nil :deflate))
+                                 (fnn-fault "owner returned a malformed compression layer"))
+                               alg)))
                (submitted (fnn-core 'fn-splan-step-submittedp step))
                (consumed (fnn-core 'fn-splan-step-consumed step))
                (completion nil)

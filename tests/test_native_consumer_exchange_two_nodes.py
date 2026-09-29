@@ -34,7 +34,10 @@ NNTP STAT/IHAVE).  It decides nothing fn or the consumer decides.
 
 Opt-in: FN_RUN_CONSUMER_EXCHANGE=1 and FN_NATIVE_DEVELOPER_HOST naming a
 source-matched developer image (the owner stop cut is developer-only).
-FN_CONSUMER_EXCHANGE_EVIDENCE names a directory for the per-case witnesses.
+FN_CONSUMER_EXCHANGE_TWO_NODES_EVIDENCE names a directory for the per-case
+witnesses (its own name: tests.test_native_consumer_exchange reads
+FN_CONSUMER_EXCHANGE_EVIDENCE as a FILE, and one invocation setting it for
+both errored after every assertion passed; PKT-393).
 """
 import hashlib
 import json
@@ -326,7 +329,7 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
         text = json.dumps(data, indent=1, sort_keys=True)
         print("CONSUMER-2N-WITNESS %s sha256=%s" % (case, sha(text.encode())), flush=True)
         print(text, flush=True)
-        out = os.environ.get("FN_CONSUMER_EXCHANGE_EVIDENCE")
+        out = os.environ.get("FN_CONSUMER_EXCHANGE_TWO_NODES_EVIDENCE")
         if out:
             Path(out).mkdir(parents=True, exist_ok=True)
             (Path(out) / (case + ".json")).write_text(text, encoding="utf-8")

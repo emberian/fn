@@ -1,5 +1,5 @@
 ; fn: the runtime producers stay inside the record widths the profile admits
-; (PRF-123; D27, packets P6 and 6 of the Fable mandate §12), and every record
+; (PRF-123; D27, packets P6 and 6 of the Fable mandate section 12), and every record
 ; they can stage is within R at any sequence, txid, generation and stamp
 ; width (PRF-126, below the PRF-123 section).
 ;

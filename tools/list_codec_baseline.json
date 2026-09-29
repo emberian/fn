@@ -1,0 +1,90 @@
+{
+ "_doc": "tools/list_codec_check.py: host dispatches (fnn-X 'fn-NAME ...) that hand a CODEC an octet list consed from a byte vector (fnn-octet-list), counted per host file (D27, row Q2 of COMPLETE-BEFORE-6.6.0). Only shrinks: give the codec a buffer twin with its boundary theorem (books/octets-stobj.lisp; the pattern of books/article-buffer.lisp) and lower its count. The classes name the codec entries the row's backlog lines name; an entry handed a bounded identity is not a site unless a class names it.",
+ "classes": {
+  "frame-control": [
+   "^fn-native-control-host-",
+   "^fn-native-hybrid-control-host-",
+   "^fn-tlsr-host-",
+   "^fn-frame-(decode|encode|seal|parse|split)",
+   "^fn-ncl-",
+   "^fn-fj-",
+   "^fn-jrn-"
+  ],
+  "record": [
+   "^fn-lgc-take$",
+   "^fn-lgc-",
+   "^fn-lgw-",
+   "^fn-lgdm-",
+   "^fn-store-record-sequence$",
+   "^fn-store-sn-(prepare|existing-action|lookup)",
+   "^fn-store-metadata-config-open$",
+   "^fn-cpr-",
+   "^fn-record-",
+   "^fn-otm-jw-plan$",
+   "^fn-rfz-",
+   "^fn-cat-intern"
+  ],
+  "article": [
+   "^fn-owner-(login-gate|control-filing|peer-carrier-form|peer-carrier-plan|existing-action|peer-carried-relay-event)$",
+   "^fn-pa-",
+   "^fn-article-parse",
+   "^fn-ctl-classify"
+  ],
+  "status": [
+   "^fn-nls-",
+   "^fn-native-live-status-host-",
+   "^fn-native-live-pages-host-"
+  ],
+  "bp-tcpcl-feed": [
+   "^fn-bpn-",
+   "^fn-bpa-",
+   "^fn-bpnr-",
+   "^fn-bpnf-",
+   "^fn-bpi-",
+   "^fn-bpr-",
+   "^fn-bprr-",
+   "^fn-bp-",
+   "^fn-tcpcl-",
+   "^fn-tcl-",
+   "^fn-peer-",
+   "^fn-pull-",
+   "^fn-cu-",
+   "^fn-fs-",
+   "^fn-fnbs-"
+  ],
+  "digest": [
+   "^fn-frame-trailer$",
+   "^fn-frame-digest",
+   "^fn-sha256",
+   "^fn-blake3"
+  ],
+  "checkpoint": [
+   "^fn-cpc-",
+   "^fn-scc-",
+   "^fn-sco-",
+   "^fn-store-checkpoint",
+   "^fn-obi-"
+  ],
+  "group-names": [
+   "^fn-owner-group-codes$",
+   "^fn-store-group-codes$",
+   "^fn-store-codes-from-groups$"
+  ]
+ },
+ "sites": {
+  "host/native/bp-app.lisp": 1,
+  "host/native/bp-obligation.lisp": 3,
+  "host/native/bp-service.lisp": 13,
+  "host/native/bp.lisp": 15,
+  "host/native/checkpoint.lisp": 2,
+  "host/native/consumer-local.lisp": 3,
+  "host/native/control.lisp": 9,
+  "host/native/hybrid-control.lisp": 12,
+  "host/native/io.lisp": 17,
+  "host/native/owner.lisp": 9,
+  "host/native/pull-service.lisp": 2,
+  "host/native/tcpcl.lisp": 4,
+  "host/native/tls-reload.lisp": 2
+ },
+ "total": 92
+}

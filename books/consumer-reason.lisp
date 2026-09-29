@@ -62,13 +62,19 @@
 
 ; The owner's decode: the kind-22 frame's payload decided exactly as the
 ; kind-4 request with that payload (`fn-ncr-request-decode-is-the-plain-decode').
-(defun fn-ncr-request-decode (octets)
+; The payload grammar over an opened frame; the decode below is the open
+; (fn-nctrl-open) followed by it, and books/native-control-buffer.lisp opens
+; the frame in place and calls the grammar.
+(defun fn-ncr-request-payload-decode (opened)
   (declare (xargs :guard t))
-  (let ((opened (fn-nctrl-open octets *fn-ncr-request-kind*)))
     (if (fn-frame-result-okp opened)
         (fn-cwait-request-decode
          (fn-nctrl-seal *fn-ncl-request-kind* (fn-frame-result-payload opened)))
-      (list :refused :frame))))
+      (list :refused :frame)))
+
+(defun fn-ncr-request-decode (octets)
+  (declare (xargs :guard t))
+  (fn-ncr-request-payload-decode (fn-nctrl-open octets *fn-ncr-request-kind*)))
 
 ; Whether a frame asked for the reasoned consumer reply.
 (defun fn-ncr-framep (octets)
