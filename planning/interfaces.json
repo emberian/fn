@@ -5,7 +5,7 @@
     "declared": 1223,
     "declared_and_dispatched": 1206,
     "guard_verified": 474,
-    "with_keystone": 141
+    "with_keystone": 144
   },
   "entries": [
     {
@@ -13520,7 +13520,11 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpnp-dispatch-publication-authorize-admits-exactly-the-issued-pending-dispatch"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -13628,7 +13632,11 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpnp-forward-publication-authorize-admits-exactly-the-issued-pending-forward"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
@@ -13676,7 +13684,11 @@
       "class": "ideal",
       "kinds": [],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpnp-forward-publication-authorize-admits-exactly-the-issued-pending-forward"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
