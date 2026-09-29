@@ -13335,6 +13335,55 @@
           "name": "fn-feed-restart-forgets-the-previous-clock-domain"
         }
       ]
+    },
+    {
+      "id": "PRF-939",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-orcp-reserve-keeps-funded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orcp-reserve-holds-the-estimate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orcp-reserve-refused-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orcp-release-frees-the-pass"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orcp-swap-only-over-the-capture"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orcp-swapped-history-is-the-offline-rewrite"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orcp-every-cut-is-old-or-new"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orcp-new-exactly-from-the-install"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orcp-rerun-rewrites-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orcp-rebuild-is-the-full-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orcp-swapped-store-is-the-full-open"
+        }
+      ]
     }
   ]
 }

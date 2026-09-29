@@ -13986,6 +13986,45 @@
         "fn-feed-restart-forgets-the-previous-clock-domain"
       ],
       "progress_note": "Lane time-bars (Opus 5.5, 2026-09-28). Found by the restart clock-domain audit: fn-feed-restart kept backoff-until, a reading of the previous process's monotonic clock rebuilt by the replay of :feed-retry/:feed-lost, and fn-feed-with-backoff never lowers it, so a peer backing off at the stop was not fed for about the previous run's uptime. Teeth: tests/acl2/feed-restart-domain-tests.lisp (prefix frd-): a feed backed off at 259,200,000 ms (three days up), restarted, offers again at 1,500 ms; the same through the replayed journal; the defect as a tooth (no restart: nothing offered); a non-feed keeps its deadline (the feedp hypothesis)."
+    },
+    {
+      "id": "PRF-939",
+      "title": "A running owner installs `store reclaim --recorded`: the pass's second copy of the history is reserved in the credit ledger or refused by name, the swap is taken only over exactly the captured Store with the commit pipeline idle and no other off-mutex reader, the swapped owner serves the Store the full open of the rewritten history installs, and every pass cut recovers to the old or the new publication",
+      "statement": "Subject: host/native/owner.lisp fnn-owner-reclaim-pass (called by host/native/admin.lisp fnn-owner-reclaim-request for --recorded) through host/owner-host.lisp fn-owner-orcp-capture (fn-orcp-reserve), fn-owner-orcp-intern-chunk (fn-orcp-intern-rows), fn-owner-orcp-rebuild (fn-orcp-rebuild), fn-owner-orcp-swap-word (fn-orcp-swap-word), fn-owner-orcp-swap (fn-orcp-swapped-owner) and fn-owner-orcp-finish (fn-orcp-release). fn-orcp-reserve-keeps-funded / -holds-the-estimate (KEYSTONE): the reservation under :reclaim never over-commits the ledger and, admitted, holds exactly fn-orcp-estimate while every other operation's credit is unchanged; fn-orcp-reserve-refused-by-name: past the budget it is (:refused :memory-budget-exhausted) with the ledger kept. fn-orcp-swap-only-over-the-capture (KEYSTONE): :swap only when count, frontier and Store are the captured ones, the pipeline idle and no other reader. fn-orcp-swapped-history-is-the-offline-rewrite: then the rewritten rows' octets are fn-rclp-events of the rows now (PRF-927's keystone). fn-orcp-rebuild-is-the-full-open and fn-orcp-swapped-store-is-the-full-open (KEYSTONE): the rebuilt owner is fn-ock-recover-full of the rewritten rows, and the swapped owner serves its Store. fn-orcp-every-cut-is-old-or-new, fn-orcp-new-exactly-from-the-install, fn-orcp-rerun-rewrites-nothing: cuts before the install leave the old publication, from it the new, and a rerun rewrites nothing more. Scope: a delta (records committed after the capture) defers the pass by name until the carried finalize verdict lands (lane incremental-finalize); that the re-pinned connections satisfy fn-own-conns-okp over the rebuilt Store is not yet proved; `store reclaim` without --recorded (recording the instant live) stays offline-only.",
+      "milestone": "M5",
+      "requirements": [
+        "RET-008",
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-927",
+        "PRF-930",
+        "PRF-380"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-reclaim-pass.lisp",
+        "tests/acl2/owner-reclaim-pass-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/admin.lisp",
+        "tests/test_native_expiry.py"
+      ],
+      "progress_note": "Lane online-reclaim-3 (2026-09-29, Q16 (a)). REPL-admitted on persvati (book + 58 test forms incl. 5 must-fails).",
+      "events": [
+        "fn-orcp-reserve-keeps-funded",
+        "fn-orcp-reserve-holds-the-estimate",
+        "fn-orcp-reserve-refused-by-name",
+        "fn-orcp-release-frees-the-pass",
+        "fn-orcp-swap-only-over-the-capture",
+        "fn-orcp-swapped-history-is-the-offline-rewrite",
+        "fn-orcp-every-cut-is-old-or-new",
+        "fn-orcp-new-exactly-from-the-install",
+        "fn-orcp-rerun-rewrites-nothing",
+        "fn-orcp-rebuild-is-the-full-open",
+        "fn-orcp-swapped-store-is-the-full-open"
+      ]
     }
   ]
 }
