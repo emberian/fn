@@ -62,6 +62,12 @@
                                      fn-nntp-decimal-digitp)
            :expand ((take 4 l) (take 3 (cdr l)) (take 2 (cddr l)) (take 1 (cdddr l))))))
 
+(local (defthm fn-zar-decide-stored-octets
+  (implies (equal (car (fn-zar-decide args index fn-arena)) :stored)
+           (fn-octet-listp (nth 2 (fn-zar-decide args index fn-arena))))
+  :hints (("Goal" :in-theory (disable fn-zar-decide-stored-denotes fn-zar-decide)
+           :use ((:instance fn-zar-decide-stored-denotes))))))
+
 (defthm fn-zar-command-effects-well-formed
   (implies (fn-midx-correspondencep index (fn-state-articles archive))
            (fn-nntp-effectsp
@@ -71,8 +77,15 @@
                            (fn-zar-line-okp fn-zar-decide fn-zar-initial fn-zdn-body-lines
                             fn-nntp-multi-octets fn-nntp-single fn-nntp-effectsp
                             fn-nntp-result-effects fn-nntp-msgid-retrieval-indexed
-                            fn-nntp-response-textp fn-nntp-initial-status-linep))
-           :use ((:instance fn-zar-decide-stored-denotes)))))
+                            fn-nntp-response-textp fn-nntp-initial-status-linep
+                            fn-midx-correspondencep))
+           :use ((:instance fn-zar-decide-stored-octets)
+                 (:instance fn-zdn-body-lines-are-block-text
+                            (c (nth 2 (fn-zar-decide args index fn-arena))))
+                 (:instance fn-zar-line-okp-is-an-initial-line
+                            (l (fn-zar-initial (nth 1 (fn-zar-decide args index fn-arena))
+                                               (nth 3 (fn-zar-decide args index fn-arena))
+                                               (len (nth 2 (fn-zar-decide args index fn-arena))))))))))
 
 (defthm fn-nov-indexed-lines-are-clean
   (fn-nov-clean-line-listp
