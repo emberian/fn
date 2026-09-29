@@ -948,8 +948,8 @@ the next class (none when nothing waits: fn-osch-next answers nil)."
 (defun fnn-owner-monotonic-ms ()
   "One reading of the monotonic clock, in milliseconds: the only clock the
 disk's deadline logic reads (books/owner-time-model.lisp takes it as NOW;
-the host compares no times)."
-  (floor (* (get-internal-real-time) 1000) internal-time-units-per-second))
+the host compares no times; ACL2 converts the ticks: io.lisp fnn-monotonic-ms)."
+  (fnn-monotonic-ms))
 
 (defun fnn-owner-space-event (service need)
   "PRF-359 (PKT-872): record the store filesystem's free octets (statvfs,

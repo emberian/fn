@@ -1482,7 +1482,7 @@
   ; reading of the wall clock (fn-otm-wall-reading) and its observation
   (declare (xargs :mode :program))
   (let* ((clock (fn-hx-clock))
-         (reading (fn-otm-wall-reading (cadr clock) (caddr clock) 946684800))
+         (reading (fn-otm-wall-reading (cadr clock) (caddr clock)))
          (ok (and (true-listp reading) (equal (len reading) 2)
                   (integerp (car reading)) (<= 0 (car reading)) (booleanp (cadr reading)))))
     (if (not ok) (fn-xw-fault "ACL2 returned a malformed wall reading")

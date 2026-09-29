@@ -29,8 +29,7 @@ represent."
   ;; dropped, so such a record claimed 2000-01-01.
   (multiple-value-bind (wall has-wall) (fnn-owner-wall-milliseconds)
     (let ((result (fnn-core 'fn-native-admin-host-clock-observation
-                            (floor (* (get-internal-real-time) 1000)
-                                   internal-time-units-per-second)
+                            (fnn-monotonic-ms)
                             wall has-wall)))
       (unless (eq (fnn-core 'fn-native-admin-host-clock-status result) :accepted)
         (fnn-refuse "ACL2 refused an unrepresentable clock observation"))

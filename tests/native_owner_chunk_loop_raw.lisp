@@ -302,11 +302,16 @@ unbounded (&rest or &key)."
     ;; epoch and T at or after it, else (0 NIL).  The stub answers the
     ;; model's value on the host's raw reading.
     (fn-otm-wall-reading
-     (destructuring-bind (seconds microseconds offset) args
+     (destructuring-bind (seconds microseconds) args
        (if (and (integerp seconds) (integerp microseconds) (<= 0 microseconds)
-                (<= offset seconds))
-           (list (+ (* 1000 (- seconds offset)) (floor microseconds 1000)) t)
+                (<= 946684800 seconds))
+           (list (+ (* 1000 (- seconds 946684800)) (floor microseconds 1000)) t)
          (list 0 nil))))
+    ;; The monotonic milliseconds are ACL2's too (books/clock-wall-reading.lisp
+    ;; fn-otm-monotonic-ms, PRF-305): the stub answers the model's value.
+    (fn-otm-monotonic-ms
+     (destructuring-bind (ticks units) args
+       (floor (* ticks 1000) units)))
     (fn-splan-step-p t)
     (fn-splan-step-closep (second *step*))
     (fn-splan-step-handshake-owed (third *step*))

@@ -25,6 +25,7 @@
 (include-book "../../books/owner-commit-pipeline")
 (include-book "../../books/owner-reader-view")
 (include-book "../../books/owner-time-model")
+(include-book "../../books/clock-reading")
 (include-book "../../books/owner-time-journal")
 (include-book "../../books/owner-time-admission")
 (include-book "../../books/owner-article-slots")

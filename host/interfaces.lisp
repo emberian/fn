@@ -724,7 +724,15 @@
 
 (definterface fn-otm-wall-reading
   :class ::common-lisp-compliant
-  :keystones (fn-otm-wall-reading-shape))
+  :keystones (fn-otm-wall-reading-shape fn-clkr-wall-reading-is-the-ns-decision))
+
+(definterface fn-otm-monotonic-ms
+  :class ::common-lisp-compliant
+  :keystones (fn-clkr-monotonic-readings-are-the-ns-decision))
+
+(definterface fn-otm-boottime-ms
+  :class ::common-lisp-compliant
+  :keystones (fn-clkr-monotonic-readings-are-the-ns-decision))
 
 (definterface fn-otm-wordp
   :class ::common-lisp-compliant)

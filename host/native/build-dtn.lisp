@@ -229,8 +229,10 @@
 ;; fn-owner-chunk-span calls fn-scar-ocfg-read-span.
 (include-book "books/served-span")
 ;; Lane time-model-2: host/native/io.lisp fnn-owner-wall-milliseconds calls
-;; fn-otm-wall-reading (the wall clock's validity is ACL2's).
-(include-book "books/clock-wall-reading")
+;; fn-otm-wall-reading (the wall clock's validity is ACL2's); PRF-305
+;; (assurance-hygiene-5): with the monotonic readings (fn-otm-monotonic-ms,
+;; fn-otm-boottime-ms) and their keystones, books/clock-reading.
+(include-book "books/clock-reading")
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 ; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose
 ; name is ACL2's `fn-store-checkpoint-clone-fence-name'.  Without this file
