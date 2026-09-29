@@ -291,7 +291,7 @@
 (include-book "tls-handshake-budget")
 (include-book "owner-number-bound")
 (include-book "owner-outcome-pinned")
-(include-book "page-read-ledger")
+(include-book "page-read-ownership")
 (include-book "accounts")
 (include-book "native-operator-stage")
 (include-book "owner-maintenance-request")

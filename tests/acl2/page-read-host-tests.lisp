@@ -15,7 +15,7 @@
   (mv-let (absent token0 fn-page-read-pool)
     (fn-owner-page-read-admit 7 11 200 64 999 fn-page-read-pool)
     (mv-let (installed fn-page-read-pool)
-      (fn-owner-page-read-install '(10000 0 2 1 10) 8 3000 4 fn-page-read-pool)
+      (fn-owner-page-read-install '(10000 0 2 1 10) 8 3000 4 100 fn-page-read-pool)
       (mv-let (registered fn-page-read-pool)
         (fn-owner-page-read-register 11 fn-page-read-pool)
         (mv-let (admitted token fn-page-read-pool)
@@ -36,7 +36,7 @@
                           (mv-let (closed fn-page-read-pool)
                             (fn-owner-page-read-close 11 fn-page-read-pool)
                             (mv-let (reinstall fn-page-read-pool)
-                              (fn-owner-page-read-install '(10000 0 2 1 10) 8 3000 4 fn-page-read-pool)
+                              (fn-owner-page-read-install '(10000 0 2 1 10) 8 3000 4 100 fn-page-read-pool)
                               (mv (list absent token0 installed registered admitted token
                                         refused token1 same-refusal settled
                                         (fn-prl-nth 1 cached) duplicate held evicted closed reinstall
@@ -62,7 +62,7 @@
   (let ((offline (fn-owner-page-read-registration-mode fn-page-read-pool))
         (offline-close (fn-owner-page-read-close-preview 11 fn-page-read-pool)))
     (mv-let (installed fn-page-read-pool)
-      (fn-owner-page-read-install '(10000 0 2 1 10) 8 3000 4 fn-page-read-pool)
+      (fn-owner-page-read-install '(10000 0 2 1 10) 8 3000 4 100 fn-page-read-pool)
       (let ((funded (fn-owner-page-read-registration-mode fn-page-read-pool)))
         (mv-let (registered fn-page-read-pool)
           (fn-owner-page-read-register 11 fn-page-read-pool)
@@ -81,3 +81,28 @@
 (assert-event
  (and (eq (symbol-class 'fn-owner-page-read-registration-mode (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-owner-page-read-close-preview (w state)) :common-lisp-compliant)))
+
+(defun prh-file-run (fn-page-read-pool)
+  (declare (xargs :mode :program :stobjs fn-page-read-pool))
+  (let ((offline (mv-list 3 (fn-owner-page-file-issue nil fn-page-read-pool))))
+    (mv-let (installed fn-page-read-pool)
+      (fn-owner-page-read-install '(10000 0 2 1 10) 8 0 4 2 fn-page-read-pool)
+      (mv-let (registered fn-page-read-pool)
+        (fn-owner-page-read-register-path 1 "/x" fn-page-read-pool)
+        (mv (list offline installed registered
+                  (fn-prl-nth 1 (fn-owner-page-read-ledger fn-page-read-pool))
+                  (mv-list 3 (fn-owner-page-file-issue nil fn-page-read-pool))
+                  (mv-list 3 (fn-owner-page-file-issue 2 fn-page-read-pool))
+                  (mv-list 3 (fn-owner-page-file-issue 3 fn-page-read-pool)))
+            fn-page-read-pool)))))
+(defun prh-file-exec ()
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-page-read-pool
+    (mv-let (result fn-page-read-pool) (prh-file-run fn-page-read-pool) result)))
+(assert!
+ (equal (prh-file-exec)
+        '((:unfunded-offline 2 1) :installed :registered (88 0 1 0 0)
+          (:issued 2 1) (:issued 3 2) (:file-identities-exhausted 3 nil))))
+(assert-event
+ (and (eq (symbol-class 'fn-owner-page-file-issue (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-owner-page-read-register-path (w state)) :common-lisp-compliant)))

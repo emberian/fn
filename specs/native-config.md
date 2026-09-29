@@ -106,7 +106,7 @@ native wrapper; `host/native/config.lisp` registers the diagnostic protocol
 ### Explicit cold resources (P12 staged grammar)
 
 `[resources]` accepts `cold_heap_octets`, `cold_workers`,
-`cold_descriptors` and `cold_read_ids` together. All four are positive
+`cold_descriptors`, `cold_read_ids` and `cold_file_ids` together. All five are positive
 naturals representable in u64; a partial table, zero or overflow is
 refused. Absence remains absent in the normalized record, and `show`
 preserves the exact supplied values through the loader round trip.
@@ -120,3 +120,7 @@ charge each registered incarnation until physical close. Native pressure,
 actual pread stall, completion/cache/close observations are SCN-1002.
 Checkpoint/recovery rescue and compressed decoder highwater need additional
 grounded funding; this grammar does not establish them.
+
+The file-incarnation namespace is distinct from the read namespace. The
+operator limits each independently, with no wrapped identity reuse; the
+local file allocator refuses before opening beyond `cold_file_ids`.
