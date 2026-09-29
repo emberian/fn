@@ -86,3 +86,24 @@
            (and (not stage-present) (not root-present)))
   :rule-classes nil)
 
+
+; KEYSTONE (PRF-942).  The admission as the host composes it
+; (fnn-command-init-published: the classification of a leftover stage, nil
+; without one, and whether ROOT exists) decides by what is present and by
+; nothing else: it proceeds exactly when neither name is present, and each
+; other combination is the refusal that names it.  The theorem above takes
+; the admission as a hypothesis; this one concludes it.
+(defthm fn-bs-init-pub-admission-decides-by-what-is-present
+  (let ((admission (fn-bs-init-pub-admission
+                    (and stage-present
+                         (fn-bs-imp-classify stage-present root-present))
+                    root-present)))
+    (and (iff (equal admission :proceed)
+              (and (not stage-present) (not root-present)))
+         (implies (and stage-present (not root-present))
+                  (equal admission (list :refused :interrupted-init)))
+         (implies (and stage-present root-present)
+                  (equal admission (list :refused :publication-uncertain)))
+         (implies (and (not stage-present) root-present)
+                  (equal admission (list :refused :store-path-exists)))))
+  :rule-classes nil)

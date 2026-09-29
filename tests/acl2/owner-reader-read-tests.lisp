@@ -42,11 +42,14 @@
                                                           (fn-ocfg-at-reader-view oc views)
                                                         oc))
                                        id fn-arena fn-cat)
+                (fn-scar-view-indexedp (fn-ocfg-owner (if (consp views)
+                                                          (fn-ocfg-at-reader-view oc views)
+                                                        oc)))
                 (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache))
            (equal (fn-orr-read-span oc views id i end cache fn-octets fn-arena fn-cat)
                   (orrt-read-span-scar oc views id i end fn-octets fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-orr-read-span fn-scr-ocfg-read-span-is-scar-ocfg-read-span)
-                                  (fn-scr-owner-catalogp fn-ocfg-at-reader-view)))))
+                                  (fn-scr-owner-catalogp fn-scar-view-indexedp fn-ocfg-at-reader-view)))))
 
 ; The call on ground octets: the buffer filled as fnn-octets-fill fills it,
 ; the whole region read (i 0, end its length), an empty sealed arena.

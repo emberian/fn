@@ -282,6 +282,23 @@ def cmd_archive(args: argparse.Namespace) -> int:
     return 0
 
 
+FARM_RUN_ID = re.compile(r"run-[0-9]{8}T[0-9]{6}Z-[0-9a-f]+")
+
+
+def certify_ids_of_farm_run(root: Path, farm_run: str) -> list[str] | None:
+    """The certify-... ids a farm run's fetched log names, or None without the log.
+
+    `add` took only the certification id and its refusal did not say so;
+    lanes had the farm's run id in hand (depth-debt-2, d27-representation-2).
+    """
+    try:
+        text = (root / "build" / "farm" / f"{farm_run}.log").read_text(encoding="utf-8")
+    except OSError:
+        return None
+    found = re.findall(r"Certification evidence: build/acl2/(" + RUN_ID_ERE + ")", text)
+    return list(dict.fromkeys(found))
+
+
 def add_command(run_id: str) -> str:
     return f"python3 tools/evidence_manifests.py add {run_id}"
 
@@ -291,10 +308,30 @@ def cmd_add(args: argparse.Namespace, root: Path = ROOT) -> int:
     wanted = []
     for word in args.run_ids:
         match = RUN_ID.search(word)
-        if not match:
-            print(f"evidence_manifests: {word!r} names no certify run id", file=sys.stderr)
+        if match:
+            wanted.append(match.group(0))
+            continue
+        farm_run = FARM_RUN_ID.search(word)
+        if not farm_run:
+            print(f"evidence_manifests: {word!r} names no run id: give the "
+                  "certification's certify-<UTC>-<pid> or the farm's run-<UTC>-<hex>",
+                  file=sys.stderr)
             return 2
-        wanted.append(match.group(0))
+        found = certify_ids_of_farm_run(root, farm_run.group(0))
+        if found is None:
+            print(f"evidence_manifests: {farm_run.group(0)} is a farm run id, and "
+                  f"build/farm/{farm_run.group(0)}.log is not here to map it to "
+                  "its certify-... id: `farm.py wait BOX RUN` fetches it, or pass "
+                  "the certify id `farm.py wait` printed", file=sys.stderr)
+            return 2
+        if not found:
+            print(f"evidence_manifests: farm run {farm_run.group(0)} names no "
+                  "certification evidence in its log (it did not finish, or "
+                  "certified nothing)", file=sys.stderr)
+            return 2
+        print(f"evidence_manifests: farm run {farm_run.group(0)} -> "
+              + ", ".join(found) + f" (from build/farm/{farm_run.group(0)}.log)")
+        wanted.extend(found)
     have = archived(root)
     candidates = local_candidates(root, args.source) if set(wanted) - have else {}
     missing = []
@@ -452,7 +489,9 @@ def main(argv: list[str] | None = None) -> int:
 
     add = subs.add_parser("add", help="file and track (git add -f) the named runs' manifests")
     add.add_argument("run_ids", nargs="+", metavar="RUN-ID",
-                     help="certify-<UTC>-<pid>, or a path or text containing one")
+                     help="certify-<UTC>-<pid>, a farm run-<UTC>-<hex> (mapped "
+                          "through its fetched build/farm log), or a path or text "
+                          "containing either")
     add.add_argument("--from", dest="source", action="append", default=[],
                      help="an extra directory of certify-* run directories")
     add.set_defaults(func=cmd_add)
