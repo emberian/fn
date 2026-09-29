@@ -4246,6 +4246,23 @@ FN_NATIVE_RECLAIM_FAULT names it."
         (when (string-equal (subseq raw 0 colon) (symbol-name cut))
           (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
           (fnn-fault "test SIGKILL did not terminate the process")))))
+  ;; Developer image only (the HELD form of the same cuts, for the
+  ;; resilience scenarios' interleavings; the held point is named
+  ;; reclaim-CUT, e.g. reclaim-captured): FN_NATIVE_RECLAIM_HOLD=CUT:PATH
+  ;; makes the pass, on reaching CUT, print `RECLAIM held at=CUT' and wait
+  ;; until the release file PATH exists, so a scenario can take a new
+  ;; independent hold (a reader on the candidate) between that cut and the
+  ;; next step, then create PATH.
+  (let ((raw (fnn-developer-selector "FN_NATIVE_RECLAIM_HOLD")))
+    (when (and raw (plusp (length raw)))
+      (let ((colon (position #\: raw)))
+        (unless (and colon (< (1+ colon) (length raw))
+                     (member (subseq raw 0 colon) +fnn-reclaim-cuts+ :test #'string=))
+          (fnn-fault "invalid FN_NATIVE_RECLAIM_HOLD (expected CUT:RELEASE-FILE)"))
+        (when (string-equal (subseq raw 0 colon) (symbol-name cut))
+          (let ((release (subseq raw (1+ colon))))
+            (fnn-err "RECLAIM held at=~(~a~)" cut)
+            (loop until (probe-file release) do (sleep 0.05)))))))
   ;; Developer image only (Q16 item 5): while the file
   ;; FN_NATIVE_TEST_RECLAIM_STALL_FILE names exists, the pass waits at its
   ;; :rebuilt cut, off the owner mutex, so posts commit between the capture
