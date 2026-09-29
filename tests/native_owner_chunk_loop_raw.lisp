@@ -74,11 +74,16 @@
 ;;; declared unreached).
 
 (defparameter *extractable*
-  '("host/native/io.lisp" "host/native/owner.lisp" "host/native/mux.lisp"))
+  '("host/native/io.lisp" "host/native/owner.lisp" "host/native/mux.lisp"
+    ;; Only the COMPRESS layer's structures (fnn-zin-pending on the mux's
+    ;; step loop); its functions are declared unreached below.
+    "host/native/deflate.lisp"))
 
 (defvar *host* (make-hash-table :test 'eq))   ; name -> list of (kind file form)
+(defvar *ordinal* (make-hash-table :test 'eq)) ; form -> its position in the host
 
 (defun index-form (form file)
+  (setf (gethash form *ordinal*) (hash-table-count *ordinal*))
   (when (consp form)
     (let ((head (car form)))
       (flet ((note (name kind)
@@ -249,7 +254,9 @@ unbounded (&rest or &key)."
     ;; The served read size (fn-cbud-step-read-octets).
     (fn-owner-read-octets 4096)
     ;; PRF-164: no XREDEEM in these scenarios, so no connection waits.
-    (fn-acct-host-owner-redeem-waitingp nil)))
+    (fn-acct-host-owner-redeem-waitingp nil)
+    ;; RFC 8054: no scenario sends COMPRESS DEFLATE, so no layer is owed.
+    (fn-owner-compress-owed nil)))
 
 (defun fnn-owner-action (name &rest args)
   (ecase name
@@ -351,7 +358,8 @@ unbounded (&rest or &key)."
 (defun fnn-csprng-octets (width what)
   (declare (ignore what))
   (make-list width :initial-element 0))
-(defun fnn-owner-render-next (plan)
+(defun fnn-owner-render-next (plan &optional compressedp)
+  (declare (ignore compressedp))
   (if plan
       (values (first plan) (rest plan) (null (rest plan)))
     (values (fnn-make-octets 0) nil t)))
@@ -382,7 +390,9 @@ unbounded (&rest or &key)."
     ;; XREDEEM (PRF-164): no connection here waits for a redeem.
     fnn-owner-redeem-quantum
     ;; Row A4 (c): no read here meets a cold payload (see the stub above).
-    fnn-extent-prefetch))
+    fnn-extent-prefetch
+    ;; COMPRESS (RFC 8054): no scenario negotiates the DEFLATE layer.
+    fnn-zin-new fnn-zin-inflate fnn-zout-new fnn-zout-sync fnn-zout-free))
 
 (dolist (name *unreached*)
   (let ((name name))
@@ -478,8 +488,7 @@ unbounded (&rest or &key)."
 ;;; Evaluate what was extracted: definitions that others expand or read first
 ;;; (constants, types, conditions, structures, macros), then the functions,
 ;;; each group in the host's own order.
-(let* ((files *extractable*)
-       (rank (lambda (form)
+(let* ((rank (lambda (form)
                (case (car form)
                  ((defconstant defvar defparameter) 0) (deftype 1)
                  (define-condition 2) (defstruct 3) (defmacro 4) (t 5))))
@@ -489,8 +498,8 @@ unbounded (&rest or &key)."
                    (let ((ra (funcall rank (cdr a))) (rb (funcall rank (cdr b))))
                      (or (< ra rb)
                          (and (= ra rb)
-                              (< (position (car a) files :test #'string=)
-                                 (position (car b) files :test #'string=)))))))))
+                              (< (gethash (cdr a) *ordinal*)
+                                 (gethash (cdr b) *ordinal*)))))))))
   (handler-bind ((style-warning #'muffle-warning)
                  (sb-ext:compiler-note #'muffle-warning))
     (dolist (item ordered) (eval (cdr item)))))
