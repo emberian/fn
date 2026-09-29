@@ -199,7 +199,7 @@
 ;; fn-gidx-list-counts-command (books/nntp.lisp)
 (defthm fn-proto-codes-of-gidx-list-counts-command
   (implies (and (member-equal 215 codes) (member-equal 501 codes))
-           (fn-proto-within (fn-nntp-result-effects (fn-gidx-list-counts-command session archive buckets args)) codes))
+           (fn-proto-within (fn-nntp-result-effects (fn-gidx-list-counts-command session archive buckets closed args)) codes))
   :hints (("Goal" :in-theory (enable fn-gidx-list-counts-command))))
 
 ;; fn-gidx-listgroup-result (books/group-bucket-index.lisp)
@@ -349,13 +349,13 @@
 ;; fn-nntp-list-counts (books/nntp-responses.lisp)
 (defthm fn-proto-codes-of-nntp-list-counts
   (implies (and (member-equal 215 codes))
-           (fn-proto-within (fn-nntp-result-effects (fn-nntp-list-counts session archive groups)) codes))
+           (fn-proto-within (fn-nntp-result-effects (fn-nntp-list-counts session archive groups closed)) codes))
   :hints (("Goal" :in-theory (enable fn-nntp-list-counts))))
 
 ;; fn-nntp-list-counts-command (books/nntp-responses.lisp)
 (defthm fn-proto-codes-of-nntp-list-counts-command
   (implies (and (member-equal 215 codes) (member-equal 501 codes))
-           (fn-proto-within (fn-nntp-result-effects (fn-nntp-list-counts-command session archive args)) codes))
+           (fn-proto-within (fn-nntp-result-effects (fn-nntp-list-counts-command session archive closed args)) codes))
   :hints (("Goal" :in-theory (enable fn-nntp-list-counts-command))))
 
 ;; fn-nntp-list-motd (books/nntp-responses.lisp)

@@ -1000,6 +1000,8 @@ a freshness anchor (D14); the configuration history and the BP stores.
 
 STO-014: Content reclamation under D13: an operator retention rule, a per-article decision over every holder, and a tombstone that keeps every decision the history needs.
 
+RET-008: A per-group expiry policy is an authorized release: the operator's keep/default/purge days and octets window, honouring a posted Expires: within the bounds, released through the one reclaim path with every holder still in force.
+
 Status: decision, tombstone and served projection proved (PRF-088); the
 host asks the tombstone-aware D25 verdict at every site; OVER, XOVER and
 NEWNEWS drop a reclaimed article; `status` prints the rule and the

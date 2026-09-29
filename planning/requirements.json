@@ -205,7 +205,7 @@
         "tests/evidence/2026-09-18-assurance.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 \u00a74.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema0-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
+      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 §4.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema0-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
       "keystones": [
         "fn-cbor-value-round-trip",
         "fn-cbor-accepted-input-is-canonical",
@@ -1333,7 +1333,8 @@
         "PRF-015",
         "PRF-033",
         "PRF-056",
-        "PRF-070"
+        "PRF-070",
+        "PRF-905"
       ],
       "verification": [
         "proof",
@@ -1358,7 +1359,8 @@
         "PRF-067",
         "PRF-074",
         "PRF-189",
-        "PRF-206"
+        "PRF-206",
+        "PRF-904"
       ],
       "verification": [
         "proof",
@@ -1410,7 +1412,7 @@
     },
     {
       "id": "NNT-008",
-      "title": "NEWNEWS answers from this node\u2019s durable acceptance stamp",
+      "title": "NEWNEWS answers from this node’s durable acceptance stamp",
       "specification": "specs/nntp.md#polling-newnews",
       "milestone": "M3",
       "status": "implemented",
@@ -1428,7 +1430,7 @@
         "specs/nntp.md",
         "specs/nntp-audit.md"
       ],
-      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner\u2019s durable whole-second acceptance stamp; schema-0 articles use the nearest later stamped acceptance, else the pinned reader wall second, else remain visible. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
+      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner’s durable whole-second acceptance stamp; schema-0 articles use the nearest later stamped acceptance, else the pinned reader wall second, else remain visible. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
       "note": "The DATE-to-NEWNEWS no-miss guarantee across a reader pin and in-flight prepare remains T6 under A-CLOCK."
     },
     {
@@ -3834,7 +3836,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-196"
+        "PRF-196",
+        "PRF-904"
       ],
       "verification": [
         "proof",
@@ -3853,9 +3856,10 @@
         "host/native-admin-host.lisp",
         "tests/acl2/group-status-tests.lisp",
         "tests/test_native_group_policy.py",
-        "planning/evidence/group-policy-2026-09-26.md"
+        "planning/evidence/group-policy-2026-09-26.md",
+        "tests/acl2/nntp-list-counts-tests.lisp"
       ],
-      "implementation_note": "RFC 3977 section 7.6.3 (the status field) and RFC 6048 section 2.1 (n: local postings not permitted; relayed articles still arrive): an RFC meaning, not a stronger fn guarantee. The 441 text naming the reason is a stronger fn guarantee (RFC 3977 section 6.3.1 permits a plain 441). The verb `group policy NAME n|y` is a durable configuration record (:set-group-status, delta code 21), offline or live; no store record, no format change. A control message is not gated; Supersedes is. LIST COUNTS still reports y (PKT-575 (1)); CT3, the operator's withdrawal, is PRF-256."
+      "implementation_note": "RFC 3977 section 7.6.3 (the status field) and RFC 6048 section 2.1 (n: local postings not permitted; relayed articles still arrive): an RFC meaning, not a stronger fn guarantee. The 441 text naming the reason is a stronger fn guarantee (RFC 3977 section 6.3.1 permits a plain 441). The verb `group policy NAME n|y` is a durable configuration record (:set-group-status, delta code 21), offline or live; no store record, no format change. A control message is not gated; Supersedes is. LIST COUNTS carries the same status (PRF-904, PKT-703; PKT-575 (1)); CT3, the operator's withdrawal, is PRF-256."
     },
     {
       "id": "SEC-006",
@@ -4186,7 +4190,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-222"
+        "PRF-222",
+        "PRF-913"
       ],
       "verification": [
         "proof",
@@ -4217,7 +4222,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-222"
+        "PRF-222",
+        "PRF-913"
       ],
       "verification": [
         "proof",
@@ -4238,7 +4244,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-228"
+        "PRF-228",
+        "PRF-904"
       ],
       "verification": [
         "proof",
@@ -4263,7 +4270,8 @@
         "host/native-admin-host.lisp",
         "books/moderation-verbs.lisp",
         "tests/acl2/moderation-verbs-tests.lisp",
-        "planning/evidence/moderation-verbs-2026-09-27.md"
+        "planning/evidence/moderation-verbs-2026-09-27.md",
+        "tests/acl2/nntp-list-counts-tests.lisp"
       ],
       "implementation_note": "RFC 5537 section 3.5 item 7 and 3.5.1 (forward, never post; method 1, application/news-transmission; usage=moderate), section 7 (verify the approver by transport authentication), sections 3.6 item 6 and 3.7 item 5 (relay/serving refusal); RFC 6048 section 2.1.1 (m). fn has no mail path: the forward is an envelope article into the group's queue group (an ordinary Store article: no new persistence domain). The moderator is an account with a role (accounts slot, marks 4 and 5; delta code 23). The 441 texts naming the reason are a stronger fn guarantee. A control message is not gated. The queue group is never offered to a peer and is served only to the moderators of the groups it queues for (PKT-658; group-access's restricted view with the queue hidden). `moderation list GROUP` reports the queue (FNLS kind 3 code 10). `moderation approve ID --moderator LOGIN` and `moderation reject ID --moderator LOGIN [--reason TEXT]` (PKT-657, FNCT request kind 21, books/moderation-verbs.lisp): only a moderator of the envelope's group, approve posts the held article with Approved under LOGIN's served decision, reject is the node's withdrawal (PRF-256). Not done: a PGPMoose-style signed approval."
     },
@@ -4455,7 +4463,8 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-230"
+        "PRF-230",
+        "PRF-905"
       ],
       "verification": [
         "proof",
@@ -4465,9 +4474,11 @@
         "books/byte-store-frame.lisp",
         "books/article-header-limits.lisp",
         "books/injection.lisp",
-        "planning/evidence/header-limits-profile-2026-09-27.md"
+        "planning/evidence/header-limits-profile-2026-09-27.md",
+        "books/article-line-bound.lisp",
+        "tests/test_native_header_lines.py"
       ],
-      "implementation_note": "Fields 13 to 15 (format 10) (defaults 64, 256, 16,384); the served POST refuses by them (PRF-230, SCN-156). Open: peer and BP ingress (PKT-660)."
+      "implementation_note": "Fields 13 to 15 (format 10) (defaults 64, 256, 16,384); the served POST refuses by them (PRF-230, SCN-156). Open: peer and BP ingress (PKT-660). A header LINE over RFC 5322 section 2.1.1's 998 octets is refused by its own name, :line-length (PRF-905, PKT-506): the line bound is the RFC's, not a limit on a field, which is admitted folded."
     },
     {
       "id": "HST-019",
@@ -5204,6 +5215,34 @@
         "tests/acl2/scram-tests.lisp"
       ],
       "implementation_note": "RFC 4643 section 2.4 with PLAIN (RFC 4616), SCRAM-SHA-256 (RFC 5802, RFC 7677) and SCRAM-SHA-256-PLUS (RFC 9266 tls-exporter). DIGEST-MD5 (RFC 4643's mandatory mechanism) is not implemented: RFC 6331 made it Historic. Increment 1 (lane sasl): the HMAC-SHA-256/PBKDF2 and SCRAM mechanism books. Increment 2: the exchange (books/sasl.lisp), verifier v2 and the served AUTHINFO SASL arm."
+    },
+    {
+      "id": "NNT-057",
+      "title": "An article whose number in any of its groups would pass RFC 3977 section 6's 2,147,483,647 is refused by name at admission; the served path counts no articles",
+      "specification": "specs/nntp-audit.md#the-served-path-carries-its-projection-verdict",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-921"
+      ],
+      "verification": [
+        "proof"
+      ],
+      "evidence": [
+        "books/store-number-bound.lisp",
+        "books/store-number-projection.lisp",
+        "books/owner-prepare-served.lisp",
+        "books/store-prepare-served.lisp",
+        "books/nntp-session.lisp",
+        "tests/acl2/store-number-bound-tests.lisp",
+        "tests/acl2/owner-prepare-served-tests.lisp",
+        "tests/acl2/owner-prepare-outcome-tests.lisp",
+        "tests/acl2/store-prepare-served-tests.lisp",
+        "tests/acl2/nntp-post-tests.lisp",
+        "planning/evidence/pkt-615-number-bound-2026-09-28.md"
+      ],
+      "implementation_note": "RFC 3977 section 6 requirement (article numbers 1..2,147,483,647), enforced as a protocol bound, not an implementation ceiling (D27): admission refuses (:article-numbers-exhausted; POST 441 with reason, IHAVE 437, TAKETHIS 439) instead of allocating a number past it. The whole-archive article-count conjunct of fn-nntp-projectionp (no RFC basis; an O(N) walk at every re-pin) is removed. Local policy: the last number assigned in a group is 2,147,483,646, so the watermark after it (rendered as an emptied group's low number, RFC 3977 section 6.1.1.2) is itself an article number.",
+      "note": "PKT-615 as the coordinator decided it (lane join-f2-615, 2026-09-28). Scenario: no native scenario reaches the bound (2^31 articles); the refusal is exercised by the ACL2 teeth at constructed boundary states, labelled as such."
     }
   ]
 }

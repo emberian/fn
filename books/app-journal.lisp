@@ -8,9 +8,9 @@
 (include-book "journal-publish")
 (include-book "byte-store-txn-name")
 (include-book "frame")
+(include-book "consumer-position")
 ; PKT-869: the carry control journal's frame (domain :carry).
 (include-book "bp-carry-frame")
-(include-book "consumer-position")
 
 (defconst *fn-aj-max-records* 4096)
 (defconst *fn-aj-workflow-max-aggregate* 16777216)

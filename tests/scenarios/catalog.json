@@ -5857,6 +5857,56 @@
         "The SASL label lists the mechanisms offered now and survives the login; PLAIN in clear is 483; SCRAM answers 383 then 283 with the server's v=; a wrong password and a replayed final message are 481; PLUS succeeds only with the connection's own exporter value."
       ],
       "execution_scope": "Specified by lane sasl increment 1 (the mechanism books); the served arm and tests/test_native_sasl.py come with increment 2."
+    },
+    {
+      "id": "SCN-197",
+      "title": "Long header fields: a 900-octet Subject and about 9,000 octets of folded References are accepted and served whole by OVER, XOVER and HDR; the same References on one line is refused by the line bound's own 441",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "STO-030",
+        "NNT-005"
+      ],
+      "steps": [
+        "`init fn.test`; start the owner (plain listener, default profile).",
+        "POST <long> with Subject of 900 octets and References of 200 Message-IDs folded one per line; POST <oneline> with the same References on one line; POST <edge> with a 998-octet Subject line and <over> with a 999-octet one.",
+        "GROUP fn.test; OVER and XOVER of the group's range; OVER <long>; HDR Subject <long>; HDR References <long>; ARTICLE <long>; STAT <oneline>."
+      ],
+      "expected": [
+        "<long> and <edge> 240; <oneline> and <over> `441 posting failed; a header line is longer than 998 octets (RFC 5322 section 2.1.1); fold it`; STAT <oneline> 430.",
+        "OVER and XOVER carry the whole Subject (900 octets) and the whole References (the unfolded value, RFC 3977 section 8.3.2); HDR answers the same fields; ARTICLE carries the posted folded lines."
+      ],
+      "implementation": {
+        "test": "tests.test_native_header_lines",
+        "cases": [
+          "NativeHeaderLineTests.test_long_fields_folded_are_served_whole_and_a_long_line_is_refused_by_name"
+        ],
+        "native": true,
+        "record": "planning/evidence/nntp-bugs-2026-09-28.md",
+        "log": "planning/evidence/nntp-bugs-2026-09-28/native-n3-test_native_header_lines.log"
+      },
+      "evidence": [
+        "tests/test_native_header_lines.py",
+        "planning/evidence/nntp-bugs-2026-09-28.md",
+        "planning/evidence/nntp-bugs-2026-09-28/native-n3-test_native_header_lines.log"
+      ]
+    },
+    {
+      "id": "SCN-206",
+      "title": "An article that would take a group's number past 2,147,483,647 is refused by name at admission, and the served path counts no articles",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-057"
+      ],
+      "steps": [
+        "A store one of whose groups has its high watermark at 2,147,483,647 (RFC 3977 section 6's bound).",
+        "A POST, an IHAVE and a TAKETHIS of an article for that group; a re-pin of a reader over the store."
+      ],
+      "expected": [
+        "POST answers 441 naming :article-numbers-exhausted, IHAVE 437, TAKETHIS 439, and nothing is stored; the re-pin walks no article count (fn-nntp-projectionp decides configuration only)."
+      ],
+      "execution_scope": "Specified at batch BB for lane join-f2-615 (PKT-615): proved in tests/acl2/store-number-bound-tests.lisp and owner-prepare-served-tests.lisp; a native case owed."
     }
   ]
 }
