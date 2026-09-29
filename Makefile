@@ -252,6 +252,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-init-publication \
 	tests/acl2/store-init-publication-tests \
 	tests/acl2/store-host-boundary-tests \
+	tests/acl2/bp-node-host-sequence-tests \
 	tests/acl2/store-profile-facts-tests \
 	books/store-genesis \
 	tests/acl2/store-genesis-tests \

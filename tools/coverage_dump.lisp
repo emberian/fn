@@ -168,6 +168,12 @@
            (state (xt-json-symlist (car pairs) channel state)))
       (cov-json-pairs (cdr pairs) nil channel state))))
 
+(defun cov-alias-p (body)
+  ; (F v1 ... vn) with F a function symbol and every argument a variable: a
+  ; translated constant is (quote c), so a symbol argument is a variable
+  (and (consp body) (symbolp (car body)) (car body)
+       (symbol-listp (cdr body))))
+
 (defun cov-json-fn (name book first channel state)
   (let* ((w (w state))
          (body (getpropc name 'unnormalized-body nil w))
@@ -181,6 +187,20 @@
          (state (xt-json-sym (symbol-class name w) channel state))
          (state (princ$ ",\"callees\":" channel state))
          (state (xt-json-symlist (if body (all-fnnames body) nil) channel state))
+         (state (princ$ ",\"formals\":" channel state))
+         (state (xt-json-symlist (getpropc name 'formals nil w) channel state))
+         ; the alias shape: the body is one application of a named function to
+         ; variables only (no constant, no nested call, no lambda), else null;
+         ; tools/coverage.py compares the variables to the formals in order
+         ; (a declared :delegates needs the identity argument mapping)
+         (state (princ$ ",\"alias\":" channel state))
+         (state (if (cov-alias-p body)
+                    (let* ((state (princ$ "{\"callee\":" channel state))
+                           (state (xt-json-sym (car body) channel state))
+                           (state (princ$ ",\"args\":" channel state))
+                           (state (xt-json-symlist (cdr body) channel state)))
+                      (princ$ "}" channel state))
+                  (princ$ "null" channel state)))
          (state (princ$ ",\"attachment\":" channel state))
          (state (if att (xt-json-sym att channel state) (princ$ "null" channel state)))
          (state (princ$ ",\"body\":" channel state))

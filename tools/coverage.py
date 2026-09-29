@@ -77,21 +77,35 @@ community function is a leaf) -- both
       allocation, budget, capacity or fence).  Each word must name at least
       one function of the world, or the rule is stale and `--check` says so.
 
-A DECLARED DELEGATION (`:delegates CALLEE` in host/interfaces.lisp, where
-definterface refuses it unless the entry's body is exactly CALLEE applied to
-the entry's formals): the entry is plumbing whose decision is CALLEE's, and
-CALLEE's direct theorems are the entry's by definition -- provided the world
-agrees (the entry calls exactly CALLEE) and CALLEE has a direct theorem;
-`--check` refuses a declared delegation the world does not bear out, so a
-delegation never hides a decision nobody proved anything about.
+A DECLARED DELEGATION (`:delegates CALLEE` in host/interfaces.lisp): the
+entry is plumbing whose decision is CALLEE's only when the DUMPED WORLD
+bears out, from the translated body, that the entry is a true alias: its
+body is one application of exactly CALLEE to the entry's own formals, in
+order (the dump's `alias` against its `formals`: the identity argument
+mapping, so nothing is hardwired, reordered, projected away, inverted or
+evaluated for effect on the way -- the 2026-09-29 review's cases), and
+CALLEE has a direct theorem that a proof target CITES (a shape lemma about
+CALLEE is not the claimed property).  definterface generates the wrapper
+equation NAME-is-CALLEE-by-definition for such an entry; it is filed as a
+`restatement`, never as the entry's direct theorem.  `--check` refuses a
+declared delegation the world does not bear out.  A one-call wrapper that
+is NOT such an alias is classified by its own closure like any other entry:
+there is no delegation by shape, only by declaration checked in the world.
 
 Everything else is PLUMBING, filed by what the world shows: `straight-line`
 (no branch anywhere in the private closure), `codec` (branches only over
-encode/decode/render/parse helpers), `delegates` (its decision is another
-entry's: a callee that is a decision entry, named), `branches` (branches,
-names no outcome; a scan, a fold, a projection with a case split).  An
-entry the dumped world lacks is `absent` (declared after the dump, or
-defined in a host file the session did not load) and decides nothing here.
+encode/decode/render/parse helpers), `branches` (branches, names no
+outcome; a scan, a fold, a projection with a case split).  An entry the
+dumped world lacks is `absent` (declared after the dump, or defined in a
+host file the session did not load) and decides nothing here.
+
+THREE DIMENSIONS, kept apart in every row and never folded into one bit:
+`direct` -- a theorem's conclusion names the entry (`status`);
+`keystone_cited` -- among those, the theorems a proof target cites, i.e. a
+registered claim states the property (for a delegation: the callee's, in
+`delegated_cited`); the third, whether the premises of those theorems are
+established at the entry by the raw host, is K6's premise audit and is not
+computed here (`rule.dimensions` says so in the output).
 
 `--check` (make check) refuses: a families file that leaves a requirement
 unfiled or names an unknown id; a vocabulary word no function of the world
@@ -200,6 +214,11 @@ class World:
                 # [LOGIC, EXEC] per mbe of the body (a dump before
                 # obstructions-3 has none: its twins are defattach + names).
                 "mbe": [[sym(one) for one in pair] for pair in record.get("mbe", ())],
+
+                # the alias shape (formals, and the body when it is one
+                # application to variables), for a declared :delegates
+                "formals": record.get("formals"),
+                "alias": record.get("alias"),
             }
         for record in doc["theorems"]:
             name = sym(record["name"])
@@ -324,6 +343,16 @@ def theorem_row(world: World, registry: Registry, name: str) -> dict:
             "proofs": proofs, "families": families}
 
 
+RESTATEMENT_SUFFIXES = ("-by-definition", "-unfolds")
+
+
+def is_restatement(theorem: str) -> bool:
+    """AGENTS.md names a corollary or restatement `-by-definition` or `-unfolds`;
+    definterface's generated wrapper equation is one.  It names the entry in
+    its conclusion and says nothing about it."""
+    return theorem.endswith(RESTATEMENT_SUFFIXES)
+
+
 def classify(world: World, entry: str, entries: frozenset) -> dict:
     """Decision or plumbing, by the rule in the module docstring."""
     record = world.functions[entry]
@@ -352,40 +381,80 @@ def classify(world: World, entry: str, entries: frozenset) -> dict:
             "vocabulary": vocabulary, "mode": record["class"], "book": record["book"]}
 
 
-def delegate(rows: list[dict]) -> None:
-    """A `branches` entry whose callee entries include a decision entry DELEGATES
-    to it: its decision is that entry's (a second pass, once every entry is classified)."""
-    decisions = {r["name"] for r in rows if r.get("kind") == "decision"}
-    for row in rows:
-        if row.get("kind") != "branches":
-            continue
-        delegates = sorted(c for c in row.get("callee_entries", ()) if c in decisions)
-        if delegates:
-            row["kind"] = "delegates"
-            row["why"] = "its decision is another entry's: " + ", ".join(delegates)
-
-
-def delegation(world: World, row: dict, callee: str) -> None:
+def delegation(world: World, registry: Registry, row: dict, callee: str) -> None:
     """A declared `:delegates CALLEE`: file the entry as plumbing whose decision
-    is CALLEE's when the world bears it out (the entry's callees are exactly
-    CALLEE, which has a direct theorem); else keep the entry's kind and carry
-    the problem, which `check` refuses."""
+    is CALLEE's when the dumped world bears it out -- the entry's translated
+    body is CALLEE applied to the entry's formals in order (the identity
+    argument mapping), and CALLEE has a direct theorem a proof target cites;
+    else keep the entry's kind and carry the problem, which `check` refuses.
+    (2026-09-29 review: a one-call wrapper can invert a result, hardwire a
+    principal, reorder arguments, discard an updated state or evaluate an
+    argument for effect while the callee's theorem stays true; the world's
+    alias shape refuses each, and a merely shape-related theorem is refused
+    by the citation.)"""
     name = row["name"]
     if name not in world.functions:
         return
-    edges = sorted(set(world.graph.get(name, ())))
-    direct = sorted(world.concl_index.get(callee, set()))
-    if edges != [callee]:
-        row["delegates_problem"] = "{} is declared to delegate to {} but calls {}".format(
-            name, callee, ", ".join(edges) or "nothing")
+    record = world.functions[name]
+    formals = record.get("formals")
+    formals = None if formals is None else [sym(f) for f in formals]
+    alias = record.get("alias")
+    alias = alias and {"callee": sym(alias["callee"]), "args": [sym(a) for a in alias["args"]]}
+    direct = [t for t in sorted(world.concl_index.get(callee, set())) if not is_restatement(t)]
+    cited = [t for t in direct if registry.families_of_theorem(t)[0]]
+    if formals is None:
+        row["delegates_problem"] = ("{} is declared to delegate to {} but the dump carries no "
+                                    "formals/alias shape for it (re-dump with the current "
+                                    "tools/coverage_dump.lisp)".format(name, callee))
+    elif not alias or alias.get("callee") != callee:
+        edges = sorted(set(world.graph.get(name, ())))
+        row["delegates_problem"] = (
+            "{} is declared to delegate to {} but its body is not one application of it "
+            "to variables (it calls {})".format(name, callee, ", ".join(edges) or "nothing"))
+    elif list(alias.get("args", ())) != list(formals):
+        row["delegates_problem"] = (
+            "{} is declared to delegate to {} but applies it to ({}), not to its formals "
+            "({}) in order: the argument mapping is not the identity".format(
+                name, callee, " ".join(alias.get("args", ())), " ".join(formals)))
     elif not direct:
         row["delegates_problem"] = "{} delegates to {}, which no theorem's conclusion names".format(
             name, callee)
+    elif not cited:
+        row["delegates_problem"] = (
+            "{} delegates to {}, whose direct theorems ({}) no proof target cites: a shape "
+            "lemma is not the claimed property".format(name, callee, ", ".join(direct[:3])))
     else:
         row["kind"] = "delegates"
-        row["why"] = ("its decision is {0}'s: the entry is exactly a call of it (declared "
-                      ":delegates); {0}'s direct theorems: {1}".format(callee, ", ".join(direct[:3])))
+        row["why"] = ("its decision is {0}'s: the entry is exactly {0} applied to its formals "
+                      "(declared :delegates, the world's alias shape); {0}'s cited direct "
+                      "theorems: {1}".format(callee, ", ".join(cited[:3])))
         row["delegated_direct"] = direct
+        row["delegated_cited"] = cited
+
+
+def wrap_decisions(rows: list[dict]) -> None:
+    """A plumbing entry that CALLS a decision entry without a verified
+    delegation is a decision entry itself: whatever it does around that call
+    (an inversion, a hardwired principal, a reordering, a projection that
+    discards an updated state, an effect in an argument -- the 2026-09-29
+    review's cases) is its own transformation of a decision, and gets a
+    keystone or a declared, world-checked :delegates.  A second pass, once
+    every entry is classified; a wrapper of a wrapper follows."""
+    decisions = {r["name"] for r in rows if r.get("kind") == "decision"}
+    changed = True
+    while changed:
+        changed = False
+        for row in rows:
+            if row.get("kind") not in ("straight-line", "branches", "codec"):
+                continue
+            wrapped = sorted(c for c in row.get("callee_entries", ()) if c in decisions)
+            if wrapped:
+                row["kind"] = "decision"
+                row["why"] = ("wraps the decision entry {} without a verified :delegates: "
+                              "its own transformation of that decision".format(", ".join(wrapped)))
+                row["wraps"] = wrapped
+                decisions.add(row["name"])
+                changed = True
 
 
 def cover(world: World, registry: Registry, entry: str, entries: frozenset) -> dict:
@@ -395,7 +464,9 @@ def cover(world: World, registry: Registry, entry: str, entries: frozenset) -> d
                 "direct": [], "hyps_only": [], "via_caller": {"count": 0, "opened": 0, "examples": []},
                 "callee_only": {"count": 0, "examples": []}}
     shape = classify(world, entry, entries)
-    direct = sorted(world.concl_index.get(entry, set()))
+    named = sorted(world.concl_index.get(entry, set()))
+    restatements = [t for t in named if is_restatement(t)]
+    direct = [t for t in named if not is_restatement(t)]
     hyps_only = sorted(world.hyps_index.get(entry, set()) - set(direct))
     mentioned = set(direct) | set(hyps_only)
     toward = world.ancestors(entry)
@@ -454,6 +525,8 @@ def cover(world: World, registry: Registry, entry: str, entries: frozenset) -> d
     return {
         "status": status, **shape,
         "direct": [theorem_row(world, registry, t) for t in direct],
+        "keystone_cited": [t for t in direct if registry.families_of_theorem(t)[0]],
+        "restatements": restatements,
         "hyps_only": [theorem_row(world, registry, t) for t in hyps_only],
         "via_caller": {"count": len(via), "opened": len(opened), "examples": via_rows[:EXAMPLES]},
         "callee_only": {"count": len(callee_only), "examples": callee_rows[:EXAMPLES]},
@@ -483,9 +556,9 @@ def build(world_path: Path, box: str | None = None, root: Path = ROOT) -> dict:
                "delegates": d.get("delegates")}
         row.update(cover(world, registry, d["name"], entries))
         if d.get("delegates"):
-            delegation(world, row, d["delegates"])
+            delegation(world, registry, row, d["delegates"])
         rows.append(row)
-    delegate(rows)
+    wrap_decisions(rows)
     stale = sorted(word for word in DECISION_VOCABULARY
                    if not any(word in name for name in world.functions if world.in_tree(name)))
     return {
@@ -499,7 +572,17 @@ def build(world_path: Path, box: str | None = None, root: Path = ROOT) -> dict:
                        "functions": sum(1 for n in world.functions if world.in_tree(n))},
         "rule": {"decision": "branches (if in its private closure) and constructs an outcome "
                              "(DECISION_VOCABULARY word in a closure function's name)",
-                 "vocabulary": DECISION_VOCABULARY, "vocabulary_unmatched": stale},
+                 "vocabulary": DECISION_VOCABULARY, "vocabulary_unmatched": stale,
+                 "delegation": "declared :delegates only; the world's alias shape must be the "
+                               "callee applied to the formals in order, and the callee needs a "
+                               "cited direct theorem (delegates_problem otherwise)",
+                 "dimensions": {
+                     "direct": "a theorem's conclusion names the entry (restatements, "
+                               "-by-definition/-unfolds, are listed apart)",
+                     "keystone_cited": "of those, the theorems a proof target cites",
+                     "premises_established": "NOT computed here: whether the raw host "
+                                             "establishes those theorems' premises at the entry "
+                                             "is K6's premise audit; never folded into the others"}},
         "entries": rows,
     }
 

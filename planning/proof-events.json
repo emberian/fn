@@ -14845,6 +14845,28 @@
           "name": "fn-ocpr-line-names-the-reason-exactly-when-refused"
         }
       ]
+    },
+    {
+      "id": "PRF-983",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling"
+        }
+      ]
+    },
+    {
+      "id": "PRF-984",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-authored-wire-name-names-the-reserved-sequence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-authored-wire-authorize-carries-reservation"
+        }
+      ]
     }
   ]
 }

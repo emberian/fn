@@ -292,6 +292,28 @@
     (:bad-delegates (msg ":delegates ~x0 is not a function name." (cadr reason)))
     (otherwise (msg "malformed form: ~x0." reason))))
 
+; The events a checked declaration adds: the table entry, and for a declared
+; :delegates CALLEE the wrapper equation NAME-is-CALLEE-by-definition, which
+; NAME's definition proves at once (the 2026-09-29 review: a true alias gets
+; its equating theorem generated, so the world -- not a source-form rule --
+; carries that every theorem about CALLEE is one about NAME; a wrapper that
+; transforms gets a keystone instead).  :rule-classes nil: it is a
+; restatement, cited by nothing, and never a rewrite.
+(defun fn-di-events (name kvs w)
+  (declare (xargs :mode :program))
+  (let ((callee (fn-di-get :delegates kvs))
+        (formals (getpropc name 'formals nil w)))
+    (if callee
+        `(progn (table fn-interfaces ',name ',kvs)
+                (defthm ,(intern-in-package-of-symbol
+                          (concatenate 'string (symbol-name name) "-IS-"
+                                       (symbol-name callee) "-BY-DEFINITION")
+                          name)
+                  (equal (,name ,@formals) (,callee ,@formals))
+                  :rule-classes nil
+                  :hints (("Goal" :in-theory '(,name)))))
+      `(table fn-interfaces ',name ',kvs))))
+
 (defmacro definterface (name &rest kvs)
   (let ((reason (fn-di-refusal name kvs)))
     (if reason
@@ -301,5 +323,5 @@
         (let ((problem (fn-di-problem ',name ',kvs (w state))))
           (if problem
               (er soft 'definterface "~x0: ~@1" ',name problem)
-            (value '(table fn-interfaces ',name ',kvs))))
+            (value (fn-di-events ',name ',kvs (w state)))))
 ))))
