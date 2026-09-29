@@ -559,6 +559,65 @@ class LaneCheckTests(unittest.TestCase):
         self.assertIn("differs from the committed file", said)
 
 
+class SuspectCacheTests(unittest.TestCase):
+    """C8: suspect reasons persist per theorem; a one-book edit re-judges only
+    the theorems whose key (own forms, named theorems, definitional closure)
+    moved, and the cached answer equals the uncached one."""
+
+    SOURCES = {
+        "books/defs.lisp": (
+            "(defun leaf (x) (car x))\n"
+            "(defun mid (x) (leaf x))\n"
+            "(defun top (x) (mid x))\n"
+            "(defun other (x) (cdr x))\n"),
+        "books/thms.lisp": (
+            "(include-book \"defs\")\n"
+            "(defthm top-is-car (equal (top x) (car x)))\n"
+            "(defthm other-refl (equal (other x) (other x)))\n"
+            "(defthm plain (equal (len (cons a b)) (+ 1 (len b))))\n"),
+    }
+
+    def tree(self, sources, cache):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            books = {}
+            for relative, text in sources.items():
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(text)
+                books[relative] = ledger.analyze_book(path, relative)
+        return ledger.Tree(books, [r[:-5] for r in sources], {}, suspect_cache=cache)
+
+    def test_cached_reasons_equal_uncached_and_only_moved_keys_recompute(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory) / "suspects.json"
+            first = self.tree(self.SOURCES, cache)
+            uncached = tree_from(self.SOURCES)
+            self.assertEqual(first.suspects, uncached.suspects)
+            self.assertIn("top-is-car", first.suspects)   # unfolds through mid, leaf
+            self.assertEqual(first.suspect_recomputed, 3)
+            again = self.tree(self.SOURCES, cache)
+            self.assertEqual(again.suspect_recomputed, 0)
+            self.assertEqual(again.suspects, first.suspects)
+            # An edit two calls below top-is-car moves its key, and only its.
+            edited = dict(self.SOURCES)
+            edited["books/defs.lisp"] = edited["books/defs.lisp"].replace(
+                "(defun leaf (x) (car x))", "(defun leaf (x) (cdr x))")
+            moved = self.tree(edited, cache)
+            self.assertEqual(moved.suspect_recomputed, 1)
+            self.assertEqual(moved.suspects, tree_from(edited).suspects)
+            self.assertNotIn("top-is-car", moved.suspects)
+
+    def test_the_closure_digest_follows_cycles_and_callees(self):
+        own = {"a": "1", "b": "2", "c": "3", "d": "4"}
+        edges = {"a": ["b"], "b": ["a", "c"], "c": [], "d": []}
+        base = ledger._closure_digests(own, edges)
+        self.assertEqual(base["a"], base["b"])           # one cycle, one digest
+        changed = ledger._closure_digests(dict(own, c="9"), edges)
+        self.assertNotEqual(changed["a"], base["a"])     # a reaches c through b
+        self.assertEqual(changed["d"], base["d"])        # d reaches nothing that moved
+
+
 if __name__ == "__main__":
     unittest.main()
 
