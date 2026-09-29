@@ -215,3 +215,73 @@
            :in-theory (set-difference-theories
                        (union-theories '(fn-his-check-row car-cons cdr-cons (:e equal) eq) (theory 'minimal-theory))
                        '(mv-nth)))))
+; -----------------------------------------------------------------------------
+; The image region of the checkpoint's file.
+;
+; The file starts with the image region: a 37-octet header (the size of a
+; checkpoint segment header, so the open's first read is the same), zeros to
+; *fn-his-base*, then NP pages of 16 KiB, page A at *fn-his-base* + 16 KiB * A
+; (page 0, the root slots' page, zeros: the root travels in the F row).  The
+; framed segments follow at *fn-his-base* + 16 KiB * NP.  The header:
+; "FNSI", the region's version, NP (u64, little-endian), *fn-his-base*
+; (u64), sixteen zero octets.
+
+(defconst *fn-his-magic* '(70 78 83 73))   ; "FNSI"
+(defconst *fn-his-version* 1)
+(defconst *fn-his-base* 16384)
+(defconst *fn-his-page-octets* 16384)
+(defconst *fn-his-header-octets* 37)
+
+(defun fn-his-le (n k)
+  ; N as K little-endian octets
+  (declare (xargs :guard (and (natp n) (natp k))))
+  (if (zp k) nil (cons (mod (nfix n) 256) (fn-his-le (floor (nfix n) 256) (1- k)))))
+
+(defun fn-his-le-value (octets)
+  (declare (xargs :guard t))
+  (if (atom octets) 0 (+ (nfix (car octets)) (* 256 (fn-his-le-value (cdr octets))))))
+
+(defun fn-his-image-header (np)
+  (declare (xargs :guard (natp np)))
+  (append *fn-his-magic* (list *fn-his-version*) (fn-his-le np 8) (fn-his-le *fn-his-base* 8)
+          (make-list 16 :initial-element 0)))
+
+(defun fn-his-image-header-np (header)
+  ; NP when HEADER (the file's first 37 octets) is an image region's header,
+  ; else nil (a file without an image: its first octets are a segment's)
+  (declare (xargs :guard t))
+  (if (and (true-listp header) (equal (len header) *fn-his-header-octets*)
+           (equal (take 4 header) *fn-his-magic*)
+           (equal (nth 4 header) *fn-his-version*)
+           (equal (fn-his-le-value (take 8 (nthcdr 13 header))) *fn-his-base*))
+      (fn-his-le-value (take 8 (nthcdr 5 header)))
+    nil))
+
+(defun fn-his-skip-octets (np)
+  ; the octets after the header up to the framed segments
+  (declare (xargs :guard (natp np)))
+  (+ (- *fn-his-base* *fn-his-header-octets*) (* *fn-his-page-octets* np)))
+
+; The open reads back the page count the writer put (ground witnesses; the
+; symbolic round trip is the codec lemma's shape and is not needed by any
+; keystone: a header the open does not parse is a file without an image).
+(defthm fn-his-image-header-np-witness
+  (and (equal (fn-his-image-header-np (fn-his-image-header 0)) 0)
+       (equal (fn-his-image-header-np (fn-his-image-header 1234567)) 1234567)
+       (equal (fn-his-image-header-np '(70 78 83 67 3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)) nil))
+  :rule-classes nil)
+
+(defun fn-his-np (writes acc)
+  ; one past the largest page address WRITES names
+  (declare (xargs :guard (natp acc)))
+  (if (atom writes)
+      acc
+    (fn-his-np (cdr writes)
+               (if (and (consp (car writes)) (natp (car (car writes))) (<= acc (car (car writes))))
+                   (+ 1 (car (car writes)))
+                 acc))))
+
+(defun fn-his-binding (node salt count trail rec)
+  ; the binding the checkpoint's F row carries for its image
+  (declare (xargs :guard t))
+  (fn-hib-binding node *fn-hib-codec* count trail rec salt))
