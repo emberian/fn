@@ -5,6 +5,7 @@ import io
 import json
 import pathlib
 import shlex
+import shutil
 import sys
 import tempfile
 import unittest
@@ -213,6 +214,29 @@ class ExecuteTests(unittest.TestCase):
         self.assertTrue(execute(self.steps, self.cache)[2][0].get("cached"))
         (self.data / "src" / "f").write_text("g")
         self.assertFalse(execute(self.steps, self.cache)[2][0].get("cached"))
+
+    def test_steps_that_read_a_shared_cache_wait_for_its_warm_up(self):
+        (ROOT / "build" / "cache").mkdir(parents=True, exist_ok=True)
+        shared = pathlib.Path(tempfile.mkdtemp(dir=check_steps.SHARED_CACHES[0].rstrip("/"),
+                                               prefix="test-check-steps-"))
+        self.addCleanup(shutil.rmtree, shared, True)
+        entry = shared / "entry"
+        warm = [PY, "-c", f"import time, os; time.sleep(0.4); "
+                          f"open({str(entry) + '.tmp'!r}, 'w').write('warm'); "
+                          f"os.replace({str(entry) + '.tmp'!r}, {str(entry)!r})"]
+        user = [PY, "-c", f"import os; p = {str(entry)!r}; "
+                          "print('user saw', open(p).read() if os.path.exists(p) else 'nothing')"]
+        check_steps.begin(self.steps)
+        check_steps.add(self.steps, warm, warm=True)
+        check_steps.add(self.steps, user)
+        for _ in range(2):  # a step never traced waits; then its trace says so
+            entry.unlink(missing_ok=True)
+            verdict, text, rows = execute(self.steps, self.cache, use_cache=False)
+            self.assertIn("user saw warm", text)
+        worlds = json.loads((self.cache / "worlds.json").read_text())
+        self.assertEqual(sorted(worlds.values()), [True, True])
+        rows = execute(self.steps, self.cache)[2]
+        self.assertEqual([bool(row.get("cached")) for row in rows], [False, True])  # warm-ups never
 
     def test_git_replay_is_for_reads_only(self):
         self.assertTrue(check_steps.git_replayable(["rev-parse", "HEAD"]))

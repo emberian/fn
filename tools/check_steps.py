@@ -23,6 +23,12 @@ its steps and this driver runs them:
   run discovered, kept in the cache directory) runs first, alone, in plan
   order.  Each step's output is printed whole when it finishes (the log
   never interleaves) and kept in DIRECTORY/logs/.
+- WARM-UPS.  A step planned with `add --warm` (tools/ledger.py --load-tree)
+  fills a content-addressed cache under build/cache/ that several steps
+  read; it starts first and is never cached itself, the steps whose last
+  traced run read build/cache/ (and any never traced) start after it, and
+  every other step runs meanwhile.  Seven checkers used to analyse the same
+  tree at once, four minutes each on persvati.
 - INPUT-HASHED.  Every step runs under tools/check_trace/sitecustomize.py,
   which records what it actually read: the files it opened (imports
   included), the directories it listed, the paths it stat'ed and the git
@@ -118,10 +124,10 @@ def begin(directory: Path) -> int:
     return 0
 
 
-def add(directory: Path, command: list[str]) -> int:
+def add(directory: Path, command: list[str], warm: bool = False) -> int:
     directory.mkdir(parents=True, exist_ok=True)
     with open(directory / PLAN, "a", encoding="utf-8") as plan:
-        plan.write(json.dumps({"command": command}) + "\n")
+        plan.write(json.dumps({"command": command, **({"warm": True} if warm else {})}) + "\n")
     return 0
 
 
@@ -385,6 +391,8 @@ class Executor:
         self.memo = FileMemo(load_json(cache / "digests.json", {}))
         self.durations = load_json(cache / "durations.json", {})
         self.learned = set(load_json(cache / "writers.json", []))
+        # Per step key: whether its last traced run read a shared cache.
+        self.worlds = load_json(cache / "worlds.json", {})
         self.head = head_sha()
         self.processes: dict[int, subprocess.Popen] = {}
         self.traces: dict[int, dict] = {}
@@ -394,7 +402,7 @@ class Executor:
         return self.cache / "steps" / f"{key}.json"
 
     def cached(self, step: dict) -> dict | None:
-        if not self.use_cache:
+        if not self.use_cache or step["warm"]:
             return None
         entry = load_json(self.entry_path(step["key"]), None)
         if not entry or entry.get("command") != step["command"]:
@@ -464,6 +472,9 @@ class Executor:
         with self.lock:
             self.traces[index] = trace
             self.durations[step["key"]] = seconds
+            self.worlds[step["key"]] = any(
+                (p + os.sep).startswith(SHARED_CACHES)
+                for p in trace["r"] | trace["l"] | trace["w"] | trace["s"])
         if code == 0:  # a forced run refreshes the cache too
             inputs, why = inputs_of(trace, self.memo)
             if inputs is None:
@@ -530,8 +541,19 @@ class Executor:
                 for step in sorted(rest, key=lambda s: s["index"]):
                     self.perform(step, alone=True)
             else:
+                # Warm-ups first; the steps that read what they fill (by their
+                # last traced run; a step never traced counts) after them,
+                # while every other step already runs.
+                warm = [s for s in rest if s["warm"]]
+                late = [s for s in rest if not s["warm"] and warm
+                        and self.worlds.get(s["key"], True)]
+                early = [s for s in rest if s not in warm and s not in late]
                 with concurrent.futures.ThreadPoolExecutor(self.jobs) as pool:
-                    for future in [pool.submit(self.perform, s) for s in rest]:
+                    futures = [pool.submit(self.perform, s) for s in warm + early]
+                    for future in futures[:len(warm)]:
+                        future.result()
+                    futures += [pool.submit(self.perform, s) for s in late]
+                    for future in futures:
                         future.result()
         except KeyboardInterrupt:
             with self.lock:
@@ -545,6 +567,7 @@ class Executor:
         save_json(self.cache / "digests.json", self.memo.known)
         save_json(self.cache / "durations.json", self.durations)
         save_json(self.cache / "writers.json", sorted(self.learned))
+        save_json(self.cache / "worlds.json", self.worlds)
         for hazard in hazards:
             print(f"check_steps: WARNING {hazard}; it runs first and alone from now on "
                   f"({self.cache / 'writers.json'}); name it in WRITERS in tools/check_steps.py")
@@ -561,9 +584,10 @@ def plan_steps(directory: Path) -> list[dict]:
         return []
     steps = []
     for index, line in enumerate(line for line in lines if line.strip()):
-        command = json.loads(line)["command"]
+        planned = json.loads(line)
+        command = planned["command"]
         steps.append({"index": index, "name": step_name(command), "command": command,
-                      "key": step_key(command)})
+                      "key": step_key(command), "warm": bool(planned.get("warm"))})
     return steps
 
 
@@ -592,6 +616,11 @@ def main(argv: list[str] | None = None) -> int:
     for action, text in (("run", "one step now: DIRECTORY -- COMMAND ..."),
                          ("add", "plan one step: DIRECTORY -- COMMAND ...")):
         p = sub.add_parser(action, help=text)
+        if action == "add":
+            p.add_argument("--warm", action="store_true",
+                           help="a warm-up: it fills a shared cache (build/cache/) and is "
+                                "never itself cached; the steps that read that cache wait "
+                                "for it")
         p.add_argument("directory")
         p.add_argument("command", nargs=argparse.REMAINDER)
     p = sub.add_parser("execute", help="run the planned steps and print the table")
@@ -617,7 +646,7 @@ def main(argv: list[str] | None = None) -> int:
     if not command:
         parser.error(f"{args.action} needs a command after --")
     if args.action == "add":
-        return add(directory, command)
+        return add(directory, command, args.warm)
     try:
         return run(directory, command)
     except KeyboardInterrupt:

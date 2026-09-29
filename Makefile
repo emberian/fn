@@ -1540,11 +1540,19 @@ check-fast-lane:
 # gate's evidence and must not rest on another tree's cached verdicts.
 CHECK_STEPS_DIR ?= build/check-steps
 CHECK_STEP = $(PYTHON) tools/check_steps.py add $(CHECK_STEPS_DIR) --
+CHECK_STEP_WARM = $(PYTHON) tools/check_steps.py add --warm $(CHECK_STEPS_DIR) --
 CHECK_EXECUTE = $(PYTHON) tools/check_steps.py execute $(CHECK_STEPS_DIR) \
 	$(if $(CHECK_JOBS),--jobs $(CHECK_JOBS)) $(if $(filter 1 yes true,$(FORCE)),--no-cache)
 
 check:
 	@$(PYTHON) tools/check_steps.py begin $(CHECK_STEPS_DIR)
+# The analysed tree (tools/ledger.py load_tree, persisted by its inputs'
+# digest under build/cache/ledger-tree) that check_scaffold, certified_claims,
+# current_view, depth_check, harness_check, interface_emit and spec_cite_check
+# read: about four minutes cold on persvati, 87% of it the whole-tree suspect
+# pass.  Analysed once here, while the steps that do not read it already run;
+# the ones that do wait for it (they had each analysed it at once).
+	@$(CHECK_STEP_WARM) $(PYTHON) tools/ledger.py --load-tree
 	@$(CHECK_STEP) $(PYTHON) tools/check_scaffold.py
 # Every command the docs name exists with the grammar the docs give (NNT-032):
 # operator invocations are judged by ACL2's grammar in the generated book

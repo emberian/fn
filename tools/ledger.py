@@ -34,6 +34,7 @@ import os
 import re
 import sys
 import tempfile
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -3411,7 +3412,17 @@ def main(argv: list[str] | None = None) -> int:
                         help="report only these books (repeatable): their row and the "
                              "suspect reasons of their own theorems, without the "
                              "whole-tree suspect pass (a before/after diff of one book)")
+    parser.add_argument("--load-tree", action="store_true",
+                        help="analyse the tree into build/cache/ledger-tree and stop: "
+                             "make check's first step, so the checkers that read the "
+                             "tree load it instead of each analysing it at once")
     arguments = parser.parse_args(argv)
+    if arguments.load_tree:
+        started = time.monotonic()
+        tree = load_tree()
+        print(f"ledger --load-tree: {len(tree.books)} books, "
+              f"{time.monotonic() - started:.1f} s")
+        return 0
     if arguments.book:
         return book_report(arguments.book)
     if arguments.check:
