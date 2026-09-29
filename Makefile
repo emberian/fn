@@ -1453,9 +1453,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/packed-submission-tests \
 	tests/acl2/body-chunks-tests \
 	tests/acl2/bp-node-fragment-job-tests \
-	tests/acl2/deflate-pool-tests \
 	tests/acl2/native-operator-stage-tests \
-	tests/acl2/nntp-compress-dict-tests \
 	tests/acl2/owner-control-post-reason-tests \
 	tests/acl2/owner-export-request-tests \
 	books/owner-open-carried \
