@@ -24,6 +24,7 @@
         (fn-sf-records (fn-sn-files (fn-osr-capture *cpo-t-ready*)))))))
 (assert-event
  (and (fn-osr-livep *cpo-t-ready*)
+      (fn-sti-livep *cpo-t-ready*)
       (fn-osr-livep (fn-cpo-configure-durable *cpo-t-ready* *cpo-t-increase*))
       (equal (fn-sn-capacity *cpo-t-live*) 20)))
 (assert-event
