@@ -1,7 +1,7 @@
-; Reverse canonicality for the experimental local schema-0 transaction record.
+; Reverse canonicality for the experimental local transaction record.
 ;
 ; This lifts the primitive CBOR accepted-input canonicality theorem through the
-; record parser.  It concerns only a successful exact parse of schema 0; it
+; record parser.  It concerns only a successful exact parse; it
 ; does not make a persistence, guard-verification, or physical-storage claim.
 (in-package "ACL2")
 (include-book "records-invariants")
@@ -284,8 +284,7 @@
                 after-evidence)
                after-subject)
         (equal (append (fn-record-uint-encode charge)
-                       (if (equal stamp :legacy) nil
-                         (fn-record-uint-encode stamp)))
+                       (fn-record-uint-encode stamp))
                after-evidence)
         (fn-cbor-at-mostp
          (append
@@ -363,7 +362,7 @@
     (fn-record-read-uint
      (fn-record-parse-rest (fn-record-read-bytes ,octets)))))
 
-; The optional schema-1 stamp begins just after the charge.  This syntactic
+; The stamp begins just after the charge.  This syntactic
 ; abbreviation keeps the primitive inverse instantiated at that exact suffix.
 (defmacro fn-record-tail-after-evidence (octets)
   `(fn-record-parse-rest
@@ -386,7 +385,7 @@
 ; opening the CBOR decoder while relieving those hypotheses later.
 (defthm fn-record-decode-after-header-successes
   (implies
-   (fn-record-parse-okp (fn-record-decode-after-header schema octets))
+   (fn-record-parse-okp (fn-record-decode-after-header octets))
    (and
     (fn-record-parse-okp (fn-record-read-uint octets))
     (fn-record-parse-okp
@@ -415,7 +414,6 @@
             (fn-record-parse-rest (fn-record-read-uint octets))))))))))
     (fn-record-parse-okp
      (fn-record-decode-tail
-      schema
       (fn-record-parse-value (fn-record-read-uint octets))
       (fn-record-parse-value
        (fn-record-read-uint
@@ -460,14 +458,28 @@
               fn-record-parse-error-is-failure
               (:executable-counterpart not))))))
 
+; A read that consumes its whole input is exactly the encoding of its value:
+; the stamp, the record's last field.
+(defthm fn-record-read-uint-exact-is-encoding
+  (implies (and (fn-record-parse-okp (fn-record-read-uint y))
+                (null (fn-record-parse-rest (fn-record-read-uint y))))
+           (equal (fn-record-uint-encode
+                   (fn-record-parse-value (fn-record-read-uint y)))
+                  y))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-record-read-uint-reencode-prefix
+                                   (octets y)))
+           :in-theory (disable fn-record-read-uint-reencode-prefix
+                               fn-record-read-uint fn-record-uint-encode))))
+
 (defthm fn-record-decode-tail-reencode
-  (implies (and (member-equal schema '(0 1 2))
+  (implies (and (member-equal schema '(1 2))
             (fn-record-parse-okp
-             (fn-record-decode-tail schema sequence txid generation msgid payload octets))
+             (fn-record-decode-tail sequence txid generation msgid payload octets))
             (equal schema
                    (fn-record-schema-octet
                     (fn-record-parse-value
-                     (fn-record-decode-tail schema sequence txid generation msgid
+                     (fn-record-decode-tail sequence txid generation msgid
                                             payload octets))))
             (fn-cbor-at-mostp
              (append
@@ -483,7 +495,7 @@
            (equal
             (fn-record-encode-impl
              (fn-record-parse-value
-              (fn-record-decode-tail schema sequence txid generation msgid payload octets)))
+              (fn-record-decode-tail sequence txid generation msgid payload octets)))
             (append
              (fn-record-item-encode (cons :bytes *fn-record-magic*))
              (fn-record-uint-encode schema)
@@ -500,6 +512,12 @@
                             (octets (fn-record-tail-after-charge octets)))
                  (:instance fn-record-read-uint-reencode-prefix
                             (octets (fn-record-tail-after-charge octets)))
+                 (:instance fn-record-read-uint-exact-is-encoding
+                            (y (fn-record-tail-after-charge octets)))
+                 (:instance fn-record-read-uint-reencode-prefix
+                            (octets octets))
+                 (:instance fn-record-read-uint-reencode-prefix
+                            (octets (fn-record-tail-after-evidence octets)))
                  (:instance fn-record-component-prefixes-compose
              (count (fn-record-parse-value (fn-record-read-uint octets)))
              (groups (fn-record-parse-value (fn-record-parse-groups (fn-record-parse-value (fn-record-read-uint octets)) (fn-record-parse-rest (fn-record-read-uint octets)))))
@@ -510,7 +528,7 @@
              (stamp
               (fn-record-stamp
                (fn-record-parse-value
-                (fn-record-decode-tail schema sequence txid generation
+                (fn-record-decode-tail sequence txid generation
                                        msgid payload octets))))
              (after-count (fn-record-parse-rest (fn-record-read-uint octets)))
              (after-groups (fn-record-parse-rest (fn-record-parse-groups (fn-record-parse-value (fn-record-read-uint octets)) (fn-record-parse-rest (fn-record-read-uint octets)))))
@@ -520,7 +538,9 @@
              ))
            :in-theory
            (e/d (fn-record-decode-tail fn-record-stamp fn-record-make)
-                (fn-record-parse-okp
+                (fn-record-read-uint-value-is-natural
+                 fn-record-read-uint-reencode-prefix
+                 fn-record-parse-okp
                  fn-record-parse-ok
                  fn-record-parse-value
                  fn-record-parse-rest
@@ -540,12 +560,12 @@
                  (:type-prescription true-listp-append))))))
 
 (defthm fn-record-decode-after-header-reencode
-  (implies (and (member-equal schema '(0 1 2))
-            (fn-record-parse-okp (fn-record-decode-after-header schema octets))
+  (implies (and (member-equal schema '(1 2))
+            (fn-record-parse-okp (fn-record-decode-after-header octets))
             (equal schema
                    (fn-record-schema-octet
                     (fn-record-parse-value
-                     (fn-record-decode-after-header schema octets))))
+                     (fn-record-decode-after-header octets))))
             (fn-cbor-at-mostp
              (append
               (fn-record-item-encode (cons :bytes *fn-record-magic*))
@@ -554,7 +574,7 @@
              *fn-record-max-octets*))
            (equal
              (fn-record-encode-impl
-             (fn-record-parse-value (fn-record-decode-after-header schema octets)))
+             (fn-record-parse-value (fn-record-decode-after-header octets)))
             (append
              (fn-record-item-encode (cons :bytes *fn-record-magic*))
              (fn-record-uint-encode schema)
@@ -779,21 +799,18 @@
     (fn-record-parse-okp
      (fn-record-read-uint
       (fn-record-parse-rest (fn-record-read-bytes octets))))
-    (member-equal (fn-record-header-schema octets) '(0 1 2))
+    (member-equal (fn-record-header-schema octets) '(1 2))
     (fn-record-parse-okp
      (fn-record-decode-after-header
-      (fn-record-header-schema octets)
       (fn-record-header-tail octets)))
     (equal
      (fn-record-result-record (fn-record-decode-exact-impl octets))
      (fn-record-parse-value
       (fn-record-decode-after-header
-       (fn-record-header-schema octets)
        (fn-record-header-tail octets))))
     (equal (fn-record-schema-octet
             (fn-record-parse-value
              (fn-record-decode-after-header
-              (fn-record-header-schema octets)
               (fn-record-header-tail octets))))
            (fn-record-header-schema octets))))
   :hints (("Goal"
@@ -809,7 +826,7 @@
               (:executable-counterpart equal)
               (:executable-counterpart not))))))
 
-; Every accepted exact schema-0 record is already its deterministic encoding.
+; Every accepted exact record is already its deterministic encoding.
 ; The hypothesis is only parser success: the decoder itself establishes the
 ; byte domain, input cap, schema checks, field domains, group uniqueness, and
 ; absence of trailing octets.
@@ -902,7 +919,7 @@
              fn-record-decode-exact-successes))
 
 ; -----------------------------------------------------------------------------
-; The implementation's side of the seam (plan 2026-09-22 section 4.1, step T1).
+; The implementation's side of the seam (plan 2026-09-22 §4.1, step T1).
 ;
 ; `books/records-seam.lisp' constrains `fn-record-encode' and
 ; `fn-record-decode-exact' by six properties; these are the same six of
@@ -996,15 +1013,14 @@
 
 (local
  (defthm fn-record-narrow-stamp-forward
-   (implies (and (not (fn-record-widep record))
-                 (not (equal (fn-record-stamp record) :legacy)))
+   (implies (not (fn-record-widep record))
             (and (natp (fn-record-stamp record))
                  (<= (fn-record-stamp record) *fn-cbor-max-uint*)))
    :rule-classes :forward-chaining
    :hints (("Goal" :in-theory (enable fn-record-widep fn-record-uint32p)))))
 
 ; KEYSTONE (the record ceiling at the widths the runtime produces; design
-; 2026-09-25-bounds section 2.1: the relation a profile's record bound must satisfy
+; 2026-09-25-bounds §2.1: the relation a profile's record bound must satisfy
 ; for its article bound).  A record whose integer fields fit u32 encodes
 ; within `fn-record-encoded-octets-ceiling', the 1 083-octet overhead a
 ; profile's R has been checked against since before packet P6: the five
@@ -1140,7 +1156,7 @@
                             (:type-prescription true-listp-append))))))
 
 ; Kind dispatch: every accepted input begins with the five magic octets and
-; the decoded schema (0 or 1).  A decoder for another event kind whose inputs
+; the decoded schema (1 or 2).  A decoder for another event kind whose inputs
 ; never begin with this magic cannot accept a record.
 (defthm fn-record-impl-accepted-input-header
   (implies (fn-record-result-okp (fn-record-decode-exact-impl octets))
@@ -1162,11 +1178,10 @@
                                fn-record-decode-after-header)))
   :rule-classes nil)
 
-; The header split the way the seam states it (plan 2026-09-22 section 4.1;
-; specs/acceptance-stamp.md section 2.1): the five magic octets, and the schema
-; octet as the one the decoded record needs.  At schema 0 both follow from
-; the six-octet fact above; the acceptance stamp changes the second one's
-; proof and neither statement.
+; The header split the way the seam states it (plan 2026-09-22 §4.1;
+; specs/acceptance-stamp.md §2.1): the five magic octets, and the schema
+; octet as the one the decoded record needs.  Both follow from the six-octet
+; fact above.
 (defthm fn-record-impl-accepted-input-magic
   (implies (fn-record-result-okp (fn-record-decode-exact-impl octets))
            (equal (take 5 octets) *fn-record-magic-octets*))
@@ -1189,7 +1204,6 @@
            (equal (nth 5 (fn-record-encode-impl record))
                   (fn-record-schema-octet record)))
   :hints (("Goal"
-           :cases ((equal (fn-record-stamp record) :legacy))
            :in-theory (e/d (fn-record-encode-impl fn-record-schema-octet)
                            (fn-record-p fn-cbor-encode fn-record-encode-groups
                             fn-record-string-octets fn-cbor-at-mostp

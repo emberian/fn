@@ -41,6 +41,9 @@
 ; Row S10 (lane operability-2): a refused control post completion names the
 ; Store's word on the reply and the line.
 (include-book "../books/owner-control-post-reason")
+; W5b: the transit AUTHORITY verdict beside the byte decision (fn-pta-decide),
+; from the store's carried index and keyring.
+(include-book "../books/peer-transit-authority")
 ; Q16: content reclamation on a running owner (fn-orc-).
 (include-book "../books/owner-reclaim")
 (include-book "../books/owner-reclaim-conns")
@@ -218,6 +221,13 @@
 (include-book "../books/owner-reader-read")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
+; The owner's calls into these books (host_check --books, obstructions-9 item
+; 83): the TLS handshake budget (fn-hsb-*), the number bound at the open
+; (fn-onb-open-okp) and the pinned outcomes (fn-oop-*).  No other host file
+; brought them into the image world, so its host-ld would fail.
+(include-book "../books/tls-handshake-budget")
+(include-book "../books/owner-number-bound")
+(include-book "../books/owner-outcome-pinned")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -2652,16 +2662,26 @@
             (value :not-transit)
           ; PRF-230/PKT-660: under the opened profile's header limits, the
           ; owner's injection configuration's, exactly as a POST.
-          (let* ((d (fn-peer-decide-transfer-under
-                     node cfg peer msgid octets (fn-own-clock owner) id subject
-                     (fn-own-config-header-limits (fn-own-config owner))))
-                 (args (fn-peer-injection-arguments node cfg peer msgid octets
+          ; W5b: the byte decision and the AUTHORITY verdict in one call
+          ; (books/peer-transit-authority.lisp fn-pta-decide): the byte
+          ; decision is fn-peer-decide-transfer-under's, unchanged; the
+          ; verdict is read from the store's carried index and keyring
+          ; before any durable intent, and named beside the decision
+          ; (fn-owner-transit-authority; the transit log line carries it).
+          (mv-let (d authority)
+            (fn-pta-decide (fn-sn-index (fn-own-store owner))
+                           (fn-sn-keyring (fn-own-store owner))
+                           (fn-cfg-value cfg) (fn-cfg-generation cfg)
+                           node cfg peer msgid octets (fn-own-clock owner) id subject
+                           (fn-own-config-header-limits (fn-own-config owner)))
+          (let* ((args (fn-peer-injection-arguments node cfg peer msgid octets
                                                     0 id subject
                                                     (fn-own-clock owner)))
                  (state (f-put-global 'fn-owner-transit-kind
                                       (fn-peer-decision-kind d) state))
                  (state (f-put-global 'fn-owner-transit-reason
                                       (fn-peer-decision-reason d) state))
+                 (state (f-put-global 'fn-owner-transit-authority authority state))
                  ; (nth 3 args) is fn-peer-scope-groups' answer: the list
                  ; fn-peer-injection-arguments hands fn-node-prepare as the
                  ; memberships (generation, msgid, octets, GROUPS, id,
@@ -2722,7 +2742,7 @@
                                           (nth 2 args)
                                         nil)
                                       state)))
-            (value (fn-peer-decision-kind d))))))))
+            (value (fn-peer-decision-kind d)))))))))
 
 ; The transit reply.  `kind' and `reason' are the decision this image just
 ; made; `word' is the store's observed outcome (:durable, :refused,
@@ -2913,9 +2933,17 @@
 (defun fn-owner-transit-log-line (id kind reason word detail verdict state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (let ((state (f-put-global 'fn-owner-log-line
-                             (fn-olog-transit-line (fn-owner-core state)
-                                                   id kind reason word detail
-                                                   verdict)
+                             ; W5b: "accepted ... authority=NAME" keeps the
+                             ; authority refusal distinct from the byte
+                             ; decision and from the outcome word.
+                             (fn-olog-join
+                              (list (fn-olog-transit-line (fn-owner-core state)
+                                                          id kind reason word detail
+                                                          verdict)
+                                    (fn-olog-field
+                                     "authority"
+                                     (fn-olog-symbol-text
+                                      (f-get-global 'fn-owner-transit-authority state)))))
                              state)))
     (value :ok)))
 
@@ -2926,6 +2954,12 @@
 (defun fn-owner-transit-reason (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner-transit-reason state)))
   (value (f-get-global 'fn-owner-transit-reason state)))
+
+; W5b: the authority verdict fn-owner-transit-decide computed for the transit
+; take in flight (*fn-pta-verdicts*, or :none when the bytes were not wanted).
+(defun fn-owner-transit-authority (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (f-get-global 'fn-owner-transit-authority state)))
 
 (defun fn-owner-transit-evidence (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner-transit-evidence state)))

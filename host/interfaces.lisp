@@ -20,6 +20,10 @@
 
 (in-package "ACL2")
 (include-book "../books/definterface")
+; Keystones the declarations below name, in books no host file otherwise
+; brings into the image world (decision-keystones-5; host_check --books).
+(include-book "../books/bp-handoff-report")
+(include-book "../books/tcpcl-delivery-invariants")
 
 ; -----------------------------------------------------------------------------
 ; The extraction roots: the functions the extracted served program's driver
@@ -754,6 +758,10 @@
 (definterface fn-otm-wall-reading
   :class ::common-lisp-compliant
   :keystones (fn-otm-wall-reading-shape fn-clkr-wall-reading-is-the-ns-decision))
+
+(definterface fn-otm-wall-seconds
+  :class ::common-lisp-compliant
+  :keystones (fn-otm-wall-seconds-is-natural fn-clkr-wall-seconds-is-the-ns-decision))
 
 (definterface fn-otm-monotonic-ms
   :class ::common-lisp-compliant
@@ -2197,7 +2205,8 @@
   :class ::ideal)
 
 (definterface fn-bpah-handoff-report
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpah-handoff-report-is-application-disposition))
 
 (definterface fn-bpah-outbox-effective-status
   :class ::common-lisp-compliant)
@@ -2321,7 +2330,8 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-evidence-next-result-name
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-evidence-next-result-name-names-exactly-the-next-record))
 
 (definterface fn-bpn-host-evidence-next-wire-name
   :class ::ideal)
@@ -2354,13 +2364,16 @@
   :class ::ideal)
 
 (definterface fn-bpn-host-existing-sequence
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-existing-sequence-reuses-exactly-the-keyed-jobs-sequence))
 
 (definterface fn-bpn-host-existing-sequence-p
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-existing-sequence-reuses-exactly-the-keyed-jobs-sequence))
 
 (definterface fn-bpn-host-existing-sequence-value
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpn-host-existing-sequence-reuses-exactly-the-keyed-jobs-sequence))
 
 (definterface fn-bpn-host-lifecycle-frame-limit
   :class ::ideal)
@@ -2678,13 +2691,15 @@
               fn-bpnjc-ask-position-bounds))
 
 (definterface fn-bpnp-configured-budgets
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnp-configured-budgets-admits-exactly-the-frame-bounded-positive-budgets))
 
 (definterface fn-bpnp-delivery-view
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnp-dispatch-publication-authorize
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpnp-dispatch-publication-authorize-admits-exactly-the-issued-pending-dispatch))
 
 (definterface fn-bpnp-dispatch-publication-frame
   :class ::ideal)
@@ -2705,7 +2720,8 @@
               fn-bpnp-forward-plan-has-one-session-per-peer))
 
 (definterface fn-bpnp-forward-publication-authorize
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpnp-forward-publication-authorize-admits-exactly-the-issued-pending-forward))
 
 (definterface fn-bpnp-forward-publication-name
   :class ::ideal)
@@ -2714,7 +2730,8 @@
   :class ::ideal)
 
 (definterface fn-bpnp-forward-publication-operationp
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-bpnp-forward-publication-authorize-admits-exactly-the-issued-pending-forward))
 
 (definterface fn-bpnp-forward-publication-publisher
   :class ::ideal)
@@ -2935,7 +2952,8 @@
   :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-tcl-delivery-plan
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-tcl-delivery-plan-decides-exactly-by-the-held-final-ack-and-the-callback))
 
 (definterface fn-tcl-delivery-plan-detail
   :class ::common-lisp-compliant)
@@ -2953,7 +2971,8 @@
   :class ::ideal)
 
 (definterface fn-tcl-host-drive
-  :class ::ideal)
+  :class ::ideal
+  :keystones (fn-tcl-host-drive-bundle-has-held-final))
 
 (definterface fn-tcl-host-encode
   ; an exact alias; the callee's keystones are PRF-1006 (the per-kind
@@ -4273,7 +4292,7 @@
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orc-init
-  :class :program)
+  :class :common-lisp-compliant)
 
 ; host/native/admin.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orc-request
@@ -4281,7 +4300,7 @@
 
 ; host/native/admin.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orc-request-status
-  :class :program)
+  :class :common-lisp-compliant)
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orcp-capture
