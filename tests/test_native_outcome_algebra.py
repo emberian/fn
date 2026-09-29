@@ -24,7 +24,8 @@ import time
 import unittest
 
 from tests import test_native_operator_verbs as verbs
-from tests.native_harness import EXIT, Node, free_port, native_image, requires
+from tests.native_harness import (
+    EXIT, Acl2Session, Node, acl2_octets, free_port, native_image, requires)
 
 DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
 IMAGE = native_image("FN_NATIVE_HOST")
@@ -36,57 +37,20 @@ ACCEPTED, REFUSED, FENCED, FAULT, USAGE, INTERRUPTED, NOT_CONNECTED = (
     EXIT.NOT_CONNECTED)
 
 
-def _cbor_head(major, n):
-    if n < 24:
-        return bytes([major << 5 | n])
-    for code, width in ((24, 1), (25, 2), (26, 4), (27, 8)):
-        if n < 1 << (8 * width):
-            return bytes([major << 5 | code]) + n.to_bytes(width, "big")
-    raise ValueError(n)
-
-
-def _uint(n):
-    return _cbor_head(0, n)
-
-
-def _text(t):
-    b = t.encode("ascii")
-    return _cbor_head(3, len(b)) + b
-
-
-def _bytes(b):
-    return _cbor_head(2, len(b)) + b
-
-
-def _array(items):
-    return _cbor_head(4, len(items)) + b"".join(items)
-
-
-def _crc16_x25(data):
-    crc = 0xFFFF
-    for octet in data:
-        crc ^= octet
-        for _ in range(8):
-            crc = (crc >> 1) ^ 0x8408 if crc & 1 else crc >> 1
-    return (crc ^ 0xFFFF).to_bytes(2, "big")
-
-
-def _with_crc16(items):
-    """RFC 9171 4.2.1: the CRC is computed with its own field zeroed."""
-    zeroed = _array(items + [_bytes(b"\0\0")])
-    return _array(items + [_bytes(_crc16_x25(zeroed))])
-
-
 def bundle_without_age(creation_ms, lifetime_ms, adu=b"clockless"):
     """A bundle with a DTN creation time and no Bundle Age block: without a
     wall clock the receiver cannot decide its lifetime (books/clock.lisp
-    fn-clock-expiry-decision answers :uncertain)."""
-    eid = lambda node: _array([_uint(1), _text("//%s/" % node)])
-    primary = _with_crc16([_uint(7), _uint(0), _uint(1), eid("fn-b"), eid("fn-a"),
-                           eid("fn-a"), _array([_uint(creation_ms), _uint(0)]),
-                           _uint(lifetime_ms)])
-    payload = _with_crc16([_uint(1), _uint(1), _uint(0), _uint(1), _bytes(adu)])
-    return b"\x9f" + primary + payload + b"\xff"
+    fn-clock-expiry-decision answers :uncertain).  ACL2 frames it
+    (books/bp-bundle.lisp fn-bpb-encode, CRC-16 blocks) in the developer
+    image's session."""
+    def eid(node):
+        return "(cons :dtn '" + Acl2Session.literal(("//%s/" % node).encode("ascii")) + ")"
+    primary = "(fn-bpp-make-block 0 1 %s %s %s %d 0 %d nil nil)" % (
+        eid("fn-b"), eid("fn-a"), eid("fn-a"), creation_ms, lifetime_ms)
+    with Acl2Session(DEVELOPER) as acl2:
+        return acl2_octets(acl2.call(
+            "(fn-bpb-encode (fn-bpb-make-bundle %s nil (fn-bpb-payload-block 1 '%s)))"
+            % (primary, Acl2Session.literal(adu))))
 
 
 class OutcomeAlgebraSourceTests(unittest.TestCase):
