@@ -111,6 +111,7 @@
            (equal (fn-lim-apply-deltas values (fn-lim-deltas field n))
                   (fn-lim-apply-row values field n)))
   :hints (("Goal" :in-theory (enable fn-cfg-set-limit fn-cfg-delta-make
+                                     fn-cfg-ag-car fn-cfg-ag-cdr
                                      fn-cfg-delta-kind fn-cfg-delta-a fn-cfg-delta-n))))
 
 ; -----------------------------------------------------------------------------
@@ -129,7 +130,7 @@
 ;   (:refused :not-a-live-limit FIELD 0)
 ;   (:refused :below-current-use FIELD USE)
 ;   (:refused :profile-invalid REASON 0)
-;   (:refused :machine-cannot-hold-profile MB MACHINE-MB)
+;   (:refused REASON MB MACHINE-MB)    heap-figure.lisp fn-heap-decide's refusal
 (defun fn-lim-use-of (field use)
   (declare (xargs :guard t))
   (cond ((equal field "max-transactions") (nfix (fn-cfg-ag-car use)))
@@ -148,8 +149,9 @@
           (t
            (let ((d (fn-heap-decide candidate core nursery observations)))
              (if (not (equal (car d) :heap))
-                 (list :refused :machine-cannot-hold-profile
-                       (nfix (caddr d)) (nfix (cadddr d)))
+                 ; heap-figure's reason: machine-cannot-hold-profile,
+                 ; -hold-image or machine-memory-unobserved.
+                 (list :refused (cadr d) (nfix (caddr d)) (nfix (cadddr d)))
                (let ((mb (fn-heap-decision-mb d)))
                  (if (and (posp run-mb) (<= mb (nfix run-mb)))
                      (list :applied mb)
@@ -172,6 +174,11 @@
                   (fn-bs-profile-admittedp p)
                   (<= (fn-lim-use-of field use) (nfix n))
                   (implies (equal (car d) :applied)
-                           (<= (cadr d) (nfix run-mb)))))))
+                           (<= (cadr d) (nfix run-mb))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-lim-decide fn-lim-acceptedp)
+                                  (fn-bs-profile-admittedp fn-heap-decide fn-lim-apply-row
+                                   fn-lim-use-of fn-bs-profile-invalid-reason
+                                   fn-heap-decision-mb fn-lim-fieldp)))))
 
 (in-theory (disable fn-lim-decide fn-lim-effective fn-lim-apply-deltas))
