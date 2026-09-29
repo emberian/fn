@@ -244,8 +244,7 @@
   ; (tools/extract/served-main.scm store-report; lane extract-writable)
   :root :extract)
 
-; =============================================================================
-; Every other entry the raw host dispatches through fnn-call, by subsystem
+; ======================================================================; Every other entry the raw host dispatches through fnn-call, by subsystem
 ; (tools/interface_emit.py SUBSYSTEMS).  Class and kinds are the image
 ; world's; a keystone is a cited theorem (planning/proofs.json) whose
 ; conclusion is about the entry or whose name carries it.  No :keystones is
@@ -2219,7 +2218,7 @@
   :class ::ideal)
 
 (definterface fn-bpah-handoff-report
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpah-handoff-report-is-application-disposition))
 
 (definterface fn-bpah-outbox-effective-status
@@ -2232,20 +2231,23 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpah-publication-authorize
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpah-publication-authorize-admits-exactly-the-issued-pending-delivery))
 
 (definterface fn-bpah-publication-frame
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpah-publication-name
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpah-publication-operationp
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpah-publication-publisher
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpaj-eid-text
   :class ::common-lisp-compliant)
@@ -2505,7 +2507,7 @@
   :keystones (fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling))
 
 (definterface fn-bpn-machine-invariantp
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpn-nth
   :class ::common-lisp-compliant
@@ -2525,7 +2527,7 @@
   :keystones (fn-bpn-report-outbox-next-selects-exactly-the-least-yielding-row))
 
 (definterface fn-bpn-report-outbox-peer-matchp
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-answer-effects
   :class ::common-lisp-compliant
@@ -2568,59 +2570,85 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-conflict-publication-authorize
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpnf-conflict-publication-success-binds-exact-echo))
 
 (definterface fn-bpnf-conflict-publication-frame
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-conflict-publication-name
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-conflict-publication-operationp
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-conflict-publication-publisher
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-delete-publication-authorize
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpnf-delete-publication-authorize-admits-exactly-the-issued-pending-deletion))
 
 (definterface fn-bpnf-delete-publication-frame
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-delete-publication-name
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-delete-publication-operationp
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-delete-publication-publisher
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-epoch
   :class ::common-lisp-compliant)
 
-(definterface fn-bpnf-family-next
+;; Q4a increment B: the reassembly job the host carries between steps
+;; (books/bp-node-fragment-job, books/bp-node-fragment-step).
+(definterface fn-bpfj-next-candidate
   :class ::common-lisp-compliant
-  :keystones (fn-bpnf-family-next-selects-exactly-the-first-ready-family))
+  :kinds ((tried true-listp)))
 
+(definterface fn-bpnf-find-arrival
+  :class ::common-lisp-compliant)
+
+(definterface fn-bpfj-start
+  :class ::common-lisp-compliant)
+
+(definterface fn-bpfj-step
+  :class ::common-lisp-compliant
+  :kinds ((quantum natp)))
+
+(definterface fn-bpfj-finishedp
+  :class ::common-lisp-compliant)
+
+(definterface fn-bpnpf-bundle-octets
+  :class ::common-lisp-compliant)
 (definterface fn-bpnf-family-publication-authorize
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpnf-family-publication-authorize-admits-exactly-the-issued-pending-family))
 
 (definterface fn-bpnf-family-publication-frame
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-family-publication-name
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-family-publication-operationp
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-family-publication-publisher
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-find-held
   :class ::common-lisp-compliant)
@@ -2638,13 +2666,15 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-mixed-legacy-names
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((plan true-listp)))
 
 (definterface fn-bpnf-mixed-legacy-observed
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-mixed-received-names
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((plan true-listp)))
 
 (definterface fn-bpnf-mixed-recovery-plan
   :class ::common-lisp-compliant)
@@ -2653,22 +2683,25 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-namespace-max-entries
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-publication-authorize
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-publication-operation-frame
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-publication-operation-name
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-publication-operation-publisher
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnf-publication-operationp
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-receive-wire-event-value
   :class ::common-lisp-compliant)
@@ -2677,20 +2710,21 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-stored-frame-limit
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-stored-record-name
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnj-attempt-token
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnj-host-eventp
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpnj-host-refuses-an-unnamed-transport-result))
 
 (definterface fn-bpnj-step
-  :class ::ideal
+  :class ::common-lisp-compliant
+  :kinds ((event fn-bpnj-host-eventp))
   :keystones (fn-bpnj-step-preserves-guard-premises
               fn-bpnj-step-forwarded-needs-a-durable-finished-record
               fn-bpnj-stale-job-result-settles-nothing))
@@ -2716,20 +2750,23 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnp-dispatch-publication-authorize
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpnp-dispatch-publication-authorize-admits-exactly-the-issued-pending-dispatch))
 
 (definterface fn-bpnp-dispatch-publication-frame
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnp-dispatch-publication-name
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnp-dispatch-publication-operationp
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnp-dispatch-publication-publisher
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((operation true-listp)))
 
 (definterface fn-bpnp-forward-plan
   :class ::common-lisp-compliant
@@ -2738,21 +2775,21 @@
               fn-bpnp-forward-plan-has-one-session-per-peer))
 
 (definterface fn-bpnp-forward-publication-authorize
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpnp-forward-publication-authorize-admits-exactly-the-issued-pending-forward))
 
 (definterface fn-bpnp-forward-publication-name
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnp-forward-publication-octets
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnp-forward-publication-operationp
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpnp-forward-publication-authorize-admits-exactly-the-issued-pending-forward))
 
 (definterface fn-bpnp-forward-publication-publisher
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnp-forward-unrouted
   :class ::common-lisp-compliant
@@ -2962,10 +2999,10 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpsr-host-encode
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpsr-host-preimage
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-id-hex-octets
   :class ::common-lisp-compliant

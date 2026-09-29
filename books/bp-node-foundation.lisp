@@ -1186,3 +1186,9 @@
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
 (in-theory (disable (:definition fn-bpnf-heldp)))
+
+;; The *1* class (Q4a item 2, bp-remainder-5): host-called entries and their callees.
+(verify-guards fn-bpah-accepting-dispositionp)
+(verify-guards fn-bpah-refusing-dispositionp)
+(verify-guards fn-bpah-disposition-report)
+(verify-guards fn-bpah-handoff-report)

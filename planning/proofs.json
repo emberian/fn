@@ -4035,7 +4035,7 @@
       "progress_note": "Open: the durable `store reclaim` byte program and its `--dry-run` verb in books/native-operator (design B, reclaim through the compaction pack: planning/evidence/reclaim-host-2026-09-25.md); the reclaimed record's own replay step; holders: the consumer reading is conservative (a lagging consumer holds every article), feed state and FNBS rows are not read, reader pins have no durable form (offline reclaim needs none); the retention charge released with the payload; articles with a verdict other than :absent are held; the buffer's source digest slices the two ranges of the D32 description into one list on the resend-of-a-reclaimed-article path (a two-range buffer digest reader would remove it); native N=5,000 run and cut campaign (SCN-048). audit-fixes rcl (2026-09-27): since the acceptance flip the reclaim counts (status's reclaim line, the reclaim verbs' reports) read each article's HANDLE as its octets, so reclaimable-octets and freed-octets were 0 and a tombstoned article counted reclaimable again. fn-rcl-store-counts now takes the arena (host: fn-native-live-status-host-offline/-answer, fn-store-reclaim-decide(-stream), fn-store-log-reclaim-decide-stream pass the live fn-arena) and reads lengths and the tombstone head through it; KEYSTONE fn-rcl-store-counts-is-the-model-over-alpha: the counts are fn-rcl-summary / fn-rcl-held-count over ALPHA of the Store's articles (tests/acl2/store-reclaim-holders-tests.lisp).",
       "events": [
         "fn-rcl-reclaimable-is-no-obligation-names-it",
-        "fn-rclp-event-never-touches-a-held-article",
+        "fn-rcl-reclaim-never-touches-a-held-article",
         "fn-rcl-reclaim-keeps-the-duplicate-history",
         "fn-rcl-reclaim-keeps-every-binding",
         "fn-rcl-reclaim-keeps-the-numbering",
@@ -4798,9 +4798,7 @@
         "fn-sbud-article-verdict-keeps-history",
         "fn-sbud-prepare-under-article-budget-keeps-history",
         "fn-post-admitted-article-keeps-history",
-        "fn-sbud-article-figure-bounds-the-record",
-        "fn-sbud-article-gate-figure-bounds-every-record",
-        "fn-sbud-article-verdict-keeps-history-for-every-record"
+        "fn-sbud-article-figure-bounds-the-record"
       ]
     },
     {
@@ -5027,9 +5025,10 @@
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
         "planning/evidence/manifests/certify-20260926T063856Z-608753.json",
         "planning/evidence/manifests/certify-20260926T061654Z-546487.json",
-        "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
+        "planning/evidence/manifests/certify-20260926T102113Z-288651.json",
+        "books/bp-node-fragment-jobs.lisp"
       ],
-      "progress_note": "Lane bp-lifecycle (2026-09-25, wave 2), PKT-171. Teeth in tests/acl2/bp-fragment-sweep-tests (a 70000-octet ADU in 100 fragments, out of order and overlapping, every outcome against the spec, one witness per hypothesis of fn-bpfw-exact-canvas-reassembles) and tests/acl2/bp-fragment-send-tests (the 100-fragment and 70000-octet plans the capped reference refuses; a must-fail per hypothesis). Native: tests/test_bp_fragment_node_native test_seventy_fragments_across_a_kill_reassemble_once. See the record for the manifest and native SHAs.",
+      "progress_note": "Lane bp-lifecycle (2026-09-25, wave 2), PKT-171. Teeth in tests/acl2/bp-fragment-sweep-tests (a 70000-octet ADU in 100 fragments, out of order and overlapping, every outcome against the spec, one witness per hypothesis of fn-bpfw-exact-canvas-reassembles) and tests/acl2/bp-fragment-send-tests (the 100-fragment and 70000-octet plans the capped reference refuses; a must-fail per hypothesis). Native: tests/test_bp_fragment_node_native test_seventy_fragments_across_a_kill_reassemble_once. See the record for the manifest and native SHAs. Lane bp-remainder-4 (Fable, 2026-09-29): fn-bpfj-apply-conserves-jobs, the same over the kind-18 application read from the host-carried job (fn-bpfj-apply, any job); fn-bpnp-step-family-events-keep-jobs-agreeing now covers the (:family ... JOB LIMIT) and (:persist-result ... JOB LIMIT) forms through the twins' local lemmas.",
       "events": [
         "fn-bpfw-reassemble-is-spec",
         "fn-bpf-reassemble-is-capped-spec",
@@ -5042,7 +5041,8 @@
         "fn-bpfw-cell-at-of-sort",
         "fn-bpfw-sortedp-of-sort",
         "fn-bpnf-family-apply-conserves-jobs",
-        "fn-bpnp-step-family-events-keep-jobs-agreeing"
+        "fn-bpnp-step-family-events-keep-jobs-agreeing",
+        "fn-bpfj-apply-conserves-jobs"
       ]
     },
     {
@@ -5086,7 +5086,7 @@
         "fn-rclp-events-keep-the-summary-shape",
         "fn-rclp-a-reclaimed-event-stays-reclaimed",
         "fn-rclp-events-idempotent",
-        "fn-rclp-event-never-touches-a-held-article",
+        "fn-rclp-events-never-touch-a-held-article",
         "fn-rclp-events-keep-every-other-kind",
         "fn-rclp-freed-octets-account",
         "fn-rclp-freed-is-the-admission-count",
@@ -7558,8 +7558,7 @@
         "fn-heap-store-history-holds-payload-and-memberships",
         "fn-heap-arena-octets-slope",
         "fn-heap-records-retained-within-the-terms",
-        "fn-heap-small-profile-run-fits-a-two-gib-machine",
-        "fn-heap-record-charge-is-the-budgets-charge"
+        "fn-heap-small-profile-run-fits-a-two-gib-machine"
       ],
       "evidence": [
         "books/heap-figure.lisp",
@@ -9107,7 +9106,10 @@
         "fn-bpfr-step-is-bounded",
         "fn-bpfr-finished-state-is-the-sweep",
         "fn-bpfr-run-resumes",
-        "fn-bpfr-run-finishes"
+        "fn-bpfr-run-finishes",
+        "fn-bpfr-step-keeps-statep",
+        "fn-bpfr-step-keeps-cells-true-listp",
+        "fn-bpfr-resume-true-listp"
       ],
       "evidence": [
         "books/bp-fragment-resume.lisp",
@@ -9115,7 +9117,7 @@
         "tests/acl2/bp-fragment-resume-tests.lisp",
         "planning/evidence/bp-fragments-10mib-2026-09-27.md"
       ],
-      "progress_note": "Lane bp-fragments-10mib-2 (2026-09-27): REPL-admitted and certified with certify_books.py --incremental on persvati; no host caller yet."
+      "progress_note": "Lane bp-fragments-10mib-2 (2026-09-27): REPL-admitted and certified with certify_books.py --incremental on persvati; no host caller yet. Lane bp-remainder-4 (Fable, 2026-09-29): fn-bpfr-statep (the sweep state's shape between steps, never its cells) is the guard of fn-bpfr-step / -resume / -run / -finish, all guard-verified; fn-bpfr-step-keeps-statep and -keeps-cells-true-listp carry it across the host's loop."
     },
     {
       "id": "PRF-252",
@@ -11401,8 +11403,7 @@
         "fn-cvec-statement-admission-keeps-the-vector",
         "fn-cvec-statement-row-within-its-figure",
         "fn-pvc-statement-verdict-carried-is-cvec-statement-verdict-at",
-        "fn-oii-publication-group-count-is-the-rows",
-        "fn-cvec-held-row-within-its-figure"
+        "fn-oii-publication-group-count-is-the-rows"
       ]
     },
     {
@@ -12499,7 +12500,7 @@
       "events": [
         "fn-web-session-route-needs-its-session",
         "fn-web-session-sends-only-to-its-connection",
-        "fn-web-step-admits-no-session-but-by-281",
+        "fn-web-sessions-bound-by-281",
         "fn-wss-body-cannot-end-the-article",
         "fn-wss-emit-body-is-stuff"
       ]
@@ -15801,13 +15802,17 @@
         "fn-bpfj-plan-is-the-plan-within-the-limit",
         "fn-bpfj-plan-at-is-the-plan-at",
         "fn-bpfj-apply-is-the-apply",
-        "fn-bpfj-apply-at-is-the-apply-at"
+        "fn-bpfj-apply-at-is-the-apply-at",
+        "fn-bpfj-start-is-readable",
+        "fn-bpfj-step-keeps-readable"
       ],
       "evidence": [
         "books/bp-node-fragment-job.lisp",
-        "tests/acl2/bp-node-fragment-job-tests.lisp"
+        "tests/acl2/bp-node-fragment-job-tests.lisp",
+        "books/bp-fragment-job-shape.lisp",
+        "tests/acl2/bp-node-fragment-step-job-tests.lisp"
       ],
-      "progress_note": "Lane bp-remainder-2 (Fable, 2026-09-29): REPL-admitted on hbox (13 defthms; the reading keystones 200 to 850 prover steps); teeth loaded on persvati. Host: none yet -- the next increment routes a job-bearing (:family anchor observation job) / (:persist-result epoch op result job) event through fn-bpnf-fragment-step to fn-bpfj-propose/-persist twins, adds the debt-delta twin in bp-node-progress, and has bp-service's fnn-bps-fragment-progress step the job per scheduling step with the profile's bundle octets as the limit; SCN-067 and the 10 MiB transfer then run natively."
+      "progress_note": "Lane bp-remainder-2 (Fable, 2026-09-29): REPL-admitted on hbox (13 defthms). Lane bp-remainder-3 (Fable, 2026-09-29): host-reached -- Host: host/native/bp-service.lisp fnn-bps-fragment-progress starts, steps and offers the job; the (:family anchor observation job limit) and (:persist-result epoch op result job limit) events reach fn-bpfj-propose-step / fn-bpfj-persist-step through fn-bpnj-step -> fn-bpnp-step -> fn-bpn-report-author-step -> fn-bpn-report-step -> fn-bpnf-fragment-step (books/bp-node-fragment-step). The debt-delta twin in bp-node-progress is deferred (the credit path still reassembles once per proposal and once per result, today's cost); the whole-bundle encode stays one step's work until PKT-585. Lane bp-remainder-4 (Fable, 2026-09-29): the job's shape is books/bp-fragment-job-shape (fn-bpfj-jobp: what a step needs, linear in the fragments; fn-bpfj-readable-jobp: the cells a true list too, for the readings), the guard of fn-bpfj-start / -step / -finishedp / -query / -plan / -apply and of the twins, checked by fn-bpnf-host-eventp of a job-carrying event; fn-bpfj-start-is-readable and fn-bpfj-step-keeps-readable carry it across the host's loop; every fn-bpfj-* the host reaches is guard-verified in books/bp-node-fragment-guards (fn-bpfj-image-octets, a specification function, is not)."
     },
     {
       "id": "PRF-991",
@@ -17597,6 +17602,46 @@
         "tests/acl2/replay-historical-limits-tests.lisp"
       ],
       "progress_note": "Lane limits-live-8 2026-09-29, row S1 item 3."
+    },
+    {
+      "id": "PRF-1008",
+      "title": "The BP fragment family proposal over the host-carried reassembly job equals the whole-family proposal within the profile's limit",
+      "statement": "books/bp-node-fragment-step.lisp (Q4a increment B; D27). fn-bpfj-propose-step is fn-bpnf-family-propose-step with its plan read by fn-bpfj-plan-at from the finished job and its apply by fn-bpfj-apply-at; fn-bpfj-propose-step-is-the-propose-step: when the job is well-formed at the anchor (fn-bpfj-wf), finished, LIMIT is a natural at most *fn-bpnf-max-held-image* and the family's image (fn-bpfj-image-octets) is within LIMIT, the two steps are equal. Past the limit the job plan refuses by name (PRF-989) and the step issues nothing; a stale or unfinished job plans as (:stale :job) / (:pending :job) and issues nothing. fn-bpnf-fragment-step routes (:family anchor observation job limit) to the twin and (:family anchor observation) to the family step; fn-bpfj-next-candidate selects the family a job is started for without reassembling (its completeness against fn-bpnf-family-select is open).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-008"
+      ],
+      "depends_on": [
+        "PRF-989"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [],
+      "evidence": [
+        "books/bp-node-fragment-step.lisp",
+        "tests/acl2/bp-node-fragment-step-job-tests.lisp"
+      ],
+      "progress_note": "Lane bp-remainder-3 (Fable, 2026-09-29): REPL-admitted on hbox; Host: host/native/bp-service.lisp fnn-bps-fragment-progress starts, steps and offers the job; the (:family anchor observation job limit) and (:persist-result epoch op result job limit) events reach fn-bpfj-propose-step / fn-bpfj-persist-step through fn-bpnj-step -> fn-bpnp-step -> fn-bpn-report-author-step -> fn-bpn-report-step -> fn-bpnf-fragment-step (books/bp-node-fragment-step)."
+    },
+    {
+      "id": "PRF-1009",
+      "title": "The BP fragment family kind-18 result over the host-carried reassembly job applies exactly the whole-family result within the profile's limit",
+      "statement": "books/bp-node-fragment-step.lisp (Q4a increment B; D27). fn-bpfj-persist-step is fn-bpnf-family-persist-step with its application read by fn-bpfj-apply-at from the finished job the proposal was made from; fn-bpfj-persist-step-is-the-persist-step: under PRF-1008's hypotheses at the issued record's anchor, the two steps are equal, so a durable kind-18 retires the family's fragments and holds the whole image exactly as before, an uncertain or refused result answers as before. fn-bpnf-fragment-step routes (:persist-result epoch op result job limit) to the twin; the host carries the proposal's job into its result (bp-service *fnn-bps-fragment-job*).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-008"
+      ],
+      "depends_on": [
+        "PRF-1008"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [],
+      "evidence": [
+        "books/bp-node-fragment-step.lisp",
+        "tests/acl2/bp-node-fragment-step-job-tests.lisp"
+      ],
+      "progress_note": "Lane bp-remainder-3 (Fable, 2026-09-29): REPL-admitted on hbox; Host: host/native/bp-service.lisp fnn-bps-fragment-progress starts, steps and offers the job; the (:family anchor observation job limit) and (:persist-result epoch op result job limit) events reach fn-bpfj-propose-step / fn-bpfj-persist-step through fn-bpnj-step -> fn-bpnp-step -> fn-bpn-report-author-step -> fn-bpn-report-step -> fn-bpnf-fragment-step (books/bp-node-fragment-step)."
     }
   ]
 }

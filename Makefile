@@ -653,6 +653,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-fnbs-forward-publication-tests \
 	books/bp-node-progress-invariants \
 	books/bp-node-progress-guards \
+	books/bp-node-job-offer-guards \
 	books/bp-node-progress-premises \
 	tests/acl2/bp-node-progress-premises-tests \
 	books/bp-node-progress-bridge \
@@ -761,6 +762,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-fragment-sweep \
 	books/bp-fragment-resume \
 	tests/acl2/bp-fragment-resume-tests \
+	books/bp-fragment-job-shape \
 	books/bp-limits \
 	tests/acl2/bp-fragment-tests \
 	tests/acl2/bp-fragment-fast-tests \
