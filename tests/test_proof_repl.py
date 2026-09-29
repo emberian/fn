@@ -1921,5 +1921,31 @@ class LdHonoursLocalTests(unittest.TestCase):
         self.assertIn("--ld-leak", state["stopped_at"])
 
 
+class FailedDependencyTests(unittest.TestCase):
+    """obstructions-7 item 57: a from-source dependency that fails to load is
+    named with its first error line, and the session is not reported live."""
+
+    def test_the_verdict_names_the_dependency_and_its_error(self):
+        state = {"name": "s", "book": "books/b", "loaded": [], "ready": True,
+                 "stopped_at": "books/dep: fn-lemma-7",
+                 "error": "\nACL2 Error in ( DEFTHM FN-LEMMA-7 ...): the proof failed\nmore",
+                 "failed_dependency": "books/dep",
+                 "dependency_error": "ACL2 Error in ( DEFTHM FN-LEMMA-7 ...): the proof failed"}
+        line, partial = proof_repl.load_verdict(state)
+        self.assertTrue(partial)
+        self.assertIn("NOT LIVE -- the dependency books/dep failed", line)
+        self.assertIn("ACL2 Error in ( DEFTHM FN-LEMMA-7", line)
+        self.assertNotIn("is live", line)
+        self.assertIn(f"exit {proof_repl.SOURCE_DEPS_FAILED}", line)
+
+    def test_serve_records_the_first_error_line_and_start_exits_with_it(self):
+        import inspect
+        serve = inspect.getsource(proof_repl.serve)
+        self.assertIn('state["failed_dependency"] = one', serve)
+        self.assertIn('state["dependency_error"]', serve)
+        start = inspect.getsource(proof_repl)
+        self.assertIn('if final.get("failed_dependency"):', start)
+
+
 if __name__ == "__main__":
     unittest.main()

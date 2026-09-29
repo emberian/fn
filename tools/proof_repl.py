@@ -1188,9 +1188,19 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
         state["acl2_pgid"] = acl2.pgid
         skip = set(ld)
         per_form = state["load_limit"] or None
-        loaded = all(load_book(acl2, one, state, load_timeout, skip, record=False,
-                               encapsulate=ld_local, limit=per_form)
-                     for one in ld)
+        loaded = True
+        for one in ld:
+            if not load_book(acl2, one, state, load_timeout, skip, record=False,
+                             encapsulate=ld_local, limit=per_form):
+                # The session record names the dependency and its first error
+                # line (obstructions-7 item 57: depth-debt-5 saw "live, 0
+                # forms loaded" three times and never the dependency's error).
+                loaded = False
+                state["failed_dependency"] = one
+                state["dependency_error"] = next(
+                    (line.strip() for line in str(state.get("error") or "").splitlines()
+                     if line.strip()), "no error text (see the session log)")
+                break
         if loaded:
             load_book(acl2, book, state, load_timeout, skip,
                       stop_before=(upto or "").lower(), stop_after=(through or "").lower(),
@@ -1693,8 +1703,11 @@ def _start(args) -> int:
             print("proof-repl: the session did not become ready; see", directory / "log")
             return 1
         code = status(args)
-        line, partial = load_verdict(read_state(args.name) or {})
+        final = read_state(args.name) or {}
+        line, partial = load_verdict(final)
         print(line)
+        if final.get("failed_dependency"):
+            return SOURCE_DEPS_FAILED
         return PARTIAL_LOAD if partial else code
     finally:
         os.close(lock_fd)
@@ -1715,6 +1728,12 @@ def load_verdict(state: dict) -> tuple[str, bool]:
     name, book = state.get("name", "?"), state.get("book", "?")
     loaded = len(state.get("loaded") or [])
     stopped = state.get("stopped_at")
+    if state.get("failed_dependency"):
+        return (f"proof-repl {name}: NOT LIVE -- the dependency {state['failed_dependency']} "
+                f"failed to load from source at {stopped or '?'}: "
+                f"{state.get('dependency_error')}; none of {book}'s forms were sent. "
+                f"`proof_repl stop {name}`, then fix it or start with --certify-missing; "
+                f"exit {SOURCE_DEPS_FAILED}", True)
     if not stopped:
         asked = state.get("upto") or state.get("through")
         return (f"proof-repl {name}: LOADED {book}: {loaded} forms"
