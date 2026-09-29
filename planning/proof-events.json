@@ -3589,6 +3589,10 @@
         {
           "kind": "theorem",
           "name": "fn-ctl-served-status-is-control-status"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-read-of-a-withdrawn-article-answers-430-withdrawn"
         }
       ]
     },
@@ -4401,6 +4405,10 @@
         {
           "kind": "theorem",
           "name": "fn-pcb-admission-verdict-names-its-class"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-admission-verdict-names-a-revocation"
         }
       ]
     },
@@ -5790,6 +5798,10 @@
         {
           "kind": "theorem",
           "name": "fn-nctrl-reason-word-of-a-reason-is-not-none"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-control-host-refusal-names-its-class"
         }
       ]
     },
@@ -14065,6 +14077,19 @@
         {
           "kind": "theorem",
           "name": "fn-sbud-post-boundary-never-refuses-an-admitted-payloads-charge"
+        }
+      ]
+    },
+    {
+      "id": "PRF-959",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sckd-digest-of-written-file"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sckd-digest-ignores-revision-and-log"
         }
       ]
     }

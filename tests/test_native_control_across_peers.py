@@ -348,13 +348,13 @@ class NativeControlAcrossPeersTests(unittest.TestCase):
         self.assertTrue(fresh.startswith("220 "), fresh)
         self.assertEqual(replayed, fresh)
 
-    # PKT-443: reachable and still the plain answer.  With nothing visible
-    # the view's group index is nil (fn-own-refresh: fn-gidx-build of an
-    # empty list), so books/served.lisp fn-served-conn-pinned-index pins the
-    # bare trie without the control pin and the reader answers "430 no
-    # article with that message-id" (hbox, developer image f10414e9 at f9b91cde, manual-ev2.log).
-    # The expected answer stays the served guarantee.
-    @unittest.expectedFailure
+    # PKT-443: reachable.  With nothing visible the view's group index is
+    # nil (fn-own-refresh: fn-gidx-build of an empty list); before the fix
+    # books/served.lisp fn-served-conn-pinned-index pinned the bare trie
+    # without the control pin and the reader answered "430 no article with
+    # that message-id" (hbox, developer image f10414e9 at f9b91cde,
+    # manual-ev2.log).  An empty view is now pinned with its control pin
+    # (fn-own-read-of-a-withdrawn-article-answers-430-withdrawn).
     def test_a_view_with_every_article_withdrawn(self):
         """PKT-208's nil-group-index view (control-c3e, "Not done"): a view
         whose visible list is empty has no group index.  Two signed cancels

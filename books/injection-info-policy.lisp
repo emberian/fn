@@ -8,9 +8,11 @@
 ;     ADDR' is admitted exactly when ADDR is an <addr-spec> of two
 ;     dot-atoms (`fn-ipp-addr-specp'), a durable `:set-policy' row like
 ;     path-identity (no delta code of its own);
-;   * the posting-account value of a login (`fn operator CONFIG account
-;     hash LOGIN', `fn-ipp-account-hash'): the value an article posted under
-;     LOGIN carries, for the operator who answers a complaint.
+;   * the posting-account value of an account (`fn-ipp-account-hash'; `fn
+;     operator CONFIG account hash LOGIN' resolves LOGIN to its account,
+;     books/native-operator.lisp fn-nop-account-hash): the value an article
+;     posted under that account carries, for the operator who answers a
+;     complaint.
 
 (in-package "ACL2")
 (include-book "posting-account")
@@ -98,13 +100,15 @@
   (and (stringp w) (consp (fn-ipp-octets w))
        (fn-ipp-login-octetsp (fn-ipp-octets w))))
 
-; The operator's answer for a login (`fn operator CONFIG account hash
-; LOGIN', books/native-operator.lisp fn-nop-parse-account; the host reads
-; the node secret and prints this value): the value an article posted under
-; LOGIN carries, under the same secret.
-(defun fn-ipp-account-hash (secret login)
+; The posting-account value of an ACCOUNT (the principal a session
+; authenticated as, books/served.lisp fn-served-account; PKT-786): the value
+; an article posted under that account carries, under the same secret
+; (books/injection-info-params.lisp fn-ipp-injected-octets).  The operator's
+; `fn operator CONFIG account hash LOGIN' resolves LOGIN to its account
+; first (books/native-operator.lisp fn-nop-account-hash).
+(defun fn-ipp-account-hash (secret account)
   (declare (xargs :guard t))
-  (fn-pa-account-value secret (fn-ipp-octets login)))
+  (fn-pa-account-value secret (fn-ipp-octets account)))
 
 ;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
 ;; Each is tried in includers' proofs and pays for its frames in
