@@ -1060,7 +1060,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
       ],
@@ -1087,7 +1087,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
       ],
@@ -2525,7 +2525,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/mailbox.lisp",
         "books/injection.lisp",
@@ -10654,7 +10654,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/post-fields.lisp",
         "tests/acl2/post-fields-tests.lisp",
@@ -10994,7 +10994,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/clock-reading.lisp",
         "tests/acl2/clock-reading-tests.lisp",
@@ -11234,7 +11234,7 @@
         "PRF-288"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-model.lisp",
         "tests/acl2/owner-time-model-tests.lisp",
@@ -11729,7 +11729,7 @@
         "PRF-311"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-journal.lisp",
         "books/clock-wall-reading.lisp",
@@ -13018,7 +13018,7 @@
         "PRF-322"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-model.lisp",
         "tests/acl2/owner-time-space-tests.lisp",
@@ -13058,7 +13058,7 @@
         "PRF-322"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-journal-writer.lisp",
         "books/owner-time-journal.lisp",
@@ -13093,7 +13093,7 @@
         "PRF-311"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-stop-drain.lisp",
         "tests/acl2/owner-stop-drain-tests.lisp",
@@ -13698,7 +13698,7 @@
         "PRF-272"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-commit-fairness.lisp",
         "books/owner-commit-pipeline.lisp",
@@ -13865,7 +13865,7 @@
         "PRF-360"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-bars.lisp",
         "books/owner-time-journal.lisp",
@@ -14584,7 +14584,7 @@
         "PRF-384"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-bars.lisp",
         "tests/acl2/owner-time-bars-tests.lisp"
@@ -16849,21 +16849,15 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/article.lisp",
         "books/article-work.lisp"
       ],
       "progress_note": "Lane served-costs (2026-09-29): REPL-admitted on hbox (article.lisp whole book 4.05 s; the correspondence 0.25 s); certification owed with the affected roots.",
       "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-article-parse-lines-acc-is-parse-lines"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-aw-add-fold-open-cost"
-        }
+        "fn-article-parse-lines-acc-is-parse-lines",
+        "fn-aw-add-fold-open-cost"
       ]
     },
     {
@@ -16883,18 +16877,9 @@
       ],
       "progress_note": "Lane served-costs (2026-09-29): REPL-admitted on hbox; teeth in tests/acl2/owner-parse-carried-tests.lisp (one-entry memo, unchanged by later readers, mutation witness, hypothesis-removal witness); certification owed.",
       "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-apc-plan-is-received-plan"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-apc-plansp-of-extend"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-apc-plans-extend-bounded"
-        }
+        "fn-apc-plan-is-received-plan",
+        "fn-apc-plansp-of-extend",
+        "fn-apc-plans-extend-bounded"
       ]
     },
     {
@@ -16914,7 +16899,16 @@
         "books/identity-retain-carried.lisp",
         "tests/acl2/identity-retain-carried-tests.lisp"
       ],
-      "progress_note": "Lane served-costs-4 (2026-09-29): REPL-admitted; certification owed with the affected roots."
+      "progress_note": "Lane served-costs-4 (2026-09-29): REPL-admitted; certification owed with the affected roots.",
+      "events": [
+        "fn-irc-pout-prepare-identity-of-refresh-is-pout",
+        "fn-irc-apply-record-is-replay-apply-record",
+        "fn-irc-node-prepare-is-node-prepare",
+        "fn-irc-sn-prepare-identity-is-ccar",
+        "fn-irc-ocfg-prepare-identity-is-ccar",
+        "fn-irc-psrv-prepare-identity-is-psrv",
+        "fn-irc-oiis-prepare-identity-is-oiis"
+      ]
     },
     {
       "id": "PRF-1012",
@@ -16934,7 +16928,17 @@
         "books/identity-retain-carried.lisp",
         "tests/acl2/identity-retain-carried-tests.lisp"
       ],
-      "progress_note": "Lane served-costs-4 (2026-09-29): REPL-admitted; certification owed with the affected roots."
+      "progress_note": "Lane served-costs-4 (2026-09-29): REPL-admitted; certification owed with the affected roots.",
+      "events": [
+        "fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete",
+        "fn-irc-rix-ocfg-complete-is-rix",
+        "fn-irc-rix-own-complete-is-rix",
+        "fn-irc-rix-own-complete-enabled-is-rix",
+        "fn-irc-sn-finish-enabled-is-ccar",
+        "fn-irc-completion-enabledp-is-ccar",
+        "fn-irc-completion-core-enabledp-is-ccar",
+        "fn-irc-apply-retention-event-is-reference"
+      ]
     },
     {
       "id": "PRF-979",

@@ -1506,7 +1506,9 @@
         "PRF-960",
         "PRF-968",
         "PRF-992",
-        "PRF-1005"
+        "PRF-1005",
+        "PRF-1011",
+        "PRF-1012"
       ],
       "verification": [
         "proof",
@@ -1612,7 +1614,8 @@
         "PRF-293",
         "PRF-347",
         "PRF-935",
-        "PRF-960"
+        "PRF-960",
+        "PRF-982"
       ],
       "verification": [
         "proof",
@@ -4533,7 +4536,8 @@
       "proof_targets": [
         "PRF-230",
         "PRF-905",
-        "PRF-978"
+        "PRF-978",
+        "PRF-981"
       ],
       "verification": [
         "proof",
