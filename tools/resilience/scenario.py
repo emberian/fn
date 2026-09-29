@@ -72,10 +72,17 @@ PENDING_BOUNDARIES = {
         "operations": ("reclaim",),
         "owner": "online-reclaim-8",
         "kill_form": "reclaim-captured",
-        "coordinate": "kill form only: FN_NATIVE_RECLAIM_FAULT=captured:kill "
-                      "(host/native/owner.lisp +fnn-reclaim-cuts+); the interleaving needs a "
-                      "held (pause/resume) form of the same cut so a hold can be acquired "
-                      "between the capture and the install"},
+        "held_form": {"selector": "FN_NATIVE_RECLAIM_HOLD", "value": "captured:RELEASE-FILE",
+                      "release": "the file named after the colon",
+                      "where": "the reclaim pass (host/native/owner.lisp) prints 'RECLAIM held "
+                               "at=CUT' and waits until RELEASE-FILE exists; CUT is one of "
+                               "+fnn-reclaim-cuts+; the held point is reclaim-CUT",
+                      "source": "lane/online-reclaim a8b5e0f72 (its developer image does not "
+                                "build yet: a definterface :kinds refusal on fn-arx-file-count)"},
+        "coordinate": "kill form FN_NATIVE_RECLAIM_FAULT=captured:kill on dev; held form "
+                      "FN_NATIVE_RECLAIM_HOLD=captured:RELEASE-FILE on lane/online-reclaim "
+                      "a8b5e0f72: the runner that acquires a hold at it is the next increment; "
+                      "until the selector is in this tree and that runner exists, pending"},
     "receipt-observed": {
         "note": "duplicate, reorder with a policy change, lose its durable completion",
         "operations": ("receipt",),

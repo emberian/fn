@@ -96,9 +96,14 @@ RULES = {
     "reclaim-old-or-new": Rule(
         "reclaim-old-or-new",
         "a death at a cut of the reclaim pass leaves the old publication before "
-        ":installed and the new one from it (host/native/owner.lisp +fnn-reclaim-cuts+; "
-        "the pass's book is owner-reclaim-pass.lisp; its theorem is not yet named here)",
-        None, "books/owner-reclaim-pass.lisp", None, "pending"),
+        ":installed and the new one from it: the rerun rewrites nothing "
+        "(fn-orcp-rerun-rewrites-nothing); the swap happens only over exactly the "
+        "captured store with no other reader, in one mutex hold "
+        "(fn-orcp-swap-only-over-the-capture); every open connection is re-pinned onto "
+        "the rebuilt history (books/owner-reclaim-conns.lisp "
+        "fn-orcn-swap-over-the-rebuild-keeps-conn-histories); no single theorem states "
+        "old-or-new at the reader level (online-reclaim-8)",
+        "fn-orcp-rerun-rewrites-nothing", "books/owner-reclaim-pass.lisp", None, "registered"),
 }
 
 # Which rule a persisted-records fact (the image's scan) is judged by, per
