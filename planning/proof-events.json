@@ -13570,6 +13570,18 @@
         {
           "kind": "theorem",
           "name": "fn-clo-store-open-of-clean-stop-is-accepted-or-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clo-relation-state-opens-or-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clo-capture-of-clean-stop-opens-or-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clo-observed-at-the-computed-frontier"
         }
       ]
     }
