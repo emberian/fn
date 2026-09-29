@@ -4,7 +4,7 @@
   "coverage": {
     "declared": 1224,
     "declared_and_dispatched": 1207,
-    "guard_verified": 546,
+    "guard_verified": 549,
     "with_keystone": 154
   },
   "entries": [
@@ -14088,7 +14088,7 @@
       "name": "fn-bpnr-publish-action",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -14104,7 +14104,7 @@
       "name": "fn-bpnr-publish-outcome",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [
@@ -14127,7 +14127,7 @@
       "name": "fn-bpnr-publish-step",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
