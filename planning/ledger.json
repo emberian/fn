@@ -1637,8 +1637,8 @@
     "books": 1697,
     "books_in_root_closure": 1694,
     "roots": 1630,
-    "theorems": 27801,
-    "functions": 18121,
+    "theorems": 27804,
+    "functions": 18123,
     "assert_events": 22976,
     "must_fails": 2496,
     "prover_refusals": 0,
@@ -1646,8 +1646,8 @@
     "guards": {
       "verified": 3460,
       "declared-off": 2084,
-      "default-guarded": 9844,
-      "default-unguarded": 2733
+      "default-guarded": 9845,
+      "default-unguarded": 2734
     },
     "suspect_theorems": 1227,
     "export_hygiene_warnings": 318,
@@ -19825,7 +19825,7 @@
       "book": "books/owner-retain-state.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 3,
+      "theorems": 4,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -43891,13 +43891,13 @@
       "book": "tests/acl2/owner-retain-state-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
-      "functions": 1,
+      "theorems": 2,
+      "functions": 3,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 1
+        "default-guarded": 1,
+        "default-unguarded": 2
       },
       "verify_guards_events": 0,
       "assert_events": 0,

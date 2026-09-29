@@ -13,12 +13,12 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1697 |
 | Certification roots in the Makefile | 1630 |
 | Books inside the root closure | 1694 |
-| `defthm` and `defthmd` events | 27801 |
-| `defun` events | 18121 |
+| `defthm` and `defthmd` events | 27804 |
+| `defun` events | 18123 |
 | Functions with verified guards | 3460 |
 | Functions declared `:verify-guards nil` and never verified | 2084 |
-| Functions left at the default with an explicit guard | 9844 |
-| Functions left at the default with no guard | 2733 |
+| Functions left at the default with an explicit guard | 9845 |
+| Functions left at the default with no guard | 2734 |
 | `assert-event` checks | 22976 |
 | `must-fail` checks | 2496 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
@@ -687,7 +687,7 @@ that `make certify` requests.
 | `books/owner-recover-ocl.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-refresh-indexed.lisp` | root | 9 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/owner-results.lisp` | root | 23 | 69 | 8/5/55/1 | 0 | 0 | 1 |
-| `books/owner-retain-state.lisp` | closure | 3 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/owner-retain-state.lisp` | closure | 4 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/owner-retention-preparation.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-scheduler.lisp` | root | 27 | 34 | 0/0/34/0 | 0 | 0 | 1 |
 | `books/owner-served-bound.lisp` | root | 6 | 2 | 0/0/2/0 | 0 | 0 | 2 |
@@ -1521,7 +1521,7 @@ that `make certify` requests.
 | `tests/acl2/owner-recover-ocl-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 3 | 0 |
 | `tests/acl2/owner-refresh-indexed-tests.lisp` | root | 0 | 8 | 0/6/0/2 | 5 | 0 | 0 |
 | `tests/acl2/owner-results-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 49 | 2 | 0 |
-| `tests/acl2/owner-retain-state-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 0 | 0 | 0 |
+| `tests/acl2/owner-retain-state-tests.lisp` | root | 2 | 3 | 0/0/1/2 | 0 | 0 | 0 |
 | `tests/acl2/owner-retention-preparation-tests.lisp` | root | 0 | 3 | 0/2/0/1 | 5 | 1 | 0 |
 | `tests/acl2/owner-scheduler-tests.lisp` | root | 0 | 2 | 0/1/1/0 | 26 | 4 | 0 |
 | `tests/acl2/owner-served-bound-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 8 | 2 | 0 |
