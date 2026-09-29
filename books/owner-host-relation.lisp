@@ -38,12 +38,14 @@
 ;   fn-owner-open-at                  fn-ocar-ocfg-open (= fn-ocfg-open)  fn-ocl-open-preserves-historical-relation
 ;   fn-owner-observe                  fn-ocfg-observe        fn-ocl-observe-preserves-historical-relation
 ;   fn-owner-at-reader-view/-working-view  fn-ocfg-with-view  fn-orr-relation-of-with-view, fn-ocl-relation-of-a-view-captured-before-appends
-;   fn-owner-chunk                    fn-scar-ocfg-read-tls-prefix (= fn-ocfg-read-tls-prefix = fn-ocfg-read of the consumed prefix)  fn-ocl-read-preserves-historical-relation [composite owed]
-;   fn-owner-chunk-span-at            fn-oas-read-span       [owed: join-f2's fn-otm-read-span arm]
+;   fn-owner-chunk                    fn-scar-ocfg-read-tls-prefix (= fn-ocfg-read-tls-prefix = fn-ocfg-read of the consumed prefix)  fn-ohr-chunk-preserves-ocl-relation
+;   fn-owner-chunk-span-at            fn-mca-read-span (credits over slots over admission over the capture over the catalog read)
+;                                                            fn-ohr-read-span-preserves-carried-relation (books/owner-host-relation-span.lisp; within the credit and slots, admitted, no capture)
 ;   fn-owner-exposure-open            fn-ocar-exp-open (= fn-exp-open)  fn-ohr-exposure-open-preserves-ocl-relation (both arms: fn-ocfg-open, fn-ocfg-open-peer)
-;   fn-owner-finish-synced            fn-rix-ocfg-complete (= fn-ccar-ocfg-complete)  [owed]
-;   fn-owner-begin, -declare-group    fn-pout-begin, fn-pout-declare-group  [owed: :begin keeps control; :declare-group appends a fact]
-;   fn-owner-tls-established          fn-ocfg-read-step (:tls-established)  [owed]
+;   fn-owner-exposure-release (after :close / the fault)  fn-exp-release  fn-ohr-exposure-release-close-/-fault-keeps-entries-open (every exposure entry names an open connection; inclusion, not equality: a logical transit connection has no entry)
+;   fn-owner-finish-synced            fn-rix-ocfg-complete (= fn-ccar-ocfg-complete)  fn-ohr-finish-synced-preserves-ocl-relation (nothing staged)
+;   fn-owner-begin, -declare-group    fn-pout-begin, fn-pout-declare-group  fn-ohr-step-begin-, fn-ohr-step-declare-group-preserves-ocl-relation
+;   fn-owner-tls-established          fn-ocfg-read-step (:tls-established)  fn-ohr-tls-established-preserves-carried-relation (fn-ohr-read-step-preserves-ocl-relation, every event)
 ;   fn-owner-open-peer (host/native/pull-service.lisp fnn-pull-local-open), fn-exp-open's peer arm (host/native/mux.lisp)
 ;                                     fn-ocfg-open-peer      fn-ohr-open-peer-preserves-carried-relation (PRF-931; pins the live configuration since PKT-888)
 ;   fn-owner-outcome                  fn-oop-outcome (= fn-apc-own-outcome on the owner and effects; books/owner-outcome-pinned.lisp)
