@@ -1662,5 +1662,91 @@ class WaitReadsTheRunsOwnDirectoryTests(unittest.TestCase):
             self.assertIn("unknown", " ".join(farm.verdict_lines(root, "run-y", 1)))
 
 
+class RunsOwnManifestTests(unittest.TestCase):
+    """obstructions-7 item 63: `wait` takes only this run's manifest, and
+    `status RUN` finds the run's record in any worktree."""
+
+    def tree(self, directory: str, certify: str, final: bool = True) -> Path:
+        root = Path(directory)
+        (root / "build" / "farm").mkdir(parents=True)
+        own = root / "build" / "acl2" / certify
+        own.mkdir(parents=True)
+        manifest = {"status": "passed"}
+        if final:
+            manifest["finished_utc"] = "2026-09-29T01:30:00Z"
+        (own / "manifest.json").write_text(json.dumps(manifest))
+        return root
+
+    def progress(self, root: Path, run: str) -> dict:
+        (root / "build" / "farm" / f"{run}.log").write_text("starting\n")
+        out = subprocess.run(["sh", "-c", farm.progress_script(root, run)],
+                             capture_output=True, text=True).stdout
+        return farm.parse_progress(out)
+
+    def test_a_previous_runs_final_manifest_is_not_this_runs_verdict(self):
+        with tempfile.TemporaryDirectory() as directory:
+            # The only directory is an hour older than the run: its runner
+            # has not made one yet (operability-3).
+            root = self.tree(directory, "certify-20260929T010000Z-11")
+            progress = self.progress(root, "run-20260929T020000Z-ab12")
+            self.assertEqual(progress.get("MANIFEST", ""), "")
+            self.assertEqual(progress.get("MARKERS"), "0")
+
+    def test_this_runs_newest_directory_counts_within_the_clock_skew(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tree(directory, "certify-20260929T020100Z-11")
+            progress = self.progress(root, "run-20260929T020000Z-ab12")
+            self.assertEqual(progress["MANIFEST"], "passed certify-20260929T020100Z-11")
+        with tempfile.TemporaryDirectory() as directory:
+            # A box clock a minute behind the laptop's is still this run.
+            root = self.tree(directory, "certify-20260929T015900Z-11")
+            progress = self.progress(root, "run-20260929T020000Z-ab12")
+            self.assertEqual(progress["MANIFEST"], "passed certify-20260929T015900Z-11")
+
+    def test_status_run_finds_the_record_in_another_worktree(self):
+        with tempfile.TemporaryDirectory() as mine, tempfile.TemporaryDirectory() as theirs:
+            other = Path(theirs)
+            (other / "build" / "farm").mkdir(parents=True)
+            farm.record_path(other, "run-x").write_text(json.dumps(
+                {"host": "hbox", "box_path": "/tank/fn/gates/theirs"}))
+
+            def listing(*_args, **_kwargs):
+                return subprocess.CompletedProcess(
+                    [], 0, f"worktree {mine}\nHEAD abc\n\nworktree {other}\nHEAD def\n", "")
+            where, record = farm.find_run_record(Path(mine), "run-x", runner=listing)
+            self.assertEqual(where, other)
+            self.assertEqual(record["box_path"], "/tank/fn/gates/theirs")
+            self.assertEqual(farm.find_run_record(Path(mine), "run-none", runner=listing),
+                             (Path(mine), {}))
+
+    def test_status_run_prints_only_that_run_and_its_certify_id(self):
+        rows = [{"run_id": "run-a", "state": "0", "data": "manifest", "manifest": "passed",
+                 "passed": 3, "failed": 0, "certify_id": None},
+                {"run_id": "run-b", "state": "running", "data": "missing", "certify_id": None}]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "build" / "farm").mkdir(parents=True)
+            farm.record_path(root, "run-a").write_text(json.dumps(
+                {"host": "persvati", "box_path": "/home/u/fn-gates/x"}))
+            calls = []
+
+            def fake_ssh(host, script, check=False):
+                calls.append((host, script))
+                if script.startswith("cd ") and "grep -m1 -E" in script:
+                    return subprocess.CompletedProcess([], 0, "Certification run: /x/build/acl2/"
+                                                       "certify-20260929T010000Z-7\n", "")
+                return subprocess.CompletedProcess([], 0, json.dumps(rows), "")
+            out = io.StringIO()
+            with mock.patch.object(farm, "ssh", fake_ssh), contextlib.redirect_stdout(out):
+                self.assertEqual(farm.run_status(None, "run-a", root), 0)
+            text = out.getvalue()
+            self.assertIn("run-a on persvati:/home/u/fn-gates/x", text)
+            self.assertNotIn("run-b", text)
+            self.assertIn("certify id certify-20260929T010000Z-7", text)
+            self.assertEqual(farm.run_record(root, "run-a")["certify_id"],
+                             "certify-20260929T010000Z-7")
+            self.assertTrue(all(host == "persvati" for host, _ in calls))
+
+
 if __name__ == "__main__":
     unittest.main()
