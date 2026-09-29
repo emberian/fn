@@ -61,9 +61,9 @@ class NativeTlsHandshakeBudgetTests(unittest.TestCase):
         self.node.operator("policy", "set", slot, str(value), expect=EXIT.OK)
 
     def start(self):
-        process = self.node.start()
-        line = process.announcement(b"LISTENING-TLS ")
-        self.assertEqual(line, "LISTENING-TLS {}\n".format(self.node.tls_port).encode())
+        # Node.start waits for both listeners' announcements (use_tls sets
+        # listening = 2), LISTENING-TLS among them.
+        self.node.start()
 
     def handshake(self, source, timeout=10):
         """True when the TLS handshake from SOURCE completes and the node
