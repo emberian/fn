@@ -174,3 +174,5 @@
 (verify-guards fn-bpnp-result-frame)
 (verify-guards fn-bpnp-deferral-values)
 (verify-guards fn-bpnp-deferral-frame)
+(verify-guards fn-bpnp-attempt-from-values)
+(verify-guards fn-bpnp-result-from-values)

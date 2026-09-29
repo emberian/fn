@@ -72,3 +72,5 @@
 ;; wrappers call these; verified so that their wrappers can be.
 (verify-guards fn-bpnf-delete-values)
 (verify-guards fn-bpnf-delete-frame)
+(verify-guards fn-bpnf-delete-from-values)
+(verify-guards fn-bpnf-delete-unframe)

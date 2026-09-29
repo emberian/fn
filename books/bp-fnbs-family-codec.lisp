@@ -208,3 +208,8 @@
 (verify-guards fn-bpnf-family-record-atp)
 (verify-guards fn-bpnf-family-v1-values)
 (verify-guards fn-bpnf-family-v1-frame)
+(verify-guards fn-bpnf-family-from-values)
+(verify-guards fn-bpnf-family-v1-from-values)
+(verify-guards fn-bpnf-family-unframe)
+(verify-guards fn-bpnf-family-v1-unframe)
+(verify-guards fn-bpnf-family-replay-unframe)

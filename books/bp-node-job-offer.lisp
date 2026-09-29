@@ -1044,3 +1044,11 @@
            :in-theory (union-theories '(fn-bpnj-contact-next-is-the-two-scan-selection car-cons)
                                       (theory 'minimal-theory))))
   :rule-classes nil)
+
+;; The *1* class (Q4a item 2, bp-remainder-5): host-called entries and their callees.
+(verify-guards fn-bpnj-with-base)
+(verify-guards fn-bpnj-open-base)
+(verify-guards fn-bpnj-attempt-token)
+(verify-guards fn-bpnj-transfer-outcomep)
+(verify-guards fn-bpnj-unnamed-result-p)
+(verify-guards fn-bpnj-host-eventp)

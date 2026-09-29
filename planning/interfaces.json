@@ -4,7 +4,7 @@
   "coverage": {
     "declared": 1229,
     "declared_and_dispatched": 1212,
-    "guard_verified": 587,
+    "guard_verified": 598,
     "with_keystone": 153
   },
   "entries": [
@@ -11065,7 +11065,7 @@
       "name": "fn-bpah-handoff-report",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [
@@ -12517,7 +12517,7 @@
       "name": "fn-bpn-machine-invariantp",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -12607,7 +12607,7 @@
       "name": "fn-bpn-report-outbox-peer-matchp",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -13311,8 +13311,13 @@
       "name": "fn-bpnf-mixed-legacy-names",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
-      "kinds": [],
+      "class": "common-lisp-compliant",
+      "kinds": [
+        [
+          "plan",
+          "true-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -13343,8 +13348,13 @@
       "name": "fn-bpnf-mixed-received-names",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
-      "kinds": [],
+      "class": "common-lisp-compliant",
+      "kinds": [
+        [
+          "plan",
+          "true-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -13391,7 +13401,7 @@
       "name": "fn-bpnf-namespace-max-entries",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -13535,7 +13545,7 @@
       "name": "fn-bpnf-stored-frame-limit",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -13567,7 +13577,7 @@
       "name": "fn-bpnj-attempt-token",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -13583,7 +13593,7 @@
       "name": "fn-bpnj-host-eventp",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [
@@ -15020,7 +15030,7 @@
       "name": "fn-bpsr-host-encode",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],
@@ -15036,7 +15046,7 @@
       "name": "fn-bpsr-host-preimage",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [],

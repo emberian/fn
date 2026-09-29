@@ -24,6 +24,7 @@
   (declare (xargs :guard t))
   (+ *fn-frame-header-octets* *fn-bpn-lifecycle-max-payload*
      *fn-frame-trailer-octets*))
+(verify-guards fn-bpnf-stored-frame-limit) ; the *1* class (Q4a item 2): host-called
 
 (defun fn-bpnf-frame-ingressp (ingress)
   (declare (xargs :guard t))

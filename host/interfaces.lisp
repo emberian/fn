@@ -2205,7 +2205,7 @@
   :class ::ideal)
 
 (definterface fn-bpah-handoff-report
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpah-handoff-report-is-application-disposition))
 
 (definterface fn-bpah-outbox-effective-status
@@ -2493,7 +2493,7 @@
   :keystones (fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling))
 
 (definterface fn-bpn-machine-invariantp
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpn-nth
   :class ::common-lisp-compliant
@@ -2511,7 +2511,7 @@
   :class ::ideal)
 
 (definterface fn-bpn-report-outbox-peer-matchp
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-answer-effects
   :class ::common-lisp-compliant
@@ -2651,13 +2651,15 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-mixed-legacy-names
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((plan true-listp)))
 
 (definterface fn-bpnf-mixed-legacy-observed
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-mixed-received-names
-  :class ::ideal)
+  :class ::common-lisp-compliant
+  :kinds ((plan true-listp)))
 
 (definterface fn-bpnf-mixed-recovery-plan
   :class ::common-lisp-compliant)
@@ -2666,7 +2668,7 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-namespace-max-entries
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-publication-authorize
   :class ::common-lisp-compliant)
@@ -2693,16 +2695,16 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-stored-frame-limit
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-stored-record-name
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnj-attempt-token
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnj-host-eventp
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpnj-host-refuses-an-unnamed-transport-result))
 
 (definterface fn-bpnj-step
@@ -2979,10 +2981,10 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpsr-host-encode
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpsr-host-preimage
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-id-hex-octets
   :class ::common-lisp-compliant
