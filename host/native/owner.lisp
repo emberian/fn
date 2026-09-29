@@ -744,7 +744,7 @@ pair is a string and a non-empty octet list."
            (fnn-fault "owner refused recovered feed resolution")))
         (t (fnn-fault "unexpected feed reconciliation: ~a" resolution))))))
 
-(defun fnn-owner-recover-core (store records max-connections)
+(defun fnn-owner-recover-core (store records max-connections entry)
   "Install the owner from the Store open this process just ran.  The open
 (full replay, or the verified state checkpoint over the records after it) left
 its extended checkpoint E and ACL2's (fn-sco-store-open E ...) in the global
@@ -757,7 +757,11 @@ checkpoint's S, or NIL."
   (declare (ignore records))
   (let* ((mode (fnn-store-open-mode store))
          (s (and (eq (first mode) :checkpoint) (second mode)))
-         (result (fnn-owner-action 'fn-owner-recover-from-store-open max-connections)))
+         ;; THE SWITCH (PRF-1037): ENTRY is the node secret's current entry
+         ;; (fnn-owner-read-node-secret, read before this open); ACL2 derives
+         ;; the paged Message-ID table's key from it and installs it before
+         ;; the rows are loaded (fn-owner-install-extended).
+         (result (fnn-owner-action 'fn-owner-recover-from-store-open max-connections entry)))
     ;; A watermark past RFC 3977 section 6's bound is a damaged Store, refused
     ;; by name (books/owner-number-bound.lisp fn-onb-open-okp); the node does
     ;; not start on it.
@@ -787,7 +791,12 @@ checkpoint's S, or NIL."
 ;;; not regular, is readable or writable by group or others, or does not
 ;;; parse, or ACL2 does not accept the ring (fn-owner-install-node-secret
 ;;; answers :refused unless fn-ns-ringp).
-(defun fnn-owner-load-node-secret (store)
+(defun fnn-owner-read-node-secret (store)
+  "Read the ring's files: (CURRENT . RETAINED), the current entry first.
+Read BEFORE the recovery (fnn-owner-recover-core takes the current entry:
+THE SWITCH, PRF-1037, keys the catalog's paged Message-ID table from it at
+the open) and installed after it (fnn-owner-install-node-secret): one read,
+one ring, so the table's key and the served boundary's are one source."
   (let* ((path (fnn-node-secret-path store))
          (current (or (fnn-node-secret-read-entry path "node secret")
                       (fnn-refuse "node secret ~a is missing: run `store ~a node-secret create' once (a start never creates one)"
@@ -799,10 +808,14 @@ checkpoint's S, or NIL."
                            (or (fnn-node-secret-read-entry older "retained node secret")
                                (fnn-refuse "node secret retained epoch ~d missing: ~a"
                                            e older))))))
-    (unless (eq (fnn-owner-core 'fn-owner-install-node-secret (cons current retained))
-                :installed)
-      (fnn-refuse "node secret files in ~a do not form a key ring (epochs must decrease from the current one)"
-                  (fnn-node-secret-directory store)))))
+    (cons current retained)))
+
+(defun fnn-owner-install-node-secret (store ring)
+  "Hand the ring fnn-owner-read-node-secret read to the owner."
+  (unless (eq (fnn-owner-core 'fn-owner-install-node-secret ring)
+              :installed)
+    (fnn-refuse "node secret files in ~a do not form a key ring (epochs must decrease from the current one)"
+                (fnn-node-secret-directory store))))
 
 (defun fnn-owner-install (root max-connections &optional fault)
   (multiple-value-bind (store count) (fnn-open-live-store root t fault)
@@ -813,7 +826,12 @@ checkpoint's S, or NIL."
             ;; (books/store-mount-identity.lisp fn-smid-start-verdict),
             ;; before the owner serves anything.
             (fnn-check-filesystem-identity store t)
-            (fnn-owner-recover-core store count max-connections)
+            ;; SEC-006: the ring is READ before the recovery (its current
+            ;; entry keys the catalog's Message-ID table at the open) and
+            ;; INSTALLED after the recovery that builds the owner.
+            (let ((ring (fnn-owner-read-node-secret store)))
+              (fnn-owner-recover-core store count max-connections (car ring))
+              (fnn-owner-install-node-secret store ring))
             ;; `ms=': milliseconds from the image's entry to here (the
             ;; recovery included), the measured length of a start that
             ;; `install.sh --upgrade' quotes as the next gap (io.lisp
@@ -830,9 +848,6 @@ checkpoint's S, or NIL."
                                         (fnn-store-config store))
                         :installed)
               (fnn-fault "owner refused the store profile"))
-            ;; SEC-006: the node secret, handed to the owner after the
-            ;; recovery that built it (fnn-owner-load-node-secret).
-            (fnn-owner-load-node-secret store)
             ;; The recovery barriers again (three, fnn-store-recovery-barriers):
             ;; fresh namespace observations, now delivered to fn-owner.
             (let ((phase nil))
@@ -1505,9 +1520,14 @@ follows is justified only by this line."
           (when (or (keywordp codes) (not (listp codes))
                     (/= (length codes) (length groups)))
             (fnn-refuse "unknown or duplicate configured group"))
-          (fnn-validate-post-boundary
-           (fnn-owner-core 'fn-owner-post-boundary (fnn-octet-list msgid)
-                           (length payload) (length codes) charge))
+          (let ((boundary (fnn-owner-core 'fn-owner-post-boundary (fnn-octet-list msgid)
+                                          (length payload) (length codes) charge)))
+            ;; Preserve ACL2's named placement refusal before buffer fill,
+            ;; identity allocation or prepare.  The generic condition
+            ;; handler would otherwise erase it into :refused.
+            (when (eq boundary :mpx-saturated)
+              (return-from fnn-owner-attempt boundary))
+            (fnn-validate-post-boundary boundary))
           ;; The payload goes to the core in the octet buffer
           ;; (books/octets-stobj.lisp): filled once here from the byte
           ;; vector, read in place by the existing-article test and the
@@ -1657,9 +1677,11 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                        (/= (length codes) (length groups)))
                (return-from fnn-owner-attempt-transit
                  (fnn-owner-transit-refused :groups)))
-             (fnn-validate-post-boundary
-              (fnn-owner-core 'fn-owner-post-boundary (fnn-octet-list msgid)
-                              (length payload) (length codes) charge))
+             (let ((boundary (fnn-owner-core 'fn-owner-post-boundary (fnn-octet-list msgid)
+                                             (length payload) (length codes) charge)))
+               (when (eq boundary :mpx-saturated)
+                 (return-from fnn-owner-attempt-transit boundary))
+               (fnn-validate-post-boundary boundary))
              (case (fnn-owner-arena-action 'fn-owner-existing-action
                                      (fnn-octet-list msgid)
                                      (fnn-owner-payload-octets payload) codes)
@@ -3494,7 +3516,40 @@ CLOSING STARTTLS CONSUMED)."
                  closing starttls consumed)))
       (:fnn-extent-cold
        (fnn-owner-cold-line service cid incoming socket class peerp (second results)))
-      (t (values-list results)))))
+      (:defer (values-list results))
+      (t (fnn-owner-page-read-hold cid (first results))
+         (values-list results)))))
+
+;;; Developer image only (the resilience framework's `page-read-outstanding'
+;;; point, planning/design-resilience-framework-2026-09-29.md section 5):
+;;; FN_NATIVE_PAGE_READ_HOLD=MIN-OCTETS:RELEASE-FILE holds a served read
+;;; AFTER its step ran against the reader's pinned view (the plan is built;
+;;; the owner mutex is released) and BEFORE its reply is rendered and
+;;; delivered, when ACL2's first render window of the plan
+;;; (fn-splan-window-size) is at least MIN-OCTETS, so a scenario holds the
+;;; ARTICLE it started and not the short status replies before it.  It
+;;; prints `PAGE-READ held at=page-read-outstanding cid=N window=W' and waits
+;;; until the release file exists; the scenario cancels the reader, retires
+;;; the old generation (reclaim) and then creates the file, and the read is
+;;; delivered (or meets its closed socket).  A SIGKILL during the hold is the
+;;; death form.  Once the file exists every later read passes.
+(defun fnn-owner-page-read-hold (cid plan)
+  (let ((raw (fnn-developer-selector "FN_NATIVE_PAGE_READ_HOLD")))
+    (when (and raw (plusp (length raw)))
+      (let* ((colon (position #\: raw))
+             (min (and colon (plusp colon)
+                       (every #'digit-char-p (subseq raw 0 colon))
+                       (parse-integer raw :end colon))))
+        (unless (and min (< (1+ colon) (length raw)))
+          (fnn-fault "invalid FN_NATIVE_PAGE_READ_HOLD (expected MIN-OCTETS:RELEASE-FILE)"))
+        (let ((release (subseq raw (1+ colon))))
+          (unless (probe-file release)
+            (let ((size (fnn-core 'fn-splan-window-size plan)))
+              (unless (and (integerp size) (>= size 0))
+                (fnn-fault "owner returned a malformed render window size"))
+              (when (and (plusp size) (>= size min))
+                (fnn-err "PAGE-READ held at=page-read-outstanding cid=~d window=~d" cid size)
+                (loop until (probe-file release) do (sleep 0.05))))))))))
 
 ;;; Row A4, option (c) (lane composed-owner-3; books/owner-cold-line.lisp,
 ;;; PRF-933).  The served read span is pure over its stobjs, so it runs with
@@ -3898,9 +3953,15 @@ or pending (closed by a later release) and serving continues."
                       (setf (svref st 1) 0
                             (svref st 0) (make-array 0 :element-type '(unsigned-byte 8)))))))))
           (fnn-owner-gated (service :control)
-            (let ((quiet (fnn-call 'fn-xrt-quiet-files *fnn-extent-retired*
-                                   (fnn-log-member-files (fnn-store-log store)) arena)))
-              (unless (listp quiet) (fnn-fault "ACL2 returned a malformed quiet set"))
+            ;; fnn-call answers the values as a list: the quiet set is its
+            ;; first (the whole list was taken for the set once, so no
+            ;; dropped file ever closed: KEYSTONE fn-xrt-dropped-file-is-
+            ;; released says which do).
+            (let ((quiet (first (fnn-call 'fn-xrt-quiet-files *fnn-extent-retired*
+                                          (fnn-log-member-files (fnn-store-log store))
+                                          arena))))
+              (unless (and (listp quiet) (every #'integerp quiet))
+                (fnn-fault "ACL2 returned a malformed quiet set"))
               (when quiet
                 (setq *fnn-extent-pending*
                       (append *fnn-extent-pending* (list (cons (fnn-arena-stamp) quiet)))
@@ -3917,7 +3978,7 @@ or pending (closed by a later release) and serving continues."
               (let ((members (fnn-log-member-files (fnn-store-log store))))
                 (setq named-detail
                       (loop for id in *fnn-extent-retired*
-                            collect (list id (fnn-call 'fn-arx-file-count id arena)
+                            collect (list id (first (fnn-call 'fn-arx-file-count id arena))
                                           (if (member id members) 1 0)))))))
           (fnn-err "CHECKPOINT release reseated=~d incomplete=~d closed=~d retired=~d open=~d~@[ held=~(~a~)~]~@[ named=~{~{~d:~d:~d~}~^,~}~]"
                    reseated incomplete closed
@@ -4449,6 +4510,23 @@ FN_NATIVE_RECLAIM_FAULT names it."
         (when (string-equal (subseq raw 0 colon) (symbol-name cut))
           (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
           (fnn-fault "test SIGKILL did not terminate the process")))))
+  ;; Developer image only (the HELD form of the same cuts, for the
+  ;; resilience scenarios' interleavings; the held point is named
+  ;; reclaim-CUT, e.g. reclaim-captured): FN_NATIVE_RECLAIM_HOLD=CUT:PATH
+  ;; makes the pass, on reaching CUT, print `RECLAIM held at=CUT' and wait
+  ;; until the release file PATH exists, so a scenario can take a new
+  ;; independent hold (a reader on the candidate) between that cut and the
+  ;; next step, then create PATH.
+  (let ((raw (fnn-developer-selector "FN_NATIVE_RECLAIM_HOLD")))
+    (when (and raw (plusp (length raw)))
+      (let ((colon (position #\: raw)))
+        (unless (and colon (< (1+ colon) (length raw))
+                     (member (subseq raw 0 colon) +fnn-reclaim-cuts+ :test #'string=))
+          (fnn-fault "invalid FN_NATIVE_RECLAIM_HOLD (expected CUT:RELEASE-FILE)"))
+        (when (string-equal (subseq raw 0 colon) (symbol-name cut))
+          (let ((release (subseq raw (1+ colon))))
+            (fnn-err "RECLAIM held at=~(~a~)" cut)
+            (loop until (probe-file release) do (sleep 0.05)))))))
   ;; Developer image only (Q16 item 5): while the file
   ;; FN_NATIVE_TEST_RECLAIM_STALL_FILE names exists, the pass waits at its
   ;; :rebuilt cut, off the owner mutex, so posts commit between the capture
@@ -4635,7 +4713,9 @@ publication).  Answers the reply word."
                         (hist (fnn-fresh-stobj 'fn-hist)))
                    (when (eq (second rebuilt) :fault)
                      (deferred :rebuild) (return-from pass))
-                   (fnn-call 'fn-owner-orcp-load-columns rows
+                   (fnn-call 'fn-owner-orcp-load-columns
+                             (fnn-owner-core 'fn-owner-orcp-key)
+                             rows
                              (fnn-core 'fn-owner-orcp-view-index (second rebuilt))
                              (fnn-owner-core 'fn-owner-orcp-salt)
                              (fnn-live-arena) cat hist)

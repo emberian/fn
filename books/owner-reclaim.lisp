@@ -44,32 +44,62 @@
 ; -----------------------------------------------------------------------------
 ; 1. The rows' octets and the row rewrite.
 
+;; The host's chunk (host/owner-host.lisp fn-owner-orc-chunk -> fn-orc-chunk)
+;; runs the row rewrite in raw Lisp only when every function under it is
+;; guard-verified; the encoders' and the reclaim pack's are verified here, as
+;; books/store-budget.lisp verifies the store-events encoders it runs.
+(verify-guards fn-store-retention-event-encode)
+(verify-guards fn-store-event-encode)
+(verify-guards fn-rclp-tombstoned)
+(verify-guards fn-rclp-ctx-reclaimable)
+(verify-guards fn-rclp-rewrites-p)
+
 ; A row's octets: the canonical encoding of the wire event the row stands for
 ; (alpha, books/store-intern.lisp fn-row-wire-of).
 (defun fn-orc-row-octets (row fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-arena :guard t))
   (fn-store-event-encode (fn-row-wire-of row fn-arena)))
 
 (defun fn-orc-rows-octets (rows fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-arena :guard t))
   (if (consp rows)
       (cons (fn-orc-row-octets (car rows) fn-arena)
             (fn-orc-rows-octets (cdr rows) fn-arena))
     nil))
 
 (defun fn-orc-rewrite-row (row ctx fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-arena :guard t))
   (let ((o (fn-orc-row-octets row fn-arena)))
     (if (fn-rclp-rewrites-p o ctx)
         (fn-rclp-tombstoned (fn-record-result-record (fn-record-decode-exact o)))
       row)))
 
+; Executes by a loop (depth_check: a chunk's rows), equal by
+; fn-orc-rewrite-rows-loop-is-rev-onto.
+(defun fn-orc-rewrite-rows-loop (rows ctx acc fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (consp rows)
+      (fn-orc-rewrite-rows-loop (cdr rows) ctx
+                                (cons (fn-orc-rewrite-row (car rows) ctx fn-arena) acc)
+                                fn-arena)
+    (fn-ag-rev-onto acc nil)))
+
 (defun fn-orc-rewrite-rows (rows ctx fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
-  (if (consp rows)
-      (cons (fn-orc-rewrite-row (car rows) ctx fn-arena)
-            (fn-orc-rewrite-rows (cdr rows) ctx fn-arena))
-    nil))
+  (mbe :logic (if (consp rows)
+                  (cons (fn-orc-rewrite-row (car rows) ctx fn-arena)
+                        (fn-orc-rewrite-rows (cdr rows) ctx fn-arena))
+                nil)
+       :exec (fn-orc-rewrite-rows-loop rows ctx nil fn-arena)))
+
+(defthm fn-orc-rewrite-rows-loop-is-rev-onto
+  (equal (fn-orc-rewrite-rows-loop rows ctx acc fn-arena)
+         (fn-ag-rev-onto acc (fn-orc-rewrite-rows rows ctx fn-arena)))
+  :hints (("Goal" :induct (fn-orc-rewrite-rows-loop rows ctx acc fn-arena)
+                  :in-theory (disable fn-orc-rewrite-row))))
+
+(verify-guards fn-orc-rewrite-rows
+  :hints (("Goal" :in-theory (disable fn-orc-rewrite-row))))
 
 ; The offline fold (count, rewritten Message-IDs newest first, freed octets)
 ; over the rows' octets.

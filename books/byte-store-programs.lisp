@@ -268,15 +268,57 @@
   (list (list :unlink :staging stage)
         (list :cut "recovery-stage-unlinked")))
 
+; The byte model's name of a file the sweep names.  The sweep decides over
+; octet lists (books/store-sweep.lisp fn-sn-staging-namep: the host hands it
+; each observed name's octets, io.lisp fnn-bridge-sweep-round); the byte
+; model names a file by a string (fn-bs-namep).  One conversion at that
+; boundary, the record codec's one character per octet
+; (books/records-shape.lisp fn-record-octets-string), and its inverse
+; theorem below (fn-bs-octets-name-inverts): distinct octet names are
+; distinct byte names.  The host decodes a removal's octets as UTF-8
+; (io.lisp fnn-octets-string); on the ASCII names every host program stages
+; (the prefixes of *fn-sn-staging-prefixes* and a pid and hex suffix) the
+; two decodings agree.
+(defun fn-bs-octets-name (octets)
+  (declare (xargs :guard t))
+  (fn-record-octets-string octets))
+
+(defthm fn-bs-octets-name-is-a-name
+  (fn-bs-namep (fn-bs-octets-name octets))
+  :hints (("Goal" :in-theory (enable fn-bs-namep fn-record-octets-string))))
+
+(local
+ (defthm fn-bs-string-octets-aux-of-octets-chars
+   (implies (fn-cbor-octet-listp xs)
+            (equal (fn-record-string-octets-aux (fn-record-octets-chars xs)) xs))
+   :hints (("Goal" :in-theory (enable fn-cbor-octet-listp fn-cbor-octetp)))))
+
+(local
+ (defthm fn-bs-character-listp-of-octets-chars
+   (character-listp (fn-record-octets-chars xs))))
+
+; The byte name gives the sweep's octet name back: the conversion loses
+; nothing, so the file the byte model unlinks is the one the sweep chose
+; and no two octet names share a byte name.
+(defthm fn-bs-octets-name-inverts
+  (implies (fn-cbor-octet-listp octets)
+           (equal (fn-record-string-octets (fn-bs-octets-name octets)) octets))
+  :hints (("Goal" :in-theory (enable fn-record-string-octets
+                                     fn-record-octets-string))))
+
 ; The whole sweep: one cleanup per name the ACL2 sweep returned, in the order
 ; the host unlinks them (host/native/io.lisp, fnn-sweep-staging, one dolist
-; per round of fn-sn-sweep-round).  Rounds are concatenated: between two
-; rounds the host only enumerates, which is a read of the view and no step.
-; Every cut of this program is a recovery-stage-unlinked death point.
+; per round of fn-sn-sweep-round), each by its byte model name.  Rounds are
+; concatenated: between two rounds the host only enumerates, which is a read
+; of the view and no step.  Every cut of this program is a
+; recovery-stage-unlinked death point.  Until lane online-reclaim-10 this
+; handed the sweep's octet names to the byte model unconverted: no octet
+; list is an fn-bs-namep, every unlink answered :enoent, and the orphan was
+; never removed in the model (assurance-hygiene-6, witness row B29).
 (defun fn-bs-recover-sweep-program (names)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp names)
-      (append (fn-bs-recover-stage-cleanup-program (car names))
+      (append (fn-bs-recover-stage-cleanup-program (fn-bs-octets-name (car names)))
               (fn-bs-recover-sweep-program (cdr names)))
     nil))
 

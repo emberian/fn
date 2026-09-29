@@ -357,9 +357,22 @@
   (declare (xargs :guard t))
   (pgs-ptab-run-pages (pgs-ntables npages)))
 
+; Loop twins (depth_check: page runs, free lists and dirty pages are store
+; data): (mbe :logic <the recursion> :exec <a tail-recursive loop>), with the
+; lemma equating them.
+(defun pgs-run-loop (a m rev)
+  (declare (xargs :guard (and (natp a) (natp m) (true-listp rev))))
+  (if (zp m) (revappend rev nil) (pgs-run-loop (+ 1 (nfix a)) (1- m) (cons a rev))))
+
 (defun pgs-run (a m)
-  (declare (xargs :guard (and (natp a) (natp m))))
-  (if (zp m) nil (cons a (pgs-run (+ 1 (nfix a)) (1- m)))))
+  (declare (xargs :guard (and (natp a) (natp m)) :verify-guards nil))
+  (mbe :logic (if (zp m) nil (cons a (pgs-run (+ 1 (nfix a)) (1- m))))
+       :exec (pgs-run-loop a m nil)))
+
+(defthm pgs-run-loop-is-run
+  (equal (pgs-run-loop a m rev) (revappend rev (pgs-run a m))))
+
+(verify-guards pgs-run)
 
 (defun pgs-ptab-physes (ptab)
   (declare (xargs :guard (pgs-ptab-p ptab)))
@@ -428,23 +441,53 @@
         ((and (natp (car cands)) (pgs-all-in (pgs-run (car cands) m) free)) (car cands))
         (t (pgs-find-free-run (cdr cands) m free))))
 
-(defun pgs-remove-all (xs free)
-  (declare (xargs :guard (and (true-listp xs) (true-listp free))))
+(defun pgs-remove-all-loop (xs free rev)
+  (declare (xargs :guard (and (true-listp xs) (true-listp free) (true-listp rev))))
   (if (atom free)
-      nil
+      (revappend rev nil)
     (if (member-equal (car free) xs)
-        (pgs-remove-all xs (cdr free))
-      (cons (car free) (pgs-remove-all xs (cdr free))))))
+        (pgs-remove-all-loop xs (cdr free) rev)
+      (pgs-remove-all-loop xs (cdr free) (cons (car free) rev)))))
+
+(defun pgs-remove-all (xs free)
+  (declare (xargs :guard (and (true-listp xs) (true-listp free)) :verify-guards nil))
+  (mbe :logic (if (atom free)
+                  nil
+                (if (member-equal (car free) xs)
+                    (pgs-remove-all xs (cdr free))
+                  (cons (car free) (pgs-remove-all xs (cdr free)))))
+       :exec (pgs-remove-all-loop xs free nil)))
+
+(defthm pgs-remove-all-loop-is-remove-all
+  (equal (pgs-remove-all-loop xs free rev) (revappend rev (pgs-remove-all xs free))))
+
+(verify-guards pgs-remove-all)
+
+(defun pgs-take-singles-loop (n free hwm rev)
+  (declare (xargs :guard (and (natp n) (true-listp free) (natp hwm) (true-listp rev))))
+  (cond ((zp n) (mv (revappend rev nil) free (nfix hwm)))
+        ((consp free)
+         (pgs-take-singles-loop (1- n) (cdr free) hwm (cons (car free) rev)))
+        (t (pgs-take-singles-loop (1- n) nil (+ 1 (nfix hwm)) (cons (nfix hwm) rev)))))
 
 (defun pgs-take-singles (n free hwm)
   ; (mv SINGLES FREE2 HWM2): N addresses, FREE first.
-  (declare (xargs :guard (and (natp n) (true-listp free) (natp hwm))))
-  (cond ((zp n) (mv nil free (nfix hwm)))
-        ((consp free)
-         (mv-let (s f h) (pgs-take-singles (1- n) (cdr free) hwm)
-           (mv (cons (car free) s) f h)))
-        (t (mv-let (s f h) (pgs-take-singles (1- n) nil (+ 1 (nfix hwm)))
-             (mv (cons (nfix hwm) s) f h)))))
+  (declare (xargs :guard (and (natp n) (true-listp free) (natp hwm)) :verify-guards nil))
+  (mbe :logic (cond ((zp n) (mv nil free (nfix hwm)))
+                    ((consp free)
+                     (mv-let (s f h) (pgs-take-singles (1- n) (cdr free) hwm)
+                       (mv (cons (car free) s) f h)))
+                    (t (mv-let (s f h) (pgs-take-singles (1- n) nil (+ 1 (nfix hwm)))
+                         (mv (cons (nfix hwm) s) f h))))
+       :exec (pgs-take-singles-loop n free hwm nil)))
+
+(defthm pgs-take-singles-loop-is-take-singles
+  (equal (pgs-take-singles-loop n free hwm rev)
+         (mv (revappend rev (mv-nth 0 (pgs-take-singles n free hwm)))
+             (mv-nth 1 (pgs-take-singles n free hwm))
+             (mv-nth 2 (pgs-take-singles n free hwm)))))
+
+(verify-guards pgs-take-singles)
 
 (defun pgs-alloc (n m alloc)
   ; (RUN-START SINGLES FREE2 HWM2) for a commit of N singles and an M-page
@@ -507,16 +550,31 @@
                                      ptab)
                    (cdr lpages) (cdr fresh) (cdr digests) txid)))
 
+(defun pgs-touched-loop (lpages prev rev)
+  (declare (xargs :guard (and (nat-listp lpages) (true-listp rev))))
+  (if (atom lpages)
+      (revappend rev nil)
+    (let ((tp (floor (nfix (car lpages)) *pgs-tab-entries*)))
+      (if (equal tp prev)
+          (pgs-touched-loop (cdr lpages) prev rev)
+        (pgs-touched-loop (cdr lpages) tp (cons tp rev))))))
+
 (defun pgs-touched (lpages prev)
   ; Shared: the table pages LPAGES (ascending) fall in, ascending, each once;
   ; PREV the last one emitted (nil at the start).
-  (declare (xargs :guard (nat-listp lpages)))
-  (if (atom lpages)
-      nil
-    (let ((tp (floor (nfix (car lpages)) *pgs-tab-entries*)))
-      (if (equal tp prev)
-          (pgs-touched (cdr lpages) prev)
-        (cons tp (pgs-touched (cdr lpages) tp))))))
+  (declare (xargs :guard (nat-listp lpages) :verify-guards nil))
+  (mbe :logic (if (atom lpages)
+                  nil
+                (let ((tp (floor (nfix (car lpages)) *pgs-tab-entries*)))
+                  (if (equal tp prev)
+                      (pgs-touched (cdr lpages) prev)
+                    (cons tp (pgs-touched (cdr lpages) tp)))))
+       :exec (pgs-touched-loop lpages prev nil)))
+
+(defthm pgs-touched-loop-is-touched
+  (equal (pgs-touched-loop lpages prev rev) (revappend rev (pgs-touched lpages prev))))
+
+(verify-guards pgs-touched)
 
 (defun pgs-dirty-lpages (dirty)
   (declare (xargs :guard (alistp dirty)))
