@@ -1696,20 +1696,40 @@ class ObstructionsTwoTests(unittest.TestCase):
         self.assertEqual(proof_repl.select_range(forms, "b", None, "b"), range(1, 2))
         self.assertEqual(proof_repl.select_range(forms, "a", "c"), range(0, 2))
 
-    def test_a_failed_from_source_dependency_falls_back_to_certify_missing(self):
+    def test_a_failed_source_dependency_retries_only_with_explicit_certification(self):
         calls = []
 
         def fake_start(args):
             calls.append((args.certify_missing, args.source_deps))
             return proof_repl.SOURCE_DEPS_FAILED if len(calls) == 1 else 0
-        args = argparse.Namespace(name="s", certify_missing=False, source_deps="*",
+        args = argparse.Namespace(name="s", certify_missing=True, source_deps="*",
                                   ld_missing=False, ld=[])
         with mock.patch.object(proof_repl, "_start", fake_start), \
                 mock.patch.object(proof_repl, "stop", lambda args: 0), \
                 contextlib.redirect_stdout(io.StringIO()) as out:
             self.assertEqual(proof_repl.start(args), 0)
-        self.assertEqual(calls, [(False, "*"), (True, None)])
+        self.assertEqual(calls, [(True, "*"), (True, None)])
         self.assertIn("retrying with --certify-missing", out.getvalue())
+
+    def test_source_refusal_does_not_launch_certification_or_change_requested_loading(self):
+        for source_deps, ld_missing, ld in (("*", False, []),
+                                          ("books/near", False, []),
+                                          (None, True, []),
+                                          (None, False, ["books/near"])):
+            with self.subTest(source_deps=source_deps, ld_missing=ld_missing, ld=ld):
+                args = argparse.Namespace(name="s", certify_missing=False,
+                                          source_deps=source_deps, ld_missing=ld_missing,
+                                          ld=list(ld))
+                before = vars(args).copy()
+                with mock.patch.object(proof_repl, "_start",
+                                       return_value=proof_repl.SOURCE_DEPS_FAILED) as start, \
+                        mock.patch.object(proof_repl, "stop", return_value=0) as stop, \
+                        contextlib.redirect_stdout(io.StringIO()) as out:
+                    self.assertEqual(proof_repl.start(args), proof_repl.SOURCE_DEPS_FAILED)
+                start.assert_called_once_with(args)
+                stop.assert_called_once_with(args)
+                self.assertEqual(vars(args), before)
+                self.assertIn("no certification launched", out.getvalue())
 
 
 class SessionIncludeTests(unittest.TestCase):
@@ -1775,6 +1795,26 @@ class SessionIncludeTests(unittest.TestCase):
                         name="s", form='(include-book "tests/acl2/fixture-tests")',
                         limit=None, full=False, allow_undo=False))
                 self.assertEqual((code, sent), (1, []))
+
+    def test_sent_include_cache_miss_does_not_certify_or_send_any_form(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tree(directory)
+            with mock.patch.object(proof_repl, "ROOT", root), \
+                    mock.patch.object(proof_repl, "read_state",
+                                      return_value={"book": "books/model"}), \
+                    mock.patch.object(proof_repl.certs, "valid_looking", return_value=False), \
+                    mock.patch.object(proof_repl, "install_closure",
+                                      return_value=(False, "cache miss", [])) as acquire, \
+                    mock.patch.object(proof_repl, "ask") as ask, \
+                    contextlib.redirect_stdout(io.StringIO()):
+                code = proof_repl.send(argparse.Namespace(
+                    name="s", form='(include-book "tests/acl2/fixture-tests")',
+                    limit=None, full=False, allow_undo=False))
+            self.assertEqual(code, 1)
+            self.assertEqual(acquire.call_args.args[:3],
+                             ("tests/acl2/fixture-tests", (), None))
+            self.assertTrue(acquire.call_args.kwargs["include_self"])
+            ask.assert_not_called()
 
 
 class PartialLoadTests(unittest.TestCase):
