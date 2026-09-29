@@ -632,10 +632,69 @@ def findings() -> tuple[list[dict], int, int]:
                 rows.append({"function": fn, "component": comp, "nontail_calls": bad,
                              "where": "{}:{}".format(d.path, d.line)})
     rows.sort(key=lambda r: r["function"])
+    _LAST_ROOTS.clear()
+    _LAST_ROOTS.update(roots)
     return rows, len(sites), len(roots)
 
 
 _LAST_DEFS: dict = {}
+_LAST_ROOTS: set[str] = set()  # findings()'s host-called roots
+
+
+_EXTRACT_ROOTS = ROOT / "tools" / "extract" / "roots.sh"
+
+
+def extract_roots() -> set[str]:
+    """The extractor's declared roots (tools/extract/roots.sh): the entries
+    the extracted program's host calls, which no raw host file names."""
+    text = _EXTRACT_ROOTS.read_text(encoding="utf-8") if _EXTRACT_ROOTS.exists() else ""
+    out: set[str] = set()
+    for m in re.finditer(r'^FN_EXTRACT_(?:ROOTS|EXTRA)_DECLARED="([^"]*)"', text, re.MULTILINE):
+        out.update(w.lower() for w in m.group(1).split())
+    return out
+
+
+def program_entries(defs: dict, roots: set[str]) -> list[dict]:
+    """Every host-called entry (a raw host file's or the extractor's root) whose
+    definition is `:mode :program': no guard, so nothing the host establishes is
+    checked at the boundary and no theorem can mention it (AGENTS.md: every
+    host-called entry guard-verified).  Rows sorted by name."""
+    rows = []
+    for name in sorted(set(roots) | extract_roots()):
+        d = defs.get(name)
+        if d is None:
+            continue
+        form = d.form
+        if callgraph.head(form) not in callgraph.FUNCTION_HEADS or len(form) < 4:
+            continue
+        mode = _xargs(form).get(":mode")
+        if isinstance(mode, Sym) and _name(mode) == ":program":
+            rows.append({"function": name, "where": "{}:{}".format(d.path, d.line)})
+    return rows
+
+
+def check_program(rows: list[dict], baseline: dict) -> list[str]:
+    """The :program host-called entries only shrink: each is listed by name
+    under "program" in tools/depth_baseline.json with why it is still
+    :program (row K2), a new one is refused, and an entry that is no longer
+    :program (or no longer host-called) must leave the list."""
+    listed = baseline.get("program", {})
+    found = {r["function"] for r in rows}
+    problems = []
+    for r in rows:
+        fn = r["function"]
+        if fn not in listed:
+            problems.append(
+                "{} ({}): a :program host-called entry (nothing the host establishes is checked "
+                "at the boundary, and no theorem can mention it): make it :logic and verify its "
+                "guards, or split its ACL2 decision out as a guard-verified :logic entry it calls; "
+                "the survivors are listed by name under \"program\" in tools/depth_baseline.json "
+                "with why (that list only shrinks)".format(fn, r["where"]))
+    for fn in sorted(set(listed) - found):
+        problems.append("{}: listed under \"program\" in tools/depth_baseline.json but no longer a "
+                        ":program host-called entry: remove its entry (the list only shrinks)"
+                        .format(fn))
+    return problems
 
 
 def load_baseline(path: Path = BASELINE) -> dict:
@@ -795,15 +854,25 @@ def main(argv: list[str] | None = None) -> int:
             print("append-{:8s} {:45s} {}  {}".format(cls, r["function"], r["where"],
                                                      " | ".join(r["first"])))
     problems += check_appends(app_rows, baseline)
+    program_rows = program_entries(_LAST_DEFS, _LAST_ROOTS)
+    if arguments.list:
+        listed = baseline.get("program", {})
+        for r in program_rows:
+            print("program-{:8s} {:45s} {}  {}".format(
+                "listed" if r["function"] in listed else "UNLISTED", r["function"],
+                r["where"], listed.get(r["function"], "")))
+    problems += check_program(program_rows, baseline)
     for p in problems:
         print("depth_check: " + p, file=sys.stderr)
     print("depth_check: {} host-called root(s), {} function(s) in the closure, {} non-tail "
           "recursion(s): {} bounded, {} debt; {} data-sized append(s) through *1*: {} bounded, {} debt; "
-          "{} problem(s)".format(
+          "{} :program host-called entr{} ({} listed); {} problem(s)".format(
               roots, size, len(rows), sum(r["class"] == "bounded" for r in rows),
               sum(r["class"] == "debt" for r in rows), len(app_rows),
               sum(r["function"] in baseline["append"]["bounded"] for r in app_rows),
               sum(r["function"] in baseline["append"]["debt"] for r in app_rows),
+              len(program_rows), "y" if len(program_rows) == 1 else "ies",
+              sum(r["function"] in baseline.get("program", {}) for r in program_rows),
               len(problems)), file=sys.stderr)
     return 1 if problems else 0
 

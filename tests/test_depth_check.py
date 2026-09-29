@@ -121,3 +121,38 @@ class BaselineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProgramEntryTests(unittest.TestCase):
+    """The :program host-called entries (row K2) only shrink: a new one is
+    refused, a listed one passes, a stale listing must leave."""
+    ROW = {"function": "fn-xw-main", "where": "host/store-write-host.lisp:1877"}
+
+    def test_an_unlisted_program_entry_fails(self):
+        problems = d.check_program([self.ROW], {"program": {}})
+        self.assertEqual(len(problems), 1)
+        self.assertIn("fn-xw-main", problems[0])
+        self.assertIn("only shrinks", problems[0])
+
+    def test_a_listed_one_passes_and_a_stale_entry_fails(self):
+        listed = {"program": {"fn-xw-main": "the extractor's :program store writer"}}
+        self.assertEqual(d.check_program([self.ROW], listed), [])
+        stale = d.check_program([], listed)
+        self.assertEqual(len(stale), 1)
+        self.assertIn("remove its entry", stale[0])
+
+    def test_a_baseline_without_the_key_refuses_every_entry(self):
+        self.assertEqual(len(d.check_program([self.ROW], {"bounded": {}, "debt": {}})), 1)
+
+    def test_only_program_definitions_are_rows(self):
+        defs = {
+            "fn-a": d.callgraph.Definition(
+                "fn-a", "function", "host/a.lisp", 1,
+                form("(defun fn-a (x) (declare (xargs :mode :program)) x)")),
+            "fn-b": d.callgraph.Definition(
+                "fn-b", "function", "books/b.lisp", 1,
+                form("(defun fn-b (x) (declare (xargs :guard t)) x)")),
+        }
+        rows = d.program_entries(defs, {"fn-a", "fn-b", "fn-missing"})
+        self.assertEqual([r["function"] for r in rows], ["fn-a"])
+        self.assertEqual(rows[0]["where"], "host/a.lisp:1")
