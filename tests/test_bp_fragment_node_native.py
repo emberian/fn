@@ -11,9 +11,9 @@ import time
 import unittest
 
 from tests.native_harness import (
+    Acl2Session,
     EXIT, acl2_octets, acl2_result, environment, free_port, native_image, requires, run,
     scratch, start)
-from tools import run_bp_ingress, run_store
 
 
 ROOT = Path(os.environ.get(
@@ -79,27 +79,13 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
             b"Date: Mon, 21 Sep 2026 08:00:00 +0000\r\n"
             b"Message-ID: " + msgid + b"\r\n\r\nfragmented body\r\n"
         )
-        bridge = run_bp_ingress.Acl2BpIngress()
-        try:
-            bridge.call('(include-book "books/bp-adu")')
-            bridge.call('(include-book "books/bp-fragment")')
-            bridge.call('(include-book "books/bp-bundle")')
-            _archive, subject, _provenance = run_store.metadata(msgid, article)
-
-            def text(value):
-                return "(fn-store-octets->string '" + bridge.literal(value) + ")"
-
+        with Acl2Session(IMAGE) as bridge:
             fields = [
-                b"work-bp-fragment", subject, b"dtn://sender/",
+                b"work-bp-fragment", bridge.subject(msgid, article), b"dtn://sender/",
                 b"dtn://receiver/", b"native-policy", b"origin-native",
                 b"wire-auth", b"terms-native",
             ]
-            adu_form = (
-                "(fn-bpa-encode (fn-bpa-make-request "
-                + " ".join(text(value) for value in fields)
-                + " '" + bridge.literal(article) + "))"
-            )
-            adu = acl2_octets(bridge.call(adu_form))
+            adu = bridge.bp_request(fields, article)
             # COUNT - 1 interior cut points, strictly increasing.  The cut
             # is fn-bpf-cut (no fragment-count ceiling), not fn-bpf-fragment
             # (at most 64 pieces).
@@ -134,8 +120,6 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
                 path.write_bytes(wire)
                 paths.append(path)
             return paths
-        finally:
-            bridge.close()
 
     def serve_argv(self, once):
         return [IMAGE, "--fn", "bp-node", "serve", self.port, self.journal, self.store,
@@ -281,12 +265,8 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
             b"Message-ID: " + msgid + b"\r\n\r\n" + body
         )
         self.large_msgid, self.large_article = msgid, article
-        bridge = run_bp_ingress.Acl2BpIngress()
-        try:
-            for book in ("bp-adu", "bp-fragment", "bp-fragment-fast",
-                         "bp-bundle"):
-                bridge.call('(include-book "books/' + book + '")')
-            _archive, subject, _provenance = run_store.metadata(msgid, article)
+        with Acl2Session(IMAGE) as bridge:
+            subject = bridge.subject(msgid, article)
 
             def text(value):
                 return "(fn-store-octets->string '" + bridge.literal(value) + ")"
@@ -332,8 +312,6 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
                 path.write_bytes(wire)
                 paths.append(path)
             return paths, total
-        finally:
-            bridge.close()
 
     @staticmethod
     def drain(process):

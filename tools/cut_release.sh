@@ -80,7 +80,7 @@
 # amd64, syspatch 002-021; pkg sbcl 2.6.3, libsodium 1.0.22, python 3.13,
 # bash, gmake; ACL2 8.7 and its certified system books under
 # /usr/local/fn-work).  The gate writes its own literal ACL2 launcher there
-# (4 GiB heap, --tls-limit 65536 as hbox's image builds since batch AV).
+# (4 GiB heap, the profile's --tls-limit as hbox's image builds since batch AV).
 # Its second disk is the build space, FFS2 on sd1a, mounted
 # wxallowed at /bw.  qemu runs in the fn-openbsd-qemu:local container with
 # /dev/kvm; root logs in with OB_BASE/vm/id_ed25519 on 127.0.0.1:PORT
@@ -130,6 +130,8 @@ case $FROM$TO in ''|*[!0-9]*) usage ;; esac
 case $OB_VM in ''|*[!A-Za-z0-9_-]*) usage ;; esac
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+# The runtime profile's thread-local storage limit (books/profile-limits.lisp).
+TLS_LIMIT=$(python3 "$ROOT/tools/profile_limits.py" get tls-limit)
 cd "$ROOT" || exit 2
 REV=$(git rev-parse --verify -q "$REV_ARG^{commit}") || { echo "cut_release: no commit $REV_ARG" >&2; exit 2; }
 SHORT=$(printf %s "$REV" | cut -c1-12)
@@ -393,7 +395,7 @@ mount | grep -q ' /bw '
 ulimit -d \$(ulimit -H -d)
 [ \$(ulimit -d) = unlimited ] || [ \$(ulimit -d) -ge 6291456 ] || { echo \"datasize \$(ulimit -d) KiB: under the 4 GiB heap plus runtime; lift root's login class (tools/cut_release.sh header)\"; exit 1; }
 L=/usr/local/fn-work/acl2-lit-4g-tls64k
-printf '%s\\n' '#!/bin/sh' 'export SBCL_HOME=/usr/local/lib/sbcl/' 'exec /usr/local/bin/sbcl --tls-limit 65536 --dynamic-space-size 4096 --control-stack-size 64 --disable-ldb --core /usr/local/fn-work/acl2-8.7/saved_acl2.core --end-runtime-options --no-userinit --eval \"(acl2::sbcl-restart)\" \"\$@\"' > \$L
+printf '%s\\n' '#!/bin/sh' 'export SBCL_HOME=/usr/local/lib/sbcl/' 'exec /usr/local/bin/sbcl --tls-limit $TLS_LIMIT --dynamic-space-size 4096 --control-stack-size 64 --disable-ldb --core /usr/local/fn-work/acl2-8.7/saved_acl2.core --end-runtime-options --no-userinit --eval \"(acl2::sbcl-restart)\" \"\$@\"' > \$L
 chmod 0755 \$L
 export FN_ACL2=\$L ACL2_SYSTEM_BOOKS=/usr/local/fn-work/acl2-8.7/books
 export FN_ACL2_SLOTS=7 FN_ACL2_TIMEOUT_SECONDS=3000 FN_CERT_CACHE=$W/certcache

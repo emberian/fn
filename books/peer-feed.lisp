@@ -59,11 +59,16 @@
 ; Closed enumerations
 ;
 ; `*fn-feed-outcome-codes*' is the response vocabulary of RFC 3977 sec. 6.3.2
-; and RFC 4644 sec. 2.4/2.5 that the feed journals.  `*fn-feed-drop-reasons*'
+; and RFC 4644 sec. 2.4/2.5 that the feed journals as a final :feed-outcome:
+; the transfer is settled.  A retry (431, 436) is journaled as :feed-retry and
+; a loss as :feed-lost, each with its monotonic tick (books/feed-events.lisp
+; fn-feed-observe-records); an outcome record with any other code is not a
+; record, so a journal carrying one is invalid evidence (no migrations: fresh
+; deploys at 6.6.0).  `*fn-feed-drop-reasons*'
 ; is closed so that no entry can leave the queue without a reason a reader of
 ; the journal can name.
 
-(defconst *fn-feed-outcome-codes* '(235 239 435 438 437 439 431 436 400))
+(defconst *fn-feed-outcome-codes* '(235 239 435 438 437 439))
 (defconst *fn-feed-accepted-codes* '(235 239))
 (defconst *fn-feed-drop-reasons* '(:retry-bound :peer-removed :operator))
 
@@ -1078,18 +1083,32 @@
                      nil)))
               (t (mv (fn-feed-lost f obs) nil))))))
 
+; The feed with no back-off deadline.
+(defun fn-feed-without-backoff (f)
+  (declare (xargs :guard t))
+  (fn-feed-make (fn-feed-peer f) (fn-feed-limits-of f) (fn-feed-queue f)
+                (fn-feed-contact f) 0 (fn-feed-conn f) (fn-feed-next-attempt f)))
+
 ; Restart: on open, before any offer.  Every in-flight entry is fenced back to
 ; :queued with its attempt RETIRED, and the connection is forgotten.  The next
 ; command for such an entry is therefore an offer -- a CHECK or an IHAVE --
 ; whose 435/438 is the peer's own history absorbing the one retransmission a
 ; lost reply can cause.  Never a blind TAKETHIS.
+; The back-off deadline is forgotten too (lane time-bars, PRF-385): it is a
+; reading of the previous process's monotonic clock (the replay of
+; :feed-retry and :feed-lost rebuilds it from that run's readings), which
+; means nothing in this one -- SBCL's clock starts near zero in every
+; process, so a kept deadline held a peer that was backing off unfed for
+; about the previous run's uptime.  What crosses the restart is the semantic
+; observation: each entry's attempt count, which sets the next back-off.
 (defun fn-feed-restart (f)
   (declare (xargs :guard t))
   (if (not (fn-feedp f))
       f
-      (fn-feed-with-conn
-       (fn-feed-with-queue f (fn-feed-queue-settle (fn-feed-queue f)))
-       nil)))
+      (fn-feed-without-backoff
+       (fn-feed-with-conn
+        (fn-feed-with-queue f (fn-feed-queue-settle (fn-feed-queue f)))
+        nil))))
 
 (defun fn-feed-settle (f)
   (declare (xargs :guard t))
@@ -1387,15 +1406,9 @@
                      f (fn-feed-queue-set-state (fn-feed-queue f) msgid
                                                 (fn-feed-sent attempt))))))
              ((equal kind :feed-outcome)
-              (let ((code (fn-frame-item 3 values)))
-                (cond ((member-equal code '(235 239 435 438 437 439))
-                       (fn-feed-done f msgid))
-                      ((member-equal code '(431 436))
-                       (fn-feed-with-queue
-                        f (fn-feed-queue-requeue (fn-feed-queue f) msgid 0)))
-                      (t (fn-feed-with-queue
-                          f (fn-feed-queue-requeue-inflight
-                             (fn-feed-queue f) 0))))))
+              (if (member-equal (fn-frame-item 3 values) *fn-feed-outcome-codes*)
+                  (fn-feed-done f msgid)
+                f))
              ((equal kind :feed-retry)
               (fn-feed-back-off f msgid
                 (fn-clock-observation (fn-feed-record-nat 4 values) 0 0 nil)))

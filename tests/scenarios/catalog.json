@@ -71,16 +71,15 @@
         "books/store-node-existing-invariants.lisp",
         "tests/acl2/store-node-existing-tests.lisp"
       ],
-      "execution_scope": "Validated for abstract atomic acceptance and now a real CLI cross-post/reopen path: one article, two local numbers, one charged pin. Full signed/network POST service remains outside this scenario evidence. The ACL2 Store decision is exercised on a reachable committed state with duplicate, each conflict factor, and missing binding; the actual host prepare/query wrappers call that decision. A newly built combined native image is still required to remeasure the changed host path.",
+      "execution_scope": "Validated for abstract atomic acceptance; the native path is one article posted to two groups through the operator, one local number in each group across a restart, an identical resubmission accepted as the duplicate and a changed source under the held Message-ID refused without replacing the stored octets (tests/test_native_conformance.py). The charged pin is not observed by that case. The Python-host implementation (tests/test_store.py) retired with the Python host.",
       "implementation": {
-        "test": "tests.test_store",
+        "test": "tests.test_native_conformance",
         "cases": [
-          "test_two_group_post_replays_both_allocations_and_one_pin",
-          "test_duplicate_retry_and_conflicting_id_do_not_overwrite"
+          "test_a_crosspost_is_one_article_and_a_resubmission_overwrites_nothing"
         ],
-        "native": false,
-        "log": "planning/evidence/harness-repair-2026-09-25/laptop-after.txt",
-        "record": "planning/evidence/harness-repair-2026-09-25.md"
+        "native": true,
+        "log": "planning/evidence/python-diet-2-2026-09-28/native-conformance-bec5cefcd.log",
+        "record": "planning/evidence/python-diet-2-2026-09-28/native-runs.md"
       }
     },
     {
@@ -120,14 +119,12 @@
         "tests/evidence/2026-09-18-wildmat-storage.md",
         "tests/evidence/2026-09-18-wildmat-storage.json",
         "books/store-files-invariants.lisp",
-        "tests/test_store.py",
         "tests/evidence/2026-09-18-fields-transfer.md",
         "tests/evidence/2026-09-18-fields-transfer.json",
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json",
         "books/store-node-resolution.lisp",
         "books/store-observed.lisp",
-        "tests/test_store_corruption.py",
         "planning/evidence/deploy-cce4b11-2026-09-20.md",
         "planning/evidence/wave-realignment-2026-09-19.md",
         "tests/acl2/byte-store-initializer-tests.lisp",
@@ -285,7 +282,6 @@
         "tests/evidence/2026-09-18-bp-workflow.md",
         "tests/evidence/2026-09-18-bp-exchange.md",
         "tests/evidence/2026-09-18-bp-composition-assurance.md",
-        "tests/test_bp_receive_process_crash.py",
         "tests/acl2/bp-receiver-invariants-tests.lisp",
         "planning/evidence/native-bp-app-2026-09-21.md",
         "tests/test_bp_app_native.py"
@@ -482,7 +478,6 @@
         "tests/evidence/2026-09-18-wildmat-storage.json",
         "books/nntp-invariants.lisp",
         "books/nntp-effects.lisp",
-        "tests/test_reader_partitions.py",
         "books/served.lisp",
         "tests/acl2/served-tests.lisp",
         "planning/evidence/deploy-cce4b11-2026-09-20.md",
@@ -535,7 +530,6 @@
         "tests/evidence/2026-09-18-wildmat-storage.md",
         "tests/evidence/2026-09-18-wildmat-storage.json",
         "books/store-files-invariants.lisp",
-        "tests/test_store.py",
         "tests/evidence/2026-09-18-fields-transfer.md",
         "tests/evidence/2026-09-18-fields-transfer.json",
         "tests/evidence/2026-09-18-assurance.md",
@@ -702,7 +696,6 @@
         "A Message-ID the node does not hold is a refusal (exit 1), distinct from uncertainty (exit 3) and a fault (exit 4)."
       ],
       "evidence": [
-        "tests/test_provenance.py",
         "tests/acl2/provenance-tests.lisp"
       ],
       "note": "The transit path is NOT covered: it still stores fn-peer-evidence's rendering. See planning/lanes/HANDOFF-w10-provenance.md."
@@ -736,7 +729,7 @@
         "A stopped service releases the writer lock, and the store reopens without recovery."
       ],
       "evidence": [],
-      "execution_scope": "Specified. `tools/v0_matrix.py` drives every step between two nodes on one host over loopback; the row verdicts and their blockers are in planning/v0-matrix.json. Nothing here exercises two machines, a real network, or an operator's own configuration."
+      "execution_scope": "Specified. The v0 rows (planning/v0-matrix.json, last run b6759850) are owned by tests/test_native_conformance.py on one node and by tests/test_native_peering.py and tests/test_native_protected_peering.py between two nodes on one host over loopback (planning/evidence/python-diet-2-2026-09-28/v0-row-owners.md). Nothing here exercises two machines, a real network, or an operator's own configuration."
     },
     {
       "id": "SCN-022",
@@ -879,7 +872,7 @@
       "id": "SCN-026",
       "title": "A host fault on one connection, with another connection open across it",
       "milestone": "M3",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "HST-005",
         "NNT-002",
@@ -900,17 +893,7 @@
       "evidence": [
         "planning/evidence/owner-survival-2026-09-21.md"
       ],
-      "execution_scope": "Implemented as tests/test_owner.py OwnerSurvivesAFaultTests, two cases, one owner process each. The fault is injected, not provoked by a peer: the two real crashes it stands for are fixed, and a regression that provokes one from the wire needs two nodes (tools/v0_matrix.py's transit rows). This remains Python-host evidence. Native attributable-fault survival is pending and is not replaced by the separate shared-state global-fence scenario SCN-015.",
-      "implementation": {
-        "test": "tests.test_owner",
-        "cases": [
-          "OwnerSurvivesAFaultTests.test_a_fault_in_a_served_read_costs_that_connection_and_nothing_else",
-          "OwnerSurvivesAFaultTests.test_a_fault_carrying_a_submission_leaves_the_post_path_open"
-        ],
-        "native": false,
-        "log": "planning/evidence/harness-repair-2026-09-25/laptop-after.txt",
-        "record": "planning/evidence/owner-survival-2026-09-21.md"
-      }
+      "execution_scope": "Specified. Its implementation was tests/test_owner.py OwnerSurvivesAFaultTests over the retired Python host (python-diet T5 removed both; recoverable at 940bc3104). Native attributable-fault survival is pending and is not replaced by the separate shared-state global-fence scenario SCN-015."
     },
     {
       "id": "SCN-027",
@@ -5591,7 +5574,7 @@
     },
     {
       "id": "SCN-193",
-      "title": "Concurrent posters of the profile's largest articles are each answered accepted or refused by name and the node never faults; partial uploads holding the whole pool of article credits all complete",
+      "title": "Concurrent posters of the profile's largest articles are each answered accepted or refused by name and the node never faults; partial uploads holding the whole pool of article credits all complete; a TAKETHIS carried with its article in one read past the slots is refused whole",
       "milestone": "M6",
       "status": "specified",
       "requirements": [
@@ -5599,21 +5582,166 @@
       ],
       "steps": [
         "A = 4 MiB (one credit): `operator init --profile development --max-transactions 1024 --max-history-octets 64MiB --max-record-octets 4199563 --max-article-octets 4194304 --max-groups-per-article 16 fn.test`; `run`; six NNTP connections; POST on the first and half its 4 MiB article; POST on the other five; the rest of the first article in pieces; then each of the five posts in turn (asking again while a 440 names the memory).",
-        "A = 600,000 (three credits): the same init with --max-article-octets 600000; five connections; three POSTs each followed by half its article; POST on the other two; the three finish, last admitted first; then the two post."
+        "A = 600,000 (three credits): the same init with --max-article-octets 600000; five connections; three POSTs each followed by half its article; POST on the other two; the three finish, last admitted first; then the two post.",
+        "A = 4 MiB (one credit), a peer on loopback (`operator peer add slots-peer slots-peer.example.invalid 127.0.0.1 1 fn.* - 127.0.0.1 true`): IHAVE and half a 64 KiB article on one connection; on a second, `TAKETHIS <id>` and its whole 600-octet article in one write; the first finishes; the TAKETHIS is retried on new connections."
       ],
       "expected": [
         "The five are answered `440 posting not permitted now; the articles in flight fill the memory, try again later` while the first is mid-article; the first is answered 240; each of the five is then offered 340 and answered 240; the node never exits and stops cleanly (exit 0) with 6 transactions.",
-        "The two are answered the memory 440 while three partial uploads hold the pool; each of the three is answered 240 without waiting for another (no completion deadlock: reserve-to-finish); the two are then accepted; exit 0 with 5 transactions."
+        "The two are answered the memory 440 while three partial uploads hold the pool; each of the three is answered 240 without waiting for another (no completion deadlock: reserve-to-finish); the two are then accepted; exit 0 with 5 transactions.",
+        "The TAKETHIS is answered `400 the articles in flight fill the memory; try again later` and the connection closed (before lane admission-gap it was answered 239 with two articles in the one slot: a read entering and completing an article escaped the admission); the IHAVE is answered 235; the retried TAKETHIS is answered 239 once the commit releases the slot; exit 0 with 2 transactions."
       ],
       "implementation": {
         "test": "tests.test_native_article_slots",
         "cases": [
           "ArticleSlotsTests.test_concurrent_large_posters_are_answered_by_name_and_the_node_lives",
-          "ArticleSlotsTests.test_partial_uploads_holding_the_pool_all_complete"
+          "ArticleSlotsTests.test_partial_uploads_holding_the_pool_all_complete",
+          "ArticleSlotsTests.test_a_takethis_within_one_read_past_the_slot_is_refused_whole"
         ],
         "native": true,
         "record": "planning/evidence/zero-copy-commit-2026-09-28.md"
       }
+    },
+    {
+      "id": "SCN-194",
+      "title": "Memory credits follow the buffer: the batch in flight keeps its article's credit after its poster hangs up, until its barrier returns; many large posters and readers at once never fault the node",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "HST-024"
+      ],
+      "steps": [
+        "Developer image, FN_NATIVE_OWNER_TEST_BARRIER_MS=3000; A = 4 MiB (one credit): the SCN-193 init; `run`; connection A: POST, the whole 4 MiB article, then A hangs up; within the barrier connection B: POST; B asks again until offered, then posts.",
+        "A = 600,000 (three credits): twelve connections post a 600,000-octet article each (asking again while a 440 names the memory) while four readers loop GROUP, LISTGROUP, STAT and HEAD."
+      ],
+      "expected": [
+        "B is answered `440 posting not permitted now; the articles in flight fill the memory, try again later` while A's batch is in flight (before lane credits the slots admitted it: the owner's queue, in-flight field and A's connection were empty); after the barrier B is offered 340 and answered 240; the node never exits and stops cleanly with 2 transactions (A's article durable although A hung up).",
+        "Every POST is offered 340 or refused the memory 440 by name, every offered article is answered 240, every reader's answer is 2xx or 4xx, the node never exits (no 4) and stops cleanly with 12 transactions."
+      ],
+      "implementation": {
+        "test": "tests.test_native_credits",
+        "cases": [
+          "CreditsTests.test_the_batch_in_flight_keeps_its_credit_past_the_close",
+          "CreditsTests.test_many_large_posters_and_readers_never_fault_the_node"
+        ],
+        "native": true,
+        "record": "planning/evidence/credits-2026-09-28.md"
+      }
+    },
+    {
+      "id": "SCN-195",
+      "title": "A mutating control request is admitted under sustained POST load (the owner's queue is fair; PRF-901)",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-023"
+      ],
+      "steps": [
+        "tests/test_native_owner_scheduler.py test_a_control_request_is_admitted_under_sustained_post_load on the developer image: the barrier held 1.5 s by FN_NATIVE_OWNER_TEST_BARRIER_MS; four posters POST back to back for the whole test; after 4.5 s `group create fn.fair' on the control socket."
+      ],
+      "expected": [
+        "The control request is answered within three barriers plus slack (under 7.5 s) while the posters keep being answered 240; before the lane it waited for as long as the POSTs kept coming."
+      ],
+      "evidence": [
+        "books/owner-commit-fairness.lisp",
+        "tests/test_native_owner_scheduler.py"
+      ]
+    },
+    {
+      "id": "SCN-202",
+      "title": "The adopted default F4 bars classify an unresolved write: try-later past D, the held poster told uncertain once at H (not at D), the same article re-sent answered try-later during the stall and `already stored here' after it, and a restart a new clock domain",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-031"
+      ],
+      "steps": [
+        "tests/test_native_slow_disk.py on the developer image with FN_NATIVE_TEST_DISK_STALL_FILE and no policy rows (D 5,000 ms, H 30,000 ms, cadence 1,000 ms): a warm POST; the stall file created; one POST (held); health at 2 s and at 7 s; a POST command and the same article's POST command on two other connections; a GROUP; wait for the held poster's answer; health; the stall file removed; the same article re-sent; SIGTERM, restart, `store ROOT journal'."
+      ],
+      "expected": [
+        "health `disk ok' exit 0 under D; `disk slow ... deadline-ms=5000 stall-ms=30000' exit 0 past D; both POST commands `440 posting not permitted now; the disk is slow'; the held poster `441' uncertain (no try-later) after at least 29.5 s, then closed, never answered again; health exit 28 `disk stalled' stall-ms=30000; after recovery the same article `441 posting failed; this article is already stored here'; every start entry of decisions.fnj has reading 0 and usable 1, and `store ROOT journal' exits 0 with `segments=2' and `replay=agrees'."
+      ],
+      "evidence": [
+        "tests/test_native_slow_disk.py",
+        "planning/evidence/time-bars-2026-09-28.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_slow_disk",
+        "cases": [
+          "test_the_adopted_default_bars_classify_an_unresolved_write"
+        ],
+        "native": true,
+        "record": "planning/evidence/time-bars-2026-09-28.md"
+      }
+    },
+    {
+      "id": "SCN-198",
+      "title": "Power is cut under a committing node while a reader polls GROUP/OVER; every number the reader was served before the cut is served with the same Message-ID after recovery, and a fresh POST takes a number above all of them",
+      "milestone": "M2",
+      "status": "implemented",
+      "implementation": {
+        "test": "tools/power_loss.py",
+        "cases": [],
+        "native": true,
+        "record": "planning/evidence/durability-numbers-2026-09-28.md",
+        "log": "planning/evidence/durability-numbers-2026-09-28/obs1.log"
+      },
+      "requirements": [
+        "OBJ-005",
+        "STO-005"
+      ],
+      "steps": [
+        "tools/power_loss.py workload --observe --posters 4: a reader thread polls GROUP fn.test and OVER 1- and writes a seen-N mark into the dm-log-writes log after the first reply serving N.",
+        "For each cut, the numbers whose seen mark precedes the cut must be served after recovery by the same Message-ID (observed-number-reissued / observed-number-lost otherwise), and the fresh POST's number is above every observed one."
+      ],
+      "evidence": [
+        "planning/evidence/durability-numbers-2026-09-28.md",
+        "tools/power_loss.py",
+        "planning/evidence/durability-numbers-2026-09-28/cuts-obs1.jsonl"
+      ],
+      "expected": "No observed number reissued or lost; a lost unacknowledged POST's number may be taken by the next POST (never observed)."
+    },
+    {
+      "id": "SCN-204",
+      "title": "A per-group expiry policy releases what it expires through `store reclaim`, keeps expired distinct from absent, never resurrects or renumbers, and a death mid-expiry completes the same expiry",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "RET-008",
+        "STO-017"
+      ],
+      "steps": [
+        "Post to fn.test articles with a past Expires:, none, and a future one, and one cross-posted to fn.keep with a past Expires:.",
+        "`store reclaim --dry-run` with no policy; `retention expire fn.test purge 30`; dry run; `store reclaim`.",
+        "Serve ARTICLE/STAT by Message-ID and number, GROUP; re-POST an expired article; POST a new one.",
+        "`retention expire fn.test octets N` over four equal articles (N a little over two).",
+        "Developer image: on a copy per state-checkpoint cut, kill the expiring reclaim; `status`; `store reclaim --recorded` (or a rerun)."
+      ],
+      "expected": [
+        "Nothing expires without a policy; the two past-Expires fn.test articles expire; the future one, the one without Expires: and the cross-post stay.",
+        "430/423 article reclaimed for the expired; 430 no article for a never-held Message-ID; GROUP's high water unchanged; the re-POST refused; the new POST takes the next number.",
+        "The two oldest leave.",
+        "Every copy reopens and ends with the same two articles expired."
+      ],
+      "evidence": [
+        "tests/test_native_expiry.py"
+      ]
+    },
+    {
+      "id": "SCN-205",
+      "title": "A reader logs in with AUTHINFO SASL: PLAIN over TLS, SCRAM-SHA-256 in clear and over TLS, and SCRAM-SHA-256-PLUS bound to the connection's tls-exporter value",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-056"
+      ],
+      "steps": [
+        "A node with a plaintext reader listener offering STARTTLS, an implicit-TLS listener, required authentication and one credential written by `principal set-password`.",
+        "CAPABILITIES in clear, over TLS and after a login; AUTHINFO SASL PLAIN, SCRAM-SHA-256 and SCRAM-SHA-256-PLUS exchanges, a wrong password and a replayed final message."
+      ],
+      "expected": [
+        "The SASL label lists the mechanisms offered now and survives the login; PLAIN in clear is 483; SCRAM answers 383 then 283 with the server's v=; a wrong password and a replayed final message are 481; PLUS succeeds only with the connection's own exporter value."
+      ],
+      "execution_scope": "Specified by lane sasl increment 1 (the mechanism books); the served arm and tests/test_native_sasl.py come with increment 2."
     }
   ]
 }

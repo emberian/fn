@@ -40,6 +40,7 @@
 ; entry, sequence 0) from fn-otm-init.
 (in-package "ACL2")
 (include-book "owner-time-model")
+(include-book "defevent")
 (include-book "cbor") ; fn-cbor-octet-listp, the entry guard's octets kind
 (local (include-book "arithmetic-5/top" :dir :system))
 ; The replay's reasoning is over whole events: never unfold one here.
@@ -228,23 +229,35 @@
 ;         a note's two counts; else 0
 ;   WORD  the event's word, by the code below (0 for a start or a note)
 
-(defun fn-otm-op-of-kind (kind)
-  (declare (xargs :guard t))
-  (cond ((eq kind :clock) 1) ((eq kind :served) 2) ((eq kind :issue) 3)
-        ((eq kind :return) 4) ((eq kind :space) 6) (t 0)))
+;; The two tables are one form each (books/defevent.lisp), which generates the
+;; encoder, the replay's decoder and the host's recognizer, and the registry
+;; row (tools/event_emit.py, planning/events.json) that keeps each code's
+;; meaning stable across versions.
+(defevent fn-otm-op
+  :version 1
+  :var kind
+  :codes ((:clock 1) (:served 2) (:issue 3) (:return 4) (:space 6))
+  :otherwise 0
+  :reserved ((0 :start "a start entry (SEQ 0): replay restarts from fn-otm-init")
+             (5 :note "a note (fn-otm-note): the stall's release, with its two counts")
+             (7 :mark "a mark (*fn-otm-mark-entry*): entries were lost before the next"))
+  :recorded ((reading "the host's monotonic clock reading at the event, taken outside every owner step")
+             (a "a :served event's wall reading in ms; a :space event's observed free octets"))
+  :encode fn-otm-op-of-kind
+  :decode fn-otm-kind-of-op
+  :code-var op)
 
-(defun fn-otm-kind-of-op (op)
-  (declare (xargs :guard t))
-  (cond ((eql op 1) :clock) ((eql op 2) :served) ((eql op 3) :issue)
-        ((eql op 4) :return) ((eql op 6) :space) (t nil)))
-
-(defun fn-otm-word-code (w)
-  (declare (xargs :guard t))
-  (case w
-    (:issued 1) (:returned 2) (:recovered 3) (:recovered-from-stall 4)
-    (:became-slow 5) (:became-stalled 6) (:none 7) (:clock-regressed 8)
-    (:fault 9) (:became-full 10) (:space-recovered 11) (:space-unobserved 12)
-    (otherwise 0)))
+(defevent fn-otm-word
+  :version 1
+  :var w
+  :codes ((:issued 1) (:returned 2) (:recovered 3) (:recovered-from-stall 4)
+          (:became-slow 5) (:became-stalled 6) (:none 7) (:clock-regressed 8)
+          (:fault 9) (:became-full 10) (:space-recovered 11) (:space-unobserved 12))
+  :otherwise 0
+  :reserved ((0 :no-word "a start entry or a note: no word"))
+  :encode fn-otm-word-code
+  :encode-style :case
+  :recognizer fn-otm-wordp)
 
 (defun fn-otm-event-args (kind arg)
   (declare (xargs :guard t))
@@ -292,10 +305,19 @@
   (mv-let (s2 e) (fn-otm-note s a b) (list s2 (fn-otm-jline e))))
 
 ; THE HOST'S CALL at a run's start (the gate made from fn-otm-init): the
-; start entry, with the first monotonic READING and the WALL reading.
-(defun fn-otm-start-line (reading wall)
+; start entry.  A run is its own clock domain (lane time-bars, PRF-384): a
+; monotonic reading means nothing in another process, so the entry records
+; the semantic observation -- the WALL reading and whether it is USABLE
+; (1/0) -- and no monotonic origin (its READING field is 0); the replay
+; starts the segment from fn-otm-init (books/owner-time-bars.lisp
+; fn-otb-a-restart-forgets-the-previous-clock-domain).
+(defun fn-otm-start-entry (wall usable)
   (declare (xargs :guard t))
-  (fn-otm-jline (list 0 0 (nfix reading) (nfix wall) 0 0 0)))
+  (list 0 0 0 (nfix wall) (if usable 1 0) 0 0))
+
+(defun fn-otm-start-line (wall usable)
+  (declare (xargs :guard t))
+  (fn-otm-jline (fn-otm-start-entry wall usable)))
 
 ; -----------------------------------------------------------------------------
 ; Replay.  From S, apply each entry's event to the value and compare the

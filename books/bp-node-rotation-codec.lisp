@@ -18,6 +18,8 @@
 (in-package "ACL2")
 (include-book "bp-fnbs-codec")
 (include-book "bp-primary-cbor")
+(include-book "article")
+(include-book "consumer-position")
 (set-verify-guards-eagerness 0)
 
 (defconst *fn-bpnr-checkpoint-code* 19)

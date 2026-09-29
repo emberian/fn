@@ -41,6 +41,7 @@ import tempfile
 import unittest
 
 from tests import native_harness
+from tools import profile_limits
 from tests.native_harness import (
     EXIT_FAULT, EXIT_USAGE, ROOT, Client, Node, executable, native_image)
 
@@ -55,7 +56,8 @@ MEASURE = ROOT / "tools" / "runtime_image" / "node_measure.py"
 GUARD_LINE = (b"store: host-entry-guard: fn-b3-left-chunks argument 2 (n) must be a "
               b"natural (natp); the host passed the integer -1\n")
 CORE_CEILING_KIB = 128 * 1024
-SMALL_STACK_KIB = 1024          # fn-heap-stack-kib: the constant (served-line-iterative)
+# fn-heap-stack-kib: the profile's row (books/profile-limits.lisp), read, not copied.
+SMALL_STACK_KIB = profile_limits.get("stack-kib")
 
 
 # This module measures the control stack, so it names every stack itself:
@@ -94,6 +96,20 @@ class ProductionTests(unittest.TestCase):
     def setUp(self):
         if not executable(IMAGE):
             self.skipTest("needs the production image %s" % IMAGE)
+
+    def test_launcher_carries_the_profile_figures(self):
+        """The saved launcher runs SBCL at the profile's figures: the build
+        printed them from ACL2 (FN_NATIVE_TLS_LIMIT, FN_NATIVE_STACK_KIB,
+        books/profile-limits.lisp through fn-profile-limit) and
+        tools/build_native_host.sh wrote them in.  The table is read here by
+        tools/profile_limits.py, a different reader of the same literal, so a
+        disagreement between the macro's reading, the build's and the tools'
+        shows here."""
+        text = Path(IMAGE).read_text(errors="replace")
+        tls = re.findall(r"--tls-limit (\d+) ", text)
+        stack = re.findall(r"--control-stack-size (\d+)KB ", text)
+        self.assertEqual(tls, [str(profile_limits.get("tls-limit"))], text)
+        self.assertEqual(stack, [str(profile_limits.get("stack-kib"))], text)
 
     def test_production_refuses_guard_probe(self):
         res = run(IMAGE, ["guard-probe"], environment())
@@ -192,7 +208,43 @@ class DeepInputStackTests(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp(prefix="fn-deep-"))
         self.addCleanup(lambda: subprocess.run(["rm", "-rf", str(self.tmp)]))
 
+    def small_budget(self):
+        """The init budget (MB) the small preset's own figure needs, from ACL2's
+        refusal, never a constant: init under a budget no preset fits is
+        refused by name with the floor's (the small preset's) reservation R;
+        R - 1 is refused by name the same way, and R is the budget the tests
+        init under (the mechanism: a budget at least the figure is accepted,
+        one below it refused).  The bar "the small profile fits 1.5 GB" is
+        the fundamentals F8 scoreboard's, recorded UNMET there, not assumed
+        here (lane heap-bounds, row B2: the records' term derived from the
+        profile's limits)."""
+        cached = getattr(type(self), "_small_budget", None)
+        if cached is not None:
+            return cached
+        refused = re.compile(r"refused init-budget-cannot-hold-profile profile=small "
+                             r"sizing=conservative reservation=(\d+) MB budget=(\d+) MB")
+        def attempt(name, budget):
+            node = Node(self, IMAGE, root=self.tmp / name, control=False, env=NO_STACK)
+            return node, node.operator("init", "--profile", "default", "local.test",
+                                       env={"FN_INIT_BUDGET_MB": str(budget)})
+        probe, low = attempt("budget-probe", 100)
+        self.assertEqual(low.returncode, 1, low.stderr)
+        found = refused.search((low.stdout + low.stderr).decode(errors="replace"))
+        self.assertIsNotNone(found, low.stderr)
+        figure = int(found.group(1))
+        self.assertFalse(Path(probe.store_path).exists())
+        _node, below = attempt("budget-below", figure - 1)
+        self.assertEqual(below.returncode, 1, below.stderr)
+        found = refused.search((below.stdout + below.stderr).decode(errors="replace"))
+        self.assertIsNotNone(found, below.stderr)
+        self.assertEqual((int(found.group(1)), int(found.group(2))), (figure, figure - 1))
+        print("NATIVE-DEEP small figure={} MB (1,500 before lane heap-bounds)".format(figure))
+        type(self)._small_budget = figure
+        return figure
+
     def store(self, name, flags, **init_env):
+        if init_env.get("FN_INIT_BUDGET_MB") == "small":
+            init_env["FN_INIT_BUDGET_MB"] = str(self.small_budget())
         node = Node(self, IMAGE, root=self.tmp / name, control=False, env=NO_STACK)
         made = node.operator("init", *flags, "local.test", env=init_env)
         self.assertEqual(made.returncode, 0, made.stderr)
@@ -214,7 +266,7 @@ class DeepInputStackTests(unittest.TestCase):
         passes the control stack the installed launcher's probe decides for
         a store, not ACL2's save-exec 64 MiB."""
         _node, stack = self.store("launcher", ["--profile", "default"],
-                                      FN_INIT_BUDGET_MB="1500")
+                                      FN_INIT_BUDGET_MB="small")
         found = re.findall(r"--control-stack-size (\S+) ", IMAGE.read_text(encoding="utf-8"))
         self.assertEqual(found, ["%dKB" % stack], found)
 
@@ -254,12 +306,12 @@ class DeepInputStackTests(unittest.TestCase):
         short of the history, which the open refuses by name
         (checkpoint-damaged; batch AY, as lane fitness found for
         test_native_image_differential)."""
-        # The small preset (T = 16,384) on any machine: a 1,500 MB budget.
+        # The small preset (T = 16,384) on any machine: its own figure's budget.
         # The replay store keeps its whole history in one segment: its open
         # suffix (the automatic checkpoint's period) is above 2,000 records.
         for name, extra in (("long", []), ("long-replay", ["--max-open-suffix", "4096"])):
             node, stack = self.store(name, ["--profile", "default"] + extra,
-                                          FN_INIT_BUDGET_MB="1500")
+                                          FN_INIT_BUDGET_MB="small")
             print("NATIVE-DEEP {} stack={} KB".format(name, stack))
             owner = self.start(node, stack)
             try:
@@ -290,7 +342,7 @@ class DeepInputStackTests(unittest.TestCase):
         lines, and one of 20,000 lines over the 32,768-octet bound, are
         refused (441) and the node serves on."""
         node, stack = self.store("errors", ["--profile", "default"],
-                                      FN_INIT_BUDGET_MB="1500")
+                                      FN_INIT_BUDGET_MB="small")
         print("NATIVE-DEEP errors stack={} KB".format(stack))
         owner = self.start(node, stack)
         try:

@@ -63,7 +63,6 @@
 ; none of node-config's definitions (audit 2026-09-25, packet 2).
 (include-book "node-invariants")
 (include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
-(include-book "config-invariants")
 (include-book "config-records")
 (include-book "nntp-syntax")
 (include-book "records-seam")

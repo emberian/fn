@@ -4,6 +4,7 @@
 (include-book "../../books/store-reclaim-pack")
 (include-book "must-fail-checked")
 (include-book "owner-served-invariants-tests")
+(include-book "../../books/byte-store-frame")
 
 ; The owner fixture's store after its article completed (as in
 ; store-reclaim-holders-tests), its committed history as octets, and the

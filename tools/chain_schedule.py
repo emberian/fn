@@ -54,6 +54,13 @@ from typing import Iterable
 
 ROOT = Path(__file__).resolve().parent.parent
 HISTORY = ROOT / "planning" / "evidence" / "manifests"
+# What quiet_walls needs of each archived manifest, keyed by file name with
+# its size and mtime: the archive is ~400 MB of JSON (2,458 manifests, up to
+# 2.4 MB each) and every `--jobs auto` and shape_books call re-read all of it
+# (tooling-obstructions, 2026-09-28).  build/ is per tree and ignored; a stale
+# or unreadable summary is rebuilt, never trusted over the file.
+SUMMARY = ROOT / "build" / "wall-summary.json"
+SUMMARY_VERSION = 1
 
 # (knee, slope) of s(L) per box, from `python3 tools/chain_schedule.py fit`
 # on 2026-09-28 over planning/evidence/manifests at 48a736d5e: persvati
@@ -102,8 +109,71 @@ class Walls:
     fill: float
 
 
+def manifest_summary(manifest: object) -> dict | None:
+    """The part of one manifest quiet_walls reads, or None when it counts nothing:
+    its box, cpus and each book's wall with its mean load (None when unrecorded)."""
+    if not isinstance(manifest, dict) or manifest.get("pcert"):
+        return None
+    walls = manifest.get("book_wall_seconds") or {}
+    loads = manifest.get("book_load_average") or {}
+    if not isinstance(walls, dict):
+        return None
+    books = {}
+    for book, seconds in walls.items():
+        if not isinstance(seconds, (int, float)) or seconds < 0:
+            continue
+        load = loads.get(book) if isinstance(loads, dict) else None
+        mean = ((load[0] + load[1]) / 2 if isinstance(load, list) and len(load) == 2
+                and None not in load else None)
+        books[book] = [float(seconds), mean]
+    cpus = manifest.get("cpu_count")
+    return {"box": host_name(str(manifest.get("hostname") or "unknown")),
+            "cpus": cpus if isinstance(cpus, int) else None, "books": books}
+
+
+def summaries(paths: list[Path], summary: Path | None) -> list[dict | None]:
+    """Each path's manifest_summary, from the SUMMARY file where it is current."""
+    known: dict = {}
+    if summary is not None:
+        try:
+            loaded = json.loads(summary.read_text(encoding="utf-8"))
+            if loaded.get("version") == SUMMARY_VERSION:
+                known = loaded.get("files") or {}
+        except (OSError, ValueError, AttributeError):
+            known = {}
+    found, fresh, changed = [], {}, False
+    for path in paths:
+        try:
+            stat = path.stat()
+        except OSError:
+            found.append(None)
+            continue
+        stamp = [stat.st_size, stat.st_mtime_ns]
+        entry = known.get(path.name)
+        if isinstance(entry, dict) and entry.get("stamp") == stamp:
+            value = entry.get("summary")
+        else:
+            changed = True
+            try:
+                value = manifest_summary(json.loads(path.read_text(encoding="utf-8")))
+            except (OSError, ValueError):
+                value = None
+        fresh[path.name] = {"stamp": stamp, "summary": value}
+        found.append(value)
+    if summary is not None and (changed or set(fresh) != set(known)):
+        try:
+            summary.parent.mkdir(parents=True, exist_ok=True)
+            partial = summary.with_name(f"{summary.name}.{os.getpid()}.tmp")
+            partial.write_text(json.dumps({"version": SUMMARY_VERSION, "files": fresh}),
+                               encoding="utf-8")
+            os.replace(partial, summary)
+        except OSError:
+            pass
+    return found
+
+
 def quiet_walls(books: Iterable[str], history: Path | None = None,
-                host: str | None = None) -> Walls:
+                host: str | None = None, summary: Path | None = None) -> Walls:
     """Each book's predicted quiet seconds on HOST (default: this box).
 
     A measurement is an archived wall divided by the slowdown at the load
@@ -111,36 +181,28 @@ def quiet_walls(books: Iterable[str], history: Path | None = None,
     `RECENT` measurements on HOST, or on any box when HOST has none (the
     laptop, a fresh box).  Archived run ids carry a UTC stamp after
     `certify-`, which orders them in time.  A missing or unreadable
-    manifest is skipped.
+    manifest is skipped.  The archive's manifests are read through the
+    SUMMARY cache (another history only with an explicit `summary`).
     """
-    history = HISTORY if history is None else history
+    if history is None:
+        history = HISTORY
+        summary = SUMMARY if summary is None else summary
     wanted = set(books)
     here = host_name(host)
     mine: dict[str, list[float]] = collections.defaultdict(list)
     anywhere: dict[str, list[float]] = collections.defaultdict(list)
     paths = sorted(history.glob("*certify-*.json"),
                    key=lambda p: p.name.split("certify-")[-1]) if history.is_dir() else []
-    for path in paths:
-        try:
-            manifest = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
+    for one in summaries(paths, summary):
+        if one is None:
             continue
-        if not isinstance(manifest, dict) or manifest.get("pcert"):
-            continue
-        walls = manifest.get("book_wall_seconds") or {}
-        loads = manifest.get("book_load_average") or {}
-        cpus = manifest.get("cpu_count")
-        box = host_name(str(manifest.get("hostname") or "unknown"))
-        if not isinstance(walls, dict):
-            continue
-        for book, seconds in walls.items():
-            if book not in wanted or not isinstance(seconds, (int, float)) or seconds < 0:
+        box, cpus = one["box"], one["cpus"]
+        for book, (seconds, load) in one["books"].items():
+            if book not in wanted:
                 continue
             factor = 1.0
-            load = loads.get(book) if isinstance(loads, dict) else None
-            if (isinstance(load, list) and len(load) == 2 and None not in load
-                    and isinstance(cpus, int) and cpus > 0):
-                factor = slowdown((load[0] + load[1]) / 2 / cpus, box)
+            if load is not None and isinstance(cpus, int) and cpus > 0:
+                factor = slowdown(load / cpus, box)
             anywhere[book].append(float(seconds) / factor)
             if box == here:
                 mine[book].append(float(seconds) / factor)

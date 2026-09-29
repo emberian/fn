@@ -24,10 +24,11 @@ details, the measured envelope.
 Everything the node runs is `bin/fn` (a shell script), the frozen launcher
 and the saved Lisp image it execs; no Python runs on a deployed node
 (D35, `tools/runpath_check.py`). Python remains for clients on other
-machines and for the tests. The sections "Install", "Initialize" and the
-per-user `~/fn-live` service further down describe the older Python
-development service (`bin/fn --config ...` in a checkout); a release has
-none of it, and its verbs are `fn operator CONFIG VERB ...`.
+machines and for the tests. The sections "Install" and "Run it as a service"
+and the per-user `~/fn-live` service further down still describe the older
+Python development service (the Python `bin/fn` in a checkout), which was
+retired on 2026-09-28 (python-diet T5); a release never had it, and its verbs
+are `fn operator CONFIG VERB ...`.
 
 ## Native component entry
 
@@ -226,7 +227,7 @@ machine is the least of its physical memory, the cgroup's `memory.max`
 store's next `run` over the store on disk (`fn-heap-status-decide`, the same
 decision as the launcher's probe): `heap=MB MB profile=WORD machine=M MB
 stack=KB KB threads=N`. The thread stacks are added by
-books/heap-reservation.lisp (30 threads: 12 fixed, 2 I/O loops, 16 control
+books/heap-reservation.lisp (<!--limit:fixed-threads + mux-loops + control-clients-->30<!--/limit--> threads: <!--limit:fixed-threads-->12<!--/limit--> fixed, <!--limit:mux-loops-->2<!--/limit--> I/O loops, <!--limit:control-clients-->16<!--/limit--> control
 clients; a connection is no thread since connection-multiplexing). The
 installed launcher ignores the caller's `SBCL_USER_ARGS` and
 `FN_TEST_HEAP_MB`; a checkout's `packaging/fn` takes the tests'
@@ -455,7 +456,22 @@ PRF-271, equated with the streamed decision the host calls by
 `fn-lgr-decide-stream-is-lgr-decide`). It prints `reclaimed=N
 freed-octets=F ...` and one `reclaimed MSGID` line each; `--dry-run` prints
 `dry-run would-reclaim=N ...` and changes nothing; nothing to do is
-`reclaimed=0`. `store checkpoint` publishes the checkpoint alone (the same
+`reclaimed=0`. Beside the store-wide retention rule, a per-group expiry
+policy releases content (Q14, RET-008, books/expiry*.lisp):
+`retention expire {GROUP | *} {clear | [keep DAYS] [default DAYS] [purge
+DAYS] [octets N]}` (INN expire.ctl's keep, default and purge; a posted
+`Expires:` is honoured between keep and purge; `octets` keeps the newest
+articles of the group whose payloads fit; `*` is every group without its
+own; no policy expires nothing). The reclaim's context carries the set the
+policy expires at the reclaim's recorded instant, an article leaves only when
+every group it is filed in expires it, and every holder still keeps what it
+holds; `expired=E` (`would-expire=E`) is the policy's share of the report.
+An expired article is served `430`/`423 article reclaimed`, its Message-ID is
+still refused as a duplicate and its numbers are never reused. Reclamation
+frees bytes, never transactions: `transactions-used` counts the records the
+tombstones keep, so a store whose transaction count is exhausted is not
+brought back by expiry (Q11; the way back today is `store export`, a fresh
+`init` with a larger `--max-transactions`, `store import`). `store checkpoint` publishes the checkpoint alone (the same
 rotate and drop). `store ROOT digest` opens the store read-only (refused while an
 owner runs) and prints ACL2's BLAKE3 digests of the state the open folded
 (`fn-store-sn-replay-digest-report`, host/store-node-host.lisp, over
@@ -668,7 +684,7 @@ accepted operator health
 | 20 | `fenced` | a clone fence awaits its incarnation rollover (`reason=clone-fence`); a process holds the store's writer lock and nothing answers on the configured control socket yet (`reason=starting`: an owner recovering its store before it listens, or an offline command); a process holds the lock and no control socket is configured, or the lock could not be probed (`reason=store-held`); or the socket accepted and did not answer (`reason=owner-unanswering`) | `starting`: wait and ask again, `status` answers once the owner listens; otherwise find the process (`fuser store/writer.lock`); a clone finishes its rollover; never delete the lock |
 | 21 | `exhausted` | transactions used reached the transaction-id codec ceiling (2^32 - 1), or the retention ledger's reserved charge its uint32 count | terminal for this store format: no profile raises it |
 | 22 | `unqualified-profile` | the persisted profile is not valid (`fn-bs-profile-validp`), or it is the development profile. The line prints the store's format (`format=9` for the record log) | reinstall: `store export`, then `store import --FIELD N` (or `init --profile scale`) |
-| 23 | `space-pressure` | free headroom below `[alerts] headroom_min_percent` (default 10) on transactions, history octets or retention charge | a reinstall with a larger field (`store export`, `store import --FIELD N`), `capacity`, or release obligations |
+| 23 | `space-pressure` | free headroom below `[alerts] headroom_min_percent` (default <!--limit:headroom-min-percent-->10<!--/limit-->) on transactions, history octets or retention charge | a reinstall with a larger field (`store export`, `store import --FIELD N`), `capacity`, or release obligations |
 | 24 | `no-route` | forwarding obligations are held and the configuration has no `bp-route` | `bp-route add PATTERN BOUNDARY` |
 | 25 | `stranded-transfer` | an outbound feed entry was dropped at its retry bound; nothing re-offers it | fix the peer, then re-feed the article |
 | 26 | `unavailable-peer` | an outbound peer has pending articles and no open connection, or it keeps deferring them (`deferred=N`: a full peer answers IHAVE/TAKETHIS `436` with `reason=unaffordable` in its log; planning/evidence/friend-blockers-2026-09-27.md, PKT-711), or its outbound feed queue is saturated (`saturated=N`: the queue holds only undelivered articles, and while one of the post's target peers has no room every POST is refused `441 ... (feed-queue-full)` and a relayed article is answered `436`; PRF-335) | check the peer's host and port (`peer list`), its reachability, and ask its operator whether its store is full |
@@ -1249,17 +1265,12 @@ recorded and what it replaced.
 ## Initialize
 
 ```
-fn --config /etc/fn/fn.toml init \
-        --store /var/lib/fn/store \
-        --group fn.letters --group fn.test \
-        --listen 127.0.0.1:1119 \
-        --agent "news@example.invalid" \
-        --anchor-server int08h \
-        --acl2 /usr/local/bin/acl2 \
-        --log /var/log/fn/fn.log
+fn operator /etc/fn/fn.toml init fn.letters fn.test
 ```
 
-This creates the store and writes the configuration file.
+This creates the store the configuration's `[store] path` names, serving the
+groups named; the configuration file itself (`[store]`, `[listener]`, `[log]`,
+`[control]`) is written by the operator beforehand (`packaging/fn.toml.example`).
 [`packaging/fn.toml.example`](../packaging/fn.toml.example) documents every
 table: `[store] path`, `[listener] host port`, `[posting] enabled`,
 `[anchor] server`, `[acl2] path slots`, `[log] path`, `[control] path`. This
@@ -1392,10 +1403,9 @@ maps writable-executable pages and will not start with it set.
 
 Two things the unit will bite you with, both learned by running it:
 
-- **`--config` precedes the verb.** `fn run --config <path>` exits 2 with
-  `unrecognized arguments`, and under `Restart=on-failure` that is a loop. The
-  shipped `ExecStart` is `fn --config <path> run`; keep that order if you edit
-  it. The unit carries `StartLimitIntervalSec=60` and `StartLimitBurst=5` so a
+- **The configuration precedes the verb.** The shipped `ExecStart` is
+  `fn operator <config> run`; a verb before the configuration is a usage
+  error, and under `Restart=on-failure` that is a loop. The unit carries `StartLimitIntervalSec=60` and `StartLimitBurst=5` so a
   service that cannot start gives up instead of spinning.
 - **The start limit latches.** Once a unit has hit it, every later `restart`
   is refused with `Start request repeated too quickly` **and exits 0**, which
@@ -1526,7 +1536,7 @@ Post through fn, which routes to the running owner's control socket when one
 is live and opens the store directly when one is not:
 
 ```
-fn --config /etc/fn/fn.toml post \
+fn operator /etc/fn/fn.toml post \
    --message-id '<2026-09-19.1@example.invalid>' \
    --payload /tmp/article.txt --group fn.letters
 ```
@@ -1588,17 +1598,17 @@ a box that is also peering with itself.
 
 ## Require a login (RFC 4643)
 
-Off by default. To turn it on, write the policy into the configuration and
-enrol at least one login:
+Off by default. To turn it on, write the policy into the configuration
+(`[auth] required = true`) and enrol at least one login:
 
 ```
-fn --config /etc/fn/fn.toml init --store /var/lib/fn/store --auth-required
-fn --config /etc/fn/fn.toml principal set-password alice --posting
-fn --config /etc/fn/fn.toml principal list
+fn operator /etc/fn/fn.toml principal set-password alice --posting
+fn operator /etc/fn/fn.toml principal list
 ```
 
-`set-password` prompts twice, derives the salted verifier in an ACL2 session
-over `books/auth-secret.lisp`, and writes `<store>/auth.toml` at mode 0600.
+`set-password` prompts twice (or reads two lines of standard input when there
+is no terminal), derives the salted verifier in ACL2 over
+`books/auth-secret.lisp`, and writes the credential file at mode 0600.
 The secret is not in that file and cannot be recovered from it. `principal
 list` reads the same file, which is the one the running service loads, and
 prints the login, its principal id and its posting flag; it never prints the

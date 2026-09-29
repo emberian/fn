@@ -175,6 +175,8 @@
 (include-book "owner-stop-drain")
 (include-book "owner-time-admission")
 (include-book "owner-article-slots")
+(include-book "owner-credits")
 (include-book "owner-time-journal-writer")
+(include-book "owner-time-bars")
 (include-book "owner-reader-read")
 (include-book "peer-carriage")

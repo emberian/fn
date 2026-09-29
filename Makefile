@@ -7,11 +7,15 @@ FN_CERTIFY_JOBS ?= 1
 FN_LD_TIMEOUT_SECONDS ?= 240
 ACL2_BOOKS ?= books/defrecord \
 	books/defkeystone \
+	books/definterface \
+	books/defevent \
 	books/deftransition \
 	books/rev-onto \
 	books/acceptance-alloc \
 	tests/acl2/defrecord-tests \
 	tests/acl2/defkeystone-tests \
+	tests/acl2/definterface-tests \
+	tests/acl2/defevent-tests \
 	books/acceptance \
 	books/acceptance-invariants \
 	tests/acl2/acceptance-tests \
@@ -55,6 +59,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-config \
 	books/sha256 \
 	tests/acl2/sha256-tests \
+	books/hmac-sha256 \
+	tests/acl2/hmac-sha256-tests \
+	books/scram \
+	tests/acl2/scram-tests \
 	books/blake3 \
 	tests/acl2/blake3-tests \
 	books/blake3-stobj \
@@ -415,6 +423,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-reclaim-tests \
 	books/reclaim-instant \
 	tests/acl2/reclaim-instant-tests \
+	books/expiry-policy \
+	books/expiry-verdict \
+	books/expiry \
+	books/expiry-instant \
+	tests/acl2/expiry-tests \
 	books/store-log-route-phases \
 	books/store-log-extend \
 	tests/acl2/store-log-extend-tests \
@@ -905,6 +918,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-join-pinned \
 	books/served-catalog-join-read \
 	books/served-catalog-join-inv \
+	books/served-catalog-join-host \
+	books/served-catalog-join-host-finish \
+	books/served-catalog-join-host-post \
+	books/served-catalog-join-host-open \
+	books/served-catalog-join-host-identity \
+	books/served-catalog-join-host-complete \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
@@ -1143,6 +1162,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/relay-source-routes-tests \
 	tests/acl2/owner-served-invariants-tests \
 	tests/acl2/owner-numbering-tests \
+	books/number-durability \
+	tests/acl2/number-durability-tests \
 	tests/acl2/owner-fault-tests \
 	tests/acl2/owner-verdict-tests \
 	tests/acl2/owner-verdict-read-tests \
@@ -1264,6 +1285,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-commit-steps-tests \
 	books/owner-commit-pipeline \
 	tests/acl2/owner-commit-pipeline-tests \
+	books/owner-commit-fairness \
+	tests/acl2/owner-commit-fairness-tests \
 	books/owner-ack-after-barrier \
 	tests/acl2/owner-ack-after-barrier-tests \
 	books/owner-reader-view \
@@ -1277,11 +1300,18 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-time-admission \
 	tests/acl2/owner-time-model-tests \
 	books/owner-article-slots \
+	books/owner-article-held \
 	tests/acl2/owner-article-slots-tests \
+	books/owner-credits \
+	tests/acl2/owner-credits-tests \
 	books/owner-time-journal-writer \
 	tests/acl2/owner-time-journal-writer-tests \
 	books/owner-stop-drain \
 	tests/acl2/owner-stop-drain-tests \
+	books/owner-time-bars \
+	tests/acl2/owner-time-bars-tests \
+	books/feed-restart-domain \
+	tests/acl2/feed-restart-domain-tests \
 	books/web-request \
 	tests/acl2/web-request-tests \
 	books/web-2047 \
@@ -1439,7 +1469,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/image-world-dtn \
 	books/image-world-store-test
 
-.PHONY: extract-check site check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
+.PHONY: extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
 # opens a codec theory at the top or names a seam's implementation, and
 # `make check` fails if one starts to.  Each cluster lane of the step appends
@@ -1477,6 +1507,26 @@ site:
 check-lane:
 	FN_LANE_CHECK=1 FN_LANE_CHECK_DIR=$$(mktemp -d "$${TMPDIR:-/tmp}/fn-lane-check.XXXXXX") $(MAKE) check
 
+# `make check-fast`: the seconds-to-a-minute checks a two-line registry or
+# docs fix can break, before a full check-lane (lanes asked for it after a
+# two-line registry fix cost a 25-minute round; batch BB, 2026-09-28).  Not a
+# gate: `make check` stays the gate.  Registry reciprocity, spec and reach
+# citations, the ledger and the current view (with FN_LANE_CHECK, as
+# check-fast-lane sets it, the ledger is regenerated into a temporary
+# directory and only printed, as in check-lane), and docs_check.
+check-fast:
+	@$(PYTHON) tools/check_steps.py begin $(CHECK_STEPS_DIR)
+	@$(CHECK_STEP) $(PYTHON) tools/merge_registry.py --reciprocate --check
+	@$(CHECK_STEP) $(PYTHON) tools/spec_cite_check.py --summary --strict
+	@$(CHECK_STEP) $(PYTHON) tools/reach_check.py --summary --strict
+	@$(CHECK_STEP) $(PYTHON) tools/ledger.py --check
+	@$(CHECK_STEP) $(PYTHON) tools/current_view.py --check
+	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
+	@$(PYTHON) tools/check_steps.py summary $(CHECK_STEPS_DIR)
+
+check-fast-lane:
+	FN_LANE_CHECK=1 FN_LANE_CHECK_DIR=$$(mktemp -d "$${TMPDIR:-/tmp}/fn-lane-check.XXXXXX") $(MAKE) check-fast
+
 # `make check` runs every step even when one fails, then prints a table of
 # them (step, exit, seconds, first finding) and fails if any step failed:
 # make stops a recipe at its first red line, and one sibling's red step used
@@ -1498,6 +1548,8 @@ check:
 # counts move with every include (lane lane-tools-2, for served-columns).
 	@$(CHECK_STEP) $(PYTHON) tools/shape_books.py --check
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_shape_books
+# tools/rule_usage.py's graph simulation and log reading (lane fan-in-cuts).
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_rule_usage
 # The website renders the guides' articles (site/build_site.py, stdlib only):
 # every article is well-formed (tools/docs_articles.py: its headers, its
 # Message-ID, 72 columns), every repository path it names exists, and every
@@ -1538,15 +1590,9 @@ check:
 # on build order with it).
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_modes
-# specs/crash-model-v2.md section 2.3's check, in both directions: every cut
-# the campaign kills at is a :cut of the model program that transcribes its
-# host function, and every :cut of a model program is a host faults.at site.
-# It is mechanical and needs no ACL2, so it belongs in `check`.  It fails on a
-# fidelity defect; missing host cuts and syscall drift are reported and do not
-# fail (--strict fails on those too).
-	@$(CHECK_STEP) $(PYTHON) tools/transcribe_check.py
-# The same transcription check for the native host, which transcribe_check
-# does not read: for each program tests/campaign/native_cuts.py names, the
+# specs/crash-model-v2.md section 2.3's transcription check for the native
+# host (the Python host and its transcribe_check retired, python-diet T5):
+# for each program tests/campaign/native_cuts.py names, the
 # host function's success-path syscalls, file-kernel observations and fnn-at
 # cuts in source order equal the program's steps (kind and directory), and
 # every error-arm observation is one of the program's error constants.  A
@@ -1740,6 +1786,9 @@ check:
 # subject, so every orphan it reports is real and it misses some.
 	@$(CHECK_STEP) $(PYTHON) tools/reach_check.py --summary --strict
 	@$(CHECK_STEP) $(PYTHON) tools/keystone_emit.py --check
+	@$(CHECK_STEP) $(PYTHON) tools/interface_emit.py --check
+	@$(CHECK_STEP) $(PYTHON) tools/event_emit.py --check
+	@$(CHECK_STEP) $(PYTHON) tools/profile_limits.py --check
 # Which host entries walk retained state (PKT-334, answers 2026-09-26 §2): a
 # function called once per request that traverses the Store history, the
 # held BP fragments or the queued BP jobs.  tools/hot_path_check.py follows the
@@ -1825,7 +1874,7 @@ TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check tests.test_hot_path_check tests.test_fixture_stderr tests.test_fixture_init_refusal \
 	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost tests.test_throughput_gate tests.test_service_envelope \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_rule_cost tests.test_tau_cost tests.test_proof_repl tests.test_native_raw_scripts \
-	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check tests.test_post_docs \
+	    tests.test_test_budget tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check tests.test_post_docs \
 	    tests.test_farm tests.test_merge_registry tests.test_next_id tests.test_host_check_load tests.test_wait_for tests.test_native_harness tests.test_native_program_check \
 	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_release_sequence tests.test_cut_release tests.test_fundamentals tests.test_check_steps tests.test_cert_cache_sync \
 	    tests.test_extract_gate
@@ -1838,7 +1887,7 @@ tooling-test:
 # named, and either fails the target (exit 2; test failures exit 1).
 # `--order reverse` runs each module's tests last to first, which is how a
 # test that relies on an earlier one's leftovers is found (harness-repair).  tests/test_budgets.json may lower a module's budget,
-# never raise it.  `make test-modules MODULES="tests.test_store ..."` runs a
+# never raise it.  `make test-modules MODULES="tests.test_native_owner ..."` runs a
 # chosen set the same way.  A module whose every test skipped is reported
 # SKIPPED (N of N) with its reasons and exits 4 (PKT-437 (2)); --discover
 # includes the native modules, which skip on a machine without their image,

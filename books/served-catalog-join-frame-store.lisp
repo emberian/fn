@@ -40,8 +40,10 @@
 ;                             across every owner transition.
 ;   fn-scjs-historyp       -- natp version, version <= len, a true-list history:
 ;                             fn-own-relation gives it (fn-scjs-historyp-of-own-relation).
-;   fn-nntp-projectionp    -- of the refreshed view's archive: the parent's
-;                             named hypothesis (LANEDUMP, "Named hypotheses").
+;   fn-statep              -- of the refreshed view's archive: the catalog
+;                             premise's (was fn-nntp-projectionp until lane
+;                             join-f2); fn-ocl-relation carries it
+;                             (fn-acar-ocl-relation-carries-view-statep).
 ;   for a completion: (not (fn-scj-load-h (fn-sn-completion-record s))), the
 ;   completing record loads no row -- an ARTICLE completion is the catalog's
 ;   own T4-then-T2 (step 2) and is excluded; and the history past the view
@@ -192,7 +194,7 @@
                   (fn-scjs-store-framep (fn-own-store o) (fn-own-store o2) v)
                   (equal (fn-own-view o2) (fn-own-view o))
                   (equal (fn-own-conns o2) (fn-own-conns o))
-                  (fn-nntp-projectionp (fn-own-view-archive (fn-own-view (fn-own-refresh o2)))))
+                  (fn-statep (fn-own-view-archive (fn-own-view (fn-own-refresh o2)))))
              (and (fn-scj-invp (fn-own-refresh o2) fn-arena fn-cat)
                   (fn-scjs-seenp (fn-own-refresh o2)))))
   :hints (("Goal" :cases ((fn-own-store-idlep (fn-own-store o2)))
@@ -561,7 +563,7 @@
                   (fn-scar-view-indexedp o)
                   (fn-scjs-historyp o)
                   (fn-scjs-store-framep (fn-own-store o) st (fn-own-view-version (fn-own-view o)))
-                  (fn-nntp-projectionp (fn-own-view-archive (fn-own-view o2))))
+                  (fn-statep (fn-own-view-archive (fn-own-view o2))))
              (and (fn-scj-invp o2 fn-arena fn-cat)
                   (fn-scjs-seenp o2))))
   :hints (("Goal" :in-theory '(fn-ocl-owner-with-store fn-scjs-historyp fn-own-store-of-fn-own-make
@@ -595,7 +597,7 @@
                 (fn-scar-view-indexedp o)
                 (fn-scjs-historyp o)
                 (not (member-equal (car event) '(:finish :crash :recover)))
-                (fn-nntp-projectionp (fn-own-view-archive (fn-own-view (fn-own-store-step o event)))))
+                (fn-statep (fn-own-view-archive (fn-own-view (fn-own-store-step o event)))))
            (and (fn-scj-invp (fn-own-store-step o event) fn-arena fn-cat)
                 (fn-scjs-seenp (fn-own-store-step o event))))
   :hints (("Goal" :in-theory '(fn-scjs-store-step-is-owner-with-store)
@@ -637,7 +639,7 @@
                   (not (fn-scj-load-h (fn-sn-completion-record s)))
                   (fn-scj-no-rowsp (nthcdr (fn-own-view-version (fn-own-view o))
                                            (fn-sf-records (fn-sn-files s))))
-                  (fn-nntp-projectionp (fn-own-view-archive (fn-own-view (fn-own-complete o)))))
+                  (fn-statep (fn-own-view-archive (fn-own-view (fn-own-complete o)))))
              (and (fn-scj-invp (fn-own-complete o) fn-arena fn-cat)
                   (fn-scjs-seenp (fn-own-complete o)))))
   :hints (("Goal" :in-theory '(fn-scjs-historyp fn-own-store-of-fn-own-make
@@ -666,7 +668,7 @@
                   (not (fn-scj-load-h (fn-sn-completion-record s)))
                   (fn-scj-no-rowsp (nthcdr (fn-own-view-version (fn-own-view o))
                                            (fn-sf-records (fn-sn-files s))))
-                  (fn-nntp-projectionp (fn-own-view-archive (fn-own-view (fn-own-store-step o event)))))
+                  (fn-statep (fn-own-view-archive (fn-own-view (fn-own-store-step o event)))))
              (and (fn-scj-invp (fn-own-store-step o event) fn-arena fn-cat)
                   (fn-scjs-seenp (fn-own-store-step o event)))))
   :hints (("Goal" :cases ((fn-sn-completion-enabledp (fn-own-store o)))
@@ -919,7 +921,19 @@
                                  (fn-own-config o) (fn-own-queue o) nil
                                  (if (equal (fn-own-outcome-completion o word) :durable)
                                      (fn-own-feed-durable o (fn-own-inflight o))
-                                   (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o))))))))
+                                   (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o))))
+                 ;; the durable arm advances the next owner (fn-own-outcome):
+                 ;; stated, so the proof does not depend on which rules an
+                 ;; includer's world happens to try first.
+                 (:instance fn-scjs-advance-keeps-invp
+                            (o (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+                                   (fn-own-next-id o) (fn-own-max-conns o)
+                                   (if (equal (fn-own-pending o) id) nil (fn-own-pending o))
+                                   (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
+                                   (fn-own-config o) (fn-own-queue o) nil
+                                   (if (equal (fn-own-outcome-completion o word) :durable)
+                                       (fn-own-feed-durable o (fn-own-inflight o))
+                                     (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o))))))))
 
 (defthm fn-scjs-transit-outcome-keeps-invp
   (implies (fn-scj-invp o fn-arena fn-cat)
@@ -998,7 +1012,7 @@
                   (not (fn-scj-load-h (fn-sn-completion-record s)))
                   (fn-scj-no-rowsp (nthcdr (fn-own-view-version (fn-own-view o))
                                            (fn-sf-records (fn-sn-files s))))
-                  (fn-nntp-projectionp
+                  (fn-statep
                    (fn-own-view-archive (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena))))))
              (and (fn-scj-invp (cdr (fn-ccar-own-finish o cfg fn-arena)) fn-arena fn-cat)
                   (fn-scjs-seenp (cdr (fn-ccar-own-finish o cfg fn-arena))))))
@@ -1017,7 +1031,7 @@
                   (not (fn-scj-load-h (fn-sn-completion-record s)))
                   (fn-scj-no-rowsp (nthcdr (fn-own-view-version (fn-own-view o))
                                            (fn-sf-records (fn-sn-files s))))
-                  (fn-nntp-projectionp
+                  (fn-statep
                    (fn-own-view-archive (fn-own-view (fn-ocfg-owner (fn-ocfg-complete oc))))))
              (and (fn-scj-invp (fn-ocfg-owner (fn-ocfg-complete oc)) fn-arena fn-cat)
                   (fn-scjs-seenp (fn-ocfg-owner (fn-ocfg-complete oc))))))
@@ -1037,7 +1051,7 @@
                   (not (fn-scj-load-h (fn-sn-completion-record s)))
                   (fn-scj-no-rowsp (nthcdr (fn-own-view-version (fn-own-view o))
                                            (fn-sf-records (fn-sn-files s))))
-                  (fn-nntp-projectionp
+                  (fn-statep
                    (fn-own-view-archive (fn-own-view (fn-ocfg-owner (fn-rix-ocfg-complete oc fn-hist))))))
              (and (fn-scj-invp (fn-ocfg-owner (fn-rix-ocfg-complete oc fn-hist)) fn-arena fn-cat)
                   (fn-scjs-seenp (fn-ocfg-owner (fn-rix-ocfg-complete oc fn-hist))))))
@@ -1065,7 +1079,7 @@
                   (fn-scar-view-indexedp o)
                   (fn-scjs-historyp o)
                   (not (member-equal (car ev) '(:finish :crash :recover)))
-                  (fn-nntp-projectionp (fn-own-view-archive (fn-own-view o2))))
+                  (fn-statep (fn-own-view-archive (fn-own-view o2))))
              (and (fn-scj-invp o2 fn-arena fn-cat)
                   (fn-scjs-seenp o2))))
   :hints (("Goal" :in-theory '(fn-scjs-ocfg-store-step-owner)
@@ -1080,7 +1094,7 @@
                   (fn-scjs-seenp o)
                   (fn-scar-view-indexedp o)
                   (fn-scjs-historyp o)
-                  (fn-nntp-projectionp (fn-own-view-archive (fn-own-view o2))))
+                  (fn-statep (fn-own-view-archive (fn-own-view o2))))
              (and (fn-scj-invp o2 fn-arena fn-cat)
                   (fn-scjs-seenp o2))))
   :hints (("Goal" :in-theory '(fn-pcar-sbud-prepare-is-sbud-prepare fn-sbud-prepare fn-opc-prepare
@@ -1121,7 +1135,7 @@
                       (fn-scjs-store-framep s (fn-cpo-configure-durable s (fn-ocfg-staged oc)) v)
                     (and (not (fn-scj-load-h (fn-sn-completion-record s)))
                          (fn-scj-no-rowsp (nthcdr v (fn-sf-records (fn-sn-files s))))))
-                  (fn-nntp-projectionp
+                  (fn-statep
                    (fn-own-view-archive (fn-own-view (fn-ocfg-owner (fn-ocl-complete oc))))))
              (and (fn-scj-invp (fn-ocfg-owner (fn-ocl-complete oc)) fn-arena fn-cat)
                   (fn-scjs-seenp (fn-ocfg-owner (fn-ocl-complete oc))))))
@@ -1159,7 +1173,7 @@
                   (fn-scjs-seenp o)
                   (fn-scar-view-indexedp o)
                   (fn-scjs-historyp o)
-                  (fn-nntp-projectionp (fn-own-view-archive (fn-own-view o2))))
+                  (fn-statep (fn-own-view-archive (fn-own-view o2))))
              (and (fn-scj-invp o2 fn-arena fn-cat)
                   (fn-scjs-seenp o2))))
   :hints (("Goal" :in-theory '(fn-ccar-ocfg-prepare-identity fn-ocfg-with-owner

@@ -64,6 +64,25 @@ class BoxesTests(unittest.TestCase):
             self.assertIn("hbox reserved by curve-lane", self.run_boxes(answers).stdout)
         self.assertEqual(self.run_boxes(answers, "reserve", "hbox", "--why", "x").returncode, 2)
 
+    def test_check_names_the_holder_and_expiry_and_the_listing_shows_tokens(self):
+        # tooling-obstructions: `check` said nothing unless someone else held
+        # the box, and no command showed who held the wide-book token.
+        lease = "R 1900000000 25 17:05Z curve-lane a scale curve"
+        token = "T wide 1900000000 12 16:52Z config-and-legacy config.lisp batch"
+        answers = {"hbox": "24 1.0 70 24 700 /tank/fn/scratch\n" + lease + "\n" + token,
+                   "persvati": "24 12.0 60 0 80 /home/e/fn-gates"}
+        with mock_env(FN_BOX_AS="curve-lane"):
+            mine = self.run_boxes(answers, "check", "hbox")
+        self.assertEqual(mine.returncode, 0)
+        self.assertIn("hbox reserved by curve-lane until 17:05Z (25 min left)", mine.stdout)
+        with mock_env(FN_BOX_AS="other-lane"):
+            free = self.run_boxes(answers, "check", "persvati")
+            self.assertEqual(free.returncode, 0)
+            self.assertIn("boxes: persvati free", free.stdout)
+            listing = self.run_boxes(answers).stdout
+        self.assertIn("token     wide reserved by config-and-legacy until 16:52Z "
+                      "(12 min left): config.lisp batch", listing)
+
     # waiver-ok: capability -- the lease uses flock(1) and GNU date's -d @N;
     # the laptop (BSD date, no flock) is a machine this tree has not built
     # them for, so the case runs on the build boxes only.

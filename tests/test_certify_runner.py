@@ -315,7 +315,11 @@ class FakeRepository:
         with mock.patch.object(runner, "ROOT", self.root), \
                 mock.patch.object(runner.ledger, "ROOT", self.root), \
                 mock.patch.object(runner, "BUILD_ROOT", self.root / "build" / "dry"), \
-                mock.patch.dict(os.environ, {"PATH": os.environ.get("PATH", "/bin")},
+                mock.patch.dict(os.environ, {"PATH": os.environ.get("PATH", "/bin"),
+                                             # Named, so a farm box's defaults
+                                             # (acl2_slots.apply_box_defaults) stay out.
+                                             "FN_ACL2": "acl2",
+                                             "FN_CERT_CACHE": str(self.root / "no-cache")},
                                 clear=True), \
                 mock.patch.object(runner.sys, "argv", argv), \
                 contextlib.redirect_stdout(buffer), \
@@ -674,6 +678,20 @@ class AffectedByTests(unittest.TestCase):
 
 class MakefileRootsTests(unittest.TestCase):
     """One list of roots, and the Makefile owns it."""
+
+    def test_a_farm_box_run_defaults_its_own_acl2_and_cache(self):
+        # tooling-obstructions: on persvati without FN_CERT_CACHE the run planned
+        # all 339 books against an empty ~/.cache/fn-certs.
+        import farm
+        env = {"PATH": "/bin"}
+        with mock.patch("socket.gethostname", return_value="persvati"):
+            self.assertEqual(runner.acl2_slots.apply_box_defaults(env), "persvati")
+        self.assertEqual(env["FN_CERT_CACHE"],
+                         os.path.expanduser(farm.HOSTS["persvati"]["cache"]))
+        self.assertEqual(env["FN_ACL2"], farm.HOSTS["persvati"]["acl2"])
+        # main applies them before anything reads FN_ACL2 or the cache.
+        after = Path(runner.__file__).read_text().split("args = parser.parse_args()", 1)[1]
+        self.assertTrue(after.lstrip().startswith("box = acl2_slots.apply_box_defaults()"))
 
     def test_the_default_roots_are_the_makefile_roots(self):
         with tempfile.TemporaryDirectory() as directory:

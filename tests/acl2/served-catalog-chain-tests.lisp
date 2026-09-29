@@ -93,7 +93,7 @@
   (let ((arch (scct-arch 3)) (index (scct-index 3)))
     (and ;; the hypothesis, conjunct by conjunct
          (equal (fn-state-articles arch) (fn-cat-view-articles 3 *scct-a* *scct-c*))
-         (fn-nntp-projectionp arch)
+         (fn-statep arch)
          (fn-gidx-pin-correspondencep index arch)
          (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles arch))
          (fn-cnx-freshp *scct-c*)

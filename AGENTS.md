@@ -81,9 +81,10 @@ the 2026-09-22 proof-engineering review. Green is not true.
   Remove a redundant hypothesis only after proving the weakened theorem;
   failed proof search is not a counterexample.
 - **A named assumption is an `encapsulate`** with a local witness in
-  `books/assumptions.lisp`, and the theorems that use it mention it.
+  `books/assumptions.lisp` or a book it includes (`books/assumptions-*.lisp`),
+  and the theorems that use it mention it.
 - **Every process-death cut is a model crash point.**
-  (`transcribe_check`, `native_program_check`.)
+  (`native_program_check`.)
 - **No whole-state revalidation on a served path**: carry the invariant in
   state and prove it preserved.
 - **Uncertain, refused and accepted stay distinct** at every boundary,

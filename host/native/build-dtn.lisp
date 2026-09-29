@@ -357,6 +357,8 @@
         ; `bp-node serve' (specs/bp-node-machine.md).  `bp send' and `bp
         ; receive' above stay as the lab's transport tools.
         (load "host/native/bp-node.lisp")
+        ; `acl2 session': developer images only (the test fixtures' ACL2).
+        (load "host/native/acl2-session.lisp")
         ; What this image leaves out of the owner and operator it loaded:
         ; the NNTP service (TLS, auth, the feed service, the listener), the
         ; credential store and the control socket.  It does not load
@@ -376,6 +378,10 @@
 ;; tools/build_native_host.sh writes it into the saved launcher, so a run of
 ;; the image outside the installed launcher has the deployed stack (PKT-876).
 (value-triple (prog2$ (cw "FN_NATIVE_STACK_KIB ~x0~%" (fn-heap-stack-kib nil)) :stack))
+;; Every thread's thread-local storage, the profile's row
+;; (books/profile-limits.lisp :tls-limit): tools/build_native_host.sh writes it
+;; into the saved launcher as --tls-limit.
+(value-triple (prog2$ (cw "FN_NATIVE_TLS_LIMIT ~x0~%" (fn-profile-limit :tls-limit)) :tls))
 
 :q
 ;; The thread-local storage the build used (tools/build_native_host.sh

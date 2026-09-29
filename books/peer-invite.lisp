@@ -37,6 +37,7 @@
 (include-book "peer-config")
 ; PKT-613 (PRF-231): the Host and Inviter-Host an invitation may carry.
 (include-book "peer-host")
+(include-book "consumer-position")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md

@@ -73,8 +73,17 @@
 # served image's load exhausted SBCL's thread-local storage at 16384 on
 # 2026-09-27 (batch AV's native-av-bb1a and recover-memory-2); give the
 # toolchain's own path to build at 16384),
-# --jobs N|auto (certify, default auto: tools/chain_schedule.py), --no-build (reuse the images already in that
-# scratch tree), --env NAME=VALUE (repeatable; paths may use $T, the tree),
+# --jobs N (modules run N at a time against the one image set, default 1:
+# each is its own process, its own MemoryMax scope and its own ports; a
+# group of 20 modules at 4 jobs on hbox takes about a quarter of the serial
+# time), --certify-jobs N|auto (certify, default auto: tools/chain_schedule.py), --no-build (reuse the images already in that
+# scratch tree; the re-ship keeps the tree's .cert/.port/.fasl files, which it
+# used to delete, leaving REPL sessions there refusing include-book),
+# --image-set SHA (no certify and no build: link the prebuilt images the batch
+# published for dev commit SHA from hbox:/tank/fn/images/SHA, verified by its
+# SHA256SUMS; layout and publishing in tools/image_set.py; --images names
+# which of its production, developer, dtn, dtn-developer to link; the
+# images' identity source is SHA, the tree is REV), --env NAME=VALUE (repeatable; paths may use $T, the tree),
 # --deadline S (default 5400), --dry-run (print the box script; the refusal
 # and the per-module environment show there).  Options may come before or
 # after REV and the modules.
@@ -95,7 +104,8 @@ if [ -z "${FN_HBOX_NATIVE_COPY:-}" ]; then
     FN_HBOX_NATIVE_HERE=$(cd "$(dirname "$0")/.." && pwd)
     FN_HBOX_NATIVE_COPY=$(mktemp -d "${TMPDIR:-/tmp}/hbox_native.XXXXXX") || exit 3
     cp "$FN_HBOX_NATIVE_HERE/tools/hbox_native.sh" "$FN_HBOX_NATIVE_HERE/tools/wait_for.sh" \
-        "$FN_HBOX_NATIVE_HERE/tools/boxes.sh" "$FN_HBOX_NATIVE_COPY/" || exit 3
+        "$FN_HBOX_NATIVE_HERE/tools/boxes.sh" "$FN_HBOX_NATIVE_HERE/tools/image_set.py" \
+        "$FN_HBOX_NATIVE_COPY/" || exit 3
     export FN_HBOX_NATIVE_COPY FN_HBOX_NATIVE_HERE
     exec sh "$FN_HBOX_NATIVE_COPY/hbox_native.sh" "$@"
 fi
@@ -108,21 +118,29 @@ IMAGES=developer
 MEM=24G
 IMAGE_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k
 JOBS=auto
+MODULE_JOBS=1
 BUILD=1
 DETACH=0
 DRY=0
 DEADLINE=5400
 ENVS=
 POSITIONAL=
-usage() { sed -n '2,78p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+IMAGE_SET=
+usage() { sed -n '2,95p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 while [ $# -gt 0 ]; do
     case $1 in
         --name) NAME=$2; shift 2 ;;
         --label) LABEL=$2; shift 2 ;;
         --images) IMAGES=$2; shift 2 ;;
         --mem) MEM=$2; shift 2 ;;
-        --jobs) JOBS=$2; shift 2 ;;
+        --jobs)
+            case $2 in ''|*[!0-9]*|0) echo "hbox_native: --jobs takes a positive integer" >&2; exit 2 ;; esac
+            MODULE_JOBS=$2; shift 2 ;;
+        --certify-jobs) JOBS=$2; shift 2 ;;
         --no-build) BUILD=0; shift ;;
+        --image-set)
+            case $2 in *[!0-9a-f]*|'') echo "hbox_native: --image-set takes a commit sha" >&2; exit 2 ;; esac
+            IMAGE_SET=$2; BUILD=0; shift 2 ;;
         --detach) DETACH=1; shift ;;
         --dry-run) DRY=1; shift ;;
         --deadline) DEADLINE=$2; shift 2 ;;
@@ -175,6 +193,16 @@ for image in $(echo "$IMAGES" | tr ',' ' '); do
         *) echo "hbox_native: --images takes developer,production,dtn,dtn-developer,reference,developer-stripped,prof" >&2; exit 2 ;;
     esac
 done
+if [ -n "$IMAGE_SET" ]; then
+    for image in $(echo "$IMAGES" | tr ',' ' '); do
+        case $image in production|developer|dtn|dtn-developer) ;;
+            *) echo "hbox_native: an image set holds production, developer, dtn and dtn-developer, not $image" >&2; exit 2 ;;
+        esac
+    done
+    IMAGE_SET=$(git -C "$HERE" rev-parse --verify --quiet "$IMAGE_SET^{commit}" || echo "$IMAGE_SET")
+    case $IMAGE_SET in *[!0-9a-f]*) exit 2 ;; esac
+    [ ${#IMAGE_SET} -eq 40 ] || { echo "hbox_native: --image-set $IMAGE_SET: not a commit here; give the full sha" >&2; exit 2; }
+fi
 if [ $DTN_DEVELOPER -eq 1 ] && [ $DTN_PRODUCTION -eq 0 ]; then
     case " $ENVS" in *" FN_NATIVE_BP_HOST="*) ;; *) ENVS="FN_NATIVE_BP_HOST=\$T/build/fn-host-dtn-developer$ENVS" ;; esac
 fi
@@ -195,6 +223,8 @@ else
     [ -n "$LABEL" ] || LABEL=$(echo "$FULL" | cut -c1-12)
 fi
 case $LABEL in ''|*[!A-Za-z0-9._-]*) echo "hbox_native: bad --label $LABEL" >&2; exit 2 ;; esac
+# The images' own source is the set's commit, whatever tree runs the tests.
+[ -z "$IMAGE_SET" ] || SOURCE_ID=$IMAGE_SET
 S=/tank/fn/scratch/$NAME/native-$LABEL
 case $S in /tank/fn/node*) echo "hbox_native: refusing the live node path" >&2; exit 2 ;; esac
 
@@ -228,24 +258,6 @@ step() {
         tail -n 15 \$L/\$name.log | sed 's/^/   | /'
         finish \$rc
     fi
-}
-# A test module runs to the end whatever the others did; its verdict goes in
-# run.log: OK (N ran, K skipped), FAILED, or SKIPPED (N of N), with every
-# skip's reason (a skipped witness is not evidence).  SKIPPED is status 4.
-failed=0
-passed=0 skipped=0 broke=0
-tstep() {
-    name=\$1; shift
-    echo "== \$name \$(date -u +%H:%M:%SZ) load \$(cut -d' ' -f1-3 /proc/loadavg)"
-    "\$@" > \$L/\$name.log 2>&1
-    rc=\$?
-    verdict=\$(python3 tools/test_budget.py --verdict \$L/\$name.log)
-    vrc=\$?
-    echo "   \$name exit \$rc: \$verdict"
-    echo "   (\$L/\$name.log)"
-    [ \$rc -ne 0 ] || rc=\$vrc
-    case \$rc in 0) passed=\$((passed+1)) ;; 4) skipped=\$((skipped+1)) ;; *) broke=\$((broke+1)) ;; esac
-    [ \$rc -eq 0 ] || [ \$failed -ne 0 ] || failed=\$rc
 }
 # A module reads an image variable: the image must be in the tree.
 need() {
@@ -311,6 +323,12 @@ step image-$image env FN_ACL2=${IMAGE_ACL2:-\$ACL2} FN_NATIVE_PROFILE=$profile F
 BOX
         done
     fi
+    if [ -n "$IMAGE_SET" ]; then
+        cat <<BOX
+echo "== images: the published set $IMAGE_SET (/tank/fn/images/$IMAGE_SET)"
+step image-set python3 \$S/bin/image_set.py link $IMAGE_SET \$T $(echo "$IMAGES" | tr ',' ' ')
+BOX
+    fi
     # The production image's identity (tests/test_native_peering and
     # test_native_admin check the running process against it), computed by
     # tools/native_env.py identity from the image FN_NATIVE_HOST names by
@@ -323,6 +341,9 @@ BOX
     cat <<BOX
 if [ -x "$identity_image" ]; then
     eval "\$(python3 tools/native_env.py identity --image "$identity_image" --source $SOURCE_ID --export)"
+fi
+if [ -x build/fn-host-developer ]; then
+    eval "\$(python3 tools/native_env.py identity --image build/fn-host-developer --prefix FN_NATIVE_DEVELOPER_ --export)"
 fi
 BOX
     for assignment in $ENVS; do
@@ -343,11 +364,60 @@ BOX
         ''|*[!0-9]*) ;;
         *) [ "${MEM%G}" -ge 48 ] && BIGMEM="flock /tank/fn/scratch/.hbox-native-bigmem.lock" ;;
     esac
+    # The modules run from $S/module.sh, one process per module, --jobs at
+    # a time (xargs -P; 1 keeps the old serial order).  Each writes its exit
+    # code to $S/rc/test-MODULE and prints its verdict as one line when it
+    # ends, so parallel modules never share a counter or split a block;
+    # the tally below reads the codes in the order the modules were named.
+    # Parallel modules are independent processes: each harness Node binds
+    # its own ephemeral ports and makes its own temporary directories, and
+    # each module keeps its own MemoryMax scope (N jobs can hold N x --mem).
+    echo "export S T L FN_TEST_OPENSSL_BIN"
+    echo "rm -rf \$S/rc; mkdir -p \$S/rc"
+    echo "cat > \$S/module.sh <<'MODULE'"
+    cat <<'MOD'
+#!/bin/sh
+set -u
+cd "$T" || exit 0
+# A test module runs to the end whatever the others did; its verdict goes in
+# run.log: OK (N ran, K skipped), FAILED, or SKIPPED (N of N), with every
+# skip's reason (a skipped witness is not evidence).  SKIPPED is status 4.
+tstep() {
+    name=$1; shift
+    echo "== $name $(date -u +%H:%M:%SZ) load $(cut -d' ' -f1-3 /proc/loadavg)"
+    "$@" > $L/$name.log 2>&1
+    rc=$?
+    verdict=$(python3 tools/test_budget.py --verdict $L/$name.log)
+    vrc=$?
+    [ $rc -ne 0 ] || rc=$vrc
+    echo "   $name exit $rc $(date -u +%H:%M:%SZ): $verdict ($L/$name.log)"
+    echo $rc > $S/rc/$name
+}
+case $1 in
+MOD
+    i=0
     echo "$PLAN" | while read -r module assignments; do
+        i=$((i+1))
         cat <<BOX
+$i)
 tstep test-$module $BIGMEM env $assignments systemd-run --user --scope --quiet --slice=swarm.slice -p MemoryMax=$MEM -p MemorySwapMax=0 -- sh -c 'echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one $module'
+;;
 BOX
     done
+    echo "esac"
+    echo "exit 0"
+    echo "MODULE"
+    count=$(echo "$PLAN" | grep -c .)
+    echo "echo \"== modules: $count, $MODULE_JOBS at a time\""
+    echo "seq 1 $count | xargs -P $MODULE_JOBS -n 1 sh \$S/module.sh"
+    echo 'failed=0 passed=0 skipped=0 broke=0'
+    echo "for name in $(echo "$PLAN" | while read -r module assignments; do printf 'test-%s ' "$module"; done); do"
+    cat <<'BOX'
+    rc=$(cat $S/rc/$name 2>/dev/null || echo 125)
+    case $rc in 0) passed=$((passed+1)) ;; 4) skipped=$((skipped+1)) ;; *) broke=$((broke+1)) ;; esac
+    [ $rc -eq 0 ] || [ $failed -ne 0 ] || failed=$rc
+done
+BOX
     echo 'echo "== modules: $passed OK, $skipped SKIPPED (no test executed), $broke FAILED"'
     echo "finish \$failed"
 }
@@ -362,16 +432,29 @@ fi
 FN_BOX_AS=${FN_BOX_AS:-$(basename "$HERE")} sh "$FN_HBOX_NATIVE_COPY/boxes.sh" wait "$HOST" || exit 3
 echo "hbox_native: $SOURCE -> $HOST:$S"
 ssh -n "$HOST" "mkdir -p $S/tree $S/logs" || { echo "hbox_native: cannot create $S on $HOST" >&2; exit 3; }
+# --no-build keeps the tree's certificates: its images and any REPL session
+# there were made against them, and a re-ship that deleted them left those
+# sessions refusing include-book (2026-09-28).  A build run re-installs them.
+KEEP=
+[ $BUILD -eq 1 ] || KEEP="--exclude=*.cert --exclude=*.port --exclude=*.fasl"
 if [ "$REV" = . ]; then
+    # shellcheck disable=SC2086
     rsync -a --delete --exclude=build/ --exclude=.git/ --exclude=__pycache__/ \
-        --exclude=.venv/ --exclude='*.pyc' --exclude=LANEDUMP.md \
+        --exclude=.venv/ --exclude='*.pyc' --exclude=LANEDUMP.md $KEEP \
         "$HERE/" "$HOST:$S/tree/" || { echo "hbox_native: rsync failed" >&2; exit 3; }
+elif [ $BUILD -eq 0 ]; then
+    ssh -n "$HOST" "find $S/tree -mindepth 1 -path $S/tree/build -prune -o -type f ! -name '*.cert' ! -name '*.port' ! -name '*.fasl' -exec rm -f {} +" || exit 3
+    git -C "$HERE" archive --format=tar "$FULL" | ssh "$HOST" "tar -x -C $S/tree" \
+        || { echo "hbox_native: shipping $FULL failed" >&2; exit 3; }
 else
     ssh -n "$HOST" "find $S/tree -mindepth 1 -maxdepth 1 ! -name build -exec rm -rf {} +" || exit 3
     git -C "$HERE" archive --format=tar "$FULL" | ssh "$HOST" "tar -x -C $S/tree" \
         || { echo "hbox_native: shipping $FULL failed" >&2; exit 3; }
 fi
 box_script "$@" | ssh "$HOST" "cat > $S/run.sh" || exit 3
+if [ -n "$IMAGE_SET" ]; then
+    ssh "$HOST" "mkdir -p $S/bin && cat > $S/bin/image_set.py" < "$FN_HBOX_NATIVE_COPY/image_set.py" || exit 3
+fi
 ssh -n "$HOST" "rm -f $S/status; nohup sh $S/run.sh > $S/run.log 2>&1 < /dev/null &" || exit 3
 echo "hbox_native: started; progress in $HOST:$S/run.log"
 if [ $DETACH -eq 1 ]; then

@@ -49,16 +49,11 @@ non-minimal CBOR head, an unknown tag or symbol code, and a cons deeper than
 its depth fuel (the octets it has). The item reader has no per-item
 whole-stream preflight: the frame bounds the payload once (4 MiB).
 
-The decoder also accepts schema 0 selected checkpoints written before the
-acceptance stamp. A ready pre-stamp node has five-field articles and no pending
-transaction; ACL2 appends `:legacy` to each article, leaves every other field
-unchanged, then requires the complete current `fn-checkpointp` before restore.
-Version 1 never migrates an old shape. The short-lived T2 image that wrote a
-six-field node under schema 0 is accepted unchanged when it already passes
-`fn-checkpointp`. The generation frame and selection marker remain protected
-and are checked before migration; the saved bytes are not rewritten. Restore
-still compares the private checkpoint-plus-suffix result with authoritative
-full journal replay, so migration cannot replace a mismatched live state.
+The decoder accepts one schema, 1. A header naming any other version (the
+pre-stamp schema 0 of earlier releases included) is refused `:version`, and a
+node whose articles lack the acceptance stamp is refused `:invalid` by
+`fn-checkpointp`; no shape is migrated (no migrations: every node redeploys
+fresh at 6.6.0).
 
 - `fn-cpc-decode-of-encode` (value direction): for an encodable checkpoint
   whose encoding fits the payload cap, decoding at its own groups and
@@ -66,12 +61,10 @@ full journal replay, so migration cannot replace a mismatched live state.
   its own yields `(:ok checkpoint)`. Hypotheses: `fn-cpc-encodablep` (a
   `fn-checkpointp` value with octet-domain group names, at most 16 groups,
   32-bit capacity and sequence, node in the universe), the two bounds.
-- `fn-cpc-accepted-input-is-canonical` (byte direction): an accepted **schema
-  1** input is exactly the encoding of the value returned. Hypotheses:
-  acceptance and the current-version header. A schema 0 pre-stamp checkpoint
-  migrates its logical article shape and therefore cannot re-encode to the
-  identical bytes using the schema 1 encoder; the canonical raw-tree decoder
-  still rejects alternate byte spellings before that migration.
+- `fn-cpc-accepted-input-is-canonical` (byte direction): an accepted input is
+  exactly the encoding of the value returned. Hypothesis: acceptance (the
+  current-version header hypothesis went with schema 0; the weakened theorem
+  is proved).
   The decoder itself establishes the octet domain, cap, magic, version,
   bounds, configuration equality, absence of trailing octets and
   `fn-checkpointp` of the assembled value.
