@@ -318,8 +318,8 @@ fn-pcb-transit-verdict (PKT-473), or nil."
 ;;  - served: every 441 reply a socket read's effects carry (the injection
 ;;    refusals of fn-nntp-post-step, fn-post-refusal-line, including the
 ;;    :oversize line the wire's :body-overlimit close gives).  The host
-;;    (host/owner-host.lisp fn-owner-chunk) leaves the lines in
-;;    `fn-owner-refusal-lines' after the read; host/native/owner.lisp
+;;    (host/owner-host.lisp fn-owner-chunk-span-at) returns the lines in
+;;    the step it makes (fn-splan-step-make); host/native/owner.lisp
 ;;    fnn-owner-handle-chunk writes each.  A refusal after the take is
 ;;    fn-olog-served-post-line's, as before.
 ;;  - control: the operator's article refused by fn-own-operator-submit-result
@@ -735,7 +735,7 @@ decision injects (the outcome line is then fn-olog-control-post-line's)."
     t))
 ; KEYSTONE (served).  The lines a socket read logs are exactly one per 441
 ; reply its effects send the client, and every one is a single line whose
-; first word is `refused'.  host/owner-host.lisp fn-owner-chunk computes them
+; first word is `refused'.  host/owner-host.lisp fn-owner-chunk-span-at computes them
 ; over the effects it installs for the client.
 (defthm fn-olog-served-refusal-lines-one-per-441
   (and (equal (len (fn-olog-served-refusal-lines o id effects))

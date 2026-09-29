@@ -2,8 +2,8 @@
 ;; over the function the host calls.
 ;;
 ;; Host path (reader), as for HDR :fn-verified (books/owner-verdict-read):
-;; host/native/owner.lisp calls fn-owner-chunk (host/owner-host.lisp), which
-;; runs fn-ocfg-read-tls-prefix, equal to fn-ocfg-read over the octets it
+;; host/native/owner.lisp calls fn-owner-chunk-span-at (host/owner-host.lisp),
+;; which runs fn-ocfg-read-tls-prefix over the span (fn-scr-ocfg-read-span-is-reference-under-ocl-relation), equal to fn-ocfg-read over the octets it
 ;; consumed (all of them unless a submission made it yield) by
 ;; fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix (books/owner-tls-prefix), which is
 ;; fn-own-read on the connection.  fn-own-read builds the served connection

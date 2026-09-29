@@ -390,7 +390,7 @@
 
 ; -----------------------------------------------------------------------------
 ; Refused POSTs (PKT-095): fn-olog-served-refusal-lines, which
-; host/owner-host.lisp fn-owner-chunk calls over the effects it installs, and
+; host/owner-host.lisp fn-owner-chunk-span-at calls over the effects it installs, and
 ; fn-olog-control-refusal-line, which fn-owner-operator-submit calls.
 
 (defun olt-reply (text) (list :reply (fn-nntp-crlf (fn-nntp-string-octets text))))

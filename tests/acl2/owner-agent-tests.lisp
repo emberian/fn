@@ -7,7 +7,7 @@
 ;   fn-oag-open-pins-the-owner-config
 ;     fn-ocfg-open, called by host/owner-host.lisp fn-owner-open
 ;   fn-oag-served-post-names-the-pinned-agent
-;     fn-ocfg-read-tls-prefix, called by host/owner-host.lisp fn-owner-chunk
+;     fn-ocfg-read-tls-prefix, run by host/owner-host.lisp fn-owner-chunk-span-at
 ;
 ; Each has a reachable witness below, built the way the host builds it: a
 ; replayed configuration history whose second record is the
@@ -143,7 +143,7 @@
 
 ; -----------------------------------------------------------------------------
 ; Keystone 3: one socket read, POST and an article, through the transition
-; host/owner-host.lisp fn-owner-chunk calls.
+; host/owner-host.lisp fn-owner-chunk-span-at runs.
 
 (defconst *oat-post-read*
   (append '(80 79 83 84 13 10)

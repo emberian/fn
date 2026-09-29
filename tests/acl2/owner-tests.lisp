@@ -1388,7 +1388,7 @@
 ; clock is refused as a clock fault and not as an article verdict.
 ;
 ; The subject is fn-own-read, which is what host/owner-host.lisp
-; `fn-owner-chunk' calls on every socket chunk; connection 4 has already had
+; `fn-owner-chunk-span-at' calls on every socket chunk; connection 4 has already had
 ; one 240 above and is re-pinned to the committed view.
 
 (defconst *own-article-2*
