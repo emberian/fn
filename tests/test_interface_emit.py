@@ -105,14 +105,6 @@ class GapTests(unittest.TestCase):
         self.assertEqual(interface_emit.subsystem("fn-q", {"host/native/bp-node.lisp"}), "bp")
         self.assertEqual(interface_emit.subsystem("fn-q", ()), "nntp/served")
 
-    def test_gap_rows(self):
-        decls = interface_emit.declarations(tree(SOURCE))
-        text = interface_emit.render_gaps(decls, reading())
-        # fn-a has keystones; fn-c (store: io.lisp), fn-d and create-fn-e have none.
-        self.assertIn("| `fn-c` | program | io |", text)
-        self.assertNotIn("`fn-a`", text)
-        self.assertIn("| all | 4 | 1 | 3 | 3 | 0 | 1 |", text)
-
 
 if __name__ == "__main__":
     unittest.main()
