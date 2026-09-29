@@ -10,8 +10,10 @@ var/
 *.fasl
 # Certification run manifests are archived here by tools/evidence_manifests.py
 # on every run; the ones a committed claim CITES are tracked with `git add -f`
-# (`evidence_manifests.py sync --add`).  Ignoring the rest keeps an exploratory
-# run out of the history and keeps `git status` readable in a lane worktree.
+# (`evidence_manifests.py add RUN-ID`, or `sync --add`).  Ignoring the rest keeps
+# an exploratory run out of the history and keeps `git status` readable in a
+# lane worktree: a manifest is up to 2.4 MB and every run files one (the
+# reasoning is in tools/evidence_manifests.py's docstring).
 planning/evidence/manifests/*.json
 
 # Lane scratch (BRIEF-COMMON: never committed)

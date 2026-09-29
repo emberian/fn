@@ -21,8 +21,8 @@ import time
 import unittest
 
 from tests import test_native_peering as peer
-from tests.test_feed_journal_live import BookBridge
-from tests.native_harness import EXIT_OK, Client, Node, native_image, scratch
+from tests.native_harness import (
+    EXIT_OK, Acl2Session, Client, Node, acl2_nat, acl2_result, native_image, scratch)
 
 ACTUAL_CORE = peer.ACTUAL_CORE
 ACTUAL_LAUNCHER = peer.ACTUAL_LAUNCHER
@@ -34,6 +34,64 @@ DEVELOPER_TEXT = os.environ.get("FN_NATIVE_DEVELOPER_HOST")
 DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST") if DEVELOPER_TEXT else None
 DEVELOPER_CORE_SHA256 = os.environ.get("FN_NATIVE_DEVELOPER_CORE_SHA256")
 DEVELOPER_LAUNCHER_SHA256 = os.environ.get("FN_NATIVE_DEVELOPER_LAUNCHER_SHA256")
+
+
+def inspect_feed_journal(path, msgid, peer):
+    """An at-rest FNFD file read through ACL2's own scanner and replay
+    (books/feed-journal.lisp), in the developer image's session: Python only
+    reads the prefix length ACL2 names, so the record kinds, queue state and
+    attempt count are the book's projection of the durable bytes."""
+    with Acl2Session(DEVELOPER) as acl2:
+        def symbol(form):
+            text = acl2_result(acl2.call(form)).decode("ascii", "replace").strip().lower()
+            return text[1:] if text.startswith(":") else text
+
+        def nat(form):
+            return acl2_nat(acl2.call(form))
+
+        acl2.call("(f-put-global 'fn-owner-feed-safe-offset 0 state)")
+        acl2.call("(f-put-global 'fn-test-feed (fn-feed-open '{} (fn-feed-limits 100 1000 3 t) "
+                  "(fn-sched-contact \"inn\" 0 1000000) nil) state)".format(acl2.literal(peer)))
+        if symbol("(fn-feedp (@ fn-test-feed))") != "t":
+            raise AssertionError("ACL2 inspector initial feed is invalid")
+        counts = {}
+        prefix_size = nat("*fn-feed-journal-prefix-size*")
+        with Path(path).open("rb") as source:
+            while True:
+                prefix = source.read(prefix_size)
+                if not prefix:
+                    break
+                plan = symbol("(fn-feed-journal-prefix '{})".format(acl2.literal(prefix)))
+                if not plan.isdigit():
+                    raise AssertionError("ACL2 refused FNFD prefix: {}".format(plan))
+                frame = source.read(int(plan))
+                if len(frame) != int(plan):
+                    raise AssertionError("short FNFD frame")
+                acl2.call("(f-put-global 'fn-test-scan (fn-feed-journal-scan '{} '{} '{} "
+                          "(@ fn-owner-feed-safe-offset)) state)".format(
+                              acl2.literal(peer), acl2.literal(prefix), acl2.literal(frame)))
+                state = symbol("(car (@ fn-test-scan))")
+                if state != "next":
+                    raise AssertionError("ACL2 refused FNFD frame: {}".format(state))
+                acl2.call("(f-put-global 'fn-owner-feed-safe-offset (cadr (@ fn-test-scan)) state)")
+                acl2.call("(f-put-global 'fn-test-feed (fn-feed-replay (@ fn-test-feed) "
+                          "(list (caddr (@ fn-test-scan)))) state)")
+                if symbol("(fn-feedp (@ fn-test-feed))") != "t":
+                    raise AssertionError("ACL2 replay left the feed recognizer")
+                kind = symbol("(fn-feed-journal-kind (caddr (@ fn-test-scan)))")
+                counts[kind] = counts.get(kind, 0) + 1
+        mid = acl2.literal(msgid.encode("ascii"))
+        queue = "(fn-feed-queue (@ fn-test-feed))"
+        before = symbol("(fn-feed-state-of '{} {})".format(mid, queue))
+        sent_before = symbol("(fn-feed-sentp (fn-feed-state-of '{} {}))".format(mid, queue))
+        acl2.call("(f-put-global 'fn-test-feed (fn-feed-restart (@ fn-test-feed)) state)")
+        return {"records": counts, "state_before_restart": before,
+                "sent_before_restart": sent_before,
+                "state_after_restart": symbol("(fn-feed-state-of '{} {})".format(mid, queue)),
+                "queue_length": nat("(len {})".format(queue)),
+                "attempts": nat("(fn-feed-entry-attempts (fn-feed-find '{} {}))".format(mid, queue)),
+                "next_attempt": nat("(fn-feed-next-attempt (@ fn-test-feed))"),
+                "inflight": symbol("(fn-feed-inflightp '{} (@ fn-test-feed))".format(mid))}
 
 
 @unittest.skipUnless(READY, "set explicit source-matched native image and hashes")
@@ -288,14 +346,14 @@ class NativeProtectedPeeringTests(unittest.TestCase):
         source.kill()
         source.wait(timeout=30)
         source.finish()
-        bridge = BookBridge(peer=b"once-b")
-        try:
-            before = bridge.inspect_file(journal, message_id)
-        finally:
-            bridge.close()
-        self.assertEqual(before["state_before_restart"], "done", before)
-        self.assertEqual(before["state_after_restart"], "done", before)
-        self.assertEqual(before["queue_length"], 1, before)
+        before = inspect_feed_journal(journal, message_id, b"once-b")
+        # The acknowledged entry is RETIRED by its outcome record (fn-feed-done:
+        # it leaves the queue, the outcome record keeps which it was), before
+        # and after the restart fold: nothing is left to offer.
+        self.assertEqual(before["state_before_restart"], "nil", before)
+        self.assertEqual(before["state_after_restart"], "nil", before)
+        self.assertEqual(before["queue_length"], 0, before)
+        self.assertGreaterEqual(before["records"].get("feed-commit", 0), 1, before)
         self.assertGreaterEqual(before["records"].get("feed-outcome", 0), 1, before)
 
         self.start(a)
@@ -305,12 +363,9 @@ class NativeProtectedPeeringTests(unittest.TestCase):
         identity = {"a": self.verify_process_identity(a),
                     "b": self.verify_process_identity(b)}
         self.stop_all(a, b)
-        bridge = BookBridge(peer=b"once-b")
-        try:
-            after = bridge.inspect_file(journal, message_id)
-        finally:
-            bridge.close()
-        self.assertEqual(after["state_after_restart"], "done", after)
+        after = inspect_feed_journal(journal, message_id, b"once-b")
+        self.assertEqual(after["state_after_restart"], "nil", after)
+        self.assertEqual(after["queue_length"], 0, after)
         self.assertEqual(after["records"].get("feed-offer", 0),
                          before["records"].get("feed-offer", 0), (before, after))
         self.assertEqual(after["records"].get("feed-sent", 0),
@@ -363,11 +418,7 @@ class NativeProtectedPeeringTests(unittest.TestCase):
         self.assertEqual(source.wait(timeout=30), -9)
         source.finish()
         journal = a.store_path / "feed" / "sent-b.fnfd"
-        bridge = BookBridge(peer=b"sent-b")
-        try:
-            interrupted = bridge.inspect_file(journal, message_id)
-        finally:
-            bridge.close()
+        interrupted = inspect_feed_journal(journal, message_id, b"sent-b")
         self.assertEqual(interrupted["sent_before_restart"], "t", interrupted)
         self.assertEqual(interrupted["state_after_restart"], "queued", interrupted)
         self.assertGreaterEqual(interrupted["records"].get("feed-sent", 0), 1)
@@ -382,12 +433,10 @@ class NativeProtectedPeeringTests(unittest.TestCase):
         identity = {"a": self.verify_process_identity(a),
                     "b": self.verify_process_identity(b)}
         self.stop_all(a, b)
-        bridge = BookBridge(peer=b"sent-b")
-        try:
-            settled = bridge.inspect_file(journal, message_id)
-        finally:
-            bridge.close()
-        self.assertEqual(settled["state_after_restart"], "done", settled)
+        settled = inspect_feed_journal(journal, message_id, b"sent-b")
+        self.assertEqual(settled["state_after_restart"], "nil", settled)
+        self.assertEqual(settled["queue_length"], 0, settled)
+        self.assertGreaterEqual(settled["records"].get("feed-outcome", 0), 1, settled)
         self.assertGreater(settled["records"].get("feed-offer", 0),
                            interrupted["records"].get("feed-offer", 0))
         status = b.operator("status", expect=EXIT_OK)

@@ -7,6 +7,7 @@
 (include-book "bp-fnbs-namespace")
 (include-book "frame-trailer")
 (include-book "journal-publish")
+(include-book "consumer-position")
 
 (defconst *fn-bpcd-kind* 6)
 (defconst *fn-bpcd-final-name* "clock-domain.fnb")

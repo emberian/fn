@@ -113,13 +113,42 @@
   (natp (fn-mca-queued id subs))
   :rule-classes :type-prescription)
 
-; What connection ID's buffers need in OC: a reserve while it is
-; mid-article, and one for each of its queued submissions.
+; What a queued submission holds (lane credits-stall; PKT-887): its
+; article's octets and the groups and Message-ID read from them (each at
+; most the article's length), as octet lists, twice for the collector's
+; copy, and a line -- never more than the reserve it was admitted with.
+; The worst case (the reserve) is what an article NOT YET COMPLETE may still
+; need; once complete its size is known and the rest comes back.
+(defun fn-mca-sub-charge (sub reserve)
+  (declare (xargs :guard t))
+  (min (nfix reserve)
+       (* 2 *fn-heap-list-octets-per-octet*
+          (+ *fn-heap-article-line-octets* (* 2 (len (fn-own-sub-octets sub)))))))
+
+(defthm fn-mca-sub-charge-natp
+  (natp (fn-mca-sub-charge sub reserve))
+  :rule-classes :type-prescription)
+
+; The charges of connection ID's queued submissions.  A loop.
+(defun fn-mca-queued-charge-onto (id subs reserve acc)
+  (declare (xargs :guard (natp acc)))
+  (if (consp subs)
+      (fn-mca-queued-charge-onto id (cdr subs) reserve
+                                 (if (and (consp (car subs)) (equal (fn-own-sub-id (car subs)) id))
+                                     (+ acc (fn-mca-sub-charge (car subs) reserve))
+                                   acc))
+    acc))
+
+(defthm fn-mca-queued-charge-onto-natp
+  (implies (natp acc) (natp (fn-mca-queued-charge-onto id subs reserve acc)))
+  :rule-classes :type-prescription)
+
+; What connection ID's buffers need in OC: a whole reserve while it is
+; mid-article (reserve to finish), and each queued submission's charge.
 (defun fn-mca-need (oc id reserve)
   (declare (xargs :guard t))
-  (* (nfix reserve)
-     (+ (if (fn-oas-articlep oc id) 1 0)
-        (fn-mca-queued id (fn-own-queue (fn-ocfg-owner oc))))))
+  (+ (if (fn-oas-articlep oc id) (nfix reserve) 0)
+     (fn-mca-queued-charge-onto id (fn-own-queue (fn-ocfg-owner oc)) reserve 0)))
 
 (defthm fn-mca-need-natp
   (natp (fn-mca-need oc id reserve))
@@ -196,8 +225,9 @@
   (declare (xargs :guard t))
   (fn-mca-ok-or (fn-mcr-resize credits (fn-mca-conn-key id) 0) credits))
 
-; The committer took connection ID's oldest queued submission: one reserve
-; (what the connection holds, if less) moves to :open.  The control
+; The committer took connection ID's oldest queued submission: its charge
+; RESERVE (fn-mca-sub-charge; what the connection holds, if less) moves to
+; :open.  The control
 ; channel's and a BP delivery's submissions are not keyed by a connection
 ; (the figure's request in flight holds them): nothing moves.
 (defun fn-mca-take (credits id reserve)

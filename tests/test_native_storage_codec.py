@@ -96,16 +96,19 @@ class NativeStorageCodecTests(unittest.TestCase):
                 result = self.invoke(store, "status", expected=EXIT_FAULT)
                 self.assertIn(diagnostic, result.stderr)
 
-    def test_legacy_json_is_retained_and_refused_by_name(self):
+    def test_legacy_json_is_retained_and_is_a_fault(self):
         store = self.base / "legacy"
         self.invoke(store, "init")
         legacy = b'{"format":"fn-store-experiment-5"}\n'
         path = store / "config.json"
         path.write_bytes(legacy)
-        # D34: a JSON profile of an earlier experiment is refused at the open
-        # by ACL2's name (host/native/io.lisp fnn-load-config), and kept.
-        result = self.invoke(store, "status", expected=EXIT_REFUSED)
-        self.assertIn(b"open refused reason=store-format", result.stderr)
+        # One format (ember 2026-09-28, no migrations): a profile FRAME of
+        # another format word is refused by ACL2's name (store-format), but
+        # the JSON of an earlier experiment is no frame at all, so the open
+        # names it a fault (host/native/io.lisp fnn-metadata-config-decode:
+        # "a frame that is no saved profile stays a fault") -- and keeps it.
+        result = self.invoke(store, "status", expected=EXIT_FAULT)
+        self.assertIn(b"ACL2 rejected durable configuration frame", result.stderr)
         self.assertEqual(path.read_bytes(), legacy)
 
     def test_native_publication_cut_stays_uncertain_until_recovery(self):

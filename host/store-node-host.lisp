@@ -1544,7 +1544,8 @@ reopen predicate, writer-lock observation and observed final namespace."
   ; pin has been released.  The lookup and the wire/legacy dispatch are ACL2's
   ; (books/provenance-inspect.lisp fn-provi-of-msgid); the host decodes the
   ; octets and relays.
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp msgid-octets)))
   (value (fn-provi-of-msgid (fn-sn-node (f-get-global 'fn-store-sn state))
                             (fn-store-octets->string msgid-octets))))
 
