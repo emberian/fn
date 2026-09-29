@@ -1596,3 +1596,13 @@
                                                   (fn-record-string-octets "/tmp/a")
                                                   (fn-record-string-octets "extra"))))
                      :refused))
+
+; Positive anchors for the negative malformed-input witnesses above: typed
+; deltas, well-shaped argv, an in-range canonical count and a creatable name
+; are accepted.  A constantly-false recognizer cannot satisfy these cases.
+(assert-event (fn-cfg-deltap
+               (fn-cfg-create-group "fn.test" *fn-cfg-default-policy-id*)))
+(assert-event (fn-native-admin-argvp
+               (fn-na-test-argv '("policy" "set" "max-history-octets" "4096"))))
+(assert-event (fn-native-admin-decimalp "4294967295"))
+(assert-event (fn-native-admin-group-name-creatablep "fn.test"))
