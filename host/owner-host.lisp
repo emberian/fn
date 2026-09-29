@@ -2427,7 +2427,9 @@
 
 (defun fn-owner-consumer-local-wait-admit (waiters state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-cwait-admit waiters)))
+  ;; PKT-700: the capacity is the store profile's control ceiling less the
+  ;; reserved workers (books/consumer-wait.lisp fn-cwait-capacity).
+  (value (fn-cwait-admit waiters (fn-owner-store-profile state))))
 
 (defun fn-owner-consumer-local-bound-ack (cursor-octets secret state)
   (declare (xargs :stobjs state :mode :program

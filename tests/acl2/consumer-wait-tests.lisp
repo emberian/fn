@@ -394,11 +394,26 @@
                 (cwt-poll *cwt-oc-full* *cwt-c2* *cwt-secret*))))
 
 ; --- KEYSTONE 3: fn-cwait-admit-leaves-workers-free -------------------------
-(assert-event (equal (fn-cwait-capacity) 12))
-(assert-event (equal (fn-cwait-admit 0) :admit))
-(assert-event (equal (fn-cwait-admit 11) :admit))
-(assert-event (equal (fn-cwait-admit 12) '(:refused :waiters)))
+; The default profile (control ceiling 16): capacity 12.
+(defconst *cwt-p* *fn-bs-profile-development*)
+(assert-event (equal (fn-cwait-capacity *cwt-p*) 12))
+(assert-event (equal (fn-cwait-admit 0 *cwt-p*) :admit))
+(assert-event (equal (fn-cwait-admit 11 *cwt-p*) :admit))
+(assert-event (<= (+ 1 11 *fn-cwait-reserved-workers*) (fn-bs-profile-max-control-clients *cwt-p*)))
+(assert-event (equal (fn-cwait-admit 12 *cwt-p*) '(:refused :waiters)))
 ; Without the first conjunct's hypothesis: 12 is not admitted.
-(must-fail-checked (assert-event (<= (+ 1 12) (fn-cwait-capacity))))
+(must-fail-checked (assert-event (<= (+ 1 12) (fn-cwait-capacity *cwt-p*))))
 ; Without the second's: 11 is admitted.
-(must-fail-checked (assert-event (equal (fn-cwait-admit 11) '(:refused :waiters))))
+(must-fail-checked (assert-event (equal (fn-cwait-admit 11 *cwt-p*) '(:refused :waiters))))
+; PKT-700: the operator's ceiling moves the capacity (200 -> 196; the
+; smallest, 5 -> 1), and a value that is no admitted profile admits nothing.
+(defconst *cwt-wide* (fn-bs-profile-resolve '(:development ((16 . 200))) nil))
+(assert-event (fn-bs-profile-admittedp *cwt-wide*))
+(assert-event (equal (fn-cwait-capacity *cwt-wide*) 196))
+(assert-event (equal (fn-cwait-admit 195 *cwt-wide*) :admit))
+(assert-event (equal (fn-cwait-admit 196 *cwt-wide*) '(:refused :waiters)))
+(defconst *cwt-least* (fn-bs-profile-resolve '(:development ((16 . 5))) nil))
+(assert-event (equal (fn-cwait-capacity *cwt-least*) 1))
+(assert-event (equal (fn-cwait-admit 0 *cwt-least*) :admit))
+(assert-event (equal (fn-cwait-admit 1 *cwt-least*) '(:refused :waiters)))
+(assert-event (equal (fn-cwait-admit 0 nil) '(:refused :waiters)))

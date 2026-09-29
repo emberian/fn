@@ -27,8 +27,9 @@
 ; is the ack's, and the wait never acks).
 ;
 ; Waiters hold a local-control worker each, so they are admitted up to
-; `fn-cwait-capacity', four fewer than the control worker ceiling
-; (`fn-native-control-max-active-clients'), and refused by name
+; `fn-cwait-capacity', four fewer than the control worker ceiling of the
+; store's profile (field 16, `fn-bs-profile-max-control-clients': the
+; operator's admission limit, PKT-700, D27), and refused by name
 ; (:refused :waiters) past it (`fn-cwait-admit-leaves-workers-free').  The
 ; heap reservation already counts every control worker's thread
 ; (books/heap-reservation.lisp), so a waiter costs no memory it does not
@@ -41,20 +42,25 @@
 (include-book "consumer-bound")
 (include-book "consumer-wait-codec")
 
-(defconst *fn-cwait-reserved-workers* 4)
+(defconst *fn-cwait-reserved-workers* *fn-bs-profile-control-reserved-workers*)
 
-(defun fn-cwait-capacity ()
+; PROFILE is the profile the store runs under (a value that is not an
+; admitted profile gives capacity 0: every wait refused).
+(defun fn-cwait-capacity (profile)
   (declare (xargs :guard t))
-  (- (fn-native-control-max-active-clients) *fn-cwait-reserved-workers*))
+  (nfix (- (fn-bs-profile-max-control-clients profile) *fn-cwait-reserved-workers*)))
 
 (defthm fn-cwait-capacity-is-positive
-  (posp (fn-cwait-capacity))
-  :rule-classes :type-prescription)
+  (implies (fn-bs-profile-admittedp profile)
+           (posp (fn-cwait-capacity profile)))
+  :rule-classes ((:type-prescription) (:rewrite))
+  :hints (("Goal" :in-theory (e/d (fn-cwait-capacity)
+                                  (fn-bs-profile-admittedp fn-bs-profile-max-control-clients)))))
 
 ; WAITERS is the count of waits already asleep or polling.
-(defun fn-cwait-admit (waiters)
+(defun fn-cwait-admit (waiters profile)
   (declare (xargs :guard t))
-  (if (and (natp waiters) (< waiters (fn-cwait-capacity)))
+  (if (and (natp waiters) (< waiters (fn-cwait-capacity profile)))
       :admit
     (list :refused :waiters)))
 
@@ -181,15 +187,15 @@
 ; *fn-cwait-reserved-workers* control workers for every other request; past
 ; the capacity a wait is refused by name.
 (defthm fn-cwait-admit-leaves-workers-free
-  (and (implies (equal (fn-cwait-admit waiters) :admit)
+  (and (implies (equal (fn-cwait-admit waiters profile) :admit)
                 (and (natp waiters)
-                     (<= (+ 1 waiters) (fn-cwait-capacity))
+                     (<= (+ 1 waiters) (fn-cwait-capacity profile))
                      (<= (+ 1 waiters *fn-cwait-reserved-workers*)
-                         (fn-native-control-max-active-clients))))
-       (implies (<= (fn-cwait-capacity) waiters)
-                (equal (fn-cwait-admit waiters) '(:refused :waiters))))
+                         (fn-bs-profile-max-control-clients profile))))
+       (implies (<= (fn-cwait-capacity profile) waiters)
+                (equal (fn-cwait-admit waiters profile) '(:refused :waiters))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-cwait-admit fn-cwait-capacity))))
+  :hints (("Goal" :in-theory (e/d (fn-cwait-admit fn-cwait-capacity) (fn-bs-profile-max-control-clients)))))
 
 (verify-guards fn-cwait-poll)
 (verify-guards fn-cwait-step)
