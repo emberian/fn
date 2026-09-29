@@ -1073,3 +1073,123 @@
                  fn-osr-ready-topic-exact fn-osr-ready-has-configured-history
                  fn-csi-live-ready-exact-replay
                  fn-cpo-open-success-has-historical-relation)))))
+
+; :ready is required for equality to the source's committed node, but not
+; for the history's ability to open. Remove that redundant opening premise.
+(defthm fn-osr-configured-completing-enables-finish
+  (implies (and (fn-cst-relation s)
+                (equal (fn-sf-phase (fn-sn-files s)) :completing))
+           (fn-sn-completion-enabledp s))
+  :hints (("Goal" :in-theory
+           (e/d (fn-cst-relation fn-snt-idle-phasep fn-sf-record-phasep)
+                (fn-cst-recoverablep fn-cst-final-configurationp
+                 fn-cst-completion-linkp fn-sn-statep fn-sn-completion-enabledp)))))
+
+(defthm fn-osr-configured-never-completed
+  (implies (fn-cst-relation s)
+           (not (equal (fn-sf-phase (fn-sn-files s)) :completed)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-cst-relation fn-snt-idle-phasep fn-sf-record-phasep)
+                (fn-cst-recoverablep fn-cst-final-configurationp
+                 fn-cst-completion-linkp fn-sn-statep fn-sn-completion-enabledp)))))
+
+
+(defthm fn-osr-live-not-completing-identity-and-consumer-ok
+  (implies (and (fn-osr-livep s)
+                (not (equal (fn-sf-phase (fn-sn-files s)) :completing)))
+           (and (equal (fn-stxk-context-kind
+                        (fn-replay-identity (fn-sf-records (fn-sn-files s)))) :ok)
+                (equal (car (fn-cpe-projection-replay
+                             nil (fn-sf-records (fn-sn-files s)) 0)) :ok)))
+  :hints (("Goal"
+           :use ((:instance fn-sf-state-records-are-true-list
+                            (s (fn-sn-files s)))
+                 (:instance fn-cbor-take-whole-list
+                            (xs (fn-sf-records (fn-sn-files s)))))
+           :in-theory
+           (e/d (fn-osr-livep fn-sti-livep fn-csi-livep fn-sn-identity-sequencep
+                 fn-sf-completion-phasep fn-osr-identity-prefixp
+                 fn-csi-completed-prefixp)
+                (fn-cst-relation fn-sn-statep fn-sf-statep take
+                 fn-replay-identity fn-cpe-projection-replay fn-stxk-context-kind
+                 fn-sti-completed-prefixp fn-csi-completion-lastp)))))
+
+(defthm fn-osr-live-current-identity-and-consumer-ok
+  (implies (fn-osr-livep s)
+           (and (equal (fn-stxk-context-kind
+                        (fn-replay-identity (fn-sf-records (fn-sn-files s)))) :ok)
+                (equal (car (fn-cpe-projection-replay
+                             nil (fn-sf-records (fn-sn-files s)) 0)) :ok)))
+  :hints (("Goal"
+           :cases ((equal (fn-sf-phase (fn-sn-files s)) :completing))
+           :use ((:instance fn-osr-ready-identity-exact-view (s (fn-sn-finish s)))
+                 (:instance fn-csi-live-ready-exact-replay (s (fn-sn-finish s)))
+                 fn-osr-finish-preserves-live-carry fn-snt-finish-image
+                 fn-osr-live-not-completing-identity-and-consumer-ok)
+           :in-theory
+           (e/d (fn-osr-livep fn-sti-livep)
+                (fn-sn-finish fn-cst-relation fn-sn-statep fn-sf-statep
+                 fn-replay-identity fn-cpe-projection-replay fn-stxk-context-kind
+                 fn-osr-ready-identity-exact-view fn-csi-live-ready-exact-replay
+                 fn-osr-finish-preserves-live-carry fn-csi-livep
+                 fn-osr-live-not-completing-identity-and-consumer-ok
+                 fn-osr-identity-prefixp fn-sti-completed-prefixp)))))
+
+(defthm fn-osr-live-replay-identity-fields-typed
+  (implies (fn-osr-livep s)
+           (and (natp (fn-stxk-context-next
+                       (fn-replay-identity (fn-sf-records (fn-sn-files s)))))
+                (fn-sn-keyring-snapshot-listp
+                 (fn-stxk-context-snapshots
+                  (fn-replay-identity (fn-sf-records (fn-sn-files s)))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :cases ((equal (fn-sf-phase (fn-sn-files s)) :completing))
+           :use (fn-osr-source-fields-typed
+                 (:instance fn-osr-ready-identity-exact-view (s (fn-sn-finish s)))
+                 (:instance fn-osr-source-fields-typed (s (fn-sn-finish s)))
+                 fn-osr-finish-preserves-live-carry fn-snt-finish-image
+                 (:instance fn-sf-state-records-are-true-list (s (fn-sn-files s)))
+                 (:instance fn-cbor-take-whole-list
+                            (xs (fn-sf-records (fn-sn-files s)))))
+           :in-theory
+           (e/d (fn-osr-livep fn-sti-livep fn-csi-livep fn-sn-identity-sequencep
+                 fn-sf-completion-phasep fn-osr-identity-prefixp fn-osr-context-view
+                 fn-sn-identity-context fn-stxk-context)
+                (fn-sn-finish fn-cst-relation fn-sn-statep fn-sf-statep take
+                 fn-replay-identity fn-cpe-projection-replay
+                 fn-osr-ready-identity-exact-view fn-osr-finish-preserves-live-carry
+                 fn-sti-completed-prefixp fn-csi-completion-lastp
+                 fn-csi-completed-prefixp fn-sn-keyring-snapshot-listp)))))
+
+(defthm fn-osr-live-capture-opens
+  (implies (fn-osr-livep s)
+           (fn-sn-open-okp
+            (fn-cpo-open-observed (fn-sn-config-history (fn-osr-capture s))
+                                  (fn-sf-frontier (fn-sn-files (fn-osr-capture s)))
+                                  (fn-sf-records (fn-sn-files (fn-osr-capture s))))))
+  :hints (("Goal"
+           :use (fn-osr-live-replay-identity-fields-typed
+                 fn-osr-live-current-identity-and-consumer-ok
+                 fn-sti-current-records-topic-ok-including-completed)
+           :in-theory
+           (e/d (fn-osr-livep fn-sti-livep fn-osr-capture
+                 fn-cst-relation fn-cst-final-configurationp fn-cst-recoverablep
+                 fn-cst-replay-node fn-cpo-open-observed fn-cpo-install
+                 fn-sn-open-okp fn-sn-open-ok fn-sn-open-shapep fn-sn-open-state
+                 fn-sn-open-kind fn-sn-keyring fn-sn-keyring-generation
+                 fn-sn-with-event-index fn-sn-with-topic fn-sn-with-consumer
+                 fn-sn-update-replayed fn-sn-observed-seed fn-sn-make
+                 fn-sn-make-v2 fn-osr-context-view fn-sn-identity-context
+                 fn-stxk-context fn-sn-observed-topic-okp)
+                (fn-osr-live-current-identity-and-consumer-ok
+                 fn-sti-current-records-topic-ok-including-completed
+                 fn-sn-make-v6 fn-sn-with-configuration fn-sn-statep
+                 fn-cnode-statep fn-cpr-replay fn-cpr-loop fn-replay-identity
+                 fn-replay-identity-loop fn-replay-advance-txid fn-sf-make
+                 fn-node-initial-state fn-cnode-make fn-cnode-node fn-cnode-config
+                 fn-cnode-domain-of fn-cfg-capacity fn-cfg-value
+                 fn-th-at fn-th-prefix-project fn-cpe-projection-replay
+                 fn-stx-index-empty fn-replay-verdict-pairs fn-csi-livep
+                 fn-sti-completed-prefixp)))))
+

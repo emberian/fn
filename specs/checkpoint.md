@@ -303,9 +303,9 @@ the log's rotation and drop (specs/storage.md STO-012, STO-017, STO-034).
 `fn-osr-livep` combines the phase-aware configured history relation with
 independent identity, consumer and topic prefixes. Actual successful configured
 startup establishes these prefixes; actual durable completion and configuration
-publication preserve the live carry. A ready capture therefore opens successfully
-under its captured configuration history, without an open-success premise or a
-served history scan. Recovered node, domain/capacity, configuration/event history,
+publication preserve the live carry. A live capture therefore opens successfully
+under its captured configuration history, including an in-flight transaction, without an open-success premise or a
+served history scan. At readiness, recovered node, domain/capacity, configuration/event history,
 frontier, identity cursor/snapshots, consumer obligations and topic
 conflicts/provenance equal the captured values. Source readiness and recovery
 barriers intentionally differ.
