@@ -277,7 +277,8 @@
 ;; accepts (the checkpoint-damaged bug, operability review 2026-09-29).
 ;; :bad records answer ACC: the open refuses them itself.
 (defun fn-store-cfg-next-txid (octet-records acc)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-octet-list-listp octet-records)))
   (let ((records (fn-store-cfg-decode-records octet-records)))
     (if (equal records :bad)
         (nfix acc)
@@ -286,7 +287,8 @@
 ;; The served profile: the sealed one under the configuration history's
 ;; :set-limit rows (books/limits-live.lisp fn-lim-effective).
 (defun fn-store-lim-effective (sealed octet-records)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-octet-list-listp octet-records)))
   (let ((records (fn-store-cfg-decode-records octet-records)))
     (if (equal records :bad)
         sealed

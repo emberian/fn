@@ -4364,11 +4364,13 @@
 
 ; host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
 (definterface fn-store-cfg-next-txid
-  :class ::program)
+  :class ::program
+  :kinds ((octet-records fn-octet-list-listp)))
 
 ; host/native/admin.lisp, host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
 (definterface fn-store-lim-effective
-  :class ::program)
+  :class ::program
+  :kinds ((octet-records fn-octet-list-listp)))
 
 ; host/native/admin.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
 (definterface fn-store-lim-use
