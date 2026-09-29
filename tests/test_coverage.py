@@ -111,7 +111,7 @@ class DelegationTests(unittest.TestCase):
         world["functions"] += [
             fn("fn-wrap-serve", ["fn-serve"]),         # exactly a call of fn-serve (direct theorem)
             fn("fn-wrap-scan", ["fn-scan"]),           # exactly a call of fn-scan (no theorem)
-            fn("fn-wrap-branch", [IF, "fn-serve"]),    # branches itself
+            fn("fn-wrap-branch", [IF, "fn-serve-refusal"]),  # branches itself, over a helper
         ]
         interfaces = json.loads(json.dumps(INTERFACES))
         interfaces["entries"] += [
