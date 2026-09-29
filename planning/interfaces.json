@@ -11358,7 +11358,7 @@
       "keystones": [],
       "extraction": null,
       "direct": null,
-      "delegates": null,
+      "delegates": "fn-bpn-authored-wire-authorize",
       "dispatched_from": [
         "host/native/bp.lisp"
       ],
@@ -11502,7 +11502,7 @@
       "keystones": [],
       "extraction": null,
       "direct": null,
-      "delegates": null,
+      "delegates": "fn-bpn-evidence-authorize",
       "dispatched_from": [
         "host/native/bp.lisp"
       ],
@@ -14806,7 +14806,7 @@
       "keystones": [],
       "extraction": null,
       "direct": null,
-      "delegates": null,
+      "delegates": "fn-tcl-encode",
       "dispatched_from": [
         "host/native/tcpcl.lisp"
       ],
