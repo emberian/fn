@@ -64,23 +64,14 @@
 ; streams after the decision): the entry is an entry of the chain with no
 ; record, and the suffix's records follow, chained from GENESIS
 ; (fn-lg-scan-of-rotation-entry-append).
-(make-event
- (prog2$ (cw "~%SLGL-DIAG unit ~x0 max ~x1 head-len ~x2 slice-len ~x3 entry-okp ~x4 scan-p ~x5 scan-ps ~x6 scan-last ~x7 broken ~x8 scan-fork ~x9~%"
-             (slgl-unit) (slgl-max) (len (slgl-head)) (len (fn-lg-slice (slgl-head)))
-             (fn-lg-entry-okp (fn-lg-slice (slgl-head)) (slgl-p) (slgl-max))
-             (fn-lg-scan (slgl-head) (slgl-p) (slgl-unit) (slgl-max))
-             (fn-lg-scan (append (slgl-head) (slgl-suffix)) (slgl-p) (slgl-unit) (slgl-max))
-             (fn-lg-scan-last (append (slgl-head) (slgl-suffix)) (slgl-p) (slgl-unit) (slgl-max))
-             (fn-lgs-chain-broken-p (append (slgl-head) (slgl-suffix)) (slgl-p) (slgl-unit) (slgl-max))
-             (fn-lg-scan (slgl-head) (slgl-g-fork) (slgl-unit) (slgl-max)))
-         '(value-triple :slgl-diag)))
-
 (assert-event (equal (car (fn-lg-scan (slgl-head) (slgl-p) (slgl-unit) (slgl-max))) nil))
 (assert-event (equal (cdr (fn-lg-scan (slgl-head) (slgl-p) (slgl-unit) (slgl-max))) (len (slgl-head))))
 (assert-event (equal (car (fn-lg-scan (append (slgl-head) (slgl-suffix)) (slgl-p) (slgl-unit) (slgl-max)))
                      (list '(1 2 3))))
+; the chain's last is the suffix FRAME's trailer (the entry is the frame padded
+; to the unit: its last octets are the padding)
 (assert-event (equal (fn-lg-scan-last (append (slgl-head) (slgl-suffix)) (slgl-p) (slgl-unit) (slgl-max))
-                     (fn-lg-trailer (slgl-suffix))))
+                     (fn-lg-trailer (fn-lg-slice (slgl-suffix)))))
 (assert-event (not (fn-lgs-chain-broken-p (append (slgl-head) (slgl-suffix)) (slgl-p) (slgl-unit) (slgl-max))))
 ; the fork's GENESIS as the scan's start: the head is a splice, refused by the chain too
 (assert-event (equal (fn-lg-scan (slgl-head) (slgl-g-fork) (slgl-unit) (slgl-max)) '(nil . 0)))
