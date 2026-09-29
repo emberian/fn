@@ -13551,6 +13551,27 @@
           "name": "fn-ofr-apply-record-idle-past-txid"
         }
       ]
+    },
+    {
+      "id": "PRF-945",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-clo-clean-stop-is-accepted-or-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clo-finalize-never-answers-frontier-at-the-computed-frontier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clo-capture-of-clean-stop-is-accepted-or-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clo-store-open-of-clean-stop-is-accepted-or-identity"
+        }
+      ]
     }
   ]
 }

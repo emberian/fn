@@ -14135,6 +14135,27 @@
         "tests/test_native_checkpoint_auto.py"
       ],
       "progress_note": "Lane limits-live-2 (2026-09-29), row B10: the checkpoint-damaged bug of the operability review's walk F3."
+    },
+    {
+      "id": "PRF-945",
+      "title": "The open accepts every state a clean stop leaves: at the frontier the open computes from its own records, a clean stop is refused neither :history-by-frontier, nor :replay, nor :frontier -- its answer is the open or the carried contexts' :identity refusal",
+      "statement": "Subject: the host's store open, host/store-node-host.lisp and host/owner-host.lisp calling books/store-checkpoint-open.lisp fn-sco-store-open (= fn-rii-sco-store-open, PRF-321), whose :logic finalize is fn-sco-finalize. fn-clo-finalize-never-answers-frontier-at-the-computed-frontier: for ANY checkpoint C of a history (CONFIGS, EVENTS) -- C's records are EVENTS and C's drained fold is fn-cpr-replay CONFIGS EVENTS; fn-sco-capture is one (fn-sco-replay-of-capture) -- and any natural FLOOR, the finalize at fn-ofr-frontier CONFIGS EVENTS FLOOR (books/open-frontier.lisp, PRF-937) is not (fn-sn-open-error :frontier): the :frontier arm is dead at the computed frontier. fn-clo-clean-stop-is-accepted-or-identity (keystone): when moreover the history is a clean stop (fn-cst-recoverablep CONFIGS EVENTS FRONTIER, books/config-store-traces.lisp, the state the store steps carry, books/config-store-steps.lisp fn-cstp-recoverable-facts), CONFIGS is non-empty and EVENTS is an observed history below the computed frontier (fn-sn-observed-historyp), the finalize's answer has kind :ok or is (fn-sn-open-error :identity). fn-clo-capture-of-clean-stop-is-accepted-or-identity and fn-clo-store-open-of-clean-stop-is-accepted-or-identity: the same of fn-sco-capture CONFIGS EVENTS and of the second value of fn-sco-store-open on it. Scope: 'the frontier the host passes is fn-ofr-frontier' rests on PRF-937's config half (host-called) and the events half by transcription (host/store-host.lisp fn-store-log-next-txid-of-events, program mode, owed); fn-sn-observed-historyp at the computed frontier is a hypothesis (the trace relation carries it at the recorded frontier); the host's extended captures reduce to the capture by fn-sco-extend-of-capture. Teeth: tests/acl2/closure-open-tests.lisp -- the positive witness on open-frontier-tests' fixture (every hypothesis, the conclusion, and which disjunct: the open); the mutation witness (at frontier 6, not the fold, the same clean stop IS refused :frontier); the hypothesis-removal witness (a history whose configuration chain starts at the late record: retained hypotheses affirmed, fn-cst-recoverablep fails, the conclusion fails, the answer is :replay).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-011",
+        "STO-025"
+      ],
+      "depends_on": [
+        "PRF-937",
+        "PRF-321"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/closure-open.lisp",
+        "tests/acl2/closure-open-tests.lisp"
+      ],
+      "progress_note": "Lane closure-theorems-2 (2026-09-29), row X1/K6's composition (C): the two halves (limits-live-2's PRF-937 and config-store-steps' clean stop) meet at the host's finalize."
     }
   ]
 }
