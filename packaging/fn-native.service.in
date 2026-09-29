@@ -1,7 +1,11 @@
 # fn: the systemd unit a release carries (share/fn/systemd/fn.service.in).
-# install.sh renders @PREFIX@ (the installed release, /opt/fn), @NODE@ (the
-# node directory: fn.toml, store/, tls/, log/; /var/lib/fn) and @USER@ (the
-# service account, fn) and installs it as /etc/systemd/system/fn.service.
+# install.sh renders @PREFIX@ (the installation, /opt/fn: its releases under
+# releases/, the running one reached through the `current` link), @NODE@
+# (the node directory: fn.toml, store/, tls/, log/; /var/lib/fn) and @USER@
+# (the service account, fn) and installs it as /etc/systemd/system/fn.service.
+# ExecStart goes through @PREFIX@/current, so `install.sh --upgrade` and
+# `--rollback` switch releases by moving that link, never by editing this
+# unit (they render it again from the release that becomes current).
 # `run` holds the store's exclusive writer lock for its lifetime; SIGTERM is
 # the clean shutdown.
 [Unit]
@@ -21,7 +25,7 @@ WorkingDirectory=@NODE@
 # finding H1, planning/evidence/hbox-node-2026-09-28.md).  HOME is the node
 # directory, which the unit can read.
 Environment=HOME=@NODE@
-ExecStart=@PREFIX@/bin/fn operator @NODE@/fn.toml run
+ExecStart=@PREFIX@/current/bin/fn operator @NODE@/fn.toml run
 Restart=on-failure
 RestartSec=5
 KillSignal=SIGTERM

@@ -3311,6 +3311,9 @@
 (definterface fn-native-health-host-run-started-line
   :class ::program)
 
+(definterface fn-native-health-host-run-opened-line
+  :class ::program)
+
 (definterface fn-native-health-host-run-stopped-line
   :class ::program)
 

@@ -5698,6 +5698,22 @@ serialized profile when the saved image later starts."
 ;;; at the cut (tools/cut_release.sh gate 01) and by the packaging.
 (defvar *fnn-release-version* nil)
 
+;;; The clock at the image's entry (fnn-main).  The owner's OWNER-OPEN line
+;;; records the milliseconds from here to its open (`ms=N'): the measured
+;;; length of a start, which `install.sh --upgrade' quotes as the gap of
+;;; the next one (docs/install.md, "Upgrading").  A measurement, no
+;;; decision: the heap probe (packaging/fn, a first run of the image) and
+;;; the stop are outside it.
+(defvar *fnn-process-started* nil)
+
+(defun fnn-ms-since-process-start ()
+  "Milliseconds since fnn-main began; 0 when the owner runs without the
+entry (a harness that calls it directly)."
+  (if *fnn-process-started*
+      (values (round (* 1000 (- (get-internal-real-time) *fnn-process-started*))
+                     internal-time-units-per-second))
+      0))
+
 (defun fnn-release-version-word-p (text)
   "TEXT is dotted decimal numerals without leading zeros, any number of
 components (6.6.0, 6.7.12, 6.6.6.6)."
@@ -8269,6 +8285,7 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
   ;; with the guard checks that keep every stobj update well-guarded -- but no
   ;; warning text on standard output, which carries the LISTENING line and
   ;; the `model' verb's reply octets and nothing else.  Never NIL (unsafe).
+  (setq *fnn-process-started* (get-internal-real-time))
   (f-put-global 'check-invariant-risk t *the-live-state*)
   (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
   (fnn-open-streams)

@@ -814,7 +814,16 @@ checkpoint's S, or NIL."
             ;; before the owner serves anything.
             (fnn-check-filesystem-identity store t)
             (fnn-owner-recover-core store count max-connections)
-            (fnn-err "OWNER-OPEN ~a" (fnn-open-report store))
+            ;; `ms=': milliseconds from the image's entry to here (the
+            ;; recovery included), the measured length of a start that
+            ;; `install.sh --upgrade' quotes as the next gap (io.lisp
+            ;; *fnn-process-started*).
+            (let ((ms (fnn-ms-since-process-start)))
+              (fnn-err "OWNER-OPEN ~a ms=~d" (fnn-open-report store) ms)
+              ;; The service log's line for it, ACL2's rendering
+              ;; (books/native-health.lisp fn-nh-run-opened-line): what
+              ;; `install.sh --upgrade' reads for the gap to expect.
+              (fnn-log-line (fnn-core 'fn-native-health-host-run-opened-line ms)))
             ;; The persisted profile ACL2 decoded at open, handed back once:
             ;; the owner's transaction budget is derived from it there.
             (unless (eq (fnn-owner-core 'fn-owner-install-profile
