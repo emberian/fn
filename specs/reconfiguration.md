@@ -900,7 +900,7 @@ further events; the owner state shrinks by one slot rather than growing.*
 
 **Packet R4 — hosts and the CLI.** Owner: host lane. Delete every `defconst`
 in §1.7's table; thread the store's configuration into `fn-store-post-boundary`,
-`fn-store-group-names`, `fn-bpi-host-policy` and `fn-bpi-host-context`; move the
+`fn-store-group-names` and the lab BP ingress host's policy and context (that host since retired, Q7k 2026-09-29); move the
 reader seed to `tests/acl2/reader-fixture.lisp`. `run_store.py` gains
 `reconfigure` (deltas in, D13 exit codes out) and `config` (print the generation
 and value); `run_owner.py` gains a `RECONFIGURE` control line. `DEFAULT_CONFIG`

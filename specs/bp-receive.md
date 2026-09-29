@@ -28,7 +28,8 @@ authentication result. The Store must already be initialized.
 ## Identity and expiry precede staging
 
 Before anything is written, the host hands the raw bundle octets to
-`fn-bpi-host-bundle-report` (`host/bp-ingress-host.lisp`).  ACL2 checks the
+the lab ingress host's report call (`host/bp-ingress-host.lisp`, since retired:
+python-diet T5b, Q7k 2026-09-29).  ACL2 checks the
 RFC 9171 §4.1 indefinite-array head, decodes exactly one CBOR item with the
 certified profile decoder, runs `fn-bpp-decode` over those octets -- which
 re-encodes them and refuses any non-canonical spelling -- and answers with
