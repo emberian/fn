@@ -1521,7 +1521,7 @@
     "books": 1565,
     "books_in_root_closure": 1558,
     "roots": 1514,
-    "theorems": 25351,
+    "theorems": 25352,
     "functions": 16768,
     "assert_events": 21408,
     "must_fails": 2321,
@@ -24662,7 +24662,7 @@
       "book": "books/store-finalize-carried-check.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 6,
+      "theorems": 7,
       "functions": 1,
       "guards": {
         "verified": 0,

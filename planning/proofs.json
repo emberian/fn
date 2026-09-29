@@ -15074,13 +15074,22 @@
       "assumptions": [
         "A-CARRIED-PAIR"
       ],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-finalize-carried-check.lisp",
         "tests/acl2/store-finalize-carried-check-tests.lisp",
         "books/assumptions-publication.lisp"
       ],
-      "progress_note": "Lane incremental-finalize-3 (Claude Fable 5.1, 2026-09-29): REPL-green on persvati (every theorem under 400 steps). Teeth: the open's pair and a carried round's answered pair both check :ok (so on the test history the carried id trie IS structurally the rebuilt one); the empty node's tries check :wrong-msgid-trie and on the served path (raw) admit a duplicate Message-ID the right pair refuses; the three shape answers; :uncertain-id-trie reached with the right Message-ID trie and a foreign id trie."
+      "progress_note": "Lane incremental-finalize-3 (Claude Fable 5.1, 2026-09-29): REPL-green on persvati (every theorem under 400 steps). Teeth: the open's pair and a carried round's answered pair both check :ok (so on the test history the carried id trie IS structurally the rebuilt one); the empty node's tries check :wrong-msgid-trie and on the served path (raw) admit a duplicate Message-ID the right pair refuses; the three shape answers; :uncertain-id-trie reached with the right Message-ID trie and a foreign id trie.",
+      "events": [
+        "fn-sfk-check-ok-is-carried",
+        "fn-sfk-check-ok-facts",
+        "fn-sfk-check-wrong-msgid-trie-is-not-carried",
+        "fn-sfk-check-shape-answers-are-not-carried",
+        "fn-sfk-carry-checks-ok",
+        "fn-assume-carried-pair-is-carried",
+        "fn-sfp-carried-open-under-carried-pair"
+      ]
     }
   ]
 }
