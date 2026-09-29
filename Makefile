@@ -291,11 +291,13 @@ ACL2_BOOKS ?= books/defrecord \
 	books/byte-store-range-read \
 	tests/acl2/byte-store-state-checkpoint-program-tests \
 	books/store-node-resolution \
+	books/refusal-effect \
 	books/store-identity-sequence-invariants \
 	tests/acl2/store-identity-sequence-invariants-tests \
 	books/consumer-store-invariants \
 	tests/acl2/consumer-store-invariants-tests \
 	tests/acl2/store-node-resolution-tests \
+	tests/acl2/refusal-effect-tests \
 	tests/acl2/store-node-resolution-traces-tests \
 	tests/acl2/store-identity-traces-tests \
 	books/store-sweep \

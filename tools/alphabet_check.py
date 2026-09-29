@@ -61,9 +61,15 @@ ROW_ALIASES = {"fn-replay-composite-held": "fn-hstxa-p"}
 
 def definition(path: pathlib.Path, name: str) -> str:
     text = path.read_text(encoding="utf-8", errors="replace")
+    pattern = re.compile(r"\(\s*(defun|defund|defconst)\s+" + re.escape(name) + r"[\s)]")
     for form in reach_check.forms(text):
-        if re.match(r"\(\s*(defun|defund|defconst)\s+" + re.escape(name) + r"[\s)]", form):
-            return form
+        # The definition may sit inside an encapsulate, defsection or progn:
+        # take the inner form from its head, as reach_check.theorem_forms does.
+        match = pattern.search(form)
+        if match:
+            inner = reach_check.forms(form[match.start():])
+            if inner:
+                return inner[0]
     raise SystemExit(f"alphabet_check: {path.relative_to(ROOT)} defines no {name}")
 
 
@@ -91,19 +97,25 @@ def cond_predicates(form: str) -> set[str]:
 
 def store_event_tables() -> dict[str, set[str]]:
     encoder = cond_predicates(definition(STORE_EVENTS, "fn-store-event-encode"))
-    decoder = cond_predicates(definition(STORE_EVENTS, "fn-store-event-decode"))
     kind = cond_predicates(definition(STORE_EVENTS, "fn-store-event-kind"))
+    # The decoder (fn-store-event-decode-exact) dispatches on the code and
+    # calls one decoder per kind; each decoder names its kind's predicate by
+    # the tree's convention (fn-X-decode: fn-X-p, fn-Xp or fn-X-eventp).
+    decode_form = definition(STORE_EVENTS, "fn-store-event-decode-exact")
+    decoders = set(re.findall(r"\((fn-[a-z0-9-]+)-decode\b", decode_form)) - {"fn-store-event"}
+    wire = encoder | kind
+    decoder = set()
+    for base in decoders:
+        match = next((p for p in (base + "-p", base + "p", base + "-eventp") if p in wire), None)
+        decoder.add(match or base + "-decode")
     replay = definition(REPLAY, "fn-replay-apply-record")
     rii = definition(RII, "fn-rii-apply-record")
     dispatch = set()
     for form in (replay, rii):
         for name in re.findall(r"\((fn-[a-z0-9-]+(?:-p|p|-held))\s", form):
             dispatch.add(ROW_ALIASES.get(name, name))
-    # The decoder answers a decoded WIRE event; the decode arms name the
-    # decoders, so read the predicates the decoder's cond tests as well.
-    decoder |= {p for p in cond_predicates(definition(STORE_EVENTS, "fn-store-event-decode"))}
     as_row = lambda s: {WIRE_TO_ROW.get(p, p) for p in s}  # noqa: E731
-    return {"encoder": as_row(encoder), "decoder": as_row(decoder) or as_row(encoder),
+    return {"encoder": as_row(encoder), "decoder": as_row(decoder),
             "kind": as_row(kind), "dispatcher": dispatch & (as_row(encoder) | as_row(kind) | dispatch)}
 
 
