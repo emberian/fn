@@ -32,6 +32,7 @@ import hashlib
 import json
 import os
 import re
+import subprocess
 import sys
 import tempfile
 import time
@@ -3583,6 +3584,7 @@ def apply_events(regenerated: dict[str, list[str]],
     """``proofs.json`` with regenerated ``events`` and ``status``; the rest untouched."""
     registry = json.loads(PROOFS.read_text(encoding="utf-8"))
     state: dict = {}
+    flipped: list[tuple[str, set[str]]] = []
     if books is not None and any(books.values()):
         here = str(Path(__file__).resolve().parent)
         if here not in sys.path:
@@ -3606,9 +3608,57 @@ def apply_events(regenerated: dict[str, list[str]],
         else:
             entry.pop("events", None)
         if books is not None:
+            before = entry.get("status")
             entry["status"] = derived_status(entry, names, books.get(entry["id"], set()),
                                              state)
+            if before == "certified" and entry["status"] != "certified":
+                flipped.append((entry["id"], books.get(entry["id"], set())))
+    if flipped:
+        for line in flip_lines(flipped, (state.get("__green__") or {}).get(
+                "books_by_verdict", {})):
+            print(line, file=sys.stderr)
     return json.dumps(registry, indent=2, ensure_ascii=False) + "\n"
+
+
+def flip_lines(flipped: list[tuple[str, set[str]]], records: dict,
+               changed: "set[str] | None" = None) -> list[str]:
+    """Why each row this regen took from certified is no longer certified,
+    grouped by cause (obstructions-8 item 71: store-lineage-3's persvati regen
+    uncertified 16 rows, which read as a cache-key bug; it was the lane's own
+    books/store-log.lisp edit moving their closures -- right, and expected
+    until the runner certifies the branch).  A cause is a book of the row
+    whose own digest has no green run, or a dependency moved since its green;
+    each is marked `this branch' when `git diff origin/dev` changes it."""
+    if changed is None:
+        done = subprocess.run(["git", "-C", str(ROOT), "diff", "--name-only", "origin/dev",
+                               "--", "books", "tests/acl2"], capture_output=True, text=True,
+                              check=False)
+        changed = set(done.stdout.split()) if done.returncode == 0 else set()
+    causes: dict[str, list[str]] = {}
+    for ident, event_books in flipped:
+        found = False
+        for book in sorted(event_books):
+            record = records.get(book) or {}
+            moved = list(record.get("deps_moved_since") or [])
+            if record.get("verdict") != "green":
+                moved.append(f"{book}.lisp ({record.get('verdict', 'unjudged')})")
+            elif not record.get("certified_archived"):
+                moved.append(f"{book}.lisp (green only in an unarchived local run)")
+            for cause in moved:
+                causes.setdefault(cause, []).append(ident)
+                found = True
+        if not found:
+            causes.setdefault("(no cause recorded)", []).append(ident)
+    lines = [f"ledger: {len(flipped)} row(s) certified -> uncertified-at-current-digest "
+             "by this regen; by cause:"]
+    for cause, idents in sorted(causes.items(), key=lambda kv: (-len(kv[1]), kv[0])):
+        path = cause.split(" ", 1)[0]
+        ours = "this branch changes it: expected until it is certified" if path in changed \
+            else "not changed by this branch vs origin/dev: investigate"
+        unique = sorted(set(idents))
+        lines.append(f"  {cause}: {len(unique)} row(s) ({ours}): {', '.join(unique[:8])}"
+                     + (" ..." if len(unique) > 8 else ""))
+    return lines
 
 
 # --------------------------------------------------------------------------

@@ -4,7 +4,7 @@
     python3 tools/next_id.py                       # next free of every kind, and why
     python3 tools/next_id.py claim PRF --lane NAME --note "what it is" [--count N]
     python3 tools/next_id.py claims [--lane NAME] [--kind PRF]
-    python3 tools/next_id.py check [--base origin/dev] [--lane NAME]
+    python3 tools/next_id.py check [--base origin/dev] [--lane NAME ...] [--exact-lane]
     python3 tools/next_id.py backfill --since 2026-09-27T00:00:00Z [--dry-run]
 
 Nearly every merge on 2026-09-27 renumbered an id.  The old tool read this
@@ -487,8 +487,34 @@ def added_ids(base: str, root: Path | None = None) -> tuple[list[str], str]:
     return unique, merge_base
 
 
+def branch_lane(root: Path | None = None) -> str | None:
+    """The lane the checked-out branch names (lane/X -> X), or None."""
+    branch = git("branch", "--show-current", cwd=root or ROOT).strip()
+    return branch[len("lane/"):] if branch.startswith("lane/") else None
+
+
+def lane_family(name: str) -> str:
+    """A lane's line: its name without the successor number (obstructions-8,
+    obstructions-7 and obstructions-2 are one line, in one worktree)."""
+    return re.sub(r"-\d+$", "", name)
+
+
+def our_lanes(named: list[str] | None, root: Path | None = None) -> set[str]:
+    """The names this worktree's ids may be claimed under: each --lane, the
+    branch's lane, the worktree's directory, $FN_LANE (item 70: the check took
+    only the worktree directory, so a successor's own claims, made under its
+    own name, read as collisions)."""
+    names = set(named or [])
+    for found in (branch_lane(root), default_lane(root)):
+        if found:
+            names.add(found)
+    return names
+
+
 def check(args) -> int:
-    lane = args.lane or default_lane()
+    lanes = our_lanes(args.lane)
+    families = {lane_family(name) for name in lanes}
+    lane = sorted(lanes)[0] if lanes else None
     ids, merge_base = added_ids(args.base)
     claims = claims_by_id(read_ledger(ledger_path()))
     collisions = unclaimed = 0
@@ -499,12 +525,15 @@ def check(args) -> int:
             print(f"UNCLAIMED {ident}: no row in the claims ledger "
                   f"(python3 tools/next_id.py claim {parse_id(ident)[0]} --lane {lane or 'NAME'}"
                   " --note ... takes a free one; renumber to it)")
-        elif lane and row.get("lane") != lane:
+        elif lanes and row.get("lane") not in lanes and (
+                getattr(args, "exact_lane", False)
+                or lane_family(row.get("lane") or "") not in families):
             collisions += 1
             print(f"COLLISION {ident}: claimed by {row.get('lane')} at {row.get('at')} "
                   f"({row.get('note')}); renumber this lane's use")
         else:
-            print(f"ok        {ident}: claimed by {row.get('lane')} ({row.get('note')})")
+            line = "" if not lanes or row.get("lane") in lanes else " -- this lane's line"
+            print(f"ok        {ident}: claimed by {row.get('lane')} ({row.get('note')}){line}")
     print(f"{len(ids)} id(s) added against {args.base} (merge base {merge_base[:12]}): "
           f"{collisions} collision(s), {unclaimed} unclaimed")
     return 1 if collisions else 3 if unclaimed else 0
@@ -657,7 +686,12 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(run=list_claims)
     p = sub.add_parser("check", help="this tree's new ids against the ledger")
     p.add_argument("--base", default="origin/dev")
-    p.add_argument("--lane", default=None)
+    p.add_argument("--lane", action="append", default=None,
+                   help="a name this lane claims under (repeatable; default: the "
+                        "branch's lane/X, the worktree's directory and $FN_LANE, and "
+                        "their predecessors: the same name up to a -N suffix)")
+    p.add_argument("--exact-lane", action="store_true",
+                   help="only the names themselves, not their predecessors")
     p.set_defaults(run=check)
     p = sub.add_parser("backfill", help="record ids taken before the ledger existed")
     p.add_argument("--since", required=True, help="ISO time; ids above the base's largest then")

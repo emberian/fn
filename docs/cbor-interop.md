@@ -1,7 +1,7 @@
 # CBOR interoperability probe
 
 `tests/interop_cbor.py` is an optional interoperability probe for the
-experimental primitive profile in `books/cbor.lisp` and the provisional schema-0
+experimental primitive profile in `books/cbor.lisp` and the provisional
 record in `books/records.lisp`. It is deliberately outside the default
 `unittest` suite and does not add a project dependency.
 
@@ -55,15 +55,15 @@ shortest argument heads, a 65535-byte payload limit, a 65538-octet input limit,
 and exact single-item decoding. Therefore generic CBOR acceptance is not
 reported as fn-profile acceptance.
 
-The schema-0 and schema-1 fixtures use the attached `fn-record-encode` and
+The schema-1 fixtures use the attached `fn-record-encode` and
 `fn-record-decode-exact` calls. cbor2 decodes the concatenated primitive items,
 re-encodes them, and supplies an independently encoded sequence back to ACL2.
-This checks primitive sequence interoperability for both exact record grammars;
+This checks primitive sequence interoperability for the exact record grammar;
 the separately certified codec seam establishes the general round-trip and
 canonicality claims.
 
 The ACL2 bridge sends only generated decimal octet-list literals to fixed calls
 to `fn-cbor-*` and `fn-record-*`; no external bytes are passed to the Lisp
 reader or evaluator. This probe supplies integration evidence for `SCN-013` and
-`ENC-001`'s current primitive/schema-0 scope. It does not prove canonicality,
+`ENC-001`'s current primitive/record scope. It does not prove canonicality,
 bounded work, cryptographic properties, or full native/batch interoperability.
