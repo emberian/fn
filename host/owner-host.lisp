@@ -886,17 +886,16 @@
 ; (the publication's, as fn-owner-sco-due reads it; FREE the statvfs the
 ; host took before the quantum), whether an instant is or will be recorded.
 ; A dry run writes nothing: no publication or deferral stands against it.
-; A running owner answers the dry run and `--recorded' (the pass that
-; installs, books/owner-reclaim-pass.lisp); `store reclaim' without it
-; (which first records the instant at the clock) is refused by name,
-; :offline-only, until the pass records the instant live (LANEDUMP
-; online-reclaim-3 NEXT).
+; A running owner answers the dry run, `--recorded' (the pass that
+; installs, books/owner-reclaim-pass.lisp) and `store reclaim', which first
+; records the instant at the clock through the live reconfiguration
+; (fn-owner-orc-instant-stage) and then runs the same pass over it.
 (defun fn-owner-orc-request (mode override free state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((profile (fn-owner-store-profile state))
          (dry (eq mode :dry-run))
          (v (fn-cfg-value (fn-ocfg-config (fn-owner-ocfg state)))))
-    (value (if (not (member-eq mode '(:dry-run :recorded)))
+    (value (if (not (member-eq mode '(:dry-run :recorded :reclaim)))
                :offline-only
              (fn-orc-request-word
             (fn-owner-orc-pass state)
@@ -4358,6 +4357,23 @@ existing port only after fn-fc has made this connection ready."
 ; Under the mutex, a chunk of the rewritten rows: its tombstoned records
 ; interned into the live arena under the captured Store's key ring
 ; (fn-orcp-intern-rows).  (mv ROWS FN-ARENA).
+;; Q16 (lane online-reclaim-6): the reclaim's instant recorded LIVE, the twin
+;; of the offline host/checkpoint-host.lisp fn-store-reclaim-instant-record:
+;; the one delta fn-rci-delta of CLOCK's stamp, staged on the private
+;; connection CID by the path every live reconfiguration takes
+;; (fn-owner-reconfigure-deltas: the generation pin, the connection budget,
+;; the staged record), published by host/native/admin.lisp
+;; fnn-owner-live-reconfigure-locked.  An unrepresentable instant is refused
+;; by name, :reclaim-instant, before anything is staged.  KEYSTONE (the
+;; record's meaning) fn-rci-recorded-context-is-the-decided-context.
+(defun fn-owner-orc-instant-stage (cid clock fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (let* ((stamp (fn-record-stamp-of-observation clock))
+         (now (if (natp stamp) stamp nil)))
+    (if (fn-rci-representablep now)
+        (fn-owner-reconfigure-deltas cid (list (fn-rci-delta now)) fn-arena state)
+      (value (fn-ores-config-refused :reclaim-instant)))))
+
 (defun fn-owner-orcp-intern-chunk (rows keyring generation fn-arena)
   (declare (xargs :stobjs fn-arena :mode :program))
   (fn-orcp-intern-rows rows keyring generation fn-arena))

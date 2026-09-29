@@ -204,9 +204,6 @@ class ExpiryMixin:
             first, final = c.post(article("n9", GROUP, None))
             self.assertTrue((final or first).startswith(b"240"), (first, final))
             self.assertTrue(c.command("STAT %s" % msgid("n9")).startswith(b"223"))
-            # `store reclaim' itself is refused by name while the owner runs.
-            refused = self.reclaim(node, expect=EXIT.REFUSED)
-            self.assertIn(b"reclaim offline-only", refused.stdout, refused.stdout)
             c.close()
         finally:
             node.stop(expect=None, grace=300)
@@ -315,6 +312,30 @@ class DeveloperExpiryTests(ExpiryMixin, unittest.TestCase):
         opened = [l for l in status.stdout.decode("ascii").splitlines() if l.startswith("open=")]
         self.assertEqual(opened, ["open=checkpoint:%d suffix=0" % sequence], status.stdout)
         # Reopened from it: the durable publication is the one served before the stop.
+        self.assert_reclaimed(node, "reopened")
+        self.assertTrue(self.served(node, ["STAT %s" % msgid("n9")])[0].startswith(b"223"))
+
+    # Q16 (lane online-reclaim-6): `store reclaim' on the serving node records
+    # the instant through the live reconfiguration, then the pass installs.
+    def test_a_live_reclaim_records_the_instant_and_installs(self):
+        node = self.filled("live-reclaim")
+        owner = node.start(timeout=600)
+        try:
+            node.operator("retention", "expire", GROUP, "purge", "30", expect=EXIT.OK)
+            c = Client(node.port, timeout=300, greeting=None)
+            self.assertTrue(c.command("STAT %s" % msgid("p0")).startswith(b"223"))
+            done = self.reclaim(node)
+            self.assertIn(b"installed", done.stdout, done.stdout)
+            line = self.owner_lines(owner, re.compile(rb"RECLAIM installed records="), 1)
+            self.assertEqual(len(line), 1, owner.stderr.since(0)[-3000:])
+            self.assertIn(b"reclaimed=2", line[0], line)
+            self.assertTrue(c.command("STAT %s" % msgid("p0")).startswith(b"430 article reclaimed"))
+            self.assertTrue(c.command("STAT %s" % msgid("n0")).startswith(b"223"))
+            first, final = c.post(article("n9", GROUP, None))
+            self.assertTrue((final or first).startswith(b"240"), (first, final))
+            c.close()
+        finally:
+            node.stop(expect=None, grace=300)
         self.assert_reclaimed(node, "reopened")
         self.assertTrue(self.served(node, ["STAT %s" % msgid("n9")])[0].startswith(b"223"))
 

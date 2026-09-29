@@ -350,8 +350,8 @@ then the fold over the rows, the classes and the decision), its report in the
 owner's log as `store reclaim --dry-run' prints it offline; a pass in flight
 answers :in-flight; `--recorded' runs the pass that installs
 (fnn-owner-reclaim-pass: :installed, :none, or deferred by name);
-`store reclaim' without it is :offline-only until the pass records the
-instant live.  The reply names the word."
+`store reclaim' without it records the instant live, then runs that pass.
+The reply names the word."
   (let* ((free (fnn-disk-free-octets (fnn-owner-service-store service)))
          (word (fnn-owner-serialized
                 service nil
@@ -362,10 +362,31 @@ instant live.  The reply names the word."
                            :offline-only))
       (fnn-fault "owner returned a malformed reclaim answer ~a" word))
     (fnn-err "RECLAIM request mode=~(~a~) answer=~(~a~)" mode word)
+    (when (and (eq word :requested) (eq mode :reclaim))
+      ;; `store reclaim': the instant at the clock recorded first, through
+      ;; the live reconfiguration (fn-owner-orc-instant-stage), durable
+      ;; before the pass reads it; a refusal is before anything was written.
+      (let ((clock (fnn-store-prepare-observation)))
+        (destructuring-bind (recorded &optional reason &rest ignored)
+            (fnn-owner-serialized
+             service nil
+             (lambda ()
+               (multiple-value-list
+                (fnn-owner-live-reconfigure-locked
+                 service
+                 (lambda (cid)
+                   (fnn-owner-result 'fn-ores-config-result-p
+                                     'fn-owner-orc-instant-stage cid clock))))))
+          (declare (ignore ignored))
+          (unless (eq recorded :accepted)
+            (fnn-err "RECLAIM instant refused: ~(~a~)" reason)
+            (return-from fnn-owner-reclaim-request
+              (list :reason :refused (or reason :reclaim-instant)))))))
     (when (eq word :requested)
       (setq word (if (eq mode :dry-run)
                      (fnn-owner-reclaim-dry-run service free)
-                   ;; Q16 (a): `--recorded' installs (fnn-owner-reclaim-pass)
+                   ;; Q16 (a): `--recorded' installs (fnn-owner-reclaim-pass),
+                   ;; and `store reclaim' over the instant it just recorded
                    (fnn-owner-reclaim-pass service free))))
     (list :reason (fnn-core 'fn-owner-orc-request-status word) word)))
 
