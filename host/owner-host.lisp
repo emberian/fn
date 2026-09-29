@@ -550,16 +550,6 @@
           (value :installed))
       (value :refused))))
 
-;; Row S1 (books/limits-live.lisp, PRF-940): the store's use a limit
-;; decision reads, (TRANSACTIONS HISTORY-OCTETS): the owner's committed
-;; record count (fn-sf-records-count-is-used-by-definition) and its carried
-;; record octets (fn-owner-record-octets; fn-sbud-bytes-used).
-(defun fn-owner-limit-use (fn-hist state)
-  (declare (xargs :stobjs (fn-hist state) :mode :program))
-  (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
-    (let ((s (fn-owner-store state)))
-      (mv nil (list (fn-sf-records-count (fn-sn-files s)) bytes) fn-hist state))))
-
 ;; Row S1: serve an applied limit's profile (the one the configuration
 ;; history now records, fn-lim-effective, fn-lim-effective-of-append-record)
 ;; as the owner's served bound, carried verdict and store profile.  The
@@ -910,6 +900,16 @@
          (state (f-put-global 'fn-owner-record-octets
                               (cons (fn-hist-count fn-hist) bytes) state)))
     (mv bytes fn-hist state)))
+
+;; Row S1 (books/limits-live.lisp, PRF-940): the store's use a limit
+;; decision reads, (TRANSACTIONS HISTORY-OCTETS): the owner's committed
+;; record count (fn-sf-records-count-is-used-by-definition) and its carried
+;; record octets (fn-owner-record-octets; fn-sbud-bytes-used).
+(defun fn-owner-limit-use (fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
+    (let ((s (fn-owner-store state)))
+      (mv nil (list (fn-sf-records-count (fn-sn-files s)) bytes) fn-hist state))))
 
 ; The completion debt of the carried Store (the open forward undertakings,
 ; each owing a release record), carried as (K . DEBT) and advanced over the
