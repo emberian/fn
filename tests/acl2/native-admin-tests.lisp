@@ -476,6 +476,22 @@
                       )
                      :refused))
 
+; Row Q10c: `consumer show' is its own query (the consumer bindings), never
+; `account list''s; both read the configuration without the writer lock.
+(assert-event
+ (let ((plan (fn-native-admin-plan (fn-na-test-argv '("consumer" "show")))))
+   (and (equal (fn-native-admin-result-status plan) :accepted)
+        (equal (fn-native-admin-result-kind plan) :list-consumers)
+        (fn-native-admin-result-queryp plan)
+        (equal (fn-native-admin-result-report-kind plan) :consumers))))
+(assert-event
+ (let ((plan (fn-native-admin-plan (fn-na-test-argv '("account" "list")))))
+   (and (equal (fn-native-admin-result-kind plan) :list-accounts)
+        (equal (fn-native-admin-result-report-kind plan) :accounts))))
+(assert-event (equal (fn-native-admin-result-status
+                      (fn-native-admin-plan (fn-na-test-argv '("consumer" "show" "x"))))
+                     :refused))
+
 ; The report: the record `peer add` wrote, read back in the order `peer add`
 ; takes its arguments.  The rows are the codec's own.
 (defconst *fn-na-peer-rows*

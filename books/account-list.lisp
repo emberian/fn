@@ -179,3 +179,79 @@
 (defthm fn-acct-list-word-is-pending-only-for-a-pending-row
   (equal (equal (fn-acct-kind-word (fn-acct-row-kind row)) "pending ")
          (equal (fn-cfg-row-n row) 0)))
+
+; -----------------------------------------------------------------------------
+; Row Q10c: `consumer show' lists the consumer bindings (mark 6) alone.  The
+; review's walk found it printed the whole account list, pending expiries
+; and redeemed principals included (the plan was `account list''s).  The
+; report is the account list's own line for each consumer row, in row order,
+; and nothing for any other row; it executes by the same loop as the account
+; list (the table has no row cap, D27).
+
+(defun fn-acct-consumer-rows (rows)
+  "The consumer rows of ROWS, in order (the logical filter the report is of)."
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (equal (fn-acct-row-kind (car rows)) :consumer)
+          (cons (car rows) (fn-acct-consumer-rows (cdr rows)))
+        (fn-acct-consumer-rows (cdr rows)))
+    nil))
+
+(defun fn-acct-consumer-line (row)
+  (declare (xargs :guard t))
+  (if (equal (fn-acct-row-kind row) :consumer) (fn-acct-list-line row) ""))
+
+(defun fn-acct-consumer-lines-loop (rows acc)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (fn-acct-consumer-lines-loop
+       (cdr rows)
+       (fn-ag-rev-onto (coerce (fn-acct-consumer-line (car rows)) 'list) acc))
+    (fn-ag-rev-onto acc nil)))
+
+(defun fn-acct-consumer-lines (rows)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp rows)
+                  (concatenate 'string (fn-acct-consumer-line (car rows))
+                               (fn-acct-consumer-lines (cdr rows)))
+                "")
+       :exec (coerce (fn-acct-consumer-lines-loop rows nil) 'string)))
+
+(defthm fn-acct-consumer-lines-loop-is-rev-onto
+  (equal (fn-acct-consumer-lines-loop rows acc)
+         (fn-ag-rev-onto acc (coerce (fn-acct-consumer-lines rows) 'list)))
+  :hints (("Goal" :induct (fn-acct-consumer-lines-loop rows acc)
+                  :in-theory (disable fn-acct-consumer-line))))
+
+(verify-guards fn-acct-consumer-lines
+  :hints (("Goal" :in-theory (disable fn-acct-consumer-line))))
+
+(defun fn-acct-consumers-list-report (v)
+  "The `consumer show' report over configuration value V."
+  (declare (xargs :guard t))
+  (fn-record-string-octets (fn-acct-consumer-lines (fn-cfg-accounts v))))
+
+; KEYSTONE (row Q10c).  `consumer show' prints exactly the lines `account
+; list' prints for the consumer rows, in order: the account list's report
+; over the consumer rows alone.  No pending, redeemed, binding, access,
+; moderation or deleted row reaches it.
+(defthm fn-acct-consumer-lines-are-the-list-lines-of-the-consumer-rows
+  (equal (fn-acct-consumer-lines rows)
+         (fn-acct-kinds-lines (fn-acct-consumer-rows rows)))
+  :hints (("Goal" :in-theory (disable fn-acct-list-line fn-acct-row-kind))))
+
+(defthm fn-acct-consumers-list-report-is-the-list-report-of-the-consumer-rows
+  (equal (fn-acct-consumers-list-report v)
+         (fn-record-string-octets
+          (fn-acct-kinds-lines (fn-acct-consumer-rows (fn-cfg-accounts v)))))
+  :hints (("Goal" :in-theory '(fn-acct-consumers-list-report
+                               fn-acct-consumer-lines-are-the-list-lines-of-the-consumer-rows))))
+
+(defthm fn-acct-consumer-rows-are-consumers
+  (implies (member-equal row (fn-acct-consumer-rows rows))
+           (equal (fn-acct-row-kind row) :consumer)))
+
+(defthm fn-acct-consumer-rows-keep-every-consumer
+  (implies (and (member-equal row rows)
+                (equal (fn-acct-row-kind row) :consumer))
+           (member-equal row (fn-acct-consumer-rows rows))))

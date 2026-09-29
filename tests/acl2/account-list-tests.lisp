@@ -82,3 +82,28 @@
 ; Past year 9999 the instant is not rendered (RFC 3339's four-digit year).
 (assert-event (equal (fn-acct-expiry-text "99999999999999999999")
                      "99999999999999999999"))
+
+; Row Q10c: `consumer show' prints the consumer rows' lines alone.  Over
+; alt-v1's pending invitation followed by a consumer binding (mark 6), the
+; account list prints both lines and `consumer show' only the binding's.
+(defconst *alt-consumer-row*
+  (fn-cfg-row-make "bob-pub" "bob" "" 6))
+(defmacro alt-mixed-rows ()
+  '(append (fn-cfg-accounts (alt-v1)) (list *alt-consumer-row*)))
+(assert-event (equal (len (alt-mixed-rows)) 2))
+(assert-event
+ (equal (fn-acct-kinds-lines (alt-mixed-rows))
+        (concatenate 'string "pending expires 2000-01-24T03:33:20Z" (string #\Newline)
+                     "consumer bob-pub account bob" (string #\Newline))))
+(assert-event
+ (equal (fn-acct-consumer-lines (alt-mixed-rows))
+        (concatenate 'string "consumer bob-pub account bob" (string #\Newline))))
+(assert-event (equal (fn-acct-consumer-rows (alt-mixed-rows))
+                     (list *alt-consumer-row*)))
+; The executable loop (what the host runs) agrees on the same rows.
+(assert-event
+ (equal (coerce (fn-acct-consumer-lines-loop (alt-mixed-rows) nil) 'string)
+        (concatenate 'string "consumer bob-pub account bob" (string #\Newline))))
+; No consumer row: `consumer show' prints nothing though the list does not.
+(assert-event (equal (fn-acct-consumer-lines (fn-cfg-accounts (alt-v1))) ""))
+(assert-event (not (equal (fn-acct-kinds-lines (fn-cfg-accounts (alt-v1))) "")))
