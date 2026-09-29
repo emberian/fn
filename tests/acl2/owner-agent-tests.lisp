@@ -171,7 +171,7 @@
 ; The article is the one the owner queued for the writer.
 (defun oat-queued-decisionp (d subs)
   (and (consp subs)
-       (or (equal (fn-own-sub-decision (car subs)) d)
+       (or (equal (fn-own-sub-queued-decision (car subs)) d)
            (oat-queued-decisionp d (cdr subs)))))
 (assert-event
  (oat-queued-decisionp *oat-submission*

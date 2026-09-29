@@ -34,8 +34,9 @@
           (mv result fn-octets)))
       result)))
 
-; One article's reserve at the small preset (fn-heap-article-reserve-octets).
-(defconst *mcat-r* 1589248)
+; One article's reserve at the small preset (fn-heap-article-reserve-octets;
+; the packed article since lane chunked-body-2).
+(defconst *mcat-r* 107552)
 ; A ledger with ROOM octets free: 100 MiB of base, nothing else held.
 (defun mcat-ledger (room ops)
   (declare (xargs :mode :program))
@@ -187,14 +188,14 @@
 
 ; KEYSTONE fn-mca-initial-funds-exactly-the-articles on the production core
 ; (heap-figure-tests' *hft-prod-core*): at the small preset the pool is
-; 50,855,936 octets, 32 reserves and not 33; under A = 4 MiB exactly one
-; (the native case, tests/test_native_article_slots.py).
+; 3,441,664 octets, 32 reserves and not 33; under A = 4 MiB seven
+; (the native case, tests/test_native_article_slots.py; lane chunked-body-2).
 (defconst *mcat-core* '(200411640 . 114644864))
 (defconst *mcat-small* (fn-mca-initial *fn-heap-small-profile* *mcat-core* nil))
 (assert-event (fn-mcr-fundedp *mcat-small*))
 (assert-event (equal (fn-mcr-budget *mcat-small*)
                      (fn-heap-figure-octets *fn-heap-small-profile* *mcat-core* nil)))
-(assert-event (equal (- (fn-mcr-budget *mcat-small*) (fn-mcr-total *mcat-small*)) 50855936))
+(assert-event (equal (- (fn-mcr-budget *mcat-small*) (fn-mcr-total *mcat-small*)) 3441664))
 (assert-event (equal (fn-mcr-completion *mcat-small*) (fn-mca-open-octets *fn-heap-small-profile*)))
 (defun mcat-admit-n (l n r)
   (declare (xargs :mode :program))
@@ -205,8 +206,9 @@
 (assert-event (equal (mcat-admit-n *mcat-small* 33 *mcat-r*) :refused))
 (defconst *mcat-a4* (fn-mca-initial *oast-a4* *mcat-core* nil))
 (defconst *mcat-a4-r* (fn-heap-article-reserve-octets *oast-a4*))
-(assert-event (fn-mcr-fundedp (mcat-admit-n *mcat-a4* 1 *mcat-a4-r*)))
-(assert-event (equal (mcat-admit-n *mcat-a4* 2 *mcat-a4-r*) :refused))
+; A = 4 MiB: seven (one before lane chunked-body-2's packed reserve).
+(assert-event (fn-mcr-fundedp (mcat-admit-n *mcat-a4* 7 *mcat-a4-r*)))
+(assert-event (equal (mcat-admit-n *mcat-a4* 8 *mcat-a4-r*) :refused))
 
 ; PKT-887 (lane credits-stall): a poster whose short article is queued
 ; behind a barrier holds that article's charge, not a whole reserve, so its
