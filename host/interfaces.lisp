@@ -2589,7 +2589,8 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnf-family-next
-  :class ::common-lisp-compliant)
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnf-family-next-selects-exactly-the-first-ready-family))
 
 (definterface fn-bpnf-family-publication-authorize
   :class ::ideal
