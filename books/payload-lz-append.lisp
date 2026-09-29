@@ -375,7 +375,7 @@
     (and (iff (fn-lzr-append-refusal-text d)
               (and (fn-lzr-span-okp r k n) (fn-lzr-u32p dict-id)
                    (not (eq candidate :none))
-                   (not (equal (fn-lz-decode dict candidate n)
+                   (not (equal (fn-pzd-decode dict candidate n)
                                (list :ok (take n (nthcdr k r)))))))
          (implies (fn-lzr-append-refusal-text d)
                   (and (stringp (fn-lzr-append-refusal-text d))
@@ -388,7 +388,7 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-lzr-append-refusal-text fn-lzr-append-decide
                             fn-lzr-append-octets)
-                           (fn-lz-decode fn-lzr-seal fn-lzr-compress-p
+                           (fn-pzd-decode fn-lzr-seal fn-lzr-compress-p
                             fn-lzr-span-okp fn-lzr-u32p take nthcdr)))))
 
 ; KEYSTONE (PRF-952).  The refusal line the host prints for a read
@@ -405,5 +405,5 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-lzr-read-refusal-text fn-lzr-expand)
-                           (fn-lz-decode fn-lzr-parse fn-lzr-magicp take nthcdr
+                           (fn-pzd-decode fn-lzr-parse fn-lzr-magicp take nthcdr
                             assoc-equal)))))

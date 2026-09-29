@@ -305,7 +305,7 @@
  (let ((d (fn-lzr-append-decide nil 0 64 *plr-r* *plr-k* 750 '(1 2 3))))
    (and (equal d (list :refused :lz-candidate))
         (stringp (fn-lzr-append-refusal-text d))
-        (not (equal (fn-lz-decode nil '(1 2 3) 750)
+        (not (equal (fn-pzd-decode nil '(1 2 3) 750)
                     (list :ok (take 750 (nthcdr *plr-k* *plr-r*))))))))
 (assert-event
  (and (null (fn-lzr-append-refusal-text

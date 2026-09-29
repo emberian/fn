@@ -33,15 +33,11 @@ SCRIPTS = sorted(path for path in ROOT.glob("tests/*.sh")
 # harness drifted from the host it loads.  Expected failures, so each is
 # reported every run and one that passes again fails as an unexpected
 # success: drop it here then.  Shrink-only.
-KNOWN_BROKEN = {
-    "test_native_live_config_cache_raw.sh":
-        "its stub core refuses FN-NATIVE-ADMIN-HOST-OWNER-REQUESTP (owner: online-reclaim's host call)",
-    "test_native_feed_peer_octets.sh":
-        "FNN-OWNER-TRANSIT-SERIALIZED undefined: the harness predates host/native/feed-service's owner transit",
-    "test_native_io_progress.sh":
-        "FN-OUTCOME-HOST-CONDITION-EXIT-CODE undefined: the harness predates io.lisp's outcome map",
-    "test_native_owner_publication.sh":
-        "expected FNN-STORE-ERROR, got ACL2::W undefined (SCN-027's witness)",
+KNOWN_BROKEN: dict[str, str] = {
+    # Empty since tooling-truth-3 (2026-09-29): the four drifted harnesses
+    # were rewritten against the current host (the arena-read staged record,
+    # the transit serializer, the owner-request branch, io.lisp's outcome map
+    # and entry guard over an empty world in tests/native_io_prelude.lisp).
 }
 IMAGE = pathlib.Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
 RUNTIME = runtime_sbcl(IMAGE)

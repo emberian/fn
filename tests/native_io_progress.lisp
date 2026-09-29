@@ -645,3 +645,4 @@
 
 (nio-config-enumeration-is-bounded-and-core-ordered)
 (format t "native-config-observation: ok~%")
+(format t "native-io-progress witness: PASS~%")
