@@ -2604,11 +2604,18 @@
 ; `(:feed-enqueue ...)` records a POST does: a relayed article is fed
 ; onward (RFC 5537 sec. 3.6) and the entry must survive the process that
 ; accepted it.  Read before the outcome moves the owner, as for POST.
+; The call is fn-oop-transit-outcome (books/owner-outcome-pinned.lisp): the
+; transit outcome over the configured owner, whose effects and owner are
+; fn-own-transit-outcome's (fn-oop-transit-outcome-is-own-transit-outcome)
+; and whose pin table follows a durable completion's advance, as
+; fn-ocfg-advance's does (PKT-889: fn-owner-replace-core kept the pin the
+; connection was opened under, so the carried relation was false after a
+; durable transfer on a connection older than the live configuration;
+; books/owner-host-relation.lisp fn-ohr-transit-outcome-preserves-carried-relation).
 (defun fn-owner-transit-outcome (id kind reason word state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((owner (fn-owner-core state))
-         (result (fn-own-transit-outcome owner id kind reason word))
-         (state (fn-owner-replace-core (cdr result) state))
+  (let* ((result (fn-oop-transit-outcome (fn-owner-ocfg state) id kind reason word))
+         (state (fn-owner-install-ocfg (cdr result) state))
          (state (fn-owner-install-effects (car result) state)))
     (value :fed)))
 
@@ -2671,9 +2678,18 @@
          ; under the intent and parse carries fn-owner-take wrote
          ; (fn-apc-own-outcome-is-acar-own-outcome): the durable article's
          ; feed targets from the carried Path and parse, not a reparse.
-         (result (fn-apc-own-outcome owner id word (fn-owner-intent-carry state)
-                                     (fn-owner-parse-carry state)))
-         (state (fn-owner-replace-core (cdr result) state))
+         ; owner-relation-2 (PKT-889): the call is fn-oop-outcome
+         ; (books/owner-outcome-pinned.lisp), fn-apc-own-outcome over the
+         ; configured owner with the same effects and owner
+         ; (fn-oop-outcome-is-apc-own-outcome) and the pin table following a
+         ; durable completion's advance, as fn-ocfg-advance's does;
+         ; fn-owner-replace-core kept the pin the connection was opened
+         ; under (books/owner-host-relation.lisp
+         ; fn-ohr-outcome-preserves-carried-relation).
+         (result (fn-oop-outcome (fn-owner-ocfg state) id word
+                                 (fn-owner-intent-carry state)
+                                 (fn-owner-parse-carry state)))
+         (state (fn-owner-install-ocfg (cdr result) state))
          (state (fn-owner-install-effects (car result) state))
          (state (f-put-global 'fn-owner-shared-resolution-id nil state)))
     (value :fed)))

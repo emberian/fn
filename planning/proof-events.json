@@ -13584,6 +13584,196 @@
           "name": "fn-snb-replayed-acceptance-is-projection"
         }
       ]
+    },
+    {
+      "id": "PRF-924",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-fault-preserves-ocl-relation",
+          "note": "host/owner-host.lisp fn-owner-fault (fn-ocfg-fault). Teeth: tests/acl2/owner-host-relation-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-reconfigure-preserves-ocl-relation",
+          "note": "host/owner-host.lisp fn-owner-reconfigure through fn-owner-step (:reconfigure id deltas). Teeth: tests/acl2/owner-host-relation-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-ocl-relation-with-staged",
+          "note": "The staged-slot frame both rest on."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-fault-preserves-carried-relation",
+          "note": "The fn-lgoc-invariantp lift."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-step-reconfigure-preserves-carried-relation",
+          "note": "The host-shaped step, carried."
+        }
+      ]
+    },
+    {
+      "id": "PRF-925",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-ocl-relation-with-owner-of-same-control",
+          "note": "The same-control frame."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-step-take-preserves-carried-relation",
+          "note": "host/owner-host.lisp fn-owner-take through fn-owner-step (:take)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-step-control-submit-preserves-carried-relation",
+          "note": "fn-owner-control-submit (:control-submit ...)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-step-operator-submit-preserves-carried-relation",
+          "note": "fn-owner-operator-submit (:operator-submit ...)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-step-feed-replay-preserves-carried-relation",
+          "note": "fn-owner-feed-replay (:feed-replay peer entries)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-step-control-outcome-preserves-carried-relation",
+          "note": "fn-owner-control-outcome (:control-outcome word)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-step-bp-transit-outcome-preserves-carried-relation",
+          "note": "fn-owner-bp-transit-outcome (:bp-transit-outcome word)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-step-feeds-preserves-carried-relation",
+          "note": "fn-owner-feeds-reconfigure (:feeds cfg)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-step-feed-conn-preserves-carried-relation",
+          "note": "fn-owner-feed-connect (:feed-conn peer conn form)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-configure-preserves-carried-relation",
+          "note": "fn-owner-posting-configure (fn-owner-replace-core of fn-own-configure)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-osb-install-preserves-carried-relation",
+          "note": "fn-owner-install-profile (fn-osb-install)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-with-feeds-preserves-carried-relation",
+          "note": "fn-owner-feed-install-port-result (fn-own-with-feeds)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-with-node-secret-preserves-carried-relation",
+          "note": "fn-owner-install-node-secret (fn-own-with-node-secret)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-step-begin-preserves-ocl-relation",
+          "note": "fn-owner-begin (fn-pout-begin: fn-ocfg-step (:begin id)). Teeth: tests/acl2/owner-host-relation-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-step-declare-group-preserves-ocl-relation",
+          "note": "fn-owner-declare-group (fn-pout-declare-group: fn-ocfg-step (:declare-group name)); the facts frame fn-ohr-ocl-relation-with-owner-of-same-control-and-facts. Teeth: tests/acl2/owner-host-relation-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-chunk-preserves-ocl-relation",
+          "note": "fn-owner-chunk (fn-scar-ocfg-read-tls-prefix) under the carried view index and the connection's wire state. Teeth owed (a served-span fixture)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-exposure-open-preserves-ocl-relation",
+          "note": "fn-owner-exposure-open (fn-ocar-exp-open) with no peer named; a configured peer is PKT-888. Teeth owed (a public-exposure fixture)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-finish-synced-preserves-ocl-relation",
+          "note": "fn-owner-finish-synced (fn-rix-ocfg-complete) with nothing staged. Teeth owed (needs the history stobj)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-926",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-store-open-installs-the-carried-relation",
+          "note": "host/owner-host.lisp fn-owner-recover-from-store-open (fn-ock-install of the fn-store-sco-open global)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-931",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-open-peer-preserves-ocl-relation",
+          "note": "host/owner-host.lisp fn-owner-open-peer and fn-exp-open's peer arm (fn-owner-exposure-open): fn-ocfg-open-peer keeps fn-ocl-relation."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-open-peer-preserves-carried-relation",
+          "note": "The carried fn-lgoc-invariantp across the peer open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-exposure-open-preserves-ocl-relation",
+          "note": "Both arms of fn-ocar-exp-open (reader and configured peer)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-932",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-oop-outcome-is-apc-own-outcome",
+          "note": "host/owner-host.lisp fn-owner-outcome: the configured outcome's effects and owner are fn-apc-own-outcome's."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oop-transit-outcome-is-own-transit-outcome",
+          "note": "host/owner-host.lisp fn-owner-transit-outcome: the configured transit outcome's effects and owner are fn-own-transit-outcome's."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-outcome-preserves-ocl-relation",
+          "note": "fn-oop-outcome keeps fn-ocl-relation (the pin follows a durable completion's advance)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-transit-outcome-preserves-ocl-relation",
+          "note": "fn-oop-transit-outcome keeps fn-ocl-relation."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-outcome-preserves-carried-relation",
+          "note": "The carried fn-lgoc-invariantp across the served outcome."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ohr-transit-outcome-preserves-carried-relation",
+          "note": "The carried fn-lgoc-invariantp across the transit outcome."
+        }
+      ]
     }
   ]
 }
