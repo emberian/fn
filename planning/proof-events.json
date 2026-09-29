@@ -12568,6 +12568,27 @@
       ]
     },
     {
+      "id": "PRF-963",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nh-deferred-checkpoint-is-never-healthy"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-verdict-states"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-exit-code-decodes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nh-report-exit-of-render"
+        }
+      ]
+    },
+    {
       "id": "PRF-359",
       "events": [
         {

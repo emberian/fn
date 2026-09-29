@@ -231,7 +231,7 @@ and a refusal is never reported as one (`fn-bprc-decode-never-fences`;
 NO-STORE, `fn-native-operator-absent-store-is-refused`).
 
 Outside the seven, and never an outcome class: `operator CONFIG health`
-exits with its verdict (0 all clear, 19 unobserved, 20 to 27 the first held
+exits with its verdict (0 all clear, 19 unobserved, 20 to 29 the first held
 state; HST-007). It is the one exception to the table, and it never
 overlaps it: for every verdict the code is 0 or at least 19, and it is an
 outcome code exactly when it is 0, the code of `:accepted`
@@ -1171,14 +1171,17 @@ verbs.
 
 ## Operator health
 
-HST-007: The operator's health verdict names which of nine things is wrong,
+HST-007: The operator's health verdict names which of ten things is wrong,
 never one red bit. `operator CONFIG health` prints one line per state in a
 fixed order: fenced, exhausted, unqualified-profile, space-pressure,
 no-route, stranded-transfer, unavailable-peer, receipt-debt, disk (PRF-358:
 the running owner's disk stalled or full, exit 28, both PROVISIONAL until
 ember decides the F4 bars and the health exit; appended so 20..27 keep
 their meaning; a slow disk is the `disk slow` line only, provisional per
-PKT-853 (b)); each line says
+PKT-853 (b)), checkpoint-deferred (PRF-963, PKT-542: the running owner's
+automatic checkpoint publication is deferred, `reason=R estimate=E
+budget=B`, so every restart until one fits is a full replay; exit 29,
+appended so 20..28 keep their meaning); each line says
 `held` (with the figures that hold it), `clear`, or `unobserved` (the source
 was not observed: offline there is no feed table, a fenced store is not
 opened). The exit code is 20 plus the index of the first held state, 19 when
