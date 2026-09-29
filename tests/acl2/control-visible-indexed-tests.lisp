@@ -58,7 +58,7 @@
 ; A held row of BYTES at sequence SEQ and txid TXID (= its generation, as a
 ; Store record's is); its handle is SEQ.
 (defun cvit-rec (seq txid msgid groups bytes)
-  (fn-held-make seq txid txid msgid seq groups "a" "s" "e" 2 :legacy
+  (fn-held-make seq txid txid msgid seq groups "a" "s" "e" 2 0
                 (fn-held-facts-of bytes)
                 (fn-hc-make (fn-stx-make-verdict :absent nil 0) nil 0) nil nil))
 
@@ -139,7 +139,7 @@
 ; position is no handle), so the index skips it and the walk does not.  H1
 ; holds.
 (defconst *cvit-fake*
-  (list 0 3 3 "<t@example.invalid>" :no-handle '("fn.mod.a") "a" "s" "e" 2 :legacy
+  (list 0 3 3 "<t@example.invalid>" :no-handle '("fn.mod.a") "a" "s" "e" 2 0
         nil nil nil nil))
 (defconst *cvit-rt1* (cvit-rec 1 4 "<t@example.invalid>" '("fn.mod.a") *cvit-t-bytes*))
 (defconst *cvit-fake-hist* (list *cvit-fake* *cvit-rt1*))

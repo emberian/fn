@@ -3,6 +3,7 @@
 (include-book "../../books/bp-forward-attempt")
 (include-book "../../books/bp-node-dispatch")
 (include-book "../../books/bp-node-debt")
+(include-book "must-fail-checked")
 
 (defconst *bpnfa-local* (cons :dtn '(47 47 98 112 45 108 111 99 97 108 47)))
 (defconst *bpnfa-peer* (cons :dtn '(47 47 98 112 45 112 101 101 114 47)))
@@ -68,3 +69,27 @@
                0 1 (cons 0 2) :sent)
               (list *bpnfa-h2*)))
         :fault))
+
+; KEYSTONE teeth (PRF-1035,
+; fn-bpnp-configured-budgets-admits-exactly-the-frame-bounded-positive-budgets):
+; absent rows take the defaults; configured rows are carried and read back by
+; name; a zero retry budget, a negative backoff and an over-frame backoff are
+; refused (nil, which bp-node.lisp refuses).
+(assert-event
+ (and (equal (fn-bpnp-configured-budgets nil nil)
+             (fn-bpnp-budgets *fn-bpnp-default-owner-backoff*
+                              *fn-bpnp-max-forward-retries*))
+      (fn-frame-natp 7) (fn-frame-natp 2) (< 0 2)
+      (fn-bpnp-budgetsp (fn-bpnp-configured-budgets 7 2))
+      (equal (fn-bpnp-configured-budgets 7 2) (fn-bpnp-budgets 7 2))
+      (equal (fn-bpnp-budget-backoff (fn-bpnp-configured-budgets 7 2)) 7)
+      (equal (fn-bpnp-budget-retries (fn-bpnp-configured-budgets 7 2)) 2)
+      (equal (fn-bpnp-budget-retries (fn-bpnp-configured-budgets 7 nil))
+             *fn-bpnp-max-forward-retries*)))
+(assert-event
+ (and (null (fn-bpnp-configured-budgets 7 0))
+      (null (fn-bpnp-configured-budgets -1 2))
+      (not (fn-frame-natp (1+ *fn-frame-max-nat*)))
+      (null (fn-bpnp-configured-budgets (1+ *fn-frame-max-nat*) 2))))
+(must-fail-checked
+ (assert-event (fn-bpnp-budgetsp (fn-bpnp-configured-budgets 7 0))))

@@ -3,20 +3,16 @@
 ; records and frames without giving the host a second transition function.
 
 (in-package "ACL2")
+(include-book "../books/bp-node-host-machine")
 
 (defun fn-bpn-host-ready-peers (st)
   ; fnn-bps-open checks the initial invariant once.  Its only later state
   ; writes are fn-bpn-step answers, whose transition preserves it.
   (fn-bpn-ready-peers (fn-bpn-machine-state-jobs st)))
 
-(defun fn-bpn-host-existing-sequence (st work attempt generation)
-  (fn-bpn-existing-sequence st (list work attempt generation)))
-
-(defun fn-bpn-host-existing-sequence-p (answer)
-  (and (fn-bpn-existing-sequencep answer) t))
-
-(defun fn-bpn-host-existing-sequence-value (answer)
-  (if (fn-bpn-existing-sequencep answer) (nth 1 answer) nil))
+; fn-bpn-host-existing-sequence, fn-bpn-host-existing-sequence-p and
+; fn-bpn-host-existing-sequence-value are books/bp-node-host-machine.lisp's
+; (guard-verified, with the keystone PRF-1031).
 
 (defun fn-bpn-host-lifecycle-record-frame (record)
   (if (fn-bpn-lifecycle-recordp record)

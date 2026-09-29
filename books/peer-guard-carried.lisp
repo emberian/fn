@@ -1,6 +1,6 @@
 ; fn: the peer arm of the served step with no node recognizer in its guard.
 ;
-; fn-pix-peer-step-pinned (books/peer-offer-indexed.lisp) tests
+; fn-peer-step-pinned (books/peer-inbound.lisp; its indexed copy was deleted) tests
 ; fn-peer-sessionp on every event, and so fn-node-statep of the session's
 ; node, O(N^2) in the archive.  It cannot drop the test and stay
 ; guard-verified: its transit arms call fn-peer-command, whose guard is
@@ -184,16 +184,18 @@
            (fn-retain-statep (fn-node-retention node)))
   :hints (("Goal" :in-theory (enable fn-node-statep)))))
 
-(defthm fn-pgc-decide-offer-is-pix-decide-offer
-  (implies (fn-node-statep node)
+(defthm fn-pgc-decide-offer-is-peer-decide-offer
+  (implies (and (fn-node-statep node)
+                (fn-midx-correspondencep trie arts))
            (equal (fn-pgc-decide-offer node cfg peer session msgid clock
                                        inflight trie arts)
-                  (fn-pix-decide-offer node cfg peer session msgid clock
-                                       inflight trie arts)))
-  :hints (("Goal" :in-theory (e/d (fn-pgc-decide-offer fn-pix-decide-offer)
+                  (fn-peer-decide-offer node cfg peer session msgid clock
+                                        inflight)))
+  :hints (("Goal" :in-theory (e/d (fn-pgc-decide-offer fn-peer-decide-offer)
                                   (fn-peer-shed-p fn-pgc-retain-admissiblep
                                    fn-retain-admissiblep
-                                   fn-pix-history-hasp fn-node-statep
+                                   fn-pix-history-hasp fn-peer-history-hasp
+                                   fn-node-statep fn-midx-correspondencep
                                    fn-retain-statep
                                    fn-peer-stagedp fn-cfg-peer-find
                                    fn-af-message-idp fn-record-octets-string)))))
@@ -282,7 +284,6 @@
                   (fn-peer-command ps keyword args)))
   :hints (("Goal" :in-theory (e/d (fn-pgc-peer-command fn-peer-command)
                                   (fn-pgc-decide-offer fn-peer-decide-offer
-                                   fn-pix-decide-offer
                                    fn-node-statep fn-midx-correspondencep
                                    fn-nntp-keywordp fn-peer-msgid-argp
                                    fn-peer-single fn-peer-echo-reply
@@ -352,7 +353,7 @@
                                    fn-post-body-octets)))))
 
 ; -----------------------------------------------------------------------------
-; The peer arm: fn-pix-peer-step-pinned past its first two branches, for a
+; The peer arm: fn-peer-step-pinned past its first two branches, for a
 ; peer session, with no session recognizer evaluated.  What the peer commands
 ; do not answer goes to the reader delegate whose Message-ID retrieval walks
 ; the trie by index (fn-pix-peer-delegate-pinned, equal to

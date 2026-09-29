@@ -19,7 +19,7 @@
    (fn-accept-prepare (fn-initial-state *rdc-t-groups*) 1
                       "<reader@example.invalid>"
                       0
-                      *rdc-t-groups* :legacy)
+                      *rdc-t-groups* 0)
    0 1 :durable))
 (defconst *rdc-t-verdicts* '(("<reader@example.invalid>" . :pinned-for-the-test)))
 (defconst *rdc-t-config* (fn-inj-make-config nil '(102 110) '((102 110 46 108 101 116 116 101 114 115)) 1000))

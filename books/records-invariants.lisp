@@ -1,4 +1,4 @@
-; General schema-0 record codec properties; no persistent format or disk claim.
+; General record codec properties; no persistent format or disk claim.
 (in-package "ACL2")
 (include-book "records")
 (include-book "cbor-invariants")
@@ -416,20 +416,6 @@
            (fn-record-p (fn-record-with-stamp record stamp)))
   :hints (("Goal" :in-theory (enable fn-record-with-stamp
                                      fn-record-shape-vocabulary))))
-
-(defthm fn-record-schema-0-bytes-decode-as-legacy
-  (implies (fn-record-p record)
-           (equal (fn-record-decode-exact-impl
-                   (fn-record-schema0-encode record))
-                  (fn-record-result-ok
-                   (fn-record-with-stamp record :legacy))))
-  :hints (("Goal" :use ((:instance fn-record-impl-round-trip
-                                    (record (fn-record-with-stamp record :legacy))))
-           :in-theory (e/d (fn-record-schema0-encode)
-                           (fn-record-impl-round-trip
-                            fn-record-decode-exact-impl
-                            fn-record-encode-impl))))
-  :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
 ; Export theory.  `fn-record-round-trip' is the keystone; everything else here
