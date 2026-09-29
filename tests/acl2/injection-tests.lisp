@@ -780,6 +780,29 @@
                       (fn-inj-decide (it-refs-article nil (concatenate 'string *it-subject-989* "s"))
                                      *it-lab-cfg* *it-lab-obs*))
                      :line-length))
+;; I5: RFC 5322 section 2.2.3 lets a field body begin on a continuation line:
+;; `References:' CRLF ` <id>' is injected and its unfolded value is the
+;; fold; a bare `References:' closed by the next field, or by the header's
+;; end, is refused :unparsable (RFC 5536 section 2.2: no empty field).
+(defconst *it-refs-empty-first*
+  (fn-inj-decide (it-refs-article (list "References:" " <r1@example.invalid>") "empty first")
+                 *it-lab-cfg* *it-lab-obs*))
+(assert-event (fn-inj-injectedp *it-refs-empty-first*))
+(assert-event
+ (let ((a (fn-article-result-article
+           (fn-article-parse (fn-inj-decision-octets *it-refs-empty-first*)))))
+   (equal (fn-article-field-unfolded-value
+           (car (fn-article-get-headers a (it-octets "references"))))
+          (it-octets " <r1@example.invalid>"))))
+(assert-event (equal (fn-inj-decision-reason
+                      (fn-inj-decide (it-refs-article (list "References:" "X-Next: y") "bare")
+                                     *it-lab-cfg* *it-lab-obs*))
+                     :unparsable))
+(assert-event (equal (fn-inj-decision-reason
+                      (fn-inj-decide (it-lines (list "From: p@example.invalid" "Newsgroups: fn.letters"
+                                                     "Subject: bare" "References:" "" "body"))
+                                     *it-lab-cfg* *it-lab-obs*))
+                     :unparsable))
 ; Another syntax fault keeps its own name, and is not a long line: a bare LF.
 (defconst *it-bare-lf* (append (it-octets "From: p@example.invalid") '(10 13 10 13 10)))
 (assert-event (equal (fn-inj-decision-reason

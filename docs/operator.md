@@ -317,7 +317,8 @@ fn operator CONFIG account list
    (`news.example.org:11563`). Add `--tls` and the port (`news.example.org:563`) for a
    node that speaks TLS from the start. `redeemed: the account carol is
    ready` means it worked. A newsreader cannot do this step; a program can
-   send `XREDEEM CODE LOGIN`, then `XREDEEM PASS PASSWORD`, over TLS.
+   send `XREDEEM CODE LOGIN` (the code itself, then the login), then
+   `XREDEEM PASS PASSWORD`, over TLS.
 4. From then on they log in normally. No restart is needed.
 
 `account list` shows accounts and unused codes, never passwords or codes.

@@ -438,16 +438,42 @@ accepted change is recorded for the next start.  Prints ACL2's line."
                  generation name verification)
         (fnn-out "~a" line)
         +fnn-exit-ok+))))
+(defun fnn-owner-reclaim-request (service mode)
+  "Q16: `store reclaim' on the running owner (books/owner-reclaim.lisp).  ACL2
+answers it under the owner mutex (host/owner-host.lisp fn-owner-orc-request):
+a dry run the owner runs now, off its mutex, on this control thread
+(host/native/owner.lisp fnn-owner-reclaim-dry-run: the capture by pointer,
+then the fold over the rows, the classes and the decision), its report in the
+owner's log as `store reclaim --dry-run' prints it offline; a pass in flight
+answers :in-flight; `store reclaim' and `--recorded' are :offline-only until
+the pass that installs lands.  The reply names the word."
+  (let* ((free (fnn-disk-free-octets (fnn-owner-service-store service)))
+         (word (fnn-owner-serialized
+                service nil
+                (lambda ()
+                  (fnn-owner-core 'fn-owner-orc-request mode
+                                  (fnn-checkpoint-budget-test-override nil) free)))))
+    (unless (member word '(:requested :in-flight :queued :blocked :no-recorded-instant
+                           :offline-only))
+      (fnn-fault "owner returned a malformed reclaim answer ~a" word))
+    (fnn-err "RECLAIM request mode=~(~a~) answer=~(~a~)" mode word)
+    (when (eq word :requested)
+      (setq word (fnn-owner-reclaim-dry-run service free)))
+    (list :reason (fnn-core 'fn-owner-orc-request-status word) word)))
 
 (defun fnn-owner-live-admin-serialized (service argv)
   "Publish one ACL2-planned configuration mutation through the live owner,
 or answer the one owner request an admin vector carries (PKT-868: the
-compaction request; ACL2's fn-native-admin-result-owner-requestp)."
-  (when (fnn-core 'fn-native-admin-host-owner-requestp
-                  (fnn-core 'fn-native-admin-host-plan argv))
-    (return-from fnn-owner-live-admin-serialized
-      (fnn-owner-compaction-request service)))
+compaction request; Q16: the reclaim request; ACL2's
+fn-native-admin-result-owner-requestp and -reclaim-mode; row S1: a store
+limit, fnn-owner-limit-serialized)."
   (let ((plan (fnn-core 'fn-native-admin-host-plan argv)))
+    (when (fnn-core 'fn-native-admin-host-owner-requestp plan)
+      (let ((mode (fnn-core 'fn-native-admin-host-reclaim-mode plan)))
+        (return-from fnn-owner-live-admin-serialized
+          (if mode
+              (fnn-owner-reclaim-request service mode)
+            (fnn-owner-compaction-request service)))))
     (when (fnn-lim-plan-p plan)
       (return-from fnn-owner-live-admin-serialized
         (fnn-owner-limit-serialized service plan))))

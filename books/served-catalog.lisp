@@ -2363,6 +2363,378 @@
            :use ((:instance fn-nntp-parse-range-ok-has-natural-bounds (token (cadr args)))))))
 
 
+;;; OVER/XOVER of a range with an Xref server, and the Message-ID withdrawn
+;;; test, over the catalog (lane join-f2-midx, the fn-midx retirement): the
+;;; served arm reads the catalog's number column and its rows, not the pinned
+;;; group buckets and Message-ID trie.  Each is equated to the trie arm it
+;;; replaces under the pin's built index (the reference dispatcher is unchanged).
+
+(defthm fn-scat-nidx-of-build-is-available
+  (implies (and (fn-article-listp configured (fn-cat-view-articles v fn-arena fn-cat))
+                (fn-cnx-freshp fn-cat) group)
+           (equal (fn-gidx-nidx-number-article
+                   n (fn-gidx-bucket-numbers group (fn-gidx-build (fn-cat-view-articles v fn-arena fn-cat)))
+                   (fn-midx-build (fn-cat-view-articles v fn-arena fn-cat)))
+                  (fn-scat-available-article group n v fn-arena fn-cat)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-scat-available-article-is-available
+                            fn-gidx-nidx-number-article-is-walk
+                            fn-gidx-numbers-okp-of-build)
+                           (fn-scat-available-article fn-gidx-nidx-number-article
+                            fn-gidx-entry-number-article fn-gidx-build fn-midx-build
+                            fn-cat-view-articles fn-cnx-freshp fn-gidx-bucket-numbers
+                            fn-gidx-bucket fn-nntp-available-article))
+           :use ((:instance fn-gidx-entry-number-article-of-built-bucket
+                            (number n) (articles (fn-cat-view-articles v fn-arena fn-cat)))))))
+
+(defun fn-nov-served-lines-for-numbers-cat-loop (group numbers server v fn-arena fn-cat acc)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (and (fn-scat-guard) (true-listp acc)) :verify-guards nil))
+  (if (consp numbers)
+      (let* ((number (car numbers))
+             (article (fn-scat-available-article group number v fn-arena fn-cat))
+             (over (if (and (consp article)
+                            (not (fn-scol-tombstonep article fn-arena fn-cat)))
+                       (fn-scol-overview-of article fn-arena fn-cat)
+                     (list :error))))
+        (if (fn-nov-okp over)
+            (fn-nov-served-lines-for-numbers-cat-loop
+             group (cdr numbers) server v fn-arena fn-cat
+             (cons (fn-nov-served-line number over server article) acc))
+          (fn-nov-served-lines-for-numbers-cat-loop group (cdr numbers) server v fn-arena fn-cat acc)))
+    (revappend acc nil)))
+
+(defun fn-nov-served-lines-for-numbers-cat (group numbers server v fn-arena fn-cat)
+  (declare (xargs :verify-guards nil :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
+  (mbe :logic
+       (if (consp numbers)
+           (let* ((number (car numbers))
+                  (article (fn-scat-available-article group number v fn-arena fn-cat))
+                  (over (if (and (consp article)
+                                 (not (fn-scol-tombstonep article fn-arena fn-cat)))
+                            (fn-scol-overview-of article fn-arena fn-cat)
+                          (list :error))))
+             (if (fn-nov-okp over)
+                 (cons (fn-nov-served-line number over server article)
+                       (fn-nov-served-lines-for-numbers-cat group (cdr numbers) server v fn-arena fn-cat))
+               (fn-nov-served-lines-for-numbers-cat group (cdr numbers) server v fn-arena fn-cat)))
+         nil)
+       :exec (fn-nov-served-lines-for-numbers-cat-loop group numbers server v fn-arena fn-cat nil)))
+
+(local
+ (defthm fn-nov-served-lines-for-numbers-cat-loop-is-revappend
+   (equal (fn-nov-served-lines-for-numbers-cat-loop group numbers server v fn-arena fn-cat acc)
+          (revappend acc (fn-nov-served-lines-for-numbers-cat group numbers server v fn-arena fn-cat)))
+   :hints (("Goal" :induct (fn-nov-served-lines-for-numbers-cat-loop group numbers server v fn-arena fn-cat acc)
+                   :in-theory (union-theories '(fn-nov-served-lines-for-numbers-cat-loop
+                                                fn-nov-served-lines-for-numbers-cat revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-nov-served-lines-for-numbers-cat-loop)
+
+(verify-guards fn-nov-served-lines-for-numbers-cat
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-nov-served-lines-for-numbers-cat)
+                                             (union-theories (theory 'minimal-theory)
+                                                             (executable-counterpart-theory :here)))
+           :use ((:instance fn-nov-served-lines-for-numbers-cat-loop-is-revappend (acc nil))))))
+
+(defthm fn-nov-served-lines-for-numbers-cat-is-col
+  (implies (and (fn-article-listp configured (fn-cat-view-articles v fn-arena fn-cat))
+                (fn-cnx-freshp fn-cat) group)
+           (equal (fn-nov-served-lines-for-numbers-cat group numbers server v fn-arena fn-cat)
+                  (fn-nov-served-lines-numbered-col
+                   numbers (fn-gidx-bucket-numbers group (fn-gidx-build (fn-cat-view-articles v fn-arena fn-cat)))
+                   (fn-midx-build (fn-cat-view-articles v fn-arena fn-cat))
+                   server fn-arena fn-cat)))
+  :hints (("Goal" :induct (fn-nov-served-lines-for-numbers-cat group numbers server v fn-arena fn-cat)
+           :in-theory (e/d (fn-nov-served-lines-numbered-col fn-scat-nidx-of-build-is-available)
+                           (fn-scat-available-article fn-gidx-nidx-number-article fn-gidx-build
+                            fn-midx-build fn-cat-view-articles fn-cnx-freshp fn-gidx-bucket-numbers
+                            fn-scol-tombstonep fn-scol-overview-of fn-nov-okp fn-nov-served-line
+                            fn-article-listp)))))
+
+(defthm fn-scat-select-nonstring
+  (implies (and (fn-index-listp entries) (not (stringp group)))
+           (equal (fn-gidx-select group entries) nil))
+  :hints (("Goal" :induct (len entries) :in-theory (enable fn-gidx-select fn-index-listp fn-index-entryp))))
+(defthm fn-scat-built-range-numbers-nonstring
+  (implies (and (fn-article-listp configured articles)
+                (not (stringp group)))
+           (equal (fn-gidx-range-numbers (fn-gidx-build articles) group low high) nil))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-gidx-range-numbers fn-gidx-bucket-of-build fn-nntp-index-group-range-numbers fn-index-query-range fn-nntp-index-numbers fn-nntp-numbers-sort)
+                           (fn-gidx-build fn-index-build))
+           :use ((:instance fn-index-build-listp)
+                 (:instance fn-scat-select-nonstring (entries (fn-index-build articles)))))))
+
+(defthm fn-scat-index-range-numbers-of-nil
+  (equal (fn-nntp-index-group-range-numbers nil group low high) nil)
+  :hints (("Goal" :in-theory (enable fn-nntp-index-group-range-numbers fn-index-query-range
+                                     fn-nntp-index-numbers fn-nntp-numbers-sort))))
+
+(defun fn-nntp-over-range-served-cat (session v token legacyp server fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
+  (let ((group (fn-nntp-session-group session))
+        (range (fn-nntp-parse-range token)))
+    (if (null group)
+        (fn-nntp-single session (fn-proto-text * :no-group-selected))
+      (let* ((numbers (fn-scat-range-numbers
+                       group (nfix (fn-nntp-range-low range))
+                       (nfix (fn-nntp-range-high range)) v fn-cat))
+             (lines (fn-nov-served-lines-for-numbers-cat group numbers server v fn-arena fn-cat)))
+        (if (consp lines)
+            (fn-nntp-multi session (fn-proto-text * :overview) lines)
+          (fn-nntp-single
+           session (if legacyp (fn-proto-text * :none-selected)
+                     (fn-proto-text * :empty-range))))))))
+
+(defthm fn-nntp-over-range-served-cat-is-col
+  (implies (and (fn-article-listp configured (fn-cat-view-articles v fn-arena fn-cat))
+                (fn-cnx-freshp fn-cat)
+                (natp (fn-nntp-range-low (fn-nntp-parse-range token)))
+                (natp (fn-nntp-range-high (fn-nntp-parse-range token))))
+           (equal (fn-nntp-over-range-served-cat session v token legacyp server fn-arena fn-cat)
+                  (fn-nntp-over-range-served-col
+                   session (fn-gidx-build (fn-cat-view-articles v fn-arena fn-cat))
+                   (fn-midx-build (fn-cat-view-articles v fn-arena fn-cat))
+                   token legacyp server fn-arena fn-cat)))
+  :hints (("Goal" :do-not-induct t
+           :cases ((stringp (fn-nntp-session-group session)))
+           :use ((:instance fn-gidx-range-of-build-equals-archive-fold
+                            (articles (fn-cat-view-articles v fn-arena fn-cat))
+                            (group (fn-nntp-session-group session))
+                            (low (fn-nntp-range-low (fn-nntp-parse-range token)))
+                            (high (fn-nntp-range-high (fn-nntp-parse-range token))))
+                 (:instance fn-scat-built-range-numbers-nonstring
+                            (articles (fn-cat-view-articles v fn-arena fn-cat))
+                            (group (fn-nntp-session-group session))
+                            (low (fn-nntp-range-low (fn-nntp-parse-range token)))
+                            (high (fn-nntp-range-high (fn-nntp-parse-range token))))
+                 (:instance fn-xri-archive-range-nonstring
+                            (articles (fn-cat-view-articles v fn-arena fn-cat))
+                            (group (fn-nntp-session-group session))
+                            (low (fn-nntp-range-low (fn-nntp-parse-range token)))
+                            (high (fn-nntp-range-high (fn-nntp-parse-range token))))
+                 (:instance fn-scat-range-numbers-is-group-range-numbers
+                            (group (fn-nntp-session-group session))
+                            (low (fn-nntp-range-low (fn-nntp-parse-range token)))
+                            (high (fn-nntp-range-high (fn-nntp-parse-range token)))))
+           :in-theory (e/d (fn-nntp-over-range-served-cat fn-nntp-over-range-served-col
+                            fn-nov-served-lines-for-numbers-cat-is-col fn-gidx-range-numbers
+                            fn-scat-index-range-numbers-of-nil)
+                           (fn-nntp-index-group-range-numbers fn-scat-range-numbers fn-gidx-build fn-midx-build
+                            fn-cat-view-articles fn-cnx-freshp fn-nntp-group-range-numbers
+                            fn-nov-served-lines-for-numbers-cat fn-nov-served-lines-numbered-col
+                            fn-nntp-parse-range fn-nntp-range-okp fn-article-listp
+                            fn-nntp-multi fn-nntp-single fn-gidx-bucket-numbers
+                            fn-gidx-range-of-build-equals-archive-fold
+                            fn-scat-range-numbers-is-group-range-numbers)))))
+
+(defun fn-nntp-xref-reply-cat (session archive index env keyword args v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
+  (cond
+   ((and (fn-nntp-keywordp keyword "LIST")
+         (fn-nntp-xref-server env)
+         (consp args) (null (cdr args))
+         (fn-nntp-keyword-tokenp (car args))
+         (fn-nntp-keywordp (car args) "OVERVIEW.FMT"))
+    (fn-nntp-list-overview-fmt-served session))
+   ((and (or (fn-nntp-keywordp keyword "OVER")
+             (fn-nntp-keywordp keyword "XOVER"))
+         (fn-nntp-xref-server env)
+         (fn-gidx-pinp index)
+         (consp args) (null (cdr args))
+         (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
+    (fn-nntp-over-range-served-cat
+     session v (car args) (fn-nntp-keywordp keyword "XOVER") (fn-nntp-xref-server env) fn-arena fn-cat))
+   ((and (or (fn-nntp-keywordp keyword "OVER")
+             (fn-nntp-keywordp keyword "XOVER"))
+         (fn-nntp-xref-server env)
+         (null args))
+    (fn-nntp-over-current-served-col session archive (fn-nntp-xref-server env) fn-arena fn-cat))
+   ((and (fn-nntp-keywordp keyword "OVER")
+         (fn-nntp-xref-server env)
+         (consp args) (null (cdr args))
+         (not (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
+         (fn-nntp-message-id-tokenp (car args)))
+    (fn-nntp-over-msgid-served-col session archive (car args)
+                                   (fn-nntp-xref-server env) fn-arena fn-cat))
+   (t nil)))
+
+(defthm fn-nntp-xref-reply-cat-is-col
+  (implies (and (fn-article-listp configured (fn-cat-view-articles v fn-arena fn-cat))
+                (fn-cnx-freshp fn-cat)
+                (implies (fn-gidx-pinp index)
+                         (and (equal (fn-gidx-pin-buckets index)
+                                     (fn-gidx-build (fn-cat-view-articles v fn-arena fn-cat)))
+                              (equal (fn-gidx-pin-trie index)
+                                     (fn-midx-build (fn-cat-view-articles v fn-arena fn-cat))))))
+           (equal (fn-nntp-xref-reply-cat session archive index env keyword args v fn-arena fn-cat)
+                  (fn-nntp-xref-reply-col session archive index env keyword args fn-arena fn-cat)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-xref-reply-cat fn-nntp-xref-reply-col)
+                           (fn-nntp-over-range-served-cat fn-nntp-over-range-served-col
+                            fn-nntp-over-current-served-col fn-nntp-over-msgid-served-col
+                            fn-nntp-list-overview-fmt-served fn-nntp-keywordp fn-nntp-xref-server
+                            fn-gidx-pinp fn-nntp-parse-range fn-nntp-range-okp fn-nntp-keyword-tokenp
+                            fn-nntp-message-id-tokenp fn-gidx-build fn-midx-build fn-cat-view-articles
+                            fn-cnx-freshp fn-article-listp fn-gidx-pin-buckets fn-gidx-pin-trie))
+           :use ((:instance fn-nntp-over-range-served-cat-is-col
+                            (token (car args)) (legacyp (fn-nntp-keywordp keyword "XOVER"))
+                            (server (fn-nntp-xref-server env)))
+                 (:instance fn-nntp-parse-range-ok-has-natural-bounds (token (car args)))))))
+
+(defun fn-nntp-msgid-withdrawn-p-cat (index token v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
+  (and (fn-octet-listp token)
+       (fn-ctl-msgid-withdrawn (fn-nntp-token-string token)
+                               (fn-ctl-pin-withdrawn (fn-gidx-pin-control index)))
+       (not (consp (fn-scat-msgid-article (fn-nntp-token-string token) v fn-arena fn-cat)))
+       t))
+
+(defthm fn-nntp-msgid-withdrawn-p-cat-is-trie
+  (implies (and (fn-nntp-message-id-tokenp token)
+                (equal (fn-gidx-pin-trie index) (fn-midx-build (fn-cat-view-articles v fn-arena fn-cat))))
+           (equal (fn-nntp-msgid-withdrawn-p-cat index token v fn-arena fn-cat)
+                  (fn-nntp-msgid-withdrawn-p index token)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-msgid-withdrawn-p-cat fn-nntp-msgid-withdrawn-p
+                            fn-scat-msgid-article-is-find-article
+                            fn-midx-lookup-of-build-is-find-article-for-nonempty)
+                           (fn-scat-msgid-article fn-midx-lookup fn-midx-build fn-find-article
+                            fn-cat-view-articles fn-ctl-msgid-withdrawn fn-nntp-token-string
+                            fn-nntp-message-id-tokenp fn-gidx-pin-trie fn-gidx-pin-control))
+           :use ((:instance fn-nntp-message-id-token-has-nonempty-index-key)))))
+
+
+;;; HDR :fn-control and HDR :fn-enrollment over the catalog (lane
+;;; join-f2-midx): the article a Message-ID names is found in the catalog's
+;;; Message-ID column at the pin's version, not the pinned trie; each arm is
+;;; equated to the pinned arm under the pin's correspondence.
+
+(defun fn-scat-control-held (msgid visible withdrawn v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
+  (or (fn-ctl-msgid-withdrawn msgid withdrawn)
+      (if (and (stringp msgid) (< 0 (length msgid)))
+          (let ((hit (fn-scat-msgid-article msgid v fn-arena fn-cat)))
+            (if (consp hit) hit nil))
+        (fn-ctl-msgid-withdrawn msgid visible))))
+
+(defthm fn-scat-control-held-is-find-held
+  (implies (equal visible (fn-cat-view-articles v fn-arena fn-cat))
+           (equal (fn-scat-control-held msgid visible withdrawn v fn-arena fn-cat)
+                  (fn-ctl-find-held msgid visible withdrawn)))
+  :hints (("Goal" :in-theory (e/d (fn-ctl-find-held fn-scat-msgid-article-is-find-article)
+                                  (fn-scat-msgid-article fn-find-article fn-ctl-msgid-withdrawn
+                                   fn-cat-view-articles fn-ctl-find-article-is-msgid-withdrawn))
+           :use ((:instance fn-ctl-find-article-is-msgid-withdrawn (xs visible))))))
+
+(defun fn-scat-control-status (c cbytes visible withdrawn ws verdicts v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
+  (let* ((msgid (and (consp c) (fn-article-msgid c)))
+         (target (and (consp c) (fn-ctl-target-octets cbytes)))
+         (plan (fn-ctl-withdrawal-plan msgid (fn-ctl-lookup-verdict msgid verdicts)
+                                       target
+                                       (and (consp c)
+                                            (fn-ctl-keys-octets cbytes))
+                                       nil)))
+    (cond ((not target) (list :none))
+          ((not (fn-ctl-withdrawalp plan)) (list :declined (fn-ctl-at 1 plan)))
+          (t (let ((rec (fn-ctl-cause-record ws msgid target)))
+               (if (not rec)
+                   (list :declined :no-record)
+                 (let ((held (fn-scat-control-held target visible withdrawn v fn-arena fn-cat)))
+                   (if (not held)
+                       (list :owed)
+                     (let ((effect (fn-ctl-withdrawal-effect
+                                    rec (fn-article-groups held)
+                                    (fn-ctl-lookup-verdict target verdicts)
+                                    (fn-article-payload held))))
+                       (if (fn-ctl-effect-withdrawsp effect)
+                           (list :executed effect)
+                         (list :declined (fn-ctl-at 1 effect))))))))))))
+
+(defthm fn-scat-control-status-is-control-status
+  (implies (equal visible (fn-cat-view-articles v fn-arena fn-cat))
+           (equal (fn-scat-control-status c cbytes visible withdrawn ws verdicts v fn-arena fn-cat)
+                  (fn-ctl-control-status c cbytes visible withdrawn ws verdicts)))
+  :hints (("Goal" :in-theory (e/d (fn-ctl-control-status fn-scat-control-held-is-find-held)
+                                  (fn-scat-control-held fn-ctl-find-held fn-cat-view-articles
+                                   fn-ctl-withdrawal-plan fn-ctl-withdrawalp
+                                   fn-ctl-withdrawal-effect fn-ctl-effect-withdrawsp
+                                   fn-ctl-cause-record fn-ctl-target-octets fn-ctl-keys-octets
+                                   fn-ctl-lookup-verdict)))))
+
+(defun fn-nntp-control-hdr-response-cat (session archive index verdicts args v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
+  (if (and (consp args) (consp (cdr args)) (null (cddr args))
+           (fn-nntp-message-id-tokenp (cadr args))
+           (fn-octet-listp (cadr args)))
+      (let* ((control (fn-gidx-pin-control index))
+             (visible (fn-state-articles archive))
+             (withdrawn (fn-ctl-pin-withdrawn control))
+             (c (fn-scat-control-held (fn-nntp-token-string (cadr args))
+                                        visible withdrawn v fn-arena fn-cat)))
+        (if (not (consp c))
+            (fn-nntp-single session (fn-proto-text "HDR" :no-msgid))
+          (let* ((cbytes (fn-nntp-article-bytes c fn-arena))
+                 (item (fn-nntp-string-octets
+                        (fn-ctl-control-item
+                         (fn-scat-control-status c cbytes visible withdrawn
+                                                   (fn-ctl-pin-ws control) verdicts v fn-arena fn-cat)
+                         (fn-ctl-target-octets cbytes)))))
+            (if (fn-nntp-control-cleanp item)
+                (fn-nntp-multi
+                 session (fn-nntp-hdr-initial nil)
+                 (list (fn-nntp-hdr-line (fn-nntp-decimal-field 0) item)))
+              (fn-nntp-single session (fn-proto-text "HDR" :no-control-status))))))
+    (fn-nntp-single session (fn-proto-text "HDR" :syntax))))
+
+(defthm fn-nntp-control-hdr-response-cat-is-pinned
+  (implies (and (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat))
+                (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles archive)))
+           (equal (fn-nntp-control-hdr-response-cat session archive index verdicts args v fn-arena fn-cat)
+                  (fn-nntp-control-hdr-response session archive index verdicts args fn-arena)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-control-hdr-response-cat fn-nntp-control-hdr-response
+                            fn-scat-control-held-is-find-held fn-scat-control-status-is-control-status
+                            fn-ctl-served-held-is-find-held fn-ctl-served-status-is-control-status)
+                           (fn-scat-control-held fn-ctl-served-held fn-scat-control-status
+                            fn-ctl-served-status fn-ctl-find-held fn-ctl-control-status
+                            fn-cat-view-articles fn-midx-correspondencep fn-nntp-article-bytes
+                            fn-ctl-control-item fn-nntp-string-octets fn-nntp-control-cleanp
+                            fn-nntp-multi fn-nntp-single fn-nntp-hdr-line fn-nntp-message-id-tokenp)))))
+
+(defun fn-nntp-enrollment-hdr-response-cat (session index verdicts args v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
+  (if (and (consp args) (consp (cdr args)) (null (cddr args))
+           (fn-nntp-message-id-tokenp (cadr args))
+           (fn-octet-listp (cadr args)))
+      (let ((msgid (fn-nntp-token-string (cadr args))))
+        (if (not (consp (fn-scat-msgid-article msgid v fn-arena fn-cat)))
+            (fn-nntp-single session (fn-proto-text * :no-msgid))
+          (fn-nntp-multi
+           session (fn-nntp-hdr-initial nil)
+           (list (fn-nntp-hdr-line
+                  (fn-nntp-decimal-field 0)
+                  (fn-enr-item (fn-stx-reader-lookup msgid verdicts)
+                               (fn-gidx-pin-control index)))))))
+    (fn-nntp-single session (fn-proto-text * :syntax))))
+
+(defthm fn-nntp-enrollment-hdr-response-cat-is-pinned
+  (implies (and (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat))
+                (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles archive)))
+           (equal (fn-nntp-enrollment-hdr-response-cat session index verdicts args v fn-arena fn-cat)
+                  (fn-nntp-enrollment-hdr-response session archive index verdicts args)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-enrollment-hdr-response-cat fn-nntp-enrollment-hdr-response
+                            fn-scat-msgid-article-is-find-article fn-midx-correspondencep
+                            fn-midx-lookup-of-build-is-find-article-for-nonempty)
+                           (fn-scat-msgid-article fn-find-article fn-midx-lookup fn-midx-build
+                            fn-cat-view-articles fn-nntp-token-string fn-nntp-message-id-tokenp
+                            fn-enr-item fn-stx-reader-lookup fn-nntp-multi fn-nntp-single
+                            fn-nntp-hdr-line fn-gidx-pin-trie fn-gidx-pin-control))
+           :use ((:instance fn-nntp-message-id-token-has-nonempty-index-key (token (cadr args)))))))
+
 ;;; The dispatcher: fn-nntp-archive-command-pinned's case split with the two
 ;;; retrieval arms reading the catalog.  Every other arm is the pinned arm
 ;;; (it reads the archive and the pinned index until step 8).  Its guards are
@@ -2375,7 +2747,7 @@
                   :guard (and (natp v)
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
                   :verify-guards nil))
-  (let ((xref (fn-nntp-xref-reply-col session archive index env keyword args fn-arena fn-cat)))
+  (let ((xref (fn-nntp-xref-reply-cat session archive index env keyword args v fn-arena fn-cat)))
     (if xref xref
       (cond
        ((and (fn-nntp-keywordp keyword "LIST")
@@ -2398,7 +2770,7 @@
                  (fn-nntp-keywordp keyword "STAT"))
              (consp args) (null (cdr args))
              (fn-nntp-message-id-tokenp (car args))
-             (fn-nntp-msgid-withdrawn-p index (car args)))
+             (fn-nntp-msgid-withdrawn-p-cat index (car args) v fn-arena fn-cat))
         (fn-nntp-withdrawn-reply session t))
        ;; PRF-243: the served compatibility arms, where the pinned dispatcher
        ;; has them (books/nntp.lisp fn-nntp-archive-command-pinned); ARTICLE
@@ -2449,11 +2821,11 @@
        ((and (fn-nntp-keywordp keyword "HDR")
              (consp args)
              (fn-nntp-keywordp (car args) ":FN-CONTROL"))
-        (fn-nntp-control-hdr-response session archive index verdicts args fn-arena))
+        (fn-nntp-control-hdr-response-cat session archive index verdicts args v fn-arena fn-cat))
        ((and (fn-nntp-keywordp keyword "HDR")
              (consp args)
              (fn-nntp-keywordp (car args) ":FN-ENROLLMENT"))
-        (fn-nntp-enrollment-hdr-response session archive index verdicts args))
+        (fn-nntp-enrollment-hdr-response-cat session index verdicts args v fn-arena fn-cat))
        ((fn-nntp-keywordp keyword "GROUP")
         (if (and (consp args) (null (cdr args)) (fn-nntp-printable-tokenp (car args)))
             (fn-nntp-group-result-cat session archive (fn-nntp-token-string (car args)) v fn-cat)
@@ -2572,6 +2944,12 @@
                              fn-nntp-filter-groups-by-wildmat
                              fn-wildmat-parse fn-nntp-multi fn-nntp-single))))))
 
+(local
+ (defthm fn-scat-statep-article-listp
+   (implies (fn-statep archive)
+            (fn-article-listp (fn-state-groups archive) (fn-state-articles archive)))
+   :hints (("Goal" :in-theory (enable fn-statep)))))
+
 (defthm fn-nntp-archive-command-cat-is-pinned
   (implies (and (equal (fn-state-articles archive)
                        (fn-cat-view-articles v fn-arena fn-cat))
@@ -2620,7 +2998,17 @@
                             fn-nntp-list-newsgroups-described fn-nntp-list-motd
                             fn-nntp-printable-tokenp fn-nntp-token-string
                             fn-nntp-single fn-gidx-build fn-midx-build fn-statep
-                            fn-nntp-over-range-indexed-is-walk)))))
+                            fn-nntp-over-range-indexed-is-walk
+                            fn-nntp-xref-reply-cat fn-nntp-msgid-withdrawn-p-cat
+                            fn-nntp-xref-reply-cat-is-col fn-nntp-msgid-withdrawn-p-cat-is-trie
+                            fn-nntp-control-hdr-response-cat fn-nntp-enrollment-hdr-response-cat))
+           :use ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
+                 (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
+                 (:instance fn-nntp-control-hdr-response-cat-is-pinned)
+                 (:instance fn-nntp-enrollment-hdr-response-cat-is-pinned)
+                 (:instance fn-scat-statep-article-listp)
+                 (:instance fn-scat-pin-trie-is-built)
+                 (:instance fn-scat-pin-buckets-are-built)))))
 
 ; Guards of the arms the lift executes (books/served-catalog-chain.lisp
 ; fn-scr-command calls the dispatcher): the whole -cat path is guard-verified.

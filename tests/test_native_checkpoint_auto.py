@@ -33,6 +33,7 @@ after 64 POSTs):
   deferral blocks until the budget covers E), and `status` names the
   deferral on its checkpoint-file line while the owner runs.
 """
+import os
 import re
 import time
 import unittest
@@ -47,6 +48,9 @@ CHECKPOINT_AUTO = re.compile(rb"CHECKPOINT auto sequence=(\d+) suffix=(\d+) octe
 CHECKPOINT_DEFERRED = re.compile(
     rb"CHECKPOINT deferred reason=([a-z-]+) estimate=(\d+) budget=(\d+) sequence=(\d+) ms=(\d+)")
 CHECKPOINT_ANY = re.compile(rb"CHECKPOINT ")
+CHECKPOINT_DROPPED = re.compile(rb"CHECKPOINT auto sequence=(\d+) .* dropped=(\d+)")
+CHECKPOINT_RELEASE = re.compile(
+    rb"CHECKPOINT release reseated=(\d+) incomplete=(\d+) closed=(\d+) retired=(\d+) open=(\d+)")
 
 
 class AutoCheckpointSourceTests(unittest.TestCase):
@@ -268,6 +272,78 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         self.assertTrue(any(line.startswith("open=checkpoint:") for line in lines), lines)
         again = self.node.start()
         self.node.stop(process=again)
+
+    def held_unlinked_blocks(self):
+        """The disk blocks df counts for this store that no directory entry
+        names: files under the store unlinked but still open in a process
+        (Linux /proc).  (count, octets of allocated blocks)."""
+        store = str(self.store.resolve())
+        count, octets = 0, 0
+        for pid in os.listdir("/proc"):
+            if not pid.isdigit():
+                continue
+            try:
+                fds = os.listdir("/proc/{}/fd".format(pid))
+            except OSError:
+                continue
+            for fd in fds:
+                link = "/proc/{}/fd/{}".format(pid, fd)
+                try:
+                    target = os.readlink(link)
+                    if target.startswith(store) and target.endswith(" (deleted)"):
+                        count += 1
+                        octets += os.stat(link).st_blocks * 512
+                except OSError:
+                    continue
+        return count, octets
+
+    def test_a_publication_gives_the_dropped_files_blocks_back_while_serving(self):
+        # Q16 (b), PRF-930: until now every extent descriptor was held for
+        # the owner's life, so the segments a publication dropped (T8) and
+        # the checkpoint a newer one replaced kept their blocks until the
+        # process exited (df did not move).  Now the publication reseats the
+        # live payloads at the installed checkpoint's frames and closes the
+        # dropped files' descriptors (books/extent-retire.lisp): the blocks
+        # come back while the owner serves, and every article still reads
+        # the same octets (now through the checkpoint's frames).
+        if not os.path.isdir("/proc/self/fd"):
+            self.skipTest("needs /proc to observe held unlinked files")
+        self.init_development()
+        owner = self.node.start()
+        self.ids = self.post_batch(0, 64)
+        line = self.owner_line(owner, CHECKPOINT_DROPPED)
+        self.assertIsNotNone(line, "no publication dropped a segment")
+        self.assertGreaterEqual(int(line.group(2)), 1)
+        release = self.owner_line(owner, CHECKPOINT_RELEASE)
+        self.assertIsNotNone(release, "the publication did not release")
+        reseated, incomplete, closed, retired, _ = (int(release.group(i)) for i in range(1, 6))
+        self.assertGreater(reseated, 0)
+        self.assertEqual((incomplete, retired), (0, 0))
+        self.assertGreaterEqual(closed, 1)
+        self.assertEqual(self.held_unlinked_blocks(), (0, 0))
+        with self.node.session() as c:
+            served = [c.article(i) for i in self.ids]
+        self.assertTrue(all(served))
+        # A second publication (the operator's request) retires the first
+        # checkpoint too: its descriptor closes and nothing stays held.
+        self.ids += self.post_batch(64, 8)
+        asked = self.op("store", "compact")
+        self.assertEqual(asked.returncode, EXIT_OK, asked.stderr.decode())
+        release = self.owner_line(owner, CHECKPOINT_RELEASE)
+        self.assertIsNotNone(release, "the requested publication did not release")
+        self.assertEqual((int(release.group(2)), int(release.group(4))), (0, 0))
+        self.assertGreaterEqual(int(release.group(3)), 1)
+        self.assertEqual(self.held_unlinked_blocks(), (0, 0))
+        with self.node.session() as c:
+            again = [c.article(i) for i in self.ids]
+        self.assertEqual(again[:64], served)
+        self.node.stop(process=owner)
+        # The reopened store (the checkpoint, resident) serves the same octets.
+        owner = self.node.start()
+        with self.node.session() as c:
+            reopened = [c.article(i) for i in self.ids]
+        self.node.stop(process=owner)
+        self.assertEqual(reopened, again)
 
     def test_a_publication_past_the_budget_is_deferred_by_name_and_serving_continues(self):
         self.init_development()

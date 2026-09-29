@@ -23,7 +23,7 @@
 ;     fn-auth-step-starttls-clears-a-principal-role
 ;
 ; The subject of the first two is `fn-auth-step', which books/served.lisp
-; `fn-served-dispatch' calls and which host/owner-host.lisp `fn-owner-chunk'
+; `fn-served-dispatch' calls and which host/owner-host.lisp `fn-owner-chunk-span-at'
 ; reaches through `fn-own-read' and `fn-served-step'; the native host's
 ; socket read is host/native/owner.lisp, through the same owner entry.  The
 ; subject of the greeting pair is `fn-served-open', which
@@ -1968,7 +1968,7 @@
 ; The subject of keystones 11, 12 and 15 to 17 is `fn-auth-step-pinned', the
 ; one call books/served.lisp:617 `fn-served-dispatch' makes into this layer;
 ; the subject of 13 and 14 is `fn-served-dispatch' itself.  The host reaches
-; both from host/owner-host.lisp:1240 (`fn-owner-chunk', through
+; both from host/owner-host.lisp (`fn-owner-chunk-span-at', through
 ; `fn-ocfg-read-tls-prefix').  Each keystone is admitted here once more from
 ; its own hypothesis list, with every hypothesis named, and then once per
 ; hypothesis with that one left out under `must-fail'; beside each

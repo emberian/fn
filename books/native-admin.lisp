@@ -932,6 +932,16 @@
        ; (fn-native-admin-result-owner-requestp; books/owner-compact-request).
        ((equal words '("compaction" "request"))
         (fn-native-admin-result :accepted nil :request-compaction nil 0 nil nil))
+       ; Q16: what `store reclaim' sends a running owner
+       ; (host/native/operator.lisp fnn-operator-execute-store-action): a
+       ; request for its reclaim pass (books/owner-reclaim.lisp), no
+       ; configuration record of the plan's own.
+       ((equal words '("reclaim" "request"))
+        (fn-native-admin-result :accepted nil :request-reclaim nil 0 nil nil))
+       ((equal words '("reclaim" "recorded"))
+        (fn-native-admin-result :accepted nil :request-reclaim-recorded nil 0 nil nil))
+       ((equal words '("reclaim" "dry-run"))
+        (fn-native-admin-result :accepted nil :request-reclaim-dry-run nil 0 nil nil))
        (t (fn-native-admin-result :refused :syntax nil nil nil nil nil))))))
 
 ; PKT-868: an accepted plan the live owner answers from its own state, not by
@@ -939,7 +949,21 @@
 (defun fn-native-admin-result-owner-requestp (result)
   (declare (xargs :guard t))
   (and (equal (fn-native-admin-result-status result) :accepted)
-       (equal (fn-native-admin-result-kind result) :request-compaction)))
+       (member-equal (fn-native-admin-result-kind result)
+                     '(:request-compaction :request-reclaim :request-reclaim-recorded
+                       :request-reclaim-dry-run))
+       t))
+
+; Q16: the reclaim pass's mode an accepted reclaim request names, or nil
+; (the compaction request).
+(defun fn-native-admin-result-reclaim-mode (result)
+  (declare (xargs :guard t))
+  (and (fn-native-admin-result-owner-requestp result)
+       (let ((kind (fn-native-admin-result-kind result)))
+         (cond ((equal kind :request-reclaim) :reclaim)
+               ((equal kind :request-reclaim-recorded) :recorded)
+               ((equal kind :request-reclaim-dry-run) :dry-run)
+               (t nil)))))
 
 ; The delta list the LIVE owner stages for an accepted plan.
 ;

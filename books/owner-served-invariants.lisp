@@ -4,7 +4,7 @@
 ; books/owner-invariants states most owner theorems over fn-own-step and
 ; fn-own-run.  The host reaches the owner through narrower entries:
 ; fn-owner-outcome calls fn-own-outcome directly (owner-host.lisp:1034),
-; fn-owner-chunk calls fn-ocfg-read-tls-prefix (:1240), fn-owner-open calls
+; fn-owner-chunk-span-at runs fn-ocfg-read-tls-prefix over the span, fn-owner-open calls
 ; fn-ocfg-open (:1218), fn-owner-fault calls fn-ocfg-fault (:1273), and the
 ; writer path runs (:take), (:store ...) and (:complete) through
 ; fn-owner-step, which is fn-ocfg-step (:209).  Each theorem here is stated
@@ -432,8 +432,9 @@
 ; answered as before; a chunk whose GROUP or LISTGROUP succeeds now answers
 ; from the fresh view BY SPECIFICATION, and the read half holds per framed
 ; event for every other command (the corollary below); its chunk form (a
-; chunk framing no selection answers as before) is stated in the record and
-; not yet proved.
+; chunk framing no selection answers as before) is
+; fn-scl-host-chunk-selecting-nothing-survives-other-post
+; (books/served-chunk-live-free.lisp).
 (defthm fn-own-pinned-view-survives-other-post
   (implies (and (fn-ocfg-writer-eventsp events)
                 (not (equal id sub-id)))

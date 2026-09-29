@@ -171,6 +171,52 @@
   *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
   :verified :verified *hst-injection-config* *hst-injection-observation*)
  nil)
+
+; Teeth for fn-hsig-authorized-injected-carried-submission-event-decides
+; (PRF-943).  The reachable positive witness is *hst-injected-event*: its
+; complete antecedent, by name -- the received bytes are the carrier's
+; injection, the plan injected, the charge is the payload's, the snapshot is
+; the keyring's, the observed verification holds -- and the conclusion, that
+; it binds.  The refusal just above is the hypothesis-removal witness of
+; `received = carrier': the carried profile's bytes are not the injection,
+; every other argument retained.
+(assert-equal *hst-injected-received*
+              (fn-hsig-injected-carrier-octets
+               *hst-authored-source* *hst-principal* *hst-keys*
+               *hst-signatures* *hst-injection-config*
+               *hst-injection-observation*))
+(assert! (not (equal *hst-carried-received* *hst-injected-received*)))
+(assert! (fn-inj-injectedp
+          (fn-hsig-injected-carrier-plan
+           *hst-authored-source* *hst-principal* *hst-keys* *hst-signatures*
+           *hst-injection-config* *hst-injection-observation*)))
+(assert-equal *hst-snapshot* (fn-hsig-keyring-snapshot *hst-principal* *hst-keys*))
+(assert! (fn-hsig-authorize-at (fn-hsig-source-version *hst-authored-source*)
+                               *hst-principal* *hst-keys* *hst-authored-source*
+                               *hst-signatures* *hst-ml-key* :verified :verified))
+(assert! (fn-stxa-bindsp *hst-injected-event*))
+; Hypothesis removal, the charge: one more than the payload's charge, every
+; other argument retained, and there is no event.
+(assert-equal
+ (fn-hsig-authorized-injected-carried-submission-event
+  2 3 4 4 *hst-snapshot* "<hybrid@example.invalid>"
+  *hst-authored-source* *hst-injected-received* '("example")
+  *hst-injected-obligation* *hst-injected-subject* "release"
+  (+ 1 (fn-charge-for-payload (len *hst-injected-received*)))
+  *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
+  :verified :verified *hst-injection-config* *hst-injection-observation*)
+ nil)
+; Hypothesis removal, the authorization: an Ed25519 observation that is not
+; :verified, every other argument retained, and there is no event.
+(assert-equal
+ (fn-hsig-authorized-injected-carried-submission-event
+  2 3 4 4 *hst-snapshot* "<hybrid@example.invalid>"
+  *hst-authored-source* *hst-injected-received* '("example")
+  *hst-injected-obligation* *hst-injected-subject* "release"
+  (fn-charge-for-payload (len *hst-injected-received*))
+  *hst-principal* *hst-keys* *hst-signatures* *hst-ml-key*
+  nil :verified *hst-injection-config* *hst-injection-observation*)
+ nil)
 (assert-equal (fn-stxa-schema *hst-carried-event*) 1)
 (assert-equal (fn-stxa-authored-source *hst-carried-event*)
               *hst-authored-source*)
