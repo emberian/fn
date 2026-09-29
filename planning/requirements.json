@@ -3658,7 +3658,9 @@
         "PRF-204",
         "PRF-332",
         "PRF-367",
-        "PRF-957"
+        "PRF-957",
+        "PRF-969",
+        "PRF-970"
       ],
       "verification": [
         "proof",

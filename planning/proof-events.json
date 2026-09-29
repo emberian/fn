@@ -14228,13 +14228,34 @@
     {
       "id": "PRF-957",
       "events": [
-        "fn-mpx-confirm-is-the-records-for",
-        "fn-mpx-records-is-the-records-for",
-        "fn-mpx-records-is-hist-msgid-records",
-        "fn-mpx-candidates-ascending",
-        "fn-mpx-candidates-below",
-        "fn-mpx-candidates-nat-listp",
-        "fn-mpx-spec-from-is-records-for"
+        {
+          "kind": "theorem",
+          "name": "fn-mpx-confirm-is-the-records-for"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpx-records-is-the-records-for"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpx-records-is-hist-msgid-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpx-candidates-ascending"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpx-candidates-below"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpx-candidates-nat-listp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpx-spec-from-is-records-for"
+        }
       ]
     },
     {
@@ -14285,23 +14306,59 @@
     {
       "id": "PRF-969",
       "events": [
-        "fn-mpxt-seqs-is-spec-from",
-        "fn-mpxt-confirm-is-the-spec",
-        "fn-mpxt-faithful-from-complete",
-        "fn-mpxt-candidates-ascending",
-        "fn-mpxt-candidates-below",
-        "fn-mpxt-candidates-nat-listp",
-        "fn-mpxt-put-preserves-faithful",
-        "fn-mpxt-put-run-finds",
-        "fn-mpxt-pages-okp-of-put-run",
-        "fn-mpxt-faithful-from-of-put-run"
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-seqs-is-spec-from"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-confirm-is-the-spec"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-faithful-from-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-candidates-ascending"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-candidates-below"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-candidates-nat-listp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-put-preserves-faithful"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-put-run-finds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-pages-okp-of-put-run"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-faithful-from-of-put-run"
+        }
       ]
     },
     {
       "id": "PRF-970",
       "events": [
-        "fn-mpxt-seqs-is-cat-msgid-seqs",
-        "fn-mpxt-spec-from-is-cat-seqs-for"
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-seqs-is-cat-msgid-seqs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-spec-from-is-cat-seqs-for"
+        }
       ]
     }
   ]
