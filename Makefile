@@ -1662,10 +1662,14 @@ check-lane:
 # check-fast-lane sets it, the ledger is regenerated into a temporary
 # directory and only printed, as in check-lane), docs_check, and every host/
 # file reads (host_check --read, half a second: stx-model-2's paren on a
-# comment line reached an image build; obstructions-9 item 80).
+# comment line reached an image build; obstructions-9 item 80), and every
+# book an ld host file calls into is in the image world (host_check --books,
+# item 83: store-checkpoint-digest and store-finalize-incremental each cost
+# an image build).
 check-fast:
 	@$(PYTHON) tools/check_steps.py begin $(CHECK_STEPS_DIR)
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --read
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --books
 	@$(CHECK_STEP) $(PYTHON) tools/merge_registry.py --reciprocate --check
 	@$(CHECK_STEP) $(PYTHON) tools/spec_cite_check.py --summary --strict
 	@$(CHECK_STEP) $(PYTHON) tools/reach_check.py --summary --strict
@@ -1959,6 +1963,7 @@ check:
 # the world of the image that loads it (build.lisp, build-dtn.lisp): static,
 # no ACL2 (lane lane-tools-2, after payload-lz-record was outside the world).
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --world
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --books
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_world
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_forward
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_read
