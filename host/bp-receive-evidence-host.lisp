@@ -10,6 +10,8 @@
   (if (fn-bpn-evidence-statep st) t nil))
 (defun fn-bpn-host-evidence-authorize (st outcome lock-ownedp
                                              wire-absentp result-absentp)
+  ; An exact alias (definterface :delegates): the decision is the books'.
+  (declare (xargs :guard t))
   (fn-bpn-evidence-authorize st outcome lock-ownedp
                              wire-absentp result-absentp))
 (defun fn-bpn-host-evidence-next-wire-name (st)
@@ -22,7 +24,8 @@
       (fn-bpn-evidence-next-result-name st outcome)
     nil))
 (defun fn-bpn-host-evidence-operationp (operation)
-  (if (fn-bpn-evidence-operationp operation) t nil))
+  ; An exact alias (definterface :delegates); the recognizer is boolean.
+  (fn-bpn-evidence-operationp operation))
 (defun fn-bpn-host-evidence-operation-wire-name (operation)
   (fn-bpn-evidence-operation-wire-name operation))
 (defun fn-bpn-host-evidence-operation-result-name (operation)

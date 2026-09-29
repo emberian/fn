@@ -13717,117 +13717,6 @@
       ]
     },
     {
-      "id": "PRF-922",
-      "title": "The article in flight is held as a canonical store of packed blocks: the wire's article mode keeps the decoded body (completed lines with CR LF, then the current line) as fixed 512-octet naturals, one octet a byte; the served scan appends straight from the buffer and stays equal to the byte fold; the article event is the store's lines and they are its octets",
-      "statement": "books/packed-octets.lisp: fn-bch-pack xs = 256^|xs| + sum xs_i 256^i; fn-bch-unpack-of-pack (octet lists round-trip), fn-bch-pack-of-append, and the reader the host runs, fn-bch-digits-onto (divide and conquer, depth log2 of the length: fn-bch-digits-onto-is-digits; fn-bch-unpack-is-digits). books/body-chunks.lisp: the store (COUNT TAIL-LEN TAIL . BLOCKS); fn-bch-push appends one octet; KEYSTONE fn-bch-octets-of-push-list (the abstraction: appending XS to a well-formed store appends XS to its octets); KEYSTONE fn-bch-wf-is-of-octets (canonicity: a well-formed store is fn-bch-of its octets); the held body fn-bch-body-okp B N L (B's octets are N octets of lines each followed by CR LF, then the current line's decoded octets, L its arrived length) and its transitions fn-bch-body-okp-dot / -octet / -line / -whole-line; KEYSTONE fn-bch-join-of-terminator-lines (at a line start the lines the terminator reads out, joined with CR LF, are exactly the store's octets). books/body-chunks-span.lisp: KEYSTONE fn-bchs-push-span-is-push-list (no hypothesis): the span append straight from the octet buffer is the per-octet append of the span's octets, for every store. books/wire.lisp: in article mode the body-rev field is the store and line-rev is empty; fn-wire-statep has fn-bch-body-okp as its article conjunct; fn-wire-after-line reads the current line's length in constant work (fn-wire-partial-len). books/wire-invariants.lisp KEYSTONE fn-wire-article-event-is-the-held-body: the article a byte ends (fn-wire-feed-byte, the byte step of the served scan) is the store's completed lines (fn-wire-body-lines) and they joined are its octets. books/wire-scan.lisp: an article-mode run goes into the store by fn-bchs-push-span; fn-wire-scan-is-span-fold (PRF-346) stays hypothesis-free. The subject is the host's read: host/owner-host.lisp fn-owner-chunk-span-at -> fn-mca-read-span -> ... -> books/served-scan.lisp fn-scar-scan-span -> fn-wire-scan. Not claimed: the article event and the queued decision are still octet lists (16 octets of heap an octet); the credit (books/heap-store-figure.lisp fn-heap-article-reserve-octets) is therefore unchanged, and now covers the wire's form soundly (before, a body of A and a current line of A+1 could coexist as lists past the reserve's A+512).",
-      "milestone": "M5",
-      "requirements": [
-        "REP-012"
-      ],
-      "depends_on": [
-        "PRF-346"
-      ],
-      "assumptions": [],
-      "status": "certified",
-      "evidence": [
-        "books/packed-octets.lisp",
-        "books/body-chunks.lisp",
-        "books/body-chunks-span.lisp",
-        "books/wire.lisp",
-        "books/wire-invariants.lisp",
-        "books/wire-scan.lisp",
-        "books/wire-outbound-invariants.lisp",
-        "books/transit-bound.lisp",
-        "tests/acl2/body-chunks-tests.lisp",
-        "tests/acl2/wire-tests.lisp",
-        "specs/store-refinement.md"
-      ],
-      "progress_note": "Lane chunked-body (2026-09-28/29, B6 of COMPLETE-BEFORE-6.6.0): certification and native modules in the lane's READY.",
-      "events": [
-        "fn-bch-unpack-of-pack",
-        "fn-bch-pack-of-append",
-        "fn-bch-digits-onto-is-digits",
-        "fn-bch-unpack-is-digits",
-        "fn-bch-octets-of-push-list",
-        "fn-bch-wf-is-of-octets",
-        "fn-bch-body-okp-line",
-        "fn-bch-body-okp-whole-line",
-        "fn-bch-join-of-terminator-lines",
-        "fn-bchs-push-span-is-push-list",
-        "fn-wire-article-event-is-the-held-body"
-      ]
-    },
-    {
-      "id": "PRF-928",
-      "title": "The queued submission is packed: the owner's queue holds each submission's article octets as one natural and an injection's groups comma-joined into another, and the take unpacks it, so the committer installs exactly the submission the read enqueued; the per-article credit is the packed article",
-      "statement": "books/packed-submission.lisp: fn-psub-pack-dc (the executable packing, divide and conquer, depth log2 of the length; the lemma fn-psub-pack-dc-is-pack: it is fn-bch-pack of the first N octets); KEYSTONES fn-psub-unpack-of-pack-octets, fn-psub-unpack-of-pack-groups, fn-psub-unpack-of-pack-sub (no hypothesis: every field round-trips, a field that is not an octet list, or groups that are not joinable names, kept as (:raw . X)); fn-psub-packed-octets-len-is-len. books/owner.lisp: fn-own-enqueue appends (fn-psub-pack-sub SUB); fn-own-take-submission installs the fields of (fn-psub-unpack-sub (car queue)); fn-own-sub-fields-of-pack / -unpack and fn-own-decision-fields-of-pack (id, version, mark, login, account, the Message-ID, transit and control are the packed record's own); fn-own-sub-queued-decision (the decision a queued submission carries, unpacked). books/owner-invariants-outcome.lisp KEYSTONE fn-own-take-installs-the-enqueued-submission: after enqueuing SUB on an idle ready owner the take installs SUB's decision exactly; fn-own-take-installs-the-queued-submission-whatever-it-carries restated over the unpacked head. books/owner-credits.lisp fn-mca-sub-charge: twice fn-psub-sub-heap of the QUEUED submission (host/owner-host.lisp fn-owner-take charges the queue's head before the take), capped by the reserve. books/heap-store-figure.lisp fn-heap-article-reserve-octets = 2 x max(fn-heap-article-wire-octets, fn-heap-article-queued-octets) (544 octets a 512-octet block of the wire's store over A + 1 octets; the packed submission: A + HDR + a 250-octet Message-ID list + cells), and fn-heap-store-inflight-octets gains the taken (unpacked) submission, one at a time. The subject is the owner step the host calls (host/owner-host.lisp fn-owner-step -> fn-own-finish-read -> fn-own-enqueue; fn-owner-take -> fn-own-take-submission). Not claimed: that the packed forms take the figure's octets of heap (a measurement: measure at convergence, VmRSS with 30 posters mid-article at A = 1 MiB).",
-      "milestone": "M5",
-      "requirements": [
-        "REP-012"
-      ],
-      "depends_on": [
-        "PRF-922",
-        "PRF-380"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/packed-submission.lisp",
-        "books/owner.lisp",
-        "books/owner-invariants-outcome.lisp",
-        "books/owner-invariants-step.lisp",
-        "books/owner-credits.lisp",
-        "books/heap-store-figure.lisp",
-        "books/heap-figure.lisp",
-        "books/heap-breakdown.lisp",
-        "tests/acl2/packed-submission-tests.lisp",
-        "tests/acl2/owner-credits-tests.lisp",
-        "tests/test_native_article_slots.py",
-        "specs/store-refinement.md"
-      ],
-      "progress_note": "Lane chunked-body-2 (2026-09-29, B6b of COMPLETE-BEFORE-6.6.0): at A = 1 MiB the 64 MiB pool holds 30 articles in flight (it held 1).",
-      "events": [
-        "fn-psub-unpack-of-pack-octets",
-        "fn-psub-unpack-of-pack-groups",
-        "fn-psub-unpack-of-pack-sub",
-        "fn-psub-packed-octets-len-is-len",
-        "fn-own-take-installs-the-enqueued-submission",
-        "fn-own-take-installs-the-queued-submission-whatever-it-carries",
-        "fn-heap-article-slots-are-held"
-      ]
-    },
-    {
-      "id": "PRF-929",
-      "title": "Mid-article a connection holds at most the body limit and one octet: the wire closes :body-overlimit at the octet that dooms the line, not at its LF",
-      "statement": "books/wire.lisp: fn-wire-line-room (in article mode the line's room is also the body's: min(line limit, body limit + 1 - body-size)); fn-wire-feed-byte takes an ordinary octet only within it and otherwise closes :body-overlimit (:line-overlimit when the line limit binds); fn-wire-statep's article conjunct gains body-size + line-len <= body limit + 1; KEYSTONE fn-wire-statep-article-holds-at-most-the-body-limit (fn-wire-held-octets <= body limit + 1). The octet closed on dooms the article: its completed line would be over the body limit (a completed line adds its CR LF, and the terminator is one octet). books/wire-scan.lisp: the scan's run ends at the same room, fn-wire-scan-is-span-fold (PRF-346) unchanged and hypothesis-free. books/transit-bound.lisp KEYSTONE fn-tb-served-run-holds-at-most-the-body-limit-mid-article: after any served run from a wire-invariant state, mid-article, the held octets are at most the body limit and one. The subject is the host's read: host/owner-host.lisp fn-owner-chunk-span-at -> ... -> books/served-scan.lisp fn-scar-scan-span -> fn-wire-scan. This is the wire's term of fn-heap-article-reserve-octets (PRF-928).",
-      "milestone": "M5",
-      "requirements": [
-        "REP-012"
-      ],
-      "depends_on": [
-        "PRF-922",
-        "PRF-346"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/wire.lisp",
-        "books/wire-scan.lisp",
-        "books/wire-invariants.lisp",
-        "books/wire-outbound-invariants.lisp",
-        "books/transit-bound.lisp",
-        "tests/acl2/wire-tests.lisp",
-        "specs/store-refinement.md"
-      ],
-      "progress_note": "Lane chunked-body-2 (2026-09-29, B6b).",
-      "events": [
-        "fn-wire-statep-article-holds-at-most-the-body-limit",
-        "fn-wire-feed-byte-preserves-statep",
-        "fn-tb-served-run-holds-at-most-the-body-limit-mid-article",
-        "fn-wire-scan-is-span-fold"
-      ]
-    },
-    {
       "id": "PRF-906",
       "title": "An acknowledged BP custody is delivered within one quiet read timeout of an open session, never held until the session ends (PKT-873)",
       "statement": "Subjects fn-tcl-delivery-plan and fn-tcl-delivery-plan-progress-p (books/tcpcl-delivery.lisp), which host/native/tcpcl.lisp fnn-tcl-act calls on every completed inbound transfer; fnn-tcl-session marks the custody when the plan names the progress point and calls *fnn-tcl-progress* at its first quiet read timeout after it (at most max(1, keepalive/4) s; a session the peer ends first is delivered by the between-sessions pass), and host/native/bp-node.lisp fnn-command-bp-node binds it to fnn-bpnode-dispatch-pending. KEYSTONE fn-tcl-acknowledged-custody-is-progressed-in-its-turn: if the plan's released messages carry the transfer's final END XFER_ACK, the callback's result was (:accepted PATH) (kind-5 custody durable, spec 9.2) and the plan names the progress point; fn-tcl-unaccepted-delivery-names-no-progress: a refusal, an uncertain publication or a fault names none. Crash scope: the in-session turn adds no durable write; a process death between the ACK and the delivery is the existing kind-5 cut, recovered by the open's delivery pass. Teeth: tests/acl2/tcpcl-delivery-tests.lisp (fn-tcl-complete's held END ACK with (:accepted nil): final ACK released, progress named; removal of the final-ACK hypothesis by a refusal, an uncertain publication and a fault: no progress). Native: tests/test_native_source_corpus_bp.py (B SIGKILLed mid-receive; the relay restarted after B keeps its session open; the verdict precedes that session's end).",
@@ -14283,6 +14172,418 @@
       ]
     },
     {
+      "id": "PRF-942",
+      "title": "Operator init's admission decides by what is present: it proceeds exactly when neither a leftover stage nor the root exists, and each other combination is the refusal that names it",
+      "statement": "books/store-init-publication.lisp. KEYSTONE fn-bs-init-pub-admission-decides-by-what-is-present: over the antecedent as host/native/io.lisp fnn-command-init-published composes it (STAGE-VERDICT = (and stage-present (fn-bs-imp-classify stage-present root-present)), ROOT-PRESENT), the host-called fn-bs-init-pub-admission is :proceed iff neither name is present; a stage alone is (:refused :interrupted-init); a stage beside the root is (:refused :publication-uncertain); the root alone is (:refused :store-path-exists). The earlier fn-bs-init-pub-admission-proceeds-only-on-nothing took the admission as a hypothesis (coverage: hyps-only); this theorem concludes it. Teeth: tests/acl2/store-init-publication-tests.lisp (positive witness :proceed on nothing; hypothesis-removal witnesses for each present name, each checked never :proceed).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-029"
+      ],
+      "depends_on": [
+        "PRF-217"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-init-publication.lisp",
+        "tests/acl2/store-init-publication-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4 of COMPLETE-BEFORE-6.6.0). REPL-admitted on persvati (451 steps); certification pending in the lane's READY manifest.",
+      "events": [
+        "fn-bs-init-pub-admission-decides-by-what-is-present"
+      ]
+    },
+    {
+      "id": "PRF-943",
+      "title": "The native hybrid-author event constructor decides at its own boundary: no event unless the durable received payload is exactly the injection ACL2 decided, and an event binds, is charged for its payload, names the enrolled snapshot and passed the observed verification",
+      "statement": "books/hybrid-store-injected.lisp. KEYSTONE fn-hsig-authorized-injected-carried-submission-event-decides about the host-called fn-hsig-authorized-injected-carried-submission-event (host/native/signatures.lisp): with CARRIER = fn-hsig-injected-carrier-octets over the same source, principal, keys, signatures, config and observation, (1) received /= CARRIER implies the event is nil; (2) an event implies fn-stxa-bindsp of it, received = CARRIER, fn-inj-injectedp of the carrier plan, charge = fn-charge-for-payload (len received), enrolled-snapshot = fn-hsig-keyring-snapshot, and fn-hsig-authorize-at over the source's signatures and both observations. Before this theorem the entry had 1,175 theorems about its helpers and none about itself (planning/evidence/coverage-2026-09-29.md). Teeth: tests/acl2/hybrid-store-tests.lisp (the positive witness *hst-injected-event* with its antecedent checked by name; hypothesis-removal witnesses: the carried profile's bytes as the payload, the charge plus one, an unverified Ed25519 observation, each nil).",
+      "milestone": "M3",
+      "requirements": [
+        "OBJ-007",
+        "NNT-004"
+      ],
+      "depends_on": [
+        "PRF-063"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/hybrid-store-injected.lisp",
+        "tests/acl2/hybrid-store-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (1,687 steps); certification pending in the lane's READY manifest.",
+      "events": [
+        "fn-hsig-authorized-injected-carried-submission-event-decides"
+      ]
+    },
+    {
+      "id": "PRF-944",
+      "title": "The BP transfer boundary the host calls keeps accepted, refused and uncertain distinct, hands over an ADU only for an acceptance, and receives what its own send authored",
+      "statement": "books/bp-node-host-transfer.lisp (fn-bpn-host-send, fn-bpn-host-receive and its three flat-result readers, moved from host/bp-node-host.lisp and guard-verified; host/native/bp.lisp calls them). KEYSTONE fn-bpn-host-receive-keeps-the-three-outcomes-distinct: the outcome is one of :accepted, :refused, :uncertain; it is :accepted iff the arguments are well formed and fn-bpn-receive accepted, :uncertain iff well formed and fn-bpn-receive was uncertain; malformed arguments are exactly (:refused :host-arguments nil 0); the ADU is fn-bpn-received-adu on acceptance and nil otherwise; every other outcome carries fn-bpn-outcome-reason. KEYSTONE fn-bpn-host-receive-of-host-send-hands-over-the-adu: a bundle fn-bpn-host-send authored for a peer, received by that peer's configuration with outcome :accepted, yields the sent ADU (through fn-bpn-receive-of-send-carries-the-adu). Teeth: tests/acl2/bp-node-host-tests.lisp (the authored-and-received witness with its antecedent by name; hypothesis removal: the ADU offered as the wire is :refused with the book's reason and no ADU; no configuration or no observation is :host-arguments; symbol-class checks).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-038"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/bp-node-host-transfer.lisp",
+        "host/bp-node-host.lisp",
+        "tests/acl2/bp-node-host-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). Both keystones REPL-admitted on persvati over the host file (4,620 and 1,436 steps); the guard verification and certification of the new book are pending in the lane's READY manifest.",
+      "events": [
+        "fn-bpn-host-receive-keeps-the-three-outcomes-distinct",
+        "fn-bpn-host-receive-of-host-send-hands-over-the-adu"
+      ]
+    },
+    {
+      "id": "PRF-951",
+      "title": "The time-bars early answer tells each untold member exactly once and leaves the request in flight",
+      "statement": "books/owner-time-bars.lisp. KEYSTONE fn-otb-answer-early-answers-each-untold-member-once about the host-called fn-otb-answer-early (host/native/owner.lisp fnn-owner-commit-pipeline, the stall's uncertain release and every stop's): with (NOW L') its answer, NOW has no duplicates, is drawn from CIDS and is disjoint from the connections already told; every member of CIDS is told in L'; L' told is the old told list extended by NOW; the generation and OPEN are unchanged. fn-otb-a-member-is-answered-once (PRF-384) states the once-only property over a run of early answers and the completion; this theorem is about the entry itself. Teeth: tests/acl2/owner-time-bars-tests.lisp (the stall's release by conjunct; a told member not told again and a newcomer told; a duplicated member told once).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-031"
+      ],
+      "depends_on": [
+        "PRF-384"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-time-bars.lisp",
+        "tests/acl2/owner-time-bars-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati with eleven local membership and subset lemmas (496 steps for the keystone); certification pending in the lane's READY manifest.",
+      "events": [
+        "fn-otb-answer-early-answers-each-untold-member-once"
+      ]
+    },
+    {
+      "id": "PRF-952",
+      "title": "The LZ refusal lines the host prints exist exactly for a lying encoder on append and for a record that does not expand on read",
+      "statement": "books/payload-lz-append.lisp. KEYSTONE fn-lzr-append-refusal-text-refuses-exactly-a-lying-encoder about the host-called fn-lzr-append-refusal-text over fn-lzr-append-decide's decision: a line iff the span and dictionary id are admissible, the encoder answered a block, and that block does not decode to the record's span; the line is a string and the decision is (:refused :lz-candidate); without a line the decision is :kept (the log takes R) or :framed. KEYSTONE fn-lzr-read-refusal-text-refuses-exactly-what-does-not-expand about the host-called fn-lzr-read-refusal-text over fn-lzr-expand: a line iff the expansion is not :ok; a string when present; a record that is not a frame never has one. Teeth: tests/acl2/payload-lz-append-tests.lisp (a non-decoding block refused with a line; :none and the real frame without; the real frame without its dictionary refused with a line; with it, and the plain record, without).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010"
+      ],
+      "depends_on": [
+        "PRF-341"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/payload-lz-append.lisp",
+        "tests/acl2/payload-lz-append-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). Both REPL-admitted on persvati (2,277 and 22,797 steps); certification pending in the lane's READY manifest.",
+      "events": [
+        "fn-lzr-append-refusal-text-refuses-exactly-a-lying-encoder",
+        "fn-lzr-read-refusal-text-refuses-exactly-what-does-not-expand"
+      ]
+    },
+    {
+      "id": "PRF-953",
+      "title": "The open's log-damage refusal line exists exactly for a broken stream or confirmed damage, never for a torn tail or a complete segment",
+      "statement": "books/store-log-damage.lisp. KEYSTONE fn-lgdm-refusal-text-refuses-exactly-a-break-or-damage about the host-called fn-lgdm-refusal-text (host/native/io.lisp, the store-open refusal) over fn-lgdm-verdict of the stopped stream ST and the probe PS: a line iff (fn-lgw-broken ST) or (fn-lgdm-first PS); a line iff fn-lgdm-refused-p of the verdict; the line is a string. Teeth: tests/acl2/store-log-damage-tests.lisp (the flipped bit and the splice over the host's verdict, refused with a line; :complete and :torn verdicts without a line and not refused).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-005"
+      ],
+      "depends_on": [
+        "PRF-316"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-damage.lisp",
+        "tests/acl2/store-log-damage-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (28,750 steps with string-append, coerce and nth disabled; 12.3M steps without); certification pending in the lane's READY manifest.",
+      "events": [
+        "fn-lgdm-refusal-text-refuses-exactly-a-break-or-damage"
+      ]
+    },
+    {
+      "id": "PRF-954",
+      "title": "The durability warning the host prints exists exactly when the mount observation shows a reason durability is disabled",
+      "statement": "books/store-mount-identity.lisp. KEYSTONE fn-smid-durability-warning-warns-exactly-when-the-mount-is-unsafe about the host-called fn-smid-durability-warning (host/native/io.lisp fnn-filesystem-durability-warn): a warning iff fn-smid-unsafe-reason is non-nil; an observation that is not one never warns; a warning's reason is :nobarrier or :memory. Teeth: tests/acl2/store-mount-identity-tests.lisp (the tmpfs and nobarrier stores warn with their reasons; the plain mount and two non-observations neither warn nor have a reason).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-031"
+      ],
+      "depends_on": [
+        "PRF-232"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-mount-identity.lisp",
+        "tests/acl2/store-mount-identity-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (4,825 steps); certification pending in the lane's READY manifest.",
+      "events": [
+        "fn-smid-durability-warning-warns-exactly-when-the-mount-is-unsafe"
+      ]
+    },
+    {
+      "id": "PRF-955",
+      "title": "The anchor replace outcome the host reads is terminal only after the directory barrier, uncertain exactly when the step fenced",
+      "statement": "books/anchor-replace.lisp. KEYSTONE fn-anchor-rp-outcome-is-terminal-only-after-the-directory-barrier about the host-called fn-anchor-rp-outcome (host/native/anchor.lisp) over fn-anchor-rp-step: the outcome is one of :durable, :recovered, :fault, :uncertain, :pending; from a phase not already terminal it is :durable iff the phase is :replace-visible and the event is (:directory-result :ok), :recovered iff the phase is :recover-directory and the event is (:recovery-directory-result :ok); :uncertain iff the step is :fenced; :fault iff the step is :known-fail. Lifts the two step keystones to the word the host acts on. Teeth: tests/acl2/anchor-replace-tests.lisp (the visible replace's barrier :ok is :durable; the same barrier from the issued phase, and a failed barrier, are not).",
+      "milestone": "M5",
+      "requirements": [
+        "TOP-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/anchor-replace.lisp",
+        "tests/acl2/anchor-replace-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (14,415 steps); certification pending (the successor's farm round).",
+      "events": [
+        "fn-anchor-rp-outcome-is-terminal-only-after-the-directory-barrier"
+      ]
+    },
+    {
+      "id": "PRF-956",
+      "title": "The sender's reading of a TCPCL session keeps sent, refused with its reason, failed and uncertain distinct",
+      "statement": "books/bp-node-progress.lisp. KEYSTONE fn-bpnp-tcpcl-outcome-keeps-sent-refused-failed-and-uncertain-distinct about the host-called fn-bpnp-tcpcl-outcome (host/native/bp-node.lisp fnn-bpnode-forward-contact): :sent iff the connection observed :accepted; a (:refused CODE) result iff observed :refused with a frame-nat reason, keeping the code; :failed iff observed :refused with no reason; :uncertain iff none of those (a lost connection after the durable kind 8, a refusal whose reason is not a code), so the row is retried and never counted sent or failed. Complements fn-bpnp-tcpcl-outcome-keeps-the-refusal-reason (books/bp-node-forward-retry.lisp). Teeth: tests/acl2/bp-node-forward-retry-tests.lisp (the four readings; a non-code reason and a lost connection are :uncertain).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/bp-node-progress.lisp",
+        "tests/acl2/bp-node-forward-retry-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (937 steps); certification pending (the successor's farm round).",
+      "events": [
+        "fn-bpnp-tcpcl-outcome-keeps-sent-refused-failed-and-uncertain-distinct"
+      ]
+    },
+    {
+      "id": "PRF-961",
+      "title": "The store bounds the host reads are one guard-verified boundary: a publication is admitted exactly within the profile, the open's read bound covers every admitted publication, and the charge quoted is the receipt's",
+      "statement": "books/store-host-boundary.lisp (fn-store-charge, fn-store-publication-admissibility and fn-store-profile-read-bound moved from host/store-host.lisp and guard-verified; host/native/io.lisp calls them through the host file). KEYSTONE fn-store-publication-admissibility-admits-exactly-within-the-profile: the answer is :admissible or :refused, and :admissible iff the profile is admitted, both counts are naturals, the committed count is below the profile's max-transactions and the prospective payload is at most fn-bs-profile-record-ceiling. KEYSTONE fn-store-profile-read-bound-covers-every-admitted-publication (two host entries composed): an :admissible publication's payload plus *fn-frame-overhead-octets* is at most fn-store-profile-read-bound of the same profile, the bound the open reads each committed file under. KEYSTONE fn-store-charge-is-positive-exactly-for-a-length-and-is-the-receipt-charge: the charge is positive iff the argument is a natural, equals fn-charge-for-payload for one, and for an article's octets equals fn-ct-charge of the article. Teeth: tests/acl2/store-host-boundary-tests.lisp over the decoded development profile (positive witnesses with the antecedent checked by name; hypothesis removal: the committed count at T, the payload one past the ceiling, a non-natural, no admitted profile, each :refused; the read bound one octet short of ceiling+1; the charge 0 exactly for a non-length; symbol-class checks).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-015",
+        "STO-018"
+      ],
+      "depends_on": [
+        "PRF-102"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-host-boundary.lisp",
+        "tests/acl2/store-host-boundary-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-2 (Claude Fable 5.1, 2026-09-29; K4 of COMPLETE-BEFORE-6.6.0). REPL-admitted on persvati (8,218 steps for the book); certification in the lane's READY manifest.",
+      "events": [
+        "fn-store-publication-admissibility-admits-exactly-within-the-profile",
+        "fn-store-profile-read-bound-covers-every-admitted-publication",
+        "fn-store-charge-is-positive-exactly-for-a-length-and-is-the-receipt-charge"
+      ]
+    },
+    {
+      "id": "PRF-962",
+      "title": "A host wrapper that is exactly a call of a book function delegates its decision to it by a checked declaration, and the five delegated-to functions that lacked a theorem have one: the two refusal-text lines are rendered exactly for a refusal, the profile report names the format exactly for a valid profile, the log route holds exactly for a valid profile, and what init writes for a preset the open opens",
+      "statement": "books/definterface.lisp `:delegates CALLEE' (refused unless the entry's unnormalized body is exactly CALLEE applied to the entry's formals; tests/acl2/definterface-tests.lisp) and tools/coverage.py (a declared delegation files the entry as plumbing whose decision is CALLEE's only when the world's call graph agrees and CALLEE has a direct theorem; `--check' refuses any other; tests/test_coverage.py). The ten fn-store-* wrappers of host/store-host.lisp declare it, as do fn-bpn-host-authored-wire-authorize, fn-bpn-host-evidence-authorize and fn-tcl-host-encode (host/interfaces.lisp), whose callees already had direct theorems. books/store-host-boundary.lisp proves the callee theorems the store wrappers needed: fn-spo-refusal-text-refuses-exactly-the-foreign-format (a line iff the verdict is (:refused :store-format); for fn-spo-config-open's own verdict iff the octets decode to no profile and name a foreign format), fn-gen-refusal-text-refuses-exactly-a-refused-open (a line iff the verdict is one of the four genesis refusals; for fn-gen-open's own verdict iff it is not the accepted :genesis), fn-bs-profile-report-names-the-format-exactly-for-a-valid-profile (an alist whose format entry is 10 iff fn-bs-profile-validp, else 0), fn-bs-profile-logp-holds-exactly-for-a-valid-profile (the log commit route iff fn-bs-profile-validp), fn-bs-config-frame-for-profile-is-what-the-open-opens (for each preset word, fn-spo-config-open of the frame init writes is (:opened VALUES) with VALUES that preset's, through fn-bs-config-decode-of-encode). Teeth: tests/acl2/store-host-boundary-tests.lisp (each refusal verdict rendered, an accepted and a foreign verdict not; fn-gen-open of no octets is the damaged refusal with its line; the report's format 10 for the development profile and 0 for none; each preset's frame opens as that preset and a word naming none has no frame; the log route with and without a valid profile).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-036",
+        "STO-015"
+      ],
+      "depends_on": [
+        "PRF-961"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/definterface.lisp",
+        "tools/coverage.py",
+        "books/store-host-boundary.lisp",
+        "tests/acl2/store-host-boundary-tests.lisp",
+        "tests/acl2/definterface-tests.lisp",
+        "tests/test_coverage.py"
+      ],
+      "progress_note": "Lane decision-keystones-2 (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati; certification in the lane's READY manifest.",
+      "events": [
+        "fn-spo-refusal-text-refuses-exactly-the-foreign-format",
+        "fn-gen-refusal-text-refuses-exactly-a-refused-open",
+        "fn-bs-profile-report-names-the-format-exactly-for-a-valid-profile",
+        "fn-bs-config-frame-for-profile-is-what-the-open-opens",
+        "fn-bs-profile-logp-holds-exactly-for-a-valid-profile"
+      ]
+    },
+    {
+      "id": "PRF-983",
+      "title": "The host reads a sequence reservation exactly when the recovered frontier is below the 64-bit ceiling; its sequence is that frontier and the frame made durable first is the successor record's",
+      "statement": "books/bp-node-host-sequence.lisp (fn-bpn-host-sequence-reserve, fn-bpn-host-sequence-reservationp, fn-bpn-host-sequence-reservation-sequence and fn-bpn-host-sequence-reservation-frame moved from host/bp-node-host.lisp and guard-verified; host/native/bp.lisp's fnn-bp-reserve-sequence calls them through the host file). KEYSTONE fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling (the four entries composed): fn-bpn-host-sequence-reservationp of the reserve answer holds iff the argument is a frontier (fn-bpn-sequence-frontierp) below *fn-bpc-max-uint*; then the reservation's sequence is that frontier, its frame is fn-bpn-sequence-record-frame of fn-bpn-sequence-record of the successor and is an octet list; a frontier at the ceiling answers exactly (:refused :sequence-exhausted), the books' refusal; a non-frontier answers exactly (:refused :host-arguments), the host's, distinct from exhaustion. Teeth: tests/acl2/bp-node-host-sequence-tests.lisp (positive witness at frontier 5 with the antecedent by name; hypothesis removal: the ceiling, a negative and a string frontier; the reads of a refusal are empty).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-944"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/bp-node-host-sequence.lisp",
+        "host/bp-node-host.lisp",
+        "tests/acl2/bp-node-host-sequence-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-3 (Claude Fable 5.1, 2026-09-29; K4). Keystone REPL-admitted on persvati (3,275 steps) with the book guard-verified; certification in the lane's READY manifest.",
+      "events": [
+        "fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling"
+      ]
+    },
+    {
+      "id": "PRF-984",
+      "title": "The authored-wire name the host previews is a non-empty string exactly for a reservation, and then the books' name of the reserved sequence",
+      "statement": "books/bp-node-host-sequence.lisp (fn-bpn-host-authored-wire-name moved from host/bp-node-host.lisp and guard-verified, with fn-bpn-authored-wire-name-chars and fn-bpn-authored-wire-name-for-reservation guard-verified there; host/native/bp.lisp's fnn-bp-authored-wire-publish calls it through the host file). KEYSTONE fn-bpn-host-authored-wire-name-names-the-reserved-sequence: the name is a string; it is the empty string iff the argument is not a reservation (fn-bpn-host-sequence-reservationp), so the host's non-empty check faults exactly then; for a reservation it equals the string of fn-bpn-authored-wire-name-chars of fn-bpn-host-sequence-reservation-sequence, the name fn-bpn-authored-wire-authorize carries (fn-bpn-authored-wire-authorize-carries-reservation). Teeth: tests/acl2/bp-node-host-sequence-tests.lisp (the reservation of 5 previews authored-5.wire with the antecedent by name; a refusal, a mutated reservation whose record does not carry the successor, and a number name nothing).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-983"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/bp-node-host-sequence.lisp",
+        "host/bp-node-host.lisp",
+        "tests/acl2/bp-node-host-sequence-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-3 (Claude Fable 5.1, 2026-09-29; K4). Keystone REPL-admitted on persvati (440 steps); certification in the lane's READY manifest.",
+      "events": [
+        "fn-bpn-host-authored-wire-name-names-the-reserved-sequence",
+        "fn-bpn-authored-wire-authorize-carries-reservation"
+      ]
+    },
+    {
+      "id": "PRF-922",
+      "title": "The article in flight is held as a canonical store of packed blocks: the wire's article mode keeps the decoded body (completed lines with CR LF, then the current line) as fixed 512-octet naturals, one octet a byte; the served scan appends straight from the buffer and stays equal to the byte fold; the article event is the store's lines and they are its octets",
+      "statement": "books/packed-octets.lisp: fn-bch-pack xs = 256^|xs| + sum xs_i 256^i; fn-bch-unpack-of-pack (octet lists round-trip), fn-bch-pack-of-append, and the reader the host runs, fn-bch-digits-onto (divide and conquer, depth log2 of the length: fn-bch-digits-onto-is-digits; fn-bch-unpack-is-digits). books/body-chunks.lisp: the store (COUNT TAIL-LEN TAIL . BLOCKS); fn-bch-push appends one octet; KEYSTONE fn-bch-octets-of-push-list (the abstraction: appending XS to a well-formed store appends XS to its octets); KEYSTONE fn-bch-wf-is-of-octets (canonicity: a well-formed store is fn-bch-of its octets); the held body fn-bch-body-okp B N L (B's octets are N octets of lines each followed by CR LF, then the current line's decoded octets, L its arrived length) and its transitions fn-bch-body-okp-dot / -octet / -line / -whole-line; KEYSTONE fn-bch-join-of-terminator-lines (at a line start the lines the terminator reads out, joined with CR LF, are exactly the store's octets). books/body-chunks-span.lisp: KEYSTONE fn-bchs-push-span-is-push-list (no hypothesis): the span append straight from the octet buffer is the per-octet append of the span's octets, for every store. books/wire.lisp: in article mode the body-rev field is the store and line-rev is empty; fn-wire-statep has fn-bch-body-okp as its article conjunct; fn-wire-after-line reads the current line's length in constant work (fn-wire-partial-len). books/wire-invariants.lisp KEYSTONE fn-wire-article-event-is-the-held-body: the article a byte ends (fn-wire-feed-byte, the byte step of the served scan) is the store's completed lines (fn-wire-body-lines) and they joined are its octets. books/wire-scan.lisp: an article-mode run goes into the store by fn-bchs-push-span; fn-wire-scan-is-span-fold (PRF-346) stays hypothesis-free. The subject is the host's read: host/owner-host.lisp fn-owner-chunk-span-at -> fn-mca-read-span -> ... -> books/served-scan.lisp fn-scar-scan-span -> fn-wire-scan. Not claimed: the article event and the queued decision are still octet lists (16 octets of heap an octet); the credit (books/heap-store-figure.lisp fn-heap-article-reserve-octets) is therefore unchanged, and now covers the wire's form soundly (before, a body of A and a current line of A+1 could coexist as lists past the reserve's A+512).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-012"
+      ],
+      "depends_on": [
+        "PRF-346"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/packed-octets.lisp",
+        "books/body-chunks.lisp",
+        "books/body-chunks-span.lisp",
+        "books/wire.lisp",
+        "books/wire-invariants.lisp",
+        "books/wire-scan.lisp",
+        "books/wire-outbound-invariants.lisp",
+        "books/transit-bound.lisp",
+        "tests/acl2/body-chunks-tests.lisp",
+        "tests/acl2/wire-tests.lisp",
+        "specs/store-refinement.md"
+      ],
+      "progress_note": "Lane chunked-body (2026-09-28/29, B6 of COMPLETE-BEFORE-6.6.0): certification and native modules in the lane's READY.",
+      "events": [
+        "fn-bch-unpack-of-pack",
+        "fn-bch-pack-of-append",
+        "fn-bch-digits-onto-is-digits",
+        "fn-bch-unpack-is-digits",
+        "fn-bch-octets-of-push-list",
+        "fn-bch-wf-is-of-octets",
+        "fn-bch-body-okp-line",
+        "fn-bch-body-okp-whole-line",
+        "fn-bch-join-of-terminator-lines",
+        "fn-bchs-push-span-is-push-list",
+        "fn-wire-article-event-is-the-held-body"
+      ]
+    },
+    {
+      "id": "PRF-928",
+      "title": "The queued submission is packed: the owner's queue holds each submission's article octets as one natural and an injection's groups comma-joined into another, and the take unpacks it, so the committer installs exactly the submission the read enqueued; the per-article credit is the packed article",
+      "statement": "books/packed-submission.lisp: fn-psub-pack-dc (the executable packing, divide and conquer, depth log2 of the length; the lemma fn-psub-pack-dc-is-pack: it is fn-bch-pack of the first N octets); KEYSTONES fn-psub-unpack-of-pack-octets, fn-psub-unpack-of-pack-groups, fn-psub-unpack-of-pack-sub (no hypothesis: every field round-trips, a field that is not an octet list, or groups that are not joinable names, kept as (:raw . X)); fn-psub-packed-octets-len-is-len. books/owner.lisp: fn-own-enqueue appends (fn-psub-pack-sub SUB); fn-own-take-submission installs the fields of (fn-psub-unpack-sub (car queue)); fn-own-sub-fields-of-pack / -unpack and fn-own-decision-fields-of-pack (id, version, mark, login, account, the Message-ID, transit and control are the packed record's own); fn-own-sub-queued-decision (the decision a queued submission carries, unpacked). books/owner-invariants-outcome.lisp KEYSTONE fn-own-take-installs-the-enqueued-submission: after enqueuing SUB on an idle ready owner the take installs SUB's decision exactly; fn-own-take-installs-the-queued-submission-whatever-it-carries restated over the unpacked head. books/owner-credits.lisp fn-mca-sub-charge: twice fn-psub-sub-heap of the QUEUED submission (host/owner-host.lisp fn-owner-take charges the queue's head before the take), capped by the reserve. books/heap-store-figure.lisp fn-heap-article-reserve-octets = 2 x max(fn-heap-article-wire-octets, fn-heap-article-queued-octets) (544 octets a 512-octet block of the wire's store over A + 1 octets; the packed submission: A + HDR + a 250-octet Message-ID list + cells), and fn-heap-store-inflight-octets gains the taken (unpacked) submission, one at a time. The subject is the owner step the host calls (host/owner-host.lisp fn-owner-step -> fn-own-finish-read -> fn-own-enqueue; fn-owner-take -> fn-own-take-submission). Not claimed: that the packed forms take the figure's octets of heap (a measurement: measure at convergence, VmRSS with 30 posters mid-article at A = 1 MiB).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-012"
+      ],
+      "depends_on": [
+        "PRF-922",
+        "PRF-380"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/packed-submission.lisp",
+        "books/owner.lisp",
+        "books/owner-invariants-outcome.lisp",
+        "books/owner-invariants-step.lisp",
+        "books/owner-credits.lisp",
+        "books/heap-store-figure.lisp",
+        "books/heap-figure.lisp",
+        "books/heap-breakdown.lisp",
+        "tests/acl2/packed-submission-tests.lisp",
+        "tests/acl2/owner-credits-tests.lisp",
+        "tests/test_native_article_slots.py",
+        "specs/store-refinement.md"
+      ],
+      "progress_note": "Lane chunked-body-2 (2026-09-29, B6b of COMPLETE-BEFORE-6.6.0): at A = 1 MiB the 64 MiB pool holds 30 articles in flight (it held 1).",
+      "events": [
+        "fn-psub-unpack-of-pack-octets",
+        "fn-psub-unpack-of-pack-groups",
+        "fn-psub-unpack-of-pack-sub",
+        "fn-psub-packed-octets-len-is-len",
+        "fn-own-take-installs-the-enqueued-submission",
+        "fn-own-take-installs-the-queued-submission-whatever-it-carries",
+        "fn-heap-article-slots-are-held"
+      ]
+    },
+    {
+      "id": "PRF-929",
+      "title": "Mid-article a connection holds at most the body limit and one octet: the wire closes :body-overlimit at the octet that dooms the line, not at its LF",
+      "statement": "books/wire.lisp: fn-wire-line-room (in article mode the line's room is also the body's: min(line limit, body limit + 1 - body-size)); fn-wire-feed-byte takes an ordinary octet only within it and otherwise closes :body-overlimit (:line-overlimit when the line limit binds); fn-wire-statep's article conjunct gains body-size + line-len <= body limit + 1; KEYSTONE fn-wire-statep-article-holds-at-most-the-body-limit (fn-wire-held-octets <= body limit + 1). The octet closed on dooms the article: its completed line would be over the body limit (a completed line adds its CR LF, and the terminator is one octet). books/wire-scan.lisp: the scan's run ends at the same room, fn-wire-scan-is-span-fold (PRF-346) unchanged and hypothesis-free. books/transit-bound.lisp KEYSTONE fn-tb-served-run-holds-at-most-the-body-limit-mid-article: after any served run from a wire-invariant state, mid-article, the held octets are at most the body limit and one. The subject is the host's read: host/owner-host.lisp fn-owner-chunk-span-at -> ... -> books/served-scan.lisp fn-scar-scan-span -> fn-wire-scan. This is the wire's term of fn-heap-article-reserve-octets (PRF-928).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-012"
+      ],
+      "depends_on": [
+        "PRF-922",
+        "PRF-346"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/wire.lisp",
+        "books/wire-scan.lisp",
+        "books/wire-invariants.lisp",
+        "books/wire-outbound-invariants.lisp",
+        "books/transit-bound.lisp",
+        "tests/acl2/wire-tests.lisp",
+        "specs/store-refinement.md"
+      ],
+      "progress_note": "Lane chunked-body-2 (2026-09-29, B6b).",
+      "events": [
+        "fn-wire-statep-article-holds-at-most-the-body-limit",
+        "fn-wire-feed-byte-preserves-statep",
+        "fn-tb-served-run-holds-at-most-the-body-limit-mid-article",
+        "fn-wire-scan-is-span-fold"
+      ]
+    },
+    {
       "id": "PRF-927",
       "title": "Reclamation over a running owner's rows is the offline reclamation: the rewritten rows' octets are the offline rewrite of the history, the fold is the offline fold, and the decision names exactly the rewritten articles",
       "statement": "Subject: host/owner-host.lisp fn-owner-orc-chunk = books/owner-reclaim.lisp fn-orc-chunk (called by host/native/owner.lisp fnn-owner-reclaim-walk, from fnn-owner-reclaim-dry-run), and fn-owner-orc-decide = fn-rci-decide-stream / fn-lgr-decide-stream over its fold. fn-orc-rewrite-row-is-the-offline-event: the octets (fn-store-event-encode of alpha) of the rewritten row are fn-rclp-event of the row's octets, no hypothesis; fn-orc-rewrite-rows-is-the-offline-rewrite: for any rows, context and arena, the rewritten rows' octets are fn-rclp-events of the rows' octets (so PRF-119's theorems about the offline rewrite -- a held article is never touched, a reclaimed one stays reclaimed, a rerun rewrites nothing -- hold of the online rewrite); fn-orc-fold-is-the-offline-fold: the fold over the rows is fn-rcls-fold over their octets; fn-orc-decision-names-the-rewritten-articles: when the recorded decision over the fold reclaims, the configuration was recorded, the run is not a dry run, the profile is admitted, and the Message-IDs and freed octets it reports are fn-rclp-rewritten-msgids and fn-rclp-freed of the rows' octets. fn-orc-rewrite-rows-of-append and fn-orc-fold-of-append: the host's chunks compose to the whole history's rewrite and fold. fn-orc-one-pass-in-flight-by-definition, fn-orc-never-past-a-deferral: the request's answer. Scope: a running owner answers `store reclaim --dry-run` (nothing written); the installing pass (checkpoint of the rewritten capture, live swap, drop) is open.",
@@ -14501,204 +14802,6 @@
         "fn-bs-read-ranges-is-the-range",
         "fn-bs-read-ranges-read-the-whole-file",
         "fn-lgs-open-plan-scan-ignores-covered"
-      ]
-    },
-    {
-      "id": "PRF-942",
-      "title": "Operator init's admission decides by what is present: it proceeds exactly when neither a leftover stage nor the root exists, and each other combination is the refusal that names it",
-      "statement": "books/store-init-publication.lisp. KEYSTONE fn-bs-init-pub-admission-decides-by-what-is-present: over the antecedent as host/native/io.lisp fnn-command-init-published composes it (STAGE-VERDICT = (and stage-present (fn-bs-imp-classify stage-present root-present)), ROOT-PRESENT), the host-called fn-bs-init-pub-admission is :proceed iff neither name is present; a stage alone is (:refused :interrupted-init); a stage beside the root is (:refused :publication-uncertain); the root alone is (:refused :store-path-exists). The earlier fn-bs-init-pub-admission-proceeds-only-on-nothing took the admission as a hypothesis (coverage: hyps-only); this theorem concludes it. Teeth: tests/acl2/store-init-publication-tests.lisp (positive witness :proceed on nothing; hypothesis-removal witnesses for each present name, each checked never :proceed).",
-      "milestone": "M5",
-      "requirements": [
-        "STO-029"
-      ],
-      "depends_on": [
-        "PRF-217"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/store-init-publication.lisp",
-        "tests/acl2/store-init-publication-tests.lisp"
-      ],
-      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4 of COMPLETE-BEFORE-6.6.0). REPL-admitted on persvati (451 steps); certification pending in the lane's READY manifest.",
-      "events": [
-        "fn-bs-init-pub-admission-decides-by-what-is-present"
-      ]
-    },
-    {
-      "id": "PRF-943",
-      "title": "The native hybrid-author event constructor decides at its own boundary: no event unless the durable received payload is exactly the injection ACL2 decided, and an event binds, is charged for its payload, names the enrolled snapshot and passed the observed verification",
-      "statement": "books/hybrid-store-injected.lisp. KEYSTONE fn-hsig-authorized-injected-carried-submission-event-decides about the host-called fn-hsig-authorized-injected-carried-submission-event (host/native/signatures.lisp): with CARRIER = fn-hsig-injected-carrier-octets over the same source, principal, keys, signatures, config and observation, (1) received /= CARRIER implies the event is nil; (2) an event implies fn-stxa-bindsp of it, received = CARRIER, fn-inj-injectedp of the carrier plan, charge = fn-charge-for-payload (len received), enrolled-snapshot = fn-hsig-keyring-snapshot, and fn-hsig-authorize-at over the source's signatures and both observations. Before this theorem the entry had 1,175 theorems about its helpers and none about itself (planning/evidence/coverage-2026-09-29.md). Teeth: tests/acl2/hybrid-store-tests.lisp (the positive witness *hst-injected-event* with its antecedent checked by name; hypothesis-removal witnesses: the carried profile's bytes as the payload, the charge plus one, an unverified Ed25519 observation, each nil).",
-      "milestone": "M3",
-      "requirements": [
-        "OBJ-007",
-        "NNT-004"
-      ],
-      "depends_on": [
-        "PRF-063"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/hybrid-store-injected.lisp",
-        "tests/acl2/hybrid-store-tests.lisp"
-      ],
-      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (1,687 steps); certification pending in the lane's READY manifest.",
-      "events": [
-        "fn-hsig-authorized-injected-carried-submission-event-decides"
-      ]
-    },
-    {
-      "id": "PRF-944",
-      "title": "The BP transfer boundary the host calls keeps accepted, refused and uncertain distinct, hands over an ADU only for an acceptance, and receives what its own send authored",
-      "statement": "books/bp-node-host-transfer.lisp (fn-bpn-host-send, fn-bpn-host-receive and its three flat-result readers, moved from host/bp-node-host.lisp and guard-verified; host/native/bp.lisp calls them). KEYSTONE fn-bpn-host-receive-keeps-the-three-outcomes-distinct: the outcome is one of :accepted, :refused, :uncertain; it is :accepted iff the arguments are well formed and fn-bpn-receive accepted, :uncertain iff well formed and fn-bpn-receive was uncertain; malformed arguments are exactly (:refused :host-arguments nil 0); the ADU is fn-bpn-received-adu on acceptance and nil otherwise; every other outcome carries fn-bpn-outcome-reason. KEYSTONE fn-bpn-host-receive-of-host-send-hands-over-the-adu: a bundle fn-bpn-host-send authored for a peer, received by that peer's configuration with outcome :accepted, yields the sent ADU (through fn-bpn-receive-of-send-carries-the-adu). Teeth: tests/acl2/bp-node-host-tests.lisp (the authored-and-received witness with its antecedent by name; hypothesis removal: the ADU offered as the wire is :refused with the book's reason and no ADU; no configuration or no observation is :host-arguments; symbol-class checks).",
-      "milestone": "M4",
-      "requirements": [
-        "REP-006"
-      ],
-      "depends_on": [
-        "PRF-038"
-      ],
-      "assumptions": [],
-      "status": "certified",
-      "evidence": [
-        "books/bp-node-host-transfer.lisp",
-        "host/bp-node-host.lisp",
-        "tests/acl2/bp-node-host-tests.lisp"
-      ],
-      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). Both keystones REPL-admitted on persvati over the host file (4,620 and 1,436 steps); the guard verification and certification of the new book are pending in the lane's READY manifest.",
-      "events": [
-        "fn-bpn-host-receive-keeps-the-three-outcomes-distinct",
-        "fn-bpn-host-receive-of-host-send-hands-over-the-adu"
-      ]
-    },
-    {
-      "id": "PRF-951",
-      "title": "The time-bars early answer tells each untold member exactly once and leaves the request in flight",
-      "statement": "books/owner-time-bars.lisp. KEYSTONE fn-otb-answer-early-answers-each-untold-member-once about the host-called fn-otb-answer-early (host/native/owner.lisp fnn-owner-commit-pipeline, the stall's uncertain release and every stop's): with (NOW L') its answer, NOW has no duplicates, is drawn from CIDS and is disjoint from the connections already told; every member of CIDS is told in L'; L' told is the old told list extended by NOW; the generation and OPEN are unchanged. fn-otb-a-member-is-answered-once (PRF-384) states the once-only property over a run of early answers and the completion; this theorem is about the entry itself. Teeth: tests/acl2/owner-time-bars-tests.lisp (the stall's release by conjunct; a told member not told again and a newcomer told; a duplicated member told once).",
-      "milestone": "M5",
-      "requirements": [
-        "HST-031"
-      ],
-      "depends_on": [
-        "PRF-384"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/owner-time-bars.lisp",
-        "tests/acl2/owner-time-bars-tests.lisp"
-      ],
-      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati with eleven local membership and subset lemmas (496 steps for the keystone); certification pending in the lane's READY manifest.",
-      "events": [
-        "fn-otb-answer-early-answers-each-untold-member-once"
-      ]
-    },
-    {
-      "id": "PRF-952",
-      "title": "The LZ refusal lines the host prints exist exactly for a lying encoder on append and for a record that does not expand on read",
-      "statement": "books/payload-lz-append.lisp. KEYSTONE fn-lzr-append-refusal-text-refuses-exactly-a-lying-encoder about the host-called fn-lzr-append-refusal-text over fn-lzr-append-decide's decision: a line iff the span and dictionary id are admissible, the encoder answered a block, and that block does not decode to the record's span; the line is a string and the decision is (:refused :lz-candidate); without a line the decision is :kept (the log takes R) or :framed. KEYSTONE fn-lzr-read-refusal-text-refuses-exactly-what-does-not-expand about the host-called fn-lzr-read-refusal-text over fn-lzr-expand: a line iff the expansion is not :ok; a string when present; a record that is not a frame never has one. Teeth: tests/acl2/payload-lz-append-tests.lisp (a non-decoding block refused with a line; :none and the real frame without; the real frame without its dictionary refused with a line; with it, and the plain record, without).",
-      "milestone": "M5",
-      "requirements": [
-        "REP-010"
-      ],
-      "depends_on": [
-        "PRF-341"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/payload-lz-append.lisp",
-        "tests/acl2/payload-lz-append-tests.lisp"
-      ],
-      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). Both REPL-admitted on persvati (2,277 and 22,797 steps); certification pending in the lane's READY manifest.",
-      "events": [
-        "fn-lzr-append-refusal-text-refuses-exactly-a-lying-encoder",
-        "fn-lzr-read-refusal-text-refuses-exactly-what-does-not-expand"
-      ]
-    },
-    {
-      "id": "PRF-953",
-      "title": "The open's log-damage refusal line exists exactly for a broken stream or confirmed damage, never for a torn tail or a complete segment",
-      "statement": "books/store-log-damage.lisp. KEYSTONE fn-lgdm-refusal-text-refuses-exactly-a-break-or-damage about the host-called fn-lgdm-refusal-text (host/native/io.lisp, the store-open refusal) over fn-lgdm-verdict of the stopped stream ST and the probe PS: a line iff (fn-lgw-broken ST) or (fn-lgdm-first PS); a line iff fn-lgdm-refused-p of the verdict; the line is a string. Teeth: tests/acl2/store-log-damage-tests.lisp (the flipped bit and the splice over the host's verdict, refused with a line; :complete and :torn verdicts without a line and not refused).",
-      "milestone": "M5",
-      "requirements": [
-        "STO-005"
-      ],
-      "depends_on": [
-        "PRF-316"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/store-log-damage.lisp",
-        "tests/acl2/store-log-damage-tests.lisp"
-      ],
-      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (28,750 steps with string-append, coerce and nth disabled; 12.3M steps without); certification pending in the lane's READY manifest.",
-      "events": [
-        "fn-lgdm-refusal-text-refuses-exactly-a-break-or-damage"
-      ]
-    },
-    {
-      "id": "PRF-954",
-      "title": "The durability warning the host prints exists exactly when the mount observation shows a reason durability is disabled",
-      "statement": "books/store-mount-identity.lisp. KEYSTONE fn-smid-durability-warning-warns-exactly-when-the-mount-is-unsafe about the host-called fn-smid-durability-warning (host/native/io.lisp fnn-filesystem-durability-warn): a warning iff fn-smid-unsafe-reason is non-nil; an observation that is not one never warns; a warning's reason is :nobarrier or :memory. Teeth: tests/acl2/store-mount-identity-tests.lisp (the tmpfs and nobarrier stores warn with their reasons; the plain mount and two non-observations neither warn nor have a reason).",
-      "milestone": "M5",
-      "requirements": [
-        "STO-031"
-      ],
-      "depends_on": [
-        "PRF-232"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/store-mount-identity.lisp",
-        "tests/acl2/store-mount-identity-tests.lisp"
-      ],
-      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (4,825 steps); certification pending in the lane's READY manifest.",
-      "events": [
-        "fn-smid-durability-warning-warns-exactly-when-the-mount-is-unsafe"
-      ]
-    },
-    {
-      "id": "PRF-955",
-      "title": "The anchor replace outcome the host reads is terminal only after the directory barrier, uncertain exactly when the step fenced",
-      "statement": "books/anchor-replace.lisp. KEYSTONE fn-anchor-rp-outcome-is-terminal-only-after-the-directory-barrier about the host-called fn-anchor-rp-outcome (host/native/anchor.lisp) over fn-anchor-rp-step: the outcome is one of :durable, :recovered, :fault, :uncertain, :pending; from a phase not already terminal it is :durable iff the phase is :replace-visible and the event is (:directory-result :ok), :recovered iff the phase is :recover-directory and the event is (:recovery-directory-result :ok); :uncertain iff the step is :fenced; :fault iff the step is :known-fail. Lifts the two step keystones to the word the host acts on. Teeth: tests/acl2/anchor-replace-tests.lisp (the visible replace's barrier :ok is :durable; the same barrier from the issued phase, and a failed barrier, are not).",
-      "milestone": "M5",
-      "requirements": [
-        "TOP-002"
-      ],
-      "depends_on": [],
-      "assumptions": [],
-      "status": "certified",
-      "evidence": [
-        "books/anchor-replace.lisp",
-        "tests/acl2/anchor-replace-tests.lisp"
-      ],
-      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (14,415 steps); certification pending (the successor's farm round).",
-      "events": [
-        "fn-anchor-rp-outcome-is-terminal-only-after-the-directory-barrier"
-      ]
-    },
-    {
-      "id": "PRF-956",
-      "title": "The sender's reading of a TCPCL session keeps sent, refused with its reason, failed and uncertain distinct",
-      "statement": "books/bp-node-progress.lisp. KEYSTONE fn-bpnp-tcpcl-outcome-keeps-sent-refused-failed-and-uncertain-distinct about the host-called fn-bpnp-tcpcl-outcome (host/native/bp-node.lisp fnn-bpnode-forward-contact): :sent iff the connection observed :accepted; a (:refused CODE) result iff observed :refused with a frame-nat reason, keeping the code; :failed iff observed :refused with no reason; :uncertain iff none of those (a lost connection after the durable kind 8, a refusal whose reason is not a code), so the row is retried and never counted sent or failed. Complements fn-bpnp-tcpcl-outcome-keeps-the-refusal-reason (books/bp-node-forward-retry.lisp). Teeth: tests/acl2/bp-node-forward-retry-tests.lisp (the four readings; a non-code reason and a lost connection are :uncertain).",
-      "milestone": "M4",
-      "requirements": [
-        "REP-006"
-      ],
-      "depends_on": [],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/bp-node-progress.lisp",
-        "tests/acl2/bp-node-forward-retry-tests.lisp"
-      ],
-      "progress_note": "Lane decision-keystones (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati (937 steps); certification pending (the successor's farm round).",
-      "events": [
-        "fn-bpnp-tcpcl-outcome-keeps-sent-refused-failed-and-uncertain-distinct"
       ]
     },
     {
@@ -15075,6 +15178,120 @@
         "fn-mpxt-seqs-is-cat-msgid-seqs",
         "fn-mpxt-spec-from-is-cat-seqs-for"
       ]
+    },
+    {
+      "id": "PRF-1006",
+      "title": "fn-tcl-encode is the canonical TCPCL wire form: the encoding of every message kind the host sends decodes back to it with the rest untouched, and an accepted buffer is the encoding of its parse",
+      "statement": "books/tcpcl-octets.lisp; host/tcpcl-host.lisp's fn-tcl-host-encode is an exact alias (a checked :delegates fn-tcl-encode, the generated equation fn-tcl-host-encode-is-fn-tcl-encode-by-definition), called by host/native/tcpcl.lisp's send path. KEYSTONES: fn-tcl-decode-message-of-encode-{init,segment,ack,refuse,term,reject,keepalive} and fn-tcl-decode-contact-of-encode: for a message M of that kind with (fn-tcl-messagep M mru) (for the contact header: an octet version and octet flags), (fn-tcl-decode-message (append (fn-tcl-encode M) rest) mru) is (fn-tcl-parse-ok M rest), so a peer reads exactly M and consumes exactly the encoding; fn-tcl-accepted-message-is-canonical and fn-tcl-accepted-contact-is-canonical: an octet buffer the decoder accepts equals the encoding of its parse followed by its rest, so no second octet form is accepted for a message. Scope: the octet codec under the segment MRU bound; the session machine's use of the codec is PRF-956 and PRF-060. Teeth: tests/acl2/tcpcl-tests.lisp (golden vectors per kind; the round trip per kind with the antecedent by name; the canonical reconstruction of an accepted buffer; a segment over the MRU is neither a message at it nor accepted at it).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006",
+        "ENC-001"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/tcpcl-octets.lisp",
+        "host/tcpcl-host.lisp",
+        "host/interfaces.lisp",
+        "tests/acl2/tcpcl-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-4: the theorems existed (tcpcl-octets) and no proof target cited them, which is why decision-keystones-3 withdrew fn-tcl-host-encode's delegation; registered here and the delegation restored under the strict rule."
+    },
+    {
+      "id": "PRF-1007",
+      "title": "Receive-evidence admission issues an operation exactly under the held lock, a ready state below the ceiling, a classified outcome and both exact next names absent, and then the operation carries the next identity, its names, initial authorized publications and the successor",
+      "statement": "books/bp-receive-evidence.lisp; host/bp-receive-evidence-host.lisp's fn-bpn-host-evidence-authorize is an exact alias (a checked :delegates fn-bpn-evidence-authorize, common-lisp-compliant; the admission chain fn-bpn-evidence-authorize, -name, -next-wire-name, -next-result-name and their helpers are guard-verified), and fn-bpn-host-evidence-operationp an exact alias of the boolean recognizer (:delegates fn-bpn-evidence-operationp); host/native/bp.lisp's receive path calls both. KEYSTONE fn-bpn-evidence-authorize-admits-exactly-the-locked-next-identity, two-sided: (fn-bpn-evidence-operationp answer) iff the state is ready (fn-bpn-evidence-statep) with its next identity below *fn-bpn-evidence-max-records*, the outcome is one of :accepted/:refused/:uncertain, and LOCK-OWNEDP, WIRE-ABSENTP and RESULT-ABSENTP are each exactly t (the principal: the caller holds the evidence lock; the evidence: both exact next names observed absent); then the operation's identity is the state's next, its wire name and result name are fn-bpn-evidence-name of that identity for :wire and for the outcome's result kind, both publications are (fn-jpub-initial t) and the successor is the ready state at the next identity; otherwise the answer is exactly (:refused :evidence-admission). With fn-bpn-evidence-successor-does-not-reuse-identity (the successor's next is the issued identity plus one). Teeth: tests/acl2/bp-receive-evidence-tests.lisp (the positive witness with the antecedent by name and every conclusion conjunct; hypothesis-removal witnesses for the lock, each absence, an unclassified outcome, the ceiling, a truthy non-t lock report; a corrupted-state witness, labelled).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006",
+        "FLR-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/bp-receive-evidence.lisp",
+        "host/bp-receive-evidence-host.lisp",
+        "host/interfaces.lisp",
+        "tests/acl2/bp-receive-evidence-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-4: the finding decision-keystones-3 withdrew the delegation for (an exact alias whose callee had no cited theorem) gets its callee's two-sided keystone; the delegation restored under the strict rule."
+    },
+    {
+      "id": "PRF-985",
+      "title": "Outbound lifecycle publication is authorized exactly for the pending :persist of a ready, unfenced machine under the held lifecycle lock and an absent final name, and then carries the offered token and record",
+      "statement": "books/bp-node-machine-codec.lisp; host/bp-node-machine-host.lisp's fn-bpn-host-lifecycle-publication-authorize is an exact alias (a checked :delegates fn-bpn-lifecycle-publication-authorize, the generated equation fn-bpn-host-lifecycle-publication-authorize-is-fn-bpn-lifecycle-publication-authorize-by-definition), called by host/native/bp-service.lisp before it publishes a lifecycle record. KEYSTONE fn-bpn-lifecycle-publication-authorize-admits-exactly-the-pending-persist, two-sided: (fn-bpn-lifecycle-publication-operationp answer) iff the state is a machine state (fn-bpn-machine-statep), not fenced, with a pending operation whose token is the offered TOKEN, which is also the machine's next token, and whose record is the offered RECORD, and LOCK-OWNED and FINAL-ABSENT hold (the principal: the native caller holds the lifecycle lock; the evidence: the canonical final name observed absent); then the operation's token and record are the offered ones and its publication is (fn-jpub-initial t); otherwise the answer is exactly (:fault :lifecycle-publication-authority). With fn-bpn-lifecycle-pending-fields-of-statep (a ready state's pending operation carries a u64 token and a lifecycle record), proved with the state recognizer closed. Teeth: tests/acl2/bp-node-machine-tests.lisp (the positive witness with the antecedent by name and every conclusion conjunct; hypothesis-removal witnesses: a token that is not the pending one, a machine with nothing pending, the lock not held, the final name present, a record that is not the pending one).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006",
+        "FLR-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/bp-node-machine-codec.lisp",
+        "host/bp-node-machine-host.lisp",
+        "host/interfaces.lisp",
+        "tests/acl2/bp-node-machine-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-4 (claimed by decision-keystones-3): the delegation callee's keystone; the host wrapper's :delegates declared under the strict rule."
+    },
+    {
+      "id": "PRF-1013",
+      "title": "fn-bpah-publication-authorize authorizes the publication exactly for the issued pending delivery of the offered epoch and operation id under the held lock and an absent final name, and then carries the record, its stored name and frame",
+      "statement": "books/bp-fnbs-delivery-publication.lisp, called by host/native/bp-node.lisp's delivery publication. KEYSTONE fn-bpah-publication-authorize-admits-exactly-the-issued-pending-delivery, two-sided: the answer is an operation (the -operationp recognizer) iff the state's issued operation is a well-formed pending delivery matching the offered epoch and operation id whose carried record is the offered one, the state's epoch is the offered epoch and its next operation id the offered one plus one, the record is a well-formed stored record carrying that epoch and id, LOCK-OWNED and FINAL-ABSENT hold (the principal: the caller holds the publication lock; the evidence: the canonical final name observed absent) and the record frames; then the operation carries the epoch, the id, the record, the stored record name of the epoch and id, the record's frame and (fn-jpub-initial t); otherwise the answer is exactly the authority fault or the codec fault. With fn-bpah-delivery-record-epoch-and-op-are-frame-nats (a stored record's epoch and id are frame naturals). Subsumes the one-sided echo theorem of the book. Teeth: tests/acl2/bp-fnbs-delivery-publication-tests.lisp (the positive witness with the antecedent by name and every conclusion part; hypothesis-removal witnesses answering the fault exactly).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006",
+        "FLR-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/bp-fnbs-delivery-publication.lisp",
+        "tests/acl2/bp-fnbs-delivery-publication-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-4: the bp publication-authorize family, one two-sided shape per book (the PRF-985 template); REPL-admitted, certified by the tree's background cite (the 2026-09-29 mode)."
+    },
+    {
+      "id": "PRF-1014",
+      "title": "fn-bpnf-delete-publication-authorize authorizes the publication exactly for the issued pending deletion of the offered epoch and operation id under the held lock and an absent final name, and then carries the record, its stored name and frame",
+      "statement": "books/bp-fnbs-deletion-publication.lisp, called by host/native/bp-node.lisp's deletion publication. KEYSTONE fn-bpnf-delete-publication-authorize-admits-exactly-the-issued-pending-deletion, two-sided: the answer is an operation (the -operationp recognizer) iff the state's issued operation is a well-formed pending deletion matching the offered epoch and operation id whose carried record is the offered one, the state's epoch is the offered epoch and its next operation id the offered one plus one, the record is a well-formed stored record carrying that epoch and id, LOCK-OWNED and FINAL-ABSENT hold (the principal: the caller holds the publication lock; the evidence: the canonical final name observed absent) and the record frames; then the operation carries the epoch, the id, the record, the stored record name of the epoch and id, the record's frame and (fn-jpub-initial t); otherwise the answer is exactly the authority fault or the codec fault. With fn-bpn-report-delete-record-epoch-and-op-are-frame-nats (a stored record's epoch and id are frame naturals). Subsumes the one-sided echo theorem of the book. Teeth: tests/acl2/bp-fnbs-deletion-publication-tests.lisp (the positive witness with the antecedent by name and every conclusion part; hypothesis-removal witnesses answering the fault exactly).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006",
+        "FLR-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/bp-fnbs-deletion-publication.lisp",
+        "tests/acl2/bp-fnbs-deletion-publication-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-4: the bp publication-authorize family, one two-sided shape per book (the PRF-985 template); REPL-admitted, certified by the tree's background cite (the 2026-09-29 mode)."
+    },
+    {
+      "id": "PRF-1015",
+      "title": "fn-bpnf-family-publication-authorize authorizes the publication exactly for the issued pending family of the offered epoch and operation id under the held lock and an absent final name, and then carries the record, its stored name and frame",
+      "statement": "books/bp-fnbs-family-publication.lisp, called by host/native/bp-node.lisp's fragment-family publication. KEYSTONE fn-bpnf-family-publication-authorize-admits-exactly-the-issued-pending-family, two-sided: the answer is an operation (the -operationp recognizer) iff the state's issued operation is a well-formed pending family matching the offered epoch and operation id whose carried record is the offered one, the state's epoch is the offered epoch and its next operation id the offered one plus one, the record is a well-formed stored record carrying that epoch and id, LOCK-OWNED and FINAL-ABSENT hold (the principal: the caller holds the publication lock; the evidence: the canonical final name observed absent) and the record frames; then the operation carries the epoch, the id, the record, the stored record name of the epoch and id, the record's frame and (fn-jpub-initial t); otherwise the answer is exactly the authority fault or the codec fault. With fn-bpnf-family-record-at-epoch-and-op-are-frame-nats (a stored record's epoch and id are frame naturals). Subsumes the one-sided echo theorem of the book. Teeth: tests/acl2/bp-fnbs-family-publication-tests.lisp (the positive witness with the antecedent by name and every conclusion part; hypothesis-removal witnesses answering the fault exactly).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006",
+        "FLR-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "proposed",
+      "evidence": [
+        "books/bp-fnbs-family-publication.lisp",
+        "tests/acl2/bp-fnbs-family-publication-tests.lisp"
+      ],
+      "progress_note": "Lane decision-keystones-4: the bp publication-authorize family, one two-sided shape per book (the PRF-985 template); REPL-admitted, certified by the tree's background cite (the 2026-09-29 mode)."
     },
     {
       "id": "PRF-959",
@@ -15524,62 +15741,6 @@
       ]
     },
     {
-      "id": "PRF-961",
-      "title": "The store bounds the host reads are one guard-verified boundary: a publication is admitted exactly within the profile, the open's read bound covers every admitted publication, and the charge quoted is the receipt's",
-      "statement": "books/store-host-boundary.lisp (fn-store-charge, fn-store-publication-admissibility and fn-store-profile-read-bound moved from host/store-host.lisp and guard-verified; host/native/io.lisp calls them through the host file). KEYSTONE fn-store-publication-admissibility-admits-exactly-within-the-profile: the answer is :admissible or :refused, and :admissible iff the profile is admitted, both counts are naturals, the committed count is below the profile's max-transactions and the prospective payload is at most fn-bs-profile-record-ceiling. KEYSTONE fn-store-profile-read-bound-covers-every-admitted-publication (two host entries composed): an :admissible publication's payload plus *fn-frame-overhead-octets* is at most fn-store-profile-read-bound of the same profile, the bound the open reads each committed file under. KEYSTONE fn-store-charge-is-positive-exactly-for-a-length-and-is-the-receipt-charge: the charge is positive iff the argument is a natural, equals fn-charge-for-payload for one, and for an article's octets equals fn-ct-charge of the article. Teeth: tests/acl2/store-host-boundary-tests.lisp over the decoded development profile (positive witnesses with the antecedent checked by name; hypothesis removal: the committed count at T, the payload one past the ceiling, a non-natural, no admitted profile, each :refused; the read bound one octet short of ceiling+1; the charge 0 exactly for a non-length; symbol-class checks).",
-      "milestone": "M5",
-      "requirements": [
-        "STO-015",
-        "STO-018"
-      ],
-      "depends_on": [
-        "PRF-102"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/store-host-boundary.lisp",
-        "tests/acl2/store-host-boundary-tests.lisp"
-      ],
-      "progress_note": "Lane decision-keystones-2 (Claude Fable 5.1, 2026-09-29; K4 of COMPLETE-BEFORE-6.6.0). REPL-admitted on persvati (8,218 steps for the book); certification in the lane's READY manifest.",
-      "events": [
-        "fn-store-publication-admissibility-admits-exactly-within-the-profile",
-        "fn-store-profile-read-bound-covers-every-admitted-publication",
-        "fn-store-charge-is-positive-exactly-for-a-length-and-is-the-receipt-charge"
-      ]
-    },
-    {
-      "id": "PRF-962",
-      "title": "A host wrapper that is exactly a call of a book function delegates its decision to it by a checked declaration, and the five delegated-to functions that lacked a theorem have one: the two refusal-text lines are rendered exactly for a refusal, the profile report names the format exactly for a valid profile, the log route holds exactly for a valid profile, and what init writes for a preset the open opens",
-      "statement": "books/definterface.lisp `:delegates CALLEE' (refused unless the entry's unnormalized body is exactly CALLEE applied to the entry's formals; tests/acl2/definterface-tests.lisp) and tools/coverage.py (a declared delegation files the entry as plumbing whose decision is CALLEE's only when the world's call graph agrees and CALLEE has a direct theorem; `--check' refuses any other; tests/test_coverage.py). The ten fn-store-* wrappers of host/store-host.lisp declare it, as do fn-bpn-host-authored-wire-authorize, fn-bpn-host-evidence-authorize and fn-tcl-host-encode (host/interfaces.lisp), whose callees already had direct theorems. books/store-host-boundary.lisp proves the callee theorems the store wrappers needed: fn-spo-refusal-text-refuses-exactly-the-foreign-format (a line iff the verdict is (:refused :store-format); for fn-spo-config-open's own verdict iff the octets decode to no profile and name a foreign format), fn-gen-refusal-text-refuses-exactly-a-refused-open (a line iff the verdict is one of the four genesis refusals; for fn-gen-open's own verdict iff it is not the accepted :genesis), fn-bs-profile-report-names-the-format-exactly-for-a-valid-profile (an alist whose format entry is 10 iff fn-bs-profile-validp, else 0), fn-bs-profile-logp-holds-exactly-for-a-valid-profile (the log commit route iff fn-bs-profile-validp), fn-bs-config-frame-for-profile-is-what-the-open-opens (for each preset word, fn-spo-config-open of the frame init writes is (:opened VALUES) with VALUES that preset's, through fn-bs-config-decode-of-encode). Teeth: tests/acl2/store-host-boundary-tests.lisp (each refusal verdict rendered, an accepted and a foreign verdict not; fn-gen-open of no octets is the damaged refusal with its line; the report's format 10 for the development profile and 0 for none; each preset's frame opens as that preset and a word naming none has no frame; the log route with and without a valid profile).",
-      "milestone": "M5",
-      "requirements": [
-        "STO-036",
-        "STO-015"
-      ],
-      "depends_on": [
-        "PRF-961"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/definterface.lisp",
-        "tools/coverage.py",
-        "books/store-host-boundary.lisp",
-        "tests/acl2/store-host-boundary-tests.lisp",
-        "tests/acl2/definterface-tests.lisp",
-        "tests/test_coverage.py"
-      ],
-      "progress_note": "Lane decision-keystones-2 (Claude Fable 5.1, 2026-09-29; K4). REPL-admitted on persvati; certification in the lane's READY manifest.",
-      "events": [
-        "fn-spo-refusal-text-refuses-exactly-the-foreign-format",
-        "fn-gen-refusal-text-refuses-exactly-a-refused-open",
-        "fn-bs-profile-report-names-the-format-exactly-for-a-valid-profile",
-        "fn-bs-config-frame-for-profile-is-what-the-open-opens",
-        "fn-bs-profile-logp-holds-exactly-for-a-valid-profile"
-      ]
-    },
-    {
       "id": "PRF-964",
       "title": "A served inspect renders as the offline one: the report the client prints from the owner's word is fn-native-operator-inspect-report of the owner's lookup",
       "statement": "books/owner-maintenance-request.lisp. KEYSTONE fn-omr-inspect-live-is-the-offline-report: for any Message-ID octets and any lookup result FOUNDP, fn-omr-inspect-live-report of the reasoned reply's word (fn-nctrl-reason-word of fn-omr-inspect-word FOUNDP) equals fn-native-operator-inspect-report of FOUNDP: exit, verdict and printed line. fn-omr-inspect-status-is-the-offline-exit: the owner's reply status is :accepted exactly when the offline exit is 0. Subject: host/native/operator.lisp fnn-operator-execute-inspect-live, over the word host/native/admin.lisp fnn-owner-inspect-request answers (fnn-bridge-lookup-found-p under the owner mutex). Teeth: tests/acl2/owner-maintenance-request-tests.lisp (found, absent, a malformed word reads as absent).",
@@ -15655,53 +15816,6 @@
       "progress_note": "Lane operations (2026-09-28): REPL-admitted on hbox; teeth: the keystone's witness at suffix 10 under K/2 = 64, each hypothesis removed (in flight: coalesced; deferral: blocked) with its must-fail, no suffix, the attempted count.",
       "events": [
         "fn-ocpr-line-names-the-reason-exactly-when-refused"
-      ]
-    },
-    {
-      "id": "PRF-983",
-      "title": "The host reads a sequence reservation exactly when the recovered frontier is below the 64-bit ceiling; its sequence is that frontier and the frame made durable first is the successor record's",
-      "statement": "books/bp-node-host-sequence.lisp (fn-bpn-host-sequence-reserve, fn-bpn-host-sequence-reservationp, fn-bpn-host-sequence-reservation-sequence and fn-bpn-host-sequence-reservation-frame moved from host/bp-node-host.lisp and guard-verified; host/native/bp.lisp's fnn-bp-reserve-sequence calls them through the host file). KEYSTONE fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling (the four entries composed): fn-bpn-host-sequence-reservationp of the reserve answer holds iff the argument is a frontier (fn-bpn-sequence-frontierp) below *fn-bpc-max-uint*; then the reservation's sequence is that frontier, its frame is fn-bpn-sequence-record-frame of fn-bpn-sequence-record of the successor and is an octet list; a frontier at the ceiling answers exactly (:refused :sequence-exhausted), the books' refusal; a non-frontier answers exactly (:refused :host-arguments), the host's, distinct from exhaustion. Teeth: tests/acl2/bp-node-host-sequence-tests.lisp (positive witness at frontier 5 with the antecedent by name; hypothesis removal: the ceiling, a negative and a string frontier; the reads of a refusal are empty).",
-      "milestone": "M4",
-      "requirements": [
-        "REP-006"
-      ],
-      "depends_on": [
-        "PRF-944"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/bp-node-host-sequence.lisp",
-        "host/bp-node-host.lisp",
-        "tests/acl2/bp-node-host-sequence-tests.lisp"
-      ],
-      "progress_note": "Lane decision-keystones-3 (Claude Fable 5.1, 2026-09-29; K4). Keystone REPL-admitted on persvati (3,275 steps) with the book guard-verified; certification in the lane's READY manifest.",
-      "events": [
-        "fn-bpn-host-sequence-reserve-reserves-exactly-below-the-ceiling"
-      ]
-    },
-    {
-      "id": "PRF-984",
-      "title": "The authored-wire name the host previews is a non-empty string exactly for a reservation, and then the books' name of the reserved sequence",
-      "statement": "books/bp-node-host-sequence.lisp (fn-bpn-host-authored-wire-name moved from host/bp-node-host.lisp and guard-verified, with fn-bpn-authored-wire-name-chars and fn-bpn-authored-wire-name-for-reservation guard-verified there; host/native/bp.lisp's fnn-bp-authored-wire-publish calls it through the host file). KEYSTONE fn-bpn-host-authored-wire-name-names-the-reserved-sequence: the name is a string; it is the empty string iff the argument is not a reservation (fn-bpn-host-sequence-reservationp), so the host's non-empty check faults exactly then; for a reservation it equals the string of fn-bpn-authored-wire-name-chars of fn-bpn-host-sequence-reservation-sequence, the name fn-bpn-authored-wire-authorize carries (fn-bpn-authored-wire-authorize-carries-reservation). Teeth: tests/acl2/bp-node-host-sequence-tests.lisp (the reservation of 5 previews authored-5.wire with the antecedent by name; a refusal, a mutated reservation whose record does not carry the successor, and a number name nothing).",
-      "milestone": "M4",
-      "requirements": [
-        "REP-006"
-      ],
-      "depends_on": [
-        "PRF-983"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/bp-node-host-sequence.lisp",
-        "host/bp-node-host.lisp",
-        "tests/acl2/bp-node-host-sequence-tests.lisp"
-      ],
-      "progress_note": "Lane decision-keystones-3 (Claude Fable 5.1, 2026-09-29; K4). Keystone REPL-admitted on persvati (440 steps); certification in the lane's READY manifest.",
-      "events": [
-        "fn-bpn-host-authored-wire-name-names-the-reserved-sequence",
-        "fn-bpn-authored-wire-authorize-carries-reservation"
       ]
     },
     {
