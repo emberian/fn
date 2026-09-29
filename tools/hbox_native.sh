@@ -308,6 +308,12 @@ finish() {
 }
 echo "== source $SOURCE"
 echo "== load at start: \$(uptime)"
+# The toolchain SBCL (tools/farm.py HOSTS) first on PATH and as FN_SBCL:
+# hbox's system /usr/bin/sbcl is 2.2.9, and a test running \`sbcl\` by name
+# got it (tooling-truth-2's KNOWN_RED list).  A bare sbcl that is not the
+# toolchain's is refused before any step (obstructions-5 item 41).
+eval "\$(python3 tools/native_env.py sbcl --export)"
+step sbcl-check python3 tools/native_env.py sbcl-check
 BOX
     if [ $BUILD -eq 1 ]; then
         cat <<BOX

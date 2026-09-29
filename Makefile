@@ -1,4 +1,12 @@
 PYTHON ?= python3
+# On a box, the toolchain SBCL (tools/farm.py HOSTS) first on PATH and as
+# FN_SBCL for every recipe: hbox's system /usr/bin/sbcl is 2.2.9 and a check
+# running `sbcl` by name got it (obstructions-5 item 41).  Off a box: nothing.
+TOOLCHAIN_SBCL := $(shell $(PYTHON) tools/native_env.py sbcl 2>/dev/null)
+ifneq ($(TOOLCHAIN_SBCL),)
+export FN_SBCL := $(TOOLCHAIN_SBCL)
+export PATH := $(patsubst %/,%,$(dir $(TOOLCHAIN_SBCL))):$(PATH)
+endif
 # Maximum concurrent ACL2 processes. Books still certify in local
 # include-book dependency order; 1 reproduces the sequential run.
 FN_CERTIFY_JOBS ?= 1

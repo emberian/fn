@@ -63,12 +63,30 @@ target.  The fixtures, the power-loss and service-envelope harnesses and the
 pack-chain module make stores for hbox and run them directly; they take the
 target from `harness_store_env` here, HARNESS_INIT_BUDGET_MB (hbox's 96
 GiB), so it is written once.
+
+The toolchain SBCL (obstructions-5 item 41; tooling-truth-2 found a whole
+KNOWN_RED list caused by it): hbox's system sbcl 2.2.9 (/usr/bin/sbcl) sits
+on PATH ahead of the toolchain's /tank/fn/sbcl/bin/sbcl 2.6.8, so a tool or
+test running `sbcl` by name got the wrong runtime.  tools/farm.py HOSTS names
+each box's `sbcl`; on a box (that file exists here)
+
+    python3 tools/native_env.py sbcl            # its absolute path ('' off a box)
+    python3 tools/native_env.py sbcl --export   # export FN_SBCL=... PATH=<its dir>:$PATH
+    python3 tools/native_env.py sbcl-check      # exit 2 when `sbcl` or FN_SBCL is another
+
+hbox_native.sh, remote_check.sh and the Makefile put it first on PATH and
+set FN_SBCL; farm.py's box command does the same; hbox_native and
+remote_check run `sbcl-check` before any step, so a bare `sbcl` that is not
+the toolchain's is refused by name instead of silently running.
 """
 
 from __future__ import annotations
 
 import argparse
+import ast
+import os
 import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -405,6 +423,43 @@ def table() -> str:
     return "\n".join(rows)
 
 
+def host_sbcls(farm: Path | None = None) -> list[str]:
+    """Every box's toolchain SBCL, from tools/farm.py HOSTS (read, not imported)."""
+    tree = ast.parse((farm or ROOT / "tools" / "farm.py").read_text(encoding="utf-8"))
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and getattr(node.targets[0], "id", None) == "HOSTS":
+            hosts = ast.literal_eval(node.value)
+            return sorted({h["sbcl"] for h in hosts.values() if h.get("sbcl")})
+    return []
+
+
+def toolchain_sbcl(candidates: list[str] | None = None, exists=os.path.isfile) -> str | None:
+    """The toolchain SBCL when this machine is a box (its HOSTS path is here), else None."""
+    for path in host_sbcls() if candidates is None else candidates:
+        if exists(path):
+            return path
+    return None
+
+
+def sbcl_refusal(toolchain: str | None, on_path: str | None, fn_sbcl: str | None,
+                 real=os.path.realpath) -> str | None:
+    """Why a box's `sbcl` is not the toolchain's, or None.  Off a box: None."""
+    if toolchain is None:
+        return None
+    want = real(toolchain)
+    if fn_sbcl and real(fn_sbcl) != want:
+        return (f"FN_SBCL is {fn_sbcl}, not the toolchain's {toolchain} (tools/farm.py HOSTS)")
+    if on_path is None:
+        return (f"no `sbcl` on PATH; put {os.path.dirname(toolchain)} first "
+                "(eval \"$(python3 tools/native_env.py sbcl --export)\")")
+    if real(on_path) != want:
+        return (f"`sbcl` on PATH is {on_path}, not the toolchain's {toolchain} "
+                "(hbox's system sbcl is 2.2.9, the toolchain's 2.6.8): put "
+                f"{os.path.dirname(toolchain)} first on PATH "
+                "(eval \"$(python3 tools/native_env.py sbcl --export)\")")
+    return None
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -425,7 +480,27 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--prefix", default=None,
                    help="FN_NATIVE_DEVELOPER_: print the launcher and core digests "
                         "under that prefix (DEVELOPER_IDENTITY) and nothing else")
+    p = sub.add_parser("sbcl", help="this box's toolchain SBCL (nothing off a box)")
+    p.add_argument("--export", action="store_true",
+                   help="as `export FN_SBCL=... PATH=<its dir>:$PATH`")
+    sub.add_parser("sbcl-check", help="exit 2 when `sbcl`/FN_SBCL here is not the toolchain's")
     arguments = parser.parse_args(argv)
+    if arguments.command == "sbcl":
+        found = toolchain_sbcl()
+        if found and arguments.export:
+            print(f"export FN_SBCL={found} PATH={os.path.dirname(found)}:$PATH")
+        elif found:
+            print(found)
+        return 0
+    if arguments.command == "sbcl-check":
+        found = toolchain_sbcl()
+        why = sbcl_refusal(found, shutil.which("sbcl"), os.environ.get("FN_SBCL"))
+        if why:
+            print(f"native_env: REFUSED: {why}", file=sys.stderr)
+            return 2
+        print(f"native_env: sbcl is the toolchain's {found}" if found
+              else "native_env: not a box (no HOSTS sbcl here); sbcl not checked")
+        return 0
     if arguments.command == "table":
         print(table())
         return 0

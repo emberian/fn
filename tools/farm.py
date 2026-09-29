@@ -104,6 +104,9 @@ HOSTS = {
         # The same launcher at --tls-limit 65536: make check's host_check
         # loads the production world, which exhausts the 16384 default.
         "image_acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+        # The toolchain SBCL by absolute path, ahead of any system sbcl on
+        # PATH (tools/native_env.py sbcl; hbox's /usr/bin/sbcl is 2.2.9).
+        "sbcl": "/tank/fn/sbcl/bin/sbcl",
         "cache": "~/fn-certcache",
         "wrap": "",
     },
@@ -113,6 +116,7 @@ HOSTS = {
         # SBCL's default thread-local storage (tools/hbox_native.sh IMAGE_ACL2;
         # packaging/release-tarball.sh FN_IMAGE_ACL2).
         "image_acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+        "sbcl": "/tank/fn/sbcl/bin/sbcl",  # not /usr/bin/sbcl (2.2.9); see persvati's
         "cache": "/tank/fn/certcache",
         # hbox is shared with another project's build; swarm-build is the
         # cgroup with the enforced memory cap.
@@ -747,6 +751,9 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
         f"FN_ACL2={acl2_shell_word(host, acl2)} "
         f"FN_ACL2_TIMEOUT_SECONDS={timeout_seconds} "
         f"FN_CERT_CACHE={settings['cache']} "
+        + (f"FN_SBCL={settings['sbcl']} PATH={os.path.dirname(settings['sbcl'])}:$PATH "
+           if settings.get("sbcl") else "")
+        +
         # The runner publishes into the box's cache after each root.  This
         # run's tree is a snapshot: the pairs are shareable with the next
         # lane on the box, and saying so at publish time is what lets its
