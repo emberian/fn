@@ -23,7 +23,26 @@ import unittest
 from tests.native_harness import runtime_sbcl
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-SCRIPTS = sorted(ROOT.glob("tests/test_*_raw.sh"))
+# Every script whose header says `# witness: raw` (tools/witness_check.py):
+# the *_raw.sh wrappers and the other sbcl-only witnesses, which nothing ran
+# until 2026-09-29 (five were red at load, found by tooling-truth-2).
+RAW_MARK = "# witness: raw"
+SCRIPTS = sorted(path for path in ROOT.glob("tests/*.sh")
+                 if RAW_MARK in path.read_text(encoding="utf-8", errors="replace").splitlines())
+# Red when first run (hbox, the toolchain SBCL, 2026-09-29 at 02bd7993e): the
+# harness drifted from the host it loads.  Expected failures, so each is
+# reported every run and one that passes again fails as an unexpected
+# success: drop it here then.  Shrink-only.
+KNOWN_BROKEN = {
+    "test_native_live_config_cache_raw.sh":
+        "its stub core refuses FN-NATIVE-ADMIN-HOST-OWNER-REQUESTP (owner: online-reclaim's host call)",
+    "test_native_feed_peer_octets.sh":
+        "FNN-OWNER-TRANSIT-SERIALIZED undefined: the harness predates host/native/feed-service's owner transit",
+    "test_native_io_progress.sh":
+        "FN-OUTCOME-HOST-CONDITION-EXIT-CODE undefined: the harness predates io.lisp's outcome map",
+    "test_native_owner_publication.sh":
+        "expected FNN-STORE-ERROR, got ACL2::W undefined (SCN-027's witness)",
+}
 IMAGE = pathlib.Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
 RUNTIME = runtime_sbcl(IMAGE)
 
@@ -31,7 +50,9 @@ RUNTIME = runtime_sbcl(IMAGE)
 @unittest.skipUnless(RUNTIME, "no SBCL runtime for the image and none on PATH")
 class RawScriptTests(unittest.TestCase):
     def test_every_raw_script_has_a_case_here(self):
-        self.assertTrue(SCRIPTS, "no tests/test_*_raw.sh found")
+        self.assertTrue(SCRIPTS, "no tests/*.sh marked raw found")
+        self.assertEqual(sorted(set(KNOWN_BROKEN) - {s.name for s in SCRIPTS}), [],
+                         "KNOWN_BROKEN names a script that is gone or not raw")
 
     def test_every_raw_harness_has_a_runner(self):
         # native_peer_authored_accept_raw.lisp had no runner until
@@ -61,6 +82,9 @@ def _add_cases() -> None:
 
         def case(self, script=script):
             self.run_script(script)
+
+        if script.name in KNOWN_BROKEN:
+            case = unittest.expectedFailure(case)
 
         setattr(RawScriptTests, name, case)
 

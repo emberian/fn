@@ -1,4 +1,5 @@
 #!/bin/sh
+# witness: raw
 set -eu
 
 test_dir=${TMPDIR:-/tmp}/fn-native-crypto-saved-image.$$

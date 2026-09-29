@@ -1,4 +1,5 @@
 #!/bin/sh
+# witness: raw
 # Exercise FNFD's production raw directory walk with a small ACL2 policy seam.
 set -eu
 cd "$(dirname "$0")/.."
