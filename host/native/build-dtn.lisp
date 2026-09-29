@@ -353,6 +353,7 @@
           (fnn-main)
           (values nil :exited *the-live-state*))
         (load "host/native/immutable-publish.lisp")
+        (load "host/native/auth-read.lisp")
         (load "host/native/admin.lisp")
         (load "host/native/config.lisp")
         (load "host/native/feed-filename.lisp")

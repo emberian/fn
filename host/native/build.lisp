@@ -465,6 +465,7 @@
         ; derivation, serialization, reporting and persistence transitions.
         (load "host/native/auth-admin.lisp")
         (load "host/native/immutable-publish.lisp")
+        (load "host/native/auth-read.lisp")
         (load "host/native/admin.lisp")
         ; The writable NNTP owner.  It registers the `owner' verb and calls
         ; only host/owner-host.lisp wrappers for protocol and state decisions.

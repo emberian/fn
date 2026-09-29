@@ -214,14 +214,7 @@ owner decides it and answers the reasoned reply."
            (fnn-operator-status-of-exit-code code) command condition)
           code)))))
 
-(defun fnn-operator-store-max-credentials (root)
-  "The store profile's max-credentials (D27, PRF-102), read from config.json
-without the writer lock: principal administration does not open the store.
-The profile is written once, at init or import (D34), so this read sees the
-bound the owner loads under."
-  (let ((store (make-fnn-store root)))
-    (fnn-load-config store)
-    (fnn-profile-nat 'fn-store-profile-max-credentials store)))
+
 
 (defun fnn-operator-execute-principal (result)
   "Execute only the credential plan and credential path projected by ACL2.
