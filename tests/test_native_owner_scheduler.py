@@ -68,14 +68,14 @@ class SchedulerSourceTests(unittest.TestCase):
         self.assertIn("'fn-otm-commit-event", owner)
         self.assertIn("'fn-otm-committer-wake", owner)
         self.assertLess(batch.index("(fnn-owner-commit-start-locked service)"),
-                        batch.index("(fnn-owner-start-syncer service)"))
-        self.assertLess(batch.index("(fnn-owner-start-syncer service)"),
+                        batch.index("(fnn-owner-start-syncer service gen)"))
+        self.assertLess(batch.index("(fnn-owner-start-syncer service gen)"),
                         batch.index("(fnn-owner-commit-start-locked service :seal nil)"))
         self.assertLess(batch.index("(sb-thread:join-thread syncer"),
-                        batch.index("service :complete (fnn-owner-unreleased members released) deferred)"))
-        self.assertLess(batch.index("service :complete (fnn-owner-unreleased members released) deferred)"),
+                        batch.index("service :complete members deferred)"))
+        self.assertLess(batch.index("service :complete members deferred)"),
                         batch.index("(fnn-log-seal-open-batch store)"))
-        self.assertEqual(batch.count("(fnn-owner-start-syncer service)"), 1)
+        self.assertEqual(batch.count("(fnn-owner-start-syncer service gen)"), 1)
         syncer = owner[owner.index("(defun fnn-owner-commit-sync "):owner.index("(defun fnn-owner-commit-complete-locked")]
         self.assertIn("(fnn-log-sync-sealed-batch ", syncer)
         control = (ROOT / "host" / "native" / "control.lisp").read_text()

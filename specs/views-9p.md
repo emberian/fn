@@ -5,7 +5,7 @@ NNTP projection defined in [the NNTP contract](nntp.md) and implemented in
 `books/nntp.lisp`. It is not a second projection: no acceptance, numbering,
 membership or framing decision is made here or in the host.
 
-The server is [`tools/fn9p.py`](../tools/fn9p.py); the ACL2 adapter it reads
+The server is `tools/fn9p.py`; the ACL2 adapter it reads
 through is [`host/ninep-host.lisp`](../host/ninep-host.lisp).
 
 ## The tree
@@ -70,7 +70,7 @@ A mount shows one committed generation for its whole life.
 
 The server acquires the shared store lock, replays the committed transaction
 history through the same `Store.recover` path as
-[the reader](../tools/run_reader.py), materializes *every byte of the whole
+the reader, materializes *every byte of the whole
 view* through the adapter, and only then releases the lock, the bridge and the
 ACL2 process. From that moment the served tree is a frozen copy: no later
 commit is visible through it, `/status` keeps naming the generation it was

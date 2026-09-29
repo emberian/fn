@@ -1,8 +1,9 @@
 #!/bin/sh
 # Run `make check-lane` (or another target) for this worktree on a build box.
 #
-#   tools/remote_check.sh BOX [--target T] [--fetch PATH]... [--no-dirty]
-#                             [--install-certs] [--tree PATH] [--log PATH]
+#   tools/remote_check.sh BOX [--target T | --cmd 'COMMAND' | --regen]
+#                             [--fetch PATH]... [--no-dirty] [--no-install-certs]
+#                             [--tree BOXPATH] [--log BOXPATH]
 #
 # BOX is hbox, persvati or auto (tools/boxes.sh --pick: the lower load per
 # core now among the boxes nobody has reserved; it prints both loads and the
@@ -18,19 +19,27 @@
 #      make on an old head (batch AX, 2026-09-28);
 #   4. applies this worktree's uncommitted tracked changes (git diff HEAD) on
 #      top, unless --no-dirty; untracked files are named, never shipped;
-#   5. with --install-certs, first installs the box cache's certificates for
-#      the tree's bytes (tools/certs.py install; its summary heads the log):
-#      without them make check's host_check prints NOT RUN for both images
-#      (batch AZ, 2026-09-28; AY ran the install by hand before each check);
-#      then runs `make T` there (T = check-lane by default) with the box's own
+#   5. first installs the box cache's certificates for the tree's bytes
+#      (tools/certs.py install; its summary heads the log; --no-install-certs
+#      skips it): without them make check's host_check prints NOT RUN for both
+#      images and check-lane fails for every lane (batch AZ, tooling-obstructions,
+#      2026-09-28); then runs `make T` there (T = check-lane by default; `--cmd
+#      'COMMAND'` runs that shell command in the tree instead, e.g. one test
+#      module; `--regen` runs tools/ledger.py --write and tools/current_view.py
+#      --write and fetches the four files they write) with the box's own
 #      FN_ACL2 and FN_CERT_CACHE (tools/farm.py HOSTS), under swarm-build on
-#      hbox, logging to <base>/LANE-check.log;
+#      hbox, logging to --log BOXPATH (a path ON THE BOX; default
+#      <base>/LANE-check.log; the copy here is build/remote-check/BOX-T.log);
 #      a `make certify` there plans its job count (FN_CERTIFY_JOBS, default
 #      auto: tools/chain_schedule.py) unless this shell sets FN_CERTIFY_JOBS;
 #   6. prints the log's step table, copies the log to
 #      build/remote-check/BOX-T.log here, rsyncs each --fetch PATH (a file or
 #      directory of the tree, e.g. planning/ledger.json) back into this
-#      worktree, and exits with make's own status.
+#      worktree, and exits with make's own status.  A fetched file is written
+#      here only when this worktree's copy is still the one shipped in step 4:
+#      one edited, committed or merged here while the box ran is kept, and the
+#      box's copy goes to build/remote-check/fetched/PATH (a fetch clobbered a
+#      lane's newer ledger files, 2026-09-28).
 # <base> is /tank/fn/scratch on hbox and ~/fn-gates on persvati (hbox's
 # mirror was seeded by `git clone --bare` of a box repo; seeding avoids the
 # first run's whole-history bundle).  LANE is
@@ -48,7 +57,7 @@ set -u
 {
 
 usage() {
-    sed -n '2,35p' "$0" | sed 's/^# \{0,1\}//' >&2
+    sed -n '2,47p' "$0" | sed 's/^# \{0,1\}//' >&2
     exit 2
 }
 
@@ -58,21 +67,34 @@ shift
 TARGET=check-lane
 FETCH=
 DIRTY=1
-INSTALL=0
+INSTALL=1
 TREE=
 LOG=
+CMD=
+REGEN=0
 while [ $# -gt 0 ]; do
     case $1 in
         --target) [ $# -ge 2 ] || usage; TARGET=$2; shift 2 ;;
         --fetch) [ $# -ge 2 ] || usage; FETCH="$FETCH $2"; shift 2 ;;
         --no-dirty) DIRTY=0; shift ;;
         --install-certs) INSTALL=1; shift ;;
+        --no-install-certs) INSTALL=0; shift ;;
+        --cmd) [ $# -ge 2 ] || usage; CMD=$2; TARGET=cmd; shift 2 ;;
+        --regen) REGEN=1; TARGET=regen; shift ;;
         --tree) [ $# -ge 2 ] || usage; TREE=$2; shift 2 ;;
         --log) [ $# -ge 2 ] || usage; LOG=$2; shift 2 ;;
         -h|--help) usage ;;
         *) echo "remote_check: unknown option $1" >&2; usage ;;
     esac
 done
+
+if [ -n "$CMD" ] && [ $REGEN = 1 ]; then echo "remote_check: --cmd and --regen are exclusive" >&2; usage; fi
+if [ $REGEN = 1 ]; then
+    CMD='python3 tools/ledger.py --write && python3 tools/current_view.py --write'
+    FETCH="$FETCH planning/ledger.json planning/ledger.md planning/proofs.json planning/current.md"
+fi
+sq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
+if [ -n "$CMD" ]; then RUN="sh -c $(sq "$CMD")"; else RUN="make $TARGET"; fi
 
 if [ "$BOX" = auto ]; then
     BOX=$(sh "$(dirname "$0")/boxes.sh" --pick) || exit 3
@@ -146,6 +168,16 @@ git fetch -q origin '+$REF:$REF' && git checkout -q -f --detach $HEAD_SHA \
   && git clean -fdq -e build/ && test \"\$(git rev-parse HEAD)\" = $HEAD_SHA" \
     || { echo "remote_check: checkout in $BOX:$TREE failed" >&2; exit 3; }
 
+# What each --fetch path is here as shipped: step 6 writes a fetched file
+# only over this same content (or its absence).
+digest() { if [ -f "$ROOT/$1" ]; then cksum < "$ROOT/$1" | tr ' \t' '--'; else echo absent; fi; }
+: > "$WORK/shipped"
+for path in $FETCH; do
+    [ -d "$ROOT/$path" ] && (cd "$ROOT" && find "$path" -type f) | while IFS= read -r f; do
+        echo "$(digest "$f") $f"; done >> "$WORK/shipped"
+    [ -d "$ROOT/$path" ] || echo "$(digest "$path") $path" >> "$WORK/shipped"
+done
+
 # 4. Uncommitted tracked changes ride on top; untracked ones are named.
 if [ "$DIRTY" = 1 ]; then
     git -C "$ROOT" diff HEAD --binary > "$WORK/dirty.patch"
@@ -163,13 +195,13 @@ ENVS="eval \$(python3 -c 'import ast,os,sys
 t=ast.parse(open(\"tools/farm.py\").read())
 h=[ast.literal_eval(n.value) for n in t.body if isinstance(n,ast.Assign) and getattr(n.targets[0],\"id\",None)==\"HOSTS\"][0].get(sys.argv[1],{})
 print((\"export FN_ACL2=%s FN_CERT_CACHE=%s\" % (h.get(\"acl2\",\"\"), os.path.expanduser(h.get(\"cache\",\"\")))) + (\" FN_IMAGE_ACL2=%s\" % h[\"image_acl2\"] if h.get(\"image_acl2\") else \"\") if h else \"\")' $BOX 2>/dev/null)"
-echo "remote_check: make $TARGET in $BOX:$TREE (log $LOG)"
+echo "remote_check: $RUN in $BOX:$TREE (log $BOX:$LOG)"
 # make runs DETACHED on the box (its own script, nohup) and this side polls
 # the log's last line: an ssh session that ends early (exit 255) used to be
 # reported as make's status while make kept running (scale-latency,
 # 2026-09-28).  A poll that cannot reach the box is retried.
 remote "cat > $LOG.run.sh" <<RUNSCRIPT || { echo "remote_check: cannot write the run script on $BOX" >&2; exit 3; }
-cd $TREE && $ENVS; export FN_CERTIFY_JOBS=${FN_CERTIFY_JOBS:-auto}; [ -n "\${FN_ACL2:-}" ] || { echo 'remote_check: no FN_ACL2 for $BOX (tools/farm.py HOSTS)'; exit 3; }; { echo "== remote_check $HEAD_SHA \$(date -u +%FT%TZ) load: \$(uptime)"; if [ $INSTALL = 1 ]; then echo "== certs install: \$(python3 tools/certs.py install 2>&1 | grep -E '^ *installed' | tail -n 1)"; fi; $WRAP make $TARGET 2>&1; echo "== make exit \$?"; } > $LOG 2>&1
+cd $TREE && $ENVS; export FN_CERTIFY_JOBS=${FN_CERTIFY_JOBS:-auto}; [ -n "\${FN_ACL2:-}" ] || { echo 'remote_check: no FN_ACL2 for $BOX (tools/farm.py HOSTS)'; exit 3; }; { echo "== remote_check $HEAD_SHA \$(date -u +%FT%TZ) load: \$(uptime)"; if [ $INSTALL = 1 ] && [ -f tools/certs.py ]; then echo "== certs install: \$(python3 tools/certs.py install 2>&1 | grep -E '^ *installed' | tail -n 1)"; fi; $WRAP $RUN 2>&1; echo "== make exit \$?"; } > $LOG 2>&1
 RUNSCRIPT
 remote "rm -f $LOG; nohup sh $LOG.run.sh > $LOG 2>&1 < /dev/null &" || {
     echo "remote_check: cannot start make on $BOX" >&2; exit 3; }
@@ -198,12 +230,23 @@ else
 fi
 
 # 6. Generated files back into this worktree.
+mkdir -p "$WORK/fetched"
 for path in $FETCH; do
     case $path in /*|*..*) echo "remote_check: --fetch $path: a path inside the tree" >&2; continue ;; esac
-    mkdir -p "$ROOT/$(dirname "$path")"
-    remote "cd $TREE && tar cf - '$path'" | tar xf - -C "$ROOT" \
-        && echo "remote_check: fetched $path" || echo "remote_check: could not fetch $path" >&2
+    remote "cd $TREE && tar cf - '$path'" | tar xf - -C "$WORK/fetched" \
+        || { echo "remote_check: could not fetch $path" >&2; continue; }
+    (cd "$WORK/fetched" && find "$path" -type f) | while IFS= read -r f; do
+        was=$(awk -v f="$f" '$2 == f { print $1; exit }' "$WORK/shipped")
+        if [ "$(digest "$f")" = "${was:-absent}" ]; then
+            mkdir -p "$ROOT/$(dirname "$f")" && cp "$WORK/fetched/$f" "$ROOT/$f" \
+                && echo "remote_check: fetched $f"
+        else
+            mkdir -p "$ROOT/build/remote-check/fetched/$(dirname "$f")"
+            cp "$WORK/fetched/$f" "$ROOT/build/remote-check/fetched/$f"
+            echo "remote_check: kept this worktree's $f (changed here since the run shipped); the box's copy is build/remote-check/fetched/$f" >&2
+        fi
+    done
 done
-echo "remote_check: $BOX make $TARGET exit $MAKE_EXIT at $HEAD_SHA; log build/remote-check/$BOX-$TARGET.log"
+echo "remote_check: $BOX $RUN exit $MAKE_EXIT at $HEAD_SHA; log build/remote-check/$BOX-$TARGET.log"
 exit "$MAKE_EXIT"
 }

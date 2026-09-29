@@ -29,9 +29,8 @@
   (if (and (equal (fn-sf-phase files) :reserved)
            (fn-sf-candidatep record (fn-sf-records files)
                              (fn-sf-frontier files)))
-      (fn-sf-make :record-staged (fn-sf-frontier files) nil
-                  (fn-sf-records files) record nil
-                  (fn-sf-successes files) (fn-sf-barriers files))
+      (fn-sf-remake :record-staged (fn-sf-frontier files) nil
+                    record nil (fn-sf-barriers files) files)
     files))
 
 (local

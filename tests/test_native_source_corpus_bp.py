@@ -514,8 +514,14 @@ class NativeSourceCorpusBpTests(unittest.TestCase):
                 facts[name]["held"] = self.hold.held.wait(60)
                 self.stop(b_serve, kill=True)
                 facts[name]["b_sigkill"] = b_serve.pid
-                b_serve, b_log = start_b("b-serve-1")
+                # PKT-873: the relay is stopped BEFORE B restarts, so the
+                # only session into the new B is the restarted relay's,
+                # which dtn7-rs keeps open with keepalives after the
+                # transfer.  B must deliver the custody it acknowledged
+                # while that session stays open (fn-tcl-acknowledged-
+                # custody-is-progressed-in-its-turn), not when it ends.
                 relay.stop()
+                b_serve, b_log = start_b("b-serve-1")
                 relay.start()
                 seen = 0
             seen += 1
@@ -531,6 +537,14 @@ class NativeSourceCorpusBpTests(unittest.TestCase):
                 facts[name]["b_reason"] = (before[len("BP node delivery "):]
                                            if not re.match(verdict_rx, before) and before
                                            else None)
+        # PKT-873: the restarted B's verdict for the held element came
+        # before the relay's session into it ended (no "summary ... phase="
+        # line precedes it in b-serve-1's log).
+        restarted = b_log.read_text(errors="replace")
+        verdict_at = restarted.find("BP node delivery request-")
+        closed_at = restarted.find("TCPCL bp-node summary")
+        facts[carried[-1]]["b_verdict_in_session"] = (
+            verdict_at >= 0 and (closed_at < 0 or verdict_at < closed_at))
         self.stop(b_serve)
         frames = self.b_frames(b_fnbs)
         # --- the records -----------------------------------------------------------
@@ -570,6 +584,7 @@ class NativeSourceCorpusBpTests(unittest.TestCase):
                 "b_after_sigkill_reopen_same": (f["b_reopened"] == b_octets
                                                 if b_octets else None),
                 "b_sigkill_mid_receive": f.get("b_sigkill"),
+                "b_verdict_in_session": f.get("b_verdict_in_session"),
             })
         print("SOURCE-CORPUS-BP-TABLE " + json.dumps(rows, sort_keys=True))
         # --- the contract ---------------------------------------------------------
@@ -577,6 +592,8 @@ class NativeSourceCorpusBpTests(unittest.TestCase):
         self.assertEqual(carried, [n for n in ELEMENTS if n != "xref"],
                          [(n, facts[n]["post"]) for n in ELEMENTS])
         self.assertTrue(facts[carried[-1]].get("held"), "the transfer into B was not held")
+        self.assertTrue(facts[carried[-1]].get("b_verdict_in_session"),
+                        "B delivered the held element only after its session ended")
         for name in carried:
             f = facts[name]
             self.assertIsNotNone(f["attempt"], (name, "no kind-8 attempt line"))

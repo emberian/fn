@@ -3,14 +3,16 @@
 # and box reservations for measurements.
 #
 #   tools/boxes.sh            laptop, hbox, persvati: load1/cores, free memory, free disk,
-#                             and a live reservation under its box
+#                             and a live reservation under its box; then each live
+#                             TOKEN lease (e.g. `wide') with its holder and expiry
 #   tools/boxes.sh --pick     print the build box (hbox or persvati) with the
 #                             lowest load1 per core now among those not reserved by
 #                             someone else, and both loads on stderr; when every box
 #                             that answers is reserved, wait for the first lease to end
 #   tools/boxes.sh reserve BOX --for MINUTES --why TEXT [--as NAME]
 #   tools/boxes.sh release BOX [--as NAME] [--force]
-#   tools/boxes.sh check BOX [--as NAME]      exit 0 free (or yours), 4 reserved
+#   tools/boxes.sh check BOX [--as NAME]      prints "free" or the holder and expiry;
+#                             exit 0 free (or yours), 4 reserved
 #   tools/boxes.sh wait BOX [--as NAME] [--max MINUTES]   until free (or yours)
 #   BOX may also be a named TOKEN (a lower-case word that is not a box, e.g.
 #   `wide'): a lease on a shared resource rather than a machine, kept on
@@ -32,7 +34,8 @@
 # --as, else $FN_BOX_AS, else the basename of the git worktree (the lane).
 # tools/hbox_native.sh, tools/remote_check.sh, tools/farm.py submit and
 # tools/proof_repl.py start honour it: an explicit box waits for the lease
-# (printing who holds it and until when), auto picks the other box.
+# (printing who holds it and until when; proof_repl refuses at once a lease
+# longer than its --lease-wait), auto picks the other box.
 # FN_BOX_RESERVATION=ignore skips the wait (the holder's own runs pass anyway).
 #
 # Exit: 0; 3 --pick found no box; 4 reserved by someone else (reserve,
@@ -44,7 +47,8 @@
 # were impossible on a box anyone could start work on.
 set -u
 
-LEASE_SHOW='L=$HOME/.fn-box-reservation; if [ -f "$L" ]; then IFS=$(printf "\t") read -r u h w < "$L"; n=$(date +%s); if [ "${u:-0}" -gt "$n" ] 2>/dev/null; then echo "R $u $(( (u - n + 59) / 60 )) $(date -u -d @$u +%H:%MZ 2>/dev/null || echo ?) $h $w"; fi; fi'
+LEASE_SHOW='L=$HOME/.fn-box-reservation; if [ -f "$L" ]; then IFS=$(printf "\t") read -r u h w < "$L"; n=$(date +%s); if [ "${u:-0}" -gt "$n" ] 2>/dev/null; then echo "R $u $(( (u - n + 59) / 60 )) $(date -u -d @$u +%H:%MZ 2>/dev/null || echo ?) $h $w"; fi; fi
+for T in "$HOME"/.fn-box-reservation-token-*; do case $T in *.lock|*.new|*"*") continue ;; esac; [ -f "$T" ] || continue; IFS=$(printf "\t") read -r u h w < "$T"; n=$(date +%s); if [ "${u:-0}" -gt "$n" ] 2>/dev/null; then echo "T ${T##*-token-} $u $(( (u - n + 59) / 60 )) $(date -u -d @$u +%H:%MZ 2>/dev/null || echo ?) $h $w"; fi; done'
 
 PROBE='n=$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu); l=$(cut -d" " -f1 /proc/loadavg 2>/dev/null || sysctl -n vm.loadavg | tr -d "{}" | cut -d" " -f2)
 if [ -r /proc/meminfo ]; then m=$(awk "/MemAvailable/{print int(\$2/1048576)}" /proc/meminfo); else m=$(vm_stat | awk "/free|inactive|speculative/{s+=\$NF} END{print int(s*16384/1073741824)}"); fi
@@ -90,7 +94,7 @@ per_core() { set -- $1; [ $# -ge 2 ] && awk -v c="$1" -v l="$2" 'BEGIN{printf "%
 
 sq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 
-usage() { sed -n '2,36p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+usage() { sed -n '2,43p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 
 # The lease operations run on the box, under flock: OP HOLDER MINUTES WHY FORCE.
 LEASE_OP='L=$HOME/.fn-box-reservation$6; op=$1; me=$2; min=$3; why=$4; force=$5
@@ -135,11 +139,18 @@ esac
 
 case $cmd in
     '')
+        tokens=
         for box in laptop hbox persvati; do
             host=$box; [ $box = laptop ] && host=
             out=$(probe "$host")
             line "$box" "$(first "$out")"
             l=$(lease "$out"); [ -n "$l" ] && echo "          $(describe "$box" "$l")"
+            if [ "$box" = "${FN_BOX_TOKEN_HOST:-hbox}" ]; then
+                tokens=$(printf '%s\n' "$out" | sed -n 's/^T //p')
+            fi
+        done
+        printf '%s\n' "$tokens" | while read -r name rest; do
+            [ -n "$name" ] && echo "token     $(describe "$name" "$rest")"
         done ;;
     --pick)
         waited=0
@@ -189,7 +200,13 @@ case $cmd in
                 hbox|persvati) l=$(lease "$(probe "$BOX")") ;;
                 *) l=$(lease "$(lease_op "$BOX" show 0 "" 0 2>/dev/null)") ;;
             esac
-            if ! held_by_other "$l" || [ "${FN_BOX_RESERVATION:-}" = ignore ]; then exit 0; fi
+            if ! held_by_other "$l" || [ "${FN_BOX_RESERVATION:-}" = ignore ]; then
+                if [ $cmd = check ]; then
+                    if [ -n "$l" ]; then echo "boxes: $(describe "$BOX" "$l")"
+                    else echo "boxes: $BOX free"; fi
+                fi
+                exit 0
+            fi
             if [ $cmd = check ] || [ $waited -ge $((MAX * 60)) ]; then
                 echo "boxes: $(describe "$BOX" "$l")" >&2; exit 4
             fi

@@ -8,6 +8,7 @@
 (include-book "bp-native-app")
 (include-book "store-files-traces")
 (include-book "history-columns-relation")
+(include-book "byte-store-scan")
 (local (include-book "bp-receiver-state-invariants"))
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
