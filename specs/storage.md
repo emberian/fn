@@ -1126,6 +1126,20 @@ verdict does not need its payload, under a releasing rule
 same record with the tombstone of its payload
 (`fn-rclp-event-decodes-to-the-tombstoned-record`).
 
+On a running owner the verb is a request the owner answers by name over its
+control socket (Q16, `books/owner-reclaim.lisp`, PRF-927). The owner's
+history is its rows (held rows whose payloads are arena handles); the pass
+rewrites and folds them in chunks off the owner mutex (`fn-orc-chunk`), and
+the rows' octets after the rewrite are exactly the offline rewrite of the
+history's octets (KEYSTONE `fn-orc-rewrite-rows-is-the-offline-rewrite`;
+the fold is the offline fold, `fn-orc-fold-is-the-offline-fold`), so the
+decision names exactly the rewritten articles
+(`fn-orc-decision-names-the-rewritten-articles`). Today the owner answers
+`--dry-run` (its report in the owner's log, posts and reads continuing) and
+refuses `store reclaim` and `--recorded` by name (`offline-only`) until the
+installing pass (the rewritten capture's checkpoint, the live swap, the
+drop) lands.
+
 What becomes available again, precisely: the payload octets of each
 reclaimed record, on disk when the covered segments are dropped, and in the
 committed-record octets the admission gate sums (`bytes-used` of

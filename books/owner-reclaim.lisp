@@ -29,16 +29,14 @@
 ;       (the recorded instant's, fn-rci-decide-stream over fn-orc-fold, which
 ;       is the offline fold over the rows' octets) reclaims only when recorded,
 ;       admitted and not a dry run, and names exactly the rewritten articles.
-;   fn-orc-rewrite-rows-of-append: the rewrite of a history extended by a
-;       suffix is the rewrite of the prefix followed by the suffix's; the pass
-;       rewrites the captured prefix in chunks and the records committed after
-;       the capture are kept as they are (fn-orc-suffix-keptp decides that
-;       they need no rewrite, so the swapped history is the offline rewrite
-;       of the whole current history).
+;   fn-orc-rewrite-rows-of-append, fn-orc-fold-of-append: the pass walks the
+;       captured rows in chunks, and the chunks' rewrites and folds compose to
+;       the whole history's.
 ;
-; The request (fn-orc-request-word) and the swap's validity
-; (fn-orc-swap-validp) are the owner's answers; the pass's cuts and what a
-; process death at each leaves durable are fn-orc-cut-outcome.
+; The request's answer is fn-orc-request-word.  The pass that installs (the
+; rewritten capture's checkpoint, the live swap, the drop) is lane
+; online-reclaim's NEXT; until it lands a running owner answers the dry run
+; (host/native/owner.lisp fnn-owner-reclaim-dry-run).
 (in-package "ACL2")
 (include-book "expiry-instant")
 (include-book "store-intern")
@@ -192,7 +190,7 @@
                                    (records (fn-orc-rows-octets rows fn-arena)))))))
 
 ; -----------------------------------------------------------------------------
-; 3. The captured prefix and the suffix.
+; 3. Chunks.
 
 (defthm fn-orc-rewrite-rows-of-append
   (equal (fn-orc-rewrite-rows (append a b) ctx fn-arena)
@@ -207,36 +205,8 @@
                   :in-theory (union-theories '(fn-orc-fold binary-append car-cons cdr-cons)
                                              (theory 'minimal-theory)))))
 
-; Whether no record of SUFFIX is rewritten under CTX (the records committed
-; after the capture: new articles the capture's context does not release).
-(defun fn-orc-suffix-keptp (suffix ctx fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
-  (if (consp suffix)
-      (and (not (fn-rclp-rewrites-p (fn-orc-row-octets (car suffix) fn-arena) ctx))
-           (fn-orc-suffix-keptp (cdr suffix) ctx fn-arena))
-    t))
-
-(defthm fn-orc-rewrite-rows-of-a-kept-suffix
-  (implies (and (fn-orc-suffix-keptp suffix ctx fn-arena) (true-listp suffix))
-           (equal (fn-orc-rewrite-rows suffix ctx fn-arena) suffix))
-  :hints (("Goal" :induct (fn-orc-suffix-keptp suffix ctx fn-arena)
-                  :in-theory (union-theories '(fn-orc-rewrite-rows fn-orc-rewrite-row
-                                               fn-orc-suffix-keptp true-listp car-cons cdr-cons
-                                               cons-car-cdr)
-                                             (theory 'minimal-theory)))))
-
-; The swapped history (the captured prefix's rewrite, then the suffix as it
-; is) is the rewrite of the whole current history when the suffix is kept.
-(defthm fn-orc-swapped-history-is-the-rewrite-of-the-history
-  (implies (and (fn-orc-suffix-keptp suffix ctx fn-arena) (true-listp suffix))
-           (equal (append (fn-orc-rewrite-rows prefix ctx fn-arena) suffix)
-                  (fn-orc-rewrite-rows (append prefix suffix) ctx fn-arena)))
-  :hints (("Goal" :in-theory (union-theories '(fn-orc-rewrite-rows-of-append
-                                               fn-orc-rewrite-rows-of-a-kept-suffix)
-                                             (theory 'minimal-theory)))))
-
 ; -----------------------------------------------------------------------------
-; 4. The operator's request, and the swap.
+; 4. The operator's request.
 
 ; The answer to `store reclaim' on a running owner.  PASS the phase of a
 ; reclaim pass in flight (nil when none); INFLIGHT the count an automatic
@@ -268,54 +238,3 @@
   (implies (and (not pass) (not (natp inflight)) blockedp)
            (equal (fn-orc-request-status (fn-orc-request-word pass inflight blockedp recordedp))
                   :refused)))
-
-; The swap (under the owner mutex): valid when the reclaim context of the
-; articles the pass rewrote cannot have changed since the capture -- the
-; holders and the verdicts the capture's context read are the store's now,
-; and the articles the capture read are a tail of the articles now (the
-; acceptance only adds articles in front) -- and the suffix is kept.  An
-; invalid swap installs nothing: the pass is abandoned and says so.
-(defun fn-orc-article-tailp (cap now)
-  (declare (xargs :guard t))
-  (cond ((equal cap now) t)
-        ((consp now) (fn-orc-article-tailp cap (cdr now)))
-        (t nil)))
-
-(defun fn-orc-swap-validp (s-cap s-now suffix ctx fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
-  (and (equal (fn-rcl-store-holders s-now) (fn-rcl-store-holders s-cap))
-       (equal (fn-sn-verdicts s-now) (fn-sn-verdicts s-cap))
-       (fn-orc-article-tailp (fn-state-articles (fn-node-acceptance (fn-sn-node s-cap)))
-                             (fn-state-articles (fn-node-acceptance (fn-sn-node s-now))))
-       (fn-orc-suffix-keptp suffix ctx fn-arena)))
-
-; -----------------------------------------------------------------------------
-; 5. The pass's cuts (model crash points).
-;
-; Each cut is a point a process death can fall at; the outcome is what the
-; next open reads.  Before the install's rename the old publication stands
-; (the recorded instant is a configuration record, committed by the live
-; reconfiguration before the capture; the staged file is staging's, swept by
-; the open); from the rename on the new one does (the byte program's
-; fn-bs-scp-program-crash-is-old-or-new: the file is the old or the new one,
-; never torn, and the new checkpoint's F row names the segment the capture
-; rotated to, so the open replays exactly the suffix after it).  The drop of
-; the covered segments comes after the root's fence (T8).
-(defconst *fn-orc-cuts*
-  '(:instant-recorded :captured :rewritten :staged :staged-durable
-    :installed :installed-durable :swapped :dropped))
-
-(defun fn-orc-cut-outcome (cut)
-  (declare (xargs :guard t))
-  (if (member-eq cut '(:instant-recorded :captured :rewritten :staged :staged-durable))
-      :old
-    (if (member-eq cut *fn-orc-cuts*) :new :unknown)))
-
-(defthm fn-orc-every-cut-is-old-or-new
-  (implies (member-equal cut *fn-orc-cuts*)
-           (member-equal (fn-orc-cut-outcome cut) '(:old :new))))
-
-(defthm fn-orc-new-exactly-from-the-install
-  (implies (member-equal cut *fn-orc-cuts*)
-           (iff (equal (fn-orc-cut-outcome cut) :new)
-                (member-equal cut '(:installed :installed-durable :swapped :dropped)))))

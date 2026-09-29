@@ -12,8 +12,6 @@
 (bpr-lift fn-orc-rows-octets 1)
 (bpr-lift fn-orc-rewrite-rows 2)
 (bpr-lift fn-orc-fold 3)
-(bpr-lift fn-orc-suffix-keptp 2)
-(bpr-lift fn-orc-swap-validp 4)
 
 (defconst *ort-rows* (fn-sf-records (fn-sn-files *rpt-s*)))
 ; (macros, not constants: the codec's attachment is not callable in a defconst)
@@ -85,35 +83,6 @@
                                                  (fn-rcls-init))
                            nil))
                      :none))
-; fn-orc-swapped-history-is-the-rewrite-of-the-history: the capture's rows
-; rewritten, then a suffix the context keeps (the rewritten rows themselves,
-; which a rerun keeps: witness of fn-orc-suffix-keptp).
-(assert-event (in-arena-fn-orc-suffix-keptp *rpt-payloads* (ort-new) *xt-ctx*))
-(assert-event (equal (append (in-arena-fn-orc-rewrite-rows *rpt-payloads* *ort-rows* *xt-ctx*)
-                             (ort-new))
-                     (in-arena-fn-orc-rewrite-rows *rpt-payloads* (append *ort-rows* (ort-new))
-                                                   *xt-ctx*)))
-; Hypothesis removal (the suffix kept): a suffix the context rewrites (the
-; unrewritten rows, a true list) is not kept, and the swapped history is then
-; not the rewrite of the whole.
-(assert-event (not (in-arena-fn-orc-suffix-keptp *rpt-payloads* *ort-rows* *xt-ctx*)))
-(assert-event (not (equal (append (in-arena-fn-orc-rewrite-rows *rpt-payloads* *ort-rows*
-                                                                *xt-ctx*)
-                                  *ort-rows*)
-                          (in-arena-fn-orc-rewrite-rows *rpt-payloads*
-                                                        (append *ort-rows* *ort-rows*)
-                                                        *xt-ctx*))))
-(assert-event (true-listp *ort-rows*))
-
-; The swap's validity: the capture's store against itself with an empty
-; suffix is valid; with a suffix the context rewrites it is not.
-(assert-event (in-arena-fn-orc-swap-validp *rpt-payloads* *rpt-s* *rpt-s* nil *xt-ctx*))
-(assert-event (not (in-arena-fn-orc-swap-validp *rpt-payloads* *rpt-s* *rpt-s* *ort-rows*
-                                                *xt-ctx*)))
-; The articles the capture read must be a tail of the articles now.
-(assert-event (fn-orc-article-tailp '(b a) '(c b a)))
-(assert-event (not (fn-orc-article-tailp '(b a) '(c b x))))
-
 ; The request.
 (assert-event (equal (fn-orc-request-word nil nil nil t) :requested))
 (assert-event (equal (fn-orc-request-status :requested) :accepted))
@@ -129,9 +98,3 @@
             (equal (fn-orc-request-status (fn-orc-request-word pass inflight blockedp recordedp))
                    :refused))
    :rule-classes nil))
-
-; The cuts: every cut is old or new, new exactly from the install.
-(assert-event (equal (fn-orc-cut-outcome :staged-durable) :old))
-(assert-event (equal (fn-orc-cut-outcome :installed) :new))
-(assert-event (equal (fn-orc-cut-outcome :dropped) :new))
-(assert-event (equal (fn-orc-cut-outcome :bogus) :unknown))
