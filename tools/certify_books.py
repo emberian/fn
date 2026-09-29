@@ -941,11 +941,11 @@ def main() -> int:
     parser.add_argument(
         "--images",
         choices=("on", "off"),
-        default=os.environ.get("FN_CERT_IMAGES", "on"),
+        default=os.environ.get("FN_CERT_IMAGES", "off"),
         help=(
             "certify each book from the costliest built certification image "
             "its closure allows (tools/cert_images.py, tools/cert-images.json); "
-            "off certifies every book in a plain world (default: on, or "
+            "off certifies every book in a plain world (default: off until the attach-stobj defect is fixed, batch BB 2026-09-29; or "
             "FN_CERT_IMAGES)"
         ),
     )
