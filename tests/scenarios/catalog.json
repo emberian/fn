@@ -6235,7 +6235,7 @@
         "tests/test_resilience_bp_control.py",
         "planning/evidence/resilience-bp-control-2026-09-29.md"
       ],
-      "execution_scope": "Source adapter staged for schedule-receipt-observed-reorder. BP live-control source and a matching runner image/native run remain pending; adapter unit tests do not establish native activation or receipt ordering."
+      "execution_scope": "Source adapter and BP live-control source0238f266f integrated for schedule-receipt-observed-reorder. A matching runner image/native run remains pending; adapter unit tests do not establish native activation or receipt ordering."
     },
     {
       "id": "SCN-217",

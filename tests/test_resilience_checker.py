@@ -461,7 +461,7 @@ class SchedulePointTests(unittest.TestCase):
         # The reorder variant: its held form exists; the nemesis verb (a live
         # `bp-route remove` under the running receiver) still needs source
         # integration and an image that exercises the same serialized owner.
-        self.assertIn("source integration and matching image pending",
+        self.assertIn("matching-image execution pending",
                       pending["schedule-receipt-observed-reorder"]["reasons"][0])
         self.assertEqual(pending["schedule-receipt-observed-reorder"]["owner"],
                          "bp_resume (serialized live BP control); resilience (SCN-218 adapter)")
