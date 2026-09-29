@@ -158,20 +158,55 @@
       *fn-frame-max-receipt-payload*)
   :rule-classes nil)
 
-(defthm fn-frame-spec-for-workflow-is-spec-list
-  (implies (not (equal (fn-frame-spec-for kind *fn-frame-workflow-specs*) :none))
-           (fn-frame-spec-listp
-            (fn-frame-spec-for kind *fn-frame-workflow-specs*))))
+; -----------------------------------------------------------------------------
+; The journal tables, generically (row K3).  What a guard or a round trip
+; needs of a kind -- its specification is a spec list, its code is a nonzero
+; octet -- is proved ONCE here over any table, under two recognizers the
+; rewriter decides on a constant table by evaluation.  A new kind is one row
+; in its kinds list and one in its specs table; it adds no proof.  (Each
+; per-table lemma these replace was proved by splitting on every kind:
+; `fn-frame-workflow-protected''s guard took 475,868 steps at eleven kinds,
+; and one more kind doubled it.)  Every entry point's hint keeps the lookup,
+; the code and the item closed.
 
-(defthm fn-frame-spec-for-receipt-is-spec-list
-  (implies (not (equal (fn-frame-spec-for kind *fn-frame-receipt-specs*) :none))
-           (fn-frame-spec-listp
-            (fn-frame-spec-for kind *fn-frame-receipt-specs*))))
+(defun fn-frame-spec-tablep (table)
+  ; Every row a kind and its field specification.
+  (declare (xargs :guard t))
+  (if (consp table)
+      (and (consp (car table))
+           (fn-frame-spec-listp (cdr (car table)))
+           (fn-frame-spec-tablep (cdr table)))
+    t))
 
-(defthm fn-frame-spec-for-bundle-store-is-spec-list
-  (implies (not (equal (fn-frame-spec-for kind *fn-frame-bundle-store-specs*) :none))
-           (fn-frame-spec-listp
-            (fn-frame-spec-for kind *fn-frame-bundle-store-specs*))))
+(defun fn-frame-table-kinds-in (table kinds)
+  ; Every row's kind has a code in KINDS.
+  (declare (xargs :guard (true-listp kinds)))
+  (if (consp table)
+      (and (consp (car table))
+           (member-equal (car (car table)) kinds)
+           (fn-frame-table-kinds-in (cdr table) kinds))
+    t))
+
+(defthm fn-frame-spec-for-is-spec-list
+  (implies (and (fn-frame-spec-tablep table)
+                (not (equal (fn-frame-spec-for kind table) :none)))
+           (fn-frame-spec-listp (fn-frame-spec-for kind table))))
+
+(local (defthm fn-frame-enum-index-of-member
+  (implies (member-equal value keys)
+           (not (equal (fn-frame-enum-index value keys) 0)))))
+
+(defthm fn-frame-spec-for-has-code
+  (implies (and (fn-frame-table-kinds-in table kinds)
+                (not (equal (fn-frame-spec-for kind table) :none)))
+           (not (equal (fn-frame-enum-index kind kinds) 0))))
+
+(defthm fn-frame-enum-index-is-octet
+  (implies (<= (len keys) 255)
+           (fn-cbor-octetp (fn-frame-enum-index value keys)))
+  :hints (("Goal" :in-theory (disable fn-frame-enum-index)
+           :use ((:instance fn-frame-enum-index-bound)))))
+
 
 ; The outcome record's phase and result are not independent: an ordinary
 ; outcome is durable or aborted and a recovery outcome is committed or absent.
@@ -216,7 +251,7 @@
                  (fn-frame-spec-for kind *fn-frame-workflow-specs*) values)))
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (e/d (fn-frame-workflow-record-okp
-                                   fn-frame-spec-for-workflow-is-spec-list)
+                                   fn-frame-spec-for-is-spec-list)
                                   (fn-frame-spec-for fn-frame-values-okp
                                    fn-frame-spec-listp)))))
 
@@ -228,7 +263,7 @@
                  (fn-frame-spec-for kind *fn-frame-receipt-specs*) values)))
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (e/d (fn-frame-receipt-record-okp
-                                   fn-frame-spec-for-receipt-is-spec-list)
+                                   fn-frame-spec-for-is-spec-list)
                                   (fn-frame-spec-for fn-frame-values-okp
                                    fn-frame-spec-listp)))))
 
@@ -302,8 +337,8 @@
 (verify-guards fn-frame-workflow-encode
   :hints (("Goal" :in-theory (e/d (fn-frame-workflow-record-okp-fields)
                                   (fn-frame-workflow-record-okp
-                                   fn-frame-spec-for fn-frame-values-okp
-                                   fn-frame-fields-octets)))))
+                                   fn-frame-spec-for fn-frame-values-okp fn-frame-fields-octets
+                                   fn-frame-enum-index fn-frame-item)))))
 
 (defun fn-frame-workflow-decode (octets digest)
   (declare (xargs :guard t :verify-guards nil))
@@ -355,8 +390,8 @@
 (verify-guards fn-frame-receipt-encode
   :hints (("Goal" :in-theory (e/d (fn-frame-receipt-record-okp-fields)
                                   (fn-frame-receipt-record-okp
-                                   fn-frame-spec-for fn-frame-values-okp
-                                   fn-frame-fields-octets)))))
+                                   fn-frame-spec-for fn-frame-values-okp fn-frame-fields-octets
+                                   fn-frame-enum-index fn-frame-item)))))
 
 (defun fn-frame-receipt-decode (octets digest)
   (declare (xargs :guard t :verify-guards nil))
@@ -402,7 +437,10 @@
                           values)
                          digest)))))
 
-(verify-guards fn-frame-bundle-store-encode)
+(verify-guards fn-frame-bundle-store-encode
+  :hints (("Goal" :in-theory (disable fn-frame-spec-for fn-frame-values-okp
+                                      fn-frame-fields-octets fn-frame-enum-index
+                                      fn-frame-item))))
 
 (defun fn-frame-bundle-store-decode (octets digest)
   (declare (xargs :guard t :verify-guards nil))
@@ -430,19 +468,21 @@
                                  *fn-frame-version* kind
                                  (fn-frame-parse-value parsed))))))))))))
 
-(verify-guards fn-frame-bundle-store-decode)
+(verify-guards fn-frame-bundle-store-decode
+  :hints (("Goal" :in-theory (disable fn-frame-spec-for fn-frame-values-okp
+                                      fn-frame-fields-octets))))
 
 ; -----------------------------------------------------------------------------
-; Export theory.  Both facts are about the two constant specification tables
-; and exist for the guard proofs below them.
+; Export theory: the generic table facts, for the guard and round-trip
+; proofs over any journal table.
 
 (deftheory fn-frame-journal-vocabulary
-  '(    fn-frame-spec-for-workflow-is-spec-list
-    fn-frame-spec-for-receipt-is-spec-list
-    fn-frame-spec-for-bundle-store-is-spec-list))
+  '(fn-frame-spec-for-is-spec-list
+    fn-frame-spec-for-has-code
+    fn-frame-enum-index-is-octet))
 
 (in-theory (disable fn-frame-workflow-record-okp-fields
              fn-frame-receipt-record-okp-fields
-             fn-frame-spec-for-workflow-is-spec-list
-             fn-frame-spec-for-receipt-is-spec-list
-             fn-frame-spec-for-bundle-store-is-spec-list))
+             fn-frame-spec-for-is-spec-list
+             fn-frame-spec-for-has-code
+             fn-frame-enum-index-is-octet))

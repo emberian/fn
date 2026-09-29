@@ -19,6 +19,9 @@
 
 (in-package "ACL2")
 (include-book "stx-lace")
+; The policy column's key (the statement's policy group) and slot order (W5b,
+; lane stx-model-2, 2026-09-29).
+(include-book "policy-invariants")
 
 (local (in-theory (enable (:d fn-lace-same-slotp) (:d fn-lace-slot-conflictp)
                           (:d fn-lace-equivocatorp))))
@@ -194,7 +197,7 @@
 
 (defun fn-stx-index-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 3)))
+  (and (true-listp x) (equal (len x) 4)))
 (defun fn-stx-index-bindings (x)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car x) :exec (fn-ag-car x)))
@@ -207,25 +210,37 @@
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr (cdr x))) :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
 (verify-guards fn-stx-index-records)
-(defun fn-stx-make-index (bindings slots records)
+; The fourth column (W5b): per (group . authority), the authority's policy
+; statement of the greatest (incarnation, sequence) slot seen and whether a
+; DISTINCT policy statement shares that slot -- fn-pol-current's answer
+; (books/policy.lisp) without a walk of the lace; see fn-stx-index-policy-current.
+(defun fn-stx-index-policies (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr (cdr x))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
+(verify-guards fn-stx-index-policies)
+(defun fn-stx-make-index (bindings slots records policies)
   (declare (xargs :guard t))
-  (list bindings slots records))
+  (list bindings slots records policies))
 
 (defthm fn-stx-index-shapep-of-fn-stx-make-index
-  (fn-stx-index-shapep (fn-stx-make-index bindings slots records)))
+  (fn-stx-index-shapep (fn-stx-make-index bindings slots records policies)))
 (defthm fn-stx-index-bindings-of-fn-stx-make-index
-  (equal (fn-stx-index-bindings (fn-stx-make-index bindings slots records))
+  (equal (fn-stx-index-bindings (fn-stx-make-index bindings slots records policies))
          bindings))
 (defthm fn-stx-index-slots-of-fn-stx-make-index
-  (equal (fn-stx-index-slots (fn-stx-make-index bindings slots records))
+  (equal (fn-stx-index-slots (fn-stx-make-index bindings slots records policies))
          slots))
 (defthm fn-stx-index-records-of-fn-stx-make-index
-  (equal (fn-stx-index-records (fn-stx-make-index bindings slots records))
+  (equal (fn-stx-index-records (fn-stx-make-index bindings slots records policies))
          records))
+(defthm fn-stx-index-policies-of-fn-stx-make-index
+  (equal (fn-stx-index-policies (fn-stx-make-index bindings slots records policies))
+         policies))
 
 (in-theory (disable (:d fn-stx-index-shapep) (:d fn-stx-index-bindings)
                     (:d fn-stx-index-slots) (:d fn-stx-index-records)
-                    (:d fn-stx-make-index)))
+                    (:d fn-stx-index-policies) (:d fn-stx-make-index)))
 
 ; -----------------------------------------------------------------------------
 ; The durable equivocation record
@@ -297,9 +312,44 @@
         (fn-stx-alist-get key (cdr al)))
     nil))
 
+; -----------------------------------------------------------------------------
+; The policy column's key and entry (W5b).  A statement keys the column when it
+; is a :policy statement whose payload decodes to a policy: (group . creator).
+; An entry is (stmt . conflictp): the greatest-slot policy statement seen under
+; that key and whether a distinct one shares its slot.  The update is one
+; comparison (fn-pol-slot-lessp, the order fn-pol-latest maximises); an entry
+; that is not a statement (unreachable: every entry was consed here) is
+; replaced.
+
+; books/policy.lisp keeps the decoded policy's list shape local; the group
+; accessor's guard needs it once more here.
+(local (defthm fn-stx-policy-of-stmt-is-true-list
+         (true-listp (fn-pol-statement-policy s))
+         :hints (("Goal" :use fn-pol-statement-policy-is-policy
+                  :in-theory (e/d (fn-pol-policy-p)
+                                  (fn-pol-statement-policy
+                                   fn-pol-statement-policy-is-policy))))))
+
+(defun fn-stx-policy-key (s)
+  (declare (xargs :guard (fn-stmt-p s)
+                  :guard-hints (("Goal" :in-theory (disable fn-pol-statement-policy)))))
+  (if (equal (fn-stmt-kind s) :policy)
+      (let ((p (fn-pol-statement-policy s)))
+        (if (consp p) (cons (fn-pol-policy-group p) (fn-stmt-creator s)) nil))
+    nil))
+
+(defun fn-stx-policy-entry-add (entry s)
+  (declare (xargs :guard (fn-stmt-p s)))
+  (if (not (and (consp entry) (fn-stmt-p (car entry))))
+      (cons s nil)
+    (cond ((fn-pol-slot-lessp (car entry) s) (cons s nil))
+          ((fn-pol-slot-lessp s (car entry)) entry)
+          ((equal s (car entry)) entry)
+          (t (cons (car entry) t)))))
+
 (defun fn-stx-index-empty ()
   (declare (xargs :guard t))
-  (fn-stx-make-index nil nil nil))
+  (fn-stx-make-index nil nil nil nil))
 
 ; One statement into the index.  A binding and a slot entry are written only
 ; when absent, so both hold the OLDEST statement -- which is what
@@ -311,7 +361,9 @@
   (let* ((b (fn-stx-index-bindings index))
          (sl (fn-stx-index-slots index))
          (rs (fn-stx-index-records index))
-         (prev (fn-stx-alist-get (fn-stx-slot-key s) sl)))
+         (ps (fn-stx-index-policies index))
+         (prev (fn-stx-alist-get (fn-stx-slot-key s) sl))
+         (k (fn-stx-policy-key s)))
     (fn-stx-make-index
      (if (fn-stx-alist-get (fn-stmt-id s) b)
          b
@@ -319,7 +371,10 @@
      (if prev sl (cons (cons (fn-stx-slot-key s) s) sl))
      (if (and (consp prev) (not (equal (cdr prev) s)))
          (cons (fn-stx-equivocation-record (cdr prev) s) rs)
-       rs))))
+       rs)
+     (if k
+         (cons (cons k (fn-stx-policy-entry-add (cdr (fn-stx-alist-get k ps)) s)) ps)
+       ps))))
 
 (defun fn-stx-index-add (index delta)
   (declare (xargs :guard (fn-lace-p delta)))
@@ -345,6 +400,15 @@
                (cons (fn-stx-equivocation-record (cdr prev) s)
                      (fn-stx-index-records index))
              (fn-stx-index-records index)))))
+
+(defthm fn-stx-policies-of-add1
+  (equal (fn-stx-index-policies (fn-stx-index-add1 index s))
+         (let ((k (fn-stx-policy-key s))
+               (ps (fn-stx-index-policies index)))
+           (if k
+               (cons (cons k (fn-stx-policy-entry-add (cdr (fn-stx-alist-get k ps)) s))
+                     ps)
+             ps))))
 
 (in-theory (disable (:d fn-stx-index-add1)))
 
@@ -434,6 +498,15 @@
 (defun fn-stx-recorded-equivocationp (index p i)
   (declare (xargs :guard t))
   (fn-stx-index-equivocatorp index p i))
+
+; The policy in force for (group, authority), from the column: the entry's
+; statement unless a distinct policy statement shares its slot (W5b).  One
+; alist lookup; no lace, no store, no parse.
+(defun fn-stx-index-policy-current (index group authority)
+  (declare (xargs :guard t))
+  (let ((e (cdr (fn-stx-alist-get (cons group authority)
+                                  (fn-stx-index-policies index)))))
+    (if (and (consp e) (not (cdr e))) (car e) nil)))
 
 ; -----------------------------------------------------------------------------
 ; The agreement, over an article list.  The invariant over the NODE
@@ -818,6 +891,257 @@
          (cdr (fn-stx-alist-get id (fn-stx-index-bindings index))))
   :rule-classes nil)
 
+
+; -----------------------------------------------------------------------------
+; THE POLICY COLUMN AGREES WITH THE LACE (W5b, lane stx-model-2, 2026-09-29).
+; fn-pol-current over the lace of the store (books/policy.lisp: the
+; greatest-slot candidate unless the authority forked at that slot) is the
+; column's answer.  Proved through an order-independent characterisation of
+; the fold: after folding the candidates the entry holds a maximal candidate
+; and records whether a distinct candidate shares its slot; fn-pol-latest is
+; maximal too (fn-pol-latest-is-maximal), two maximal candidates of one
+; authority share a slot, and fn-pol-same-slot-conflictp is exactly that.
+; The keyring drops out because every member of the lace of the store is
+; verified under it (fn-stx-delta emits nothing else).
+
+(local (defthm fn-stx-pol-stmt-slots-are-natural
+  (implies (fn-stmt-p s)
+           (and (natp (fn-stmt-incarnation s)) (natp (fn-stmt-sequence s))))
+  :hints (("Goal" :in-theory (enable fn-stmt-p fn-stmt-headerp fn-stmt-incarnation
+                                     fn-stmt-sequence fn-record-uint32p)))))
+(local (defthm fn-stx-pol-same-slotp-is-neither-below
+  (implies (and (fn-stmt-p a) (fn-stmt-p b)
+                (equal (fn-stmt-creator a) (fn-stmt-creator b)))
+           (iff (fn-lace-same-slotp a b)
+                (and (not (fn-pol-slot-lessp a b)) (not (fn-pol-slot-lessp b a)))))
+  :hints (("Goal" :in-theory (e/d (fn-pol-slot-lessp (:d fn-lace-same-slotp)) (fn-stmt-p))))))
+(local (defthm fn-stx-pol-candidatep-is-key
+  (implies (fn-prin-verifiedp s keyring)
+           (iff (fn-pol-candidatep s keyring group authority)
+                (and (fn-stmt-p s) (equal (fn-stx-policy-key s) (cons group authority)))))
+  :hints (("Goal" :in-theory (e/d (fn-pol-candidatep fn-stx-policy-key)
+                                  (fn-pol-statement-policy fn-stmt-p fn-prin-verifiedp))))))
+(local (defthm fn-stx-pol-delta-member-is-verified
+  (implies (member-equal s (fn-stx-delta octets keyring))
+           (fn-prin-verifiedp s keyring))
+  :hints (("Goal" :in-theory (enable (:d fn-stx-delta) (:d fn-stx-verifiedp))))))
+(local (defthm fn-stx-pol-delta-car-is-stmt
+  (implies (consp (fn-stx-delta octets keyring))
+           (fn-stmt-p (car (fn-stx-delta octets keyring))))
+  :hints (("Goal" :use fn-stx-delta-is-lace :in-theory (e/d (fn-lace-p) (fn-stx-delta-is-lace))))))
+(local (defun fn-stx-pol-all-verifiedp (lace keyring)
+  (if (consp lace)
+      (and (fn-prin-verifiedp (car lace) keyring)
+           (fn-stx-pol-all-verifiedp (cdr lace) keyring))
+    t)))
+(local (defthm fn-stx-pol-all-verifiedp-of-append
+  (iff (fn-stx-pol-all-verifiedp (append a b) keyring)
+       (and (fn-stx-pol-all-verifiedp a keyring) (fn-stx-pol-all-verifiedp b keyring)))))
+(local (defthm fn-stx-pol-delta-is-all-verified
+  (fn-stx-pol-all-verifiedp (fn-stx-delta octets keyring) keyring)
+  :hints (("Goal" :use (fn-stx-delta-is-nil-or-singleton
+                        (:instance fn-stx-pol-delta-member-is-verified
+                                   (s (car (fn-stx-delta octets keyring)))))
+           :in-theory (e/d (member-equal) (fn-stx-delta-is-nil-or-singleton
+                                           fn-stx-pol-delta-member-is-verified))
+           :expand ((fn-stx-pol-all-verifiedp (fn-stx-delta octets keyring) keyring)
+                    (fn-stx-pol-all-verifiedp (cdr (fn-stx-delta octets keyring)) keyring))))))
+(local (defthm fn-stx-pol-lace-of-store-is-all-verified
+  (fn-stx-pol-all-verifiedp (fn-stx-lace-of-store articles keyring) keyring)
+  :hints (("Goal" :in-theory (e/d ((:d fn-stx-lace-of-store)) (fn-stx-delta fn-prin-verifiedp))))))
+(local (defun fn-stx-pol-filter (lace group authority)
+  (if (consp lace)
+      (if (and (fn-stmt-p (car lace))
+               (equal (fn-stx-policy-key (car lace)) (cons group authority)))
+          (cons (car lace) (fn-stx-pol-filter (cdr lace) group authority))
+        (fn-stx-pol-filter (cdr lace) group authority))
+    nil)))
+(local (defthm fn-stx-pol-candidates-of-verified-lace-are-filter
+  (implies (fn-stx-pol-all-verifiedp lace keyring)
+           (equal (fn-pol-candidates lace keyring group authority)
+                  (fn-stx-pol-filter lace group authority)))
+  :hints (("Goal" :in-theory (e/d (fn-pol-candidates) (fn-pol-candidatep fn-stmt-p fn-stx-policy-key fn-prin-verifiedp))))))
+(local (defthm fn-stx-pol-filter-of-append
+  (equal (fn-stx-pol-filter (append a b) group authority)
+         (append (fn-stx-pol-filter a group authority) (fn-stx-pol-filter b group authority)))))
+(local (defun fn-stx-pol-fold (cands entry)
+  (if (consp cands)
+      (fn-stx-pol-fold (cdr cands) (fn-stx-policy-entry-add entry (car cands)))
+    entry)))
+(local (defthm fn-stx-pol-fold-of-append
+  (equal (fn-stx-pol-fold (append a b) e)
+         (fn-stx-pol-fold b (fn-stx-pol-fold a e)))))
+(local (defthm fn-stx-pol-filter-of-short-list
+  (implies (not (consp (cdr d)))
+           (equal (fn-stx-pol-filter d group authority)
+                  (if (and (consp d) (fn-stmt-p (car d))
+                           (equal (fn-stx-policy-key (car d)) (cons group authority)))
+                      (list (car d))
+                    nil)))
+  :hints (("Goal" :in-theory (disable fn-stmt-p fn-stx-policy-key)))))
+(local (defthm fn-stx-pol-column-of-store-is-the-fold
+  (equal (cdr (fn-stx-alist-get (cons group authority)
+                                (fn-stx-index-policies (fn-stx-index-of-store articles keyring))))
+         (fn-stx-pol-fold (fn-stx-pol-filter (fn-stx-lace-of-store articles keyring) group authority)
+                          nil))
+  :hints (("Goal" :induct (fn-stx-index-of-store articles keyring)
+           :in-theory (e/d ((:d fn-stx-index-of-store) (:d fn-stx-lace-of-store)
+                            (:d fn-stx-index-add) (:d fn-stx-alist-get)
+                            fn-stx-pol-filter-of-append fn-stx-pol-fold-of-append)
+                           (fn-stx-delta fn-stx-policy-key fn-stx-policy-entry-add fn-stmt-p
+                            fn-stx-pol-filter))))))
+
+(local (defun fn-stx-pol-not-above (m cands)
+  (if (consp cands)
+      (and (not (fn-pol-slot-lessp m (car cands))) (fn-stx-pol-not-above m (cdr cands)))
+    t)))
+(local (defun fn-stx-pol-conflictp (m cands)
+  (if (consp cands)
+      (or (and (not (equal (car cands) m))
+               (not (fn-pol-slot-lessp m (car cands)))
+               (not (fn-pol-slot-lessp (car cands) m)))
+          (fn-stx-pol-conflictp m (cdr cands)))
+    nil)))
+(local (defun fn-stx-pol-entry-okp (e cands)
+  (if (consp cands)
+      (and (consp e)
+           (member-equal (car e) cands)
+           (fn-stx-pol-not-above (car e) cands)
+           (iff (cdr e) (fn-stx-pol-conflictp (car e) cands)))
+    (null e))))
+(local (defthm fn-stx-pol-not-above-of-append-one
+  (iff (fn-stx-pol-not-above m (append p (list x)))
+       (and (fn-stx-pol-not-above m p) (not (fn-pol-slot-lessp m x))))
+  :hints (("Goal" :in-theory (disable fn-pol-slot-lessp)))))
+(local (defthm fn-stx-pol-conflictp-of-append-one
+  (iff (fn-stx-pol-conflictp m (append p (list x)))
+       (or (fn-stx-pol-conflictp m p)
+           (and (not (equal x m)) (not (fn-pol-slot-lessp m x)) (not (fn-pol-slot-lessp x m)))))
+  :hints (("Goal" :in-theory (disable fn-pol-slot-lessp)))))
+(local (defthm fn-stx-pol-member-of-append-one
+  (iff (member-equal y (append p (list x))) (or (member-equal y p) (equal y x)))))
+(local (defthm fn-stx-pol-not-above-of-bigger
+  (implies (and (fn-stx-pol-not-above m p) (fn-pol-slot-lessp m x))
+           (fn-stx-pol-not-above x p))
+  :hints (("Goal" :in-theory (enable fn-pol-slot-lessp)))))
+(local (defthm fn-stx-pol-bigger-has-no-conflict-below
+  (implies (and (fn-stx-pol-not-above m p) (fn-pol-slot-lessp m x))
+           (not (fn-stx-pol-conflictp x p)))
+  :hints (("Goal" :in-theory (enable fn-pol-slot-lessp)))))
+(local (defthm fn-stx-pol-lace-member-is-stmt
+  (implies (and (fn-lace-p p) (member-equal y p)) (fn-stmt-p y))
+  :hints (("Goal" :in-theory (e/d (fn-lace-p) (fn-stmt-p))))))
+(local (in-theory (enable fn-pol-invariants-vocabulary)))
+(local (defthm fn-stx-pol-entry-add-keeps-okp
+  (implies (and (fn-stx-pol-entry-okp e p) (fn-lace-p p) (fn-stmt-p x))
+           (fn-stx-pol-entry-okp (fn-stx-policy-entry-add e x) (append p (list x))))
+  :hints (("Goal" :in-theory (e/d (fn-stx-policy-entry-add) (fn-pol-slot-lessp fn-stmt-p fn-lace-p))))))
+(local (defthm fn-stx-pol-append-assoc
+  (equal (append (append a b) c) (append a (append b c)))))
+(local (defun fn-stx-pol-fold-induct (c e p)
+  (if (consp c)
+      (fn-stx-pol-fold-induct (cdr c) (fn-stx-policy-entry-add e (car c)) (append p (list (car c))))
+    (list c e p))))
+(local (defthm fn-stx-pol-lace-p-of-append
+  (implies (true-listp a)
+           (iff (fn-lace-p (append a b)) (and (fn-lace-p a) (fn-lace-p b))))
+  :hints (("Goal" :in-theory (e/d (fn-lace-p) (fn-stmt-p))))))
+(local (defthm fn-stx-pol-lace-p-is-true-list
+  (implies (fn-lace-p a) (true-listp a))
+  :hints (("Goal" :in-theory (e/d (fn-lace-p) (fn-stmt-p))))))
+(local (defthm fn-stx-pol-fold-keeps-okp
+  (implies (and (fn-stx-pol-entry-okp e p) (fn-lace-p p) (fn-lace-p c))
+           (fn-stx-pol-entry-okp (fn-stx-pol-fold c e) (append p c)))
+  :hints (("Goal" :induct (fn-stx-pol-fold-induct c e p)
+           :in-theory (e/d (fn-lace-p) (fn-stx-pol-entry-okp fn-stx-policy-entry-add fn-stmt-p
+                                        fn-stx-pol-member-of-append-one
+                                        fn-stx-pol-not-above-of-append-one
+                                        fn-stx-pol-conflictp-of-append-one))))))
+(local (defun fn-stx-pol-creators-are (cands authority)
+  (if (consp cands)
+      (and (equal (fn-stmt-creator (car cands)) authority)
+           (fn-stx-pol-creators-are (cdr cands) authority))
+    t)))
+(local (defthm fn-stx-pol-key-names-the-creator
+  (implies (equal (fn-stx-policy-key y) (cons group authority))
+           (equal (fn-stmt-creator y) authority))
+  :hints (("Goal" :in-theory (e/d (fn-stx-policy-key) (fn-pol-statement-policy fn-stmt-p))))))
+(local (defthm fn-stx-pol-filter-facts
+  (and (fn-lace-p (fn-stx-pol-filter lace group authority))
+       (fn-stx-pol-creators-are (fn-stx-pol-filter lace group authority) authority))
+  :hints (("Goal" :in-theory (e/d (fn-lace-p) (fn-stmt-p fn-stx-policy-key))))))
+(local (defthm fn-stx-pol-creators-member
+  (implies (and (fn-stx-pol-creators-are cands authority) (member-equal y cands))
+           (equal (fn-stmt-creator y) authority))))
+(local (defthm fn-stx-pol-not-above-member
+  (implies (and (fn-stx-pol-not-above m cands) (member-equal x cands))
+           (not (fn-pol-slot-lessp m x)))
+  :hints (("Goal" :in-theory (disable fn-pol-slot-lessp)))))
+(local (defthm fn-stx-pol-conflictp-is-same-slot-conflictp
+  (implies (and (fn-stmt-p m) (equal (fn-stmt-creator m) authority)
+                (fn-lace-p cands) (fn-stx-pol-creators-are cands authority))
+           (iff (fn-stx-pol-conflictp m cands)
+                (fn-pol-same-slot-conflictp m cands)))
+  :hints (("Goal" :induct (fn-stx-pol-conflictp m cands)
+           :in-theory (e/d (fn-pol-same-slot-conflictp fn-lace-p)
+                           (fn-pol-slot-lessp fn-stmt-p (:d fn-lace-same-slotp)))))))
+(local (defthm fn-stx-pol-same-slot-conflictp-by-member
+  (implies (and (member-equal z cands) (not (equal z l)) (fn-lace-same-slotp z l))
+           (fn-pol-same-slot-conflictp l cands))
+  :hints (("Goal" :in-theory (e/d (fn-pol-same-slot-conflictp) ((:d fn-lace-same-slotp)))))))
+(local (defthm fn-stx-pol-maximal-pair-is-same-slot
+  (implies (and (fn-lace-p cands) (fn-stx-pol-creators-are cands authority)
+                (member-equal a cands) (member-equal b cands)
+                (fn-stx-pol-not-above a cands) (fn-stx-pol-not-above b cands))
+           (fn-lace-same-slotp a b))
+  :hints (("Goal" :use ((:instance fn-stx-pol-same-slotp-is-neither-below))
+           :in-theory (disable fn-pol-slot-lessp fn-stmt-p (:d fn-lace-same-slotp)
+                               fn-stx-pol-same-slotp-is-neither-below)))))
+(local (defthm fn-stx-pol-conflict-case
+  (implies (and (fn-lace-p cands) (fn-stx-pol-creators-are cands authority)
+                (fn-stx-pol-entry-okp e cands) (cdr e))
+           (fn-pol-same-slot-conflictp (fn-pol-latest cands) cands))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-stx-pol-maximal-pair-is-same-slot (a (car e)) (b (fn-pol-latest cands)))
+                 (:instance fn-stx-pol-same-slot-conflictp-by-member (z (car e)) (l (fn-pol-latest cands)))
+                 (:instance fn-stx-pol-conflictp-is-same-slot-conflictp (m (car e))))
+           :in-theory (e/d () (fn-pol-slot-lessp fn-stmt-p (:d fn-lace-same-slotp) fn-pol-latest
+                               fn-pol-same-slot-conflictp fn-stx-pol-conflictp fn-stx-pol-not-above
+                               fn-stx-pol-maximal-pair-is-same-slot
+                               fn-stx-pol-same-slot-conflictp-by-member
+                               fn-stx-pol-conflictp-is-same-slot-conflictp))))))
+(local (defthm fn-stx-pol-no-conflict-case
+  (implies (and (fn-lace-p cands) (fn-stx-pol-creators-are cands authority)
+                (fn-stx-pol-entry-okp e cands) (consp cands) (not (cdr e)))
+           (and (equal (fn-pol-latest cands) (car e))
+                (not (fn-pol-same-slot-conflictp (car e) cands))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-stx-pol-maximal-pair-is-same-slot (a (fn-pol-latest cands)) (b (car e)))
+                 (:instance fn-stx-pol-same-slot-conflictp-by-member (z (fn-pol-latest cands)) (l (car e)))
+                 (:instance fn-stx-pol-conflictp-is-same-slot-conflictp (m (car e))))
+           :in-theory (e/d () (fn-pol-slot-lessp fn-stmt-p (:d fn-lace-same-slotp) fn-pol-latest
+                               fn-pol-same-slot-conflictp fn-stx-pol-conflictp fn-stx-pol-not-above
+                               fn-stx-pol-maximal-pair-is-same-slot
+                               fn-stx-pol-same-slot-conflictp-by-member
+                               fn-stx-pol-conflictp-is-same-slot-conflictp))))))
+(defthm fn-stx-index-policy-agrees
+  (equal (fn-stx-index-policy-current (fn-stx-index-of-store articles keyring) group authority)
+         (fn-pol-current (fn-stx-lace-of-store articles keyring) keyring group authority))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-stx-pol-fold-keeps-okp (p nil) (e nil)
+                            (c (fn-stx-pol-filter (fn-stx-lace-of-store articles keyring) group authority)))
+                 (:instance fn-stx-pol-conflict-case
+                            (cands (fn-stx-pol-filter (fn-stx-lace-of-store articles keyring) group authority))
+                            (e (fn-stx-pol-fold (fn-stx-pol-filter (fn-stx-lace-of-store articles keyring) group authority) nil)))
+                 (:instance fn-stx-pol-no-conflict-case
+                            (cands (fn-stx-pol-filter (fn-stx-lace-of-store articles keyring) group authority))
+                            (e (fn-stx-pol-fold (fn-stx-pol-filter (fn-stx-lace-of-store articles keyring) group authority) nil))))
+           :in-theory (e/d (fn-stx-index-policy-current fn-pol-current)
+                           (fn-pol-slot-lessp fn-stmt-p fn-pol-latest fn-pol-same-slot-conflictp
+                            fn-stx-pol-conflictp fn-stx-pol-not-above fn-stx-pol-fold fn-stx-pol-filter
+                            fn-stx-pol-entry-okp fn-pol-candidates fn-stx-lace-of-store fn-stx-index-of-store
+                            fn-stx-pol-fold-keeps-okp fn-stx-pol-conflict-case fn-stx-pol-no-conflict-case)))))
+
 ; -----------------------------------------------------------------------------
 ; Export theory (docs/proof-style.md section 2).
 
@@ -826,4 +1150,6 @@
                     (:d fn-stx-index-slot-first) (:d fn-stx-records-scan)
                     (:d fn-stx-index-equivocatorp)
                     (:d fn-stx-recorded-equivocationp)
+                    (:d fn-stx-policy-key) (:d fn-stx-policy-entry-add)
+                    (:d fn-stx-index-policy-current)
                     (:d fn-stx-lace-slot-first) (:d fn-stx-slot-partner)))

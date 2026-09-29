@@ -11,7 +11,7 @@
 ; 0 1 2 4 5, sealed as the open reads them.
 (defconst *sxit-events*
   (list (fn-record-make 0 0 0 "<sxit-0@example.invalid>" '(65)
-                        '("fn.letters") "archive" "subject" "evidence" 1 :legacy)
+                        '("fn.letters") "archive" "subject" "evidence" 1 0)
         (fn-store-retention-event-make :undertake 1 1 1
                                        "obligation-1" "article-0" "local" 1)
         (fn-store-retention-event-make :release 2 2 1

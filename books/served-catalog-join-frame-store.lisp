@@ -375,7 +375,7 @@
                                    fn-replay-apply-record fn-replay-apply-retention-event
                                    fn-replay-identity-step fn-cpe-projection-step fn-th-prefix-step
                                    fn-store-retention-event-p fn-stxe-p fn-stxk-p fn-hstxa-p fn-held-p
-                                   fn-cpe-eventp fn-th-topic-eventp fn-th-topic-v1-anchorp
+                                   fn-cpe-eventp fn-th-topic-eventp
                                    fn-replay-advance-txid fn-node-complete fn-scj-no-rowsp
                                    fn-hc-generation fn-held-context fn-record-stamp fn-th-at
                                    fn-sn-identity-context fn-replay-composite-held)))))

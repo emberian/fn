@@ -35,7 +35,7 @@
 ; the entry interns (store-intern fn-intern-row-at), handle = its sequence,
 ; its facts (the control fact the refresh reads: flip-L8-2) its BYTES'.
 (defun cet-rec (seq txid msgid groups bytes)
-  (fn-hrt-row-at (fn-record-make seq txid 1 msgid bytes groups "a" "s" "e" 2 :legacy) seq))
+  (fn-hrt-row-at (fn-record-make seq txid 1 msgid bytes groups "a" "s" "e" 2 0) seq))
 (defconst *cet-records* (list (cet-rec 0 4 "<t@example.invalid>" '("fn.mod.a") '(65))
                               (cet-rec 1 5 "<c2@example.invalid>" '("control.cancel")
                                        (fn-article-payload *cet-c2*))))
