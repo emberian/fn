@@ -45,7 +45,6 @@
 (include-book "octets-stobj")
 (include-book "peer-authored-accept")
 (include-book "login-binding-live")
-(local (include-book "std/lists/nthcdr" :dir :system))
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -209,29 +208,50 @@
 ; -----------------------------------------------------------------------------
 ; The correspondence.
 
+; The nthcdr facts the correspondences read (no std/lists book: the farm's
+; system books certify std/lists/rev only).
+(local
+ (defthm fn-ars-nthcdr-of-zero
+   (equal (nthcdr 0 xs) xs)
+   :hints (("Goal" :in-theory (enable nthcdr)))))
+
 (local
  (defthm fn-ars-cdr-of-nthcdr
-   (equal (cdr (nthcdr j xs)) (nthcdr (+ 1 (nfix j)) xs))
-   :hints (("Goal" :in-theory (enable nthcdr)))))
+   (implies (natp j)
+            (equal (cdr (nthcdr j xs)) (nthcdr (+ 1 j) xs)))
+   :hints (("Goal" :induct (nthcdr j xs) :in-theory (enable nthcdr)))))
 
 (local
  (defthm fn-ars-cddr-of-nthcdr
-   (equal (cdr (cdr (nthcdr j xs))) (nthcdr (+ 2 (nfix j)) xs))))
+   (implies (natp j)
+            (equal (cdr (cdr (nthcdr j xs))) (nthcdr (+ 2 j) xs)))
+   :hints (("Goal" :use ((:instance fn-ars-cdr-of-nthcdr)
+                         (:instance fn-ars-cdr-of-nthcdr (j (+ 1 j))))
+                   :in-theory (disable fn-ars-cdr-of-nthcdr)))))
 
 (local
  (defthm fn-ars-consp-of-nthcdr
-   (equal (consp (nthcdr j xs)) (< (nfix j) (len xs)))
-   :hints (("Goal" :in-theory (enable nthcdr)))))
+   (implies (natp j)
+            (equal (consp (nthcdr j xs)) (< j (len xs))))
+   :hints (("Goal" :induct (nthcdr j xs) :in-theory (enable nthcdr)))))
 
 (local
  (defthm fn-ars-car-of-nthcdr
-   (equal (car (nthcdr j xs)) (nth j xs))
-   :hints (("Goal" :in-theory (enable nthcdr nth)))))
+   (implies (natp j)
+            (equal (car (nthcdr j xs)) (nth j xs)))
+   :hints (("Goal" :induct (nthcdr j xs) :in-theory (enable nthcdr nth)))))
 
 (local
  (defthm fn-ars-len-of-nthcdr
-   (equal (len (nthcdr j xs)) (nfix (- (len xs) (nfix j))))
-   :hints (("Goal" :in-theory (enable nthcdr)))))
+   (implies (natp j)
+            (equal (len (nthcdr j xs)) (nfix (- (len xs) j))))
+   :hints (("Goal" :induct (nthcdr j xs) :in-theory (enable nthcdr)))))
+
+(local
+ (defthm fn-ars-nthcdr-of-nthcdr
+   (implies (and (natp i) (natp j))
+            (equal (nthcdr i (nthcdr j xs)) (nthcdr (+ i j) xs)))
+   :hints (("Goal" :induct (nthcdr j xs) :in-theory (enable nthcdr)))))
 
 (defthm fn-ars-next-line-aux-is-reference
   (implies (natp j)
