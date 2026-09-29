@@ -251,7 +251,10 @@ def summarize(record: dict, slowest: int) -> str:
     elif record["all_skipped"]:
         verdict = f"SKIPPED ({record['skipped']} of {record['skipped']}; no test executed)"
     elif record["passed"]:
-        verdict = "ok" + (f" ({record['skipped']} skipped)" if record.get("skipped") else "")
+        # A skipped test did not pass: it is NOT RUN, counted apart (PKT-375:
+        # the laptop's fn_verify verdicts read as a green module).
+        verdict = "ok" + (f" ({record['skipped']} skipped: NOT RUN, not passed)"
+                          if record.get("skipped") else "")
     else:
         verdict = (f"FAILED ({record.get('failures', '?')} failures, "
                    f"{record.get('errors', '?')} errors, exit {record['returncode']})")

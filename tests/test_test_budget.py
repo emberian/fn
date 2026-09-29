@@ -170,7 +170,7 @@ class TestBudgetRunner(unittest.TestCase):
         self.assertFalse(record["all_skipped"])
         self.assertEqual((record["executed"], record["skipped"]), (1, 1))
         line = test_budget.summarize(record, 1)
-        self.assertIn("ok (1 skipped)", line)
+        self.assertIn("ok (1 skipped: NOT RUN, not passed)", line)
         self.assertIn("opt-in unset", line)
 
     def test_all_skipped_has_its_own_exit_bit(self):
