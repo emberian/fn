@@ -360,6 +360,20 @@
                      5))
 (assert-event (equal (fn-native-operator-exit-code (fn-nop-t-store "export" "/")) 5))
 
+ ; S7a opens the named copy even when the configured source store is absent.
+(defconst *fn-nop-bless* (fn-nop-t-store "bless-snapshot" "/tmp/snapshot"))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-bless*) :accepted))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-bless*)
+                     :bless-snapshot))
+(assert-event (equal (fn-native-operator-result-archive-path-octets *fn-nop-bless*)
+                     (fn-record-string-octets "/tmp/snapshot")))
+(assert-event (not (fn-native-operator-result-needs-storep *fn-nop-bless*)))
+(assert-event (equal (fn-native-operator-store-outcome *fn-nop-bless* nil) *fn-nop-bless*))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-nop-t-store "bless-snapshot" "relative")) :usage))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-nop-t-store "bless-snapshot" "/tmp/a" "/tmp/b")) :usage))
+
 (defconst *fn-nop-import*
   (fn-nop-t-store "import" "/tmp/a" "--max-transactions" "1000"))
 (assert-event (equal (fn-native-operator-result-status *fn-nop-import*) :accepted))

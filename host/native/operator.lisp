@@ -575,6 +575,11 @@ fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
                                 +fnn-exit-refused+)
                          (t (fnn-out "~a" (fnn-core 'fn-oex-status-no-owner-line))
                             +fnn-exit-refused+)))
+                      (:bless-snapshot
+                       (fnn-command-store-bless-snapshot
+                        (fnn-octets-string
+                         (fnn-core 'fn-native-operator-host-result-archive-path-octets
+                                   result))))
                       (:import
                        (fnn-command-store-import
                         root
@@ -1021,7 +1026,7 @@ answer that is neither the report nor a refusal (the transport) is uncertain."
           (:init (fnn-operator-execute-init result))
           (:status (fnn-operator-execute-status result))
           (:health (fnn-operator-execute-health result))
-          ((:recover :compact :checkpoint :export :export-status :import
+          ((:recover :compact :checkpoint :export :export-status :import :bless-snapshot
             :reclaim :reclaim-dry-run :reclaim-recorded :rebind-filesystem)
            (fnn-operator-execute-store-action result action))
           (:inspect (fnn-operator-execute-inspect result))
