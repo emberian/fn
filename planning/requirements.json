@@ -3741,7 +3741,8 @@
         "PRF-970",
         "PRF-991",
         "PRF-1018",
-        "PRF-1037"
+        "PRF-1037",
+        "PRF-1044"
       ],
       "verification": [
         "proof",
@@ -3750,7 +3751,7 @@
       "evidence": [
         "planning/evidence/catalog-slice-2026-09-26.md"
       ],
-      "implementation_note": "Not yet served (catalog-slice, 2026-09-26): the stobj and its columns exist and are proved; the host still reads the owner's view (PKT-585). catalog-slice-2 (2026-09-26): the relation between the catalog's columns and the store's history is proved at every entry (fn-cat-load-establishes-relation) and preserved by the completion; the served reads (PRF-204) remain PKT-585.",
+      "implementation_note": "The served catalog reads its indexed columns; the Message-ID column uses the keyed page table (PRF-1037). P2 slice 3 installs the current generation key at open and asks its saturation verdict before staging (PRF-1044). The served host now preserves :mpx-saturated as a named refusal rather than erasing it into generic :refused; the broadened NNTP refusal distinctness and uncertainty-separation theorems and their literal positive witnesses are REPL-admitted. Matching candidate certification/native execution, served crafted-collision/saturation activation, refusal-finder composition and retained-generation resource evidence remain open. The catalog rows are still heap-resident until P3/P4; no constant-memory whole-store claim follows.",
       "note": "Lane catalog-slice (wave 5 lane 2, D33)."
     },
     {
