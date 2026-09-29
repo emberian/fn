@@ -1194,6 +1194,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-served-invariants-tests \
 	tests/acl2/owner-numbering-tests \
 	books/number-durability \
+	books/number-durability-handles \
 	tests/acl2/number-durability-tests \
 	tests/acl2/owner-fault-tests \
 	tests/acl2/owner-verdict-tests \
