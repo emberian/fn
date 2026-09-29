@@ -103,7 +103,8 @@
 ;; every proof over fn-bpnf-fragment-step sees the same shapes as before.
 
 (defun fn-bpfj-propose-step (st anchor-arrival observation job limit)
-  (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))
+  (declare (xargs :guard (and (fn-bpn-machine-statep (fn-bpnf-base st))
+                              (fn-bpfj-readable-jobp job))
                   :verify-guards nil))
   (if (or (fn-bpnf-issued st)
           (fn-bpnf-waits st)
@@ -142,7 +143,8 @@
                      (fn-bpnf-next-op st) record)))))))
 
 (defun fn-bpfj-persist-step (st epoch op result job limit)
-  (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))
+  (declare (xargs :guard (and (fn-bpn-machine-statep (fn-bpnf-base st))
+                              (fn-bpfj-readable-jobp job))
                   :verify-guards nil))
   (let ((issued (fn-bpnf-issued st)))
     (if (not (and (fn-bpnf-family-issuedp st)
@@ -259,7 +261,15 @@
                        (or (not (equal (fn-cbor-ag-car event) :recover-fnbs))
                            (and (true-listp (fn-bpn-nth 2 event))
                                 (<= (len (fn-bpn-nth 2 event))
-                                    *fn-bpn-machine-max-records*))))
+                                    *fn-bpn-machine-max-records*)))
+                       ;; A carried job is readable (the boundary's check,
+                       ;; books/bp-node-receive-boundary fn-bpnf-host-eventp).
+                       (or (not (equal (fn-cbor-ag-car event) :family))
+                           (not (fn-bpn-nth 3 event))
+                           (fn-bpfj-readable-jobp (fn-bpn-nth 3 event)))
+                       (or (not (equal (fn-cbor-ag-car event) :persist-result))
+                           (not (fn-bpn-nth 4 event))
+                           (fn-bpfj-readable-jobp (fn-bpn-nth 4 event))))
                   :verify-guards nil))
   (cond
    ((equal (fn-cbor-ag-car event) :recover-fnbs)

@@ -5,6 +5,7 @@
 (include-book "bp-node-foundation")
 (include-book "bp-fnbs-namespace")
 (include-book "bp-node-machine-guards")
+(include-book "bp-fragment-job-shape")
 
 (set-verify-guards-eagerness 0)
 
@@ -78,7 +79,7 @@
     (and (true-listp event)
          (or (equal (len event) 4)
              (and (equal (len event) 6)
-                  (fn-bpn-nth 4 event)
+                  (fn-bpfj-readable-jobp (fn-bpn-nth 4 event))
                   (natp (fn-bpn-nth 5 event))))
          (fn-frame-natp (fn-bpn-nth 1 event))
          (fn-frame-natp (fn-bpn-nth 2 event))
@@ -106,7 +107,7 @@
     (and (true-listp event)
          (or (equal (len event) 3)
              (and (equal (len event) 5)
-                  (fn-bpn-nth 3 event)
+                  (fn-bpfj-readable-jobp (fn-bpn-nth 3 event))
                   (natp (fn-bpn-nth 4 event))))
          (fn-frame-natp (fn-bpn-nth 1 event))
          (fn-clock-observationp (fn-bpn-nth 2 event)) t))

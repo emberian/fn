@@ -747,6 +747,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-fragment-sweep \
 	books/bp-fragment-resume \
 	tests/acl2/bp-fragment-resume-tests \
+	books/bp-fragment-job-shape \
 	books/bp-limits \
 	tests/acl2/bp-fragment-tests \
 	tests/acl2/bp-fragment-fast-tests \

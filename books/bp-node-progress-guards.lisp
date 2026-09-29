@@ -421,6 +421,33 @@
                              fn-bpf-fragment-listp-car-and-cdr
                              fn-bpf-fragmentp-fields))))))
 (local
+ (defthm fn-bpnpg-nth-3-of-a-three-list
+   (implies (and (true-listp e) (equal (len e) 3))
+            (equal (fn-bpn-nth 3 e) nil))
+   :hints (("Goal" :expand ((fn-bpn-nth 3 e) (fn-bpn-nth 2 (cdr e))
+                            (fn-bpn-nth 1 (cddr e)) (fn-bpn-nth 0 (cdddr e))
+                            (len e) (len (cdr e)) (len (cddr e))
+                            (len (cdddr e)))
+            :in-theory (union-theories '(fn-cbor-ag-car car-cons cdr-cons
+                                         natp zp (:e natp) (:e zp) (:e binary-+)
+                                         (:e unary--) (:e equal) (:e not)
+                                         default-car default-cdr true-listp)
+                                       (theory 'minimal-theory))))))
+(local
+ (defthm fn-bpnpg-nth-4-of-a-four-list
+   (implies (and (true-listp e) (equal (len e) 4))
+            (equal (fn-bpn-nth 4 e) nil))
+   :hints (("Goal" :expand ((fn-bpn-nth 4 e) (fn-bpn-nth 3 (cdr e))
+                            (fn-bpn-nth 2 (cddr e)) (fn-bpn-nth 1 (cdddr e))
+                            (fn-bpn-nth 0 (cddddr e))
+                            (len e) (len (cdr e)) (len (cddr e))
+                            (len (cdddr e)) (len (cddddr e)))
+            :in-theory (union-theories '(fn-cbor-ag-car car-cons cdr-cons
+                                         natp zp (:e natp) (:e zp) (:e binary-+)
+                                         (:e unary--) (:e equal) (:e not)
+                                         default-car default-cdr true-listp)
+                                       (theory 'minimal-theory))))))
+(local
  (defthm fn-bpnp-delegate-event-guard
    (implies (and (fn-bpnp-host-eventp event)
                  (not (equal (fn-cbor-ag-car event) :progress)))
@@ -429,13 +456,20 @@
                  (or (not (equal (fn-cbor-ag-car event) :recover-fnbs))
                      (and (true-listp (fn-bpn-nth 2 event))
                           (<= (len (fn-bpn-nth 2 event))
-                              *fn-bpn-machine-max-records*)))))
+                              *fn-bpn-machine-max-records*)))
+                 (or (not (equal (fn-cbor-ag-car event) :family))
+                     (not (fn-bpn-nth 3 event))
+                     (fn-bpfj-readable-jobp (fn-bpn-nth 3 event)))
+                 (or (not (equal (fn-cbor-ag-car event) :persist-result))
+                     (not (fn-bpn-nth 4 event))
+                     (fn-bpfj-readable-jobp (fn-bpn-nth 4 event)))))
    :hints (("Goal" :do-not-induct t
             :in-theory (e/d (fn-bpnp-host-eventp fn-bpnf-host-eventp)
                             (fn-bpn-machine-eventp fn-bpb-bundlep
                              fn-bpp-blockp fn-bpn-nth-is-nth-on-true-lists
                              fn-bpf-fragment-listp-is-a-true-list
-                             fn-bpf-fragment-listp fn-bpf-fragmentp fn-cp-idp))))
+                             fn-bpf-fragment-listp fn-bpf-fragmentp fn-cp-idp
+                             fn-bpfj-readable-jobp))))
    :rule-classes nil))
 (local
  (defthm fn-bpnp-held-list-of-with-runtime-for-guard
