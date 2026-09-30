@@ -243,3 +243,18 @@ Internal fixnum shift temporaries, compiled call/frame and collector lifetimes
 remain open; this sum is not total ASH or decoder allocation demand. New
 literal domain-removal and unsupported-factor mutation teeth preserve that
 scope, and the central inclusion patch remains a convergence obligation.
+
+
+`payload-action-runtime-workspace.lisp` establishes the actual emit/pull/match
+arithmetic operand domains from carried input/output/header/bit/span bounds.
+Under the named shared NEG/ADD and positive256-multiply families at the exact
+coordinate, the arithmetic-only sums are96/160 bytes for refused/successful
+emit,64 for pull,128 for zero-K match, or224+96K for a positive match.
+Thus K64 costs6368 for this family, including the surrounding match counters.
+Eleven complete conditional-positive and retained-premise removal teeth
+accompany those component joins. The corrupt NBITS removal fixes the bad
+scalar and proves domain failure for every unrelated external buffer; the
+getter refinement is closed so proof preprocessing cannot execute unsupported
+huge shifts. Width monotonicity helpers remain local. Borrowed getters/setters,
+bit/ring/index helpers, compiled calls, cache/fault/collector lifetimes and
+whole initialization/activation authority remain separate open obligations.

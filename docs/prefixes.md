@@ -373,3 +373,5 @@ anything a book does not already decide.
 | `fn-pat-` | `payload-action-source-trace`, `payload-action-source-counts` | actual emit/pull/match return/effects observers and arithmetic-site counts; borrowed costs remain open |
 
 | `fn-pbs-` | `payload-budget-shift-workspace` | actual budget source roster mapped to selected ASH result/add families; full runtime adequacy open |
+
+| `fn-paw-` | `payload-action-runtime-workspace` | actual action arithmetic operand and conditional workspace joins; borrowed/compiler/lifetime costs remain open |
