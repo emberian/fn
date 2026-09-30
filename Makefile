@@ -2014,7 +2014,13 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/consumer-remote-query-profile-tests \
     tests/acl2/consumer-remote-scope-tests \
     tests/acl2/consumer-remote-transaction-tests \
-    tests/acl2/consumer-remote-wire-charge-tests
+    tests/acl2/consumer-remote-wire-charge-tests \
+    books/consumer-account-candidate \
+    books/consumer-account-candidate-model \
+    tests/acl2/consumer-account-candidate-tests \
+    books/consumer-account-initial \
+    books/consumer-progress-carried \
+    tests/acl2/consumer-account-config-owner-lineage-tests
 
 .PHONY: host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none

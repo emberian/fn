@@ -45,7 +45,7 @@
  (let* ((cp (fn-cp-nth 0 *acjt-prepared*)) (p (fn-cp-nth 5 (fn-cp-nth 6 cp))))
   (fn-cacm-marker '(65) 7 0 0 (fn-cp-nth 3 cp) (fn-cp-nth 3 p) (fn-cp-nth 7 p))))
 (defconst *acjt-record*
- (fn-cfg-record-make 8 (1+ (fn-cp-nth 3 (fn-cp-nth 0 *acjt-prepared*))) 8
+ (fn-cfg-record-make (fn-cfg-generation *bcpt-base*) (1+ (fn-cp-nth 3 (fn-cp-nth 0 *acjt-prepared*))) 8
                      *acjt-marker* (fn-clock-observation 1 0 0 nil)))
 (defconst *acjt-final*
  (fn-acj-commit (fn-cp-nth 0 *acjt-prepared*) (fn-cp-nth 1 *acjt-prepared*)
@@ -93,3 +93,14 @@
                            (update-nth 4 (list :authority-fence '(65) 0 (fn-cp-nth 3 p) (fn-cp-nth 7 p)) event)
                            seq nil)
               '(:refused :typed-config-commit-required)))))
+
+;@mutation-witness actual-c-sequence-is-prior-generation
+(assert-event
+ (let* ((cp (fn-cp-nth 0 *acjt-prepared*))
+        (wrong (update-nth 0 (fn-cfg-record-generation *acjt-record*) *acjt-record*)))
+  (and (equal (fn-cfg-record-sequence *acjt-record*) 7)
+       (equal (fn-cfg-record-generation *acjt-record*) 8)
+       (equal (fn-cp-nth 0 *acjt-final*) :ok)
+       (equal (fn-acj-commit cp (fn-cp-nth 1 *acjt-prepared*)
+                            (fn-cp-nth 2 *acjt-prepared*) wrong 0 (fn-cp-nth 3 cp))
+              '(:refused :account-config-commit)))))

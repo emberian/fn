@@ -97,7 +97,10 @@
                 (equal (len metadata) 5) (eq (fn-cp-nth 0 metadata) :account-carries)
                 (fn-cp-uintp base) (< base *fn-cbor-max-uint*)
                 (equal generation (1+ base))
-                (equal (fn-cfg-record-sequence record) generation)
+                ; Existing fn-ocfg-reconfig-record persists prior generation as C
+                ; sequence. Genesis is sequence 0/generation 1; this commit
+                ; extends that same lineage rather than treating the two alike.
+                (equal (fn-cfg-record-sequence record) base)
                 (fn-cp-uintp (fn-cfg-record-txid record))
                 (posp (fn-cfg-record-txid record))
                 (< (fn-cfg-record-txid record) *fn-cbor-max-uint*)
@@ -138,6 +141,11 @@
  (implies (equal (fn-cp-nth 0 (fn-acj-commit cp metadata preparation record begin-count event-count)) :ok)
           (equal (fn-cp-nth 3 (fn-cp-nth 1 (fn-acj-commit cp metadata preparation record begin-count event-count)))
                  (fn-cp-nth 3 cp)))
- :hints (("Goal" :in-theory (enable fn-acj-commit fn-cp-state-carry fn-cp-nth))))
+ :hints (("Goal" :in-theory
+          (e/d (fn-acj-commit fn-cp-state-carry fn-cp-nth)
+               (fn-caac-metadata fn-caac-root-carry fn-bcp-prepared
+                fn-cacm-recordp fn-cbor-at-mostp fn-cp-uintp
+                fn-caac-authority-carry fn-caac-atom fn-caac-spine
+                fn-caac-list-carry)))))
 
 (in-theory (disable fn-acj-metadata5 fn-acj-stage-advance fn-acj-stage fn-acj-commit))

@@ -41,6 +41,7 @@
 (include-book "../books/owner-config")
 (include-book "../books/owner-authority-proposal-state")
 (include-book "../books/consumer-account-carries-state")
+(include-book "../books/consumer-progress-carried")
 (include-book "../books/owner-state-accessors")
 (include-book "../books/state-globals")
 (include-book "../books/owner-retain-state")
@@ -1237,7 +1238,7 @@
          ; Its maintained correspondence is an owner producer obligation;
          ; absence remains unavailable, never reconstructed from CP graphs.
          (approved (if reason nil
-                     (fn-cca-preflight cp (fn-owner-account-carries-read state)))))
+                     (fn-cpm-config-preflight cp (fn-owner-account-carries-read state)))))
     (if (and (not reason) (not (eq (fn-cp-nth 0 approved) :ok)))
         (value (fn-ores-config-refused (fn-cp-nth 1 approved)))
       (let* ((state (fn-owner-step (list :reconfigure id deltas) fn-arena state))

@@ -2003,29 +2003,35 @@
     "tests/acl2/consumer-remote-query-profile-tests",
     "tests/acl2/consumer-remote-scope-tests",
     "tests/acl2/consumer-remote-transaction-tests",
-    "tests/acl2/consumer-remote-wire-charge-tests"
+    "tests/acl2/consumer-remote-wire-charge-tests",
+    "books/consumer-account-candidate",
+    "books/consumer-account-candidate-model",
+    "tests/acl2/consumer-account-candidate-tests",
+    "books/consumer-account-initial",
+    "books/consumer-progress-carried",
+    "tests/acl2/consumer-account-config-owner-lineage-tests"
   ],
   "totals": {
-    "books": 2186,
-    "books_in_root_closure": 2134,
-    "roots": 2002,
-    "theorems": 32329,
-    "functions": 20681,
-    "assert_events": 24426,
+    "books": 2192,
+    "books_in_root_closure": 2142,
+    "roots": 2008,
+    "theorems": 32333,
+    "functions": 20703,
+    "assert_events": 24436,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 160,
     "guards": {
       "verified": 3709,
-      "declared-off": 2529,
-      "default-guarded": 11449,
+      "declared-off": 2534,
+      "default-guarded": 11466,
       "default-unguarded": 2994
     },
     "suspect_theorems": 1291,
     "export_hygiene_warnings": 381,
     "enabled_projection_warnings": 69,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2817,
+    "include_hygiene_warnings": 2821,
     "host_names_warnings": 2366,
     "hand_written_record_warnings": 19
   },
@@ -11371,6 +11377,58 @@
       "read_error": null
     },
     {
+      "book": "books/consumer-account-candidate-model.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "consumer-account-candidate"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/consumer-account-candidate.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 10,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "consumer-account-carried"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/consumer-account-carried.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -11618,6 +11676,32 @@
       "read_error": null
     },
     {
+      "book": "books/consumer-account-initial.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "consumer-account-carried"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/consumer-account-input.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -11750,7 +11834,7 @@
     },
     {
       "book": "books/consumer-authority-revision.lisp",
-      "in_root_closure": false,
+      "in_root_closure": true,
       "is_root": false,
       "theorems": 2,
       "functions": 3,
@@ -11810,7 +11894,7 @@
     },
     {
       "book": "books/consumer-config-authority.lisp",
-      "in_root_closure": false,
+      "in_root_closure": true,
       "is_root": false,
       "theorems": 2,
       "functions": 5,
@@ -12177,6 +12261,33 @@
       "suspects": [
         "fn-cp-cursor-decode-overlong-by-definition"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/consumer-progress-carried.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 6,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "consumer-account-initial",
+        "consumer-config-authority"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -46940,6 +47051,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/consumer-account-candidate-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 8,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 10,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/consumer-account-candidate-model"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/consumer-account-config-commit-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -46952,7 +47089,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 4,
+      "assert_events": 5,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 10,
@@ -46988,6 +47125,33 @@
       "encapsulates": 0,
       "includes": [
         "../../books/consumer-account-config-marker-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/consumer-account-config-owner-lineage-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-config",
+        "consumer-account-config-commit-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -82048,10 +82212,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/consumer-account-candidate.lisp",
+        "line": 8,
+        "include": "consumer-account-carried",
+        "included": "books/consumer-account-carried.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/consumer-account-config-preparation.lisp",
         "line": 9,
         "include": "identity-hex",
         "included": "books/identity-hex.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/consumer-account-initial.lisp",
+        "line": 5,
+        "include": "consumer-account-carried",
+        "included": "books/consumer-account-carried.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -82164,6 +82342,20 @@
         "line": 8,
         "include": "rev-onto",
         "included": "books/rev-onto.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/consumer-progress-carried.lisp",
+        "line": 6,
+        "include": "consumer-account-initial",
+        "included": "books/consumer-account-initial.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/consumer-progress-carried.lisp",
+        "line": 7,
+        "include": "consumer-config-authority",
+        "included": "books/consumer-config-authority.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -113481,140 +113673,140 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 442,
+        "line": 443,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 442,
+        "line": 443,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 442,
+        "line": 443,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 458,
+        "line": 459,
         "name": "with-local-stobj",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 748,
+        "line": 749,
         "name": "member-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 859,
+        "line": 860,
         "name": "atom",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 859,
+        "line": 860,
         "name": "reverse",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1091,
+        "line": 1092,
         "name": "fn-hist-count",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1586,
+        "line": 1587,
         "name": "fn-owner-incoming-row",
         "source": "books/incoming-copy-association.lisp",
         "reason": "defined in books/incoming-copy-association.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1722,
+        "line": 1723,
         "name": "fn-arena-count",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1880,
+        "line": 1881,
         "name": "fn-octets-len",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1880,
+        "line": 1881,
         "name": "fn-octets-list",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2889,
+        "line": 2890,
         "name": "assoc-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 4221,
+        "line": 4222,
         "name": "fn-owner-rx-parser-source-currentp",
         "source": "host/receiver-source-gate-host.lisp",
         "reason": "defined in host/receiver-source-gate-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 4221,
+        "line": 4222,
         "name": "stobj-let",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 4221,
+        "line": 4222,
         "name": "fn-rxp-octets",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 4221,
+        "line": 4222,
         "name": "fn-rxp-carry",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 4221,
+        "line": 4222,
         "name": "erp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 4221,
+        "line": 4222,
         "name": "fn-rxc-token",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 4560,
+        "line": 4561,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
