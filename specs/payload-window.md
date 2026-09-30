@@ -202,3 +202,17 @@ lowering, other arithmetic/modes, constructors, frames, first-use/cache,
 collector coexistence and retained activation-to-return lifetimes remain
 separate obligations before native admission. The central assumptions umbrella
 must include the shared book at convergence.
+
+
+`A-SELECTED-RUNTIME-POSITIVE` adds a separate conditional single positive
+fixed-factor multiplication family for factors 2, 16 and 256 at the same
+runtime/compiler/attachment coordinate. Its natural input limit and extra
+result digit are explicit; negative copies, ratios and general multiply are
+excluded. Existing actual storage allowance and decode-budget source observers
+join to conditional 64/128-byte arithmetic-family sums. C63/N72 alone need a
+conservative 74-bit helper operand bound; under full stored admissibility the
+existing narrower budget theorem remains unchanged. The positive fixture uses
+an admissible stored length; unsupported wider input is labelled separately.
+Actual compiled constant-site lowering remains to be qualified before any
+complete runtime demand consumes the conditional primitive family. The
+central umbrella patch includes both shared assumption books at convergence.
