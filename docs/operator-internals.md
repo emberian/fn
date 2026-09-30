@@ -1627,7 +1627,9 @@ The service log (`[log] path`, otherwise stderr, which under systemd is the
 journal) carries one line per post and one per accepted connection, with the
 outcome word first. `run` opens `[log] path` append-only (created 0640 if it
 is absent, never through a symlink) before it opens the store, so a wrong
-path fails before recovery; fn never truncates or rotates it. A connection
+path fails before recovery. fn does not rotate it automatically: rename the
+file and send the owner `SIGHUP`; it reopens that path at the next accept,
+so external rotation uses rename and signal without `copytruncate`. A connection
 line says the **role** the owner gave the connection at accept, which it
 decides from the peer table and not from anything the client says: `reader`,
 or `peer` with the record's name. A post line's word is the reply's word:

@@ -63,8 +63,9 @@ enabled = true
 # `reader` or `peer name=...`.  A relative path is under this file's
 # directory, as every path here is.  `run` opens it
 # append-only (created 0640 if absent, never through a symlink) before it
-# opens the store; fn never truncates or rotates it, so give it to your log
-# rotation tool (copytruncate) if it must be bounded.  Remove this table to
+# opens the store. To rotate it, rename the file and send the owner SIGHUP;
+# it reopens this path on its next accept. No copytruncate is needed.
+# Remove this table to
 # log to stderr, which under systemd is the journal.
 path = "/var/log/fn/fn.log"
 
