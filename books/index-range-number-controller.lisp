@@ -84,3 +84,61 @@
             (fn-ipub-count publication))
           (fn-ibr-work next publication nil nil))))
      (t (fn-ibr-restate control :number group number work)))))
+
+(defthm fn-ibr-group-one-retains-original-plan-and-source
+  (let ((next (fn-ibr-group-one control)))
+    (and (equal (fn-spp-at 1 next) (fn-spp-at 1 control))
+         (equal (fn-spp-at 2 next) (fn-spp-at 2 control))
+         (equal (fn-spp-at 4 next) (fn-spp-at 4 control))
+         (equal (fn-spp-at 5 next) (fn-spp-at 5 control))
+         (equal (fn-spp-at 8 next) (fn-spp-at 8 control))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-ibr-group-one fn-ibr-restate fn-ibr-make
+                 fn-spp-at fn-ag-car fn-ag-cdr)
+                (fn-gns-group-step fn-gns-group-selected-result
+                 fn-gns-number-begin fn-ipub-count)))))
+
+(defthm fn-ibr-number-one-retains-publication-plan-and-owed
+  (let* ((next (fn-ibr-number-one control))
+         (old-work (fn-spp-at 8 control)) (new-work (fn-spp-at 8 next)))
+    (and (equal (fn-spp-at 1 next) (fn-spp-at 1 control))
+         (equal (fn-spp-at 2 next) (fn-spp-at 2 control))
+         (equal (fn-spp-at 4 next) (fn-spp-at 4 control))
+         (equal (fn-spp-at 5 next) (fn-spp-at 5 control))
+         (equal (fn-spp-at 6 next) (fn-spp-at 6 control))
+         (equal (fn-spp-at 2 new-work) (fn-spp-at 2 old-work))
+         (equal (fn-spp-at 5 (fn-spp-at 1 new-work))
+                (fn-spp-at 5 (fn-spp-at 1 old-work)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-ibr-number-one fn-ibr-restate fn-ibr-make fn-ibr-work
+                 fn-obc-next-range fn-ovw-cursor fn-spp-at fn-ag-car fn-ag-cdr)
+                (fn-gns-number-step fn-gns-number-result
+                 fn-gns-group-selected-result fn-gns-number-begin fn-ipub-count)))))
+
+; Guard/proof carry only. Registered transitions establish it once and keep
+; it; the selected compiled callback must not execute this recognizer.
+(defun fn-ibr-number-ready-p (control)
+  (declare (xargs :guard t))
+  (let* ((work (fn-spp-at 8 control))
+         (range (fn-spp-at 1 work)) (publication (fn-spp-at 2 work))
+         (number (fn-spp-at 7 control)))
+    (and (fn-gns-number-cursorp number) (true-listp range)
+         (natp (fn-ipub-count publication))
+         (implies (posp (fn-spp-at 1 range))
+                  (equal (fn-gns-at 3 number) (fn-ipub-count publication))))))
+
+(defthm fn-ibr-number-one-preserves-captured-count-carry
+  (implies (fn-ibr-number-ready-p control)
+           (fn-ibr-number-ready-p (fn-ibr-number-one control)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-gns-number-step-cursorp
+                            (c (fn-spp-at 7 control))))
+           :in-theory
+           (e/d (fn-ibr-number-ready-p fn-ibr-number-one fn-ibr-work
+                 fn-ibr-restate fn-ibr-make fn-obc-next-range fn-ovw-cursor
+                 fn-spp-at fn-gns-at fn-ag-car fn-ag-cdr
+                 fn-gns-number-step fn-gns-number-begin fn-gns-number-cursorp)
+                (fn-gns-number-result fn-gns-group-selected-result fn-ipub-count)))))

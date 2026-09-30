@@ -59,6 +59,7 @@
 
 (in-package "ACL2")
 (include-book "catalog-record")
+(include-book "catalog-message-id-shape")
 (include-book "msgid-pages-exec")
 
 ; The tau system is off in this book: it is time no prover step counts, and
@@ -330,12 +331,6 @@
 ;; HORIZON (one past the latest withdrawal's version, fn-cat-horizon-of) is
 ;; that bound, and books/served-catalog.lisp falls back to the probe pass
 ;; below it.
-
-(defun fn-scat-msgid-idp (text)
-  (declare (xargs :guard t))
-  (and (stringp text)
-       (<= (length text) *fn-nntp-max-message-id-octets*)
-       (fn-nntp-message-id-tokenp (fn-nntp-string-octets text))))
 
 (defun fn-cat-live-rowp (group k h)
   (declare (xargs :guard t))

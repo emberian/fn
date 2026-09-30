@@ -1,0 +1,111 @@
+(in-package "ACL2")
+(include-book "../../books/index-range-number-controller")
+
+(defun irnct-publication ()
+  (declare (xargs :guard t))
+  (fn-ipub-make 6 "key" nil 2 9 7 nil 0 11 nil 0 12
+    (fn-gnix-set 359
+      (fn-gns-group-value 3 (fn-gnix-set 3 '(:ordinal 1)
+                                  (fn-gnix-set 1 '(:ordinal 0) nil))) nil)
+    13 42 '(:captured-visibility) 4 2))
+(defun irnct-start ()
+  (declare (xargs :guard t))
+  (fn-ibr-begin 17 6
+    '((:over-cursor ("g" 1 3 7 nil t)))
+    (list :publication-pin '(:generation 6) (irnct-publication))
+    '(:reserved-row-work) '(:original-effects)))
+(defun-nx irnct-group-run (control steps)
+  (declare (xargs :measure (nfix steps) :verify-guards nil))
+  (if (zp steps) control
+    (irnct-group-run (fn-ibr-group-one control) (- steps 1))))
+(defun-nx irnct-number-conclusion (control)
+  (declare (xargs :verify-guards nil))
+  (fn-ibr-number-ready-p (fn-ibr-number-one control)))
+
+; Conditional source/controller fixture, not an issued grant/publication.
+(defthm irnct-positive-captured-source-group-and-ordinal-zero
+  (let* ((start (irnct-start))
+         (begin (fn-ibr-number-source-begin start))
+         (group (irnct-group-run (mv-nth 1 begin) 9))
+         (row (fn-ibr-number-one group)))
+    (and (equal (mv-nth 0 begin) :group)
+         (equal (fn-spp-at 3 group) :number)
+         (fn-ibr-number-ready-p group)
+         (irnct-number-conclusion group)
+         (equal (fn-spp-at 3 row) :row)
+         (equal (fn-gns-number-result (fn-spp-at 7 row)) '(:ordinal 0))
+         (equal (fn-spp-at 4 row) (fn-spp-at 4 start))
+         (equal (fn-spp-at 5 row) (fn-spp-at 5 start))
+         (equal (fn-ipub-count (fn-spp-at 2 (fn-spp-at 8 row))) 2)
+         (equal (fn-ipub-view (fn-spp-at 2 (fn-spp-at 8 row))) 7)
+         (equal (fn-ipub-frontier (fn-spp-at 2 (fn-spp-at 8 row))) 9)))
+  :rule-classes nil
+  :hints (("Goal" :expand ((:free (control n) (irnct-group-run control n)))
+           :in-theory (enable irnct-group-run))))
+
+(defthm irnct-positive-hole-advances-number-and-keeps-owed
+  (let* ((group (irnct-group-run
+                 (mv-nth 1 (fn-ibr-number-source-begin (irnct-start))) 9))
+         (pub (fn-spp-at 2 (fn-spp-at 8 group)))
+         (root (fn-spp-at 1 (fn-gns-group-selected-result (fn-spp-at 6 group))))
+         (hole (fn-ibr-restate group :number (fn-spp-at 6 group)
+                 (fn-gns-number-begin 2 root 2)
+                 (fn-ibr-work '("g" 2 3 7 nil t) pub nil nil)))
+         (bit (fn-ibr-number-one hole))
+         (next (fn-ibr-number-one bit)))
+    (and (fn-ibr-number-ready-p hole)
+         (irnct-number-conclusion hole)
+         (fn-ibr-number-ready-p bit)
+         (irnct-number-conclusion bit)
+         (equal (fn-spp-at 1 (fn-spp-at 1 (fn-spp-at 8 next))) 3)
+         (equal (fn-spp-at 5 (fn-spp-at 1 (fn-spp-at 8 next))) t)
+         (equal (fn-spp-at 2 (fn-spp-at 8 next)) pub)
+         (equal (fn-spp-at 4 next) (fn-spp-at 4 hole))))
+  :rule-classes nil
+  :hints (("Goal" :expand ((:free (control n) (irnct-group-run control n)))
+           :in-theory (enable irnct-group-run))))
+
+; Corrupted count carry: no issuer/source authority is claimed for it.
+(defthm irnct-removal-captured-count-carry
+  (let* ((pub (irnct-publication))
+         (control (fn-ibr-make 17 6 :number '(:original-plan)
+                    (list :publication-pin '(:generation 6) pub) nil
+                    (fn-gns-number-begin 8 nil 1)
+                    (fn-ibr-work '("g" 8 9 7 nil t) pub nil nil))))
+    (and (not (fn-ibr-number-ready-p control))
+         (not (irnct-number-conclusion control))))
+  :rule-classes nil)
+
+(defun-nx irnct-group-source-conclusion (control)
+  (declare (xargs :verify-guards nil))
+  (let ((next (fn-ibr-group-one control)))
+    (and (equal (fn-spp-at 1 next) (fn-spp-at 1 control))
+         (equal (fn-spp-at 2 next) (fn-spp-at 2 control))
+         (equal (fn-spp-at 4 next) (fn-spp-at 4 control))
+         (equal (fn-spp-at 5 next) (fn-spp-at 5 control))
+         (equal (fn-spp-at 8 next) (fn-spp-at 8 control)))))
+(defun-nx irnct-number-source-conclusion (control)
+  (declare (xargs :verify-guards nil))
+  (let* ((next (fn-ibr-number-one control))
+         (old-work (fn-spp-at 8 control)) (new-work (fn-spp-at 8 next)))
+    (and (equal (fn-spp-at 1 next) (fn-spp-at 1 control))
+         (equal (fn-spp-at 2 next) (fn-spp-at 2 control))
+         (equal (fn-spp-at 4 next) (fn-spp-at 4 control))
+         (equal (fn-spp-at 5 next) (fn-spp-at 5 control))
+         (equal (fn-spp-at 6 next) (fn-spp-at 6 control))
+         (equal (fn-spp-at 2 new-work) (fn-spp-at 2 old-work))
+         (equal (fn-spp-at 5 (fn-spp-at 1 new-work))
+                (fn-spp-at 5 (fn-spp-at 1 old-work))))))
+
+(defthm irnct-positive-complete-group-and-number-source-boundaries
+  (let* ((begin (mv-nth 1 (fn-ibr-number-source-begin (irnct-start))))
+         (number (irnct-group-run begin 9)))
+    (and (fn-gns-group-cursorp (fn-spp-at 6 begin))
+         (equal (fn-spp-at 3 begin) :group)
+         (irnct-group-source-conclusion begin)
+         (fn-ibr-number-ready-p number)
+         (equal (fn-spp-at 3 number) :number)
+         (irnct-number-source-conclusion number)))
+  :rule-classes nil
+  :hints (("Goal" :expand ((:free (control n) (irnct-group-run control n)))
+           :in-theory (enable irnct-group-run))))
