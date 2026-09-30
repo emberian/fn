@@ -6350,7 +6350,8 @@
         "Evaluate actual two-byte and zero-copy ring/output effects with full counter-count/domain conclusions; remove the operand-width premise and test the two-operations-per-byte tariff mutation.",
         "Check exact actual counter-roster domain/count join and conditional workspace positive; remove typed-demand coordinate/span premises and actual roster-width premise; distinguish omitted-negation charge mutation from allocator claims.",
         "Check guard-verified positive fixed-factor family selector complete domains and each refusal; join actual admissible storage allowance/budget positives, remove actual helper operand premises, and label unsupported-stored-length 73-bit intermediate mutation.",
-        "Construct actual small and N>2^63 core decoded descriptors; assert complete descriptor/off_t-to-C63/N72/budget73 antecedent and conclusion, both literal hypothesis removals, corrupted trailer2^400 and wide ticket/file ceiling witnesses."
+        "Construct actual small and N>2^63 core decoded descriptors; assert complete descriptor/off_t-to-C63/N72/budget73 antecedent and conclusion, both literal hypothesis removals, corrupted trailer2^400 and wide ticket/file ceiling witnesses.",
+        "Call the actual typed initializer with empty and real shipped presets and a supported wide scalar decoded descriptor; assert complete internal carry, fixed buffer representation, zero counters and returned control domains, then both literal control-premise removals."
       ],
       "expected": [
         "Bit buffer remains at most39bits and exact length-relative Huffman carry is preserved only on non-error exits; every walker exit remains within the stated fixed scalar bounds.",
@@ -6363,7 +6364,8 @@
         "Actual copy large-counter family records one negation plus two additions per byte; this does not price the surrounding small-index/decoder/compiler work.",
         "The counter-only96*K charge is conditional on named single-primitive runtime assumptions; complete compiled decoder demand remains open.",
         "Positive fixed-factor 2/16/256 single-primitive allocation is a named conditional model with pinned source review, not proof of compiled-site lowering or full job demand.",
-        "Selected offset representability and actual stored admissibility establish decoder scalar widths. Descriptor validity does not establish257-bit trailer provenance or small identity/ticket widths; no full decoded job admission is activated."
+        "Selected offset representability and actual stored admissibility establish decoder scalar widths. Descriptor validity does not establish257-bit trailer provenance or small identity/ticket widths; no full decoded job admission is activated.",
+        "Actual initialization establishes its representation and scalar funding prerequisites without a prior decoder invariant. These source facts do not justify a supplied-demand lease or full compiled activation-to-cleanup adequacy."
       ],
       "evidence": [
         "tests/acl2/payload-window-width-tests.lisp",
@@ -6414,7 +6416,9 @@
         "planning/evidence/payload-table-runtime-domain-2026-09-30/README.md",
         "books/decoded-window-profile.lisp",
         "tests/acl2/decoded-window-profile-tests.lisp",
-        "planning/evidence/decoded-window-profile-2026-09-30/README.md"
+        "planning/evidence/decoded-window-profile-2026-09-30/README.md",
+        "tests/acl2/decoded-window-initial-funding-domain-tests.lisp",
+        "planning/evidence/decoded-window-initial-funding-domain-2026-09-30/README.md"
       ],
       "execution_scope": "Protected source replay only; the codec/runtime/controller/host composition remains open."
     },

@@ -309,3 +309,16 @@ witnesses accompany the theorem. This is a source scalar prerequisite for
 actual `fn-pwz-job-demand`; the supplied-demand admission remains insufficient,
 and complete constructors/wrappers/compiler frames/cache/GC/lifetime and
 activation-to-definite-cleanup adequacy are still open.
+
+`decoded-window-initial-funding-domain.lisp` now joins those descriptor
+widths to the actual host-called `fn-pwz-begin` result. Actual initialization
+establishes bit, Huffman and header carry; typed fixed history/table buffers
+and empty output; and zero TIN/TOUT, without a prior decoder invariant. The
+actual typed token and selected native offset profile establish the returned
+continuation's N72, decoded-offset containment, at most16KiB requested window,
+budget73, zero input span and initial status. Complete empty-preset, shipped-
+preset and supported wide scalar positives, plus both control-premise removals,
+accompany these literal theorems. These facts supply actual initializer inputs
+to future full job demand composition. Compiled callbacks, frames, constructors,
+cache/GC/lifetime and definitive cleanup remain separate open obligations;
+no supplied-demand or native activation authority follows.
