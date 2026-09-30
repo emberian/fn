@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1858 |
-| Certification roots in the Makefile | 1782 |
-| Books inside the root closure | 1855 |
-| `defthm` and `defthmd` events | 29549 |
-| `defun` events | 18936 |
+| Books read | 1865 |
+| Certification roots in the Makefile | 1789 |
+| Books inside the root closure | 1862 |
+| `defthm` and `defthmd` events | 29698 |
+| `defun` events | 18952 |
 | Functions with verified guards | 3513 |
 | Functions declared `:verify-guards nil` and never verified | 2265 |
-| Functions left at the default with an explicit guard | 10321 |
-| Functions left at the default with no guard | 2837 |
-| `assert-event` checks | 23920 |
+| Functions left at the default with an explicit guard | 10325 |
+| Functions left at the default with no guard | 2849 |
+| `assert-event` checks | 23924 |
 | `must-fail` checks | 2516 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 163 |
+| `encapsulate` events | 169 |
 | Theorems flagged SUSPECT by shape | 1248 |
 | Export-hygiene warnings | 340 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2549 |
+| Include-hygiene warnings | 2557 |
 | Host-names warnings | 2156 |
 | Hand-written-record warnings | 18 |
 
@@ -436,7 +436,9 @@ that `make certify` requests.
 | `books/extent-window-compressed.lisp` | closure | 1 | 10 | 3/0/7/0 | 0 | 0 | 0 |
 | `books/extent-window-plan.lisp` | closure | 11 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/extent-window-refinement.lisp` | closure | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/extent-window-source-words.lisp` | root | 11 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `books/extent-window-stream-refinement.lisp` | closure | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/extent-window-stream-semantics.lisp` | root | 15 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/extent-window-stream.lisp` | closure | 3 | 7 | 2/0/5/0 | 0 | 0 | 0 |
 | `books/feed-auth-profile.lisp` | root | 4 | 8 | 8/0/0/0 | 0 | 0 | 0 |
 | `books/feed-connection-invariants.lisp` | root | 48 | 22 | 2/0/20/0 | 0 | 0 | 1 |
@@ -589,7 +591,7 @@ that `make certify` requests.
 | `books/native-auth-admin.lisp` | root | 17 | 60 | 7/0/53/0 | 0 | 0 | 0 |
 | `books/native-auth-profile.lisp` | root | 9 | 25 | 2/0/23/0 | 0 | 0 | 1 |
 | `books/native-config-observation.lisp` | root | 10 | 21 | 10/0/11/0 | 0 | 0 | 0 |
-| `books/native-config-paths.lisp` | root | 9 | 9 | 0/0/9/0 | 0 | 0 | 0 |
+| `books/native-config-paths.lisp` | root | 10 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/native-config-show.lisp` | root | 130 | 40 | 0/0/36/4 | 0 | 0 | 3 |
 | `books/native-config.lisp` | root | 31 | 109 | 1/0/108/0 | 0 | 0 | 0 |
 | `books/native-control-buffer.lisp` | root | 23 | 12 | 1/0/11/0 | 0 | 0 | 0 |
@@ -811,6 +813,8 @@ that `make certify` requests.
 | `books/payload-lz-record.lisp` | root | 51 | 17 | 0/0/17/0 | 0 | 0 | 2 |
 | `books/payload-lz-replay.lisp` | root | 14 | 8 | 2/0/6/0 | 0 | 0 | 1 |
 | `books/payload-lz-value.lisp` | root | 8 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/payload-window-profile-width.lisp` | root | 13 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/payload-window-register-width.lisp` | root | 62 | 4 | 0/0/3/1 | 0 | 0 | 0 |
 | `books/payload-window-width.lisp` | root | 39 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/payload-window.lisp` | root | 16 | 11 | 0/0/11/0 | 0 | 0 | 0 |
 | `books/peer-authored-accept.lisp` | root | 23 | 14 | 1/0/13/0 | 0 | 0 | 1 |
@@ -1413,6 +1417,7 @@ that `make certify` requests.
 | `tests/acl2/extent-window-plan-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 6 | 0 | 0 |
 | `tests/acl2/extent-window-refinement-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
 | `tests/acl2/extent-window-stream-refinement-tests.lisp` | root | 4 | 1 | 0/0/0/1 | 0 | 0 | 0 |
+| `tests/acl2/extent-window-stream-semantics-tests.lisp` | root | 18 | 4 | 0/0/0/4 | 0 | 0 | 0 |
 | `tests/acl2/extent-window-stream-tests.lisp` | root | 4 | 4 | 0/3/0/1 | 5 | 0 | 0 |
 | `tests/acl2/extent-window-stream-union-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/feed-auth-profile-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 0 | 0 |
@@ -1534,7 +1539,7 @@ that `make certify` requests.
 | `tests/acl2/native-auth-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/native-auth-profile-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 28 | 1 | 0 |
 | `tests/acl2/native-config-observation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 22 | 1 | 0 |
-| `tests/acl2/native-config-paths-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 34 | 1 | 0 |
+| `tests/acl2/native-config-paths-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 38 | 1 | 0 |
 | `tests/acl2/native-config-show-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 67 | 5 | 0 |
 | `tests/acl2/native-config-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 97 | 1 | 0 |
 | `tests/acl2/native-control-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
@@ -1705,6 +1710,8 @@ that `make certify` requests.
 | `tests/acl2/payload-kinds-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
 | `tests/acl2/payload-lz-append-tests.lisp` | root | 5 | 0 | 0/0/0/0 | 22 | 8 | 0 |
 | `tests/acl2/payload-lz-record-tests.lisp` | root | 11 | 0 | 0/0/0/0 | 14 | 10 | 0 |
+| `tests/acl2/payload-window-profile-width-tests.lisp` | root | 22 | 3 | 0/0/0/3 | 0 | 0 | 0 |
+| `tests/acl2/payload-window-register-width-tests.lisp` | root | 7 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/payload-window-tests.lisp` | root | 5 | 3 | 0/0/0/3 | 16 | 0 | 0 |
 | `tests/acl2/payload-window-width-tests.lisp` | root | 14 | 4 | 0/0/0/4 | 0 | 0 | 0 |
 | `tests/acl2/peer-authored-accept-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 51 | 15 | 0 |

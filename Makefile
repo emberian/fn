@@ -1133,6 +1133,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/extent-window-compressed-refinement-tests \
 	books/payload-window-width \
 	tests/acl2/payload-window-width-tests \
+	books/payload-window-register-width \
+	tests/acl2/payload-window-register-width-tests \
+	books/payload-window-profile-width \
+	tests/acl2/payload-window-profile-width-tests \
 	books/extent-window-compressed-input \
 	tests/acl2/extent-window-compressed-input-tests \
 	books/extent-window-compressed-output \
