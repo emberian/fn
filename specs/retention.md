@@ -476,3 +476,18 @@ freshness alone grants no current authority: the owner must retain and recheck
 its actual epoch, configuration generation and canonical account publication
 namespace/revision under owner exclusion. The durable Store-to-publication
 correspondence and operation-derived funding are separate activation gates.
+
+SCN-1049 also covers ordinary noquery parser lifetime. Before parse, the actual
+serialized STATE producer acquires a parser actor retaining current preOC/wire
+with RC NIL and the exact filled source range. Progress is derived from the
+same produced served-step and retains actual RC/wire even at the range end;
+it is not a detachment or refill receipt. A response commit records an issued
+(:receiver-response lifetime-ticket episode) token, including zero-consumed
+terminal close/exposure-close responses. The maintained episode increases on
+each commit, so stale callbacks cannot settle a later response. The per-filled
+span bound is derived from the admitted receive quantum, not stored-data size.
+A zero nonclosing response is refused and the actual postSTATE RC/wire/step
+must be fenced and retained in parser recovery before exposure. Real IRQ
+transfer retains both the parser root and SAME committed receipt actor root.
+Connection/RX factory association, ordinary parser detachment, actual response
+return and all-alias terminal producers remain activation prerequisites.
