@@ -19111,9 +19111,12 @@
       "status": "planned",
       "events": [],
       "evidence": [
+        "books/bpsec-target.lisp",
+        "tests/acl2/bpsec-target-tests.lisp",
+        "planning/evidence/bpsec-target-source-2026-09-30.json",
         "specs/bp-design.md"
       ],
-      "progress_note": "Claimed target-graph work; parser source does not establish this target. No implementation/proof/native claim."
+      "progress_note": "Logical graph source and29 literal fixture forms admitted on exact w28fced/7matchingcached dependency coordinate. Exact-byte match premise, stale same-number/type mismatch, complete security coverage and derived opaque BIB pending behavior exercised. No graph keystone, served bounded traversal/refinement, carried provider invariant, normal certificate or native security-gate claim."
     }
   ]
 }

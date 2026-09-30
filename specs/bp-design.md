@@ -1031,8 +1031,26 @@ never verified. Explicit empty parameters are refused in this supported
 profile. Literal codec scenarios are SCN-1065/1066. Structural parsing is
 distinct from target-graph validity and cryptographic verification.
 
+The logical target-graph reference in `books/bpsec-target.lisp` binds each
+ASB as `(block-number . ASB)`, checks actual block existence/type, unique
+service/target pairs, forbidden security targets and payload BCB flags. Every
+actual security block must be covered by one binding or exactly the opaque
+BIB set derived from parsed BCB targets. Missing security coverage returns
+unsupported before pending plaintext. A BIB hidden by a BCB is never parsed
+as an ASB; it returns `:pending-plaintext` after the remaining checks. The
+complete graph must be recomputed over the authenticated transformed view
+after decryption, while retaining the original ciphertext wire.
+
+`fn-bps-parsed-bindings-matchp` is the mandatory logical exact-data premise
+for a statement about the actual bundle: each binding equals decoding its
+actual block data. Number/type equality alone does not establish that fact.
+The stale-ASB witness retains those coordinates while changing actual target
+bytes and demonstrates the missing relation. The logical checker is not
+installed as a served list scan or whole-data re-decoder; bounded operational
+traversal and its carried byte-binding invariant remain PRF-1179 work.
+
 Full cursor invariant preservation, equality for every chunk/quantum
-schedule, operational span refinement, target graph (PRF-1179), canonical
+schedule, operational span refinement, served target graph (PRF-1179), canonical
 cryptographic inputs, descriptor-bound primitive completion, explicit key
 policy, durable nonce allocation and native admission remain open. Actual
 ACL2 admission is component evidence; normal certification and the matching

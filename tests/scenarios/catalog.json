@@ -7366,16 +7366,22 @@
         "Refuse empty/duplicate targets, trailing data, declared truncated byte strings and explicitly empty parameters.",
         "Retain reserved read flags and mark an unknown security context unsupported with original wire.",
         "Decode context2 with explicit twelve-byte IV and empty per-target result array without inventing a tag field.",
-        "Reject a mismatched input backing and keep uncertain outside the primitive result enum."
+        "Reject a mismatched input backing and keep uncertain outside the primitive result enum.",
+        "Bind ASBs by actual security block number/type and mutate actual target bytes while retaining the supplied parsed binding.",
+        "Derive opaque BIB numbers from parsed BCB targets; leave a second BCB unparsed and require unsupported before pending."
       ],
       "expected": [
         "Malformed known grammar refuses; unsupported never verifies.",
         "Reserved flags do not change the accepted source object; encoder clears them.",
-        "Ciphertext-tail tag extraction requires later exact target binding and is not performed by ASB parsing."
+        "Ciphertext-tail tag extraction requires later exact target binding and is not performed by ASB parsing.",
+        "Stale same-number/type ASB fails exact-data match even if supplied metadata alone is structurally valid.",
+        "Encrypted BIB data remains opaque; complete supported coverage may be pending-plaintext, incomplete coverage is unsupported."
       ],
       "evidence": [
         "tests/acl2/bpsec-asb-tests.lisp",
-        "planning/evidence/bpsec-asb-source-2026-09-30.json"
+        "planning/evidence/bpsec-asb-source-2026-09-30.json",
+        "tests/acl2/bpsec-target-tests.lisp",
+        "planning/evidence/bpsec-target-source-2026-09-30.json"
       ],
       "execution_scope": "ACL2 source grammar tests only; no AES/HMAC execution, key grant, target plan, crypto gate or native receipt."
     }
