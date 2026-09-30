@@ -589,6 +589,9 @@ def witnesses_observed(scenario, journal) -> set:
             op = scenario.operation(r["operation"])
             if r["outcome"] == "accepted" and op.op in ("post", "retry"):
                 seen.add("post-accepted")
+            from .payload_boundary import named_refusal
+            if op.op == "post" and named_refusal(op, r):
+                seen.add("payload-bound-refused")
             if op.op == "retry" and r["outcome"] in ("duplicate", "accepted"):
                 seen.add("retry-reconciled")
             if (op.op == "retry" and r.get("cross_route") and r["outcome"] == "refused"

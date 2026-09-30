@@ -45,6 +45,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 import socket
 import subprocess
@@ -61,6 +62,7 @@ from tests.campaign import native_operator_campaign as campaign  # noqa: E402
 from tests import native_log_observation  # noqa: E402
 from tools.resilience.scenario import (  # noqa: E402
     Scenario, Operation, Fault, boundary_registry, check as check_scenario)
+from tools.outcome_codes import EXIT
 from tools.resilience.journal import Journal  # noqa: E402
 from tools.resilience import checker  # noqa: E402
 
@@ -372,12 +374,24 @@ def _invoke(image, store, command, *arguments, env=None, cwd=ROOT, verb="store")
 
 
 def _reply_outcome(result) -> str:
-    if result.returncode == -9:
+    """Observe the selected ACL2 exit-class table; uncertainty is never refusal."""
+    from tools.outcome_codes import EXIT
+    if not isinstance(result.returncode, int) or isinstance(result.returncode, bool):
+        raise HarnessFailure("native-post-returncode-missing-or-invalid")
+    if result.returncode < 0:
         return "lost"
-    if result.returncode == 0 and (b"committed sequence=" in result.stdout
-                                   or b"duplicate" in result.stdout):
-        return "duplicate" if b"duplicate" in result.stdout else "accepted"
-    return "refused"
+    if result.returncode == EXIT.UNCERTAIN:
+        return "uncertain"
+    if result.returncode == EXIT.REFUSED:
+        return "refused"
+    if result.returncode == EXIT.OK:
+        lines = result.stdout.splitlines()
+        if any(re.fullmatch(rb"committed sequence=[0-9]+ charge=[0-9]+", line) for line in lines):
+            return "accepted"
+        if b"duplicate" in lines:
+            return "duplicate"
+        raise HarnessFailure("native-post-success-without-outcome")
+    raise HarnessFailure("native-post-noncontract-exit:" + str(result.returncode))
 
 
 def served_split(served: bytes) -> tuple:
@@ -499,6 +513,9 @@ class Run:
         self.hook = fault_hook
         self.registry = boundary_registry()
         self.j = Journal(scenario.id)
+        if any("boundary_payload" in op.args for op in scenario.posts()):
+            from tools.resilience.payload_boundary import image_preflight
+            image_preflight(scenario, self.image, self.j)
         self.store = self.work / "store"
         # The operator verb's configuration over the same store: `operator
         # CONFIG status --replay` is the replayed report on every image
@@ -545,25 +562,40 @@ class Run:
         return _invoke(self.image, self.store, command, *arguments, env=env)
 
     def store_post(self, op: Operation, env=None, route="store-post"):
+        from tools.resilience.payload_boundary import require_prepared_payload
+        require_prepared_payload(op, self.payloads[op.id], self.j)
         r = self.invoke("post", mid(op.id), self.payloads[op.id], "-", "-", *op.args["groups"],
                         env=env)
-        self.j.client("reply", operation=op.id, outcome=_reply_outcome(r), route=route,
-                      returncode=r.returncode)
+        self.record_post_reply(op, r, route)
+        require_prepared_payload(op, self.payloads[op.id], self.j)
         return r
+
+    def record_post_reply(self, op, result, route):
+        # Raw transcript survives even if its exit/output cannot establish a fate.
+        self.j.environment("post-process-result", operation=op.id, route=route,
+                           returncode=result.returncode, stdout_hex=result.stdout.hex(),
+                           stderr_hex=result.stderr.hex())
+        outcome = _reply_outcome(result)
+        self.j.client("reply", operation=op.id, outcome=outcome, route=route,
+                      returncode=result.returncode, stdout_hex=result.stdout.hex(),
+                      stderr_hex=result.stderr.hex())
 
     def store_retry(self, op: Operation):
         of = self.s.operation(op.args["of"])
         r = self.invoke("post", mid(of.id), self.payloads[of.id], "-", "-", *of.args["groups"])
-        self.j.client("reply", operation=op.id, outcome=_reply_outcome(r), route="store-post",
-                      returncode=r.returncode)
+        self.record_post_reply(op, r, "store-post")
 
     def store_read(self, op: Operation):
         art = op.args["article"]
         r = self.invoke("inspect", mid(art))
         if r.returncode == 0:
             result = "match" if r.stdout == self.payloads[art].read_bytes() else "other"
-        else:
+        elif r.returncode == EXIT.REFUSED and not r.stdout and not r.stderr:
+            # fnn-command-inspect’s lookup-not-found arm is silent; a Store
+            # open refusal with a diagnostic is not evidence of absence.
             result = "absent"
+        else:
+            raise HarnessFailure("native-read-not-an-absence:" + str(r.returncode))
         self.j.client("read", operation=op.id, article=art, result=result, route="store")
 
     def store_list(self, op: Operation):
@@ -600,6 +632,11 @@ class Run:
         return rc
 
     def finish(self) -> tuple:
+        from tools.resilience.payload_boundary import image_unchanged
+        try:
+            image_unchanged(self.s, self.image, self.j)
+        except HarnessFailure as error:
+            return self.failed(str(error))
         path = self.j.write(self.work / "journal.jsonl")
         reread = Journal.read(path)          # the verdict is over the journal as stored
         verdict = checker.check(self.s, reread)
@@ -631,10 +668,16 @@ class Run:
     def run_post(self):
         j = self.j
         j.stage("workload", "begun")
-        init = self.invoke("init", *self.s.initial["groups"])
+        init = self.invoke("init", *self.s.initial.get("profile_flags", []), *self.s.initial["groups"])
         if init.returncode != 0:
             j.stage("workload", "ended")
             raise HarnessFailure("init-failed")
+        if any("boundary_payload" in o.args for o in self.s.posts()):
+            profile = self.invoke("status")
+            self.j.environment("persisted-payload-profile", returncode=profile.returncode,
+                               stdout_hex=profile.stdout.hex(), stderr_hex=profile.stderr.hex())
+            from tools.resilience.payload_boundary import require_profile
+            require_profile(self.s, profile)
         for o in self.s.posts():
             fault = self.fault_for(o)
             r = self.store_post(o, env=fault_env(self.registry, fault, "post") if fault else None)

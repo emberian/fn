@@ -41,7 +41,7 @@ FAULT_ACTIONS = ("kill", "lose-response", "withhold-completion", "report-error",
                  "deliver-stale-completion")
 FAULT_CLASSES = ("contract-admissible", "assumption-challenging")
 STAGES = ("issued", "performed", "persisted", "observed")
-WITNESSES = ("post-accepted", "retry-reconciled", "read-completed",
+WITNESSES = ("post-accepted", "payload-bound-refused", "retry-reconciled", "read-completed",
              "read-during-competing-work", "reclaim-freed", "recovery-completed",
              "memberships-listed", "checkpoint-installed",
              "receipt-delivered", "receipt-effect-once", "cross-route-retry-refused",
