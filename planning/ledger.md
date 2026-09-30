@@ -10,20 +10,20 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1901 |
-| Certification roots in the Makefile | 1816 |
-| Books inside the root closure | 1884 |
-| `defthm` and `defthmd` events | 29832 |
-| `defun` events | 19096 |
-| Functions with verified guards | 3530 |
-| Functions declared `:verify-guards nil` and never verified | 2277 |
-| Functions left at the default with an explicit guard | 10433 |
-| Functions left at the default with no guard | 2856 |
-| `assert-event` checks | 24056 |
+| Books read | 1902 |
+| Certification roots in the Makefile | 1817 |
+| Books inside the root closure | 1885 |
+| `defthm` and `defthmd` events | 29856 |
+| `defun` events | 19120 |
+| Functions with verified guards | 3539 |
+| Functions declared `:verify-guards nil` and never verified | 2287 |
+| Functions left at the default with an explicit guard | 10434 |
+| Functions left at the default with no guard | 2860 |
+| `assert-event` checks | 24066 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
-| Theorems flagged SUSPECT by shape | 1256 |
+| Theorems flagged SUSPECT by shape | 1258 |
 | Export-hygiene warnings | 350 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
@@ -931,7 +931,7 @@ that `make certify` requests.
 | `books/scheduler.lisp` | root | 64 | 104 | 27/0/77/0 | 0 | 0 | 0 |
 | `books/scram.lisp` | root | 34 | 53 | 0/0/53/0 | 0 | 0 | 0 |
 | `books/served-carried.lisp` | root | 18 | 13 | 1/0/12/0 | 0 | 0 | 0 |
-| `books/served-catalog-chain.lisp` | root | 77 | 39 | 18/1/13/7 | 0 | 0 | 9 |
+| `books/served-catalog-chain.lisp` | root | 101 | 52 | 27/1/14/10 | 0 | 0 | 11 |
 | `books/served-catalog-join-conns.lisp` | root | 12 | 7 | 0/0/1/6 | 0 | 0 | 1 |
 | `books/served-catalog-join-entry.lisp` | root | 59 | 11 | 0/5/4/2 | 0 | 0 | 5 |
 | `books/served-catalog-join-finish.lisp` | root | 32 | 5 | 0/2/2/1 | 0 | 0 | 0 |
@@ -1820,6 +1820,7 @@ that `make certify` requests.
 | `tests/acl2/served-catalog-join-tests.lisp` | root | 7 | 6 | 0/3/0/3 | 22 | 0 | 1 |
 | `tests/acl2/served-catalog-owner-tests.lisp` | root | 0 | 25 | 0/5/0/20 | 43 | 2 | 0 |
 | `tests/acl2/served-catalog-scan-tests.lisp` | root | 0 | 10 | 0/6/0/4 | 9 | 0 | 0 |
+| `tests/acl2/served-catalog-source-scan-tests.lisp` | root | 0 | 11 | 0/10/0/1 | 10 | 0 | 0 |
 | `tests/acl2/served-catalog-tests.lisp` | root | 26 | 3 | 0/0/0/3 | 0 | 12 | 0 |
 | `tests/acl2/served-catalog-view-tests.lisp` | root | 5 | 1 | 0/0/0/1 | 0 | 1 | 0 |
 | `tests/acl2/served-chunk-live-free-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 8 | 0 | 0 |
@@ -2851,12 +2852,14 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-scr-auth-view-archive-unrestricted` | `books/served-catalog-chain.lisp` | 693 | arm-of-definition: the hypotheses select one IF/COND arm of fn-auth-view-archive and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-auth-view-archive and the conclusion is that branch's value |
 | `fn-scr-auth-view-index-unrestricted` | `books/served-catalog-chain.lisp` | 699 | arm-of-definition: the hypotheses select one IF/COND arm of fn-auth-view-index and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-auth-view-index and the conclusion is that branch's value |
 | `fn-scr-consumed-of-counted-make` | `books/served-catalog-chain.lisp` | 862 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-scr-finish-read-effects` | `books/served-catalog-chain.lisp` | 1777 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-scr-finish-read-effects` | `books/served-catalog-chain.lisp` | 1904 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-scr-msgid-argp-forward` | `books/served-catalog-chain.lisp` | 590 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-peer-msgid-argp |
 | `fn-scr-result-of-counted-make` | `books/served-catalog-chain.lisp` | 866 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-scr-tls-result-of-make` | `books/served-catalog-chain.lisp` | 239 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-scrs-dispatch-no-events` | `books/served-catalog-chain.lisp` | 1574 | arm-of-definition: the hypotheses select one IF/COND arm of fn-scr-dispatch-events and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-scr-dispatch-events and the conclusion is that branch's value |
-| `fn-scrs-handshaking-of-with-wire` | `books/served-catalog-chain.lisp` | 1557 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-scrs-consumed-of-counted-make` | `books/served-catalog-chain.lisp` | 2134 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-scrs-dispatch-no-events` | `books/served-catalog-chain.lisp` | 1701 | arm-of-definition: the hypotheses select one IF/COND arm of fn-scr-dispatch-events and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-scr-dispatch-events and the conclusion is that branch's value |
+| `fn-scrs-handshaking-of-with-wire` | `books/served-catalog-chain.lisp` | 1684 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-scrs-result-of-counted-make` | `books/served-catalog-chain.lisp` | 2139 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sctr-plan-segments-nil` | `books/store-checkpoint-tables-reader.lisp` | 589 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sccr-plan-segments and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-sccr-plan-segments and the conclusion is that branch's value |
 | `fn-served-conn-archive-of-fn-served-make-conn` | `books/served.lisp` | 599 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-served-conn-archive-of-fn-served-make-conn-indexed` | `books/served.lisp` | 481 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

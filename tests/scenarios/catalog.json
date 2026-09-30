@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -7241,6 +7241,33 @@
         "planning/evidence/peering-inn-lifecycle-source-2026-09-30.json"
       ],
       "execution_scope": "Source-present observer only. Scripted peers/local shell tests do not establish actual INN/native behavior. No matching current executable exists; original Q12 criteria remain open."
+    },
+    {
+      "id": "SCN-1056",
+      "title": "Actual old-source OVER, isolated GROUP/LISTGROUP refresh and new-source OVER",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-042"
+      ],
+      "steps": [
+        "Establish two actual durable publications and an issued connection holder pinned to the older source; retain original input and query grants.",
+        "Run OVER(old) followed by GROUP or LISTGROUP and OVER(new) in one incoming span, including partial-command/refill cuts.",
+        "Require first admitted request to return the exact consumed old-reply prefix and untouched pre-refresh wire, then execute the isolated refresh under an acquired offered publication.",
+        "Advance the next request from the returned exact consumed offset and new holder; repeat with failed selection, closure, cancellation and duplicate commit/resume."
+      ],
+      "expected": [
+        "Full original result/effects/state on each consumed prefix; no replay, rollback or lost input.",
+        "Old query effects keep old publication; successful refresh transfers owned offered pin, failed selection retains old pin.",
+        "LISTGROUP aliases are never authorized by the initial old publication; final/current publication is never substituted.",
+        "Once-only RC/STATE commit and actual joined cleanup retain construction, source and input custody across yields or uncertainty."
+      ],
+      "evidence": [
+        "books/served-catalog-chain.lisp",
+        "tests/acl2/served-catalog-source-scan-tests.lisp",
+        "planning/evidence/reader-source-prefix-2026-09-30/manifest.json"
+      ],
+      "execution_scope": "Pure actual source scanner/prepare/dispatch and configured owner component with real stobjs passes full consumed-prefix/staged-boundary/remaining-input/effects/final-connection equality and proper-effects/natural consumed/span bounds for OVER -> GROUP/LISTGROUP -> OVER. Public normal pending. Durable publication/query/input custody, failed-selection/native/funding and full S7 remain specified and unactivated."
     }
   ]
 }

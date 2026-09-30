@@ -1394,6 +1394,133 @@
                           fn-scr-dispatch-events-is-scar-dispatch-events
                           fn-nntp-article-idp-is-consp fn-scat-article-idp-is-msgid-idp)))
 
+; A publication-changing command is isolated from preceding reply effects.
+; The original scanner remains the logical full-span reference. This entry
+; will be called only after the request producer owns the applicable source;
+; standalone GROUP/LISTGROUP additionally require offered-source custody.
+(defun fn-scr-source-change-eventsp (events)
+ (declare (xargs :guard t))
+ (and (consp events)
+      (or (fn-served-advance-eventp (car events))
+          (fn-scr-source-change-eventsp (cdr events)))))
+
+; Parsed source-changing event continuation. No host parser and no second
+; wire scan. The registered request owns this fixed8 and its borrowed refs.
+; A prefix commits against the old source and discards the speculative event.
+; Standalone parse/offer/query/dispatch/commit is one serialized span.
+(defun fn-scr-source-prepare-span-loop
+ (conn i end live trie lver arts cache fn-octets fn-arena fn-cat consumed acc)
+ (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
+                 :guard (and (fn-wire-fast-statep (fn-served-conn-wire conn))
+                             (natp i) (natp end) (<= i end)
+                             (<= end (fn-octets-len fn-octets))
+                             (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)
+                             (acl2-numberp consumed))
+                 :measure (nfix (- end i)) :verify-guards nil
+                 :hints (("Goal" :in-theory (disable fn-scr-dispatch-events
+                                                     fn-served-submission)))))
+ (if (or (not (natp i)) (not (natp end)) (>= i end)
+         (fn-served-closed-wirep (fn-served-conn-wire conn))
+         (fn-served-haltedp conn))
+     (list :source-result (fn-served-counted-make consumed
+       (fn-served-make-result conn (fn-ag-rev-onto acc nil))))
+   (let* ((w (fn-wire-scan (fn-served-conn-wire conn) i end fn-octets))
+          (next (fn-wsp-next w)))
+    (if (fn-scr-source-change-eventsp (fn-wsp-events w))
+        (if (or (consp acc) (posp consumed))
+            ; Commit only the prefix/pre-command wire. The speculative parse
+            ; is discarded and explicitly paid; next request parses current
+            ; unconsumed command bytes again under its current source/policy.
+            (list :source-result (fn-served-counted-make consumed
+              (fn-served-make-result conn (fn-ag-rev-onto acc nil))))
+          (list :source-boundary conn i end w consumed acc :source-change))
+      (let ((here (fn-scr-dispatch-events
+                   (fn-served-conn-with-wire conn (fn-wsp-state w))
+                   (fn-wsp-events w) live trie lver arts cache fn-arena fn-cat)))
+       (if (fn-served-submission (fn-served-result-effects here))
+           (list :source-result (fn-served-counted-make (+ consumed (- next i))
+             (fn-served-make-result (fn-served-result-conn here)
+               (fn-ag-rev-onto acc (fn-served-result-effects here)))))
+         (fn-scr-source-prepare-span-loop (fn-served-result-conn here) next end
+           live trie lver arts cache fn-octets fn-arena fn-cat
+           (+ consumed (- next i))
+           (fn-ag-rev-onto (fn-served-result-effects here) acc))))))))
+
+(defun fn-scr-source-prepare-span (conn i end live trie lver arts cache fn-octets fn-arena fn-cat)
+ (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
+                 :guard (and (fn-wire-fast-statep (fn-served-conn-wire conn))
+                             (natp i) (natp end) (<= i end)
+                             (<= end (fn-octets-len fn-octets))
+                             (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                 :verify-guards nil))
+ (fn-scr-source-prepare-span-loop conn i end live trie lver arts cache
+                               fn-octets fn-arena fn-cat 0 nil))
+
+; INTERNAL only after the SAME retained parsed boundary has acquired offered
+; source authority. This dispatches the retained events exactly once.
+(defun fn-scr-source-boundary-dispatch (boundary live trie lver arts cache fn-arena fn-cat)
+ (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)
+                 :verify-guards nil))
+ (if (not (and (true-listp boundary) (equal (len boundary) 8)))
+     (mv :refused nil)
+  (let* ((conn (nth 1 boundary)) (w (nth 4 boundary))
+         (i (nth 2 boundary)) (end (nth 3 boundary)) (next (fn-wsp-next w)))
+   (if (not (and (equal (car boundary) :source-boundary)
+                 (equal (nth 7 boundary) :source-change)
+                 (equal (nth 5 boundary) 0) (null (nth 6 boundary))
+                 (natp i) (natp end) (natp next) (<= i next) (<= next end)
+                 (fn-scr-source-change-eventsp (fn-wsp-events w))))
+       (mv :refused nil)
+     (let ((here (fn-scr-dispatch-events
+                  (fn-served-conn-with-wire conn (fn-wsp-state w))
+                  (fn-wsp-events w) live trie lver arts cache fn-arena fn-cat)))
+      (mv :dispatched (fn-served-counted-make (- next i) here)))))))
+
+(defun fn-scr-source-scan-span-loop
+ (conn i end live trie lver arts cache fn-octets fn-arena fn-cat consumed acc)
+ (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
+                 :guard (and (fn-wire-fast-statep (fn-served-conn-wire conn))
+                             (natp i) (natp end) (<= i end)
+                             (<= end (fn-octets-len fn-octets))
+                             (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)
+                             (acl2-numberp consumed))
+                 :measure (nfix (- end i)) :verify-guards nil
+                 :hints (("Goal" :in-theory (disable fn-scr-dispatch-events
+                                                     fn-served-submission)))))
+ (if (or (not (natp i)) (not (natp end)) (>= i end)
+         (fn-served-closed-wirep (fn-served-conn-wire conn))
+         (fn-served-haltedp conn))
+     (fn-served-counted-make consumed
+       (fn-served-make-result conn (fn-ag-rev-onto acc nil)))
+   (let* ((w (fn-wire-scan (fn-served-conn-wire conn) i end fn-octets))
+          (next (fn-wsp-next w))
+          (changing (fn-scr-source-change-eventsp (fn-wsp-events w))))
+     (if (and changing (or (consp acc) (posp consumed)))
+         ; Do not install the scanned wire: the entire command is unconsumed.
+         (fn-served-counted-make consumed
+           (fn-served-make-result conn (fn-ag-rev-onto acc nil)))
+       (let ((here (fn-scr-dispatch-events
+                    (fn-served-conn-with-wire conn (fn-wsp-state w))
+                    (fn-wsp-events w) live trie lver arts cache fn-arena fn-cat)))
+         (if (or changing (fn-served-submission (fn-served-result-effects here)))
+             (fn-served-counted-make (+ consumed (- next i))
+               (fn-served-make-result (fn-served-result-conn here)
+                 (fn-ag-rev-onto acc (fn-served-result-effects here))))
+           (fn-scr-source-scan-span-loop (fn-served-result-conn here) next end
+             live trie lver arts cache fn-octets fn-arena fn-cat
+             (+ consumed (- next i))
+             (fn-ag-rev-onto (fn-served-result-effects here) acc))))))))
+
+(defun fn-scr-source-scan-span (conn i end live trie lver arts cache fn-octets fn-arena fn-cat)
+ (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
+                 :guard (and (fn-wire-fast-statep (fn-served-conn-wire conn))
+                             (natp i) (natp end) (<= i end)
+                             (<= end (fn-octets-len fn-octets))
+                             (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                 :verify-guards nil))
+ (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+                              fn-octets fn-arena fn-cat 0 nil))
+
 (defun fn-scr-scan-span-loop (conn i end live trie lver arts cache fn-octets fn-arena fn-cat
                                    consumed acc)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
@@ -1908,6 +2035,514 @@
      (fn-ocfg-with-read-owner oc id (fn-own-tls-result-owner result)
                               (fn-own-tls-result-repinned result))
      (fn-own-tls-result-repinned result))))
+
+; Source-bounded caller chain, pending consumed-prefix refinement and guards.
+(defun fn-scr-source-step-span-core (conn i end live trie lver arts cache fn-octets fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
+                  :guard (and (fn-wire-fast-statep (fn-served-conn-wire conn))
+                              (natp i) (natp end) (<= i end)
+                              (<= end (fn-octets-len fn-octets))
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :verify-guards nil))
+  (let* ((wire (fn-served-conn-wire conn))
+         (fed (fn-scr-source-scan-span conn i end live trie lver arts cache fn-octets fn-arena fn-cat))
+         (result (fn-served-counted-result fed))
+         (wire2 (fn-served-conn-wire (fn-served-result-conn result))))
+    (fn-served-counted-make
+     (fn-served-counted-consumed fed)
+     (fn-served-make-result
+      (fn-served-result-conn result)
+      (mbe :logic
+           (append (fn-served-result-effects result)
+                   (if (and (not (fn-served-closed-wirep wire))
+                            (fn-served-closed-wirep wire2))
+                       (list (fn-nntp-close-effect))
+                     nil))
+           :exec
+           (fn-ag-append
+            (fn-served-result-effects result)
+            (if (and (not (fn-served-closed-wirep wire))
+                     (fn-served-closed-wirep wire2))
+                (list (fn-nntp-close-effect))
+              nil)))))))
+
+(defun fn-scr-source-step-span-fast (conn i end live trie lver arts cache fn-octets fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
+                  :guard (and (natp i) (natp end) (<= i end)
+                              (<= end (fn-octets-len fn-octets))
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :verify-guards nil))
+  (if (not (fn-wire-fast-statep (fn-served-conn-wire conn)))
+      (fn-served-counted-make 0 (fn-served-make-result conn nil))
+    (fn-scr-source-step-span-core conn i end live trie lver arts cache fn-octets fn-arena fn-cat)))
+
+(defun fn-scr-source-own-read-span (o id i end cache fn-octets fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
+                  :guard (and (natp i) (natp end) (<= i end)
+                              (<= end (fn-octets-len fn-octets))
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :verify-guards nil))
+  (let ((conn (fn-own-find-conn id (fn-own-conns o)))
+        (live (fn-sn-node (fn-own-store o)))
+        (trie (fn-own-view-index (fn-own-view o)))
+        (lver (fn-own-view-version (fn-own-view o)))
+        (arts (fn-state-articles (fn-own-view-archive (fn-own-view o)))))
+    (if conn
+        (let* ((counted
+                 (fn-scr-source-step-span-fast
+                  (fn-own-tls-served-conn o conn) i end live trie lver arts cache fn-octets fn-arena fn-cat))
+               (result
+                 (fn-scar-finish-read
+                  o conn (fn-served-counted-result counted) live)))
+          (fn-own-tls-make-result
+           (fn-served-counted-consumed counted) (car result) (cdr result)
+           (fn-own-result-repinned (fn-served-counted-result counted))))
+      (fn-own-tls-make-result (nfix (- end i)) nil o nil))))
+
+(defun fn-scr-ocfg-source-read-span (oc id i end cache fn-octets fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
+                  :guard (and (natp i) (natp end) (<= i end)
+                              (<= end (fn-octets-len fn-octets))
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :verify-guards nil))
+  (let ((result (fn-scr-source-own-read-span (fn-ocfg-owner oc) id i end cache fn-octets fn-arena fn-cat)))
+    (fn-own-tls-make-result
+     (fn-own-tls-result-consumed result)
+     (fn-own-tls-result-effects result)
+     (fn-ocfg-with-read-owner oc id (fn-own-tls-result-owner result)
+                              (fn-own-tls-result-repinned result))
+     (fn-own-tls-result-repinned result))))
+
+; PRF-1152: actual source-bounded machine preserves the original counted
+; machine's complete result on precisely the consumed input prefix. Proposed
+; proof; source admission is pending in the frozen affected scanner world.
+(verify-guards fn-scr-source-prepare-span-loop
+ :hints (("Goal"
+          :in-theory (e/d (fn-served-counted-make fn-served-counted-result)
+                          (fn-scr-dispatch-events fn-wire-fast-statep
+                           fn-served-counted-consumed))
+          :use ((:instance fn-scr-dispatch-events-preserves-fast-statep
+                           (conn (fn-served-conn-with-wire
+                                  conn (fn-wsp-state (fn-wire-scan
+                                   (fn-served-conn-wire conn) i end fn-octets))))
+                           (events (fn-wsp-events (fn-wire-scan
+                                    (fn-served-conn-wire conn) i end fn-octets))))))))
+(verify-guards fn-scr-source-prepare-span)
+(verify-guards fn-scr-source-boundary-dispatch
+ :hints (("Goal" :in-theory (disable fn-scr-dispatch-events))))
+
+(local
+ (defthm fn-scrs-consumed-of-counted-make
+  (equal (fn-served-counted-consumed (fn-served-counted-make n r)) n)
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-served-counted-consumed fn-served-counted-make fn-ag-car fn-ag-cdr car-cons cdr-cons))))))
+(local
+ (defthm fn-scrs-result-of-counted-make
+  (equal (fn-served-counted-result (fn-served-counted-make n r)) r)
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-served-counted-result fn-served-counted-make fn-ag-car fn-ag-cdr car-cons cdr-cons))))))
+
+(local
+ (defthm fn-scrs-source-loop-consumed-bounds
+  (implies (and (natp consumed) (natp i) (natp end) (<= i end))
+   (let ((r (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+                                        fn-octets fn-arena fn-cat consumed acc)))
+    (and (natp (fn-served-counted-consumed r))
+         (<= consumed (fn-served-counted-consumed r))
+         (<= (fn-served-counted-consumed r) (+ consumed (- end i))))))
+  :rule-classes nil
+  :hints (("Goal"
+   :induct (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+                                       fn-octets fn-arena fn-cat consumed acc)
+   :in-theory (union-theories (theory 'minimal-theory)
+    '(fn-scr-source-scan-span-loop fn-served-counted-make fn-served-counted-consumed
+      fn-wire-scan-next-bounds fn-wire-scan-next-natp fn-ag-car fn-ag-cdr car-cons cdr-cons natp nfix posp))))))
+
+(local
+ (defthm fn-scrs-source-loop-consumed-natural
+  (implies (and (natp consumed) (natp i) (natp end) (<= i end))
+   (natp (fn-served-counted-consumed
+    (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+                                 fn-octets fn-arena fn-cat consumed acc))))
+  :rule-classes (:rewrite :type-prescription)
+  :hints (("Goal" :use fn-scrs-source-loop-consumed-bounds
+           :in-theory (theory 'minimal-theory)))))
+(local
+ (defthm fn-scrs-source-loop-consumed-linear
+  (implies (and (natp consumed) (natp i) (natp end) (<= i end))
+   (let ((r (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+                                        fn-octets fn-arena fn-cat consumed acc)))
+    (and (<= consumed (fn-served-counted-consumed r))
+         (<= (fn-served-counted-consumed r) (+ consumed (- end i))))))
+  :rule-classes :linear
+  :hints (("Goal" :use fn-scrs-source-loop-consumed-bounds
+           :in-theory (theory 'minimal-theory)))))
+
+(local
+ (defthm fn-scrs-wire-fold-end-restriction
+  (implies (and (natp i) (natp end) (natp stop)
+                (<= i stop) (<= stop end)
+                (<= (fn-wsp-next (fn-wire-span-fold wire-state i end fn-octets)) stop))
+   (equal (fn-wire-span-fold wire-state i stop fn-octets)
+          (fn-wire-span-fold wire-state i end fn-octets)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-wire-span-fold wire-state i end fn-octets)
+           :in-theory (union-theories (theory 'minimal-theory)
+             '(fn-wire-span-fold fn-wsp-next-of-fn-wsp-make
+               fn-wire-span-fold-next-bounds fn-wire-span-fold-next-at-least
+               natp nfix zp))))))
+
+(local
+ (defthm fn-scrs-wire-scan-end-restriction
+  (implies (and (natp i) (natp end) (natp stop)
+                (<= i stop) (<= stop end)
+                (<= (fn-wsp-next (fn-wire-scan wire-state i end fn-octets)) stop))
+   (equal (fn-wire-scan wire-state i stop fn-octets)
+          (fn-wire-scan wire-state i end fn-octets)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-scrs-wire-fold-end-restriction
+           :in-theory (union-theories (theory 'minimal-theory)
+             '(fn-wire-scan-is-span-fold))))))
+
+(local
+ (defthm fn-scrs-wire-advance-natural
+  (implies (and (natp consumed) (natp i) (natp end) (< i end))
+   (natp (+ consumed (- (fn-wsp-next (fn-wire-scan wire-state i end fn-octets)) i))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+    '(natp fn-wire-scan-next-bounds fn-wire-scan-next-natp))))))
+
+(local
+ (defthm fn-scrs-integer-stop
+  (implies (and (integerp i) (integerp n) (integerp consumed))
+   (integerp (+ i n (- consumed))))))
+
+(local
+ (defthm fn-scrs-source-loop-natural-from-consumed
+  (implies (natp consumed)
+   (natp (fn-served-counted-consumed
+    (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+                                 fn-octets fn-arena fn-cat consumed acc))))
+  :rule-classes (:rewrite :type-prescription)
+  :hints (("Goal" :induct
+    (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+                                 fn-octets fn-arena fn-cat consumed acc)
+    :in-theory (union-theories (theory 'minimal-theory)
+      '(fn-scr-source-scan-span-loop fn-scrs-consumed-of-counted-make
+        fn-wire-scan-next-bounds fn-wire-scan-next-natp natp posp nfix))))))
+
+(local
+ (defthm fn-scrs-source-stop-natural
+  (implies (and (natp consumed) (natp i) (natp end) (<= i end))
+   (natp (+ i (- (fn-served-counted-consumed
+    (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+                                 fn-octets fn-arena fn-cat consumed acc)) consumed))))
+  :rule-classes (:rewrite :type-prescription)
+  :hints (("Goal" :use fn-scrs-source-loop-consumed-bounds
+    :in-theory (disable fn-scr-source-scan-span-loop fn-served-counted-consumed)))))
+
+(local
+ (defun fn-scrs-proof-calls (name x)
+  (declare (xargs :mode :program))
+  (if (atom x) nil
+   (append (if (eq (car x) name) (list x) nil)
+           (fn-scrs-proof-calls name (car x))
+           (fn-scrs-proof-calls name (cdr x))))))
+(local
+ (defun fn-scrs-proof-bound-uses (calls)
+  (declare (xargs :mode :program))
+  (if (atom calls) nil
+   (let ((x (car calls)))
+    (cons (list :instance 'fn-scrs-source-loop-consumed-bounds
+      (list 'conn (nth 1 x)) (list 'i (nth 2 x)) (list 'end (nth 3 x))
+      (list 'live (nth 4 x)) (list 'trie (nth 5 x)) (list 'lver (nth 6 x))
+      (list 'arts (nth 7 x)) (list 'cache (nth 8 x))
+      (list 'consumed (nth 12 x)) (list 'acc (nth 13 x)))
+     (fn-scrs-proof-bound-uses (cdr calls)))))))
+(local
+ (defun fn-scrs-proof-scan-uses (calls stop)
+  (declare (xargs :mode :program))
+  (if (atom calls) nil
+   (let ((x (car calls)))
+    (cons (list :instance 'fn-scrs-wire-scan-end-restriction
+      (list 'wire-state (nth 1 x)) (list 'i (nth 2 x))
+      (list 'end (nth 3 x)) (list 'stop stop))
+     (fn-scrs-proof-scan-uses (cdr calls) stop))))))
+
+(local
+ (defthm fn-scrs-old-loop-at-end
+  (equal (fn-scr-scan-span-loop conn i i live trie lver arts cache
+                               fn-octets fn-arena fn-cat consumed acc)
+   (fn-served-counted-make consumed
+     (fn-served-make-result conn (fn-ag-rev-onto acc nil))))
+  :hints (("Goal" :expand ((fn-scr-scan-span-loop conn i i live trie lver arts cache fn-octets fn-arena fn-cat consumed acc)) :in-theory (union-theories (theory 'minimal-theory) '(fn-scr-scan-span-loop))))))
+
+(local
+ (defthm fn-scrs-dispatch-effects-true-listp
+  (true-listp (fn-served-result-effects
+    (fn-scr-dispatch-events conn events live trie lver arts cache fn-arena fn-cat)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :induct
+    (fn-scr-dispatch-events conn events live trie lver arts cache fn-arena fn-cat)
+    :in-theory (union-theories (theory 'minimal-theory)
+      '(fn-scr-dispatch-events fn-served-result-effects-of-fn-served-make-result
+        (:type-prescription true-listp-append) true-listp))))))
+
+(local
+ (defthm fn-scrs-source-loop-effects-true-listp
+  (implies (true-listp acc)
+   (true-listp (fn-served-result-effects (fn-served-counted-result
+    (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+                                 fn-octets fn-arena fn-cat consumed acc)))))
+  :rule-classes :type-prescription
+  :hints (("Goal" :induct
+   (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+                                fn-octets fn-arena fn-cat consumed acc)
+   :in-theory (union-theories (theory 'minimal-theory)
+    '(fn-scr-source-scan-span-loop fn-scrs-result-of-counted-make
+      fn-served-result-effects-of-fn-served-make-result
+      fn-scrs-dispatch-effects-true-listp fn-ag-rev-onto-true-listp
+      (:type-prescription true-listp-append) true-listp))))))
+
+(local
+ (defthm fn-scrs-source-loop-is-old-loop-at-stop
+  (implies (and (natp consumed) (natp i) (natp end) (natp stop)
+                (<= i stop) (<= stop end)
+                (<= stop (+ i (- (fn-served-counted-consumed
+                  (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+                    fn-octets fn-arena fn-cat consumed acc)) consumed)))
+                (<= (+ i (- (fn-served-counted-consumed
+                  (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+                    fn-octets fn-arena fn-cat consumed acc)) consumed)) stop))
+   (equal (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+                    fn-octets fn-arena fn-cat consumed acc)
+          (fn-scr-scan-span-loop conn i stop live trie lver arts cache
+                    fn-octets fn-arena fn-cat consumed acc)))
+  :rule-classes nil
+  :hints (("Goal"
+   :induct (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+                                       fn-octets fn-arena fn-cat consumed acc)
+
+   :in-theory (union-theories (theory 'minimal-theory)
+    '(fn-scr-source-scan-span-loop
+      fn-scrs-old-loop-at-end fn-scr-rev-onto-of-rev-onto
+      fn-scrs-dispatch-effects-true-listp append-to-nil
+      fn-scrs-consumed-of-counted-make fn-scrs-result-of-counted-make
+      fn-served-result-conn-of-fn-served-make-result
+      fn-served-result-effects-of-fn-served-make-result
+      fn-wire-scan-next-bounds fn-wire-scan-next-natp
+      fn-scrs-source-loop-consumed-natural fn-scrs-source-loop-consumed-linear
+      fn-scrs-wire-advance-natural fn-scrs-integer-stop
+      fn-scrs-source-loop-natural-from-consumed fn-scrs-source-stop-natural
+      natp nfix posp)))
+   (and stable-under-simplificationp
+    (let ((old (car (fn-scrs-proof-calls 'fn-scr-scan-span-loop clause))))
+     (and old
+      (list :use
+       (append (fn-scrs-proof-bound-uses
+         (fn-scrs-proof-calls 'fn-scr-source-scan-span-loop clause))
+        (fn-scrs-proof-scan-uses (fn-scrs-proof-calls 'fn-wire-scan clause) (nth 3 old)))
+       :expand (list old)
+       :in-theory
+       '(union-theories (theory 'minimal-theory)
+        '(fn-scr-source-scan-span-loop fn-scr-scan-span-loop
+          fn-scrs-old-loop-at-end fn-scr-rev-onto-of-rev-onto
+      fn-scrs-dispatch-effects-true-listp append-to-nil
+      fn-scrs-consumed-of-counted-make fn-scrs-result-of-counted-make
+          fn-served-result-conn-of-fn-served-make-result
+          fn-served-result-effects-of-fn-served-make-result
+          fn-wire-scan-next-bounds fn-wire-scan-next-natp
+          fn-scrs-source-loop-consumed-natural fn-scrs-source-loop-consumed-linear
+          fn-scrs-wire-advance-natural fn-scrs-integer-stop
+          fn-scrs-source-loop-natural-from-consumed fn-scrs-source-stop-natural
+          natp nfix posp)))))))))
+
+(local
+ (defthm fn-scrs-prepare-positive-is-result
+  (implies (posp consumed)
+   (equal (car (fn-scr-source-prepare-span-loop conn i end live trie lver arts cache
+                 fn-octets fn-arena fn-cat consumed acc)) :source-result))
+  :hints (("Goal" :induct
+    (fn-scr-source-prepare-span-loop conn i end live trie lver arts cache
+                 fn-octets fn-arena fn-cat consumed acc)
+    :in-theory (union-theories (theory 'minimal-theory)
+     '(fn-scr-source-prepare-span-loop fn-wire-scan-next-bounds fn-wire-scan-next-natp
+       natp posp nfix zp car-cons cdr-cons))))))
+(local
+ (defthm fn-scrs-prepared-result-is-source-loop
+  (implies (and (natp consumed) (true-listp acc))
+   (let ((p (fn-scr-source-prepare-span-loop conn i end live trie lver arts cache
+              fn-octets fn-arena fn-cat consumed acc)))
+    (implies (equal (car p) :source-result)
+     (equal (nth 1 p) (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+              fn-octets fn-arena fn-cat consumed acc)))))
+  :rule-classes nil
+  :hints (("Goal" :induct
+    (fn-scr-source-prepare-span-loop conn i end live trie lver arts cache
+              fn-octets fn-arena fn-cat consumed acc)
+    :in-theory (union-theories (theory 'minimal-theory)
+     '(fn-scr-source-prepare-span-loop fn-scr-source-scan-span-loop
+       fn-wire-scan-next-bounds fn-wire-scan-next-natp fn-ag-rev-onto-true-listp
+       fn-scrs-wire-advance-natural natp posp nfix zp true-listp nth car-cons cdr-cons))))))
+(local
+ (defthm fn-scrs-prepared-boundary-is-first
+  (implies (natp consumed)
+   (let ((p (fn-scr-source-prepare-span-loop conn i end live trie lver arts cache
+              fn-octets fn-arena fn-cat consumed acc)))
+    (implies (equal (car p) :source-boundary)
+     (and (equal consumed 0) (not (consp acc)) (natp i) (natp end) (< i end)
+          (not (fn-served-closed-wirep (fn-served-conn-wire conn)))
+          (not (fn-served-haltedp conn))
+          (fn-scr-source-change-eventsp (fn-wsp-events
+            (fn-wire-scan (fn-served-conn-wire conn) i end fn-octets)))
+          (equal p (list :source-boundary conn i end
+            (fn-wire-scan (fn-served-conn-wire conn) i end fn-octets)
+            consumed acc :source-change))))))
+  :rule-classes nil
+  :hints (("Goal" :induct
+    (fn-scr-source-prepare-span-loop conn i end live trie lver arts cache
+              fn-octets fn-arena fn-cat consumed acc)
+    :in-theory (union-theories (theory 'minimal-theory)
+     '(fn-scr-source-prepare-span-loop fn-scrs-prepare-positive-is-result
+       fn-wire-scan-next-bounds fn-wire-scan-next-natp fn-scrs-wire-advance-natural
+       natp posp nfix zp car-cons cdr-cons))))))
+
+(local
+ (defthm fn-scrs-dispatch-result-is-its-parts
+  (equal (fn-served-make-result
+           (fn-served-result-conn (fn-scr-dispatch-events conn events live trie lver arts cache fn-arena fn-cat))
+           (fn-served-result-effects (fn-scr-dispatch-events conn events live trie lver arts cache fn-arena fn-cat)))
+         (fn-scr-dispatch-events conn events live trie lver arts cache fn-arena fn-cat))
+  :hints (("Goal" :expand ((fn-scr-dispatch-events conn events live trie lver arts cache fn-arena fn-cat))
+   :in-theory (union-theories (theory 'minimal-theory)
+    '(fn-served-result-conn-of-fn-served-make-result
+      fn-served-result-effects-of-fn-served-make-result))))))
+
+(defthm fn-scr-source-prepare-span-is-source-scan
+ (let* ((p (fn-scr-source-prepare-span conn i end live trie lver arts cache
+                                    fn-octets fn-arena fn-cat))
+        (r (fn-scr-source-scan-span conn i end live trie lver arts cache
+                                    fn-octets fn-arena fn-cat)))
+  (and (implies (equal (car p) :source-result) (equal (nth 1 p) r))
+       (implies (equal (car p) :source-boundary)
+        (and (equal (mv-nth 0 (fn-scr-source-boundary-dispatch p live trie lver arts cache
+                                fn-arena fn-cat)) :dispatched)
+             (equal (mv-nth 1 (fn-scr-source-boundary-dispatch p live trie lver arts cache
+                                fn-arena fn-cat)) r)))))
+ :rule-classes nil
+ :hints (("Goal"
+  :use ((:instance fn-scrs-prepared-result-is-source-loop (consumed 0) (acc nil))
+        (:instance fn-scrs-prepared-boundary-is-first (consumed 0) (acc nil)))
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-scr-source-prepare-span fn-scr-source-scan-span
+     fn-scr-source-boundary-dispatch fn-scr-source-scan-span-loop
+     fn-wire-scan-next-bounds fn-wire-scan-next-natp
+     fn-scrs-dispatch-result-is-its-parts fn-served-counted-make
+     unicity-of-0 fix natp posp nfix zp nth mv-nth len true-listp car-cons cdr-cons fn-ag-rev-onto)))))
+
+(defthm fn-scr-source-scan-span-is-scan-of-consumed-prefix
+ (let ((r (fn-scr-source-scan-span conn i end live trie lver arts cache
+                                  fn-octets fn-arena fn-cat)))
+  (equal r
+    (fn-scr-scan-span conn i (+ i (fn-served-counted-consumed r))
+                     live trie lver arts cache fn-octets fn-arena fn-cat)))
+ :hints (("Goal"
+   :cases ((and (natp i) (natp end) (<= i end)))
+   :use ((:instance fn-scrs-source-loop-is-old-loop-at-stop
+            (consumed 0) (acc nil)
+            (stop (+ i (fn-served-counted-consumed
+             (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+              fn-octets fn-arena fn-cat 0 nil)))))
+         (:instance fn-scrs-source-loop-consumed-bounds (consumed 0) (acc nil))
+         (:instance fn-scrs-source-stop-natural (consumed 0) (acc nil)))
+   :in-theory (union-theories (theory 'minimal-theory)
+      '(fn-scr-source-scan-span fn-scr-scan-span-loop-at-zero
+        fn-scrs-consumed-of-counted-make natp nfix)))
+  ("Subgoal 2" :use nil
+   :expand ((fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+              fn-octets fn-arena fn-cat 0 nil)
+            (:free (stop) (fn-scr-scan-span conn i stop live trie lver arts cache
+              fn-octets fn-arena fn-cat)))
+   :in-theory (union-theories (theory 'minimal-theory)
+     '(fn-scr-source-scan-span fn-served-counted-consumed fn-served-counted-make
+       fn-ag-car fn-ag-cdr car-cons cdr-cons fn-ag-rev-onto natp nfix)))))
+
+(defthm fn-scr-source-own-read-span-effects-are-proper
+ (true-listp (fn-own-tls-result-effects
+  (fn-scr-source-own-read-span o id i end cache fn-octets fn-arena fn-cat)))
+ :rule-classes :type-prescription
+ :hints (("Goal" :in-theory
+  (union-theories (theory 'minimal-theory)
+   '(fn-scr-source-own-read-span fn-scr-source-step-span-fast
+     fn-scr-source-step-span-core fn-scr-source-scan-span
+     fn-own-tls-make-result fn-own-tls-result-effects fn-scar-finish-read
+     fn-scrs-source-loop-effects-true-listp fn-scrs-result-of-counted-make
+     fn-served-result-effects-of-fn-served-make-result
+     fn-served-counted-make fn-served-counted-result
+     fn-ag-car fn-ag-cdr car-cons cdr-cons
+     (:type-prescription true-listp-append) true-listp)))))
+
+(defthm fn-scr-source-own-read-span-consumed-is-bounded
+ (let ((r (fn-scr-source-own-read-span o id i end cache fn-octets fn-arena fn-cat)))
+  (and (natp (fn-own-tls-result-consumed r))
+       (<= (fn-own-tls-result-consumed r) (nfix (- end i)))))
+ :rule-classes nil
+ :hints (("Goal"
+  :cases ((and (natp i) (natp end) (<= i end)))
+  :use ((:instance fn-scrs-source-loop-consumed-bounds
+         (conn (fn-own-tls-served-conn o (fn-own-find-conn id (fn-own-conns o))))
+         (live (fn-sn-node (fn-own-store o)))
+         (trie (fn-own-view-index (fn-own-view o)))
+         (lver (fn-own-view-version (fn-own-view o)))
+         (arts (fn-state-articles (fn-own-view-archive (fn-own-view o))))
+         (consumed 0) (acc nil)))
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-scr-source-own-read-span fn-scr-source-step-span-fast
+     fn-scr-source-step-span-core fn-scr-source-scan-span
+     fn-own-tls-make-result fn-own-tls-result-consumed
+     fn-served-counted-make fn-served-counted-consumed
+     fn-scrs-consumed-of-counted-make fn-ag-car fn-ag-cdr car-cons cdr-cons
+     natp nfix fix unicity-of-0)))
+ ("Subgoal 2" :expand
+  ((:free (conn live trie lver arts)
+    (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+                                 fn-octets fn-arena fn-cat 0 nil))))))
+
+(defthm fn-scr-ocfg-source-read-span-establishes-response-domain
+ (let ((r (fn-scr-ocfg-source-read-span oc id i end cache fn-octets fn-arena fn-cat)))
+  (and (true-listp (fn-own-tls-result-effects r))
+       (natp (fn-own-tls-result-consumed r))
+       (<= (fn-own-tls-result-consumed r) (nfix (- end i)))))
+ :rule-classes nil
+ :hints (("Goal"
+  :use ((:instance fn-scr-source-own-read-span-effects-are-proper
+                  (o (fn-ocfg-owner oc)))
+        (:instance fn-scr-source-own-read-span-consumed-is-bounded
+                  (o (fn-ocfg-owner oc))))
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-scr-ocfg-source-read-span fn-own-tls-make-result
+     fn-own-tls-result-effects fn-own-tls-result-consumed
+     fn-ag-car fn-ag-cdr car-cons cdr-cons)))))
+
+(verify-guards fn-scr-source-scan-span-loop
+ :hints (("Goal"
+   :in-theory (e/d (fn-served-counted-make fn-served-counted-result)
+                   (fn-scr-dispatch-events fn-wire-fast-statep
+                    fn-served-counted-consumed))
+   :use ((:instance fn-scr-dispatch-events-preserves-fast-statep
+            (conn (fn-served-conn-with-wire conn
+                     (fn-wsp-state (fn-wire-scan (fn-served-conn-wire conn)
+                                               i end fn-octets))))
+            (events (fn-wsp-events (fn-wire-scan (fn-served-conn-wire conn)
+                                               i end fn-octets))))))))
+(verify-guards fn-scr-source-scan-span)
+(verify-guards fn-scr-source-step-span-core)
+(verify-guards fn-scr-source-step-span-fast)
+(verify-guards fn-scr-source-own-read-span
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+   '(natp nfix fn-scar-finish-read car-cons cdr-cons)))))
+(verify-guards fn-scr-ocfg-source-read-span
+ :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+   '(natp nfix (:type-prescription fn-scr-source-own-read-span))))))
 
 (defthm fn-scr-ocfg-read-span-is-scar-ocfg-read-span
   (implies (and (fn-gacc-okp cache) (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat)

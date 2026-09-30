@@ -2233,3 +2233,21 @@ or unrestricted federation is implied by this profile. Those need explicit
 policy and authorization. First client acceptance tests should include an actual
 newsreader and an independent transcript client, rather than only fn talking to
 itself. Legacy convenience aliases are added only with documented semantics.
+
+The concrete registered reader must isolate a publication refresh from
+preceding consumed input or reply effects (NNT-042, PRF-1152, SCN-1056).
+If a counted span has consumed earlier bytes, stop before executing its next
+parsed GROUP or LISTGROUP, returning the exact consumed prefix and original
+pre-command wire state. The next admitted request parses those still-unconsumed
+bytes with current state; this bounded second core parse is explicitly paid.
+The isolated refresh owns its offered publication before any reply aliases.
+Successful selection transfers ownership; failed selection keeps the old holder.
+This is fn's stronger representation/lifetime guarantee over RFC 3977 sections
+6.1.1 and 6.1.2, not authority to render a pipelined span with its final source.
+The unchanged consumed-prefix equation, staged prepare/dispatch equation,
+configured-reader proper-effects and consumed-span domain, and all affected
+executable guards are source-admitted with literal mixed-command witnesses.
+Public normal, actual offered-source custody, bounded refresh replies,
+serialized RC/STATE/input actor return, installed runtime envelope and native
+composition remain pending. The original logical reader remains the full
+consumed-prefix reference.

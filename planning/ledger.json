@@ -1150,6 +1150,7 @@
     "tests/acl2/served-catalog-view-tests",
     "tests/acl2/served-catalog-chain-tests",
     "tests/acl2/served-catalog-scan-tests",
+    "tests/acl2/served-catalog-source-scan-tests",
     "tests/acl2/served-catalog-owner-tests",
     "tests/acl2/served-catalog-join-tests",
     "tests/acl2/served-catalog-join-open-tests",
@@ -1820,22 +1821,22 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1901,
-    "books_in_root_closure": 1884,
-    "roots": 1816,
-    "theorems": 29832,
-    "functions": 19096,
-    "assert_events": 24056,
+    "books": 1902,
+    "books_in_root_closure": 1885,
+    "roots": 1817,
+    "theorems": 29856,
+    "functions": 19120,
+    "assert_events": 24066,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
-      "verified": 3530,
-      "declared-off": 2277,
-      "default-guarded": 10433,
-      "default-unguarded": 2856
+      "verified": 3539,
+      "declared-off": 2287,
+      "default-guarded": 10434,
+      "default-unguarded": 2860
     },
-    "suspect_theorems": 1256,
+    "suspect_theorems": 1258,
     "export_hygiene_warnings": 350,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
@@ -27110,15 +27111,15 @@
       "book": "books/served-catalog-chain.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 77,
-      "functions": 39,
+      "theorems": 101,
+      "functions": 52,
       "guards": {
-        "verified": 18,
+        "verified": 27,
         "declared-off": 1,
-        "default-guarded": 13,
-        "default-unguarded": 7
+        "default-guarded": 14,
+        "default-unguarded": 10
       },
-      "verify_guards_events": 18,
+      "verify_guards_events": 27,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -27140,8 +27141,10 @@
         "fn-scr-msgid-argp-forward",
         "fn-scr-result-of-counted-make",
         "fn-scr-tls-result-of-make",
+        "fn-scrs-consumed-of-counted-make",
         "fn-scrs-dispatch-no-events",
-        "fn-scrs-handshaking-of-with-wire"
+        "fn-scrs-handshaking-of-with-wire",
+        "fn-scrs-result-of-counted-make"
       ],
       "read_error": null
     },
@@ -52329,6 +52332,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/served-catalog-source-scan-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 11,
+      "guards": {
+        "verified": 0,
+        "declared-off": 10,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 10,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/served-catalog-chain"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/served-catalog-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -63977,7 +64006,7 @@
     {
       "theorem": "fn-scr-finish-read-effects",
       "book": "books/served-catalog-chain.lisp",
-      "line": 1777,
+      "line": 1904,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -64007,9 +64036,17 @@
       ]
     },
     {
+      "theorem": "fn-scrs-consumed-of-counted-make",
+      "book": "books/served-catalog-chain.lisp",
+      "line": 2134,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
       "theorem": "fn-scrs-dispatch-no-events",
       "book": "books/served-catalog-chain.lisp",
-      "line": 1574,
+      "line": 1701,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-scr-dispatch-events and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-scr-dispatch-events and the conclusion is that branch's value"
@@ -64018,7 +64055,15 @@
     {
       "theorem": "fn-scrs-handshaking-of-with-wire",
       "book": "books/served-catalog-chain.lisp",
-      "line": 1557,
+      "line": 1684,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-scrs-result-of-counted-make",
+      "book": "books/served-catalog-chain.lisp",
+      "line": 2139,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -68621,7 +68666,7 @@
       {
         "theorem": "fn-scr-served-conn-live-is-view-live",
         "book": "books/served-catalog-chain.lisp",
-        "line": 1838,
+        "line": 1965,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
