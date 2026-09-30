@@ -83,10 +83,10 @@
                                          car-cons cdr-cons)
                                        (theory 'minimal-theory))))))
 
-; No blocking (bp-routing finding 3).  A row the gate does not offer on
+; Definition-level scan helper, not a no-blocking keystone. A row the gate does not offer on
 ; this session is not in the list the session scans: whatever an older
 ; row's route, the scan over the younger rows is the same.
-(defthm fn-bpnp-routed-rows-skip-an-unrouted-row
+(defthm fn-bpnp-routed-rows-skip-an-unrouted-row-by-definition
   (implies (not (equal (fn-bprt-offer-decision (fn-bpnp-held-dest h) via) :offer))
            (equal (fn-bpnp-routed-rows (cons h rest) via)
                   (fn-bpnp-routed-rows rest via)))

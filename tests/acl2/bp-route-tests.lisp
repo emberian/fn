@@ -224,7 +224,7 @@
                       (fn-bprt-admin-plan (list "bp-route" "add" "dtn://bp-dest/" "")))
                      :refused))
 ;; ---------------------------------------------------------------------
-;; No blocking (bp-routing finding 3; fn-bpnp-routed-rows-skip-an-unrouted-row
+;; No blocking (bp-routing finding 3; fn-bpnp-routed-rows-skip-an-unrouted-row-by-definition
 ;; and fn-bpnp-step-session-offer-is-the-scan-choice).  Two held rows under
 ;; one dispatch key: an OLDER bundle to dtn://elsewhere/, which the progress
 ;; routes also send to dtn://bp-dest/'s key, and the YOUNGER bundle to
