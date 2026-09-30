@@ -24,7 +24,8 @@
              (equal token (fn-pww-token fn-pww-carry))
              (eq (fn-pww-phase fn-pww-carry) :storage-constructing)))
    (mv :decoded-factory-unavailable fn-pww-carry))
-  ((eq (car (fn-pww-observation fn-pww-carry)) :constructor-intent)
+  ((and (consp (fn-pww-observation fn-pww-carry))
+        (eq (car (fn-pww-observation fn-pww-carry)) :constructor-intent))
    ; Unknown prior constructor outcome is debt, never a retry instruction.
    (mv :decoded-constructor-uncertain fn-pww-carry))
   ((not kind) (mv :decoded-storage-present fn-pww-carry))
