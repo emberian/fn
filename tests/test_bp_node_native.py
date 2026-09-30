@@ -1177,6 +1177,31 @@ class NativeBpNodeTests(unittest.TestCase):
         observe("checkpoint-complete-readback", exit_code=code,
                 stdout=out, stderr=err, octets=final_octets)
 
+        # Both standalone sender processes have been reaped before the
+        # production owner acquires this Store. Its recovery must preserve
+        # the remaining BP obligation even with no outbound NNTP feed debt.
+        self.assertIsNotNone(sender.poll())
+        retiring = Node(self, PRODUCER, root=self.tmp / "sender-retirement")
+        retiring.store_path = self.sender_store
+        retiring.write_config()
+        retiring.start()
+        before = retiring.operator("obligations", expect=EXIT.OK)
+        unrelated_line = b"obligation id=forward-unrelated kind=forward"
+        matching_line = b"obligation id=forward-bp-node kind=forward"
+        self.assertIn(unrelated_line, before.stdout)
+        self.assertNotIn(matching_line, before.stdout)
+        retired = retiring.operator("retire", "--drain", "4", timeout=240,
+                                    expect=EXIT.OK)
+        retiring.exited(EXIT.OK, timeout=120)
+        report = (self.sender_store / "retire-report.txt").read_bytes()
+        self.assertIn(report, retired.stdout)
+        self.assertIn(unrelated_line, report)
+        self.assertNotIn(matching_line, report)
+        self.assertIn(b"pinned=yes", self.unrelated_status().stdout)
+        self.assertIn(b"pinned=no", self.sender_status().stdout)
+        observe("retirement-frozen-report", exit_code=retired.returncode,
+                stdout=retired.stdout, stderr=retired.stderr, report=report)
+
     def test_dropped_receipt_contact_is_reoffered_by_the_next_pass(self):
         """Spec 4.3.2: an uncertain receipt transfer is connection-local.
 

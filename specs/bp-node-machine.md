@@ -5017,7 +5017,11 @@ application-decision death, receipt-outbox death with live route changes,
 interrupted receipt contact, sender restart and checkpoint-staging death. Its
 source-manifest check requires both native images to name the same immutable
 source before Store mutation. The expected final durable receipt releases only
-the matching obligation; the unrelated one stays pinned. Matching native
-execution is pending. This fixture leaves the bounded checkpoint writer, its
-resident capture funding and the final retirement producer fence/join open;
-it does not establish full Q4 or Q12 completion.
+the matching obligation; the unrelated one stays pinned. After reaping the
+standalone sender, the production owner reopens that same Store and retires
+through the actual drain command. Its final report must individually retain
+the unrelated obligation and omit the released matching one; stopped-owner
+readback must still show the unrelated pin held. Matching native execution is
+pending. This fixture leaves the bounded checkpoint writer, resident capture
+funding, registered captured-row receipt gate and safe final retirement
+producer fence/join open; it does not establish full Q4 or Q12 completion.

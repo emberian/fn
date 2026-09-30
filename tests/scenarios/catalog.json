@@ -6996,12 +6996,14 @@
       "steps": [
         "Require matching published source manifests for the production NNTP producer and BP node images before mutation. Accept the target and unrelated article through served POST and read the stopped owner's exact persisted bytes through the core.",
         "Kill after the durable application decision; replay the owed receipt; retry a carrier, change the live route at the durable outbox, and kill that receipt job.",
-        "Interrupt the receipt contact, restart the sender, kill checkpoint staging, resume the receiver and deliver the durable receipt."
+        "Interrupt the receipt contact, restart the sender, kill checkpoint staging, resume the receiver and deliver the durable receipt.",
+        "Reap the standalone sender, reopen its same Store with the production owner, and retire through the actual drain command and final report."
       ],
       "expected": [
         "All application, job, contact and checkpoint interruptions preserve one accepted article and the unresolved matching obligation.",
         "The resumed job preserves the attempted work identity and only the matching durable receipt releases its obligation; the unrelated obligation remains pinned.",
-        "A clean final checkpoint preserves article visibility."
+        "A clean final checkpoint preserves article visibility.",
+        "The final retirement report names the unrelated forwarding obligation individually, omits the released matching obligation, and leaves the unrelated pin held after owner exit."
       ],
       "evidence": [
         "tests/test_bp_node_native.py",
@@ -7014,7 +7016,7 @@
         ],
         "native": true
       },
-      "execution_scope": "Authored composed fixture; Python compilation and source-manifest helper unit tests pass. No matching native execution yet. Current checkpoint host still materializes whole bytes; bounded producer, funding and final retirement join remain open and this scenario does not close full Q4/Q12."
+      "execution_scope": "Authored composed fixture including actual retirement CLI/report join; Python compilation and source-manifest helper unit tests pass. No matching native execution yet. Current checkpoint host still materializes whole bytes; bounded producer/funding, registered captured-row receipt gate and safe final retirement fence/join remain open. This scenario does not close full Q4/Q12."
     }
   ]
 }
