@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1900 |
-| Certification roots in the Makefile | 1818 |
-| Books inside the root closure | 1892 |
-| `defthm` and `defthmd` events | 29863 |
-| `defun` events | 19059 |
+| Books read | 1902 |
+| Certification roots in the Makefile | 1819 |
+| Books inside the root closure | 1894 |
+| `defthm` and `defthmd` events | 29940 |
+| `defun` events | 19069 |
 | Functions with verified guards | 3513 |
 | Functions declared `:verify-guards nil` and never verified | 2278 |
-| Functions left at the default with an explicit guard | 10404 |
-| Functions left at the default with no guard | 2864 |
+| Functions left at the default with an explicit guard | 10408 |
+| Functions left at the default with no guard | 2870 |
 | `assert-event` checks | 23990 |
 | `must-fail` checks | 2516 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 169 |
-| Theorems flagged SUSPECT by shape | 1251 |
+| Theorems flagged SUSPECT by shape | 1252 |
 | Export-hygiene warnings | 340 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2570 |
+| Include-hygiene warnings | 2572 |
 | Host-names warnings | 2199 |
 | Hand-written-record warnings | 18 |
 
@@ -416,6 +416,7 @@ that `make certify` requests.
 | `books/crypto-seam.lisp` | root | 19 | 14 | 0/0/10/4 | 0 | 0 | 0 |
 | `books/decoded-window-action-trajectory.lisp` | closure | 20 | 2 | 0/1/1/0 | 0 | 0 | 0 |
 | `books/decoded-window-begin.lisp` | closure | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/decoded-window-budget-trajectory.lisp` | closure | 56 | 4 | 0/0/4/0 | 0 | 0 | 1 |
 | `books/decoded-window-copy-trajectory.lisp` | closure | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/decoded-window-descriptor.lisp` | closure | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/decoded-window-lease.lisp` | closure | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
@@ -1418,6 +1419,7 @@ that `make certify` requests.
 | `tests/acl2/crypto-seam-tests.lisp` | root | 11 | 7 | 0/0/7/0 | 18 | 0 | 0 |
 | `tests/acl2/decoded-window-action-trajectory-tests.lisp` | root | 14 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `tests/acl2/decoded-window-begin-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 1 | 0 | 0 |
+| `tests/acl2/decoded-window-budget-trajectory-tests.lisp` | root | 21 | 6 | 0/0/0/6 | 0 | 0 | 0 |
 | `tests/acl2/decoded-window-copy-trajectory-tests.lisp` | root | 18 | 1 | 0/1/0/0 | 1 | 0 | 0 |
 | `tests/acl2/decoded-window-descriptor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 0 | 0 |
 | `tests/acl2/decoded-window-executor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
@@ -2709,6 +2711,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-pwz-actual-literal-first-action-effects-rewrite` | `books/decoded-window-literal-trajectory.lisp` | 210 | instance-corollary: the statement is fn-pwz-actual-literal-first-action-effects instantiated, discharging nothing |
 | `fn-pwz-actual-step-is-action-trajectory-unfolds` | `books/decoded-window-step-trajectory.lisp` | 118 | instance-corollary: the statement is fn-pwz-actual-step-is-action-trajectory instantiated, discharging nothing |
 | `fn-pwz-literal-batch-first-action-and-tail-rewrite` | `books/decoded-window-literal-trajectory.lisp` | 195 | instance-corollary: the statement is fn-pwz-literal-batch-first-action-and-tail instantiated, discharging nothing |
+| `fn-pwz-raw-plan-phase-keeps-compressed-length-by-definition` | `books/decoded-window-budget-trajectory.lisp` | 470 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-pxy-observe-at-deadline-by-definition` | `books/tls-proxy.lisp` | 274 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pxy-observe and the conclusion is that arm's value |
 | `fn-rca-result-okp-is-line-okp` | `books/reclaim-admission.lisp` | 83 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-rci-unrecorded-is-refused-by-definition` | `books/reclaim-instant.lisp` | 194 | arm-of-definition: the hypotheses select one IF/COND arm of fn-rci-decide-stream and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-rci-decide-stream and the conclusion is that branch's value |

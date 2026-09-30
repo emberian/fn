@@ -1152,6 +1152,7 @@
     "tests/acl2/decoded-window-action-trajectory-tests",
     "tests/acl2/decoded-window-literal-trajectory-tests",
     "tests/acl2/decoded-window-step-trajectory-tests",
+    "tests/acl2/decoded-window-budget-trajectory-tests",
     "tests/acl2/records-freeze-tests",
     "tests/acl2/catalog-record-tests",
     "tests/acl2/catalog-tests",
@@ -1822,11 +1823,11 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1900,
-    "books_in_root_closure": 1892,
-    "roots": 1818,
-    "theorems": 29863,
-    "functions": 19059,
+    "books": 1902,
+    "books_in_root_closure": 1894,
+    "roots": 1819,
+    "theorems": 29940,
+    "functions": 19069,
     "assert_events": 23990,
     "must_fails": 2516,
     "prover_refusals": 0,
@@ -1834,14 +1835,14 @@
     "guards": {
       "verified": 3513,
       "declared-off": 2278,
-      "default-guarded": 10404,
-      "default-unguarded": 2864
+      "default-guarded": 10408,
+      "default-unguarded": 2870
     },
-    "suspect_theorems": 1251,
+    "suspect_theorems": 1252,
     "export_hygiene_warnings": 340,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2570,
+    "include_hygiene_warnings": 2572,
     "host_names_warnings": 2199,
     "hand_written_record_warnings": 18
   },
@@ -11193,6 +11194,37 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/decoded-window-budget-trajectory.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 56,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "decoded-window-step-trajectory",
+        "extent-window-compressed-output"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [
+        "fn-pwz-raw-plan-phase-keeps-compressed-length-by-definition"
+      ],
       "read_error": null
     },
     {
@@ -41232,6 +41264,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/decoded-window-budget-trajectory-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 21,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 6
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/decoded-window-budget-trajectory"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/decoded-window-copy-trajectory-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -62783,6 +62841,14 @@
       ]
     },
     {
+      "theorem": "fn-pwz-raw-plan-phase-keeps-compressed-length-by-definition",
+      "book": "books/decoded-window-budget-trajectory.lisp",
+      "line": 470,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
       "theorem": "fn-pxy-observe-at-deadline-by-definition",
       "book": "books/tls-proxy.lisp",
       "line": 274,
@@ -73107,6 +73173,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/decoded-window-budget-trajectory.lisp",
+        "line": 7,
+        "include": "decoded-window-step-trajectory",
+        "included": "books/decoded-window-step-trajectory.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/decoded-window-descriptor.lisp",
         "line": 4,
         "include": "payload-window",
@@ -82701,6 +82774,13 @@
         "line": 2,
         "include": "../../books/decoded-window-action-trajectory",
         "included": "books/decoded-window-action-trajectory.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/decoded-window-budget-trajectory-tests.lisp",
+        "line": 2,
+        "include": "../../books/decoded-window-budget-trajectory",
+        "included": "books/decoded-window-budget-trajectory.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

@@ -284,3 +284,18 @@ adequate initial budget still require proof. Legacy fast/ahead has no
 caller in this current composed stored cold path. Native decoded dispatch
 remains refused until exact retained buffer/view binding and full matched
 runtime demand exist. See planning/evidence/decoded-window-step-source-2026-09-30.md.
+
+The actual basic loop also carries source charge evidence. A successful
+actual STEP pays one scheduling action, including a copied/literal batch;
+its bit/output/grammar phase potential bounds that charge. Actual loop
+outcomes, including terminal refusal, have a proved source trajectory
+bound. Actual compressed begin, read, hash tick and nonrefusal codec calls
+preserve a decoder budget carry; joining the existing actual real-input and
+active-output carries gives remaining budget at least3840+7C on active
+states retaining that joint carry. This is a logical source invariant, not
+an added host validation or compiled operation tariff. The accepted terminal
+refusal's final-charge carry and complete arbitrary-window bytes/status/
+digest trajectory remain open. No N63 restriction or pending-length limit
+is imposed on stored descriptors; the grammar-produced match length bound
+does not restrict stored LEN16. See the budget source evidence for its
+literal positives, complete removals and exact source gate.

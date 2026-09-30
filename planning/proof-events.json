@@ -17800,6 +17800,21 @@
           "kind": "theorem",
           "name": "fn-pwz-actual-codec-is-action-trajectory",
           "note": "Actual fn-ewz-codec-tick complete seven-value tuple equals ACT/PULL replay with identical charged schedule, stored credit, selected private writes and next mode under fixed history/table readiness. Actual initializer/basic chunk positive and both full buffer-removal witnesses. Output-window confluence, total budget and native binding/funding remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-loop-charge-bound",
+          "note": "Actual basic loop all outcomes, including terminal refusal: charged budget is bounded by 9 times real input advance plus 2 times output advance plus incoming bit/phase potential and259. Actual pending-copy and terminal positives, corrupted grammar-state and nonnatural-budget removals. No compiled tariff or complete cross-window adequacy claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-codec-carries-budget",
+          "note": "Actual fn-ewz-codec-tick preserves carried charged-budget invariant from incoming carry and nonrefusal returned decoder status, with no extra state/pool hypotheses. Actual source initializer/first-chunk positive and corrupted incoming-budget/terminal-refusal removals. Accepted terminal final-charge envelope remains a separate open join."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-active-controller-budget-remains-positive",
+          "note": "Existing actual real-input/output carries plus decoder-budget carry imply active remaining budget at least3840+7C. Actual bounded-copy and C=0 source positives and both complete carry/active-mode removals. Successful codec/read/hash carry is joined to actual controller source; accepted terminal final charge and general trajectory still remain open."
         }
       ],
       "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. Full decoder/dictionary stuttering, total action-budget completeness, compiled workspace funding and actual typed lifetime/consumer joins remain open; these component events do not complete PRF-1131."
