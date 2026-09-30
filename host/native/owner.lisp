@@ -4149,7 +4149,7 @@ already owns MAINTENANCE-LEASE; this token covers only physical retention."
   "Project the live root ticket through ACL2 while caller holds owner."
   (declare (ignore service))
   (sb-thread:with-mutex (*fnn-extent-lock*)
-    (fnn-core-page-read-pool 'fn-owner-page-file-pin-ticket token)))
+    (first (fnn-core-page-read-pool 'fn-owner-page-file-pin-ticket token))))
 
 (defun fnn-snapshot-source-root-release (service token)
   "Controller has finished/joined all scans and relinquished their buffers.
