@@ -1,6 +1,9 @@
 (in-package "ACL2")
 (include-book "../../books/replay-produced-size")
 (include-book "../../books/statement-attach")
+(include-book "../../books/codec-attach")
+(include-book "../../books/crypto-attach")
+(include-book "../../books/catalog-record")
 (defun ript-fields (xs)
  (if (consp xs) (cons (fn-scs-summary (car xs)) (ript-fields (cdr xs))) nil))
 (defconst *ript-ctx* (fn-stxk-initial-context 0))
@@ -31,3 +34,109 @@
        (equal (fn-rips-verdict-carry (fn-stmt-value r) sizes)
               (fn-scs-summary *ript-verdict*)))))
 (assert-event (ript-child-parser-carry))
+
+(defun ript-line (s) (append (fn-record-string-octets s) '(13 10)))
+(defconst *ript-principal* (make-list 32 :initial-element 7))
+(defconst *ript-keys* (list (cons :ed25519 (make-list 32 :initial-element 11))
+                          (cons :ml-dsa-65 (make-list 1952 :initial-element 13))))
+(defconst *ript-signatures* (list (cons :ed25519 (make-list 64 :initial-element 17))
+                                (cons :ml-dsa-65 (make-list 3309 :initial-element 19))))
+(defconst *ript-source*
+ (append (ript-line "From: author@example.invalid")
+         (ript-line "Date: Wed, 23 Sep 2026 12:00:00 +0000")
+         (ript-line "Newsgroups: example") (ript-line "Subject: exact source")
+         (ript-line "Message-ID: <hybrid@example.invalid>") '(13 10 98 111 100 121 13 10)))
+(make-event `(defconst *ript-received*
+ ',(fn-hc-render-at-most *fn-article-max-octets* *ript-source* *ript-principal*
+                         *ript-keys* *ript-signatures*)))
+(make-event `(defconst *ript-subject-id* ',(fn-id-subject-of-payload *ript-received*)))
+(make-event `(defconst *ript-subject* ',(fn-record-octets-string (fn-id-text *ript-subject-id*))))
+(make-event `(defconst *ript-obligation*
+ ',(fn-record-octets-string (fn-id-text (fn-id-obligation-of
+    (fn-record-string-octets "<hybrid@example.invalid>") *ript-subject-id*)))))
+(make-event `(defconst *ript-carried-child*
+ ',(fn-stxe-make 0 1 1 "<hybrid@example.invalid>" :carried *ript-principal* 0
+                 (fn-hsig-evidence-tag *ript-source*))))
+(make-event `(defconst *ript-carried-record*
+ ',(fn-record-make 0 1 1 "<hybrid@example.invalid>" *ript-received* '("example")
+   *ript-obligation* *ript-subject* "release" (fn-charge-for-payload (len *ript-received*))
+   841000000)))
+(make-event `(defconst *ript-carried-event*
+ ',(fn-stxa-make-carried 0 1 1 0 (fn-hsig-evidence-tag *ript-source*)
+   (fn-record-string-octets *ript-subject*) (fn-record-encode *ript-carried-record*)
+   (fn-stxe-encode *ript-carried-child*) *ript-source*
+   (fn-hsig-authored-source-id *ript-source*))))
+(assert-event (fn-hsig-article-event-carried-bindsp *ript-carried-event*))
+; Exact public fn-intern-event body selected for this component fixture.
+(defun fn-intern-event (w keyring generation fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (fn-prin-keyringp keyring) (natp generation))))
+  (cond ((fn-record-p w) (fn-cat-intern-list w keyring generation fn-arena))
+        ((fn-stxa-p w)
+         (let ((a (fn-replay-composite-record w)))
+           (if (fn-record-p a)
+               (mv-let (held fn-arena)
+                 (fn-cat-intern-list a keyring generation fn-arena)
+                 (mv (fn-hstxa-make w held) fn-arena))
+             (mv :bad fn-arena))))
+        ((fn-wire-event-p w) (mv w fn-arena))
+        (t (mv :bad fn-arena))))
+(defun ript-carried-positive (row)
+ (mv-let (checked fields status)
+  (fn-ris-produced-step *ript-ctx* (ript-fields *ript-ctx*) row nil)
+  (mv-let (same effect child sizes)
+   (fn-replay-identity-produced-effects *ript-ctx* row)
+   (and (fn-ics-contextp *ript-ctx*)
+        (fn-scs-correspondsp (ript-fields *ript-ctx*) *ript-ctx*)
+        (equal checked same) (eq effect :verdict)
+        (equal child *ript-carried-child*) (fn-rips-lengths-p sizes)
+        (equal (fn-rips-verdict-carry child sizes) (fn-scs-summary child))
+        (equal checked (fn-replay-identity-step *ript-ctx* row))
+        (eq status :carried) (fn-scs-correspondsp fields checked)))))
+(defun ript-carried-live (fn-arena)
+ (declare (xargs :mode :program :stobjs fn-arena))
+ (mv-let (row fn-arena) (fn-intern-event *ript-carried-event* nil 0 fn-arena)
+  (mv (and (fn-hstxa-p row) (fn-store-event-p row)
+           (equal (fn-held-wire-of (fn-hstxa-held row) fn-arena) *ript-carried-record*)
+           (ript-carried-positive row)) fn-arena)))
+(defun ript-carried-local ()
+ (declare (xargs :mode :program))
+ (with-local-stobj fn-arena
+  (mv-let (ok fn-arena) (ript-carried-live fn-arena) ok)))
+(make-event (value (list 'assert-event (ript-carried-local))))
+
+(defun ript-snapshot-source-p (ctx event carry)
+ (mv-let (checked effect child sizes) (fn-replay-identity-produced-effects ctx event)
+  (declare (ignore checked sizes))
+  (implies (eq effect :snapshot) (equal carry (fn-scs-summary child)))))
+(defun ript-full-conclusion (ctx fields event carry)
+ (mv-let (checked next-fields status) (fn-ris-produced-step ctx fields event carry)
+  (and (eq status :carried) (fn-scs-correspondsp next-fields checked))))
+; Complete reachable literal antecedent and conclusion, snapshot source carry.
+(assert-event
+ (let ((ctx *ript-ctx*) (fields (ript-fields *ript-ctx*))
+       (event *ript-snapshot*) (carry (fn-scs-summary *ript-snapshot*)))
+  (and (fn-ics-contextp ctx) (fn-scs-correspondsp fields ctx)
+       (ript-snapshot-source-p ctx event carry)
+       (ript-full-conclusion ctx fields event carry))))
+; Independent hypothesis removal: original field metadata is corrupted.
+(assert-event
+ (let ((ctx *ript-ctx*) (fields (update-nth 2 '(999 nil nil) (ript-fields *ript-ctx*)))
+       (event *ript-snapshot*) (carry (fn-scs-summary *ript-snapshot*)))
+  (and (fn-ics-contextp ctx) (not (fn-scs-correspondsp fields ctx))
+       (ript-snapshot-source-p ctx event carry)
+       (not (ript-full-conclusion ctx fields event carry)))))
+; Independent hypothesis removal: actual changed snapshot provenance is absent.
+(assert-event
+ (let ((ctx *ript-ctx*) (fields (ript-fields *ript-ctx*))
+       (event *ript-snapshot*) (carry '(999 nil nil)))
+  (and (fn-ics-contextp ctx) (fn-scs-correspondsp fields ctx)
+       (not (ript-snapshot-source-p ctx event carry))
+       (not (ript-full-conclusion ctx fields event carry)))))
+; Corrupted-state hypothesis removal: seven fields cannot be the ORIGINALctx6.
+(assert-event
+ (let* ((ctx '(:fault 0 nil nil nil :damaged :extra)) (fields (ript-fields ctx))
+        (event *ript-snapshot*) (carry nil))
+  (and (not (fn-ics-contextp ctx)) (fn-scs-correspondsp fields ctx)
+       (ript-snapshot-source-p ctx event carry)
+       (not (ript-full-conclusion ctx fields event carry)))))

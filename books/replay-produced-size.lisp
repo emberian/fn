@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "replay-identity-produced")
 (include-book "identity-context-size")
+(include-book "replay-identity-size")
 (defun fn-rips-lengths-p (sizes)
  (declare (xargs :guard t))
  (and (consp sizes) (natp (car sizes)) (consp (cdr sizes))
@@ -76,3 +77,173 @@
   (fn-replay-identity-produced-effects fn-replay-identity-effects
    fn-replay-identity-step fn-ics-carriesp fn-scs-carryp
    fn-rips-verdict-carry fn-ics-fields fn-scs-cons)))))
+
+
+(local (defthm fn-rips-string-summary
+ (implies (and (stringp x) (equal n (length x)))
+          (equal (fn-rips-string n) (fn-scs-summary x)))
+ :hints (("Goal" :use fn-scs-atom-establishes-summary
+  :in-theory (e/d (fn-rips-string fn-scs-atom fn-scs-atom-size fn-scc-octetp)
+                  (fn-scs-atom-size-is-encoded-length fn-scs-atom-establishes-summary fn-scs-width fn-scs-summary fn-scc-atom-octets))))))
+
+(local (defthm fn-rips-cbor-octets-are-store-octets
+ (equal (fn-cbor-octet-listp xs) (fn-scc-octet-listp xs))
+ :hints (("Goal" :induct (len xs)
+          :in-theory (enable fn-cbor-octet-listp fn-cbor-octetp
+                             fn-scc-octet-listp fn-scc-octetp)))))
+
+(local (defthm fn-rips-consp-positive-len
+ (implies (consp xs) (< 0 (len xs)))
+ :rule-classes :linear
+ :hints (("Goal" :expand ((len xs))))))
+
+(defthm fn-rips-verdict-carry-is-exact
+ (implies (and (fn-stxe-p child) (fn-rips-lengths-p sizes)
+               (equal sizes (list (length (fn-stxe-msgid child))
+                                  (len (fn-stxe-detail child))
+                                  (len (fn-stxe-profile child)))))
+          (equal (fn-rips-verdict-carry child sizes) (fn-scs-summary child)))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use ((:instance fn-scs-spine-preserves-canonical-size (xs child) (cs (list (fn-ics-scalar (fn-stxe-sequence child))
+ (fn-ics-scalar (fn-stxe-txid child)) (fn-ics-scalar (fn-stxe-generation child))
+ (fn-rips-string (car sizes)) (fn-ics-scalar (fn-stxe-token child))
+ (fn-scs-octets (cadr sizes)) (fn-ics-scalar (fn-stxe-keyring-generation child))
+ (fn-scs-octets (caddr sizes))))))
+  :in-theory (e/d (fn-rips-verdict-carry fn-rips-lengths-p fn-ics-scalar
+                   fn-stxe-p fn-stxe-msgid fn-stxe-detail fn-stxe-profile
+                   fn-stxe-sequence fn-stxe-txid fn-stxe-generation
+                   fn-stxe-token fn-stxe-keyring-generation fn-stxe-shapep
+                   fn-record-uint32p fn-record-msgidp fn-stxe-tokenp
+                   fn-stxe-bounded-octetsp fn-scs-correspondsp)
+                  (fn-scs-spine fn-scs-spine-preserves-canonical-size fn-scs-summary fn-rips-string fn-scs-cons fn-scs-atom
+                   fn-scs-octets length)))))
+
+(local (defthm fn-rips-sized-child-is-record
+ (implies (fn-stmt-okp (mv-nth 0 (fn-stxs-decode octets)))
+          (fn-stxe-p (fn-stmt-value (mv-nth 0 (fn-stxs-decode octets)))))
+ :hints (("Goal" :do-not-induct t
+  :in-theory (e/d (fn-stxs-decode fn-stxe-of-items fn-stxe-items-p
+                   fn-stxe-p fn-stmt-ok fn-stmt-error fn-stmt-okp fn-stmt-value
+                   fn-stmt-uint-item-p fn-stmt-bytes-item-p fn-record-uint32p
+                   fn-stxe-sequence fn-stxe-txid fn-stxe-generation fn-stxe-msgid
+                   fn-stxe-token fn-stxe-detail fn-stxe-keyring-generation fn-stxe-profile
+                   fn-cbor-ag-cdr)
+                  (fn-stmt-decode-items-sized-bounded-impl
+                   fn-stmt-decode-items-bounded-impl fn-stmt-decode-items-prechecked
+                   fn-stxe-make fn-stxe-tokenp fn-stxe-code-token fn-stxe-bounded-octetsp
+                   fn-record-msgidp fn-record-octets-string
+                   fn-rips-cbor-octets-are-store-octets))))))
+
+(defthm fn-rips-produced-verdict-has-actual-lengths
+ (implies (equal (mv-nth 1 (fn-replay-identity-produced-effects ctx event)) :verdict)
+  (let ((child (mv-nth 2 (fn-replay-identity-produced-effects ctx event)))
+        (sizes (mv-nth 3 (fn-replay-identity-produced-effects ctx event))))
+   (and (fn-stxe-p child)
+        (equal sizes (list (length (fn-stxe-msgid child))
+                           (len (fn-stxe-detail child))
+                           (len (fn-stxe-profile child)))))))
+ :rule-classes nil
+ :hints (("Goal"
+  :use ((:instance fn-rips-sized-child-is-record
+          (octets (fn-stxa-verdict-event (fn-replay-identity-wire event))))
+        (:instance fn-stxs-success-byte-lengths-correspond
+          (octets (fn-stxa-verdict-event (fn-replay-identity-wire event))))
+        (:instance fn-stxs-decode-ok-is-public
+          (octets (fn-stxa-verdict-event (fn-replay-identity-wire event))))
+        (:instance fn-hsig-article-event-carried-bindsp-facts
+          (event (fn-replay-identity-wire event)))
+        (:instance fn-hsig-article-event-revoked-bindsp-facts
+          (event (fn-replay-identity-wire event))))
+  :in-theory (e/d (fn-replay-identity-produced-effects
+                   fn-replay-identity-produced-verdict-effect)
+                 (fn-replay-identity-wire fn-stxs-decode fn-stxe-decode-exact
+                  fn-stmt-okp fn-stmt-value fn-stxk-p fn-stxe-p fn-stxa-p
+                  fn-stxk-apply-snapshot fn-stxk-apply-verdict fn-stxk-find
+                  fn-stxa-bindsp fn-hsig-article-event-carried-bindsp
+                  fn-hsig-article-event-revoked-bindsp fn-hsig-article-event-snapshot-bindsp
+                  fn-replay-apply-carried-verdict fn-replay-apply-revoked-verdict
+                  fn-stxs-success-byte-lengths-correspond)))))
+
+(local (defthm fn-rips-record-lengths-shape
+ (implies (fn-stxe-p child)
+  (fn-rips-lengths-p (list (length (fn-stxe-msgid child))
+                          (len (fn-stxe-detail child)) (len (fn-stxe-profile child)))))
+ :hints (("Goal" :in-theory (e/d (fn-rips-lengths-p fn-stxe-p fn-record-msgidp)
+                     (fn-record-ascii-stringp fn-record-string-octets
+                      fn-stxe-bounded-octetsp fn-stxe-tokenp fn-record-uint32p))))))
+
+(defthm fn-rips-produced-verdict-carry-is-exact
+ (implies (equal (mv-nth 1 (fn-replay-identity-produced-effects ctx event)) :verdict)
+  (equal (fn-rips-verdict-carry
+           (mv-nth 2 (fn-replay-identity-produced-effects ctx event))
+           (mv-nth 3 (fn-replay-identity-produced-effects ctx event)))
+         (fn-scs-summary (mv-nth 2 (fn-replay-identity-produced-effects ctx event)))))
+ :rule-classes nil
+ :hints (("Goal"
+  :use (fn-rips-produced-verdict-has-actual-lengths
+        (:instance fn-rips-record-lengths-shape
+           (child (mv-nth 2 (fn-replay-identity-produced-effects ctx event))))
+        (:instance fn-rips-verdict-carry-is-exact
+           (child (mv-nth 2 (fn-replay-identity-produced-effects ctx event)))
+           (sizes (mv-nth 3 (fn-replay-identity-produced-effects ctx event)))))
+  :in-theory (disable fn-replay-identity-produced-effects fn-rips-verdict-carry
+                      fn-scs-summary fn-rips-lengths-p fn-stxe-p
+                      fn-stxe-msgid fn-stxe-detail fn-stxe-profile))))
+
+(local (defthm fn-rips-corresponding-carries-shape
+ (implies (fn-scs-correspondsp fields ctx)
+          (fn-scs-fixed-carriesp (len ctx) fields))
+ :hints (("Goal" :induct (fn-scs-correspondsp fields ctx)
+  :in-theory (enable fn-scs-correspondsp fn-scs-fixed-carriesp)))))
+
+(local (defthm fn-rips-full-context-has-fixed-carries
+ (implies (and (fn-ics-contextp ctx) (fn-scs-correspondsp fields ctx))
+          (fn-ics-carriesp fields))
+ :hints (("Goal" :use fn-rips-corresponding-carries-shape
+  :in-theory (e/d (fn-ics-contextp fn-ics-carriesp)
+                  (fn-scs-correspondsp fn-scs-fixed-carriesp))))))
+
+(local (defthm fn-rips-produced-effect-is-tag
+ (member-eq (mv-nth 1 (fn-replay-identity-produced-effects ctx event))
+            '(:none :snapshot :verdict))
+ :hints (("Goal" :in-theory (e/d (fn-replay-identity-produced-effects
+                                  fn-replay-identity-produced-verdict-effect member-eq)
+       (fn-replay-identity-wire fn-stxs-decode fn-stxe-decode-exact
+        fn-stmt-okp fn-stmt-value fn-stxk-p fn-stxe-p fn-stxa-p
+        fn-stxk-apply-snapshot fn-stxk-apply-verdict fn-stxk-find
+        fn-stxa-bindsp fn-hsig-article-event-carried-bindsp
+        fn-hsig-article-event-revoked-bindsp fn-hsig-article-event-snapshot-bindsp
+        fn-replay-apply-carried-verdict fn-replay-apply-revoked-verdict))))))
+
+(defthm fn-ris-produced-step-preserves-canonical-size
+ (implies
+  (and (fn-ics-contextp ctx) (fn-scs-correspondsp fields ctx)
+       (implies (equal (mv-nth 1 (fn-replay-identity-produced-effects ctx event)) :snapshot)
+                (equal snapshot-carry
+                 (fn-scs-summary (mv-nth 2 (fn-replay-identity-produced-effects ctx event))))))
+  (and (equal (mv-nth 2 (fn-ris-produced-step ctx fields event snapshot-carry)) :carried)
+       (fn-scs-correspondsp
+         (mv-nth 1 (fn-ris-produced-step ctx fields event snapshot-carry))
+         (mv-nth 0 (fn-ris-produced-step ctx fields event snapshot-carry)))))
+ :rule-classes nil
+ :hints (("Goal"
+  :use (fn-rips-produced-effect-is-tag
+        fn-replay-identity-produced-has-original-context-and-effects
+        fn-rips-produced-verdict-carry-is-exact fn-rips-full-context-has-fixed-carries
+        (:instance fn-ris-step-preserves-canonical-size (carries fields)
+          (child-carry
+           (cond ((equal (mv-nth 1 (fn-replay-identity-produced-effects ctx event)) :snapshot)
+                  snapshot-carry)
+                 ((equal (mv-nth 1 (fn-replay-identity-produced-effects ctx event)) :verdict)
+                  (fn-rips-verdict-carry
+                   (mv-nth 2 (fn-replay-identity-produced-effects ctx event))
+                   (mv-nth 3 (fn-replay-identity-produced-effects ctx event))))
+                 (t nil)))))
+  :in-theory (e/d (fn-ris-produced-step fn-ris-step member-eq)
+     (fn-rips-produced-effect-is-tag fn-ris-step-preserves-canonical-size
+      fn-rips-full-context-has-fixed-carries
+      fn-replay-identity-produced-effects fn-replay-identity-effects
+      fn-ics-fields fn-ics-field fn-ics-carriesp fn-ics-contextp
+      fn-rips-verdict-carry fn-scs-summary fn-scs-carryp fn-scs-cons
+      fn-scs-correspondsp)))))
