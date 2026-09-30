@@ -75,6 +75,8 @@
      ((eq phase :pool)
       (mv-let (v n next fn-hpb) (fn-hpe-tick child fn-hpb)
         (cond
+         ((fn-hsrcb-demandp v)
+          (mv v nil c fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb))
          ((and (eq v :prepared) (unsigned-byte-p 64 n))
           (mv-let (bounds count2 pool2) (fn-hcc-row ordinal offset ordinal n)
             (if (and (eq bounds :counted) (<= count2 (fn-hrcur-field 1 c))
@@ -112,6 +114,22 @@
                         (fn-hpcx-with (if (equal count2 (fn-hrcur-field 1 c)) :prepared :need-row)
                                      count2 pool2 nil token 0 0 0 c)
                         fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb))))))))))))
+
+(defun fn-hpcx-supply (c position byte fn-hpb)
+  (declare (xargs :stobjs fn-hpb))
+  (if (not (and (fn-hpcx-shapep c) (eq (fn-hrcur-field 0 c) :pool)))
+      (mv '(:refused :no-pool-byte-demand) c fn-hpb)
+    (mv-let (v child fn-hpb) (fn-hpe-supply (fn-hrcur-field 5 c) position byte fn-hpb)
+      (if (eq v :continue)
+          (mv v (fn-hpcx-with :pool (fn-hrcur-field 2 c) (fn-hrcur-field 3 c)
+                              child (fn-hrcur-field 6 c) (fn-hrcur-field 7 c) 0 0 c) fn-hpb)
+        (mv v c fn-hpb)))))
+
+(defthm fn-hpcx-supply-keeps-shape
+  (implies (fn-hpcx-shapep c)
+           (fn-hpcx-shapep (mv-nth 1 (fn-hpcx-supply c position byte fn-hpb))))
+  :hints (("Goal" :in-theory (e/d (fn-hpcx-shapep fn-hpcx-supply fn-hpcx-with)
+                               (fn-hpe-supply fn-hpe-shapep fn-omk-tokenp)))))
 
 (defthm fn-hpcx-begin-keeps-shape
   (fn-hpcx-shapep (fn-hpcx-begin count pool token capture lease))

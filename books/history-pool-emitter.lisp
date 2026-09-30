@@ -1,6 +1,6 @@
 ; One source codec tick and at most one concrete pool word per scheduling step.
 (in-package "ACL2")
-(include-book "history-record-cursor")
+(include-book "history-source-byte-cursor")
 (include-book "history-page-buffer")
 
 (defun fn-hpe-shapep (c)
@@ -12,7 +12,7 @@
 
 (defun fn-hpe-begin (source capture lease)
   (declare (xargs :guard t))
-  (list :codec (fn-hrcur-byte-begin source capture lease) 0 0 0 capture lease))
+  (list :codec (fn-hsrcb-begin source capture lease) 0 0 0 capture lease))
 
 (defun fn-hpe-tick (c fn-hpb)
   (declare (xargs :stobjs fn-hpb))
@@ -37,8 +37,9 @@
               (mv :prepared n (list :prepared codec 0 0 n capture lease) fn-hpb)
             (mv '(:refused :packing) nil c fn-hpb)))))
      (t
-      (mv-let (v byte next) (fn-hrcur-byte-tick codec)
+      (mv-let (v byte next) (fn-hsrcb-tick codec)
         (cond
+         ((fn-hsrcb-demandp v) (mv v nil c fn-hpb))
          ((eq v :continue)
           (mv :continue nil (list :codec next k w n capture lease) fn-hpb))
          ((eq v :prepared)
@@ -55,9 +56,57 @@
              (t (mv '(:refused :packing) nil c fn-hpb)))))
          (t (mv '(:refused :codec) nil (list :refused next k w n capture lease) fn-hpb))))))))
 
+; Authenticated supply is a separate scheduling step. An outstanding page
+; stays immutable and the byte is not consumed until its exact write ACK.
+(defun fn-hpe-supply (c position byte fn-hpb)
+  (declare (xargs :stobjs fn-hpb))
+  (let ((codec (fn-hrcur-field 1 c)) (k (fn-hrcur-field 2 c))
+        (w (fn-hrcur-field 3 c)) (n (fn-hrcur-field 4 c))
+        (capture (fn-hrcur-field 5 c)) (lease (fn-hrcur-field 6 c)))
+    (cond
+     ((not (and (fn-hpe-shapep c) (eq (fn-hrcur-field 0 c) :codec)))
+      (mv '(:refused :not-awaiting-cold-byte) c fn-hpb))
+     ((fn-hpb-ready fn-hpb) (mv :page-full c fn-hpb))
+     (t
+      (mv-let (v emitted next) (fn-hsrcb-supply codec position byte)
+        (cond
+         ((eq v :continue)
+          (mv :continue (list :codec next k w n capture lease) fn-hpb))
+         ((and (eq v :emit) (fn-scc-octetp emitted)
+               (< (+ 1 n) *fn-hrcur-u64-bound*))
+          (mv-let (packed word k2 w2) (fn-hrcur-word-push emitted k w)
+            (cond
+             ((and (eq packed :emit) (unsigned-byte-p 64 word))
+              (mv-let (stored fn-hpb) (fn-hpb-put word fn-hpb)
+                (declare (ignore stored))
+                (mv :continue (list :codec next k2 w2 (+ 1 n) capture lease) fn-hpb)))
+             ((eq packed :continue)
+              (mv :continue (list :codec next k2 w2 (+ 1 n) capture lease) fn-hpb))
+             (t (mv '(:refused :packing) c fn-hpb)))))
+         (t (mv v c fn-hpb))))))))
+
+(defthm fn-hpe-supply-keeps-shape
+  (implies (fn-hpe-shapep c)
+           (fn-hpe-shapep (mv-nth 1 (fn-hpe-supply c position byte fn-hpb))))
+  :hints (("Goal"
+           :use ((:instance fn-hrcur-word-push-preserves
+                    (octet (mv-nth 1 (fn-hsrcb-supply (fn-hrcur-field 1 c) position byte)))
+                    (k (fn-hrcur-field 2 c)) (w (fn-hrcur-field 3 c))))
+           :in-theory (e/d (fn-hpe-shapep fn-hpe-supply)
+                 (fn-hsrcb-supply fn-hrcur-word-push fn-hpb-put
+                  fn-hrcur-word-push-preserves)))))
+
+(defthm fn-hpe-full-supply-does-not-consume
+  (implies (and (fn-hpe-shapep c) (eq (fn-hrcur-field 0 c) :codec)
+                (fn-hpb-ready fn-hpb))
+           (equal (fn-hpe-supply c position byte fn-hpb)
+                  (mv :page-full c fn-hpb)))
+  :hints (("Goal" :in-theory (e/d (fn-hpe-supply)
+                           (fn-hsrcb-supply fn-hrcur-word-push fn-hpb-put)))))
+
 (defthm fn-hpe-begin-keeps-shape
   (fn-hpe-shapep (fn-hpe-begin source capture lease))
-  :hints (("Goal" :in-theory (disable fn-hrcur-byte-begin))))
+  :hints (("Goal" :in-theory (disable fn-hsrcb-begin fn-hrcur-byte-begin))))
 
 (defthm fn-hpe-full-yields-before-consuming
   (implies (and (fn-hpe-shapep c)
@@ -66,7 +115,7 @@
            (and (equal (mv-nth 0 (fn-hpe-tick c fn-hpb)) :page-full)
                 (equal (mv-nth 2 (fn-hpe-tick c fn-hpb)) c)
                 (equal (mv-nth 3 (fn-hpe-tick c fn-hpb)) fn-hpb)))
-  :hints (("Goal" :in-theory (disable fn-hrcur-byte-tick fn-hrcur-word-push
+  :hints (("Goal" :in-theory (disable fn-hsrcb-tick fn-hrcur-byte-tick fn-hrcur-word-push
                                       fn-hrcur-word-finish fn-hpb-put))))
 
 (defthm fn-hpe-tick-keeps-shape
@@ -74,15 +123,15 @@
            (fn-hpe-shapep (mv-nth 2 (fn-hpe-tick c fn-hpb))))
   :hints (("Goal"
            :use ((:instance fn-hrcur-word-push-preserves
-                            (octet (mv-nth 1 (fn-hrcur-byte-tick (fn-hrcur-field 1 c))))
+                            (octet (mv-nth 1 (fn-hsrcb-tick (fn-hrcur-field 1 c))))
                             (k (fn-hrcur-field 2 c)) (w (fn-hrcur-field 3 c))))
-           :in-theory (disable fn-hrcur-byte-tick fn-hrcur-word-push
+           :in-theory (disable fn-hsrcb-tick fn-hrcur-word-push
                          fn-hrcur-word-finish fn-hpb-put fn-hrcur-word-push-preserves))))
 
 (defthm fn-hpe-tick-keeps-concrete
   (implies (fn-hpbp fn-hpb)
            (fn-hpbp (mv-nth 3 (fn-hpe-tick c fn-hpb))))
-  :hints (("Goal" :in-theory (disable fn-hrcur-byte-tick fn-hrcur-word-push
+  :hints (("Goal" :in-theory (disable fn-hsrcb-tick fn-hrcur-word-push
                                       fn-hrcur-word-finish fn-hpb-put fn-hpbp))))
 
 (defthm fn-hpe-tick-keeps-identities
@@ -90,7 +139,7 @@
        (equal (fn-hrcur-field 6 (mv-nth 2 (fn-hpe-tick c fn-hpb))) (fn-hrcur-field 6 c))
        (equal (fn-hpb-epoch (mv-nth 3 (fn-hpe-tick c fn-hpb))) (fn-hpb-epoch fn-hpb))
        (equal (fn-hpb-lease (mv-nth 3 (fn-hpe-tick c fn-hpb))) (fn-hpb-lease fn-hpb)))
-  :hints (("Goal" :in-theory (disable fn-hrcur-byte-tick fn-hrcur-word-push
+  :hints (("Goal" :in-theory (disable fn-hsrcb-tick fn-hrcur-word-push
                              fn-hrcur-word-finish fn-hpb-put fn-hpb-epoch fn-hpb-lease))))
 
 ; Proof-only byte accounting; no residual traversal occurs in tick or guards.
@@ -152,10 +201,18 @@
                  (:instance fn-hrcur-word-push-preserves
                             (octet (mv-nth 1 (fn-hrcur-byte-tick (fn-hrcur-field 1 c))))
                             (k (fn-hrcur-field 2 c)) (w (fn-hrcur-field 3 c))))
-           :in-theory (disable fn-hpe-shape-scalars fn-hpe-shapep fn-hrcur-byte-tick fn-hrcur-byte-invariantp
+           :in-theory (disable fn-hsrcb-tick fn-hpe-shape-scalars fn-hpe-shapep fn-hrcur-byte-tick fn-hrcur-byte-invariantp
                         fn-hrcur-byte-rest fn-hpb-put fn-hrcur-word-push-preserves
                         fn-hrcur-byte-tick-preserves fn-hrcur-byte-tick-refines-residual
                         fn-hrcur-byte-prepared-empty fn-hpe-tick-keeps-shape))))
+
+(local
+ (defthm fn-hpe-old-emission-is-resident
+   (implies (equal (mv-nth 0 (fn-hrcur-byte-tick c)) :emit)
+            (not (fn-hsrcb-coldp c)))
+   :hints (("Goal" :in-theory (e/d (fn-hrcur-byte-tick fn-hsrcb-coldp
+                                    fn-hrcur-widthp)
+                       (fn-hrcur-tree-tick fn-hrsc-tick fn-hrcur-leaf-tick))))))
 
 ; Actual concrete eighth-byte write, connected to existing fn-hp-pack8.
 (defthm fn-hpe-eighth-byte-refines-pool-word
@@ -176,7 +233,7 @@
                    (octet (mv-nth 1 (fn-hrcur-byte-tick (fn-hrcur-field 1 c)))))
                  (:instance fn-hrcur-word-push-preserves (k 7) (w (fn-hrcur-field 3 c))
                    (octet (mv-nth 1 (fn-hrcur-byte-tick (fn-hrcur-field 1 c))))))
-           :in-theory (disable fn-hrcur-byte-tick fn-hrcur-word-push fn-hrcur-word-finish
+           :in-theory (disable fn-hsrcb-tick fn-hrcur-byte-tick fn-hrcur-word-push fn-hrcur-word-finish
                         fn-hpb-put fn-hpb-prefix fn-hp-pack8 adt-unle fn-hrcur-wordp
                         fn-hrcur-word-push-refines-pack8 fn-hrcur-word-push-preserves))))
 
@@ -195,7 +252,7 @@
                             (k (fn-hrcur-field 2 c)) (w (fn-hrcur-field 3 c)))
                  (:instance fn-hpe-finish-permitted
                             (k (fn-hrcur-field 2 c)) (w (fn-hrcur-field 3 c))))
-           :in-theory (disable fn-hrcur-byte-tick fn-hrcur-word-push fn-hrcur-word-finish
+           :in-theory (disable fn-hsrcb-tick fn-hrcur-byte-tick fn-hrcur-word-push fn-hrcur-word-finish
                         fn-hpb-put fn-hpb-prefix fn-hp-pack8 adt-zeros adt-unle
                         fn-hrcur-word-finish-refines-pad8 fn-hpe-finish-permitted))))
 
