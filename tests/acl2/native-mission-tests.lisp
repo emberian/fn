@@ -24,6 +24,28 @@
 ; the table has no profile.
 (must-fail-checked (assert-event (fn-bs-profile-admittedp (fn-native-mission-profile "moon"))))
 
+; PRF-094 fn-native-mission-profiles-valid: each supported mission affirms
+; the literal name-membership hypothesis and exact resolved-profile validity.
+(assert-event
+ (and (member-equal "small-community" *fn-ncfg-mission-names*)
+      (fn-bs-profile-validp
+       (fn-bs-profile-resolve (fn-native-mission-request "small-community") nil))))
+(assert-event
+ (and (member-equal "relay" *fn-ncfg-mission-names*)
+      (fn-bs-profile-validp
+       (fn-bs-profile-resolve (fn-native-mission-request "relay") nil))))
+(assert-event
+ (and (member-equal "archive" *fn-ncfg-mission-names*)
+      (fn-bs-profile-validp
+       (fn-bs-profile-resolve (fn-native-mission-request "archive") nil))))
+; Remove the sole hypothesis: the unsupported name resolves to an invalid
+; request, not a valid profile. There are no retained hypotheses.
+(assert-event (not (member-equal "moon" *fn-ncfg-mission-names*)))
+(must-fail-checked
+ (assert-event
+  (fn-bs-profile-validp
+   (fn-bs-profile-resolve (fn-native-mission-request "moon") nil))))
+
 ; The verb: `mission relay' at a config path writes the relay rendering.
 (defconst *nmt-path* (fn-record-string-octets "/tank/fn/scratch/operator-config/relay/fn.toml"))
 (defconst *nmt-mission*
