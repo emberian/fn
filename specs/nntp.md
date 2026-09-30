@@ -1855,6 +1855,38 @@ cursor implementation. Integration, legacy rows without a decided NOV,
 the maintained codec bound on numeric setup and matched runtime cost
 measurement remain open; no complete long-row scheduling claim is made.
 
+### Bounded legacy hydration source component (PRF-1094, SCN-1009)
+
+`fn-lpc-begin(handle, length, origin-pin)` captures immutable source identity;
+`fn-lpc-tick(cursor, fuel, fn-arena)` returns cursor, consumed, work and
+`:yield`, `:valid` or `:invalid`. One raw source byte costs one transition.
+The runtime guard checks only source handle, known length and position. It
+never rescans the article, the accumulated fields or the whole arena.
+
+The five `fn-lpc-field(cursor, k)` values, in Subject, From, Date,
+Message-ID and References order, are absent or `(handle start length pin)`.
+The first matching field wins. The span starts after exactly one initial
+unfolded SP; an initial TAB is retained for `fn-nov-scrub-byte`. Interior
+folding CRLF pairs remain in the raw span and `fn-nov-scrub` removes them.
+An empty first physical value followed by a fold uses that fold's first
+octet for the single-SP rule. No field or source is flattened at EOF.
+This preserves the RFC 3977 §8.3.2 projection; physical header syntax and
+folding follow the existing RFC 5322 §2.1.1/§2.2.3 and RFC 5536 §2.2 parser.
+
+The admitted source theorem `fn-lpc-tick-full-body-lines` equates the actual
+arena tick's complete body count to `fn-hf-body-lines-of`. The first
+CRLFCRLF search and body framing run independently of header rejection:
+body NUL or an unterminated final body line produces zero count even when
+the article parser accepts those opaque body octets.
+
+This component is not served yet. `fn-lpc-agreesp` states the full remaining
+comparison with actual `fn-hnov-of` and `fn-hf-body-lines-of`; it is a
+predicate, not a proved theorem. General header-verdict/field refinement,
+maintained span bounds, allocation accounting, actual cursor composition
+and matched runtime measurements remain open. The source stores fixed-size
+records and source references and reports raw-byte work; that statement
+alone is not a physical allocation or latency qualification.
+
 ## Public exposure (NNT-031)
 
 NNT-031: A reader port facing strangers admits, paces and closes connections within operator limits ACL2 decides, and an unauthenticated session under the none policy reaches no reader or posting command
