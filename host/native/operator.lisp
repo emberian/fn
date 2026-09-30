@@ -253,10 +253,14 @@ order, and the names it found handed straight back."
 ;;; lines (books/native-health.lisp fn-nh-last-run).  Nothing here parses.
 
 (defun fnn-operator-log-run-line (octets)
-  "Append ACL2's run line and one LF to the open service log, directly (the
-log writer is not running at either end of `run').  A failed write stops
+  "Append ACL2's run line and one LF only with released writer authority.
+A timed-out writer retains its descriptor; no direct write then. A failed write stops
 nothing: the log is an operator's record."
-  (when (and *fnn-owner-log-fd* (fnn-octet-list-p octets))
+  (when (and (eq (fnn-core 'fn-ort-log-caller-action
+                          (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+                            (and *fnn-log-writer* t)))
+                 :write-close)
+             *fnn-owner-log-fd* (fnn-octet-list-p octets))
     (ignore-errors
      (sb-thread:with-recursive-lock (*fnn-owner-log-mutex*)
        (fnn-write-all *fnn-owner-log-fd* (fnn-octets (append octets (list 10))))))))

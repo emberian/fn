@@ -2,6 +2,12 @@
 (include-book "../../books/owner-retire-counted")
 
 (assert-event
+ (and (equal (fn-ort-log-caller-action nil) :write-close)
+      (not (equal t nil))
+      (equal (fn-ort-log-caller-action t) :held)
+      (not (equal (fn-ort-log-caller-action t) :write-close))))
+
+(assert-event
  (and (equal (fn-ort-report-close-action :joined :closed) :joined)
       (equal (fn-ort-report-close-action :joined :absent) :joined)
       (not (equal :held :joined))

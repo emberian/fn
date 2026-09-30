@@ -128,20 +128,28 @@
                 ;; by the outer handler.
                 (setq run-failure condition)
                 (error condition)))
-          (let ((code (or run-code (and run-failure (fnn-exit-code-for run-failure)))))
-            (when (integerp code)
-              (fnn-operator-log-run-line
-               (fnn-core 'fn-native-health-host-run-stopped-line code
-                         (let ((reason (cond (run-failure
-                                              (ignore-errors (format nil "~a" run-failure)))
-                                             ((/= code +fnn-exit-ok+) *fnn-owner-last-fault*))))
-                           (and (stringp reason) (fnn-octet-list (fnn-string-octets reason))))))))
+          (when (eq (fnn-core 'fn-ort-log-caller-action
+                             (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+                               (and *fnn-log-writer* t)))
+                    :write-close)
+            (let ((code (or run-code (and run-failure (fnn-exit-code-for run-failure)))))
+              (when (integerp code)
+                (fnn-operator-log-run-line
+                 (fnn-core 'fn-native-health-host-run-stopped-line code
+                           (let ((reason (cond (run-failure
+                                                (ignore-errors (format nil "~a" run-failure)))
+                                               ((/= code +fnn-exit-ok+) *fnn-owner-last-fault*))))
+                             (and (stringp reason) (fnn-octet-list (fnn-string-octets reason)))))))))
           (when tls-context (fnn-tls-close-context tls-context))
-          (sb-thread:with-recursive-lock (*fnn-owner-log-mutex*)
-            (when *fnn-owner-log-fd*
-              (ignore-errors (fnn-close *fnn-owner-log-fd*))
-              (setq *fnn-owner-log-fd* nil
-                    *fnn-owner-log-path* nil)))))
+          (when (eq (fnn-core 'fn-ort-log-caller-action
+                             (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+                               (and *fnn-log-writer* t)))
+                    :write-close)
+            (sb-thread:with-recursive-lock (*fnn-owner-log-mutex*)
+              (when *fnn-owner-log-fd*
+                (ignore-errors (fnn-close *fnn-owner-log-fd*))
+                (setq *fnn-owner-log-fd* nil
+                      *fnn-owner-log-path* nil))))))
     (error (condition)
       (let ((code (fnn-exit-code-for condition)))
         (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "run" condition)

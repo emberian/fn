@@ -51,6 +51,17 @@
                 (or (equal observation :closed) (equal observation :absent))))
   :rule-classes nil)
 
+; The native writer slot remains present after timeout and is cleared only
+; after definite join. This decides authority over its log descriptor only,
+; not settlement of the complete owner producer graph.
+(defun fn-ort-log-caller-action (writer-presentp)
+  (declare (xargs :guard t))
+  (if (equal writer-presentp nil) :write-close :held))
+
+(defthm fn-ort-log-caller-held-preserves-descriptor-authority
+  (implies (not (equal writer-presentp nil))
+           (equal (fn-ort-log-caller-action writer-presentp) :held)))
+
 (defun fn-ort-drain-step-counted (s0 s seconds pending intake-fenced producers-settled)
   (declare (xargs :guard t))
   (cond ((and (equal intake-fenced t) (equal producers-settled t)
@@ -93,4 +104,4 @@
 (in-theory (disable fn-ort-drain-step-counted fn-ort-intake-action
                     fn-ort-fenced-input-consumed fn-ort-window-step
                     fn-ort-log-close-action fn-ort-log-close-exit
-                    fn-ort-report-close-action))
+                    fn-ort-report-close-action fn-ort-log-caller-action))

@@ -4769,6 +4769,10 @@
   :class :common-lisp-compliant
   :keystones (fn-ort-report-close-requires-journal-settlement))
 
+(definterface fn-ort-log-caller-action
+  :class :common-lisp-compliant
+  :keystones (fn-ort-log-caller-held-preserves-descriptor-authority))
+
 (definterface fn-ort-intake-action
   :class :common-lisp-compliant)
 

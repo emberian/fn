@@ -59,6 +59,10 @@ job. A held writer retains its journal descriptor, suppresses report
 publication and returns uncertain through `fn-ort-log-close-exit`. Literal
 mutation fixtures cover each unsettled observation. These source admissions
 do not establish the complete native producer fence or funded report.
+The outer operator caller and the direct run-line writer also consult
+`fn-ort-log-caller-action`: the retained writer slot forbids both direct
+stopped-line I/O and descriptor close. A timeout does not relinquish that
+slot; only definite join clears it.
 
 ## Unactivated cursor contract
 
