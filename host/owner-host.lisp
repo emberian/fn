@@ -45,6 +45,7 @@
 (include-book "../books/consumer-progress-carried")
 (include-book "../books/owner-state-accessors")
 (include-book "../books/state-globals")
+(include-book "../books/history-capture-state")
 (include-book "../books/owner-retain-state")
 (include-book "../books/owner-retain-transitions")
 (include-book "../books/owner-obligation-state")
@@ -425,9 +426,12 @@
   (declare (xargs :stobjs (fn-arena fn-cat fn-hist state) :mode :program))
   ; The retired bridge's recoveries load a local catalog that serves nothing:
   ; the zero entry's key.
-  (fn-owner-install-extended
-   (fn-ock-recover-extended extended config-records frontier max-conns)
-   extended (fn-mpxt-key-of-entry nil) fn-arena fn-cat fn-hist state))
+  ; Refuse before any recovery load, canonical reset or source mutation.
+  (if (not (eq (fn-owner-history-reset-status state) :history-reset-clear))
+      (mv nil :history-source-held fn-arena fn-cat fn-hist state)
+    (fn-owner-install-extended
+     (fn-ock-recover-extended extended config-records frontier max-conns)
+     extended (fn-mpxt-key-of-entry nil) fn-arena fn-cat fn-hist state)))
 
 ; The owner from the Store open this process just ran
 ; (fn-store-sn-open-extended, host/store-node-host.lisp): its extended
@@ -443,14 +447,17 @@
 ; key and the served boundary's (fn-owner-mpx-key) are one source).
 (defun fn-owner-recover-from-store-open (max-conns entry fn-arena fn-cat fn-hist state)
   (declare (xargs :stobjs (fn-arena fn-cat fn-hist state) :mode :program))
-  (let ((opened (and (boundp-global 'fn-store-sco-open state)
+  ; Do not clear the opened receipt or touch retained physical history.
+  (if (not (eq (fn-owner-history-reset-status state) :history-reset-clear))
+      (mv nil :history-source-held fn-arena fn-cat fn-hist state)
+   (let ((opened (and (boundp-global 'fn-store-sco-open state)
                      (f-get-global 'fn-store-sco-open state))))
     (if (not (and (consp opened) (consp (cdr opened)) (consp (cddr opened))))
         (mv nil :fault fn-arena fn-cat fn-hist state)
       (let ((state (f-put-global 'fn-store-sco-open nil state)))
         (fn-owner-install-extended
          (fn-ock-install (cadr opened) (caddr opened) max-conns)
-         (car opened) (fn-mpxt-key-of-entry entry) fn-arena fn-cat fn-hist state)))))
+         (car opened) (fn-mpxt-key-of-entry entry) fn-arena fn-cat fn-hist state))))))
 
 ; The two recoveries below are the Python bridge's (tools/run_owner.py), whose
 ; served path was the retired fn-owner-chunk over the view's lists and reads no catalog:
@@ -5125,9 +5132,14 @@ existing port only after fn-fc has made this connection ready."
 ; histories, books/owner-reclaim-conns.lisp).
 (defun fn-owner-orcp-swap-word (count-cap frontier-cap s-cap readers rebuilt state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((oc (fn-owner-ocfg state))
-         (o (fn-ocfg-owner oc))
-         (st (fn-own-store o)))
+  ; The native swap driver calls this under the owner mutex BEFORE the
+  ; durable checkpoint install and column replacement. Existing :busy
+  ; handling yields; WAIT must terminal-return its capture before sleeping.
+  (if (not (eq (fn-owner-history-reset-status state) :history-reset-clear))
+      (value :busy)
+   (let* ((oc (fn-owner-ocfg state))
+          (o (fn-ocfg-owner oc))
+          (st (fn-own-store o)))
     (value (fn-orcp-swap-decision
             (fn-orcp-swap-word count-cap frontier-cap s-cap
                                (fn-sf-records-count (fn-sn-files st))
@@ -5137,7 +5149,7 @@ existing port only after fn-fc has made this connection ready."
                                     (null (fn-own-inflight o))
                                     (null (f-get-global 'fn-owner-cat-pending state)))
                                readers)
-            oc (nth 1 rebuilt)))))
+            oc (nth 1 rebuilt))))))
 
 ; Defined under the same host-called name in books/owner-recovery-retain.lisp.
 
