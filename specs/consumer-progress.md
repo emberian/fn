@@ -1283,3 +1283,14 @@ fixed width, so charge correspondence does not require count equality, while
 the stream producer still requires exact count/name correspondence. These are
 source-only boundaries; genuine runtime funding/source custody, publication
 and the remote scan/reply still remain open.
+
+The additive remote scanner source carries exact uninspected query and article
+group suffixes, compares one bounded name pair per tick, and emits each selected
+event once. Its no-skipped-match source theorems and concrete single-FnHISTAt
+result refinement pass with literal positive/removal witnesses. A missing dense
+event remains an unavailable gap. Catalog ordinals are distinct from Store event
+positions. The FNCR kind-2 logical reply grammar preserves accepted/refused/
+uncertain/unavailable and explicit nullable cursor/report tags; its 13 source
+fixtures pass. Retained all-event backing/custody, final current account/READ
+validation, bounded report/digest writer, callback quiescence, TLS activation
+and the original complete scenarios remain open. This is source evidence only.
