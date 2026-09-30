@@ -155,3 +155,82 @@
          fn-ag-car fn-ag-cdr)
         (nth mv-nth fn-osh-one fn-osh-ready-p fn-osh-selected-source-p
          fn-gns-number-begin fn-gns-group-selected-result fn-ipub-count)))))
+
+; Full range termination becomes the current paid reply, with every later
+; effect still in the SAME SPP. OWED is taken from the actual advanced range.
+(defun fn-ibr-terminal-prepare (control)
+ (declare (xargs :guard t))
+ (let* ((plan (fn-spp-at 4 control)) (work (fn-spp-at 8 control))
+        (range (fn-spp-at 1 work)))
+  (if (not (and (equal (fn-spp-at 3 control) :terminal)
+                (eq (fn-spp-status plan) :cursor)))
+      (mv :unavailable control)
+    (let* ((reply (if (fn-spp-at 5 range)
+                     (fn-ovw-status (fn-ovw-empty-text (fn-spp-at 4 range)))
+                   '(46 13 10)))
+           (next-plan
+             (fn-spp-save-active plan
+               (cons reply (fn-ag-cdr (fn-spp-rest plan))))))
+     (mv :position
+      (fn-ibr-make (fn-spp-at 1 control) (fn-spp-at 2 control) :position
+                   next-plan (fn-spp-at 5 control)
+                   (fn-spp-at 6 control) (fn-spp-at 7 control) work))))))
+
+(defun fn-ibr-terminal-head-window (w fn-octets control)
+ (declare (xargs :stobjs fn-octets :guard (natp w)))
+ (if (not (natp w)) (mv :unavailable control fn-octets)
+  (mv-let (word positioned) (fn-ibr-terminal-prepare control)
+   (if (not (and (eq word :position)
+                 (eq (fn-spp-status (fn-spp-at 4 positioned)) :reply)))
+       (mv (if (eq word :position) :recovery-required word) control fn-octets)
+     (mv-let (status plan fn-octets)
+       (fn-spp-head-window (fn-spp-at 4 positioned) w fn-octets)
+      (mv status
+       (fn-ibr-make (fn-spp-at 1 positioned) (fn-spp-at 2 positioned) :position
+                    plan (fn-spp-at 5 positioned) (fn-spp-at 6 positioned)
+                    (fn-spp-at 7 positioned) (fn-spp-at 8 positioned))
+       fn-octets))))))
+
+(local
+ (defthm fn-ibr-terminal-prepares-fixed-reply
+  (implies (and (equal (fn-spp-at 3 control) :terminal)
+                (eq (fn-spp-status (fn-spp-at 4 control)) :cursor))
+   (let ((plan (fn-spp-at 4 (mv-nth 1 (fn-ibr-terminal-prepare control)))))
+    (and (eq (mv-nth 0 (fn-ibr-terminal-prepare control)) :position)
+         (eq (fn-spp-status plan) :reply) (consp (fn-spp-cur plan))
+         (true-listp (fn-spp-cur plan)))))
+  :hints (("Goal" :do-not-induct t :in-theory
+    (e/d (fn-ibr-terminal-prepare fn-ibr-make fn-spp-save-active fn-spp-make
+          fn-spp-status fn-spp-holderp fn-spp-cur fn-spp-rest fn-spp-prefix
+          fn-spp-origin fn-spp-resource fn-spp-at fn-ag-car fn-ag-cdr
+          fn-splan-cur fn-splan-rest fn-ovw-empty-text)
+         (fn-ovw-status fn-splan-cursor-effectp fn-srb-effect-octets))))))
+
+(defthm fn-ibr-terminal-window-refines-original-buffer-window
+ (let* ((positioned (mv-nth 1 (fn-ibr-terminal-prepare control)))
+        (prepared (fn-spp-at 4 positioned))
+        (actual (fn-ibr-terminal-head-window w fn-octets control))
+        (old (fn-splan-window (fn-spp-active-plan prepared)
+                              (min w (len (fn-spp-cur prepared))) fn-octets))
+        (next (fn-spp-at 4 (mv-nth 1 actual))))
+  (implies (and (natp w)
+                (equal (fn-spp-at 3 control) :terminal)
+                (eq (fn-spp-status (fn-spp-at 4 control)) :cursor))
+   (and (equal (mv-nth 0 actual) (mv-nth 0 old))
+        (equal (mv-nth 2 actual) (mv-nth 2 old))
+        (equal (fn-spp-active-plan next) (mv-nth 1 old))
+        (equal (fn-spp-prefix next) (fn-spp-prefix (fn-spp-at 4 control)))
+        (equal (fn-spp-origin next) (fn-spp-origin (fn-spp-at 4 control)))
+        (equal (fn-spp-resource next) (fn-spp-resource (fn-spp-at 4 control))))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use ((:instance fn-ibr-terminal-prepares-fixed-reply)
+        (:instance fn-spp-head-window-refines-actual-old-buffer-window
+          (p (fn-spp-at 4 (mv-nth 1 (fn-ibr-terminal-prepare control))))))
+  :in-theory
+   (e/d (fn-ibr-terminal-head-window fn-ibr-terminal-prepare fn-ibr-make
+         fn-spp-save-active fn-spp-make fn-spp-at fn-ag-car fn-ag-cdr
+         fn-spp-prefix fn-spp-origin fn-spp-resource)
+        (fn-spp-head-window fn-splan-window fn-spp-active-plan fn-spp-cur
+         fn-spp-rest
+         fn-spp-status fn-ovw-status fn-ovw-empty-text len min)))))

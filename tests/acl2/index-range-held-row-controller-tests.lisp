@@ -91,3 +91,63 @@
        (equal (fn-spp-at 4 next) (fn-spp-at 4 original))
        (equal (fn-spp-at 5 next) (fn-spp-at 5 original))))
  :rule-classes nil)
+
+(defun ibrhct-terminal (phase cursor owed legacy)
+ (fn-ibr-make 17 7 phase
+  (fn-spp-make nil '((:log retained))
+   (if cursor '((:over-cursor original) (:reply (90 13 10)) (:close))
+     '((:reply (65)) (:close))) :origin :funded)
+  :pin :group :number
+  (fn-ibr-work (list "g" 4 3 7 legacy owed) :publication nil nil)))
+(defun-nx ibrhct-terminal-conclusion (control w fn-octets)
+ (declare (xargs :stobjs fn-octets :verify-guards nil))
+ (let* ((prepared (fn-spp-at 4 (mv-nth 1 (fn-ibr-terminal-prepare control))))
+        (actual (fn-ibr-terminal-head-window w fn-octets control))
+        (old (fn-splan-window (fn-spp-active-plan prepared)
+                 (min w (len (fn-spp-cur prepared))) fn-octets))
+        (next (fn-spp-at 4 (mv-nth 1 actual))))
+  (and (equal (mv-nth 0 actual) (mv-nth 0 old))
+       (equal (mv-nth 2 actual) (mv-nth 2 old))
+       (equal (fn-spp-active-plan next) (mv-nth 1 old))
+       (equal (fn-spp-prefix next) (fn-spp-prefix (fn-spp-at 4 control)))
+       (equal (fn-spp-origin next) (fn-spp-origin (fn-spp-at 4 control)))
+       (equal (fn-spp-resource next) (fn-spp-resource (fn-spp-at 4 control))))))
+(defthm ibrhct-terminal-positive-with-full-tail
+ (let* ((control (ibrhct-terminal :terminal t nil nil)) (w 2) (fn-octets nil)
+        (actual (fn-ibr-terminal-head-window w fn-octets control))
+        (next (fn-spp-at 4 (mv-nth 1 actual))))
+  (and (natp w) (equal (fn-spp-at 3 control) :terminal)
+       (eq (fn-spp-status (fn-spp-at 4 control)) :cursor)
+       (ibrhct-terminal-conclusion control w fn-octets)
+       (equal (mv-nth 2 actual) '(46 13))
+       (equal (fn-spp-cur next) '(10))
+       (equal (fn-spp-rest next) '((:reply (90 13 10)) (:close)))
+       (equal (fn-spp-prefix next) '((:log retained)))))
+ :rule-classes nil)
+(defthm ibrhct-terminal-without-natural-window-corrupted-state
+ (let ((control (ibrhct-terminal :terminal t nil nil)) (w 3/2) (fn-octets nil))
+  (and (not (natp w)) (equal (fn-spp-at 3 control) :terminal)
+       (eq (fn-spp-status (fn-spp-at 4 control)) :cursor)
+       (not (ibrhct-terminal-conclusion control w fn-octets))))
+ :rule-classes nil)
+(defthm ibrhct-terminal-without-terminal-phase-corrupted-state
+ (let ((control (ibrhct-terminal :position t nil nil)) (w 2) (fn-octets nil))
+  (and (natp w) (not (equal (fn-spp-at 3 control) :terminal))
+       (eq (fn-spp-status (fn-spp-at 4 control)) :cursor)
+       (not (ibrhct-terminal-conclusion control w fn-octets))))
+ :rule-classes nil)
+(defthm ibrhct-terminal-without-cursor-status-corrupted-state
+ (let ((control (ibrhct-terminal :terminal nil nil nil)) (w 2) (fn-octets nil))
+  (and (natp w) (equal (fn-spp-at 3 control) :terminal)
+       (not (eq (fn-spp-status (fn-spp-at 4 control)) :cursor))
+       (not (ibrhct-terminal-conclusion control w fn-octets))))
+ :rule-classes nil)
+(defthm ibrhct-terminal-actual-owed-endings
+ (and
+  (equal (fn-spp-cur (fn-spp-at 4 (mv-nth 1
+           (fn-ibr-terminal-prepare (ibrhct-terminal :terminal t t nil)))))
+         (fn-ovw-status (fn-ovw-empty-text nil)))
+  (equal (fn-spp-cur (fn-spp-at 4 (mv-nth 1
+           (fn-ibr-terminal-prepare (ibrhct-terminal :terminal t t t)))))
+         (fn-ovw-status (fn-ovw-empty-text t))))
+ :rule-classes nil)
