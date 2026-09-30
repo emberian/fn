@@ -2,6 +2,8 @@
 import json
 from pathlib import Path
 import tempfile
+import subprocess
+import sys
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -36,6 +38,53 @@ class TypedSourceBackendTests(unittest.TestCase):
                 verdict = backend.execute(scenario)
             self.assertEqual(verdict.kind, "harness-failure")
             self.assertEqual(verdict.cause, "typed-source-trial-did-not-complete")
+
+    def test_actual_child_timeout_records_output_and_blocks_reuse(self):
+        scenario = Scenario.load(EVIDENCE / "trial-0000/scenario.json")
+        with tempfile.TemporaryDirectory(dir=ROOT / "build") as tmp:
+            backend = SourceBackend(tmp, "unit-timeout")
+            backend.live = True  # No proof process: only the diagnostic child below.
+            def child(*arguments):
+                return subprocess.run([sys.executable, "-c",
+                    "import sys,time; sys.stdout.buffer.write(b'checkpoint\\xff'); sys.stdout.flush(); time.sleep(30)"],
+                    capture_output=True, timeout=0.2)
+            with patch.object(backend, "command", side_effect=child):
+                verdict = backend.execute(scenario)
+            self.assertEqual(verdict.kind, "harness-failure")
+            failure = json.loads((Path(tmp) / "trial-0000/failure.json").read_text())
+            self.assertEqual(failure["stage"], "send-file")
+            self.assertEqual(failure["exception"], "TimeoutExpired")
+            self.assertEqual(failure["stdout"], "checkpoint\\xff")
+            self.assertTrue(failure["owned_session_requires_stop"])
+            with self.assertRaisesRegex(RuntimeError, "prior trial is incomplete"):
+                backend.execute(scenario)
+            self.assertFalse((Path(tmp) / "trial-0001").exists())
+
+    def test_log_transport_failure_is_not_a_replay_verdict(self):
+        scenario = Scenario.load(EVIDENCE / "trial-0000/scenario.json")
+        with tempfile.TemporaryDirectory(dir=ROOT / "build") as tmp:
+            backend = SourceBackend(tmp, "unit-fetch")
+            backend.live = True
+            with patch.object(backend, "command", return_value=SimpleNamespace(returncode=0, stdout="sent", stderr="")), \
+                    patch.object(backend, "fetch", side_effect=OSError("transport lost")):
+                verdict = backend.execute(scenario)
+            self.assertEqual(verdict.cause, "typed-source-trial-transport-incomplete")
+            self.assertEqual(json.loads((Path(tmp) / "trial-0000/failure.json").read_text())["stage"], "fetch-log")
+            self.assertTrue(backend.live)
+            self.assertTrue(backend.failed)
+
+    def test_failed_stop_preserves_primary_error_and_owned_handle(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "build") as tmp:
+            backend = SourceBackend(tmp, "unit-stop")
+            backend.live = True
+            original = ValueError("original trial failure")
+            with patch.object(backend, "command", return_value=SimpleNamespace(returncode=1, stdout="", stderr="stop refused")):
+                backend.__exit__(ValueError, original, None)
+            self.assertTrue(backend.live)
+            self.assertIn("cleanup failed", original.__notes__[0])
+            failure = json.loads((Path(tmp) / "stop-failure.json").read_text())
+            self.assertTrue(failure["owned_session_requires_stop"])
+            self.assertEqual((Path(tmp) / "stop.stderr").read_text(), "stop refused")
 
     def test_session_and_host_coordinates_are_bounded(self):
         for session, host in [("bad;name", "hbox"), ("valid", "other-host")]:
