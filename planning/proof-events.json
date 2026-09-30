@@ -124,6 +124,14 @@
           "kind": "theorem",
           "name": "fn-ocmt-sn-finish-preserves-cst-relation",
           "note": "fn-cst-relation (the configured store's history relation) survives fn-sn-finish on every arm: the completing phase's link equates the node fn-sn-finish installs with the replay of the unchanged history. Teeth: tests/acl2/owner-advance-carried-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-replay-receiver-is-receiver-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-replay-rest-receiver-is-receiver-replay-rest"
         }
       ]
     },
@@ -629,6 +637,14 @@
           "kind": "theorem",
           "name": "fn-bpr-live-receipt-regenerated-after-restart-of-host-open",
           "note": "The receipt-regeneration theorem with the restart reopening through fn-cpo-open-observed; added hypotheses fn-sob-configured-openp and fn-sonb-configured-before-eventsp. No ground witness (the fixed-table keystone has none either)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-replay-receiver-is-receiver-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-replay-rest-receiver-is-receiver-replay-rest"
         }
       ]
     },
@@ -812,6 +828,14 @@
         {
           "kind": "theorem",
           "name": "fn-bpr-live-state-is-replay-of-journal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-replay-receiver-is-receiver-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-replay-rest-receiver-is-receiver-replay-rest"
         }
       ]
     },
@@ -17598,6 +17622,19 @@
         }
       ],
       "pending_subject": "Native executor invokes the subjects through named answer/effect adapter equations. Persistent installation remains unreachable-in-composition until funded startup constructs the workers; matching manifest/image and productive allocator/profile evidence pending."
+    },
+    {
+      "id": "PRF-1091",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-replay-receiver-is-receiver-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-replay-rest-receiver-is-receiver-replay-rest"
+        }
+      ]
     }
   ]
 }
