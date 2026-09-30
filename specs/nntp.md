@@ -1897,6 +1897,12 @@ octet for the single-SP rule. No field or source is flattened at EOF.
 This preserves the RFC 3977 §8.3.2 projection; physical header syntax and
 folding follow the existing RFC 5322 §2.1.1/§2.2.3 and RFC 5536 §2.2 parser.
 
+The logical span invariant is established by begin and preserved by each
+actual tick. `fn-lpc-field-read-is-ready` supplies the concrete arena read
+guard from that carried invariant; the served candidate does not execute
+the span recognizer. A physical continuation line carries its own visibility
+flag: an earlier visible field line cannot admit a whitespace-only fold.
+
 The admitted source theorem `fn-lpc-tick-full-body-lines` equates the actual
 arena tick's complete body count to `fn-hf-body-lines-of`. The first
 CRLFCRLF search and body framing run independently of header rejection:
@@ -1906,7 +1912,7 @@ the article parser accepts those opaque body octets.
 This component is not served yet. `fn-lpc-agreesp` states the full remaining
 comparison with actual `fn-hnov-of` and `fn-hf-body-lines-of`; it is a
 predicate, not a proved theorem. General header-verdict/field refinement,
-maintained span bounds, allocation accounting, actual cursor composition
+allocation accounting, actual cursor composition
 and matched runtime measurements remain open. The source stores fixed-size
 records and source references and reports raw-byte work; that statement
 alone is not a physical allocation or latency qualification.
