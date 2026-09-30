@@ -565,7 +565,12 @@ reopen predicate, writer-lock observation and observed final namespace."
 
 (defun fn-store-sco-clear (state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((state (f-put-global 'fn-store-sco-checkpoint nil state))
+  (let* ((state (fn-store-sco-source-invalidate state))
+         (state (f-put-global 'fn-store-sco-checkpoint nil state))
+         (state (f-put-global 'fn-store-sco-context-info nil state))
+         (state (f-put-global 'fn-store-sco-summary-region nil state))
+         (state (f-put-global 'fn-store-sco-recovery-source nil state))
+         (state (f-put-global 'fn-store-sco-original-plan nil state))
          (state (f-put-global 'fn-store-sco-load nil state))
          (state (f-put-global 'fn-store-sco-open nil state)))
     (value :cleared)))
