@@ -31,7 +31,9 @@
 ; `fn-stmt-decode-items-value-is-item-list', derived below under their old
 ; names for the profile wrapper `fn-stmt-decode-items').
 ;
-; WHAT THEY DO NOT SAY: anything about the bounded decoder at other budgets,
+; The paired sized decoder additionally preserves the complete bounded result
+; and actual parsed item lengths at every budget.
+; WHAT THEY DO NOT SAY: canonical/value constraints at other budgets,
 ; or anything about `fn-stmt-decode-prefix-items-bounded' beyond its guard.
 ; No book proves such a fact today (checkpoint-compaction and the keyring
 ; and accept records call those decoders in definitions whose guards are
@@ -41,6 +43,7 @@
 
 (in-package "ACL2")
 (include-book "statement-items")
+(include-book "statement-size-values")
 
 (encapsulate
   (((fn-stmt-encode-items *) => *
@@ -48,11 +51,14 @@
    ((fn-stmt-decode-items-bounded * * * *) => *
     :formals (fuel octets outer-budget item-budget)
     :guard (and (natp fuel) (natp outer-budget) (natp item-budget)))
+   ((fn-stmt-decode-items-sized-bounded * * * *) => (mv * *)
+    :formals (fuel octets outer-budget item-budget)
+    :guard (and (natp fuel) (natp outer-budget) (natp item-budget)))
    ((fn-stmt-decode-prefix-items-bounded * * * *) => *
     :formals (count octets outer-budget item-budget)
     :guard (and (natp count) (natp outer-budget) (natp item-budget))))
 
-  (local (include-book "statement-codec"))
+  (local (include-book "statement-codec-size-reader"))
 
   (local (defun fn-stmt-encode-items (items)
            (declare (xargs :guard (fn-stmt-item-listp items)))
@@ -62,6 +68,32 @@
            (declare (xargs :guard (and (natp fuel) (natp outer-budget)
                                        (natp item-budget))))
            (fn-stmt-decode-items-bounded-impl fuel octets outer-budget item-budget)))
+
+  (local (defun fn-stmt-decode-items-sized-bounded (fuel octets outer-budget item-budget)
+           (declare (xargs :guard (and (natp fuel) (natp outer-budget)
+                                       (natp item-budget))))
+           (fn-stmt-decode-items-sized-bounded-impl fuel octets outer-budget item-budget)))
+
+  ; Every budget preserves the complete old result, including refusal/errors.
+  (defthm fn-stmt-sized-result-is-bounded-result
+    (equal (mv-nth 0 (fn-stmt-decode-items-sized-bounded fuel octets outer-budget item-budget))
+           (fn-stmt-decode-items-bounded fuel octets outer-budget item-budget))
+    :hints (("Goal" :use fn-stmt-sized-bounded-projection-by-definition)))
+
+  ; Logical provenance, never a served whole-item validation.
+  (defthm fn-stmt-sized-result-lengths-correspond
+    (implies (fn-stmt-okp (mv-nth 0 (fn-stmt-decode-items-sized-bounded
+                                    fuel octets outer-budget item-budget)))
+      (fn-stmt-item-sizes-correspondsp
+        (fn-stmt-value (mv-nth 0 (fn-stmt-decode-items-sized-bounded
+                                  fuel octets outer-budget item-budget)))
+        (mv-nth 1 (fn-stmt-decode-items-sized-bounded
+                    fuel octets outer-budget item-budget))))
+    :hints (("Goal" :use fn-stmt-sized-bounded-lengths-correspond
+      :in-theory (e/d (fn-stmt-decode-items-sized-bounded)
+       (fn-stmt-decode-items-sized-bounded-impl
+        fn-stmt-sized-result-is-bounded-result
+        fn-stmt-sized-bounded-lengths-correspond fn-stmt-okp fn-stmt-value)))))
 
   (local (defun fn-stmt-decode-prefix-items-bounded (count octets outer-budget item-budget)
            (declare (xargs :guard (and (natp count) (natp outer-budget)
