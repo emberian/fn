@@ -6,6 +6,7 @@
 (include-book "../books/page-read-ownership")
 (include-book "../books/page-discovery-ledger")
 (include-book "../books/cold-read-layout")
+(include-book "../books/cold-guard-bootstrap")
 
 (defstobj fn-page-read-pool
   (fn-prp-data :initially nil)

@@ -21,7 +21,7 @@
   (and (true-listp w) (equal (len w) 4) (natp (nth 0 w))
        (or (null (nth 1 w)) (natp (nth 1 w)))
        (if (equal (nth 2 w) :idle) (null (nth 3 w))
-         (and (member-equal (nth 2 w) '(:running :returned))
+         (and (member-equal (nth 2 w) '(:running :returned :cancelled-running :cancelled-returned))
               (fn-pwx-tokenp (nth 3 w))
               (equal (nth 1 w) (fn-prl-nth 1 (nth 3 w))))) t))
 
@@ -30,7 +30,10 @@
   (and (fn-pwx-rowp w) (fn-pwx-tokenp token)
        (equal (fn-prl-nth 2 w) phase)
        (equal (fn-prl-nth 3 w) token)
-       (equal (fn-prw-phase ledger token) phase)
+       (equal (fn-prw-phase ledger token)
+              (cond ((equal phase :cancelled-running) :running)
+                    ((equal phase :cancelled-returned) :returned)
+                    (t phase)))
        (equal (fn-prl-nth 3 (cdr (fn-prl-binding token (fn-prl-nth 3 ledger))))
               (fn-prl-nth 0 w))))
 
@@ -54,9 +57,12 @@
 ; the exact slot until the borrower drops every private/output alias.
 (defun fn-pwx-return (ledger w token)
   (declare (xargs :guard t :guard-hints (("Goal" :in-theory (enable fn-prl-binding)))))
-  (if (not (fn-pwx-boundp ledger w token :running)) (mv :stale-job w ledger)
+  (if (not (or (fn-pwx-boundp ledger w token :running)
+               (fn-pwx-boundp ledger w token :cancelled-running))) (mv :stale-job w ledger)
     (let* ((rows (fn-prl-nth 3 ledger)) (row (cdr (fn-prl-binding token rows))))
-      (mv :returned (list (fn-prl-nth 0 w) (fn-prl-nth 1 w) :returned token)
+      (mv :returned (list (fn-prl-nth 0 w) (fn-prl-nth 1 w)
+                          (if (equal (fn-prl-nth 2 w) :cancelled-running)
+                              :cancelled-returned :returned) token)
           (fn-prl-build (fn-prl-nth 0 ledger) (fn-prl-nth 1 ledger) (fn-prl-nth 2 ledger)
             (cons (cons token (list (fn-prl-nth 0 row) :window :returned (fn-prl-nth 0 w)))
                   (fn-prl-remove token rows))
@@ -69,6 +75,46 @@
       (if (equal word :released)
           (mv :released (list (fn-prl-nth 0 w) (fn-prl-nth 1 w) :idle nil) ledger1)
         (mv :stale-job w ledger)))))
+
+; Cancellation revokes publication authority, but neither marks actual return
+; nor frees any charge. The four-field worker is still the sole exact owner.
+(defun fn-pwx-cancel (ledger w token)
+  (declare (xargs :guard t))
+  (cond ((fn-pwx-boundp ledger w token :running)
+         (mv :cancelled (list (fn-prl-nth 0 w) (fn-prl-nth 1 w)
+                             :cancelled-running token) ledger))
+        ((fn-pwx-boundp ledger w token :returned)
+         (mv :cancelled (list (fn-prl-nth 0 w) (fn-prl-nth 1 w)
+                             :cancelled-returned token) ledger))
+        ((or (fn-pwx-boundp ledger w token :cancelled-running)
+             (fn-pwx-boundp ledger w token :cancelled-returned))
+         (mv :cancelled w ledger))
+        (t (mv :stale-job w ledger))))
+
+(defun fn-pwx-work-permittedp (ledger w token)
+  (declare (xargs :guard t))
+  (fn-pwx-boundp ledger w token :running))
+
+; Native caller has observed actual return/join and dropped retained aliases.
+; Ordinary publication release remains distinct from cancelled settlement.
+(defun fn-pwx-settle-cancelled (ledger w token)
+  (declare (xargs :guard t))
+  (if (not (fn-pwx-boundp ledger w token :cancelled-returned))
+      (mv :stale-job w ledger)
+    (mv-let (word ledger1) (fn-prw-release ledger token)
+      (if (equal word :released)
+          (mv :released (list (fn-prl-nth 0 w) (fn-prl-nth 1 w) :idle nil) ledger1)
+        (mv :stale-job w ledger)))))
+
+(defthm fn-pwx-cancel-retains-ledger
+  (equal (mv-nth 2 (fn-pwx-cancel ledger w token)) ledger))
+
+(defthm fn-pwx-cancelled-running-cannot-settle
+  (implies (equal (fn-prl-nth 2 w) :cancelled-running)
+           (equal (mv-list 3 (fn-pwx-settle-cancelled ledger w token))
+                  (list :stale-job w ledger)))
+  :hints (("Goal" :in-theory (enable fn-pwx-boundp)))
+  :rule-classes nil)
 
 (defthm fn-pwx-return-keeps-all-charges
   (equal (fn-prl-nth 1 (mv-nth 2 (fn-pwx-return ledger w token)))
@@ -112,3 +158,13 @@
   (implies (fn-pwx-rowp w)
            (fn-pwx-rowp (mv-nth 1 (fn-pwx-release ledger w token))))
   :hints (("Goal" :in-theory (enable fn-pwx-release fn-pwx-boundp fn-pwx-rowp fn-pwx-tokenp fn-prl-nth))))
+
+(defthm fn-pwx-cancel-preserves-worker
+  (implies (fn-pwx-rowp w)
+           (fn-pwx-rowp (mv-nth 1 (fn-pwx-cancel ledger w token))))
+  :hints (("Goal" :in-theory (enable fn-pwx-cancel fn-pwx-boundp fn-pwx-rowp fn-pwx-tokenp fn-prl-nth))))
+
+(defthm fn-pwx-settle-cancelled-preserves-worker
+  (implies (fn-pwx-rowp w)
+           (fn-pwx-rowp (mv-nth 1 (fn-pwx-settle-cancelled ledger w token))))
+  :hints (("Goal" :in-theory (enable fn-pwx-settle-cancelled fn-pwx-boundp fn-pwx-rowp fn-pwx-tokenp fn-prl-nth))))

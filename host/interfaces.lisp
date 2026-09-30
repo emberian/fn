@@ -254,10 +254,6 @@
 ; -----------------------------------------------------------------------------
 ; store (262 entries)
 
-(definterface fn-arena-clear
-  :class ::common-lisp-compliant
-  :keystones (fn-sca-ocl-relation-at-full-open))
-
 (definterface fn-arena-count
   :class ::common-lisp-compliant
   :keystones (fn-arena-seal-lz-extent-payload
@@ -4836,7 +4832,8 @@
 (definterface fn-ews-read :class :common-lisp-compliant
   :keystones ((fn-ews-read-publication-requires-core-integrity :via fn-ews-read)))
 (definterface fn-owner-page-read-ledger :class :common-lisp-compliant)
-(definterface fn-pwx-tokenp :class :common-lisp-compliant)
+(definterface fn-pwx-tokenp :class :common-lisp-compliant
+  :direct "Guard-t fixed-shape worker kind discrimination avoids an unpriced global guard-cache entry")
 (definterface fn-pwx-boundp :class :common-lisp-compliant)
 (definterface fn-owner-page-window-executor-acquire :class :common-lisp-compliant)
 (definterface fn-owner-page-window-executor-acquire-funded :class :common-lisp-compliant)
@@ -4849,3 +4846,29 @@
 (definterface fn-pwr-cold-descriptor :class :common-lisp-compliant)
 
 (definterface fn-owner-page-window-outcome :class :common-lisp-compliant)
+
+(definterface fn-owner-page-window-executor-cancel :class :common-lisp-compliant)
+(definterface fn-owner-page-window-executor-settle-cancelled :class :common-lisp-compliant)
+(definterface fn-owner-page-window-work-permittedp :class :common-lisp-compliant)
+
+(definterface fn-owner-page-window-current-octet :class :common-lisp-compliant)
+(definterface fn-owner-page-window-decoded-refusal :class :common-lisp-compliant)
+
+; Exact private cache declarations imported from 4b9be704b.
+(definterface fn-cgb-roster :class :common-lisp-compliant
+  :direct "Fixed guard-t literal roster used before dedicated cache preparation")
+(definterface fn-cgb-namep :class :common-lisp-compliant
+  :direct "Guard-t fixed roster membership avoids recursive entry-cache construction")
+(definterface fn-cgb-planp :class :common-lisp-compliant
+  :direct "Guard-t core plan check before allocating the dedicated cold guard cache")
+(definterface fn-cgb-specp :class :common-lisp-compliant
+  :direct "Guard-t bounded cached-metadata validation in the funded fixed roster prewarm")
+
+; Exact logical view declarations imported from producer 57b70ff2b.
+(definterface fn-owner-payload-view-acquire :class :program)
+(definterface fn-owner-payload-view-live-p :class :program)
+(definterface fn-owner-payload-view-release :class :program)
+(definterface fn-owner-payload-view-reset :class :program)
+
+(definterface fn-pvl-runtime-step :class ::common-lisp-compliant)
+(definterface fn-owner-payload-view-owned-p :class :program)

@@ -114,3 +114,20 @@
                 '((:fault :commitment) nil)))))
 (defthm pwrtest-terminal-faults-witness (pwrtest-terminal-faults)
   :rule-classes nil :hints (("Goal" :in-theory (enable fn-pwr-outcome fn-pwr-byte-at))))
+
+; Actual digest publication revoked after return. The same authentic plan and
+; buffer cannot become a scalar publication, and every credit remains held.
+(defun-nx pwrtest-cancelled-positive ()
+  (let* ((r (pwrtest-ready)) (token (nth 0 r)) (returned (nth 2 r))
+         (run (nth 3 r)) (s (nth 1 run)) (buffer (nth 3 run))
+         (ledger (nth 2 returned)) (worker (nth 1 returned))
+         (cancel (fn-pwx-cancel ledger worker token))
+         (worker1 (nth 1 cancel)))
+    (and (equal (nth 0 run) :verified) (equal (nth 0 cancel) :cancelled)
+         (equal (nth 2 cancel) ledger)
+         (equal (fn-pwr-outcome ledger worker1 token s) :cancelled)
+         (equal (fn-pwr-byte-at ledger worker1 token s 11 100 3 100 3 (nth 8 token) 1 buffer)
+                '(:cancelled nil)))))
+(defthm pwrtest-cancelled-publication-witness
+  (pwrtest-cancelled-positive)
+  :rule-classes nil)

@@ -40,7 +40,8 @@
 ; separate core answers. A failed integrity check never asks for a rescan.
 (defun fn-pwr-outcome (ledger worker token s)
   (declare (xargs :guard (true-listp s)))
-  (cond ((not (fn-pwx-boundp ledger worker token :returned)) :stale-job)
+  (cond ((fn-pwx-boundp ledger worker token :cancelled-returned) :cancelled)
+        ((not (fn-pwx-boundp ledger worker token :returned)) :stale-job)
         ((not (fn-pwr-plan-matches-token s token)) '(:fault :state))
         ((fn-ewp-publication s) :ready)
         ((member-eq (nth 0 s) '(:bounds :commitment :digest :state :read))
