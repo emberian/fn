@@ -18143,6 +18143,25 @@
         "tests/acl2/snapshot-source-cursor-tests.lisp"
       ],
       "progress_note": "Clean proper-local persvati osrc75 loads source in one encapsulate: 31 test forms, zero refusals, 130,524 steps / 0.18 ACL2 sec, including prepared-pointer replay, drained restart, outstanding restart refusal and delayed prior-pass completion refusal. Session stopped; provider abstract-row inverse/host composition pending. No certification/image/native claim."
+    },
+    {
+      "id": "PRF-1102",
+      "title": "Bounded current-format history byte decoder and borrowed row abstraction",
+      "statement": "Planned full source-row boundary: authenticated captured history page bytes consumed in bounded ticks decode to a concrete borrowed node whose fn-hdc-abstract equals the actual current fn-scc-decode-tree result, with unchanged root/epoch/lease, exact padding/MKEY refusal and bounded funded storage. Current library components: fn-hdc-number-feed-preserves-value preserves the little-endian residual under positive remaining digits and a natural consumed byte; fn-hdc-number-is-current-codec refines the existing numeric reader including nonminimal spellings. fn-hdc-feed is guard-verified, preserves its fixed-size shape and lifetime fields, and consumes exactly one byte per active call. Payloads remain source spans; a fixed HSTXA comparison avoids arbitrary symbol interning. Full stream semantic inverse, source authentication, funding and actual host composition remain open. This row cites no production event before that boundary exists.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/history-decode-cursor.lisp",
+        "books/history-decode-nodes.lisp",
+        "books/history-decode-stream.lisp",
+        "tests/acl2/history-decode-cursor-tests.lisp",
+        "planning/history-decode-contract.md",
+        "specs/checkpoint.md"
+      ],
+      "progress_note": "Protected source REPL admissions only, no certificate or qualified image. Producer/encoder consume the tagged node API. Numeric residual theorem was weakened after proving cursor shape and upper octet bound redundant to its algebra; execution still requires a valid cursor and octet. General decoder inverse is not established by the finite compatibility witnesses."
     }
   ]
 }

@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1697 |
+| Books read | 1701 |
 | Certification roots in the Makefile | 1630 |
 | Books inside the root closure | 1694 |
-| `defthm` and `defthmd` events | 27804 |
-| `defun` events | 18123 |
-| Functions with verified guards | 3460 |
-| Functions declared `:verify-guards nil` and never verified | 2084 |
-| Functions left at the default with an explicit guard | 9845 |
-| Functions left at the default with no guard | 2734 |
-| `assert-event` checks | 22976 |
+| `defthm` and `defthmd` events | 27828 |
+| `defun` events | 18145 |
+| Functions with verified guards | 3462 |
+| Functions declared `:verify-guards nil` and never verified | 2086 |
+| Functions left at the default with an explicit guard | 9862 |
+| Functions left at the default with no guard | 2735 |
+| `assert-event` checks | 22991 |
 | `must-fail` checks | 2496 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 156 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 318 |
 | Enabled-projection warnings | 52 |
 | Teeth-form warnings | 272 |
-| Include-hygiene warnings | 2417 |
+| Include-hygiene warnings | 2419 |
 | Host-names warnings | 2087 |
 | Hand-written-record warnings | 18 |
 
@@ -460,6 +460,9 @@ that `make certify` requests.
 | `books/history-columns-relation.lisp` | root | 12 | 5 | 0/0/1/4 | 0 | 0 | 0 |
 | `books/history-columns-store.lisp` | root | 18 | 6 | 6/0/0/0 | 0 | 0 | 1 |
 | `books/history-columns.lisp` | root | 78 | 26 | 2/1/17/6 | 0 | 0 | 2 |
+| `books/history-decode-cursor.lisp` | - | 7 | 5 | 1/0/4/0 | 0 | 0 | 0 |
+| `books/history-decode-nodes.lisp` | - | 4 | 6 | 0/0/5/1 | 0 | 0 | 0 |
+| `books/history-decode-stream.lisp` | - | 12 | 9 | 1/0/8/0 | 0 | 0 | 0 |
 | `books/history-fold-refinement.lisp` | closure | 29 | 4 | 1/0/3/0 | 0 | 0 | 3 |
 | `books/history-image-binding.lisp` | root | 99 | 39 | 0/3/25/11 | 0 | 0 | 0 |
 | `books/history-image-fold.lisp` | root | 17 | 6 | 0/1/2/3 | 0 | 0 | 0 |
@@ -1349,6 +1352,7 @@ that `make certify` requests.
 | `tests/acl2/history-columns-relation-tests.lisp` | root | 5 | 0 | 0/0/0/0 | 2 | 1 | 0 |
 | `tests/acl2/history-columns-store-tests.lisp` | root | 2 | 3 | 0/2/1/0 | 16 | 2 | 0 |
 | `tests/acl2/history-columns-tests.lisp` | root | 10 | 9 | 0/0/7/2 | 14 | 4 | 0 |
+| `tests/acl2/history-decode-cursor-tests.lisp` | - | 1 | 2 | 0/2/0/0 | 15 | 0 | 0 |
 | `tests/acl2/history-fold-refinement-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 30 | 1 | 0 |
 | `tests/acl2/history-image-binding-tests.lisp` | root | 1 | 31 | 0/24/1/6 | 37 | 0 | 0 |
 | `tests/acl2/history-image-campaign-tests.lisp` | root | 1 | 13 | 0/5/1/7 | 16 | 0 | 0 |

@@ -20,14 +20,6 @@
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
       "packet": "PKT-448 (a)"
     },
-    "fn-bpah-apply-delivery recursion F": {
-      "class": "unexpected",
-      "packet": "PKT-308"
-    },
-    "fn-bpn-append recursion J": {
-      "class": "unexpected",
-      "packet": "PKT-308"
-    },
     "fn-bpn-enqueue-step len J": {
       "class": "unexpected",
       "packet": "PKT-308"
@@ -52,31 +44,11 @@
       "class": "unexpected",
       "packet": "PKT-308"
     },
-    "fn-bpn-jobs-octets recursion J": {
-      "class": "unexpected",
-      "packet": "PKT-308"
-    },
-    "fn-bpn-jobs-octets*1* recursion J": {
-      "class": "unexpected",
-      "packet": "PKT-308"
-    },
     "fn-bpn-machine-statep len J": {
       "class": "unexpected",
       "packet": "PKT-308"
     },
-    "fn-bpn-ready-peers recursion J": {
-      "class": "unexpected",
-      "packet": "PKT-308"
-    },
     "fn-bpn-record-applicablep len J": {
-      "class": "unexpected",
-      "packet": "PKT-308"
-    },
-    "fn-bpn-replace-job recursion J": {
-      "class": "unexpected",
-      "packet": "PKT-308"
-    },
-    "fn-bpn-report-apply-delete recursion F": {
       "class": "unexpected",
       "packet": "PKT-308"
     },
@@ -104,10 +76,6 @@
       "class": "unexpected",
       "packet": "PKT-308"
     },
-    "fn-bpn-resume-jobs recursion J": {
-      "class": "unexpected",
-      "packet": "PKT-308"
-    },
     "fn-bpnd-held-list-debt-loop recursion F": {
       "class": "unexpected",
       "packet": "PKT-308",
@@ -129,10 +97,6 @@
       "class": "unexpected",
       "packet": "PKT-308"
     },
-    "fn-bpnf-family-next-aux*1* recursion F": {
-      "class": "unexpected",
-      "packet": "PKT-308"
-    },
     "fn-bpnf-family-plan*1* len F": {
       "class": "unexpected",
       "packet": "PKT-308"
@@ -146,10 +110,6 @@
       "packet": "PKT-308"
     },
     "fn-bpnf-find-held recursion F": {
-      "class": "unexpected",
-      "packet": "PKT-308"
-    },
-    "fn-bpnf-held-octets recursion F": {
       "class": "unexpected",
       "packet": "PKT-308"
     },
@@ -201,10 +161,6 @@
       "class": "unexpected",
       "packet": "PKT-504 (b)"
     },
-    "fn-bpnp-forward-plan-rows recursion F": {
-      "class": "unexpected",
-      "packet": "PKT-504 (b)"
-    },
     "fn-bpnp-forward-result-replace*1* recursion F": {
       "class": "unexpected",
       "packet": "PKT-308"
@@ -218,10 +174,6 @@
       "packet": "PKT-504 (b)"
     },
     "fn-bpnp-forward-unrouted#guard true-listp F": {
-      "class": "unexpected",
-      "packet": "PKT-504 (b)"
-    },
-    "fn-bpnp-forward-unrouted-rows recursion F": {
       "class": "unexpected",
       "packet": "PKT-504 (b)"
     },
@@ -420,10 +372,6 @@
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
       "packet": "PKT-448 (c)"
-    },
-    "fn-nntp-index-config-digest len N": {
-      "class": "unexpected",
-      "packet": "PKT-448 (f)"
     },
     "fn-nntp-newnews-scan-loop recursion N": {
       "class": "unexpected",
@@ -669,10 +617,6 @@
       "confirmed": "section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
       "packet": "PKT-448 (a)"
     },
-    "fn-sim-acceptance-durable-okp len N": {
-      "class": "unexpected",
-      "packet": "PKT-448 (f)"
-    },
     "fn-sl-of len N": {
       "class": "cold",
       "packet": "PKT-448 (d)",
@@ -716,14 +660,6 @@
       "packet": "PKT-448 (d)",
       "note": "cold since the fn-sn-recover cut (tools/hot_path_dimensions.json, flip-bridge 2026-09-27): its only served path was fn-owner-step's (:reopen) / (:store (:recover)) arm, which no host line selects; it runs at the open and recovery entries"
     },
-    "fn9p-servable-articles recursion N": {
-      "class": "unexpected",
-      "packet": "PKT-448 (f)"
-    },
-    "fn9p-status-octets len N": {
-      "class": "unexpected",
-      "packet": "PKT-448 (f)"
-    },
     "fnn-bp-profile-open length F": {
       "class": "cold",
       "packet": "PKT-448 (f)"
@@ -746,11 +682,6 @@
       "class": "unexpected",
       "packet": "PKT-324 (8)",
       "note": "lane scale-reads-status (PRF-368): the live status reclaim line's ONE walk over the articles (was four walks, each realizing and digest-checking every payload); the tombstone flag is read from the catalog column. Still O(articles) per status under the owner mutex: 2.2 s at syn1m-2k live."
-    },
-    "fn-nsc-report len N": {
-      "class": "unexpected",
-      "packet": "PKT-324 (8)",
-      "note": "lane scale-reads-status (PRF-368): the status line's articles= count (len of the article list), as fn-nls-report's; the live twin of the same term."
     },
     "fn-nlp-fill recursion N": {
       "class": "resumable",

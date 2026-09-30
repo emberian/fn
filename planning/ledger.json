@@ -1634,26 +1634,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1697,
+    "books": 1701,
     "books_in_root_closure": 1694,
     "roots": 1630,
-    "theorems": 27804,
-    "functions": 18123,
-    "assert_events": 22976,
+    "theorems": 27828,
+    "functions": 18145,
+    "assert_events": 22991,
     "must_fails": 2496,
     "prover_refusals": 0,
     "encapsulates": 156,
     "guards": {
-      "verified": 3460,
-      "declared-off": 2084,
-      "default-guarded": 9845,
-      "default-unguarded": 2734
+      "verified": 3462,
+      "declared-off": 2086,
+      "default-guarded": 9862,
+      "default-unguarded": 2735
     },
     "suspect_theorems": 1227,
     "export_hygiene_warnings": 318,
     "enabled_projection_warnings": 52,
     "teeth_form_warnings": 272,
-    "include_hygiene_warnings": 2417,
+    "include_hygiene_warnings": 2419,
     "host_names_warnings": 2087,
     "hand_written_record_warnings": 18
   },
@@ -12265,6 +12265,89 @@
         "fn-hist-empty-fields",
         "fn-hist-records-for-of-atom"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/history-decode-cursor.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 7,
+      "functions": 5,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-tree-codec"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/history-decode-nodes.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 4,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-tree-codec"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/history-decode-stream.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 12,
+      "functions": 9,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 8,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-decode-cursor",
+        "history-decode-nodes"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -39087,6 +39170,32 @@
       "includes": [
         "../../books/history-columns",
         "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/history-decode-cursor-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 1,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 15,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-decode-stream"
       ],
       "system_includes": [],
       "suspects": [],
@@ -67040,6 +67149,20 @@
         "line": 23,
         "include": "owner-invariants-served",
         "included": "books/owner-invariants-served.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/history-decode-cursor.lisp",
+        "line": 5,
+        "include": "store-tree-codec",
+        "included": "books/store-tree-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/history-decode-nodes.lisp",
+        "line": 5,
+        "include": "store-tree-codec",
+        "included": "books/store-tree-codec.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

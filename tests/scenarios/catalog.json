@@ -6325,6 +6325,33 @@
         "planning/evidence/resilience-bp-control-2026-09-29.md"
       ],
       "execution_scope": "Source adapter and BP live-control source0238f266f integrated for schedule-receipt-observed-reorder. A matching runner image/native run remains pending; adapter unit tests do not establish native activation or receipt ordering."
+    },
+    {
+      "id": "SCN-1014",
+      "title": "Byte-fed current history decode preserves values and source lifetime",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [],
+      "steps": [
+        "Feed nonempty little-endian digits one at a time, including a nonminimal leading-zero spelling, and compare the existing numeric codec.",
+        "Decode nonempty strings, opaque symbol spans, fixed HSTXA, paired values and empty opcode6; cut and resume within payload.",
+        "Remove each residual hypothesis literally; check malformed package, truncated number/string and stack underflow refusal.",
+        "Compose authenticated captured root pages, exact source tokens, padding/MKEY checks, borrowed row remap and canonical reencoding."
+      ],
+      "expected": [
+        "Every live byte step consumes exactly one byte and retains source epoch/lease; no whole string coerce, intern, reverse, row decode or pool preflight occurs in the tick.",
+        "Spans name raw payload bytes in the captured immutable pool, and general borrowed-tree abstraction equals the old decoder result.",
+        "No partial row escapes malformed input; stale/uncertain physical I/O cannot advance or release a borrowed source."
+      ],
+      "implementation": {
+        "test": "tests/acl2/history-decode-cursor-tests.lisp",
+        "native": false
+      },
+      "evidence": [
+        "tests/acl2/history-decode-cursor-tests.lisp",
+        "planning/history-decode-contract.md"
+      ],
+      "execution_scope": "Source component tests only. General stream inverse, page-source authentication, integrated native caller and full producer remain open."
     }
   ]
 }
