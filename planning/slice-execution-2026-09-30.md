@@ -30,6 +30,19 @@ read through the connection's retained publication. This is a newly explicit
 join obligation; it is not a claim that the old served path has a demonstrated
 reclamation defect.
 
+Those publication holds also retain the exact payload-arena incarnation and
+the published prefix, before any query exists. Protecting table and row
+roots while counting only active query grants permits a later first query
+to interpret an old handle against a reset arena. The index provider carries
+the arena association and current/D/N/connection/writer references; physical
+reset exclusion observes those maintained publication holds together with
+active query grants. A query acquires its own exact grant before the source
+publication hold is released. An alternative atomic rebinding needs its own
+representation argument. Definite releases must restore reclaimability; an
+immortal publication pin is not a solution. The zero-query D capture,
+attempted arena reset, first reader and final-release sequence belongs in
+the actual composition evidence.
+
 Ember's 2026-09-30 correction changes the execution practice: identify the obstruction to a complete capability, remove it confidently, and close its associated original work together. This does not change the finite scope, completion criteria, evidence standards or model policy (Sol execution, Astra only architectural synthesis).
 
 | Slice | Integration owner | Acceptance path and helper roles |
