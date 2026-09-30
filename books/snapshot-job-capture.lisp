@@ -44,5 +44,30 @@
        (and (equal returned :returned)
             (member-equal stage '(:none :deleted :published))))
   :hints (("Goal" :in-theory (enable fn-osj-cleanup-word))))
+; These are observations of the existing physical rotation boundary. A
+; generic thrown result is not proof that rename/head I/O was never issued.
+(defun fn-osj-log-observation (observation)
+  (declare (xargs :guard t))
+  (cond ((eq observation :rotation-returned) :frozen)
+        ((eq observation :rotation-threw) :uncertain)
+        ((eq observation :rotation-durable) :durable)
+        (t :unfrozen)))
+(defun fn-osj-log-fence-word (phase)
+  (declare (xargs :guard t))
+  (cond ((eq phase :frozen) :fence)
+        ((eq phase :durable) :durable)
+        ((eq phase :uncertain) :uncertain)
+        (t :refused)))
+(defun fn-osj-cleanup-log-word (returned stage log-phase)
+  (declare (xargs :guard t))
+  (cond ((eq log-phase :uncertain) '(:uncertain :log-not-settled))
+        ((member-eq log-phase '(:unfrozen :frozen :durable))
+         (fn-osj-cleanup-word returned stage))
+        (t '(:refused :log-phase))))
+(defthm fn-osj-uncertain-log-keeps-the-source-grant
+  (not (equal (car (fn-osj-cleanup-log-word returned stage
+                                           (fn-osj-log-observation :rotation-threw)))
+              :release)))
 (in-theory (disable fn-osj-resource-word fn-osj-capture-ticket
-                    fn-osj-stage-observation fn-osj-cleanup-word))
+                    fn-osj-stage-observation fn-osj-cleanup-word
+                    fn-osj-log-observation fn-osj-cleanup-log-word fn-osj-log-fence-word))

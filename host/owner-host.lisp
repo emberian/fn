@@ -54,6 +54,7 @@
 (include-book "../books/history-census-controller")
 (include-book "../books/history-decode-completion")
 (include-book "../books/snapshot-job-capture")
+(include-book "../books/owner-maintenance-admission")
 (include-book "../books/owner-canonical-state")
 ; Row S10 (lane operability-2): a refused control post completion names the
 ; Store's word on the reply and the line.

@@ -6,7 +6,7 @@
 
 (defstruct (fnn-snapshot-job (:constructor %make-fnn-snapshot-job))
   service capture root maintenance canonical payload-view source reader provider
-  observation completion (phase :source) outcome
+  observation completion log-position (log-phase :unfrozen) (phase :source) outcome
   census pending-row cold-mapping (pipeline-phase :census) writer key-cursor remapper
   (action-lock (sb-thread:make-mutex :name "snapshot action"))
   (returned :returned) (stage :none))
@@ -384,9 +384,10 @@ present, must already have a definite deleted/published core observation.
 Every field is cleared only after its actual release succeeds; failures
 retain the rest of the job for retry or recovery."
   (sb-thread:with-mutex ((fnn-snapshot-job-action-lock job))
-    (let ((word (fnn-core 'fn-osj-cleanup-word
+    (let ((word (fnn-core 'fn-osj-cleanup-log-word
                           (fnn-snapshot-job-returned job)
-                          (fnn-snapshot-job-stage job))))
+                          (fnn-snapshot-job-stage job)
+                          (fnn-snapshot-job-log-phase job))))
       (unless (eq (first word) :release)
         (return-from fnn-snapshot-job-cleanup word))
       (fnn-snapshot-job-release-source job)
@@ -418,6 +419,58 @@ retain the rest of the job for retry or recovery."
             (fnn-snapshot-job-phase job) :released)
       '(:released))))
 
+(define-condition fnn-snapshot-capture-uncertain (fnn-store-indeterminate)
+  ((job :initarg :job :reader fnn-snapshot-capture-uncertain-job)))
+
+(defun fnn-snapshot-job-freeze-log (job)
+  "Caller holds the same owner control fence as capture. Retain the actual
+rotation position, never infer its physical chain from an event count. The
+job exists before rename/head I/O, so any thrown failure carries its held
+source and resource authority to recovery."
+  (let* ((store (fnn-owner-service-store (fnn-snapshot-job-service job)))
+         (log (fnn-store-log store)))
+    (handler-case
+        (setf (fnn-snapshot-job-log-position job)
+              (fnn-log-with-kernel (log) (fnn-log-rotate store))
+              (fnn-snapshot-job-log-phase job)
+              (fnn-core 'fn-osj-log-observation :rotation-returned))
+      (error (condition)
+        ; Generic failures from the existing rotation API do not expose a
+        ; definite no-I/O result. Keep them uncertain, including the grant.
+        (setf (fnn-snapshot-job-log-phase job)
+              (fnn-core 'fn-osj-log-observation :rotation-threw)
+              (fnn-snapshot-job-phase job) :recovery-required
+              (fnn-snapshot-job-outcome job) :uncertain)
+        (error 'fnn-snapshot-capture-uncertain :job job
+               :message (format nil "snapshot log capture is uncertain: ~a" condition)))))
+  job)
+
+(defun fnn-snapshot-job-log-durable (job)
+  "One returned publication barrier, off the owner mutex. F may name the
+frozen position only after this actual existing log barrier returns. An
+ambiguous barrier retains the job; cancellation does not erase it."
+  (sb-thread:with-mutex ((fnn-snapshot-job-action-lock job))
+    (let ((word (fnn-core 'fn-osj-log-fence-word (fnn-snapshot-job-log-phase job))))
+      (unless (eq word :fence)
+        (return-from fnn-snapshot-job-log-durable word))
+      (setf (fnn-snapshot-job-returned job) :running)
+      (unwind-protect
+           (handler-case
+               (progn
+                 (fnn-log-make-durable
+                  (fnn-store-log (fnn-owner-service-store (fnn-snapshot-job-service job))))
+                 (setf (fnn-snapshot-job-log-phase job)
+                       (fnn-core 'fn-osj-log-observation :rotation-durable))
+                 :durable)
+             (error (condition)
+               (setf (fnn-snapshot-job-log-phase job)
+                     (fnn-core 'fn-osj-log-observation :rotation-threw)
+                     (fnn-snapshot-job-phase job) :recovery-required
+                     (fnn-snapshot-job-outcome job) :uncertain)
+               (error 'fnn-snapshot-capture-uncertain :job job
+                      :message (format nil "snapshot log barrier is uncertain: ~a" condition))))
+        (setf (fnn-snapshot-job-returned job) :returned)))))
+
 (defun fnn-owner-snapshot-capture (service maintenance)
   "MAINTENANCE is an already admitted, operation-derived demand. Recheck
 its exact live ledger binding before acquiring a root or capture. This
@@ -425,8 +478,21 @@ operational fence does not claim the complete rescue reserve is installed."
   (let ((captured nil) (canonical nil) (root nil) (view nil) (job nil))
     (unwind-protect
          (fnn-owner-gated (service :control)
-           (let* ((context (fnn-snapshot-source-context))
+           ; The retirement observation is read at the same serialized
+           ; owner fence as capture, not at an earlier accept-loop poll.
+           (unless (eq (fnn-core 'fn-ort-maintenance-action
+                                 (fnn-owner-service-retire service)) :admit)
+             (fnn-refuse-io "snapshot admission skipped during retirement"))
+           (let* ((store (fnn-owner-service-store service))
+                  (log (fnn-store-log store))
+                  (context (fnn-snapshot-source-context))
                   (plan (fnn-core 'fn-osj-resource-word context maintenance)))
+             ; The off-mutex publisher prepares its rotation spare first.
+             ; This fence never performs preallocation or waits for it.
+             (unless (fnn-log-with-kernel (log)
+                       (and (fnn-core 'fn-lgc-rotate-admitsp (fnn-log-kernel log))
+                            (fnn-log-rotation-ready-p store)))
+               (fnn-refuse-io "snapshot log rotation is not ready"))
              (unless (eq (first plan) :capture)
                (fnn-refuse-io "snapshot capture refused: ~a" (second plan)))
              (unless (eq (first (fnn-core-page-read-pool
@@ -447,7 +513,7 @@ operational fence does not claim the complete rescue reserve is installed."
                (setq view holder))
              (setq job (fnn-snapshot-job-open service captured root maintenance view))
              (setf (fnn-snapshot-job-canonical job) canonical)
-             job))
+             (fnn-snapshot-job-freeze-log job)))
       ; No worker exists yet on this refusal path. The owner gate has
       ; returned before these cleanup calls acquire it again.
       (unless job

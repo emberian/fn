@@ -4928,3 +4928,15 @@
 (definterface fn-omk-tick :class :common-lisp-compliant)
 
 (definterface fn-omk-token-matchp :class :common-lisp-compliant)
+
+(definterface fn-osj-log-observation :class :common-lisp-compliant)
+(definterface fn-osj-cleanup-log-word :class :common-lisp-compliant)
+
+(definterface fn-ort-maintenance-action :class :common-lisp-compliant)
+
+(definterface fn-osj-log-fence-word :class :common-lisp-compliant)
+
+(definterface fn-owner-history-image-effect-plan :class :common-lisp-compliant)
+(definterface fn-owner-history-image-effect-result :class :common-lisp-compliant)
+(definterface fn-owner-history-image-effect-read-count :class :common-lisp-compliant)
+(definterface fn-owner-history-image-effect-byte :class :common-lisp-compliant)

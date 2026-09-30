@@ -19198,9 +19198,10 @@
         "books/history-image-effect-boundary.lisp",
         "host/history-image-effect-host.lisp",
         "host/native/history-image-effects.lisp",
-        "tests/acl2/history-image-effect-tests.lisp"
+        "tests/acl2/history-image-effect-tests.lisp",
+        "planning/evidence/history-image-effects-recording-2026-09-30/result.json"
       ],
-      "progress_note": "Actual core/native definitions authored WIP; guard/source replay, keystone/teeth and real native scenario remain open. No activation or funding adequacy claim."
+      "progress_note": "Exact current effect definitions/guards and two assertions admitted in protected hpie2 source closure. Actual funded host wrappers plus issued zero-page/short-write retained-credit fixture passed source. Recording executor at4eda verified actual values-list ABI, exact one-syscall coordinates, short/error, stale-before and lost-authority-after branches using explicit authority/page/syscall mocks. General boundary keystone/teeth, physical/runtime funding and actual filesystem/native image qualification remain open."
     },
     {
       "id": "PRF-1144",
