@@ -337,3 +337,30 @@ funding and durable publication remain producer obligations. Literal tests
 exercise nonempty rows, an actual16400byte page crossing, both residual
 hypothesis omissions, sole carry and both prepared-empty omissions. The full
 per-literal audit of all helper/terminal hypotheses remains open.
+
+## Actual pool-to-column dispatcher seam (2026-09-30)
+
+`fn-hpcx-begin(count,pool,token,capture,lease)` retains twelve fixed cells:
+phase/count/ordinal/offset/pool-limit/child/token/key/encoded/column/capture/lease.
+`fn-hpcx-offer(c,ordinal,source,token,key)` binds one actual fn-hpe child only
+in need-row phase. Scalar token checks reuse exact fn-omk-tokenp/matchp;
+epoch, ticket, pass and ordinal remain distinct from resource lease and pins.
+Token count agrees with census count; pool/column token ordinal agrees with
+pending ordinal. Ticket/pass stay natural scalars without a new u64 ceiling.
+Begin/offer/tick do not compare Store/root/file names or traverse source data.
+
+One pool tick, or one fn-hcl-cell→fn-hpq-put write, executes per tick. Capture
+prepared length once, check fn-hcc-row representability/census bounds before
+columns, retain full-page column, and advance count/offset only after column3.
+All five page buffers have independent flush ownership. Reset is external and
+requires completed physical page consumption; this cursor grants no reset or
+I/O lease. The pool emitter still consumes resident bytes only until the cold
+owner supplies the full current-codec residual/controller.
+
+Conditional attribution/prefix boundaries and literal teeth are component
+source evidence. Actual provider/remap/MKEY/pins/reservation are producer
+obligations. This lane still owes canonical census/layout/body/metadata/digest
+effect-stream and whole terminal refinement, joining their owners rather than
+duplicating encoders or hashes. Current finite pool-residual bridge, partial
+column effects and scalar funding references imply neither whole producer
+completion, general progress, physical allocation nor durable publication.

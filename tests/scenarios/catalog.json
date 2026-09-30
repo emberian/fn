@@ -6286,7 +6286,8 @@
         "Finalize canonical capacity domain with valid regional lengths whose combined rounded image overflows; emit a real padded scalar-column cell into concrete scratch.",
         "Offer two resident rows to the census controller and interleave actual codec ticks; try stale/duplicate offers and corrupted count, pool, codec completion, row attribution and premature completion.",
         "Write distinct words into each of five region scratch pages; exercise every selected-prefix domain/capacity hypothesis independently.",
-        "Run the actual byte codec and pool packer for partial/aligned rows and a16400octet row crossing a full page; retry fullpage unchanged, reset after simulated completion and resume."
+        "Run the actual byte codec and pool packer for partial/aligned rows and a16400octet row crossing a full page; retry fullpage unchanged, reset after simulated completion and resume.",
+        "Run actual resident pool preparation then four column writes; fill column1 before the row, yield after column0, reset only column1 and resume. Try stale epoch/ticket/pass/ordinal and repeated offers; separately mutate logical width-edge and attribution state."
       ],
       "expected": [
         "Each valid tick emits one exact original descriptor or yields without losing remaining writes.",
@@ -6302,7 +6303,8 @@
         "Successful row completion gives the exact existing count and independently padded history pool; continuations retain both totals and codec residual, and each omitted completion premise has a literal retained-premise counterexample.",
         "Only the selected concrete prefix changes; all region invariants and identities are preserved. Invalid logical state/domain witnesses falsify the exact boundary after omitting each premise.",
         "Pool stream equals current logical padded packing; fullpage consumes no source byte; prepared count is exact, with no extra aligned word. Literal eighth/final-word source-attribution and corrupted terminal invariant witnesses accompany the boundaries.",
-        "Actual child residual plus carried partial bytes conserves the exact concrete pool word stream across tick and page reset; a prepared trace from current codec equals packed codec words and exact byte count. Both residual premise-removals, sole carry and prepared-empty removals affirm retained conditions and failed conclusions."
+        "Actual child residual plus carried partial bytes conserves the exact concrete pool word stream across tick and page reset; a prepared trace from current codec equals packed codec words and exact byte count. Both residual premise-removals, sole carry and prepared-empty removals affirm retained conditions and failed conclusions.",
+        "Actual dispatcher stores the existing current row cells one column per tick; a full selected column retains the complete cursor and all five buffers. Only column3 completion advances row ordinal and padded pool offset. Reachable partial/aligned traces assert literal length/prefix hypotheses and conclusions; four prefix and three attribution premise-removals affirm every retained condition and failed conclusion. Width overflow refuses before column effects. Full cold/producer/progress/funding/publication remain open."
       ],
       "implementation": {
         "test": "tests/acl2/history-page-cursor-tests.lisp",
@@ -6321,7 +6323,9 @@
         "tests/acl2/history-census-controller-tests.lisp",
         "tests/acl2/history-page-buffers-tests.lisp",
         "tests/acl2/history-pool-emitter-tests.lisp",
-        "tests/acl2/history-pool-refinement-tests.lisp"
+        "tests/acl2/history-pool-refinement-tests.lisp",
+        "tests/acl2/history-pool-columns-tests.lisp",
+        "planning/evidence/history-pool-columns-2026-09-30.md"
       ],
       "execution_scope": "Library component only; no actual host or funded producer completion claim."
     },
