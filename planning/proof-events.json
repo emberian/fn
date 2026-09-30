@@ -17445,6 +17445,10 @@
         {
           "kind": "theorem",
           "name": "fn-osr-configure-durable-preserves-live-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-finish-preserves-full-retained-carry"
         }
       ],
       "pending_subject": "fn-osr-capture is a pure inverse dependency; the running snapshot producer capture caller and maintained keyed/verdict/index fields are not integrated by this slice."
