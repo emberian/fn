@@ -1,4 +1,4 @@
-; Actual same-row census completion -> remapper ACK.
+; WIP actual same-row census completion -> remapper ACK.
 ; Ghost relation only; runtime never checks this or traverses histories.
 (in-package "ACL2")
 (include-book "snapshot-row-source-tagged-refinement")
@@ -68,3 +68,76 @@
                  (fn-hct-tick fn-osm-row-source fn-hdc-abstract fn-hsrcb-demandp
                   fn-hsrcc-tick fn-hsrcc-invariantp fn-hsrcc-total
                   fn-hp-pes-len fn-scc-encode fn-hcc-row fn-hct-shapep)))))
+
+(defthm fn-rcca-actual-offer-retains-the-produced-row-and-child
+ (implies
+  (and (eq (car (mv-nth 0 (fn-osm-offer remapper token original))) :mapped)
+       (equal (fn-omk-at 3 token) (len history))
+       (fn-omk-widthp (mv-nth 0 (fn-osm-row-source original (fn-omk-at 2 remapper))) 2)
+       (natp (mv-nth 1 (fn-osm-row-source original (fn-omk-at 2 remapper))))
+       (let ((mapped (mv-nth 0 (fn-osm-row-source original (fn-omk-at 2 remapper)))))
+        (cond ((eq (fn-omk-at 0 mapped) :resident) (equal row (fn-omk-at 1 mapped)))
+              ((eq (fn-omk-at 0 mapped) :decoded)
+               (equal row (fn-hdc-abstract (fn-omk-at 1 mapped) pool)))
+              (t nil)))
+       (equal (fn-omk-at 1 census) (fn-omk-at 1 (fn-omk-at 1 token)))
+       (equal (fn-omk-at 5 census)
+              (list (fn-omk-at 0 (fn-omk-at 1 token))
+                    (fn-omk-at 1 (fn-omk-at 1 token))))
+       (fn-rcct-current-row-invariantp census history row pool))
+  (fn-rcca-waiting-rowp (mv-nth 1 (fn-osm-offer remapper token original))
+                        census history row pool))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :in-theory (e/d (fn-rcca-waiting-rowp fn-osm-offer fn-omk-token-matchp fn-omk-widthp fn-omk-at)
+                 (fn-osm-row-source fn-hdc-abstract fn-rcct-current-row-invariantp
+                  fn-omk-tokenp)))))
+
+(defun-nx fn-rcca-idle-prefixp (remapper census history)
+ (let* ((source (fn-omk-at 1 remapper)) (pair (fn-omk-at 1 source)))
+  (and (fn-omk-widthp remapper 4) (eq (fn-omk-at 0 remapper) :idle)
+       (fn-omk-tokenp source) (natp (fn-omk-at 2 remapper))
+       (equal (fn-omk-at 3 remapper) nil)
+       (fn-hct-shapep census)
+       (member-eq (fn-omk-at 0 census) '(:need-row :prepared))
+       (equal (fn-omk-at 3 source) (len history))
+       (equal (fn-omk-at 2 census) (len history))
+       (equal (fn-omk-at 3 census) (fn-hp-pes-len history))
+       (equal (fn-omk-at 1 census) (fn-omk-at 1 pair))
+       (equal (fn-omk-at 5 census)
+        (list (fn-omk-at 0 pair) (fn-omk-at 1 pair))))))
+(defthm fn-rcca-actual-ack-preserves-the-idle-mapped-prefix
+ (implies (and (fn-rcca-waiting-rowp remapper census history row pool)
+               (eq (mv-nth 0 (fn-hct-tick census)) :row-done))
+  (let* ((completed (mv-nth 2 (fn-hct-tick census)))
+         (next (mv-nth 1 (fn-osm-census-ack remapper completed))))
+   (fn-rcca-idle-prefixp next completed (append history (list row)))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use (fn-rcca-actual-row-done-ack-advances-exactly-the-same-prefix
+        (:instance fn-rcca-row-done-has-actual-ack-phase (c census))
+        (:instance fn-hct-tick-keeps-shape (c census)))
+  :in-theory (e/d (fn-rcca-idle-prefixp fn-rcca-waiting-rowp
+                   fn-rcct-current-row-invariantp fn-omk-tokenp
+                   fn-osm-census-ack fn-osm-advance fn-omk-at fn-omk-widthp)
+                 (fn-hct-tick fn-hct-shapep fn-osm-row-source fn-hdc-abstract
+                  fn-hsrcc-invariantp fn-hsrcc-total fn-hp-pes-len fn-scc-encode)))))
+
+(local (defthm fn-rcca-fixed-pair-reconstructs
+ (implies (fn-omk-widthp x 2)
+          (equal (list (fn-omk-at 0 x) (fn-omk-at 1 x)) x))
+ :hints (("Goal" :do-not-induct t
+  :expand ((fn-omk-widthp x 2) (fn-omk-widthp (cdr x) 1)
+           (fn-omk-widthp (cddr x) 0))
+  :in-theory (enable fn-omk-at fn-omk-widthp)))))
+(defthm fn-rcca-actual-begin-establishes-the-empty-mapped-prefix
+ (implies (and (fn-omk-tokenp source) (equal (fn-omk-at 3 source) 0)
+               (unsigned-byte-p 61 (fn-omk-at 1 (fn-omk-at 1 source))))
+  (fn-rcca-idle-prefixp (fn-osm-begin source)
+   (fn-hct-begin (fn-omk-at 1 (fn-omk-at 1 source)) (fn-omk-at 1 source) resource) nil))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use ((:instance fn-rcca-fixed-pair-reconstructs (x (fn-omk-at 1 source))))
+  :in-theory (enable fn-rcca-idle-prefixp fn-osm-begin fn-hct-begin
+                     fn-hct-shapep fn-omk-tokenp fn-omk-at fn-omk-widthp
+                     fn-hrcur-field fn-hrcur-widthp fn-hp-pes-len))))
