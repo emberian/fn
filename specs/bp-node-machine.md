@@ -5210,3 +5210,14 @@ the source boundary. Evidence is
 `Decoded` is a parse result, not durable/recovered acceptance. Registered
 integrity workspace, maintained recovery carry and selected runtime/profile
 authority still precede public/native entry.
+
+The private reopen workspace has lazy per-controller storage independent of
+controller-directory growth. Token-only registered-job-validated readout
+checks boundp before every child lookup and yields by fuel; missing reads
+create no workspace. Actual local stobj witnesses distinguish slots0 and1,
+refuse wrong-job/revision reads and retain absent paths. These are supplied
+storage fixtures, not installed grants. The implementation split and exact
+remaining constructor-intent/source-observation joins are recorded in
+`planning/bp-digest-workspace-contract-20260930.md`; guard/source evidence is
+`planning/evidence/bp-digest-workspace-storage-20260930/manifest.json`.
+No new keystone or whole reopen completion is claimed.
