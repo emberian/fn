@@ -212,6 +212,10 @@ opcode0. A normalizer may explicitly select opcode0 for an imported NIL name.
 The supplied opcode/package are TARGET descriptors, never assumed to be the
 canonical interpretation of an arbitrary old symbol instruction.
 
+`fn-hrcur-span-begin` checks offset/count individually against the current
+format u64 domain before adding them, so malformed huge metadata is refused
+without performing an unbounded sum. Every valid-format result is unchanged.
+
 `fn-hrcur-span-tick` emits one header byte, advances a phase, prepares an empty
 stream, or returns `(:need-byte absolute-pool-position)` with the cursor
 unchanged. `fn-hrcur-span-supply(cursor, position, octet)` emits one payload
