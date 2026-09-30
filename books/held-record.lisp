@@ -240,7 +240,29 @@
 (defun fn-row-binding (r)
   (declare (xargs :guard t))
   ; Both current representations are supported; neither old shape is valid.
-  (if (fn-record-shapep r) (fn-record-binding r) (fn-held-binding r)))
+  (cond ((fn-record-shapep r) (fn-record-binding r))
+        ((fn-held-shapep r) (fn-held-binding r))
+        (t nil)))
+
+; A held constructor's binding is its appended field, never the wire
+; binding position (which is the held facts field).  Alpha uses this
+; distinction before discarding the extra held metadata.
+(defthm fn-row-binding-of-held-make
+  (equal (fn-row-binding
+          (fn-held-make sequence txid generation msgid payload groups
+                        obligation-id content-subject release-evidence
+                        charge stamp facts context numbers withdrawn binding))
+         binding)
+  :hints (("Goal" :in-theory (enable fn-row-binding fn-record-shapep
+                                     fn-held-internals))))
+
+(defthm fn-row-binding-of-record-make
+  (equal (fn-row-binding
+          (fn-record-make sequence txid generation msgid payload groups
+                          obligation-id content-subject release-evidence
+                          charge stamp binding))
+         binding)
+  :hints (("Goal" :in-theory (enable fn-row-binding fn-record-internals))))
 
 (defun fn-held-wire (h payload)
   (declare (xargs :guard t))
