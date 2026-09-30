@@ -597,3 +597,99 @@
            :in-theory (e/d (fn-nlv-run)
                            (fn-lpc-header-byte fn-lpc-at fn-nlv-run-phase-is-control-run-phase
                             fn-nlv-run-append)))))
+
+; Widest counters are dominated by source consumption, not a grammar ceiling.
+(defthm fn-nlv-next-line-aux-consumes
+  (implies (and (true-listp prefix)
+                (fn-article-line-okp (fn-article-next-line-aux octets prefix left)))
+           (<= (+ 2 (len (fn-article-line-value (fn-article-next-line-aux octets prefix left)))
+                    (len (fn-article-line-rest (fn-article-next-line-aux octets prefix left))))
+               (+ (len octets) (len prefix))))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-article-next-line-aux octets prefix left)
+           :in-theory (enable fn-article-next-line-aux fn-article-line-okp
+                              fn-article-line-value fn-article-line-rest fn-article-error reverse))))
+
+(defthm fn-nlv-next-line-consumes
+  (implies (fn-article-line-okp (fn-article-next-line octets))
+           (<= (+ 2 (len (fn-article-line-value (fn-article-next-line octets)))
+                    (len (fn-article-line-rest (fn-article-next-line octets))))
+               (len octets)))
+  :rule-classes :linear
+  :hints (("Goal" :use ((:instance fn-nlv-next-line-aux-consumes (prefix nil) (left 998)))
+           :in-theory (e/d (fn-article-next-line) (fn-article-next-line-aux)))))
+
+(defthm fn-nlv-next-line-aux-no-counter-errors
+  (not (member-equal (fn-article-next-line-aux octets prefix left)
+        '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit))))
+  :hints (("Goal" :induct (fn-article-next-line-aux octets prefix left)
+           :in-theory (enable fn-article-next-line-aux fn-article-error))))
+(defthm fn-nlv-split-colon-no-counter-errors
+  (not (member-equal (fn-article-split-colon-aux line prefix)
+        '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit))))
+  :hints (("Goal" :induct (fn-article-split-colon-aux line prefix)
+           :in-theory (enable fn-article-split-colon-aux fn-article-error))))
+(defthm fn-nlv-new-field-no-counter-errors
+  (not (member-equal (fn-article-new-field line)
+        '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit))))
+  :hints (("Goal" :use ((:instance fn-nlv-split-colon-no-counter-errors (prefix nil)))
+           :in-theory (e/d (fn-article-new-field fn-article-make-field fn-article-error)
+                                 (fn-nlv-split-colon-no-counter-errors fn-article-split-colon-aux fn-article-namep fn-article-header-bytes-p)))))
+
+(defthm fn-nlv-ok-no-counter-errors
+  (not (member-equal (cons :ok rest)
+         '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit)))))
+
+(defthm fn-nlv-next-line-does-not-return-counter-errors
+  (not (member-equal (fn-article-next-line octets)
+        '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit))))
+  :hints (("Goal" :use ((:instance fn-nlv-next-line-aux-no-counter-errors (prefix nil) (left 998)))
+           :in-theory (e/d (fn-article-next-line fn-article-next-line-aux fn-article-error) (fn-nlv-next-line-aux-no-counter-errors)))))
+
+(defthm fn-nlv-parser-counters-covered-by-source
+ (implies (and (< (len octets) (nfix lines-left))
+               (<= (+ header-bytes (len octets)) (fn-article-limit-octets limits))
+               (<= (+ (nfix nfields) (len octets)) (fn-article-limit-fields limits)))
+          (not (member-equal (fn-novlp-parse-lines octets limits lines-left header-bytes nfields columns current names)
+             '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit)))))
+ :hints (("Goal" :induct (fn-novlp-parse-lines octets limits lines-left header-bytes nfields columns current names)
+          :in-theory (e/d (fn-novlp-parse-lines fn-article-error)
+                          (member-equal len fn-nlv-new-field-is-name-tail fn-article-fold-linep fn-article-wspp
+                           fn-article-limit-fields fn-article-limit-octets fn-article-next-line fn-article-next-line-aux fn-article-new-field
+                           fn-article-line-okp fn-article-line-value fn-article-line-rest
+                           fn-article-field-closedp fn-article-add-fold fn-novlp-add-field fn-novlp-normalize)))))
+
+(defthm fn-nlv-preflight-bounds-length
+  (implies (fn-cbor-at-mostp octets bound) (<= (len octets) (nfix bound)))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-cbor-at-mostp octets bound)
+           :in-theory (enable fn-cbor-at-mostp))))
+
+(defthm fn-nlv-widest-projection-never-counter-error
+  (not (member-equal (fn-novlp-parse octets)
+        '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit))))
+  :hints (("Goal" :use ((:instance fn-nlv-parser-counters-covered-by-source
+                          (limits *fn-article-ceiling-limits*) (lines-left (+ 1 *fn-article-max-octets*))
+                          (header-bytes 0) (nfields 0)
+                          (columns (fn-novlp-columns nil *fn-novlp-names*)) (current nil) (names *fn-novlp-names*)))
+           :in-theory (e/d (fn-novlp-parse fn-novlp-parse-under fn-article-error
+                            fn-article-limit-fields fn-article-limit-lines fn-article-limit-octets)
+                           (fn-novlp-parse-lines fn-novlp-columns fn-cbor-at-mostp fn-cbor-octet-listp
+                            fn-nlv-parser-counters-covered-by-source fn-novlp-parse-under-is-parser-projection
+                            fn-novlp-parse-is-parser-projection)))))
+
+(defthm fn-nlv-projection-counter-errors-unfolds
+  (equal (member-equal (fn-novlp-result parsed names)
+          '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit)))
+         (member-equal parsed
+          '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit))))
+  :hints (("Goal" :in-theory (e/d (fn-novlp-result fn-article-result-okp)
+                                 (fn-novlp-normalize fn-novlp-columns fn-article-fields
+                                  fn-article-result-article)))))
+
+(defthm fn-nlv-actual-parser-never-counter-error
+  (not (member-equal (fn-article-parse octets)
+        '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit))))
+  :hints (("Goal" :use fn-nlv-widest-projection-never-counter-error
+           :in-theory (disable fn-nlv-widest-projection-never-counter-error
+                               fn-article-parse fn-novlp-parse fn-novlp-result member-equal))))

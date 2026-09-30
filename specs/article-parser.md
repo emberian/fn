@@ -168,6 +168,9 @@ post-colon WSP, invalid header octets and lines over 998 octets. Its exact
 start/bad result uses the actual new-field and fold predicates; it does not
 assume the line is grammatical. The actual-byte framing components also prove exact separator/body acceptance,
 unfinished header nonacceptance, bare-LF rejection and CR/non-LF rejection
-from every state and arbitrary prefix. Complete scanner/parser composition,
-widest parser-counter redundancy and complete source-span simulation remain open
+from every state and arbitrary prefix. The widest parser counters are now proved redundant under its existing codec
+preflight: `fn-nlv-actual-parser-never-counter-error` unconditionally excludes
+header line/field/octet counter errors from `fn-article-parse`. This does not
+remove operator admission limits. Complete scanner/parser acceptance composition
+and complete source-span simulation remain open
 before claiming the cursor refines the actual parser.
