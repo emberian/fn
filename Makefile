@@ -930,6 +930,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/legacy-parser-validity-tests \
 	books/legacy-parser-values \
 	tests/acl2/legacy-parser-values-tests \
+	books/legacy-parser-value-run \
+	tests/acl2/legacy-parser-value-run-tests \
+	books/legacy-parser-columns \
+	tests/acl2/legacy-parser-columns-tests \
 	books/legacy-parser-catalog \
 	tests/acl2/legacy-parser-catalog-tests \
 	books/nntp-article-pass \
@@ -1574,6 +1578,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-symbol-normalize-tests \
 	books/history-decode-cursor \
 	books/history-decode-stream \
+	books/history-decode-refinement \
+	tests/acl2/history-decode-refinement-tests \
 	tests/acl2/history-decode-cursor-tests \
 	books/pagestore-digest-cursor \
 	books/pagestore-digest-cursor-refinement \
