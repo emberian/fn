@@ -18221,6 +18221,26 @@
         "specs/selected-runtime-evaluator-shift.md",
         "planning/evidence/selected-evaluator-ash3-2026-09-30/README.md"
       ]
+    },
+    {
+      "id": "PRF-1184",
+      "title": "Conditional exact BP creator object request units",
+      "statement": "Named A-SELECTED-RUNTIME-BP-CREATORS conditionally bounds successful exact record12+mutex, digest16/frame64, carry6 and table16 node-family object requests; allocator, frames, first-use, faults, publication, installed source/pool and cleanup remain separate.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-013"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-SELECTED-RUNTIME-BP-CREATORS"
+      ],
+      "status": "planned",
+      "evidence": [
+        "books/assumptions-selected-runtime-bp-creators.lisp",
+        "tests/acl2/selected-runtime-bp-creators-tests.lisp",
+        "specs/selected-runtime-bp-creators.md",
+        "planning/evidence/bp-selected-creators-2026-09-30/README.md"
+      ]
     }
   ]
 }
