@@ -6431,9 +6431,12 @@
         "planning/evidence/history-image-spool-transition-source-2026-09-30.json",
         "books/history-image-effect-refinement.lisp",
         "tests/acl2/history-image-effect-refinement-tests.lisp",
-        "planning/evidence/history-image-effect-payload-source-2026-09-30.json"
+        "planning/evidence/history-image-effect-payload-source-2026-09-30.json",
+        "books/history-image-front-refinement.lisp",
+        "tests/acl2/history-image-front-refinement-tests.lisp",
+        "planning/evidence/history-image-front-source-2026-09-30.json"
       ],
-      "execution_scope": "Actual host-called fn-hie-page-byte full output now equals canonical serialization of the selected retained full page under the exact live plan/index/fullness context. Source body18 forms/15 locals:0.97 ACL2s/22,590 steps;8 literal assertions:0.04s/101 steps. Five positives are labelled constructed funded page-effect phases and three complete context-removal/corruption negatives. Official IHS support is explicitly source-loaded uncertified; no certificate/native/whole-image transfer. All prior metadata evidence retained. Runtime unchanged d3; full image/private spool/root/progress/FD/source authority/INITIAL remain open; PRF-1144 planned/events[]."
+      "execution_scope": "Actual zero/header leading-page canonical invariant and complete page handoff now proved for fn-hpi-tick. Clean source20forms/13locals2.83 ACL2s/410,011steps;12complete reachable trajectory assertions18forms0.16s/1,262steps, including both retained-premise removals for each phase/event and full buffer/digest frames. Header positives drive real zero-page issuance+ACK first. Prior metadata/payload evidence preserved, including explicit uncertified IHS support at payload coordinate. Runtime unchanged d3; full pool/column/data/private digest/spool/root/progress/FD/source authority/INITIAL remain open; PRF1144 planned/events[]."
     }
   ]
 }

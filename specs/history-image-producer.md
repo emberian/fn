@@ -307,3 +307,24 @@ that limitation is explicit in the manifest. Full image/progress, private
 spool/digest/root, retained FD roles, installed source authority and complete
 INITIAL runtime funding remain open. Runtime is unchanged; PRF-1144 remains
 planned with no completion events.
+
+
+The actual leading-page controller now preserves the complete canonical
+zero/header prefix while continuing and hands off its full 2048-word page
+with the exact positional effect and retained continuation. The continuing
+law frames c/ledger/the other four complete buffers/digest, increments used
+once, and retains scratch epoch/lease. The handoff law equates the entire
+actual call output to the issued core page effect with all state frames.
+
+Four complete positive witnesses reach these phases from actual admission
+and begin/tick. The header witnesses drive zero-page issuance and exact
+core ACK first. Each has two separately labelled retained-premise removals:
+corrupting word zero removes the invariant but retains the status; removing
+the growth receipt retains the invariant but removes the status. Every
+complete conclusion is checked, with all buffer cells and every digest
+frame compared where the theorem requires an unchanged stobj. All twelve
+assertions and the fresh proof-body replay are recorded in
+`planning/evidence/history-image-front-source-2026-09-30.json`.
+Full pool/column/data, private digest/spool/root and progress, FD/source
+authority and INITIAL funding remain open. Runtime is unchanged; PRF-1144
+remains planned with no completion events.
