@@ -3,6 +3,7 @@
 ; Reception here is a validated-bundle kernel, not a TCPCL or FNBS publisher.
 (in-package "ACL2")
 (include-book "bp-node-machine")
+(include-book "bp-handoff-recovery-shape")
 (include-book "bp-adu")
 (include-book "bp-signed-receipt")
 (set-verify-guards-eagerness 0)
@@ -675,6 +676,11 @@
                       (equal (len replay-result) 4)
                       (equal (len replay-result) 5))
                   (equal (car replay-result) :ready)
+                  ;; A ready replay is not authority to install malformed
+                  ;; checkpoint handoffs. Legacy three-field replay has none.
+                  (fn-bphs-handoffs-p
+                   (if (>= (len replay-result) 4)
+                       (fn-bpn-nth 2 replay-result) nil))
                   (or (null prior)
                       (and (consp prior) (natp (car prior))
                            (natp (cdr prior))))
@@ -703,7 +709,11 @@
                                        (if (equal replay-result
                                                   '(:fault :held-beyond-profile))
                                            :held-beyond-profile
-                                         :fnbs-or-base))))
+                                         (if (not (fn-bphs-handoffs-p
+                                                   (if (>= (len replay-result) 4)
+                                                       (fn-bpn-nth 2 replay-result) nil)))
+                                             :handoff-shape
+                                           :fnbs-or-base)))))
       (fn-bpnf-answer
        (fn-bpnf-state-with-arrival (fn-bpn-answer-state base-answer)
                       (fn-bpn-nth 1 replay-result)

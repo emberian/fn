@@ -5013,3 +5013,23 @@ not the host's outer exception handler or unobserved physical effects.
 first-failure, later-failure, refusal and uncertain traces, and explicit
 hypothesis-removal witnesses. Matching certification and native composition
 remain separate evidence coordinates.
+
+### Typed checkpoint handoff recovery (source integration pending)
+
+Checkpoint replay must not install an untyped handoff merely because its outer
+CK7 structure decodes. The actual durable delivery producer
+`fn-bpah-apply-delivery` constructs a handoff from nonempty bounded receipt
+identity octets, the received principal and bundle identity, and `:owed`.
+The recovery grammar also recognizes the existing computed
+`(:handed-off sequence)` observation with a natural sequence. This is a local
+recovery policy, not a BP transport acknowledgement or durable receipt claim.
+
+`fn-bpnf-recover-fnbs-step` rejects malformed handoffs with
+`:restart-fault :handoff-shape` and retains the original state. Three-field
+legacy replay carries no handoffs. This tightens acceptance of corrupt stored
+data; it does not preserve the old function on every input. The literal CK7
+encoded malformed-symbol scenario and the real delivery producer witness
+name the changed boundary. Full source replay, bounded restart codec work,
+qualified native interruption/restart and complete held-field symbol grammar
+remain separate pending coordinates.
+
