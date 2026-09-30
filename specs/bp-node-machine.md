@@ -5271,3 +5271,24 @@ record construction or registry lookup. The actual recording refuter exercises
 open, write failure, failed core observation and non-repetition; it is not a
 native or installed authority verdict. Evidence is
 `planning/evidence/bp-checkpoint-registered-caller-20260930/manifest.json`.
+
+### Internal lazy registered digest workspace factory
+
+The internal factory derives its plan from the actual registered constructing
+intent and controller slot. Each fuel-bounded turn traverses existing children,
+creates the first missing root/path/digest/carry child and returns without
+descending into that new child. Carry remains constructing; storage presence
+is not installation or publication. The actual registered fixture derives its
+source incarnation from the census and emitted prefix, then exercises separate
+root/digest/carry turns with a deliberately seeded unfunded intent. The public
+step refuses runtime-unavailable before lookup/plan/creator while the genuine
+selected operation family and BODY issuer are missing.
+
+The one logical missing-child action does not bound compiled constructor
+allocation, including default-creator lowering at existing child GET sites.
+Those sites and supported path/quantum adequacy remain exact runtime joins.
+The protected source/fixture evidence is
+`planning/evidence/bp-digest-workspace-factory-20260930/manifest.json`.
+Normal source assembly must import the exact shared pool10 book and factor the
+old host inline pool declaration/get/keeper coherently; no pool2 image evidence
+transfers.
