@@ -1025,6 +1025,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-view \
 	books/served-columns \
 	tests/acl2/served-columns-tests \
+	books/nov-span-window \
+	tests/acl2/nov-span-window-tests \
 	books/nov-decimal-window \
 	tests/acl2/nov-decimal-window-tests \
 	books/nov-byte-window \

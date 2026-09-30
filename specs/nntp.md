@@ -1867,6 +1867,18 @@ continuation; this component never truncates them to ten digits. The work
 count measures divisions, not machine bit complexity of arbitrary bignums;
 actual runtime cost still requires the maintained representation bound.
 
+The immutable span component `fn-nsw-step` reads at most its fuel in source
+octets and emits at most its fuel in normalized octets. It retains the
+source handle, position, remaining length and a pending CR across quanta;
+a following LF is consumed without output, while an unpaired CR emits SP
+without swallowing the unread octet. Its produced bytes plus logical
+residual equal `fn-nov-scrub` of the original span, including across a fold.
+The slice abstraction, endpoint, octet representation and strict active
+progress are proved. These logical residuals never execute in a quantum.
+The owning response must retain the origin generation pin until all span
+bytes drain or it cancels. This component is not yet wired into the served
+cursor and does not establish legacy parser refinement or runtime costs.
+
 ### Bounded legacy hydration source component (PRF-1094, SCN-1009)
 
 `fn-lpc-begin(handle, length, origin-pin)` captures immutable source identity;
@@ -1912,6 +1924,7 @@ allocation accounting, actual cursor composition
 and matched runtime measurements remain open. The source stores fixed-size
 records and source references and reports raw-byte work; that statement
 alone is not a physical allocation or latency qualification.
+
 
 
 ## Public exposure (NNT-031)
