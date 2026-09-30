@@ -5,10 +5,10 @@
 (in-package "ACL2")
 (include-book "allocation-epoch-domain")
 
-; Immutable installed tuple (12 cells): tag, exact runtime/image/profile/pool
+; Immutable installed tuple (13 cells): tag, exact runtime/image/profile/pool
 ; association, immediate domain, physical budget, footprint factor, footprint
 ; slack, collector resident reserve, external resident reserve, ordinary
-; allocation headroom, Qgate, Qcollect, Qresume. The affine footprint envelope
+; allocation headroom, Qgate, Qcollect, Qresume, dynamic collector reserve. The affine footprint envelope
 ; must be established by the selected allocator unit; it covers region slack,
 ; rounding and fragmentation. Its representation predicate is NOT authority.
 (defun fn-aec-at (n x)
@@ -36,7 +36,7 @@
 
 (defun fn-aec-installationp (x)
  (declare (xargs :guard t))
- (and (true-listp x) (equal (len x) 12)
+ (and (true-listp x) (equal (len x) 13)
       (eq (fn-aec-at 0 x) :allocation-epoch-installation)
       (fn-aec-runtime-associationp (fn-aec-at 1 x) (fn-aec-at 2 x))
       (posp (fn-aec-at 2 x))
@@ -49,17 +49,29 @@
       (and (natp (fn-aec-at 9 x)) (<= (fn-aec-at 9 x) (fn-aec-at 2 x)))
       (and (natp (fn-aec-at 10 x)) (<= (fn-aec-at 10 x) (fn-aec-at 2 x)))
       (and (natp (fn-aec-at 11 x)) (<= (fn-aec-at 11 x) (fn-aec-at 2 x)))
+      (and (natp (fn-aec-at 12 x))
+           (<= (fn-aec-at 12 x) (fn-aec-at 2 x))
+           (<= (fn-aec-at 12 x) (fn-aec-at 5 (fn-aec-at 1 x))))
       (posp (fn-aec-at 4 x))
       (<= (fn-aec-at 5 x) (fn-aec-at 3 x))
       (<= (fn-aec-at 6 x) (- (fn-aec-at 3 x) (fn-aec-at 5 x)))
       (<= (fn-aec-at 7 x)
           (- (- (fn-aec-at 3 x) (fn-aec-at 5 x)) (fn-aec-at 6 x)))))
 
-(defun fn-aec-ceiling (installation)
+(defun fn-aec-physical-ceiling (installation)
  (declare (xargs :guard (fn-aec-installationp installation)))
  (floor (- (- (- (fn-aec-at 3 installation) (fn-aec-at 5 installation))
                  (fn-aec-at 6 installation)) (fn-aec-at 7 installation))
         (fn-aec-at 4 installation)))
+
+; Dynamic reservation and affine physical footprint are distinct ceilings.
+; The appended reserve is supplied only by the genuine qualified installer;
+; collector resident reserve does not establish dynamic collector headroom.
+(defun fn-aec-ceiling (installation)
+ (declare (xargs :guard (fn-aec-installationp installation)))
+ (min (fn-aec-physical-ceiling installation)
+      (- (fn-aec-at 5 (fn-aec-at 1 installation))
+         (fn-aec-at 12 installation))))
 
 ; The logical budget/grants invariant remains a distinct same-pool invariant.
 ; This predicate covers physical allocation only. A release of logical C is

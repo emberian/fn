@@ -4,7 +4,7 @@
 ; Corruption/removal cases deliberately evaluate outside executable guards.
 (defconst *ats-assoc* '(:allocation-epoch-association :runtime :profile :pool 10 1000))
 (defconst *ats-installation*
- (list :allocation-epoch-installation *ats-assoc* 1000 800 2 20 20 20 50 10 20 7))
+ (list :allocation-epoch-installation *ats-assoc* 1000 800 2 20 20 20 50 10 20 7 0))
 (defconst *ats-ledger* '((1000 1000 1000 1000 1000) (0 0 0 0 7) 7 (:lifetime-holder) (0 0 0 0 0)))
 
 (defun atst-init (ledger allocated fn-allocation-turn-slots fn-page-read-pool)

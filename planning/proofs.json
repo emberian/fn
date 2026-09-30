@@ -18083,7 +18083,7 @@
     {
       "id": "PRF-1164",
       "title": "Actual allocating-turn entry and finish source census preserves complete results",
-      "statement": "The executable proof-only fn-atsc-enter and fn-atsc-finish observers equal the complete four- and three-value results of the actual fn-ats-enter-internal and fn-ats-finish-owned subjects. Every entry branch has at most 40 explicit source CONS cells and 50 recorded material arithmetic operations, including definite failed-entry disposition. Successful entry has 39/40 cells according to the actual legacy/baseline ledger constructor and exactly 50 material operations, with ordered operands retained. Fixed reader/recognizer arithmetic, comparisons, concrete stores, compiler frames and result-MV lowering remain explicit separate native closure obligations; source counts alone establish no physical Qgate allowance.",
+      "statement": "The executable proof-only fn-atsc-enter and fn-atsc-finish observers equal the complete four- and three-value results of the actual fn-ats-enter-internal and fn-ats-finish-owned subjects. Every entry branch has at most 40 explicit source CONS cells and 51 recorded material arithmetic operations, including definite failed-entry disposition. Successful entry has 39/40 cells according to the actual legacy/baseline ledger constructor and exactly 51 material operations, with ordered operands retained. Fixed reader/recognizer arithmetic, comparisons, concrete stores, compiler frames and result-MV lowering remain explicit separate native closure obligations; source counts alone establish no physical Qgate allowance.",
       "milestone": "M5",
       "requirements": [
         "HST-042"
@@ -18102,9 +18102,12 @@
         "planning/evidence/manifests/certify-20260930T171255Z-54307.json",
         "planning/evidence/manifests/certify-20260930T170410Z-47967.json",
         "planning/evidence/manifests/certify-20260930T172909Z-66675.json",
-        "planning/evidence/allocation-turn-source-cost-2026-09-30/README.md"
+        "planning/evidence/allocation-turn-source-cost-2026-09-30/README.md",
+        "planning/evidence/manifests/certify-20260930T222650Z-3894000.json",
+        "planning/evidence/allocation-turn-dual-ceiling-2026-09-30/README.md",
+        "planning/evidence/manifests/certify-20260930T224655Z-326155.json"
       ],
-      "progress_note": "Certified source census and full-result refinement; literal concrete result witnesses and premise-removal cases. Actual selected compiler request/octet conversion, all reader/recognizer/MV/frame closures and genuine physical allowance installation remain open.",
+      "progress_note": "Normal exact source/test roots passed at kernel13. Actual entry39/40 explicit sourceCONS and51 materialOPS, ceiling5 and gate13. MIN/comparison, implicit constructors, frames, full runtime Qgate and genuine installation remain separate. Previous kernel12/50 evidence historical.",
       "events": [
         "fn-atsc-enter-observes-complete-actual-result",
         "fn-atsc-finish-observes-complete-actual-result",
@@ -18214,7 +18217,8 @@
       "evidence": [
         "planning/evidence/manifests/certify-20260930T203103Z-1338622.json",
         "tests/acl2/allocation-turn-body-authority-tests.lisp",
-        "planning/evidence/connection-source-census-2026-09-30/README.md"
+        "planning/evidence/connection-source-census-2026-09-30/README.md",
+        "planning/evidence/manifests/certify-20260930T221219Z-3688998.json"
       ],
       "progress_note": "Source component only; genuine installation/profile/constructor baseline and body allowance remain open. The predicate rejects recovery mode even when matching nonce/role/BODY phase survive uncertainty.",
       "events": [

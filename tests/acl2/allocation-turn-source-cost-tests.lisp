@@ -137,26 +137,26 @@
            (mv (and valid (eq word expected)
                     (equal (list ow on (atsct-decode-view (atst-view fn-allocation-turn-slots fn-page-read-pool))) actual)
                     (equal oc cells) (equal (len ops) operations) (consp sites)
-                    (<= oc 40) (<= (len ops) 50)
+                    (<= oc 40) (<= (len ops) 51)
                     (if (eq expected :gate-owned)
                         (and (eq word :gate-owned)
                              (equal oc (+ 35 (if (fn-prl-nth 4
                                (fn-owner-page-read-ledger fn-page-read-pool)) 5 4)))
-                             (equal (len ops) 50))
+                             (equal (len ops) 51))
                       (and (not (eq word :gate-owned))
                            (not (and (equal oc (+ 35 (if (fn-prl-nth 4
                              (fn-owner-page-read-ledger fn-page-read-pool)) 5 4)))
-                                     (equal (len ops) 50))))))
+                                     (equal (len ops) 51))))))
                fn-allocation-turn-slots fn-page-read-pool)))))))
      (mv ok fn-page-read-pool)))
    ok)))
 
-(assert-event (atsct-entry :success :gate-owned 40 50))
-(assert-event (atsct-entry :legacy :gate-owned 39 50))
-(assert-event (atsct-entry :identities :read-identities-exhausted 10 30))
-(assert-event (atsct-entry :resources :read-resources-unavailable 25 45))
-(assert-event (atsct-entry :domain-next :invalid-resource-state 0 13))
-(assert-event (atsct-entry :gate-room :yield 0 10))
+(assert-event (atsct-entry :success :gate-owned 40 51))
+(assert-event (atsct-entry :legacy :gate-owned 39 51))
+(assert-event (atsct-entry :identities :read-identities-exhausted 10 31))
+(assert-event (atsct-entry :resources :read-resources-unavailable 25 46))
+(assert-event (atsct-entry :domain-next :invalid-resource-state 0 14))
+(assert-event (atsct-entry :gate-room :yield 0 11))
 (assert-event (atsct-entry :draining :yield 0 0))
 (assert-event (atsct-entry :recovery :recovery-required 0 0))
 (assert-event (atsct-entry :busy :busy 0 0))
@@ -165,7 +165,7 @@
 ; Model raw retained entry intent, outside ordinary returned correspondence.
 (assert-event (atsct-entry :intent :recovery-required 0 0))
 ; CORRUPTED logical funding, though the separate physical pool invariant holds.
-(assert-event (atsct-entry :invalid-funded :invalid-resource-state 10 30))
+(assert-event (atsct-entry :invalid-funded :invalid-resource-state 10 31))
 ; CORRUPTED ATS correspondence: an idle slot cannot coexist with domain active
 ; turns in this two-slot maintained fixture. Scalar overflow branch is tested,
 ; not asserted reachable in the composed maintained machine.

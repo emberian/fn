@@ -96,21 +96,43 @@
         (collector (fn-aec-at 6 installation)) (external (fn-aec-at 7 installation))
         (factor (fn-aec-at 4 installation))
         (first (- budget slack)) (second (- first collector))
-        (third (- second external)))
-  (list (floor third factor) 0
+        (third (- second external))
+        (reservation (fn-aec-at 5 (fn-aec-at 1 installation)))
+        (dynamic-reserve (fn-aec-at 12 installation)))
+  (list (min (floor third factor) (- reservation dynamic-reserve)) 0
         (list (list :subtract (list budget slack))
               (list :subtract (list first collector))
               (list :subtract (list second external))
-              (list :floor (list third factor)))
-        '(fn-aec-ceiling fn-aec-at))))
+              (list :floor (list third factor))
+              (list :subtract (list reservation dynamic-reserve)))
+        '(fn-aec-ceiling fn-aec-physical-ceiling fn-aec-at min))))
 (defthm fn-atsc-ceiling-observes-result
- (equal (fn-atsc-value (fn-atsc-ceiling installation)) (fn-aec-ceiling installation)))
+ (equal (fn-atsc-value (fn-atsc-ceiling installation)) (fn-aec-ceiling installation))
+ :hints (("Goal" :in-theory
+  (e/d (fn-atsc-ceiling fn-aec-ceiling fn-aec-physical-ceiling fn-atsc-value fn-atsc-at)
+       (floor min fn-aec-at)))))
 
 ; The guard-verified caller carries installation validity; it is not an
 ; allocating served revalidation. Epoch/nonce remain actual ignored inputs.
+(local
+ (defthm fn-atsc-active-state-input-domain
+  (implies (and (fn-aec-statep i m e l a n g) (eq m :active))
+   (and (fn-aec-installationp i) (natp n)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+   (e/d (fn-aec-statep fn-aec-nats-below)
+        (fn-aec-installationp fn-aec-ceiling fn-aec-at fn-aed-ordinary-roomp))))))
 (defun fn-atsc-gate (installation mode epoch occupied allocated turns nonce)
  (declare (ignore epoch nonce)
-  (xargs :guard (fn-aec-statep installation mode epoch occupied allocated turns nonce)))
+  (xargs :guard (fn-aec-statep installation mode epoch occupied allocated turns nonce)
+   :guard-hints (("Goal" :in-theory
+    (disable fn-aec-statep fn-aec-installationp fn-aec-ceiling
+             fn-aec-physical-ceiling fn-atsc-ceiling fn-atsc-prepay
+             fn-atsc-add-room fn-atsc-value fn-atsc-at fn-atsc-ops fn-atsc-sites
+             fn-aed-ordinary-prepay fn-aed-ordinary-roomp fn-aed-add-roomp)
+    :use ((:instance fn-atsc-active-state-input-domain
+     (i installation) (m mode) (e epoch) (l occupied)
+     (a allocated) (n turns) (g nonce)))))))
  (cond
   ((not (eq mode :active))
    (list (list (if (eq mode :recovery) :recovery-required :yield) mode allocated turns)
@@ -477,12 +499,14 @@
         (fn-atsc-add-room fn-aed-add-roomp fn-atsc-ordinary-room fn-aed-ordinary-roomp
          fn-atsc-value fn-atsc-ops fn-atsc-sites))))))
 (local
- (defthm fn-atsc-ceiling-four-operations
-  (equal (len (fn-atsc-ops (fn-atsc-ceiling installation))) 4)))
+ (defthm fn-atsc-ceiling-five-operations
+  (equal (len (fn-atsc-ops (fn-atsc-ceiling installation))) 5)
+  :hints (("Goal" :in-theory
+   (disable floor min fn-aec-at fn-aec-ceiling fn-aec-physical-ceiling)))))
 (local
- (defthm fn-atsc-prepaid-gate-twelve-operations
+ (defthm fn-atsc-prepaid-gate-thirteen-operations
   (implies (eq (mv-nth 0 (fn-aec-enter i m e l a n g nil)) :prepaid)
-   (equal (len (fn-atsc-ops (fn-atsc-gate i m e l a n g))) 12))
+   (equal (len (fn-atsc-ops (fn-atsc-gate i m e l a n g))) 13))
   :hints (("Goal" :in-theory
    (e/d (fn-atsc-gate fn-aec-enter)
         (fn-atsc-add-room fn-aed-add-roomp fn-atsc-prepay fn-aed-ordinary-prepay
@@ -511,7 +535,7 @@
  (implies (eq (mv-nth 0 (fn-ats-enter-internal slot role slots pool)) :gate-owned)
   (and (equal (mv-nth 4 (fn-atsc-enter slot role slots pool))
               (+ 35 (if (fn-prl-nth 4 (fn-owner-page-read-ledger pool)) 5 4)))
-       (equal (len (mv-nth 5 (fn-atsc-enter slot role slots pool))) 50)))
+       (equal (len (mv-nth 5 (fn-atsc-enter slot role slots pool))) 51)))
  :rule-classes nil
  :hints (("Goal" :in-theory
   (e/d (fn-atsc-enter fn-ats-enter-internal fn-aec-pool-enter-internal)
@@ -579,11 +603,14 @@
         (fn-atsc-add-room fn-atsc-ordinary-room fn-atsc-value fn-atsc-ops fn-atsc-sites))))))
 (local
  (defthm fn-atsc-gate-operation-bound
-  (<= (len (fn-atsc-ops (fn-atsc-gate i m e l a n g))) 12)
+  (<= (len (fn-atsc-ops (fn-atsc-gate i m e l a n g))) 13)
   :rule-classes :linear
   :hints (("Goal" :in-theory
    (e/d (fn-atsc-gate)
-        (fn-atsc-add-room fn-atsc-prepay fn-atsc-ceiling fn-atsc-value fn-atsc-ops fn-atsc-sites))))))
+        (fn-atsc-add-room fn-atsc-prepay fn-atsc-ceiling fn-atsc-value fn-atsc-ops fn-atsc-sites
+         fn-atsc-add-room-observes-result fn-atsc-prepay-observes-complete-result
+         fn-atsc-ceiling-observes-result fn-aec-ceiling fn-aec-physical-ceiling
+         fn-aec-at floor min))))))
 (local
  (defthm fn-atsc-leave-operation-bound
   (<= (len (fn-atsc-ops (fn-atsc-leave m a n))) 1)
@@ -623,7 +650,7 @@
 ; Native readers/recognizers/stores/MV/frames still need their own exact closure.
 (defthm fn-atsc-all-entry-paths-source-census-bound
  (and (<= (mv-nth 4 (fn-atsc-enter slot role slots pool)) 40)
-      (<= (len (mv-nth 5 (fn-atsc-enter slot role slots pool))) 50))
+      (<= (len (mv-nth 5 (fn-atsc-enter slot role slots pool))) 51))
  :rule-classes nil
  :hints (("Goal" :in-theory
   (e/d (fn-atsc-enter)

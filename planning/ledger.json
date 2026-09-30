@@ -1657,8 +1657,8 @@
     "books": 1757,
     "books_in_root_closure": 1751,
     "roots": 1650,
-    "theorems": 28119,
-    "functions": 18534,
+    "theorems": 28120,
+    "functions": 18535,
     "assert_events": 23115,
     "must_fails": 2496,
     "prover_refusals": 0,
@@ -1666,7 +1666,7 @@
     "guards": {
       "verified": 3561,
       "declared-off": 2109,
-      "default-guarded": 10129,
+      "default-guarded": 10130,
       "default-unguarded": 2735
     },
     "suspect_theorems": 1233,
@@ -1997,11 +1997,11 @@
       "in_root_closure": true,
       "is_root": false,
       "theorems": 11,
-      "functions": 14,
+      "functions": 15,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 14,
+        "default-guarded": 15,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -2107,7 +2107,7 @@
       "book": "books/allocation-turn-source-cost.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 44,
+      "theorems": 45,
       "functions": 16,
       "guards": {
         "verified": 3,
@@ -52850,7 +52850,7 @@
     {
       "theorem": "fn-aec-collection-issue-preserves-state",
       "book": "books/allocation-epoch.lisp",
-      "line": 259,
+      "line": 271,
       "reasons": [
         "preserves-no-subject-call: the statement never calls fn-aec-collection-issue or a fn-aec-collection-issue- transition"
       ]
@@ -62924,7 +62924,7 @@
       {
         "theorem": "fn-atsc-ceiling-observes-result",
         "book": "books/allocation-turn-source-cost.lisp",
-        "line": 106,
+        "line": 109,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {

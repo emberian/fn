@@ -13,11 +13,11 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1757 |
 | Certification roots in the Makefile | 1650 |
 | Books inside the root closure | 1751 |
-| `defthm` and `defthmd` events | 28119 |
-| `defun` events | 18534 |
+| `defthm` and `defthmd` events | 28120 |
+| `defun` events | 18535 |
 | Functions with verified guards | 3561 |
 | Functions declared `:verify-guards nil` and never verified | 2109 |
-| Functions left at the default with an explicit guard | 10129 |
+| Functions left at the default with an explicit guard | 10130 |
 | Functions left at the default with no guard | 2735 |
 | `assert-event` checks | 23115 |
 | `must-fail` checks | 2496 |
@@ -97,11 +97,11 @@ that `make certify` requests.
 | `books/allocation-epoch-domain.lisp` | closure | 3 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/allocation-epoch-observation.lisp` | closure | 3 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/allocation-epoch-pool.lisp` | closure | 6 | 9 | 0/0/7/2 | 0 | 0 | 0 |
-| `books/allocation-epoch.lisp` | closure | 11 | 14 | 0/0/14/0 | 0 | 0 | 1 |
+| `books/allocation-epoch.lisp` | closure | 11 | 15 | 0/0/15/0 | 0 | 0 | 1 |
 | `books/allocation-turn-body-authority.lisp` | root | 3 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/allocation-turn-raw-bridge.lisp` | root | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/allocation-turn-slots.lisp` | closure | 17 | 13 | 0/0/12/1 | 0 | 0 | 2 |
-| `books/allocation-turn-source-cost.lisp` | root | 44 | 16 | 3/0/13/0 | 0 | 0 | 0 |
+| `books/allocation-turn-source-cost.lisp` | root | 45 | 16 | 3/0/13/0 | 0 | 0 | 0 |
 | `books/anchor-invariants.lisp` | root | 31 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/anchor-record.lisp` | root | 5 | 4 | 4/0/0/0 | 0 | 0 | 0 |
 | `books/anchor-replace.lisp` | root | 7 | 10 | 0/0/10/0 | 0 | 0 | 0 |
@@ -1857,7 +1857,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `bpgap-uncertain-issued-is-inert` | `books/bp-node-machine-gaps.lisp` | 104 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpnp-step and the conclusion is that arm's value |
 | `bprsend-job-with-status-fields` | `books/bp-node-receipt-send.lisp` | 278 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-acct-redeem-bounded-plan-is-the-plan-unless-it-redeems` | `books/accounts.lisp` | 762 | arm-of-definition: the hypotheses select one IF/COND arm of fn-acct-redeem-bounded-plan and the conclusion is that arm's value |
-| `fn-aec-collection-issue-preserves-state` | `books/allocation-epoch.lisp` | 259 | preserves-no-subject-call: the statement never calls fn-aec-collection-issue or a fn-aec-collection-issue- transition |
+| `fn-aec-collection-issue-preserves-state` | `books/allocation-epoch.lisp` | 271 | preserves-no-subject-call: the statement never calls fn-aec-collection-issue or a fn-aec-collection-issue- transition |
 | `fn-af-message-id-equalp-is-exact` | `books/article-fields.lisp` | 346 | definition-restated: the conclusion is the body of fn-af-message-id-equalp with the conjuncts the hypotheses already assert struck out |
 | `fn-ag-less-is-less` | `books/acceptance-alloc.lisp` | 81 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-ag-less; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-anchor-octets-of-lengthp-forward` | `books/anchor.lisp` | 130 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-anchor-octets-of-lengthp |

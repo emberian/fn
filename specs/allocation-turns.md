@@ -67,8 +67,8 @@ PRF-1164 supplies the proof-only executable source observers `fn-atsc-enter`
 `fn-atsc-finish` (word, slots, pool, cells, ordered operands, source sites). Named
 complete-result correspondence connects each to the actual internal callback.
 Every entry branch, including failed issuer disposition, is bounded by 40 explicit
-source CONS cells and 50 material arithmetic operations; successful current and
-legacy reconstruction has 40 and 39 cells respectively and exactly 50 operations.
+source CONS cells and 51 material arithmetic operations; successful current and
+legacy reconstruction has 40 and 39 cells respectively and exactly 51 operations.
 Finish has zero explicit source CONS and records the actual count subtraction
 only when consumed. All five PRS coordinates and actual arithmetic operands are
 retained. These counts are not installed tariffs: fixed reader/recognizer and
@@ -148,3 +148,13 @@ four-value reconstruction; the explicit local lemma repaired the proof without
 changing its statement. Those failures remain archived. Current RX four-field
 closure is still a coordinator convergence obligation; neither constructor nor
 native qualification is transferred from the historical coordinate.
+
+Kernel13 source successor retains distinct dynamic and physical ceilings. The
+observer now records the original three SUBTRACT/FLOOR operations followed by
+SUBTRACT(reservation,Gdynamic); MIN remains an unpriced comparison. Gate control
+has13 material operations and successful entry51, with the same39/40 CONS cells.
+Normal222650 certifies the exact observer and full entry/finish source tests;
+normal221219 passing rows cover kernel and unchanged slot/body fixtures, while
+that overall run remains incomplete. Connection composed expectations are adapted
+to73/52/71 operations but await coordinator replay. Fixtures append zero reserve
+only as synthetic logical tests; they are not qualified installations.

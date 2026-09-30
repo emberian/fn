@@ -4,7 +4,7 @@
 (defun atsbat-case (fn-allocation-turn-slots fn-page-read-pool)
  (declare (xargs :stobjs (fn-allocation-turn-slots fn-page-read-pool) :verify-guards nil))
  (let* ((association '(:allocation-epoch-association :runtime :profile :pool 10 1000))
-        (installation (list :allocation-epoch-installation association 1000 800 2 20 20 20 50 10 20 7))
+        (installation (list :allocation-epoch-installation association 1000 800 2 20 20 20 50 10 20 7 0))
         (fn-page-read-pool (fn-owner-page-read-keep-ledger
           '((1000 1000 1000 1000 1000) (0 0 0 0 0) 0 nil (0 0 0 0 0)) fn-page-read-pool))
         (fn-page-read-pool (update-fn-prp-alloc-installation installation fn-page-read-pool))
