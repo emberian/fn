@@ -462,7 +462,19 @@ class StreamingContinuationTests(unittest.TestCase):
             if phase == "fetch":
                 if mutation == "retry-content" and "after duplicate" in name:
                     data += b"mutated\r\n"
+                if mutation == "forced-content" and "after forced duplicate" in name:
+                    data += b"mutated\r\n"
+                if mutation == "forced-missing" and "after forced duplicate" in name:
+                    return inn_lab.Step(name, extra, 0, json.dumps(dict(article="430 missing")), 0)
                 result = dict(article="220 article", octets=base64.b64encode(data).decode())
+            elif "force duplicate" in name:
+                result = dict(ok=True, mode_stream="203 stream", offer="438 " + subject,
+                              result="439 " + subject)
+                if mutation == "forced-offer": result["offer"] = "438 <wrong@x>"
+                if mutation == "forced-subject": result["result"] = "439 <wrong@x>"
+                if mutation == "forced-accepted": result["result"] = "239 " + subject
+                if mutation == "forced-retry": result["result"] = "436 " + subject
+                if mutation == "forced-error": result["ok"] = False
             elif "retry accepted" in name:
                 result = dict(mode_stream="203 stream", offer="438 " + subject, result="")
                 if mutation == "retry-subject": result["offer"] = "438 <wrong@x>"
@@ -491,6 +503,73 @@ class StreamingContinuationTests(unittest.TestCase):
                 self.assertIn(("streaming-duplicate-retry", direction, mutation is None), checks)
             if mutation in ("transfer-subject", "transfer-content"):
                 self.assertFalse(any("retry accepted" in name for _, name in commands))
+
+    def test_forced_duplicate_requires_exact_439_and_unchanged_receiver(self):
+        mutations = (None, "transfer-subject", "transfer-content", "forced-offer",
+                     "forced-subject", "forced-accepted", "forced-retry", "forced-error",
+                     "forced-content", "forced-missing")
+        for mutation in mutations:
+            lab, checks, commands = self.fixture(mutation)
+            lab.scenario_bidirectional_streaming()
+            for direction in ("fn-to-inn", "inn-to-fn"):
+                self.assertIn(("streaming-forced-duplicate", direction, mutation is None), checks, mutation)
+            if mutation in ("transfer-subject", "transfer-content"):
+                self.assertFalse(any(phase == "stream-forced" for phase, _ in commands))
+            else:
+                self.assertEqual(sum(phase == "stream-forced" for phase, _ in commands), 2)
+
+    def test_forced_duplicate_replays_feed_not_post_or_receiver_path(self):
+        lab, checks, commands = self.fixture()
+        stored = {}
+        put = lab.put_article
+        lab.put_article = lambda name, data: stored.setdefault(name, data) and put(name, data)
+        wait = lab.wait_tap
+        captured = {}
+        def actual_feed(pair, subject, name):
+            found = wait(pair, subject, name)
+            data = found["article"]
+            if b"Path:" not in data:
+                data = b"Path: sender!not-for-mail\r\n" + data
+            else:
+                data = data.replace(b"Path: fn-lab!", b"Path: sender!fn-lab!")
+            found["article"] = data
+            captured[name.removeprefix("streaming ")] = data
+            return found
+        lab.wait_tap = actual_feed
+        lab.scenario_bidirectional_streaming()
+        for direction in ("fn-to-inn", "inn-to-fn"):
+            self.assertEqual(stored["forced-stream-" + direction], captured[direction])
+            self.assertIn(("streaming-forced-duplicate", direction, True), checks)
+
+    def test_forced_driver_sends_only_after_exact_duplicate_and_requires_439(self):
+        for offer, result, sends, accepted in (
+                ("438 <stream@x> held", "439 <stream@x> refused", True, True),
+                ("438 <other@x> held", "439 <stream@x> refused", False, False),
+                ("238 <stream@x> wanted", "439 <stream@x> refused", False, False),
+                ("438 <stream@x> held", "239 <stream@x> accepted", True, False),
+                ("438 <stream@x> held", "436 <stream@x> retry", True, False),
+                ("438 <stream@x> held", "439 <other@x> refused", True, False)):
+            namespace = {"__name__": "driver-test"}
+            exec(compile(inn_lab.INN_DRIVER, "inn-driver", "exec"), namespace)
+            commands = []
+            replies = iter(["203 stream", offer])
+            class Peer:
+                greeting = "200 ready"
+                def __init__(self, port):
+                    self.sock = SimpleNamespace(sendall=lambda data: commands.append(data))
+                def cmd(self, command): commands.append(command); return next(replies)
+                def send_block(self, data): commands.append(data)
+                def line(self): return result
+                def close(self): commands.append("closed")
+            namespace["Wire"] = Peer
+            data = b"Path: sender!not-for-mail\r\nSubject: original\r\n\r\nbody\r\n"
+            with tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "article"
+                path.write_bytes(data)
+                got = namespace["stream_forced"](SimpleNamespace(port=1, msgid="<stream@x>", file=str(path)))
+            self.assertEqual(got["ok"], accepted)
+            self.assertEqual(data in commands, sends)
+            self.assertEqual(commands[-1], "closed")
 
     def test_configuration_refusal_prevents_submission(self):
         lab, checks, commands = self.fixture()

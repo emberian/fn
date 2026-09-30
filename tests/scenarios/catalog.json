@@ -7296,6 +7296,33 @@
         "planning/evidence/peering-inn-throttle-source-2026-09-30.json"
       ],
       "execution_scope": "Source-present actual-INN observation stage; local scripted fixture accounting only. No matching current native executable exists; actual INN/native NOT RUN. Original bidirectional S9 and all eight Q12 anchors remain open."
+    },
+    {
+      "id": "SCN-1063",
+      "title": "Both INN/native receivers refuse forced duplicate TAKETHIS after advisory CHECK438 and preserve exact receiver bytes",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-045"
+      ],
+      "steps": [
+        "Select --inn-streaming and complete each SCN-1041 actual feed direction with exact subject/content readback.",
+        "Open a fresh connection to each receiver transit endpoint, require MODE STREAM203 and CHECK438 naming the accepted subject, then deliberately send TAKETHIS with exactly the captured successful feed bytes.",
+        "Require439 naming that same subject, then fetch the receiver and compare its exact pre/post bytes."
+      ],
+      "expected": [
+        "A failed positive actual feed marks this dependent observer NOT EXERCISED and never submits the forced duplicate.",
+        "The forced driver sends no bytes for wrong-subject CHECK438, CHECK238 or refused MODE STREAM. Normal duplicate retry still sends no TAKETHIS.",
+        "Only exact-subject439 satisfies the RFC4644 section2.5 duplicate rejection;239,436, wrong subjects, missing receiver content and changed receiver bytes fail.",
+        "Replay uses actual feed bytes, not the original Path-less POST or the receiver-rendered Path, to avoid replacing the duplicate observation with a Path-loop observation."
+      ],
+      "evidence": [
+        "tools/inn_lab.py",
+        "tests/test_inn_lab.py",
+        "docs/interop-inn.md",
+        "planning/evidence/peering-inn-advisory-source-2026-09-30.json"
+      ],
+      "execution_scope": "Source-present original S4 CHECK advisory observation. Scripted observer fixtures only; actual INN/native NOT RUN, no new proof or matching executable claim. All eight original Q12 anchors remain OPEN."
     }
   ]
 }

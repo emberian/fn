@@ -3163,3 +3163,12 @@ with only Path/Xref transit changes. A new-connection duplicate retry must
 answer CHECK438 for the accepted subject and leave receiver bytes unchanged
 (RFC 4644 sections 2.3–2.5). Scripted source harness validation is distinct
 from real INN/native observation; all other Q12 criteria remain open.
+
+SCN-1063 extends the same selected streaming stage with original S4's
+advisory CHECK: after each positive actual feed, a separate client ignores
+exact-subject CHECK438 and submits the captured feed bytes by TAKETHIS.
+It requires exact-subject439 and unchanged receiver bytes (RFC 4644
+section 2.5). The successful feed's bytes avoid a receiver-added Path-loop
+confound. Failed actual positive transfer leaves the dependent observer
+NOT EXERCISED. This observer source and its scripted fixtures do not establish
+real INN/native behavior or close any original Q12 anchor.
