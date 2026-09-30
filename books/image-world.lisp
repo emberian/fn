@@ -304,6 +304,7 @@
 (include-book "owner-outcome-pinned")
 (include-book "page-discovery-ledger")
 (include-book "cold-read-layout")
+(include-book "cold-guard-bootstrap")
 (include-book "page-maintenance-lease")
 (include-book "accounts")
 (include-book "native-operator-stage")

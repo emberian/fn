@@ -646,6 +646,26 @@ The selected positive-family inventory includes power-of-two CEILING's
 quotient-plus-successor and ROOT packing's extra limb, plus actual native
 REST/MV list wrappers. It excludes general signed division/multiplication,
 EXPT, first-use guard/cache and unexpected condition construction. The current
-source inventory is278400 resident octets for the small descriptor; it remains
+source inventory is282496 resident octets for the small descriptor; it remains
 unactivated pending the selected-runtime assumption/caller join and full
 supported producer/default profile.
+
+
+### Fixed raw guard-cache source checkpoint
+
+`cold-guard-bootstrap.lisp` specifies the current16-entry raw window roster,
+actual arities/recognized guard metadata and one fixed constructor capacity.
+The selected table/spec/prewarm inventory reserves5984 resident octets once;
+`fn-crb-start-plan` carries capacity16 as its eighth field. The staged native
+`fnn-cold-guard-cache-prepare` refuses unknown metadata and prewarms a separate
+cache; `fnn-cold-call` uses that cache exclusively. This is not installed on a
+served startup path yet. A caller must consume one fresh funded installation
+before workers/listeners; repeated replacement, arbitrary world metadata,
+compiled guard evaluation and exception/compiler allocation are not proved
+by the source count. Cancellation's planned successor roster must revise
+these capacities and costs before adding dispatched calls.
+
+The narrow guard-source tests pass; the complete bootstrap source closure
+currently stops in the unchanged inherited `fn-profile-seal-octet-listp`
+proof, before any bootstrap target form. Full startup/profile, producer
+canonical demand/disk/rescue and native qualification remain open.

@@ -10,9 +10,9 @@
 (assert! (equal (fn-crw-job-demand *crw-small* 1)
                 (fn-crw-job-demand *crw-large* 1)))
 ; Independent selected-layout pin: backing17280 + conses1469*16 +
-; retained/native boxes1581*48 + wrapper128*16 + scalar128*(2*64)
+; retained/native boxes1581*48 + wrapper256*16 + scalar128*(2*64)
 ; + ROOT64*64; collector doubles.
-(assert! (equal (car (fn-crw-job-demand *crw-small* 1)) 278400))
+(assert! (equal (car (fn-crw-job-demand *crw-small* 1)) 282496))
 ; Mutation witness for replacing allocated bignum extent by normalized size.
 (assert! (and (equal (fn-crl-natural-octets (- (expt 2 256) 1)) 48)
               (equal (fn-crw-primitive-buffer-octets (- (expt 2 256) 1)) 64)

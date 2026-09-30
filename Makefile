@@ -601,6 +601,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/assumptions-cold-runtime \
 	books/page-maintenance-lease \
 	tests/acl2/page-maintenance-lease-tests \
+	books/cold-guard-bootstrap \
+	tests/acl2/cold-guard-bootstrap-tests \
 	books/cold-read-bootstrap \
 	tests/acl2/cold-read-bootstrap-tests \
 	tests/acl2/cold-read-bootstrap-host-tests \

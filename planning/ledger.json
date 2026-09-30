@@ -1660,7 +1660,7 @@
     "books": 1721,
     "books_in_root_closure": 1716,
     "roots": 1653,
-    "theorems": 27840,
+    "theorems": 27841,
     "functions": 18213,
     "assert_events": 23019,
     "must_fails": 2496,
@@ -9367,7 +9367,7 @@
       "book": "books/cold-read-window.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 2,
+      "theorems": 3,
       "functions": 10,
       "guards": {
         "verified": 0,
@@ -58644,7 +58644,7 @@
     {
       "theorem": "fn-sco-select-named-refuses-schema",
       "book": "books/store-checkpoint-tables.lisp",
-      "line": 1129,
+      "line": 1134,
       "reasons": [
         "arm-of-definition: constant arguments select one IF/COND arm of fn-sco-select-named and the conclusion is that arm's value"
       ]
@@ -58652,7 +58652,7 @@
     {
       "theorem": "fn-sco-select-named-unfolds",
       "book": "books/store-checkpoint-tables.lisp",
-      "line": 1124,
+      "line": 1129,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-sco-select-named and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-sco-select-named and the conclusion is that branch's value"
@@ -58768,7 +58768,7 @@
     {
       "theorem": "fn-sct-event-index-of-capture",
       "book": "books/store-checkpoint-tables.lisp",
-      "line": 780,
+      "line": 784,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -58776,7 +58776,7 @@
     {
       "theorem": "fn-sct-records-of-capture",
       "book": "books/store-checkpoint-tables.lisp",
-      "line": 789,
+      "line": 793,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -63347,7 +63347,7 @@
       {
         "theorem": "fn-sct-next-of-tables-of-capture",
         "book": "books/store-checkpoint-tables.lisp",
-        "line": 645,
+        "line": 649,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {

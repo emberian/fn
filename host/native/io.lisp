@@ -1276,6 +1276,31 @@ kind); :unknown when the world has no formals for NAME (a raw primitive)."
                                 checks)))))
                   (cons (length formals) (sort checks #'< :key #'first)))))))))
 
+; Staged raw-cold cache: the caller first installs the exact admitted core
+; bootstrap plan in a fresh service, before any worker/listener allocation.
+; These helpers are unactivated until that startup/caller coordinate lands.
+; This cache is permanently funded and never refunded by a settled job.
+(defvar *fnn-cold-entry-guard-specs* nil)
+
+(defun fnn-cold-guard-cache-prepare (plan)
+  (unless (fn-cgb-planp plan)
+    (error 'fnn-store-fault :message "cold guard cache: missing funded bootstrap plan"))
+  (let* ((cache (make-hash-table :test 'eq :size (nth 7 plan)
+                               :rehash-size 1 :rehash-threshold 1.0 :synchronized t))
+         (*fnn-entry-guard-specs* cache))
+    ; Only the fixed core roster can populate this preallocated cache.
+    (dolist (name (fn-cgb-roster))
+      (unless (fn-cgb-specp name (fnn-entry-guard-spec name))
+        (error 'fnn-store-fault :message "cold guard cache: unsupported image guard metadata")))
+    (setf *fnn-cold-entry-guard-specs* cache)
+    cache))
+
+(defun fnn-cold-call (name &rest args)
+  (unless (and *fnn-cold-entry-guard-specs* (fn-cgb-namep name))
+    (error 'fnn-store-fault :message "cold guard cache: unprepared or unsupported entry"))
+  (let ((*fnn-entry-guard-specs* *fnn-cold-entry-guard-specs*))
+    (apply #'fnn-call name args)))
+
 (defun fnn-entry-guard-describe (value)
   "A bounded description of VALUE's kind (never its contents)."
   (cond ((and (integerp value) (>= value 0)) (format nil "the natural ~d" value))

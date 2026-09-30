@@ -4632,3 +4632,14 @@
 
 (definterface fn-pio-file-issue :class :common-lisp-compliant
   :keystones ((fn-pio-successive-file-issues-have-distinct-identities :via fn-pio-file-issue)))
+
+; Staged fixed raw-cold guard cache. Baseline/selected-world startup join open.
+(definterface fn-cgb-roster :class :common-lisp-compliant
+  :direct "Fixed guard-t literal roster used before dedicated cache preparation")
+(definterface fn-cgb-namep :class :common-lisp-compliant
+  :direct "Guard-t fixed roster membership avoids recursive entry-cache construction")
+(definterface fn-cgb-planp :class :common-lisp-compliant
+  :direct "Guard-t core plan check before allocating the dedicated cold guard cache")
+
+(definterface fn-cgb-specp :class :common-lisp-compliant
+  :direct "Guard-t bounded cached-metadata validation in the funded fixed roster prewarm")

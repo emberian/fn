@@ -3,6 +3,7 @@
 ; supported served profile until those physical consumers are joined.
 (in-package "ACL2")
 (include-book "cold-read-layout")
+(include-book "cold-guard-bootstrap")
 (include-book "assumptions-cold-runtime")
 (include-book "cold-read-reservation")
 (include-book "payload-extent")
@@ -41,6 +42,7 @@
 (defun fn-crb-permanent-baseline (policy profile runtime)
   (declare (xargs :guard t))
   (list (+ (fn-crv-native-baseline policy profile)
+           (fn-cgb-baseline-octets)
            (* 2 (+ (fn-crb-map-octets policy)
                    (fn-crb-executor-octets policy runtime)
                    (fn-crb-remove-scratch-octets policy))))
@@ -66,7 +68,7 @@
                      (fn-crl-table-capacity (fn-crv-nth 2 policy))
                      (fn-crl-table-capacity (fn-crv-nth 1 policy))
                      (fn-crl-table-capacity (fn-crb-cache-capacity))
-                     (fn-crv-nth 1 policy))
+                     (fn-crv-nth 1 policy) (fn-cgb-capacity))
              '(:refused :cold-bootstrap-exceeds-budget))))))
 
 ; Numerical projection of the plan; not an allocator refinement theorem.

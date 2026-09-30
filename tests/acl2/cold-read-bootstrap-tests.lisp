@@ -8,7 +8,7 @@
 (assert! (equal (fn-crb-executor-octets *crb-policy* *crb-runtime*) 134880))
 (assert! (equal (fn-crb-binding-capacity *crb-policy*) 75))
 (assert! (equal (fn-crb-remove-scratch-octets *crb-policy*) 2400))
-(assert! (equal (nthcdr 3 (fn-crb-start-plan *crb-policy* nil *crb-runtime*)) '(64 8 9 2)))
+(assert! (equal (nthcdr 3 (fn-crb-start-plan *crb-policy* nil *crb-runtime*)) '(64 8 9 2 16)))
 (assert! (and (equal (fn-crv-nth 0 (fn-crb-start-plan *crb-policy* nil *crb-runtime*)) :admitted)
               (fn-prs-fundedp (fn-crv-pool-budget *crb-policy* nil)
                               (fn-crb-permanent-baseline *crb-policy* nil *crb-runtime*)
@@ -28,3 +28,5 @@
                 '(:refused :unsupported-cold-runtime)))
 (assert! (equal (fn-crb-start-plan *crb-policy* nil '("SBCL" "2.6.9" "X86-64" "Linux" 3 0 0))
                 '(:refused :unsupported-cold-runtime)))
+
+(assert! (fn-cgb-planp (fn-crb-start-plan *crb-policy* nil *crb-runtime*)))

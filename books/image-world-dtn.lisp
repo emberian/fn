@@ -281,6 +281,7 @@
 (include-book "owner-outcome-pinned")
 (include-book "page-discovery-ledger")
 (include-book "cold-read-layout")
+(include-book "cold-guard-bootstrap")
 (include-book "page-maintenance-lease")
 (include-book "native-control")
 (include-book "native-control-launch")
