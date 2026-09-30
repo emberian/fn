@@ -6301,7 +6301,8 @@
         "Total canonical image overflow refuses; successful cell write equals current row model and preserves concrete scratch/lease.",
         "Successful row completion gives the exact existing count and independently padded history pool; continuations retain both totals and codec residual, and each omitted completion premise has a literal retained-premise counterexample.",
         "Only the selected concrete prefix changes; all region invariants and identities are preserved. Invalid logical state/domain witnesses falsify the exact boundary after omitting each premise.",
-        "Pool stream equals current logical padded packing; fullpage consumes no source byte; prepared count is exact, with no extra aligned word. Literal eighth/final-word source-attribution and corrupted terminal invariant witnesses accompany the boundaries."
+        "Pool stream equals current logical padded packing; fullpage consumes no source byte; prepared count is exact, with no extra aligned word. Literal eighth/final-word source-attribution and corrupted terminal invariant witnesses accompany the boundaries.",
+        "Actual child residual plus carried partial bytes conserves the exact concrete pool word stream across tick and page reset; a prepared trace from current codec equals packed codec words and exact byte count. Both residual premise-removals, sole carry and prepared-empty removals affirm retained conditions and failed conclusions."
       ],
       "implementation": {
         "test": "tests/acl2/history-page-cursor-tests.lisp",
@@ -6319,7 +6320,8 @@
         "tests/acl2/history-image-columns-tests.lisp",
         "tests/acl2/history-census-controller-tests.lisp",
         "tests/acl2/history-page-buffers-tests.lisp",
-        "tests/acl2/history-pool-emitter-tests.lisp"
+        "tests/acl2/history-pool-emitter-tests.lisp",
+        "tests/acl2/history-pool-refinement-tests.lisp"
       ],
       "execution_scope": "Library component only; no actual host or funded producer completion claim."
     },

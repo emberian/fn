@@ -313,3 +313,27 @@ with the old logical packing. The full per-literal helper premise audit and
 complete page/record induction remain open. Encoded counts and final padded
 region capacities must already have passed census/profile admission before
 this emitter owns a served reservation.
+
+## Exact carried pool residual (proof-only composition)
+
+`books/history-pool-refinement.lisp` names a logical partial byte prefix,
+never a host list. Its invariant carries emitter validity, octet prefix,
+`k = len(partial)` and `w = adt-unle(k,partial)`; prepared implies no partial.
+`fn-hper-pending` applies existing `fn-hp-pack8` to that partial followed by
+the actual `fn-hrcur-byte-rest`. Begin equals packed current `fn-scc-encode`.
+`fn-hper-tick-refines-pool-residual` equates old scratch prefix plus pending
+with the post-tick concrete scratch prefix plus pending. This covers actual
+nonemitting, partial, eighth-byte and final-word transitions. Its assumptions
+are the carried ghost invariant and concrete scratch invariant.
+
+A finite proof-only trace invokes actual `fn-hpe-tick` and resets full pages,
+transferring each prefix to a logical completed trace. Exact residual and
+byte-count conservation hold for every fuel. A prepared trace from empty
+scratch equals packed current codec words and exact unpadded byte count.
+The trace collects proof vocabulary only: it is neither a runtime serializer
+nor an authorization to reset a buffer before its I/O owner releases it.
+General progress, cold byte-source composition, full column/history placement,
+funding and durable publication remain producer obligations. Literal tests
+exercise nonempty rows, an actual16400byte page crossing, both residual
+hypothesis omissions, sole carry and both prepared-empty omissions. The full
+per-literal audit of all helper/terminal hypotheses remains open.
