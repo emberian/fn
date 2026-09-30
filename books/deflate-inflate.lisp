@@ -44,10 +44,11 @@
 ;               connection closes (RFC 8054 section 2.2.2: "the receiving
 ;               end immediately closes the connection").
 ;
-; One action reads at most one input octet and appends at most one output
-; octet; a table construction is one action (bounded by the 320 code
-; lengths).  So a call does work bounded by B, reads at most END - START
-; octets, and never grows the output past LIM (`fn-zin-feed-out-bound').
+; One loop action reads one input octet or advances the decoder. Bulk
+; match/literal actions append only within the caller's output room; a
+; table construction is one action over at most 320 code lengths. B and
+; LIM jointly bound a call's work and allocation, with reads at most
+; END - START and output never past LIM (`fn-zin-feed-out-bound').
 ;
 ; THE BOMB.  ZS counts the octets read (TOTAL-IN) and produced (TOTAL-OUT).
 ; A stream that would produce more than `*fn-zin-ratio*' times what it has
@@ -70,11 +71,11 @@
 ; dynamic and stored blocks and a preset-dictionary stream to their octets.
 ;
 ; THE PAYLOAD DECODER.  `fn-zin-payload-with' (the store's: a payload is
-; decoded whole) runs the same machine through `fn-zin-loop-ahead', which
-; reads ahead and runs `fn-zin-fast' (zlib's inflate_fast: whole symbols in
-; typed locals) between the symbols of a Huffman block.  Its octets are what
-; a seal compares with the payload's; the witnesses check it against the
-; wire's decoder on every vector.
+; decoded whole) now runs fn-zin-loop with a declared total-input
+; expansion allowance, separately from the network prefix policy. It
+; validates the actual final or sync-flush state. The legacy lookahead
+; loop remains available for comparison; no ahead=loop equality is claimed.
+; A seal compares these canonical stored-decoder octets with the payload.
 
 (in-package "ACL2")
 (include-book "octets-stobj")
@@ -373,6 +374,8 @@
 (defmacro fn-zin-preset (fn-zin-st) `(fn-zin-fld 18 ,fn-zin-st)) ; a preset dictionary's
                                                    ; octets (at most 32 KiB; reset keeps it)
 
+; Field 19 records an empty non-final stored block for sync-flush validation.
+; Reset and each new block clear it; parsing zero LEN with valid NLEN sets it.
 (defstobj fn-zin-st
   (fn-zin-regs :type (array (integer 0 *) (20)) :initially 0))
 
@@ -403,7 +406,8 @@
   ; loaded into the window (fn-zin-load-preset, field 18) is kept: one
   ; decoder serves every payload of that dictionary.
   (declare (xargs :stobjs fn-zin-st))
-  (let ((fn-zin-st (fn-zin-reset-loop 0 fn-zin-st)))
+  (let* ((fn-zin-st (fn-zin-reset-loop 0 fn-zin-st))
+         (fn-zin-st (fn-zin-set 19 0 fn-zin-st)))
     (fn-zin-set 11 1 fn-zin-st)))
 
 (defthm fn-zin-fld-of-set
@@ -1120,7 +1124,8 @@
   (case (fn-zin-mode fn-zin-st)
     (0 ; a block header
      (mv-let (h fn-zin-st) (fn-zin-take 3 fn-zin-st)
-       (let ((fn-zin-st (fn-zin-set 12 (fn-zin-lowb h 1) fn-zin-st)))
+       (let* ((fn-zin-st (fn-zin-set 19 0 fn-zin-st))
+              (fn-zin-st (fn-zin-set 12 (fn-zin-lowb h 1) fn-zin-st)))
          (case (fn-zin-highb h 1)
            (0 (fn-zin-go (0 1)))
            (1 (let* ((fn-zin-tab (fn-zin-fixed-tables fn-zin-tab))
@@ -1136,7 +1141,8 @@
      (mv-let (len fn-zin-st) (fn-zin-take 16 fn-zin-st)
        (mv-let (nlen fn-zin-st) (fn-zin-take 16 fn-zin-st)
          (if (eql (+ len nlen) 65535)
-             (fn-zin-go (3 len) (0 3))
+             (fn-zin-go (19 (if (and (eql len 0) (eql (fn-zin-final fn-zin-st) 0)) 1 0))
+                        (3 len) (0 3))
            (mv :stored-length fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)))))
     (3 ; a stored block's octets
      (if (zp (fn-zin-n fn-zin-st))
@@ -1713,8 +1719,8 @@
 ; needs in hand, the output room, the distance within reach -- and
 ; otherwise stops before it, where the machine takes over a step at a time
 ; (a block's end, a malformed code, the input's last octets).  Only the
-; payload decoder (fn-zin-loop-ahead) runs it: the COMPRESS wire's loop
-; keeps its one-octet-at-a-time reading for the resumption keystones.
+; historical payload decoder (fn-zin-loop-ahead) runs it. Canonical stored
+; and COMPRESS now share the resumable loop, with distinct expansion policy.
 
 (encapsulate
   ()
@@ -2470,8 +2476,8 @@
   (fn-zin-inflate-with b nil c lim))
 
 ; The payload decoder (the store's: a payload is decoded whole, from the
-; initial state over its dictionary): the same buffers and actions, run by
-; fn-zin-loop-ahead and so by the fast path.  (mv STATUS fn-zin-st win out)
+; initial state over its dictionary): the same buffers and resumable
+; fn-zin-loop actions, with the explicit stored-input policy.  (mv STATUS fn-zin-st win out)
 ; over the input in fn-octets cells [START, END).  What it produces is what
 ; a seal compares with the octets a payload was made from.
 
@@ -2542,6 +2548,32 @@
 
 (in-theory (disable fn-zin-payload-ready (:e fn-zin-payload-ready)))
 
+; Stored-input policy, deliberately distinct from the network prefix bound.
+; C/N are untrusted scalar descriptors; neither authorizes a whole allocation.
+(defun fn-zin-stored-allowance (compressed)
+  (declare (xargs :guard t))
+  (+ (* *fn-zin-ratio* (nfix compressed)) *fn-zin-slack*))
+
+(defun fn-zin-stored-limit (compressed lim)
+  (declare (xargs :guard t))
+  (min (nfix lim) (+ 1 (fn-zin-stored-allowance compressed))))
+
+(defun fn-zin-stored-terminalp (status fn-zin-st)
+  (declare (xargs :stobjs fn-zin-st :guard t))
+  (or (and (equal status '(:refused :stream-ended))
+           (eql (fn-zin-mode fn-zin-st) 13))
+      (and (eq status :more) (eql (fn-zin-mode fn-zin-st) 0)
+           (eql (fn-zin-nbits fn-zin-st) 0) (eql (fn-zin-fld 19 fn-zin-st) 1))))
+
+(defun fn-zin-stored-status (status compressed fn-zin-st)
+  (declare (xargs :stobjs fn-zin-st :guard t))
+  (cond ((< (fn-zin-stored-allowance compressed) (fn-zin-tout fn-zin-st))
+         (list :refused :bomb))
+        ((or (eq status :more) (equal status '(:refused :stream-ended)))
+         (if (fn-zin-stored-terminalp status fn-zin-st) status
+           (list :refused :truncated)))
+        (t status)))
+
 (defun fn-zin-payload-bufs (b dict start end lim fn-octets fn-zin-win fn-zin-tab fn-zin-out)
   ; THE HOST ENTRY for a stored payload (the host holds one window, table
   ; and output per thread and passes them; the scalar state is local): every
@@ -2556,13 +2588,15 @@
       (let* ((fn-zin-out (fn-zin-out-clear fn-zin-out))
              (fn-zin-st (fn-zin-reset fn-zin-st)))
         (mv-let (h fn-zin-win fn-zin-tab) (fn-zin-payload-ready dict fn-zin-win fn-zin-tab)
-          (let ((fn-zin-st (fn-zin-set 18 h fn-zin-st)))
+          (let* ((fn-zin-st (fn-zin-set 18 h fn-zin-st))
+                 (fn-zin-st (fn-zin-set 7 (nfix (- end start)) fn-zin-st)))
             (if (and (fn-zin-window-ready-p fn-zin-win) (fn-zin-tab-okp fn-zin-tab))
                 (mv-let (st b2 ip fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
-                  (fn-zin-loop-ahead b start end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab
+                  (fn-zin-loop b start end (fn-zin-stored-limit (nfix (- end start)) lim) fn-zin-st fn-octets fn-zin-win fn-zin-tab
                                      fn-zin-out)
                   (declare (ignore b2 ip))
-                  (mv st fn-zin-st fn-zin-win fn-zin-tab fn-zin-out))
+                  (mv (fn-zin-stored-status st (nfix (- end start)) fn-zin-st)
+                      fn-zin-st fn-zin-win fn-zin-tab fn-zin-out))
               (mv (list :refused :buffers) fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)))))
       (mv st fn-zin-win fn-zin-tab fn-zin-out))))
 
@@ -2605,7 +2639,7 @@
            (equal (fn-zin-payload-bufs b dict start end lim fn-octets fn-zin-win fn-zin-tab
                                        fn-zin-out)
                   (fn-zin-payload-bufs b dict start end lim fn-octets nil nil nil)))
-  :hints (("Goal" :in-theory (disable fn-zin-payload-ready fn-zin-loop-ahead))))
+  :hints (("Goal" :in-theory (disable fn-zin-payload-ready fn-zin-loop fn-zin-stored-status))))
 
 ; KEYSTONE (the payload decoder's boundary).  The host entry, over the
 ; host's buffers with the input C in fn-octets, answers the list decoder's
@@ -2622,7 +2656,7 @@
   (implies (and (fn-cbor-octet-listp dict) (fn-cbor-octet-listp c))
            (and (fn-cbor-octet-listp (cadr (fn-zin-payload-with b dict c lim)))
                 (true-listp (cadr (fn-zin-payload-with b dict c lim)))))
-  :hints (("Goal" :in-theory (disable fn-zin-loop-ahead fn-oct-back-copy (:e fn-oct-back-copy)
+  :hints (("Goal" :in-theory (disable fn-zin-loop fn-zin-stored-status fn-oct-back-copy (:e fn-oct-back-copy)
                                       (:e fn-zin-win-append-back) (:e fn-zin-tab-append-back)
                                       (:e fn-octets$a-append-back)))))
 

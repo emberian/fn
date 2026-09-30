@@ -609,6 +609,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/index-backing-chunks-tests \
 	books/page-file-lease \
 	books/page-window-lease \
+	books/decoded-window-descriptor \
+	books/decoded-window-lease \
+	tests/acl2/decoded-window-lease-tests \
+	tests/acl2/decoded-window-executor-tests \
 	books/page-window-executor \
 	books/page-window-read \
 	tests/acl2/page-window-executor-tests \
@@ -1483,6 +1487,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/index-backing-chunks-tests \
 	books/page-file-lease \
 	books/page-window-lease \
+	books/decoded-window-descriptor \
+	books/decoded-window-lease \
+	tests/acl2/decoded-window-lease-tests \
+	tests/acl2/decoded-window-executor-tests \
 	books/page-window-executor \
 	books/page-window-read \
 	tests/acl2/page-window-executor-tests \

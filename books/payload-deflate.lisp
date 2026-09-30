@@ -10,7 +10,7 @@
 ; at the end of its input), else
 ; (:error STATUS).  The decoder is the ACL2 inflater's payload decoder
 ; (books/deflate-inflate.lisp fn-zin-payload-with: bounded by a budget of
-; actions, the bomb bound, and LIM = N + 1 octets of output); the encoder is
+; actions, the stored total-input bound, and LIM = N + 1 octets of output); the encoder is
 ; zlib's (host/native/fn-deflate.c), untrusted: a seal keeps a candidate
 ; only when this decoder gives the payload's octets.
 ;
@@ -33,7 +33,8 @@
 
 ; The stream's end: its final block ended (the inflater's mode 13, which
 ; the wire refuses by name, :stream-ended, and a payload ends with), or its
-; input ran out after a sync flush (:more).
+; input ran out after a verified sync flush (:more). fn-zin-stored-status
+; rejects other :more states before this status-only answer adapter.
 (defun fn-pzd-endedp (st)
   (declare (xargs :guard t))
   (or (eq st :more) (equal st '(:refused :stream-ended))))

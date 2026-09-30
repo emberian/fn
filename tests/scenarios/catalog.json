@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6369,14 +6369,16 @@
         "Run the actual core raw digest trajectory on three bytes and its real trailer, then observe physical return and borrow one scalar.",
         "Drop all native result aliases before final release, then attempt repeated release.",
         "Request offset one, pass the arena payload-relative index unchanged, alter payload coordinates, and run actual damaged-prefix, wrong-commitment and short-read scans.",
-        "Cancel exact running and returned windows, deny scalar publication, retain charges until actual return and exact cancelled settlement; stage bound-arena current-placement capture before off-lock read."
+        "Cancel exact running and returned windows, deny scalar publication, retain charges until actual return and exact cancelled settlement; stage bound-arena current-placement capture before off-lock read.",
+        "Admit the distinct full decoded-window token through its actual core issuer; acquire/cancel/return/settle the same shared worker, then mutate decoded N and verify stale full identity."
       ],
       "expected": [
         "Exact binding preserves every supplied charge. Altered range and worker slot cannot return or release the job.",
         "Actual return retains worker credit and file lease. The actual authenticated stream authorizes scalar 2 at relative offset 1; a running slot remains unavailable.",
         "Final release refunds once and restores an ordinary idle slot. No result vector is exposed through the scalar borrow API.",
         "ACL2 computes the exact window-relative scalar index; mismatching original coordinates and pre-window indices do not borrow bytes. Core outcomes preserve read/digest/commitment failure distinctly from a new cold request.",
-        "Cancellation never fabricates worker return or refunds a running job. A wrong token cannot settle; final exact settlement refunds once after aliases end. Compressed current getters refuse before eager decoding."
+        "Cancellation never fabricates worker return or refunds a running job. A wrong token cannot settle; final exact settlement refunds once after aliases end. Compressed current getters refuse before eager decoding.",
+        "Decoded cancellation preserves supplied charges until exact return/settlement. Raw publication refuses decoded kind; native decoded execution remains explicitly refused until its actual funded integration."
       ],
       "evidence": [
         "tests/acl2/page-window-executor-tests.lisp",

@@ -462,9 +462,12 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
                    (progn
                      (fnn-err "PAGE-IO dispatch-failed token=~s worker=retained buffer=none" token)
                      (error 'fnn-extent-fault :message "arena-extent-read: injected job dispatch error"))
-                 (if (fnn-extent-window-p token)
-                     (fnn-extent-window-run worker token)
-                   (fnn-extent-prefetch token)))
+                 (cond ((fn-pwz-tokenp token)
+                        (fnn-core-cold-single 'fn-owner-page-window-decoded-refusal)
+                        (fnn-fault "decoded executor funding is not installed"))
+                       ((fnn-extent-window-p token)
+                        (fnn-extent-window-run worker token))
+                       (t (fnn-extent-prefetch token))))
              ;; Our extent faults carry a diagnostic string. An arbitrary
              ;; runtime condition may retain its datum/arguments, including
              ;; the private vector. Do not let that alias escape in RESULT.

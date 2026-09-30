@@ -186,3 +186,11 @@ obligation 1 has no hypothesis to name.
   SIGBUS is not a verdict.
 * A whole-store revalidation on any served path (AGENTS.md): the resident
   view carries its verdicts in state.
+
+
+## Distinct decoded request in the shared physical lifetime
+
+The raw token remains (:window ticket file eoff elen poff plen offset trailer).
+The decoded token is (:decoded-window ticket file eoff elen poff C decoded-offset trailer N dictionary-ID). The logical descriptor permits decoded offset beyond C and no arbitrary machine ceiling; the actual decoded issue path must separately establish supported physical spans and funding before construction or pread. Dictionary-ID selects the actual shipped immutable dictionary. The shared retained row kind remains :window, with the full token binding immutable coordinates and dictionary identity.
+
+Shared cancellation, actual return and exact final settlement apply to both types. Raw plan publication and raw scalar access require raw kind and descriptor7 explicitly. Native decoded-first discrimination currently core-refuses execution before the raw runner/destructuring. This is an executable staged type/lifetime boundary, not decoded semantic trajectory, profile adequacy or activation.
