@@ -183,3 +183,19 @@ the source switch or refusal is joined. Native activation, the complete source
 invariant and operation-derived runtime funding remain open.
 [Repin evidence](../planning/evidence/connection-repin-2026-09-30/README.md)
 records actual registry tests with two distinct synthetic publications.
+
+The fixed native lifetime adapters in `index-connection-lifetime-host.lisp`
+thread STATE unchanged and expose actual abort/settlement outcomes from the
+same provider and pool. Only `:released` permits native pending/retiring
+custody to be forgotten. A resumed read must retain the actual repin outcome:
+`:committed-repin-released` and `:committed-repin-held` distinguish whether the
+old holder settled. `:committed-repin-aborted` records actual release of a
+refused replacement and returns that exact new token, keeping the old holder
+active. Ordinary `:committed` does not permit pending custody to be discarded.
+An absent or stale token cannot reconstruct an earlier release outcome.
+
+Native cleanup must keep owner exclusion through the core result and custody
+unlink. Its resource contract must cover the released-but-still-reachable
+node/token and callback frames, or retain a distinct cleanup charge; it cannot
+assume immediate garbage collection. The operation-derived start callback and
+native constructor allowance are still required before activation.
