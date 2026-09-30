@@ -263,6 +263,21 @@ handle, the served path still holds the list.
 
 REP-013: The committed event catalog: one attachable abstract stobj (`fn-cat`, books/catalog.lisp) whose logical value is the list of held records (`fn-held-p`, books/catalog-record.lisp: the wire tuple's positions with the payload a handle into the arena, the byte facts and the context decided once at intern, the numbers assigned at commit, the withdrawal as a versioned fact) and whose executable is the indexed tables; `fn-cat$corr` states the cross-field invariants once, the creator establishes them and every export preserves them; alpha (`fn-held-wire-of`) of intern is the identity on the wire record. Wave 5 lane catalog-slice, D33.
 
+The catalog's context frame (PRF-203) covers a live ARTICLE interval: the
+Store is outside `:replaying` and its completing record is not a key snapshot.
+Prepare, I/O and held completion preserve the verification table and generation;
+ordinary finish does so on the ARTICLE arm. Durable key-snapshot completion
+publishes the accepted snapshot, and recovery resolves the retained snapshots.
+These writers can change the table. Recovery preserves the source context only
+when that source resolves its retained snapshots and those snapshots equal the
+actual identity replay of its durable history. The unchanged full retained
+Store relation at readiness establishes this premise
+(`fn-osr-ready-establishes-catalog-recovery-context`). This is proof-only coherence,
+not a served history check. A matching generation alone does not establish that
+an arbitrary supplied context was computed under the source table. The held
+finish refinement retains its actual context hypothesis. Reachable enrollment,
+ARTICLE, crash and reopen scenarios exercise these separate transitions.
+
 REP-014: The payload arena is an ATTACHABLE generic (`fn-arena`, books/payload-arena.lisp, `:attachable t`) whose logical value is the list of sealed payloads and whose own foundation is the list-backed reference; the byte array (`fn-arena-bytes`, books/payload-arena-bytes.lisp: one byte per payload octet, the same logical side) is an implementation attached in the image before the generic is introduced (books/payload-arena-attach.lisp), so the catalog and every book above the arena are certified once against the generic and run over the array. A handle has identity (the sealed bytes: `fn-rfz-served-bytes-by-definition`), extent (the handle's length in the arena is the octets fact decided at intern: `fn-rfz-intern-extent`) and lifetime (it resolves to the same bytes after any later seals: `fn-arena-seals-keep-sealed`). Replay over the retained view equals replay over the wire view: under the context invariant `fn-rfz-contexts-okp` (every row's context is the context of its bytes under the keyring and generation), the fold of the rows' context deltas is `fn-stx-index-of-store` of the rows' articles (`fn-rfz-replay-index-over-both-views`) and the rows' context verdicts are the per-record `fn-stx-verdict-of-octets` (`fn-rfz-replay-verdicts-over-both-views`); the intern establishes the invariant for its row, seals keep it, and the load `fn-cat-load` establishes it for every row (`fn-rfz-load-establishes-contexts`). Payload identity across reclamation (D13): a reclaim seals the tombstone as a new handle; a pinned row list materializes the same after that seal and any later ones (`fn-rfz-pinned-rows-survive-seals`), and a versioned mapping resolves a reader at version V <= W (the reclaim's version) to the original and V > W to the tombstone (`fn-rfz-resolve-before-reclaim`, `-after-reclaim`). Lane records-freeze, PKT-293; the joined owner's measurement is the join's (catalog-slice-5 step 8, acceptance-payload-arena).
 
 ## First proof obligations
