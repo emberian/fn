@@ -138,6 +138,12 @@ def check(scenario: Scenario, journal: Journal, budget: Budget | None = None,
         return check_page_io(scenario, journal, budget, healing, overran)
     if scenario.contract == "reclaim-response-hold":
         return check_reclaim_hold(scenario, journal, budget, healing, overran)
+    from .payload_boundary import inspect as inspect_payload_boundary
+    boundary_failure = inspect_payload_boundary(scenario, journal)
+    if boundary_failure:
+        kind, cause = boundary_failure
+        return Verdict(kind, scenario.id, journal.digest(), cause=cause,
+                       pending_rules=["payload-boundary-native-qualification"]).sign()
     narrowing = journal.narrowing()
     if len(narrowing) > budget.max_records:
         return Verdict("inconclusive", scenario.id, journal.digest(),
@@ -177,8 +183,12 @@ def check(scenario: Scenario, journal: Journal, budget: Budget | None = None,
                                    "commits it (seq {})".format(op, r["seq"]))
     observed = contract.witnesses_observed(scenario, journal)
     missing = sorted(set(scenario.witnesses) - observed)
+    if "payload_boundary" in scenario.initial:
+        diagnostics.append("Boundary reference PRF-110 at " + scenario.initial["payload_boundary"]["reference_source"] +
+                           "; observed selected-image outcomes do not establish native qualification.")
     common = dict(surviving=len(survivors), witnesses_observed=sorted(observed),
-                  witnesses_missing=missing, pending_rules=contract.pending_rules(used),
+                  witnesses_missing=missing, pending_rules=contract.pending_rules(used) + (["payload-boundary-native-qualification"]
+                      if "payload_boundary" in scenario.initial else []),
                   diagnostics=diagnostics, healing=healing, budget=asdict(budget))
     if overran:
         note = "healing:{:.1f}s>{}s".format(healing["elapsed"], healing["bound"]["value"])

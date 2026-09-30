@@ -2,6 +2,7 @@ import hashlib
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 from tools.resilience import payload_corpus
 from tools.resilience.adapters.native_cuts import Run, scenario_for
 from tests.campaign.native_cuts import POST_LOG_CUTS
@@ -24,7 +25,8 @@ class BoundaryPayloadTests(unittest.TestCase):
         post.args["boundary_payload"] = row
         scenario.initial["payload_preparation_budget"] = 8193
         with tempfile.TemporaryDirectory() as tmp:
-            runner = Run(scenario, Path(tmp) / "unexecuted-image", Path(tmp))
+            with patch("tools.resilience.payload_boundary.image_preflight"):
+                runner = Run(scenario, Path(tmp) / "unexecuted-image", Path(tmp))
             data = runner.payloads[post.id].read_bytes()
             self.assertEqual(data, b"x" * 8193)
             record = next(r for r in runner.j.records if r.get("event") == "boundary-payload-prepared")
