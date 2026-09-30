@@ -131,25 +131,25 @@
  (<= (len (fn-cfg-item-encode (cons :uint value))) 1))
  :rule-classes :linear
  :hints (("Goal" :use ((:instance fn-cacm-field-item-bound (kind :flag)))
- :in-theory (disable fn-cac-fieldp fn-cfg-item-encode))))))
+ :in-theory (disable fn-cac-fieldp fn-cfg-item-encode)))))
 (local (defthm fn-cacm-u64-item-bound
  (implies (fn-cac-fieldp value :u64)
  (<= (len (fn-cfg-item-encode (cons :uint value))) 9))
  :rule-classes :linear
  :hints (("Goal" :use ((:instance fn-cacm-field-item-bound (kind :u64)))
- :in-theory (disable fn-cac-fieldp fn-cfg-item-encode))))))
+ :in-theory (disable fn-cac-fieldp fn-cfg-item-encode)))))
 (local (defthm fn-cacm-id-item-bound
  (implies (fn-cac-fieldp value :id)
  (<= (len (fn-cfg-item-encode (cons :bytes value))) 66))
  :rule-classes :linear
  :hints (("Goal" :use ((:instance fn-cacm-field-item-bound (kind :id)))
- :in-theory (disable fn-cac-fieldp fn-cfg-item-encode))))))
+ :in-theory (disable fn-cac-fieldp fn-cfg-item-encode)))))
 (local (defthm fn-cacm-bytes32-item-bound
  (implies (fn-cac-fieldp value :bytes32)
  (<= (len (fn-cfg-item-encode (cons :bytes value))) 34))
  :rule-classes :linear
  :hints (("Goal" :use ((:instance fn-cacm-field-item-bound (kind :bytes32)))
- :in-theory (disable fn-cac-fieldp fn-cfg-item-encode))))))
+ :in-theory (disable fn-cac-fieldp fn-cfg-item-encode)))))
 (local (defthm fn-cacm-items-octet-bound
  (implies (and (subsetp-equal kinds '(:flag :u64 :id :bytes32))
                (fn-cac-fields-validp values kinds))
