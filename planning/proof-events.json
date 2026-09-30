@@ -17809,15 +17809,25 @@
         {
           "kind": "theorem",
           "name": "fn-pwz-actual-codec-carries-budget",
-          "note": "Actual fn-ewz-codec-tick preserves carried charged-budget invariant from incoming carry and nonrefusal returned decoder status, with no extra state/pool hypotheses. Actual source initializer/first-chunk positive and corrupted incoming-budget/terminal-refusal removals. Accepted terminal final-charge envelope remains a separate open join."
+          "note": "Actual fn-ewz-codec-tick preserves carried charged-budget invariant from incoming carry and nonrefusal returned decoder status, with no extra state/pool hypotheses. Actual source initializer/first-chunk positive and corrupted incoming-budget/terminal-refusal removals. Its nonrefusal scope is preserved; the separate final-envelope component covers all outcomes."
         },
         {
           "kind": "theorem",
           "name": "fn-pwz-active-controller-budget-remains-positive",
-          "note": "Existing actual real-input/output carries plus decoder-budget carry imply active remaining budget at least3840+7C. Actual bounded-copy and C=0 source positives and both complete carry/active-mode removals. Successful codec/read/hash carry is joined to actual controller source; accepted terminal final charge and general trajectory still remain open."
+          "note": "Existing actual real-input/output carries plus decoder-budget carry imply active remaining budget at least3840+7C. Actual bounded-copy and C=0 source positives and both complete carry/active-mode removals. Successful codec/read/hash carry is joined to actual controller source; general arbitrary-window trajectory and native demand remain open; the separate final-envelope component covers terminal charge."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-codec-preserves-final-budget-envelope",
+          "note": "Actual fn-ewz-codec-tick preserves the complete real-input/output/final-budget envelope on all outcomes with no pool or status premises. Actual repeated codec windows reach terminal decoded TIN6/TOUT251; complete envelope removal and separately labeled corrupted-pool empty-stream special branch."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-final-envelope-active-budget-positive",
+          "note": "Actual controller final envelope plus active mode imply remaining charged budget at least3839+7C, including terminal drain/decoded states. Actual terminal source positive and complete envelope/active-mode removals. Source action charge only; no compiled tariff/native demand or full bytes/digest convergence."
         }
       ],
-      "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. Full decoder/dictionary stuttering, total action-budget completeness, compiled workspace funding and actual typed lifetime/consumer joins remain open; these component events do not complete PRF-1131."
+      "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. Full arbitrary-window decoder/dictionary bytes/status/digest trajectory, compiled workspace funding and actual typed lifetime/consumer joins remain open; source charged-budget invariants do not complete PRF-1131."
     }
   ]
 }

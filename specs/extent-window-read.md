@@ -293,9 +293,15 @@ bound. Actual compressed begin, read, hash tick and nonrefusal codec calls
 preserve a decoder budget carry; joining the existing actual real-input and
 active-output carries gives remaining budget at least3840+7C on active
 states retaining that joint carry. This is a logical source invariant, not
-an added host validation or compiled operation tariff. The accepted terminal
-refusal's final-charge carry and complete arbitrary-window bytes/status/
-digest trajectory remain open. No N63 restriction or pending-length limit
+an added host validation or compiled operation tariff. A separate final envelope now retains strict carry in scan/codec and pays
+the final action in drain/decoded. Actual begin/read/hash/codec preserve it
+on all outcomes, and active remaining budget is at least3839+7C. The real
+empty-stream decision is covered without inventing a status premise. Complete
+arbitrary-window bytes/status/digest trajectory and native adequacy remain open. No N63 restriction or pending-length limit
 is imposed on stored descriptors; the grammar-produced match length bound
 does not restrict stored LEN16. See the budget source evidence for its
 literal positives, complete removals and exact source gate.
+
+The final-budget component evidence is
+`planning/evidence/decoded-window-budget-completion-source-2026-09-30.md`;
+its source gate and literal tests do not enable the dormant native driver.
