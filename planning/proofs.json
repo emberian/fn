@@ -18028,7 +18028,7 @@
     {
       "id": "PRF-1161",
       "title": "Connection start reserves only with a matching registered receipt",
-      "statement": "The internal fn-ics-reserve-register result :reserved implies the actual returned backing retains a matching :connection-reservation token in :registered phase. The actual existing child and SAMEpool accounting are exercised by concrete fixtures; public STATE ticket composition and its producer remain separately open.",
+      "statement": "Actual fn-owner-index-connection-start result :reserved implies the returned MIO provider retains a matching :connection-reservation token in :registered phase. The theorem composes the actual internal reserve/register result; guarded operation entry, genuine installer and complete native closure remain separately qualified.",
       "milestone": "M5",
       "requirements": [
         "STO-10001"
@@ -18039,15 +18039,18 @@
       "assumptions": [],
       "status": "uncertified-at-current-digest",
       "events": [
-        "fn-ics-reserved-has-registered-receipt"
+        "fn-ics-reserved-has-registered-receipt",
+        "fn-owner-index-connection-reserved-has-registered-receipt"
       ],
       "evidence": [
         "books/index-connection-start.lisp",
         "tests/acl2/index-connection-start-tests.lisp",
         "specs/connection-operation.md",
-        "planning/evidence/connection-start-join-2026-09-30"
+        "planning/evidence/connection-start-join-2026-09-30",
+        "books/connection-operation-start.lisp",
+        "tests/acl2/connection-operation-start-tests.lisp"
       ],
-      "progress_note": "Exact core source guards and theorem admission; synthetic positive/removal fixtures. Host ticket guard verification, genuine full closure installation and native activation open."
+      "progress_note": "Actual public prepare/start definitions and guards plus public receipt theorem admitted in current MIO/provider world; six SAMEpool/STATE transactions and literal positive/removal teeth pass. Raw PREPARE preservation declaration, genuine full operation installer and native start join remain open."
     },
     {
       "id": "PRF-1162",
@@ -18092,6 +18095,7 @@
         "fn-owner-index-connection-fault-is-idempotent"
       ],
       "evidence": [
+        "books/connection-operation-ticket.lisp",
         "host/connection-operation-ticket-host.lisp",
         "tests/acl2/connection-operation-ticket-tests.lisp",
         "specs/connection-operation.md",

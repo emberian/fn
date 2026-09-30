@@ -5729,9 +5729,12 @@
         "tests/acl2/connection-operation-cost-tests.lisp",
         "specs/connection-operation.md",
         "host/connection-operation-ticket-host.lisp",
-        "tests/acl2/connection-operation-ticket-tests.lisp"
+        "tests/acl2/connection-operation-ticket-tests.lisp",
+        "books/connection-operation-ticket.lisp",
+        "books/connection-operation-start.lisp",
+        "tests/acl2/connection-operation-start-tests.lisp"
       ],
-      "implementation_note": "Internal guarded scalar, same-pool, installed-geometry observation and actual sharedPRS nonce source. Genuine runtime/source tariff installation, process-wide barrier, identity rescue and once-only allocating-turn producer joins remain open; no activation/funding claim. Connection debit/existing-child registration and bounded operation evaluator source admitted; one-use STATE ticket host composition remains guard-unverified and installer/native closure remains open. Narrow actual STATE finish/fault/refusal callbacks now guard-verified with raw dispatch; prepare/start owner-world guards and genuine installer remain open."
+      "implementation_note": "Internal guarded scalar/same-pool/installed-geometry collection observation and shared PRS nonce source. Actual once-only ATS receipts, strict STATE completion and public prepare/start debit+existing-child registration are source-guarded with concrete SAMEpool transaction tests. Complete runtime/source operation allowance, genuine installation, process-wide native barrier and full actual native prepare/start closure remain open; no activation/funding claim."
     }
   ]
 }

@@ -78,7 +78,8 @@ and hypothesis-removal witnesses, malformed/oversized input and immediate overfl
 These use explicit synthetic descriptors and physical-child fixtures.
 
 The completion callbacks, getters and internal refusal settlement are factored
-into `host/connection-operation-ticket-host.lisp`, with no owner/MIO dependency.
+into `books/connection-operation-ticket.lisp`, with the thin
+`host/connection-operation-ticket-host.lisp` declarations and no owner/MIO dependency.
 Finish/fault guards and actual `:raw-with` preservation/frame declarations are
 admitted. PRF-1163 proves that successful finish consumes one active turn without
 refunding A and repeated fault has the exact same full result. Actual STATE/ATS
@@ -86,6 +87,15 @@ fixtures cover nonce zero, successful finish/replay, definite refusal cleanup,
 retained start intent and double fault; declaration-removal cases fail as required.
 
 Current coordinate: the two core leaves and narrow completion leaf and their
-stated tests are source-admitted; prepare/start guards remain explicitly unverified
-pending the actual owner source-world join. No complete selected-runtime operation
+stated tests are source-admitted; prepare/start guards and the public registered-receipt theorem are admitted
+in the actual provider/MIO source world. Raw PREPARE preservation declarations
+and the actual installed/native operation join remain open. No complete selected-runtime operation
 allowance, genuine installation, native activation or certification is claimed.
+
+The public start definitions and registered-receipt theorem live in
+`books/connection-operation-start.lisp`; the host companion includes that exact
+source. Six actual STATE/ATS/MIO cases exercise prepare through registration,
+definite abort and finish in the same pool, including refused evaluator/body
+paths and a fault between prepare and start. Synthetic installation is explicit.
+The positive case uses scheduling nonce zero, holder identity two and two spent
+shared identities; logical abort and turn finish preserve cumulative A.

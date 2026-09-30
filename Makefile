@@ -20,6 +20,8 @@ ACL2_BOOKS ?= books/defrecord \
 	host/connection-operation-ticket-host \
 	books/allocation-epoch-collection-request \
 	books/connection-operation-cost \
+	books/connection-operation-start \
+	books/connection-operation-ticket \
 	books/index-connection-start \
 	books/defevent \
 	books/deftransition \
