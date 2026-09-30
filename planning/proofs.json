@@ -18005,7 +18005,7 @@
     {
       "id": "PRF-1103",
       "title": "Actual article parser has an exact first-five NOV line projection",
-      "statement": "Logical component for fn-lpc header refinement: fn-nlp-parse-lines projects fn-article-parse-lines on all arguments and preserves every error result; fn-nlp-five-columns-are-overview-content equates the five normalized first matches with the actual fn-nov-header-content values consumed by fn-hnov-of-parsed. These are unconditional theorems. The reference carries only selected completed values and the open field. It is proof vocabulary, not a host-called implementation or a bounded-work claim. Byte cursor simulation, guards of any served executable, host integration and matching qualification remain open.",
+      "statement": "Logical component for fn-lpc header refinement: fn-novlp-parse-lines projects fn-article-parse-lines on all arguments and preserves every error result; fn-novlp-five-columns-are-overview-content equates the five normalized first matches with the actual fn-nov-header-content values consumed by fn-hnov-of-parsed. These are unconditional theorems. The reference carries only selected completed values and the open field. It is proof vocabulary, not a host-called implementation or a bounded-work claim. Byte cursor simulation, guards of any served executable, host integration and matching qualification remain open.",
       "milestone": "M6",
       "requirements": [
         "NNT-006"
@@ -18013,10 +18013,7 @@
       "depends_on": [],
       "assumptions": [],
       "status": "planned",
-      "events": [
-        "fn-nlp-parse-lines-is-parser-projection",
-        "fn-nlp-five-columns-are-overview-content"
-      ],
+      "events": [],
       "evidence": [
         "books/nov-line-projection.lisp",
         "tests/acl2/nov-line-projection-tests.lisp",
