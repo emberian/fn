@@ -18201,6 +18201,26 @@
         "planning/evidence/selected-immediate-arithmetic-2026-09-30/README.md"
       ],
       "progress_note": "Fresh protected proper srif1 .03s/233steps, scalar guards/four complete positives/six model-only clause removals; actual primitive capture in separate tagged stopped costprimitive1. No central inclusion or native admission."
+    },
+    {
+      "id": "PRF-1174",
+      "title": "Conditional actual evaluator ASH3 primary object unit",
+      "statement": "Named A-SELECTED-RUNTIME-EVALUATOR-SHIFT conditionally bounds exact selected natural ASH count3 fitting-result primary objects to zero; actual source/caller/frame/first-use/GC/whole operation qualification remains separate.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-013"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-SELECTED-RUNTIME-EVALUATOR-SHIFT"
+      ],
+      "status": "planned",
+      "evidence": [
+        "books/assumptions-selected-runtime-evaluator-shift.lisp",
+        "tests/acl2/selected-runtime-evaluator-shift-tests.lisp",
+        "specs/selected-runtime-evaluator-shift.md",
+        "planning/evidence/selected-evaluator-ash3-2026-09-30/README.md"
+      ]
     }
   ]
 }
