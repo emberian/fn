@@ -18505,6 +18505,28 @@
         "planning/evidence/history-scalar-cursor-source-2026-09-30.json"
       ],
       "progress_note": "Clean persvati hrsct8 source-dependency admission with proper local scope: 6.00 ACL2 seconds / 4,810,489 prover steps; 27 test forms include 23 passing literal witnesses. Runtime begin/tick helpers are guard verified. Static teeth: 23 witnesses, 0 findings; narrow theory check green. No certification, host, image or physical-resource claim; library events remain component evidence, with full target planned."
+    },
+    {
+      "id": "PRF-1103",
+      "title": "Actual article parser has an exact first-five NOV line projection",
+      "statement": "Logical component for fn-lpc header refinement: fn-nlp-parse-lines projects fn-article-parse-lines on all arguments and preserves every error result; fn-nlp-five-columns-are-overview-content equates the five normalized first matches with the actual fn-nov-header-content values consumed by fn-hnov-of-parsed. These are unconditional theorems. The reference carries only selected completed values and the open field. It is proof vocabulary, not a host-called implementation or a bounded-work claim. Byte cursor simulation, guards of any served executable, host integration and matching qualification remain open.",
+      "milestone": "M6",
+      "requirements": [
+        "NNT-006"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [
+        "fn-nlp-parse-lines-is-parser-projection",
+        "fn-nlp-five-columns-are-overview-content"
+      ],
+      "evidence": [
+        "books/nov-line-projection.lisp",
+        "tests/acl2/nov-line-projection-tests.lisp",
+        "planning/evidence/nov-line-projection-source.md"
+      ],
+      "progress_note": "Protected clean persvati nlp2 admitted 23 source forms including source dependencies: 5.55 ACL2 seconds / 2239851 prover steps. General parser projection 51441 steps. Fifteen test forms passed. Source admission only; no committed certification manifest, host/image or native claim."
     }
   ]
 }
