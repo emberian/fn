@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (logic)
 (include-book "../books/index-reader-request")
+(include-book "../books/index-reader-step")
 (include-book "index-connection-repin-prepare-host")
 
 ; Token-only consumer of the actual registered range control. The callee
@@ -127,9 +128,9 @@
        (let* ((state (fn-owner-put-credits (cdr rc) state))
               (state (fn-owner-install-ocfg (fn-own-tls-result-owner result) state))
               (state (fn-owner-exposure-observe id effects consumed state))
-              (step (fn-splan-step-make effects
+              (step (fn-irr-step-from-read-result result
                       (fn-served-closingp effects) (fn-served-starttlsp effects)
-                      (fn-served-submission effects) consumed
+                      (fn-served-submission effects)
                       (fn-olog-served-refusal-lines (fn-owner-core state) id effects)
                       (f-get-global 'fn-owner-exposure-close state))))
         (mv-let (committed disposition-token fn-mio$c)

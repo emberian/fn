@@ -1502,6 +1502,9 @@ ACL2_BOOKS ?= books/group-number-source-reader-refinement \
 	tests/acl2/public-exposure-reply-tests \
 	books/served-reply-buffer \
 	tests/acl2/served-reply-buffer-tests \
+	books/served-step \
+	books/index-reader-step \
+	tests/acl2/index-reader-step-tests \
 	books/served-plan \
 	tests/acl2/served-plan-tests \
 	books/served-plan-cursor \
