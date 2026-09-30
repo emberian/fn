@@ -381,3 +381,31 @@ rewrite exclusions remove a literal rune from an existing hint theory, so the
 hint is valid whether that row theorem exists or not. The same exact bytes
 replay again after the cached row include in hrcscan2; runtime and theorem
 statements are unchanged. This is source admission, not certification.
+
+## Importable cold runtime for private composition
+
+`history-cold-record-runtime` contains the single guard-verified implementation
+of `fn-hrcur-cold-begin(source, capture, lease)`,
+`fn-hrcur-cold-tick(cursor)` and
+`fn-hrcur-cold-supply(cursor, position, byte)`. Begin accepts
+`(:decoded node)`; the tick and supply return three values: verdict, one emitted
+octet or NIL, and next cursor. A byte demand is exactly
+`(:need-byte pool-position kind child-coordinate)` and retains the cursor.
+Kinds are `:octet-nil`, `:symbol-normalize`, `:span-body`, and `:opaque-span`.
+The producer validates source/pass/root-pin, request kind/coordinate, reader
+serial and fresh buffer ownership before supplying an authenticated scalar.
+The emitter performs no whole-row conversion or retained-pool validation.
+
+This source checkpoint makes private first-pass census and second-pass page
+emission use the same executable stream. Count each `:emit`; rebegin the same
+immutable source for replay. Existing resident-only census APIs are unchanged.
+A tagged adapter lives above the resident and cold runtime books; placing its
+cold dependency in the older record book would introduce an include cycle.
+
+The lane's separate work-in-progress `history-cold-record-cursor` proof book
+includes this runtime; that suffix is not part of this importable checkpoint.
+Its complete all-phase invariant/residual, productive progress, literal teeth
+and fresh full replay are still open. Runtime tests exercise complete current
+codec outputs for scalar, borrowed strings/octet spans, collapsed pair tails,
+imported symbols and NIL aliases. These tests and runtime guard admission do
+not complete the cold producer, physical funding or qualification claim.

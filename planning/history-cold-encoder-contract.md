@@ -75,3 +75,43 @@ continuation stack and return/request objects coexist and require separate
 funding. No physical pool, immediate reclamation refund, whole encoded-row
 buffer, suffix-array doubling or image resize is assumed. Supported records
 resume until complete; quantum exhaustion never truncates them.
+
+Runtime implementation now exists in books/history-cold-record-cursor.lisp
+(WIP, no source-ready/full inverse claim). Its state has nine fixed cells:
+phase, pending tasks, child, original borrowed node, capture, lease, bounded
+header prefix, active borrowed node, remaining opaque count. Cold tick returns
+mv verdict/octet/cursor, matching the resident byte emitter. The exact demand
+is (:need-byte position kind child-coordinate), where kind is :octet-nil,
+:symbol-normalize, :span-body or :opaque-span. Supply takes cursor/position/byte
+only after outer source4, pin, kind, persistent reader serial and buffer identity
+checks. Every demand leaves the entire cursor unchanged. There is no Store,
+file/path or opaque lease equality in these functions.
+
+A failed pair classifier preserves the number of leading byte heads it has
+visited. The controller places :no-octets tasks with that depth on the stack;
+each postfix pair expansion decrements it for the cdr, until classification
+must resume past the known failing head. This avoids repeated suffix scans
+without a retained per-row suffix array or equality on whole subtrees. The
+classifier proof-only prefix relation must be preserved before this cost and
+semantic optimization can be claimed. A successful classifier emits a bounded
+canonical opcode6/count header, then reads resident pair heads and borrowed
+op6 span bytes. Exhausted remaining count stops without rereading a NIL tail.
+
+Storage demand is concrete and must be funded by the outer owner. Every new
+outer state allocates nine cons cells; old/new outer states may coexist. A
+pair expansion adds three task-stack cons cells plus three fixed descriptors
+(two/two-or-three/two cells). Node and immutable source references are borrowed,
+not copied. The u64 opaque header has at most ten cells (opcode, digit-count,
+at most eight digits). Normal scalar/span/NIL/normalizer child state allocation
+is inherited from the named helper, and old/new child states coexist through
+the return. Stack depth and total borrowed node retention depend on the actual
+represented tree; no profile ceiling or pre-existing physical pool is assumed.
+The source pin, task stack, child state, scratch/page buffers and overlapping
+return values require lifetime/funding proof in the actual producer.
+
+The normalizer scalar guard bounds offset/count/index by existing history u64
+format and serial by the proved static-table initial work bound12250. The
+serial+work conservation join is admitted in the cold source: initialization,
+tick and supply preserve serial plus remaining work at most 12250. This number
+is derived from the current import table, not a new stored-name limit. No runtime source
+coerce/intern, whole-tree domain scan or whole encoded-row allocation occurs.
