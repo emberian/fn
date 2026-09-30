@@ -10,15 +10,15 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1980 |
+| Books read | 1989 |
 | Certification roots in the Makefile | 1866 |
 | Books inside the root closure | 1938 |
-| `defthm` and `defthmd` events | 30255 |
-| `defun` events | 19297 |
+| `defthm` and `defthmd` events | 30283 |
+| `defun` events | 19331 |
 | Functions with verified guards | 3549 |
 | Functions declared `:verify-guards nil` and never verified | 2350 |
-| Functions left at the default with an explicit guard | 10532 |
-| Functions left at the default with no guard | 2866 |
+| Functions left at the default with an explicit guard | 10562 |
+| Functions left at the default with no guard | 2870 |
 | `assert-event` checks | 24064 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 348 |
 | Enabled-projection warnings | 55 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2715 |
+| Include-hygiene warnings | 2721 |
 | Host-names warnings | 2193 |
 | Hand-written-record warnings | 18 |
 
@@ -93,6 +93,7 @@ that `make certify` requests.
 | `books/acceptance.lisp` | root | 69 | 53 | 40/1/12/0 | 0 | 0 | 1 |
 | `books/account-list.lisp` | closure | 9 | 15 | 2/0/13/0 | 0 | 0 | 0 |
 | `books/accounts.lisp` | closure | 63 | 23 | 0/0/22/1 | 0 | 0 | 2 |
+| `books/allocation-epoch-domain.lisp` | - | 3 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/anchor-invariants.lisp` | root | 31 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/anchor-record.lisp` | root | 5 | 4 | 4/0/0/0 | 0 | 0 | 0 |
 | `books/anchor-replace.lisp` | root | 7 | 10 | 0/0/10/0 | 0 | 0 | 0 |
@@ -390,6 +391,7 @@ that `make certify` requests.
 | `books/config-stream.lisp` | root | 21 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/config.lisp` | root | 115 | 285 | 33/0/252/0 | 0 | 0 | 1 |
 | `books/connection-budget.lisp` | root | 38 | 35 | 0/0/35/0 | 0 | 0 | 3 |
+| `books/connection-operation-cost.lisp` | - | 3 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/consumer-artifact-retry.lisp` | root | 21 | 3 | 0/0/2/1 | 0 | 0 | 0 |
 | `books/consumer-bound.lisp` | root | 26 | 15 | 7/1/7/0 | 0 | 0 | 5 |
 | `books/consumer-event-index.lisp` | root | 29 | 20 | 4/1/15/0 | 0 | 0 | 0 |
@@ -561,6 +563,7 @@ that `make certify` requests.
 | `books/index-range-render-active.lisp` | - | 3 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/index-range-render-custody.lisp` | - | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/index-range-render-demand.lisp` | - | 1 | 5 | 2/0/3/0 | 0 | 0 | 0 |
+| `books/index-range-row-decision.lisp` | - | 7 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/index.lisp` | root | 35 | 26 | 24/0/2/0 | 0 | 0 | 3 |
 | `books/injection-info-params-invariants.lisp` | root | 82 | 4 | 0/0/4/0 | 0 | 0 | 2 |
 | `books/injection-info-params.lisp` | root | 1 | 11 | 0/0/11/0 | 0 | 0 | 0 |
@@ -696,6 +699,8 @@ that `make certify` requests.
 | `books/operator-report-fields-text.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/operator-report-fields.lisp` | root | 34 | 27 | 6/0/21/0 | 0 | 0 | 0 |
 | `books/outcome-class.lisp` | root | 8 | 6 | 0/0/6/0 | 0 | 0 | 0 |
+| `books/outgoing-operation-cost.lisp` | - | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/outgoing-operation-source.lisp` | - | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/over-byte-cached-row-source.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/over-byte-cursor.lisp` | root | 22 | 8 | 4/0/4/0 | 0 | 0 | 1 |
 | `books/over-byte-full-parser-range.lisp` | root | 15 | 0 | 0/0/0/0 | 0 | 0 | 1 |
@@ -931,6 +936,7 @@ that `make certify` requests.
 | `books/public-exposure-rows.lisp` | closure | 1 | 12 | 1/0/11/0 | 0 | 0 | 0 |
 | `books/public-exposure.lisp` | root | 36 | 82 | 10/0/72/0 | 0 | 0 | 0 |
 | `books/reader-open-carried.lisp` | root | 6 | 8 | 1/0/7/0 | 0 | 0 | 1 |
+| `books/reader-output-job.lisp` | - | 2 | 11 | 0/0/11/0 | 0 | 0 | 0 |
 | `books/reclaim-admission.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/reclaim-instant.lisp` | root | 10 | 9 | 0/3/6/0 | 0 | 0 | 1 |
 | `books/reclaim-rule.lisp` | root | 7 | 7 | 0/0/7/0 | 0 | 0 | 1 |
@@ -1578,6 +1584,7 @@ that `make certify` requests.
 | `tests/acl2/index-range-controller-tests.lisp` | root | 10 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `tests/acl2/index-range-held-row-controller-tests.lisp` | - | 11 | 7 | 0/4/0/3 | 0 | 0 | 0 |
 | `tests/acl2/index-range-number-controller-tests.lisp` | - | 4 | 6 | 0/4/2/0 | 0 | 0 | 0 |
+| `tests/acl2/index-range-row-decision-tests.lisp` | - | 5 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/injection-info-params-tests.lisp` | root | 0 | 5 | 0/0/3/2 | 48 | 14 | 0 |
 | `tests/acl2/injection-tests.lisp` | root | 0 | 11 | 0/0/0/11 | 156 | 10 | 0 |
@@ -1681,6 +1688,7 @@ that `make certify` requests.
 | `tests/acl2/operator-report-fields-native-reference-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/operator-report-fields-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/outcome-class-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 37 | 7 | 0 |
+| `tests/acl2/outgoing-operation-cost-tests.lisp` | - | 4 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `tests/acl2/over-byte-cached-row-source-tests.lisp` | root | 3 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `tests/acl2/over-byte-cursor-tests.lisp` | root | 1 | 6 | 0/5/0/1 | 11 | 0 | 0 |
 | `tests/acl2/over-byte-full-parser-range-tests.lisp` | root | 14 | 5 | 0/4/0/1 | 0 | 0 | 0 |
@@ -1856,6 +1864,7 @@ that `make certify` requests.
 | `tests/acl2/public-exposure-reply-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 13 | 2 | 0 |
 | `tests/acl2/public-exposure-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 121 | 15 | 0 |
 | `tests/acl2/reader-open-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 0 | 0 |
+| `tests/acl2/reader-output-job-tests.lisp` | - | 4 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `tests/acl2/reclaim-admission-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 4 | 0 |
 | `tests/acl2/reclaim-article-subject-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/reclaim-instant-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 3 | 0 |

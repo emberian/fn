@@ -1870,11 +1870,11 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1980,
+    "books": 1989,
     "books_in_root_closure": 1938,
     "roots": 1866,
-    "theorems": 30255,
-    "functions": 19297,
+    "theorems": 30283,
+    "functions": 19331,
     "assert_events": 24064,
     "must_fails": 2519,
     "prover_refusals": 0,
@@ -1882,14 +1882,14 @@
     "guards": {
       "verified": 3549,
       "declared-off": 2350,
-      "default-guarded": 10532,
-      "default-unguarded": 2866
+      "default-guarded": 10562,
+      "default-unguarded": 2870
     },
     "suspect_theorems": 1266,
     "export_hygiene_warnings": 348,
     "enabled_projection_warnings": 55,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2715,
+    "include_hygiene_warnings": 2721,
     "host_names_warnings": 2193,
     "hand_written_record_warnings": 18
   },
@@ -2102,6 +2102,30 @@
         "fn-acct-redeem-bounded-plan-is-the-plan-unless-it-redeems",
         "fn-cfg-delta-reason-of-a-redeem-past-its-expiry"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/allocation-epoch-domain.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 3,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -10492,6 +10516,34 @@
       "read_error": null
     },
     {
+      "book": "books/connection-operation-cost.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 3,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 8,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "allocation-epoch-domain",
+        "page-read-ledger",
+        "snapshot-source-token"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/consumer-artifact-retry.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -16269,6 +16321,32 @@
       "read_error": null
     },
     {
+      "book": "books/index-range-row-decision.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 7,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "index-range-held-row-controller"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/index.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -20219,6 +20297,56 @@
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/outgoing-operation-cost.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "connection-operation-cost"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/outgoing-operation-source.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [],
@@ -27143,6 +27271,32 @@
       "suspects": [
         "fn-rdc-store-selection-unfolds"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/reader-output-job.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 2,
+      "functions": 11,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 11,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "page-read-ledger"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -45694,6 +45848,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/index-range-row-decision-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 5,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/index-range-row-decision"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/index-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -48532,6 +48712,32 @@
         "../../books/native-operator",
         "../../books/topic-history-local-control",
         "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/outgoing-operation-cost-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 4,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/outgoing-operation-cost"
       ],
       "system_includes": [],
       "suspects": [],
@@ -53352,6 +53558,32 @@
       "includes": [
         "../../books/reader-open-carried",
         "owner-advance-carried-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/reader-output-job-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 4,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/reader-output-job"
       ],
       "system_includes": [],
       "suspects": [],
@@ -75480,6 +75712,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/connection-operation-cost.lisp",
+        "line": 5,
+        "include": "allocation-epoch-domain",
+        "included": "books/allocation-epoch-domain.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/consumer-artifact-retry.lisp",
         "line": 32,
         "include": "source-routes",
@@ -78777,6 +79016,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/index-range-row-decision.lisp",
+        "line": 4,
+        "include": "index-range-held-row-controller",
+        "included": "books/index-range-held-row-controller.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/injection-info-params-invariants.lisp",
         "line": 26,
         "include": "poster-bytes-invariants",
@@ -79565,6 +79811,13 @@
         "line": 4,
         "include": "acceptance-alloc",
         "included": "books/acceptance-alloc.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/outgoing-operation-cost.lisp",
+        "line": 5,
+        "include": "connection-operation-cost",
+        "included": "books/connection-operation-cost.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -86960,6 +87213,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/index-range-row-decision-tests.lisp",
+        "line": 3,
+        "include": "../../books/index-range-row-decision",
+        "included": "books/index-range-row-decision.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/injection-info-params-tests.lisp",
         "line": 11,
         "include": "must-fail-checked",
@@ -88147,6 +88407,13 @@
         "line": 11,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/outgoing-operation-cost-tests.lisp",
+        "line": 2,
+        "include": "../../books/outgoing-operation-cost",
+        "included": "books/outgoing-operation-cost.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -90240,6 +90507,13 @@
         "line": 6,
         "include": "owner-advance-carried-tests",
         "included": "tests/acl2/owner-advance-carried-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/reader-output-job-tests.lisp",
+        "line": 2,
+        "include": "../../books/reader-output-job",
+        "included": "books/reader-output-job.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

@@ -2331,3 +2331,24 @@ omitted hypothesis and failure of the whole row conclusion. They also
 check literal removals of the prior terminal feed, NOV and body-line bridges.
 The full selected-range residual, funded prefix positioning, actual fullplan
 host/physical binding and matching qualification remain open.
+
+### Experimental outgoing window source boundary
+
+The new internal `reader-output-job` kernel identifies each bounded output
+window by the complete issued response episode, a core-issued actor serial,
+and the shared allocator's old NEXT. Partial-write counts and wait outcomes
+advance its offset in ACL2. Stale identities leave the current window intact;
+cancellation and drain retain the storage claim. Neither drain nor a transport
+report establishes that result, renderer and physical aliases have returned.
+The successor issuer requires the released claim and terminal-receipt carry;
+the actual epilogue establishing that carry remains open.
+
+`fn-owner-outgoing-operation-installation` currently returns NIL. The separate
+OUTGOING evaluator uses checked immediate-domain arithmetic and an explicit
+fixed scalar coordinate fence; its coefficients require a genuine immutable
+selected-runtime installation covering the factory, callbacks, frames, first
+use, retained storage and cleanup. Native code supplies no tariff or demand.
+A missing complete installation refuses before output construction. The
+protected source admissions and MODEL partial-write fixtures establish the
+lower internal transition properties, not an installed storage allowance,
+registered producer, native activation or qualified image.
