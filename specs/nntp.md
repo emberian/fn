@@ -2251,3 +2251,21 @@ Public normal, actual offered-source custody, bounded refresh replies,
 serialized RC/STATE/input actor return, installed runtime envelope and native
 composition remain pending. The original logical reader remains the full
 consumed-prefix reference.
+
+### Native outgoing source cut
+
+The actual native Queue, QueuePlan and Flush path now checks the installed
+`:outgoing-window` source before rendering, copying or writing. An absent
+source returns its named unavailable word and preserves pending out/input,
+plan and after action. A family readout alone supplies neither a window
+storage claim nor terminal evidence. Response unpinning retains its prior
+pin while that evidence is missing; socket drain, cancellation, a NIL plan
+or lexical return does not settle the new custody graph.
+
+SCN-1035's recording fixture checks this exact closed-side cut. It does not
+implement the positive partial-write, completion/cancel or last-borrow
+dispatcher. OVER owns the missing public registered Window/Observe/Return
+and common response factory; physical owns registered worker acquisition
+and actual last-borrow. Their lower source/guard components and older
+response-pin model are separate scopes. New constructor/holder/frame/GC,
+installed allowance and changed native image qualification remain open.

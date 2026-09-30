@@ -7010,7 +7010,8 @@
         "Run the actual core raw digest trajectory on three bytes and its real trailer, then observe physical return and borrow one scalar.",
         "Drop all native result aliases before final release, then attempt repeated release.",
         "Request offset one, pass the arena payload-relative index unchanged, alter payload coordinates, and run actual damaged-prefix, wrong-commitment and short-read scans.",
-        "Cancel exact running and returned windows, deny scalar publication, retain charges until actual return and exact cancelled settlement; stage bound-arena current-placement capture before off-lock read."
+        "Cancel exact running and returned windows, deny scalar publication, retain charges until actual return and exact cancelled settlement; stage bound-arena current-placement capture before off-lock read.",
+        "At the actual native Queue/QueuePlan/Flush/unpin source cut, observe genuine unavailable source and preserve output/input/plan/after/pin without render/copy/write; an unqualified available family still supplies no issuer/return."
       ],
       "expected": [
         "Exact binding preserves every supplied charge. Altered range and worker slot cannot return or release the job.",
@@ -7026,9 +7027,11 @@
         "tests/acl2/page-window-admission-tests.lisp",
         "planning/evidence/physical-window-source-2026-09-30.md",
         "planning/evidence/physical-window-coordinate-source-2026-09-30.md",
-        "tests/native/page-window-lifecycle.lisp"
+        "tests/native/page-window-lifecycle.lisp",
+        "tests/test_native_wire_dispatch.py",
+        "planning/evidence/native-outgoing-cut-2026-09-30.md"
       ],
-      "execution_scope": "Source model/adapter and staged raw wrapper only. Actual native observation, adequate native demand and served activation remain pending."
+      "execution_scope": "Source model/adapter and staged raw wrapper only. Actual native observation, adequate native demand and served activation remain pending. Native unavailable-source recording fixture additionally passes exact actual Queue/QueuePlan/Flush and unpin cuts; synthetic family-only availability is rejected. No positive outgoing dispatcher/worker/receipt/runtime/image scope is inferred."
     },
     {
       "id": "SCN-1055",

@@ -932,8 +932,17 @@ outstanding response belongs to this connection."
     (fnn-fault "connection ~a could not capture its response ownership" cid)))
 
 (defun fnn-owner-response-unpin (service cid)
-  "CID's captured response drained or was cancelled.  Idempotent cleanup,
-including a service stop; no owner semantic operation is needed."
+  "Request captured response return; retain it while genuine evidence is missing."
+  ;; A drained socket or lexical cancellation is not a new custody receipt.
+  ;; Preserve the old pin until the actual issued-window return joins here.
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (multiple-value-bind (word ignored)
+        (fnn-core-mv 'fn-owner-runtime-operation-source
+          (fn-owner-runtime-operation-source :outgoing-window
+            (fnn-live-page-read-pool) *the-live-state*))
+      (declare (ignore ignored))
+      (unless (eq word :ready) (return-from fnn-owner-response-unpin word))
+      (return-from fnn-owner-response-unpin :output-terminal-unavailable)))
   (unless (member (fnn-owner-response-pin-step service (list :release cid))
                   '(:released :absent))
     (fnn-fault "connection ~a could not settle its response ownership" cid)))
