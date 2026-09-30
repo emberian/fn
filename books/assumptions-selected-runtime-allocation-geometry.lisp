@@ -69,3 +69,9 @@
          ("Subgoal *1/1" :use ((:instance fn-assume-srag-ordinary-request-prefix-bound
                                   (request (car requests))))))
  :rule-classes nil)
+; The scalar evaluator may become a selected callback only after a genuine
+; installer binds its qualified coordinate and maintained caller relation.
+(verify-guards fn-srag-coordinate-p)
+(verify-guards fn-srag-request-domain-p)
+(verify-guards fn-srag-request-prefix-demand)
+(verify-guards fn-srag-counted-prefix-demand)
