@@ -17745,6 +17745,26 @@
         {
           "kind": "theorem",
           "name": "fn-iprc-context-update-preserves-row-domain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-iprc-node-row-write-preserves-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-iprc-node-row-write-extends-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-iprc-copy-cell-preserves-destination-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-iprc-copy-cell-extends-owned-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-iprc-copy-one-appended-domain"
         }
       ],
       "pending_subject": "Actual recursive row-write/copy/shared-descriptor preservation to published captured row-root/ordinal + retained arena incarnation; durable append/withdraw/redecide/policy event source attachment."

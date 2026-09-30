@@ -98,3 +98,43 @@ Until these composition obligations are established,
 `fn-ibr-held-install-ready-p` remains a caller obligation for OVER's install/ONE
 path. Funding, installed source/runtime, captured lifetime and native activation
 remain separate requirements.
+
+## Actual recursive copy progress
+
+The mapping successor establishes the existing prefix relation through actual
+`fn-ibp-node-row-write`. A typed write preserves an existing prefix; a successful
+write exactly at its end extends it. Sealing preserves the cells. Actual
+`fn-ibp-node-page-owner-action` and `fn-ibp-node-row-owner-filled` update a separate
+metadata child, preserving the row relation on every selected path.
+
+`fn-ibp-row-copy-cell` reads the CURRENT owner row to select its position. Under
+the destination prefix at that position, a typed assigned row, the retained old
+source prefix and natural Catalog C, its actual `:copied` or `:appended` result
+extends the destination prefix by one. It uses the actual recursive old-row
+reader; a seal or owner filled count is not substituted for source typing.
+Existing destination prefixes are also preserved through refusal or uncertainty.
+
+Literal tests prepare two rows into the same successive arena, commit the first
+reference row and run actual bounded group-number assignment for the second.
+They execute recursive physical copy and append with those held16 pointers.
+Physical child installation and ownership setup remain explicit fixture inputs,
+not genuine admission or durable publication. Each successful-copy hypothesis
+has a literal removal witness; malformed rows and nonnatural Catalog C are
+corrupted-state witnesses. The five cases retain all other hypotheses and show
+failure of the extended prefix. This is source proof, not native execution.
+
+The served owner actually publishes `fn-cat-prepare-sealed` through
+`fn-owner-cat-prepare-sealed`. The existing
+`fn-cat-prepare-is-seal-then-prepare-sealed` equation connects it to reference
+prepare under its literal buffer/row premises. A production join must retain
+those premises and the SAME arena incarnation through generation registration;
+neither the reference proof nor a PC header supplies the absent caller hook.
+
+The actual `fn-ipa-row-copy-one` caller derives its assigned row, count and old
+descriptor from the retained builder and page receipt. Its `:appended` result
+establishes the complete partial-page prefix under the carried layout relation,
+including the already-copied idempotent branch. Literal carry/status removals
+are separate from the source scenario that calls CopyOne twice, actual RowSeal,
+two actual RowRootOne steps, and the recursive row reader through the resulting
+descriptor. That scenario observes the same assigned pointer and retained old
+descriptor; it does not establish publication of that root or source authenticity.

@@ -4,6 +4,7 @@
 (include-book "index-backing-row-carry")
 (include-book "catalog-prepare")
 (include-book "index-backing-assignment")
+(include-book "index-backing-row-copy")
 
 (defthm fn-iprc-prepare-establishes-row-domain
  (implies (and (not pending) (fn-ab-p (fn-row-binding wire)))
@@ -123,3 +124,197 @@
   :in-theory (e/d (fn-held-with-context fn-ibrc-row-domainp
                     fn-held-internals fn-record-internals)
                   (fn-ab-p fn-hnov-p fn-hf-nov fn-held-withdrawnp)))))
+
+; Actual recursive destination mutation, carried from the existing filled
+; prefix and actual assigned/copied row. A stamp never establishes the row.
+(local
+ (defthm fn-iprc-row-set-preserves-prefix
+  (implies (and (fn-ibrc-prefixp (nth 0 fn-ibp-row-page) count prefix)
+                (fn-ibrc-row-domainp row prefix))
+   (fn-ibrc-prefixp (nth 0 (fn-ibp-row-set ordinal row fn-ibp-row-page)) count prefix))
+  :hints (("Goal"
+   :use ((:instance fn-ibrc-prefix-replace (rows (nth 0 fn-ibp-row-page)) (slot ordinal)))
+   :in-theory (e/d (fn-ibp-row-set update-fn-ibp-row-cellsi)
+    (fn-ibrc-prefixp fn-ibrc-row-domainp fn-ibrc-prefix-replace update-nth nfix))))))
+
+(defthm fn-iprc-node-row-write-preserves-prefix
+ (implies
+  (and (fn-iprc-node-prefixp slot depth count prefix fn-ibp-node)
+       (or sealp (fn-ibrc-row-domainp row prefix)))
+  (fn-iprc-node-prefixp slot depth count prefix
+   (mv-nth 2 (fn-ibp-node-row-write ordinal row sealp slot depth id incarnation fuel fn-ibp-node))))
+ :hints (("Goal"
+  :induct (fn-ibp-node-row-write ordinal row sealp slot depth id incarnation fuel fn-ibp-node)
+  :do-not '(generalize eliminate-destructors)
+  :expand ((fn-iprc-node-prefixp slot depth count prefix fn-ibp-node))
+  :in-theory (e/d (fn-iprc-node-prefixp fn-ibp-node-row-write)
+   (fn-ibp-row-set fn-ibp-row-seal nth fn-ibrc-prefixp fn-ibrc-row-domainp
+    mod floor mod-=-0 floor-=-x/y mod-type)))))
+
+(defthm fn-iprc-node-row-write-extends-prefix
+ (implies
+  (and (fn-iprc-node-prefixp slot depth count prefix fn-ibp-node)
+       (fn-ibrc-row-domainp row prefix)
+       (equal (mod ordinal 256) (nfix count))
+       (eq (mv-nth 0 (fn-ibp-node-row-write ordinal row nil slot depth id incarnation fuel fn-ibp-node)) :written))
+  (fn-iprc-node-prefixp slot depth (+ 1 (nfix count)) prefix
+   (mv-nth 2 (fn-ibp-node-row-write ordinal row nil slot depth id incarnation fuel fn-ibp-node))))
+ :hints (("Goal"
+  :induct (fn-ibp-node-row-write ordinal row nil slot depth id incarnation fuel fn-ibp-node)
+  :do-not '(generalize eliminate-destructors)
+  :expand ((fn-iprc-node-prefixp slot depth count prefix fn-ibp-node))
+  :in-theory (e/d (fn-iprc-node-prefixp fn-ibp-node-row-write)
+   (fn-ibp-row-set fn-ibp-row-seal nfix nth fn-ibrc-prefixp fn-ibrc-row-domainp
+    mod floor mod-=-0 floor-=-x/y mod-type)))))
+
+; Owner lifecycle metadata is in a distinct child from row cells. Actual
+; CURRENT read/retain/seal and copy progress preserve every selected row path.
+(encapsulate ()
+ (local (defun-nx fn-iprc-owner-path-induct (slot address depth fuel node)
+  (declare (xargs :measure (nfix depth)))
+  (if (zp depth) (list slot fuel node)
+   (fn-iprc-owner-path-induct (floor slot 2) (floor address 2) (- depth 1) (- fuel 1)
+    (fn-ibp-node-children-get
+     (if (evenp address) 'fn-ibp-node-left 'fn-ibp-node-right)
+     node (create-fn-ibp-node))))))
+
+ (defthm fn-iprc-page-owner-action-preserves-row-prefix
+  (equal
+   (fn-iprc-node-prefixp slot depth count prefix
+    (mv-nth 4 (fn-ibp-node-page-owner-action token operation kind physical receipt builder
+                 fuel address depth fn-ibp-node)))
+   (fn-iprc-node-prefixp slot depth count prefix fn-ibp-node))
+  :hints (("Goal"
+   :induct (fn-iprc-owner-path-induct slot address depth fuel fn-ibp-node)
+   :do-not '(generalize eliminate-destructors)
+   :expand ((fn-iprc-node-prefixp slot depth count prefix fn-ibp-node)
+            (fn-ibp-node-page-owner-action token operation kind physical receipt builder fuel address depth fn-ibp-node))
+   :in-theory (e/d (fn-iprc-node-prefixp fn-ibp-node-page-owner-action)
+    (fn-ibp-page-owner-row fn-ibp-page-owner-finish-retirement
+     fn-ibp-page-owner-reserve fn-ibp-page-owner-built fn-ibp-page-owner-sealed
+     fn-ibp-page-owner-reference fn-ibp-page-owner-retire
+     fn-ibp-page-owner-tokenp fn-omk-at nth fn-ibrc-prefixp fn-ibrc-row-domainp
+     mod floor mod-=-0 floor-=-x/y mod-type floor-type-2 floor-type-3 floor-type-4)))))
+
+ (defthm fn-iprc-owner-filled-preserves-row-prefix
+  (equal
+   (fn-iprc-node-prefixp slot depth count prefix
+    (mv-nth 2 (fn-ibp-node-row-owner-filled token expected fuel address depth fn-ibp-node)))
+   (fn-iprc-node-prefixp slot depth count prefix fn-ibp-node))
+  :hints (("Goal"
+   :induct (fn-iprc-owner-path-induct slot address depth fuel fn-ibp-node)
+   :do-not '(generalize eliminate-destructors)
+   :expand ((fn-iprc-node-prefixp slot depth count prefix fn-ibp-node)
+            (fn-ibp-node-row-owner-filled token expected fuel address depth fn-ibp-node))
+   :in-theory (e/d (fn-iprc-node-prefixp fn-ibp-node-row-owner-filled)
+    (fn-ibp-row-owner-filled nth fn-ibrc-prefixp fn-ibrc-row-domainp
+     mod floor mod-=-0 floor-=-x/y mod-type floor-type-2 floor-type-3 floor-type-4)))))
+)
+
+(defthm fn-iprc-copy-cell-preserves-destination-prefix
+ (implies
+  (and (natp count)
+       (fn-iprc-node-prefixp physical depth filled prefix fn-ibp-node)
+       (fn-ibrc-row-domainp assigned prefix)
+       (fn-iprc-node-prefixp (nth 1 old-descriptor) depth (mod count 256) prefix fn-ibp-node))
+  (fn-iprc-node-prefixp physical depth filled prefix
+   (mv-nth 2 (fn-ibp-row-copy-cell token assigned count old-descriptor physical nonce fuel depth fn-ibp-node))))
+ :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors)
+  :use ((:instance fn-iprc-actual-node-read-row-domain
+          (ordinal (fn-omk-at 10 (mv-nth 1 (fn-ibp-node-page-owner-action token :read nil nil nil nil (+ 1 depth) (floor physical 64) depth fn-ibp-node))))
+          (fuel (+ 1 depth)) (slot (nth 1 old-descriptor))
+          (count (mod count 256)) (id (nth 2 old-descriptor))
+          (incarnation (nth 3 old-descriptor)) (fn-ibp-node (mv-nth 4 (fn-ibp-node-page-owner-action token :read nil nil nil nil (+ 1 depth) (floor physical 64) depth fn-ibp-node)))))
+  :in-theory (e/d (fn-ibp-row-copy-cell)
+   (fn-iprc-actual-node-read-row-domain fn-iprc-node-prefixp fn-ibrc-row-domainp fn-ibp-node-page-owner-action
+    fn-ibp-node-row-read fn-ibp-node-row-write fn-ibp-node-row-owner-filled
+    fn-ibp-chunk-descriptorp fn-omk-at mod floor mod-=-0 floor-=-x/y mod-type)))))
+
+(defthm fn-iprc-copy-cell-extends-owned-prefix
+ (let ((position (fn-omk-at 10 (mv-nth 1 (fn-ibp-node-page-owner-action token :read nil nil nil nil (+ 1 depth) (floor physical 64) depth fn-ibp-node)))))
+  (implies
+   (and (natp count)
+        (fn-iprc-node-prefixp physical depth position prefix fn-ibp-node)
+        (fn-ibrc-row-domainp assigned prefix)
+        (fn-iprc-node-prefixp (nth 1 old-descriptor) depth (mod count 256) prefix fn-ibp-node)
+        (member-eq (mv-nth 0 (fn-ibp-row-copy-cell token assigned count old-descriptor physical nonce fuel depth fn-ibp-node))
+                   '(:copied :appended)))
+   (fn-iprc-node-prefixp physical depth (+ 1 (nfix position)) prefix
+    (mv-nth 2 (fn-ibp-row-copy-cell token assigned count old-descriptor physical nonce fuel depth fn-ibp-node)))))
+ :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors)
+  :use ((:instance fn-iprc-node-row-write-extends-prefix
+ (ordinal (fn-omk-at 10 (mv-nth 1 (fn-ibp-node-page-owner-action token :read nil nil nil nil (+ 1 depth) (floor physical 64) depth fn-ibp-node)))) (row assigned) (slot physical) (count (fn-omk-at 10 (mv-nth 1 (fn-ibp-node-page-owner-action token :read nil nil nil nil (+ 1 depth) (floor physical 64) depth fn-ibp-node))))
+ (id nonce) (incarnation nonce) (fuel (+ 1 depth)) (fn-ibp-node (mv-nth 4 (fn-ibp-node-page-owner-action token :read nil nil nil nil (+ 1 depth) (floor physical 64) depth fn-ibp-node))))
+(:instance fn-iprc-node-row-write-extends-prefix
+ (ordinal (fn-omk-at 10 (mv-nth 1 (fn-ibp-node-page-owner-action token :read nil nil nil nil (+ 1 depth) (floor physical 64) depth fn-ibp-node)))) (row (mv-nth 1 (fn-ibp-node-row-read (fn-omk-at 10 (mv-nth 1 (fn-ibp-node-page-owner-action token :read nil nil nil nil (+ 1 depth) (floor physical 64) depth fn-ibp-node))) (+ 1 depth) (nth 1 old-descriptor) depth (nth 2 old-descriptor) (nth 3 old-descriptor) (mv-nth 4 (fn-ibp-node-page-owner-action token :read nil nil nil nil (+ 1 depth) (floor physical 64) depth fn-ibp-node))))) (slot physical) (count (fn-omk-at 10 (mv-nth 1 (fn-ibp-node-page-owner-action token :read nil nil nil nil (+ 1 depth) (floor physical 64) depth fn-ibp-node))))
+ (id nonce) (incarnation nonce) (fuel (+ 1 depth)) (fn-ibp-node (mv-nth 4 (fn-ibp-node-page-owner-action token :read nil nil nil nil (+ 1 depth) (floor physical 64) depth fn-ibp-node))))
+(:instance fn-iprc-actual-node-read-row-domain
+          (ordinal (fn-omk-at 10 (mv-nth 1 (fn-ibp-node-page-owner-action token :read nil nil nil nil (+ 1 depth) (floor physical 64) depth fn-ibp-node)))) (fuel (+ 1 depth)) (slot (nth 1 old-descriptor))
+          (count (mod count 256)) (id (nth 2 old-descriptor)) (incarnation (nth 3 old-descriptor))
+          (fn-ibp-node (mv-nth 4 (fn-ibp-node-page-owner-action token :read nil nil nil nil (+ 1 depth) (floor physical 64) depth fn-ibp-node)))))
+  :in-theory (e/d (fn-ibp-row-copy-cell)
+   (fn-iprc-node-row-write-extends-prefix fn-iprc-actual-node-read-row-domain fn-iprc-node-prefixp fn-ibrc-row-domainp
+    fn-ibp-node-page-owner-action fn-ibp-node-row-read fn-ibp-node-row-write
+    fn-ibp-node-row-owner-filled fn-ibp-chunk-descriptorp fn-omk-at
+    mod floor mod-=-0 floor-=-x/y mod-type)))))
+
+; Actual caller derives the copied row and descriptors from its retained builder.
+(encapsulate ()
+(defun-nx fn-iprc-copy-layout-domainp (prefix backing)
+ (let* ((builder (fn-ibp-builder backing)) (receipt (fn-ibp-page-pending backing))
+        (count (fn-omk-at 6 builder)) (physical (fn-omk-at 3 receipt))
+        (nonce (fn-omk-at 2 receipt)) (depth (fn-ibp-slot-depth backing))
+        (descriptor (fn-omk-at 9 receipt)) (node (fn-ibp-registry backing))
+        (token (list :index-page nonce (+ 1 (floor physical 64)) (mod physical 64)))
+        (owner (mv-nth 1 (fn-ibp-node-page-owner-action token :read nil nil nil nil
+                           (+ 1 depth) (floor physical 64) depth node))))
+  (and (natp count)
+       (fn-ibrc-row-domainp (fn-omk-at 5 (fn-omk-at 8 builder)) prefix)
+       (fn-iprc-node-prefixp (nth 1 descriptor) depth (mod count 256) prefix node)
+       (fn-iprc-node-prefixp physical depth
+         (if (eq (fn-omk-at 10 receipt) :copied) (+ 1 (mod count 256))
+           (fn-omk-at 10 owner)) prefix node))))
+
+(local
+ (defthm fn-iprc-copy-appended-position
+  (implies
+   (eq (mv-nth 0 (fn-ibp-row-copy-cell token assigned count old-descriptor physical nonce fuel depth fn-ibp-node)) :appended)
+   (equal (fn-omk-at 10
+           (mv-nth 1 (fn-ibp-node-page-owner-action token :read nil nil nil nil
+                        (+ 1 depth) (floor physical 64) depth fn-ibp-node)))
+          (mod count 256)))
+  :hints (("Goal" :do-not-induct t
+   :in-theory (e/d (fn-ibp-row-copy-cell)
+    (fn-ibp-node-page-owner-action fn-ibp-node-row-read fn-ibp-node-row-write
+     fn-ibp-node-row-owner-filled fn-ibp-chunk-descriptorp fn-omk-at
+     mod floor mod-=-0 floor-=-x/y mod-type))))))
+
+(local (defthm fn-iprc-count-remainder-natp
+ (implies (natp count) (natp (mod count 256)))
+ :rule-classes (:rewrite :type-prescription)
+ :hints (("Goal" :in-theory (enable mod)))))
+
+(defthm fn-iprc-copy-one-appended-domain
+ (implies
+  (and (fn-iprc-copy-layout-domainp prefix fn-index-backing)
+       (eq (mv-nth 0 (fn-ipa-row-copy-one fuel fn-index-backing)) :appended))
+  (fn-iprc-node-prefixp
+   (fn-omk-at 3 (fn-ibp-page-pending fn-index-backing))
+   (fn-ibp-slot-depth fn-index-backing)
+   (+ 1 (mod (fn-omk-at 6 (fn-ibp-builder fn-index-backing)) 256)) prefix
+   (fn-ibp-registry (mv-nth 2 (fn-ipa-row-copy-one fuel fn-index-backing)))))
+ :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors)
+  :use ((:instance fn-iprc-copy-cell-extends-owned-prefix (token (list :index-page (fn-omk-at 2 (fn-ibp-page-pending fn-index-backing)) (+ 1 (floor (fn-omk-at 3 (fn-ibp-page-pending fn-index-backing)) 64)) (mod (fn-omk-at 3 (fn-ibp-page-pending fn-index-backing)) 64)))
+ (assigned (fn-omk-at 5 (fn-omk-at 8 (fn-ibp-builder fn-index-backing)))) (count (fn-omk-at 6 (fn-ibp-builder fn-index-backing)))
+ (old-descriptor (fn-omk-at 9 (fn-ibp-page-pending fn-index-backing))) (physical (fn-omk-at 3 (fn-ibp-page-pending fn-index-backing))) (nonce (fn-omk-at 2 (fn-ibp-page-pending fn-index-backing)))
+ (depth (fn-ibp-slot-depth fn-index-backing)) (fn-ibp-node (fn-ibp-registry fn-index-backing)))
+        (:instance fn-iprc-copy-appended-position (token (list :index-page (fn-omk-at 2 (fn-ibp-page-pending fn-index-backing)) (+ 1 (floor (fn-omk-at 3 (fn-ibp-page-pending fn-index-backing)) 64)) (mod (fn-omk-at 3 (fn-ibp-page-pending fn-index-backing)) 64)))
+ (assigned (fn-omk-at 5 (fn-omk-at 8 (fn-ibp-builder fn-index-backing)))) (count (fn-omk-at 6 (fn-ibp-builder fn-index-backing)))
+ (old-descriptor (fn-omk-at 9 (fn-ibp-page-pending fn-index-backing))) (physical (fn-omk-at 3 (fn-ibp-page-pending fn-index-backing))) (nonce (fn-omk-at 2 (fn-ibp-page-pending fn-index-backing)))
+ (depth (fn-ibp-slot-depth fn-index-backing)) (fn-ibp-node (fn-ibp-registry fn-index-backing))))
+  :in-theory (e/d (fn-ipa-row-copy-one fn-iprc-copy-layout-domainp)
+   (fn-iprc-copy-cell-extends-owned-prefix fn-iprc-copy-appended-position nth update-nth
+    fn-ibp-row-copy-cell fn-ibp-node-page-owner-action fn-ibrc-row-domainp
+    fn-iprc-node-prefixp fn-omk-at mod floor mod-=-0 floor-=-x/y mod-type)))))
+
+)
