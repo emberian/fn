@@ -3,6 +3,7 @@
 ; publication, not worker ownership. Only actual I/O completion settles.
 ; A row's immutable token names request incarnation and full extent identity.
 (in-package "ACL2")
+(include-book "page-read-ledger")
 
 ; R = (ID CID FILE EOFF ELEN TRAILER PHASE). ID is process-monotonic,
 ; never a descriptor number or a reusable connection slot.
@@ -21,6 +22,27 @@
   (declare (xargs :guard (and (natp next) (natp cid) (natp file)
                               (natp eoff) (natp elen) (natp trailer))))
   (mv (+ 1 next) (list next cid file eoff elen trailer :issued)))
+
+ ; The admitted pool token is the only ID source. No raw second counter.
+(defun fn-pio-own-admitted-token (token)
+  (declare (xargs :guard t))
+  (if (true-listp token)
+      (let ((row (append token (list :issued))))
+        (if (fn-pio-rowp row) row nil))
+    nil))
+
+(defthm fn-pio-admitted-resource-token-establishes-owned-read
+  (implies
+   (equal (mv-nth 0 (fn-prl-admit ledger cid file eoff elen trailer demand native-demand)) :admitted)
+   (let* ((token (mv-nth 1 (fn-prl-admit ledger cid file eoff elen trailer demand native-demand)))
+          (row (fn-pio-own-admitted-token token)))
+     (and (fn-pio-rowp row) (equal (fn-pio-token row) token)
+          (equal (nth 6 row) :issued)
+          (equal (nth 0 row) (fn-prl-nth 2 ledger))
+          (< (nth 0 row)
+             (fn-prl-nth 2 (mv-nth 2 (fn-prl-admit ledger cid file eoff elen trailer demand native-demand)))))))
+  :hints (("Goal" :in-theory (enable fn-prl-admit fn-prs-issue fn-prl-token fn-prl-nth fn-prl-build)))
+  :rule-classes nil)
 
 (defun fn-pio-cancel (r token)
   (declare (xargs :guard t))
@@ -96,6 +118,55 @@
   (implies (and (member-equal r rows) (fn-pio-rowp r)
                 (equal (nth 2 r) file) (not (eq (nth 6 r) :settled)))
            (not (fn-pio-file-clear-p file rows))))
+
+; Process-local incarnation names are derived by ACL2 as well. NIL is the
+; initial allocator; an invalid carried counter refuses rather than resetting.
+(defun fn-pio-file-issue (next)
+  (declare (xargs :guard t))
+  (cond ((null next) (mv :issued 2 1))
+        ((posp next) (mv :issued (+ 1 next) next))
+        (t (mv :invalid-file-identity next nil))))
+
+ ; The installed operator profile bounds this *local identity namespace*,
+; not stored data. Exhaustion refuses before an OS open and never wraps.
+(defun fn-pio-file-issue-with-limit (next limit)
+  (declare (xargs :guard t))
+  (cond ((not (posp limit)) (mv :invalid-file-identity next nil))
+        ((and next (not (posp next))) (mv :invalid-file-identity next nil))
+        ((and next (< limit next)) (mv :file-identities-exhausted next nil))
+        (t (fn-pio-file-issue next))))
+
+(defthm fn-pio-bounded-file-issue-spends-a-fresh-representable-name
+  (implies (equal (mv-nth 0 (fn-pio-file-issue-with-limit next limit)) :issued)
+           (and (posp (mv-nth 2 (fn-pio-file-issue-with-limit next limit)))
+                (<= (mv-nth 2 (fn-pio-file-issue-with-limit next limit)) limit)
+                (equal (mv-nth 1 (fn-pio-file-issue-with-limit next limit))
+                       (+ 1 (mv-nth 2 (fn-pio-file-issue-with-limit next limit))))))
+  :rule-classes nil)
+
+(defthm fn-pio-bounded-file-refusal-preserves-counter
+  (implies (not (equal (mv-nth 0 (fn-pio-file-issue-with-limit next limit)) :issued))
+           (and (equal (mv-nth 1 (fn-pio-file-issue-with-limit next limit)) next)
+                (equal (mv-nth 2 (fn-pio-file-issue-with-limit next limit)) nil))))
+
+(defthm fn-pio-successive-file-issues-have-distinct-identities
+  (let* ((next1 (mv-nth 1 (fn-pio-file-issue next)))
+         (first-id (mv-nth 2 (fn-pio-file-issue next)))
+         (second-id (mv-nth 2 (fn-pio-file-issue next1))))
+    (implies (eq (mv-nth 0 (fn-pio-file-issue next)) :issued)
+             (and (eq (mv-nth 0 (fn-pio-file-issue next1)) :issued)
+                  (posp first-id) (posp second-id) (< first-id second-id))))
+  :rule-classes nil)
+
+; A reaper quantum inspects one owned worker, not the whole pool. These
+; are work limits/OS-observation decisions, never ceilings on stored data.
+(defun fn-pio-reap-work ()
+  (declare (xargs :guard t))
+  1)
+
+(defun fn-pio-worker-death-step (deadp)
+  (declare (xargs :guard (booleanp deadp)))
+  (if deadp :settle :rotate))
 
 (in-theory (disable fn-pio-rowp fn-pio-token fn-pio-complete fn-pio-cancel
                     fn-pio-file-clear-p fn-pio-issue))
