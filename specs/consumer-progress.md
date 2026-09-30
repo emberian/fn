@@ -1077,3 +1077,17 @@ the adopted rows and returns the exact requested live account. These constituent
 proofs do not establish universal begin/stage construction, carried size metadata,
 cold provenance, funding or actual owner publication. Served callers consume the
 maintained relation; they never execute its whole-graph predicates.
+
+The current-account request boundary consumes the owner's single committed
+publication tuple, checking its process epoch, authority namespace/revision and
+completed-fence count against current CP7 and Store count. A missing or stale
+publication is unavailable; it never authorizes an empty default configuration.
+Every request and WAIT wake resolves its explicit login in the committed exact
+trie and performs the existing credential comparison anew, returning that
+account's principal and durable creation token. Equal passwords do not substitute
+accounts. Publication freshness checks are bounded scalar checks; the owner
+producer must establish the complete root relation to current adopted CP7 rows.
+A valid-looking phantom credential demonstrates why shape alone is insufficient.
+Parsed request-byte funding precedes credential hashing. The selected actual
+owner read wrapper is source assembly only: installed publication, metadata
+funding, resumable current readscope and the TLS FNCR endpoint remain open.
