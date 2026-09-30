@@ -17598,7 +17598,7 @@
     {
       "id": "PRF-1065",
       "title": "Token-bound cold read resource admission, joined completion, cache and incarnation lifetime",
-      "statement": "Subject fn-prl-admit in books/page-read-ledger.lisp, called by the guard-verified fn-owner-page-read-admit adapter in host/page-read-host.lisp: fn-prl-admit-preserves-pool-funding establishes the installed cold-pool vector is funded after every admitted issue. fn-prl-completion-refunds-at-most-once is unconditional: repeating settlement of the complete immutable token is stale and changes nothing. fn-prl-settle-never-reuses-identity retains the process-local counter. Cache settlement releases only the supplied native worker demand; buffer/bookkeeping credits persist until eviction. These are pool transition claims, not an allocator refinement or full P12 rescue theorem. Native issuance/publication, physically dead joined workers, physical incarnation close, measured persistent hash-capacity baseline, supported profile/launcher and checkpoint/recovery/suffix rescue remain open.",
+      "statement": "Subject fn-prl-admit in books/page-read-ledger.lisp, called by the guard-verified fn-owner-page-read-admit adapter in host/page-read-host.lisp: fn-prl-admit-preserves-pool-funding establishes the installed cold-pool vector, including its permanent baseline, is funded after every admitted issue. Persistent install rejects an unfunded baseline before changing the pool; lifecycle transitions retain that baseline while job settlement releases only its execution lease. fn-prl-completion-refunds-at-most-once is unconditional: repeating settlement of the complete immutable token is stale and changes nothing. fn-prl-settle-never-reuses-identity retains the process-local counter. Cache settlement releases only the supplied native worker demand; buffer/bookkeeping credits persist until eviction. These are pool transition claims, not an allocator refinement or full P12 rescue theorem. Native issuance/publication, physically dead joined workers, physical incarnation close, measured persistent hash-capacity baseline, supported profile/launcher and checkpoint/recovery/suffix rescue remain open. fn-prd-admit in books/page-discovery-ledger.lisp is called by fn-owner-page-read-discovery-admit: the distinct unverified discovery lease has no fabricated trailer and also establishes funded pool admission. It holds its file incarnation until explicit release after all borrowed charged buffers are relinquished; it cannot settle into the verified cache. Explicit offline/served lifecycle prevents an absent pool from authorizing offline reads. Natural token fields wider than fixnums are charged by the selected runtime layout model, independently of extent length.",
       "milestone": "M5",
       "requirements": [
         "STO-020"
@@ -17609,16 +17609,21 @@
       "events": [
         "fn-prl-admit-preserves-pool-funding",
         "fn-prl-completion-refunds-at-most-once",
-        "fn-prl-settle-never-reuses-identity"
+        "fn-prl-settle-never-reuses-identity",
+        "fn-prd-admit-preserves-pool-funding"
       ],
       "evidence": [
         "books/page-read-resources.lisp",
         "books/page-read-ledger.lisp",
         "host/page-read-host.lisp",
         "tests/acl2/page-read-ledger-tests.lisp",
-        "tests/acl2/page-read-host-tests.lisp"
+        "tests/acl2/page-read-host-tests.lisp",
+        "books/page-discovery-ledger.lisp",
+        "books/cold-read-layout.lisp",
+        "tests/acl2/page-discovery-ledger-tests.lisp",
+        "tests/acl2/cold-read-layout-tests.lisp"
       ],
-      "progress_note": "paged-history-5: clean source REPL g61phledgerteethclean (34 forms), g61phhostteeth (6 forms), 0 refused; adapter functions common-lisp-compliant. No committed certification manifest or native verdict yet. SCN-1002 specifies actual boundary observations."
+      "progress_note": "Clean source sessions: baseline27/pureteeth48/adapter18; selected layout p12layout16forms; discovery p12discovery6forms and p12discoveryteeth16forms; final lifecycle/discovery adapter p12modehostclean26forms, all zero refused. Native configuration/startup and lifetime call sites are separate physical-owner integration; no matching image/native verdict or full Store rescue claim."
     },
     {
       "id": "PRF-1073",

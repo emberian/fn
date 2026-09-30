@@ -194,6 +194,8 @@
 (include-book "../../books/store-log-walk-once")
 (include-book "../../books/store-log-extend")
 (include-book "../../books/store-init-log-publication")
+(include-book "../../books/page-discovery-ledger")
+(include-book "../../books/cold-read-layout")
 (include-book "../../host/page-read-host")
 (include-book "../../books/page-read-executor")
 (include-book "../../books/history-columns-relation")

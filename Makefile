@@ -590,6 +590,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/page-read-resources \
 	tests/acl2/page-read-resources-tests \
 	books/page-read-ledger \
+	books/page-discovery-ledger \
+	books/cold-read-layout \
+	tests/acl2/page-discovery-ledger-tests \
+	tests/acl2/cold-read-layout-tests \
 	books/page-read-ownership \
 	tests/acl2/page-read-ownership-tests \
 	books/page-read-executor \
