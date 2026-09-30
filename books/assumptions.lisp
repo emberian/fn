@@ -514,3 +514,5 @@
 
   (defthm fn-pgs-fill-realize-is-page-words
     (equal (fn-pgs-fill-realize file addr) (fn-pgs-page-words file addr))))
+
+(include-book "assumptions-selected-runtime-allocation-geometry") ; PRF-1155 conditional ordinary allocator unit
