@@ -6978,6 +6978,33 @@
         "tests/acl2/identity-reserve-trace-tests.lisp"
       ],
       "evidence_note": "Persistent source 13 literal assertions pass, including actual nonempty undertaking/opened near ceiling, ordinary post-reservation burn then protected refusal, authorized release and wrong-purpose/changed-operation refusal, exact grant binding and terminal release failure. Remaining scenario branches are not completed; hybrid runtime adapter and hostload pending. Protected ordinary-refusal trace component now composes the actual fn-idr-reservation gate with fn-sn-refuse-reservation/fn-olr-sn-reserve. Under ready-state and already-funded release headroom, arbitrary bounded traces preserve both readiness and promised identity headroom; records/groups/capacity are an unconditional frame. Fresh idrt2 source replay passed four literal witnesses, including both hypothesis removals. This logical reference driver is not guard-verified or served; host incarnation, local grants and full continuation remain open."
+    },
+    {
+      "id": "SCN-1049",
+      "title": "Yielded POST input cannot be refilled cleared or released while ordinary receives progress",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "RET-010",
+        "STO-020"
+      ],
+      "steps": [
+        "Admit the exact incoming holder from the shared funded pool before frontier reservation and buffer setup, seal it, then yield a query.",
+        "Attempt native refill/clear/release and every abstract/concrete mutation from unrelated ordinary and maintenance jobs; continue ordinary receive service through its separately funded congruent buffer.",
+        "Cancel the query while aliases remain, then separately observe query return and final alias clearing; exercise stale token, duplicate release and exhausted namespace."
+      ],
+      "expected": [
+        "ACL2 permits only exact holder setup before seal and exact authorized readonly dispatch afterward. Live/cancelled held input and binding/groups/inflight references remain unchanged.",
+        "Ordinary receives remain bounded by the existing connection quantum and do not copy retained POST payload; complete permanent/source-overlap/runtime/startup demand is paid before allocation.",
+        "Cancellation alone never refunds or frees backing. Exact completed-and-cleared settlement releases reusable charge once, retains spent identity, and stale/duplicate operations cannot steal ownership."
+      ],
+      "evidence": [
+        "books/incoming-octet-holder.lisp",
+        "tests/acl2/incoming-octet-holder-tests.lisp",
+        "books/receive-octet-buffer.lisp",
+        "specs/retention.md"
+      ],
+      "evidence_note": "Three unactivated source assertions pass for shared identity, seal/mutation exclusion, cancellation-held settlement and stale/concurrent attempts. Actual native routes and receive liveness/funding remain incomplete."
     }
   ]
 }

@@ -18927,6 +18927,29 @@
         "tests/acl2/owner-identity-prepare-tests.lisp"
       ],
       "progress_note": "Clean protected pinned idr6 source admission evaluates all 13 literal assertions (33 fixture forms), 1.89 ACL2 seconds / 6,918 steps. Gate definitions guard-verified; ordinary/undertake/release headroom and exact successor theorems admitted, not certified. Actual native ordinary gate/refusal and owner exact-grant consumption pass 2/2 hybrid runtime tests, 0 skips, on historical published 6462 image with exact changed definitions loaded. Whole native bare load 47/47 has zero findings; this is not a matching certified-world/current-image claim. Reinstall and rewritten-owner swap explicitly clear ephemeral grant. Root preserves PRF269/number-durability: logged/fenced IDs are issued; neverlogged FNFD correlation metadata may reuse a speculative number across crash after complete reconciliation. OPEN: composed host/crash/refinement, stale callback/incarnation and existing-prefix recovery joins, local read census/grants, selected profile/codec width agreement, and full alpha(L,R) continuation. Protected ordinary-refusal trace component now composes the actual fn-idr-reservation gate with fn-sn-refuse-reservation/fn-olr-sn-reserve. Under ready-state and already-funded release headroom, arbitrary bounded traces preserve both readiness and promised identity headroom; records/groups/capacity are an unconditional frame. Fresh idrt2 source replay passed four literal witnesses, including both hypothesis removals. This logical reference driver is not guard-verified or served; host incarnation, local grants and full continuation remain open. Actual fused fn-idrp-prepare-retention is now guard-verified in fresh idrp3 matching source dependencies; complete four-value output/effect theorem and three literal assertions pass. Denied grant cannot reinstall owner. Source admission167.20s/20,090,841steps; current-image qualification and composed recovery remain open."
+    },
+    {
+      "id": "PRF-1143",
+      "title": "Exclusive incoming octet ownership preserves yielded query input and funded receive service",
+      "statement": "Prove the host-called shared-pool incoming holder reserve, setup, seal, cancellation and settlement boundary with a typed fixed-shape token allocated from the single PRL namespace. Seal prevents every native and abstract/concrete mutation until the exact query and retained aliases join. Cancellation retains the charged slot. Preserve ordinary command service with a separate congruent receive buffer using the existing supported connection read quantum, with actual permanent backing, source overlap, primitive workspace and startup demands funded before allocation. No POST payload copy or arbitrary data ceiling. Actual readonly dispatch authorization and all mutation hooks are ACL2 decisions; use named representation/refinement and composed lifetime theorems.",
+      "milestone": "M5",
+      "requirements": [
+        "RET-010",
+        "STO-020"
+      ],
+      "depends_on": [
+        "PRF-1134",
+        "PRF-1057"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/incoming-octet-holder.lisp",
+        "tests/acl2/incoming-octet-holder-tests.lisp",
+        "books/receive-octet-buffer.lisp",
+        "specs/retention.md"
+      ],
+      "progress_note": "Unactivated holder algebra uses shared PRL budget/baseline/charged/NEXT with an exclusive constant-access slot, fixed two-field token validation and no binding-list scans. Fresh ioh4 source guards/theorems and three literal assertions pass1.25s/309900steps. Supplied demand is not an actual constructor census. Actual readonly subject mapping, host mutator/dispatch routes, permanent-capacity promotion, receive constructor/runtime/startup envelope and composed cancellation/alias observations remain open."
     }
   ]
 }

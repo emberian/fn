@@ -280,3 +280,12 @@ consumer/topic, configuration, keyring evidence and indexes. Its spent file
 frontier and node next-txid remain resource effects outside that frame. This
 partial frame does not establish full reclaim/recovery alpha(L,R), stale host
 callback exclusion, arena relocation or retirement-debt discharge.
+
+PRF-1143 / SCN-1049 specify the exclusive incoming octet holder for yielded
+POST identity queries. Its typed fixed-shape token uses the same process-local
+resource namespace and charge as reads. A carried exclusive slot permits only
+owned setup, then sealed readonly access; cancellation retains ownership until
+query return and last-alias clearing. Ordinary receive service needs a distinct
+funded congruent buffer at the existing connection read quantum. These source
+components remain unactivated pending actual readonly dispatch, all native and
+concrete mutation hooks, constructor census and complete startup/runtime funding.

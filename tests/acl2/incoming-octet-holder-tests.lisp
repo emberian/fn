@@ -1,0 +1,40 @@
+(in-package "ACL2")
+(include-book "../../books/incoming-octet-holder")
+(defconst *ioh-ledger* (fn-prl-make '(4096 0 0 0 8)))
+(defconst *ioh-admitted* (mv-list 4 (fn-ioh-admit *ioh-ledger* nil '(256 0 0 0 1))))
+(defconst *ioh-token* (mv-nth 1 *ioh-admitted*))
+(defconst *ioh-live-ledger* (mv-nth 2 *ioh-admitted*))
+(defconst *ioh-slot* (mv-nth 3 *ioh-admitted*))
+(defconst *ioh-sealed* (mv-nth 1 (mv-list 2 (fn-ioh-seal *ioh-slot* *ioh-token*))))
+; Complete positive identity and operational exclusion witness.
+(assert-event
+ (and (equal (mv-nth 0 *ioh-admitted*) :admitted)
+      (equal *ioh-token* '(:incoming 0))
+      (equal (fn-prl-nth 2 *ioh-live-ledger*) 1)
+      (equal (fn-ioh-access *ioh-slot* *ioh-token* :mutate) :holder-setup)
+      (equal (fn-ioh-access *ioh-sealed* *ioh-token* :read) :holder-readonly)
+      (equal (fn-ioh-access *ioh-sealed* *ioh-token* :mutate) :incoming-busy)
+      (equal (fn-ioh-access *ioh-sealed* nil :read) :incoming-busy)))
+(defconst *ioh-cancelled* (mv-nth 1 (mv-list 2 (fn-ioh-cancel *ioh-sealed* *ioh-token*))))
+; Cancellation retains both row and charge; neither return nor alias loss alone
+; refunds. The final joined-and-cleared release keeps the spent ID.
+(assert-event
+ (and (equal (fn-ioh-access *ioh-cancelled* *ioh-token* :mutate) :incoming-busy)
+      (equal (mv-list 3 (fn-ioh-release *ioh-live-ledger* *ioh-cancelled* *ioh-token* t nil))
+             (list :incoming-held *ioh-live-ledger* *ioh-cancelled*))
+      (equal (mv-list 3 (fn-ioh-release *ioh-live-ledger* *ioh-cancelled* *ioh-token* nil t))
+             (list :incoming-held *ioh-live-ledger* *ioh-cancelled*))
+      (equal (mv-nth 0 (mv-list 3 (fn-ioh-release *ioh-live-ledger* *ioh-cancelled* *ioh-token* t t)))
+             :released)
+      (equal (fn-prl-nth 1 (mv-nth 1 (mv-list 3 (fn-ioh-release *ioh-live-ledger* *ioh-cancelled* *ioh-token* t t))))
+             '(0 0 0 0 1))
+      (equal (fn-prl-nth 2 (mv-nth 1 (mv-list 3 (fn-ioh-release *ioh-live-ledger* *ioh-cancelled* *ioh-token* t t)))) 1)))
+; Stale token, duplicate release, and concurrent admission cannot steal a slot.
+(assert-event
+ (and (equal (mv-list 3 (fn-ioh-release *ioh-live-ledger* *ioh-cancelled* '(:incoming 1) t t))
+             (list :incoming-held *ioh-live-ledger* *ioh-cancelled*))
+      (equal (mv-nth 0 (mv-list 4 (fn-ioh-admit *ioh-live-ledger* *ioh-cancelled* '(256 0 0 0 1))))
+             :incoming-busy)
+      (equal (mv-nth 2 (mv-list 4 (fn-ioh-admit *ioh-live-ledger* *ioh-cancelled* '(256 0 0 0 1))))
+             *ioh-live-ledger*)
+      (equal (mv-nth 0 (mv-list 3 (fn-ioh-release *ioh-live-ledger* nil *ioh-token* t t))) :incoming-held)))
