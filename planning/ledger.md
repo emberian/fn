@@ -10,15 +10,15 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1975 |
+| Books read | 1977 |
 | Certification roots in the Makefile | 1866 |
 | Books inside the root closure | 1938 |
-| `defthm` and `defthmd` events | 30239 |
-| `defun` events | 19284 |
+| `defthm` and `defthmd` events | 30249 |
+| `defun` events | 19290 |
 | Functions with verified guards | 3547 |
-| Functions declared `:verify-guards nil` and never verified | 2348 |
-| Functions left at the default with an explicit guard | 10526 |
-| Functions left at the default with no guard | 2863 |
+| Functions declared `:verify-guards nil` and never verified | 2350 |
+| Functions left at the default with an explicit guard | 10527 |
+| Functions left at the default with no guard | 2866 |
 | `assert-event` checks | 24064 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 348 |
 | Enabled-projection warnings | 55 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2710 |
+| Include-hygiene warnings | 2712 |
 | Host-names warnings | 2193 |
 | Hand-written-record warnings | 18 |
 
@@ -717,6 +717,7 @@ that `make certify` requests.
 | `books/over-row-piece-shape.lisp` | closure | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/over-row-pieces.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/over-row-state.lisp` | closure | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/over-selected-byte-demand.lisp` | - | 4 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/over-selected-held-cell.lisp` | - | 8 | 4 | 1/0/3/0 | 0 | 0 | 0 |
 | `books/over-selected-source-carry.lisp` | - | 11 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/over-window.lisp` | root | 30 | 6 | 1/3/2/0 | 0 | 0 | 0 |
@@ -1691,6 +1692,7 @@ that `make certify` requests.
 | `tests/acl2/over-held-row-carry-tests.lisp` | - | 3 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `tests/acl2/over-held-row-establishment-tests.lisp` | - | 6 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `tests/acl2/over-held-row-tests.lisp` | - | 6 | 2 | 0/1/1/0 | 0 | 0 | 0 |
+| `tests/acl2/over-selected-byte-demand-tests.lisp` | - | 6 | 5 | 0/2/0/3 | 0 | 0 | 0 |
 | `tests/acl2/over-selected-held-cell-tests.lisp` | - | 13 | 4 | 0/4/0/0 | 0 | 0 | 0 |
 | `tests/acl2/over-selected-source-carry-tests.lisp` | - | 13 | 5 | 0/3/0/2 | 0 | 0 | 0 |
 | `tests/acl2/over-window-tests.lisp` | root | 6 | 2 | 0/0/0/2 | 0 | 0 | 0 |
