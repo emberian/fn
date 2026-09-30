@@ -328,3 +328,27 @@ assertions and the fresh proof-body replay are recorded in
 Full pool/column/data, private digest/spool/root and progress, FD/source
 authority and INITIAL funding remain open. Runtime is unchanged; PRF-1144
 remains planned with no completion events.
+
+The conditional scalar-column carry now reaches the actual `fn-hpi-tick`
+entry in `fn-hpi-column-step-preserves-full-canonical-column-carry`.
+Its two literal premises are the complete `fn-hpicol-writer-ready-p`
+(captured salt, full cursor/census association, and all four canonical
+region suffixes) and an actual `:continue`/`:row-done` result. Canonical
+columns are projections of the existing FNADTSN2 `adt-rows-cells`/transpose
+model; this proof does not introduce another codec. Each accepted column
+preserves all four suffixes and the complete next body/controller, with
+pool, ledger and digest unchanged. The exact row token/encoded ACK and
+completed history/ordinal/padded pool offset advance only at column3.
+The proof-only observers are not host entry points or new guard claims.
+
+Four decoded-source trajectory positives assert the complete literal
+antecedent and conclusion. Each first establishes that full baseline before
+a separately labelled frozen-salt corruption or retained-receipt removal;
+the other premise holds and the complete conclusion fails. Expected body
+comes from independently executing the actual inner function and restoring
+every test buffer word/metadata before calling the outer subject. Full pool
+and digest frames are compared. Fresh same-world source evidence is
+`planning/evidence/history-image-body-source-2026-09-30.json`.
+Full source/pool residual, page ACK/reset/padding, private stage/spool/digest
+fidelity, whole-image progress, producer/FD authority, INITIAL and native
+qualification remain open; PRF-1144 remains planned with no cited events.

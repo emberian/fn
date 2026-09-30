@@ -6434,9 +6434,12 @@
         "planning/evidence/history-image-effect-payload-source-2026-09-30.json",
         "books/history-image-front-refinement.lisp",
         "tests/acl2/history-image-front-refinement-tests.lisp",
-        "planning/evidence/history-image-front-source-2026-09-30.json"
+        "planning/evidence/history-image-front-source-2026-09-30.json",
+        "planning/evidence/history-image-body-source-2026-09-30.json",
+        "books/history-image-body-refinement.lisp",
+        "tests/acl2/history-image-body-refinement-tests.lisp"
       ],
-      "execution_scope": "Actual zero/header leading-page canonical invariant and complete page handoff now proved for fn-hpi-tick. Clean source20forms/13locals2.83 ACL2s/410,011steps;12complete reachable trajectory assertions18forms0.16s/1,262steps, including both retained-premise removals for each phase/event and full buffer/digest frames. Header positives drive real zero-page issuance+ACK first. Prior metadata/payload evidence preserved, including explicit uncertified IHS support at payload coordinate. Runtime unchanged d3; full pool/column/data/private digest/spool/root/progress/FD/source authority/INITIAL remain open; PRF1144 planned/events[]."
+      "execution_scope": "Actual zero/header leading-page canonical invariant and complete page handoff now proved for fn-hpi-tick. Clean source20forms/13locals2.83 ACL2s/410,011steps;12complete reachable trajectory assertions18forms0.16s/1,262steps, including both retained-premise removals for each phase/event and full buffer/digest frames. Header positives drive real zero-page issuance+ACK first. Prior metadata/payload evidence preserved, including explicit uncertified IHS support at payload coordinate. Runtime unchanged d3; full pool/column/data/private digest/spool/root/progress/FD/source authority/INITIAL remain open; PRF1144 planned/events[]. Actual four-column carry now reaches fn-hpi-tick: final clean41forms/28locals14.54 ACL2s/2,001,253steps,20fixtureforms/8locals12complete assertions0.25s/4,511steps. Four decoded-source columns each have full positive plus labelled salt and receipt mutations; next body/controller, canonical suffixes, exact row ACK and pool/ledger/digest frames checked. Runtime unchanged; full pool/source/page-reset/padding/private trace/INITIAL/native remain open."
     }
   ]
 }
