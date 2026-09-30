@@ -6582,6 +6582,31 @@
         "specs/history-record-cursor.md"
       ],
       "execution_scope": "Resident tree descriptor, opaque-leaf byte and scalar word-accumulator source libraries only. Scalar byte composition, borrowed cold spans, total census/producer/profile bridge and native qualification remain open."
+    },
+    {
+      "id": "SCN-1009",
+      "title": "Byte-budgeted legacy NOV hydration keeps exact first headers and body facts",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-023"
+      ],
+      "steps": [
+        "Seal an article in the arena and begin a cursor with its handle, length and origin pin. Resume across every byte boundary, including a split CRLF, colon, first value SP and folded line.",
+        "Exercise five selected fields, mixed-case and repeated names, empty initial values completed by folds, TAB versus exactly one initial SP, missing fields and physical lines of 998 and 999 octets.",
+        "Exercise invalid names, orphan folds, empty final fields, missing separator, bare CR/LF, header NUL, body NUL and unterminated body; compare terminal results with fn-hnov-of and fn-hf-body-lines-of.",
+        "Mutate continuation position, source handle, first-header selection and whitespace normalization separately."
+      ],
+      "expected": [
+        "Each tick consumes and reports at most its fuel, preserves handle and pin and makes bounded progress. No final tick walks or copies the full source or field.",
+        "The body count equals the actual catalog function even for a rejected header parse.",
+        "The five spans materialize to the existing first-header NOV semantics. This last general refinement is open; ground fixtures currently supply examples only."
+      ],
+      "evidence": [
+        "books/legacy-parser-cursor.lisp",
+        "books/legacy-parser-reference.lisp",
+        "tests/acl2/legacy-parser-cursor-tests.lisp"
+      ]
     }
   ]
 }
