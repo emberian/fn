@@ -13,7 +13,9 @@ FN_CERTIFY_JOBS ?= 1
 # The wall clock an interactive `ld` gets before tools/acl2 kills it and frees
 # its slot: the brief's three-minute rule, with a minute of slack.
 FN_LD_TIMEOUT_SECONDS ?= 240
-ACL2_BOOKS ?= books/connection-operation-start \
+ACL2_BOOKS ?= books/connection-receiver-source-invariants \
+	tests/acl2/connection-receiver-source-tests \
+	books/connection-operation-start \
 	tests/acl2/connection-operation-start-tests \
 	tests/acl2/connection-operation-cost-tests \
 	tests/acl2/index-connection-start-tests \

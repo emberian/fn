@@ -99,3 +99,17 @@
                     (update-fn-ich-rx-originsi (fn-omk-at 3 holder) origin
                                               fn-ibp-connection-segment)))
                (mv :associated fn-ibp-connection-segment))))))))
+
+; Revoke future turn issuance before the actual close/fault. A separate issued
+; receipt can still retain its immutable origin for terminal custody handling.
+(defun fn-ich-rx-revoke (id holder fn-ibp-connection-segment)
+ (declare (xargs :stobjs fn-ibp-connection-segment :guard t))
+ (let ((row (fn-ich-row holder fn-ibp-connection-segment)))
+  (if (not (and (fn-ich-tokenp holder)
+                (equal id (fn-omk-at 2 row))
+                (member-eq (fn-omk-at 4 row) '(:live :closing))))
+      (mv :stale fn-ibp-connection-segment)
+   (let ((fn-ibp-connection-segment
+          (update-fn-ich-rx-originsi (fn-omk-at 3 holder) nil
+                                    fn-ibp-connection-segment)))
+    (mv :revoked fn-ibp-connection-segment)))))

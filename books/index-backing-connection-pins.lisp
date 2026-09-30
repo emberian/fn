@@ -59,6 +59,9 @@
 (defun fn-ich-event (token operation id value fn-ibp-connection-segment)
  (declare (xargs :stobjs fn-ibp-connection-segment :guard t))
  (case operation
+  (:rx-revoke (mv-let (word fn-ibp-connection-segment)
+              (fn-ich-rx-revoke id token fn-ibp-connection-segment)
+              (mv word nil fn-ibp-connection-segment)))
   (:rx-origin (mv-let (word origin)
               (fn-ich-rx-origin id token fn-ibp-connection-segment)
               (mv word origin fn-ibp-connection-segment)))
