@@ -728,7 +728,12 @@
                                                     (cons :uint n))))
                                              (fn-cbor-encode
                                               (cons :uint n))))))))
-           :in-theory (enable fn-frame-protected fn-frame-header))))
+           ; The codec cluster withdraws the octet recognizer. Open only the
+           ; fixed header's cons cells here; the encoded payload stays opaque
+           ; and is justified by the explicit payload-bound instance above.
+           :in-theory (e/d (fn-frame-protected fn-frame-header
+                            fn-cbor-octet-listp fn-cbor-octetp)
+                           (fn-cbor-encode)))))
 
 (defthm fn-bs-frontier-seal-octet-listp
   (implies (and (natp n) (<= n *fn-cbor-max-uint*))
@@ -804,7 +809,10 @@
                                        (cons *fn-bs-meta-frontier-kind*
                                              (append (fn-cbor-u32-bytes (len p))
                                                      p))))))
-            :in-theory (enable fn-frame-protected fn-frame-header)))))
+            ; As above, the fixed header needs the octet recognizers even
+            ; when the surrounding codec cluster keeps them disabled.
+            :in-theory (enable fn-frame-protected fn-frame-header
+                               fn-cbor-octet-listp fn-cbor-octetp)))))
 
 (local
  (defthm fn-bs-frontier-payload-seal-facts
