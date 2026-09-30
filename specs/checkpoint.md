@@ -349,8 +349,11 @@ the64slots are a representation choice, never an operator data limit.
 
 Current evidence is clean guard admission and literal evaluation across empty,
 block, chunk and uneven tree boundaries including the actual previous word-digest
-entry. PRF-1087 is planned: the general terminal bridge through
-`pgs-x-words-digest-is-blake3`, maintained stream/representation invariant,
-strict progress, concrete allocation demand and actual controller composition
+entry. The proof-only refinement now preserves complete active-frame denotation
+in every phase and conditionally connects a root step to the actual previous
+word digest through `pgs-x-words-digest-is-blake3`. Its captured-source semantic
+carry is still a hypothesis. PRF-1087 remains planned: maintained trajectory
+and representation invariants, strict progress, supported-domain stack
+sufficiency, concrete allocation demand and actual controller composition
 remain open. Ground BLAKE3 agreement establishes neither standard conformance
 nor real cryptographic assumptions. Full S7/P12/D33 completion is unchanged.

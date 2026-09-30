@@ -6382,9 +6382,12 @@
       "evidence": [
         "books/pagestore-digest-cursor.lisp",
         "tests/acl2/pagestore-digest-cursor-tests.lisp",
-        "planning/page-digest-cursor-contract.md"
+        "planning/page-digest-cursor-contract.md",
+        "books/pagestore-digest-cursor-refinement.lisp",
+        "tests/acl2/pagestore-digest-cursor-refinement-tests.lisp",
+        "planning/evidence/page-digest-cursor-refinement-2026-09-30.md"
       ],
-      "execution_scope": "Guard-verified library/source REPL ground evidence only; general terminal/refinement/work/allocation and host composition remain open."
+      "execution_scope": "Guard-verified source library plus clean phase equations and conditional actual-digest terminal bridge. Literal semantic carry and matching-block removal with distinct output mutation pass. Maintained trajectory/progress/domain/allocation and host composition remain open."
     }
   ]
 }

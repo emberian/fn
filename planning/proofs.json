@@ -18059,9 +18059,12 @@
         "tests/acl2/pagestore-digest-cursor-tests.lisp",
         "specs/checkpoint.md",
         "planning/page-digest-cursor-contract.md",
-        "planning/evidence/page-digest-cursor-source-2026-09-30.md"
+        "planning/evidence/page-digest-cursor-source-2026-09-30.md",
+        "books/pagestore-digest-cursor-refinement.lisp",
+        "tests/acl2/pagestore-digest-cursor-refinement-tests.lisp",
+        "planning/evidence/page-digest-cursor-refinement-2026-09-30.md"
       ],
-      "progress_note": "Executable fixed stobj, streaming block core and optional immutable pgs-mem reader are guard-verified in a protected source REPL. Literal empty,64-byte knownvector,1,024-byte chunk,uneven parent/threechunk comparisons to the existing model, actual pgs-x-words-digest comparison, source mutation and corrupted-depth tests pass. General terminal refinement, invariant/progress and concrete allocation proof remain open. No host caller, manifest, image or native evidence, no producer/admission claim. Final fresh pdc7 admits22 book forms and15 test top-level forms,1.21 ACL2 seconds / 707,379 steps; raw logs/source hashes committed. Scope remains source library only."
+      "progress_note": "Guarded fixed-block executable library remains source-only. New proof-only refinement admits all actual step phase denotation equations, split carry, initialization and conditional terminal equality to actual pgs-x-words-digest via its existing BLAKE3 theorem. The semantic carry is a hypothesis; maintained trajectory invariant, progress, supported-domain stack sufficiency, actual allocation and caller composition remain open. Fresh protected pdcrt2 admits22 core forms,61 refinement forms and9 sent test forms with zero refusals:2.09 ACL2 seconds /765,727 steps. Literal reachable node/chunk and terminal positives, matching-block and semantic-carry removal, and separately labelled corrupted output mutation pass. No manifest, image, native or producer/admission claim."
     }
   ]
 }
