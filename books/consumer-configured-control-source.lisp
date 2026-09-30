@@ -25,7 +25,10 @@
 ; Begin from the SAME prefix history lookup used by the existing control
 ; producer. Before every yielded step, the actual caller rechecks current
 ; custody of captured chain root separately from account authority.
-(defun fn-ctcp-article-begin (article files fn-hist chain captured-source)
+; EVENT-UPPER-TXID is actual included E-prefix bound, not last Ctxid. The
+; caller must establish its association to this SAME captured prefix source.
+; Verdict and target locks are retained BEFORE any config-lookup yield.
+(defun fn-ctcp-article-begin (article verdicts files fn-hist chain captured-source event-upper-txid)
  (declare (xargs :stobjs fn-hist :guard t :verify-guards nil))
  (if (not (consp article)) '(:plan nil)
   (let* ((msgid (fn-article-msgid article))
@@ -33,19 +36,26 @@
          (control (if event (fn-hf-control (fn-held-facts (fn-ctl-event-row event))) nil))
          (target (fn-ctl-control-target control)))
    (if (not target) '(:plan nil)
-    (let ((lookup (fn-ccpx-begin chain (fn-store-event-txid event) captured-source)))
-     (if (not (eq (fn-cp-nth 0 lookup) :yield)) lookup
-      (list :yield (list :control-article-lookup msgid target control event
-                         (fn-cp-nth 1 lookup) captured-source))))))))
+    (let ((query (fn-store-event-txid event)))
+     (if (not (and (natp event-upper-txid) (natp query) (<= query event-upper-txid)))
+         '(:unavailable :control-event-source-bound)
+      (let ((lookup (fn-ccpx-begin chain query captured-source)))
+       (if (not (eq (fn-cp-nth 0 lookup) :yield)) lookup
+        (list :yield (list :control-article-lookup msgid target control event
+                           (fn-cp-nth 1 lookup) captured-source
+                           (fn-ctl-lookup-verdict msgid verdicts)
+                           (fn-ctl-control-locks
+                            (fn-ctl-row-control-fx target files fn-hist))))))))))))
 
 ; ONE lookup cell, then the actual withdrawal-plan/tlocks constructors using
-; exactly that selected historical config. Never call ordinary FnCTLConfigAt
+; exactly that selected historical config and the saved original verdict/locks.
+; No fresh history/verdict reads after yield. Never call ordinary FnCTLConfigAt
 ; on typed C evidence. Verdict/source representation and per-step allocation
 ; relation remain obligations of the actual owner/recovery caller.
-(defun fn-ctcp-article-step (cursor verdicts files fn-hist)
- (declare (xargs :stobjs fn-hist :guard t :verify-guards nil))
- (if (not (and (fn-cbor-at-mostp cursor 7) (true-listp cursor)
-               (equal (len cursor) 7) (eq (fn-cp-nth 0 cursor) :control-article-lookup)))
+(defun fn-ctcp-article-step (cursor)
+ (declare (xargs :guard t :verify-guards nil))
+ (if (not (and (fn-cbor-at-mostp cursor 9) (true-listp cursor)
+               (equal (len cursor) 9) (eq (fn-cp-nth 0 cursor) :control-article-lookup)))
      '(:refused :control-article-cursor)
   (let ((one (fn-ccpx-tick (fn-cp-nth 5 cursor))))
    (cond ((eq (fn-cp-nth 0 one) :yield)
@@ -56,9 +66,9 @@
                 (control (fn-cp-nth 3 cursor)))
            (list :plan
              (fn-ctl-w-with-tlocks
-              (fn-ctl-withdrawal-plan msgid (fn-ctl-lookup-verdict msgid verdicts)
+              (fn-ctl-withdrawal-plan msgid (fn-cp-nth 7 cursor)
                                      target (fn-ctl-control-keys control) (fn-cp-nth 1 one))
-              (fn-ctl-control-locks (fn-ctl-row-control-fx target files fn-hist)))
+              (fn-cp-nth 8 cursor))
              one)))))))
 
 (in-theory (disable fn-capr-config-step-with-projection

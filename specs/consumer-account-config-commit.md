@@ -125,3 +125,12 @@ completion. Existing high `fn-capr-event-step` still refuses the typed source
 until that completion is installed; it cannot replay a marker through ordinary
 `fn-ctl-config-at`. Verdict lookup, scalar/runtime envelopes and new retained
 projection graph lifetime remain actual caller obligations.
+
+The high control continuation now retains the exact original verdict and
+target-lock inputs before yielding historical configuration lookup, in fixed9
+`(:control-article-lookup msgid target control event lookup captured-source
+verdict target-locks)`. `fn-ctcp-article-step(cursor)` performs no fresh history
+or verdict read. Begin refuses an event query above the actual captured
+E-prefix upper txid; this bound is independent of last Ctxid. The actual caller
+must establish the bound's same-source association and recheck custody of all
+retained inputs. These changes remain high-source drafts, not a custody proof.
