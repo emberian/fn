@@ -64,5 +64,8 @@
   (sb-ext:exit :code 0))
 (sb-ext:gc :full t)
 (format t "~&XL built; dynamic usage ~,1f MiB~%" (/ (sb-kernel:dynamic-usage) 1048576.0))
-(sb-ext:save-lisp-and-die (cl-user::xl-path "fn-core") :toplevel #'cl-user::xl-toplevel
-                          :executable t :save-runtime-options t)
+;; Keep the existing native launcher/core packaging contract. SBCL handles
+;; command-line options, then the generated launcher calls XL-TOPLEVEL. A
+;; runtime identity probe can consequently exit without starting fn.
+(sb-ext:save-lisp-and-die (cl-user::xl-path "fn-core.core")
+                        :toplevel #'sb-impl::toplevel-init :executable nil)

@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1879 |
-| Certification roots in the Makefile | 1796 |
-| Books inside the root closure | 1872 |
-| `defthm` and `defthmd` events | 29587 |
-| `defun` events | 18964 |
+| Books read | 1886 |
+| Certification roots in the Makefile | 1804 |
+| Books inside the root closure | 1882 |
+| `defthm` and `defthmd` events | 29624 |
+| `defun` events | 18999 |
 | Functions with verified guards | 3516 |
-| Functions declared `:verify-guards nil` and never verified | 2286 |
-| Functions left at the default with an explicit guard | 10327 |
-| Functions left at the default with no guard | 2835 |
-| `assert-event` checks | 23946 |
+| Functions declared `:verify-guards nil` and never verified | 2292 |
+| Functions left at the default with an explicit guard | 10349 |
+| Functions left at the default with no guard | 2842 |
+| `assert-event` checks | 24003 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
 | Theorems flagged SUSPECT by shape | 1249 |
-| Export-hygiene warnings | 339 |
+| Export-hygiene warnings | 342 |
 | Enabled-projection warnings | 55 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2591 |
+| Include-hygiene warnings | 2593 |
 | Host-names warnings | 2156 |
 | Hand-written-record warnings | 18 |
 
@@ -343,7 +343,7 @@ that `make certify` requests.
 | `books/catalog-record.lisp` | root | 29 | 16 | 1/0/13/2 | 0 | 0 | 0 |
 | `books/catalog-refresh.lisp` | root | 17 | 3 | 0/0/3/0 | 0 | 0 | 3 |
 | `books/catalog-relation.lisp` | root | 42 | 8 | 1/1/4/2 | 0 | 0 | 10 |
-| `books/catalog-row-article.lisp` | closure | 3 | 1 | 1/0/0/0 | 0 | 0 | 3 |
+| `books/catalog-row-article.lisp` | root | 3 | 1 | 1/0/0/0 | 0 | 0 | 3 |
 | `books/catalog-view.lisp` | root | 18 | 11 | 4/0/6/1 | 0 | 0 | 0 |
 | `books/catalog.lisp` | root | 385 | 131 | 14/20/70/27 | 0 | 0 | 7 |
 | `books/cbor-invariants.lisp` | root | 73 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -470,10 +470,12 @@ that `make certify` requests.
 | `books/history-columns-relation.lisp` | root | 12 | 5 | 0/0/1/4 | 0 | 0 | 0 |
 | `books/history-columns-store.lisp` | root | 18 | 6 | 6/0/0/0 | 0 | 0 | 1 |
 | `books/history-columns.lisp` | root | 78 | 26 | 2/1/17/6 | 0 | 0 | 2 |
+| `books/history-decode-completion.lisp` | closure | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/history-decode-cursor.lisp` | root | 7 | 5 | 1/0/4/0 | 0 | 0 | 0 |
 | `books/history-decode-nodes.lisp` | root | 4 | 6 | 0/0/5/1 | 0 | 0 | 0 |
 | `books/history-decode-refinement.lisp` | root | 63 | 15 | 0/0/0/15 | 0 | 0 | 1 |
 | `books/history-decode-shape.lisp` | root | 28 | 5 | 0/0/0/5 | 0 | 0 | 1 |
+| `books/history-decode-size.lisp` | closure | 15 | 14 | 0/0/12/2 | 0 | 0 | 0 |
 | `books/history-decode-stream.lisp` | root | 12 | 10 | 1/0/9/0 | 0 | 0 | 0 |
 | `books/history-decoded-record-cursor.lisp` | root | 17 | 7 | 0/3/4/0 | 0 | 0 | 1 |
 | `books/history-fold-refinement.lisp` | closure | 29 | 4 | 1/0/3/0 | 0 | 0 | 3 |
@@ -675,7 +677,7 @@ that `make certify` requests.
 | `books/over-byte-old-row-relation.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/over-byte-parser-relation.lisp` | root | 11 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/over-byte-row-relation.lisp` | root | 16 | 0 | 0/0/0/0 | 0 | 0 | 1 |
-| `books/over-byte-selected-row-relation.lisp` | - | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/over-byte-selected-row-relation.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/over-cursor-shape.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 1 |
 | `books/over-row-pieces.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/over-window.lisp` | root | 30 | 6 | 1/3/2/0 | 0 | 0 | 0 |
@@ -964,7 +966,7 @@ that `make certify` requests.
 | `books/served-plan.lisp` | root | 31 | 21 | 0/1/20/0 | 0 | 0 | 2 |
 | `books/served-reply-buffer.lisp` | root | 8 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/served-scan.lisp` | root | 12 | 2 | 1/1/0/0 | 0 | 0 | 3 |
-| `books/served-selected-article.lisp` | closure | 3 | 2 | 1/0/1/0 | 0 | 0 | 0 |
+| `books/served-selected-article.lisp` | root | 3 | 2 | 1/0/1/0 | 0 | 0 | 0 |
 | `books/served-span.lisp` | root | 13 | 5 | 1/0/4/0 | 0 | 0 | 0 |
 | `books/served-tls-prefix.lisp` | root | 47 | 11 | 1/3/7/0 | 0 | 0 | 2 |
 | `books/served.lisp` | root | 171 | 89 | 7/5/77/0 | 0 | 0 | 53 |
@@ -1087,6 +1089,7 @@ that `make certify` requests.
 | `books/store-retention-codec-invariants.lisp` | root | 21 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/store-sweep.lisp` | root | 37 | 17 | 2/0/14/1 | 0 | 0 | 1 |
 | `books/store-tree-codec.lisp` | closure | 41 | 30 | 4/6/20/0 | 0 | 0 | 0 |
+| `books/store-tree-size.lisp` | closure | 12 | 11 | 0/2/9/0 | 0 | 0 | 0 |
 | `books/stx-accept-records.lisp` | root | 16 | 22 | 10/0/12/0 | 0 | 0 | 0 |
 | `books/stx-authority.lisp` | root | 3 | 3 | 0/0/3/0 | 0 | 0 | 2 |
 | `books/stx-carrier.lisp` | root | 56 | 31 | 8/0/23/0 | 0 | 0 | 0 |
@@ -1457,9 +1460,11 @@ that `make certify` requests.
 | `tests/acl2/history-columns-relation-tests.lisp` | root | 5 | 0 | 0/0/0/0 | 2 | 1 | 0 |
 | `tests/acl2/history-columns-store-tests.lisp` | root | 2 | 3 | 0/2/1/0 | 16 | 2 | 0 |
 | `tests/acl2/history-columns-tests.lisp` | root | 10 | 9 | 0/0/7/2 | 14 | 4 | 0 |
+| `tests/acl2/history-decode-completion-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 4 | 0 | 0 |
 | `tests/acl2/history-decode-cursor-tests.lisp` | root | 1 | 2 | 0/2/0/0 | 15 | 0 | 0 |
 | `tests/acl2/history-decode-refinement-tests.lisp` | root | 20 | 1 | 0/1/0/0 | 4 | 0 | 0 |
 | `tests/acl2/history-decode-shape-tests.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `tests/acl2/history-decode-size-tests.lisp` | root | 1 | 5 | 0/1/0/4 | 39 | 0 | 0 |
 | `tests/acl2/history-decoded-record-cursor-tests.lisp` | root | 1 | 6 | 0/6/0/0 | 25 | 0 | 0 |
 | `tests/acl2/history-fold-refinement-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 30 | 1 | 0 |
 | `tests/acl2/history-image-binding-tests.lisp` | root | 1 | 31 | 0/24/1/6 | 37 | 0 | 0 |
@@ -1608,9 +1613,10 @@ that `make certify` requests.
 | `tests/acl2/open-one-pass-tests.lisp` | root | 0 | 8 | 0/6/0/2 | 56 | 1 | 0 |
 | `tests/acl2/outcome-class-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 37 | 7 | 0 |
 | `tests/acl2/over-byte-cursor-tests.lisp` | root | 1 | 6 | 0/5/0/1 | 11 | 0 | 0 |
+| `tests/acl2/over-byte-old-row-relation-tests.lisp` | root | 7 | 3 | 0/2/0/1 | 0 | 0 | 0 |
 | `tests/acl2/over-byte-parser-relation-tests.lisp` | root | 5 | 5 | 0/5/0/0 | 3 | 0 | 0 |
 | `tests/acl2/over-byte-row-relation-tests.lisp` | root | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `tests/acl2/over-byte-selected-row-relation-tests.lisp` | - | 10 | 3 | 0/2/0/1 | 0 | 0 | 0 |
+| `tests/acl2/over-byte-selected-row-relation-tests.lisp` | root | 10 | 3 | 0/2/0/1 | 0 | 0 | 0 |
 | `tests/acl2/over-window-tests.lisp` | root | 6 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/owner-ack-after-barrier-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 40 | 0 | 0 |
 | `tests/acl2/owner-advance-carried-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 64 | 16 | 0 |
@@ -1811,7 +1817,7 @@ that `make certify` requests.
 | `tests/acl2/served-plan-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 39 | 8 | 0 |
 | `tests/acl2/served-reply-buffer-tests.lisp` | root | 0 | 4 | 0/0/4/0 | 7 | 2 | 0 |
 | `tests/acl2/served-scan-tests.lisp` | root | 0 | 18 | 0/15/0/3 | 22 | 0 | 0 |
-| `tests/acl2/served-selected-article-tests.lisp` | - | 6 | 3 | 0/2/1/0 | 1 | 0 | 0 |
+| `tests/acl2/served-selected-article-tests.lisp` | root | 6 | 3 | 0/2/1/0 | 1 | 0 | 0 |
 | `tests/acl2/served-span-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 1 | 3 | 0 |
 | `tests/acl2/served-tests.lisp` | root | 0 | 4 | 0/2/0/2 | 118 | 0 | 0 |
 | `tests/acl2/served-tls-prefix-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 9 | 1 | 0 |
@@ -1918,6 +1924,7 @@ that `make certify` requests.
 | `tests/acl2/store-replay-bound-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/store-retention-codec-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 1 | 0 |
 | `tests/acl2/store-sweep-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 33 | 0 | 0 |
+| `tests/acl2/store-tree-size-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
 | `tests/acl2/stx-accept-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 30 | 0 | 0 |
 | `tests/acl2/stx-evidence-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 2 | 0 |
 | `tests/acl2/stx-keyring-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 30 | 0 | 0 |

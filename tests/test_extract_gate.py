@@ -221,7 +221,7 @@ elif role == "core":
     os.makedirs(k, exist_ok=True)
     if FAULT == "core-build-exit":
         print("stand-in core build failing"); sys.exit(3)
-    for n in ("core.json", "defs.lisp", "packages.lisp", "core-world.lisp", "host-block.lisp"):
+    for n in ("core.json", "defs.lisp", "packages.lisp", "core-world.lisp", "host-block.lisp", "fn-core.core"):
         open(os.path.join(k, n), "w").write("stand-in\n")
     json.dump({"defun": 3, "star1": 1, "stobj-prim": 0, "host-defined": ["ACL2::FN-SIG-VERIFY"]},
               open(os.path.join(k, "inventory.json"), "w"))
@@ -229,6 +229,31 @@ elif role == "core":
     open(exe, "w").write("#!/bin/sh\nFAKE_CORE=1 exec %s %s sbcl \"$@\"\n" % (sys.executable, os.path.abspath(__file__)))
     os.chmod(exe, 0o755)
     print("core: built (stand-in)")
+
+elif role == "owner":
+    from owner import CASE, OBSERVATIONS
+    out = args[2]
+    os.makedirs(out)
+    if FAULT == "owner-exit":
+        sys.exit(73)
+    observations = {key: "observed" for key in OBSERVATIONS}
+    doc = {"status": "PASS", "case": CASE, "observations_expected": list(OBSERVATIONS),
+           "sides": {label: {"observations": dict(observations)} for label in ("image", "core")}}
+    products = {label: {"artifacts": {label: "a" * 64}} for label in ("image", "core")}
+    doc.update(products_before=products, products_after=products)
+    if FAULT == "owner-changed-product":
+        doc["products_after"] = {}
+    if FAULT == "owner-missing-side":
+        del doc["sides"]["core"]
+    if FAULT == "owner-missing-observation":
+        del doc["sides"]["core"]["observations"]["closed"]
+    if FAULT == "owner-differ":
+        doc["sides"]["core"]["observations"]["uncertain"] = "accepted"
+    if FAULT == "owner-fail":
+        doc["status"] = "FAIL"
+    if FAULT == "owner-empty":
+        doc["sides"]["core"]["observations"]["closed"] = ""
+    json.dump(doc, open(os.path.join(out, "owner.json"), "w"))
 
 elif role == "stateful":
     # stand-in for tools/extract/stateful.py IMAGE PROGRAM OUT
@@ -321,10 +346,12 @@ class Fixture:
                                 swarm=[], build=[PY, str(self.standin), "build", str(t)],
                                 ldd=[str(bin_ / "ldd")], cc=["echo", "cc stand-in"],
                                 stateful=[PY, str(self.standin), "stateful"],
+                                owner=[PY, str(self.standin), "owner"],
                                 core=[PY, str(self.standin), "core", str(t)],
                                 store=str(self.store), per=400, source="stand-in")
         self.env = {"FAKE_EXTRACT_DIR": str(ROOT / "tools" / "extract"),
-                    "FAKE_LIBCRYPTO": str(fakelib / "libcrypto.so.3")}
+                    "FAKE_LIBCRYPTO": str(fakelib / "libcrypto.so.3"),
+                    "PYTHONPATH": str(ROOT / "tools" / "extract")}
 
     def run(self, fault=""):
         g = gate.Gate(self.tree, self.image, self.tools)
@@ -368,6 +395,17 @@ class ExtractGateTest(unittest.TestCase):
         done = subprocess.run([PY, "-c", "import hashlib, ssl; hashlib.sha256(b'')"],
                               env=g.env, capture_output=True, text=True)
         self.assertEqual(done.returncode, 0, done.stderr)
+
+    def test_owner_gate_refuses_incomplete_or_disagreeing_runs(self):
+        for fault, reason in (("owner-exit", "exited 73"),
+                              ("owner-changed-product", "fingerprints missing or changed"),
+                              ("owner-missing-side", "both image and core"),
+                              ("owner-missing-observation", "missing owner observations"),
+                              ("owner-differ", "observations differ"),
+                              ("owner-fail", "did not pass"),
+                              ("owner-empty", "missing owner observations")):
+            with self.subTest(fault=fault):
+                self.assertFails(fault, "owner", reason)
 
     def test_clean_run_passes_with_manifests(self):
         rc, out, status, g = self.fx.run("")

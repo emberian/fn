@@ -164,6 +164,67 @@ class HostBindingTests(unittest.TestCase):
         self.assertEqual(doc["entries"][1]["raw_with"], [])
 
 
+class HostReadingTreeTests(unittest.TestCase):
+    """Structural generation agrees without running theorem detectors."""
+
+    def test_lazy_reading_matches_eager_and_tracks_source_changes(self):
+        from tools import ledger, harness_check
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "books").mkdir()
+            (root / "host/native").mkdir(parents=True)
+            (root / "Makefile").write_text("ACL2_BOOKS = books/a\n")
+            book = root / "books/a.lisp"
+            book.write_text('(defun fn-a (x) x)\n(defthm fn-a-id (equal (fn-a x) x))\n')
+            (root / "host/interfaces.lisp").write_text(
+                '(definterface fn-a :class :program :root :extract)\n'
+                '(definterface fn-b :class :program :direct "primitive")\n')
+            (root / "host/build.lisp").write_text(
+                '(defttag :raw)\n(progn! (set-raw-mode t) (load "host/native/io.lisp"))\n')
+            host = root / "host/native/io.lisp"
+            host.write_text("(defun fnn-use (x) (fnn-call 'fn-a x) (fn-b x))\n")
+            with mock.patch.object(ledger, "ROOT", root), \
+                    mock.patch.object(harness_check, "ROOT", root), \
+                    mock.patch.object(ledger, "_TREE_CACHE", None), \
+                    mock.patch.dict("os.environ", {"FN_LEDGER_TREE_CACHE": "0"}):
+                genuine_load = ledger.load_tree
+                snapshots = []
+                for changed in (False, True):
+                    if changed:
+                        book.write_text('(defun fn-b (x) x)\n')
+                        host.write_text("(defun fnn-use (x) (fnn-call 'fn-missing x) (fn-b x))\n")
+                    ledger._TREE_CACHE = None
+                    eager = genuine_load()
+                    with mock.patch.object(ledger, "load_tree", return_value=eager):
+                        expected = interface_emit.host_reading(root)
+                    ledger._TREE_CACHE = None
+                    with mock.patch.object(ledger.Tree, "_all_suspects",
+                                           side_effect=AssertionError("unneeded analysis")), \
+                            mock.patch.object(ledger, "load_tree", wraps=genuine_load) as loader:
+                        actual = interface_emit.host_reading(root)
+                        loader.assert_called_once_with(lazy=True)
+                        self.assertIsNone(ledger._TREE_CACHE[1]._suspects)
+                    self.assertEqual(actual, expected)
+                    decls = interface_emit.declarations(root)
+                    self.assertEqual(interface_emit.render_registry(decls, actual),
+                                     interface_emit.render_registry(decls, expected))
+                    self.assertEqual(interface_emit.findings(decls, actual, root),
+                                     interface_emit.findings(decls, expected, root))
+                    snapshots.append(actual)
+                    # Full theorem analysis still runs when a caller asks for it.
+                    lazy = ledger._TREE_CACHE[1]
+                    with mock.patch.object(lazy, "_all_suspects", wraps=lazy._all_suspects) as analysis:
+                        self.assertEqual(lazy.suspects, eager.suspects)
+                        analysis.assert_called_once_with()
+                self.assertNotEqual(snapshots[0], snapshots[1])
+                self.assertIn("fn-missing", snapshots[1]["dispatched"])
+                self.assertNotIn("fn-a", snapshots[1]["defined"])
+                self.assertIn("fn-b", snapshots[1]["direct"])
+                problems = interface_emit.findings(decls, snapshots[1], root)
+                self.assertTrue(any("fn-a is defined by no book" in p for p in problems))
+                self.assertTrue(any("dispatches fn-missing" in p for p in problems))
+
+
 class GapTests(unittest.TestCase):
     def test_subsystem_prefix_then_file(self):
         self.assertEqual(interface_emit.subsystem("fn-owner-x", {"host/native/bp.lisp"}), "owner")

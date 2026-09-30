@@ -52,6 +52,7 @@ mkdir "$tmp/lib"
 printf mldsa > "$tmp/lib/libfn-mldsa65.so"
 # The COMPRESS DEFLATE compressor beside it (tools/build_deflate.sh).
 printf deflate > "$tmp/lib/libfn-deflate.so"
+printf lz4 > "$tmp/lib/libfn-lz4.so"
 # BLAKE3, fn's digest, from the same lib/ (host/native/digest.lisp).
 printf blake3 > "$tmp/lib/libfn-blake3.so"
 set +e
@@ -74,9 +75,10 @@ test -s "$tmp/root/opt/fn/libexec/fn/runtime/sbcl-home/sbcl.core"
 grep -q '^source_revision=0123456789abcdef$' "$tmp/root/opt/fn/share/fn/native-artifacts.txt"
 grep -q '^profile=production (verified by disabled reader entrypoint)$' "$tmp/root/opt/fn/share/fn/native-artifacts.txt"
 grep -q '^dlopen-requirements: system libcrypto+libssl' "$tmp/root/opt/fn/share/fn/native-artifacts.txt"
-grep -q -- "--core \"$tmp/root/opt/fn/libexec/fn/fn-host.core\"" "$tmp/root/opt/fn/libexec/fn/fn-host"
-grep -q "SBCL_HOME='$tmp/root/opt/fn/libexec/fn/runtime/sbcl-home/'" "$tmp/root/opt/fn/libexec/fn/fn-host"
-grep -q 'ExecStart=@PREFIX@/bin/fn operator @NODE@/fn.toml run' "$tmp/root/opt/fn/share/fn/systemd/fn.service.in"
+grep -Fq -- '--core "$here/fn-host.core"' "$tmp/root/opt/fn/libexec/fn/fn-host"
+grep -Fq 'export SBCL_HOME="$here/runtime/sbcl-home/"' "$tmp/root/opt/fn/libexec/fn/fn-host"
+cmp "$tmp/lib/libfn-lz4.so" "$tmp/root/opt/fn/libexec/fn/lib/libfn-lz4.so"
+grep -q 'ExecStart=@PREFIX@/current/bin/fn operator @NODE@/fn.toml run' "$tmp/root/opt/fn/share/fn/systemd/fn.service.in"
 test -x "$tmp/root/opt/fn/install.sh"
 # One directory (HST-017): a second install into the same PREFIX is refused
 # before anything is written.

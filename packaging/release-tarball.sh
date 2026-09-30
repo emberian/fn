@@ -203,8 +203,13 @@ if [ -z "$frozen" ]; then
   FN_ACL2=$image_acl2 FN_NATIVE_PROFILE=production FN_NATIVE_BUILD=host/native/build.lisp \
     FN_NATIVE_IMAGE=build/fn-host FN_NATIVE_LOG="$work/native-build.log" \
     $wrap sh tools/build_native_host.sh
+  # E1: the ACL2 production image above is the proof reference. The served
+  # product is the extracted bare SBCL core under the same launcher contract.
+  FN_EXTRACT_ACL2=$image_acl2 FN_EXTRACT_IMAGE="$work/src/build/fn-host" \
+    FN_NATIVE_PROFILE=production FN_CORE_OUT="$work/src/build/served" FN_CORE_NAME=fn-host \
+    sh tools/extract/core.sh "$work/src"
   FN_FREEZE_VARIANTS=fn-host FN_FREEZE_RUNTIME=${runtime_from:+$runtime_from/sbcl} \
-    sh packaging/freeze-native-image.sh "$work/src/build" "$work/frozen"
+    sh packaging/freeze-native-image.sh "$work/src/build/served" "$work/frozen"
   frozen=$work/frozen
   stage=$work/stage
   {
