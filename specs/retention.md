@@ -501,3 +501,14 @@ The planned :source-returnable custody phase has no current emitter; NIL actor
 fields, :done, STOPPING and caller joined words cannot create it. Ordinary
 receiver roots and completed incoming POST roots have distinct source/range
 kinds; receiver-only shape checks never impose 4096 on the stored input.
+
+The actual parser evaluator leaves STATE unchanged. Before any install write,
+its SAME RC is recorded in the existing parser root and the phase becomes
+`:parser-installing`; provider capacity is then revoked. The installer reads
+that recorded RC, and finish derives its result from the root rather than a
+caller RC. An escape during cache, credits, owner or exposure publication
+retains the RC/source/claim. Progress records its cursor before publishing
+capacity last; the intervening cut refuses every public consumer. Response
+completion retains revoked capacity until real custody return. Staging adds
+root allocation and old/new overlap to the epoch allocation census; it does
+not create a release, refill, rollback or reclaim receipt.
