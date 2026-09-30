@@ -43,6 +43,8 @@
  (declare (xargs :guard t)) (fn-omk-at 5 request))
 (defun fn-irr-request-holder (request)
  (declare (xargs :guard t)) (fn-omk-at 8 request))
+(defun fn-irr-request-input-source (request)
+ (declare (xargs :guard t)) (fn-omk-at 9 request))
 (defun fn-irr-request-pin (request)
  (declare (xargs :guard t)) (fn-omk-at 2 request))
 (defun fn-irr-request-publication (request)
@@ -66,6 +68,17 @@
       (mv :stale nil)
     (if (fn-irr-receipt-committedp receipt) (mv (fn-omk-at 7 receipt) receipt)
       (mv :pending nil)))))
+
+; Token-only recipient projection BEFORE adoption; never a source tuple input.
+; The receiver transfer also checks its actual live filled source/claim.
+(defun fn-irr-pending-input-source (token fn-index-backing)
+ (declare (xargs :stobjs fn-index-backing :guard t))
+ (mv-let (word receipt) (fn-irr-pending-read token fn-index-backing)
+  (let* ((request (fn-irr-receipt-request receipt))
+         (source (fn-irr-request-input-source request)))
+   (if (and (fn-irq-committed-phasep word) (fn-omk-widthp request 10) source)
+       (mv word source)
+     (mv (if (fn-irq-committed-phasep word) :unavailable-input word) nil)))))
 
 ; Called after the exact registered query grant has been admitted. Generation
 ; and immutable effects/pin are projections of the retained producer request.
@@ -307,7 +320,14 @@
   (cond ((not (and (posp nonce) (equal nonce (fn-omk-at 2 receipt))
                    (eq (fn-omk-at 0 receipt) :index-request-receipt)))
          (mv :stale fuel fn-index-backing))
-        ((eq (fn-omk-at 7 receipt) :offer-owned) (mv :owned fuel fn-index-backing))
+        ((eq (fn-omk-at 7 receipt) :offer-owned)
+         (let ((intent (fn-irr-receipt-repin receipt)))
+          (if (and intent (equal (fn-omk-at 1 intent) new-token)
+                   (equal (fn-omk-at 1 (fn-omk-at 2 intent)) generation)
+                   (fn-irr-publication-coordinatesp
+                    (fn-omk-at 2 (fn-omk-at 2 intent)) (fn-omk-at 2 pin)))
+              (mv :owned fuel fn-index-backing)
+            (mv :recovery-required fuel fn-index-backing))))
         ((not (and (eq (fn-omk-at 7 receipt) :source-owned)
                    (null (fn-omk-at 9 receipt))
                    (fn-omk-widthp prepared 8)
@@ -376,7 +396,8 @@
                          (fn-omk-at 2 request) (fn-omk-at 3 request)
                          current-oc rc
                          (fn-own-tls-result-effects (car rc))
-                         (fn-omk-at 7 request) (fn-irr-request-holder request)))
+                         (fn-omk-at 7 request) (fn-irr-request-holder request)
+                         (fn-irr-request-input-source request)))
                   (fn-index-backing
                    (update-fn-ibp-request-pending
                      (list (fn-omk-at 0 receipt) (fn-omk-at 1 receipt)
@@ -400,7 +421,7 @@
         (intent (fn-irr-receipt-repin receipt))
         (new (fn-omk-at 1 intent)) (pin (fn-omk-at 2 intent))
         (rc (fn-irr-request-rc request))
-        (accepted (fn-own-tls-result-repinned (car rc)))
+        (accepted (and (consp rc) (fn-own-tls-result-repinned (car rc))))
         (units (+ 1 (fn-ibp-slot-depth fn-index-backing))))
   (cond
    ((not (and (posp nonce) (equal nonce (fn-omk-at 2 receipt))))
@@ -452,7 +473,7 @@
                    (list (fn-omk-at 0 request) (fn-omk-at 1 request)
                     pin (fn-omk-at 2 pin) (fn-omk-at 4 request) rc
                     (fn-irr-request-effects request) (fn-irr-request-origin request)
-                    (fn-irr-request-holder request)))
+                    (fn-irr-request-holder request) (fn-irr-request-input-source request)))
                   (next-phase (if (eq joined :repinned)
                                   :read-ready-repin-released :read-ready-repin-held))
                   (fn-index-backing
@@ -576,6 +597,20 @@
                          (fn-omk-at 2 pin) (fn-omk-at 2 row))))
              (mv :recovery-required nil nil after-generation)
            (mv :authorized control receipt after-generation)))))))))
+
+; After adoption, read the SAME receipt preserved in registered context.
+; Recipient nonce/address and selected generation come from actual token;
+; receiver-turn custody remains a separate typed transition.
+(defun fn-irr-registered-input-source (token fuel fn-mio$c)
+ (declare (xargs :stobjs fn-mio$c :guard (natp fuel)))
+ (mv-let (word control receipt left)
+  (fn-irr-registered-read token fuel fn-mio$c)
+  (declare (ignore control))
+  (let* ((request (fn-irr-receipt-request receipt))
+         (source (fn-irr-request-input-source request)))
+   (if (and (eq word :authorized) (fn-omk-widthp request 10) source)
+       (mv (fn-omk-at 7 receipt) source left)
+     (mv (if (eq word :authorized) :unavailable-input word) nil left)))))
 
 ; Returns the exact committed step, never rebuilt against newer STATE.
 ; Current account/configuration policy remains the owner caller's decision.

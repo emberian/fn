@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (logic)
 (include-book "../books/index-reader-request")
+(include-book "index-connection-repin-prepare-host")
 
 ; Token-only consumer of the actual registered range control. The callee
 ; validates the exact active query/payload claim before borrowing its plan.
@@ -24,6 +25,40 @@
  (mv-let (word step disposition-token left)
    (fn-irr-response-read token fuel fn-mio$c)
    (mv word step disposition-token left fn-mio$c state)))
+
+; INTERNAL only for the actual zero-prefix source-boundary action. NEW is
+; projected from its registered reservation, not accepted from a host plan.
+; The whole parse/offer/query/dispatch/commit allowance precedes this call.
+(defun fn-owner-index-reader-request-offer-source
+ (token fuel fn-mio$c state)
+ (declare (xargs :stobjs (fn-mio$c state) :mode :program))
+ (mv-let (identity id old new needed fn-mio$c)
+  (stobj-let ((fn-index-backing (fn-mio$c-provider fn-mio$c)))
+   (identity id old new needed)
+   (let* ((receipt (fn-ibp-request-pending fn-index-backing))
+          (request (fn-irr-receipt-request receipt))
+          (nonce (fn-omk-at 2 receipt))
+          (ordinal (fn-omk-at 3 receipt))
+          (generation (fn-irq-receipt-request-generation receipt)))
+    (mv (and (posp nonce) (natp ordinal) (posp generation)
+             (equal token (fn-irq-candidate-token nonce ordinal generation)))
+        (fn-omk-at 1 request) (fn-irr-request-holder request)
+        (fn-omk-at 1 (fn-ibp-connection-pending fn-index-backing))
+        (* 13 (+ 1 (fn-ibp-slot-depth fn-index-backing)))))
+   (mv identity id old new needed fn-mio$c))
+  (if (not (and identity (natp fuel) (<= needed fuel)))
+      ; Already inside the serialized parsed action: never save/replay RC.
+      (mv :recovery-required nil fuel fn-mio$c state)
+    (mv-let (prepared pin left fn-mio$c state)
+     (fn-owner-index-connection-repin-prepare id old new fuel fn-mio$c state)
+     (if (not (and (eq prepared :captured) (natp left)))
+         (mv prepared nil left fn-mio$c state)
+       (mv-let (owned remaining fn-mio$c)
+        (stobj-let ((fn-index-backing (fn-mio$c-provider fn-mio$c)))
+         (owned remaining fn-index-backing)
+         (fn-irr-request-offer-source (fn-omk-at 1 token) left fn-index-backing)
+         (mv owned remaining fn-mio$c))
+        (mv (if (eq owned :owned) :offer-ready owned) pin remaining fn-mio$c state)))))))
 
 ; INTERNAL producer-only boundary, included after owner STATE/credits/exposure
 ; definitions. The actual caller derives RC from current STATE under the same

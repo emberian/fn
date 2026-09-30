@@ -1459,18 +1459,22 @@
 ; INTERNAL only after the SAME retained parsed boundary has acquired offered
 ; source authority. This dispatches the retained events exactly once.
 (defun fn-scr-source-boundary-dispatch (boundary live trie lver arts cache fn-arena fn-cat)
- (declare (xargs :stobjs (fn-arena fn-cat) :guard t :verify-guards nil))
- (let* ((conn (nth 1 boundary)) (w (nth 4 boundary)))
-  (if (not (and (equal (car boundary) :source-boundary)
-                (equal (nth 7 boundary) :source-change)
-                (null (nth 6 boundary))
-                (fn-scr-source-change-eventsp (fn-wsp-events w))))
-      (mv :refused nil)
-    (let ((here (fn-scr-dispatch-events
-                 (fn-served-conn-with-wire conn (fn-wsp-state w))
-                 (fn-wsp-events w) live trie lver arts cache fn-arena fn-cat)))
-     (mv :dispatched
-         (fn-served-counted-make (- (fn-wsp-next w) (nth 2 boundary)) here))))))
+ (declare (xargs :stobjs (fn-arena fn-cat) :guard (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)
+                 :verify-guards nil))
+ (if (not (and (true-listp boundary) (equal (len boundary) 8)))
+     (mv :refused nil)
+  (let* ((conn (nth 1 boundary)) (w (nth 4 boundary))
+         (i (nth 2 boundary)) (end (nth 3 boundary)) (next (fn-wsp-next w)))
+   (if (not (and (equal (car boundary) :source-boundary)
+                 (equal (nth 7 boundary) :source-change)
+                 (equal (nth 5 boundary) 0) (null (nth 6 boundary))
+                 (natp i) (natp end) (natp next) (<= i next) (<= next end)
+                 (fn-scr-source-change-eventsp (fn-wsp-events w))))
+       (mv :refused nil)
+     (let ((here (fn-scr-dispatch-events
+                  (fn-served-conn-with-wire conn (fn-wsp-state w))
+                  (fn-wsp-events w) live trie lver arts cache fn-arena fn-cat)))
+      (mv :dispatched (fn-served-counted-make (- next i) here)))))))
 
 (defun fn-scr-source-scan-span-loop
  (conn i end live trie lver arts cache fn-octets fn-arena fn-cat consumed acc)
