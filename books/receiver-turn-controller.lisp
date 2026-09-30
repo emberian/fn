@@ -381,6 +381,35 @@
         (mv-let (fenced fn-rx-provider fn-receiver-turn fn-page-read-pool)
          (fn-owner-rx-turn-parser-fence ticket RC wire step fn-rx-provider fn-receiver-turn fn-page-read-pool)
          (mv fenced nil fn-rx-provider fn-receiver-turn fn-page-read-pool))))))))
+(encapsulate ()
+(local (defun fn-rxst-nth-update-induct (i j l)
+ (if (or (zp i) (zp j)) (list i j l)
+  (fn-rxst-nth-update-induct (1- i) (1- j) (cdr l)))))
+(local (defthm fn-rxst-nth-update
+ (implies (and (natp i) (natp j))
+  (equal (nth i (update-nth j v l))
+         (if (equal i j) v (nth i l))))
+ :hints (("Goal" :induct (fn-rxst-nth-update-induct i j l)))))
+(local (defthm fn-rxst-cadr-nth
+ (equal (cadr x) (nth 1 x))
+ :hints (("Goal" :use fn-rxc-second-field-by-definition
+          :in-theory (disable fn-rxc-second-field-by-definition)))))
+(defthm fn-rxt-staged-success-retains-result-and-pool
+ (let* ((out (fn-owner-rx-turn-parser-stage ticket RC fn-rx-provider fn-receiver-turn fn-page-read-pool))
+        (provider (mv-nth 1 out)) (turn (mv-nth 2 out)))
+  (implies (equal (mv-nth 0 out) :parser-staged)
+   (and (equal (fn-prl-nth 7 (fn-rxt-job turn)) RC)
+        (equal (fn-rxt-phase turn) :parser-installing)
+        (null (fn-rxp-capacity provider))
+        (equal (fn-rxt-source turn) (fn-rxt-source fn-receiver-turn))
+        (equal (fn-rxt-demand turn) (fn-rxt-demand fn-receiver-turn))
+        (equal (mv-nth 3 out) fn-page-read-pool))))
+ :hints (("Goal" :in-theory (e/d (fn-owner-rx-turn-parser-stage fn-rxp-fence fn-rxc-fence fn-rxp-capacity fn-prl-nth)
+                                 (fn-rxt-parser-currentp fn-rxt-owned-claim-p fn-rxc-currentp fn-bca-tokenp nth update-nth fn-rxc-second-field-by-definition))))
+ :rule-classes nil)
+
+)
+
 (defun fn-owner-rx-turn-response-currentp
  (response fn-rx-provider fn-receiver-turn fn-page-read-pool)
  (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
