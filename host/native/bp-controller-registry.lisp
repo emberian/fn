@@ -28,6 +28,7 @@
 ;;; allowance, installed epoch role, guarded body and escape barrier qualify.
 (defvar *fnn-bp-checkpoint-reserve-callback* nil)
 (defvar *fnn-bp-checkpoint-fence-callback* nil)
+(defvar *fnn-bp-checkpoint-payload-fence-callback* nil)
 (defmacro fnn-core-bp-checkpoint-values (name &rest arguments)
   (let ((callback
           (cond ((eq name 'fn-owner-bp-checkpoint-reserve)
@@ -38,6 +39,10 @@
                  (unless (= (length arguments) 2)
                    (error "BP checkpoint fence expects controller and fuel"))
                  '*fnn-bp-checkpoint-fence-callback*)
+                ((eq name 'fn-owner-bp-checkpoint-payload-fence-current)
+                 (unless (= (length arguments) 2)
+                   (error "BP checkpoint payload fence expects controller and fuel"))
+                 '*fnn-bp-checkpoint-payload-fence-callback*)
                 (t (error "BP checkpoint dispatcher requires a literal core subject")))))
     `(let ((callback ,callback))
        (unless callback

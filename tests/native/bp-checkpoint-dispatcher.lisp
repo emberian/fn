@@ -39,4 +39,23 @@
       (fnn-core-bp-checkpoint-values fn-owner-bp-checkpoint-fence-current :c 4)
     (assert (and (eq word :recorded-fence) (= left 3)
                  (eq registry *fnn-bp-controller-registry*) (eq pool *recorded-pool*)))))
+(assert (rejected-macro-p '(fnn-core-bp-checkpoint-values fn-owner-bp-checkpoint-payload-fence-current c)))
+(let ((evaluated 0) (*fnn-bp-checkpoint-payload-fence-callback* nil))
+  (handler-case
+      (fnn-core-bp-checkpoint-values fn-owner-bp-checkpoint-payload-fence-current
+                                    (progn (incf evaluated) :c) 4)
+    (error () nil))
+  (assert (zerop evaluated)))
+(let* ((*fnn-bp-controller-registry* (list :recording-registry))
+       (*fnn-bp-checkpoint-fence-callback* (lambda (&rest ignored)
+                                          (declare (ignore ignored))
+                                          (error "old fence must not run")))
+       (*fnn-bp-checkpoint-payload-fence-callback*
+        (lambda (controller fuel registry pool)
+          (assert (and (eq controller :c) (= fuel 4)))
+          (values :retentive-fence 3 registry pool))))
+  (multiple-value-bind (word left registry pool)
+      (fnn-core-bp-checkpoint-values fn-owner-bp-checkpoint-payload-fence-current :c 4)
+    (assert (and (eq word :retentive-fence) (= left 3)
+                 (eq registry *fnn-bp-controller-registry*) (eq pool *recorded-pool*)))))
 (format t "BP checkpoint dispatcher recording assertions passed~%")
