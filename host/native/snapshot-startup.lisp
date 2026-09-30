@@ -52,8 +52,8 @@ canonical readiness or a publication capability."
                (unless (eq (first plan) :capture)
                  (fnn-refuse-io "startup INITIAL/source mismatch: ~a" plan))
                (when (second plan)
-                 (setq root (fnn-snapshot-source-root-acquire
-                             service (second plan) maintenance))))
+                 (setq root (fnn-snapshot-recovery-root-acquire
+                             service (second plan) maintenance token))))
              (multiple-value-bind (word holder)
                  (fnn-snapshot-recovery-payload-view-acquire
                   service maintenance token)
@@ -78,16 +78,18 @@ canonical readiness or a publication capability."
       ; later allocation errors for actual joined cleanup, never refund on
       ; the strength of an exception. Before JOB, no worker has been issued.
       (unless job
-        (when root (fnn-snapshot-source-root-release service root))
         (when view
           (sb-thread:with-mutex ((fnn-owner-service-lock service))
-            (let ((word (fnn-snapshot-recovery-payload-view-release view :joined)))
+            (let ((word (fnn-snapshot-recovery-payload-view-release view)))
               (unless (eq (first word) :released)
                 (fnn-fault "startup view cleanup retained: ~a" word)))))
+        (when root
+          (fnn-snapshot-recovery-root-release service root maintenance token))
+        ; INITIAL remains owned even after role returns. Ordinary maintenance
+        ; release cannot settle its constructor/runtime custody. The genuine
+        ; same-row settlement boundary is still being joined.
         (when maintenance
-          (unless (eq (first (fnn-core-page-read-pool
-                              'fn-owner-maintenance-release maintenance)) :released)
-            (fnn-fault "startup INITIAL cleanup retained ownership")))))))
+          (fnn-fault "startup INITIAL custody retained awaiting actual settlement"))))))
 
 (defun fnn-snapshot-startup-measure (service)
   "Drive the actual retained OSM/HCT collector in the exclusive startup cut.
