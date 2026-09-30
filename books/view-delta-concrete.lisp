@@ -130,22 +130,27 @@
 
 (in-theory (disable fn-vdc-get fn-vdc-put fn-vdc-bump fn-vdc-unbump))
 
+(local
+ (defthm fn-vdc-put-nonstring-key-is-unchanged
+   (implies (not (stringp key)) (equal (fn-vdc-put key pair trie) trie))
+   :hints (("Goal" :in-theory (enable fn-vdc-put)))))
+
 (defthm fn-vdc-get-of-build-loop
-  (implies (and (fn-vdc-contribsp cs) (stringp key))
+  (implies (stringp key)
            (equal (fn-vdc-get key (fn-vdc-build-loop cs trie))
                   (cons (+ (car (fn-vd-oracle-at key cs)) (car (fn-vdc-get key trie)))
                         (+ (cdr (fn-vd-oracle-at key cs)) (cdr (fn-vdc-get key trie))))))
   :hints (("Goal" :induct (fn-vdc-build-loop cs trie)
-           :in-theory (e/d (fn-vdc-bump fn-vd-oracle-at fn-vdc-contribsp fn-vd-pairp)
-                           (fn-vdc-get fn-vdc-put)))))
+           :in-theory (e/d (fn-vdc-build-loop fn-vdc-bump fn-vd-oracle-at fn-vd-pairp)
+                           (fn-vdc-get fn-vdc-put)))
+          ("Subgoal *1/1" :cases ((stringp (caar cs))))))
 
 (defun fn-vdc-build (cs)
   (declare (xargs :guard (fn-vdc-contribsp cs)))
   (fn-vdc-build-loop cs nil))
 
 (defthm fn-vdc-build-corresponds
-  (implies (fn-vdc-contribsp cs)
-           (fn-vdc-correspondp (fn-vdc-build cs) cs))
+  (fn-vdc-correspondp (fn-vdc-build cs) cs)
   :hints (("Goal"
            :in-theory (e/d (fn-vdc-correspondp fn-vdc-build fn-vdc-get
                             fn-mxc-lookup fn-vd-pairp)

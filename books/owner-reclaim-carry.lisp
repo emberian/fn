@@ -41,13 +41,7 @@
                              (theory 'minimal-theory)))))
 
 (defthm fn-owner-orcp-rebuild-establishes-obligation-view
-  (implies (and (not (equal (nth 1 (fn-owner-orcp-rebuild rows configs frontier max-conns)) :fault))
-                (fn-retain-obligation-listp
-                 (fn-retain-pins
-                  (fn-node-retention
-                   (fn-sn-node
-                    (fn-own-store
-                     (fn-ocfg-owner (nth 1 (fn-owner-orcp-rebuild rows configs frontier max-conns)))))))))
+  (implies (not (equal (nth 1 (fn-owner-orcp-rebuild rows configs frontier max-conns)) :fault))
            (fn-rov-correspondp
             (nth 6 (fn-owner-orcp-rebuild rows configs frontier max-conns))
             (fn-retain-pins

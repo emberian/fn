@@ -17827,9 +17827,11 @@
         "tests/acl2/retention-obligation-view-tests.lisp",
         "tests/acl2/retention-obligation-view-node-tests.lisp",
         "tests/acl2/obligation-subject-tests.lisp",
-        "tests/test_native_obligation_subject.py"
+        "tests/test_native_obligation_subject.py",
+        "books/owner-obligation-recovery.lisp",
+        "tests/acl2/owner-obligation-recovery-tests.lisp"
       ],
-      "progress_note": "Clean narrow hbox REPL source evidence for core, node completion/recover and report/codec/operator boundaries, with full antecedent and mutation/corrupted-state teeth. No committed certification manifest or matching native execution. The lifetime-T arithmetic reservation is included in both store and offline-operation figures, with explicit support-hypothesis teeth. Actual fn-owner-prepare-identity preserves correspondence and exact view/ledger effects; literal relation and live signed-post/corrupted-total witnesses added. The exact radix updater and cold fold have retained cons-cell bounds, with the fold weakened after proving typing unnecessary. Other actual owner writers, cumulative support/uint64/physical allocation invariant and measured real-caller fast path remain open; no W9 completion claim."
+      "progress_note": "Clean narrow hbox REPL source evidence for core, node completion/recover and report/codec/operator boundaries, with full antecedent and mutation/corrupted-state teeth. No committed certification manifest or matching native execution. The lifetime-T arithmetic reservation is included in both store and offline-operation figures, with explicit support-hypothesis teeth. Actual fn-owner-prepare-identity preserves correspondence and exact view/ledger effects; literal relation and live signed-post/corrupted-total witnesses added. The exact radix updater and cold fold have retained cons-cell bounds, with the fold weakened after proving typing unnecessary. Actual cold installer and rebuild-to-swap effects establish correspondence from successful nonfault recovered owners; reconstruction correspondence was weakened after proving typing unnecessary; literal positive and corrupted-swap witnesses accompany live entry checks. Remaining actual owner writers, cumulative support/uint64/physical allocation invariant and measured real-caller fast path remain open; no W9 completion claim."
     },
     {
       "id": "PRF-1072",

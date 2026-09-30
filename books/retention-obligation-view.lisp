@@ -56,8 +56,7 @@
            :in-theory (enable fn-vdc-build-loop))))
 
 (defthm fn-rov-build-corresponds
-  (implies (fn-retain-obligation-listp pins)
-           (fn-rov-correspondp (fn-rov-build pins) pins))
+  (fn-rov-correspondp (fn-rov-build pins) pins)
   :hints (("Goal" :in-theory (e/d (fn-vdc-build)
                                    (fn-vdc-build-corresponds fn-rov-contribs fn-rov-contrib))
            :use ((:instance fn-vdc-build-corresponds (cs (fn-rov-contribs pins)))))))
