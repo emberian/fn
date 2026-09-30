@@ -4880,3 +4880,21 @@
 
 (definterface fn-pvl-runtime-step :class ::common-lisp-compliant)
 (definterface fn-owner-payload-view-owned-p :class :program)
+
+; Fixed incoming controller and paired pool callbacks. These declarations
+; name the selected guard-verified source; startup/capacity/lifetime joins
+; remain required before native activation. Logical test views are excluded.
+(definterface create-fn-input-copy
+  :class :common-lisp-compliant :root :extract)
+(definterface create-fn-page-read-pool
+  :class :common-lisp-compliant :root :extract)
+(definterface fn-owner-incoming-copy-start
+  :class :common-lisp-compliant :root :extract)
+(definterface fn-owner-incoming-copy-next
+  :class :common-lisp-compliant :root :extract)
+(definterface fn-owner-incoming-copy-ack
+  :class :common-lisp-compliant :root :extract)
+(definterface fn-owner-incoming-copy-stop
+  :class :common-lisp-compliant :root :extract)
+(definterface fn-owner-incoming-mutation-allowedp
+  :class :common-lisp-compliant :root :extract)
