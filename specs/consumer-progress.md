@@ -1058,3 +1058,10 @@ account root. Missing metadata cannot establish readiness. The new source
 publication unit and current owner collector still require matching admission,
 funding and recovery evidence; opaque routing observations establish only
 ordering and result retention.
+
+The bounded initial account metadata producer calls the actual `fn-cp-initial`
+constructor and uses parsed history/incarnation byte counts to establish exact
+seven-field carries. It creates empty adopted/pending account metadata and no
+usable authority namespace or account authentication root. Nonempty restore
+must retain metadata established by the same actual durable stage replay; seven
+field child sizes alone cannot reconstruct maintained row/trie annotations.
