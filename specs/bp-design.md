@@ -1031,6 +1031,15 @@ never verified. Explicit empty parameters are refused in this supported
 profile. Literal codec scenarios are SCN-1065/1066. Structural parsing is
 distinct from target-graph validity and cryptographic verification.
 
+`books/bpsec-asb-quanta.lisp` proves that splitting the actual ASB drive's
+work quantum over one fixed input preserves its complete cursor, total
+consumed-byte count and final suffix. Internal metadata steps and body-octet
+steps remain in the same order; terminal need-input/refusal states compose too.
+The theorem is unconditional on cursor shape and has literal nonempty two-target
+BIB/body and malformed-state witnesses. It is a scheduling property, separate
+from grammar invariant preservation and equivalence across changing immutable
+windows. No physical provider or native caller is established by this event.
+
 The logical target-graph reference in `books/bpsec-target.lisp` binds each
 ASB as `(block-number . ASB)`, checks actual block existence/type, unique
 service/target pairs, forbidden security targets and payload BCB flags. Every

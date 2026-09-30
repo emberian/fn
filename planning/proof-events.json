@@ -17817,6 +17817,11 @@
           "kind": "theorem",
           "name": "fn-bps-asb-drive-rest-is-exact-unconsumed-suffix",
           "pending_subject": "Component scheduling subject only: actual BP host has no installed fn-bps-asb-step immutable provider or admission gate. Full cursor invariant/partition equivalence and provider lifetime remain open; proper-local source admission is not normal certification."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-drive-composes-quanta",
+          "pending_subject": "Actual ASB scheduling component preserves complete cursor/consumed-prefix/suffix under quantum cuts over one fixed input. No actual BP window provider or host installation; every-window reference refinement and cursor invariant remain open. Source admission is not normal certification."
         }
       ]
     },

@@ -19092,9 +19092,12 @@
         "books/bpsec-head.lisp",
         "books/bpsec-asb.lisp",
         "tests/acl2/bpsec-asb-tests.lisp",
-        "planning/evidence/bpsec-asb-source-2026-09-30.json"
+        "planning/evidence/bpsec-asb-source-2026-09-30.json",
+        "books/bpsec-asb-quanta.lisp",
+        "tests/acl2/bpsec-asb-quanta-tests.lisp",
+        "planning/evidence/bpsec-asb-quanta-source-2026-09-30.json"
       ],
-      "progress_note": "Source-only proper-local admission at exact w28 fced dependency coordinate; six component bounds/suffix events admitted after a repaired corrupted-cursor guard failure and proof hints. No normal manifest, immutable runtime provider, full refinement or native security gate."
+      "progress_note": "Source-only proper-local admission at exact w28 fced dependency coordinate; six component bounds/suffix events admitted after a repaired corrupted-cursor guard failure and proof hints. No normal manifest, immutable runtime provider, full refinement or native security gate. Added actual ASB complete cursor/consumed-prefix/suffix quantum-composition source; fresh proper-local14fixtureforms23.40s7930504steps (includes four new source dependencies), all literal outcomes and guard-world audit pass. Full window/provider/grammar refinement remains open."
     },
     {
       "id": "PRF-1179",
