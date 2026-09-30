@@ -399,3 +399,159 @@
    (fn-hpi-tick fn-hpi-metadata-step fn-hpi-set fn-hpi-set-is-update-by-definition fn-omk-at
     fn-hpb-prefix fn-hpb-used mv-nth fn-hpic-directory-model fn-hpic-meta-field
     fn-hpic-cached-digest-agreesp fn-hpi-grant-matchesp fn-hpi-stream-step take nth nthcdr)))))
+
+(local (defthm fn-hpic-issued-io-is-not-write-unfolds
+ (not (equal (car (fn-hpi-issue-io tag kind ordinal offset length bytes wait c)) :write))
+ :hints (("Goal" :in-theory (e/d (fn-hpi-issue-io)
+  (fn-hpi-set fn-hpi-set-is-update-by-definition fn-omk-at))))))
+
+(local (defthm fn-hpic-metadata-directory-write-unfolds
+ (let ((r (fn-hpi-metadata-step c fn-hpb)))
+  (implies (and (equal (fn-hpic-meta-field 0 c) :directory)
+                (equal (car r) :write))
+   (and (equal (fn-hpb-used fn-hpb) 2048)
+        (equal (mv-nth 3 r) fn-hpb)
+        (equal (mv-nth 1 r)
+         (fn-hpi-write-effect (fn-omk-at 1 c) (fn-omk-at 3 c)
+           (nfix (fn-omk-at 4 c)) :directory (fn-hpic-meta-field 6 c)
+           (+ 1 (fn-hpic-meta-field 6 c)) (nfix (fn-omk-at 4 (fn-omk-at 16 c)))))
+        (equal (fn-omk-at 0 (mv-nth 2 r)) :wait-write)
+        (equal (fn-hpic-meta-field 6 (mv-nth 2 r)) (+ 1 (fn-hpic-meta-field 6 c)))
+        (equal (fn-hpic-meta-field 1 (mv-nth 2 r)) (fn-hpic-meta-field 1 c))
+        (equal (fn-hpic-meta-field 2 (mv-nth 2 r)) (fn-hpic-meta-field 2 c))
+        (equal (fn-hpic-meta-field 3 (mv-nth 2 r)) (fn-hpic-meta-field 3 c))
+        (equal (fn-omk-at 6 (mv-nth 2 r)) (fn-omk-at 6 c)))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :in-theory (e/d (fn-hpi-metadata-step fn-hpi-await-page fn-hpic-meta-field fn-hpb-ready)
+   (fn-hpi-write-effect fn-hpi-set fn-hpi-set-is-update-by-definition fn-omk-at mv-nth
+    fn-hpb-used fn-hpm-tick fn-hpm-tick-progress fn-hpm-tick-nonstored-unchanged
+    fn-hpi-issue-io fn-hpb-prefix))))))
+
+(local (defthm fn-hpic-tick-metadata-write-and-frame-unfolds
+ (let ((r (fn-hpi-tick c observation ledger fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb pgs-digest-state)))
+  (implies (and (fn-omk-widthp c 25) (equal (fn-omk-at 0 c) :metadata)
+                (equal (car r) :write))
+   (and (equal (mv-nth 1 r) (mv-nth 1 (fn-hpi-metadata-step c fn-hpb)))
+        (equal (mv-nth 2 r) (mv-nth 2 (fn-hpi-metadata-step c fn-hpb)))
+        (equal (mv-nth 8 r) (mv-nth 3 (fn-hpi-metadata-step c fn-hpb)))
+        (equal (mv-nth 3 r) ledger)
+        (equal (mv-nth 4 r) fn-hpq0) (equal (mv-nth 5 r) fn-hpq1)
+        (equal (mv-nth 6 r) fn-hpq2) (equal (mv-nth 7 r) fn-hpq3)
+        (equal (mv-nth 9 r) pgs-digest-state)
+        (equal (car (fn-hpi-metadata-step c fn-hpb)) :write))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :in-theory (e/d (fn-hpi-tick fn-hpi-stream-step)
+   (fn-hpi-metadata-step fn-hpi-set fn-hpi-set-is-update-by-definition fn-omk-at
+    fn-hpi-grant-matchesp fn-hpb-prefix mv-nth fn-hpi-digest-begin fn-hpi-digest-validp
+    fn-hpi-io-matchp fn-hpi-octets-p pgs-dcb-read-demand pgs-dcb-step
+    fn-hpi-issue-io fn-hpi-after-spool pgs-dcb-result-octets fn-hpir-root))))))
+
+(defthm fn-hpi-tick-hands-off-complete-canonical-directory-page
+ (let ((r (fn-hpi-tick c observation ledger fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb pgs-digest-state)))
+  (implies (and (fn-hpic-directory-invariantp c digests fn-hpb)
+                (equal (car r) :write))
+   (and (equal (fn-hpb-used fn-hpb) 2048)
+        (equal (mv-nth 1 r)
+         (fn-hpi-write-effect (fn-omk-at 1 c) (fn-omk-at 3 c)
+           (nfix (fn-omk-at 4 c)) :directory (fn-hpic-meta-field 6 c)
+           (+ 1 (fn-hpic-meta-field 6 c)) (nfix (fn-omk-at 4 (fn-omk-at 16 c)))))
+        (equal (fn-hpb-prefix (mv-nth 8 r))
+         (take 2048 (nthcdr (* 2048 (fn-hpic-meta-field 6 c)) (fn-hpic-directory-model c digests))))
+        (equal (fn-omk-at 0 (mv-nth 2 r)) :wait-write)
+        (equal (fn-hpic-meta-field 6 (mv-nth 2 r)) (+ 1 (fn-hpic-meta-field 6 c)))
+        (equal (fn-hpic-meta-field 1 (mv-nth 2 r)) (fn-hpic-meta-field 1 c))
+        (equal (fn-hpic-meta-field 2 (mv-nth 2 r)) (fn-hpic-meta-field 2 c))
+        (equal (fn-hpic-meta-field 3 (mv-nth 2 r)) (fn-hpic-meta-field 3 c))
+        (equal (mv-nth 3 r) ledger)
+        (equal (mv-nth 4 r) fn-hpq0) (equal (mv-nth 5 r) fn-hpq1)
+        (equal (mv-nth 6 r) fn-hpq2) (equal (mv-nth 7 r) fn-hpq3)
+        (equal (mv-nth 8 r) fn-hpb) (equal (mv-nth 9 r) pgs-digest-state))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t :use (fn-hpic-metadata-directory-write-unfolds
+                              fn-hpic-tick-metadata-write-and-frame-unfolds)
+  :in-theory (e/d (fn-hpic-directory-invariantp)
+   (fn-hpic-take-next fn-hpic-nth-nthcdr
+    fn-hpic-stored-step-has-word-room-unfolds fn-hpic-stored-active-address-unfolds
+    fn-hpic-continue-state-projection-unfolds fn-hpic-continue-used-projection-unfolds
+    fn-hpm-tick-progress fn-hpm-tick-refines-emission-effect fn-hpm-directory-padding-is-zero
+    fn-hpi-tick fn-hpi-stream-step fn-hpi-metadata-step fn-hpi-set fn-hpi-set-is-update-by-definition fn-omk-at
+    fn-hpb-prefix fn-hpb-used mv-nth fn-hpic-directory-model fn-hpic-meta-field
+    fn-hpic-cached-digest-agreesp fn-hpi-grant-matchesp fn-hpi-digest-begin fn-hpi-digest-validp
+    fn-hpi-io-matchp fn-hpi-octets-p pgs-dcb-read-demand pgs-dcb-step
+    fn-hpi-issue-io fn-hpi-after-spool pgs-dcb-result-octets fn-hpir-root take nth nthcdr)))))
+
+(local (defthm fn-hpic-written-directory-buffer-reset-unfolds
+ (let ((r (fn-hpi-written c observation fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb)))
+  (implies (and (equal (fn-omk-at 0 c) :wait-write)
+                (equal (fn-omk-at 0 (fn-omk-at 17 c)) 4)
+                (equal (car r) :written))
+   (and (equal (fn-hpi-written-status (fn-omk-at 5 c) observation) :written)
+        (equal (fn-omk-at 0 (mv-nth 1 r)) (fn-omk-at 1 (fn-omk-at 17 c)))
+        (equal (fn-omk-at 19 (mv-nth 1 r)) (fn-omk-at 19 c))
+        (equal (fn-omk-at 6 (mv-nth 1 r)) (fn-omk-at 6 c))
+        (equal (fn-omk-at 21 (mv-nth 1 r)) (fn-omk-at 21 c))
+        (equal (fn-omk-at 4 (fn-omk-at 16 (mv-nth 1 r)))
+               (+ 1 (nfix (fn-omk-at 4 (fn-omk-at 16 c)))))
+        (equal (fn-omk-at 5 (mv-nth 1 r)) nil)
+        (equal (fn-omk-at 17 (mv-nth 1 r)) nil)
+        (equal (mv-nth 2 r) fn-hpq0) (equal (mv-nth 3 r) fn-hpq1)
+        (equal (mv-nth 4 r) fn-hpq2) (equal (mv-nth 5 r) fn-hpq3)
+        (equal (mv-nth 6 r) (fn-hpb-begin (fn-omk-at 1 c) (fn-omk-at 2 c) fn-hpb)))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :in-theory (e/d (fn-hpi-written fn-hpi-reset-buffer fn-hpi-written-status)
+   (fn-hpi-written-matchp fn-hpi-set fn-hpi-set-is-update-by-definition fn-omk-at
+    fn-hpb-begin mv-nth))))))
+
+(local (defthm fn-hpic-tick-written-and-frame-unfolds
+ (let ((r (fn-hpi-tick c observation ledger fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb pgs-digest-state)))
+  (implies (and (fn-omk-widthp c 25) (equal (fn-omk-at 0 c) :wait-write)
+                (equal (car r) :written))
+   (and (equal (mv-nth 2 r) (mv-nth 1 (fn-hpi-written c observation fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb)))
+        (equal (mv-nth 8 r) (mv-nth 6 (fn-hpi-written c observation fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb)))
+        (equal (mv-nth 4 r) (mv-nth 2 (fn-hpi-written c observation fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb)))
+        (equal (mv-nth 5 r) (mv-nth 3 (fn-hpi-written c observation fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb)))
+        (equal (mv-nth 6 r) (mv-nth 4 (fn-hpi-written c observation fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb)))
+        (equal (mv-nth 7 r) (mv-nth 5 (fn-hpi-written c observation fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb)))
+        (equal (mv-nth 3 r) ledger) (equal (mv-nth 9 r) pgs-digest-state)
+        (equal (car (fn-hpi-written c observation fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb)) :written))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :in-theory (e/d (fn-hpi-tick)
+   (fn-hpi-written fn-hpi-grant-matchesp fn-hpi-set fn-hpi-set-is-update-by-definition
+    fn-hpi-stream-step fn-hpi-buffer-step fn-hpi-supply fn-omk-at mv-nth))))))
+
+(defun fn-hpic-scratch-ack-contextp (c)
+ (declare (xargs :guard t :verify-guards nil))
+ (and (fn-omk-widthp c 25) (equal (fn-omk-at 0 c) :wait-write)
+      (equal (fn-omk-at 0 (fn-omk-at 17 c)) 4)))
+
+; The definite core-matched page ACK, rather than a host success flag,
+; releases the scratch prefix and advances its generation exactly once.
+(defthm fn-hpi-tick-resets-directory-buffer-after-exact-written-ack
+ (let ((r (fn-hpi-tick c observation ledger fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb pgs-digest-state)))
+  (implies (and (fn-hpic-scratch-ack-contextp c)
+                (equal (car r) :written))
+   (and (equal (fn-hpi-written-status (fn-omk-at 5 c) observation) :written)
+        (equal (fn-omk-at 0 (mv-nth 2 r)) (fn-omk-at 1 (fn-omk-at 17 c)))
+        (equal (fn-omk-at 19 (mv-nth 2 r)) (fn-omk-at 19 c))
+        (equal (fn-omk-at 6 (mv-nth 2 r)) (fn-omk-at 6 c))
+        (equal (fn-omk-at 21 (mv-nth 2 r)) (fn-omk-at 21 c))
+        (equal (fn-omk-at 4 (fn-omk-at 16 (mv-nth 2 r)))
+               (+ 1 (nfix (fn-omk-at 4 (fn-omk-at 16 c)))))
+        (equal (fn-omk-at 5 (mv-nth 2 r)) nil)
+        (equal (fn-omk-at 17 (mv-nth 2 r)) nil)
+        (equal (fn-hpb-prefix (mv-nth 8 r)) nil)
+        (equal (mv-nth 8 r) (fn-hpb-begin (fn-omk-at 1 c) (fn-omk-at 2 c) fn-hpb))
+        (equal (mv-nth 3 r) ledger)
+        (equal (mv-nth 4 r) fn-hpq0) (equal (mv-nth 5 r) fn-hpq1)
+        (equal (mv-nth 6 r) fn-hpq2) (equal (mv-nth 7 r) fn-hpq3)
+        (equal (mv-nth 9 r) pgs-digest-state))))
+ :rule-classes nil
+ :hints (("Goal" :use (fn-hpic-written-directory-buffer-reset-unfolds fn-hpic-tick-written-and-frame-unfolds)
+  :in-theory (e/d (fn-hpic-scratch-ack-contextp) (fn-hpi-tick fn-hpi-written fn-hpi-written-status fn-omk-at
+   fn-hpi-set fn-hpi-set-is-update-by-definition fn-hpi-reset-buffer fn-hpb-begin
+   fn-hpb-prefix mv-nth fn-hpic-take-next fn-hpic-stored-step-has-word-room-unfolds
+   fn-hpic-continue-state-projection-unfolds fn-hpic-continue-used-projection-unfolds)))))

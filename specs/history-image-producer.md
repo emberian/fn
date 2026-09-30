@@ -201,3 +201,24 @@ INIT/native qualification remain open. Runtime bytes are unchanged. Exact
 source evidence is
 `planning/evidence/history-image-directory-invariant-source-2026-09-30.json`;
 PRF-1144 remains planned with no completion events.
+
+
+Actual full directory-page handoff now preserves the entire concrete buffer
+and global entry continuation while issuing the exact captured positional
+write effect. The page cursor advances before the ACK; its ordinal/component
+never resets to a page-local entry. The selected-scratch ACK context and
+actual returned `:written` status imply the core-matched definite ACK,
+reset/begin, one buffer-generation advance, retained metadata/layout/cache,
+and full ledger/other-buffer/digest frame. Stale ACK serial and corrupted
+retained buffer selection are separately labelled literal premise removals;
+neither substitutes a host success flag for the core decision.
+
+The complete small decoded-row/page/spool trajectory checks the full page
+handoff and exact reset positives, while scratch corruption and missing live
+receipt remove the handoff premises individually. Exact source evidence is
+`planning/evidence/history-image-directory-handoff-source-2026-09-30.json`.
+Cross-page canonical invariant restoration,341-entry tables/two-zero packing,
+whole image/progress/effect-to-payload/FD joins, installed source authority
+and the full INITIAL runtime/funding envelope still remain open. The existing
+signed growth receipt does not establish initial adequacy or native activation.
+PRF-1144 stays planned with no completion events; runtime bytes are unchanged.
