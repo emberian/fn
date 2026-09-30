@@ -228,15 +228,35 @@
        (fn-bpsr-adu-octets (fn-bpb-payload (fn-bpnf-held-bundle held))))
     nil))
 
+; Durable local authority stages are private Store input. Their reserved
+; FNCE prefix never becomes application authority through a BP carrier,
+; including an authenticated or trusted relay. Recognition is a fixed
+; four-octet check, not a generic Store decoder or authority interpreter.
+(defun fn-bpah-private-authority-prefixp (octets)
+  (declare (xargs :guard t))
+  (and (equal (fn-bpn-nth 0 octets) 102)
+       (equal (fn-bpn-nth 1 octets) 110)
+       (equal (fn-bpn-nth 2 octets) 99)
+       (equal (fn-bpn-nth 3 octets) 101)))
+
+(defun fn-bpah-adu-class (octets)
+  (declare (xargs :guard t))
+  (if (fn-bpah-private-authority-prefixp octets)
+      :local-authority-private
+    (let ((result (fn-bpa-decode-exact octets)))
+      (if (fn-bpa-result-okp result)
+          (let ((message (fn-bpa-result-message result)))
+            (cond ((fn-bpa-requestp message) :request)
+                  ((fn-bpa-receiptp message) :receipt)
+                  (t :unsupported)))
+        :unsupported))))
+
 (defun fn-bpah-held-class (held)
   (declare (xargs :guard t))
-  (let ((result (fn-bpah-held-adu-result held)))
-    (if (fn-bpa-result-okp result)
-        (let ((message (fn-bpa-result-message result)))
-          (cond ((fn-bpa-requestp message) :request)
-                ((fn-bpa-receiptp message) :receipt)
-                (t :unsupported)))
-      :unsupported)))
+  (if (fn-bpnf-heldp held)
+      (fn-bpah-adu-class
+       (fn-bpsr-adu-octets (fn-bpb-payload (fn-bpnf-held-bundle held))))
+    :unsupported))
 
 (defun fn-bpah-held-delivery-pendingp (h)
   (declare (xargs :guard t))
@@ -1154,6 +1174,8 @@
 (verify-guards fn-bpah-delivery-record)
 (verify-guards fn-bpah-delivery-recordp)
 (verify-guards fn-bpah-held-adu-result)
+(verify-guards fn-bpah-private-authority-prefixp)
+(verify-guards fn-bpah-adu-class)
 (verify-guards fn-bpah-held-class)
 (verify-guards fn-bpah-held-delivery-pendingp)
 (verify-guards fn-bpah-delivery-matches-heldp)

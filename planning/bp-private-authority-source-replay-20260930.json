@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "scope": "source replay only; no certificate, image, native or full BP closure claim",
+  "baseline": "5d8402501",
+  "source_sha256": {
+    "books/bp-node-foundation.lisp": "89dd63ea042034849e50b26df7091d5b10df49ff47860e83bdd1982eba58afb3",
+    "books/bp-node-progress.lisp": "3752c5f5f17e5fc8582d72cb8f3542a540752c0cd95ea33da43a9e3311216798",
+    "books/consumer-authority-codec.lisp": "492094e67d15a7f0eec433c67189c298d036a4ea5bf6a8fff862012e8e2f8711",
+    "tests/acl2/bp-private-authority-tests.lisp": "38fbfc840511617898e72bf8735e491fdd2a0dd3af48f9bd087ec8a3bc57d739"
+  },
+  "session": "bp-authority-fixture2",
+  "matched_compiled_dependency_count": 264,
+  "source_loading": {
+    "acl2_seconds": 39.37,
+    "prover_steps": 5211878,
+    "proper_encapsulation": true
+  },
+  "fixture": {
+    "initial_source_forms": 11,
+    "reachable_trace_forms": 10,
+    "assertions_passed": 2
+  },
+  "logs": "build/proof-repl/bp-authority-fixture2",
+  "stopped": true,
+  "notes": [
+    "Codec exact leased portfolio8311279f1; unchanged basic consumer-position API used.",
+    "All same-source affected progress guards and includers loaded properly; fixture captures actual encoded bytes and admitted network principal.",
+    "No keystone or authority interpreter activation credit."
+  ]
+}

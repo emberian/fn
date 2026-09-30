@@ -5025,3 +5025,19 @@ readback must still show the unrelated pin held. Matching native execution is
 pending. This fixture leaves the bounded checkpoint writer, resident capture
 funding, registered captured-row receipt gate and safe final retirement
 producer fence/join open; it does not establish full Q4 or Q12 completion.
+
+### Private durable authority input (SCN-1053)
+
+Local consumer/account authority stages use the reserved FNCE encoding. BP
+application classification gives that prefix `:local-authority-private` before
+request/receipt decoding; an admitted or trusted carrier grants no authority to
+install another node's account or configuration stages. This is a stronger fn
+local policy, not an RFC 9171 requirement. Generic Store/wire recognition does
+not change this receive policy. The shared local authority interpreter remains
+the owner of valid local stages.
+
+The source fixture encodes a real `fn-cac` begin stage, admits a configured
+network channel, then boots, receives and durably holds its bundle through the
+core. Actual progress emits only `:progress-unsupported` for its key. Protected
+source admission and guards pass; certification, current mandatory schema
+convergence and matching native image evidence remain pending.

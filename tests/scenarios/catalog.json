@@ -7017,6 +7017,31 @@
         "native": true
       },
       "execution_scope": "Authored composed fixture including actual retirement CLI/report join; Python compilation and source-manifest helper unit tests pass. No matching native execution yet. Current checkpoint host still materializes whole bytes; bounded producer/funding, registered captured-row receipt gate and safe final retirement fence/join remain open. This scenario does not close full Q4/Q12."
+    },
+    {
+      "id": "SCN-1053",
+      "title": "Encoded local authority stage stays private through an admitted BP channel",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-005",
+        "REP-006",
+        "REP-008"
+      ],
+      "steps": [
+        "Encode an authority-begin event with the real fn-cac codec and admit the configured trusted network channel.",
+        "Boot the BP machine, receive the encoded bundle and persist the transport-held row durably.",
+        "Run the actual progress step for local delivery."
+      ],
+      "expected": [
+        "Both core receive classifiers name :local-authority-private.",
+        "The progress effect is exactly :progress-unsupported for the retained key, with no request or receipt delivery and no application submission."
+      ],
+      "evidence": [
+        "tests/acl2/bp-private-authority-tests.lisp",
+        "planning/bp-private-authority-source-replay-20260930.json"
+      ],
+      "execution_scope": "Protected source replay with 264 matched compiled dependencies and required affected source roots; exact encoded trusted-channel negative and reachable progress trace pass. No certification, current mandatory schema convergence, qualified image or native acceptance claim."
     }
   ]
 }

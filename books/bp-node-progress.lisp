@@ -346,13 +346,7 @@
 
 (defun fn-bpnp-local-class (h)
   (declare (xargs :guard t))
-  (let ((result (fn-bpa-decode-exact (fn-bpsr-adu-octets (fn-bpnp-payload h)))))
-    (if (fn-bpa-result-okp result)
-        (let ((message (fn-bpa-result-message result)))
-          (cond ((fn-bpa-requestp message) :request)
-                ((fn-bpa-receiptp message) :receipt)
-                (t :unsupported)))
-      :unsupported)))
+  (fn-bpah-adu-class (fn-bpsr-adu-octets (fn-bpnp-payload h))))
 
 (defun fn-bpnp-live-pendingp (h node observation)
   (declare (xargs :guard t) (ignore node))
