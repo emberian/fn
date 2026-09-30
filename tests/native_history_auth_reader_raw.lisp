@@ -91,3 +91,33 @@ Return the live job for the cold-span continuation; no authority is refunded."
                (error "two-row actual source path stopped: ~s" answer)))
            finally (error "two-row actual source fixture watchdog expired"))
       (unless cleaned (fnn-snapshot-job-cleanup job)))))
+
+(defun fnn-hsr-fixture-census-restart (service maintenance)
+  "Complete the actual canonical census and retain the job for its writer.
+The existing immutable reader/root must survive the core source restart."
+  (multiple-value-bind (first-row job)
+      (fnn-hsr-fixture-first-based-row service maintenance)
+    (declare (ignore first-row))
+    (let ((reader (fnn-snapshot-job-reader job))
+          (root (fnn-snapshot-job-root job)) (returned nil))
+      (unwind-protect
+           (loop for watchdog below 2000000
+                 for answer = (fnn-snapshot-job-source-step job) do
+             (when (and (consp answer) (eq (first answer) :census-complete))
+               (let ((serial (fnn-core 'fn-hsr-field 3
+                                       (fnn-core 'fn-hsr-field 1
+                                                 (fnn-hsr-source-cursor reader)))))
+                 (assert (eq (first (fnn-snapshot-job-restart-source job)) :restarted))
+                 (assert (eq reader (fnn-snapshot-job-reader job)))
+                 (assert (eq root (fnn-snapshot-job-root job)))
+                 (assert (= 1 (fnn-core 'fn-osrc-at 12 (fnn-snapshot-job-source job))))
+                 (assert (equal serial
+                                (fnn-core 'fn-hsr-field 3
+                                          (fnn-core 'fn-hsr-field 1
+                                                    (fnn-hsr-source-cursor reader)))))
+                 (setq returned t)
+                 (return (values (second answer) job))))
+             (when (and (consp answer) (member (first answer) '(:refused :uncertain)))
+               (error "actual canonical census stopped: ~s" answer))
+             finally (error "actual canonical census watchdog expired"))
+        (unless returned (fnn-snapshot-job-cleanup job))))))
