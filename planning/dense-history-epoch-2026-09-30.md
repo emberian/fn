@@ -211,6 +211,10 @@ The snapshot lane's current producer is `fn-ssrp-intern-row`, returning the
 SAME interned row in MV8, and `fn-crp-produced-event`, retaining the SAME
 produced6 packet across callbacks in MV7. Preserve those objects and
 ORIGINAL context/fields; never synthesize an event from a catalog row.
+The exact event is the separate MV6 position of `fn-ssrp-intern-row`'s MV8.
+Produced6 contains checked ORIGINAL context, next fields, status, effect,
+child and sizes; it does **not** contain the event. A `:none` child can be
+NIL, and a `:verdict` child is a verdict rather than the composite event.
 
 The builder holds the exact candidate event reference plus its old installed
 source and producer/completion identity. Its private candidate-prefix reader
@@ -223,13 +227,13 @@ committed count. Reject another builder/candidate while this one is live.
 The exact new internal builder ABI is:
 
 ```
-(fn-hep-offer-produced produced6 original-context original-fields
+(fn-hep-offer-produced row produced6 original-context original-fields
                       producer-token fn-history-backing)
   -> (mv word fn-history-backing)
 (fn-hep-builder-step fuel fn-history-backing fn-page-read-pool)
   -> (mv word fuel-left fn-history-backing fn-page-read-pool)
 (fn-hep-builder-readout fn-history-backing)
-  -> (mv word produced6 original-context original-fields)
+  -> (mv word row produced6 original-context original-fields)
 (fn-hep-candidate-read-begin ordinal fn-history-backing)
   -> (mv word fn-history-backing)
 (fn-hep-candidate-read-step fuel fn-history-backing)
@@ -241,7 +245,7 @@ empty builder; its inputs are lexical results of the actual owner producer,
 not host-supplied packets. It returns `:offered`, or `:busy` without replacing
 a live candidate. Step returns `:yield`, `:prepared`, `:unavailable` or
 `:recovery-required`, retaining its current issued receipts across yields.
-Readout returns the SAME packet/context/fields; `:prepared` requires the
+Readout returns the SAME row/packet/context/fields; `:prepared` requires the
 actual page, directory and reservation phases, not a caller boolean.
 Candidate reads use the registered builder's event and old source, with
 `:row` including NIL. These helpers add no public allocation authority.
