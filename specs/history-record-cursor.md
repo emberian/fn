@@ -9,8 +9,10 @@ certification, qualified-image or publication claim.
 The private snapshot builder consumes the captured immutable source-list
 reference directly. It does not first call `fn-hrc-load` or construct a doubling
 suffix array. A census pass computes exact encoded byte counts without retaining
-encoded rows; a second pass re-begins the identical pinned source rows and emits
-current-format bytes. Capture epoch, arena incarnation and maintenance resource
+encoded rows; a second pass re-begins the identical pinned remapped history rows and emits
+current-format bytes. The remapped history row and original arena payload handles are distinct;
+this codec neither reads payload nor re-interns a row. Capture epoch, arena
+incarnation and maintenance resource
 lease remain owned by the controller across both passes. A cursor preserves
 the supplied capture and lease identities; it does not validate or manufacture
 their liveness. Publication and ambiguous I/O are separate controller events.
@@ -80,20 +82,51 @@ The page-buffer pool, task-stack storage, staging file and queued I/O have
 separate admission/lifetime accounting. No numerical physical reserve or
 unimplemented pool is assumed here.
 
+## Implemented bounded word accumulator
+
+`fn-hrcur-word-push(octet, k, w)` accepts the next byte and the carried
+partial-word scalars. `k` is in 0..7 and `w` is the little-endian value of
+those `k` bytes. It returns `(mv verdict word k2 w2)`, accumulating one byte
+as `:continue`, or returning one u64 `:emit` on the eighth byte and resetting
+both scalars. Invalid byte/word state returns a named refusal.
+
+`fn-hrcur-word-finish(k, w)` emits a nonempty final partial word, zero-padded
+through eight bytes, and resets. An exactly aligned stream (`k = 0`) returns
+`:prepared` without an extra word. Scalars are bounded by the existing u64
+word representation. There is no encoded-row list, byte copying, reversal or
+source scan in either function; `expt` uses only the fixed 0..7 byte offset.
+
+`fn-hrcur-word-push-refines-partial` preserves the exact partial little-endian
+value. `fn-hrcur-word-push-refines-pack8` equates the eighth-byte emission with
+the existing **`fn-hp-pack8`**, and
+`fn-hrcur-word-finish-refines-pad8` equates the final word with that same
+packer over exact zero padding. `fn-hrcur-word-push-preserves` establishes the
+permitted verdict and u64 output domain. `true-listp` hypotheses on the logical
+partial prefix were removed only after proving all three weakened boundaries.
+Reachable eight-byte/partial/aligned traces and a literal removal witness for
+every remaining word-boundary hypothesis are supplied; invalid cursor examples
+are explicitly argument mutations/corrupted state.
+
+This supplies scalar packing boundaries, not yet the composed tree-stream word
+cursor or the total padded census equality. The caller must thread each emitted
+codec byte through push and invoke finish only at that stream's terminal state.
+No scratch-buffer or physical allocator is inferred from the scalar functions.
+
 ## Remaining union obligations
 
 General trees, strings/symbol names and numbers need an explicit task stack and
 resumable scalar/string traversal with exact `fn-scc-program` residuals. Octet
-classification must itself resume. Word packing must prove exact zero-padding
-and `fn-hp-pack8` equality. Message-ID key hashing must consume characters
-incrementally and equal `fn-hp-mkey`. The completed census must prove all five
-region lengths and placement equal the existing `fn-hp-row`/`fn-hp-x-blocks`
-format. The source/profile invariant must establish representability before
-allocation; a whole-row predicate is never a per-tick runtime guard.
+classification must itself resume. Composed word streaming must prove its total
+zero-padding/word count agrees with the existing row. Message-ID key hashing
+must consume characters incrementally and equal `fn-hp-mkey`. The completed
+census must prove all five region lengths and placement equal the existing
+`fn-hp-row`/`fn-hp-x-blocks` format. The source/profile invariant must establish
+representability before allocation; a whole-row predicate is never a per-tick
+runtime guard.
 
-Literal reachable leaf traces and corrupted-state hypothesis removals are in
-`tests/acl2/history-record-cursor-tests.lisp`. Initial refinement's u64-size
-hypothesis has no practically executable removal witness at this stage; it is
-not represented as fully toothed. Full tree/word/census/controller proof,
-funding, matched measurements, actual producer calls and coalesced qualification
-remain open under the original S7/P12 portfolio.
+Literal reachable leaf/word traces and corrupted-state hypothesis removals are
+in `tests/acl2/history-record-cursor-tests.lisp`. Initial leaf refinement's
+u64-size hypothesis has no practically executable removal witness at this
+stage; it is not represented as fully toothed. Full tree/census/controller
+proof, funding, matched measurements, actual producer calls and coalesced
+qualification remain open under the original S7/P12 portfolio.
