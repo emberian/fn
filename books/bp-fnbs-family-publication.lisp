@@ -6,7 +6,10 @@
 
 (defun fn-bpnf-family-publication-authorize
   (st epoch op record lock-owned final-absent)
-  (declare (xargs :guard t))
+  ;; The *1* class (Q4a item 2): host-called; the guard names the kinds the
+  ;; host passes (the entry guard checks them by name) and the wrapper runs raw.
+  (declare (xargs :guard (and (fn-frame-natp epoch) (fn-frame-natp op))
+                  :verify-guards nil))
   (let ((issued (fn-bpnf-issued st)))
     (if (and (fn-bpnf-operationp issued)
              (fn-bpnf-operation-matchp issued epoch op)
@@ -15,8 +18,11 @@
              (equal (fn-bpn-nth 5 issued) :pending)
              (equal (fn-bpnf-epoch st) epoch)
              (equal (fn-bpnf-next-op st) (1+ op))
+             ;; (fix x) keeps the value on every input ((+ 1 x) treats a
+             ;; non-number as 0) and gives the guard its number before the
+             ;; record's shape is checked below.
              (equal (fn-bpnf-next-arrival st)
-                    (1+ (fn-bpn-nth 4 record)))
+                    (1+ (fix (fn-bpn-nth 4 record))))
              (fn-bpnf-family-record-atp record)
              (equal (fn-bpn-nth 1 record) epoch)
              (equal (fn-bpn-nth 2 record) op)
@@ -45,11 +51,17 @@
        (equal (nth 6 operation) (fn-jpub-initial t))))
 
 (defun fn-bpnf-family-publication-name (operation)
-  (declare (xargs :guard t)) (nth 4 operation))
+  (declare (xargs :guard (true-listp operation))) (nth 4 operation))
 (defun fn-bpnf-family-publication-frame (operation)
-  (declare (xargs :guard t)) (nth 5 operation))
+  (declare (xargs :guard (true-listp operation))) (nth 5 operation))
 (defun fn-bpnf-family-publication-publisher (operation)
-  (declare (xargs :guard t)) (nth 6 operation))
+  (declare (xargs :guard (true-listp operation))) (nth 6 operation))
+
+(verify-guards fn-bpnf-family-publication-authorize)
+(verify-guards fn-bpnf-family-publication-operationp)
+(verify-guards fn-bpnf-family-publication-name)
+(verify-guards fn-bpnf-family-publication-frame)
+(verify-guards fn-bpnf-family-publication-publisher)
 
 (defthm fn-bpnf-family-publication-success-binds-exact-echo
   (implies (equal (car (fn-bpnf-family-publication-authorize

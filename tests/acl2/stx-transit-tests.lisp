@@ -20,6 +20,10 @@
 (include-book "../../books/codec-attach")
 ; The lace of the retained store (records-flip): the rows' lace and ALPHA.
 (include-book "../../books/stx-lace-rows")
+(include-book "../../books/peer-transit-authority")
+; The store-node machine's run (its states *sni-finished*, *sni-forked*), for
+; the served-state teeth at the end of this file (lane stx-model-3).
+(include-book "store-node-index-tests")
 ; The store's records reach the committed history image's decode
 ; (books/store-records-field.lisp, lane arena-store-7), whose books include
 ; crypto-attach: it attaches fn-digest to BLAKE3 after crypto-seam-tests
@@ -798,3 +802,153 @@
  (defthm stxt-propagates-antecedent-unsatisfiable
    (implies (natp (fn-article-payload article))
             (not (equal (list s) (fn-stx-article-delta article keyring fn-arena))))))
+
+; =============================================================================
+; W5b: the transit AUTHORITY verdict over the carried index
+; (books/peer-transit-authority.lisp), the served form of the gate above.
+; The index is the wire index of the same records the gate's node holds;
+; the lace is non-empty (the first assertion says so) and each refusal is
+; produced by the one change that names it.
+
+(make-event (list 'defconst '*stxt-pta-index*
+                  (list 'quote (fn-stx-index-of-store (list *stxt-rp-a*) *stxt-keyring*))))
+(make-event (list 'defconst '*stxt-pta-s-b*
+                  (list 'quote (fn-stx-statement-of *stxt-article-post-b*))))
+; Non-vacuity first: the column holds A's policy and the lace holds it.
+(assert-event (equal (fn-stx-lace-of-store (list *stxt-rp-a*) *stxt-keyring*)
+                     (list *stxt-pol-stmt-a*)))
+(assert-event (equal (fn-stx-index-policy-current *stxt-pta-index* *stxt-group* *stxt-a*)
+                     *stxt-pol-stmt-a*))
+(assert-event (equal *stxt-pta-s-b* *stxt-post-b*))
+; The positive witness: B's post is admitted, and the lace-side gate agrees.
+(assert-event (equal (fn-pta-group-verdict *stxt-pta-index* *stxt-keyring* *stxt-group*
+                                           *stxt-a* *stxt-pta-s-b*)
+                     :admitted))
+(assert-event (fn-pol-admitp (fn-stx-lace-of-store (list *stxt-rp-a*) *stxt-keyring*)
+                             *stxt-keyring* *stxt-group* *stxt-a* *stxt-pta-s-b*))
+; Every other name, each by the change that produces it.
+(assert-event (equal (fn-pta-group-verdict *stxt-pta-index* *stxt-keyring* *stxt-group*
+                                           nil *stxt-pta-s-b*)
+                     :ungoverned))
+(assert-event (equal (fn-pta-group-verdict *stxt-pta-index* *stxt-keyring* *stxt-group*
+                                           *stxt-a* nil)
+                     :no-statement))
+(assert-event (equal (fn-pta-group-verdict *stxt-pta-index* nil *stxt-group*
+                                           *stxt-a* *stxt-pta-s-b*)
+                     :unverified))
+(assert-event (equal (fn-pta-group-verdict *stxt-pta-index* *stxt-keyring* *stxt-group*
+                                           *stxt-a* *stxt-pol-stmt-a*)
+                     :not-a-post))
+(assert-event (equal (fn-pta-group-verdict (fn-stx-index-empty) *stxt-keyring* *stxt-group*
+                                           *stxt-a* *stxt-pta-s-b*)
+                     :no-policy))
+; A later policy by A naming no member: B is not authorized.
+(make-event (list 'defconst '*stxt-policy-a-none*
+                  (list 'quote (fn-pol-policy-encode (fn-pol-make-policy *stxt-group* nil nil)))))
+(make-event (list 'defconst '*stxt-pol-stmt-a-none*
+                  (list 'quote (fn-stmt-sign *stxt-sk-a* *stxt-a* 1 10 nil :policy
+                                             *stxt-policy-a-none*))))
+(make-event (list 'defconst '*stxt-src-p-none*
+                  (list 'quote (fn-stxt-authored-octets
+                                "Subject: policy" (fn-stx-b64-encode *stxt-policy-a-none*)))))
+(make-event (list 'defconst '*stxt-rp-a-none*
+                  (list 'quote (fn-stxt-policy-record "<pa-none>" *stxt-pol-stmt-a-none*
+                                                      *stxt-src-p-none*))))
+(make-event (list 'defconst '*stxt-pta-index-none*
+                  (list 'quote (fn-stx-index-of-store (list *stxt-rp-a-none* *stxt-rp-a*)
+                                                      *stxt-keyring*))))
+(assert-event (equal (fn-stx-index-policy-current *stxt-pta-index-none* *stxt-group* *stxt-a*)
+                     *stxt-pol-stmt-a-none*))
+(assert-event (equal (fn-pta-group-verdict *stxt-pta-index-none* *stxt-keyring* *stxt-group*
+                                           *stxt-a* *stxt-pta-s-b*)
+                     :unauthorized))
+; The authority forks: a second policy by A at the SAME slot (1, 9) with
+; other members.  No policy is in force, by name, and fn-pol-current agrees.
+(make-event (list 'defconst '*stxt-pol-stmt-a-fork*
+                  (list 'quote (fn-stmt-sign *stxt-sk-a* *stxt-a* 1 9 nil :policy
+                                             *stxt-policy-a-none*))))
+(make-event (list 'defconst '*stxt-rp-a-fork*
+                  (list 'quote (fn-stxt-policy-record "<pa-fork>" *stxt-pol-stmt-a-fork*
+                                                      *stxt-src-p-none*))))
+(make-event (list 'defconst '*stxt-pta-index-fork*
+                  (list 'quote (fn-stx-index-of-store (list *stxt-rp-a-fork* *stxt-rp-a*)
+                                                      *stxt-keyring*))))
+(assert-event (not (equal *stxt-pol-stmt-a-fork* *stxt-pol-stmt-a*)))
+(assert-event (equal (fn-stx-lace-of-store (list *stxt-rp-a-fork* *stxt-rp-a*) *stxt-keyring*)
+                     (list *stxt-pol-stmt-a* *stxt-pol-stmt-a-fork*)))
+(assert-event (fn-pta-authority-forkedp *stxt-pta-index-fork* *stxt-group* *stxt-a*))
+(assert-event (equal (fn-stx-index-policy-current *stxt-pta-index-fork* *stxt-group* *stxt-a*)
+                     nil))
+(assert-event (equal (fn-pol-current (fn-stx-lace-of-store (list *stxt-rp-a-fork* *stxt-rp-a*)
+                                                           *stxt-keyring*)
+                                     *stxt-keyring* *stxt-group* *stxt-a*)
+                     nil))
+(assert-event (equal (fn-pta-group-verdict *stxt-pta-index-fork* *stxt-keyring* *stxt-group*
+                                           *stxt-a* *stxt-pta-s-b*)
+                     :authority-equivocation))
+; The poster forks: B's other :article at slot (1, 1) is already retained, so
+; B's post carries no authority, by name; the bytes are still accepted.
+(make-event (list 'defconst '*stxt-src-post-2* (list 'quote (fn-stxt-authored "Subject: post" "hello"))))
+(make-event (list 'defconst '*stxt-post-b-2*
+                  (list 'quote (fn-stmt-sign *stxt-sk-b* *stxt-b* 1 1 nil :article
+                                             *stxt-src-post-2*))))
+(make-event (list 'defconst '*stxt-r-post-b-2*
+                  (list 'quote (fn-stxt-record "<pb2>"
+                                (fn-stxt-received (fn-stx-header-value *stxt-post-b-2*)
+                                                  *stxt-src-post-2*)))))
+(make-event (list 'defconst '*stxt-pta-index-bfork*
+                  (list 'quote (fn-stx-index-of-store (list *stxt-r-post-b-2* *stxt-rp-a*)
+                                                      *stxt-keyring*))))
+(assert-event (not (equal *stxt-post-b-2* *stxt-post-b*)))
+(assert-event (equal (fn-stx-lace-of-store (list *stxt-r-post-b-2* *stxt-rp-a*) *stxt-keyring*)
+                     (list *stxt-pol-stmt-a* *stxt-post-b-2*)))
+(assert-event (fn-pta-poster-forkedp *stxt-pta-index-bfork* *stxt-pta-s-b*))
+(assert-event (equal (fn-pta-group-verdict *stxt-pta-index-bfork* *stxt-keyring* *stxt-group*
+                                           *stxt-a* *stxt-pta-s-b*)
+                     :equivocation))
+
+; -----------------------------------------------------------------------------
+; W5b (lane stx-model-3): the refusal by its cause on the STORE-NODE MACHINE'S
+; index, not a hand-built one.  tests/acl2/store-node-index-tests' run reaches
+; *sni-finished* (one statement by *sni-creator*) and *sni-forked* (a second
+; statement by the same creator at the same slot: the equivocation the merge
+; recorded, fn-sn-equivocatorp anchored there on both runs).  The group is
+; governed by an explicit authority field. Posting policy-id remains a
+; distinct string, and the default authority of `store init' is ungoverned.
+
+(defconst *stxt-governed-v*
+  (fn-cfg-value-make (list (fn-cfg-group-make-with-authority "fn.test" 1 *fn-cfg-default-stamp* nil
+                                              *fn-cfg-default-policy-id* 0
+                                              (fn-record-octets-string (fn-id-text *sni-creator*)) 1))
+                     nil nil nil nil nil nil nil nil nil))
+(defconst *stxt-default-v*
+  (fn-cfg-value-make (list (fn-cfg-group-make "fn.test" 1 *fn-cfg-default-stamp* nil
+                                              *fn-cfg-default-policy-id* 0))
+                     nil nil nil nil nil nil nil nil nil))
+(assert-event (fn-prin-idp *sni-creator*))
+(assert-event (equal (fn-pta-group-authority *stxt-governed-v* 1 "fn.test") *sni-creator*))
+(assert-event (equal (fn-pta-group-authority *stxt-default-v* 1 "fn.test") nil))
+
+; The machine's index records the fork, and only the forked run's.
+(assert-event (not (fn-pta-poster-forkedp (fn-sn-index *sni-finished*) *sni-stmt*)))
+(assert-event (fn-pta-poster-forkedp (fn-sn-index *sni-forked*) *sni-stmt-2*))
+(assert-event (fn-pta-poster-forkedp (fn-sn-index *sni-forked*) *sni-stmt*))
+(assert-event (fn-prin-verifiedp *sni-stmt-2* (fn-sn-keyring *sni-forked*)))
+
+; The verdicts by name: the single statement under a governed group with no
+; policy in force is :no-policy (the poster is not refused); each fork is
+; :equivocation; the same fork on the ungoverned group is :ungoverned.
+(assert-event (equal (fn-pta-groups-verdict (fn-sn-index *sni-finished*) (fn-sn-keyring *sni-finished*)
+                                            *stxt-governed-v* 1 '("fn.test") *sni-stmt*)
+                     :no-policy))
+(assert-event (equal (fn-pta-groups-verdict (fn-sn-index *sni-forked*) (fn-sn-keyring *sni-forked*)
+                                            *stxt-governed-v* 1 '("fn.test") *sni-stmt-2*)
+                     :equivocation))
+(assert-event (equal (fn-pta-groups-verdict (fn-sn-index *sni-forked*) (fn-sn-keyring *sni-forked*)
+                                            *stxt-governed-v* 1 '("fn.test") *sni-stmt*)
+                     :equivocation))
+(assert-event (equal (fn-pta-groups-verdict (fn-sn-index *sni-forked*) (fn-sn-keyring *sni-forked*)
+                                            *stxt-default-v* 1 '("fn.test") *sni-stmt-2*)
+                     :ungoverned))
+; The refusal is of AUTHORITY: both forks' bytes are in the store.
+(assert-event (equal (len (fn-stx-store (fn-sn-node *sni-forked*))) 2))

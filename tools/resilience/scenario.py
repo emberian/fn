@@ -33,21 +33,33 @@ OPERATIONS = ("post", "read", "list-group", "retry", "recover", "restart", "chec
               "status", "reader-snapshot", "deliver-chunk", "disconnect", "policy-change",
               "acquire-hold", "release-hold", "begin-compaction", "reclaim",
               "cancel-reader", "retire-generation", "deliver-delayed-page",
-              "receipt", "replay-media", "probe")
+              "receipt", "replay-media", "probe",
+              "model-prepare", "model-complete", "model-recover")
 FAULT_ACTIONS = ("kill", "lose-response", "withhold-completion", "report-error",
-                 "drop-writes", "substitute-record", "rollback", "interleave")
+                 "drop-writes", "substitute-record", "rollback", "interleave",
+                 "deliver-stale-completion")
 FAULT_CLASSES = ("contract-admissible", "assumption-challenging")
 STAGES = ("issued", "performed", "persisted", "observed")
 WITNESSES = ("post-accepted", "retry-reconciled", "read-completed",
              "read-during-competing-work", "reclaim-freed", "recovery-completed",
-             "memberships-listed", "checkpoint-installed")
+             "memberships-listed", "checkpoint-installed",
+             "receipt-delivered", "receipt-effect-once", "cross-route-retry-refused",
+             "init-old-or-new",
+             # the interop backend (W7e, adapters/inn_lab.py): a copy served
+             # by the other agent matched under the named normalization; a
+             # Path loop refused; a second offer refused as held
+             "relay-normalized", "loop-refused", "duplicate-refused",
+             "model-prepared", "model-published", "model-settled",
+             "issued-read-held", "cancelled-read-settled", "retired-file-closed",
+             "independent-response-held", "response-hold-settled")
 REPLAY = ("exact", "timed", "image")
-CONTRACTS = ("local-commit-log",)
+CONTRACTS = ("local-commit-log", "acceptance-model", "page-io-ownership", "reclaim-response-hold")
 CANDIDATE_RULES = ("absent", "present", "either")
 # The routes a post's cut is reached by; the registry carries each route's
 # column where they differ (design §5: `operator post' and `store post' are
 # a batch of one, the served POST a member of the owner's quantum).
-ROUTES = ("store-post", "operator-post", "served-post")
+ROUTES = ("store-post", "operator-post", "served-post", "bp-transit",
+          "peer-transit")     # NNTP transit from or to another news agent (W7e)
 HEALING_BOUND_KINDS = ("seconds", "experimental")
 EXPECTED = ("consistent", "violation", "inconclusive", "no-witness", "harness-failure",
             "healing-overran")
@@ -59,23 +71,34 @@ EXPECTED = ("consistent", "violation", "inconclusive", "no-witness", "harness-fa
 # `kill_form` the cut that already exists for a process death there, if any.
 PENDING_BOUNDARIES = {
     "page-read-outstanding": {
-        "note": "reader cancel, generation retire, then the read delivered",
+        "note": "issued read cancelled, immutable file incarnation retired, then completion discarded",
         "operations": ("read", "reader-snapshot"),
         "owner": "online-reclaim-8",
         "kill_form": None,
-        "coordinate": "none yet: the hold sits in fn-owner-chunk-span (host/native/owner.lisp) "
-                      "after the reader's snapshot and before the page's delivery; reader "
-                      "generations are reclaim's since the pin port (extent-identity finished "
-                      "at ef75e8f4e), so online-reclaim-8 adds the held form"},
+        "coordinate": "matching-image execution pending: source6a6302488 adds "
+                      "FN_NATIVE_PAGE_IO_HOLD=RELEASE-FILE after real issue/token/fd/buffer "
+                      "acquisition in fnn-extent-prefetch (host/native/extent.lisp). "
+                      "tools/resilience/adapters/page_io.py records cancelled-token "
+                      "settlement, blocked retired-file close and a distinct productive "
+                      "retained read; worker thread death is a separate pending claim"},
     "reclaim-candidate-selected": {
         "note": "a new independent hold before the destructive action",
         "operations": ("reclaim",),
         "owner": "online-reclaim-8",
         "kill_form": "reclaim-captured",
-        "coordinate": "kill form only: FN_NATIVE_RECLAIM_FAULT=captured:kill "
-                      "(host/native/owner.lisp +fnn-reclaim-cuts+); the interleaving needs a "
-                      "held (pause/resume) form of the same cut so a hold can be acquired "
-                      "between the capture and the install"},
+        "held_form": {"selector": "FN_NATIVE_RECLAIM_HOLD", "value": "captured:RELEASE-FILE",
+                      "release": "the file named after the colon",
+                      "where": "the reclaim pass (host/native/owner.lisp) prints 'RECLAIM held "
+                               "at=CUT' and waits until RELEASE-FILE exists; CUT is one of "
+                               "+fnn-reclaim-cuts+; the held point is reclaim-CUT",
+                      "source": "lane/online-reclaim a8b5e0f72 (its developer image does not "
+                                "build yet: a definterface :kinds refusal on fn-arx-file-count)"},
+        "coordinate": "matching-image execution pending: capture hold "
+                      "FN_NATIVE_RECLAIM_HOLD=captured:RELEASE-FILE is in this tree, and "
+                      "response-pin sourcecaa3bc7e acquires the independent live hold. "
+                      "tools/resilience/adapters/reclaim_hold.py observes actual OVER "
+                      "quantum-held, reader deferral, named response settlement and "
+                      "productive reclaim; no plan-only substitute or physical-sector claim"},
     "receipt-observed": {
         "note": "duplicate, reorder with a policy change, lose its durable completion",
         "operations": ("receipt",),
@@ -88,11 +111,17 @@ PENDING_BOUNDARIES = {
                                "is recorded and before the ADU/completion; prints 'BP APP "
                                "RECEIPT-OBSERVED HOLD release=PATH', released when the named "
                                "file appears; a signal there is the process-death form",
-                      "source": "lane/bp-remainder-codec 4247abc97 (READY f2e929ced)"},
-        "coordinate": "held form FN_APP_JOURNAL_TEST_HOLD_RECEIPT=decided (lane/bp-remainder-"
-                      "codec 4247abc97): the BP node runner that takes it is the next "
-                      "increment; until the selector is in this tree and that runner "
-                      "exists, pending"},
+                      "source": "lane/bp-remainder-codec 4247abc97 (READY f2e929ced; on dev "
+                                "since 96b3eb2e4)"},
+        # The runner that takes the held form (W7c-2a): with the selector in
+        # this tree and the runner present the point is executable, its
+        # actions the interleave at the hold and the death there.
+        "runner": "tools/resilience/adapters/bp_node.py",
+        "actions": ["interleave", "withhold-completion"],
+        "coordinate": "held form FN_APP_JOURNAL_TEST_HOLD_RECEIPT=decided (host/native/"
+                      "bp-app.lisp fnn-bpapp-pause-after-decision) driven by "
+                      "tools/resilience/adapters/bp_node.py (recipe bp-node): executable "
+                      "when both are in the tree, else pending"},
 }
 
 # Which operations reach each cut table, and the developer selector that
@@ -111,6 +140,10 @@ TABLE_SELECTORS = {
     "STATEMENT_CUTS": "FN_NATIVE_KEY_STATEMENT_FAULT",
 }
 RECLAIM_CUTS_SOURCE = "host/native/owner.lisp:+fnn-reclaim-cuts+"
+BLOCK_BOUNDARY = "power-loss"                   # adapters/power_loss.py (W7d)
+BLOCK_RECOVERY_BOUNDARY = "recovery-power-loss"
+INTEROP_IDLE_BOUNDARY = "peer-idle"              # adapters/inn_lab.py (W7e): fn owner SIGTERM
+INTEROP_PEER_BOUNDARY = "peer-innd"              # the peer daemon killed
 
 
 class ScenarioError(ValueError):
@@ -223,7 +256,12 @@ def boundary_registry() -> dict:
     if str(ROOT) not in sys.path:
         sys.path.insert(0, str(ROOT))
     from tests.campaign import native_cuts  # noqa: E402
-    registry = {}
+    registry = {"model-completion-delivery": {
+        "source": "books/acceptance.lisp:fn-accept-complete/fn-accept-recover",
+        "operations": ["model-complete", "model-recover"],
+        "actions": ["report-error", "deliver-stale-completion"],
+        "executable": True, "backend": "acceptance-model",
+        "rule": None, "rules": {}, "tables": []}}
     tables = (("POST_LOG_CUTS", native_cuts.POST_LOG_CUTS),
               ("POST_CUTS", native_cuts.POST_CUTS),
               ("RECOVERY_CUTS", native_cuts.RECOVERY_CUTS),
@@ -268,17 +306,49 @@ def boundary_registry() -> dict:
             "rule": rule, "rules": {r: rule for r in ROUTES},
             "operations": ["reclaim"], "actions": ["kill"],
             "selector": "FN_NATIVE_RECLAIM_FAULT", "selector_name": name, "executable": True}
+    # The block replay backend's boundaries (W7d, adapters/power_loss.py):
+    # a power cut at a recorded write boundary of the device under the
+    # committing node (tools/power_loss.py, dm-log-writes), and one during
+    # the recovery that follows.  The crash rule is the composition the
+    # checker applies (power-loss-prefix), not a cut table's column.
+    for name, ops in ((BLOCK_BOUNDARY, ["post", "checkpoint", "reclaim", "probe"]),
+                      (BLOCK_RECOVERY_BOUNDARY, ["recover"])):
+        registry[name] = {"source": "tools/power_loss.py (dm-log-writes)", "tables": [],
+                          "program": None, "book": "books/store-log-crash.lisp",
+                          "rule": None, "rules": {}, "operations": ops,
+                          "actions": ["drop-writes"], "selector": None,
+                          "executable": True, "backend": "block-replay"}
+    # The interop backend's boundaries (W7e, adapters/inn_lab.py): the fn
+    # owner's SIGTERM with no transfer in flight (tools/inn_lab.py
+    # scenario_fn_term) and the peer daemon killed (scenario_innd_cut).
+    # Neither is a cut table's column: everything acknowledged stays
+    # (present), and the peer's own recovery is the peer's, never fn's rule.
+    for name, ops, rules in ((INTEROP_IDLE_BOUNDARY, ["probe"],
+                              {"served-post": "present", "operator-post": "present",
+                               "peer-transit": "present"}),
+                             (INTEROP_PEER_BOUNDARY, ["disconnect"], {})):
+        registry[name] = {"source": "tools/inn_lab.py (INN 2.7.4 on hbox)", "tables": [],
+                          "program": None, "book": None, "rule": None, "rules": rules,
+                          "operations": ops, "actions": ["kill"], "selector": None,
+                          "executable": True, "backend": "interop"}
     io = ROOT / "host" / "native" / "io.lisp"
     selectors = io.read_text() if io.is_file() else ""
     for name, row in PENDING_BOUNDARIES.items():
         held = row.get("held_form")
-        registry[name] = {"source": "design §5 (pending)", "tables": [], "program": None,
+        held_in_tree = bool(held and held["selector"] in selectors)
+        runner = row.get("runner")
+        runner_in_tree = bool(runner and (ROOT / runner).is_file())
+        executable = held_in_tree and runner_in_tree
+        registry[name] = {"source": ("design §5 (held form + runner)" if executable
+                                     else "design §5 (pending)"),
+                          "tables": [], "program": None,
                           "book": None, "rule": None, "rules": {},
-                          "operations": list(row["operations"]), "actions": [],
+                          "operations": list(row["operations"]),
+                          "actions": list(row.get("actions", ())) if executable else [],
                           "selector": held["selector"] if held else None,
-                          "held_form": held,
-                          "held_in_tree": bool(held and held["selector"] in selectors),
-                          "executable": False, "note": row["note"],
+                          "held_form": held, "held_in_tree": held_in_tree,
+                          "runner": runner, "runner_in_tree": runner_in_tree,
+                          "executable": executable, "note": row["note"],
                           "owner": row["owner"], "kill_form": row["kill_form"],
                           "coordinate": row["coordinate"]}
     return registry
@@ -314,6 +384,20 @@ def validate(scenario: Scenario, registry: dict | None = None) -> list:
             problems.append("{}: unknown operation {}".format(o.id, o.op))
         if o.actor not in actors:
             problems.append("{}: unknown actor {}".format(o.id, o.actor))
+        if o.op.startswith("model-"):
+            if scenario.contract != "acceptance-model":
+                problems.append(o.id + ": model operation requires acceptance-model profile")
+            if o.args.get("identity") not in ("A", "B"):
+                problems.append(o.id + ": model fixture identity must be A or B")
+            generation = o.args.get("generation")
+            if type(generation) is not int or generation < 0:
+                problems.append(o.id + ": model generation must be natural")
+            allowed = {"model-complete": ("durable", "aborted", "indeterminate"),
+                       "model-recover": ("committed", "absent")}
+            if o.op in allowed and o.args.get("result") not in allowed[o.op]:
+                problems.append(o.id + ": invalid model result")
+        elif scenario.contract == "acceptance-model":
+            problems.append(o.id + ": acceptance-model requires model operations")
         if o.op == "post" and not o.args.get("groups"):
             problems.append("{}: a post names its groups".format(o.id))
         if o.op == "retry":
@@ -359,9 +443,25 @@ def validate(scenario: Scenario, registry: dict | None = None) -> list:
     return problems
 
 
+# Interleaved operations (a nemesis step at a held boundary) without a host
+# coordinate on the native backend: the held form exists, the verb the
+# nemesis needs does not.  Keyed by the operation's `op` and the recipe.
+PENDING_INTERLEAVES = {
+    ("policy-change", "bp-node"): {
+        "coordinate": "live BP route control matching-image execution pending: "
+                      "the adapter stages `bp-node serve ... --control-config CONFIG` and "
+                      "requires actual BP NODE CONTROL for this Store; the earlier image "
+                      "rf4-444f-2 refused live `bp-route remove` as store-held. "
+                      "Source0238f266f provides the same serialized BP owner pump during the "
+                      "receipt decided hold; offline edits cannot stand in for its native run",
+        "owner": "bp_resume (serialized live BP control); resilience (SCN-218 adapter)"},
+}
+
+
 def pending_reasons(scenario: Scenario, registry: dict | None = None) -> list:
     """Why the scenario is not executable on the native backend, by
-    boundary; [] when every fault has a host coordinate for its action."""
+    boundary and by interleaved operation; [] when every fault has a host
+    coordinate for its action and every nemesis step a verb."""
     registry = boundary_registry() if registry is None else registry
     reasons = []
     for f in scenario.faults:
@@ -375,7 +475,34 @@ def pending_reasons(scenario: Scenario, registry: dict | None = None) -> list:
         elif f.action not in entry.get("actions", ()):
             reasons.append("{}: no {} form of the cut (actions: {})".format(
                 f.boundary, f.action, ", ".join(entry.get("actions", ()))))
+        for step in f.interleave:
+            o = scenario.operation(step)
+            pending = PENDING_INTERLEAVES.get((o.op, scenario.initial.get("recipe")))
+            if pending:
+                reasons.append("{} at {}: {} (owner {})".format(
+                    o.op, f.boundary, pending["coordinate"], pending["owner"]))
     return reasons
+
+
+def pending_owner(scenario: Scenario, registry: dict | None = None) -> str | None:
+    """The lane asked for the first missing coordinate: a boundary without
+    an executable held form first, then a nemesis verb without a live path,
+    then the boundary's registered owner (an executable point keeps its
+    lane's name)."""
+    registry = boundary_registry() if registry is None else registry
+    for f in scenario.faults:
+        if f.boundary in PENDING_BOUNDARIES and not registry.get(f.boundary, {}).get("executable"):
+            return PENDING_BOUNDARIES[f.boundary]["owner"]
+    for f in scenario.faults:
+        for step in f.interleave:
+            o = scenario.operation(step)
+            pending = PENDING_INTERLEAVES.get((o.op, scenario.initial.get("recipe")))
+            if pending:
+                return pending["owner"]
+    for f in scenario.faults:
+        if f.boundary in PENDING_BOUNDARIES:
+            return PENDING_BOUNDARIES[f.boundary]["owner"]
+    return None
 
 
 def executable_on_native(scenario: Scenario, registry: dict | None = None) -> bool:

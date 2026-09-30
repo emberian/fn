@@ -22,6 +22,15 @@ What "the executed path" means here:
     through a dispatcher (`(fnn-core 'fn-x a b)`), which calls the executable
     counterpart and so evaluates fn-x's guard.  An ACL2 host file is
     `:program` mode, so every call it makes evaluates the callee's guard.
+  * NOT MODELLED: a host entry's OWN guard.  A host file's definitions are
+    read with guard=None (Recorder.record below), so the walk the *1*
+    counterpart's guard check performs at the host boundary (fn-sn-statep
+    of the live Store for the owner's served entries) is never on the
+    path this tool traverses.  That walk is accounted by the raw-dispatch
+    list instead: an entry declared `:raw-with` (D40; planning/
+    interfaces.json `raw_dispatched`) runs its guard-verified definition
+    and skips it; every other guard-verified host entry still pays it once
+    per call.  Do not read a silent report here as "no boundary walk".
   * A constrained function runs its `defattach` (edges from
     reach_check.attachments).  A constrained function with no attachment, or
     a `funcall` of a variable, receiving a seeded value is an UNRESOLVED edge.
@@ -51,6 +60,7 @@ does not expand macros, and treats `equal` as constant time, which structure
 sharing usually makes true.  The record lists what it cannot follow.
 
 Run: python3 tools/hot_path_check.py [--report | --summary] [--strict] [--json FILE]
+(A host entry's own guard is not modelled; see the raw-dispatch list, D40.)
 """
 
 from __future__ import annotations
@@ -59,6 +69,7 @@ import argparse
 import collections
 import importlib.util
 import json
+import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -1189,8 +1200,32 @@ def as_json(analysis: Analysis, listed: dict) -> dict:
     }
 
 
+def owning_book(file: str) -> str:
+    """FILE and the last commit that changed it (sha and subject): who to ask
+    about a NEW find (item 76)."""
+    done = subprocess.run(["git", "-C", str(ROOT), "log", "-1", "--format=%h %s", "--", file],
+                          capture_output=True, text=True, check=False)
+    last = done.stdout.strip()
+    return f"{file} (last changed {last[:90]})" if last else file
+
+
+def refresh_stale(stale: list[str], path: Path = FINDINGS) -> None:
+    """Remove STALE keys from the findings list, keeping everything else
+    byte-for-byte in shape: a listed find that no longer occurs is fixed, and
+    carrying it by hand made every runner regen red (item 76).  NEW finds are
+    never added here: each needs its owner's packet."""
+    data = json.loads(path.read_text(encoding="utf-8"))
+    for key in stale:
+        data.get("findings", {}).pop(key, None)
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(
+        description=__doc__.splitlines()[0],
+        epilog="A host entry's OWN guard (the *1* counterpart's check at the host "
+               "boundary) is not modelled here; the raw-dispatch list (D40, "
+               "planning/interfaces.json raw_dispatched) accounts for that walk.")
     parser.add_argument("--report", action="store_true",
                         help="every find, grouped by host entry, with its path")
     parser.add_argument("--summary", action="store_true",
@@ -1207,6 +1242,9 @@ def main(argv=None) -> int:
                         help="per find whose key contains FIND, EVERY served host-entry "
                              "call chain that carries its dimension to it (a find leaves "
                              "the list only when all are cut)")
+    parser.add_argument("--refresh-stale", action="store_true",
+                        help="remove the STALE listed finds from the findings file "
+                             "(the runner's regen runs it; NEW finds still need a packet)")
     arguments = parser.parse_args(argv)
 
     analysis = analyze()
@@ -1244,9 +1282,21 @@ def main(argv=None) -> int:
     for key in fresh:
         find = analysis.finds[key]
         print(f"hot_path_check: NEW unexpected find -- {key} at "
-              f"{where_text(find, analysis.tree.definitions)} via {path_text(find)}")
+              f"{where_text(find, analysis.tree.definitions)} via {path_text(find)}; "
+              f"owning book {owning_book(find.file)}: its owner lists it in "
+              f"{FINDINGS.relative_to(ROOT)} with a packet, or removes the traversal")
     for key in stale:
-        print(f"hot_path_check: STALE listed find (no longer occurs) -- {key}")
+        function = key.split()[0]
+        definition = analysis.tree.definitions.get(function)
+        where = (f"{function} is in {definition.file}" if definition is not None
+                 else f"{function} is defined nowhere now")
+        print(f"hot_path_check: STALE listed find (no longer occurs) -- {key} ({where}); "
+              "`--refresh-stale` removes it (the runner's regen does)")
+    if arguments.refresh_stale and stale:
+        refresh_stale(stale)
+        print(f"hot_path_check: removed {len(stale)} STALE entr"
+              f"{'y' if len(stale) == 1 else 'ies'} from {FINDINGS.relative_to(ROOT)}")
+        stale = []
     if arguments.json:
         Path(arguments.json).write_text(json.dumps(as_json(analysis, listed), indent=1,
                                                    sort_keys=True) + "\n")

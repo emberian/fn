@@ -507,9 +507,27 @@ class RepositoryLedgerTests(unittest.TestCase):
         failures = (ledger.ROOT / "specs/failures.md").read_text()
         named = set(re.findall(r"(?m)^\| (A-[A-Z-]+) \|", failures))
         book = (ledger.ROOT / "books/assumptions.lisp").read_text()
+        rows = dict(re.findall(r"(?m)^\| (A-[A-Z-]+) \|(.*)$", failures))
         # A-CRYPTO lives in the crypto seam, not here; see the book header.
         for assumption in sorted(named - {"A-CRYPTO"}):
-            self.assertIn(assumption, book, f"{assumption} has no encapsulate")
+            if assumption in book:
+                continue
+            # A trust-boundary row (A-CRYPTO-NATIVE, A-EXTRACT, ...) is foreign
+            # code, not an ACL2 constraint, and says so; no theorem cites it.
+            if ("trust-boundary entry" in rows.get(assumption, "")
+                    and "not an ACL2 constraint" in rows.get(assumption, "")):
+                continue
+            # A registered assumption book (tools/check_scaffold.py
+            # assumption_books: kept out of assumptions.lisp's closure, e.g.
+            # A-ARENA-STORED's arena stobj): its row names the book, and the
+            # book states the assumption as an encapsulate.
+            named_books = re.findall(r"`(books/assumptions-[a-z0-9-]+\.lisp)`",
+                                     rows.get(assumption, ""))
+            self.assertTrue(named_books, f"{assumption} has no encapsulate")
+            for path in named_books:
+                text = (ledger.ROOT / path).read_text()
+                self.assertIn("(encapsulate", text, f"{assumption}: {path} has no encapsulate")
+                self.assertIn(assumption, text, f"{assumption}: {path} does not name it")
 
 
 class TreeCacheTests(unittest.TestCase):
@@ -1407,6 +1425,33 @@ class HandWrittenRecordLintTests(unittest.TestCase):
                           '(defun fn-s (x) (declare (xargs :mode :program)) x)\n'
                           }).books["books/s.lisp"]
         self.assertFalse(ledger.exports_no_rule(book))
+
+
+class FlipLinesTests(unittest.TestCase):
+    """obstructions-8 item 71: a regen that uncertifies rows says why, and
+    whether this branch's own change is the cause."""
+
+    def test_causes_are_grouped_and_attributed(self):
+        records = {
+            "books/a": {"verdict": "green", "certified_archived": True,
+                        "deps_moved_since": ["books/store-log.lisp"]},
+            "books/b": {"verdict": "green", "certified_archived": True,
+                        "deps_moved_since": ["books/store-log.lisp", "books/other.lisp"]},
+            "books/c": {"verdict": "never"},
+            "books/d": {"verdict": "green", "certified_archived": False,
+                        "deps_moved_since": []},
+        }
+        lines = ledger.flip_lines(
+            [("PRF-1", {"books/a"}), ("PRF-2", {"books/b"}), ("PRF-3", {"books/c"}),
+             ("PRF-4", {"books/d"})], records, changed={"books/store-log.lisp"})
+        self.assertIn("4 row(s) certified -> uncertified-at-current-digest", lines[0])
+        self.assertEqual(lines[1], "  books/store-log.lisp: 2 row(s) (this branch changes it: "
+                                   "expected until it is certified): PRF-1, PRF-2")
+        text = "\n".join(lines)
+        self.assertIn("books/other.lisp: 1 row(s) (not changed by this branch vs origin/dev: "
+                      "investigate): PRF-2", text)
+        self.assertIn("books/c.lisp (never): 1 row(s)", text)
+        self.assertIn("books/d.lisp (green only in an unarchived local run): 1 row(s)", text)
 
 
 if __name__ == "__main__":

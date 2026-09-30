@@ -441,3 +441,41 @@
               (fn-bpnp-deferral-replace arrival (fn-bpn-nth 5 record) held)
               (fn-bpnp-deferred-held h (fn-bpn-nth 5 record)))
       (list :fault :deferral-row))))
+
+;; The *1* class (Q4a item 2, bp-remainder-5): the host-called publication
+;; wrappers call these; verified so that their wrappers can be.
+(verify-guards fn-bpnp-session-idp)
+(verify-guards fn-bpnp-transfer-outcomep)
+(verify-guards fn-bpnp-forward-outcomep)
+; Constructor guards belong in this book so codec certification sees them.
+(verify-guards fn-bpnp-forward-attempt-record)
+(verify-guards fn-bpnp-forward-result-record)
+(verify-guards fn-bpnp-deferral-record)
+(verify-guards fn-bpnp-forward-attempt-recordp)
+(verify-guards fn-bpnp-forward-result-recordp)
+(verify-guards fn-bpnp-deferral-recordp)
+
+; KEYSTONE (PRF-1035).  The operator's forwarding budgets (host/native/bp-node.lisp
+; reads the two rows and refuses the profile on nil) are admitted exactly
+; when the configured owner backoff and retry budget, each defaulted when
+; the row is absent, are frame naturals and the retry budget is positive;
+; then the admitted budgets carry exactly those values, read back by
+; fn-bpnp-budget-backoff and fn-bpnp-budget-retries.
+(defthm fn-bpnp-configured-budgets-admits-exactly-the-frame-bounded-positive-budgets
+  (let* ((backoff* (if (null backoff) *fn-bpnp-default-owner-backoff* backoff))
+         (retries* (if (null retries) *fn-bpnp-max-forward-retries* retries))
+         (b (fn-bpnp-configured-budgets backoff retries)))
+    (and (iff b (and (fn-frame-natp backoff*)
+                     (fn-frame-natp retries*)
+                     (< 0 retries*)))
+         (implies b
+                  (and (fn-bpnp-budgetsp b)
+                       (equal b (fn-bpnp-budgets backoff* retries*))
+                       (equal (fn-bpnp-budget-backoff b) backoff*)
+                       (equal (fn-bpnp-budget-retries b) retries*)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-bpnp-configured-budgets fn-bpnp-budgets
+                                   fn-bpnp-budgetsp fn-bpnp-budget-backoff
+                                   fn-bpnp-budget-retries fn-bpn-nth
+                                   fn-cbor-ag-car)
+                                  (fn-frame-natp)))))

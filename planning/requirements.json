@@ -207,7 +207,7 @@
         "tests/evidence/2026-09-18-assurance.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 §4.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema0-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
+      "implementation_note": "Primitive/record full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 §4.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema1-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
       "keystones": [
         "fn-cbor-value-round-trip",
         "fn-cbor-accepted-input-is-canonical",
@@ -218,7 +218,7 @@
         "fn-bpa-round-trip",
         "fn-bpa-success-is-canonical"
       ],
-      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). Round trip and accepted-input canonicality hold for the CBOR primitives, the schema-0 transaction record and the BP ADU. Scope: these are fn's own provisional formats; no native object, signature-preimage or batch format is frozen."
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). Round trip and accepted-input canonicality hold for the CBOR primitives, the transaction record and the BP ADU. Scope: these are fn's own provisional formats; no native object, signature-preimage or batch format is frozen."
     },
     {
       "id": "ENC-002",
@@ -304,7 +304,7 @@
         "tests/acl2/acceptance-stamp-tests.lisp",
         "planning/evidence/t2a-acceptance-stamp-4670cc35-2026-09-23.md"
       ],
-      "note": "T2a implements schema-1 acceptance stamps with exact schema-0 decode/re-encode as :legacy; the codec and replay properties have lane certification. Native carried-over Store qualification on the combined image remains open. Unknown article headers and body bytes remain preserved, but opaque re-encoding of an unknown record schema is still unimplemented; this broader requirement is not complete."
+      "note": "T2a implements schema-1 acceptance stamps; the stampless schema 0 and its :legacy stamp are deleted (no migrations: fresh deploys at 6.6.0; lane small-rows-2-d3); the codec and replay properties have lane certification. Native carried-over Store qualification on the combined image remains open. Unknown article headers and body bytes remain preserved, but opaque re-encoding of an unknown record schema is still unimplemented; this broader requirement is not complete."
     },
     {
       "id": "STO-001",
@@ -751,7 +751,13 @@
         "PRF-985",
         "PRF-1013",
         "PRF-1014",
-        "PRF-1015"
+        "PRF-1015",
+        "PRF-1016",
+        "PRF-1017",
+        "PRF-1031",
+        "PRF-1032",
+        "PRF-1035",
+        "PRF-1036"
       ],
       "verification": [
         "proof",
@@ -825,7 +831,8 @@
         "PRF-001",
         "PRF-004",
         "PRF-046",
-        "PRF-081"
+        "PRF-081",
+        "PRF-1046"
       ],
       "verification": [
         "proof",
@@ -1110,7 +1117,12 @@
         "PRF-214",
         "PRF-215",
         "PRF-216",
-        "PRF-335"
+        "PRF-335",
+        "PRF-1039",
+        "PRF-1046",
+        "PRF-1047",
+        "PRF-1048",
+        "PRF-1051"
       ],
       "verification": [
         "proof",
@@ -1165,7 +1177,18 @@
         "PRF-985",
         "PRF-1013",
         "PRF-1014",
-        "PRF-1015"
+        "PRF-1015",
+        "PRF-1016",
+        "PRF-1017",
+        "PRF-1031",
+        "PRF-1032",
+        "PRF-1035",
+        "PRF-1036",
+        "PRF-1039",
+        "PRF-1046",
+        "PRF-1047",
+        "PRF-1048",
+        "PRF-1051"
       ],
       "verification": [
         "proof",
@@ -1451,7 +1474,7 @@
         "specs/nntp.md",
         "specs/nntp-audit.md"
       ],
-      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner’s durable whole-second acceptance stamp; schema-0 articles use the nearest later stamped acceptance, else the pinned reader wall second, else remain visible. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
+      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner’s durable whole-second acceptance stamp; an article without a natural stamp uses the nearest later stamped acceptance, else the pinned reader wall second, else remains visible; no record carries such a stamp since schema 0 was deleted (no migrations: fresh deploys at 6.6.0), and deleting this horizon is open. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
       "note": "The DATE-to-NEWNEWS no-miss guarantee across a reader pin and in-flight prepare remains T6 under A-CLOCK."
     },
     {
@@ -1520,7 +1543,9 @@
         "PRF-992",
         "PRF-1005",
         "PRF-1011",
-        "PRF-1012"
+        "PRF-1012",
+        "PRF-1060",
+        "PRF-1067"
       ],
       "verification": [
         "proof",
@@ -1556,7 +1581,9 @@
         "PRF-016",
         "PRF-054",
         "PRF-095",
-        "PRF-094"
+        "PRF-094",
+        "PRF-1063",
+        "PRF-1064"
       ],
       "verification": [
         "proof",
@@ -1569,7 +1596,10 @@
         "planning/evidence/native-owner-integrated-2026-09-21.md",
         "planning/lanes/HANDOFF-w22-native-control.md",
         "planning/evidence/native-control-accept-shutdown-2026-09-21.md",
-        "planning/evidence/native-raw-integration-w35-2026-09-21/README.md"
+        "planning/evidence/native-raw-integration-w35-2026-09-21/README.md",
+        "books/bp-node-control.lisp",
+        "tests/acl2/bp-node-control-tests.lisp",
+        "host/native/bp-control.lisp"
       ],
       "implementation_note": "Logical single-owner serialization is implemented. The frozen03 native runtime exercises concurrent uncertainty fencing and worker lifetime, with FNFD intent reconciliation after independent restart. Full concurrent backpressure, stale completion and production two-peer lifecycle composition remain open. The integrated control endpoint uses an adjacent persistent lease and worker-owned final socket close, with bounded accept polling for orderly SIGTERM. Scoped native collision, repeated-signal and lost-reply/restart tests passed. U18's active-client ceiling, absolute frame deadline and linear bounded accumulation are now integrated with scoped native slow-drip and excess-client witnesses; complete concurrent host refinement and the combined Linux image remain open.",
       "note": "Bounded protocol effects and scoped native mutex/worker runtime evidence are recorded separately. Frozen03 supersedes the historical owner-does-not-certify blocker; it does not establish complete serialization, backpressure or crash correspondence for every later native module."
@@ -1786,7 +1816,12 @@
         "PRF-021",
         "PRF-022",
         "PRF-023",
-        "PRF-995"
+        "PRF-995",
+        "PRF-1022",
+        "PRF-1023",
+        "PRF-1024",
+        "PRF-1027",
+        "PRF-1034"
       ],
       "verification": [
         "proof",
@@ -1972,7 +2007,7 @@
         "planning/evidence/manifests/certify-20260924T054048Z-760063.json",
         "tests/fixtures/topic-history/matched-second-root.source"
       ],
-      "implementation_note": "The bounded experimental fixed-controller model carries administrator installation, root anchor and report admission in Store slot 12, binds earlier T10 exact source and historical key context, and checks finite quota, roster and same-topic parents. Fresh version-2 anchors additionally bind the exact earlier administrator-install event generation; historical version-1 anchors retain ID-only replay meaning and cannot be freshly staged. The owner-called report selector returns retained admission on exact historical retry without another Store event. Scoped v2 codec, proposal and Store prepare evidence passed; the maintained topic/crash relation remains open. No dual-image migration: no store of another release is opened (fresh deploys at 6.6.0); tests/test_native_topic_local.py's v1-image cases became one single-image reopen-and-compaction case (lane config-and-legacy 2026-09-28).",
+      "implementation_note": "The bounded experimental fixed-controller model carries administrator installation, root anchor and report admission in Store slot 12, binds earlier T10 exact source and historical key context, and checks finite quota, roster and same-topic parents. Fresh version-2 anchors additionally bind the exact earlier administrator-install event generation; the eight-field version-1 anchor is not a topic event (no migrations: fresh deploys at 6.6.0; lane small-rows-2-d3). The owner-called report selector returns retained admission on exact historical retry without another Store event. Scoped v2 codec, proposal and Store prepare evidence passed; the maintained topic/crash relation remains open. No dual-image migration: no store of another release is opened (fresh deploys at 6.6.0); tests/test_native_topic_local.py's v1-image cases became one single-image reopen-and-compaction case (lane config-and-legacy 2026-09-28).",
       "note": "This local experiment is not a universal governance contract. The maintained Store topic relation needed to derive topic-valid physical crash images is still open; BP and byte reopen remain conditional. No succession, fork healing or automatic policy adoption is inferred."
     },
     {
@@ -2748,7 +2783,9 @@
         "PRF-1000",
         "PRF-941",
         "PRF-938",
-        "PRF-987"
+        "PRF-987",
+        "PRF-1059",
+        "PRF-1057"
       ],
       "verification": [
         "proof",
@@ -3337,7 +3374,9 @@
       "proof_targets": [
         "PRF-172",
         "PRF-304",
-        "PRF-967"
+        "PRF-967",
+        "PRF-1063",
+        "PRF-1064"
       ],
       "verification": [
         "proof",
@@ -3350,7 +3389,10 @@
         "specs/host.md",
         "docs/operator.md",
         "tests/test_native_control.py",
-        "planning/evidence/operator-daily-2026-09-26.md"
+        "planning/evidence/operator-daily-2026-09-26.md",
+        "books/bp-node-control.lisp",
+        "tests/acl2/bp-node-control-tests.lisp",
+        "host/native/bp-control.lisp"
       ],
       "implementation_note": "health: reason=starting on the first line when the lock is held where an owner would listen (exit 20, the fenced state). Offline control/peer verbs: fn-native-control-liveness over the socket node and the lock; a stale node is removed under the control-path lease. Refusal by name: a control post and a live reconfiguration print ACL2's reason word after the status (`refused operator post REFUSED unknown-group`, `refused operator control REFUSED no-such-grant`), carried by the reasoned FNCT kinds 13/17 and reply kind 18 (books/native-control-reason.lisp) so an old client's plain request still reads the plain reply. health's starting clears on the listening observation (fn-nh-starting-clears-on-listening). Open: PKT-472."
     },
@@ -3712,7 +3754,9 @@
         "PRF-969",
         "PRF-970",
         "PRF-991",
-        "PRF-1018"
+        "PRF-1018",
+        "PRF-1037",
+        "PRF-1044"
       ],
       "verification": [
         "proof",
@@ -3721,7 +3765,7 @@
       "evidence": [
         "planning/evidence/catalog-slice-2026-09-26.md"
       ],
-      "implementation_note": "Not yet served (catalog-slice, 2026-09-26): the stobj and its columns exist and are proved; the host still reads the owner's view (PKT-585). catalog-slice-2 (2026-09-26): the relation between the catalog's columns and the store's history is proved at every entry (fn-cat-load-establishes-relation) and preserved by the completion; the served reads (PRF-204) remain PKT-585.",
+      "implementation_note": "The served catalog reads its indexed columns; the Message-ID column uses the keyed page table (PRF-1037). P2 slice 3 installs the current generation key at open and asks its saturation verdict before staging (PRF-1044). The served host now preserves :mpx-saturated as a named refusal rather than erasing it into generic :refused; the broadened NNTP refusal distinctness and uncertainty-separation theorems and their literal positive witnesses are REPL-admitted. Matching candidate certification/native execution, served crafted-collision/saturation activation, refusal-finder composition and retained-generation resource evidence remain open. The catalog rows are still heap-resident until P3/P4; no constant-memory whole-store claim follows.",
       "note": "Lane catalog-slice (wave 5 lane 2, D33)."
     },
     {
@@ -4732,7 +4776,10 @@
         "PRF-925",
         "PRF-926",
         "PRF-931",
-        "PRF-932"
+        "PRF-932",
+        "PRF-1020",
+        "PRF-1059",
+        "PRF-1066"
       ],
       "verification": [
         "proof",
@@ -5460,7 +5507,7 @@
     },
     {
       "id": "HST-036",
-      "title": "Maintenance while serving: `recover' and `store inspect' on a running owner are answered by that owner (recover accepted by name, its status following; inspect as the owner's own lookup rendering the offline report), refused by name with what it would take when an owner holds the lock and answers nothing; `status' and `health' on a stopped store read the checkpoint header and the journal's sizes (a bound on the transactions), never a replay; `status --replay' is the replayed report",
+      "title": "Maintenance while serving (with `store export DIR` on the running owner, row S3b): `recover' and `store inspect' on a running owner are answered by that owner (recover accepted by name, its status following; inspect as the owner's own lookup rendering the offline report), refused by name with what it would take when an owner holds the lock and answers nothing; `status' and `health' on a stopped store read the checkpoint header and the journal's sizes (a bound on the transactions), never a replay; `status --replay' is the replayed report",
       "specification": "specs/host.md#operator-commands-and-owner-critical-sections",
       "milestone": "M5",
       "status": "implemented",
@@ -5584,6 +5631,70 @@
         "tests/test_native_maintenance_live.py"
       ],
       "implementation_note": "Lane operability-2 (row S3, 2026-09-29): PKT-868's owner-request route (the administrative vector over the control socket, ACL2's liveness decision) carries `inspect request ID'; `recover' with a live owner is a status read; the stopped report is fn-omr-stopped-report over config.json, the checkpoint's 37-octet header and lstat sizes. `store export' on the running owner is the row's remaining item (S3b)."
+    },
+    {
+      "id": "HST-039",
+      "title": "Offline snapshot blessing requires a completion marker before read-only open, the copy's own accepted lineage and a valid node secret; first failure is named, never inferred fresh",
+      "specification": "specs/host.md#offline-snapshot-blessing",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-1050"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-snapshot-request.lisp",
+        "tests/acl2/owner-snapshot-request-tests.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_snapshot_bless.py"
+      ],
+      "implementation_note": "S7a checker implemented; native evidence pending matching union image. S7 running producer remains separate, unfinished."
+    },
+    {
+      "id": "OBJ-008",
+      "title": "Versioned route-independent legacy article subject",
+      "specification": "specs/substrate-transport.md#24-versioned-legacy-article-subjects-relay-v1-obj-008--prf-1058",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1058"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/article-subject.lisp",
+        "tests/acl2/article-subject-tests.lisp",
+        "tests/test_native_article_subject.py"
+      ],
+      "note": "Projection and byte-preservation forms admitted in clean REPL; native coordinate pending runner image. Original bytes commitments and signatures unchanged. Durable Message-ID binding/retained tombstone article subject remains open."
+    },
+    {
+      "id": "SUB-007",
+      "title": "Explicit durable group authority binding",
+      "specification": "specs/reconfiguration.md#explicit-group-authority-sub-007-prf-1061",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1061"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/config.lisp",
+        "books/config-invariants.lisp",
+        "books/native-admin.lisp",
+        "tests/acl2/group-authority-tests.lisp",
+        "tests/test_native_group_authority.py"
+      ],
+      "note": "Configuration implementation and clean REPL complete; running pin/replacement native pending new image. Productive verified authority through hybrid-snapshot/legacy-statement index bridge remains active finite work."
     }
   ]
 }

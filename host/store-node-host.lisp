@@ -19,6 +19,8 @@
 (include-book "../books/store-budget-article")
 (include-book "../books/store-maintenance-reserve")
 (include-book "../books/history-image-snapshot")
+; S7a offline snapshot validation verdicts, called from native/io.lisp.
+(include-book "../books/owner-snapshot-request")
 (include-book "../books/store-capacity-vector")
 (include-book "../books/store-carried-folds")
 ; PKT-220: the retention figures `operator CONFIG obligations' opens with.
@@ -41,10 +43,7 @@
 ; PKT-854: `store ROOT digest' reads fn-sckd-tables-digest (the checkpoint's
 ; tables digest) at the open; no other host file brings it into the world.
 (include-book "../books/store-checkpoint-digest")
-; PRF-992 (incremental-finalize-3): fn-store-sn-recover-from-checkpoint calls
-; fn-sfi-extend-open; no other host file brings it into the world (a regen of
-; the umbrellas from the host files dropped it: the image's host-ld failed).
-(include-book "../books/store-finalize-incremental")
+(include-book "../books/store-finalize-incremental") ; fn-sfi-extend-open (fn-store-sn-recover-from-checkpoint)
 (include-book "../books/store-checkpoint-arena-writer")
 (include-book "../books/owner-checkpoint-pipeline")
 ; PKT-444 (1): the open names a pre-C1 control record instead of faulting.
@@ -96,7 +95,7 @@
 ;; since the last read.  One process serves one Store (owner mode, or the
 ;; store node's), so one stobj.
 (defun fn-host-hist-sync (store fn-hist state)
-  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (declare (xargs :stobjs (fn-hist state) :guard t))
   (let ((reload (and (boundp-global 'fn-store-sn-hist-reload state)
                      (f-get-global 'fn-store-sn-hist-reload state))))
     (let ((fn-hist (fn-hist-refresh (fn-sn-files store) reload fn-hist)))
@@ -281,7 +280,8 @@
 ;; accepts (the checkpoint-damaged bug, operability review 2026-09-29).
 ;; :bad records answer ACC: the open refuses them itself.
 (defun fn-store-cfg-next-txid (octet-records acc)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-octet-list-listp octet-records)))
   (let ((records (fn-store-cfg-decode-records octet-records)))
     (if (equal records :bad)
         (nfix acc)
@@ -290,7 +290,8 @@
 ;; The served profile: the sealed one under the configuration history's
 ;; :set-limit rows (books/limits-live.lisp fn-lim-effective).
 (defun fn-store-lim-effective (sealed octet-records)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-octet-list-listp octet-records)))
   (let ((records (fn-store-cfg-decode-records octet-records)))
     (if (equal records :bad)
         sealed
@@ -845,6 +846,26 @@ reopen predicate, writer-lock observation and observed final namespace."
   (value (fn-store-sco-encode-records
           (take (nfix count) (nthcdr (nfix start) (fn-sco-records (fn-store-sco-current state))))
           fn-arena)))
+
+; Row S3b (lane operability-7): the running owner's export
+; (host/native/owner.lisp fnn-owner-export-write) walks the captured record
+; list a chunk at a time, off the owner mutex, through the live arena its
+; capture pinned: the next N records' octets, each what the offline export
+; writes for that record (fn-store-sco-encode-records above), and the rest
+; of the list.  The chunking is the host's; for every chunking the entries
+; are fn-sxp-entries of the whole history (books/store-export-stream.lisp
+; fn-sxp-stream-is-the-export).  A walk, not (take n) over (len records):
+; the list is the store's whole history.
+(defun fn-store-sco-split (records n acc)
+  (declare (xargs :mode :program))
+  (if (or (atom records) (zp n))
+      (mv (revappend acc nil) records)
+    (fn-store-sco-split (cdr records) (1- n) (cons (car records) acc))))
+
+(defun fn-store-sco-encode-chunk (records n fn-arena)
+  (declare (xargs :mode :program :stobjs fn-arena))
+  (mv-let (chunk rest) (fn-store-sco-split records n nil)
+    (list (fn-store-sco-encode-records chunk fn-arena) rest)))
 
 ; The covered prefix's LAST record's octets, or NIL: the owner reads its
 ; pending key statement off the history's last record, which after a log

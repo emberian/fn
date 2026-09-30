@@ -76,12 +76,82 @@ class ForwardReferenceTests(unittest.TestCase):
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
                 host_check.forward_references = lambda build, root_=None: real(build, root)
+                holes = host_check.book_holes
+                host_check.book_holes = lambda builds: holes(builds, root)
                 try:
                     code = host_check.main(["--forward", "--build", "host/native/build.lisp"])
                 finally:
                     host_check.forward_references = real
+                    host_check.book_holes = holes
             self.assertEqual(code, 1)
             self.assertIn("FAIL host/a-host.lisp:5: fn-a-later", out.getvalue())
+            self.assertIn("call(s) into a book outside the image world (--books)",
+                          out.getvalue())
+
+
+class BookHoleTests(unittest.TestCase):
+    """obstructions-9 item 83: a host file calls a name only a book outside the
+    image world defines (store-checkpoint-digest, store-finalize-incremental)."""
+
+    def tree(self, directory: str, include_it: bool) -> Path:
+        root = Path(directory).resolve()
+        host = ('(in-package "ACL2")\n'
+                + ('(include-book "../books/digest")\n' if include_it else "")
+                + "(defun fn-open (x)\n  (declare (xargs :mode :program))\n"
+                  "  (list (fn-digest x) (fn-base-f x) (car x) '(fn-local-only q)))\n"
+                  "(definterface fn-open :keystones (fn-digest-keystone))\n")
+        build = BUILD.replace('"../../books/base"', '"books/base"')
+        files = {"host/native/build.lisp": build, "books/base.lisp": BASE,
+                 "books/digest.lisp": '(in-package "ACL2")\n(defun fn-digest (x) x)\n'
+                                      '(local (defun fn-local-only (x) x))\n'
+                                      '(defthm fn-digest-keystone (equal (fn-digest x) x))\n',
+                 "host/a-host.lisp": host, "host/c-host.lisp": '(in-package "ACL2")\n',
+                 "host/native/raw.lisp": ""}
+        for name, text in files.items():
+            (root / name).parent.mkdir(parents=True, exist_ok=True)
+            (root / name).write_text(text)
+        return root
+
+    def test_a_call_into_a_book_outside_the_world_is_named_with_the_book(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tree(directory, include_it=False)
+            found = host_check.book_holes(("host/native/build.lisp",), root)
+        self.assertEqual(found, [
+            "host/native/build.lisp: host/a-host.lisp:4: fn-digest is defined in books/digest, "
+            "which this image's world does not include: include-book it in host/a-host.lisp "
+            "(and regenerate the umbrellas: tools/extract/world.py)"])
+
+    def test_the_host_files_own_include_closes_the_hole(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tree(directory, include_it=True)
+            self.assertEqual(host_check.book_holes(("host/native/build.lisp",), root), [])
+
+    def test_raw_compliant_declaration_requires_its_actual_image_book(self):
+        # Export-request passed the old call-site check: the raw host calls
+        # its compliant function directly, but loading its definterface
+        # failed because the full image omitted the defining book.
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tree(directory, include_it=True)
+            (root / "books/export.lisp").write_text(
+                '(in-package "ACL2")\n(defun fn-export-request (x) x)\n')
+            (root / "host/interfaces.lisp").write_text(
+                '(definterface fn-export-request :class :common-lisp-compliant)\n')
+            build = root / "host/native/build.lisp"
+            build.write_text(build.read_text() + '\n(ld "host/interfaces.lisp")\n')
+            found = host_check.book_holes(("host/native/build.lisp",), root)
+            self.assertEqual(len(found), 1)
+            self.assertIn("host/interfaces.lisp:1: declared fn-export-request", found[0])
+            self.assertIn("books/export", found[0])
+            build.write_text('(include-book "books/export")\n' + build.read_text())
+            self.assertEqual(host_check.book_holes(("host/native/build.lisp",), root), [])
+
+    def test_declaration_outside_loaded_prefix_does_not_add_a_dependency(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tree(directory, include_it=True)
+            (root / "books/export.lisp").write_text('(defun fn-export-request (x) x)\n')
+            (root / "host/interfaces-extract.lisp").write_text(
+                '(definterface fn-export-request :class :common-lisp-compliant)\n')
+            self.assertEqual(host_check.book_holes(("host/native/build.lisp",), root), [])
 
 
 if __name__ == "__main__":

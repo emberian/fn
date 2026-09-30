@@ -1151,15 +1151,13 @@
         "From an already accepted schema-1 root and historical key snapshot, prepare and commit a finite local anchor under the installed administrator ID. Repeat with a different caller, changed snapshot and the same already anchored root.",
         "Construct an accepted report signed by a roster author, propose and commit its admission, then retry the exact source after the finite quota is consumed and after native Store reopen; compare transaction filenames and bytes before and after each retry.",
         "Construct separate accepted reports under a non-roster signer, with an unadmitted same-topic parent and after quota exhaustion. Compare the projection before preparation and after completion.",
-        "Complete a valid administrator install, anchor and report in Store; reopen the completed prefix, then try a structurally valid duplicate administrator install image.",
-        "Create a completed version-1 administrator/root/report history with a pre-v2 source-matched image. Reopen it under a v2 image, retry the old exact report, then admit a distinct root under the same installed administrator using version 2 and reopen the mixed history. Attempt to reopen a fresh v2 anchor under the pre-v2 image."
+        "Complete a valid administrator install, anchor and report in Store; reopen the completed prefix, then try a structurally valid duplicate administrator install image."
       ],
       "expected": [
         "Only the matching administrator/root context yields a proposed anchor; the same root cannot be anchored twice.",
         "The report receives one historical admission. Exact retry returns a distinct successful replayed-historical status with no admission bytes over control, no second Store event and no additional charge, including after reopen; proposal alone does not change state.",
         "Non-roster author, missing parent and no remaining quota each refuse fresh admission; no ordinary article acceptance is undone.",
-        "Completed topic events advance Store sequence/transaction and carried topic state while preserving article acceptance; observed reopen rejects the duplicate-install topic history with :replay.",
-        "Old version-1 bytes retain ID-only historical admission and unchanged retry counts; the newly emitted version-2 anchor binds the earlier installed administrator generation, survives v2 reopen, and is refused by the old unknown-version decoder. Fresh version-1 anchor staging and cross-version anchor shape confusion refuse."
+        "Completed topic events advance Store sequence/transaction and carried topic state while preserving article acceptance; observed reopen rejects the duplicate-install topic history with :replay."
       ],
       "evidence": [
         "tests/acl2/topic-history-admission-tests.lisp",
@@ -6071,7 +6069,7 @@
       "id": "SCN-210",
       "title": "`store export DIR' answers on the running owner: requested and written while serving, refused by name when an export is in flight or DIR exists; the archive imports with the captured count",
       "milestone": "M5",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "HST-036"
       ],
@@ -6083,7 +6081,9 @@
       ],
       "implementation": {
         "test": "tests.test_native_maintenance_live",
-        "cases": [],
+        "cases": [
+          "test_store_export_answers_on_the_running_owner_and_the_archive_imports"
+        ],
         "native": true
       },
       "evidence": [
@@ -6174,6 +6174,133 @@
         ],
         "native": true
       }
+    },
+    {
+      "id": "SCN-214",
+      "title": "A node moves to the next release beside the one it runs and back: `install.sh` keeps releases under PREFIX/releases with PREFIX/current the running one; `--upgrade` prints the gap from the log's `run opened ms=N`, asks the next release (its own verdict), switches, and `--rollback` switches back; a store of another format is refused by name with nothing switched",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-036"
+      ],
+      "steps": [
+        "The production image staged twice as releases A and B (two source revisions); `sh A/install.sh --prefix P --node N --no-service`; `mission`, `init`, `run` through P/current/bin/fn; N POSTs; stop; `sh B/install.sh --upgrade --prefix P --node N --no-service`; `run` through P/current/bin/fn; `health`; one POST; stop; `sh P/current/install.sh --rollback --node N --no-service`; `run`; `status`; the refusals: `--upgrade` of an installed release, `--rollback` with no previous release, `--upgrade` over a store of another format (a fresh prefix), `--rollback` when the previous release refuses the store."
+      ],
+      "expected": [
+        "The install makes P/releases/A and P/current -> releases/A, and the rendered unit starts P/current/bin/fn; the upgrade prints `the node will be away for about S s: its last start took M ms` with M the log's last `run opened ms=` and S = ceil(M/1000), installs P/releases/B, prints B's own stopped-store verdict (`stopped checkpoint=...`), `current -> releases/B (previous -> releases/A)`, exit 0; P/current/bin/fn --version names B; the node starts through current, `health` answers, the interval from the stop to it is within the printed gap plus the named slack (the installer's ask, the heap probes and the start), and the POSTs are served (status transactions = N, then N+1); the rollback prints `current -> releases/A (previous -> releases/B)`, exit 0, and the node serves N+1 transactions on A; every refusal is by name and exit 4 with nothing switched: `is already installed at`, `nothing to roll back to`, `refuses that store's format` (P/releases/B removed again on a fresh prefix; the node's config.json restored after the rollback case)."
+      ],
+      "implementation": {
+        "test": "tests.test_native_install",
+        "cases": [
+          "test_upgrade_beside_and_rollback_walk_with_the_printed_gap",
+          "test_a_release_that_refuses_the_store_switches_nothing"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "packaging/install.sh",
+        "books/native-health.lisp",
+        "tests/acl2/native-health-tests.lisp"
+      ]
+    },
+    {
+      "id": "SCN-218",
+      "title": "A running BP node serializes receipt route removal during its decided hold, then heals and releases the sender obligation once",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-002",
+        "HST-010"
+      ],
+      "steps": [
+        "Start the receiver BP node with its exact Store control config and observe BP NODE CONTROL naming Store/control.sock. Reach the actual receipt-observed decided hold before completion.",
+        "Use operator CONFIG bp-route remove against the same running receiver. Release the hold; dispatch the retained receipt with its route absent. Restore the route and dispatch again.",
+        "Observe receipt-accepted at the sender, stop it before reading obligation status, and probe the receiver Store for one article and the expected identity."
+      ],
+      "expected": [
+        "The successful live route change is handled by the same serialized owner while the receipt is held; a missing control listener remains pending by name.",
+        "Dispatch with the removed route reports no-route; dispatch after restoration reports sent. Receipt observation does not erase the accepted application effect.",
+        "The sender obligation is receipted and unpinned after the durable receipt; the receiver contains exactly one application effect. Missing hold, route mutation, healing or productive witnesses cannot yield green."
+      ],
+      "implementation": {
+        "test": "tests.test_native_resilience_cuts",
+        "cases": [
+          "test_schedule_point_scenarios_reach_their_expected_verdict_or_are_pending_by_name"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "tools/resilience/adapters/bp_node.py",
+        "tools/resilience/schedule_points.py",
+        "tests/test_resilience_bp_control.py",
+        "planning/evidence/resilience-bp-control-2026-09-29.md"
+      ],
+      "execution_scope": "Source adapter and BP live-control source0238f266f integrated for schedule-receipt-observed-reorder. A matching runner image/native run remains pending; adapter unit tests do not establish native activation or receipt ordering."
+    },
+    {
+      "id": "SCN-217",
+      "title": "Offline snapshot blessing validates stopped-copy fixtures and real reopen, names missing marker/key and malformed store/key and refuses a foreign lineage",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-039"
+      ],
+      "steps": [
+        "Copy a stopped three-article store; explicitly supply the producer completion observation marker; bless, start the copy and retrieve each article. Remove marker or key, corrupt the key or profile; preserve first-failure refusal. Diverge copied stores and install a foreign checkpoint; blessing refuses its lineage."
+      ],
+      "expected": [
+        "Blessed iff the marker, own read-only open and node-secret observations hold; accepted exit 0, named refusal exit 1. Missing marker omits open even with malformed profile. A complete older own-lineage copy remains accepted (no freshness guarantee)."
+      ],
+      "implementation": {
+        "test": "tests.test_native_snapshot_bless",
+        "cases": [
+          "test_stopped_copy_blesses_reopens_and_names_missing_and_malformed_inputs",
+          "test_foreign_lineage_is_refused_and_complete_old_lineage_is_explicitly_allowed"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "tests/test_native_snapshot_bless.py"
+      ],
+      "scope_note": "Stopped-copy fixtures explicitly supply SNAPSHOT. No running snapshot producer or atomic-capture claim."
+    },
+    {
+      "id": "SCN-216",
+      "title": "Cold pread cancellation, retired file ownership and late completion",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-017"
+      ],
+      "steps": [
+        "Issue and hold an actual cold pread off both locks; release within deadline and read original article.",
+        "Issue another cold pread, observe 403 deadline, disconnect the client, open a replacement request and install a reclaim that retires the old file.",
+        "Observe close-held for that issued file before release; deliver success, injected stale and duplicate completion variants; assert no publish after cancellation and eventual descriptor close.",
+        "Deliver short/error after timeout and assert named store fault and fault exit rather than an unobserved detached exception.",
+        "Refuse an injected thread launch before worker/buffer creation; settle the issued token as error and fence."
+      ],
+      "expected": [
+        "Matching verified success advances the original request with exact article bytes.",
+        "Cancellation retains buffer/fd ownership; retirement cannot close the fd while worker still runs.",
+        "Late completion never delivers into the replacement request; duplicate/stale has no second publication or settlement.",
+        "Late error/short faults the store, with no fabricated article and no uncertain/absent classification.",
+        "Definite launch failure creates no detached worker and releases no ownership twice."
+      ],
+      "implementation": {
+        "test": "tests.test_native_page_io",
+        "cases": [
+          "PageIOTests.test_matching_success_publishes_and_advances_the_original_request",
+          "PageIOTests.test_cancel_retire_and_reuse_keep_the_old_fd_until_actual_completion",
+          "PageIOTests.test_a_late_short_or_error_is_settled_and_fences_the_store",
+          "PageIOTests.test_failed_launch_settles_without_worker_or_buffer"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "tests/test_native_page_io.py",
+        "tests/acl2/page-read-ownership-tests.lisp"
+      ],
+      "execution_scope": "Pending matching union image; ownership only, no funded worker/buffer admission claim."
     }
   ]
 }

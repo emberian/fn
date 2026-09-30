@@ -57,15 +57,20 @@ run only from a file system mounted `wxallowed`.
 You will see the version, like `fn 6.6.0 (REV)`. The installer:
 
 - checks every file of the release;
-- copies fn to `/opt/fn` (OpenBSD: `/usr/local/fn`);
+- puts the release under `/opt/fn/releases/` (OpenBSD: `/usr/local/fn/releases/`)
+  and points `/opt/fn/current` at it; the service runs
+  `/opt/fn/current/bin/fn`;
 - makes a service account `fn` (OpenBSD: `_fn`);
 - makes the node folder `/var/lib/fn` (OpenBSD: `/var/fn`);
 - installs the service. It starts nothing yet.
 
 If it goes wrong:
 
-- **It refuses because `/opt/fn` exists.** fn is never installed over itself.
-  See [Reinstalling](#4-reinstalling).
+- **It refuses because `/opt/fn` already runs a release.** A new release
+  goes beside the one that runs: see [Upgrading](#4-upgrading-and-going-back).
+- **It refuses because `/opt/fn` exists and holds no `releases/`.** An
+  installation from before this layout. Stop that node, move `/opt/fn`
+  aside and install; the store lives in `/var/lib/fn`, not there.
 - **You want other places.** Use `--prefix DIR`, `--node DIR` or
   `--user NAME`. `--no-service` skips the account and the service (for
   running fn under your own account).
@@ -77,7 +82,7 @@ If it goes wrong:
   of 1024 or more (and a `tls_port` of 1024 or more), or send 119 and 563 to
   it with `pf`.
 
-`/opt/fn/bin/fn --version` prints the version at any time. `fn` alone lists
+`/opt/fn/current/bin/fn --version` prints the version at any time. `fn` alone lists
 the commands, and `fn operator CONFIG help VERB` explains one command.
 
 ## 2. Set up the first node
@@ -85,11 +90,11 @@ the commands, and `fn operator CONFIG help VERB` explains one command.
 1. Open a shell as the service account, in the node folder:
 
    ```sh
-   sudo -u fn sh -c 'cd /var/lib/fn && PATH=/opt/fn/bin:$PATH exec sh'
+   sudo -u fn sh -c 'cd /var/lib/fn && PATH=/opt/fn/current/bin:$PATH exec sh'
    ```
 
    On OpenBSD (no `doas` is set up on a fresh system):
-   `su -s /bin/sh _fn -c 'cd /var/fn && PATH=/usr/local/fn/bin:$PATH exec sh'`.
+   `su -s /bin/sh _fn -c 'cd /var/fn && PATH=/usr/local/fn/current/bin:$PATH exec sh'`.
 
 2. Write the settings file. Put your server's own address after `--host`
    (`0.0.0.0` is refused: name the address you mean) and the port after
@@ -216,72 +221,115 @@ restart the node. Then follow [Read it in your browser](web.md).
 
   See [accounts](operator.md#accounts-and-invitation-codes).
 
-## 4. Reinstalling
+## 4. Upgrading and going back
 
-fn is never upgraded in place. A new release is a fresh install, and the
-store folder stays where it is. See
-[new releases](operator.md#new-releases). A release opens only a store of
-its own format; there are no migrations. A store of another format is
-refused (`open refused reason=store-format: not an fn store of this
-release: redeploy fresh`): set the node up again with `init`.
+A node moves to a new release beside the one it runs. The installer keeps
+each release under `/opt/fn/releases/` (OpenBSD: `/usr/local/fn/releases/`),
+`/opt/fn/current` points at the one that runs and `/opt/fn/previous` at the
+one before it. The service starts `/opt/fn/current/bin/fn`, so a switch
+moves that link; the old release's folder stays. The store folder stays
+where it is throughout.
 
-`store export` and `store import` move a store between installs of the same
-format, for example to raise a limit fixed at `init`. Export before you
-remove the installed release:
+Unpack the new release as in step 1 and run its installer with
+`--upgrade`, as root:
 
-1. Stop the service and export the store, with the release still
-   installed. The export runs as root, because the service account cannot
-   make a folder in `/var/lib`; the `chown` lets the service account read it:
+```sh
+sh fn/install.sh --upgrade                   # OpenBSD: sh /usr/local/src/fn/install.sh --upgrade
+```
 
-   ```sh
-   systemctl stop fn                                                    # OpenBSD: rcctl stop fn
-   /opt/fn/bin/fn operator /var/lib/fn/fn.toml store export /var/lib/fn-export
-   chown -R fn:fn /var/lib/fn-export                                    # OpenBSD: _fn:_fn
-   mv /var/lib/fn /var/lib/fn.old
-   rm -rf /opt/fn
-   sh fn/install.sh
-   ```
+It checks the release, prints the gap to expect, installs the release beside
+the current one, stops the node, asks the new release whether it opens the
+store, switches `current`, renders the service file from the new release,
+starts the node and waits until `health` answers:
 
-   On OpenBSD, `/var/fn` is its own FFS1 partition, and `mv` refuses it
-   (`cannot rename a mount point`). Move what is in it instead, then
-   unpack the new release under `/usr/local/src` as in step 1:
+```
+fn 6.6.1 (REV)
+the node will be away for about 3 s: its last start took 2140 ms from the image's entry to the open (...)
+installed /opt/fn/releases/6.6.1+REV
+== stopping the node
+== asking /opt/fn/releases/6.6.1+REV/bin/fn whether it opens the store of /var/lib/fn/fn.toml
+   stopped checkpoint=12 journal-octets=4096 transactions-at-most=40
+   ...
+current -> releases/6.6.1+REV (previous -> releases/6.6.0+REV)
+installed /etc/systemd/system/fn.service
+== starting the node
+health exit=0 state=healthy ...
+the node answered on releases/6.6.1+REV after 6 s away (expected about 3 s)
+```
 
-   ```sh
-   mkdir /var/fn.old && mv /var/fn/* /var/fn.old/
-   rm -rf /usr/local/fn /usr/local/src/fn
-   ```
+The gap comes from the node's log: `run opened ms=N` is how long its last
+start took, from the program's entry to the store's open, recovery
+included. The stop, the start and the service manager add their own
+seconds; the last line says what the switch measured.
 
-   Below, read `/var/fn` for `/var/lib/fn` and `/var/fn.old` for
-   `/var/lib/fn.old`.
+A release opens only a store of its own format; there are no migrations.
+When the new release refuses the store, the upgrade stops there and nothing
+is switched: the new release is removed again and the node starts on the
+one it ran:
 
-2. As the service account, write the settings again (or copy `fn.toml`,
-   `tls/` and `log/` from the old folder: without `log/` the service stops
-   at start with `No such file or directory: '/var/lib/fn/log/fn.log'`).
-   Then import instead of `init`:
+```
+   open refused reason=store-format: not an fn store of this release: redeploy fresh
+install: 6.6.1+REV refuses that store's format (there are no migrations); nothing switched, ...
+```
 
-   ```sh
-   cp -Rp /var/lib/fn.old/fn.toml /var/lib/fn.old/tls /var/lib/fn.old/log /var/lib/fn/
-   fn operator /var/lib/fn/fn.toml store import /var/lib/fn-export
-   ```
+Then the new release needs a fresh node: stop the node, move the node
+folder aside, install, `init`. The old store's data does not carry over.
 
-3. Copy the node's secret keys and the logins back, then start the
-   service. Without the keys the node refuses to start
-   (`node secret .../store/keys/node-secret.key is missing`); without
-   `auth.toml` every login is gone. The node then serves the same articles,
-   numbers, Message-IDs and logins:
+To go back to the previous release:
 
-   ```sh
-   cp -Rp /var/lib/fn.old/store/keys /var/lib/fn.old/store/auth.toml /var/lib/fn/store/
-   cp -Rp /var/lib/fn.old/keys /var/lib/fn/                             # only if you ran peer keygen
-   ```
+```sh
+sh /opt/fn/current/install.sh --rollback
+```
 
-   Copy back, too, every file a `peer add` named (its login file and the
-   friend's certificate, such as `friend.fnauth` and `friend-cert.pem`):
-   the peers are in the export, the files they name are not.
+The same stop, ask, switch, start and `health`, with `previous` and
+`current` exchanged. It refuses by name when there is no previous release,
+and when the previous release refuses the store (the store's format moved
+on): then the node starts again on the release it ran.
 
-   The export does not carry them (see
-   [the node's secret](operator.md#the-nodes-secret-key)). Do not make a
-   new secret instead: it breaks cancels of earlier posts.
+Both take `--no-service`: the node is neither stopped nor started. Stop it
+first, then start it through `/opt/fn/current/bin/fn`, which is what the
+service does. `--prefix` and `--node` name other places, as for an install.
+
+### Moving a store
+
+`store export` and `store import` move a store between installs of the
+same format, for example to raise a limit fixed at `init`, or to another
+machine ([back up](operator.md#back-up)). Export with the node stopped,
+as root (the service account cannot make a folder in `/var/lib`; the
+`chown` lets it read the export):
+
+```sh
+systemctl stop fn                                                    # OpenBSD: rcctl stop fn
+/opt/fn/current/bin/fn operator /var/lib/fn/fn.toml store export /var/lib/fn-export
+chown -R fn:fn /var/lib/fn-export                                    # OpenBSD: _fn:_fn
+mv /var/lib/fn /var/lib/fn.old
+```
+
+On OpenBSD, `/var/fn` is its own FFS1 partition, and `mv` refuses it
+(`cannot rename a mount point`): `mkdir /var/fn.old && mv /var/fn/* /var/fn.old/`,
+and read `/var/fn` for `/var/lib/fn` below.
+
+As the service account, write the settings again (or copy `fn.toml`,
+`tls/` and `log/` from the old folder: without `log/` the service stops
+at start with `No such file or directory: '/var/lib/fn/log/fn.log'`), then
+import instead of `init`, and copy the node's secret keys and the logins
+back before starting. Without the keys the node refuses to start
+(`node secret .../store/keys/node-secret.key is missing`); without
+`auth.toml` every login is gone. The node then serves the same articles,
+numbers, Message-IDs and logins:
+
+```sh
+cp -Rp /var/lib/fn.old/fn.toml /var/lib/fn.old/tls /var/lib/fn.old/log /var/lib/fn/
+fn operator /var/lib/fn/fn.toml store import /var/lib/fn-export
+cp -Rp /var/lib/fn.old/store/keys /var/lib/fn.old/store/auth.toml /var/lib/fn/store/
+cp -Rp /var/lib/fn.old/keys /var/lib/fn/                             # only if you ran peer keygen
+```
+
+Copy back, too, every file a `peer add` named (its login file and the
+friend's certificate, such as `friend.fnauth` and `friend-cert.pem`):
+the peers are in the export, the files they name are not. The export does
+not carry them (see [the node's secret](operator.md#the-nodes-secret-key)).
+Do not make a new secret instead: it breaks cancels of earlier posts.
 
 An export is **not a backup**. It holds the store's history only. It leaves
 out the TLS keys, passwords, the node's secret keys, peer queues and program
@@ -292,13 +340,11 @@ If an import was interrupted, the next one refuses and names the folder it
 left: `reason=interrupted-import` (nothing was set up: remove that folder
 and import again) or `reason=publication-uncertain` (a store is there: run
 `recover`, then remove that folder). An archive of another format is
-refused (`reason=profile store-format`). `install.sh` asks the new release
-about the existing node folder before copying anything, and refuses a store
-of another format: redeploy fresh.
+refused (`reason=profile store-format`).
 
-To remove fn: stop and disable the service. Then remove `/opt/fn`, the
-service file (`/etc/systemd/system/fn.service` or `/etc/rc.d/fn`), the node
-folder and the account.
+To remove fn: stop and disable the service. Then remove `/opt/fn` (every
+release under it), the service file (`/etc/systemd/system/fn.service` or
+`/etc/rc.d/fn`), the node folder and the account.
 
 ## When the node refuses something
 

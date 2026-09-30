@@ -347,6 +347,55 @@ third conjunct is `fn-lace-merge-commutative-ids`. Restated over the transit
 path in §6 as S3's keystones: ids are the union, a fork is visible after the
 merge, and the fork survives every later merge.
 
+### 2.4 Versioned legacy article subjects (relay-v1; OBJ-008 / PRF-1058)
+
+Four objects remain distinct: the received/stored-byte commitment
+(`fn-id-subject-of-payload`), the route-independent legacy article subject
+(`fn-asj-subject`), the reception record (peer, provenance, event identity and
+bytes commitment), and operation identity. The existing bytes commitment is
+unchanged. Native signed objects retain their exact signed-source subject;
+a legacy article subject is not authenticated authored identity.
+
+The `relay-v1` projection calls `fn-pu-strip` with `dropping=nil`: remove
+exactly every complete top-level Path and Xref field, case-insensitively,
+including their continuation lines. Preserve every other header byte, field
+order, separator and body byte exactly; no unfolding or normalization.
+RFC 5537 §3.2.1 and §3.6 steps 7–8 allow the trace updates, and §3.6/§3.7's
+last paragraphs forbid other alterations. The projection is fn's guarantee
+under that named profile, not a new RFC identity requirement.
+
+The preimage is `"fn/article-subject/v1" || 0 || u32(len(profile)) ||
+profile || u32(len(projection)) || projection`; the rendered identity uses
+that distinct label, identity version 1 and BLAKE3 algorithm 2. The u32
+field is a representation bound; this change adds no admission ceiling.
+Profile evolution receives a new profile/version rather than changing an
+existing commitment's meaning. A-CRYPTO's pessimistic generic collision
+work for BLAKE3-256 is approximately 2^128; projection equality implies
+digest equality without a cryptographic assumption, while the converse
+requires collision resistance and is not an ACL2 theorem.
+
+`fn-asj-permitted-relay-transformp` describes removal followed by a finite
+sequence of arbitrary complete trace-field insertions at valid header
+boundaries (including mid-header and folded fields). Its invariant, fn's
+own relay invariant, and projection idempotence are admitted in
+`books/article-subject.lisp`. The complement proves the original body suffix
+is preserved and, for proper input lists, the projection is a subsequence
+of the original octets: every kept byte is original and remains in order.
+Inserting before another field's continuation is not a permitted boundary;
+the affirmative counterexample in `tests/acl2/article-subject-tests.lisp`
+checks this, as well as changed protected body and Subject bytes.
+
+The owner computes the subject from its received transit octets before
+intent and logs `article-subject=` beside `bytes-subject=` and `authority=`.
+Its equality under the stored relay rendering follows from
+`fn-asj-project-of-relay-article`. This first increment adds observability;
+the durable reception column, original Message-ID→article-subject binding,
+conflict refusal and retained tombstone identity remain a finite follow-up.
+Until those land, reconciliation remains the existing protocol scope,
+guaranteed only when the caller knows the article identity. Obligations
+continue to refer to the unchanged bytes commitment; recording per-kind
+subject-only versus byte-retention duties belongs to that follow-up.
+
 ## 3. Group policy on inbound transit
 
 The gate on a peer-transit article is `fn-pol-admitp`, evaluated against **this
@@ -359,6 +408,36 @@ node's** lace and **this node's** keyring:
          (fn-pol-admitp (fn-stx-lace node) keyring group authority
                         (fn-stx-statement-of article keyring)))))
 ```
+
+**The served form (W5b, 2026-09-29).** On the host's transit path the gate is
+not evaluated by walking the lace. The store's carried index
+(`books/stx-index.lisp`) holds a policy column keyed by (group, authority): the
+authority's greatest-slot policy statement and whether a distinct policy
+statement shares that slot; `fn-stx-index-policy-current` reads it, and
+`fn-stx-index-policy-agrees` equates it with `fn-pol-current` over the lace of
+the store. `books/peer-transit-authority.lisp` decides the AUTHORITY verdict
+from that index, the store's keyring and the statement the relayed octets carry
+— the closed enumeration `*fn-pta-verdicts*`: `:admitted`, `:ungoverned` (the
+group has no authority), `:no-statement`, `:unverified`, `:not-a-post`,
+`:equivocation`, `:authority-equivocation`, `:no-policy`, `:unauthorized` —
+and `fn-pta-decide` carries it beside the unchanged byte decision
+`fn-peer-decide-transfer-under`, which `fn-owner-transit-decide`
+(host/owner-host.lisp) calls before the durable intent; the transit log line
+carries `authority=NAME`. `fn-pta-admitted-is-the-gate-over-the-rows` (PRF-1023)
+equates `:admitted` with `fn-pol-admitp` over the retained rows' lace minus the
+poster's fork, under the carried index invariant; the node-lace form reaches it
+through `fn-stx-lace-of-node-is-the-rows-lace` (PRF-995), whose correspondence
+hypothesis is carried on the served path: `fn-snc-correspondp`
+(books/store-node-correspondence.lisp) is established at the initial store and
+preserved by every transition of the store node (PRF-1027, PRF-1034). The
+group's authority is the live group entry's policy-id when it is a principal id
+([reconfiguration](reconfiguration.md) `(:create-group name policy-id)`); every
+other group is ungoverned by name. In the configuration model that policy-id
+is the posting-policy identifier (`*fn-cfg-default-policy-id*` in
+books/config.lisp, written by `store init` and `:set-group-status`), and no operator path binds a principal there,
+so on a running node the gate answers `:ungoverned` for every take
+(tests/test_native_key_statements' forked pair) until D11's group authority
+binding lands: an open decision, not a served refusal.
 
 Three consequences, each a §6 theorem.
 

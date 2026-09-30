@@ -28,6 +28,13 @@ from tools.resilience.scenario import boundary_registry, validate
 IMAGE = Path(os.environ.get("FN_NATIVE_CRASH_HOST", ""))
 IMAGE_AVAILABLE = IMAGE.is_file() and os.access(IMAGE, os.X_OK)
 SELECTED = os.environ.get("FN_NATIVE_RESILIENCE_CUT")
+# Harness-failure causes that mean "the held form is not on this image":
+# the adapters raise them from the image's own evidence (the receipt path
+# past its hold point; `store inspect --group` refused), never from a timeout.
+PENDING_BY_NAME = ("hold-unavailable:", "inspect-group-unavailable:",
+                   # a nemesis verb refused by the image under the running node
+                   # (`bp-route remove`: store-held, no control socket)
+                   "live-route-unavailable:")
 
 
 class CutScenarioTableTests(unittest.TestCase):
@@ -82,6 +89,12 @@ if IMAGE_AVAILABLE:
             the store and is what the verdict was made over."""
             with tempfile.TemporaryDirectory(prefix=prefix) as tmp:
                 journal, verdict = adapter.run(s, IMAGE, Path(tmp))
+                if (verdict.kind == "harness-failure"
+                        and (verdict.cause or "").startswith(PENDING_BY_NAME)):
+                    # The adapter found, from the image's own lines, that the
+                    # held form is not on this image: no verdict, pending by
+                    # name (the mode, 2026-09-29), never a skipped campaign.
+                    self.skipTest("pending by name ({}): {}".format(s.id, verdict.cause))
                 self.assertEqual(verdict.kind, s.expected, (s.id, verdict.to_json()))
                 self.assertTrue(verdict.green, (s.id, verdict.to_json()))
                 self.assertEqual(verdict.surviving, 1, s.id)
@@ -165,8 +178,6 @@ if IMAGE_AVAILABLE:
             rows = {r["scenario"]: r for r in schedule_points.status()}
             pending = sorted(k for k, r in rows.items() if r["status"] == "pending")
             self.assertEqual(pending, ["schedule-page-read-outstanding",
-                                       "schedule-receipt-observed-duplicate",
-                                       "schedule-receipt-observed-lose-completion",
                                        "schedule-receipt-observed-reorder",
                                        "schedule-reclaim-candidate-selected"],
                              "a pending point changed status: run it, or name why not")
@@ -177,6 +188,83 @@ if IMAGE_AVAILABLE:
                     continue
                 with self.subTest(scenario=s.id, point=rows[s.id]["point"]):
                     self.run_expected(s, "fn-resilience-schedule-")
+
+        def test_true_issued_page_io_settles_cancelled_token_and_reads_retained_article(self):
+            if SELECTED and SELECTED != "page-read-outstanding":
+                return
+            from tools.resilience.adapters import page_io
+            s = page_io.example()
+            with tempfile.TemporaryDirectory(prefix="fn-resilience-issued-page-") as tmp:
+                journal, verdict = page_io.run_scenario(s, IMAGE, Path(tmp))
+                self.assertTrue(verdict.green, verdict.to_json())
+                self.assertIn("page-io-native-composition", verdict.pending_rules)
+                self.assertIn("cancelled-read-settled", verdict.witnesses_observed)
+                self.assertIn("read-completed", verdict.witnesses_observed)
+                self.assertEqual(Journal.read(Path(tmp) / "journal.jsonl").digest(),
+                                 journal.digest())
+
+        def test_disabling_the_real_issued_page_io_hold_cannot_pass(self):
+            if SELECTED and SELECTED != "page-read-outstanding":
+                return
+            from tools.resilience.adapters import page_io
+            with tempfile.TemporaryDirectory(prefix="fn-resilience-no-issued-hold-") as tmp:
+                _, verdict = page_io.run_scenario(page_io.example(), IMAGE, Path(tmp), False)
+                self.assertFalse(verdict.green, verdict.to_json())
+                self.assertEqual(verdict.kind, "harness-failure", verdict.to_json())
+                self.assertTrue((verdict.cause or "").startswith("fault-never-occurred:"),
+                                 verdict.to_json())
+
+        def test_running_bp_route_control_reorders_receipt_then_heals(self):
+            if SELECTED and SELECTED != "receipt-observed":
+                return
+            scenario = next(s for s in schedule_points.scenarios()
+                            if s.id == "schedule-receipt-observed-reorder")
+            self.run_expected(scenario, "fn-resilience-live-route-")
+
+        def test_capture_first_reclaim_waits_for_independent_response_then_makes_progress(self):
+            if SELECTED and SELECTED != "reclaim-candidate-selected":
+                return
+            from tools.resilience.adapters import reclaim_hold
+            with tempfile.TemporaryDirectory(prefix="fn-resilience-new-response-hold-") as tmp:
+                _, verdict = reclaim_hold.run_scenario(reclaim_hold.example(), IMAGE, Path(tmp))
+                self.assertTrue(verdict.green, verdict.to_json())
+                self.assertIn("independent-response-held", verdict.witnesses_observed)
+                self.assertIn("response-hold-settled", verdict.witnesses_observed)
+                self.assertIn("reclaim-freed", verdict.witnesses_observed)
+
+        def test_disabling_the_capture_first_reclaim_hold_cannot_pass(self):
+            if SELECTED and SELECTED != "reclaim-candidate-selected":
+                return
+            from tools.resilience.adapters import reclaim_hold
+            with tempfile.TemporaryDirectory(prefix="fn-resilience-no-capture-hold-") as tmp:
+                _, verdict = reclaim_hold.run_scenario(reclaim_hold.example(), IMAGE, Path(tmp), False)
+                self.assertFalse(verdict.green, verdict.to_json())
+                self.assertEqual(verdict.kind, "harness-failure", verdict.to_json())
+                self.assertTrue((verdict.cause or "").startswith("fault-never-occurred:"),
+                                verdict.to_json())
+
+        def test_a_retry_across_routes_is_refused_by_name_and_the_store_is_unchanged(self):
+            """The route finding as a scenario (adapter.cross_route_retry_
+            scenario): the store-posted article POSTed again on the served
+            listener answers the named 441 conflict, the reads before and
+            after match the bytes as posted behind the one served Xref, and
+            the log's record count is the same at the cut and at the end."""
+            journal, verdict = self.run_expected(adapter.cross_route_retry_scenario(),
+                                                 "fn-resilience-xroute-")
+            reply = [r for r in journal.of_kind("client")
+                     if r.get("event") == "reply" and r.get("operation") == "retry-served"]
+            self.assertEqual(len(reply), 1)
+            self.assertEqual(reply[0]["outcome"], "refused", reply[0])
+            self.assertIn("a different article with this Message-ID is stored", reply[0]["status"])
+            self.assertTrue(reply[0]["cross_route"])
+            reads = [r for r in journal.of_kind("client") if r.get("event") == "read"]
+            self.assertEqual([r["result"] for r in reads], ["match", "match"], reads)
+            self.assertTrue(all(r["xref"] and not r["xref"]["malformed"] for r in reads), reads)
+            counts = [r["count"] for r in journal.of_kind("environment")
+                      if r.get("event") == "persisted-records"]
+            self.assertEqual(counts, [1, 1, 1], counts)
+            self.assertIn("cross-route-retry-refused", verdict.witnesses_observed)
+            self.assertIn("identity-is-the-bytes", verdict.pending_rules)
 
         def test_disabled_fault_hook_is_a_harness_failure(self):
             s = adapter.scenarios()[3]      # log-written

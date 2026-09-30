@@ -93,19 +93,179 @@
       (equal (bsk0r-scan-f (bsk0r-keep (bsk0r-replaced))) 2)
       (equal (bsk0r-scan-f (bsk0r-lose (bsk0r-replaced))) 1)))
 
+;;; KEYSTONE fn-bs-crash-image-reads-the-config (PRF-041, row B48 of planning/evidence/vacuity-audit-2026-09-29.md)
+;;; Every crash image of a related store names and holds the durable config.
+;;; KEYSTONE fn-bs-crash-image-frontier-decodes-to-a-natural (PRF-041, row B49 of planning/evidence/vacuity-audit-2026-09-29.md)
+;;; Every crash image's root frontier decodes to a natural.
+;;; KEYSTONE fn-bs-crash-image-namespace-is-contiguous (PRF-041, row B50 of planning/evidence/vacuity-audit-2026-09-29.md)
+;;; Every crash image's transaction names are the contiguous txn-names prefix.
+;;; KEYSTONE fn-bs-crash-image-records-do-not-fault (PRF-041, row B51 of planning/evidence/vacuity-audit-2026-09-29.md)
+;;; Reading every crash image's transaction records does not fault.
+;;; KEYSTONE fn-bs-store-crash-image-scans (PRF-041, row B52 of planning/evidence/vacuity-audit-2026-09-29.md)
+;;; Every crash image of a related store scans.
+;;; KEYSTONE fn-bs-store-crash-image-is-kernel-admissible (PRF-041, row B53 of planning/evidence/vacuity-audit-2026-09-29.md)
+;;; Every crash image's scan is a recovery crash image of the related kernel.
+; The shared antecedent: the pair is related (asserted in bsk0r-k1-okp) and
+; each image is a crash image of its byte state (the four ground theorems;
+; bsk0r-keep-linked-is-a-crash-image is the first).  Every image holds an
+; article: a non-empty namespace, record list and scan.
+(defthm bsk0r-keep-linked-is-a-crash-image
+  (fn-bs-crash-imagep (car (bsk0r-linked)) (bsk0r-keep (bsk0r-linked)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-bs-crash-imagep)
+           :use ((:instance fn-bs-crash-imagep-suff
+                            (s (car (bsk0r-linked)))
+                            (choices (bsk0r-keep-choices (bsk0r-linked)))
+                            (image (bsk0r-keep (bsk0r-linked))))))))
+(defthm bsk0r-lose-linked-is-a-crash-image
+  (fn-bs-crash-imagep (car (bsk0r-linked)) (bsk0r-lose (bsk0r-linked)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-bs-crash-imagep)
+           :use ((:instance fn-bs-crash-imagep-suff
+                            (s (car (bsk0r-linked))) (choices nil)
+                            (image (bsk0r-lose (bsk0r-linked))))))))
+(defthm bsk0r-keep-replaced-is-a-crash-image
+  (fn-bs-crash-imagep (car (bsk0r-replaced)) (bsk0r-keep (bsk0r-replaced)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-bs-crash-imagep)
+           :use ((:instance fn-bs-crash-imagep-suff
+                            (s (car (bsk0r-replaced)))
+                            (choices (bsk0r-keep-choices (bsk0r-replaced)))
+                            (image (bsk0r-keep (bsk0r-replaced))))))))
+(defthm bsk0r-lose-replaced-is-a-crash-image
+  (fn-bs-crash-imagep (car (bsk0r-replaced)) (bsk0r-lose (bsk0r-replaced)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-bs-crash-imagep)
+           :use ((:instance fn-bs-crash-imagep-suff
+                            (s (car (bsk0r-replaced))) (choices nil)
+                            (image (bsk0r-lose (bsk0r-replaced))))))))
+(defun bsk0r-k1-okp (pair image)
+  (let* ((bs (car pair))
+         (names (fn-bs-names image :transactions))
+         (cfg (fn-bs-durable-entry bs :root *fn-bs-scan-config-name*))
+         (scan (fn-bs-scan-store image)))
+    (and (fn-bs-store-relation bs (cdr pair) *bsk5-arena*)
+         cfg
+         (equal (fn-bs-lookup image :root *fn-bs-scan-config-name*) cfg)
+         (consp (fn-bs-durable-content bs cfg))
+         (equal (fn-bs-content image (fn-bs-lookup image :root *fn-bs-scan-config-name*))
+                (fn-bs-durable-content bs cfg))
+         (natp (fn-bs-frontier-decode
+                (fn-bs-content image (fn-bs-lookup image :root *fn-bs-scan-frontier-name*))))
+         (consp names)
+         (equal names (fn-bs-txn-names (len names)))
+         (consp (fn-bs-read-records image 0 (len names)))
+         (not (equal (fn-bs-read-records image 0 (len names)) :fault))
+         (fn-bs-scan-okp scan)
+         (consp (fn-bs-scan-records scan))
+         (fn-bs-alpha-recovery-crash-imagep (cdr pair) (fn-bs-scan-frontier scan)
+                                            (fn-bs-scan-records scan) *bsk5-arena*))))
+(assert-event
+ (and (bsk0r-k1-okp (bsk0r-linked) (bsk0r-keep (bsk0r-linked)))
+      (bsk0r-k1-okp (bsk0r-linked) (bsk0r-lose (bsk0r-linked)))
+      (bsk0r-k1-okp (bsk0r-replaced) (bsk0r-keep (bsk0r-replaced)))
+      (bsk0r-k1-okp (bsk0r-replaced) (bsk0r-lose (bsk0r-replaced)))))
+
+;;; KEYSTONE fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel (PRF-041, row B21 of planning/evidence/vacuity-audit-2026-09-29.md)
+;;; A quiet image that scans is related to the recovered kernel at every barrier n = 0..3.
+(defun bsk0r-quiet-okp (image)
+  (let* ((f (bsk0r-scan-f image)) (rows (bsk0r-scan-r image)))
+    (and (fn-bs-statep image)
+         (equal (fn-bs-pending image) nil)
+         (fn-bs-scan-okp (fn-bs-scan-store image))
+         (fn-bs-authority-knownp image)
+         (fn-record-uint32p f)
+         (consp rows)
+         (fn-sf-record-listp rows 0 0 f)
+         (equal (fn-bs-rows-wire rows *bsk5-arena*) (bsk0r-scan-w image))
+         (equal *fn-sf-recovery-barrier-count* 3)
+         (fn-bs-store-relation image (fn-bs-recovered-kernel f rows 0) *bsk5-arena*)
+         (fn-bs-store-relation image (fn-bs-recovered-kernel f rows 1) *bsk5-arena*)
+         (fn-bs-store-relation image (fn-bs-recovered-kernel f rows 2) *bsk5-arena*)
+         (fn-bs-store-relation image (fn-bs-recovered-kernel f rows 3) *bsk5-arena*))))
+(assert-event
+ (and (bsk0r-quiet-okp (bsk0r-keep (bsk0r-linked)))
+      (bsk0r-quiet-okp (bsk0r-lose (bsk0r-linked)))
+      (bsk0r-quiet-okp (bsk0r-keep (bsk0r-replaced)))
+      (bsk0r-quiet-okp (bsk0r-lose (bsk0r-replaced)))))
+;;; KEYSTONE fn-bs-recover-program-keeps-relation-at-every-cut (PRF-041, row B22 of planning/evidence/vacuity-audit-2026-09-29.md)
+;;; From the entry kernel, whose (:recover) dispatch is the recovered kernel at 0, the run is related and ends at barrier 3.
+(defun bsk0r-recover-cut-okp (pair image)
+  (let* ((f (bsk0r-scan-f image)) (rows (bsk0r-scan-r image))
+         (k (fn-bs-recovery-entry-kernel image rows))
+         (run (bsk0r-run image k *bsk5-groups* *bsk5-capacity*)))
+    (and (fn-bs-store-relation (car pair) (cdr pair) *bsk5-arena*)
+         (fn-bs-recovered-rowsp image rows *bsk5-arena*)
+         (consp rows)
+         (equal (fn-sf-dispatch k '(:recover) *bsk5-groups* *bsk5-capacity*)
+                (fn-bs-recovered-kernel f rows 0))
+         (fn-bs-run-relatedp run *bsk5-arena*)
+         (equal (len run) 11)
+         (equal (car (nth 10 run)) image)
+         (equal (cdr (nth 10 run))
+                (fn-bs-recovered-kernel f rows *fn-sf-recovery-barrier-count*)))))
+(assert-event
+ (and (bsk0r-recover-cut-okp (bsk0r-linked) (bsk0r-keep (bsk0r-linked)))
+      (bsk0r-recover-cut-okp (bsk0r-linked) (bsk0r-lose (bsk0r-linked)))
+      (bsk0r-recover-cut-okp (bsk0r-replaced) (bsk0r-keep (bsk0r-replaced)))
+      (bsk0r-recover-cut-okp (bsk0r-replaced) (bsk0r-lose (bsk0r-replaced)))))
+
 ; recovery-stage-unlinked: the sweep of the staging orphan the linked cut
-; left, from the last pair of the host's run; its cut pair is related.
+; left, from the last pair of the host's run; its cut pair is related.  The
+; names are the ones the recovered node's own sweep round returns for the
+; host's observation of that orphan (its octets, io.lisp
+; fnn-bridge-sweep-round), as the host unlinks them.
+(defconst *bsk0r-orphan* '(46 115 116 97 103 101 45 107 53 45 50)) ; .stage-k5-2
+(defun bsk0r-recovered ()
+  (let ((s (fn-sn-open-state (bsk0r-open *bsk0r-configs* (bsk0r-keep (bsk0r-linked))))))
+    (fn-sn-io (fn-sn-io (fn-sn-io s :recovery-barrier :ok) :recovery-barrier :ok)
+              :recovery-barrier :ok)))
+(defun bsk0r-round (observed)
+  (fn-sn-sweep-round (bsk0r-recovered) observed nil nil))
 (defun bsk0r-sweep-run ()
   (let ((image (bsk0r-keep (bsk0r-linked))))
     (bsk0r-sweep (nth 10 (bsk0r-run image (bsk0r-host *bsk0r-configs* image)
                                     *bsk5-groups* *bsk5-capacity*))
-                 (list ".stage-k5-2"))))
+                 (cadr (bsk0r-round (list *bsk0r-orphan*))))))
+; fn-bs-sweep-round-unlinks-each-removal-by-its-name, the positive witness:
+; the octet observation, the round's removal of the orphan, the program's
+; unlink of ".stage-k5-2", and the name giving the octets back; then the run
+; itself: the orphan is there before and gone at the cut, which is related.
+(assert-event
+ (let ((observed (list *bsk0r-orphan*)))
+   (and (fn-octet-list-listp observed)
+        (equal (bsk0r-round observed) (list :done (list *bsk0r-orphan*)))
+        (member-equal *bsk0r-orphan* (cadr (bsk0r-round observed)))
+        (equal (fn-bs-octets-name *bsk0r-orphan*) ".stage-k5-2")
+        (member-equal (list :unlink :staging ".stage-k5-2")
+                      (fn-bs-recover-sweep-program (cadr (bsk0r-round observed))))
+        (fn-bs-namep (fn-bs-octets-name *bsk0r-orphan*))
+        (equal (fn-record-string-octets (fn-bs-octets-name *bsk0r-orphan*)) *bsk0r-orphan*))))
 (assert-event
  (let ((run (bsk0r-sweep-run)))
    (and (fn-bs-lookup (bsk0r-keep (bsk0r-linked)) :staging ".stage-k5-2")
         (equal (len run) 2)
         (not (fn-bs-lookup (car (nth 1 run)) :staging ".stage-k5-2"))
         (bsk0r-related-at run 1))))
+; Drop (fn-octet-list-listp observed): a staging name whose tail is not
+; octets.  The round still removes it (the retained hypothesis holds), but
+; its byte name does not give it back (the conclusion fails).
+(defconst *bsk0r-not-octets* '(46 115 116 97 103 101 45 x))
+(assert-event
+ (let ((observed (list *bsk0r-not-octets*)))
+   (and (not (fn-octet-list-listp observed))
+        (member-equal *bsk0r-not-octets* (cadr (bsk0r-round observed)))
+        (not (equal (fn-record-string-octets (fn-bs-octets-name *bsk0r-not-octets*))
+                    *bsk0r-not-octets*)))))
+; Mutation (the defect B29 found): the octet name handed to the byte model
+; unconverted is no fn-bs-namep, its unlink answers :enoent, and the orphan
+; stays.
+(assert-event
+ (let ((bs (bsk0r-keep (bsk0r-linked))))
+   (and (not (fn-bs-namep *bsk0r-orphan*))
+        (equal (mv-let (r bs1) (fn-bs-unlink bs :staging *bsk0r-orphan* :ok)
+                 (declare (ignore bs1)) r)
+               :enoent))))
 
 ; ---------------------------------------------------------------------------
 ; Drop the relation.  The empty byte store is its own crash image and no

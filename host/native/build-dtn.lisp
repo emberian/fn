@@ -128,6 +128,8 @@
 (include-book "books/bp-report-author")
 (include-book "books/bp-node-progress")
 (include-book "books/bp-node-progress-guards")
+(include-book "books/bp-node-job-offer-guards")
+(include-book "books/bp-node-control")
 ;; PKT-261: per-destination dispatch and the forward plan
 ;; (fnn-bpnode-dispatch-one, fnn-bpnode-forward-contact).
 (include-book "books/bp-node-forward-plan")
@@ -244,7 +246,11 @@
 ; octet-list helpers store-host defines above it, as run_store.py's bridge does.
 (ld "host/config-host.lisp" :ld-error-action :error)
 (ld "host/native-admin-host.lisp" :ld-error-action :error)
+(ld "host/native-control-host.lisp" :ld-error-action :error)
 (ld "host/native-config-host.lisp" :ld-error-action :error)
+; host/native/operator.lisp (loaded below) asks fn-native-auth-host-max-octets
+; for `operator account-hash's credential file bound.
+(ld "host/native-auth-host.lisp" :ld-error-action :error)
 (ld "host/feed-filename-host.lisp" :ld-error-action :error)
 (ld "host/native-operator-host.lisp" :ld-error-action :error)
 ; The status report, offline and from the running owner.
@@ -278,6 +284,10 @@
 (include-book "books/heap-open-nursery")
 (include-book "books/heap-reservation")
 
+; D40: explicit raw declaration scope. Every selected entry is checked in
+; this loaded world; an unavailable target refuses the build.
+(ld "host/interfaces-raw.lisp" :ld-error-action :error)
+
 ; The entry save-exec's :return-from-lp form calls.  Its raw definition in
 ; host/native/io.lisp replaces this body; this one only reports its absence.
 ;; No include-book since the umbrella added a book (tools/extract/world.py).
@@ -303,6 +313,9 @@
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
         (load "host/native/io.lisp")
+        ;; D40: the raw-dispatched entries, from the fn-interfaces table of
+        ;; this world (an unknown or unverified target stops the build).
+        (fnn-install-raw-dispatch)
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")
         ; The COMPRESS DEFLATE layer (RFC 8054): mux.lisp serves it here too.
@@ -342,6 +355,7 @@
           (fnn-main)
           (values nil :exited *the-live-state*))
         (load "host/native/immutable-publish.lisp")
+        (load "host/native/auth-read.lisp")
         (load "host/native/admin.lisp")
         (load "host/native/config.lisp")
         (load "host/native/feed-filename.lisp")
@@ -350,7 +364,10 @@
         (load "host/native/owner.lisp")
         ; Its connections on a fixed set of I/O loops (PKT-605).
         (load "host/native/mux.lisp")
+        (load "host/native/control-transport.lisp")
         (load "host/native/operator.lisp")
+        (load "host/native/operator-control-client.lisp")
+        (load "host/native/bp-control-client.lisp")
         ; The heap figure (PKT-016): the launcher's probe verb `heap', and the
         ; line `status' and `health' print; after operator.lisp, whose plan it reads.
         (load "host/native/heap.lisp")
@@ -367,6 +384,7 @@
         ; The node: FNBS, the owner Store and FNRJ/FNWF under one
         ; `bp-node serve' (specs/bp-node-machine.md).  `bp send' and `bp
         ; receive' above stay as the lab's transport tools.
+        (load "host/native/bp-control.lisp")
         (load "host/native/bp-node.lisp")
         ; `acl2 session': developer images only (the test fixtures' ACL2).
         (load "host/native/acl2-session.lisp")

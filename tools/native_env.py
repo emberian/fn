@@ -300,6 +300,108 @@ def reads(module: str) -> list[str]:
     return sorted(names)
 
 
+# What a module USES of its helpers (obstructions-7 item 62): a helper's
+# image read counts for the module only through a top-level name of that
+# helper (a function, class or constant) the module refers to, directly or
+# through another helper name.  One scope's image reads are alternatives (the
+# Acl2Session falls back from the developer image to dtn-developer): the
+# scope is satisfied when ANY of them is built.  Before, a helper read was
+# only ever noted, and a run built 25 minutes of images for a module whose
+# every test then skipped.
+def _helper_names(tree: ast.Module) -> dict[str, ast.AST]:
+    names: dict[str, ast.AST] = {}
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            names[node.name] = node
+        elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            for target in targets:
+                if isinstance(target, ast.Name):
+                    names[target.id] = node
+    return names
+
+
+def _references(node: ast.AST, aliases: dict[str, str],
+                imported: dict[str, tuple[str, str]], own: str) -> set[tuple[str, str]]:
+    """(helper module, name) pairs NODE refers to: a bare name imported from a
+    helper or defined in its own module OWN, and ALIAS.name for a helper
+    module ALIAS."""
+    found: set[tuple[str, str]] = set()
+    for sub in ast.walk(node):
+        if isinstance(sub, ast.Name):
+            if sub.id in imported:
+                found.add(imported[sub.id])
+            elif own:
+                found.add((own, sub.id))
+        elif isinstance(sub, ast.Attribute) and isinstance(sub.value, ast.Name):
+            if sub.value.id in aliases:
+                found.add((aliases[sub.value.id], sub.attr))
+    return found
+
+
+def _bindings(tree: ast.Module) -> tuple[dict[str, str], dict[str, tuple[str, str]]]:
+    """(helper module aliases, names imported from helpers) of one file."""
+    aliases: dict[str, str] = {}
+    imported: dict[str, tuple[str, str]] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module:
+            if node.module == "tests":
+                for alias in node.names:
+                    aliases[alias.asname or alias.name] = f"tests.{alias.name}"
+            elif node.module.startswith("tests."):
+                for alias in node.names:
+                    imported[alias.asname or alias.name] = (node.module, alias.name)
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name.startswith("tests."):
+                    aliases[alias.asname or alias.name] = alias.name
+    return aliases, imported
+
+
+def helper_scopes(module: str) -> list[tuple[str, str, frozenset[str]]]:
+    """(helper module, name, the image variables it reads) for every helper
+    top-level name MODULE uses, directly or transitively; only scopes that
+    read an image variable."""
+    parsed: dict[str, tuple[ast.Module, str] | None] = {}
+
+    def parse(name: str):
+        if name not in parsed:
+            try:
+                path = module_file(name)
+                text = path.read_text()
+                parsed[name] = (ast.parse(text), text)
+            except (SystemExit, OSError, SyntaxError):
+                parsed[name] = None
+        return parsed[name]
+
+    top = parse(module)
+    if top is None:
+        return []
+    aliases, imported = _bindings(top[0])
+    pending = list(_references(top[0], aliases, imported, ""))
+    seen: set[tuple[str, str]] = set()
+    scopes = []
+    while pending:
+        helper, name = pending.pop()
+        if (helper, name) in seen or helper == module:
+            continue
+        seen.add((helper, name))
+        found = parse(helper)
+        if found is None:
+            continue
+        tree, text = found
+        node = _helper_names(tree).get(name)
+        if node is None:
+            continue
+        segment = ast.get_source_segment(text, node) or ""
+        images = frozenset(v for v in READ.findall(segment) if v in IMAGES)
+        if images:
+            scopes.append((helper, name, images))
+        helper_aliases, helper_imported = _bindings(tree)
+        pending.extend(_references(node, helper_aliases, helper_imported, helper))
+    return sorted(scopes, key=lambda scope: (scope[0], scope[1]))
+
+
 def join_images(built: list[str], *extra: str) -> str:
     wanted = set(built) | set(extra)
     return ",".join(image for image in ORDER if image in wanted)
@@ -351,6 +453,7 @@ def _plan(images: list[str], given: dict[str, str], modules: list[str],
         stem = module_file(module).stem
         assignments = []
         own = set(own_reads(module))
+        scopes = helper_scopes(module)
         for name in reads(module):
             if name in given or (name not in own and name not in IMAGES
                                  and name not in TOOLS):
@@ -365,6 +468,16 @@ def _plan(images: list[str], given: dict[str, str], modules: list[str],
                         assignments.append(f"{name}={IMAGE_PATH[image]}")
                 elif name in own:
                     missing.append((module, name, IMAGES[name][0]))
+                elif (unmet := [(h, n) for h, n, vars_ in scopes
+                                if name in vars_ and not any(
+                                    next((i for i in PREFER.get((stem, v), IMAGES[v])
+                                          if i in images), None) or v in given
+                                    for v in vars_)]):
+                    # The module calls a helper that starts this image and
+                    # has no built alternative: its tests would skip.
+                    helper, function = unmet[0]
+                    missing.append((module, f"{name} (through {helper}.{function}, which "
+                                            "it uses)", IMAGES[name][0]))
                 else:
                     # Read only by an imported helper, which may read it at
                     # import and never start that image: set when built,

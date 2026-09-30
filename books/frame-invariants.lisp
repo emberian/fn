@@ -830,15 +830,22 @@
                             fn-frame-inputp fn-frame-magicp fn-frame-item)
                            (fn-frame-decode fn-frame-encode)))))
 
-; A workflow kind with a field specification has a nonzero code.  With it,
-; the two workflow theorems below keep the table lookup, the field
-; recognizer and the code lookup closed; opened, they unrolled every kind
-; (1.4 and 2.5 million steps, 6.3 s and 5.2 s).
+; A workflow kind with a field specification has a nonzero code: the
+; journal's generic `fn-frame-spec-for-has-code' (row K3), whose table
+; hypothesis the rewriter decides on the constant table.  With it the two
+; workflow theorems below keep the table lookup, the field recognizer and
+; the code lookup closed; opened, they unrolled every kind.  The instance is
+; the generic lemma's, named (70 steps; it was proved by splitting on every
+; kind: 217,910 steps at eleven kinds).
 (local (defthm fn-frame-workflow-spec-for-has-code
   (implies (not (equal (fn-frame-spec-for kind *fn-frame-workflow-specs*)
                        :none))
            (not (equal (fn-frame-enum-index kind *fn-frame-workflow-kinds*)
-                       0)))))
+                       0)))
+  :hints (("Goal" :in-theory (disable fn-frame-spec-for fn-frame-enum-index)
+           :use ((:instance fn-frame-spec-for-has-code
+                            (table *fn-frame-workflow-specs*)
+                            (kinds *fn-frame-workflow-kinds*)))))))
 
 (defthm fn-frame-workflow-decode-of-encode
   (implies (and (fn-frame-workflow-record-okp kind values)

@@ -274,45 +274,125 @@ bp-remainder-3). incremental-finalize-3 confirmed (2026-09-29) that the
 capture adds no earlier prepared boundary: the NEXT bound is written inside
 the same staged checkpoint file, and the cuts stay STATE_CHECKPOINT_CUTS'.
 
+Receipt reorder continuation (SCN-218): the adapter requests the BP owner's
+serialized live listener with the trailing `--control-config CONFIG` on the
+receiver only and requires the observed `BP NODE CONTROL Store/control.sock`
+before the held route mutation. Its existing journal checker requires the
+actual successful route removal, no-route dispatch, restored sent dispatch,
+receipt and unpinned obligation, and one application effect. This adapter
+wiring is unit-tested; the source catalog still names the live-route
+dependency as pending until that owner's source and a matching runner image
+execute this case. An announcement alone never activates the receipt fault.
+
+Issued-page continuation: the page scenario now discards its cancelled
+token instead of expecting that cancelled request to finish productively.
+Its actual backend is `adapters/page_io.py`, using
+`FN_NATIVE_PAGE_IO_HOLD=RELEASE-FILE` after token/fd/buffer acquisition.
+The journal checker correlates the six-field issued token, cancellation,
+blocked retirement, CANCELLED settlement and later close; a different
+retained `n0` ARTICLE and PUBLISH token prove useful work completes.
+The row stays pending until a matching-image native run. A new socket does
+not establish native CID reuse, and completion/close logs alone do not
+establish worker thread death. The reclaim owner owns that join extension.
+
+Capture-first reclaim continuation: `adapters/reclaim_hold.py` starts a real
+recorded reclaim held at capture, then acquires a new live OVER response
+hold (the actual off-mutex quantum marker after ownership acquisition).
+A full candidate ARTICLE completes while competing work is held. Resuming
+reclaim must produce the actual readers deferral; draining the five-row
+captured response must settle that same CID. The next recorded reclaim
+must install and leave the retained article readable and the eligible one
+distinctly reclaimed. This is a bounded recorded-expiry fixture, not an
+arbitrary IR interpreter or a physical-sector release claim. Its source
+row remains pending matching-image execution and native composition.
+
 W7d **power_loss as a backend**. DONE: crash-image selection is an
 environment fact with the storage profile's ordering constraints made
 explicit (preflush/FUA semantics from dm-log-writes); `classify`/`bindings`
 are observations; the checker composes them whole-history (the "old or new
 per article" independence is gone); recovery-during-recovery is a second
 fault at a recovery boundary; the pre-recovery image is kept. AFTER THE
-CUT (the convergence checklist runs the current rig once).
+CUT (the convergence checklist runs the current rig once). Landed
+2026-09-29 (lanes resilience-framework-3 and -4): the adapter over the
+rig's records (`persisted-write-selection`, the second cut as a second
+fault, the recovery count as `persisted-records`); the rig's classify
+writes per-article outcomes (`per`) and bindings per-number outcomes
+(`observed_numbers`), each its own `read` / `number` observation, so the
+prefix property is judged per article and number stability per number
+from the rig's next run on (the 2026-09-26 records carry counts only).
 
 W7e **the INN lab as a differential backend**. DONE: the lab's workload is
 IR; normalization rules are explicit and named (numbers, transport fields);
 response classes, identities, memberships and authored bytes are never
-normalized; the RFC adjudicates. AFTER THE CUT.
+normalized; the RFC adjudicates. AFTER THE CUT. Landed 2026-09-29 (lane
+resilience-framework-4, first increment, record-driven like W7d's):
+`tools/resilience/adapters/inn_lab.py` turns the lab's findings into six
+IR scenarios (fn-to-inn, inn-to-fn, fn-term, innd-cut, operator-post,
+inn-refusals) judged by the checker under `relay-changes-permitted`
+(Path and Xref the named normalization, each with its RFC 5537 section;
+the differential itself is judged, never the lab's ok), `loop-refused`,
+`injection-complete` and the `peer-transfer` fact; boundaries `peer-idle`
+and `peer-innd`; the same rules judge both agents. Over the three findings
+files every verdict is the lab's. Remaining: the lab running from the
+scenarios (its checks as journal writes) on hbox with INN.
 
-W7f **the deterministic backend**. DONE: completion delivery and the
-selected scheduling boundaries are deterministic in the simulator; a small
-exhaustive suite around uncertainty, two independent holds, a generation
-change and repeated recovery. AFTER THE CUT.
+W7f **the deterministic backend**. IN PROGRESS: the fixed acceptance-world
+suite executes 100 schedules over two proposals, durable/aborted/indeterminate
+completion, matching/stale generation and repeated recovery. It compares the
+actual acceptance transitions with the separate four-field ACL2 oracle at
+every step. This is executable model evidence, not certification or evidence
+about the served host. It does not yet cover two independent holds or a general
+IR-driven backend. Schedule plans and separate oracle records accompany the
+traces; the driver must consume every planned step exactly once before it
+accepts the result.
+
+The implemented bounded acceptance-model IR executes through
+`tools/resilience/adapters/simulator.py`: its validated model-prepare,
+model-complete and model-recover operations are translated to calls of the
+actual ACL2 acceptance functions, not precomputed oracle replies. It retains
+the scenario, driver, source and launcher digests, raw output, sealed journal
+and shared checker verdict. The example observes stale completion delivery,
+an indeterminate completion, stale recovery, repeated recovery and a productive
+retry; a real healing suffix ends with no pending proposal or fence. Fault
+activation is recorded from the transition that executed with the named
+completion/generation, not inferred from a requested selector. The independent
+Python contract interpretation is explicitly a model check, with the composed
+fixture rule marked pending; the separate ACL2 oracle is also checked at every
+step. Native page buffers, descriptors and generation leases are outside this
+fixture. Two independent holds and broader lifecycle IR remain open. The
+tester mutations cover child death, missing operations, suppressed workload,
+disabled fault records, universal refusal, omitted terminal ownership,
+truncated journals, edited verdicts and corrupted oracle observations.
+The historical box failure was launcher configuration: the command replaced
+the real FN_ACL2 with tools/acl2, whose recursion refusal exited 2 before any
+scenario executed. Preserve that non-green result; it was not a model failure.
+AFTER THE original cut prerequisites; still part of the complete-all portfolio.
 
 W7g **Hypothesis rule-based generation + dependency-aware shrinking**.
-DONE: stateful workloads over the IR with bundles for symbolic identities;
+PLANNED: stateful workloads over the IR with bundles for symbolic identities;
 shrinking preserves prerequisites (a retry never survives its post's
 removal); separate randomness streams; the minimized scenario reproduces
 under the same backend. AFTER THE CUT.
 
-W7h **semantic coverage + structure-aware storage mutation**. DONE: the
+W7h **semantic coverage + structure-aware storage mutation**. PLANNED: the
 coverage signature (publication phase, client-outcome certainty, pending
 effect classes, reader-generation relation, hold-count class, headroom
 band, evidence-version relation, recovery attempt) counts abstract
 situations; checksum-preserving and checksum-breaking storage cases; the
 corpus keeps boundary-sized payloads. AFTER THE CUT.
 
-W7i **LibAFL / Antithesis evaluated against the same corpus**, each
+W7i **PLANNED: LibAFL / Antithesis evaluated against the same corpus**, each
 evaluation proving the intended faults occur, the storage model matches the
 declared campaign, and feedback reaches SBCL code. AFTER THE CUT.
 
 ## 11. What this increment does not claim
 
 No theorem changed; no native verdict is transferred from the old asserts
-to the new checker until W7b's module runs on the box at the READY sha; the
-"pending" schedule points have no host coordinate and no verdict; the
+to the new checker until W7b's module runs on the box at the READY sha.
+The page-I/O, capture-first reclaim and live BP control rows now have source
+coordinates and bounded native recipes, but remain pending matching-image
+execution; those source coordinates supply no native verdict. The fixed
+page-I/O and reclaim drivers reject altered recipe fields before native setup,
+so they cannot silently execute their fixture for a different supplied IR. The
 checker's enumeration is explicit and small (histories are products of
 per-uncertain-post fates) and says `inconclusive` past its budget.

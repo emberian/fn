@@ -92,7 +92,7 @@
 ; is no held row (no handle), with the index of that history.  H2 holds;
 ; the walk answers the value (no facts: no record), the index C's row.
 (defconst *ori-fake*
-  (list 0 0 0 "<lc@example>" :no-handle '("fn.letters") "a" "s" "e" 2 :legacy
+  (list 0 0 0 "<lc@example>" :no-handle '("fn.letters") "a" "s" "e" 2 0
         nil nil nil nil))
 
 

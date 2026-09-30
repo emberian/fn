@@ -413,13 +413,13 @@
   :hints (("Goal" :in-theory '(fn-irc-rix-ocfg-complete fn-rix-ocfg-complete
                                fn-irc-rix-own-complete-is-rix))))
 
-; KEYSTONE (host line): host/owner-host.lisp fn-owner-finish-synced calls the
+; Derived composition (not a keystone): host/owner-host.lisp fn-owner-finish-synced calls the
 ; left-hand side with the carry refreshed to the Store node's ledger; it is
 ; the configured owner's (:complete) on every owner whose Store carries its
 ; event index (fn-rix-ocfg-complete-is-ccar-ocfg-complete,
 ; fn-ccar-ocfg-complete-is-ocfg-step-complete), for every carry the host
 ; holds (fn-prc-carryp-of-refresh).
-(defthm fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete
+(defthm fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete-by-definition
   (implies (and (fn-prc-carryp carry)
                 (fn-hist-of-storep fn-hist (fn-own-store (fn-ocfg-owner oc))))
            (equal (fn-irc-rix-ocfg-complete oc fn-hist (fn-prc-refresh carry ledger))
@@ -449,9 +449,6 @@
            (or (fn-stxe-p event) (fn-stxk-p event) (fn-hstxa-p event))
            (eq (car (fn-ccar-cpe-projection-step
                      (fn-sn-consumer s) event (fn-sn-identity-next s))) :ok)
-           (or (not (fn-hstxa-p event))
-               (not (equal (fn-record-stamp (fn-replay-composite-held event))
-                           :legacy)))
            (consp (fn-irc-apply-record (fn-sn-node s) event carry))
            (equal (fn-stxk-context-kind
                    (fn-replay-identity-step (fn-sn-identity-context s) event))

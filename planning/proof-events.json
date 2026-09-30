@@ -356,7 +356,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-record-schema0-golden-octets-are-the-encoding"
+          "name": "fn-record-schema1-golden-octets-are-the-encoding"
         },
         {
           "kind": "theorem",
@@ -1722,6 +1722,11 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-bs-sweep-round-unlinks-each-removal-by-its-name",
+          "note": "The byte run of fn-sn-sweep-round's removals unlinks each in :staging by its byte-model name (fn-bs-octets-name), which gives the octet name back (fn-bs-octets-name-inverts): the model removes the file the sweep chose (row B29, online-reclaim-10)."
+        },
+        {
+          "kind": "theorem",
           "name": "fn-sn-sweep-round-removes-only-unheld-staging-names"
         },
         {
@@ -2581,6 +2586,11 @@
           "kind": "theorem",
           "name": "fn-tcl-delivery-events-imply-held-final",
           "note": "Keystone relating the event grammar to the native ordered :send collection and the exact fn-tcl-held-final-ackp planner premise. fn-tcl-delivery-eventsp-after-first-bundle preserves the grammar for each later completed transfer in the same batch."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-host-drive-bundle-has-held-final",
+          "note": "The host-called wrapper (host/native/tcpcl.lisp fnn-tcl-apply): fn-tcl-host-drive is fn-tcl-host-triple of fn-tcl-drive, and its event list satisfies the delivery gate at the first bundle boundary; the book books/tcpcl-delivery-invariants is in the image world since decision-keystones-5."
         }
       ]
     },
@@ -3912,23 +3922,18 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-bpnp-contact-offer-is-the-routed-hop",
-          "note": "KEYSTONE. Over the called fn-bpnp-step (host/native/bp-service.lisp fnn-bps-foundation-step) on the event fn-bpnp-contact-next answers, which host/native/bp-service.lisp fnn-bpc-drive-contact asks before every offer of a base contact (bp-service run/resume, bp-obligation request, bp-contact tick, bp-node serve's fnn-bpnode-send-receipts): with routing (:table TABLE), a well-formed base and the token below its bound, the one effect persists the first queued job's :attempting record, its :cl-send carries the job's durable route, and that route is fn-bprt-send-decision's over TABLE, the contact port of fn-bprt-next-hop's boundary among those with a contact; the EID the host expects is the decision's. Teeth: tests/acl2/bp-node-contact-driver-tests (reachable queued job routed to port 4556; must-fail with the route removed, with no contact row, with the table moved to another hop, at the token bound, and on a malformed base)."
+          "name": "fn-bpnj-contact-offer-is-the-routed-hop",
+          "note": "KEYSTONE. Over fn-bpnj-contact-next, which host/native/bp-service.lisp fnn-bpc-drive-contact calls fn-bpnjc-contact-next, equal to fn-bpnj-contact-next by fn-bpnjc-contact-next-is-the-head-scan (books/bp-node-job-cursor.lisp), before every offer of a base contact (bp-service run/resume, bp-obligation request, bp-contact tick, bp-node serve's fnn-bpnode-send-receipts): when it answers an offer with routing (:table TABLE) in force, the gate is open and the offer names fn-bpnj-select's job: queued, for the peer, not in OFFERED; the event is (:contact-job PEER KEY), OFFERED gains KEY, fn-bprt-send-decision over TABLE answers :send on the job's durable route, and the EID the host passes as the expected TCPCL peer is the decision's. So a job the table routes nowhere is never offered. Teeth: tests/acl2/bp-node-contact-driver-tests (the routed offer and its :attempting record through fn-bpnj-step; the offer hypothesis removed by four tables that hold the job; the routing hypothesis removed: an offer without a hop)."
         },
         {
           "kind": "theorem",
-          "name": "fn-bpnp-contact-holds-an-unrouted-job",
-          "note": "With no route matching the peer's destination the driver never offers, and a peer with an offerable job gets (:held KEY :no-route): the host drives no event, so the job keeps its durable row and its obligation. Teeth: tests/acl2/bp-node-contact-driver-tests (route removed; another destination's route)."
+          "name": "fn-bpnj-contact-offers-each-job-at-most-once",
+          "note": "KEYSTONE (once per contact). Along any sequence of states the host's contact loop consults fn-bpnj-contact-next at (host/native/bp-service.lisp fnn-bpc-drive-contact calls fn-bpnjc-contact-next, equal to fn-bpnj-contact-next by fn-bpnjc-contact-next-is-the-head-scan (books/bp-node-job-cursor.lisp), before every offer of a base contact (bp-service run/resume, bp-obligation request, bp-contact tick, bp-node serve's fnn-bpnode-send-receipts)), threading the OFFERED it answers (fn-bpnj-contact-offers), the keys one contact offers are pairwise distinct and none was in the initial OFFERED. Teeth: tests/acl2/bp-node-contact-driver-tests (a reachable contact whose transfer ends :uncertain and whose :requeued record makes the job :queued again: the threaded OFFERED closes the contact; mutation witness: an unthreaded driver offers the key twice)."
         },
         {
           "kind": "theorem",
-          "name": "fn-bpnp-contact-offers-each-job-at-most-once",
-          "note": "KEYSTONE (once per contact). Along any sequence of states host/native/bp-service.lisp fnn-bpc-drive-contact consults fn-bpnp-contact-next at, threading the OFFERED it answers, the keys one contact offers are pairwise distinct and none was in the initial OFFERED. Teeth: tests/acl2/bp-node-contact-driver-tests (a reachable contact whose transfer ends :uncertain and whose :requeued record is durable: the contact offers the key once and closes; must-fail without the threaded OFFERED, which offers it again)."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnp-contact-closes-only-when-nothing-owed-remains",
-          "note": "KEYSTONE. With the peer an EID, nothing issued, no delivery uncertain, the base neither fenced nor pending and a queued job for the peer, a close from fn-bpnp-contact-next means the job's key is in OFFERED: every owed job is offered unless its transfer on this contact was not accepted (with fn-bpn-apply-record-keeps-forwarded). Teeth: tests/acl2/bp-node-contact-driver-tests (witness closing with the key offered; one must-fail per gate: issued, delivery uncertain, fenced, pending, a string peer)."
+          "name": "fn-bpnj-contact-offers-while-a-ready-job-remains",
+          "note": "KEYSTONE (no starvation; replaces the retired driver's closes-only theorem). Over fn-bpnj-contact-next (host/native/bp-service.lisp fnn-bpc-drive-contact calls fn-bpnjc-contact-next, equal to fn-bpnj-contact-next by fn-bpnjc-contact-next-is-the-head-scan (books/bp-node-job-cursor.lisp), before every offer of a base contact (bp-service run/resume, bp-obligation request, bp-contact tick, bp-node serve's fnn-bpnode-send-receipts)): while the contact gate is open and any queued job for the peer is ready (not offered on this contact, routed on its durable route), the answer is an offer; a held or already offered job ahead of it never ends the contact. Teeth: tests/acl2/bp-node-job-offer-tests (gate open and KEY2 ready: an offer; readiness removed: :held; gate removed: :close)."
         },
         {
           "kind": "theorem",
@@ -8270,7 +8275,7 @@
         {
           "kind": "theorem",
           "name": "fn-prof-offer-answer-is-the-reparse",
-          "note": "KEYSTONE. Subject fn-peer-decide-offer (served: fn-pgc-decide-offer = fn-pix-decide-offer = fn-peer-decide-offer, reached from host/owner-host.lisp fn-owner-chunk -> fn-own-read with the memory re-pinned by fn-own-conn-live-session). Teeth: tests/acl2/transit-hygiene-tests.lisp; native: tests/test_native_peering.py test_transit_hygiene_refused_offer_memory_and_relay_checks."
+          "note": "KEYSTONE. Subject fn-peer-decide-offer (served: fn-pgc-decide-offer, equal to fn-peer-decide-offer by fn-pgc-decide-offer-is-peer-decide-offer, reached from host/owner-host.lisp fn-owner-chunk -> fn-own-read with the memory re-pinned by fn-own-conn-live-session). Teeth: tests/acl2/transit-hygiene-tests.lisp; native: tests/test_native_peering.py test_transit_hygiene_refused_offer_memory_and_relay_checks."
         },
         {
           "kind": "theorem",
@@ -10949,7 +10954,17 @@
         {
           "kind": "theorem",
           "name": "fn-clkr-wall-reading-is-the-ns-decision",
-          "note": "host/native/io.lisp fnn-owner-wall-milliseconds (and fnn-store-prepare-observation) calls fn-otm-wall-reading over gettimeofday's seconds and microseconds at +fnn-owner-unix-dtn-offset-seconds+. Teeth: tests/acl2/clock-reading-tests.lisp (clkt-wall-reading-*: a 2026 reading and the second before the epoch; removal of integerp seconds, natp microseconds and the epoch offset)."
+          "note": "host/native/io.lisp fnn-owner-wall-milliseconds calls fn-otm-wall-reading over gettimeofday's seconds and microseconds; the DTN epoch is ACL2's constant *fn-otm-dtn-epoch-unix-seconds*. Teeth: tests/acl2/clock-reading-tests.lisp (clkt-wall-reading-*: a 2026 reading and the second before the epoch; removal of integerp seconds and natp microseconds)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clkr-monotonic-readings-are-the-ns-decision",
+          "note": "host/native/io.lisp fnn-monotonic-ms calls fn-otm-monotonic-ms over SBCL's tick counter and rate; host/native/bp.lisp fnn-bp-monotonic-now calls fn-otm-boottime-ms over CLOCK_BOOTTIME. Teeth: clkt-monotonic-* (positives for both; removal of each hypothesis)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-clkr-wall-seconds-is-the-ns-decision",
+          "note": "host/native/io.lisp fnn-genesis-created-seconds (for fnn-genesis-octets) calls fn-otm-wall-seconds over gettimeofday's seconds and microseconds. Teeth: clkt-wall-seconds-* (5.25 s past the epoch is 5, the second before it 0; removal of integerp seconds and natp microseconds)."
         }
       ]
     },
@@ -13721,6 +13736,10 @@
         {
           "kind": "theorem",
           "name": "fn-xrt-quiet-files-are-unnamed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-xrt-dropped-file-is-released"
         }
       ]
     },
@@ -15061,17 +15080,17 @@
         {
           "kind": "theorem",
           "name": "fn-bpfj-query-is-the-query",
-          "note": "KEYSTONE. Subject fn-bpfj-query. Host: none yet (the dispatcher and bp-service's stepping loop are the next increment; until then the subject is reached by the test book). Teeth: tests/acl2/bp-node-fragment-job-tests.lisp."
+          "note": "KEYSTONE. Subject fn-bpfj-query. Host: host/native/bp-service.lisp fnn-bps-fragment-progress starts, steps and offers the job; the (:family anchor observation job limit) and (:persist-result epoch op result job limit) events reach fn-bpfj-propose-step / fn-bpfj-persist-step through fn-bpnj-step -> fn-bpnp-step -> fn-bpn-report-author-step -> fn-bpn-report-step -> fn-bpnf-fragment-step (books/bp-node-fragment-step). Teeth: tests/acl2/bp-node-fragment-job-tests.lisp."
         },
         {
           "kind": "theorem",
           "name": "fn-bpfj-plan-refuses-past-the-limit-by-name",
-          "note": "KEYSTONE. Subject fn-bpfj-plan. Host: none yet (the dispatcher and bp-service's stepping loop are the next increment; until then the subject is reached by the test book). Teeth: tests/acl2/bp-node-fragment-job-tests.lisp."
+          "note": "KEYSTONE. Subject fn-bpfj-plan. Host: host/native/bp-service.lisp fnn-bps-fragment-progress starts, steps and offers the job; the (:family anchor observation job limit) and (:persist-result epoch op result job limit) events reach fn-bpfj-propose-step / fn-bpfj-persist-step through fn-bpnj-step -> fn-bpnp-step -> fn-bpn-report-author-step -> fn-bpn-report-step -> fn-bpnf-fragment-step (books/bp-node-fragment-step). Teeth: tests/acl2/bp-node-fragment-job-tests.lisp."
         },
         {
           "kind": "theorem",
           "name": "fn-bpfj-plan-is-the-plan-within-the-limit",
-          "note": "KEYSTONE. Subject fn-bpfj-plan. Host: none yet (the dispatcher and bp-service's stepping loop are the next increment; until then the subject is reached by the test book). Teeth: tests/acl2/bp-node-fragment-job-tests.lisp."
+          "note": "KEYSTONE. Subject fn-bpfj-plan. Host: host/native/bp-service.lisp fnn-bps-fragment-progress starts, steps and offers the job; the (:family anchor observation job limit) and (:persist-result epoch op result job limit) events reach fn-bpfj-propose-step / fn-bpfj-persist-step through fn-bpnj-step -> fn-bpnp-step -> fn-bpn-report-author-step -> fn-bpn-report-step -> fn-bpnf-fragment-step (books/bp-node-fragment-step). Teeth: tests/acl2/bp-node-fragment-job-tests.lisp."
         },
         {
           "kind": "theorem",
@@ -16054,7 +16073,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-own-feed-peer-names-loop-is-rev-onto"
+          "name": "fn-cfg-peer-names-loop-is-rev-onto"
         },
         {
           "kind": "theorem",
@@ -16707,10 +16726,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-irc-rix-ocfg-complete-of-refresh-is-ocfg-step-complete"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-irc-rix-ocfg-complete-is-rix"
         },
         {
@@ -16865,6 +16880,573 @@
           "name": "fn-bpnf-family-record-at-epoch-and-op-are-frame-nats"
         }
       ]
+    },
+    {
+      "id": "PRF-1008",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpfj-record-anchor-of-family-record-at",
+          "note": "Subject fn-bpfj-record-anchor. The record's anchor is the anchor the proposal was made for (the equalities' hypothesis reads the state's own anchor)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfj-propose-step-is-the-propose-step",
+          "note": "KEYSTONE. Subject fn-bpfj-propose-step. Within the profile's limit, a finished well-formed job proposes exactly what fn-bpnf-family-propose-step proposes (fn-bpfj-plan-at-is-the-plan-at, fn-bpfj-apply-at-is-the-apply-at). Host: host/native/bp-service.lisp fnn-bps-fragment-progress starts, steps and offers the job; the (:family anchor observation job limit) and (:persist-result epoch op result job limit) events reach fn-bpfj-propose-step / fn-bpfj-persist-step through fn-bpnj-step -> fn-bpnp-step -> fn-bpn-report-author-step -> fn-bpn-report-step -> fn-bpnf-fragment-step (books/bp-node-fragment-step). Teeth: tests/acl2/bp-node-fragment-step-job-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfj-plan-at-ready-binds-live-source-rows",
+          "note": "Subject fn-bpfj-plan-at. A ready job plan binds live source rows, as fn-bpnf-family-plan-at-ready-binds-live-source-rows does for the family plan; fn-bpnf-fragment-step-family-publication-has-live-sources uses both."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1009",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpfj-persist-step-is-the-persist-step",
+          "note": "KEYSTONE. Subject fn-bpfj-persist-step. Within the profile's limit, the kind-18 :persist-result over the finished job applies exactly what fn-bpnf-family-persist-step applies (fn-bpfj-apply-at-is-the-apply-at). Host: host/native/bp-service.lisp fnn-bps-fragment-progress starts, steps and offers the job; the (:family anchor observation job limit) and (:persist-result epoch op result job limit) events reach fn-bpfj-propose-step / fn-bpfj-persist-step through fn-bpnj-step -> fn-bpnp-step -> fn-bpn-report-author-step -> fn-bpn-report-step -> fn-bpnf-fragment-step (books/bp-node-fragment-step). Teeth: tests/acl2/bp-node-fragment-step-job-tests.lisp."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1022",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-stx-index-policy-agrees",
+          "note": "books/stx-index.lisp: fn-stx-index-policy-current of the index of an article list equals fn-pol-current over the lace of the store of the same articles under the same keyring. fn-stx-policies-of-add1 is the column's one-step equation."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1023",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pta-admitted-is-the-gate-over-the-rows",
+          "note": "books/peer-transit-authority.lisp: under fn-sn-indexedp and fn-rows-contexts-okp, :admitted iff an authority, fn-pol-admitp over fn-sn-lace-of-rows, and no poster fork (no recorded equivocator at the incarnation, no distinct statement at the slot)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pta-group-verdict-is-one-of-the-verdicts",
+          "note": "books/peer-transit-authority.lisp: every verdict is a member of the closed enumeration *fn-pta-verdicts*."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1024",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pta-decide-admits-iff-every-governed-group-admits",
+          "note": "books/peer-transit-authority.lisp: on a :want, the verdict beside the decision is :admitted iff some scoped group is governed and every governed scoped group's verdict is :admitted."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pta-groups-verdict-is-admitted-iff",
+          "note": "books/peer-transit-authority.lisp: the article-level verdict's specification, member by member over the scoped groups."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pta-decide-keeps-the-byte-decision-by-definition",
+          "note": "books/peer-transit-authority.lisp: the byte decision is fn-peer-decide-transfer-under's, unchanged (named -by-definition; not cited)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pta-verdict-only-on-want-by-definition",
+          "note": "books/peer-transit-authority.lisp: no verdict unless the bytes are wanted (named -by-definition; not cited)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1027",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-snc-node-lace-is-the-rows-lace",
+          "note": "books/store-node-correspondence.lisp: under fn-snc-correspondp and fn-rows-contexts-okp, fn-stx-lace of the node equals fn-sn-lace-of-rows of the indexed rows."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snc-initial-corresponds",
+          "note": "books/store-node-correspondence.lisp: fn-sn-initial satisfies fn-snc-correspondp (no articles, no rows)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snc-crash-preserves-correspondp-by-recomputation",
+          "note": "books/store-node-correspondence.lisp: a crash of a corresponding state corresponds (the empty node, no indexed row; -by-recomputation)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1016",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-dispatch-publication-authorize-admits-exactly-the-issued-pending-dispatch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-dispatch-record-epoch-and-op-are-frame-nats"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1017",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-forward-publication-authorize-admits-exactly-the-issued-pending-forward"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-forward-publication-frame-not-bad-implies-frame-nats"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1031",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-existing-sequence-reuses-exactly-the-keyed-jobs-sequence"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1032",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-evidence-next-result-name-names-exactly-the-next-record"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1035",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-configured-budgets-admits-exactly-the-frame-bounded-positive-budgets"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1036",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tcl-delivery-plan-decides-exactly-by-the-held-final-ack-and-the-callback"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1037",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cat-msgid-seqs{correspondence-bl}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mpxt-seqs-is-cat-msgid-seqs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-msgid-saturatedp-is-the-outcome"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-index-health-is-the-build"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cat-clear-keyed-is-nil"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1039",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnr-publish-outcome-is-pending-exactly-while-the-loop-runs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnr-publish-outcome-names-the-stopped-phase"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnr-publish-action-of-run-is-dispatched"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1034",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-snc-finish-preserves-correspondp",
+          "note": "books/store-node-correspondence.lisp: under fn-sn-statep and fn-sn-completion-is-last-p a corresponding state corresponds after fn-sn-finish (one theorem, the five arms as cases)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snc-recover-preserves-correspondp-by-recomputation",
+          "note": "books/store-node-correspondence.lisp: a corresponding state corresponds after fn-sn-recover (the replayed node's articles are the history's article rows, newest first; -by-recomputation)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snc-prepare-preserves-correspondp",
+          "note": "books/store-node-correspondence.lisp: fn-sn-prepare keeps the store and the indexed rows."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snc-io-preserves-correspondp",
+          "note": "books/store-node-correspondence.lisp: fn-sn-io keeps the store and the indexed rows."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snc-set-keyring-preserves-correspondp",
+          "note": "books/store-node-correspondence.lisp: fn-sn-set-keyring recontexts the rows and keeps their Message-IDs and handles."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snc-refuse-reservation-preserves-correspondp",
+          "note": "books/store-node-correspondence.lisp: fn-sn-refuse-reservation (books/store-node-resolution) keeps the store and the indexed rows."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snc-known-abort-preserves-correspondp",
+          "note": "books/store-node-correspondence.lisp: fn-sn-known-abort (books/store-node-resolution) keeps the store (an aborted completion clears the pending) and the indexed rows."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1046",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-host-lifecycle-recovery-agrees-with-the-replayed-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-lifecycle-namespace-plan-frontier-counts-the-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-lifecycle-record-bindingsp-pairs-the-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-replay-records-ready-advances-the-frontier-per-record"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1047",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-report-observe-next-selects-exactly-the-least-yielding-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-report-observe-next-aux-selects-the-least-yield"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1048",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-report-outbox-next-selects-exactly-the-least-yielding-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpn-report-outbox-next-aux-selects-the-least-yield"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1051",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-next-selects-exactly-the-first-ready-family"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-family-next-aux-answers-the-first-ready-row"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1044",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pak-post-admission-ok-is-indexed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pak-post-admission-saturated-is-not-indexed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pak-post-admission-is-a-named-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pak-boundary-never-says-mpx-saturated"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-load-held-rows-keyed-is-load-held-rows"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1020",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-run-is-over-range-cat"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-run-is-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-step-progresses"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-step-window-at-most-w"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-lines-is-view"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-step-of-commit-pinned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-step-of-withdraw-pinned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-over-range-ovw-expands-to-over-range-cat"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-cursor-effect-expands-to-run"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-splan-cw-drain-is-the-expanded-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-splan-cw-residual-rendering"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-splan-cw-drain-of-the-arm-is-the-unbounded-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-over-range-ovw-emits-a-fresh-cursor"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-splan-cursor-step-of-okp-is-ok"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-run-of-start-is-cursor-octets"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1059",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rpin-step-preserves-funded-ownership"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rpin-acquire-holds-the-captured-generation"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1060",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-owner-orcp-rebuild-establishes-retain-carry"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1057",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pio-completion-publishes-only-the-issued-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-cancellation-retains-worker-ownership"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-close-waits-for-every-worker"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-successive-file-issues-have-distinct-identities"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1067",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-owner-retain-carry-of-put"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-retain-carry-of-other-global-put"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-retain-carry-put-frames-global-association"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1055",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pct-tick-offers-the-queued-article"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1056",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pct-tick-hands-nothing-otherwise"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1062",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pct-requested-article-is-handed-to-the-local-transport"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1058",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-asj-permitted-relay-transform-preserves-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-asj-body-of-strip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-asj-strip-preserves-byte-order"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1061",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-set-group-authority-installs-binding"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1063",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnc-ready-startup-binds-the-parsed-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnc-grant-is-the-authorized-route-plan"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1064",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnc-open-run-live-iff-both-completions-succeed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnc-retirement-stops-the-control-listener"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1068",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-osr-open-establishes-live-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-live-capture-opens"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-ready-capture-keeps-established-projections"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-finish-preserves-identity-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-finish-preserves-live-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-configure-durable-preserves-live-carry"
+        }
+      ],
+      "pending_subject": "fn-osr-capture is a pure inverse dependency; the running snapshot producer capture caller and maintained keyed/verdict/index fields are not integrated by this slice."
+    },
+    {
+      "id": "PRF-1066",
+      "events": []
     }
   ]
 }

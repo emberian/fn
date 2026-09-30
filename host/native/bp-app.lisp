@@ -179,13 +179,18 @@ The caller holds SERVICE's mutex for this whole function."
           (otherwise (fnn-fault "unknown BP application action ~a" action)))))
     (fnn-fault "BP application dispatcher did not reach a terminal state")))
 
+(defvar *fnn-bpnode-control-pump* nil
+  "Bound by the serialized BP node only; called at its completed receipt cut.")
+
 (defun fnn-bpapp-pause-after-decision ()
   ;; Test-only process-death cut named by books/bp-native-app's replay states:
   ;; decision is durable, no receipt bundle has yet been authored or offered.
   (when (string= (or (fnn-developer-selector "FN_BP_APP_TEST_PAUSE_AFTER_DECISION") "") "1")
     (fnn-out "BP APP DECISION DURABLE")
     (finish-output)
-    (loop (sleep 1)))
+    (loop
+      (when *fnn-bpnode-control-pump* (funcall *fnn-bpnode-control-pump*))
+      (sleep 1)))
   ;; The same point as a HOLD (cut receipt-observed; resilience-framework-2's
   ;; generated scenarios: a duplicate receipt, a reorder with a policy change
   ;; in between, a lost completion, against a real node).  With
@@ -199,7 +204,9 @@ The caller holds SERVICE's mutex for this whole function."
       (fnn-out "BP APP RECEIPT-OBSERVED HOLD release=~a" (or release "-"))
       (finish-output)
       (loop until (and release (probe-file release))
-            do (sleep 0.1))
+            do (when *fnn-bpnode-control-pump*
+                 (funcall *fnn-bpnode-control-pump*))
+               (sleep 0.1))
       (fnn-out "BP APP RECEIPT-OBSERVED RELEASED")
       (finish-output))))
 

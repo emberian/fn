@@ -44,21 +44,10 @@
    (equal *ast-built* :clock-unusable)
    :rule-classes nil))
 
-; A legacy record remains a read-side value.  The same reserved transaction
-; stages a natural stamp and refuses the old marker before any record write.
-(defconst *ast-legacy* (fn-record-with-stamp *ast-built* :legacy))
-(assert-event (fn-record-p *ast-legacy*))
-(defconst *ast-legacy-row* (fn-hrt-row-at *ast-legacy* 0))
-(assert-event (equal (fn-sn-prepare *sn-reserved* *ast-legacy-row*)
-                     *sn-reserved*))
 ; Direct replay of a staged node must not complete a different pending
 ; article that happens to share the record's transaction coordinates.
 (assert-event (null (fn-replay-apply-record (fn-sn-node *sn-prepared*)
                                             *sn-row*)))
-(must-fail-checked
- (defthm ast-prepare-refusal-without-legacy-hypothesis-fails
-   (equal (fn-sn-prepare *sn-reserved* *ast-row*) *sn-reserved*)
-   :rule-classes nil))
 
 ; The positive finish witness uses the exact pre-completion record staged by
 ; the file kernel, and checks the four article-arm exclusions independently.
@@ -133,24 +122,19 @@
             (fn-replay-article-eventp *ast-topic-install*))
    :rule-classes nil))
 
-; The two exact grammars differ only in the schema octet and final stamp item.
-(defconst *ast-schema0* *fn-record-schema0-golden-octets*)
+; Every record carries its stamp: the stampless schema-0 grammar is refused.
 (defconst *ast-schema1* *fn-record-schema1-golden-octets*)
-(assert-event (equal (fn-record-decode-exact *ast-schema0*)
-                     (list :ok (fn-record-make 1 2 3 "<a>" '(9 8) '("g")
-                                                    "o" "s" "e" 4 :legacy))))
+(assert-event (equal (fn-record-decode-exact
+                      (append (take 5 *ast-schema1*) '(0)
+                              (butlast (nthcdr 6 *ast-schema1*) 1)))
+                     '(:error :unknown-version)))
 (assert-event (equal (fn-record-decode-exact *ast-schema1*)
                      (list :ok (fn-record-make 1 2 3 "<a>" '(9 8) '("g")
                                                     "o" "s" "e" 4 5))))
 (assert-event (equal (fn-record-encode
                       (fn-record-result-record
-                       (fn-record-decode-exact *ast-schema0*)))
-                     *ast-schema0*))
-(assert-event (equal (fn-record-encode
-                      (fn-record-result-record
                        (fn-record-decode-exact *ast-schema1*)))
                      *ast-schema1*))
-(assert-event (equal (nth 5 *ast-schema0*) 0))
 (assert-event (equal (nth 5 *ast-schema1*) 1))
 (assert-event (equal (fn-record-decode-exact
                       (append (butlast *ast-schema1* 1) '(26 0 0 0 5)))
@@ -164,12 +148,12 @@
           (append (butlast *ast-schema1* 1) '(26 0 0 0 5)))
    :rule-classes nil))
 
-; Four durable events in one namespace: old grammar, new grammar, retention,
+; Four durable events in one namespace: two records, retention,
 ; and a composite whose fn-r child carries its own schema-1 stamp.
 (defconst *ast-journal-groups* '("stamp.test"))
 (defconst *ast-journal-r0-wire*
-  (fn-record-make 0 0 0 "<legacy@stamp.test>" '(65) *ast-journal-groups*
-                  "a0" "s0" "e0" 2 :legacy))
+  (fn-record-make 0 0 0 "<first@stamp.test>" '(65) *ast-journal-groups*
+                  "a0" "s0" "e0" 2 841000000))
 (defconst *ast-journal-r1-wire*
   (fn-record-make 1 1 1 "<new@stamp.test>" '(66) *ast-journal-groups*
                   "a1" "s1" "e1" 2 841000001))
@@ -211,16 +195,16 @@
           (fn-node-acceptance
            (fn-replay-result-node
             (fn-replay *ast-journal-groups* 20 *ast-mixed-journal*)))))
-        '(("<legacy@stamp.test>" . :legacy)
+        '(("<first@stamp.test>" . 841000000)
           ("<new@stamp.test>" . 841000001)
           ("<composite@stamp.test>" . 841000003))))
 (assert-event
  (equal (fn-replay-journal-article-stamps *ast-mixed-journal*)
-        '(("<legacy@stamp.test>" . :legacy)
+        '(("<first@stamp.test>" . 841000000)
           ("<new@stamp.test>" . 841000001)
           ("<composite@stamp.test>" . 841000003))))
 
-; The one-record subject is nonvacuous for both an old article record and a
+; The one-record subject is nonvacuous for both a plain article record and a
 ; kind-4 composite.  Its minimal hypotheses are the article arm and a real
 ; step result: successful application itself entails a valid node and event.
 (defconst *ast-replay-initial* (fn-node-initial-state *ast-journal-groups* 20))
@@ -228,7 +212,7 @@
 (assert-event (consp (fn-replay-apply-record *ast-replay-initial* *ast-journal-r0*)))
 (assert-event
  (consp (fn-find-article
-         "<legacy@stamp.test>"
+         "<first@stamp.test>"
          (fn-state-articles
           (fn-node-acceptance
            (fn-replay-apply-record *ast-replay-initial* *ast-journal-r0*))))))

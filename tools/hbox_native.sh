@@ -1,5 +1,18 @@
 #!/bin/sh
-# Build a native image on hbox and run named test modules against it.
+# Build a native image on a build box and run named test modules against it.
+#
+# The box is --box BOX (hbox, persvati or auto; default $FN_HBOX, else auto).
+# Each box's row (item 67, obstructions-7): its scratch BASE (hbox
+# /tank/fn/scratch, persvati ~/fn-gates), its certificate cache and build
+# wrapper (tools/farm.py HOSTS: hbox /tank/fn/certcache under swarm-build,
+# persvati ~/fn-certcache with none), its test OpenSSL (hbox the 3.5.8 test
+# tool below, persvati the system openssl 3.5) and whether it holds the
+# published image sets (hbox only, /tank/fn/images).  auto picks by load per
+# core (tools/boxes.sh --pick), except that --image-set and --reuse-image
+# take hbox, where the sets and the earlier runs live; name --box to
+# override.  The record (build/hbox-native/LABEL.run here) names the box.
+# Before 2026-09-29 the cache and wrapper were hbox's whatever FN_HBOX said,
+# so a persvati run could not work (compress-8).
 #
 #   tools/hbox_native.sh [options] REV MODULE...
 #
@@ -8,7 +21,7 @@
 # farm.py's excludes).  MODULE is a unittest name: tests.test_native_owner or
 # tests.test_native_owner.SomeTests.
 #
-# On hbox, under /tank/fn/scratch/NAME/native-LABEL/ (NAME is the lane: the
+# On the box, under BASE/NAME/native-LABEL/ (NAME is the lane: the
 # basename of this worktree, or --name), it
 #   1. installs the default profile's closure from /tank/fn/certcache and
 #      certifies the rest under swarm-build (a lane's changed books);
@@ -62,11 +75,23 @@
 #      loaded box can be judged (feed-queue: 20.9 s against 2.7 s for one
 #      case at load 19-37).
 #
-# It prints the scratch path, then waits for `status` (tools/wait_for.sh) and
-# prints the summary; start it with run_in_background.  --detach returns after
-# the start instead.  The box run survives a dropped ssh (nohup).
+# It prints the scratch path and returns once the box run has started
+# (DETACHED by default, obstructions-7 item 58: a run must survive its lane's
+# death; ll5d died with limits-live-5 and lost its 20-minute install step).
+# The record build/hbox-native/LABEL.run names the box, the run directory,
+# the detached pid and the log, and
 #
-# Options: --name NAME, --label LABEL, --images LIST, --mem SIZE,
+#   tools/hbox_native.sh status LABEL   prints the record, whether the pid is
+#                                        alive, the status file and the log's tail
+#   tools/hbox_native.sh attach LABEL   re-attaches: waits for `status`
+#                                        (tools/wait_for.sh, --deadline S),
+#                                        prints the run log, exits with status
+#
+# from any later session.  --wait keeps the old behaviour (start, then attach
+# at once; start it with run_in_background).  --detach is accepted and is the
+# default.  The box run survives a dropped ssh (nohup).
+#
+# Options: --box hbox|persvati|auto (above), --name NAME, --label LABEL, --images LIST, --mem SIZE,
 # --image-acl2 PATH (the ACL2 wrapper the IMAGES are built with; certification
 # keeps the toolchain's.  Default /tank/fn/toolchains/w28/acl2-literal-4g-tls64k,
 # the w28 launcher at --tls-limit 65536 (coordinator decision 2026-09-27): the
@@ -77,7 +102,8 @@
 # each is its own process, its own MemoryMax scope and its own ports; a
 # group of 20 modules at 4 jobs on hbox takes about a quarter of the serial
 # time), --certify-jobs N|auto (certify, default auto: tools/chain_schedule.py), --no-build (reuse the images already in that
-# scratch tree; the re-ship keeps the tree's .cert/.port/.fasl files, which it
+# scratch tree -- the one --label names; refused before anything ships when
+# it lacks one, naming the runs of NAME that hold them; the re-ship keeps the tree's .cert/.port/.fasl files, which it
 # used to delete, leaving REPL sessions there refusing include-book),
 # --image-set SHA (no certify and no build: link the prebuilt images the batch
 # published for dev commit SHA from hbox:/tank/fn/images/SHA, verified by its
@@ -112,13 +138,14 @@ if [ -z "${FN_HBOX_NATIVE_COPY:-}" ]; then
     FN_HBOX_NATIVE_COPY=$(mktemp -d "${TMPDIR:-/tmp}/hbox_native.XXXXXX") || exit 3
     cp "$FN_HBOX_NATIVE_HERE/tools/hbox_native.sh" "$FN_HBOX_NATIVE_HERE/tools/wait_for.sh" \
         "$FN_HBOX_NATIVE_HERE/tools/boxes.sh" "$FN_HBOX_NATIVE_HERE/tools/image_set.py" \
+        "$FN_HBOX_NATIVE_HERE/tools/native_box.sh" \
         "$FN_HBOX_NATIVE_COPY/" || exit 3
     export FN_HBOX_NATIVE_COPY FN_HBOX_NATIVE_HERE
     exec sh "$FN_HBOX_NATIVE_COPY/hbox_native.sh" "$@"
 fi
 trap 'rm -rf "$FN_HBOX_NATIVE_COPY"' EXIT
 HERE=$FN_HBOX_NATIVE_HERE
-HOST=${FN_HBOX:-hbox}
+BOX=${FN_HBOX:-auto}
 NAME=$(basename "$HERE")
 LABEL=
 IMAGES=developer
@@ -127,7 +154,7 @@ IMAGE_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k
 JOBS=auto
 MODULE_JOBS=1
 BUILD=1
-DETACH=0
+DETACH=1
 DRY=0
 ALLOW_SKIPS=
 DEADLINE=5400
@@ -136,7 +163,42 @@ IMAGES_GIVEN=0
 POSITIONAL=
 IMAGE_SET=
 REUSE=
-usage() { sed -n '2,95p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+usage() { sed -n '2,/^set -eu/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//' >&2; exit 2; }
+# status / attach LABEL: read the record this worktree's start wrote.
+attach_run() {
+    record=$HERE/build/hbox-native/$2.run
+    case $2 in ''|*[!A-Za-z0-9._-]*) echo "hbox_native: $1 takes the run's LABEL" >&2; exit 2 ;; esac
+    [ -f "$record" ] || { echo "hbox_native: no record $record (runs started here: $(ls "$HERE/build/hbox-native" 2>/dev/null | sed 's/\.run$//' | tr '\n' ' '))" >&2; exit 2; }
+    HOST=$(sed -n 's/^box=//p' "$record")
+    S=$(sed -n 's/^dir=//p' "$record")
+    PID=$(sed -n 's/^pid=//p' "$record")
+    [ -n "$HOST" ] && [ -n "$S" ] || { echo "hbox_native: $record names no box or dir" >&2; exit 2; }
+    if [ "$1" = status ]; then
+        cat "$record"
+        ssh -n "$HOST" "if [ -n '$PID' ] && kill -0 '$PID' 2>/dev/null; then echo 'pid $PID: running'; else echo 'pid ${PID:-?}: not running'; fi; if [ -f $S/status ]; then echo \"status \$(cat $S/status)\"; else echo 'status: none yet'; fi; tail -n 12 $S/run.log 2>/dev/null"
+        exit $?
+    fi
+    DEADLINE=${3:-$DEADLINE}
+    echo "hbox_native: attached to $HOST:$S (pid ${PID:-?})"
+    set +e
+    sh "$FN_HBOX_NATIVE_COPY/wait_for.sh" --host "$HOST" --deadline "$DEADLINE" --interval 30 --file "$S/status" >/dev/null
+    waited=$?
+    set -e
+    ssh -n "$HOST" "cat $S/run.log; echo '== SHA256SUMS'; cat $S/SHA256SUMS 2>/dev/null"
+    if [ $waited -ne 0 ]; then
+        echo "hbox_native: no status after ${DEADLINE}s (wait_for exit $waited); the run may still be going in $HOST:$S (attach again)" >&2
+        exit 124
+    fi
+    status=$(ssh -n "$HOST" "cat $S/status")
+    echo "hbox_native: status $status ($HOST:$S)"
+    exit "$status"
+}
+case ${1:-} in
+    status|attach)
+        [ $# -ge 2 ] || usage
+        case ${3:-} in --deadline) set -- "$1" "$2" "${4:?--deadline S}" ;; '') ;; *) usage ;; esac
+        attach_run "$@" ;;
+esac
 while [ $# -gt 0 ]; do
     case $1 in
         --name) NAME=$2; shift 2 ;;
@@ -151,14 +213,18 @@ while [ $# -gt 0 ]; do
         --image-set)
             case $2 in *[!0-9a-f]*|'') echo "hbox_native: --image-set takes a commit sha" >&2; exit 2 ;; esac
             IMAGE_SET=$2; BUILD=0; shift 2 ;;
+        --box)
+            case $2 in hbox|persvati|auto) BOX=$2 ;; *) echo "hbox_native: --box takes hbox, persvati or auto" >&2; exit 2 ;; esac
+            shift 2 ;;
         --reuse-image)
-            case $2 in /tank/fn/scratch/*) REUSE=$2 ;; */native-*) REUSE=/tank/fn/scratch/$2 ;;
+            case $2 in /*) REUSE=$2 ;; */native-*) REUSE=__BASE__/$2 ;;
                 native-*) REUSE=__NAME__/$2 ;;
-                *) echo "hbox_native: --reuse-image takes NAME/native-LABEL or a /tank/fn/scratch path" >&2; exit 2 ;;
+                *) echo "hbox_native: --reuse-image takes NAME/native-LABEL or the box's absolute run path" >&2; exit 2 ;;
             esac
             case $REUSE in *..*|*[!A-Za-z0-9._/-]*) echo "hbox_native: bad --reuse-image $2" >&2; exit 2 ;; esac
             BUILD=0; shift 2 ;;
         --detach) DETACH=1; shift ;;
+        --wait) DETACH=0; shift ;;
         --dry-run) DRY=1; shift ;;
         # A module gated by an unset opt-in (FN_RUN_*_E2E ...) is refused at
         # launch unless this is given (tools/native_env.py plan; item 45).
@@ -261,8 +327,47 @@ fi
 case $LABEL in ''|*[!A-Za-z0-9._-]*) echo "hbox_native: bad --label $LABEL" >&2; exit 2 ;; esac
 # The images' own source is the set's commit, whatever tree runs the tests.
 [ -z "$IMAGE_SET" ] || SOURCE_ID=$IMAGE_SET
-S=/tank/fn/scratch/$NAME/native-$LABEL
-case $REUSE in __NAME__/*) REUSE=/tank/fn/scratch/$NAME/${REUSE#__NAME__/} ;; esac
+# The box and its row (item 67).  auto takes hbox for --image-set and
+# --reuse-image (the published sets and the earlier runs live there) and for
+# a dry run (no ssh); otherwise the lower load per core now.
+if [ "$BOX" = auto ]; then
+    if [ -n "$IMAGE_SET" ] || [ -n "$REUSE" ] || [ $DRY -eq 1 ]; then
+        BOX=hbox
+    else
+        BOX=$(sh "$FN_HBOX_NATIVE_COPY/boxes.sh" --pick) || { echo "hbox_native: no build box answers (tools/boxes.sh --pick)" >&2; exit 3; }
+    fi
+fi
+HOST=$BOX
+ROW=$(sh "$FN_HBOX_NATIVE_COPY/native_box.sh" "$BOX" "$HERE") || exit 2
+eval "$ROW"
+case "$BASE $CACHE" in
+    '~/'*|*' ~/'*)
+        if [ $DRY -eq 0 ]; then
+            # Absolute paths in every ssh command and in the box script.
+            REMOTE_HOME=$(ssh -n "$HOST" 'echo $HOME') || { echo "hbox_native: cannot reach $HOST" >&2; exit 3; }
+            ROW=$(sh "$FN_HBOX_NATIVE_COPY/native_box.sh" "$BOX" "$HERE" "$REMOTE_HOME") || exit 2
+            eval "$ROW"
+        fi ;;
+esac
+# The test OpenSSL (a TEST TOOL only; the node links the box's libssl).
+openssl_setup() {
+    case $OPENSSL in
+        bundled) cat <<'OSSL'
+printf '%s\n' '#!/bin/sh' 'LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib exec /tank/fn/toolchains/openssl-3.5.8/bin/openssl "$@"' > $S/bin/openssl-test
+OSSL
+        ;;
+        system) cat <<'OSSL'
+printf '%s\n' '#!/bin/sh' "exec $(command -v openssl) \"\$@\"" > $S/bin/openssl-test
+OSSL
+        ;;
+    esac
+    echo 'chmod 0755 $S/bin/openssl-test'
+}
+if [ -n "$IMAGE_SET" ] && [ -z "$IMAGES_BASE" ]; then
+    echo "hbox_native: $BOX holds no published image sets (they are published on hbox); use --box hbox with --image-set" >&2; exit 2
+fi
+S=$BASE/$NAME/native-$LABEL
+case $REUSE in __NAME__/*) REUSE=$BASE/$NAME/${REUSE#__NAME__/} ;; __BASE__/*) REUSE=$BASE/${REUSE#__BASE__/} ;; esac
 if [ -n "$REUSE" ]; then
     [ "$REUSE" != "$S" ] || { echo "hbox_native: --reuse-image $REUSE is this run's own tree (use --no-build)" >&2; exit 2; }
     # The images' identity source is the reused run's, read on the box from
@@ -281,11 +386,10 @@ S=$S
 T=\$S/tree
 L=\$S/logs
 ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k  # the certify launcher (tools/farm.py HOSTS)
-CACHE=/tank/fn/certcache
+CACHE=$CACHE  # this box's (tools/farm.py HOSTS)
 unset FN_OPENSSL_PREFIX
 mkdir -p \$S/bin
-printf '%s\\n' '#!/bin/sh' 'LD_LIBRARY_PATH=/tank/fn/toolchains/openssl-3.5.8/lib exec /tank/fn/toolchains/openssl-3.5.8/bin/openssl "\$@"' > \$S/bin/openssl-test
-chmod 0755 \$S/bin/openssl-test
+$(openssl_setup)
 export FN_TEST_OPENSSL_BIN=\$S/bin/openssl-test
 # Durable scratch for stores that must sit on durable storage (a mission's
 # init: store-mount-identity), read through tests/native_harness.py
@@ -346,9 +450,12 @@ BOX
 # (limits-live-5, decision-keystones-3; obstructions-5 item 34).
 step world-check python3 tools/extract/world.py --check
 step interfaces-check python3 tools/interface_emit.py --check
+# A repository declaration is not evidence its book is in this image.
+# Reject a missing native entry before spending time on certification.
+step host-books python3 tools/host_check.py --books
 toolchain=\$(python3 tools/acl2_toolchain.py identity "\$ACL2") || finish 14
 step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
-step certify swarm-build python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
+step certify $WRAP python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
 step acquire python3 tools/proof_artifacts.py acquire --profile default --root \$T --cache \$CACHE --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
 step validate python3 tools/proof_artifacts.py validate --profile default --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
 # The ld host files in the image's order, before any image build: statically
@@ -372,7 +479,7 @@ BOX
                 # The profiling entry is loaded before build.lisp's
                 # save-exec; the script owns the (developer, full) triple.
                 cat <<BOX
-step image-prof env FN_ACL2=${IMAGE_ACL2:-\$ACL2} swarm-build sh tools/profile/build_native_profile.sh build/fn-host-prof
+step image-prof env FN_ACL2=${IMAGE_ACL2:-\$ACL2} $WRAP sh tools/profile/build_native_profile.sh build/fn-host-prof
 BOX
                 continue
             fi
@@ -385,7 +492,7 @@ BOX
                 dtn-developer) profile=developer build=host/native/build-dtn.lisp out=build/fn-host-dtn-developer world=full ;;
             esac
             cat <<BOX
-step image-$image env FN_ACL2=${IMAGE_ACL2:-\$ACL2} FN_NATIVE_PROFILE=$profile FN_NATIVE_WORLD=$world FN_NATIVE_BUILD=$build FN_NATIVE_IMAGE=$out FN_NATIVE_LOG=\$L/native-build-$image.log swarm-build sh tools/build_native_host.sh
+step image-$image env FN_ACL2=${IMAGE_ACL2:-\$ACL2} FN_NATIVE_PROFILE=$profile FN_NATIVE_WORLD=$world FN_NATIVE_BUILD=$build FN_NATIVE_IMAGE=$out FN_NATIVE_LOG=\$L/native-build-$image.log $WRAP sh tools/build_native_host.sh
 BOX
         done
     fi
@@ -397,8 +504,8 @@ BOX
     fi
     if [ -n "$IMAGE_SET" ]; then
         cat <<BOX
-echo "== images: the published set $IMAGE_SET (/tank/fn/images/$IMAGE_SET)"
-step image-set python3 \$S/bin/image_set.py link $IMAGE_SET \$T $(echo "$IMAGES" | tr ',' ' ')
+echo "== images: the published set $IMAGE_SET ($IMAGES_BASE/$IMAGE_SET)"
+step image-set python3 \$S/bin/image_set.py link --base $IMAGES_BASE $IMAGE_SET \$T $(echo "$IMAGES" | tr ',' ' ')
 BOX
     fi
     # The production image's identity (tests/test_native_peering and
@@ -434,7 +541,7 @@ BOX
     BIGMEM=
     case ${MEM%G} in
         ''|*[!0-9]*) ;;
-        *) [ "${MEM%G}" -ge 48 ] && BIGMEM="flock /tank/fn/scratch/.hbox-native-bigmem.lock" ;;
+        *) [ "${MEM%G}" -ge 48 ] && BIGMEM="flock $BASE/.hbox-native-bigmem.lock" ;;
     esac
     # The modules run from $S/module.sh, one process per module, --jobs at
     # a time (xargs -P; 1 keeps the old serial order).  Each writes its exit
@@ -507,6 +614,36 @@ fi
 # A box reserved for a measurement (tools/boxes.sh reserve) waits here, printing
 # who holds it and until when; the holder's own runs (this worktree) pass.
 FN_BOX_AS=${FN_BOX_AS:-$(basename "$HERE")} sh "$FN_HBOX_NATIVE_COPY/boxes.sh" wait "$HOST" || exit 3
+# --no-build reuses THIS label's tree (item 74): a tree without the images the
+# run needs used to fail at the first module's `need`, after the re-ship.
+# Refuse up front, naming the runs of NAME on the box that hold them (a
+# worktree run's default label is a fresh wt-TIMESTAMP: pass --label).
+if [ $BUILD -eq 0 ] && [ -z "$IMAGE_SET" ] && [ -z "$REUSE" ]; then
+    NEEDED=
+    for image in $(echo "$IMAGES" | tr ',' ' '); do
+        case $image in
+            production) NEEDED="$NEEDED build/fn-host" ;;
+            developer) NEEDED="$NEEDED build/fn-host-developer" ;;
+            reference) NEEDED="$NEEDED build/fn-host-reference" ;;
+            developer-stripped) NEEDED="$NEEDED build/fn-host-developer-stripped" ;;
+            dtn) NEEDED="$NEEDED build/fn-host-dtn" ;;
+            dtn-developer) NEEDED="$NEEDED build/fn-host-dtn-developer" ;;
+        esac
+    done
+    if [ -n "$NEEDED" ]; then
+        MISSING=$(ssh -n "$HOST" ": fn-no-build-images; if cd $S/tree 2>/dev/null; then for f in $NEEDED; do [ -x \$f ] || echo \$f; done; else echo $NEEDED; fi" | tr '\n' ' ' | sed 's/ *$//')
+        if [ -n "$MISSING" ]; then
+            RUNS=$(ssh -n "$HOST" ": fn-no-build-runs; cd $BASE/$NAME 2>/dev/null && for d in native-*; do ok=1; for f in $NEEDED; do [ -x \$d/tree/\$f ] || ok=0; done; [ \$ok = 1 ] && echo \${d#native-}; done" | tr '\n' ' ' | sed 's/ *$//')
+            echo "hbox_native: --no-build reuses $HOST:$S/tree (--label $LABEL), which lacks: $MISSING" >&2
+            if [ -n "$RUNS" ]; then
+                echo "hbox_native: runs of $NAME on $HOST holding every image this run needs: $RUNS -- pass --label ONE (or --reuse-image $NAME/native-ONE)" >&2
+            else
+                echo "hbox_native: no run of $NAME on $HOST holds them: drop --no-build to build, or --image-set SHA / --reuse-image RUN" >&2
+            fi
+            exit 2
+        fi
+    fi
+fi
 echo "hbox_native: $SOURCE -> $HOST:$S"
 ssh -n "$HOST" "mkdir -p $S/tree $S/logs" || { echo "hbox_native: cannot create $S on $HOST" >&2; exit 3; }
 # --no-build keeps the tree's certificates: its images and any REPL session
@@ -532,21 +669,14 @@ box_script "$@" | ssh "$HOST" "cat > $S/run.sh" || exit 3
 if [ -n "$IMAGE_SET" ] || [ -n "$REUSE" ]; then
     ssh "$HOST" "mkdir -p $S/bin && cat > $S/bin/image_set.py" < "$FN_HBOX_NATIVE_COPY/image_set.py" || exit 3
 fi
-ssh -n "$HOST" "rm -f $S/status; nohup sh $S/run.sh > $S/run.log 2>&1 < /dev/null &" || exit 3
+PID=$(ssh -n "$HOST" "rm -f $S/status; nohup sh $S/run.sh > $S/run.log 2>&1 < /dev/null & echo \$!") || exit 3
 echo "hbox_native: started; progress in $HOST:$S/run.log"
+# The record here names the box (item 67): status and re-attach read it.
+mkdir -p "$HERE/build/hbox-native"
+printf 'box=%s\ndir=%s\npid=%s\nlog=%s\nstatus=%s\nsource=%s\n' "$HOST" "$S" "$PID" "$S/run.log" "$S/status" "$SOURCE_ID" \
+    > "$HERE/build/hbox-native/$LABEL.run"
 if [ $DETACH -eq 1 ]; then
-    echo "hbox_native: wait with: tools/wait_for.sh --host $HOST --deadline $DEADLINE --file $S/status"
+    echo "hbox_native: detached (pid $PID on $HOST); re-attach with: tools/hbox_native.sh attach $LABEL   (status: tools/hbox_native.sh status $LABEL)"
     exit 0
 fi
-set +e
-sh "$FN_HBOX_NATIVE_COPY/wait_for.sh" --host "$HOST" --deadline "$DEADLINE" --interval 30 --file "$S/status" >/dev/null
-waited=$?
-set -e
-ssh -n "$HOST" "cat $S/run.log; echo '== SHA256SUMS'; cat $S/SHA256SUMS 2>/dev/null"
-if [ $waited -ne 0 ]; then
-    echo "hbox_native: no status after ${DEADLINE}s (wait_for exit $waited); the run may still be going in $HOST:$S" >&2
-    exit 124
-fi
-status=$(ssh -n "$HOST" "cat $S/status")
-echo "hbox_native: status $status ($HOST:$S)"
-exit "$status"
+attach_run attach "$LABEL"

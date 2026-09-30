@@ -304,5 +304,116 @@ class RealLoadTests(unittest.TestCase):
         self.assertEqual(code, 0, out.getvalue())
 
 
+class DeclaredInterfaceTests(unittest.TestCase):
+    """The declared-interface step (obstructions-7 item 59): every declared
+    entry a function of the world, every dispatched entry declared, counts per
+    touched host file."""
+
+    DECLS = [{"name": "fn-a", "source": "host/interfaces.lisp", "line": 3},
+             {"name": "fn-gone", "source": "host/interfaces.lisp", "line": 4},
+             {"name": "create-st", "source": "host/interfaces.lisp", "line": 5}]
+    READING = {"dispatched": {"fn-a": {"host/x.lisp"}, "fn-b": {"host/x.lisp", "host/y.lisp"}},
+               "direct": {}, "defined": {"fn-a"}, "entries": 2}
+
+    def test_world_forms_ask_acl2_about_the_declared_functions(self):
+        names = host_check.interface_names(self.DECLS)
+        self.assertEqual(names, ["fn-a", "fn-gone"])
+        forms = host_check.interface_world_forms(names)
+        self.assertIn("function-symbolp", forms)
+        self.assertIn("'(fn-a fn-gone)", forms)
+        self.assertIn(host_check.IFACE_TAG, forms)
+        self.assertEqual(host_check.interface_world_forms([]), "")
+
+    def test_the_world_answer_is_read_back(self):
+        tag = host_check.IFACE_TAG
+        self.assertEqual(host_check.interface_world_undefined(f"x\n{tag} (FN-GONE |fn-q|)\n"),
+                         ["fn-gone", "fn-q"])
+        self.assertEqual(host_check.interface_world_undefined(f"{tag} NIL\n"), [])
+        # Never ran (the prefix failed first): not "no finding".
+        self.assertIsNone(host_check.interface_world_undefined("ACL2 Error\n"))
+
+    def test_extraction_only_entries_are_checked_in_their_own_prefix(self):
+        from ledger import Sym
+        decls = self.DECLS + [{"name": "fn-xo-open-store",
+                              "source": "host/interfaces-extract.lisp", "line": 11}]
+        native = [[Sym("ld"), "host/interfaces.lisp"]]
+        self.assertEqual(host_check.interface_names(decls, native), ["fn-a", "fn-gone"])
+        extraction = native + [[Sym("ld"), "host/interfaces-extract.lisp"]]
+        self.assertEqual(host_check.interface_names(decls, extraction),
+                         ["fn-a", "fn-gone", "fn-xo-open-store"])
+
+    def test_report_counts_per_touched_file_and_fails_stale_and_undeclared(self):
+        lines, findings = host_check.interface_report(
+            self.DECLS, self.READING, ["the raw host dispatches fn-b (host/x.lisp) and no "
+                                       "definterface declares it"], ["host/x.lisp"], ["fn-gone"])
+        self.assertIn("host/x.lisp: 2 dispatched, 1 declared, 1 undeclared (fn-b)", "\n".join(lines))
+        self.assertIn("world: 1 declared name(s) not a function", lines[0])
+        self.assertEqual(len(findings), 2)
+        self.assertTrue(any("fn-gone is declared" in f and "not a function" in f
+                            for f in findings))
+        quiet, none = host_check.interface_report(self.DECLS, self.READING, [], [], [])
+        self.assertEqual(none, [])
+        self.assertIn("touches no host file", "\n".join(quiet))
+        unevaluated, _ = host_check.interface_report(self.DECLS, self.READING, [], None, None)
+        self.assertIn("world: not evaluated", unevaluated[0])
+        self.assertIn("host/y.lisp: 1 dispatched, 0 declared", "\n".join(unevaluated))
+
+    def test_load_check_puts_the_world_half_in_the_session_and_its_answer_in_findings(self):
+        import inspect
+        source = inspect.getsource(host_check.load_check)
+        self.assertIn("interface_world_forms(interface_names(declared, world))", source)
+        self.assertIn("interface_step(interface_world_undefined(output)", source)
+        self.assertIn("static_always=False", source)
+
+    def test_inside_load_static_findings_fail_only_for_touched_files(self):
+        from unittest import mock
+        import interface_emit
+        static = ["the raw host dispatches fn-b (host/x.lisp) and no definterface declares it",
+                  "the raw host dispatches fn-c (host/y.lisp) and no definterface declares it"]
+        out = io.StringIO()
+        with mock.patch.object(host_check, "touched_host_files", lambda root: ["host/x.lisp"]), \
+                mock.patch.object(interface_emit, "declarations", lambda root: self.DECLS), \
+                mock.patch.object(interface_emit, "host_reading", lambda root: self.READING), \
+                mock.patch.object(interface_emit, "findings", lambda d, r, root: list(static)), \
+                contextlib.redirect_stdout(out):
+            found = host_check.interface_step([], echo=False, static_always=False)
+        self.assertEqual(found, ["interfaces: " + static[0]])
+        self.assertIn("warn interfaces: " + static[1], out.getvalue())
+
+    def test_inside_load_an_untouched_branch_skips_the_static_half(self):
+        from unittest import mock
+        import interface_emit
+        out = io.StringIO()
+        with mock.patch.object(host_check, "touched_host_files", lambda root: []), \
+                mock.patch.object(interface_emit, "declarations", lambda root: self.DECLS), \
+                mock.patch.object(interface_emit, "host_reading",
+                                  side_effect=AssertionError("static half ran")), \
+                contextlib.redirect_stdout(out):
+            found = host_check.interface_step(["fn-gone"], echo=False, static_always=False)
+        self.assertEqual(len(found), 1)
+        self.assertIn("static half skipped", out.getvalue())
+
+
+class CommandModeTests(unittest.TestCase):
+    def test_combined_modes_refuse_before_skipping_any_requested_check(self):
+        import itertools
+        from unittest import mock
+        modes = ("--load", "--tables", "--alone", "--world", "--interfaces",
+                 "--forward", "--books", "--read")
+        for pair in itertools.combinations(modes, 2):
+            with self.subTest(modes=pair), \
+                    mock.patch.object(host_check, "books_main") as books, \
+                    mock.patch.object(host_check, "read_check") as read, \
+                    mock.patch.object(host_check, "executable") as executable, \
+                    contextlib.redirect_stderr(io.StringIO()) as errors:
+                with self.assertRaises(SystemExit) as refused:
+                    host_check.main(list(pair))
+                self.assertEqual(refused.exception.code, 2)
+                self.assertIn("not allowed with argument", errors.getvalue())
+                books.assert_not_called()
+                read.assert_not_called()
+                executable.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

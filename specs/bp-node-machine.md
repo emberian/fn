@@ -1698,19 +1698,23 @@ where it is (the FNRJ receipt, the report intent, the durable request attempt
 with its pin) and `BP queue route destination=… decision=…` is logged. That
 route is the job's durable route (its `:queued` record).
 
-**Contact time.** `fn-bpnp-contact-next ST PEER ROUTING OFFERED`
-(`books/bp-node-contact-driver.lisp`) is the one question the host asks before
-each offer of a base contact (`fnn-bpc-drive-contact`, which `bp-service
-run/resume`, `bp-obligation request`, `bp-contact tick` and `bp-node serve`
-all drive). ROUTING is `(:table TABLE)`, or nil for a verb without a Store,
-which keeps the queued address. The answer is:
-- `(:offer (:base (:contact PEER t)) OFFERED' EID)` when the peer's first
-  queued job is offerable (`fn-bpnp-receipt-contact-event`), is not in
-  OFFERED, and `fn-bprt-send-decision` over the current table names the job's
-  own durable route; EID is the node ID the hop's contact must announce, which
-  the host passes to the TCPCL session machine;
-- `(:held KEY DECISION)` with DECISION `:no-route`, `:no-live-hop` or
-  `:route-changed` (the table now names another hop than the durable route);
+**Contact time.** The one question the host asks before each offer of a
+base contact (`fnn-bpc-drive-contact`, which `bp-service run/resume`,
+`bp-obligation request`, `bp-contact tick` and `bp-node serve` all drive) is
+`fn-bpnj-contact-next ST PEER ROUTING OFFERED` (§4.9; the host calls its
+cursor form `fn-bpnjc-contact-next`, equal to it by
+`fn-bpnjc-contact-next-is-the-head-scan`). The first driver,
+`fn-bpnp-contact-next`, which stopped at the peer's first queued job, is
+retired (2026-09-29): no host entry called it. ROUTING is `(:table TABLE)`,
+or nil for a verb without a Store, which keeps the queued address. The answer
+is:
+- `(:offer (:contact-job PEER KEY) OFFERED' EID)` for the first ready job
+  (queued, for the peer, not in OFFERED, and `fn-bprt-send-decision` over the
+  current table names its own durable route); EID is the node ID the hop's
+  contact must announce, which the host passes to the TCPCL session machine;
+- `(:held KEY DECISION)` when no job is ready, with DECISION `:no-route`,
+  `:no-live-hop` or `:route-changed` (the table now names another hop than
+  the durable route);
 - `(:close)` otherwise.
 
 **Once per contact.** The host threads OFFERED and stops at the first answer
@@ -1719,31 +1723,28 @@ that is not an offer. A job whose transfer was not accepted is `:queued` again
 contact; an accepted one is `:forwarded`, which no record returns to
 `:queued`.
 
-**Theorems** (`books/bp-node-contact-driver.lisp`):
-- `fn-bpnp-contact-offer-is-the-routed-hop`: over `fn-bpnp-step` on the
-  driver's event, the one effect persists the first queued job's `:attempting`
-  record, its `:cl-send` carries the job's durable route, and that route is
-  the contact port of the boundary `fn-bprt-next-hop` chooses for the
-  destination among the boundaries with a contact.
-- `fn-bpnp-contact-holds-an-unrouted-job`: with no matching route the driver
-  never offers.
-- `fn-bpnp-contact-offers-each-job-at-most-once`: along any sequence of
+**Theorems** (`books/bp-node-job-offer.lisp`, PRF-103):
+- `fn-bpnj-contact-offer-is-the-routed-hop`: with routing `(:table TABLE)`,
+  an offer names `fn-bpnj-select`'s job, queued, for the peer and not in
+  OFFERED; OFFERED gains its key; `fn-bprt-send-decision` over TABLE answers
+  `:send` on the job's durable route (the contact port of the boundary
+  `fn-bprt-next-hop` chooses among the boundaries with a contact) and the EID
+  is the decision's. So a job the table routes nowhere is never offered.
+- `fn-bpnj-contact-offers-each-job-at-most-once`: along any sequence of
   states, the keys one contact offers are distinct and none was already in
   OFFERED.
-- `fn-bpnp-contact-closes-only-when-nothing-owed-remains`: with the gates
-  open, a close means the peer's first queued job was already offered on this
-  contact.
-- `fn-bpn-apply-record-keeps-forwarded`: no lifecycle record returns a
-  `:forwarded` job to `:queued`.
+- `fn-bpnj-contact-offers-while-a-ready-job-remains` (§4.9): with the gate
+  open, a ready job means an offer.
+- `fn-bpn-apply-record-keeps-forwarded` (`books/bp-node-contact-driver.lisp`):
+  no lifecycle record returns a `:forwarded` job to `:queued`.
 
 **Covered scope, stated.**
 - Held transit is routed the same way since 2026-09-26: per destination, by
   the table, at dispatch (§9.5), so one relay serves every neighbour at once;
   base jobs keep their durable queued route.
 - A table change after queueing holds the job (`:route-changed`) until the
-  table routes it back; a durable re-route record is open. The lower machine
-  offers the first queued job for a peer, so such a held job also holds the
-  younger jobs to that peer on that contact.
+  table routes it back; a durable re-route record is open. Such a held job no
+  longer holds the younger jobs to that peer on that contact (§4.9).
 - Verbs without a Store (`bp-service run`, `resume` and `bp-contact tick`
   without STORE) keep the queued address.
 - The contact host is loopback.
@@ -1775,7 +1776,7 @@ The contact loop asks `fn-bpnj-contact-next` before every offer. It offers
 the first queued job for the peer, in job-list order, that the contact has
 not offered and whose routing decision sends it on its durable route; it
 answers `(:held KEY DECISION)` only when no job is ready, and `(:close)`
-otherwise. The previous question (`fn-bpnp-contact-next`, §4.8) ended the
+otherwise. The retired first driver (`fn-bpnp-contact-next`) ended the
 contact at the first queued job when it was held or already offered, so one
 job with a changed route, or one refused transfer, stopped every younger job
 for that peer (the witness is in `tests/acl2/bp-node-job-offer-tests.lisp`).
@@ -4822,3 +4823,63 @@ dispatch, durable receipt handoff, or returned receipt release. Those are A3
 composition obligations; a TCPCL transfer ACK proves none of them. The
 namespace planner's current ACL2 behavior is certified, while its guard
 verification remains open through the inherited lifecycle helper chain.
+
+
+### Native job-offer guard boundary (2026-09-29)
+
+`host/native/bp-service.lisp`'s `fnn-bps-foundation-step` calls
+`fn-bpnj-step`. `books/bp-node-job-offer-guards.lisp` verifies that entry
+and its start/contact/result chain under the existing machine-shape,
+session-list, held-list and host-event guards. The host-event recognizer is
+verified after the progress guard closure, rather than before that closure
+is available. The contact proof carries the opened contact list's shape;
+the result proof derives a typed key from a found job and matching attempt
+token. Neither strengthens the existing executable entry's guard nor adds a
+whole-state check to its body. The existing job-offer keystones and their
+reachable/mutation witnesses remain in `bp-node-job-offer-tests`.
+
+The kind-10 and kind-18 codecs' constructors, and the forwarding record
+constructors, are guard-verified in the books where those constructors are
+defined. A verification available only in a later umbrella cannot discharge
+a codec book's independent certification. This is an execution-domain
+boundary, not a claim about physical persistence or transport success.
+
+### Serialized live route control (2026-09-29, Q4e first increment)
+
+`bp-node serve ... --control-config CONFIG` opts this run into local control.
+CONFIG is read under the existing native-config octet bound. ACL2's
+`fn-bpnc-startup` parses it, requires its actual `[store].path` octets to equal
+the Store argument, and derives its control socket path, adjacent lease path
+and command-frame bound. A mismatch is refused before a control listener is
+installed. The protected live node is not part of this test surface.
+
+The same-owner socket observation and the existing FNCT concrete-buffer
+refinement are reused. `fn-bpnc-turn-plan` grants exactly the parsed accepted
+`bp-route add` or `bp-route remove` plan, rejecting other request and admin
+kinds. `fnn-bpnc-execute` uses the ordinary owner scheduler's control class and
+`fnn-owner-live-reconfigure-locked`: acceptance follows durable configuration
+publication and installation. There is no direct Store fallback after a live
+transport ambiguity. The operator's actual CONFIG selects the same path.
+
+No control worker mutates the ACL2 image. One synchronous request is serviced
+between BP sessions and at the transfer progress boundary; it is read under
+one absolute ten-second I/O deadline and the ACL2 command-frame bound, then
+answered under the existing ten-second send deadline, and its descriptor is
+closed on every exit. At most one request is consumed per pump. The developer
+receipt hold also pumps these turns; the existing production selector gate
+still refuses that hold in a production image. A fenced or faulted owner
+cannot resume BP semantic mutation after its answer.
+
+The host follows `fn-bpnc-socket-action` and records observed bind, install and
+retire outcomes through `fn-bpnc-socket-step`. Both successful completions are
+necessary and sufficient for the open run to reach live; stop requests retire
+before closing. Cleanup removes only this run's installed socket inode while
+retaining the adjacent lease, then releases it. SIGKILL is handled by the
+existing stale-socket liveness protocol at a later operator/startup.
+PRF-1063 covers exact startup binding and route-only authority. PRF-1064 covers
+the complete socket effect/outcome protocol. The ACL2 teeth exercise actual
+parsed config/admin vectors, both open failures, retirement success/failure
+and a corrupt-phase hypothesis removal. Matching native route mutation and
+receipt ordering are SCN-218; until its image/run is recorded they are pending.
+BP boundary mutation, listener rebinding and listener generation refresh
+remain Q4e work; this increment exposes only routes.

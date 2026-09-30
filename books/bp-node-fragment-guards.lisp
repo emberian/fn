@@ -273,4 +273,165 @@
                        '(fn-bpnf-subsetp-equal-reflexive
                          fn-bpnf-family-keys-not-readyp-of-nil)
                        (theory 'minimal-theory)))))
-(verify-guards fn-bpnf-fragment-step)
+;; The candidate selector the host calls (bp-service fnn-bps-fragment-effects;
+;; the *1* class, Q4a item 2): it reassembles nothing, so no plan obligations.
+(local
+ (defthm fn-bpnfg-zero-family-keys-true-listp
+   (true-listp (fn-bpnf-zero-family-keys held))
+   :hints (("Goal" :induct (fn-bpnf-zero-family-keys held)
+            :in-theory (e/d (fn-bpnf-zero-family-keys)
+                            (fn-bpnf-fragment-candidatep
+                             fn-bpnf-fragment-family-key))))))
+(verify-guards fn-bpfj-candidate
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories
+                       '(fn-bpnfg-candidate-primary true-listp)
+                       (theory 'minimal-theory)))))
+(verify-guards fn-bpfj-next-candidate
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories
+                       '(fn-bpnfg-zero-family-keys-true-listp true-listp)
+                       (theory 'minimal-theory)))))
+
+;; Q4a increment B: the reassembly job's functions the host reaches
+;; (host/native/bp-service.lisp fnn-bps-fragment-effects: fn-bpfj-start,
+;; -step, -finishedp per quantum; the twins below read the finished job).
+;; Their guards are the job's shape (books/bp-fragment-job-shape), checked
+;; at the receive boundary, never the cells per step.
+(verify-guards fn-bpfj-cells)
+(verify-guards fn-bpfj-total
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnfg-held-primary-guard-fields (h anchor)))
+           :in-theory (e/d (fn-bpnf-active-fragmentp)
+                           (fn-bpnf-heldp fn-bpb-bundlep fn-bpp-fragmentp
+                            fn-bpnfg-held-primary-guard-fields)))))
+(verify-guards fn-bpfj-start
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-bpnf-active-fragmentp fn-bpfj-cells
+                               fn-bpfj-total fn-bpfr-start
+                               fn-bpfw-fragmentp))))
+(verify-guards fn-bpfj-step
+  :hints (("Goal" :in-theory (e/d (fn-bpfj-jobp fn-bpfr-statep)
+                                  (fn-bpfw-fragmentp fn-bpfr-step)))))
+(verify-guards fn-bpfj-finishedp
+  :hints (("Goal" :in-theory (e/d (fn-bpfj-jobp fn-bpfr-statep)
+                                  (fn-bpfw-fragmentp)))))
+(verify-guards fn-bpfj-currentp
+  :hints (("Goal" :in-theory (disable fn-bpnf-active-fragmentp fn-bpfj-cells
+                                      fn-bpfj-total))))
+(verify-guards fn-bpfj-wf
+  :hints (("Goal" :in-theory (e/d (fn-bpfj-readable-jobp fn-bpfj-jobp
+                                   fn-bpfr-statep)
+                                  (fn-bpfw-fragmentp fn-bpfw-sort
+                                   fn-bpfr-resume fn-bpfw-sweep-acc
+                                   fn-bpnf-active-fragmentp fn-bpfj-currentp)))))
+(verify-guards fn-bpfj-query
+  :hints (("Goal" :in-theory (e/d (fn-bpfj-readable-jobp fn-bpfj-jobp
+                                   fn-bpfr-statep)
+                                  (fn-bpfw-fragmentp fn-bpfr-finish
+                                   fn-bpnf-active-fragmentp fn-bpfj-currentp
+                                   fn-bpnf-family-member)))))
+(local
+ (defthm fn-bpnfg-job-query-true-listp
+   (true-listp (fn-bpfj-query st anchor job))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-bpfj-query fn-bpfr-finish)
+                            (fn-bpnf-active-set fn-bpnf-fragment-cells
+                             fn-bpfw-spec fn-bpf-canvas fn-bpfr-resume
+                             fn-bpfj-currentp fn-bpfj-finishedp
+                             fn-bpnf-active-fragmentp
+                             fn-bpnf-family-member))))))
+(verify-guards fn-bpfj-plan
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpn-state-field-types-for-guard
+                            (st (fn-bpnf-base st)))
+                 (:instance fn-bpnfg-held-octets-natp
+                            (held (fn-bpnf-held-list st)))
+                 (:instance fn-bpnfg-held-octets-natp
+                            (held (fn-bpnf-active-set st anchor))))
+           :in-theory (disable fn-bpfj-query fn-bpnf-active-set
+                               fn-bpnf-family-whole-bundle
+                               fn-bpnf-held-octets
+                               fn-bpn-machine-statep
+                               fn-bpn-machine-recordp
+                               fn-bpb-bundlep fn-bpb-encode
+                               fn-bpn-state-field-types-for-guard
+                               fn-bpnfg-held-octets-natp))))
+(verify-guards fn-bpfj-plan-at)
+(local
+ (defthm fn-bpnfg-job-query-is-not-ready
+   (not (equal (car (fn-bpfj-query st anchor job)) :ready))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-bpfj-query fn-bpfr-finish fn-bpfw-outcome)
+                            (fn-bpnf-active-set fn-bpnf-fragment-cells
+                             fn-bpf-first-index fn-bpf-run-end
+                             fn-bpfw-inputsp fn-bpfr-resume
+                             fn-bpfj-currentp fn-bpfj-finishedp
+                             fn-bpnf-active-fragmentp
+                             fn-bpnf-family-member))))))
+(local
+ (defthm fn-bpnfg-ready-job-plan-bundlep
+   (implies (equal (fn-cbor-ag-car (fn-bpfj-plan st anchor job limit)) :ready)
+            (fn-bpb-bundlep
+             (fn-bpn-nth 1 (fn-bpfj-plan st anchor job limit))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-bpfj-plan fn-bpnfg-second-is-cadr
+                             fn-bpnfg-car-is-car)
+                            (fn-bpnf-active-set fn-bpfj-query
+                             fn-bpnf-family-whole-bundle
+                             fn-bpnf-offset-zero-source fn-bpb-bundlep
+                             fn-bpb-encode fn-bpnf-held-octets
+                             fn-bpnf-family-consumed-ids
+                             fn-cbor-octet-listp fn-bpnf-held-list
+                             fn-bpn-machine-state-max-jobs
+                             fn-bpn-machine-state-max-octets))))))
+(verify-guards fn-bpfj-apply
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnfg-ready-job-plan-bundlep
+                            (anchor (fn-bpnf-find-arrival
+                                     (fn-bpn-nth 3 record)
+                                     (fn-bpnf-held-list st)))))
+           :in-theory (disable fn-bpfj-plan
+                               fn-bpnf-heldp fn-bpb-bundlep
+                               fn-bpn-machine-statep
+                               fn-bpnfg-ready-job-plan-bundlep))))
+(verify-guards fn-bpfj-record-anchor)
+(verify-guards fn-bpfj-apply-at
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-bpn-machine-statep
+                               fn-bpnf-family-record-atp
+                               fn-bpfj-plan-at fn-bpfj-apply))))
+
+;; The twins over the reassembly job have the family steps' obligations
+;; (fn-bpfj-plan-at / -apply-at are guarded by the same machine-state
+;; recognizer and the job's readability, both from the twins' guards).
+(verify-guards fn-bpfj-propose-step
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpn-state-config-for-guard
+                            (st (fn-bpnf-base st)))
+                 (:instance fn-bpn-state-field-types-for-guard
+                            (st (fn-bpnf-base st))))
+           :in-theory (disable fn-bpn-machine-statep
+                               fn-bpn-machine-recordp
+                               fn-bpn-state-config-for-guard
+                               fn-bpn-state-field-types-for-guard
+                               fn-bpfj-plan-at fn-bpfj-apply-at
+                               fn-bpfj-readable-jobp
+                               fn-bpnf-family-plan fn-bpnf-family-apply
+                               fn-bpnf-family-frame))))
+
+(verify-guards fn-bpfj-persist-step
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-bpn-machine-statep
+                               fn-bpn-machine-recordp
+                               fn-bpfj-apply-at fn-bpfj-readable-jobp
+                               fn-bpnf-family-apply
+                               fn-bpnf-family-plan))))
+
+(verify-guards fn-bpnf-fragment-step
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-bpn-machine-statep fn-bpn-machine-eventp
+                               fn-bpfj-readable-jobp fn-bpnf-family-issuedp
+                               fn-bpfj-propose-step fn-bpfj-persist-step
+                               fn-bpnf-family-propose-step
+                               fn-bpnf-family-persist-step fn-bpnf-step))))

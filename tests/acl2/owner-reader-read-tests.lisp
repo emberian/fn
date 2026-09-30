@@ -37,6 +37,8 @@
          (fn-own-tls-result-repinned result)))
     (fn-scar-ocfg-read-span oc id i end fn-octets fn-arena)))
 
+; (Since lane join-f2-12 the equation holds on the results' components, the
+; effects modulo the OVER cursor's expansion, books/served-catalog-chain.lisp.)
 (defthm orrt-the-host-read-is-the-twin-under-the-catalog
   (implies (and (fn-scr-owner-catalogp (fn-ocfg-owner (if (consp views)
                                                           (fn-ocfg-at-reader-view oc views)
@@ -46,10 +48,29 @@
                                                           (fn-ocfg-at-reader-view oc views)
                                                         oc)))
                 (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache))
-           (equal (fn-orr-read-span oc views id i end cache fn-octets fn-arena fn-cat)
-                  (orrt-read-span-scar oc views id i end fn-octets fn-arena)))
-  :hints (("Goal" :in-theory (e/d (fn-orr-read-span fn-scr-ocfg-read-span-is-scar-ocfg-read-span)
+           (let ((r (fn-orr-read-span oc views id i end cache fn-octets fn-arena fn-cat))
+                 (twin (orrt-read-span-scar oc views id i end fn-octets fn-arena)))
+             (and (equal (fn-own-tls-result-consumed r) (fn-own-tls-result-consumed twin))
+                  (equal (fn-ovw-expand (fn-own-tls-result-effects r) fn-arena fn-cat)
+                         (fn-ovw-expand (fn-own-tls-result-effects twin) fn-arena fn-cat))
+                  (equal (fn-own-tls-result-owner r) (fn-own-tls-result-owner twin))
+                  (equal (fn-own-tls-result-repinned r) (fn-own-tls-result-repinned twin)))))
+  :hints (("Goal" :in-theory (e/d (fn-orr-read-span fn-scr-ocfg-read-span-is-scar-ocfg-read-span
+                                   fn-orr-tls-result-of-make)
                                   (fn-scr-owner-catalogp fn-scar-view-indexedp fn-ocfg-at-reader-view)))))
+
+; The effects' expansion on ground values (an empty arena and catalog: a
+; GROUP reply carries no cursor, so the expansion is the identity here).
+(defun orrt-expand (effects)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-cat
+    (mv-let (r fn-cat)
+      (mv (with-local-stobj fn-arena
+            (mv-let (r fn-arena)
+              (mv (fn-ovw-expand effects fn-arena fn-cat) fn-arena)
+              r))
+          fn-cat)
+      r)))
 
 ; The call on ground octets: the buffer filled as fnn-octets-fill fills it,
 ; the whole region read (i 0, end its length), an empty sealed arena.
@@ -104,9 +125,10 @@
          (equal (fn-own-facts o2) (fn-own-facts o))
          (equal (fn-ocfg-config oc2) (fn-ocfg-config oc))
          (equal (fn-ocfg-staged oc2) (fn-ocfg-staged oc))
-         (equal (fn-own-tls-result-effects r)
-                (car (in-arena-fn-ocfg-read *orrt-arena* (fn-ocfg-with-view oc (car views)) id
-                                            (take (fn-own-tls-result-consumed r) octs)))))))
+         (equal (orrt-expand (fn-own-tls-result-effects r))
+                (orrt-expand
+                 (car (in-arena-fn-ocfg-read *orrt-arena* (fn-ocfg-with-view oc (car views)) id
+                                             (take (fn-own-tls-result-consumed r) octs))))))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE fn-orr-read-span-at-a-captured-view-restores-the-owner.

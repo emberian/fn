@@ -16,7 +16,7 @@ from dataclasses import dataclass
 
 from .adapters import native_cuts as adapter
 from .scenario import (Scenario, Operation, Fault, boundary_registry, validate,
-                       pending_reasons, PENDING_BOUNDARIES)
+                       pending_reasons, pending_owner, PENDING_BOUNDARIES)
 from tests.campaign import native_cuts
 
 GROUP = adapter.GROUP
@@ -44,77 +44,67 @@ ROWS = (
     Row("recovery-repair-write", ("log-truncated", "log-recovered", "recovery-stage-unlinked"),
         "crash again before recovery completes", "recovery"),
     Row("receipt-observed", ("receipt-observed",),
-        "duplicate it, reorder with a policy change, lose its durable completion", "pending"),
+        "duplicate it, reorder with a policy change, lose its durable completion", "bp-node"),
 )
 
 PRIOR = {"id": "post-prior", "groups": [GROUP]}
 
 
 def _pending_page_read() -> Scenario:
-    return Scenario(
-        id="schedule-page-read-outstanding",
-        title="a page read outstanding: the reader cancelled, the old generation retired, "
-              "the delayed page delivered; the read completes with the article's bytes",
-        requirements=["STO-002"], contract="local-commit-log",
-        initial={"recipe": "served-node", "groups": [GROUP], "prior": [PRIOR]},
-        actors=adapter.ACTORS,
-        operations=[Operation("snapshot", "client", "reader-snapshot", {"article": "post-prior"}),
-                    Operation("read-prior", "client", "read", {"article": "post-prior"}),
-                    Operation("cancel", "nemesis", "cancel-reader", {"reader": "snapshot"}),
-                    Operation("retire", "nemesis", "retire-generation"),
-                    Operation("deliver", "nemesis", "deliver-delayed-page",
-                              {"article": "post-prior"})],
-        faults=[Fault("read-prior", "page-read-outstanding", "interleave", "contract-admissible",
-                      "performed", "served-post", ("cancel", "retire", "deliver"))],
-        healing=["deliver"], witnesses=["read-completed", "read-during-competing-work"],
-        healing_bound=adapter.healing_bound())
+    # Cancellation discards the old token; productivity is a separate read.
+    # The row remains pending until its matching-image native run is recorded.
+    from .adapters import page_io
+    return page_io.example()
 
 
 def _pending_reclaim() -> Scenario:
-    return Scenario(
-        id="schedule-reclaim-candidate-selected",
-        title="a reclaim candidate selected: a new independent hold is acquired before the "
-              "destructive action; the held article is still read whole, eligible content "
-              "is freed",
-        requirements=["STO-002"], contract="local-commit-log",
-        initial={"recipe": "served-node", "groups": [GROUP], "prior": [PRIOR]},
-        actors=adapter.ACTORS,
-        operations=[Operation("reclaim-1", "client", "reclaim"),
-                    Operation("hold", "nemesis", "acquire-hold", {"article": "post-prior"}),
-                    Operation("read-prior", "nemesis", "read", {"article": "post-prior"}),
-                    Operation("release", "nemesis", "release-hold", {"article": "post-prior"})],
-        faults=[Fault("reclaim-1", "reclaim-candidate-selected", "interleave",
-                      "contract-admissible", "performed", "store-post",
-                      ("hold", "read-prior"))],
-        healing=["release"], witnesses=["reclaim-freed", "read-during-competing-work"],
-        healing_bound=adapter.healing_bound())
+    from .adapters import reclaim_hold
+    return reclaim_hold.example()
 
 
-def _pending_receipt(variant: str) -> Scenario:
-    ops = [Operation("receipt-1", "client", "receipt", {"bundle": "bundle-1"}),
-           Operation("probe", "client", "probe")]
+def _receipt(variant: str) -> Scenario:
+    """The receipt-observed point on a real BP node (adapters/bp_node.py,
+    recipe `bp-node`): the sender's carrier of one request is held at the
+    receiver after its decision is recorded; the nemesis interleaves; the
+    healing is a dispatch pass (the replay, or the forwarding), the receipt
+    observed at the sender's node and the receiver Store probed."""
+    receipt = Operation("receipt-1", "client", "receipt", {"bundle": "bundle-1"})
+    deliver = Operation("deliver", "client", "status", {"identity": "bundle-1"})
+    probe = Operation("probe", "client", "probe", {"identity": "bundle-1"})
     if variant == "duplicate":
-        ops.insert(1, Operation("receipt-dup", "nemesis", "receipt",
-                                {"bundle": "bundle-1", "duplicate_of": "receipt-1"}))
+        ops = [receipt,
+               Operation("receipt-dup", "nemesis", "receipt",
+                         {"bundle": "bundle-1", "duplicate_of": "receipt-1"}),
+               Operation("dispatch", "client", "restart"), deliver, probe]
         fault = Fault("receipt-1", "receipt-observed", "interleave", "contract-admissible",
-                      "observed", "store-post", ("receipt-dup",))
+                      "observed", "bp-transit", ("receipt-dup",))
+        healing = ["dispatch", "deliver", "probe"]
     elif variant == "reorder":
-        ops.insert(1, Operation("policy", "nemesis", "policy-change", {"what": "receipt-policy"}))
+        ops = [receipt,
+               Operation("policy", "nemesis", "policy-change",
+                         {"what": "receipt-policy", "change": "route-removed"}),
+               Operation("dispatch-held", "client", "restart"),
+               Operation("restore", "client", "policy-change",
+                         {"what": "receipt-policy", "change": "route-restored"}),
+               Operation("dispatch", "client", "restart"), deliver, probe]
         fault = Fault("receipt-1", "receipt-observed", "interleave", "contract-admissible",
-                      "observed", "store-post", ("policy",))
+                      "observed", "bp-transit", ("policy",))
+        healing = ["dispatch-held", "restore", "dispatch", "deliver", "probe"]
     else:
+        ops = [receipt, Operation("replay", "client", "restart"), deliver, probe]
         fault = Fault("receipt-1", "receipt-observed", "withhold-completion",
-                      "contract-admissible", "persisted")
+                      "contract-admissible", "persisted", "bp-transit")
+        healing = ["replay", "deliver", "probe"]
     return Scenario(
         id="schedule-receipt-observed-" + variant,
         title="a receipt observed, then {}: the receipt's effect happens once, in policy "
               "order, and survives the loss of its completion".format(
                   {"duplicate": "duplicated", "reorder": "reordered with a policy change",
                    "lose-completion": "its durable completion lost"}[variant]),
-        requirements=["BP-001"], contract="local-commit-log",
-        initial={"recipe": "served-node", "groups": [GROUP], "prior": []},
+        requirements=["RET-001", "RET-003"], contract="local-commit-log",
+        initial={"recipe": "bp-node", "groups": ["fn.test"], "prior": []},
         actors=adapter.ACTORS, operations=ops, faults=[fault],
-        healing=["probe"], witnesses=["post-accepted"],
+        healing=healing, witnesses=["receipt-delivered", "receipt-effect-once"],
         healing_bound=adapter.healing_bound())
 
 
@@ -139,7 +129,7 @@ def scenarios_for(row: Row) -> list:
     if row.point == "reclaim-candidate-selected":
         return [_pending_reclaim()]
     if row.point == "receipt-observed":
-        return [_pending_receipt(v) for v in ("duplicate", "reorder", "lose-completion")]
+        return [_receipt(v) for v in ("duplicate", "reorder", "lose-completion")]
     raise KeyError(row.point)
 
 
@@ -162,9 +152,7 @@ def status(registry: dict | None = None) -> list:
                         "valid": not problems, "problems": problems,
                         "status": "executable" if not reasons else "pending",
                         "reasons": reasons, "expected": s.expected,
-                        "owner": next((PENDING_BOUNDARIES[b]["owner"] for b in
-                                       {f.boundary for f in s.faults}
-                                       if b in PENDING_BOUNDARIES), None)})
+                        "owner": pending_owner(s, registry)})
     return out
 
 

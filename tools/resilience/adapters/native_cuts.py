@@ -284,6 +284,44 @@ def checkpoint_scenario_for(cut) -> Scenario:
         healing_bound=healing_bound(), replay="exact"))
 
 
+CROSS_ROUTE_HEALING = ["recover", "list-letters", "read-before", "retry-served", "read-after",
+                       "list-after"]
+
+
+def cross_route_retry_scenario() -> Scenario:
+    """The route finding (resilience-framework-2, on the box) as a scenario
+    with teeth: an article committed through the store verb (its bytes as
+    posted) is POSTed again on the served listener, which stores the
+    INJECTED article; the identity is the bytes, so the served route refuses
+    it by name (`441 posting failed; a different article with this
+    Message-ID is stored here`, books/nntp-post.lisp
+    fn-post-store-refusal-text :conflict) and the store is unchanged: the
+    reads before and after match the bytes as posted, LISTGROUP lists the
+    one membership, and the final scan holds the one record.  No fault."""
+    return check_scenario(Scenario(
+        id="native-served-cross-route-retry",
+        title="a retry across routes: the store-posted article POSTed again on the served "
+              "listener is refused by name as a different article under the same "
+              "Message-ID, and the store is unchanged",
+        requirements=REQUIREMENTS, contract="local-commit-log",
+        initial={"recipe": "served-node", "groups": [GROUP], "prior": []},
+        actors=ACTORS,
+        operations=[
+            Operation(PRIOR, "client", "post", {"groups": [GROUP], "payload": "prior",
+                                                "route": "store-post"}),
+            Operation("recover", "client", "recover"),
+            Operation("list-letters", "client", "list-group", {"group": GROUP}),
+            Operation("read-before", "client", "read", {"article": PRIOR}),
+            Operation("retry-served", "client", "retry", {"of": PRIOR, "route": "served-post"}),
+            Operation("read-after", "client", "read", {"article": PRIOR}),
+            Operation("list-after", "client", "list-group", {"group": GROUP}),
+        ],
+        faults=[], healing=list(CROSS_ROUTE_HEALING),
+        witnesses=["post-accepted", "read-completed", "cross-route-retry-refused",
+                   "memberships-listed"],
+        healing_bound=healing_bound(), replay="exact"))
+
+
 def scenarios() -> list:
     return [scenario_for(cut) for cut in native_cuts.POST_LOG_CUTS]
 
@@ -294,6 +332,7 @@ FAMILIES = {
     "served": lambda: [served_scenario_for(c) for c in native_cuts.POST_LOG_CUTS],
     "served-recovery": lambda: [served_recovery_scenario_for(c) for c in served_recovery_cuts()],
     "checkpoint": lambda: [checkpoint_scenario_for(c) for c in native_cuts.STATE_CHECKPOINT_CUTS],
+    "cross-route": lambda: [cross_route_retry_scenario()],
 }
 
 
@@ -320,12 +359,14 @@ def fault_env(registry: dict, fault: Fault, op_kind: str) -> dict:
     return {selector: "{}:{}".format(name, fault.action)}
 
 
-def _invoke(image, store, command, *arguments, env=None, cwd=ROOT):
+def _invoke(image, store, command, *arguments, env=None, cwd=ROOT, verb="store"):
+    """`store STORE COMMAND ...` (VERB "store", STORE the root) or `operator
+    CONFIG COMMAND ...` (VERB "operator", STORE the fn.toml)."""
     host_env = dict(os.environ)
     for k in FAULT_SELECTORS:
         host_env.pop(k, None)
     host_env.update(env or {})
-    return subprocess.run([str(image), "--fn", "store", str(store), command, *map(str, arguments)],
+    return subprocess.run([str(image), "--fn", verb, str(store), command, *map(str, arguments)],
                           cwd=cwd, env=host_env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                           check=False)
 
@@ -339,15 +380,46 @@ def _reply_outcome(result) -> str:
     return "refused"
 
 
+def served_split(served: bytes) -> tuple:
+    """(xref, rest) of what ARTICLE served.  The decision (resilience-
+    framework-3 with the coordinator, 2026-09-29): RFC 3977 §6.2.1 defines
+    the ARTICLE response as the article and says nothing of modification;
+    RFC 5537 §3.5 item 8 lets a serving agent add ONE Xref header field for
+    its own use, RFC 5536 §3.2.14 gives its form (`Xref: server-name
+    1*(group:number)`, server-name a path-identity).  fn's local policy
+    (books/nntp-reader-compat.lisp, PKT-668; keystone PRF-346
+    fn-rcompat-reply-cat-is-rcompat-reply; fn-rcompat-served-payload-
+    inserts-one-line): the served ARTICLE/HEAD octets are the stored octets
+    with that one line inserted LEADING the header block, the stored octets
+    a suffix; a supplied Xref is refused at injection (books/injection.lisp,
+    RFC 5537 §3.5 item 2), so the STORED octets (campaign.injected_from,
+    `inspect') never carry one.  So: exactly one leading Xref is split off
+    and parsed (its server and its group:number locations are the read
+    record's `xref`, judged by the checker against the same session's
+    LISTGROUP); a second Xref, or one anywhere else, stays in REST, and the
+    stored-bytes comparison refuses it."""
+    if not served.lower().startswith(b"xref:"):
+        return None, served
+    line, _, rest = served.partition(b"\r\n")
+    words = line[5:].split()
+    xref = {"server": words[0].decode("ascii", "replace") if words else "",
+            "locations": {}, "malformed": False}
+    for w in words[1:]:
+        g, _, n = w.partition(b":")
+        if g and n.isdigit():
+            xref["locations"][g.decode("ascii", "replace")] = int(n)
+        else:
+            xref["malformed"] = True
+    if not words or not xref["locations"]:
+        xref["malformed"] = True
+    return xref, rest
+
+
 def served_matches(served: bytes, payload: bytes) -> bool:
     """The served copy of PAYLOAD: the stored article (the payload with the
-    owner's injected fields ahead of its header: campaign.injected_from) as
-    ARTICLE serves it, with the served-time `Xref` (RFC 3977 §6.2.1) ahead
-    of that.  Xref is served, never stored, so it is dropped before the
-    stored-bytes comparison; nothing else is normalized."""
-    while served.lower().startswith(b"xref:"):
-        served = served.split(b"\r\n", 1)[1] if b"\r\n" in served else b""
-    return campaign.injected_from(served, payload)
+    owner's injected fields ahead of its header: campaign.injected_from)
+    behind the one served-time Xref line (served_split)."""
+    return campaign.injected_from(served_split(served)[1], payload)
 
 
 def _served_outcome(first: bytes, final) -> tuple:
@@ -426,6 +498,12 @@ class Run:
         self.registry = boundary_registry()
         self.j = Journal(scenario.id)
         self.store = self.work / "store"
+        # The operator verb's configuration over the same store: `operator
+        # CONFIG status --replay` is the replayed report on every image
+        # (operability-2's operator verb); `store ROOT status --replay` is
+        # operability-9's and not on the 444fb9f41 set.
+        self.config = self.work / "fn.toml"
+        self.config.write_text('[store]\npath = "{}"\n'.format(self.store), encoding="ascii")
         self.payloads, self.symbols = {}, {}
         self.node = None
         for o in scenario.posts():
@@ -620,7 +698,7 @@ class Run:
             return owner, stopped
         return owner, None
 
-    def served_post(self, op: Operation, route: str, of: str | None = None, c=None):
+    def served_post(self, op: Operation, route: str, of: str | None = None, c=None, **extra):
         """POST the article of OF (the operation's own id by default) on the
         listener, through connection C or one of its own; the retry of a
         served post is the same proto-article POSTed again."""
@@ -635,7 +713,7 @@ class Run:
             first, final = b"", b""
         outcome, status = _served_outcome(first, final)
         self.j.client("reply", operation=op.id, outcome=outcome, route=route,
-                      status=status.decode("ascii", "replace").strip())
+                      status=status.decode("ascii", "replace").strip(), **extra)
         return outcome
 
     def served_list(self, op: Operation, c: Nntp):
@@ -656,18 +734,21 @@ class Run:
     def served_read(self, op: Operation, c: Nntp):
         art = op.args["article"]
         status, lines = c.multiline("ARTICLE " + mid(art))
+        xref = None
         if status.startswith(b"220"):
-            stored = b"".join(lines)
-            result = "match" if served_matches(stored, self.payloads[art].read_bytes()) else "other"
+            served = b"".join(lines)
+            xref, stored = served_split(served)
+            result = ("match" if campaign.injected_from(stored, self.payloads[art].read_bytes())
+                      else "other")
             if result == "other":
                 self.j.internal("served-bytes", operation=op.id,
-                                head=stored[:400].decode("ascii", "replace"))
+                                head=served[:400].decode("ascii", "replace"))
         elif status.startswith(b"430"):
             result = "absent"
         else:
             raise HarnessFailure("article-unanswered:" + status.decode("ascii", "replace").strip())
         self.j.client("read", operation=op.id, article=art, result=result, route="served",
-                      status=status.decode("ascii", "replace").strip())
+                      status=status.decode("ascii", "replace").strip(), xref=xref)
 
     def run_served(self):
         j = self.j
@@ -749,8 +830,13 @@ class Run:
                     # identity is the bytes).  Served: the same proto-article
                     # POSTed again on the running node, 240 commits it, the
                     # 441 names it stored.  Store: after the owner is stopped.
+                    # A retry that NAMES another route is the cross-route
+                    # finding as a scenario (cross_route_retry_scenario):
+                    # refused by name, the store unchanged.
                     original = self.s.operation(o.args["of"])
-                    if original.args.get("route", "served-post") == "store-post":
+                    original_route = original.args.get("route", "served-post")
+                    route = o.args.get("route", original_route)
+                    if route == "store-post":
                         if c is not None:
                             c.close()
                             c = None
@@ -759,7 +845,8 @@ class Run:
                             owner = None
                         self.store_retry(o)
                     else:
-                        self.served_post(o, "served-post", of=o.args["of"], c=c)
+                        self.served_post(o, "served-post", of=o.args["of"], c=c,
+                                         cross_route=(route != original_route))
         finally:
             if c is not None:
                 c.close()
@@ -779,7 +866,13 @@ class Run:
         return r.returncode
 
     def status(self, op: Operation) -> str:
-        r = self.invoke("status")
+        # `operator CONFIG status --replay': the report over the replayed log
+        # (open=checkpoint:N suffix=M, or open=full-replay reason=R); since
+        # operability-2 cbe0c1d7d the plain stopped report reads only the
+        # checkpoint header (`stopped checkpoint=... transactions-at-most=`),
+        # and the store verb's `--replay' (operability-9) is not on 444fb9f41
+        # (there it prints the header again: 'which' read unknown, rf4-444f-2).
+        r = _invoke(self.image, self.config, "status", "--replay", verb="operator")
         lines = [ln for ln in r.stdout.decode("ascii", "replace").splitlines()
                  if ln.startswith("open=")]
         line = lines[0] if len(lines) == 1 else ""
@@ -810,7 +903,7 @@ class Run:
                 which = ("old" if line.startswith("open=checkpoint:3 ") else
                          "new" if line.startswith("open=checkpoint:5 ") else "unknown:" + line)
                 j.environment("checkpoint-installed", boundary=fault.boundary, which=which,
-                              source="store status")
+                              source="operator status --replay")
         j.stage("workload", "ended")
         j.stage("healing", "begun")
         started = time.monotonic()
@@ -831,8 +924,18 @@ class Run:
 
 def run(scenario: Scenario, image: Path, work: Path, fault_hook: bool = True) -> tuple:
     """Run SCENARIO on IMAGE under WORK; (journal, verdict).  The journal is
-    WORK/journal.jsonl, beside the store, never inside it."""
+    WORK/journal.jsonl, beside the store, never inside it.  The `bp-node`
+    recipe (the receipt-observed point) is adapters/bp_node.py's."""
     Path(work).mkdir(parents=True, exist_ok=True)
+    if scenario.initial.get("recipe") == "bp-node":
+        from tools.resilience.adapters import bp_node
+        return bp_node.run_scenario(scenario, image, work, fault_hook)
+    if scenario.initial.get("recipe") == "page-io":
+        from tools.resilience.adapters import page_io
+        return page_io.run_scenario(scenario, image, work, fault_hook)
+    if scenario.initial.get("recipe") == "reclaim-response-hold":
+        from tools.resilience.adapters import reclaim_hold
+        return reclaim_hold.run_scenario(scenario, image, work, fault_hook)
     return Run(scenario, image, work, fault_hook).run()
 
 

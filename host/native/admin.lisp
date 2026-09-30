@@ -351,6 +351,43 @@ absent.  The client renders the offline report from the word."
                  service nil (lambda () (and (fnn-bridge-lookup-found-p octets) t))))
          (word (fnn-core 'fn-omr-inspect-word found)))
     (list :reason (fnn-core 'fn-omr-inspect-status word) word)))
+(defun fnn-owner-export-request (service dir)
+  "Row S3b: `store export DIR' on the running owner.  DIR's existence is
+observed off the mutex (lstat is I/O); under the owner mutex ACL2 answers
+the word from the two observations (books/owner-export-request.lisp
+fn-oex-request-word: an export in flight, DIR present, else :requested),
+and a :requested one captures the history, pins the arena and starts the
+export thread before the mutex is released (host/native/owner.lisp
+fnn-owner-export-start), so the captured list and the pinned generation
+agree.  The reply carries the word and ACL2's sentence (kind 23,
+fn-oex-request-line)."
+  (let* ((existsp (and (fnn-lstat dir) t))
+         (word (fnn-owner-serialized
+                service nil
+                (lambda ()
+                  (let* ((inflightp (first (fnn-owner-export-observation service)))
+                         (word (fnn-core 'fn-oex-request-word inflightp existsp)))
+                    (when (eq word :requested)
+                      (let ((captured (fnn-owner-core 'fn-owner-oex-capture)))
+                        (unless (and (true-listp captured) (= (length captured) 4))
+                          (fnn-fault "owner returned a malformed export capture"))
+                        (fnn-owner-export-start service captured dir)))
+                    word)))))
+    (unless (member word '(:requested :export-in-flight :archive-exists))
+      (fnn-fault "owner returned a malformed export answer ~a" word))
+    (fnn-err "EXPORT request archive=~a answer=~(~a~)" dir word)
+    (list :reason (fnn-core 'fn-oex-request-status word) word
+          (fnn-core 'fn-oex-request-line word dir))))
+
+(defun fnn-owner-export-status (service)
+  "Row S3b: `store export --status' on the running owner: ACL2's word over
+the exporter slot (fn-oex-status-word: in flight, done, failed, idle) and
+its sentence (fn-oex-outcome-line), no owner state read."
+  (destructuring-bind (inflightp outcome dir) (fnn-owner-export-observation service)
+    (let ((word (fnn-core 'fn-oex-status-word inflightp outcome)))
+      (list :reason (fnn-core 'fn-oex-status-status word) word
+            (fnn-core 'fn-oex-outcome-line word (if (stringp dir) dir ""))))))
+
 (defun fnn-owner-reclaim-request (service mode)
   "Q16: `store reclaim' on the running owner (books/owner-reclaim.lisp).  ACL2
 answers it under the owner mutex (host/owner-host.lisp fn-owner-orc-request):
@@ -454,11 +491,19 @@ ordinary live reconfiguration, and on :applied served at once."
     (fnn-owner-serialized
      service nil
      (lambda ()
-       (let* ((values (fnn-lim-recorded-profile store))
+       (let* ((carry (fnn-owner-core 'fn-owner-limit-carried))
+              ;; The history's requested profile and what this process
+              ;; serves and admits under before D, both carried by the
+              ;; owner from its open (host/owner-host.lisp
+              ;; fn-owner-limit-carry; fn-lim-carry-after-is-the-history):
+              ;; no walk of the configuration history per request.
+              (values (car carry))
+              (funded (cdr carry))
               (use (fnn-owner-core 'fn-owner-limit-use))
-              (d (fnn-lim-decision store plan values use run-mb core observations))
-              ;; What this process serves and admits under before D.
-              (funded (fnn-store-config store))
+              (d (progn
+                   (unless (and (consp carry) values funded)
+                     (fnn-fault "owner carries no limit profile"))
+                   (fnn-lim-decision store plan values use run-mb core observations)))
               (line (fnn-lim-line plan d store values funded)))
          (fnn-err "LIMIT ~a" line)
          (if (not (eq (fnn-core 'fn-lim-decision-status d) :accepted))
@@ -478,11 +523,12 @@ ordinary live reconfiguration, and on :applied served at once."
                 ;; history this record ended (fn-lim-effective-of-append-
                 ;; record) -- else the one already served: a recorded change
                 ;; does not fund.
-                (let ((served (fnn-core 'fn-lim-funded-after d funded
-                                        (fnn-core 'fn-lim-apply-row values
-                                                  (fnn-lim-plan-field plan)
-                                                  (fnn-lim-plan-n plan)))))
-                  (unless (eq served funded)
+                ;; The carry moves to fn-lim-carry-after (the record is
+                ;; published); its funded half is the answer.
+                (let ((served (fnn-owner-core 'fn-owner-limit-decided
+                                              (fnn-lim-plan-field plan)
+                                              (fnn-lim-plan-n plan) d)))
+                  (unless (equal served funded)
                     (unless (eq (fnn-owner-core 'fn-owner-apply-limit-profile served)
                                 :installed)
                       (fnn-indeterminate
@@ -519,13 +565,16 @@ ACL2's fn-native-admin-result-owner-requestp, -inspect-msgid and
   (let ((plan (fnn-core 'fn-native-admin-host-plan argv)))
     (when (fnn-core 'fn-native-admin-host-owner-requestp plan)
       (let ((mode (fnn-core 'fn-native-admin-host-reclaim-mode plan))
-            (msgid (fnn-core 'fn-native-admin-result-inspect-msgid plan)))
+            (msgid (fnn-core 'fn-native-admin-result-inspect-msgid plan))
+            (export-dir (fnn-core 'fn-native-admin-result-export-dir plan))
+            (export-statusp (fnn-core 'fn-native-admin-result-export-statusp plan)))
         (return-from fnn-owner-live-admin-serialized
-          (if (or mode msgid)
-              (if mode
-                  (fnn-owner-reclaim-request service mode)
-                (fnn-owner-inspect-request service msgid))
-            (fnn-owner-compaction-request service))))))
+          (cond (mode (fnn-owner-reclaim-request service mode))
+                (msgid (fnn-owner-inspect-request service msgid))
+                ;; Row S3b: the export request and its status poll.
+                ((stringp export-dir) (fnn-owner-export-request service export-dir))
+                (export-statusp (fnn-owner-export-status service))
+                (t (fnn-owner-compaction-request service)))))))
   (let ((plan (fnn-core 'fn-native-admin-host-plan argv)))
     (when (fnn-lim-plan-p plan)
       (return-from fnn-owner-live-admin-serialized

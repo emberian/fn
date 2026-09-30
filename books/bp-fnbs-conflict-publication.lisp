@@ -20,7 +20,10 @@
 
 (defun fn-bpnf-conflict-publication-authorize
   (st epoch op record lock-owned final-absent)
-  (declare (xargs :guard t))
+  ;; The *1* class (Q4a item 2): host-called; the guard names the kinds the
+  ;; host passes (the entry guard checks them by name) and the wrapper runs raw.
+  (declare (xargs :guard (and (fn-frame-natp epoch) (fn-frame-natp op))
+                  :verify-guards nil))
   (let* ((issued (fn-bpnf-issued st))
          (detail (fn-bpn-nth 4 issued)))
     (if (and (fn-bpnf-conflict-operation-shapep issued)
@@ -58,11 +61,18 @@
        (equal (nth 6 operation) (fn-jpub-initial t))))
 
 (defun fn-bpnf-conflict-publication-name (operation)
-  (declare (xargs :guard t)) (nth 4 operation))
+  (declare (xargs :guard (true-listp operation))) (nth 4 operation))
 (defun fn-bpnf-conflict-publication-frame (operation)
-  (declare (xargs :guard t)) (nth 5 operation))
+  (declare (xargs :guard (true-listp operation))) (nth 5 operation))
 (defun fn-bpnf-conflict-publication-publisher (operation)
-  (declare (xargs :guard t)) (nth 6 operation))
+  (declare (xargs :guard (true-listp operation))) (nth 6 operation))
+
+(verify-guards fn-bpnf-conflict-operation-shapep)
+(verify-guards fn-bpnf-conflict-publication-authorize)
+(verify-guards fn-bpnf-conflict-publication-operationp)
+(verify-guards fn-bpnf-conflict-publication-name)
+(verify-guards fn-bpnf-conflict-publication-frame)
+(verify-guards fn-bpnf-conflict-publication-publisher)
 
 ; KEYSTONE.  An authorized kind-14 publication is exactly the machine's
 ; pending :conflict operation (an fn-bpnf-operationp) at (epoch, op), with the next operation id

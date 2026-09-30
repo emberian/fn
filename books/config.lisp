@@ -31,6 +31,7 @@
 (include-book "records-invariants")
 (include-book "rev-onto") ; the loop twins' step (PKT-877)
 (include-book "clock-unit")
+(include-book "defevent") ; the delta kinds' stable codes, one form
 
 ; Nothing in this book opens the CBOR or record codec: every definition here
 ; is `:guard t', and the ground witnesses at the end are decided by
@@ -383,9 +384,33 @@
 ; -----------------------------------------------------------------------------
 ; A group-table entry: a history entry, not a membership flag.
 
+(defun fn-cfg-hex-digit-octetp (b)
+  (declare (xargs :guard t))
+  (and (integerp b)
+       (or (and (<= 48 b) (<= b 57))
+           (and (<= 97 b) (<= b 102)))))
+
+(defun fn-cfg-hex-digit-octetsp (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (and (fn-cfg-hex-digit-octetp (car xs))
+           (fn-cfg-hex-digit-octetsp (cdr xs)))
+    (null xs)))
+
+; A principal as the 64 lowercase hexadecimal characters of its 32 octets,
+; the spelling `fn-pa-carriesp' and HDR :fn-verified compare.
+(defun fn-cfg-principal-hexp (text)
+  (declare (xargs :guard t))
+  (and (stringp text)
+       (fn-cfg-labelp text)
+       (equal (len (fn-record-string-octets text)) 64)
+       (fn-cfg-hex-digit-octetsp (fn-record-string-octets text))))
+
+
+
 (defun fn-cfg-group-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 6)))
+  (and (true-listp x) (equal (len x) 8)))
 
 (defun fn-cfg-group-name (x)
   (declare (xargs :guard t))
@@ -409,10 +434,21 @@
                                                 (fn-cfg-ag-cdr
                                                  (fn-cfg-ag-cdr x)))))))
 
-(defun fn-cfg-group-make (name created-gen created-stamp retired-gen
-                               policy-id next)
+(defun fn-cfg-group-authority (x)
   (declare (xargs :guard t))
-  (list name created-gen created-stamp retired-gen policy-id next))
+  (fn-cfg-ag-car (nthcdr 6 (true-list-fix x))))
+(defun fn-cfg-group-authority-gen (x)
+  (declare (xargs :guard t))
+  (fn-cfg-ag-car (nthcdr 7 (true-list-fix x))))
+(defun fn-cfg-group-make-with-authority (name created-gen created-stamp retired-gen
+                                              policy-id next authority authority-gen)
+  (declare (xargs :guard t))
+  (list name created-gen created-stamp retired-gen policy-id next authority authority-gen))
+(defun fn-cfg-group-make (name created-gen created-stamp retired-gen policy-id next)
+  ; Existing callers create an explicitly ungoverned entry. An authority
+  ; change or a metadata rewrite uses the extended constructor below.
+  (declare (xargs :guard t))
+  (fn-cfg-group-make-with-authority name created-gen created-stamp retired-gen policy-id next "" 0))
 
 (defthm fn-cfg-group-shapep-of-group-make
   (fn-cfg-group-shapep
@@ -442,6 +478,31 @@
           (fn-cfg-group-make name cgen cstamp rgen policy next))
          next))
 
+(defthm fn-cfg-group-authority-of-group-make
+  (equal (fn-cfg-group-authority (fn-cfg-group-make name cgen cstamp rgen policy next)) "")
+  :hints (("Goal" :in-theory (enable fn-cfg-group-make))))
+(defthm fn-cfg-group-authority-gen-of-group-make
+  (equal (fn-cfg-group-authority-gen (fn-cfg-group-make name cgen cstamp rgen policy next)) 0)
+  :hints (("Goal" :in-theory (enable fn-cfg-group-make))))
+(defthm fn-cfg-group-name-of-group-make-with-authority
+  (equal (fn-cfg-group-name (fn-cfg-group-make-with-authority name cgen cstamp rgen policy next authority agen)) name))
+(defthm fn-cfg-group-created-gen-of-group-make-with-authority
+  (equal (fn-cfg-group-created-gen (fn-cfg-group-make-with-authority name cgen cstamp rgen policy next authority agen)) cgen))
+(defthm fn-cfg-group-created-stamp-of-group-make-with-authority
+  (equal (fn-cfg-group-created-stamp (fn-cfg-group-make-with-authority name cgen cstamp rgen policy next authority agen)) cstamp))
+(defthm fn-cfg-group-retired-gen-of-group-make-with-authority
+  (equal (fn-cfg-group-retired-gen (fn-cfg-group-make-with-authority name cgen cstamp rgen policy next authority agen)) rgen))
+(defthm fn-cfg-group-policy-id-of-group-make-with-authority
+  (equal (fn-cfg-group-policy-id (fn-cfg-group-make-with-authority name cgen cstamp rgen policy next authority agen)) policy))
+(defthm fn-cfg-group-next-of-group-make-with-authority
+  (equal (fn-cfg-group-next (fn-cfg-group-make-with-authority name cgen cstamp rgen policy next authority agen)) next))
+(defthm fn-cfg-group-authority-of-group-make-with-authority
+  (equal (fn-cfg-group-authority (fn-cfg-group-make-with-authority name cgen cstamp rgen policy next authority agen)) authority))
+(defthm fn-cfg-group-authority-gen-of-group-make-with-authority
+  (equal (fn-cfg-group-authority-gen (fn-cfg-group-make-with-authority name cgen cstamp rgen policy next authority agen)) agen))
+(defthm fn-cfg-group-shapep-of-group-make-with-authority
+  (fn-cfg-group-shapep (fn-cfg-group-make-with-authority name cgen cstamp rgen policy next authority agen)))
+
 ; The shape facts type reasoning supplied while the record was open, exported
 ; as forward-chaining rules only (docs/proof-style.md section 1).
 (defthm fn-cfg-group-shapep-forward-shape
@@ -452,7 +513,9 @@
                     (:d fn-cfg-group-name) (:d fn-cfg-group-created-gen)
                     (:d fn-cfg-group-created-stamp)
                     (:d fn-cfg-group-retired-gen)
-                    (:d fn-cfg-group-policy-id) (:d fn-cfg-group-next)))
+                    (:d fn-cfg-group-policy-id) (:d fn-cfg-group-next)
+                    (:d fn-cfg-group-make-with-authority)
+                    (:d fn-cfg-group-authority) (:d fn-cfg-group-authority-gen)))
 
 (defun fn-cfg-group-entryp (e)
   (declare (xargs :guard t))
@@ -465,7 +528,10 @@
              (and (fn-record-uint32p r)
                   (<= (fn-cfg-group-created-gen e) r))))
        (fn-cfg-labelp (fn-cfg-group-policy-id e))
-       (fn-record-uint32p (fn-cfg-group-next e))))
+       (fn-record-uint32p (fn-cfg-group-next e))
+       (or (equal (fn-cfg-group-authority e) "")
+           (fn-cfg-principal-hexp (fn-cfg-group-authority e)))
+       (fn-record-uint32p (fn-cfg-group-authority-gen e))))
 
 (defthm fn-cfg-group-entryp-forward-shape
   (implies (fn-cfg-group-entryp e) (and (consp e) (true-listp e)))
@@ -975,71 +1041,32 @@
     :add-peer-rows :remove-peer-rows :set-group-description
     :set-group-status :account-access :set-group-moderation
     :consumer-bind
-    :set-default-subscriptions :withdraw-article :account-delete))
+    :set-default-subscriptions :withdraw-article :account-delete :set-group-authority))
 
-(defun fn-cfg-kind-code (kind)
-  (declare (xargs :guard t))
-  (cond ((equal kind :create-group) 1)
-        ((equal kind :remove-group) 2)
-        ((equal kind :set-capacity) 3)
-        ((equal kind :set-quota) 4)
-        ((equal kind :set-policy) 5)
-        ((equal kind :set-listeners) 6)
-        ((equal kind :set-peers) 7)
-        ((equal kind :set-limit) 8)
-        ((equal kind :set-peer) 9)
-        ((equal kind :remove-peer) 10)
-        ((equal kind :grant-control) 11)
-        ((equal kind :revoke-control) 12)
-        ((equal kind :issue-invitation) 13)
-        ((equal kind :consume-invitation) 14)
-        ((equal kind :account-invite) 15)
-        ((equal kind :account-redeem) 16)
-        ((equal kind :login-binding) 17)
-        ((equal kind :add-peer-rows) 18)
-        ((equal kind :remove-peer-rows) 19)
-        ((equal kind :set-group-description) 20)
-        ((equal kind :set-group-status) 21)
-        ((equal kind :account-access) 22)
-        ((equal kind :set-group-moderation) 23)
-        ((equal kind :consumer-bind) 24)
-        ((equal kind :set-default-subscriptions) 25)
-        ; PKT-575 (CT3): the operator's withdrawal authorization.
-        ((equal kind :withdraw-article) 26)
-        ; public-node-2: an account's deletion (its tombstone, mark 7).
-        ((equal kind :account-delete) 27)
-        (t 0)))
-
-(defun fn-cfg-code-kind (code)
-  (declare (xargs :guard t))
-  (cond ((equal code 1) :create-group)
-        ((equal code 2) :remove-group)
-        ((equal code 3) :set-capacity)
-        ((equal code 4) :set-quota)
-        ((equal code 5) :set-policy)
-        ((equal code 6) :set-listeners)
-        ((equal code 7) :set-peers)
-        ((equal code 8) :set-limit)
-        ((equal code 9) :set-peer)
-        ((equal code 10) :remove-peer)
-        ((equal code 11) :grant-control)
-        ((equal code 12) :revoke-control)
-        ((equal code 13) :issue-invitation)
-        ((equal code 14) :consume-invitation)
-        ((equal code 15) :account-invite)
-        ((equal code 16) :account-redeem)
-        ((equal code 17) :login-binding)
-        ((equal code 18) :add-peer-rows)
-        ((equal code 19) :remove-peer-rows)
-        ((equal code 20) :set-group-description)
-        ((equal code 21) :set-group-status)
-        ((equal code 22) :account-access)
-        ((equal code 23) :set-group-moderation)
-        ((equal code 24) :consumer-bind)
-        ((equal code 25) :set-default-subscriptions)
-        ((equal code 26) :withdraw-article)
-        ((equal code 27) :account-delete)
-        (t nil)))
+;; The delta kinds' stable codes are one form (books/defevent.lisp): it
+;; generates the encoder fn-cfg-kind-code and the decoder fn-cfg-code-kind as
+;; they were written by hand (their round trip is asserted at expansion, so
+;; the book's theorem set is unchanged) and the registry row
+;; (tools/event_emit.py, planning/events.json) that keeps each code's meaning
+;; stable across versions.  26 is PKT-575 (CT3), the operator's withdrawal
+;; authorization; 27 is public-node-2's account deletion (its tombstone,
+;; mark 7).
+(defevent fn-cfg-delta-kind
+  :version 1
+  :var kind
+  :codes ((:create-group 1) (:remove-group 2) (:set-capacity 3) (:set-quota 4)
+          (:set-policy 5) (:set-listeners 6) (:set-peers 7) (:set-limit 8)
+          (:set-peer 9) (:remove-peer 10) (:grant-control 11) (:revoke-control 12)
+          (:issue-invitation 13) (:consume-invitation 14) (:account-invite 15)
+          (:account-redeem 16) (:login-binding 17) (:add-peer-rows 18)
+          (:remove-peer-rows 19) (:set-group-description 20) (:set-group-status 21)
+          (:account-access 22) (:set-group-moderation 23) (:consumer-bind 24)
+          (:set-default-subscriptions 25) (:withdraw-article 26) (:account-delete 27)
+          (:set-group-authority 29))
+  :otherwise 0
+  :encode fn-cfg-kind-code
+  :decode fn-cfg-code-kind
+  :code-var code)
 
 (defun fn-cfg-deltap (d)
   (declare (xargs :guard t))
@@ -1124,6 +1151,10 @@
   (declare (xargs :guard t))
   (if (equal status "n") *fn-cfg-read-only-policy-id* *fn-cfg-default-policy-id*))
 
+(defun fn-cfg-set-group-authority (name authority)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :set-group-authority name authority 0 nil))
+
 (defun fn-cfg-set-group-status (name status)
   (declare (xargs :guard t))
   (fn-cfg-delta-make :set-group-status name status 0 nil))
@@ -1186,28 +1217,6 @@
 ;;   (:grant-control NAMESPACE PRINCIPAL 0 ((NAMESPACE PRINCIPAL VERB 0)))  code 11
 ;;   (:revoke-control NAMESPACE PRINCIPAL 0 nil)                          code 12
 (defconst *fn-cfg-control-verbs* '("cancel" "keys"))
-
-(defun fn-cfg-hex-digit-octetp (b)
-  (declare (xargs :guard t))
-  (and (integerp b)
-       (or (and (<= 48 b) (<= b 57))
-           (and (<= 97 b) (<= b 102)))))
-
-(defun fn-cfg-hex-digit-octetsp (xs)
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (and (fn-cfg-hex-digit-octetp (car xs))
-           (fn-cfg-hex-digit-octetsp (cdr xs)))
-    (null xs)))
-
-; A principal as the 64 lowercase hexadecimal characters of its 32 octets,
-; the spelling `fn-pa-carriesp' and HDR :fn-verified compare.
-(defun fn-cfg-principal-hexp (text)
-  (declare (xargs :guard t))
-  (and (stringp text)
-       (fn-cfg-labelp text)
-       (equal (len (fn-record-string-octets text)) 64)
-       (fn-cfg-hex-digit-octetsp (fn-record-string-octets text))))
 
 ; The group-name prefix of a wildcard pattern "PREFIX.*", or nil.
 (defun fn-cfg-namespace-prefix-octets (octets)
@@ -2395,12 +2404,14 @@
   (if (consp es)
       (if (equal (fn-cfg-group-name (car es)) name)
           (revappend acc
-                     (cons (fn-cfg-group-make name
+                     (cons (fn-cfg-group-make-with-authority name
                                               (fn-cfg-group-created-gen (car es))
                                               (fn-cfg-group-created-stamp (car es))
                                               gen
                                               (fn-cfg-group-policy-id (car es))
-                                              (fn-cfg-group-next (car es)))
+                                              (fn-cfg-group-next (car es))
+                                        (fn-cfg-group-authority (car es))
+                                        (fn-cfg-group-authority-gen (car es)))
                            (cdr es)))
         (fn-cfg-groups-retire-loop (cdr es) gen name (cons (car es) acc)))
     (revappend acc nil)))
@@ -2411,10 +2422,12 @@
   (mbe :logic
        (if (consp es)
            (if (equal (fn-cfg-group-name (car es)) name)
-               (cons (fn-cfg-group-make name (fn-cfg-group-created-gen (car es))
+               (cons (fn-cfg-group-make-with-authority name (fn-cfg-group-created-gen (car es))
                                         (fn-cfg-group-created-stamp (car es))
                                         gen (fn-cfg-group-policy-id (car es))
-                                        (fn-cfg-group-next (car es)))
+                                        (fn-cfg-group-next (car es))
+                                        (fn-cfg-group-authority (car es))
+                                        (fn-cfg-group-authority-gen (car es)))
                      (cdr es))
              (cons (car es) (fn-cfg-groups-retire (cdr es) gen name)))
          nil)
@@ -2448,12 +2461,14 @@
   (if (consp es)
       (if (equal (fn-cfg-group-name (car es)) name)
           (revappend acc
-                     (cons (fn-cfg-group-make name
+                     (cons (fn-cfg-group-make-with-authority name
                                               (fn-cfg-group-created-gen (car es))
                                               (fn-cfg-group-created-stamp (car es))
                                               (fn-cfg-group-retired-gen (car es))
                                               policy
-                                              (fn-cfg-group-next (car es)))
+                                              (fn-cfg-group-next (car es))
+                                        (fn-cfg-group-authority (car es))
+                                        (fn-cfg-group-authority-gen (car es)))
                            (cdr es)))
         (fn-cfg-groups-set-policy-loop (cdr es) name policy (cons (car es) acc)))
     (revappend acc nil)))
@@ -2465,11 +2480,13 @@
   (mbe :logic
        (if (consp es)
            (if (equal (fn-cfg-group-name (car es)) name)
-               (cons (fn-cfg-group-make name (fn-cfg-group-created-gen (car es))
+               (cons (fn-cfg-group-make-with-authority name (fn-cfg-group-created-gen (car es))
                                         (fn-cfg-group-created-stamp (car es))
                                         (fn-cfg-group-retired-gen (car es))
                                         policy
-                                        (fn-cfg-group-next (car es)))
+                                        (fn-cfg-group-next (car es))
+                                        (fn-cfg-group-authority (car es))
+                                        (fn-cfg-group-authority-gen (car es)))
                      (cdr es))
              (cons (car es) (fn-cfg-groups-set-policy (cdr es) name policy)))
          nil)
@@ -2494,6 +2511,44 @@
            :use
            ((:instance fn-cfg-groups-set-policy-loop-is-revappend (acc nil))))))
 
+
+(defun fn-cfg-groups-set-authority-loop (es name authority gen acc)
+  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (if (consp es)
+      (if (equal (fn-cfg-group-name (car es)) name)
+          (revappend acc
+                     (cons (fn-cfg-group-make-with-authority name
+                              (fn-cfg-group-created-gen (car es))
+                              (fn-cfg-group-created-stamp (car es))
+                              (fn-cfg-group-retired-gen (car es))
+                              (fn-cfg-group-policy-id (car es))
+                              (fn-cfg-group-next (car es)) authority gen)
+                           (cdr es)))
+        (fn-cfg-groups-set-authority-loop (cdr es) name authority gen (cons (car es) acc)))
+    (revappend acc nil)))
+(defun fn-cfg-groups-set-authority (es name authority gen)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp es)
+           (if (equal (fn-cfg-group-name (car es)) name)
+               (cons (fn-cfg-group-make-with-authority name
+                       (fn-cfg-group-created-gen (car es)) (fn-cfg-group-created-stamp (car es))
+                       (fn-cfg-group-retired-gen (car es)) (fn-cfg-group-policy-id (car es))
+                       (fn-cfg-group-next (car es)) authority gen) (cdr es))
+             (cons (car es) (fn-cfg-groups-set-authority (cdr es) name authority gen)))
+         nil)
+       :exec (fn-cfg-groups-set-authority-loop es name authority gen nil)))
+(local (defthm fn-cfg-groups-set-authority-loop-is-revappend
+  (equal (fn-cfg-groups-set-authority-loop es name authority gen acc)
+         (revappend acc (fn-cfg-groups-set-authority es name authority gen)))
+  :hints (("Goal" :induct (fn-cfg-groups-set-authority-loop es name authority gen acc)
+                  :in-theory (union-theories '(fn-cfg-groups-set-authority-loop fn-cfg-groups-set-authority revappend car-cons cdr-cons)
+                                             (theory 'minimal-theory))))))
+(verify-guards fn-cfg-groups-set-authority-loop)
+(verify-guards fn-cfg-groups-set-authority
+  :hints (("Goal" :in-theory (union-theories '(revappend fn-cfg-groups-set-authority)
+                              (union-theories (theory 'minimal-theory) (executable-counterpart-theory :here)))
+                  :use ((:instance fn-cfg-groups-set-authority-loop-is-revappend (acc nil))))))
 
 (defun fn-cfg-set-groups (v es)
   (declare (xargs :guard t))
@@ -2520,6 +2575,8 @@
      ((equal kind :set-group-status)
       (fn-cfg-set-groups v (fn-cfg-groups-set-policy
                             (fn-cfg-groups v) a (fn-cfg-status-policy-id b))))
+     ((equal kind :set-group-authority)
+      (fn-cfg-set-groups v (fn-cfg-groups-set-authority (fn-cfg-groups v) a b gen)))
      ((equal kind :set-capacity)
       (fn-cfg-value-make-full (fn-cfg-groups v) n (fn-cfg-quotas v)
                          (fn-cfg-policies v) (fn-cfg-listeners v)
@@ -2800,6 +2857,12 @@
       (cond ((not (fn-cfg-group-livep v gen a)) :no-such-group)
             ((not (member-equal (fn-cfg-delta-b d) '("y" "n"))) :group-status)
             ((not (equal (fn-cfg-delta-rows d) nil)) :group-status)
+            (t nil)))
+     ((equal kind :set-group-authority)
+      (cond ((not (fn-cfg-group-livep v gen a)) :no-such-group)
+            ((not (or (equal (fn-cfg-delta-b d) "")
+                      (fn-cfg-principal-hexp (fn-cfg-delta-b d)))) :principal)
+            ((or (not (equal n 0)) (not (equal (fn-cfg-delta-rows d) nil))) :group-authority)
             (t nil)))
      ((equal kind :set-capacity)
       (if (< n (nfix reserved)) :capacity-below-reserved nil))
@@ -3765,7 +3828,9 @@
 ; `fn-cfg-vocabulary' locally and says why.
 
 (deftheory fn-cfg-vocabulary
-  '((:d fn-cfg-ag-car) (:d fn-cfg-ag-cdr) (:d fn-cfg-labelp)
+  '((:d fn-cfg-groups-set-authority)
+    (:d fn-cfg-set-group-authority)
+    (:d fn-cfg-ag-car) (:d fn-cfg-ag-cdr) (:d fn-cfg-labelp)
     (:d fn-cfg-stampp) (:d fn-cfg-rowp) (:d fn-cfg-row-listp)
     (:d fn-cfg-quota-scope) (:d fn-cfg-quota-name) (:d fn-cfg-quota-count)
     (:d fn-cfg-policy-slot) (:d fn-cfg-policy-id)

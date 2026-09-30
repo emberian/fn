@@ -89,3 +89,60 @@
         (equal (fn-cpo-install (fn-sn-open-state m) cn *sobt-configs*)
                (fn-sn-open-state (sobt-host *sobt-configs*)))
         (fn-snt-relation (fn-sn-open-state (sobt-host *sobt-configs*))))))
+
+;;; KEYSTONE fn-bs-store-recovery-is-a-kernel-crash (PRF-041, row B25 of planning/evidence/vacuity-audit-2026-09-29.md)
+;;; Recovering a model crash image of a related pair is the kernel's image
+;;; crash at the scanned frontier and rows: same frontier, same rows, whose
+;;; wire is the scanned records, in phase :replaying.
+(defun sobt-crashed (ks image)
+  (fn-sf-image-crash ks (fn-bs-scan-frontier (fn-bs-scan-store image))
+                     (fn-bs-scanned-rows ks image *bsk5-arena*)))
+(defun sobt-crash-okp (ks image)
+  (let ((scan (fn-bs-scan-store image))
+        (rows (fn-bs-scanned-rows ks image *bsk5-arena*))
+        (crashed (sobt-crashed ks image)))
+    (and (equal (fn-sf-frontier crashed) (fn-bs-scan-frontier scan))
+         (equal (fn-sf-records crashed) rows)
+         (equal (fn-bs-rows-wire (fn-sf-records crashed) *bsk5-arena*)
+                (fn-bs-scan-records scan))
+         (equal (fn-sf-phase crashed) :replaying))))
+;; fn-bs-crash-imagep is a defun-sk: the image is admitted by its choices.
+(defun sobt-choices ()
+  (let ((bs (car (bsk5-linked-2))))
+    (fn-bs-view-choices (fn-bs-pending bs) (fn-bs-unit bs))))
+(assert-event
+ (let ((bs (car (bsk5-linked-2))))
+   (and (fn-bs-crash-choicesp (sobt-choices) (fn-bs-pending bs) (fn-bs-unit bs))
+        (equal (sobt-image) (fn-bs-crash bs (sobt-choices))))))
+(defthm sobt-image-is-a-crash-image
+  (fn-bs-crash-imagep (car (bsk5-linked-2)) (sobt-image))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-bs-crash-imagep-suff
+                                   (s (car (bsk5-linked-2))) (image (sobt-image))
+                                   (choices (sobt-choices))))
+           :in-theory (disable fn-bs-crash-imagep))))
+(assert-event
+ (let ((bs (car (bsk5-linked-2))) (ks (cdr (bsk5-linked-2))) (image (sobt-image)))
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
+        (consp (fn-sf-records ks))
+        (equal (len (fn-bs-scan-records (fn-bs-scan-store image))) 2)
+        (sobt-crash-okp ks image)
+        (equal (sobt-crashed ks image)
+               (fn-sf-image-crash (cdr (bsk5-linked-2)) (sobt-f) (sobt-r))))))
+; Drop the relation: the quiet bytes after the first finish have a legal
+; all-empty choice list, whose crash image they are; they do not relate to
+; the second publication's linked kernel, and the recovered rows are not the
+; scanned ones.
+(defthm sobt-legal-choice-constructs-crash-image
+  (implies (fn-bs-crash-choicesp choices (fn-bs-pending bs) (fn-bs-unit bs))
+           (fn-bs-crash-imagep bs (fn-bs-crash bs choices)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-bs-crash-imagep-suff
+                                   (s bs) (image (fn-bs-crash bs choices)))))))
+(defun sobt-quiet () (car (bsk5-finished)))
+(assert-event
+ (and (not (fn-bs-store-relation (sobt-quiet) (cdr (bsk5-linked-2)) *bsk5-arena*))
+      (fn-bs-crash-choicesp nil (fn-bs-pending (sobt-quiet)) (fn-bs-unit (sobt-quiet)))
+      (equal (fn-bs-crash (sobt-quiet) nil) (sobt-quiet))))
+(must-fail-checked
+ (assert-event (sobt-crash-okp (cdr (bsk5-linked-2)) (fn-bs-crash (sobt-quiet) nil))))

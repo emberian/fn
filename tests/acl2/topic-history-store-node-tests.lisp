@@ -75,7 +75,7 @@
 (assert-event
  (equal (fn-sn-prepare-topic
          (thsn-reserve *thsn-installed*)
-         (fn-th-anchor-v1-fields *thsn-anchor*))
+         (fn-th-anchor-core-fields *thsn-anchor*))
         (thsn-reserve *thsn-installed*)))
 (make-event `(defconst *thsn-anchored*
                ',(thsn-topic-commit *thsn-installed* *thsn-anchor*)))

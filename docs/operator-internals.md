@@ -1052,8 +1052,11 @@ Store inspection and recovery remain production operations.
 The low-level native `--fn store ROOT retention` diagnostic opens the recovered
 Store under a shared lock and prints `pins=N reserved=B` from the ACL2
 retention ledger. It reports aggregate active pins and reserved charge; it does
-not decide release or identify an obligation. Like `store ROOT status`, it
-refuses with exit 1 if a live writer holds the Store lock. While an owner
+not decide release or identify an obligation. Like `store ROOT status
+--replay` (the report over the replayed log; the plain `store ROOT status`
+reads the checkpoint header alone, row S3, the same decision as `operator
+CONFIG status [--replay]`), it refuses with exit 1 if a live writer holds
+the Store lock. While an owner
 runs, `operator CONFIG obligations` opens with the same two figures
 (`obligations=N reserved=B`), computed by the same ACL2 functions over the
 Store the owner carries.
@@ -2915,3 +2918,13 @@ names a group this node does not carry is refused `UNKNOWN-GROUP` (exit
   (PKT-431).
 - One credential slot per peer serves both directions, so a credentialed
   pull needs outbound groups too (PKT-431).
+
+
+`store bless-snapshot DIR` is S7a's read-only checker of an existing copy
+(`specs/host.md`, HST-039). `host/native/io.lisp`
+`fnn-command-store-bless-snapshot` supplies the marker, open and key
+observations to `fn-osn-bless-word`; ACL2 selects the first failure and
+renders the line. No source store is opened and no file is repaired.
+The running snapshot producer, including bounded capture and key/config
+ownership, is a separate unfinished S7 increment. The native checker
+fixtures are stopped copies with an explicit completion observation.

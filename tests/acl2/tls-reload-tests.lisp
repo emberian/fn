@@ -266,3 +266,18 @@
  (equal (fn-tlsr-start-refusal-line (fn-tlsr-start-decide
                                      (tlst-facts :now *tlst-na-seconds*)))
         (fn-record-string-octets "tls expired")))
+
+; KEYSTONE fn-tlsr-decide-carries-the-facts-or-a-named-refusal (PRF-212; no
+; hypothesis), by name, one witness per arm of its `if': an acceptance is
+; exactly (:accept NAMES NOT-AFTER) of the new facts, and a refusal is
+; (:refuse R) with R among *fn-tlsr-refusals*.
+(assert-event
+ (let ((d (fn-tlsr-decide (tlst-facts) *tlst-served*)))
+   (and (fn-tlsr-acceptp d)
+        (equal d (list :accept (fn-tlsr-names (tlst-facts))
+                       (fn-tlsr-not-after (tlst-facts)))))))
+(assert-event
+ (let ((d (fn-tlsr-decide (tlst-facts :key nil) *tlst-served*)))
+   (and (not (fn-tlsr-acceptp d))
+        (equal (car d) :refuse)
+        (member-equal (cadr d) *fn-tlsr-refusals*))))
