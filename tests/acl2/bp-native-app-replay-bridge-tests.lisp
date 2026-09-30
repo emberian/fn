@@ -59,3 +59,76 @@
       (not (car *bpaj-bridge-refused-actual*))
       (equal (fn-bpaj-receiver-result *bpaj-bridge-refused-actual*)
              *bpaj-bridge-refused-model*)))
+
+(bpr-lift fn-bpaj-replay-rest 3)
+(bpr-lift fn-bprr-replay-rest 3)
+(defconst *bpaj-bridge-initial* (fn-bpaj-make-state *bpr-initial* nil nil nil))
+
+; fn-bpaj-replay-rest-receiver-is-receiver-replay-rest: all hypotheses
+; and the full conclusion for the nonempty request/receipt suffix.
+(make-event
+ `(defconst *bpaj-bridge-rest-actual*
+    ',(in-arena-fn-bpaj-replay-rest
+       *bpr-payloads* *bpaj-bridge-initial* *bpr-store*
+       (cdr *bpaj-bridge-records*))))
+(make-event
+ `(defconst *bpaj-bridge-rest-model*
+    ',(in-arena-fn-bprr-replay-rest
+       *bpr-payloads* (fn-bpaj-receiver *bpaj-bridge-initial*) *bpr-store*
+       (cdr *bpaj-bridge-records*))))
+(assert-event
+ (and (fn-bpaj-context-firstp *bpaj-bridge-initial*)
+      (fn-bpaj-receiver-only-recordsp (cdr *bpaj-bridge-records*))
+      (car *bpaj-bridge-rest-actual*)
+      (equal (fn-bpaj-receiver-result *bpaj-bridge-rest-actual*)
+             *bpaj-bridge-rest-model*)))
+
+; Remove context-firstp: the actually replayed transit intent has switched
+; the join to strict. A context-first request succeeds in the receiver model
+; and is refused in the actual join. Retained no-transit hypothesis holds.
+(make-event
+ `(defconst *bpaj-bridge-strict-actual*
+    ',(in-arena-fn-bpaj-replay-rest
+       *bpr-payloads* (cadr *bpaj-intent-replay*) *bpr-store*
+       (list *bprr-request-record*))))
+(make-event
+ `(defconst *bpaj-bridge-strict-model*
+    ',(in-arena-fn-bprr-replay-rest
+       *bpr-payloads* (fn-bpaj-receiver (cadr *bpaj-intent-replay*))
+       *bpr-store* (list *bprr-request-record*))))
+(assert-event
+ (and (fn-bpaj-statep (cadr *bpaj-intent-replay*))
+      (not (fn-bpaj-context-firstp (cadr *bpaj-intent-replay*)))
+      (fn-bpaj-receiver-only-recordsp (list *bprr-request-record*))
+      (not (car *bpaj-bridge-strict-actual*))
+      (car *bpaj-bridge-strict-model*)
+      (not (equal (fn-bpaj-receiver-result *bpaj-bridge-strict-actual*)
+                  *bpaj-bridge-strict-model*))))
+(must-fail
+ (assert-event
+  (equal (fn-bpaj-receiver-result *bpaj-bridge-strict-actual*)
+         *bpaj-bridge-strict-model*)))
+
+; Remove receiver-only-recordsp: retain context-firstp, then replay a valid
+; transit intent. Actual replay succeeds and the receiver model refuses.
+(make-event
+ `(defconst *bpaj-bridge-rest-transit-actual*
+    ',(in-arena-fn-bpaj-replay-rest
+       *bpr-payloads* *bpaj-bridge-initial* *bpr-store* (list *bpaj-intent*))))
+(make-event
+ `(defconst *bpaj-bridge-rest-transit-model*
+    ',(in-arena-fn-bprr-replay-rest
+       *bpr-payloads* (fn-bpaj-receiver *bpaj-bridge-initial*) *bpr-store*
+       (list *bpaj-intent*))))
+(assert-event
+ (and (fn-bpaj-context-firstp *bpaj-bridge-initial*)
+      (not (fn-bpaj-receiver-only-recordsp (list *bpaj-intent*)))
+      (fn-bpaj-transit-intentp *bpaj-intent*)
+      (car *bpaj-bridge-rest-transit-actual*)
+      (not (car *bpaj-bridge-rest-transit-model*))
+      (not (equal (fn-bpaj-receiver-result *bpaj-bridge-rest-transit-actual*)
+                  *bpaj-bridge-rest-transit-model*))))
+(must-fail
+ (assert-event
+  (equal (fn-bpaj-receiver-result *bpaj-bridge-rest-transit-actual*)
+         *bpaj-bridge-rest-transit-model*)))
