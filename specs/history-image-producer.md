@@ -222,3 +222,22 @@ whole image/progress/effect-to-payload/FD joins, installed source authority
 and the full INITIAL runtime/funding envelope still remain open. The existing
 signed growth receipt does not establish initial adequacy or native activation.
 PRF-1144 stays planned with no completion events; runtime bytes are unchanged.
+
+The nonfinal directory-page handoff now establishes the complete retained
+resume invariant from the current canonical invariant, positive remaining
+words and actual returned `:write`. Its exact `:written` acknowledgement
+then restores the full next-page invariant with empty scratch and unchanged
+global entry continuation. Page crossings can occur halfway through an
+entry; neither ordinal nor component resets to a local page coordinate.
+
+Seven additional literal phase assertions check both complete positives
+and every retained premise removal. They construct a two-page directory
+phase using a supported actual layout, actual growth receipt and canonical
+scratch filled by `fn-hpb-put`, then call the actual writer for issuance
+and ACK. They are labelled constructed phase witnesses, not a complete
+large-image trajectory or native run. All ten previous assertions remain.
+Exact clean source evidence is
+`planning/evidence/history-image-directory-resume-source-2026-09-30.json`.
+General 341-entry tables/two-zero packing, full image/progress/effect-to-
+payload/FD joins, installed source authority and complete INITIAL/runtime
+funding remain open. Runtime is unchanged and PRF-1144 remains planned.

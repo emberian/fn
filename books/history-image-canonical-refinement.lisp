@@ -555,3 +555,116 @@
    fn-hpi-set fn-hpi-set-is-update-by-definition fn-hpi-reset-buffer fn-hpb-begin
    fn-hpb-prefix mv-nth fn-hpic-take-next fn-hpic-stored-step-has-word-room-unfolds
    fn-hpic-continue-state-projection-unfolds fn-hpic-continue-used-projection-unfolds)))))
+
+; Carried continuation after a nonfinal directory page is issued. The
+; completed page is retained until its exact ACK; global position already
+; names the next page. This is a proof observer, never a served revalidator.
+(defun fn-hpic-directory-resume-invariantp (c digests)
+ (declare (xargs :guard t :verify-guards nil))
+ (let* ((layout (fn-omk-at 1 (fn-omk-at 6 c)))
+        (m (nfix (fn-omk-at 3 layout)))
+        (ordinal (fn-hpic-meta-field 1 c)) (component (fn-hpic-meta-field 2 c))
+        (remaining (fn-hpic-meta-field 3 c)) (base (fn-hpic-meta-field 5 c))
+        (page (fn-hpic-meta-field 6 c)) (position (+ (* 6 ordinal) component)))
+  (and (fn-hpic-scratch-ack-contextp c)
+       (equal (fn-omk-at 1 (fn-omk-at 17 c)) :metadata)
+       (equal (fn-hpic-meta-field 0 c) :directory)
+       (natp ordinal) (natp component) (< component 6)
+       (posp remaining) (natp base) (posp page) (< page m)
+       (equal base (nfix (fn-omk-at 5 layout)))
+       (equal (fn-hpic-meta-field 4 c) (len digests))
+       (equal (len digests) (nfix (fn-omk-at 2 layout)))
+       (<= (* 6 (len digests)) (* 2048 m))
+       (equal position (* 2048 page))
+       (equal (+ remaining position) (* 2048 m))
+       (fn-hpic-cached-digest-agreesp c digests))))
+
+(local (defthm fn-hpic-written-keeps-cursor-width-unfolds
+ (implies (fn-omk-widthp c 25)
+  (fn-omk-widthp (mv-nth 1 (fn-hpi-written c observation fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb)) 25))
+ :hints (("Goal" :do-not-induct t
+  :in-theory (e/d (fn-hpi-written)
+   (fn-hpi-written-status fn-hpi-set fn-hpi-set-is-update-by-definition fn-omk-at
+    fn-hpi-reset-buffer fn-hpb-begin fn-omk-widthp mv-nth
+    fn-hpic-stored-step-has-word-room-unfolds fn-hpic-take-next))))))
+
+(local (defthm fn-hpic-begin-used-is-zero-unfolds
+ (equal (fn-hpb-used (fn-hpb-begin epoch lease fn-hpb)) 0)
+ :hints (("Goal" :in-theory (enable fn-hpb-begin fn-hpb-used
+                             update-fn-hpb-used update-fn-hpb-epoch update-fn-hpb-lease)))))
+
+(local (defthm fn-hpic-take-zero-unfolds
+ (equal (take 0 xs) nil)
+ :hints (("Goal" :in-theory (enable take)))))
+
+(local (defthm fn-hpic-written-canonical-fields-unfolds
+ (let ((r (fn-hpi-written c observation fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb)))
+  (implies (and (equal (fn-omk-at 0 c) :wait-write)
+                (equal (fn-omk-at 0 (fn-omk-at 17 c)) 4)
+                (equal (car r) :written))
+   (and (equal (fn-omk-at 19 (mv-nth 1 r)) (fn-omk-at 19 c))
+        (equal (fn-omk-at 6 (mv-nth 1 r)) (fn-omk-at 6 c))
+        (equal (fn-omk-at 21 (mv-nth 1 r)) (fn-omk-at 21 c))
+        (equal (fn-omk-at 0 (mv-nth 1 r)) (fn-omk-at 1 (fn-omk-at 17 c))))))
+ :hints (("Goal" :use fn-hpic-written-directory-buffer-reset-unfolds
+  :in-theory (disable fn-hpi-written fn-omk-at mv-nth)))))
+
+(defthm fn-hpi-tick-restores-next-canonical-directory-page-invariant
+ (let ((r (fn-hpi-tick c observation ledger fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb pgs-digest-state)))
+  (implies (and (fn-hpic-directory-resume-invariantp c digests)
+                (equal (car r) :written))
+   (fn-hpic-directory-invariantp (mv-nth 2 r) digests (mv-nth 8 r))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use (fn-hpi-tick-resets-directory-buffer-after-exact-written-ack
+        fn-hpic-written-keeps-cursor-width-unfolds fn-hpic-tick-written-and-frame-unfolds)
+  :in-theory (e/d (fn-hpic-directory-resume-invariantp fn-hpic-scratch-ack-contextp
+                  fn-hpic-directory-invariantp fn-hpic-meta-field fn-hpic-directory-model
+                  fn-hpic-cached-digest-agreesp)
+   (fn-hpi-tick fn-hpi-written fn-hpi-written-status fn-omk-at fn-omk-widthp
+    fn-hpi-set fn-hpi-set-is-update-by-definition fn-hpi-reset-buffer fn-hpb-begin
+    fn-hpb-prefix fn-hpb-used mv-nth fn-hpic-take-next fn-hpic-nth-nthcdr
+    fn-hpic-stored-step-has-word-room-unfolds fn-hpic-stored-active-address-unfolds
+    fn-hpic-continue-state-projection-unfolds fn-hpic-continue-used-projection-unfolds
+    pgs-encode-run fn-hpm-model-entries take nth nthcdr unsigned-byte-p)))))
+
+(local (defthm fn-hpic-metadata-issued-directory-carry-unfolds
+ (let ((r (fn-hpi-metadata-step c fn-hpb)))
+  (implies (and (fn-omk-widthp c 25)
+                (equal (fn-hpic-meta-field 0 c) :directory)
+                (equal (car r) :write))
+   (and (fn-omk-widthp (mv-nth 2 r) 25)
+        (equal (fn-hpic-meta-field 0 (mv-nth 2 r)) :directory)
+        (equal (fn-hpic-meta-field 4 (mv-nth 2 r)) (fn-hpic-meta-field 4 c))
+        (equal (fn-hpic-meta-field 5 (mv-nth 2 r)) (fn-hpic-meta-field 5 c))
+        (equal (fn-omk-at 21 (mv-nth 2 r)) (fn-omk-at 21 c))
+        (equal (fn-omk-at 0 (fn-omk-at 17 (mv-nth 2 r))) 4)
+        (equal (fn-omk-at 1 (fn-omk-at 17 (mv-nth 2 r)))
+               (if (zp (fn-hpic-meta-field 3 c)) :directory-digest-start :metadata)))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use fn-hpic-metadata-directory-write-unfolds
+  :in-theory (e/d (fn-hpi-metadata-step fn-hpi-await-page fn-hpic-meta-field fn-hpb-ready)
+   (fn-hpi-write-effect fn-hpi-set fn-hpi-set-is-update-by-definition fn-omk-at mv-nth
+    fn-hpb-used fn-hpb-ready fn-hpb-prefix fn-hpm-tick fn-hpm-tick-progress
+    fn-hpm-tick-nonstored-unchanged fn-hpi-issue-io
+    fn-hpic-stored-step-has-word-room-unfolds fn-hpic-take-next unsigned-byte-p nfix))))))
+
+(defthm fn-hpi-tick-hands-off-next-directory-page-invariant
+ (let ((r (fn-hpi-tick c observation ledger fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb pgs-digest-state)))
+  (implies (and (fn-hpic-directory-invariantp c digests fn-hpb)
+                (posp (fn-hpic-meta-field 3 c))
+                (equal (car r) :write))
+   (fn-hpic-directory-resume-invariantp (mv-nth 2 r) digests)))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use (fn-hpic-metadata-directory-write-unfolds
+        fn-hpic-metadata-issued-directory-carry-unfolds
+        fn-hpic-tick-metadata-write-and-frame-unfolds)
+  :in-theory (e/d (fn-hpic-directory-invariantp fn-hpic-directory-resume-invariantp
+                  fn-hpic-scratch-ack-contextp fn-hpic-meta-field fn-hpic-cached-digest-agreesp)
+   (fn-hpi-tick fn-hpi-metadata-step fn-hpi-set fn-hpi-set-is-update-by-definition fn-omk-at
+    fn-omk-widthp fn-hpb-prefix fn-hpb-used mv-nth fn-hpic-directory-model
+    fn-hpic-take-next fn-hpic-nth-nthcdr fn-hpic-stored-step-has-word-room-unfolds
+    fn-hpic-continue-state-projection-unfolds fn-hpic-continue-used-projection-unfolds
+    pgs-encode-run fn-hpm-model-entries take nth nthcdr unsigned-byte-p)))))
