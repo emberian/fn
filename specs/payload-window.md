@@ -291,3 +291,21 @@ A complete positive produced by actual reset/input-pull/fixed-header action,
 four retained-premise removals and a separately labeled corrupted maximal-octet
 representation witness accompany the actual helper theorem. No table scan, invented primitive count,
 compiled getter/arithmetic allocation or whole-job tariff is asserted.
+
+`decoded-window-profile.lisp` joins the actual nine-field
+`fn-pwz-descriptorp` to the selected signed `off_t` end bound. Its theorem
+derives compressed C below2^63, admissible decoded N below2^72 and the
+actual action budget below2^73. N below2^63 is not an added data policy.
+The descriptor recognizer does not prove the trailer came from the actual
+32-byte packed digest; `fn-bch-pack` includes a terminal sentinel, so that
+separate format relation has257bits. File/ticket/trailer/dictionary identities
+remain arbitrary naturals at this boundary. The fixed-field natural-ceiling
+helper retains their actual widths, ticket+1, actual budget and the credited
+input intermediate512*C+65536. A corrupted trailer2^400 deliberately passes
+the descriptor and offset checks, demonstrating why those checks cannot
+authorize a257-bit tariff. Two complete core descriptor positives (including
+N above2^63), both literal premise removals and separately scoped width-helper
+witnesses accompany the theorem. This is a source scalar prerequisite for
+actual `fn-pwz-job-demand`; the supplied-demand admission remains insufficient,
+and complete constructors/wrappers/compiler frames/cache/GC/lifetime and
+activation-to-definite-cleanup adequacy are still open.
