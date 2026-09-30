@@ -479,18 +479,18 @@ of M pages hashes256*M blocks. The current directory count is format u32, so
 this stream's complete size is representable without an extra store-size policy.
 A prepared digest is never durable publication or acceptance.
 
-The library `pgs-dc-begin(sel, base, nb, capture, lease, pgs-digest)` records this
-block count and exact captured source/lease names. `pgs-dc-step(block, pgs-digest)`
+The library `pgs-dc-begin(sel, base, nb, capture, lease, pgs-digest-state)` records this
+block count and exact captured source/lease names. `pgs-dc-step(block, pgs-digest-state)`
 receives one fixed sixteen-u32 block when `pgs-dc-needs-block` is true; the next
 word offset is `pgs-dc-next-word-offset`. Each step returns `:continue`, `:done`
 or `:invalid` with its continuation. Split search advances one doubling per
 tick, chunk processing does at most one compression, and parent/root processing
 also yields separately. `pgs-dc-result` is the terminal big-endian natural.
-The optional `pgs-dc-tick(pgs-mem, pgs-digest)` reads at most eight captured u64
+The optional `pgs-dc-tick(pgs-mem, pgs-digest-state)` reads at most eight captured u64
 words and calls the same core. The disk-backed builder may instead supply its
 one bounded emission buffer. Neither client builds a whole `fn-octets-pg`.
 
-The `pgs-digest` stobj has64 fixed frame slots plus scalar fields and fixed
+The `pgs-digest-state` stobj has64 fixed frame slots plus scalar fields and fixed
 current CV/output values. Constructor allocation belongs to admission; begin
 resets scalars without zeroing its frame array. Source pinning, buffer ownership
 and lease release remain the controller's responsibility. Supported profile,
@@ -503,15 +503,14 @@ entry. The proof-only refinement now preserves complete active-frame denotation
 in every phase and conditionally connects a root step to the actual previous
 word digest through `pgs-x-words-digest-is-blake3`. Its captured-source semantic
 carry is still a hypothesis. PRF-1087 remains planned: maintained trajectory
-and representation invariants, strict progress, supported-domain stack
-sufficiency, concrete allocation demand and actual controller composition
+and semantic invariants, strict progress, concrete allocation demand and actual controller composition
 remain open. Ground BLAKE3 agreement establishes neither standard conformance
 nor real cryptographic assumptions. Full S7/P12/D33 completion is unchanged.
 
 The reusable byte extension `pgs-dcb-begin(sel, base, byte-total, capture, lease,
-pgs-digest)` handles exact byte lengths including empty and partial blocks.
+pgs-digest-state)` handles exact byte lengths including empty and partial blocks.
 Its caller retains the captured byte-total unchanged. `pgs-dcb-step(byte-total,
-block, pgs-digest)` delegates to the page core except the final rightmost chunk,
+block, pgs-digest-state)` delegates to the page core except the final rightmost chunk,
 which records the exact byte count. The caller feeds sixteen u32 words with
 zero padding beyond `pgs-dcb-read-demand`, bounded by64 bytes, and consumes
 source only when that demand is nonzero. `pgs-dcb-next-byte-offset` is the
@@ -529,3 +528,18 @@ COMMON-LISP names and NIL, and requires the authenticated provider's matching
 source-byte and capture/pass lifetime premise. Its cursor and semantic proofs
 are component source evidence under PRF-1102; full row decoding, metadata checks,
 resource funding and host composition remain open.
+
+The page-core representation domain is now source-admitted: scalar ordering,
+CV shape, split power budget and active-frame child-span bounds establish at
+begin, survive every actual step and exclude invalid status. At most2^64 u64
+words uses depth budget57; the current directory u32 page-count domain uses
+budget36, within the64-slot array. The proof-only predicate is carried logically,
+never revalidated on the served path. Exact-byte guard and semantic/progress
+composition remain open (PRF-1087).
+
+The exact-byte guard domain is also source-admitted. It carries natural B,
+total=ceil(B/8),8pos<=B and every active frame right-start<total, establishes
+at byte begin, and survives each actual byte step. The restored right-child
+position therefore remains within B even for partial final bytes. Complete
+actual guards and never-invalid status follow without executing this proof-only
+predicate on a served tick. Semantic trajectory/progress and funding remain open.

@@ -6686,7 +6686,11 @@
         "Classify a 200-byte prefix ending in a non-byte symbol and complete within810 descriptor ticks using maintained non-octets suffix tasks.",
         "Compose descriptor traversal with scalar and opaque leaf byte cursors; assert every per-byte invariant/residual and exact current-codec output before and after a scheduling interruption.",
         "Feed the complete resident byte stream through bounded word push/finish and compare packed zero-padded output with the current pack8 oracle.",
-        "Census the identical captured row without retaining encoded bytes; interrupt/resume, compare the terminal exact count with codec length and explicitly refuse a corrupted census total at the u64 edge."
+        "Census the identical captured row without retaining encoded bytes; interrupt/resume, compare the terminal exact count with codec length and explicitly refuse a corrupted census total at the u64 edge.",
+        "Stream borrowed string/octet payloads using one absolute-byte request/supply per action; interrupt/resume and compare complete current codec bytes, including empty octet span canonical NIL.",
+        "Refuse a wrong or replayed payload position unchanged; affirm complete supply/tick hypotheses and residual/invariant conclusions, then literal removal witnesses for all five supply-refinement premises and nine initial-span premises.",
+        "Validate span metadata operands against the current u64 format before addition; replay unchanged full record codec/refinement fixtures after the existing row-book closure.",
+        "Recognize decoded package1/2 NIL spans with at most three authenticated byte supplies; interrupt/resume, preserve identities, refuse replayed positions, and prove actual decoded octet-list tail canonicalization with full positive and literal supply/progress removals."
       ],
       "expected": [
         "No source-list copy or whole-row encoding occurs at begin or tick.",
@@ -6701,7 +6705,7 @@
         "tests/acl2/history-record-cursor-tests.lisp",
         "specs/history-record-cursor.md"
       ],
-      "execution_scope": "Resident descriptor, scalar/leaf byte composition, exact byte census and scalar word-boundary source libraries only. Borrowed cold spans, general progress, total padded placement/producer/profile bridge and native qualification remain open."
+      "execution_scope": "Resident byte/census/word libraries and raw borrowed span string/octet boundaries only. Decoded-tree opaque-collapse, symbol normalizer/authority composition, general tree progress, remaining semantic/supply-progress teeth, initial u64-size witnesses, padded placement/producer/profile funding and native qualification remain open. Decoded NIL-tail probe is a proper-local source-library checkpoint only; general cold tree/normalizer/controller and full literal semantic-domain teeth remain open."
     },
     {
       "id": "SCN-1009",
@@ -6719,12 +6723,16 @@
         "Check the literal actual value-transition invariant and remove its value correspondence, phase, line-budget and valid-byte hypotheses individually while affirming all retained hypotheses; verify folded completed source spans and absent-versus-empty first hits.",
         "Check literal arbitrary-line theorem instances for actual new-field/fold runs, completed source spans, selected name and preserved earlier columns; remove source-value correspondence and fold-local visibility independently.",
         "Assert complete literal new-field/fold/header traversal premises and conclusions; remove every retained line-step premise and both traversal premises separately, including corrupted source-span state and malformed physical continuations.",
-        "Assert the literal full actual arena-tick NOV equation on octet sources, including five first/repeated/folded fields, invalid folds, opaque body NUL and tombstones. Remove the sole octet-domain premise with non-octet opaque body input; affirm negative-handle equality after removing that redundant premise. Check complete tombstone prefix antecedents and remove natural position and sufficient bytes independently."
+        "Assert the literal full actual arena-tick NOV equation on octet sources, including five first/repeated/folded fields, invalid folds, opaque body NUL and tombstones. Remove the sole octet-domain premise with non-octet opaque body input; affirm negative-handle equality after removing that redundant premise. Check complete tombstone prefix antecedents and remove natural position and sufficient bytes independently.",
+        "Check full literal actual tick scalar/source-width and returned quantum-width conclusions; remove every retained carried-state, ready, source-bound and quantum premise individually. Separate corrupted carried state from malformed grammar and run the actual stobj tick at quanta 1, 3 and complete length.",
+        "Assert literal exact-prefix init, actual fuel1 continuation/source binding and terminal complete-feed statements; remove every retained premise separately. Corrupt magic carry independently of source substitution, confirm a bad header still yields before EOF, and execute repeated actual stobj ticks through valid/invalid sources and one terminal no-op."
       ],
       "expected": [
         "Each tick consumes and reports at most its fuel, preserves handle and pin and makes bounded progress. No final tick walks or copies the full source or field.",
         "The body count equals the actual catalog function even for a rejected header parse.",
-        "For every successful actual parser result, the complete byte traversal's five spans normalize to the exact first-header NOV content. The full actual arena-tick NOV record equals fn-hnov-of under the sole octet source premise, including invalid parses and tombstones."
+        "For every successful actual parser result, the complete byte traversal's five spans normalize to the exact first-header NOV content. The full actual arena-tick NOV record equals fn-hnov-of under the sole octet source premise, including invalid parses and tombstones.",
+        "Source-dominated numeric scalars and returned consumed/work remain within their parameterized source/quantum widths. Selected runtime primitive, callstack and allocation correspondence remains open.",
+        "Repeated actual arena ticks maintain the exact source prefix; nonyield means full source feed even when headers were rejected early. The source predicate remains proof-only; consumer/physical/native composition is not inferred."
       ],
       "evidence": [
         "books/legacy-parser-cursor.lisp",
@@ -6741,7 +6749,16 @@
         "planning/evidence/legacy-parser-columns-source.md",
         "books/legacy-parser-catalog.lisp",
         "tests/acl2/legacy-parser-catalog-tests.lisp",
-        "planning/evidence/legacy-parser-catalog-source.md"
+        "planning/evidence/legacy-parser-catalog-source.md",
+        "books/legacy-parser-allocation.lisp",
+        "tests/acl2/legacy-parser-allocation-tests.lisp",
+        "planning/evidence/legacy-parser-allocation-source.md",
+        "books/legacy-parser-scalars.lisp",
+        "tests/acl2/legacy-parser-scalars-tests.lisp",
+        "planning/evidence/legacy-parser-scalars-source.md",
+        "books/legacy-parser-continuation.lisp",
+        "tests/acl2/legacy-parser-continuation-tests.lisp",
+        "planning/evidence/legacy-parser-continuation-source.md"
       ]
     },
     {
@@ -6760,7 +6777,8 @@
       "expected": [
         "Every live byte step consumes exactly one byte and retains source epoch/lease; no whole string coerce, intern, reverse, row decode or pool preflight occurs in the tick.",
         "Spans name raw payload bytes in the captured immutable pool, and general borrowed-tree abstraction equals the old decoder result.",
-        "No partial row escapes malformed input; stale/uncertain physical I/O cannot advance or release a borrowed source."
+        "No partial row escapes malformed input; stale/uncertain physical I/O cannot advance or release a borrowed source.",
+        "Successful actual decoder results carry bounded built nodes and exact literal HSTXA tags; held cons with a non-octet head refines concrete pair accessors."
       ],
       "implementation": {
         "test": "tests/acl2/history-decode-cursor-tests.lisp",
@@ -6771,9 +6789,11 @@
         "planning/history-decode-contract.md",
         "tests/acl2/history-symbol-normalize-tests.lisp",
         "tests/acl2/history-decode-refinement-tests.lisp",
-        "planning/evidence/history-decode-refinement-source-2026-09-30.json"
+        "planning/evidence/history-decode-refinement-source-2026-09-30.json",
+        "tests/acl2/history-decode-shape-tests.lisp",
+        "planning/evidence/history-decode-shape-source-2026-09-30.json"
       ],
-      "execution_scope": "Clean source component replay only. General stream inverse, recursive node span bounds, lifetime and fuel partition source proofs pass with literal witnesses; page-source authentication, canonical reencoding, integrated native caller, funded storage and full producer remain open. No certificate or image claim."
+      "execution_scope": "Clean source component replay only. General stream inverse, recursive node span bounds, lifetime and fuel partition source proofs pass with literal witnesses; page-source authentication, canonical reencoding, integrated native caller, funded storage and full producer remain open. No certificate or image claim. Companion exact source replay passes37 shape forms and5 literal tests; carried predicates are proof-only."
     },
     {
       "id": "SCN-1006",
@@ -6789,14 +6809,18 @@
         "Tick empty,64-byte,1,024-byte,1024+64-byte and2048+64-byte word streams, yielding between split search, block and parent phases.",
         "Compare terminal natural to the existing actual pgs-x-words-digest; mutate source and separately corrupt continuation depth.",
         "After general refinement/progress/allocation proofs, wire into the disk-backed two-pass preparation controller and run matching producer/image evidence.",
-        "Capture exact byte-total for protected extents and stream partial final blocks with canonical zero padding; compare exact digest octets to the existing concrete fn-blake3."
+        "Capture exact byte-total for protected extents and stream partial final blocks with canonical zero padding; compare exact digest octets to the existing concrete fn-blake3.",
+        "Establish page-core representation domain, preserve it for an actual step, and witness every initialization/profile bound removal and separately corrupted mode/position.",
+        "Carry exact-byte total and8pos<=B through partial-tail and restored right-child phases; witness every initialization bound removal and distinct corrupted mode/position."
       ],
       "expected": [
         "No whole directory staging; each input quantum is at most eight u64 words and one compression; source is read-only.",
         "Finished digest preserves current persistent-format value and capture/lease names.",
         "Source change is distinguished in ground evidence; corrupted-depth continuation returns invalid with unchanged state.",
         "No producer/resource-admission completion until actual composition, general proof and matching evidence.",
-        "Exact-byte step preserves page-step behavior on aligned lengths and returns the exact residual byte count; constrained frame-digest composition remains explicit."
+        "Exact-byte step preserves page-step behavior on aligned lengths and returns the exact residual byte count; constrained frame-digest composition remains explicit.",
+        "Current u32 directory count fits depth36 and at most2^64 u64 words fits depth57 in64 physical slots; no new data ceiling.",
+        "Exact-byte begin/step preserve the full actual byte-step guard, with no served-path frame validation."
       ],
       "evidence": [
         "books/pagestore-digest-cursor.lisp",
@@ -6808,9 +6832,16 @@
         "books/pagestore-digest-byte-cursor.lisp",
         "books/pagestore-digest-byte-refinement.lisp",
         "tests/acl2/pagestore-digest-byte-cursor-tests.lisp",
-        "planning/evidence/page-digest-byte-source-2026-09-30.md"
+        "planning/evidence/page-digest-byte-source-2026-09-30.md",
+        "books/pagestore-digest-cursor-domain.lisp",
+        "tests/acl2/pagestore-digest-cursor-domain-tests.lisp",
+        "planning/evidence/page-digest-cursor-domain-2026-09-30.md",
+        "planning/evidence/page-digest-cursor-rename-2026-09-30.md",
+        "books/pagestore-digest-byte-domain.lisp",
+        "tests/acl2/pagestore-digest-byte-domain-tests.lisp",
+        "planning/evidence/page-digest-byte-domain-2026-09-30.md"
       ],
-      "execution_scope": "Guard-verified source library plus clean phase equations and conditional actual-digest terminal bridge. Literal semantic carry and matching-block removal with distinct output mutation pass. Maintained trajectory/progress/domain/allocation and host composition remain open."
+      "execution_scope": "Guard-verified source library plus clean phase equations and conditional actual-digest terminal bridge. Literal semantic carry and matching-block removal with distinct output mutation pass. Maintained trajectory/progress/domain/allocation and host composition remain open. Page-core representation domain and supported-domain stack sufficiency now source-admitted; exact-byte guard and semantic/progress composition remain open. Exact-byte guard domain now also admitted; semantic/progress/funding and consumer completion remain open."
     },
     {
       "id": "SCN-1019",
