@@ -17908,6 +17908,24 @@
         "specs/history-record-cursor.md"
       ],
       "progress_note": "Resident tree descriptor, opaque-leaf byte and scalar word-accumulator components clean-source admitted (68 forms, 2.13 ACL2 s /459852 steps), executable begin/tick/push/finish guards verified. All44 testbody forms pass (1.35 ACL2 s /453795 steps), including dotted composite trees, quantum resume, full/partial/aligned words and literal invariant/domain removals. Proved non-octets task carry removes repeated shrinking-suffix classification; 200-byte-prefix witness completes within810 descriptor ticks. Initial/one-tick residuals name existing fn-scc-encode/program and fn-hp-pack8. No actual host caller, certification/native/image or full producer claim. Full target remains planned: scalar byte composition, borrowed decoded spans, total census, profile/domain bridge, initial leaf size-hypothesis witness and controller funding/qualification remain open."
+    },
+    {
+      "id": "PRF-1095",
+      "title": "Resumable scalar cursor refines the current Store atom codec",
+      "statement": "Library component: fn-hrsc-begin captures an atom and opaque capture/lease references; guarded fn-hrsc-tick counts and emits current fn-scc-atom-octets one byte at a time. Under the carried logical invariant it preserves exact residual output, permitted verdicts, empty terminal residual and invariant, and strictly decreases remaining work outside done. Every emitted value is an octet; identities are preserved even on refusal. Strings and symbol names use indexed source references; integer remainders use the actual 255-digit codec domain. No whole scalar list encoding occurs in runtime begin/tick. Host/tree/controller composition, physical funding, maintained source/profile representability, matching certification and native image evidence remain open.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": [
+        "books/history-scalar-cursor.lisp",
+        "tests/acl2/history-scalar-cursor-tests.lisp",
+        "specs/history-scalar-cursor.md",
+        "planning/evidence/history-scalar-cursor-source-2026-09-30.json"
+      ],
+      "progress_note": "Clean persvati hrsct8 source-dependency admission with proper local scope: 6.00 ACL2 seconds / 4,810,489 prover steps; 27 test forms include 23 passing literal witnesses. Runtime begin/tick helpers are guard verified. Static teeth: 23 witnesses, 0 findings; narrow theory check green. No certification, host, image or physical-resource claim; library events remain component evidence, with full target planned."
     }
   ]
 }
