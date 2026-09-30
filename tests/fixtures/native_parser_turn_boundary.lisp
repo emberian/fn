@@ -1,4 +1,5 @@
 (defpackage "ACL2" (:use "CL"))
+(defpackage "SB-BSD-SOCKETS" (:use "CL") (:export "SOCKET-SHUTDOWN"))
 (in-package "ACL2")
 (defconstant +fnn-exit-fault+ 4)
 (defconstant +fnn-exit-uncertain+ 3)
@@ -6,7 +7,11 @@
 (define-condition fnn-store-indeterminate (fnn-store-error) ())
 (define-condition fnn-store-fault (fnn-store-error) ())
 (define-condition fnn-os-error (error) ())
-(defstruct fnn-owner-service receiver-runtime connection-pool stopping exit-code)
+(defstruct fnn-owner-service receiver-runtime connection-pool stopping exit-code
+  (roster (sb-thread:make-mutex :name "recording roster"))
+  (commit-lock (sb-thread:make-mutex :name "recording commit"))
+  (commit-ready (sb-thread:make-waitqueue :name "recording commit ready"))
+  sparing listener clients stop-hooks)
 (defstruct fnn-connection-custody token)
 (defvar *fnn-extent-lock* (sb-thread:make-mutex :name "parser fixture extent"))
 (defvar *owner-lock* (sb-thread:make-mutex :name "parser fixture owner"))
@@ -22,14 +27,25 @@
 (defvar *step*)
 (defvar *episode*)
 (defvar *scenarios* 0)
+(defvar *drain-mode*)
+(defvar *drain-calls*)
+(defvar *wake-trace*)
 (defun fnn-live-arena () :actual-arena)
 (defun fnn-live-cat () :actual-cat)
 (defun fnn-developer-selector (name) (declare (ignore name)) nil)
 (defun fnn-owner-connection-selected-p (service) (declare (ignore service)) t)
-(defun fnn-owner-stop-service-locked (service code)
+(defun fnn-payload-lifecycle-drain (service)
   (assert (sb-thread:holding-mutex-p *owner-lock*))
-  (setf (fnn-owner-service-stopping service) t
-        (fnn-owner-service-exit-code service) code))
+  (assert (not (sb-thread:holding-mutex-p *fnn-extent-lock*)))
+  (assert (fnn-owner-service-stopping service))
+  (incf *drain-calls*)
+  (case *drain-mode*
+    (:condition (error "recording drain failure"))
+    (:throw (throw 'drain-cut :drain-cut))))
+(defun sb-bsd-sockets:socket-shutdown (socket &key direction)
+  (assert (eq direction :io)) (push socket *wake-trace*))
+(defun fnn-owner-signal-commit (service)
+  (declare (ignore service)) (push :commit *wake-trace*))
 (defun fnn-fixed-callback-fail (subject word detail)
   (error "Callback ~s: ~s: ~a" subject word detail))
 (load __SOURCE_FILE__)
@@ -61,6 +77,7 @@
 
 (defmacro scenario (&body body)
   `(let* ((*calls* 0) (*mode* :response-recorded)
+          (*drain-mode* nil) (*drain-calls* 0) (*wake-trace* nil)
           (*old-provider* (make-hash-table)) (*old-turn* (make-hash-table))
           (*old-pool* (list :actual-pool))
           (*new-provider* (make-hash-table)) (*new-turn* (make-hash-table))
@@ -166,5 +183,34 @@
       (assert (eq word :unavailable)) (assert (null runtime))
       (assert (eq pool *old-pool*))
       (assert (eq (fnn-owner-service-receiver-runtime service) :actual-current)))))
+
+(dolist (drain '(nil :condition :throw))
+  (scenario
+    (setf *drain-mode* drain
+          (fnn-owner-service-listener service) :listener
+          (fnn-owner-service-clients service) '(:answering :client)
+          (fnn-owner-service-stop-hooks service)
+          (list (lambda (service) (declare (ignore service)) (push :hook *wake-trace*))))
+    (sb-thread:with-mutex (*owner-lock*)
+      (let ((outcome
+             (catch 'drain-cut
+               (handler-case
+                   (progn (fnn-owner-stop-service-locked service +fnn-exit-fault+ :answering) :returned)
+                 (error () :condition)))))
+        (assert (eq outcome (case drain (:condition :condition) (:throw :drain-cut) (t :returned))))))
+    (assert (fnn-owner-service-stopping service))
+    (assert (= (fnn-owner-service-exit-code service) +fnn-exit-fault+))
+    (assert (= *drain-calls* 1))
+    (assert (equal (reverse *wake-trace*) '(:listener :client :commit :hook)))
+    (assert (eq (fnn-owner-service-receiver-runtime service) runtime))
+    (assert (eq (fnn-owner-service-connection-pool service) *old-pool*))
+    ;; A later cleanup stop neither retries the fallible drain nor replaces
+    ;; the first terminal result, and still spares the answering connection.
+    (setf *wake-trace* nil)
+    (sb-thread:with-mutex (*owner-lock*)
+      (fnn-owner-stop-service-locked service +fnn-exit-uncertain+))
+    (assert (= *drain-calls* 1))
+    (assert (= (fnn-owner-service-exit-code service) +fnn-exit-fault+))
+    (assert (equal (reverse *wake-trace*) '(:listener :client :commit :hook)))))
 
 (format t "PASS native parser turn: ~d scenarios~%" *scenarios*)

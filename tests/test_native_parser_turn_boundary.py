@@ -10,7 +10,8 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKET = ROOT / "planning/evidence/native-parser-turn-2026-09-30"
-SOURCES = [PACKET / "native-boundary-source.lisp", PACKET / "runtime-source.lisp",
+SOURCES = [ROOT / "planning/evidence/native-parser-stop-2026-09-30/native-stop-source.lisp",
+           PACKET / "native-boundary-source.lisp", PACKET / "runtime-source.lisp",
            ROOT / "host/native/receiver-parser-turn.lisp"]
 
 
@@ -33,13 +34,20 @@ class NativeParserTurnBoundary(unittest.TestCase):
             with self.subTest(mutation=name):
                 self.run_fixture(name, change)
 
-    def run_fixture(self, name="baseline", change=None):
+    @unittest.skipUnless(shutil.which("sbcl"), "SBCL required")
+    def test_stop_boundary_mutations(self):
+        self.run_fixture("missing-stop-fence",
+                         ("(fnn-owner-service-stopping service) t", "(fnn-owner-service-stopping service) nil"), 0)
+        self.run_fixture("drain-skipped",
+                         ("(when first-stop (fnn-payload-lifecycle-drain service))", "nil"), 0)
+
+    def run_fixture(self, name="baseline", change=None, source_index=-1):
         originals = [p.read_text() for p in SOURCES]
         chunks = originals.copy()
         if change:
             old, new = change
-            self.assertEqual(chunks[-1].count(old), 1)
-            chunks[-1] = chunks[-1].replace(old, new, 1)
+            self.assertEqual(chunks[source_index].count(old), 1)
+            chunks[source_index] = chunks[source_index].replace(old, new, 1)
         source = "\n\n".join(chunks)
         fixture = (ROOT / "tests/fixtures/native_parser_turn_boundary.lisp").read_text()
         with tempfile.TemporaryDirectory() as directory:
