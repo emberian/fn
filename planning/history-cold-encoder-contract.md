@@ -1,6 +1,6 @@
 # Cold history byte controller: remaining composition contract
 
-This is the next implementation contract, not an admitted controller.
+This contract records the single guarded runtime and conditional source-library proof checkpoint; complete finite-run and actual producer joins remain open.
 Source checkpoint32f150be4 provides only the guarded NIL-tail probe;
 9a955789d provides borrowed raw string/octet span emission. The actual
 producer/pool adapter continues to call the resident byte cursor until this
@@ -13,11 +13,11 @@ A retained sidecar may replace classification only after a named invariant
 proves its octet-list flag/count against the actual decoder's node abstraction.
 No eager conversion to an ACL2 row is permitted.
 
-Proposed APIs: `fn-hrcur-cold-begin(source,capture,lease)`,
+Stable APIs: `fn-hrcur-cold-begin(source,capture,lease)`,
 `fn-hrcur-cold-tick(cursor)` returning `mv verdict octet next`, and
 `fn-hrcur-cold-supply(cursor,position,octet)` with the same result shape.
 Verdicts are `:continue`, `:emit`, `:prepared`, explicit refusal, or
-`(:need-byte position child-request)`; every demand yields an unchanged
+`(:need-byte position kind child-coordinate)`; every demand yields an unchanged
 cursor. Supply operates on exactly the current child/request. Child serials
 are local state, not substitutes for authenticated source authority.
 
@@ -76,8 +76,9 @@ funding. No physical pool, immediate reclamation refund, whole encoded-row
 buffer, suffix-array doubling or image resize is assumed. Supported records
 resume until complete; quantum exhaustion never truncates them.
 
-Runtime implementation now exists in books/history-cold-record-cursor.lisp
-(WIP, no source-ready/full inverse claim). Its state has nine fixed cells:
+Runtime implementation is in books/history-cold-record-runtime.lisp.
+The separate books/history-cold-record-cursor.lisp exposes conditional residual
+and invariant laws, with strict general progress/run still open. Its state has nine fixed cells:
 phase, pending tasks, child, original borrowed node, capture, lease, bounded
 header prefix, active borrowed node, remaining opaque count. Cold tick returns
 mv verdict/octet/cursor, matching the resident byte emitter. The exact demand
@@ -115,3 +116,25 @@ serial+work conservation join is admitted in the cold source: initialization,
 tick and supply preserve serial plus remaining work at most 12250. This number
 is derived from the current import table, not a new stored-name limit. No runtime source
 coerce/intern, whole-tree domain scan or whole encoded-row allocation occurs.
+
+Full-controller progress plan (proof-only; not yet claimed): use a lexicographic
+triple of remaining structural credit, phase order, and current child work. A
+queued :node has twice its ACL2 node count as credit; :no-octets has two fewer
+credits, and a queued literal byte has one. Active classification has one fewer
+credit than an unclassified node; other active phases have two fewer. This
+accounts for classification rejection without resetting an equivalent task at
+the same rank, and for pair expansion into two children plus postfix opcode5.
+Phase order is work5, classifier/normalizer4, scalar/span/opaque-prefix3,
+opaque2, opaque-span1, done0. Child work comes from the existing scanner, scalar,
+span and normalizer measures, or the remaining prefix/payload count. The triple
+is never evaluated on the served path. A demand is unchanged; an attributed
+supply or productive tick must strictly lower the triple. The general rank
+and finite completion proofs are still open.
+
+Conditional source checkpoint: exact initializer, all-phase tick/supply residual
+and invariant, permitted verdicts and emitted-octet boundaries now compose in
+hrcrt1 after cached row (139 source body forms,31.79s/11,159,948steps;22proof
+test forms,.07s/4,464steps). Matching public source admissions are reused; this
+is not certification. Initial/tick/supply literal removals are explicit.
+The ordinal rank and progress initializer are admitted; strict general
+productive rank decrease and finite-run completion remain the next proof work.

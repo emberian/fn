@@ -409,3 +409,30 @@ and fresh full replay are still open. Runtime tests exercise complete current
 codec outputs for scalar, borrowed strings/octet spans, collapsed pair tails,
 imported symbols and NIL aliases. These tests and runtime guard admission do
 not complete the cold producer, physical funding or qualification claim.
+
+## Conditional full cold codec proof library
+
+`history-cold-record-cursor` includes the single guarded cold runtime and
+exposes the proof-only `fn-hrcur-cold-invariantp` and `fn-hrcur-cold-rest`.
+The initializer establishes the carried relation to exact
+`fn-scc-encode(fn-hdc-abstract source immutable-pool)`, under the decoded
+source shape/tag, recursive codec domain and pool-octet hypotheses.
+
+The actual tick preserves the invariant and removes exactly one byte on
+`:emit`; continue/demand removes none and prepared requires an empty residual.
+The complete tick boundary also permits only continue/emit/prepared/byte-demand
+under the invariant. The actual supply has four hypotheses: the invariant,
+a current byte demand, the exact requested position and exact source byte
+`nth(position, immutable-pool)`. It preserves the invariant and exact residual
+while returning continue or emit. Both runtime operations emit an octet whenever
+they emit, including for malformed input states. Every demand retains the
+cursor. Capture/lease references persist without opaque authority comparison.
+
+Twenty-two proof-test forms cover complete initial, tick and attributed-supply
+positives/removals, output-type antecedents and reachable ordinal rank. All
+139 proof body forms compose in the protected cached-row world; matching
+previous public admissions are reused, locals replay inside one encapsulate.
+This is conditional source-library evidence. Strict general rank decrease,
+finite-run completion, actual decoded source lineage, authenticated
+reader/producer authority, physical funding and certification remain open.
+The well-founded rank is proof-only and is never evaluated by the runtime.
