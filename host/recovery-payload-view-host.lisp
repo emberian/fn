@@ -1,7 +1,7 @@
 ; Production recovery-only view and INITIAL role transaction. Source WIP:
 ; exact includes/caller admission are pending, never substitute live PVL.
 (in-package "ACL2")
-(include-book "recovery-census-source-host")
+(include-book "snapshot-initial-host")
 (include-book "page-read-host")
 (include-book "../books/recovery-payload-view")
 (include-book "../books/snapshot-initial-custody")
@@ -12,7 +12,7 @@
   (mv-let (erp descriptor state) (fn-owner-recovery-startup-source source state)
     (let ((ledger (fn-owner-page-read-ledger fn-page-read-pool)))
       (if (or erp (not (eq (fn-omk-at 0 descriptor) :recovery-census))
-              (not (fn-sni-livep ledger source maintenance)))
+              (not (fn-owner-recovery-initial-livep source maintenance fn-page-read-pool state)))
           (mv erp '(:retained :initial-source) fn-arena fn-page-read-pool state)
         (let ((answer (fn-rpv-acquire (fn-owner-recovery-payload-view-ledger state)
                                       (fn-arena-count fn-arena) source maintenance)))

@@ -47,6 +47,15 @@ canonical readiness or a publication capability."
              ; NIL input requests the actual completed-open source producer;
              ; it is not authority. INITIAL returns its issued source token.
              (setq token (second admission) maintenance (third admission))
+             ; Claim actual constructor custody before any native root/view/
+             ; job/workspace creator. A partial creator keeps this row held.
+             (destructuring-bind (erp entered pool state)
+                 (fnn-call 'fn-owner-recovery-initial-constructor-begin
+                           token maintenance (fnn-live-page-read-pool) *the-live-state*)
+               (declare (ignore pool state))
+               (when erp (fnn-fault "startup constructor custody core call failed"))
+               (unless (eq (first entered) :entered)
+                 (fnn-fault "startup constructor custody retained: ~a" entered)))
              (let* ((context (fnn-snapshot-source-context))
                     (plan (fnn-core 'fn-osj-resource-word context maintenance)))
                (unless (eq (first plan) :capture)
