@@ -90,7 +90,7 @@
                   (fn-record-charge w) (fn-record-stamp w)
                   (fn-held-facts-of bytes)
                   (fn-held-context-of bytes nil 0)
-                  nil nil)))
+                  nil nil (fn-record-binding w))))
 
 ; The rows of WS interned in order under KEYRING and GENERATION on a fresh
 ; arena (:bad when the intern refuses one).
@@ -194,10 +194,10 @@
 ; record's payload; a value the codec does not produce is refused.
 (defconst *hrt-r0*
   (fn-record-make 0 0 0 "<hrt0@example.invalid>" '(65 13 10) '("fn.test")
-                  "hrt-pin-0" "hrt-content-0" "hrt-release-0" 2 841000000))
+                  "hrt-pin-0" "hrt-content-0" "hrt-release-0" 2 841000000 *fn-record-golden-binding*))
 (defconst *hrt-r1*
   (fn-record-make 1 1 1 "<hrt1@example.invalid>" '(66 13 10) '("fn.test")
-                  "hrt-pin-1" "hrt-content-1" "hrt-release-1" 3 841000000))
+                  "hrt-pin-1" "hrt-content-1" "hrt-release-1" 3 841000000 *fn-record-golden-binding*))
 (defconst *hrt-rows* (fn-hrt-rows (list *hrt-r0* *hrt-r1*) nil 0))
 (assert-event (and (fn-held-p (car *hrt-rows*)) (fn-held-p (cadr *hrt-rows*))))
 (assert-event (equal (fn-record-payload (car *hrt-rows*)) 0))

@@ -177,6 +177,11 @@
   :exempt ((payload "the received article's buffer (host/native/hybrid-control.lisp)")))
 
 
+(definterface fn-owner-legacy-control-submit
+  :class :program
+  :kinds ((msgid-octets fn-cbor-octet-listp) (group-octets fn-octet-list-listp))
+  :exempt ((payload "legacy BP/control received article buffer; ACL2 selects relay-v1")))
+
 (definterface fn-native-health-host-exit
   :class :program
   :exempt ((octets "the health report's summary structure (fnn-operator-health-report)")))

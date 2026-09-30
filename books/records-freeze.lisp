@@ -434,7 +434,7 @@
                 (fn-record-obligation-id h) (fn-record-content-subject h)
                 (fn-record-release-evidence h) (fn-record-charge h)
                 (fn-record-stamp h) (fn-held-facts h) (fn-held-context h)
-                (fn-held-numbers h) (fn-held-withdrawn h)))
+                (fn-held-numbers h) (fn-held-withdrawn h) (fn-held-binding h)))
 
 ; The old row (its original handle) reads the original bytes after the
 ; tombstone's seal; the new row reads the tombstone.  No hypothesis on the

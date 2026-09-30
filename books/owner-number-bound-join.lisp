@@ -150,7 +150,7 @@
 (defthm fn-onbj-boundp-of-ocfg-step-owner-event
   (implies (and (fn-onb-boundp (fn-ocfg-owner oc))
                 (member-equal (car event)
-                              '(:begin :take :control-submit :operator-submit :bp-transit-submit
+                              '(:begin :take :control-submit :legacy-control-submit :operator-submit :bp-transit-submit
                                 :observe :declare-group :configure :control-outcome :bp-transit-outcome
                                 :outcome :transit-outcome :feeds :feed-conn :feed-lost :feed-replay
                                 :tick :tick-peer :feed-octets :reconfigure)))

@@ -150,7 +150,7 @@
  (defthm fn-hkn-record-make-is-a-cons
    (consp (fn-record-make sequence txid generation msgid payload groups
                           obligation-id content-subject release-evidence
-                          charge stamp))
+                          charge stamp binding))
    :hints (("Goal" :in-theory (enable fn-record-make)))))
 
 (defthm fn-hkn-tombstoned-keeps-the-identity

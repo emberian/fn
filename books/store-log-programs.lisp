@@ -246,7 +246,7 @@
                      (concatenate 'string "<log-" (coerce (explode-atom txid 10) 'string)
                                   "@fn.invalid>")
                      (make-list (nfix size) :initial-element (mod txid 251))
-                     '("fn.test") "o" "s" "e" 4 5))))
+                     '("fn.test") "o" "s" "e" 4 5 (fn-ab-for-received :post-d25 (make-list (nfix size) :initial-element (mod txid 251)))))))
 
 ; RECORDS are the workload records of txids TXID, TXID + 1, ... (the verb's
 ; oracle line: `workload=t').

@@ -449,12 +449,12 @@
 (defthm fn-bs-held-wire-shape
   (implies (fn-held-p h)
            (and (true-listp (fn-held-wire h b))
-                (equal (len (fn-held-wire h b)) 11)
+                (equal (len (fn-held-wire h b)) 12)
                 (natp (car (fn-held-wire h b)))))
   :hints (("Goal" :use ((:instance fn-held-p-forward-natural-head (x h)))
            :in-theory (enable fn-held-wire fn-record-make fn-record-sequence))))
 (defthm fn-bs-natural-head-is-no-other-wire-event
-  (implies (and (natp (car x)) (equal (len x) 11))
+  (implies (and (natp (car x)) (equal (len x) 12))
            (and (not (fn-store-retention-event-p x))
                 (not (fn-stxe-p x)) (not (fn-stxk-p x)) (not (fn-stxa-p x))
                 (not (fn-cpe-eventp x)) (not (fn-th-topic-eventp x))

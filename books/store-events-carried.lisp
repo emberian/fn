@@ -80,7 +80,7 @@
 (local
  (defthm fn-evc-held-shape
    (implies (fn-held-p x)
-            (and (consp x) (natp (car x)) (equal (len x) 15)
+            (and (consp x) (natp (car x)) (equal (len x) 16)
                  (equal (fn-record-sequence x) (fn-store-event-nth 0 x))
                  (equal (fn-record-txid x) (fn-store-event-nth 1 x))
                  (equal (fn-record-generation x) (fn-store-event-nth 2 x))))

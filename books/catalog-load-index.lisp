@@ -56,7 +56,7 @@
                       (fn-record-charge w) (fn-record-stamp w)
                       (fn-held-facts-of bytes)
                       (fn-held-context-of bytes keyring generation)
-                      nil nil)
+                      nil nil (fn-record-binding w))
         fn-arena)))
 
 (defthm fn-obi-intern-range-is-intern-list

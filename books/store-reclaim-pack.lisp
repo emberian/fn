@@ -61,7 +61,7 @@
                                        (fn-record-string-octets (fn-record-msgid r)))
                   (fn-record-groups r) (fn-record-obligation-id r)
                   (fn-record-content-subject r) (fn-record-release-evidence r)
-                  *fn-rclp-history-unit* (fn-record-stamp r)))
+                  *fn-rclp-history-unit* (fn-record-stamp r) (fn-record-binding r)))
 
 ; The articles indexed by Message-ID (row A8): the first article naming a
 ; Message-ID is the one bound, as `fn-find-article's walk finds it

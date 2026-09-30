@@ -50,10 +50,10 @@
                 (fn-record-payloadp payload))
            (equal (fn-record-p (fn-record-make sequence txid generation msgid payload groups
                                                obligation-id content-subject
-                                               release-evidence charge stamp))
+                                               release-evidence charge stamp binding))
                   (fn-record-p (fn-record-make sequence txid generation msgid nil groups
                                                obligation-id content-subject
-                                               release-evidence charge stamp))))
+                                               release-evidence charge stamp binding))))
   :hints (("Goal" :in-theory (enable fn-record-p fn-record-internals))))
 
 (defun fn-record-decode-tail-exec (sequence txid generation msgid payload octets)
@@ -99,7 +99,15 @@
                                (let* ((stamp-result
                                        (fn-record-read-uint
                                         (fn-record-parse-rest charge-result)))
-                                      (id (fn-record-octets-string
+                                      (binding-result
+                                       (if (fn-record-parse-okp stamp-result)
+                                           (fn-record-read-bytes
+                                            (fn-record-parse-rest stamp-result))
+                                         (fn-record-parse-error :invalid-binding)))
+                                     (binding-decoded
+                                      (fn-ab-decode (fn-record-parse-value binding-result)))
+                                     (binding (cadr binding-decoded))
+                                     (id (fn-record-octets-string
                                            (fn-record-parse-value id-result)))
                                       (subject (fn-record-octets-string
                                                 (fn-record-parse-value subject-result)))
@@ -111,10 +119,13 @@
                                         (fn-record-parse-value groups-result)
                                         id subject evidence
                                         (fn-record-parse-value charge-result)
-                                        (fn-record-parse-value stamp-result))))
+                                        (fn-record-parse-value stamp-result) binding)))
                                  (if (not (fn-record-parse-okp stamp-result))
                                      stamp-result
-                                   (if (not (null (fn-record-parse-rest stamp-result)))
+                                   (if (or (not (fn-record-parse-okp binding-result))
+                                          (not (equal (car binding-decoded) :ok)))
+                                      (fn-record-parse-error :invalid-binding)
+                                    (if (not (null (fn-record-parse-rest binding-result)))
                                        (fn-record-parse-error :trailing)
                                      ;; The payload position was checked by the caller and
                                      ;; is in the guard: the record is checked with the
@@ -126,9 +137,10 @@
                                            (fn-record-parse-value groups-result)
                                            id subject evidence
                                            (fn-record-parse-value charge-result)
-                                           (fn-record-parse-value stamp-result)))
+                                           (fn-record-parse-value stamp-result) binding))
                                          (fn-record-parse-ok record nil)
-                                       (fn-record-parse-error :invalid)))))))))))))))))))))
+                                       (fn-record-parse-error :invalid))))))))))))))))))))))
+
 
 (defun fn-record-decode-after-header-exec (octets)
   (declare (xargs :guard (fn-cbor-octet-listp octets)
@@ -195,7 +207,7 @@
                (if (not (fn-record-parse-okp version-result))
                    version-result
                  (if (not (member-equal (fn-record-parse-value version-result)
-                                        '(1 2)))
+                                        '(3 4)))
                      (fn-record-parse-error :unknown-version)
                    (let ((parsed
                           (fn-record-decode-after-header-exec

@@ -49,9 +49,9 @@
 
 (defconst *rft-p0* (append (fn-record-string-octets "Subject: a") '(13 10 13 10 65 13 10)))
 (defconst *rft-p2* (append (fn-record-string-octets "Subject: c") '(13 10 13 10 67 13 10 68 13 10)))
-(defconst *rft-w0* (fn-record-make 0 1 1 "<a@x>" *rft-p0* '("fn.test") "o" "s" "e" 1 5))
+(defconst *rft-w0* (fn-record-make 0 1 1 "<a@x>" *rft-p0* '("fn.test") "o" "s" "e" 1 5 *fn-record-golden-binding*))
 (defconst *rft-r1* (fn-store-retention-event-make :undertake 1 2 2 "id" "subject" "evidence" 3))
-(defconst *rft-w2* (fn-record-make 2 3 3 "<c@x>" *rft-p2* '("fn.test") "o" "s" "e" 1 5))
+(defconst *rft-w2* (fn-record-make 2 3 3 "<c@x>" *rft-p2* '("fn.test") "o" "s" "e" 1 5 *fn-record-golden-binding*))
 (defconst *rft-h* (list *rft-w0* *rft-r1* *rft-w2*))
 (defconst *rft-tomb* '(84 79 77 66))
 
@@ -67,7 +67,7 @@
                 (fn-record-content-subject w) (fn-record-release-evidence w)
                 (fn-record-charge w) (fn-record-stamp w)
                 (fn-held-facts-of (fn-record-payload w))
-                (fn-held-context-of (fn-record-payload w) keyring generation) nil nil))
+                (fn-held-context-of (fn-record-payload w) keyring generation) nil nil (fn-record-binding w)))
 (defconst *rft-a* (list *rft-p0* *rft-p2*))
 (defconst *rft-c*
   (list (fn-cat-assign (rft-held *rft-w0* 0 nil 0) nil)
@@ -174,7 +174,7 @@
 (defconst *rft-signed*
   (append (fn-record-string-octets "FN-Statement: ")
           (append *rft-field* (append '(13 10) *rft-authored*))))
-(defconst *rft-ws* (fn-record-make 0 1 1 "<a1@example.invalid>" *rft-signed* '("fn.test") "o" "s" "e" 1 5))
+(defconst *rft-ws* (fn-record-make 0 1 1 "<a1@example.invalid>" *rft-signed* '("fn.test") "o" "s" "e" 1 5 *fn-record-golden-binding*))
 (assert-event (and (fn-record-p *rft-ws*)
                    (equal (fn-stx-delta *rft-signed* *rft-keyring*) (list *rft-statement*))))
 
@@ -316,7 +316,7 @@
 ; is not one (5), handle 0 and the right context is not a row, and stays
 ; in the loaded catalog.
 (defconst *rft-c-notrow*
-  (list (rft-held (fn-record-make 0 1 1 5 *rft-p0* '("fn.test") "o" "s" "e" 1 5) 0 nil 0)))
+  (list (rft-held (fn-record-make 0 1 1 5 *rft-p0* '("fn.test") "o" "s" "e" 1 5 *fn-record-golden-binding*) 0 nil 0)))
 (defthm rft-w-load-without-cat-p
   (and (not (fn-cat-p *rft-c-notrow*)) (fn-rfz-handles-inp *rft-c-notrow* *rft-a*)
        (fn-rfz-contexts-okp *rft-c-notrow* nil 0 *rft-a*) (natp 0)
@@ -397,7 +397,7 @@
                                  (fn-arena-seal-list *rft-tomb* *rft-a*))
                 (fn-held-wire r *rft-tomb*))
          (equal (fn-held-wire r *rft-tomb*)
-                (fn-record-make 0 1 1 "<a@x>" *rft-tomb* '("fn.test") "o" "s" "e" 1 5))))
+                (fn-record-make 0 1 1 "<a@x>" *rft-tomb* '("fn.test") "o" "s" "e" 1 5 *fn-record-golden-binding*))))
   :rule-classes nil)
 
 ; Without the handle below the count (the old-view theorem): a row at the

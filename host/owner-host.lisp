@@ -27,6 +27,7 @@
 ; `fn-own-fault'.  The host needs it: `fn-owner-fault' below is the only way
 ; tools/run_owner.py can abandon ONE connection, and before it existed an
 ; exception in the serve loop ended the process for every connection.
+(include-book "../books/acceptance-binding-injection")
 (include-book "../books/owner-config")
 (include-book "../books/state-globals")
 (include-book "../books/owner-retain-state")
@@ -1542,6 +1543,12 @@
 ;; different octets and answers a durable POST 441-uncertain.  The take is
 ;; this global's only writer and fn-owner-finish-submission-synced its only
 ;; reader; before any take it is the live configuration.
+(defun fn-owner-submit-binding (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-submit-binding state)
+      (f-get-global 'fn-owner-submit-binding state)
+    nil))
+
 (defun fn-owner-take-config (state)
   (declare (xargs :stobjs state :mode :program))
   (if (boundp-global 'fn-owner-take-config state)
@@ -1648,7 +1655,9 @@
 (defun fn-owner-prepare (msgid-octets payload group-codes id-octets
                           subject-octets evidence-octets charge fn-arena fn-hist state)
   (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
-  (let* ((s (fn-owner-store state))
+  (if (not (fn-ab-p (fn-owner-submit-binding state)))
+      (mv nil :invalid-binding fn-arena fn-hist state)
+    (let* ((s (fn-owner-store state))
          (groups (fn-store-groups-from-codes
                   group-codes (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
     ; The fields' checks are ACL2's (books/post-fields.lisp
@@ -1674,7 +1683,7 @@
                           (fn-store-octets->string id-octets)
                           (fn-store-octets->string subject-octets)
                           (fn-store-octets->string evidence-octets)
-                          charge))
+                          charge (fn-owner-submit-binding state)))
                  ; fn-opc-prepare is equal to the former fn-ocfg-step event
                  ; under fn-own-relation, established by observed recovery
                  ; and preserved by every live owner transition.
@@ -1744,7 +1753,7 @@
               ; and the host seals it with one fn-arena-seal-list call
               ; (tools/run_owner.py prepare), exactly when ACL2 answered
               ; :prepared.
-              (mv nil (list :seal payload) fn-arena fn-hist state)))))))))))
+              (mv nil (list :seal payload) fn-arena fn-hist state))))))))))))
 
 ; Step 8 (catalog slice) after the records flip: the host sealed the POST's
 ; payload (host/native/owner.lisp fnn-owner-attempt, after
@@ -1805,7 +1814,9 @@
                                  subject-octets evidence-octets charge
                                  fn-octets fn-arena fn-cat fn-hist state)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat fn-hist state) :mode :program))
-  (let* ((s (fn-owner-store state))
+  (if (not (fn-ab-p (fn-owner-submit-binding state)))
+      (mv nil :invalid-binding fn-arena fn-hist state)
+    (let* ((s (fn-owner-store state))
          (groups (fn-store-groups-from-codes
                   group-codes (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
     ; books/post-fields.lisp fn-pfld-article-inputsp, over the buffer's fill.
@@ -1832,7 +1843,7 @@
                           (fn-store-octets->string id-octets)
                           (fn-store-octets->string subject-octets)
                           (fn-store-octets->string evidence-octets)
-                          charge))
+                          charge (fn-owner-submit-binding state)))
                  ; Packet 1: the history gate at the article's own figure
                  ; (books/store-budget-article.lisp), and PRF-138: 0 unless
                  ; the capacity vector (a release per open undertaking and
@@ -1913,7 +1924,7 @@
               ; catalog's prepare after that seal (fn-owner-cat-prepare-sealed;
               ; books/served-catalog-owner.lisp fn-cat-prepare-sealed).
               (let ((state (f-put-global 'fn-owner-cat-candidate (cons record row) state)))
-                (mv nil :seal-buffer fn-arena fn-hist state))))))))))))
+                (mv nil :seal-buffer fn-arena fn-hist state)))))))))))))
 
 (defun fn-owner-prepare-retention
   (kind id-octets subject-octets evidence-octets charge fn-arena state)
@@ -2421,6 +2432,8 @@
       ; A served POST under a login gets its RFC 8315 Cancel-Lock in the
       ; stored octets (SEC-006, PRF-210): the owner's node secret.
       (let* ((take-config (fn-owner-config state))
+             (binding (fn-abi-sub-binding sub))
+             (state (f-put-global 'fn-owner-submit-binding binding state))
              (tk (fn-apc-take take-config sub (fn-own-node-secret after)))
              (state (f-put-global 'fn-owner-take-config take-config state))
              (intent (fn-apc-icar-carry-of sub (cdr tk)))
@@ -2461,6 +2474,29 @@
                      state)
                   state))
          (state (fn-owner-step (list :control-submit msgid-octets
+                                     group-octets payload)
+                               fn-arena state)))
+    (value result)))
+
+(defun fn-owner-legacy-control-submit (msgid-octets group-octets payload fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program
+                  :guard (and (fn-cbor-octet-listp msgid-octets)
+                              (fn-octet-list-listp group-octets))))
+  (let* ((owner (fn-owner-core state))
+         (result (fn-own-control-submit-result owner msgid-octets
+                                                group-octets payload))
+         ; A refused submission keeps the decision's reason (a header
+         ; limit's name, PRF-230) for the delivery's refusal line.
+         (state (if (equal result :refused)
+                    (f-put-global
+                     'fn-owner-app-refusal-reason
+                     (fn-inj-decision-reason
+                      (fn-own-control-decision (fn-own-config owner)
+                                               msgid-octets group-octets
+                                               payload))
+                     state)
+                  state))
+         (state (fn-owner-step (list :legacy-control-submit msgid-octets
                                      group-octets payload)
                                fn-arena state)))
     (value result)))

@@ -29,7 +29,7 @@
 (defconst *rec-teeth-record*
   (fn-record-make 1 2 3 "<a@example.invalid>" '(72 105 13 10)
                   '("fn.letters" "fn.test") "archive-a" "content-a"
-                  "release-a" 4 841000000))
+                  "release-a" 4 841000000 *fn-record-golden-binding*))
 
 (assert-event (fn-record-p *rec-teeth-record*))
 (assert-event
@@ -76,7 +76,7 @@
 ; octet out of range.  Shape validity alone is not the hypothesis.
 (defconst *rec-teeth-bad-payload*
   (fn-record-make 1 2 3 "<a@example.invalid>" '(256)
-                  '("fn.letters") "archive-a" "content-a" "release-a" 4 841000000))
+                  '("fn.letters") "archive-a" "content-a" "release-a" 4 841000000 *fn-record-golden-binding*))
 (assert-event (not (fn-record-p *rec-teeth-bad-payload*)))
 
 (local
@@ -153,7 +153,7 @@
                      (fn-record-schema-octet
                       (fn-record-result-record
                        (fn-record-decode-exact *rec-teeth-octets*)))))
-(assert-event (equal (nth 5 *rec-teeth-octets*) 1))
+(assert-event (equal (nth 5 *rec-teeth-octets*) 3))
 ; A stampless schema-0 header over the same fields is refused.
 (assert-event (not (fn-record-result-okp
                     (fn-record-decode-exact
@@ -231,7 +231,7 @@
 (defmacro rec-teeth-remake (payload)
   `(fn-record-make 1 2 3 "<a@example.invalid>" ,payload
                    '("fn.letters" "fn.test") "archive-a" "content-a"
-                   "release-a" 4 841000000))
+                   "release-a" 4 841000000 *fn-record-golden-binding*))
 (assert-event (equal (rec-teeth-remake *rec-teeth-payload*) *rec-teeth-record*))
 (assert-event (fn-record-p (rec-teeth-remake *rec-teeth-payload*)))
 (assert-event (fn-record-p (rec-teeth-remake nil)))
@@ -244,10 +244,10 @@
  (defthm rec-teeth-record-p-without-payload-without-payloadp
    (equal (fn-record-p (fn-record-make sequence txid generation msgid payload groups
                                        obligation-id content-subject
-                                       release-evidence charge stamp))
+                                       release-evidence charge stamp *fn-record-golden-binding*))
           (fn-record-p (fn-record-make sequence txid generation msgid nil groups
                                        obligation-id content-subject
-                                       release-evidence charge stamp)))
+                                       release-evidence charge stamp *fn-record-golden-binding*)))
    :hints (("Goal" :in-theory (enable fn-record-p fn-record-internals)))))
 
 ; The decode through both exec branches (the twin in books/records-exec.lisp,

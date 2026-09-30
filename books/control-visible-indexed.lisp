@@ -73,7 +73,7 @@
 
 (local
  (defthm fn-ctl-held-shape-len
-   (implies (fn-held-shapep x) (equal (len x) 15))
+   (implies (fn-held-shapep x) (equal (len x) 16))
    :rule-classes :forward-chaining
    :hints (("Goal" :in-theory (enable fn-held-shapep)))))
 

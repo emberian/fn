@@ -1592,7 +1592,7 @@ here: its budget is part of its prepare (fn-owner-prepare)."
     ((:duplicate :conflict :clock-unusable :refused :unaffordable :memberships
       :article-numbers-exhausted)
      prepared)
-    (:invalid :malformed)
+    ((:invalid :invalid-binding) :malformed)
     (t (fnn-fault "owner prepare returned ~a" prepared))))
 
 (defmacro fnn-owner-attempt-handlers (store &body body)

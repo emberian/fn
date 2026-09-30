@@ -101,7 +101,7 @@
                     (fn-held-groups h) (fn-held-obligation-id h)
                     (fn-held-content-subject h) (fn-held-release-evidence h)
                     (fn-held-charge h) (fn-held-stamp h) (fn-held-facts h)
-                    (fn-held-context h) (fn-held-numbers h) (fn-held-withdrawn h))
+                    (fn-held-context h) (fn-held-numbers h) (fn-held-withdrawn h) (fn-held-binding h))
     h))
 
 (defun fn-ndh-event (e)

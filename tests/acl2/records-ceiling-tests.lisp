@@ -24,7 +24,7 @@
 (defconst *rct-record*
   (fn-record-make 1 2 3 "<big@example.invalid>" *rct-payload*
                   (list "fn.test" *rct-long-group*)
-                  "archive-a" "content-a" "release-a" 4 841000000))
+                  "archive-a" "content-a" "release-a" 4 841000000 *fn-record-golden-binding*))
 
 (assert-event (fn-record-p *rct-record*))
 
@@ -42,12 +42,11 @@
 (assert-event (not (fn-cbor-result-okp (fn-cbor-decode *rct-payload-item*))))
 (assert-event (equal (fn-cbor-encode (cons :bytes *rct-payload*)) nil))
 
-; Records within the old widths keep their bytes: the golden schema-1 vector
-; (books/records.lisp) is unchanged.
+; The current narrow schema-3 golden vector includes the mandatory binding.
 (assert-event
  (equal (fn-record-encode
-         (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 5))
-        *fn-record-schema1-golden-octets*))
+         (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 5 *fn-record-golden-binding*))
+        *fn-record-schema3-golden-octets*))
 
 ; -----------------------------------------------------------------------------
 ; `fn-record-encode-length-bound' (records-seam; no hypothesis).  The
@@ -76,17 +75,17 @@
                   (coerce (make-list 256 :initial-element #\o) 'string)
                   (coerce (make-list 256 :initial-element #\s) 'string)
                   (coerce (make-list 256 :initial-element #\e) 'string)
-                  n n))
-(assert-event (equal (fn-record-encoded-octets-ceiling 65536 1) 66880))
-(assert-event (equal (fn-record-wide-encoded-octets-ceiling 65536 1) 66908))
+                  n n *fn-record-golden-binding*))
+(assert-event (equal (fn-record-encoded-octets-ceiling 65536 1) 66938))
+(assert-event (equal (fn-record-wide-encoded-octets-ceiling 65536 1) 66966))
 (assert-event
  (let ((r (rct-full-record 4294967295)))
    (and (fn-record-p r) (not (fn-record-widep r))
-        (equal (len (fn-record-encode r)) 66861))))
+        (equal (len (fn-record-encode r)) 66919))))
 (assert-event
  (let ((r (rct-full-record 4294967296)))
    (and (fn-record-p r) (fn-record-widep r)
-        (equal (len (fn-record-encode r)) 66881)
+        (equal (len (fn-record-encode r)) 66939)
         (< (fn-record-encoded-octets-ceiling 65536 1) (len (fn-record-encode r)))
         (<= (len (fn-record-encode r))
             (fn-record-wide-encoded-octets-ceiling 65536 1)))))

@@ -103,7 +103,47 @@
                  fn-frame-digest-length fn-frame-digest-octet-listp)
                 (fn-id-subject-preimage fn-ab-profilep)))))
 
+(defun fn-ab-for-received (profile received)
+  (declare (xargs :guard t))
+  ; Checked total boundary: an invalid profile or byte domain is refused,
+  ; never converted to an inferred local-POST profile.
+  (if (and (fn-ab-profilep profile)
+           (fn-cbor-octet-listp received)
+           (<= (len received) *fn-cbor-max-uint*))
+      (fn-ab-of-received profile received)
+    nil))
+
+(defthm fn-ab-for-received-is-valid-or-refused
+  (or (null (fn-ab-for-received profile received))
+      (fn-ab-p (fn-ab-for-received profile received)))
+  :hints (("Goal" :in-theory (e/d (fn-ab-for-received)
+                                   (fn-ab-p fn-ab-of-received fn-ab-profilep))
+                  :use fn-ab-of-received-is-binding)))
+
+(defthm fn-ab-encode-octets
+  (fn-cbor-octet-listp (fn-ab-encode x))
+  :hints (("Goal" :in-theory
+           (enable fn-ab-encode fn-ab-p fn-ab-received-subjectp
+                   fn-ab-received-subject fn-ab-profile-code fn-ab-profile
+                   fn-cbor-octet-listp))))
+
+(local (defthm fn-ab-split-prefix
+  (implies (and (true-listp w) (natp n) (< n (len w)))
+           (equal (append (take n w)
+                          (cons (nth n w) (nthcdr (+ 1 n) w))) w))
+  :hints (("Goal" :induct (nthcdr n w)
+                  :in-theory (enable take nth nthcdr)))))
+
+(defthm fn-ab-encode-of-successful-decode
+  (implies (equal (car (fn-ab-decode w)) :ok)
+           (equal (fn-ab-encode (cadr (fn-ab-decode w))) w))
+  :hints (("Goal" :use ((:instance fn-ab-split-prefix (n 7)))
+                  :in-theory
+           (enable fn-ab-decode fn-ab-encode fn-ab-make fn-ab-profile
+                   fn-ab-received-subject fn-ab-p fn-ab-profilep
+                   fn-ab-code-profile fn-ab-profile-code))))
+
 ; No host integration is claimed by these representation theorems.
 (in-theory (disable fn-ab-profilep fn-ab-profile-code fn-ab-code-profile
                     fn-ab-received-subjectp fn-ab-make fn-ab-profile
-                    fn-ab-received-subject fn-ab-p fn-ab-encode fn-ab-decode fn-ab-of-received))
+                    fn-ab-received-subject fn-ab-p fn-ab-encode fn-ab-decode fn-ab-of-received fn-ab-for-received))

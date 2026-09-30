@@ -150,7 +150,9 @@
                                   (fn-record-string-octets
                                    (fn-record-release-evidence record))))
             (fn-record-uint-encode (fn-record-charge record))
-            (fn-record-uint-encode (fn-record-stamp record)))))
+            (fn-record-uint-encode (fn-record-stamp record))
+            (fn-record-item-encode
+             (cons :bytes (fn-ab-encode (fn-record-binding record)))))))
       (if (fn-cbor-at-mostp octets *fn-record-max-octets*) octets nil))))
 (local (in-theory (enable (:type-prescription true-listp-append))))
 
@@ -244,6 +246,14 @@
                               (let* ((stamp-result
                                       (fn-record-read-uint
                                        (fn-record-parse-rest charge-result)))
+                                     (binding-result
+                                      (if (fn-record-parse-okp stamp-result)
+                                          (fn-record-read-bytes
+                                           (fn-record-parse-rest stamp-result))
+                                        (fn-record-parse-error :invalid-binding)))
+                                     (binding-decoded
+                                      (fn-ab-decode (fn-record-parse-value binding-result)))
+                                     (binding (cadr binding-decoded))
                                      (id (fn-record-octets-string
                                           (fn-record-parse-value id-result)))
                                      (subject (fn-record-octets-string
@@ -256,14 +266,18 @@
                                        (fn-record-parse-value groups-result)
                                        id subject evidence
                                        (fn-record-parse-value charge-result)
-                                       (fn-record-parse-value stamp-result))))
+                                       (fn-record-parse-value stamp-result) binding)))
                                 (if (not (fn-record-parse-okp stamp-result))
                                     stamp-result
-                                  (if (not (null (fn-record-parse-rest stamp-result)))
+                                  (if (or (not (fn-record-parse-okp binding-result))
+                                          (not (equal (car binding-decoded) :ok)))
+                                      (fn-record-parse-error :invalid-binding)
+                                    (if (not (null (fn-record-parse-rest binding-result)))
                                     (fn-record-parse-error :trailing)
                                   (if (fn-record-p record)
                                       (fn-record-parse-ok record nil)
-                                    (fn-record-parse-error :invalid))))))))))))))))))))
+                                    (fn-record-parse-error :invalid)))))))))))))))))))))
+
 
 (defun fn-record-decode-after-header (octets)
   (declare (xargs :guard (fn-cbor-octet-listp octets)
@@ -319,7 +333,7 @@
               (if (not (fn-record-parse-okp version-result))
                   version-result
                 (if (not (member-equal (fn-record-parse-value version-result)
-                                       '(1 2)))
+                                       '(3 4)))
                     (fn-record-parse-error :unknown-version)
                   (let ((parsed
                          (fn-record-decode-after-header
@@ -666,16 +680,22 @@
                                fn-cbor-octet-listp
                                true-listp))))
 
+(defconst *fn-record-golden-binding* '(:post-d25 (102 110 47 115 117 98 106 101 99 116 47 118 49 0 1 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
+
 ; A certified end-to-end schema-1 vector.  The broader all-record round-trip
 ; property remains proof work because it includes the exact ACL2 string/octet
 ; conversion and bounded variable group sequence.
 ; A witness, not a rewrite rule: it is one ground vector, cited by name.
-(defthm fn-record-schema1-golden-round-trip
+(defthm fn-record-schema3-golden-round-trip
   (equal (fn-record-decode-exact-impl
           (fn-record-encode-impl
-           (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 5)))
+           (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 5 *fn-record-golden-binding*)))
          (fn-record-result-ok
-          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 5)))
+          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 5 *fn-record-golden-binding*)))
+  :hints (("Goal" :in-theory (enable fn-ab-p fn-ab-encode fn-ab-decode
+                                    fn-ab-make fn-ab-profile fn-ab-profilep
+                                    fn-ab-received-subject fn-ab-received-subjectp
+                                    fn-ab-profile-code fn-ab-code-profile)))
   :rule-classes nil)
 
 ; The same vector as exact wire octets: the concrete conformance fact the
@@ -686,9 +706,10 @@
 ; ("<a>"), payload h'420908', one group h'4167', obligation, subject and
 ; evidence h'416f' h'4173' h'4165', charge 4, stamp 5 -- the layout of
 ; specs/encoding.md, octet for octet.
-(defconst *fn-record-schema1-golden-octets*
-  '(68 102 110 45 114 1 1 2 3 67 60 97 62 66 9 8 1 65 103
-    65 111 65 115 65 101 4 5))
+(defconst *fn-record-schema3-golden-octets*
+  '(68 102 110 45 114 3 1 2 3 67 60 97 62 66 9 8 1 65 103
+    65 111 65 115 65 101 4 5
+    88 56 0 70 78 45 65 66 49 1 102 110 47 115 117 98 106 101 99 116 47 118 49 0 1 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
 
 ; Grammar conformance at the header: a wrong magic octet and a version octet
 ; other than 1 or 2 -- the retired stampless schema 0 among them -- are
@@ -696,54 +717,79 @@
 (defthm fn-record-golden-grammar-refusals
   (and (equal (fn-record-decode-exact-impl '(68 102 110 45 115 1))
               (fn-record-parse-error :magic))
-       (equal (fn-record-decode-exact-impl '(68 102 110 45 114 3))
+       (equal (fn-record-decode-exact-impl '(68 102 110 45 114 1))
               (fn-record-parse-error :unknown-version))
        (equal (fn-record-decode-exact-impl
                (list* 68 102 110 45 114 0
-                      (nthcdr 6 (butlast *fn-record-schema1-golden-octets* 1))))
+                      (nthcdr 6 (butlast *fn-record-schema3-golden-octets* 1))))
               (fn-record-parse-error :unknown-version)))
+  :hints (("Goal" :in-theory (enable fn-ab-p fn-ab-encode fn-ab-decode
+                                    fn-ab-make fn-ab-profile fn-ab-profilep
+                                    fn-ab-received-subject fn-ab-received-subjectp
+                                    fn-ab-profile-code fn-ab-code-profile)))
   :rule-classes nil)
 
-(defthm fn-record-schema1-golden-octets-are-the-encoding
+(defthm fn-record-schema3-golden-octets-are-the-encoding
   (equal (fn-record-encode-impl
-          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 5))
-         *fn-record-schema1-golden-octets*)
+          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 5 *fn-record-golden-binding*))
+         *fn-record-schema3-golden-octets*)
+  :hints (("Goal" :in-theory (enable fn-ab-p fn-ab-encode fn-ab-decode
+                                    fn-ab-make fn-ab-profile fn-ab-profilep
+                                    fn-ab-received-subject fn-ab-received-subjectp
+                                    fn-ab-profile-code fn-ab-code-profile)))
   :rule-classes nil)
 
-(defthm fn-record-schema1-golden-octets-decode
-  (equal (fn-record-decode-exact-impl *fn-record-schema1-golden-octets*)
+(defthm fn-record-schema3-golden-octets-decode
+  (equal (fn-record-decode-exact-impl *fn-record-schema3-golden-octets*)
          (fn-record-result-ok
-          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 5)))
+          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4 5 *fn-record-golden-binding*)))
+  :hints (("Goal" :in-theory (enable fn-ab-p fn-ab-encode fn-ab-decode
+                                    fn-ab-make fn-ab-profile fn-ab-profilep
+                                    fn-ab-received-subject fn-ab-received-subjectp
+                                    fn-ab-profile-code fn-ab-code-profile)))
   :rule-classes nil)
 
 ; Schema 2 (packet P6): the schema-1 vector with charge 2^32, the first value
 ; that needs the eight-octet head h'1b 00000001 00000000'.  Every other byte is
 ; the schema-1 vector's.
-(defconst *fn-record-schema2-golden-octets*
-  '(68 102 110 45 114 2 1 2 3 67 60 97 62 66 9 8 1 65 103
-    65 111 65 115 65 101 27 0 0 0 1 0 0 0 0 5))
+(defconst *fn-record-schema4-golden-octets*
+  '(68 102 110 45 114 4 1 2 3 67 60 97 62 66 9 8 1 65 103
+    65 111 65 115 65 101 27 0 0 0 1 0 0 0 0 5
+    88 56 0 70 78 45 65 66 49 1 102 110 47 115 117 98 106 101 99 116 47 118 49 0 1 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
 
-(defthm fn-record-schema2-golden-octets-are-the-encoding
+(defthm fn-record-schema4-golden-octets-are-the-encoding
   (equal (fn-record-encode-impl
-          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4294967296 5))
-         *fn-record-schema2-golden-octets*)
+          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4294967296 5 *fn-record-golden-binding*))
+         *fn-record-schema4-golden-octets*)
+  :hints (("Goal" :in-theory (enable fn-ab-p fn-ab-encode fn-ab-decode
+                                    fn-ab-make fn-ab-profile fn-ab-profilep
+                                    fn-ab-received-subject fn-ab-received-subjectp
+                                    fn-ab-profile-code fn-ab-code-profile)))
   :rule-classes nil)
 
-(defthm fn-record-schema2-golden-octets-decode
-  (equal (fn-record-decode-exact-impl *fn-record-schema2-golden-octets*)
+(defthm fn-record-schema4-golden-octets-decode
+  (equal (fn-record-decode-exact-impl *fn-record-schema4-golden-octets*)
          (fn-record-result-ok
-          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4294967296 5)))
+          (fn-record-make 1 2 3 "<a>" '(9 8) '("g") "o" "s" "e" 4294967296 5 *fn-record-golden-binding*)))
+  :hints (("Goal" :in-theory (enable fn-ab-p fn-ab-encode fn-ab-decode
+                                    fn-ab-make fn-ab-profile fn-ab-profilep
+                                    fn-ab-received-subject fn-ab-received-subjectp
+                                    fn-ab-profile-code fn-ab-code-profile)))
   :rule-classes nil)
 
 ; The schema octet is the record's: a schema-1 header over the u64 charge,
 ; and a schema-2 header over the all-u32 schema-1 vector, are both refused.
-(defthm fn-record-schema2-golden-grammar-refusals
+(defthm fn-record-schema4-golden-grammar-refusals
   (and (equal (fn-record-decode-exact-impl
-               (list* 68 102 110 45 114 1 (nthcdr 6 *fn-record-schema2-golden-octets*)))
+               (list* 68 102 110 45 114 3 (nthcdr 6 *fn-record-schema4-golden-octets*)))
               (fn-record-parse-error :schema))
        (equal (fn-record-decode-exact-impl
-               (list* 68 102 110 45 114 2 (nthcdr 6 *fn-record-schema1-golden-octets*)))
+               (list* 68 102 110 45 114 4 (nthcdr 6 *fn-record-schema3-golden-octets*)))
               (fn-record-parse-error :schema)))
+  :hints (("Goal" :in-theory (enable fn-ab-p fn-ab-encode fn-ab-decode
+                                    fn-ab-make fn-ab-profile fn-ab-profilep
+                                    fn-ab-received-subject fn-ab-received-subjectp
+                                    fn-ab-profile-code fn-ab-code-profile)))
   :rule-classes nil)
 
 ; -----------------------------------------------------------------------------

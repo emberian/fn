@@ -139,7 +139,7 @@
 (fn-defrecord fn-held
   :constructor (fn-held-make sequence txid generation msgid payload groups
                              obligation-id content-subject release-evidence
-                             charge stamp facts context numbers withdrawn)
+                             charge stamp facts context numbers withdrawn binding)
   :fields ((fn-held-sequence fn-record-uint64p)
            (fn-held-txid fn-record-uint64p)
            (fn-held-generation fn-record-uint64p)
@@ -154,7 +154,8 @@
            (fn-held-facts fn-hf-p)
            (fn-held-context fn-hc-p)
            (fn-held-numbers fn-held-numbersp)
-           (fn-held-withdrawn fn-held-withdrawnp))
+           (fn-held-withdrawn fn-held-withdrawnp)
+           (fn-held-binding fn-ab-p))
   :recognizer fn-held-p
   :recognizer-verify-guards nil
   :car-fn fn-cbor-ag-car
@@ -229,11 +230,17 @@
                 (fn-hf-p (fn-held-facts h))
                 (fn-hc-p (fn-held-context h))
                 (fn-held-numbersp (fn-held-numbers h))
-                (fn-held-withdrawnp (fn-held-withdrawn h))))
+                (fn-held-withdrawnp (fn-held-withdrawn h))
+                (fn-ab-p (fn-held-binding h))))
   :hints (("Goal" :in-theory (enable fn-held-p))))
 
 ; -----------------------------------------------------------------------------
 ; ALPHA: the wire record a held record stands for, given its bytes.
+
+(defun fn-row-binding (r)
+  (declare (xargs :guard t))
+  ; Both current representations are supported; neither old shape is valid.
+  (if (fn-record-shapep r) (fn-record-binding r) (fn-held-binding r)))
 
 (defun fn-held-wire (h payload)
   (declare (xargs :guard t))
@@ -241,19 +248,19 @@
                   (fn-record-generation h) (fn-record-msgid h) payload
                   (fn-record-groups h) (fn-record-obligation-id h)
                   (fn-record-content-subject h) (fn-record-release-evidence h)
-                  (fn-record-charge h) (fn-record-stamp h)))
+                  (fn-record-charge h) (fn-record-stamp h) (fn-row-binding h)))
 
 ; On a wire record, replacing the payload by its own is the identity.
 (defthm fn-held-wire-of-wire-record
   (implies (fn-record-shapep w)
            (equal (fn-held-wire w (fn-record-payload w)) w))
-  :hints (("Goal" :in-theory (enable fn-held-wire))))
+  :hints (("Goal" :in-theory (enable fn-held-wire fn-row-binding))))
 
 ; The wire accessors of a held record built by the constructor.
 (defthm fn-record-accessors-of-held-make
   (let ((h (fn-held-make sequence txid generation msgid payload groups
                          obligation-id content-subject release-evidence
-                         charge stamp facts context numbers withdrawn)))
+                         charge stamp facts context numbers withdrawn binding)))
     (and (equal (fn-record-sequence h) sequence)
          (equal (fn-record-txid h) txid)
          (equal (fn-record-generation h) generation)
@@ -268,7 +275,8 @@
          (equal (fn-held-facts h) facts)
          (equal (fn-held-context h) context)
          (equal (fn-held-numbers h) numbers)
-         (equal (fn-held-withdrawn h) withdrawn)))
+         (equal (fn-held-withdrawn h) withdrawn)
+         (equal (fn-held-binding h) binding)))
   :hints (("Goal" :in-theory (enable fn-record-internals fn-held-internals))))
 
 
@@ -282,7 +290,7 @@
                 (fn-record-obligation-id h) (fn-record-content-subject h)
                 (fn-record-release-evidence h) (fn-record-charge h)
                 (fn-record-stamp h) (fn-held-facts h) (fn-held-context h)
-                numbers (fn-held-withdrawn h)))
+                numbers (fn-held-withdrawn h) (fn-held-binding h)))
 
 (defun fn-held-with-withdrawn (h withdrawn)
   (declare (xargs :guard t))
@@ -291,7 +299,7 @@
                 (fn-record-obligation-id h) (fn-record-content-subject h)
                 (fn-record-release-evidence h) (fn-record-charge h)
                 (fn-record-stamp h) (fn-held-facts h) (fn-held-context h)
-                (fn-held-numbers h) withdrawn))
+                (fn-held-numbers h) withdrawn (fn-held-binding h)))
 
 (defun fn-held-with-context (h context)
   (declare (xargs :guard t))
@@ -300,7 +308,7 @@
                 (fn-record-obligation-id h) (fn-record-content-subject h)
                 (fn-record-release-evidence h) (fn-record-charge h)
                 (fn-record-stamp h) (fn-held-facts h) context
-                (fn-held-numbers h) (fn-held-withdrawn h)))
+                (fn-held-numbers h) (fn-held-withdrawn h) (fn-held-binding h)))
 
 ; The held row of a wire record with HANDLE and no bytes read: the facts of
 ; an unread payload (its octet count, no split, no lines, no control) and the context
@@ -316,7 +324,7 @@
                 (fn-record-stamp w)
                 (fn-hf-make (len (fn-record-payload w)) nil 0 nil)
                 (fn-hc-make (fn-stx-make-verdict :absent nil 0) nil 0)
-                nil nil))
+                nil nil (fn-record-binding w)))
 
 (defthm fn-held-p-of-held-plain
   (implies (and (fn-record-p w) (natp handle))

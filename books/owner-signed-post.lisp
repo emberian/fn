@@ -103,7 +103,7 @@
                                           groups obligation-id content-subject
                                           release-evidence charge
                                           (fn-record-stamp-of-observation
-                                           observation))))
+                                           observation) (fn-ab-for-received :native-source received))))
                   (equal (fn-stxa-keyring-generation e) keyring-generation))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-hsig-authorized-carried-submission-event-base
@@ -150,7 +150,7 @@
                                      groups obligation-id content-subject
                                      release-evidence charge
                                      (fn-record-stamp-of-observation
-                                      clock-observation))))
+                                      clock-observation) (fn-ab-for-received :native-source received))))
                  (:instance fn-osp-bindsp-verdict-names-the-article-record
                   (e (fn-pa-authorized-event
                       sequence txid generation msgid received groups obligation-id
@@ -232,7 +232,7 @@
                                           groups obligation-id content-subject
                                           release-evidence charge
                                           (fn-record-stamp-of-observation
-                                           clock-observation))))
+                                           clock-observation) (fn-ab-for-received :native-source received))))
                   (fn-hsig-authorize-at (fn-hsig-source-version (nth 1 form))
                                         (nth 2 form) (nth 3 form) (nth 1 form)
                                         (nth 4 form) observed-ml-key
@@ -575,7 +575,7 @@
                                           groups obligation-id content-subject
                                           release-evidence charge
                                           (fn-record-stamp-of-observation
-                                           clock-observation))))
+                                           clock-observation) (fn-ab-for-received :native-source received))))
                   (equal (fn-stxa-authored-source e)
                          (nth 1 (fn-pa-carrier-form received))))))
   :hints (("Goal"
@@ -616,13 +616,13 @@
                                      groups obligation-id content-subject
                                      release-evidence charge
                                      (fn-record-stamp-of-observation
-                                      clock-observation))))
+                                      clock-observation) (fn-ab-for-received :native-source received))))
                  (:instance fn-record-round-trip-succeeds
                   (record (fn-record-make sequence txid generation msgid received
                                           groups obligation-id content-subject
                                           release-evidence charge
                                           (fn-record-stamp-of-observation
-                                           clock-observation)))))
+                                           clock-observation) (fn-ab-for-received :native-source received)))))
            :in-theory (disable fn-pa-carried-event fn-stxa-bindsp
                                fn-osp-carried-event-keeps-the-relayed-octets
                                fn-pa-carried-event-is-a-carried-record

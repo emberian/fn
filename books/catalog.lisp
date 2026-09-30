@@ -2692,7 +2692,7 @@
                                      (fn-record-release-evidence h)
                                      (fn-record-charge h) (fn-record-stamp h)
                                      (fn-held-facts h) (fn-held-context h)
-                                     ns (fn-held-withdrawn h))))
+                                     ns (fn-held-withdrawn h) (fn-held-binding h))))
    :hints (("Goal" :in-theory (enable fn-cat-rowp fn-record-internals fn-held-internals)))))
 
 (local
