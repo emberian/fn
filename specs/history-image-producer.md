@@ -83,3 +83,16 @@ puts the writer in recovery while retaining the pending effect, buffer
 generation, complete buffer and live credit. This is a concrete host seam
 fixture; it does not establish initial whole-operation allocation adequacy
 or replace native syscall/lifetime and general writer proofs.
+
+The proof-only tagged byte/census join connects both resident and decoded
+cold children to one canonical residual and length invariant. Tick preserves
+that residual; attributed supply preserves it only with the current demand,
+exact requested position and byte from the immutable pool. The uniform
+census counts an emitted supply byte exactly once. Its supply law explicitly
+keeps active success distinct from completed refusal. The actual producer
+`fn-hct-tick` completed-row theorem then preserves article count and padded
+pool length, assuming the carried prior census, child invariant and exact
+row denotation. Five complete positives and fifteen hypothesis-removal
+witnesses passed, including a wrong NIL-classifier byte. This does not
+establish source lineage, strict productive progress or the whole image
+writer invariant.
