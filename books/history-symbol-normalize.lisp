@@ -341,7 +341,8 @@
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-hdsn-car-of-tail-unfolds)
                  (:instance fn-hdsn-car-of-tail-unfolds (xs ys)))
-           :in-theory (disable fn-hdsn-car-of-tail-unfolds nth nthcdr)))))
+           :in-theory (union-theories (theory 'minimal-theory)
+                                      (executable-counterpart-theory :here))))))
 
 (defthm fn-hdsn-supply-preserves-denotation
   (implies (and (fn-hdsn-statep c) (stringp name)
