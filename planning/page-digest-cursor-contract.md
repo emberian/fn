@@ -136,3 +136,31 @@ must be funded. Source proof/refinement covers exact partial tails and a
 conditional terminal fn-blake3 correspondence; full trajectory/resource and
 constrained frame-digest joint attachment are explicit residuals. Evidence:
 planning/evidence/page-digest-byte-source-2026-09-30.md.
+
+### Admitted representation domain (source checkpoint)
+
+`pgs-dcd-domainp(limit, state)` is proof-only. It carries scalar ordering,
+CV shape, power-of-two search budget and active-frame child-span bounds.
+`pgs-dcd-begin-establishes-domain` establishes it;
+`pgs-dcd-step-preserves-domain` preserves it for the actual guarded subject;
+`pgs-dcd-step-is-never-invalid` excludes the malformed-state branch under it.
+No whole-state validation executes on the served path.
+
+The representation uses 64 array slots. For the supported word-span domain
+at most 2^64 words, ghost limit57 suffices; current directory page count
+M<2^32, NB=256*M, uses ghost limit36. The directory theorem admits even the
+inclusive endpoint; the codec's actual u32 domain is narrower. These are
+representation sufficiency proofs, not stored-data implementation ceilings.
+The exact-byte wrapper's additional `8*pos <= byte-total` guard still requires
+its own carried invariant. Semantic trajectory and strict progress are open.
+
+### Exact-byte guard domain (source checkpoint)
+
+`pgs-dbd-domainp(limit, byte-total, state)` carries the page domain, captured
+natural B, total=ceil(B/8),8pos<=B and active frame right-start<total.
+`pgs-dbd-begin-establishes-domain` establishes it;
+`pgs-dbd-byte-step-preserves-domain` preserves it for actual `pgs-dcb-step`;
+`pgs-dbd-domain-implies-byte-step-guard` exports the complete actual guard;
+`pgs-dbd-byte-step-is-never-invalid` excludes malformed status under it.
+The predicate is proof-only. Semantic and progress proof consumes this leaf
+without changing executable state or requiring a served-path validation.

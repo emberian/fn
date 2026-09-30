@@ -201,13 +201,104 @@ count with the codec length. Corrupted scalar metadata and a census total at
 the u64 edge are separately labeled hypothesis removals. The composed word
 trace is a test oracle, not a production word-controller completion theorem.
 
+## Implemented borrowed raw span primitive
+
+`fn-hrcur-span-begin(op, pkg, offset, count, capture, lease)` retains a
+seven-cell cursor, forms only a bounded canonical header and names raw payload
+bytes in an immutable history pool. Its natural width is the existing u64 pool
+region representation. Strings use opcode3, symbols opcode4 with canonical
+package0..2, and octets opcode6; zero-length octets emit the canonical NIL
+opcode0. A normalizer may explicitly select opcode0 for an imported NIL name.
+The supplied opcode/package are TARGET descriptors, never assumed to be the
+canonical interpretation of an arbitrary old symbol instruction.
+
+`fn-hrcur-span-begin` checks offset/count individually against the current
+format u64 domain before adding them, so malformed huge metadata is refused
+without performing an unbounded sum. Every valid-format result is unchanged.
+
+`fn-hrcur-span-tick` emits one header byte, advances a phase, prepares an empty
+stream, or returns `(:need-byte absolute-pool-position)` with the cursor
+unchanged. `fn-hrcur-span-supply(cursor, position, octet)` emits one payload
+byte and advances one position; wrong or replayed positions refuse unchanged.
+No runtime pool lookup, whole string coercion, symbol interning, byte-list copy
+or suffix validation occurs in this primitive. The source context and lease
+are opaque retained references. The outer authenticated reader must validate
+source epoch, capture ticket, pass, ordinal, physical file-pin incarnation and
+request serial BEFORE supply; a matching position alone supplies no authority.
+The snapshot lease `(capture-ticket, count)` and physical pin
+`(:file-pin root-ticket file)` are distinct from a maintenance resource lease.
+No guessed u64 ticket width or whole-root comparison is introduced here.
+
+`fn-hrcur-span-begin-refines-wire`, tick/supply residual boundaries and carried
+invariant preservation connect emitted bytes to the immutable pool model.
+`fn-hrcur-span-octets-refines-abstract-codec` and
+`fn-hrcur-span-string-refines-abstract-codec` connect this wire model through
+proof-only **`fn-hdc-abstract`** to the existing **`fn-scc-encode`**. The symbol
+case still requires composition with the bounded package-import/NIL normalizer.
+The logical work measure proves each nonterminal local action decreases work
+or requests the next source byte unchanged; authenticated supplies decrease
+work. Waiting for external I/O has no completion-time assertion.
+
+A begin/header tick retains seven cursor cells; canonical header creation adds
+at most eleven final cells (symbol opcode, package, length prefix and at most
+eight digits), plus the bounded natural helper's transient digits. A supplied
+byte creates seven replacement cursor cells; old/new states coexist. Source
+pool/pin, request object, scratch reader buffer, runtime return objects and
+scalar storage require separate funding. No physical pool or reclamation refund
+is assumed. Arbitrary represented payload length resumes byte by byte.
+
+Tests reach prefix/payload/terminal states, yield and resume a borrowed span,
+compare complete string/octet streams with the old codec, check opcode6zero
+canonicalization and refusal of wrong/replayed positions. Supply refinement has
+literal removal witnesses for all five premises. Initial span refinement has
+nine removal witnesses; the u64 sum premise retains an enormous pool-length
+hypothesis and has no practically executable removal witness. Tick progress
+has both hypothesis removals. The stronger semantic span-domain refinements
+and supply progress retain further literal-teeth work; no fully toothed full
+cold-source/producer target is claimed.
+
+## Bounded decoded NIL-tail probe
+
+`books/history-decoded-record-cursor.lisp` adds the guarded seven-field
+`fn-hrcur-nil-begin`, `fn-hrcur-nil-tick` and `fn-hrcur-nil-supply` seam.
+Only package1/2 symbols with raw payload length3 request bytes. Each supply
+compares one of the three NIL name octets; all other packages or lengths
+complete as non-NIL without reading payload. Request ticks preserve the
+cursor unchanged; wrong or replayed positions refuse unchanged. This is the
+bounded nullness decision needed before decoded CONS classification can
+canonically collapse an octet-list tail. General symbol import normalization
+remains a separate emission boundary.
+
+`fn-hrcur-nil-model-refines-decoded-symbol` equates the result with nullness
+of the actual `fn-hdc-abstract` symbol span. Initialization, supply invariant
+preservation, terminal denotation, productive supply progress and opaque
+capture/lease retention are admitted with proper-local source replay after
+cached `history-pages-row`. The runtime never reads the logical pool,
+materializes a name or compares whole source references. The outer reader
+must establish epoch/pass/pin/request authority before supplying a byte.
+
+Begin and productive supply each retain seven cursor cells; begin temporarily
+constructs no encoded name, and supply adds no source-sized object. Old/new
+cursor retention, return tuples, source pin and authenticated scratch/request
+objects require separate funding. Offsets/counts are checked individually
+against the current format's u64 domain before their bounded sum is computed.
+No physical allocation pool or reclamation refund is asserted.
+
+Tests exercise both NIL packages, non-NIL names, metadata-only rejection,
+yield/resume, decoded octet-list-tail canonicalization, all four supply
+preservation removals, the tick invariant removal and all five productive
+progress removals. Five initialization removals are executable; the u64 sum
+removal retains a pool of at least2^64 octets and has no practical fixture.
+The abstraction bridge's literal domain removals remain partial. This is a
+source-library checkpoint, not a completed cold-tree encoder or producer.
+
 ## Remaining union obligations
 
 The resident byte stream and exact byte census are admitted library components.
 Production word-stream composition, full padding/placement equality and general
 completion progress remain open.
 The actual cold source is the sum `(:resident row)` / `(:decoded node)`;
-borrowed decoded spans must stream by pinned pool offsets, with no whole-string
+the raw span primitive now streams pinned pool offsets, but decoded-tree composition must connect it without whole-string
 coerce/intern at a terminal tick. Decoded CONS trees that abstract to octet
 lists need resumable opaque-leaf classification; a zero-length opcode6 span
 abstracts to NIL and canonically encodes as opcode0. Nonminimal old length
