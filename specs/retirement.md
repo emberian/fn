@@ -175,3 +175,18 @@ complete literal report bridge are normally certified by
 `certify-20260930T114500Z-1836457`. A malformed later field demonstrates that
 ready checks the current prefix without claiming that corrupted state is valid.
 Profile, primitive and coexistence/staging lifetime funding remain separate.
+
+The actual caller reserves startup authority before auth/TLS/log I/O; only its
+thread-local reservation on the actual reserving thread lets the owner consume
+that reservation. A prior live writer or retained service fences another run.
+Held writer/journal settlement keeps the complete service and Store lock, and
+never calls Store teardown. After definite producer settlement, the caller's
+remaining log descriptor defers Store teardown until its final line/close.
+Record-log and spare close errors retain their handles; the service stays
+fenced and no continuation retries/reuses an ambiguously closed descriptor.
+An uncertain unlock/close is not evidence that the physical lock remains held.
+Tiny scalar decisions/teeth have normal two-root certificate
+`certify-20260930T124329Z-2494310`; actual SBCL thread/join recording fixtures
+cover queued timeout, restart refusal, caller defer, joined teardown and close
+faults. Filesystem/configuration/owner callbacks are recorded, so this supplies
+no disk or qualified-image result and does not close the full producer graph.

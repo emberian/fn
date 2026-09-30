@@ -476,6 +476,76 @@ the owner's keyword check, not the Store's."
   "The running service whose gate records the served reads' clock events
 (lane time-model-2); nil outside `fnn-owner-run'.")
 
+(defvar *fnn-owner-retained-service* nil
+  "Actual service/Store authority retained through unresolved writer aliases.
+T reserves startup before the service exists; NIL only after definite teardown.
+It is not a declaration that the complete producer lifecycle is proved.")
+
+(defvar *fnn-owner-retained-settlement* :held
+  "ACL2's actual writer/journal settlement carried to final caller teardown.")
+
+(defvar *fnn-owner-reserving-thread* nil)
+(defvar *fnn-owner-caller-reservation* nil
+  "Thread-local caller token, bound only after an atomic initial reservation.")
+
+(defun fnn-owner-run-admission ()
+  (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+    (fnn-core 'fn-ort-service-start-action
+              (and *fnn-log-writer* t) (and *fnn-owner-retained-service* t))))
+
+(defun fnn-owner-claim-run-authority (&optional caller-reservation)
+  (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+    (let ((action (fnn-core 'fn-ort-service-claim-action
+                            (and *fnn-log-writer* t)
+                            (and *fnn-owner-retained-service* t)
+                            (and caller-reservation
+                                 (eq *fnn-owner-retained-service* t)
+                                 (eq *fnn-owner-reserving-thread* sb-thread:*current-thread*)
+                                 t))))
+      (unless (eq action :start)
+        (fnn-indeterminate "~a" (fnn-core 'fn-ort-service-start-reason action)))
+      (setq *fnn-owner-retained-service* t
+            *fnn-owner-reserving-thread* sb-thread:*current-thread*
+            *fnn-owner-retained-settlement* :held))))
+
+(defun fnn-owner-retain-run-authority (service)
+  (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+    (when service (setq *fnn-owner-retained-service* service
+                        *fnn-owner-reserving-thread* nil))))
+
+(defun fnn-owner-store-settlement (service settlement)
+  "Retain the actual service and Store lock until writer/journal settlement.
+Store close errors are physical uncertainty, never silent authority release."
+  (let ((action
+          (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+            (fnn-core 'fn-ort-store-close-action settlement
+                      (and *fnn-owner-retained-service* t)
+                      (and *fnn-owner-log-fd* t)))))
+    (case action
+      (:held (setq *fnn-owner-retained-settlement* action) action)
+      ;; The operator caller still owes its final direct log line/close.
+      ;; Keep the Store lock and actual service, without relabeling joined
+      ;; producer settlement as uncertainty while that caller finishes.
+      (:defer (setq *fnn-owner-retained-settlement* settlement) settlement)
+      (:settled (fnn-core 'fn-ort-service-settlement-action settlement :absent))
+      (:close
+       (let* ((observation
+                (if service
+                    (handler-case
+                        (progn (fnn-store-close (fnn-owner-service-store service)) :closed)
+                      (error ()
+                        (setf (fnn-store-fenced (fnn-owner-service-store service)) t)
+                        :uncertain))
+                  :absent))
+              (result (fnn-core 'fn-ort-service-settlement-action settlement observation)))
+         (setq *fnn-owner-retained-settlement* result)
+         (when (eq result :joined)
+           (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+             (setq *fnn-owner-retained-service* nil
+                   *fnn-owner-reserving-thread* nil)))
+         result))
+      (otherwise (fnn-fault "malformed Store settlement action ~a" action)))))
+
 (defun fnn-owner-advance-clock ()
   "Hand the owner one fresh reading of this host's clocks.
 
@@ -5572,7 +5642,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
   (setq *fnn-owner-measure*
         (equal (sb-ext:posix-getenv "FN_OWNER_MEASURE") "1"))
   (let ((service nil) (listener nil) (tls-listener nil) (more-listeners nil)
-        (log-close-action nil)
+        (log-close-action nil) (run-authority-claimed nil)
         (old-active *fnn-sigterm-owner-active*)
         (old-requested *fnn-sigterm-requested*)
         (old-wakeup-fd *fnn-sigterm-wakeup-fd*))
@@ -5581,6 +5651,8 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
            (setq *fnn-sigterm-owner-active* t
                  *fnn-sigterm-requested* nil
                  *fnn-sigterm-wakeup-fd* nil)
+           (fnn-owner-claim-run-authority *fnn-owner-caller-reservation*)
+           (setq run-authority-claimed t)
            ;; PKT-508 (PRF-187): from here until the service is closed, a
            ;; log line or diagnostic is offered to the writer's queue and
            ;; never waited on (host/native/io.lisp fnn-log-offer).
@@ -5588,6 +5660,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
            (unwind-protect
                 (progn
                   (setq service (fnn-owner-install root max-connections fault))
+                  (fnn-owner-retain-run-authority service)
                   ;; Before any client/module starts, retire startup-only
                   ;; cache borrows; absent policy never gets a warm bypass.
                   (fnn-extent-end-recovery-cache)
@@ -5730,7 +5803,8 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                                       (fnn-owner-journal-close)))
                       (when (eq log-close-action :joined)
                         (fnn-owner-retire-final-report service)))
-                    (fnn-store-close (fnn-owner-service-store service))
+                    (setq log-close-action
+                          (fnn-owner-store-settlement service log-close-action))
                     (unless (eq log-close-action :joined)
                       (return-from fnn-owner-run
                         (fnn-core 'fn-ort-log-close-exit
@@ -5740,14 +5814,18 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                (dolist (extra more-listeners) (fnn-socket-shut extra))
                (when tls-listener (fnn-socket-shut tls-listener))
                (when listener (fnn-socket-shut listener)))))
-      ;; Drain and stop the writer before the caller closes `[log] path'.
-      (setq *fnn-owner-time-service* nil)
-      (unless log-close-action
-        (setq log-close-action (fnn-owner-log-settlement)))
-      ;; A timed-out writer still owns the journal descriptor. Keep it live
-      ;; until process death rather than closing underneath that producer.
-      (when (eq log-close-action :joined)
-        (fnn-owner-journal-close))
+      ;; This unwind owns cleanup only after claiming the run. A refused
+      ;; reentry must not stop or relinquish the prior retained service.
+      (when run-authority-claimed
+        (unless log-close-action
+          (setq log-close-action (fnn-owner-log-settlement)))
+        (when (eq log-close-action :joined)
+          (setq log-close-action
+                (fnn-core 'fn-ort-report-close-action log-close-action
+                          (fnn-owner-journal-close))))
+        (setq log-close-action (fnn-owner-store-settlement service log-close-action))
+        (when (eq log-close-action :joined)
+          (setq *fnn-owner-time-service* nil)))
       (setq *fnn-sigterm-wakeup-fd* old-wakeup-fd
             *fnn-sigterm-requested* old-requested
             *fnn-sigterm-owner-active* old-active))))

@@ -1,0 +1,7 @@
+PASS queued-timeout retains actual writer/service/Store descriptors and startup fence
+PASS joined writer, caller defer, actual Store teardown exactly once
+PASS physical-close uncertainty preserves handles/recovery authority; no held-lock inference
+STORE-AUTHORITY-PASS ((:JOURNAL-WRITE :JOURNAL 3) (:JOURNAL-WRITE :JOURNAL 3)
+                      (:CLOSE 403 NIL) (:CLOSE 401 NIL) (:FLOCK 402 8 NIL)
+                      (:CLOSE 402 NIL) (:CLOSE 503 NIL) (:CLOSE 501 NIL)
+                      (:CLOSE 501 NIL) (:FLOCK 502 8 NIL) (:CLOSE 502 NIL))

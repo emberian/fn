@@ -4785,6 +4785,25 @@
   :class :common-lisp-compliant
   :keystones (fn-ort-log-caller-held-preserves-descriptor-authority))
 
+(definterface fn-ort-store-close-action
+  :class :common-lisp-compliant
+  :keystones (fn-ort-store-close-requires-settled-producers))
+
+(definterface fn-ort-service-settlement-action
+  :class :common-lisp-compliant
+  :keystones (fn-ort-service-release-requires-store-settlement))
+
+(definterface fn-ort-service-start-action
+  :class :common-lisp-compliant
+  :keystones (fn-ort-service-start-requires-no-prior-authority))
+
+(definterface fn-ort-service-claim-action
+  :class :common-lisp-compliant
+  :keystones (fn-ort-service-claim-requires-no-writer-and-own-authority))
+
+(definterface fn-ort-service-start-reason
+  :class :common-lisp-compliant)
+
 (definterface fn-ort-intake-action
   :class :common-lisp-compliant)
 

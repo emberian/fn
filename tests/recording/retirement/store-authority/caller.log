@@ -1,0 +1,11 @@
+PASS queued-timeout retains actual writer/service/Store descriptors and startup fence
+PASS joined writer, caller defer, actual Store teardown exactly once
+PASS physical-close uncertainty preserves handles/recovery authority; no held-lock inference
+STORE-AUTHORITY-PASS ((:JOURNAL-WRITE :JOURNAL 3) (:JOURNAL-WRITE :JOURNAL 3)
+                      (:CLOSE 403 NIL) (:CLOSE 401 NIL) (:FLOCK 402 8 NIL)
+                      (:CLOSE 402 NIL) (:CLOSE 503 NIL) (:CLOSE 501 NIL)
+                      (:CLOSE 501 NIL) (:FLOCK 502 8 NIL) (:CLOSE 502 NIL))
+RECORDING condition uncertain ("~a" "prior owner authority is unsettled")
+PASS actual outer caller: held writer bypasses stop write/FD/Store close; reentry fenced; joined exact teardown
+STORE-CALLER-PASS ((:WRITE 123 NIL) (:WRITE 123 NIL) (:CLOSE 123 NIL)
+                   (:CLOSE 601 NIL) (:FLOCK 602 8 NIL) (:CLOSE 602 NIL))

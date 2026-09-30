@@ -2339,14 +2339,18 @@ store; anything else is left to the ordinary open."
   (setf (fnn-store-completion-pending store) nil)
   (let ((log (fnn-store-log store)))
     (when log
-      (setf (fnn-store-log store) nil)
-      (ignore-errors (fnn-log-discard-spare log))
-      (ignore-errors (fnn-close (fnn-log-fd log)))))
+      ;; Keep the handle and Store authority on any uncertain physical close.
+      ;; Callers may retry/recover; a silent error is not definite teardown.
+      (fnn-log-discard-spare log)
+      (fnn-close (fnn-log-fd log))
+      (setf (fnn-store-log store) nil)))
   (let ((fd (fnn-store-lock-fd store)))
     (when fd
-      (setf (fnn-store-lock-fd store) nil)
+      ;; A failed unlock/close is uncertainty, not proof that the lock remains
+      ;; held. Preserve its handle and let the caller retain recovery authority.
       (unwind-protect (fnn-flock fd +fnn-lock-un+)
-        (fnn-close fd)))))
+        (fnn-close fd))
+      (setf (fnn-store-lock-fd store) nil))))
 
 (defun fnn-observe (store operation &optional (result :ok))
   "Submit one already-observed filesystem result and keep failure fenced."
@@ -7140,10 +7144,12 @@ store closing).  Removing a staged name is never uncertain for the history:
 the open ignores and sweeps it."
   (let ((spare (fnn-log-spare log)))
     (when spare
-      (setf (fnn-log-spare log) nil)
       (destructuring-bind (index path fd) spare
         (declare (ignore index))
-        (ignore-errors (fnn-close fd))
+        ;; An ambiguous close retains the spare identity/debt. The caller
+        ;; fences the Store and must not allocate or reuse this descriptor.
+        (fnn-close fd)
+        (setf (fnn-log-spare log) nil)
         (ignore-errors (when (fnn-lstat path) (fnn-unlink path)))))))
 
 (defun fnn-log-prepare-spare (store)

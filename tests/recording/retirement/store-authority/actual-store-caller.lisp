@@ -1,21 +1,84 @@
-;;; The operator's live surfaces: the NNTP service (`run', `post'), credential
-;;; administration (`principal') and every arm that reaches a running owner
-;;; over its control socket (`status' and `health' asked live, live
-;;; administration, `account invite', `moderation', `article withdraw',
-;;; `peer genesis|invite|accept|confirm', `keys redecide', `tls reload').
-;;;
-;;; host/native/operator.lisp carries the offline verbs and dispatch; this file
-;;; installs the rest into it (fnn-operator-register-action and
-;;; *fnn-operator-live-owner*).  host/native/build.lisp loads it after every
-;;; file it calls (control, auth, auth-admin, feed-service, pull-service,
-;;; peer-invite, keys, tls-reload); host/native/build-dtn.lisp loads none of
-;;; them and not this file, so the DTN operator refuses those actions by the
-;;; surface's name and takes the offline arms, and nothing it loads calls a
-;;; function it lacks (`tools/host_check.py --load --build
-;;; host/native/build-dtn.lisp').  As in operator.lisp, ACL2 decides every
-;;; value; this file observes, transports and prints.
+(load "/Users/ember/dev/fn/build/lanes/operability-3/tests/recording/retirement/store-authority/actual-store-authority.lisp")
 
+(defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
+(defvar *fnn-log-queue-mutex* (sb-thread:make-mutex))
+(defvar *block-writer* t)
+(defun fn-ort-log-caller-action (writer-presentp)
+  
+  (if (equal writer-presentp nil) :write-close :held))
+(defparameter +fnn-exit-ok+ 0)
+(defvar *fnn-owner-last-fault* nil)
+(defvar *fnn-health-min-percent* nil)
+(defvar *fnn-owner-log-fd* nil)
+(defvar *fnn-owner-log-path* nil)
+(defvar *fnn-owner-startup-hooks* nil)
+(defvar *fnn-owner-start-hooks* nil)
+(defvar *fnn-owner-stop-hooks* nil)
+(defvar *fnn-owner-close-hooks* nil)
+(defvar *fnn-log-writer* nil)
+(defvar *fnn-owner-log-mutex* (sb-thread:make-mutex))
+(defvar *release* (sb-thread:make-semaphore))
+(defvar *recorded* nil)
+(defun fnn-core (name &rest args) (case name (fn-ort-log-caller-action (apply #'fn-ort-log-caller-action args)) ((fn-native-health-host-run-started-line fn-native-health-host-run-stopped-line) '(65)) (otherwise nil)))
+(defun fnn-octets (x) x)
+(defun fnn-octets-string (x) (declare (ignore x)) "")
+(defun fnn-string-octets (x) (declare (ignore x)) nil)
+(defun fnn-octet-list (x) x)
+(defun fnn-octet-list-p (x) (every #'integerp x))
+(defun fnn-operator-optional-path (result projection) (declare (ignore result)) (when (eq projection 'fn-native-operator-host-result-run-log-path-octets) "/recording-log"))
+(defun fnn-owner-open-log (path) (declare (ignore path)) 123)
+(defun fnn-write-all (fd octets) (declare (ignore octets)) (push (list :write fd (and *fnn-log-writer* (sb-thread:thread-alive-p *fnn-log-writer*))) *recorded*))
+(defun fnn-close (fd) (push (list :close fd (and *fnn-log-writer* (sb-thread:thread-alive-p *fnn-log-writer*))) *recorded*))
+(defun fnn-web-run-hooks (&rest args) (declare (ignore args)) nil)
+(defun fnn-native-auth-startup-hook (&rest args) (declare (ignore args)) nil)
+(defun fnn-operator-status-of-exit-code (x) x)
+(defun fnn-operator-emit-status (&rest args) (declare (ignore args)) nil)
+(defun fnn-exit-code-for (condition) (format t "RECORDING condition ~a~%" condition) 99)
+(dolist (name '(fnn-feed-service-start fnn-pull-service-start fnn-feed-service-wake fnn-pull-service-wake fnn-feed-service-close fnn-pull-service-close fnn-web-close-face fnn-web-start fnn-tls-start-context fnn-tls-close-context))
+ (setf (symbol-function name) (lambda (&rest args) (declare (ignore args)) nil)))
+
+
+(defparameter +fnn-exit-uncertain+ 3)
+(defvar *caller-mode* :held)
+(defvar *caller-service* nil)
+(defun fnn-core (name &rest args)
+ (case name
+  ((fn-native-health-host-run-started-line fn-native-health-host-run-stopped-line) '(65))
+  (otherwise (if (fboundp name) (apply (symbol-function name) args) nil))))
+(defun fnn-control-owner-run-normalized (&rest args)
+ (declare (ignore args))
+ (fnn-owner-claim-run-authority *fnn-owner-caller-reservation*)
+ (setq *caller-service* (make-fnn-owner-service
+         :store (make-fnn-store :log (make-fnn-log :fd 601) :lock-fd 602)))
+ (fnn-owner-retain-run-authority *caller-service*)
+ (if (eq *caller-mode* :held)
+  (progn
+   (fnn-log-writer-start)
+   (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+    (let ((answer (fn-log-sink-offer *fnn-log-sink* 3 1048576)))
+     (fnn-log-sink-accept (second answer) :caller)
+     (fnn-log-queue-push (cons :journal '(65 66 10)))))
+   (assert (sb-thread:wait-on-semaphore *entered* :timeout 2))
+   (assert (eq (fnn-log-writer-stop) :timeout))
+   (assert (eq (fnn-owner-store-settlement *caller-service* :held) :held))
+   3)
+  (progn
+   (assert (eq (fnn-owner-store-settlement *caller-service* :joined) :joined)) 0)))
+
+
+(defun fnn-operator-log-run-line (octets)
+  "Append ACL2's run line and one LF only with released writer authority.
+A timed-out writer retains its descriptor; no direct write then. A failed write stops
+nothing: the log is an operator's record."
+  (when (and (eq (fnn-core 'fn-ort-log-caller-action
+                          (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+                            (and *fnn-log-writer* t)))
+                 :write-close)
+             *fnn-owner-log-fd* (fnn-octet-list-p octets))
+    (ignore-errors
+     (sb-thread:with-recursive-lock (*fnn-owner-log-mutex*)
+       (fnn-write-all *fnn-owner-log-fd* (fnn-octets (append octets (list 10))))))))
 
 (defun fnn-operator-execute-run (result)
   "Invoke the one owner entry only with ACL2-normalized plan projections."
@@ -178,129 +241,31 @@
         (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "run" condition)
         code))))
 
+(setq *recorded* nil *caller-mode* :held)
+(assert (= (fnn-operator-execute-run nil) 3))
+(assert (alive))
+(assert (= *fnn-owner-log-fd* 123))
+(assert (eq *fnn-owner-retained-service* *caller-service*))
+(assert (= (fnn-store-lock-fd (fnn-owner-service-store *caller-service*)) 602))
+(assert (equal (reverse *recorded*) '((:write 123 nil))))
+(let ((before *recorded*))
+ (assert (= (fnn-operator-execute-run nil) 99))
+ (assert (eq before *recorded*)))
+(sb-thread:signal-semaphore *release*)
+(assert (eq (fnn-log-writer-stop) :joined))
+;; Recording recovery continuation supplies a fresh definite journal-settled
+;; observation after actual writer join, then relinquishes caller descriptor.
+(setq *fnn-owner-retained-settlement* :joined)
+(fnn-close *fnn-owner-log-fd*)
+(setq *fnn-owner-log-fd* nil *fnn-owner-log-path* nil)
+(assert (eq (fnn-owner-store-settlement *caller-service* :joined) :joined))
+(setq *recorded* nil *caller-mode* :joined)
+(assert (= (fnn-operator-execute-run nil) 0))
+(assert (null *fnn-owner-log-fd*))
+(assert (null *fnn-owner-retained-service*))
+(assert (equal (reverse *recorded*)
+ '((:write 123 nil) (:write 123 nil) (:close 123 nil)
+   (:close 601 nil) (:flock 602 8 nil) (:close 602 nil))))
+(format t "PASS actual outer caller: held writer bypasses stop write/FD/Store close; reentry fenced; joined exact teardown~%")
+(format t "STORE-CALLER-PASS ~s~%" (reverse *recorded*))
 
-
-(defun fnn-operator-execute-post (result)
-  "Use only ACL2-normalized request fields and ACL2-framed local control."
-  (handler-case
-      (multiple-value-bind (status word)
-               (fnn-control-submit
-                (fnn-octets
-                 (fnn-core
-                  'fn-native-operator-host-result-post-control-path-octets result))
-                (fnn-octets
-                 (fnn-core
-                  'fn-native-operator-host-result-post-msgid-octets result))
-                (mapcar #'fnn-octets
-                        (fnn-core
-                         'fn-native-operator-host-result-post-group-octets result))
-                (fnn-octets
-                 (fnn-core
-                  'fn-native-operator-host-result-post-payload-path-octets result)))
-        (let ((class (fnn-core 'fn-native-control-host-status-class status))
-              (code (fnn-core 'fn-native-control-host-status-exit-code status)))
-          (fnn-operator-emit-status class "post"
-                                    (fnn-operator-status-detail status word))
-          code))
-    (error (condition)
-      (let ((code (fnn-exit-code-for condition)))
-        (fnn-operator-emit-status
-         (fnn-operator-status-of-exit-code code) "post" condition)
-        code))))
-
-(defun fnn-operator-execute-moderate (result)
-  "PKT-657, PKT-575: `moderation approve|reject' and `article withdraw'.
-ACL2 frames the request (FNCT kind 21) from its normalized plan; the running
-owner decides it and answers the reasoned reply."
-  (let ((command (fnn-core 'fn-native-operator-host-result-command result)))
-    (handler-case
-        (let* ((request (fnn-core 'fn-native-operator-host-result-moderate-request
-                                  result))
-               (path (fnn-core
-                      'fn-native-operator-host-result-moderate-control-path-octets
-                      result))
-               (encoded (fnn-core 'fn-native-control-host-moderation-encode
-                                  (first request) (second request)
-                                  (third request) (fourth request))))
-          (unless (and (fnn-octet-list-p encoded) (fnn-octet-list-p path)
-                       (consp path))
-            (fnn-fault "ACL2 refused the moderation request"))
-          (multiple-value-bind (status word)
-              (fnn-control-reasoned-exchange (fnn-octets-string (fnn-octets path))
-                                             encoded (lambda () encoded))
-            (let ((class (fnn-core 'fn-native-control-host-status-class status))
-                  (code (fnn-core 'fn-native-control-host-status-exit-code status)))
-              (fnn-operator-emit-status class command
-                                        (fnn-operator-status-detail status word))
-              code)))
-      (error (condition)
-        (let ((code (fnn-exit-code-for condition)))
-          (fnn-operator-emit-status
-           (fnn-operator-status-of-exit-code code) command condition)
-          code)))))
-
-
-
-(defun fnn-operator-execute-principal (result)
-  "Execute only the credential plan and credential path projected by ACL2.
-The configured store is the one whose writer lock says whether an owner is
-serving the old credentials (fn-native-auth-admin-effect-word), and whose
-profile bounds the credentials (max-credentials, D27, PRF-102)."
-  (let ((*fnn-native-auth-admin-store-root*
-          (fnn-octets-string
-           (fnn-core 'fn-native-operator-host-result-principal-store-octets
-                     result)))
-        (*fnn-native-auth-admin-control-path*
-          (let ((control (fnn-core
-                          'fn-native-operator-host-result-principal-control-path-octets
-                          result)))
-            (and (fnn-octet-list-p control) (consp control)
-                 (fnn-octets-string (fnn-octets control))))))
-    (let ((code (fnn-native-auth-admin-execute
-                 (fnn-core 'fn-native-operator-host-result-principal-plan result)
-                 (fnn-octets-string
-                  (fnn-core 'fn-native-operator-host-result-principal-auth-path-octets
-                            result))
-                 (fnn-operator-store-max-credentials
-                  (fnn-core 'fn-native-operator-host-result-store-root result)))))
-      ;; PRF-388 (PKT-560): ACL2 answered that the credential file does not
-      ;; hold the login of `bind|unbind' (:account); its `account
-      ;; bind|unbind' result is dispatched like any operator result, live to
-      ;; the owner or offline into the store, where fn-lb-account-bind-plan
-      ;; admits it only for a redeemed account.
-      (if (eq code :account)
-          (fnn-operator-dispatch-plan
-           (fnn-core 'fn-native-operator-host-result-principal-account-result result))
-        code))))
-
-;;; The running owner, as operator.lisp's offline verbs ask it.
-
-
-
-(defun fnn-operator-live-status-tail (control-path kind)
-  ;; PRF-212: the certificate the running owner serves, its names and
-  ;; notAfter, in ACL2's words.
-  (when (eq kind :status) (fnn-tls-status-line control-path)))
-
-
-
-
-
-
-
-(setq *fnn-operator-live-owner*
-      (make-fnn-operator-live-owner
-       :socket-present #'fnn-operator-live-socket-present
-       :live-status #'fnn-control-live-status
-       :status-tail #'fnn-operator-live-status-tail
-       :admin-observe #'fnn-operator-live-admin-observe
-       :admin #'fnn-operator-live-admin
-       :request #'fnn-operator-live-request))
-
-(fnn-operator-register-action :run #'fnn-operator-execute-run)
-(fnn-operator-register-action :post #'fnn-operator-execute-post)
-(fnn-operator-register-action :moderate #'fnn-operator-execute-moderate)
-(fnn-operator-register-action :principal #'fnn-operator-execute-principal)
-(fnn-operator-register-action :peering #'fnn-pinv-execute)
-(fnn-operator-register-action :keys #'fnn-keys-execute)
-(fnn-operator-register-action :tls #'fnn-tls-execute)

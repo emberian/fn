@@ -13,55 +13,7 @@
   (declare (xargs :guard t))
   (nfix received))
 
-; A physical timeout retains the writer and its descriptor authority. Even
-; an absent/joined writer is not settlement while accounted work remains.
-(defun fn-ort-log-close-action (join-observation pending-lines pending-octets queuedp)
-  (declare (xargs :guard t))
-  (if (and (or (equal join-observation :joined)
-               (equal join-observation :absent))
-           (equal pending-lines 0) (equal pending-octets 0)
-           (equal queuedp nil))
-      :joined
-    :held))
-
-(defthm fn-ort-log-close-joined-requires-settlement
-  (implies (equal (fn-ort-log-close-action observation lines octets queuedp) :joined)
-           (and (or (equal observation :joined) (equal observation :absent))
-                (equal lines 0) (equal octets 0) (equal queuedp nil)))
-  :rule-classes nil)
-
-(defun fn-ort-log-close-exit (prior uncertain action)
-  (declare (xargs :guard (and (integerp prior) (integerp uncertain))))
-  (if (equal action :joined) prior uncertain))
-
-(defthm fn-ort-log-close-held-is-uncertain
-  (implies (not (equal action :joined))
-           (equal (fn-ort-log-close-exit prior uncertain action) uncertain)))
-
-(defun fn-ort-report-close-action (log-action journal-observation)
-  (declare (xargs :guard t))
-  (if (and (equal log-action :joined)
-           (or (equal journal-observation :closed)
-               (equal journal-observation :absent)))
-      :joined
-    :held))
-
-(defthm fn-ort-report-close-requires-journal-settlement
-  (implies (equal (fn-ort-report-close-action log-action observation) :joined)
-           (and (equal log-action :joined)
-                (or (equal observation :closed) (equal observation :absent))))
-  :rule-classes nil)
-
-; The native writer slot remains present after timeout and is cleared only
-; after definite join. This decides authority over its log descriptor only,
-; not settlement of the complete owner producer graph.
-(defun fn-ort-log-caller-action (writer-presentp)
-  (declare (xargs :guard t))
-  (if (equal writer-presentp nil) :write-close :held))
-
-(defthm fn-ort-log-caller-held-preserves-descriptor-authority
-  (implies (not (equal writer-presentp nil))
-           (equal (fn-ort-log-caller-action writer-presentp) :held)))
+(include-book "owner-retire-settlement")
 
 (defun fn-ort-drain-step-counted (s0 s seconds pending intake-fenced producers-settled)
   (declare (xargs :guard t))
