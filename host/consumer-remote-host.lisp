@@ -4,6 +4,7 @@
 (include-book "../books/consumer-remote-dispatch")
 (include-book "../books/consumer-remote-query-profile")
 (include-book "../books/consumer-remote-operation-source")
+(include-book "../books/consumer-remote-event-buffer")
 (include-book "../books/consumer-account-carries-state")
 (include-book "../books/consumer-account-state")
 (include-book "../books/owner-canonical-epoch")
@@ -177,3 +178,11 @@
       (value '(:unavailable :store-profile))
    (value (fn-crp-runtime-verdict
             (fn-crp-finish cursor (fn-owner-remote-query-policy-key state) record-ceiling))))))
+
+; Called only inside the genuine event-specific consumer publication turn
+; after exact record-extent reservation and current-source revalidation.
+; This adapter neither allocates a grant nor publishes/acknowledges a row.
+(defun fn-owner-remote-event-buffer-step (cursor current-key extent fn-octets state)
+ (declare (xargs :stobjs (fn-octets state) :mode :program))
+ (mv-let (answer fn-octets) (fn-crevb-step cursor current-key extent fn-octets)
+  (mv nil answer fn-octets state)))
