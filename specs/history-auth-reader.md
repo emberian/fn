@@ -134,3 +134,15 @@ public transitions conserve it. The exported grouped projection equality is
 named `-by-definition` and supplies no authentication keystone or cryptographic
 conclusion. It does not conserve discovery IDs, which intentionally change
 with physical borrows, or request serials, which intentionally advance.
+
+The separate proof-only `history-auth-reader-frontier` now carries recursive
+digest child-end nesting: each left child ends at its pending right start,
+each right child ends at its parent's end, and the outer interval ends at the
+complete source length. Actual page-digest begin establishes the order and
+actual `pgs-dc-step` preserves it under the carried representation domain.
+The consumed frontier is start in node/split, position in chunk, and end in
+return/root/done; an actual step advances it by exactly the read demand.
+Reachable witnesses cover every scheduling phase and both return kinds.
+This scheduling lemma supplies the reader's sequential stream join; it does
+not itself prove the reader's byte/scanner trajectory, complete authentication
+refinement, progress, physical funding, or the general M+2 request count.
