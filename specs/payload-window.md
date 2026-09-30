@@ -125,8 +125,11 @@ The reviewed profile-arithmetic candidate per chunk plus one budget update,
 window selection and stored decision is `17 + 6*Q + 2*O + I`: at most
 `3 + 2*Q` multiplications and `14 + 4*Q + 2*O + I` additions/subtractions,
 where Q <=1,024 and I/O <=64. Initial budget construction adds two
-multiplications and two additions. This is a source inventory candidate,
-not yet a trace-count or allocator theorem. The runtime must account for
+multiplications and two additions. This is a high-level source inventory candidate,
+not an actual translated primitive-count or allocator theorem. Source
+subtraction must count separate unary negation and binary addition unless
+matched compiler evidence proves fusion; the copy loop has three sites per
+output octet (negation, destination addition, and loop increment). The runtime must account for
 primitive workspaces, extra limbs, signs, status conses and control overhead.
 
 With the controller's source-position carry keeping actual TIN <= C, stored
@@ -155,3 +158,24 @@ are operand/result magnitude bounds, not primitive allocation counts. Their
 supporting upper-bound lemmas are explicit-use facts without generic global
 rewrite/linear rules. Literal teeth include an actual maximum-profile bomb
 above2^72, retained-hypothesis removals and labelled coefficient mutations.
+
+
+`books/payload-profile-source-trace.lisp` observes nine actual nonrecursive
+profile helpers, generated from pinned trusted source. Each observer has an
+actual value-projection theorem and dynamic arithmetic-source count theorem.
+Events distinguish binary addition, multiplication and unary negation,
+preserving argument and branch evaluation. Multiple-value events describe
+logical projections; the observer's own lists are not implementation
+allocations. The closed generator rejects unreviewed operators. This source
+coordinate does not yet prove whole decoder counts or selected-runtime
+workspace lowering.
+
+`books/payload-window-expanded-profile-width.lisp` preserves the stored
+allowance semantics: signed63-bit compressed C can admit decoded N above
+2^63. Under actual stored admissibility and that compressed bound, N is below
+2^72, actual fn-pzd-budget below2^73, and carried TOUT+PRESET below2^72.
+The former signed63-bit N theorem retains its explicit narrower premise; it
+never becomes a stored-data policy. Each widened keystone has literal full
+positive and hypothesis-removal teeth, including the permitted large N that
+refutes a new signed63-bit decoded ceiling. These magnitudes do not supply
+primitive workspaces or authorize native admission.
