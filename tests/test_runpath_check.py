@@ -105,7 +105,7 @@ class RunpathCheckTests(unittest.TestCase):
             code, out, err = self.run_main(["--tree", str(top)])
             self.assertEqual(code, 0, err)
             self.assertIn("libexec/fn/runtime/sbcl: ELF; needs libc.so.103.0 libzstd.so.7.0", out)
-            self.assertIn("share/fn/rc.d/fn: starts /usr/local/fn-0123456789ab/bin/fn", out)
+            self.assertIn("share/fn/rc.d/fn: starts /usr/local/fn-0123456789ab/current/bin/fn", out)
             self.assertIn("the system's: libcrypto.so.3 libssl.so", out)
 
     def assert_finding(self, top: Path, fragment: str):
@@ -203,7 +203,44 @@ class RunpathCheckTests(unittest.TestCase):
         self.assertTrue(runpath_check.carried_satisfies("libsodium.so", carried, "openbsd"))
         self.assertTrue(runpath_check.carried_satisfies("libsodium.so.11", carried, "openbsd"))
         self.assertFalse(runpath_check.carried_satisfies("libsodium.so.23", carried, "openbsd"))
-        self.assertTrue(runpath_check.carried_satisfies("libsodium.so.23", {"libsodium.so.23.3.0"}, "linux"))
+        self.assertFalse(runpath_check.carried_satisfies("libsodium.so.23", {"libsodium.so.23.3.0"}, "linux"))
+
+    def linux_release(self, tmp: Path) -> Path:
+        top = self.release(tmp)
+        library = top / "libexec/fn/lib"
+        for path in library.iterdir():
+            path.write_bytes(elf_with_needed(["libc.so.6"]))
+        (library / "libzstd.so.7.0").rename(library / "libzstd.so.1.5.7")
+        (library / "libsodium.so.11.1").rename(library / "libsodium.so.23.3.0")
+        os.symlink("libzstd.so.1.5.7", library / "libzstd.so.1")
+        os.symlink("libsodium.so.23.3.0", library / "libsodium.so.23")
+        (top / "libexec/fn/runtime/sbcl").write_bytes(
+            elf_with_needed(["libc.so.6", "libzstd.so.1"]))
+        (top / "libexec/fn/fn-host.core").write_bytes(
+            b"\0" * 64 + b"libsodium.so.23\0libssl.so.3\0libfn-mldsa65.so\0"
+            + "libcrypto.so.3".encode("utf-32-le") + b"\0" * 8)
+        return top
+
+    def test_linux_needed_name_requires_the_exact_resolving_alias(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            top = self.linux_release(Path(tmp))
+            code, _out, err = self.run_main(["--tree", str(top), "--platform", "linux"])
+            self.assertEqual(code, 0, err)
+            (top / "libexec/fn/lib/libzstd.so.1").unlink()
+            self.assert_platform_finding(top, "linux", "DT_NEEDED libzstd.so.1 is neither carried")
+
+    def test_library_basename_outside_search_directory_does_not_satisfy_name(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            top = self.linux_release(Path(tmp))
+            (top / "libexec/fn/lib/libzstd.so.1").unlink()
+            (top / "share/fn/libzstd.so.1").write_bytes(elf_with_needed(["libc.so.6"]))
+            self.assert_platform_finding(top, "linux", "DT_NEEDED libzstd.so.1 is neither carried")
+
+    def test_broken_library_alias_does_not_satisfy_needed_name(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            top = self.linux_release(Path(tmp))
+            (top / "libexec/fn/lib/libzstd.so.1.5.7").unlink()
+            self.assert_platform_finding(top, "linux", "DT_NEEDED libzstd.so.1 is neither carried")
 
     def test_openbsd_libraries_are_not_linux_libc(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -285,8 +322,10 @@ class RunpathCheckTests(unittest.TestCase):
     def test_service_starting_python_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
             top = self.release(Path(tmp))
-            rc = (top / "share/fn/rc.d/fn").read_text().replace(
-                'daemon="/usr/local/fn-0123456789ab/bin/fn"', 'daemon="/usr/local/bin/python3"')
+            original = (top / "share/fn/rc.d/fn").read_text()
+            self.assertIn('daemon="/usr/local/fn-0123456789ab/current/bin/fn"', original)
+            rc = original.replace(
+                'daemon="/usr/local/fn-0123456789ab/current/bin/fn"', 'daemon="/usr/local/bin/python3"')
             (top / "share/fn/rc.d/fn").write_text(rc)
             code, _, err = self.run_main(["--tree", str(top)])
             self.assertEqual(code, 1)
@@ -321,8 +360,10 @@ class RunpathCheckTests(unittest.TestCase):
     def test_node_service_starting_a_client_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
             top = self.with_clients(self.release(Path(tmp)))
-            rc = (top / "share/fn/rc.d/fn").read_text().replace(
-                'daemon="/usr/local/fn-0123456789ab/bin/fn"',
+            original = (top / "share/fn/rc.d/fn").read_text()
+            self.assertIn('daemon="/usr/local/fn-0123456789ab/current/bin/fn"', original)
+            rc = original.replace(
+                'daemon="/usr/local/fn-0123456789ab/current/bin/fn"',
                 'daemon="/usr/local/fn-0123456789ab/clients/bin/fn"')
             (top / "share/fn/rc.d/fn").write_text(rc)
             self.assert_finding(top, "share/fn/rc.d/fn: the node's service names clients/")

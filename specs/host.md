@@ -72,6 +72,18 @@ library's loader, no RPATH outside, every DT_NEEDED carried or the C
 library; every shared-object name in the saved core carried, the C library,
 or the system TLS library HST-016 names).
 
+For carried libraries, HST-018's static release policy resolves names in
+`libexec/fn/lib`, the frozen launcher's library search directory. On Linux,
+the exact requested name must name a file or a checked relative alias whose
+resolved file stays in the release. A longer versioned filename alone, a
+broken alias, or an identically named file outside that directory cannot
+satisfy DT_NEEDED or a core's shared-object request. OpenBSD retains its
+major/minor lookup rule. With no identified target, the checker reports its
+union of platform rules; this is not target-loader qualification. System
+libc/TLS availability, ABI compatibility and the target loader's actual
+runtime choices remain release-rehearsal evidence. SCN-1043 supplies the
+static false-green and valid-alias witnesses.
+
 HST-029: A release's `clients/` (packaging/install-clients.sh: the
 command-line client programs, Python 3.9+) is held apart from the node's
 path. `tools/runpath_check.py --tree` walks the node without `clients/`,

@@ -591,17 +591,42 @@ def detect_platform(top: Path) -> str | None:
 def carried_satisfies(name: str, carried: set[str], platform: str | None) -> bool:
     """Whether the dynamic loader of PLATFORM resolves NAME to a carried file.
     OpenBSD's ld.so resolves libX.so and libX.so.MAJOR to a libX.so.MAJOR.MINOR
-    file, and a file not named so is no library to it; elsewhere a carried
-    NAME or NAME.VERSION (libX.so.23 for libX.so.23.3.0)."""
+    file, and a file not named so is no library to it. Linux requires the
+    exact requested name (which may be a checked symlink to a versioned
+    file); a longer filename alone does not satisfy a DT_NEEDED name."""
     if name in carried:
         return True
-    if platform == "openbsd":
+    if platform in (None, "openbsd"):
         for c in carried:
             m = OPENBSD_LIB_RE.match(c)
             if m and (name == f"{m.group(1)}.so" or name == f"{m.group(1)}.so.{m.group(2)}"):
                 return True
         return False
-    return any(c.startswith(name + ".") for c in carried)
+    return False
+
+
+def carried_library_names(top: Path) -> set[str]:
+    """Names that resolve to files in the release's library search directory.
+
+    The frozen launcher puts libexec/fn/lib on LD_LIBRARY_PATH. A matching
+    basename elsewhere in the release cannot satisfy a library request.
+    Reject broken/cyclic links and links whose resolved target leaves the
+    release; the tree walk also checks every link for portable relative paths.
+    This is static name resolution, not target-loader ABI qualification.
+    """
+    directory = top / "libexec/fn/lib"
+    if not directory.is_dir():
+        return set()
+    root = top.resolve()
+    names = set()
+    for path in directory.iterdir():
+        try:
+            target = path.resolve(strict=True)
+        except (OSError, RuntimeError):
+            continue
+        if target.is_relative_to(root) and target.is_file():
+            names.add(path.name)
+    return names
 
 
 def tree_check(top: Path, platform: str | None = None) -> Findings:
@@ -619,7 +644,7 @@ def tree_check(top: Path, platform: str | None = None) -> Findings:
     system_tls = SYSTEM_TLS_BY.get(platform, SYSTEM_TLS)
     findings.note(f"platform {platform or 'unknown (the union of every platform rule)'}")
     fasls = 0
-    carried = {p.name for p in top.rglob("*") if p.is_file()}
+    carried = carried_library_names(top)
     for path in sorted(p for p in top.rglob("*") if p.is_file() or p.is_symlink()):
         rel = path.relative_to(top).as_posix()
         if rel.startswith(CLIENTS + "/"):

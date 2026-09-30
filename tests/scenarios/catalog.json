@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -7025,6 +7025,39 @@
           "NativeFeedTemporaryTests.test_temporary_mode_refusals_back_off_and_then_deliver"
         ],
         "native": true
+      }
+    },
+    {
+      "id": "SCN-1043",
+      "title": "Linux carried-library validation requires an exact resolving name in the release search directory",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "HST-018"
+      ],
+      "steps": [
+        "Check a scratch Linux ELF/core release fixture with exact relative library aliases.",
+        "Remove the DT_NEEDED alias while retaining its longer versioned target; put the requested basename outside libexec/fn/lib; separately leave a dangling alias.",
+        "Check the existing OpenBSD unversioned/major-name fixtures under their own lookup rule."
+      ],
+      "expected": [
+        "The valid resolving aliases pass static validation.",
+        "Each missing, misplaced or broken requested name fails naming DT_NEEDED; a filename-prefix match cannot pass.",
+        "OpenBSD major/minor lookup remains accepted and a Linux soname in an OpenBSD core remains refused."
+      ],
+      "evidence": [
+        "tests/test_runpath_check.py",
+        "planning/evidence/operator-q10e-library-names-source-2026-09-30.md"
+      ],
+      "implementation": {
+        "test": "tests.test_runpath_check",
+        "cases": [
+          "RunpathCheckTests.test_linux_needed_name_requires_the_exact_resolving_alias",
+          "RunpathCheckTests.test_library_basename_outside_search_directory_does_not_satisfy_name",
+          "RunpathCheckTests.test_broken_library_alias_does_not_satisfy_needed_name",
+          "RunpathCheckTests.test_openbsd_resolves_only_major_minor_files"
+        ],
+        "native": false
       }
     }
   ]
