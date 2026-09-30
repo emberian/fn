@@ -17660,6 +17660,15 @@
           "name": "fn-cvcg-accepted-publication-count-fits-profile"
         }
       ]
+    },
+    {
+      "id": "PRF-1122",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-fc-temporary-mode-refusal-closes-without-stopping"
+        }
+      ]
     }
   ]
 }

@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1757 |
 | Certification roots in the Makefile | 1692 |
 | Books inside the root closure | 1754 |
-| `defthm` and `defthmd` events | 28241 |
-| `defun` events | 18533 |
+| `defthm` and `defthmd` events | 28243 |
+| `defun` events | 18538 |
 | Functions with verified guards | 3483 |
 | Functions declared `:verify-guards nil` and never verified | 2143 |
 | Functions left at the default with an explicit guard | 10138 |
-| Functions left at the default with no guard | 2769 |
-| `assert-event` checks | 23452 |
+| Functions left at the default with no guard | 2774 |
+| `assert-event` checks | 23461 |
 | `must-fail` checks | 2506 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 157 |
@@ -428,7 +428,7 @@ that `make certify` requests.
 | `books/extent-retire.lisp` | root | 16 | 10 | 4/1/4/1 | 0 | 0 | 0 |
 | `books/feed-auth-profile.lisp` | root | 4 | 8 | 8/0/0/0 | 0 | 0 | 0 |
 | `books/feed-connection-invariants.lisp` | root | 48 | 22 | 2/0/20/0 | 0 | 0 | 1 |
-| `books/feed-connection.lisp` | root | 9 | 50 | 49/0/1/0 | 0 | 0 | 1 |
+| `books/feed-connection.lisp` | root | 11 | 50 | 49/0/1/0 | 0 | 0 | 1 |
 | `books/feed-correspondence.lisp` | root | 26 | 1 | 0/0/0/1 | 0 | 0 | 1 |
 | `books/feed-events.lisp` | root | 0 | 19 | 0/0/19/0 | 0 | 0 | 0 |
 | `books/feed-filename.lisp` | root | 2 | 21 | 0/0/21/0 | 0 | 0 | 0 |
@@ -1354,7 +1354,7 @@ that `make certify` requests.
 | `tests/acl2/feed-auth-profile-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 0 | 0 |
 | `tests/acl2/feed-connection-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 7 | 0 |
 | `tests/acl2/feed-connection-teeth-tests.lisp` | root | 6 | 0 | 0/0/0/0 | 87 | 16 | 0 |
-| `tests/acl2/feed-connection-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 56 | 1 | 0 |
+| `tests/acl2/feed-connection-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 65 | 1 | 0 |
 | `tests/acl2/feed-correspondence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 2 | 0 |
 | `tests/acl2/feed-filename-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 0 | 0 |
 | `tests/acl2/feed-journal-tests.lisp` | root | 0 | 3 | 0/2/0/1 | 23 | 2 | 0 |
@@ -2110,7 +2110,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-exp-481-count-of-atom` | `books/public-exposure-reply.lisp` | 86 | arm-of-definition: the hypotheses select one IF/COND arm of fn-exp-481-count and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-exp-481-count and the conclusion is that branch's value |
 | `fn-exp-481-scan-of-atom` | `books/public-exposure-reply.lisp` | 115 | arm-of-definition: the hypotheses select one IF/COND arm of fn-exp-481-scan and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-exp-481-scan and the conclusion is that branch's value |
 | `fn-exp-observe-effects-unfolds` | `books/public-exposure-reply.lisp` | 216 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-exp-observe-effects |
-| `fn-fc-step-is-one-fwi-step` | `books/feed-connection.lisp` | 275 | arm-of-definition: the hypotheses select one IF/COND arm of fn-fc-step and the conclusion is that arm's value |
+| `fn-fc-step-is-one-fwi-step` | `books/feed-connection.lisp` | 280 | arm-of-definition: the hypotheses select one IF/COND arm of fn-fc-step and the conclusion is that arm's value |
 | `fn-fc-wire-next-unconsumed-is-bounded-linear` | `books/feed-connection-invariants.lisp` | 31 | instance-corollary: the statement is fn-wire-next-unconsumed-is-bounded instantiated, discharging nothing |
 | `fn-feed-back-off-without-inflight-is-identity` | `books/feed-correspondence.lisp` | 92 | arm-of-definition: the hypotheses select one IF/COND arm of fn-feed-back-off and the conclusion is that arm's value |
 | `fn-fps-deltas-of-an-absent-peer` | `books/feed-pause.lisp` | 295 | arm-of-definition: the hypotheses select one IF/COND arm of fn-fps-deltas and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-fps-deltas and the conclusion is that branch's value |

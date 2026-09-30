@@ -1699,9 +1699,9 @@
     "books": 1757,
     "books_in_root_closure": 1754,
     "roots": 1692,
-    "theorems": 28241,
-    "functions": 18533,
-    "assert_events": 23452,
+    "theorems": 28243,
+    "functions": 18538,
+    "assert_events": 23461,
     "must_fails": 2506,
     "prover_refusals": 0,
     "encapsulates": 157,
@@ -1709,7 +1709,7 @@
       "verified": 3483,
       "declared-off": 2143,
       "default-guarded": 10138,
-      "default-unguarded": 2769
+      "default-unguarded": 2774
     },
     "suspect_theorems": 1231,
     "export_hygiene_warnings": 329,
@@ -11400,7 +11400,7 @@
       "book": "books/feed-connection.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 9,
+      "theorems": 11,
       "functions": 50,
       "guards": {
         "verified": 49,
@@ -39314,18 +39314,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 2,
+      "functions": 7,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 2
+        "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 56,
+      "assert_events": 65,
       "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 28,
+      "defconsts": 31,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
@@ -55026,7 +55026,7 @@
     {
       "theorem": "fn-fc-step-is-one-fwi-step",
       "book": "books/feed-connection.lisp",
-      "line": 275,
+      "line": 280,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-fc-step and the conclusion is that arm's value"
       ]
@@ -90647,7 +90647,7 @@
       {
         "host": "host/native/feed-service.lisp",
         "line": 194,
-        "name": "fnn-owner-feed-step",
+        "name": "fnn-owner-feed-arena-step",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
@@ -90703,6 +90703,13 @@
       {
         "host": "host/native/feed-service.lisp",
         "line": 254,
+        "name": "fnn-owner-feed-step",
+        "source": "host/native/owner.lisp",
+        "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/feed-service.lisp",
+        "line": 254,
         "name": "fnn-owner-feed-flush",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -90711,13 +90718,6 @@
         "host": "host/native/feed-service.lisp",
         "line": 254,
         "name": "fnn-owner-feed-log",
-        "source": "host/native/owner.lisp",
-        "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/feed-service.lisp",
-        "line": 278,
-        "name": "fnn-owner-feed-arena-step",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },

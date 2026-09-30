@@ -3428,7 +3428,8 @@
         "PRF-165",
         "PRF-307",
         "PRF-376",
-        "PRF-381"
+        "PRF-381",
+        "PRF-1122"
       ],
       "verification": [
         "proof",
@@ -3451,9 +3452,10 @@
         "tests/acl2/feed-link-backoff-tests.lisp",
         "tests/test_native_feed_tls_read.py",
         "books/feed-pause.lisp",
-        "tests/acl2/feed-pause-tests.lisp"
+        "tests/acl2/feed-pause-tests.lisp",
+        "tests/test_native_feed_temporary.py"
       ],
-      "implementation_note": "RFC 3977 section 6.2.1.3 (430: no article with that message-id) and section 7.4 (NEWNEWS). The unavailable class, the consecutive-round count and the bound (peer row pull-unavailable-rounds, default 5) are fn local policy. The feed half (a MODE STREAM refusal durable across a restart with an IHAVE fallback on the same connection, RFC 4644 section 2.3) is not implemented: PKT-431. The feed's link (defect M3, specs/peering.md 3.2.2): a TLS read that meets only a TLS 1.3 NewSessionTicket is no data yet, never a loss; every dropped link is named in ACL2's line and the redial delay doubles per consecutive failure (fn-flb-lost, PRF-376). An operator contains a misbehaving push without `peer remove': `peer feed NAME pause|resume' (PRF-381)."
+      "implementation_note": "RFC 3977 section 6.2.1.3 (430: no article with that message-id) and section 7.4 (NEWNEWS). The unavailable class, the consecutive-round count and the bound (peer row pull-unavailable-rounds, default 5) are fn local policy. The feed half (a MODE STREAM refusal durable across a restart with an IHAVE fallback on the same connection, RFC 4644 section 2.3) is not implemented: PKT-431. The feed's link (defect M3, specs/peering.md 3.2.2): a TLS read that meets only a TLS 1.3 NewSessionTicket is no data yet, never a loss; every dropped link is named in ACL2's line and the redial delay doubles per consecutive failure (fn-flb-lost, PRF-376). An operator contains a misbehaving push without `peer remove': `peer feed NAME pause|resume' (PRF-381). PKT-599(d): a MODE STREAM 400 now closes the connection without a process stop, so existing loss/backoff handling can retry. PRF-1122 is source-admitted; SCN-1028 matching-image observation remains pending."
     },
     {
       "id": "CNS-004",
@@ -4062,7 +4064,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-207"
+        "PRF-207",
+        "PRF-1122"
       ],
       "verification": [
         "proof",
@@ -4076,7 +4079,8 @@
         "tests/test_native_peering.py",
         "planning/evidence/transit-streaming-2026-09-26.md",
         "tests/owner-feed-tls-ready-host.lsp",
-        "tests/test_native_feed_tls_ready.py"
+        "tests/test_native_feed_tls_ready.py",
+        "tests/test_native_feed_temporary.py"
       ],
       "implementation_note": "RFC 4644 sections 2.3 to 2.5 and RFC 3977 section 6.3.2 are RFC requirements; one admission decision for the three forms is the fn guarantee; 436 after TAKETHIS, the 431 past max-inflight (16 from `peer add`) and the IHAVE fallback on 500/501 are local policy. fn chooses the form by MODE STREAM, not CAPABILITIES (PKT-599). PKT-599(b): the owner TLS completion now installs the feed connection/form before publishing ready for STARTTLS without streaming or login; SCN-1022 exercises that path and the implicit-TLS greeting control. Matching native observation is pending."
     },
