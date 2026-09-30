@@ -19,6 +19,9 @@ marker and zero executed cases each FAIL with a named reason.  Steps:
      through IMAGE and the program on twin stores, step for step
      (stateful.py): outcomes, durable files and subsequent reads identical,
      every case of its manifest run once, every required class covered;
+  5b. owner: actual barrier completion after the owner has told its poster
+      uncertain; exact wire replies, durable reads and restart through the
+      reference image and extracted core (owner.py);
   6. functions: the per-function differential (fcheck.py gen -> ACL2 ->
      fcheck.py scheme -> csc -> the fcheck program -> fcheck.py report): every
      vector of the manifest executed once and agreeing; uncovered functions
@@ -71,6 +74,7 @@ class Tools:
     # the stateful differential's driver (tools/extract/stateful.py); the
     # gate's tests substitute a stand-in
     stateful: list = field(default_factory=lambda: ["python3", str(X / "stateful.py")])
+    owner: list = field(default_factory=lambda: ["python3", str(X / "owner.py")])
     per: int = 20
     source: str = None
 
@@ -367,6 +371,40 @@ class Gate:
             print("stateful %s: %d cases, %d steps agree; classes %s"
                   % (label, len(cases), doc["steps_run"], ",".join(doc.get("covered", []))))
 
+    def owner(self):
+        """Actual asynchronous owner effects; no offline crash surrogate."""
+        from owner import CASE, OBSERVATIONS
+        self.step = "owner"
+        d = self.c / "owner"
+        if d.exists():
+            shutil.rmtree(d)
+        log = self.c / "owner.log"
+        self.need("owner.py", self.t.owner + [self.image, self.core_exe, d],
+                  stdout=log, stderr="stdout", log=log, env=self.acl2_env)
+        doc = self.load_json(d / "owner.json", "owner")
+        if doc.get("status") != "PASS" or doc.get("case") != CASE:
+            self.fail("owner case did not pass")
+        if doc.get("observations_expected") != list(OBSERVATIONS):
+            self.fail("owner observation manifest differs")
+        products = doc.get("products_before", {})
+        if set(products) != {"image", "core"} or products != doc.get("products_after"):
+            self.fail("owner product fingerprints missing or changed")
+        for label in ("image", "core"):
+            artifacts = products[label].get("artifacts", {})
+            if not artifacts or any(not re.fullmatch(r"[0-9a-f]{64}", digest)
+                                    for digest in artifacts.values()):
+                self.fail("owner product fingerprints invalid")
+        sides = doc.get("sides", {})
+        if set(sides) != {"image", "core"}:
+            self.fail("owner must execute both image and core")
+        for label in ("image", "core"):
+            observed = sides[label].get("observations", {})
+            if set(observed) != set(OBSERVATIONS) or not all(observed.values()):
+                self.fail("%s: missing owner observations" % label)
+        if sides["image"]["observations"] != sides["core"]["observations"]:
+            self.fail("owner observations differ")
+        print("owner: %s, %d observations agree" % (CASE, len(OBSERVATIONS)))
+
     def functions(self):
         self.step = "functions"
         c, e = self.c, self.e
@@ -547,6 +585,7 @@ class Gate:
             for name, stepfn in (("1 build", self.build), ("1b manifest", self.manifest), ("1c core", self.core),
                                  ("2 transcripts", self.transcripts), ("3 probes", self.probes),
                                  ("4 store", self.store), ("5 stateful", self.stateful),
+                                 ("5b owner", self.owner),
                                  ("6 functions", self.functions)):
                 print("==", name, flush=True)
                 stepfn()
