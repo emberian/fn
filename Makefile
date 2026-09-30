@@ -416,6 +416,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-set-tests \
 	books/store-reclaim-pack \
 	tests/acl2/store-reclaim-pack-tests \
+	tests/acl2/reclaim-article-subject-tests \
 	books/history-knowledge \
 	tests/acl2/history-knowledge-tests \
 	books/store-reclaim-stream \
@@ -982,6 +983,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-view \
 	books/served-columns \
 	tests/acl2/served-columns-tests \
+	books/nov-byte-window \
+	tests/acl2/nov-byte-window-tests \
+	books/nov-column-window \
+	tests/acl2/nov-column-window-tests \
 	books/served-catalog \
 	books/served-catalog-chain \
 	books/served-catalog-owner \
@@ -1490,6 +1495,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-export-request-tests \
 	books/owner-snapshot-request \
 	tests/acl2/owner-snapshot-request-tests \
+	books/owner-snapshot-recovery \
+	tests/acl2/owner-snapshot-recovery-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
 	books/state-globals \

@@ -394,5 +394,26 @@ class DeclaredInterfaceTests(unittest.TestCase):
         self.assertIn("static half skipped", out.getvalue())
 
 
+class CommandModeTests(unittest.TestCase):
+    def test_combined_modes_refuse_before_skipping_any_requested_check(self):
+        import itertools
+        from unittest import mock
+        modes = ("--load", "--tables", "--alone", "--world", "--interfaces",
+                 "--forward", "--books", "--read")
+        for pair in itertools.combinations(modes, 2):
+            with self.subTest(modes=pair), \
+                    mock.patch.object(host_check, "books_main") as books, \
+                    mock.patch.object(host_check, "read_check") as read, \
+                    mock.patch.object(host_check, "executable") as executable, \
+                    contextlib.redirect_stderr(io.StringIO()) as errors:
+                with self.assertRaises(SystemExit) as refused:
+                    host_check.main(list(pair))
+                self.assertEqual(refused.exception.code, 2)
+                self.assertIn("not allowed with argument", errors.getvalue())
+                books.assert_not_called()
+                read.assert_not_called()
+                executable.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

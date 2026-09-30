@@ -34,3 +34,50 @@
 (make-event
  (mv-let (ok state) (fn-orst-live-effects-witness state)
    (value (list 'assert-event ok))))
+
+; Executable association reader through ACL2's state access primitives.
+; Its exact correspondence below connects the live witness to the literal
+; global-table theorem without passing the STATE stobj to ordinary NTH.
+(defun fn-orst-association (key state)
+  (declare (xargs :stobjs state :guard (symbolp key)))
+  (if (boundp-global key state)
+      (cons key (f-get-global key state))
+    nil))
+(defthm fn-orst-nonnil-association-pair-by-definition
+  (implies (and key (assoc-equal key table))
+           (equal (cons key (cdr (assoc-equal key table)))
+                  (assoc-equal key table)))
+  :hints (("Goal" :induct (assoc-equal key table)
+           :in-theory (enable assoc-equal))))
+(defthm fn-orst-association-is-table-assoc-by-definition
+  (implies key
+           (equal (fn-orst-association key state)
+                  (assoc-equal key (nth 2 state))))
+  :hints (("Goal" :in-theory (enable fn-orst-association))))
+
+; Literal table-level frame teeth for the composed host guard repair.
+; FN-ORST-ASSOCIATION is proved equal to the literal NTH-2 association.
+(defun fn-orst-live-association-witness (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((original (fn-owner-retain-carry state))
+         (key 'fn-orst-witness-other)
+         (old-other (if (boundp-global 'fn-orst-witness-other state)
+                        (f-get-global 'fn-orst-witness-other state) nil))
+         (state (f-put-global 'fn-orst-witness-other :present-other state))
+         (before (fn-orst-association key state))
+         (state (fn-owner-retain-carry-put '("ledger-a" . "index-a") state))
+         (positive (and (not (equal key 'fn-owner-retain-carry))
+                        (consp before)
+                        (equal (fn-orst-association key state) before)))
+         (key 'fn-owner-retain-carry)
+         (before (fn-orst-association key state))
+         (state (fn-owner-retain-carry-put '("ledger-b" . "index-b") state))
+         (negative (and (equal key 'fn-owner-retain-carry)
+                        (consp before)
+                        (not (equal (fn-orst-association key state) before))))
+         (state (f-put-global 'fn-orst-witness-other old-other state))
+         (state (fn-owner-retain-carry-put original state)))
+    (mv (and positive negative) state)))
+(make-event
+ (mv-let (ok state) (fn-orst-live-association-witness state)
+   (value (list 'assert-event ok))))

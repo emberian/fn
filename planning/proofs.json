@@ -2230,7 +2230,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "planning/evidence/manifests/certify-20260924T070931Z-1040432.json",
         "planning/evidence/feed-tls-teeth-2026-09-22.md",
@@ -2384,7 +2384,7 @@
         "PRF-047"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "planning/evidence/manifests/certify-20260924T070931Z-1040432.json",
         "planning/evidence/feed-tls-teeth-2026-09-22.md",
@@ -3415,7 +3415,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/control-classify.lisp",
         "books/peer-authored-accept.lisp",
@@ -4198,7 +4198,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-carriage-rows.lisp",
         "books/peer-carriage.lisp",
@@ -4522,7 +4522,7 @@
         "PRF-084"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-invite.lisp",
         "books/config.lisp",
@@ -4689,7 +4689,7 @@
         "PRF-099"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-invite.lisp",
         "books/key-statements.lisp",
@@ -5638,7 +5638,7 @@
         "PRF-124"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/key-statements.lisp",
         "tests/acl2/key-statements-tests.lisp",
@@ -5825,7 +5825,7 @@
         "PRF-124"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-invite.lisp",
         "tests/acl2/peer-invite-tests.lisp",
@@ -6009,7 +6009,7 @@
         "PRF-140"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/key-statements.lisp",
         "tests/acl2/key-statements-tests.lisp",
@@ -6566,7 +6566,7 @@
         "PRF-160"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-invite.lisp",
         "tests/acl2/peer-invite-tests.lisp",
@@ -7156,7 +7156,7 @@
         "PRF-171"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/node-config.lisp",
         "books/config-physical-replay.lisp",
@@ -13342,7 +13342,7 @@
         "PRF-164"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/clock-unit.lisp",
         "books/accounts.lisp",
@@ -13422,7 +13422,7 @@
         "PRF-374"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/clock-unit.lisp",
         "books/config.lisp",
@@ -13498,7 +13498,7 @@
         "PRF-362"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-admin-peer-budget.lisp",
         "books/config.lisp",
@@ -13557,7 +13557,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/feed-pause.lisp",
         "tests/acl2/feed-pause-tests.lisp",
@@ -13676,7 +13676,7 @@
         "PRF-378"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/config.lisp",
         "tests/acl2/config-field-max-tests.lisp",
@@ -14974,7 +14974,7 @@
         "PRF-186"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/open-frontier.lisp",
         "tests/acl2/open-frontier-tests.lisp",
@@ -16346,7 +16346,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-set.lisp",
         "books/native-admin-peer.lisp",
@@ -16703,7 +16703,7 @@
         "PRF-915"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/sasl.lisp",
         "books/auth-secret.lisp",
@@ -17541,7 +17541,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/article-subject.lisp",
         "tests/acl2/article-subject-tests.lisp",
@@ -17565,7 +17565,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/config-invariants.lisp",
         "tests/acl2/group-authority-tests.lisp",
@@ -17786,9 +17786,10 @@
         "tests/acl2/served-plan-tests.lisp",
         "tests/acl2/served-plan-cursor-tests.lisp",
         "tests/test_native_served_differential.py",
-        "tests/test_native_over_window.py"
+        "tests/test_native_over_window.py",
+        "tests/test_native_over_pins.py"
       ],
-      "progress_note": "Lane join-f2-10 (Claude Opus 5.5, 2026-09-29; J1 item 3, resumable OVER, first increment). REPL-green on hbox (clean session, both books). Teeth tests/acl2/over-window-tests.lisp: positive witnesses evaluate both sides of the keystone on served-catalog-tests' three-article catalog at W = 1, 2, 7 (224, three lines, the dot), the first quantum at W = 1 leaving a live cursor with one line sent, the refusals 423 / 420 / 412; hypothesis removal for fn-ovw-run-is-reply (K = :x, TOP natural, conclusion fails); mutation: the first quantum alone is not the reply; frame: a fourth article committed after the pin leaves the quantum of a cursor pinned at 3 unchanged, and the same cursor pinned at 4 (v <= count omitted, the rest retained) sees it, so the conclusion fails. Lane join-f2-12 (Claude Fable 5.1, 2026-09-29; L1 of the two-lane sizing): the definitions of the start, cursor and reply moved down into served-catalog, the served arm switched to the cursor effect, fn-ovw-expand and the chain equations restated modulo it (REPL persvati: served-catalog 295/295, served-catalog-chain 153/153, over-window 43/43). Teeth tests/acl2/served-catalog-chain-tests.lisp scct-over-range-answers-a-cursor: the dispatcher's hypotheses conjunct by conjunct, the conclusion (session equal, expanded effects equal), and its teeth (the step's one effect is a cursor, the results differ literally, the expansion is the pinned reply itself, a 224 block). Host-called since L1 (fn-nntp-over-range-ovw); fn-ovw-step is host-called once L2 lands the continuation. Lane join-f2-13 (Claude Fable 5.1, 2026-09-29; L2, the union with L1): REPL persvati clean sessions served-plan 57/57, served-plan-cursor 40/40, served-plan-cursor-tests 11/11 (the keystone witness at (W, WL) = (5, 1), (3, 2), (1000, 100) over the three-article catalog; too few rounds leave the plan not done with a strict prefix; the first quantum; a malformed cursor; three must-fails), served-plan-tests' cursor witnesses. Natives: test_native_served_differential (OVER/XOVER ranges under a one-number quantum agree with the pinned model byte for byte), test_native_over_window (the fixture group's whole range under W=97 and under one quantum, byte-identical, one row per article in order), test_native_reader_index, test_native_reader_clients, test_native_conformance.",
+      "progress_note": "Lane join-f2-10 (Claude Opus 5.5, 2026-09-29; J1 item 3, resumable OVER, first increment). REPL-green on hbox (clean session, both books). Teeth tests/acl2/over-window-tests.lisp: positive witnesses evaluate both sides of the keystone on served-catalog-tests' three-article catalog at W = 1, 2, 7 (224, three lines, the dot), the first quantum at W = 1 leaving a live cursor with one line sent, the refusals 423 / 420 / 412; hypothesis removal for fn-ovw-run-is-reply (K = :x, TOP natural, conclusion fails); mutation: the first quantum alone is not the reply; frame: a fourth article committed after the pin leaves the quantum of a cursor pinned at 3 unchanged, and the same cursor pinned at 4 (v <= count omitted, the rest retained) sees it, so the conclusion fails. Lane join-f2-12 (Claude Fable 5.1, 2026-09-29; L1 of the two-lane sizing): the definitions of the start, cursor and reply moved down into served-catalog, the served arm switched to the cursor effect, fn-ovw-expand and the chain equations restated modulo it (REPL persvati: served-catalog 295/295, served-catalog-chain 153/153, over-window 43/43). Teeth tests/acl2/served-catalog-chain-tests.lisp scct-over-range-answers-a-cursor: the dispatcher's hypotheses conjunct by conjunct, the conclusion (session equal, expanded effects equal), and its teeth (the step's one effect is a cursor, the results differ literally, the expansion is the pinned reply itself, a 224 block). Host-called since L1 (fn-nntp-over-range-ovw); fn-ovw-step is host-called once L2 lands the continuation. Lane join-f2-13 (Claude Fable 5.1, 2026-09-29; L2, the union with L1): REPL persvati clean sessions served-plan 57/57, served-plan-cursor 40/40, served-plan-cursor-tests 11/11 (the keystone witness at (W, WL) = (5, 1), (3, 2), (1000, 100) over the three-article catalog; too few rounds leave the plan not done with a strict prefix; the first quantum; a malformed cursor; three must-fails), served-plan-tests' cursor witnesses. Natives: test_native_served_differential (OVER/XOVER ranges under a one-number quantum agree with the pinned model byte for byte), test_native_over_window (the fixture group's whole range under W=97 and under one quantum, byte-identical, one row per article in order), test_native_reader_index, test_native_reader_clients, test_native_conformance. Codex gpt61-over scheduling increment: every next mux cursor yields after the preceding output window, and empty progress retains plan/after/pin for ACL2-positive timer resumption. New input, idle-close and pending TLS reads exclude a held plan. Web/pull yield after empty quanta. Existing fn-splan-cursor-step-keeps-cw-remaining covers exact residual under arbitrary quantum pacing; tests/test_native_over_pins.py adds real 32-row-hole small-vs-whole/pipeline/release witness (NOT RUN pending matching image). fn-splan-cursor-resume-ms is guardverified in REPL; full served-plan-cursor source startup was refused by 21 missing cached dependencies at current nntp-post digest, not proof failure. Long-row byte work remains open.",
       "events": [
         "fn-ovw-run-is-over-range-cat",
         "fn-ovw-run-is-reply",
@@ -17870,7 +17871,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/page-read-ownership.lisp",
         "tests/acl2/page-read-ownership-tests.lisp",
@@ -17890,7 +17891,7 @@
     {
       "id": "PRF-1067",
       "title": "The owner retention carry state boundary writes exactly and frames unrelated globals",
-      "statement": "Subject: books/owner-retain-state.lisp fn-owner-retain-carry and fn-owner-retain-carry-put, called by host/owner-host.lisp fn-owner-prepare-buffer and the other carry writers. fn-owner-retain-carry-of-put: unconditionally, reading the state returned by the carry setter returns the supplied value. fn-owner-retain-carry-of-other-global-put: under key unequal to fn-owner-retain-carry, putting another global leaves the carry read unchanged. This is an exact state effects boundary, not a proof that a supplied carry satisfies fn-prc-carryp, that initialization supplies the proved value, or that a complete owner transition preserves its guard; raw owner entries stay disabled. Local policy; no RFC requirement.",
+      "statement": "Subject: books/owner-retain-state.lisp fn-owner-retain-carry and fn-owner-retain-carry-put, called by host/owner-host.lisp fn-owner-prepare-buffer and the other carry writers. fn-owner-retain-carry-of-put: unconditionally, reading the state returned by the carry setter returns the supplied value. fn-owner-retain-carry-of-other-global-put: under key unequal to fn-owner-retain-carry, putting another global leaves the carry read unchanged. This is an exact state effects boundary, not a proof that a supplied carry satisfies fn-prc-carryp, that initialization supplies the proved value, or that a complete owner transition preserves its guard; raw owner entries stay disabled. Local policy; no RFC requirement. fn-owner-retain-carry-put-frames-global-association: under key unequal to the carry global, the complete association in the returned global table is unchanged, preserving both binding and value after guard translation has opened boundp/get-global.",
       "depends_on": [],
       "milestone": "M5",
       "requirements": [
@@ -17902,10 +17903,11 @@
         "books/owner-retain-state.lisp",
         "tests/acl2/owner-retain-state-tests.lisp"
       ],
-      "progress_note": "Clean fresh REPL admits the exact getter/setter and frame theorems (583 prover steps for seven source forms). Live ACL2 state witness asserts both literal conclusions and the full frame antecedent; equal-key changed-value witness refutes removal of its only hypothesis. Matching union host load, certificate manifest and native remain pending.",
+      "progress_note": "Clean fresh REPL admits the exact getter/setter and frame theorems (583 prover steps for seven source forms). Live ACL2 state witness asserts both literal conclusions and the full frame antecedent; equal-key changed-value witness refutes removal of its only hypothesis. Matching union host load, certificate manifest and native remain pending. Dedicated D104 guard-repair replay uses the original ocfg/core/store/installer/finish definitions and unchanged guards/hints; fresh REPL finish guard verifies in 3641 steps with exact association frame. Matching full host load remains pending.",
       "events": [
         "fn-owner-retain-carry-of-put",
-        "fn-owner-retain-carry-of-other-global-put"
+        "fn-owner-retain-carry-of-other-global-put",
+        "fn-owner-retain-carry-put-frames-global-association"
       ]
     },
     {
@@ -18045,6 +18047,56 @@
       "events": [
         "fn-rclp-event-retains-article-subject"
       ]
+    },
+    {
+      "id": "PRF-1068",
+      "title": "Carried independent live Store projections establish configured snapshot recovery",
+      "statement": "books/owner-snapshot-recovery.lisp: fn-osr-capture returns the existing Store pointer in O(1). fn-osr-livep carries a nonempty configuration history, the phase-aware fn-cst-relation, independent consumer/topic fn-sti-livep, and an identity replay-prefix relation including snapshots, cursor, generation and fault status. Successful actual fn-cpo-open-observed startup establishes this relation. Independent projection lemmas establish preservation of the component Store transitions; fn-snrt-run trace preservation is library-only and is not a production boundary citation. The production claim cites actual fn-sn-finish and fn-cpo-configure-durable for complete live-carry preservation. fn-osr-live-capture-opens derives successful observed open even during an in-flight transaction without assuming that open succeeds. fn-osr-ready-capture-keeps-established-projections equates target and source node, groups/capacity, configuration/history/frontier, identity cursor/snapshots, consumer obligations and topic conflicts/provenance. The relation is proof vocabulary; capture never recomputes it on the served path. Full HST-040 producer readiness additionally requires maintained statement keytable/generation, ordinary held verdicts and frozen row index recovery equality, plus physical producer publication/cost evidence; this row does not claim those pending fields or canonical-handle tuple identity. No new trust assumption. Existing A-CHECKPOINT-PUBLICATION remains a separate bytes-to-tables boundary under PRF-992.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [
+        "PRF-083",
+        "PRF-144",
+        "PRF-992"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-snapshot-recovery.lisp",
+        "tests/acl2/owner-snapshot-recovery-tests.lisp",
+        "specs/checkpoint.md"
+      ],
+      "progress_note": "gpt61 snapshot proof: clean protected hbox REPL loads all source dependencies inside proper encapsulates; 99 book forms plus 32 test forms pass (29 body forms after include hoisting), 5,891,150 steps / 23.11 ACL2 seconds. Opening strengthened to fn-osr-live-capture-opens after proving the ready premise redundant; actual in-flight configured ACK opens. Readiness remains material to source/target node equality: genuine reservation frontier advances at recovery while the live source node waits. Reachable historical capacity decrease plus live capacity/domain updates and configured ACK completion; literal hypothesis removals and labeled corrupted-state teeth. Full retained keyed/verdict/index target awaits transit repair and mandatory matching clean rerun. Actual host capture caller and union manifest/native producer evidence remain runner/operability gates. Reach gate correction: the fn-snrt-run library trace theorem remains in the book and tests, but is omitted from production events; no baseline suppression.",
+      "events": [
+        "fn-osr-open-establishes-live-carry",
+        "fn-osr-live-capture-opens",
+        "fn-osr-ready-capture-keeps-established-projections",
+        "fn-osr-finish-preserves-identity-prefix",
+        "fn-osr-finish-preserves-live-carry",
+        "fn-osr-configure-durable-preserves-live-carry"
+      ]
+    },
+    {
+      "id": "PRF-1066",
+      "title": "Byte-bounded NOV continuation over immutable cached column references (served integration open)",
+      "statement": "Q5c/J1 implementation component, not yet host-called or a served scheduling completion claim. books/nov-byte-window.lisp fn-nbw-step retains string references plus position and bounded owned octet pieces; each byte and empty-piece transition spends one fuel unit, preserves the shape/position invariant, emits at most fuel bytes and work, and preserves exact produced prefix plus logical residual. Library theorem fn-nbw-step-makes-bounded-progress: under pieces shape, natural offset, positive fuel and live pieces, complete residual equality, invariant preservation, positive work bounded by fuel, output bounded by fuel and strictly reduced complete remaining demand all hold. fn-nbw-step-pays-exact-demand accounts for every transition. books/nov-column-window.lisp fn-nbw-column-pieces copies a fixed number of cached NOV field references, numeric pieces and separators. Library theorem fn-nbw-column-pieces-refine-article-row: under maintained column relation F, facts equal to the actual lookup and decided ok verdict, the abstraction of its pieces equals the complete fn-nov-line over the article bytes, including CRLF. Removed redundant nonnil facts and explicit column-shape premises after proving the weakened statement; literal retained hypotheses have positive/removal witnesses. OPEN: install byte cursor in actual fn-splan continuation with the full composed remaining theorem, bounded legacy parse/cache hydration when old checkpoints lack NOV, actual codec/profile bridge for numerical setup, lookup cost, allocator/runtime cost and matching native measurements. No whole payload parser or complete field/row allocation may remain in the final served quantum.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-1020",
+        "PRF-332"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/nov-byte-window.lisp",
+        "books/nov-column-window.lisp",
+        "tests/acl2/nov-byte-window-tests.lisp",
+        "tests/acl2/nov-column-window-tests.lisp"
+      ],
+      "progress_note": "Clean persvati REPL: gpt61-nbw4 25/25 forms (21 same +2 macro named forms), gpt61-nbwt4 12/12 (11 named exact), gpt61-nbwc2 10/10 (6 named exact), gpt61-nbwct3 16/16 including actual intern/commit/lookup positive and literal hypothesis removal for F, exact facts and ok. All stopped. Source-dependency loads are not certificates. No host call, qualified image, allocator measurement or completed Q5c/J1 claim. Work/fuel models loop iterations and output length, not measured physical resources. Numeric setup still requires maintained codec/profile premise. Legacy parse/cache hydration remains owned open. The two named library theorems are retained as component evidence, not cited registry events: no served keystone is claimed until the actual host-called byte cursor composes them."
     }
   ]
 }
