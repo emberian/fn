@@ -384,3 +384,4 @@ anything a book does not already decide.
 | `fn-hcc-`, `fn-hch-` | `history-image-census`, `history-image-header` | Resumable history census and current-format header emission; library components. |
 | `fn-hrf-` | `history-resource-refinement` | Retained obligation logical/resource projection and component refinement. |
 | `fn-novlp-` | `nov-line-projection` | Logical first-five normalized NOV projection of the actual article parser; component proof vocabulary, never a served scan |
+| `fn-nlv-` | `legacy-parser-validity` | Logical control projection and physical-line/body grammar proofs of the actual bounded legacy byte cursor; full malformed-header simulation remains open |
