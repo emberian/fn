@@ -92,3 +92,25 @@
 
 (verify-guards fn-mpl-page-match-from)
 (in-theory (disable fn-mpl-page-match-from))
+
+; The writer shares the query's exact circular cursor, and mutates only this
+; unpublished local page. Crossing its boundary returns to directory/COW work.
+(defun fn-mpl-page-place (tag seq cursor fuel pages page-index page-words)
+  (declare (xargs :measure (nfix fuel)
+                  :guard (and (posp tag) (natp seq) (fn-mpr-cursorp cursor pages)
+                              (natp page-index) (< page-index pages)
+                              (true-listp page-words)
+                              (natp fuel) (<= fuel *fn-mpr-slot-quantum*))
+                  :verify-guards nil))
+  (cond ((equal (nth 1 cursor) 0) (mv :full cursor fuel page-words))
+        ((zp fuel) (mv :yield cursor 0 page-words))
+        ((not (equal (nth 0 cursor) page-index)) (mv :next-page cursor fuel page-words))
+        (t
+         (let* ((slot (nth 2 cursor)) (next (fn-mpr-advance cursor pages)))
+           (if (equal (fn-mpl-tag-at 0 slot page-words) 0)
+               (mv :placed next (- fuel 1) (fn-mpl-write-slot 0 slot tag seq page-words))
+             (fn-mpl-page-place tag seq next (- fuel 1) pages page-index page-words))))))
+
+(verify-guards fn-mpl-page-place
+  :hints (("Goal" :in-theory (enable fn-mpr-cursorp))))
+(in-theory (disable fn-mpl-page-place))
