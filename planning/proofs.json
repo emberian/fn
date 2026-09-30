@@ -18117,6 +18117,31 @@
         "host/native/owner.lisp"
       ],
       "progress_note": "Clean proper-local persvati osrm64t loaded the current snapshot-row-remap dependency inside an encapsulate and all29 test forms without refusal, 1.20 ACL2 seconds/83,440 steps. Both orphan ordinary/composite intern positives and wrong composite-held payload mutation evaluated; the tick/row functions are guard verified with no suffix guard. No certification, matching image/native or full producer claim."
+    },
+    {
+      "id": "PRF-1099",
+      "title": "Captured based-history source cursor binds row completion identity and resumes snoc order restoration",
+      "statement": "Library subjects fn-osrc-begin/tick borrow the captured records-field and scalar total count, epoch and capture lease. No fn-sfr-list, fn-sfr-nth or eager fn-hp-x-at is called. Snoc order restoration copies one cell per tick; completed rows advance exactly one ordinal and preserve source field, count, base handle, epoch and lease. A based row completion is emitted only for the current issued token (epoch,lease,ordinal); executable cursor natural counters are established and preserved without a suffix recognizer. Outputs distinguish resident suffix rows from concrete decoded nodes. The completed ordered suffix pointer remains retained as rows drain; fn-osrc-restart resets the ordinal in constant work and reuses that same prepared pointer for further census/column passes, refusing before suffix preparation is complete. Correctness of provider row contents, complete source-list refinement, span remap, funded reversal scratch, private fixed-page decoder and actual producer controller remain open; protocol progress alone is not a full bounded snapshot claim.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-040"
+      ],
+      "depends_on": [
+        "PRF-1081"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [
+        "fn-osrc-decoded-completion-requires-the-issued-token",
+        "fn-osrc-row-advances-one-ordinal-and-keeps-capture",
+        "fn-osrc-reversal-copies-exactly-one-suffix-cell",
+        "fn-osrc-continuation-keeps-the-executable-cursor"
+      ],
+      "evidence": [
+        "books/snapshot-source-cursor.lisp",
+        "tests/acl2/snapshot-source-cursor-tests.lisp"
+      ],
+      "progress_note": "Clean proper-local persvati osrc69 loads source in one encapsulate: 29 test forms, zero refusals, 91,506 steps / 0.15 ACL2 sec, including prepared-pointer replay and premature restart refusal. Session stopped; provider abstract-row inverse/host composition pending. No certification/image/native claim."
     }
   ]
 }

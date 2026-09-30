@@ -1731,3 +1731,15 @@ the snapshot ticket, lease or shared checkpoint slot. This retains the actual
 committed source semantics required by the recovery inverse; it never scans
 `fn-osr-retainedp` or another whole-history predicate. Resource admission still
 precedes this capture and remains a separate producer obligation.
+
+The captured source cursor (`fn-osrc-begin/tick`, PRF-1099) borrows
+`fn-sf-records-field` rather than materializing `fn-sf-records`. It restores
+snoc suffix order one cell per tick, requests each based row from the separate
+incremental decoder, and emits `(:resident row)` or `(:decoded node)`. Each
+decoder completion binds the captured scalar frontier, two-cell capture lease
+and ordinal. A stale completion refuses without advancing the cursor. The
+physical source pin survives every census/column pass and cleanup. Reversal
+conses are additional funded source scratch. Once the bounded preparation
+finishes, `fn-osrc-restart` reuses its immutable ordered suffix pointer in
+constant work for further passes; a premature restart refuses. Provider row correctness and
+complete source refinement remain required before producer completion.

@@ -17461,6 +17461,31 @@
           "name": "fn-osl-release-requires-the-matching-ticket-and-slot"
         }
       ]
+    },
+    {
+      "id": "PRF-1099",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-osrc-decoded-completion-requires-the-issued-token",
+          "pending_subject": "Captured-field source protocol is a library component pending real decoder and producer controller; it does not certify row contents or whole-source semantics."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osrc-row-advances-one-ordinal-and-keeps-capture",
+          "pending_subject": "Captured-field source protocol is a library component pending real decoder and producer controller; it does not certify row contents or whole-source semantics."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osrc-reversal-copies-exactly-one-suffix-cell",
+          "pending_subject": "Captured-field source protocol is a library component pending real decoder and producer controller; it does not certify row contents or whole-source semantics."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osrc-continuation-keeps-the-executable-cursor",
+          "pending_subject": "Captured-field source protocol is a library component pending real decoder and producer controller; it does not certify row contents or whole-source semantics."
+        }
+      ]
     }
   ]
 }
