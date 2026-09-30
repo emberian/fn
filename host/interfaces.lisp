@@ -4865,7 +4865,8 @@
 (definterface fn-hsr-auth-feed-byte :class :common-lisp-compliant)
 (definterface fn-hsr-auth-digest-tick :class :common-lisp-compliant)
 (definterface fn-hsr-source-byte-complete :class :common-lisp-compliant)
-(definterface fn-hsr-field :class :common-lisp-compliant)
+(definterface fn-hsr-field :class :common-lisp-compliant
+  :kinds ((i natp)))
 (definterface fn-hsr-auth-release :class :common-lisp-compliant)
 (definterface fn-hsr-source-cancel-returned :class :common-lisp-compliant)
 (definterface fn-hsr-source-settle-demand :class :common-lisp-compliant)
@@ -4888,8 +4889,10 @@
 (definterface fn-hct-begin :class :common-lisp-compliant)
 (definterface fn-hct-offer :class :common-lisp-compliant)
 (definterface fn-hct-tick :class :common-lisp-compliant)
-(definterface fn-omk-at :class :common-lisp-compliant)
-(definterface fn-osrc-at :class :common-lisp-compliant)
+(definterface fn-omk-at :class :common-lisp-compliant
+  :kinds ((n natp)))
+(definterface fn-osrc-at :class :common-lisp-compliant
+  :kinds ((n natp)))
 (definterface fn-osrc-restart :class :common-lisp-compliant)
 
 (definterface fn-hct-supply :class :common-lisp-compliant)
@@ -4931,12 +4934,14 @@
 (definterface fn-owner-history-image-effect-plan :class :common-lisp-compliant)
 (definterface fn-owner-history-image-effect-result :class :common-lisp-compliant)
 (definterface fn-owner-history-image-effect-read-count :class :common-lisp-compliant)
-(definterface fn-owner-history-image-effect-byte :class :common-lisp-compliant)
+(definterface fn-owner-history-image-effect-byte :class :common-lisp-compliant
+  :kinds ((i natp)))
 
 ; PRF-1149 cold recovery authority; final installer is owner-install scoped.
 (definterface fn-owner-recovery-source-start :class ::program)
 
-(definterface fn-ssr-at :class :common-lisp-compliant)
+(definterface fn-ssr-at :class :common-lisp-compliant
+  :kinds ((n natp)))
 
 (definterface fn-owner-recovery-source-reset :class ::program)
 
