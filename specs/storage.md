@@ -1378,6 +1378,24 @@ framed by the complete host-called owner/reclamation bridge. That bridge,
 revocation, refused-request identity headroom and the bounded continuation
 checker remain open. The component is not a served whole-state traversal.
 
+The post-reservation refusal iteration is now an explicit reference component
+in `books/refusal-headroom.lisp` (PRF-1110, SCN-1019). It composes the actual
+reserve and semantic-refusal subjects. From a typed idle Store whose node may
+advance to the allocator successor, `n` such attempts leave the frontier at
+`min(UINT32_MAX, frontier + n)`, keep all records, groups and capacity, and
+make the actual host-used `fn-bs-frontier-next` return no successor exactly
+when the available identity headroom has been consumed. The native reserve
+path converts that no-successor result into its existing named finite
+transaction-ID domain refusal before mutating the log kernel. This does not
+make post-reservation refusal free: the headroom is consumed. A preflight
+refusal before reserve is a separate zero-identity-use case. The iteration
+is proof machinery over the existing boundary drivers; matching native owner
+traces and transient physical rescue funding remain separate open obligations.
+The bound also exposes that post-reservation refusals can consume all remaining
+identities; it does not reserve identities for maintenance/recovery. The funded
+rescue argument must include that finite identity-space demand, or justify the
+named terminal state for each remaining path.
+
 The two operations (the Fable mandate, section 8):
 
 - **History compaction** (replacing history by a summary sufficient for

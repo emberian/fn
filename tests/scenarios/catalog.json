@@ -6372,7 +6372,9 @@
         "Compute a nonempty scalar layout and compare its directory/data/table allocation with the actual fresh allocator; exercise each range/type hypothesis independently.",
         "Write a nonempty scratch prefix, reset while physical words remain, then fill a whole2048word page and attempt another put.",
         "Reduce completed codec lengths for actual nonempty rows; reject stale ordinal/overflow; resume scalar capacity and fill the current header one concrete word per tick.",
-        "Stream the salted Message-ID FNV one byte per tick, including an empty string terminal and an incorrectly attributed source byte."
+        "Stream the salted Message-ID FNV one byte per tick, including an empty string terminal and an incorrectly attributed source byte.",
+        "Stream342current-format metadata entries across two scratch pages, yielding within an entry; reset only after consumption and resume the same ordinal/component. Supply one incorrectly attributed digest separately.",
+        "Request positional writes for last/adjacent pages under the admitted extent; try the framed-region boundary and one-byte-short extent."
       ],
       "expected": [
         "Each valid tick emits one exact original descriptor or yields without losing remaining writes.",
@@ -6381,7 +6383,9 @@
         "Scalar addresses equal indexed fresh allocation without building an allocation list in execution; representation overflow refuses before allocation.",
         "Each stored word extends exactly the logical prefix; reset prevents stale-word exposure; full page refuses further writes without changing prefix or identities.",
         "Census equals existing individually padded history regions; capacity preserves the canonical result; emitted scratch page equals the current header, including zeros, with identities and representation preserved.",
-        "The completed key equals existing fn-hp-mkey for a nonempty held row; wrong source byte breaks the exact residual while retained premises hold."
+        "The completed key equals existing fn-hp-mkey for a nonempty held row; wrong source byte breaks the exact residual while retained premises hold.",
+        "Concatenated test pages equal existing encoded directory run including padding; page-full/done leave state unchanged; wrong digest fails the exact source-attribution conclusion.",
+        "Accepted whole-file offsets preserve the FNSI wrapper base, stay before framed segments and do not overlap; domain/extent violations refuse before I/O."
       ],
       "implementation": {
         "test": "tests/acl2/history-page-cursor-tests.lisp",
@@ -6393,7 +6397,9 @@
         "tests/acl2/history-page-buffer-tests.lisp",
         "tests/acl2/history-image-census-tests.lisp",
         "tests/acl2/history-image-header-tests.lisp",
-        "tests/acl2/history-key-cursor-tests.lisp"
+        "tests/acl2/history-key-cursor-tests.lisp",
+        "tests/acl2/history-page-metadata-tests.lisp",
+        "tests/acl2/history-page-io-tests.lisp"
       ],
       "execution_scope": "Library component only; no actual host or funded producer completion claim."
     },
@@ -6569,7 +6575,10 @@
         "Assert the literal general parser projection and five-column composition conclusions and independently expected output.",
         "Exercise bare empty field, orphan fold, NUL header, bare LF, missing separator, body framing error and empty first line followed by a fold.",
         "Mutate expected first-match selection and initial TAB normalization; assert inequality.",
-        "Exercise literal byte-control commutation, exact body acceptance and new-field/fold physical-line conclusions; remove each retained hypothesis with all other hypotheses checked."
+        "Exercise literal byte-control commutation, exact body acceptance and new-field/fold physical-line conclusions; remove each retained hypothesis with all other hypotheses checked.",
+        "Assert exact actual-byte start/bad result for arbitrary physical lines: missing/invalid colon or name, non-WSP first value, NUL/non-ASCII bytes, orphan and whitespace-only folds, exact 998 and 999 lengths; remove each retained start/length/nonempty/CRLF-free hypothesis while checking all others.",
+        "Assert exact separator/body acceptance, rejection of unfinished headers with or without trailing CR, absorbing bare LF and universal CR/non-LF refusal; every retained hypothesis has an affirmative removal witness.",
+        "Check source-dominated parser counters, each of three retained inequality removals with others affirmed, and unconditional actual widest-parser counter-error exclusion on a nonempty successful article; label reduced profile-limit mutation separately."
       ],
       "expected": [
         "Exactly the first matching fields, one initial SP removed, folding CRLF removed and TAB scrubbed to SP.",
@@ -6625,7 +6634,10 @@
         "Feed varied bytes through the scalar word accumulator; assert complete partial/eighth-byte/final-pad antecedents, exact existing fn-hp-pack8 outputs and no extra word after an aligned stream.",
         "For every remaining word-boundary hypothesis, retain all other hypotheses and affirm both failure of the removed premise and failure of the literal conclusion in a labeled argument/cursor mutation.",
         "Traverse a nonempty nested/dotted resident row with source-reference descriptors; check every literal invariant/residual/capture antecedent and compare interpreted output with fn-scc-encode.",
-        "Classify a 200-byte prefix ending in a non-byte symbol and complete within810 descriptor ticks using maintained non-octets suffix tasks."
+        "Classify a 200-byte prefix ending in a non-byte symbol and complete within810 descriptor ticks using maintained non-octets suffix tasks.",
+        "Compose descriptor traversal with scalar and opaque leaf byte cursors; assert every per-byte invariant/residual and exact current-codec output before and after a scheduling interruption.",
+        "Feed the complete resident byte stream through bounded word push/finish and compare packed zero-padded output with the current pack8 oracle.",
+        "Census the identical captured row without retaining encoded bytes; interrupt/resume, compare the terminal exact count with codec length and explicitly refuse a corrupted census total at the u64 edge."
       ],
       "expected": [
         "No source-list copy or whole-row encoding occurs at begin or tick.",
@@ -6640,7 +6652,7 @@
         "tests/acl2/history-record-cursor-tests.lisp",
         "specs/history-record-cursor.md"
       ],
-      "execution_scope": "Resident tree descriptor, opaque-leaf byte and scalar word-accumulator source libraries only. Scalar byte composition, borrowed cold spans, total census/producer/profile bridge and native qualification remain open."
+      "execution_scope": "Resident descriptor, scalar/leaf byte composition, exact byte census and scalar word-boundary source libraries only. Borrowed cold spans, general progress, total padded placement/producer/profile bridge and native qualification remain open."
     },
     {
       "id": "SCN-1009",
@@ -6654,7 +6666,8 @@
         "Seal an article in the arena and begin a cursor with its handle, length and origin pin. Resume across every byte boundary, including a split CRLF, colon, first value SP and folded line.",
         "Exercise five selected fields, mixed-case and repeated names, empty initial values completed by folds, TAB versus exactly one initial SP, missing fields and physical lines of 998 and 999 octets.",
         "Exercise invalid names, orphan folds, empty final fields, missing separator, bare CR/LF, header NUL, body NUL and unterminated body; compare terminal results with fn-hnov-of and fn-hf-body-lines-of.",
-        "Mutate continuation position, source handle, first-header selection and whitespace normalization separately."
+        "Mutate continuation position, source handle, first-header selection and whitespace normalization separately.",
+        "Check the literal actual value-transition invariant and remove its value correspondence, phase, line-budget and valid-byte hypotheses individually while affirming all retained hypotheses; verify folded completed source spans and absent-versus-empty first hits."
       ],
       "expected": [
         "Each tick consumes and reports at most its fuel, preserves handle and pin and makes bounded progress. No final tick walks or copies the full source or field.",
@@ -6664,7 +6677,10 @@
       "evidence": [
         "books/legacy-parser-cursor.lisp",
         "books/legacy-parser-reference.lisp",
-        "tests/acl2/legacy-parser-cursor-tests.lisp"
+        "tests/acl2/legacy-parser-cursor-tests.lisp",
+        "books/legacy-parser-values.lisp",
+        "tests/acl2/legacy-parser-values-tests.lisp",
+        "planning/evidence/legacy-parser-values-source.md"
       ]
     },
     {
@@ -6693,6 +6709,95 @@
         "host/native/owner.lisp"
       ],
       "execution_scope": "Source-only library/adapter and raw-host checks; producer activation and matching native execution pending."
+    },
+    {
+      "id": "SCN-1006",
+      "title": "Fixed-block page digest continuation and current word-digest identity",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-035",
+        "HST-040"
+      ],
+      "steps": [
+        "Capture exact immutable source and lease names; census final64-byte blockcount before digest begin.",
+        "Tick empty,64-byte,1,024-byte,1024+64-byte and2048+64-byte word streams, yielding between split search, block and parent phases.",
+        "Compare terminal natural to the existing actual pgs-x-words-digest; mutate source and separately corrupt continuation depth.",
+        "After general refinement/progress/allocation proofs, wire into the disk-backed two-pass preparation controller and run matching producer/image evidence.",
+        "Capture exact byte-total for protected extents and stream partial final blocks with canonical zero padding; compare exact digest octets to the existing concrete fn-blake3."
+      ],
+      "expected": [
+        "No whole directory staging; each input quantum is at most eight u64 words and one compression; source is read-only.",
+        "Finished digest preserves current persistent-format value and capture/lease names.",
+        "Source change is distinguished in ground evidence; corrupted-depth continuation returns invalid with unchanged state.",
+        "No producer/resource-admission completion until actual composition, general proof and matching evidence.",
+        "Exact-byte step preserves page-step behavior on aligned lengths and returns the exact residual byte count; constrained frame-digest composition remains explicit."
+      ],
+      "evidence": [
+        "books/pagestore-digest-cursor.lisp",
+        "tests/acl2/pagestore-digest-cursor-tests.lisp",
+        "planning/page-digest-cursor-contract.md",
+        "books/pagestore-digest-cursor-refinement.lisp",
+        "tests/acl2/pagestore-digest-cursor-refinement-tests.lisp",
+        "planning/evidence/page-digest-cursor-refinement-2026-09-30.md",
+        "books/pagestore-digest-byte-cursor.lisp",
+        "books/pagestore-digest-byte-refinement.lisp",
+        "tests/acl2/pagestore-digest-byte-cursor-tests.lisp",
+        "planning/evidence/page-digest-byte-source-2026-09-30.md"
+      ],
+      "execution_scope": "Guard-verified source library plus clean phase equations and conditional actual-digest terminal bridge. Literal semantic carry and matching-block removal with distinct output mutation pass. Maintained trajectory/progress/domain/allocation and host composition remain open."
+    },
+    {
+      "id": "SCN-1019",
+      "title": "Repeated semantic refusals preserve accepted history and exhaust identities without wraparound",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-017"
+      ],
+      "steps": [
+        "Commit a nonempty held article through actual reserve, prepare, order and finish; repeat actual reserve/refuse20times.",
+        "Open a valid nonempty persisted history with allocator frontier two below its codec ceiling; complete real recovery barriers and repeat9 refusals.",
+        "Compare actual fn-bs-frontier-next with remaining headroom at one, two and nine attempts.",
+        "Remove the ready-boundary hypothesis using the reachable reserved phase; check the expected frontier and exhaustion claims both fail."
+      ],
+      "expected": [
+        "The frontier grows by min(attempts, remaining headroom); no allocation wraps or reuses an identity.",
+        "Record history, served groups and capacity remain unchanged, even without the readiness hypothesis.",
+        "The host-used allocation predicate returns NIL at exactly exhausted headroom; the native maps this to its existing named refusal before log mutation."
+      ],
+      "evidence": [
+        "tests/acl2/refusal-headroom-tests.lisp"
+      ],
+      "execution_scope": "Logical reference composition and actual observed-open witnesses. Matching native owner trace and physical funding evidence remain open."
+    },
+    {
+      "id": "SCN-1017",
+      "title": "Authenticated checkpoint mapping resumes with fixed scratch",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [],
+      "steps": [
+        "Scan actual directory codec entries across a 16KiB page boundary, retaining only six selected words.",
+        "Check literal invariant, identity, one-word progress, exact selection, accumulated malformed flag and terminal extraction claims, with each removable hypothesis contradicted separately.",
+        "Detect a newer txid in an unselected entry and nonzero trailing padding.",
+        "Compare incremental txid/padding and directory/table verdicts with current logical codecs; check digest damage priority and literal hypothesis removals.",
+        "Planned: bind exact file incarnation and fresh buffer identity to root-directory-table-data authentication and demonstrate stale completion refusal."
+      ],
+      "expected": [
+        "Selected entry matches existing pgs-decode-table exactly, including a straddling entry.",
+        "One word of scanner work and at most six retained words per tick.",
+        "Full digest/request/physical composition remains open until integrated; extraction alone authorizes no data."
+      ],
+      "implementation": {
+        "test": "tests/acl2/history-page-reader-tests.lisp"
+      },
+      "evidence": [
+        "tests/acl2/history-page-reader-tests.lisp",
+        "specs/history-auth-reader.md",
+        "tests/acl2/history-page-reader-verdict-tests.lisp"
+      ],
+      "execution_scope": "Scanner component source only; authenticated continuation and host integration remain open."
     }
   ]
 }
