@@ -1584,6 +1584,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-decode-stream \
 	books/history-decode-refinement \
 	tests/acl2/history-decode-refinement-tests \
+	books/history-decode-shape \
+	tests/acl2/history-decode-shape-tests \
 	tests/acl2/history-decode-cursor-tests \
 	books/pagestore-digest-cursor \
 	books/pagestore-digest-cursor-refinement \
