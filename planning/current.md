@@ -167,7 +167,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 **bundles across an outage.** After a contact is lost the node re-offers the same held bundle within the retry budget and then holds it stranded, never releasing it without a receipt.
 
-- Host-called subject: `fn-bpnj-step` at host/native/bp-service.lisp:242, equated by `fn-bpnj-step-delegates-every-other-event` (books/bp-node-job-offer.lisp:221).
+- Host-called subject: `fn-bpnj-step` at host/native/bp-service.lisp:248, equated by `fn-bpnj-step-delegates-every-other-event` (books/bp-node-job-offer.lisp:221).
 - Keystone: `fn-bpnp-step-session-offer-is-the-scan-choice` (books/bp-node-forward-retry.lisp:154; PRF-046 (uncertified-at-current-digest), PRF-103 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20260928T124849Z-2149901` passed this source of `books/bp-node-forward-retry.lisp`, and since then `books/accounts.lisp`, `books/article-fields.lisp`, `books/article-header-census.lisp` and 144 more changed.
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile dtn developer and production images, frozen (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); changed since it: `books/bp-node-forward-retry.lisp`, `books/bp-node-job-offer.lisp`, `host/native/bp-service.lisp`.
 - Deployed: no: the node runs default, this needs dtn.

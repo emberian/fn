@@ -18029,7 +18029,7 @@
         "PRF-134"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-recovery-profile.lisp",
         "tests/acl2/bp-recovery-profile-tests.lisp",
@@ -18037,7 +18037,12 @@
         "tests/test_bp_fragment_node_native.py",
         "planning/evidence/bp-recovery-profile-2026-09-30.md"
       ],
-      "progress_note": "Clean persvati bpradu-final loaded22/22 test forms, no refusals; new definitions/guards and dependencies admitted from source, not certified. Session stopped. Final interface/ledger/host gates pending; matching native and combined certification remain runner-owned."
+      "progress_note": "Clean persvati bpradu-final loaded22/22 test forms, no refusals; source dependency definitions/guards admitted, not certified. Staticteeth13/13 zero findings. Source gates e74245760 passed regeneration/interface/ledger/read/books/defaultbare47/47+DTNbare31/31. Matching SCN1008 native and combined certification remain runner-owned, NOT RUN.",
+      "events": [
+        "fn-bprpf-admitted-row-has-bounded-adu",
+        "fn-bprpf-admitted-checkpoint-bounds-every-held-adu",
+        "fn-bprpf-ready-recovery-bounds-every-held-adu"
+      ]
     }
   ]
 }
