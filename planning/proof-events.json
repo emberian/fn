@@ -17438,6 +17438,18 @@
         {
           "kind": "theorem",
           "name": "fn-owner-finish-synced-preserves-retain-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-install-extended-establishes-retain-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-orcp-swap-installs-retain-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-install-extended-establishes-retain-state"
         }
       ]
     }

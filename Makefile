@@ -1502,6 +1502,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-reclaim-carry-tests \
 	tests/acl2/owner-retain-state-tests \
 	tests/acl2/owner-retain-transitions-tests \
+	tests/acl2/owner-recovery-retain-tests \
 	tests/acl2/owner-reclaim-ready-tests \
 	tests/acl2/control-request-word-tests \
 	tests/acl2/packed-submission-tests \

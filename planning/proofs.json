@@ -18042,10 +18042,11 @@
     {
       "id": "PRF-1072",
       "title": "Actual owner carry writers preserve the carried entry state",
-      "statement": "Subject: books/owner-retain-transitions.lisp fn-owner-prepare-identity, called by host/native/owner.lisp fnn-owner-identity-commit, and fn-owner-finish-synced, called by host/owner-host.lisp fn-owner-finish. Each preserves fn-prc-carryp of the returned live state under fn-prc-carryp at entry. Identity prepare additionally preserves the proof-only fn-owner-retain-statep relation: owner global bound, configured owner fn-lgoc-invariantp, and retention carry fn-prc-carryp; that relation implies its literal bound-owner/Store-state/carry guard. The exact definitions retain their executable guards and effects, including signed candidate installation and completion words. The full initialization/five-writer mission is in progress: program prepare variants, live reclaim swap, initialization, complete completion owner relation, native producer premises and matched image evidence remain open. These bounded claims enable no real-owner raw annotations and establish no signed POST cost curve. Local policy; no RFC requirement.",
+      "statement": "Subject: books/owner-retain-transitions.lisp fn-owner-prepare-identity, called by host/native/owner.lisp fnn-owner-identity-commit, and fn-owner-finish-synced, called by host/owner-host.lisp fn-owner-finish. Each preserves fn-prc-carryp of returned live state under fn-prc-carryp at entry. Identity prepare additionally preserves proof-only fn-owner-retain-statep (owner bound, fn-lgoc-invariantp configured owner, and fn-prc-carryp carry), which implies its literal entry guard. Subject books/owner-recovery-retain.lisp fn-owner-install-extended establishes fn-prc-carryp after a nonfault owner passes fn-onb-open-okp; refused/damaged opens leave prior carry unchanged. Actual fn-owner-orcp-swap, called by host/native/owner.lisp fnn-owner-reclaim-pass, installs exactly rebuilt field 2 through every later state effect; PRF-1060 establishes validity of that exact native producer field. Swap guard is verified under true-listp rebuilt and bound owner; the exact rebuild produces a true list. The cold install is guard-verified: successful-arm inputs require a typed recovered Store and the 32-byte catalog key. The exact recovery and node-secret key producers imply that literal guard. With fn-onb-open-okp and fn-lgoc-invariantp of the supplied configured owner, the actual cold installer establishes fn-owner-retain-statep through all state effects; the nonfault premise was proved redundant and removed. Article prepare domains, complete completion owner relation, maintained native premises and matching image evidence remain open. No real-owner raw annotations or signed POST cost claim. Local policy; no RFC requirement.",
       "depends_on": [
         "PRF-1067",
-        "PRF-289"
+        "PRF-289",
+        "PRF-1060"
       ],
       "milestone": "M5",
       "requirements": [
@@ -18055,13 +18056,18 @@
       "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-retain-transitions.lisp",
-        "tests/acl2/owner-retain-transitions-tests.lisp"
+        "tests/acl2/owner-retain-transitions-tests.lisp",
+        "books/owner-recovery-retain.lisp",
+        "tests/acl2/owner-recovery-retain-tests.lisp"
       ],
-      "progress_note": "Clean source REPL guard and transition proofs, reachable signed prepare/seal and durable completion/ready witnesses, and corrupted carry hypothesis-removal witnesses passed. Matching union certificate manifest, host load and native remain runner-owned and pending. Initialization and the remaining writer domains remain open.",
+      "progress_note": "Fresh ecinitclean hbox source replay: 427 matching cached books plus 26 source dependencies in encapsulates; 14 own test forms, 1010894 aggregate prover steps, 15.17 seconds ACL2 time, no refusal. Cold install and swap both COMMON-LISP-COMPLIANT. Full invariant witnesses affirm retained hypotheses and failures of each omitted premise; actual signed prepare/completion and cold/reclaim carry witnesses retained. Source-only; matching certification, composed host load and native execution remain runner-owned and pending. Article prepare domains, full completion/swap relation and maintained native premises remain open.",
       "events": [
         "fn-owner-prepare-identity-preserves-retain-carry",
         "fn-owner-prepare-identity-preserves-retain-state",
-        "fn-owner-finish-synced-preserves-retain-carry"
+        "fn-owner-finish-synced-preserves-retain-carry",
+        "fn-owner-install-extended-establishes-retain-carry",
+        "fn-owner-orcp-swap-installs-retain-carry",
+        "fn-owner-install-extended-establishes-retain-state"
       ]
     }
   ]
