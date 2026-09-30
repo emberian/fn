@@ -387,3 +387,5 @@ anything a book does not already decide.
 | `fn-nlv-` | `legacy-parser-validity` | Logical control projection and physical-line/body grammar proofs of the actual bounded legacy byte cursor; full malformed-header simulation remains open |
 | `fn-hrcur-` | `history-record-cursor` | Resumable resident history codec leaf, word, and descriptor components. |
 | `fn-lpc-` | `legacy-parser-cursor`, `legacy-parser-reference`, `legacy-parser-header` | Bounded legacy header/body cursor with source spans and logical refinement vocabulary. |
+
+| `fn-lpv-`, `fn-lpvt-`, `lpvt-` | `legacy-parser-values`, `tests/acl2/legacy-parser-values-tests` | Logical source-slice and unfolded value normalization invariants; never served materialization |
