@@ -60,3 +60,15 @@ used to establish either fence. The exact source and recording scope are in
 The sized observer calls the actual public observation once, then records fixed-six carry metadata only against its exact `:counted` successor and issued epoch/loader generation. The final installer reads `fn-owner-recovery-source-sized-readout` internally using its frozen token. Native must never supply final fields or refresh a stale token. A legitimate seed observation before the suffix loop can advance the issuer serial without replay, including an empty suffix. Unavailable metadata leaves replay usable but canonical readiness unavailable. Source and recording evidence is `planning/evidence/recovery-sized-observer-source-2026-09-30/coordinate.json`.
 
 The live suffix fold begins at zero, while the issued checkpoint frontier may be positive. The initial `fn-owner-recovery-source-observe-seed-sized` derives the retained issuer frontier in ACL2, requires serial0 and exact prefix count, and delegates to the same sized observer. It changes no suffix fold. The exact native suffix function then uses one produced SSR decision and one lexical-token observation per chunk. Final `fn-owner-recovery-source-install-sized` reads pending ORIGINAL fields internally; its production source admission and full native/physical qualification remain open.
+
+The resident suffix now obtains aligned snapshot child carries from the same
+chunk parser that returns its wire events. `fn-srss-decode` preserves the
+complete old `fn-srs-decode` result, including failures, and its successful
+side result corresponds to those exact rows. `fnn-recover-record-chunks-sized`
+retains the existing chunk schedule; `fnn-recover-suffix-intern` forwards the
+returned carries unchanged to the one actual sized intern worker. The old
+full-replay decoder remains separate. There is no second parse or whole-row
+resummary in the host. The source component and native forwarding recordings
+are in `planning/evidence/snapshot-suffix-native-join-2026-09-30/`; recording
+core/STATE doubles do not establish loader provenance, installed CP7/pool/row
+correspondence, INITIAL adequacy or native image qualification.

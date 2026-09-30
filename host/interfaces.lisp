@@ -4943,5 +4943,6 @@
 (definterface fn-owner-recovery-source-observe-sized :class :program)
 (definterface fn-store-statement-replay-seed-sized :class :program)
 (definterface fn-ssrs-intern-step :class :common-lisp-compliant)
+(definterface fn-srss-decode :class :common-lisp-compliant)
 
 (definterface fn-owner-recovery-source-observe-seed-sized :class :program)

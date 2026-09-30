@@ -16,6 +16,8 @@
 (include-book "../books/store-intern")
 (include-book "../books/open-frontier-wire")
 (include-book "../books/store-recover-stream")
+; The actual suffix decoder returns same-parser snapshot row carries.
+(include-book "../books/store-recover-stream-sized")
 ; The open's extent seals and the served read's trailer check (PRF-294);
 ; the commit's extent reseat (PRF-309; it includes payload-extent).
 (include-book "../books/payload-commit-extent")

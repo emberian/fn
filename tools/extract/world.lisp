@@ -174,6 +174,7 @@
 (include-book "../../books/store-intern")
 (include-book "../../books/open-frontier-wire")
 (include-book "../../books/store-recover-stream")
+(include-book "../../books/store-recover-stream-sized")
 (include-book "../../books/payload-commit-extent")
 (include-book "../../books/payload-extent-read")
 (include-book "../../books/page-read-ownership")

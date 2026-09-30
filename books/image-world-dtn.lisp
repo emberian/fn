@@ -118,6 +118,7 @@
 (include-book "store-intern")
 (include-book "open-frontier-wire")
 (include-book "store-recover-stream")
+(include-book "store-recover-stream-sized")
 (include-book "payload-commit-extent")
 (include-book "payload-extent-read")
 (include-book "page-read-ownership")

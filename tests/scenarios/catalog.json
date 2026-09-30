@@ -7040,7 +7040,8 @@
         "Complete configured recovery, read actual Store count/frontier/CP and atomically install context/carries/canonical sizes with sealed source4.",
         "Run real accepted-history checkpoint/restart/two-page cold read with retained old reader and joined cleanup under actual admission.",
         "Actual recovery entry resets canonical epoch inside joined-quiescent arena lifecycle exclusion before physical load; reset-first and start/capture-first schedules preserve ordering/refusal without STATE or Store mutation.",
-        "Repeat decoder finish without an active load so metadata clears but generation is unchanged; require prior token readout, observe and install to refuse with retained STATE."
+        "Repeat decoder finish without an active load so metadata clears but generation is unchanged; require prior token readout, observe and install to refuse with retained STATE.",
+        "Decode each resident suffix chunk once through the paired actual dispatcher; forward aligned snapshot child carries unchanged to one actual SSR worker. Check empty suffix, mixed snapshot/non-snapshot chunks and failure after a valid prefix without a second parse or graph resummary."
       ],
       "expected": [
         "No old live-owner source fallback or host-supplied final count.",
@@ -7055,9 +7056,10 @@
         "planning/evidence/recovery-source-authority-source-2026-09-30.json",
         "planning/evidence/recovery-state-boundary-2026-09-30/native-review.md",
         "planning/evidence/recovery-reset-source-2026-09-30/coordinate.json",
-        "planning/evidence/recovery-source-live-metadata-2026-09-30/coordinate.json"
+        "planning/evidence/recovery-source-live-metadata-2026-09-30/coordinate.json",
+        "planning/evidence/snapshot-suffix-native-join-2026-09-30/source-hashes.json"
       ],
-      "execution_scope": "Source-only scalar/token fixtures pass in fresh protected rsag3; actual loader/SSR/install and native accepted-history scenario remain specified and open. Separate recording51 scenarios pass with explicit STATE/loader/SSR/disk doubles, including six current-metadata refusal cases; no actual durable recovery claim."
+      "execution_scope": "Source-only scalar/token fixtures pass in fresh protected rsag3; actual loader/SSR/install and native accepted-history scenario remain specified and open. Separate recording51 scenarios pass with explicit STATE/loader/SSR/disk doubles, including six current-metadata refusal cases; no actual durable recovery claim. Five installed-native forwarding recordings pass with explicit decoder/SSR/STATE/arena/quantum doubles; actual same-parser chunk result/carry evidence is a distinct guarded source component, not full loader/install/funding/native qualification."
     },
     {
       "id": "SCN-1048",

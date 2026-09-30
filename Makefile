@@ -244,6 +244,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-existing-alpha-tests \
 	books/store-recover-stream \
 	tests/acl2/store-recover-stream-tests \
+	books/stx-keyring-size-reader \
+	tests/acl2/stx-keyring-size-reader-tests \
+	books/store-recover-stream-sized \
+	tests/acl2/store-recover-stream-sized-tests \
 	books/store-node-traces-prepare \
 	books/store-node-traces \
 	tests/acl2/store-node-traces-tests \

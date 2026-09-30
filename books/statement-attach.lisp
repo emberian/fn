@@ -14,13 +14,17 @@
 (in-package "ACL2")
 (include-book "statement-seam")
 (include-book "statement-codec")
+(include-book "statement-codec-size-reader")
 
 (defattach (fn-stmt-encode-items fn-stmt-encode-items-impl)
            (fn-stmt-decode-items-bounded fn-stmt-decode-items-bounded-impl)
+           (fn-stmt-decode-items-sized-bounded fn-stmt-decode-items-sized-bounded-impl)
            (fn-stmt-decode-prefix-items-bounded
             fn-stmt-decode-prefix-items-bounded-impl)
            :hints (("Goal"
-                    :use (fn-stmt-impl-encode-items-of-atom
+                    :use (fn-stmt-sized-bounded-projection-by-definition
+                          fn-stmt-sized-bounded-lengths-correspond
+                          fn-stmt-impl-encode-items-of-atom
                           fn-stmt-impl-encode-items-of-cons
                           fn-stmt-impl-decode-items-bounded-of-encode
                           fn-stmt-impl-decode-items-bounded-canonical

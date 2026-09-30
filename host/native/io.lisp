@@ -1548,6 +1548,22 @@ record is always taken first, so no record is refused or split for its size)."
               (push (fnn-octet-list record) chunk)))
           (fnn-core 'fn-store-decode-records (nreverse chunk))))))
 
+(defun fnn-recover-record-chunks-sized (records)
+  "The suffix chunk schedule with one paired ACL2 decoder call per chunk.
+Return the original wire result and its aligned same-parser snapshot carries
+as two values. The old full-replay chunk entry remains separate."
+  (lambda ()
+    (if (null records)
+        (values :end nil)
+        (let ((chunk nil) (octets 0))
+          (loop while (and records (not (fnn-core 'fn-srs-chunk-fullp octets))) do
+            (let ((record (pop records)))
+              (incf octets (length record))
+              (push (fnn-octet-list record) chunk)))
+          (destructuring-bind (decoded carries)
+              (fnn-call 'fn-srss-decode (nreverse chunk))
+            (values decoded carries))))))
+
 (defun fnn-bridge-config-observation-limit (store)
   "The config reader consumes an ACL2-owned bound before readdir retains names:
 the operator's max-config-generations of the profile STORE opened."
@@ -2626,10 +2642,11 @@ authority is issued by ACL2 before this loop; each produced completion
 consumes that exact token and returns its successor as the fourth value.
 Parallel same-decision fields and status are fifth and sixth; unavailable
 metadata never changes the original row/identity/arena result. Snapshot child
-carry is unavailable until its actual row provider supplies provenance."
+carry comes from the same paired resident decoder call as each wire event;
+unavailable child metadata preserves the existing replay result."
   (if (eq (fnn-core 'fn-store-sn-recover-records nil configs) :bad)
       (values :bad acc nil recovery-authority nil :unavailable)
-      (let* ((next (fnn-recover-record-chunks suffix))
+      (let* ((next (fnn-recover-record-chunks-sized suffix))
              (seed (fnn-core-state 'fn-store-statement-replay-seed-sized))
              (rows (first seed)) (fields (second seed))
              (metadata (third seed)) (fold acc))
@@ -2643,12 +2660,12 @@ carry is unavailable until its actual row provider supplies provenance."
               (fnn-fault "cold source rejected replay seed: ~a" answer))
             (setq recovery-authority (second answer))))
         (loop
-          (let ((decoded (funcall next)))
+          (multiple-value-bind (decoded snapshot-carries) (funcall next)
             (when (eq decoded :end) (return))
             (when (eq decoded :bad) (return-from fnn-recover-suffix-intern (values :bad acc nil recovery-authority nil :unavailable)))
             (setq fold (fnn-core 'fn-ofw-wire-next decoded fold))
             (let ((answer (fnn-call 'fn-ssrs-intern-step rows fields decoded
-                                   nil nil :resident nil nil (fnn-live-arena))))
+                                   nil nil :resident nil snapshot-carries (fnn-live-arena))))
               (setq rows (first answer) fields (second answer)
                     metadata (third answer)))
             (when (eq rows :bad) (return-from fnn-recover-suffix-intern (values :bad acc nil recovery-authority nil :unavailable)))
