@@ -595,6 +595,13 @@ ACL2_BOOKS ?= books/defrecord \
 	books/page-read-ledger \
 	books/page-discovery-ledger \
 	books/cold-read-layout \
+	books/cold-runtime-bound \
+	books/assumptions-cold-runtime \
+	books/page-maintenance-lease \
+	tests/acl2/page-maintenance-lease-tests \
+	books/cold-read-bootstrap \
+	tests/acl2/cold-read-bootstrap-tests \
+	tests/acl2/cold-read-bootstrap-host-tests \
 	tests/acl2/page-discovery-ledger-tests \
 	tests/acl2/cold-read-layout-tests \
 	books/page-read-ownership \

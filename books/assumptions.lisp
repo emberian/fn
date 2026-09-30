@@ -43,6 +43,7 @@
 
 (in-package "ACL2")
 (include-book "byte-store-invariants")
+(include-book "assumptions-cold-runtime") ; A-COLD-RUNTIME
 (include-book "assumptions-durable") ; A-DURABLE-EXTENT, A-DURABLE-LZ
 
 ;; Rules withdrawn at their source that this book's proofs use

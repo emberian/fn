@@ -184,3 +184,32 @@
       (eq (symbol-class 'fn-owner-page-read-enter-mode (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-owner-page-read-discovery-admit (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-owner-page-read-discovery-release (w state)) :common-lisp-compliant)))
+
+
+(defun prh-maintenance-run (fn-page-read-pool)
+  (declare (xargs :mode :program :stobjs fn-page-read-pool))
+  (mv-let (installed fn-page-read-pool)
+    (fn-owner-page-read-install '(10000 1000 4 2 100) 0 0 0 100 fn-page-read-pool)
+    (mv-let (admitted token fn-page-read-pool)
+      (fn-owner-maintenance-admit 7 23 '(1000 100 1 1 1) fn-page-read-pool)
+      (mv-let (grown fn-page-read-pool)
+        (fn-owner-maintenance-grow token '(16 500 1 0 0) fn-page-read-pool)
+        (let ((before (fn-owner-page-read-ledger fn-page-read-pool)))
+          (mv-let (refused fn-page-read-pool)
+            (fn-owner-maintenance-grow token '(0 401 0 0 0) fn-page-read-pool)
+            (let ((unchanged (equal before (fn-owner-page-read-ledger fn-page-read-pool))))
+              (mv-let (released fn-page-read-pool)
+                (fn-owner-maintenance-release token fn-page-read-pool)
+                (mv (list installed admitted token grown refused unchanged released
+                          (fn-prl-nth 1 (fn-owner-page-read-ledger fn-page-read-pool)))
+                    fn-page-read-pool)))))))))
+(defun prh-maintenance-exec ()
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-page-read-pool
+    (mv-let (result fn-page-read-pool) (prh-maintenance-run fn-page-read-pool) result)))
+(assert! (equal (prh-maintenance-exec)
+                '(:installed :admitted (:maintenance 0 7 23) :grown
+                  :maintenance-resources-unavailable t :released (0 0 0 0 1))))
+(assert-event (and (eq (symbol-class 'fn-owner-maintenance-admit (w state)) :common-lisp-compliant)
+                   (eq (symbol-class 'fn-owner-maintenance-grow (w state)) :common-lisp-compliant)
+                   (eq (symbol-class 'fn-owner-maintenance-release (w state)) :common-lisp-compliant)))

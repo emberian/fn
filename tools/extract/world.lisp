@@ -303,6 +303,7 @@
 (include-book "../../books/owner-outcome-pinned")
 (include-book "../../books/page-discovery-ledger")
 (include-book "../../books/cold-read-layout")
+(include-book "../../books/page-maintenance-lease")
 (include-book "../../books/accounts")
 (include-book "../../books/native-operator-stage")
 (include-book "../../books/owner-maintenance-request")

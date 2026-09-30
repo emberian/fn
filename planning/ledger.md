@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1710 |
-| Certification roots in the Makefile | 1644 |
-| Books inside the root closure | 1707 |
-| `defthm` and `defthmd` events | 27832 |
-| `defun` events | 18182 |
+| Books read | 1717 |
+| Certification roots in the Makefile | 1651 |
+| Books inside the root closure | 1714 |
+| `defthm` and `defthmd` events | 27836 |
+| `defun` events | 18200 |
 | Functions with verified guards | 3460 |
 | Functions declared `:verify-guards nil` and never verified | 2084 |
-| Functions left at the default with an explicit guard | 9891 |
-| Functions left at the default with no guard | 2747 |
-| `assert-event` checks | 23011 |
+| Functions left at the default with an explicit guard | 9904 |
+| Functions left at the default with no guard | 2752 |
+| `assert-event` checks | 23013 |
 | `must-fail` checks | 2496 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 157 |
+| `encapsulate` events | 158 |
 | Theorems flagged SUSPECT by shape | 1227 |
 | Export-hygiene warnings | 318 |
 | Enabled-projection warnings | 52 |
 | Teeth-form warnings | 272 |
-| Include-hygiene warnings | 2418 |
-| Host-names warnings | 2093 |
+| Include-hygiene warnings | 2421 |
+| Host-names warnings | 2095 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -117,6 +117,7 @@ that `make certify` requests.
 | `books/article-work-scanners.lisp` | root | 12 | 3 | 0/0/0/3 | 0 | 0 | 0 |
 | `books/article-work.lisp` | root | 25 | 7 | 0/0/0/7 | 0 | 0 | 0 |
 | `books/article.lisp` | root | 33 | 61 | 50/0/11/0 | 0 | 0 | 1 |
+| `books/assumptions-cold-runtime.lisp` | root | 2 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/assumptions-durable.lisp` | closure | 7 | 6 | 0/0/0/6 | 0 | 0 | 0 |
 | `books/assumptions-publication.lisp` | root | 4 | 3 | 0/0/0/3 | 0 | 0 | 0 |
 | `books/assumptions-stored.lisp` | closure | 1 | 1 | 0/0/0/1 | 0 | 0 | 0 |
@@ -353,8 +354,10 @@ that `make certify` requests.
 | `books/clock.lisp` | root | 9 | 18 | 18/0/0/0 | 0 | 0 | 4 |
 | `books/closure-open.lisp` | root | 15 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/codec-attach.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/cold-read-bootstrap.lisp` | root | 1 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/cold-read-layout.lisp` | root | 0 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/cold-read-reservation.lisp` | root | 3 | 6 | 0/0/6/0 | 0 | 0 | 0 |
+| `books/cold-runtime-bound.lisp` | root | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/config-carried-candidate.lisp` | root | 13 | 4 | 3/1/0/0 | 0 | 0 | 0 |
 | `books/config-carried-open.lisp` | root | 13 | 5 | 2/0/3/0 | 0 | 0 | 0 |
 | `books/config-crash-replay.lisp` | root | 18 | 1 | 0/1/0/0 | 0 | 0 | 0 |
@@ -715,6 +718,7 @@ that `make certify` requests.
 | `books/packed-octets.lisp` | closure | 48 | 17 | 2/0/15/0 | 0 | 0 | 0 |
 | `books/packed-submission.lisp` | closure | 37 | 27 | 1/0/24/2 | 0 | 0 | 0 |
 | `books/page-discovery-ledger.lisp` | root | 2 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/page-maintenance-lease.lisp` | root | 2 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/page-read-ledger.lisp` | root | 9 | 16 | 0/0/16/0 | 0 | 0 | 0 |
 | `books/page-read-ownership.lisp` | root | 12 | 11 | 0/0/11/0 | 0 | 0 | 0 |
 | `books/page-read-resources.lisp` | closure | 7 | 11 | 0/0/11/0 | 0 | 0 | 1 |
@@ -970,7 +974,7 @@ that `make certify` requests.
 | `books/store-node-retention.lisp` | root | 32 | 0 | 0/0/0/0 | 0 | 0 | 6 |
 | `books/store-node-traces-prepare.lisp` | root | 44 | 6 | 5/0/1/0 | 0 | 0 | 2 |
 | `books/store-node-traces.lisp` | root | 58 | 2 | 1/0/0/1 | 0 | 0 | 7 |
-| `books/store-node.lisp` | root | 82 | 70 | 39/2/29/0 | 0 | 0 | 32 |
+| `books/store-node.lisp` | root | 81 | 70 | 39/2/29/0 | 0 | 0 | 32 |
 | `books/store-number-bound.lisp` | root | 15 | 4 | 2/1/1/0 | 0 | 0 | 0 |
 | `books/store-number-projection.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/store-observed-traces.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -1264,6 +1268,8 @@ that `make certify` requests.
 | `tests/acl2/closure-export-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 17 | 0 | 0 |
 | `tests/acl2/closure-open-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 30 | 0 | 0 |
 | `tests/acl2/codec-seam-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 15 | 0 | 0 |
+| `tests/acl2/cold-read-bootstrap-host-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 1 | 0 | 0 |
+| `tests/acl2/cold-read-bootstrap-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/cold-read-layout-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/cold-read-reservation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 1 | 0 | 0 |
 | `tests/acl2/config-carried-candidate-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 27 | 4 | 0 |
@@ -1553,7 +1559,8 @@ that `make certify` requests.
 | `tests/acl2/owner-verdict-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
 | `tests/acl2/packed-submission-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 0 | 0 |
 | `tests/acl2/page-discovery-ledger-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `tests/acl2/page-read-host-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 5 | 0 | 0 |
+| `tests/acl2/page-maintenance-lease-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `tests/acl2/page-read-host-tests.lisp` | root | 0 | 14 | 0/0/0/14 | 6 | 0 | 0 |
 | `tests/acl2/page-read-ledger-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/page-read-ownership-tests.lisp` | root | 0 | 5 | 0/0/4/1 | 21 | 0 | 0 |
 | `tests/acl2/page-read-resources-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 1 | 0 | 0 |
@@ -2758,40 +2765,40 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-sl-of-list-when-canonp` | `books/snoc-list.lisp` | 260 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-sl-canonp |
 | `fn-slr-article-payload-of-make-article` | `books/stx-lace-rows.lisp` | 70 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-smid-same-filesystemp-reflexive` | `books/store-mount-identity.lisp` | 952 | reflexive-conclusion: a conjunct is (equal X X) |
-| `fn-sn-article-record-without-a-usable-clock-is-refused` | `books/store-node.lisp` | 824 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-article-record and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-sn-article-record and the conclusion is that branch's value |
-| `fn-sn-capacity-of-fn-sn-make` | `books/store-node.lisp` | 389 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-capacity-of-fn-sn-make-v2` | `books/store-node.lisp` | 348 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-article-record-without-a-usable-clock-is-refused` | `books/store-node.lisp` | 822 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-article-record and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-sn-article-record and the conclusion is that branch's value |
+| `fn-sn-capacity-of-fn-sn-make` | `books/store-node.lisp` | 387 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-capacity-of-fn-sn-make-v2` | `books/store-node.lisp` | 346 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sn-composite-delta-of-typed-article` | `books/store-node-invariants.lisp` | 542 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-composite-delta and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-sn-composite-delta and the conclusion is that branch's value |
-| `fn-sn-config-history-of-fn-sn-make` | `books/store-node.lisp` | 422 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-config-history-of-fn-sn-make-v2` | `books/store-node.lisp` | 379 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-files-of-fn-sn-make` | `books/store-node.lisp` | 391 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-files-of-fn-sn-make-v2` | `books/store-node.lisp` | 351 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-config-history-of-fn-sn-make` | `books/store-node.lisp` | 420 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-config-history-of-fn-sn-make-v2` | `books/store-node.lisp` | 377 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-files-of-fn-sn-make` | `books/store-node.lisp` | 389 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-files-of-fn-sn-make-v2` | `books/store-node.lisp` | 349 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sn-files-of-fn-sn-make-v6` | `books/store-node.lisp` | 218 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-files-of-fn-sn-update` | `books/store-node.lisp` | 515 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-files-of-fn-sn-update` | `books/store-node.lisp` | 513 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sn-files-of-fn-sn-update-indexed` | `books/store-node-invariants-base.lisp` | 920 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-files-of-fn-sn-update-replayed` | `books/store-node.lisp` | 760 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-files-of-fn-sn-update-replayed` | `books/store-node.lisp` | 758 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sn-files-of-fn-sn-with-consumer` | `books/store-node-invariants-base.lisp` | 712 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-files-of-fn-sn-with-event-index` | `books/store-node.lisp` | 792 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-files-of-fn-sn-with-event-index` | `books/store-node.lisp` | 790 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sn-files-of-fn-sn-with-topic` | `books/store-node-invariants-base.lisp` | 718 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sn-finish-disabled-is-no-op` | `books/store-node-invariants-base.lisp` | 606 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-finish and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-sn-finish and the conclusion is that branch's value |
-| `fn-sn-groups-of-fn-sn-make` | `books/store-node.lisp` | 387 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-groups-of-fn-sn-make-v2` | `books/store-node.lisp` | 345 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-identity-next-of-fn-sn-make` | `books/store-node.lisp` | 418 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-identity-next-of-fn-sn-make-v2` | `books/store-node.lisp` | 375 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-identity-next-of-fn-sn-update` | `books/store-node.lisp` | 522 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-identity-next-of-fn-sn-with-event-index` | `books/store-node.lisp` | 724 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-index-of-fn-sn-make` | `books/store-node.lisp` | 397 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-index-of-fn-sn-make-v2` | `books/store-node.lisp` | 360 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-groups-of-fn-sn-make` | `books/store-node.lisp` | 385 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-groups-of-fn-sn-make-v2` | `books/store-node.lisp` | 343 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-identity-next-of-fn-sn-make` | `books/store-node.lisp` | 416 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-identity-next-of-fn-sn-make-v2` | `books/store-node.lisp` | 373 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-identity-next-of-fn-sn-update` | `books/store-node.lisp` | 520 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-identity-next-of-fn-sn-with-event-index` | `books/store-node.lisp` | 722 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-index-of-fn-sn-make` | `books/store-node.lisp` | 395 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-index-of-fn-sn-make-v2` | `books/store-node.lisp` | 358 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sn-initial-node-has-an-empty-store-unfolds` | `books/store-node-invariants-base.lisp` | 1261 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-keyring-generation-of-fn-sn-make` | `books/store-node.lisp` | 407 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-keyring-generation-of-fn-sn-make-v2` | `books/store-node.lisp` | 363 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-keyring-of-fn-sn-make` | `books/store-node.lisp` | 395 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-keyring-of-fn-sn-make-v2` | `books/store-node.lisp` | 357 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-keyring-snapshots-of-fn-sn-make` | `books/store-node.lisp` | 414 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-keyring-snapshots-of-fn-sn-make-v2` | `books/store-node.lisp` | 371 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-keyring-generation-of-fn-sn-make` | `books/store-node.lisp` | 405 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-keyring-generation-of-fn-sn-make-v2` | `books/store-node.lisp` | 361 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-keyring-of-fn-sn-make` | `books/store-node.lisp` | 393 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-keyring-of-fn-sn-make-v2` | `books/store-node.lisp` | 355 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-keyring-snapshots-of-fn-sn-make` | `books/store-node.lisp` | 412 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-keyring-snapshots-of-fn-sn-make-v2` | `books/store-node.lisp` | 369 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sn-known-abort-disabled-is-no-op` | `books/store-node-resolution.lisp` | 172 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-known-abort and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-sn-known-abort and the conclusion is that branch's value |
-| `fn-sn-node-of-fn-sn-make` | `books/store-node.lisp` | 393 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-node-of-fn-sn-make-v2` | `books/store-node.lisp` | 354 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-node-of-fn-sn-make` | `books/store-node.lisp` | 391 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-node-of-fn-sn-make-v2` | `books/store-node.lisp` | 352 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sn-node-of-fn-sn-make-v6` | `books/store-node-invariants-base.lisp` | 630 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sn-node-of-fn-sn-with-consumer` | `books/store-node-invariants-base.lisp` | 638 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sn-node-of-fn-sn-with-topic` | `books/store-node-invariants-base.lisp` | 644 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -2801,14 +2808,14 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-sn-open-observed-invalid-history-refuses` | `books/store-observed.lisp` | 499 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-open-observed and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value |
 | `fn-sn-open-state-of-fn-sn-open-ok` | `books/store-observed.lisp` | 73 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sn-refuse-reservation-disabled-is-no-op` | `books/store-node-resolution.lisp` | 166 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-refuse-reservation and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value |
-| `fn-sn-state-fields-of-fn-sn-update-replayed` | `books/store-node.lisp` | 665 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-state-fields-of-fn-sn-with-consumer` | `books/store-node.lisp` | 611 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-state-fields-of-fn-sn-with-topic` | `books/store-node.lisp` | 638 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-state-fields-of-fn-sn-update-replayed` | `books/store-node.lisp` | 663 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-state-fields-of-fn-sn-with-consumer` | `books/store-node.lisp` | 609 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-state-fields-of-fn-sn-with-topic` | `books/store-node.lisp` | 636 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sn-store-event-fields-of-an-article-record` | `books/store-node-invariants-base.lisp` | 838 | arm-of-definition: the hypotheses select one IF/COND arm of fn-store-event-generation and the conclusion is that arm's value |
 | `fn-sn-store-of-node-with-retention` | `books/store-node-invariants.lisp` | 381 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sn-sweep-staging-keeps-the-store` | `books/store-sweep.lisp` | 261 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-verdicts-of-fn-sn-make` | `books/store-node.lisp` | 411 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sn-verdicts-of-fn-sn-make-v2` | `books/store-node.lisp` | 367 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-verdicts-of-fn-sn-make` | `books/store-node.lisp` | 409 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sn-verdicts-of-fn-sn-make-v2` | `books/store-node.lisp` | 365 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sn-verdicts-of-fn-sn-make-v6` | `books/store-node-invariants-base.lisp` | 400 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sn-verdicts-of-fn-sn-with-consumer` | `books/store-node-invariants-base.lisp` | 394 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sn-verdicts-of-fn-sn-with-topic` | `books/store-node-invariants-base.lisp` | 408 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

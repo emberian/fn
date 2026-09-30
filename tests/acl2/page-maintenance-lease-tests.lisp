@@ -1,0 +1,50 @@
+(in-package "ACL2")
+(include-book "../../books/page-maintenance-lease")
+(include-book "std/testing/assert-bang" :dir :system)
+(defconst *pmn-ledger* (fn-prl-make '(10000 1000 4 2 100)))
+(defconst *pmn-demand* '(1000 100 1 1 1))
+(defconst *pmn-issued* (mv-nth 2 (mv-list 3 (fn-pmn-admit *pmn-ledger* 7 23 *pmn-demand*))))
+(defconst *pmn-token* '(:maintenance 0 7 23))
+; Literal nonempty admission antecedent and complete funding conclusion.
+(assert! (and (equal (mv-nth 0 (mv-list 3 (fn-pmn-admit *pmn-ledger* 7 23 *pmn-demand*))) :admitted)
+              (equal (mv-nth 1 (mv-list 3 (fn-pmn-admit *pmn-ledger* 7 23 *pmn-demand*))) *pmn-token*)
+              (fn-prs-fundedp (fn-prl-nth 0 *pmn-ledger*) (fn-prl-baseline *pmn-ledger*)
+                              '(0 0 0 0 0) (fn-prl-nth 1 *pmn-issued*))))
+; Literal growth antecedent and conclusion, distinct heap/disk/fd increment.
+(defconst *pmn-grown* (mv-nth 1 (mv-list 2 (fn-pmn-grow *pmn-issued* *pmn-token* '(16 500 1 0 0)))))
+(assert! (and (equal (mv-nth 0 (mv-list 2 (fn-pmn-grow *pmn-issued* *pmn-token* '(16 500 1 0 0)))) :grown)
+              (fn-prs-fundedp (fn-prl-nth 0 *pmn-issued*) (fn-prl-baseline *pmn-issued*)
+                              '(0 0 0 0 0) (fn-prl-nth 1 *pmn-grown*))
+              (equal (fn-prl-nth 1 *pmn-grown*) '(1016 600 2 1 1))
+              (equal (fn-prl-nth 2 *pmn-grown*) 1)))
+(assert! (and (equal (mv-nth 0 (mv-list 2 (fn-pmn-grow *pmn-grown* *pmn-token* '(0 401 0 0 0))))
+                     :maintenance-resources-unavailable)
+              (equal (mv-nth 1 (mv-list 2 (fn-pmn-grow *pmn-grown* *pmn-token* '(0 401 0 0 0)))) *pmn-grown*)))
+(assert! (equal (mv-nth 0 (mv-list 2 (fn-pmn-grow *pmn-grown* *pmn-token* '(0 0 0 1 0))))
+                :invalid-maintenance-growth))
+(defconst *pmn-released* (mv-nth 1 (mv-list 2 (fn-pmn-release *pmn-grown* *pmn-token*))))
+(assert! (and (equal (mv-nth 0 (mv-list 2 (fn-pmn-release *pmn-grown* *pmn-token*))) :released)
+              (equal (fn-prl-nth 1 *pmn-released*) '(0 0 0 0 1))
+              (equal (fn-prl-nth 2 *pmn-released*) 1)
+              (equal (mv-nth 0 (mv-list 2 (fn-pmn-release *pmn-released* *pmn-token*))) :stale)))
+(assert! (and (not (equal (mv-nth 0 (mv-list 3 (fn-pmn-admit *pmn-ledger* 7 23 '(10001 0 0 1 1)))) :admitted))
+              (equal (mv-nth 2 (mv-list 3 (fn-pmn-admit *pmn-ledger* 7 23 '(10001 0 0 1 1)))) *pmn-ledger*)))
+; Cold-only pool has disk=0: do not fabricate staging credit.
+(assert! (equal (mv-nth 0 (mv-list 3 (fn-pmn-admit (fn-prl-make '(10000 0 4 2 100)) 7 23 *pmn-demand*)))
+                :read-resources-unavailable))
+
+; Hypothesis removal, explicitly corrupted pool: both admission/growth
+; success hypotheses fail and their literal funded conclusions fail.
+(assert!
+ (let* ((bad (fn-prl-make nil))
+        (r (mv-list 3 (fn-pmn-admit bad 7 23 *pmn-demand*))))
+   (and (not (equal (mv-nth 0 r) :admitted))
+        (not (fn-prs-fundedp nil (fn-prl-baseline bad) '(0 0 0 0 0)
+                            (fn-prl-nth 1 (mv-nth 2 r)))))))
+(assert!
+ (let* ((bad (fn-prl-build nil (fn-prl-nth 1 *pmn-issued*) 1
+                           (fn-prl-nth 3 *pmn-issued*) nil))
+        (r (mv-list 2 (fn-pmn-grow bad *pmn-token* '(16 500 1 0 0)))))
+   (and (not (equal (mv-nth 0 r) :grown))
+        (not (fn-prs-fundedp nil (fn-prl-baseline bad) '(0 0 0 0 0)
+                            (fn-prl-nth 1 (mv-nth 1 r)))))))

@@ -6,6 +6,7 @@
 (include-book "../books/page-read-ownership")
 (include-book "../books/page-discovery-ledger")
 (include-book "../books/cold-read-layout")
+(include-book "../books/page-maintenance-lease")
 
 (defstobj fn-page-read-pool
   (fn-prp-data :initially nil)
@@ -184,5 +185,31 @@
   (declare (xargs :stobjs fn-page-read-pool))
   (mv-let (word ledger) (fn-prd-release (fn-owner-page-read-ledger fn-page-read-pool) token)
     (if (equal word :stale) (mv word fn-page-read-pool)
+      (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
+        (mv word fn-page-read-pool)))))
+
+; Operational maintenance ownership. The producer admits before source/root
+; capture. The actual demand constructor is a separate representation join.
+(defun fn-owner-maintenance-admit (epoch suffix-count demand fn-page-read-pool)
+  (declare (xargs :stobjs fn-page-read-pool))
+  (if (not (equal (fn-owner-page-read-direct-mode fn-page-read-pool) :funded-pool))
+      (mv :maintenance-resources-unavailable nil fn-page-read-pool)
+    (mv-let (word token ledger)
+      (fn-pmn-admit (fn-owner-page-read-ledger fn-page-read-pool) epoch suffix-count demand)
+      (if (not (equal word :admitted)) (mv word nil fn-page-read-pool)
+        (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
+          (mv word token fn-page-read-pool))))))
+
+(defun fn-owner-maintenance-grow (token delta fn-page-read-pool)
+  (declare (xargs :stobjs fn-page-read-pool))
+  (mv-let (word ledger) (fn-pmn-grow (fn-owner-page-read-ledger fn-page-read-pool) token delta)
+    (if (not (equal word :grown)) (mv word fn-page-read-pool)
+      (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
+        (mv word fn-page-read-pool)))))
+
+(defun fn-owner-maintenance-release (token fn-page-read-pool)
+  (declare (xargs :stobjs fn-page-read-pool))
+  (mv-let (word ledger) (fn-pmn-release (fn-owner-page-read-ledger fn-page-read-pool) token)
+    (if (not (equal word :released)) (mv word fn-page-read-pool)
       (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
         (mv word fn-page-read-pool)))))

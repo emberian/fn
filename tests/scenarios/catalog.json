@@ -6359,6 +6359,54 @@
         "tests/test_native_checkpoint_auto.py"
       ],
       "execution_scope": "Pure source and wire reply witnesses passed clean REPL; matching image native execution pending."
+    },
+    {
+      "id": "SCN-1023",
+      "title": "Cold bootstrap rejects unsupported runtime or insufficient permanent reserve before constructors",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Observe selected runtime version, architecture, OS, actual registry node cardinality, joinable corpses and active starters before any cold constructor.",
+        "Try changed runtime version, pending joinable/starting threads, unsupported table capacity and one-octet dynamic allowance.",
+        "For the supported fixture, compare returned constructor capacities and installed baseline with the exact ACL2 plan."
+      ],
+      "expected": [
+        "Each unsupported or unfunded plan yields a named refusal with no constructor arguments and leaves the pool uninitialized.",
+        "The admitted fixture includes permanent executor runtime margin, old/new registry paths, tables and removal scratch, independently of per-job demand.",
+        "Library checks do not claim native startup activation, complete default operation or full Store rescue."
+      ],
+      "evidence": [
+        "tests/acl2/cold-read-bootstrap-tests.lisp",
+        "tests/acl2/page-read-host-tests.lisp"
+      ],
+      "execution_scope": "Source scenario; native joined execution pending."
+    },
+    {
+      "id": "SCN-1026",
+      "title": "Maintenance lease grows before allocation and retains credits through definite cleanup",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Admit a nonempty maintenance demand bound to epoch and suffix count before source/root capture.",
+        "Grow heap,disk and descriptor ownership within budget; try a disk-over-budget growth and a forbidden second worker/identity increment.",
+        "After definite cleanup release the exact token, repeat release, then attempt staging against a cold-only zero-disk pool."
+      ],
+      "expected": [
+        "Successful admission and growth remain funded; growth keeps the original identity and captured scalar binding.",
+        "Refusal changes no demand or counter; release refunds reusable coordinates exactly once while the spent identity remains.",
+        "Zero disk credit refuses staging. No conclusion about full accepted-obligation rescue or actual physical allocation follows."
+      ],
+      "evidence": [
+        "tests/acl2/page-maintenance-lease-tests.lisp",
+        "tests/acl2/page-read-host-tests.lisp"
+      ],
+      "execution_scope": "Clean source algebra17forms passed; represented demand and native controller integration pending."
     }
   ]
 }

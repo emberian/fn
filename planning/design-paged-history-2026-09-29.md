@@ -588,3 +588,35 @@ state: the canonical target page count cannot be inferred from wire history
 bytes or record count alone because retained context and key snapshots are
 encoded too. The old/new/staging/spool coexistence and dW+ before POST remain
 open. Refusing midway and deleting staging is not that stronger rescue claim.
+
+
+### Selected runtime startup and operational maintenance lease
+
+PRF-1117 / SCN-1023 add the concrete bootstrap plan and explicit
+A-COLD-RUNTIME boundary. The plan consumes the observed selected runtime,
+actual thread-registry node cardinality and zero pending creators/corpses.
+It funds the six maps, permanent executor layout plus sourced conservative
+runtime margin/AVL old/new paths, and two removal-list spines for at most
+F+W+9 ledger bindings. Startup must remain serialized before writer/listener
+threads. `thread-source-2026-09-30.md` records the exact source hashes,
+constructor inventory and observation scope. Unsupported observations refuse
+before constructor arguments are returned. Native activation remains pending.
+
+PRF-1121 / SCN-1026 add the operational attempt API:
+`fn-owner-maintenance-admit(epoch,suffix-count,demand,pool)` returns a typed
+`(:maintenance id epoch suffix-count)` token; `fn-owner-maintenance-grow`
+reserves additional resident/disk/descriptor demand before allocation, and
+`fn-owner-maintenance-release` requires definite joined cleanup with no
+surviving charged aliases. The caller's demand constructor must cover actual
+representations, including the13-cell source cursor and retained reversed
+suffix spine; arbitrary opaque caller numbers do not establish physical
+funding. The controller observes cheap source context, admits maintenance,
+acquires the exact root pin, then captures exclusivity/source pointer under
+the same owner mutex. Refusal unwinds leases without changing capture ticket,
+Store count or publication state. A maintenance row holds worker1 throughout,
+so a simultaneous page/window reader needs another funded worker slot.
+
+The current cold-only budget has disk0. This API deliberately cannot create
+staging disk credit; explicit startup maintenance disk funding must be joined.
+Incremental safe-attempt growth is independent of full R>=W, whose canonical
+accepted-obligation size carry and old/new/cleanup envelope remain open.
