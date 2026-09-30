@@ -47,9 +47,28 @@ The actual funded-pool stobj boundary is
 `fn-owner-snapshot-growth(maintenance,source4,stage,request,pool)` and
 `fn-owner-snapshot-grant-livep(grant,pool)`. Both require funded mode. A named
 refinement equates the actual host-called growth and resulting ledger to
-`fn-osj-grow`; an unfunded instance cannot obtain the backing grant.
+`fn-osj-native-grow`; an unfunded instance cannot obtain the backing grant.
 
 The grant proof carries explicit natural ledger-field facts in its hint so it
 composes with pagestore normalization. A dedicated composed-world scenario
 replays the actual demand/host boundary and existing literal teeth; the full
 writer source union retains its separate exact source coordinate.
+
+
+The selected Linux x86-64 signed-long native backing adapter is
+`fn-osj-native-grow`. Before any actual maintenance ledger growth, it checks
+that the three exact stage/data-spool/table-spool extents are natural and at
+most2^63-1. Outside this supported native offset profile it returns distinct
+`:checkpoint-offset-profile` refusal with the original ledger. The actual
+host wrapper calls this adapter and its grant-live check includes the profile;
+the ten-field request and receipt remain unchanged. The fixed native profile
+is a required target qualification, not attestation that a changed image has
+matching evidence and not a stored-data ceiling.
+
+Every write/read effect also requires natural offset/count and
+`offset+count<=its captured extent`. `fn-osj-native-slice-representable` gives
+the signed-offset consequences of that interval. The writer controller's
+actual preservation of these interval facts is a separate open composition
+join. A caller's NAT extent-limit cannot replace either profile or interval
+authority. Full INIT scratch/FD/root/old-new/spool/outer-frame resources,
+selected compiled workspaces and definite cleanup remain open.

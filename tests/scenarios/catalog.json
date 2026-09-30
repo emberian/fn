@@ -6433,7 +6433,10 @@
         "planning/evidence/snapshot-maintenance-growth-2026-09-30.md",
         "tests/acl2/snapshot-maintenance-host-tests.lisp",
         "tests/acl2/snapshot-maintenance-pagestore-world-tests.lisp",
-        "planning/evidence/snapshot-maintenance-pagestore-world-2026-09-30.md"
+        "planning/evidence/snapshot-maintenance-pagestore-world-2026-09-30.md",
+        "books/snapshot-maintenance-profile.lisp",
+        "tests/acl2/snapshot-maintenance-profile-tests.lisp",
+        "planning/evidence/snapshot-maintenance-profile-2026-09-30/README.md"
       ],
       "execution_scope": "Protected proper-local source proof and literal teeth only; no served activation."
     }

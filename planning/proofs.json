@@ -18106,7 +18106,7 @@
     {
       "id": "PRF-1142",
       "title": "Operation-derived snapshot maintenance admission and backing growth",
-      "statement": "Actual snapshot whole-operation initial demand must derive fixed and variable resident/disk/descriptor/worker/identity credit from the captured source and selected runtime. Implemented source component fn-osj-grow calls actual maintenance ledger growth for exact census stage end and data/table digest spools, binds immutable source4, issued maintenance ID as stage and full token, requires three reserved private descriptors, preserves funding and establishes a live exact grant bound into the maintenance row. Actual guard-verified fn-owner-snapshot-growth refines this through the global funded-pool stobj; complete receipt matching rejects changed source pass or layout. Initial size/runtime adequacy, host activation and joined definite cleanup correspondence remain open.",
+      "statement": "Actual snapshot whole-operation initial demand must derive fixed and variable resident/disk/descriptor/worker/identity credit from the captured source and selected runtime. Implemented source component fn-osj-grow calls actual maintenance ledger growth for exact census stage end and data/table digest spools, binds immutable source4, issued maintenance ID as stage and full token, requires three reserved private descriptors, preserves funding and establishes a live exact grant bound into the maintenance row. Actual guard-verified fn-owner-snapshot-growth refines this through the global funded-pool stobj; complete receipt matching rejects changed source pass or layout. Initial size/runtime adequacy, host activation and joined definite cleanup correspondence remain open. Actual host growth now refines fn-osj-native-grow, which checks each exact stage/data-spool/table-spool extent against selected signed63-bit offset range before old ledger growth and retains the ledger on typed profile refusal. A live native receipt includes that profile predicate. Writer effect offset+count containment and actual full INIT/runtime authority remain open.",
       "milestone": "M5",
       "requirements": [
         "STO-026"
@@ -18122,7 +18122,10 @@
         "host/snapshot-maintenance-host.lisp",
         "tests/acl2/snapshot-maintenance-host-tests.lisp",
         "tests/acl2/snapshot-maintenance-pagestore-world-tests.lisp",
-        "planning/evidence/snapshot-maintenance-pagestore-world-2026-09-30.md"
+        "planning/evidence/snapshot-maintenance-pagestore-world-2026-09-30.md",
+        "books/snapshot-maintenance-profile.lisp",
+        "tests/acl2/snapshot-maintenance-profile-tests.lisp",
+        "planning/evidence/snapshot-maintenance-profile-2026-09-30/README.md"
       ],
       "progress_note": "Source-only backing-growth component; complete original operation-derived demand/admission/release and selected-runtime adequacy remain open. No served/certificate/image claim."
     }
