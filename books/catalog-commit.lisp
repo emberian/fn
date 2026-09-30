@@ -38,25 +38,18 @@
 ; bytes, and the record's binding to the node's pending transaction checked
 ; on the ten metadata positions (`fn-snh-bindsp').  Its gate
 ; `fn-snh-enabledp' compares the context's keyring generation with the
-; store's and refuses a stale context by name, so the finish never commits
-; a verdict decided under a keyring the store no longer holds.
+; store's and refuses a stale generation by name. Attribution to the actual
+; current keyring is a separate carried source property, not inferred from
+; equality of generation numbers across arbitrary restored snapshots.
 ;
-; THE CONTEXT THEOREM, chosen form.  The design offered two: the phase gate
-; (no admitted transition changes the keyring while a prepare is pending)
-; or the finish re-deciding.  The phase gate is NOT a theorem of this
-; machine: `fn-sn-set-keyring' has no phase check.  (No native host line
-; calls it: host/store-node-host.lisp `fn-store-sn-set-keyring' is reached
-; from tools/run_store.py only, the retired Python host; the native node's
-; keyring is fixed at open.)  So the re-decide form is taken, in its exact
-; shape: `fn-sn-context-fixed-between-prepare-and-finish' says the keyring
-; GENERATION NAMES the keyring along every transition -- each transition
-; the host applies leaves both, and `fn-sn-set-keyring', the one writer,
-; advances the generation whenever it changes the keyring -- so a context
-; whose generation is the store's was decided under the store's keyring,
-; which is what `fn-snh-enabledp' checks in O(1) and what
-; `fn-sn-finish-held-is-finish' assumes.  A context whose generation is not
-; the store's is refused (`fn-sn-finish-held-refuses-a-stale-context'), and
-; the host re-decides it from the arena (step 8; PKT-585).
+; CONTEXT ATTRIBUTION. The held gate compares the retained context's
+; generation with the current generation. That comparison does not identify
+; an arbitrary restored keyring: attribution to the actual interned bytes and
+; current keyring is a separate carried producer obligation. Snapshot finish
+; and successful recovery can install a new keyring/generation pair. The
+; projection equations below name those actual producers; preservation is
+; claimed only for the transitions/branches that do not install a pair.
+; No whole-row or whole-Store validation is added to the served gate.
 ;
 ; KEYSTONE fn-cat-complete-by-token (PRF-203): with the pending's token and
 ; EXPECTED the count, the completed row is (fn-cat-at expected C') = the
@@ -73,6 +66,8 @@
 
 (in-package "ACL2")
 (include-book "catalog")
+(include-book "catalog-prepared-record")
+(include-book "catalog-prepare")
 (include-book "store-node")
 (include-book "store-node-resolution")
 (include-book "store-events-carried")
@@ -80,36 +75,16 @@
 ; -----------------------------------------------------------------------------
 ; PreparedCommit.
 
-(defun fn-pc-tokenp (x)
-  (declare (xargs :guard t))
-  (and (consp x) (natp (car x)) (natp (cdr x))))
 
-(defun fn-pc-anyp (x)
-  (declare (xargs :guard t) (ignore x))
-  t)
 
-(fn-defrecord fn-pc
-  :constructor (fn-pc-make token expected held plan reservation)
-  :fields ((fn-pc-token fn-pc-tokenp)
-           (fn-pc-expected natp)
-           (fn-pc-held fn-held-p)
-           (fn-pc-plan fn-pc-anyp)
-           (fn-pc-reservation fn-pc-anyp))
-  :recognizer fn-pc-p
-  :car-fn fn-cbor-ag-car
-  :cdr-fn fn-cbor-ag-cdr)
+
+
+
 
 ; Nothing pending, or one PreparedCommit.
-(defun fn-pc-optionp (x)
-  (declare (xargs :guard t))
-  (or (null x) (fn-pc-p x)))
 
-(defthm fn-pc-p-fields
-  (implies (fn-pc-p pc)
-           (and (fn-pc-tokenp (fn-pc-token pc))
-                (natp (fn-pc-expected pc))
-                (fn-held-p (fn-pc-held pc))))
-  :hints (("Goal" :in-theory (enable fn-pc-p))))
+
+
 
 ; -----------------------------------------------------------------------------
 ; The :article delta, read off a committed row.  The grammar of every delta
@@ -148,18 +123,6 @@
 ; W supplies the metadata (its payload position is not read: the bytes are
 ; the buffer's), PLAN and RESERVATION are the host's frame and reservation.
 ; Refused by name when a PreparedCommit is pending.
-(defun fn-cat-prepare (w plan reservation fn-octets keyring generation pending
-                         fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
-                  :guard (and (fn-prin-keyringp keyring) (natp generation))))
-  (if pending
-      (mv (list :pending) fn-arena)
-    (mv-let (held fn-arena)
-      (fn-cat-intern w fn-octets keyring generation fn-arena)
-      (let ((expected (fn-cat-count fn-cat)))
-        (mv (fn-pc-make (cons (nfix (fn-record-txid w)) expected)
-                        expected held plan reservation)
-            fn-arena)))))
 
 ; => (mv result pending' fn-cat): result is (:stale-token), (:expected-mismatch)
 ; or the :article delta of the committed row.
@@ -344,7 +307,8 @@
               (equal (fn-record-content-subject h) (fn-node-stage-subject stage))
               (equal (fn-record-release-evidence h) (fn-node-stage-evidence stage))
               (equal (fn-record-charge h) (fn-node-stage-charge stage))
-              (equal (fn-record-stamp h) (fn-pending-stamp pending))))))
+              (equal (fn-record-stamp h) (fn-pending-stamp pending))
+              (equal (fn-held-binding h) (fn-node-stage-binding stage))))))
 
 (verify-guards fn-snh-bindsp)
 
@@ -516,9 +480,10 @@
             (equal (fn-snh-bindsp node h) (fn-sn-record-bindsp node h)))
    :rule-classes nil
    :hints (("Goal" :in-theory (e/d (fn-snh-bindsp fn-sn-record-bindsp fn-sn-pending-record
-                                    fn-held-wire fn-record-internals)
+                                    fn-held-wire fn-record-internals fn-held-shapep)
                                    (fn-node-pending-matchesp fn-held-p))
-            :use ((:instance fn-record-make-injective
+            :use ((:instance fn-held-p-forward-shape (x h))
+                  (:instance fn-record-make-injective
                              (sequence (fn-record-sequence h)) (txid (fn-record-txid h))
                              (generation (fn-record-generation h)) (msgid (fn-record-msgid h))
                              (payload (fn-record-payload h)) (groups (fn-record-groups h))
@@ -526,6 +491,7 @@
                              (content-subject (fn-record-content-subject h))
                              (release-evidence (fn-record-release-evidence h))
                              (charge (fn-record-charge h)) (stamp (fn-record-stamp h))
+                             (binding (fn-held-binding h))
                              (sequence-2 (fn-record-sequence h))
                              (txid-2 (fn-pending-txid (fn-state-pending (fn-node-acceptance node))))
                              (generation-2 (fn-pending-generation (fn-state-pending (fn-node-acceptance node))))
@@ -536,7 +502,8 @@
                              (content-subject-2 (fn-node-stage-subject (fn-node-stage node)))
                              (release-evidence-2 (fn-node-stage-evidence (fn-node-stage node)))
                              (charge-2 (fn-node-stage-charge (fn-node-stage node)))
-                             (stamp-2 (fn-pending-stamp (fn-state-pending (fn-node-acceptance node))))))))))
+                             (stamp-2 (fn-pending-stamp (fn-state-pending (fn-node-acceptance node))))
+                             (binding-2 (fn-node-stage-binding (fn-node-stage node)))))))))
 
 ; A store's keyring generation is a natural (fn-sn-statep carries it).
 (local (defthm fn-snh-statep-generation
@@ -582,11 +549,10 @@
 (in-theory (disable fn-sn-finish-held fn-snh-enabledp fn-snh-bindsp))
 
 ; -----------------------------------------------------------------------------
-; The context theorem: the keyring generation names the keyring.  Every
-; transition the host applies leaves the keyring and its generation;
-; `fn-sn-set-keyring', the one writer, advances the generation whenever it
-; changes the keyring.  So a context whose generation is the store's was
-; decided under the store's keyring.
+; Keyring/generation projections: ordinary state rebuilding preserves
+; both fields. Replay recovery derives them from its actual decoded snapshot
+; context; accepted snapshot finish can install a new pair. No theorem below
+; equates arbitrary keyrings solely because their generation numbers match.
 
 ; The state constructors every transition rebuilds through leave the two
 ; fields (fn-sn-make-v6 with the store's own keyring and generation).
@@ -597,8 +563,6 @@
         (equal (fn-sn-keyring-generation (fn-sn-update-indexed s f n i)) (fn-sn-keyring-generation s))
         (equal (fn-sn-keyring (fn-sn-update-accepted s f n i m v)) (fn-sn-keyring s))
         (equal (fn-sn-keyring-generation (fn-sn-update-accepted s f n i m v)) (fn-sn-keyring-generation s))
-        (equal (fn-sn-keyring (fn-sn-update-replayed s f n i c)) (fn-sn-keyring s))
-        (equal (fn-sn-keyring-generation (fn-sn-update-replayed s f n i c)) (fn-sn-keyring-generation s))
         (equal (fn-sn-keyring (fn-sn-with-consumer s c)) (fn-sn-keyring s))
         (equal (fn-sn-keyring-generation (fn-sn-with-consumer s c)) (fn-sn-keyring-generation s))
         (equal (fn-sn-keyring (fn-sn-with-topic s tp)) (fn-sn-keyring s))
@@ -606,15 +570,75 @@
         (equal (fn-sn-keyring (fn-sn-with-event-index s e)) (fn-sn-keyring s))
         (equal (fn-sn-keyring-generation (fn-sn-with-event-index s e)) (fn-sn-keyring-generation s))
         (equal (fn-sn-keyring (fn-sn-advance-identity-next s)) (fn-sn-keyring s))
-        (equal (fn-sn-keyring-generation (fn-sn-advance-identity-next s)) (fn-sn-keyring-generation s))
-        (equal (fn-sn-keyring (fn-sn-finish-identity s f r n)) (fn-sn-keyring s))
-        (equal (fn-sn-keyring-generation (fn-sn-finish-identity s f r n)) (fn-sn-keyring-generation s)))
+        (equal (fn-sn-keyring-generation (fn-sn-advance-identity-next s)) (fn-sn-keyring-generation s)))
    :hints (("Goal" :in-theory (e/d (fn-sn-update fn-sn-update-indexed fn-sn-update-accepted
                                     fn-sn-update-replayed fn-sn-with-consumer fn-sn-with-topic
                                     fn-sn-with-event-index fn-sn-advance-identity-next
                                     fn-sn-finish-identity)
                                    (fn-replay-identity-step fn-stx-index-add
                                     fn-sn-composite-delta fn-replay-verdict-pairs))))))
+
+; These are complete field projections of the actual installing functions.
+; They are by-definition boundaries, not separate assurance keystones.
+(defthm fn-snh-replayed-keyring-pair-by-definition
+  (and (equal (fn-sn-keyring (fn-sn-update-replayed s f n i c))
+              (fn-ssk-keyring-of-snapshots (fn-stxk-context-snapshots c)))
+       (equal (fn-sn-keyring-generation (fn-sn-update-replayed s f n i c))
+              (fn-ssk-generation (fn-stxk-context-snapshots c))))
+  :hints (("Goal" :in-theory (enable fn-sn-update-replayed))))
+
+(defthm fn-snh-finish-identity-keyring-pair-by-definition
+  (let* ((old (fn-sn-identity-context s))
+         (next (fn-replay-identity-step old r))
+         (install (and (fn-stxk-p r)
+                       (not (equal (fn-stxk-context-current-generation next)
+                                   (fn-stxk-context-current-generation old))))))
+    (and (equal (fn-sn-keyring (fn-sn-finish-identity s f r n))
+                (if install (fn-ssk-apply-snapshot r (fn-sn-keyring s))
+                  (fn-sn-keyring s)))
+         (equal (fn-sn-keyring-generation (fn-sn-finish-identity s f r n))
+                (if install (nfix (fn-stxk-keyring-generation r))
+                  (fn-sn-keyring-generation s)))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-sn-finish-identity)
+                (fn-sn-identity-context fn-replay-identity-step fn-stxk-p
+                 fn-stxk-context-current-generation fn-stxk-keyring-generation
+                 fn-ssk-apply-snapshot fn-sn-composite-delta
+                 fn-replay-verdict-pairs fn-stx-index-add)))))
+
+(local
+ (defthm fn-snh-nonsnapshot-finish-identity-preserves-keyring
+   (implies (not (fn-stxk-p r))
+            (and (equal (fn-sn-keyring (fn-sn-finish-identity s f r n))
+                        (fn-sn-keyring s))
+                 (equal (fn-sn-keyring-generation (fn-sn-finish-identity s f r n))
+                        (fn-sn-keyring-generation s))))
+   :hints (("Goal" :use fn-snh-finish-identity-keyring-pair-by-definition
+            :in-theory (disable fn-sn-finish-identity fn-stxk-p)))))
+
+; Recovery's antecedent names the exact successful current branch; it does
+; not assume reader authentication or any historical-generation association.
+(defthm fn-snh-recovery-installs-actual-replay-context-by-definition
+  (let* ((files (fn-sf-recover (fn-sn-files s) (fn-sn-groups s) (fn-sn-capacity s)))
+         (rows (fn-sf-records files))
+         (ctx (fn-replay-identity rows)))
+    (implies
+     (and (fn-sn-statep s)
+          (equal (fn-sf-phase (fn-sn-files s)) :replaying)
+          (equal (fn-sf-phase files) :recovering)
+          (equal (fn-stxk-context-kind ctx) :ok)
+          (equal (car (fn-cpe-projection-replay nil rows 0)) :ok)
+          (equal (fn-th-at 0 (fn-th-prefix-project rows)) :ok))
+     (and (equal (fn-sn-keyring (fn-sn-recover s))
+                 (fn-ssk-keyring-of-snapshots (fn-stxk-context-snapshots ctx)))
+          (equal (fn-sn-keyring-generation (fn-sn-recover s))
+                 (fn-ssk-generation (fn-stxk-context-snapshots ctx))))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-sn-recover)
+                (fn-sn-statep fn-sf-recover fn-replay-identity
+                 fn-sf-replay-node fn-cpe-projection-replay fn-th-prefix-project
+                 fn-sn-index-of-rows fn-ssk-keyring-of-snapshots
+                 fn-ssk-generation)))))
 
 ; The two readers as slots (4 and 6), for the configuration update, which
 ; writes slots 0, 1, 3 and 10 (fn-sn-with-configuration-preserves-unselected-slot).
@@ -649,23 +673,50 @@
 
 (fn-snh-ctx-lemma fn-snh-ctx-prepare (fn-sn-prepare s r) fn-sn-prepare)
 (fn-snh-ctx-lemma fn-snh-ctx-io (fn-sn-io s op res) fn-sn-io)
-(fn-snh-ctx-lemma fn-snh-ctx-finish (fn-sn-finish s) fn-sn-finish)
+(local
+ (defthm fn-snh-ctx-finish
+   (implies (not (fn-stxk-p (fn-sn-completion-record s)))
+            (and (equal (fn-sn-keyring (fn-sn-finish s)) (fn-sn-keyring s))
+                 (equal (fn-sn-keyring-generation (fn-sn-finish s))
+                        (fn-sn-keyring-generation s))))
+   :hints (("Goal" :in-theory
+            (e/d (fn-sn-finish fn-snh-keyring-of-updates
+                  fn-snh-nonsnapshot-finish-identity-preserves-keyring)
+                 (fn-sn-finish-identity fn-stxk-p fn-sn-completion-record
+                  fn-sn-completion-enabledp fn-replay-apply-record
+                  fn-replay-apply-retention-event fn-node-complete))))))
 (fn-snh-ctx-lemma fn-snh-ctx-finish-held (fn-sn-finish-held s h ctx) fn-sn-finish-held)
 (fn-snh-ctx-lemma fn-snh-ctx-crash (fn-sn-crash s fc rc) fn-sn-crash)
-(fn-snh-ctx-lemma fn-snh-ctx-recover (fn-sn-recover s) fn-sn-recover)
 (fn-snh-ctx-lemma fn-snh-ctx-refuse (fn-sn-refuse-reservation s txid) fn-sn-refuse-reservation)
 (fn-snh-ctx-lemma fn-snh-ctx-abort (fn-sn-known-abort s) fn-sn-known-abort)
 (fn-snh-ctx-lemma fn-snh-ctx-prepare-retention (fn-sn-prepare-retention s e) fn-sn-prepare-retention)
 (fn-snh-ctx-lemma fn-snh-ctx-prepare-identity (fn-sn-prepare-identity s e) fn-sn-prepare-identity)
 (fn-snh-ctx-lemma fn-snh-ctx-prepare-consumer (fn-sn-prepare-consumer s e) fn-sn-prepare-consumer)
 (fn-snh-ctx-lemma fn-snh-ctx-prepare-topic (fn-sn-prepare-topic s e) fn-sn-prepare-topic)
-(fn-snh-ctx-lemma fn-snh-ctx-snt-step (fn-snt-step s event) fn-snt-step
-                  fn-snh-ctx-prepare fn-snh-ctx-io fn-snh-ctx-finish fn-snh-ctx-crash
-                  fn-snh-ctx-recover)
-(fn-snh-ctx-lemma fn-snh-ctx-snrt-step (fn-snrt-step s event) fn-snrt-step
-                  fn-snh-ctx-refuse fn-snh-ctx-abort fn-snh-ctx-prepare-retention
-                  fn-snh-ctx-prepare-identity fn-snh-ctx-prepare-consumer
-                  fn-snh-ctx-prepare-topic fn-snh-ctx-snt-step)
+(local
+ (defthm fn-snh-ctx-snt-step
+   (implies (and (not (equal (car event) :recover))
+                 (not (equal (car event) :finish)))
+            (and (equal (fn-sn-keyring (fn-snt-step s event)) (fn-sn-keyring s))
+                 (equal (fn-sn-keyring-generation (fn-snt-step s event))
+                        (fn-sn-keyring-generation s))))
+   :hints (("Goal" :in-theory
+            (union-theories '(fn-snt-step fn-snh-ctx-prepare fn-snh-ctx-io
+                               fn-snh-ctx-crash)
+                            (theory 'minimal-theory))))))
+(local
+ (defthm fn-snh-ctx-snrt-step
+   (implies (and (not (equal (car event) :recover))
+                 (not (equal (car event) :finish)))
+            (and (equal (fn-sn-keyring (fn-snrt-step s event)) (fn-sn-keyring s))
+                 (equal (fn-sn-keyring-generation (fn-snrt-step s event))
+                        (fn-sn-keyring-generation s))))
+   :hints (("Goal" :in-theory
+            (union-theories '(fn-snrt-step fn-snh-ctx-refuse fn-snh-ctx-abort
+                               fn-snh-ctx-prepare-retention fn-snh-ctx-prepare-identity
+                               fn-snh-ctx-prepare-consumer fn-snh-ctx-prepare-topic
+                               fn-snh-ctx-snt-step)
+                            (theory 'minimal-theory))))))
 
 ; The writer: the generation moves whenever the keyring does.
 (local (defthm fn-snh-ctx-set-keyring
@@ -676,14 +727,18 @@
                                    (fn-sn-statep fn-prin-keyringp fn-stx-index-of-store))))))
 
 (defthm fn-sn-context-fixed-between-prepare-and-finish
-  (and (equal (fn-sn-keyring (fn-snrt-step s event)) (fn-sn-keyring s))
-       (equal (fn-sn-keyring-generation (fn-snrt-step s event))
-              (fn-sn-keyring-generation s))
+  (and (implies (and (not (equal (car event) :recover))
+                     (not (equal (car event) :finish)))
+                (and (equal (fn-sn-keyring (fn-snrt-step s event)) (fn-sn-keyring s))
+                     (equal (fn-sn-keyring-generation (fn-snrt-step s event))
+                            (fn-sn-keyring-generation s))))
        (equal (fn-sn-keyring (fn-sn-io s operation result)) (fn-sn-keyring s))
        (equal (fn-sn-keyring-generation (fn-sn-io s operation result))
               (fn-sn-keyring-generation s))
-       (equal (fn-sn-keyring (fn-sn-finish s)) (fn-sn-keyring s))
-       (equal (fn-sn-keyring-generation (fn-sn-finish s)) (fn-sn-keyring-generation s))
+       (implies (not (fn-stxk-p (fn-sn-completion-record s)))
+                (and (equal (fn-sn-keyring (fn-sn-finish s)) (fn-sn-keyring s))
+                     (equal (fn-sn-keyring-generation (fn-sn-finish s))
+                            (fn-sn-keyring-generation s))))
        (equal (fn-sn-keyring (fn-sn-finish-held s h ctx)) (fn-sn-keyring s))
        (equal (fn-sn-keyring-generation (fn-sn-finish-held s h ctx))
               (fn-sn-keyring-generation s))
@@ -698,6 +753,23 @@
                                                 fn-snh-ctx-finish-held fn-snh-keyring-of-with-configuration
                                                 fn-snh-ctx-set-keyring)
                                               (theory 'minimal-theory)))))
+
+; The producer attribution premise is explicit. Equal generation numbers
+; alone do not establish that an arbitrary keyring equals the current one.
+; This is a validation equation; it does not establish the carried producer
+; premise or invoke any whole-state recognizer on the served path.
+(defthm fn-snh-current-context-validation-under-attribution-by-definition
+  (implies
+   (and (equal ctx (fn-held-context-of bytes keyring generation))
+        (equal keyring (fn-sn-keyring s))
+        (fn-snh-enabledp s h ctx))
+   (equal ctx (fn-held-context-of bytes (fn-sn-keyring s)
+                                 (fn-sn-keyring-generation s))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-snh-enabledp fn-held-context-of)
+                (fn-sn-statep fn-snh-bindsp fn-stx-verdict-of-octets
+                 fn-stx-delta fn-held-p)))))
 
 ; unreachable-in-composition: no native host line calls fn-sn-set-keyring
 ; (host/store-node-host.lisp fn-store-sn-set-keyring is tools/run_store.py's).

@@ -41,31 +41,60 @@ that the existing header-only seal accepts a row with a bad payload handle;
 independent mutations remove the binding, NOV type, withdrawal type, prefix
 bound or sixteenth field. Those are not reachable acceptance claims.
 
+## Actual publisher entry and recursive read boundary
+
+The successor leaf `index-backing-publication-row-carry` uses the actual
+`fn-cat-prepare` definition, mechanically extracted unchanged from canonical
+catalog-commit SHA `7453903f4d2a48a3b2e549efa5ee1cde12251018968555bf7af367c484640d4b`.
+Its returned prepared row has the domain against the count of that SAME returned
+arena. Pending refusal and invalid binding have literal negative witnesses.
+
+Successful `fn-igr-reserve` debits the shared pool and retains the exact prepared
+commit in reservation field 6; the builder carries its token and expected count.
+`fn-igr-register` preserves this relation, including missing-child refusal. The
+actual `fn-ibp-writer-assignment-begin` attaches its cursor to that retained PC,
+and `fn-ibp-writer-assignment-one` publishes the typed assigned8 field 5.
+The fixture's capacity and child installation are explicitly synthetic;
+no installer or operation-allocation authority is inferred.
+
+`fn-iprc-node-prefixp` is a non-executable proof relation over the actual
+selected recursive child path. It reuses `fn-ibrc-prefixp` on the reached row
+page. With that carry, an in-prefix ordinal and actual `:row` result,
+`fn-ibp-node-row-read` returns a row satisfying the domain. The positive fixture
+runs the actual recursive right-child write, seal and read; each of the three
+hypothesis removals checks all retained hypotheses. This is a conditional read
+boundary, not establishment of the prefix by the full writer.
+
+`fn-held-with-context` preserves this row domain, as required by re-decide and
+policy updates. Withdrawal uses the existing valid-withdrawal preservation
+lemma. Event coverage remains explicit: article appends, cancellation that
+changes an existing target and appends a row, direct withdrawal, re-decide,
+bounded policy ranges, and events proved to preserve rows. Advancing Store F
+or visibility V on an append-only proof cannot establish current publication.
+
 ## Required publication composition
 
 The following is an exact remaining producer construction, not a proposal to
 validate every row during a read:
 
-1. Carry the intern's arena result through the actual `fn-cat-prepare` pending
-   record and into the writer's registered builder. The modern `fn-pc-p` shape
-   alone does not imply typed optional NOV or association with a source arena.
-2. Associate the pending/assigned row and every old copied or shared page with
-   the actual generation's retained arena incarnation and prefix. The existing
-   generation row fields 9 and 10 and publication arena fields identify that
-   coordinate; matching numbers alone do not establish its provenance.
-3. Establish/preserve the page prefix relation under the actual recursive
-   `fn-ibp-node-row-write`/`fn-ibp-row-copy-cell` and row sharing transitions.
-   A builder's filled count only records progress; it is not the invariant.
-4. Make successful actual writer publication carry that relation for its
-   retained row-root/descriptor/ordinal mapping, then discharge the reader's
-   `fn-ibp-node-row-read` boundary at the SAME captured generation and arena.
-   Catalog C, Store F and visibility V remain distinct coordinates.
-5. Cold preserved pages require establishment from the actual authenticated
-   held16 loader and its retained arena. A header-only seal cannot bootstrap
-   the relation; historical held15 certificates cannot be transferred.
+1. Join the proven actual prepare/reserve/register relation to the actual
+   owner-held PreparedCommit and same-arena capture. The modern PC shape alone
+   does not imply source authenticity or arena incarnation.
+2. Associate the pending/assigned row and every copied or shared page with the
+   generation's retained arena incarnation and prefix. Generation row fields
+   9/10 and publication fields identify the coordinate; numerical equality
+   alone does not establish provenance.
+3. Establish/preserve the existing prefix relation under actual recursive
+   row write/copy and row-sharing transitions, and tie each descriptor to the
+   published row root and selected ordinal. The conditional reader theorem is
+   ready to consume that maintained relation.
+4. Join actual durable event completion to publication for the complete event
+   roster above. Catalog C, Store F and visibility V are distinct; appending
+   articles alone is not a current Store/publication invariant.
+5. Establish cold preserved pages from the authenticated held16 loader and its
+   retained arena. Neither header seals nor historical held15 evidence suffice.
 
-Until this composition and the source-publication correspondence are proved,
-`fn-ibr-held-install-ready-p` remains a caller obligation for OVER's actual
-install/ONE path. This packet supplies the intern/assignment/page facts needed
-by that obligation. Funding, installed source/runtime, captured lifetime and
-native activation remain separate requirements.
+Until these composition obligations are established,
+`fn-ibr-held-install-ready-p` remains a caller obligation for OVER's install/ONE
+path. Funding, installed source/runtime, captured lifetime and native activation
+remain separate requirements.
