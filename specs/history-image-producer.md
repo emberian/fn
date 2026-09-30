@@ -427,3 +427,26 @@ Padding ACK/reset/region advance, full source/pool and whole-image/private
 trace/progress, actual retained FD/source authority, INITIAL and native
 qualification remain open. Runtime is unchanged; PRF-1144 remains planned
 with no cited completion events.
+
+Definite padding write acknowledgment is now composed in
+`fn-hpi-written-padding-page-preserves-complete-canonical-carry`. Exact
+padding ACK context, complete original five-region carry, selectedused2048
+and actual `:written` preserve every next original canonical suffix, including
+the pool, while resuming pad with the original body and padding region. Its
+structural companion proves that only the issued buffer/page/generation is
+reset/advanced; capacities and salt remain fixed, pending ownership clears,
+and every other complete buffer plus effect/ledger/digest is framed.
+
+Twenty-five complete literal assertions drive real decoded-source trajectories
+through current full-page issuance and exact ACK. Resume corruption,
+untouched-region corruption, and actual uncertain outcomes each affirm all
+other premises and fail the complete conclusion. A separately labelled
+corrupted pending counter/empty-buffer at capacity retains canonical carry
+but demonstrates why the full-buffer premise is required; it is not a
+reachable real issuance claim. Structural ownership remains true under the
+canonical/full mutations. Every backing word and digest field is compared.
+Fresh source/fixture evidence is committed in
+`planning/evidence/history-image-padding-pages-source-2026-09-30.json`.
+Region advance, full source/pool and private stage/spool/digest/root/progress,
+actual retained FD/source authority, INITIAL and native qualification remain
+open. Runtime is unchanged; PRF-1144 remains planned with no cited events.
