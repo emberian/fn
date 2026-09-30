@@ -19040,9 +19040,12 @@
         "books/catalog-number-assignment.lisp",
         "books/catalog-prepared-record.lisp",
         "tests/acl2/group-number-source-pending-tests.lisp",
-        "planning/evidence/number-source-catalog-factoring-2026-09-30/README.md"
+        "planning/evidence/number-source-catalog-factoring-2026-09-30/README.md",
+        "books/group-number-source-catalog-invariant.lisp",
+        "tests/acl2/group-number-source-catalog-invariant-tests.lisp",
+        "planning/evidence/number-source-catalog-lineage-2026-09-30/README.md"
       ],
-      "progress_note": "Guarded resumable assignment/high-aware persistent insertion and pointwise high-fold maintenance source-replayed. Exact actual catalog numbering/PC schema factored without changing names/bodies; pending adapter and conditional fn-cat-assign equation now admitted in narrow lightweight leaf world with literal removals of every retained hypothesis. Actual registered root/catalog lineage, atomic publisher, mandatory-binding16 composed owner world, durable hooks, full funding and OVER/native remain open. No certification/native/deployment claim."
+      "progress_note": "Guarded bounded assignment/high-aware persistent insertion, pointwise high maintenance, exact factored catalog/PC adapter and conditional fn-cat-assign equation source-replayed with literal removals. Empty root establishes initial high correspondence; prepared fold and actual completed-stage projection preserve queried catalog-high after actual assigned-row append. Registered publication/row lookup and mandatory-binding16 composed owner world, actual durable hooks/loader, full funding/retention and OVER/native remain open. No certification/native/deployment claim."
     }
   ]
 }

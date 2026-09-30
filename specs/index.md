@@ -167,3 +167,13 @@ correspondence. This conditional bridge is source-admitted with literal
 hypothesis removals; it does not establish that the current registered root
 has that correspondence. Whole catalog roots and the mandatory-binding16
 owner assembly, genuine publisher and durable/native hooks remain open.
+
+Catalog-high lineage now has an initialization theorem and a pointwise
+preservation theorem for the actual completed stage-result projection. The
+proof connects the carried insertion denotation to the original catalog's
+`fn-cat-assign` and appended-row high. It supplies the semantic maintenance
+step for immutable watermark metadata; a registered publisher must still
+establish the same original row/root/count association and carry that
+correspondence through its actual atomic publish transition. Conditional
+model preservation does not certify the assembled owner or establish query
+funding/visibility, full row-ordinal lookup or native execution.
