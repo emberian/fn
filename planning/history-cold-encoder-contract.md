@@ -156,3 +156,42 @@ full-stream positive/removal witnesses accompany the initializer. This oracle
 is non-executable; it does not supply runtime bytes or establish physical I/O
 liveness. Actual decoder/source lineage, authenticated reader/pin authority,
 continuation funding and full producer qualification remain open outer joins.
+
+## Actual byte decoder establishes the cold codec domain
+
+`history-cold-source-lineage` carries numeric potential, consumed-byte weight,
+scalar/package lineage and borrowed-node extents through the actual
+`fn-hdc-feed` and `fn-hdc-model-run`. The numeric potential uses the current
+one-octet digit width (at most 255 digits); decoded list weight is bounded by
+consumed source bytes, including opcode6 collapse. Payload nodes retain
+`offset + count <= source end`. These are non-executable proof models; the
+served decoder never rescans a completed tree or evaluates the weight.
+
+`fn-hdcl-current-successful-decoder-is-cold-codec-domain` establishes the full
+recursive cold domain from an octet pool, natural offset and a slice ending
+below the existing u64 bound and within that pool. It assumes no caller node
+predicate. Nonnatural count cannot produce successful decoding, so the
+conditional successful-result theorem removes that redundant premise.
+`fn-hdcl-current-successful-decoder-retains-node-bounds` exposes the exact
+borrowed-node source-end relation separately. The named
+`fn-hdcl-current-decoder-cold-run-is-canonical-codec` then joins the actual
+successful decoder to the terminating cold encoder oracle and exact canonical
+`fn-scc-encode(fn-hdc-abstract result pool)`, including accepted nonminimal
+length prefixes and symbol NIL aliases.
+
+Thirteen literal test events cover actual numeric-prefix feed/run positives,
+all feed/run preservation hypothesis removals, four successful result/domain
+and extent cases, and two decoder-to-complete-stream positives. Corrupted
+numeric cursors and source mutations are labeled separately. Practical literal
+removals of the final slice/u64 result boundary remain partial; they are not
+inferred from preservation tests. PRF-1088 remains planned with no certified
+events. Authenticated source4/pass/pin byte attribution, physical funding,
+provider liveness, complete producer/placement and qualification remain outer
+composition obligations.
+
+The existing decoder proof models are factored, byte-for-byte, into
+`history-decode-lineage-model`; the old inverse refinement includes that leaf.
+Actual decoder definitions and theorem statements are unchanged. Scoped
+numeric inverse, move/feed and guard hints repair the carried field facts in
+the cached-row theory. The expensive whole inverse replay is not evidence for
+this lineage checkpoint.
