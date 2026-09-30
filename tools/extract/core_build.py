@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """tools/extract/core_build.py -- the host half of the Common Lisp product,
-read from host/native/build.lisp so it is what the image loads: the body of
+read from the selected native build script so it is what the image loads: the body of
 its `(progn! (set-raw-mode t) ...)' block (the raw host files in order and
-the calls between them).  `core_build.py TREE OUT.lisp' writes that body."""
+the calls between them).  `core_build.py TREE OUT.lisp [BUILD]' writes that body; BUILD defaults to
+host/native/build.lisp."""
 import re
 import sys
 from pathlib import Path

@@ -4,7 +4,9 @@
 # compiled from tools/extract/cl.py's Lisp) and host/native, and nothing of
 # ACL2 (ember 2026-09-28; A-TARGET-COMPILER).  Writes TREE/build/core/:
 # FN_CORE_OUT overrides the output directory (default build/core);
-# FN_CORE_NAME selects the launcher/core basename (default fn-core).
+# FN_CORE_NAME selects the launcher/core basename (default fn-core). DTN
+# names select build-dtn.lisp, its host roots and its extraction world/cache.
+# Named products fix production/developer profile; fn-core defaults developer.
 # core.json, packages.json, core-world.lisp (the front end's export),
 # defs.lisp, packages.lisp, host-block.lisp, the logs, and fn-core (an
 # executable: `fn-core --fn ...' is the image's CLI).  Environment:
