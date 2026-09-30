@@ -2,13 +2,15 @@
 ; Runtime definitions are WIP until the narrow guard/source replay below.
 (in-package "ACL2")
 (include-book "history-image-producer")
+(include-book "snapshot-maintenance-profile")
 
 (defun fn-hie-currentp (c effect stage ledger)
   (declare (xargs :guard t))
   (let ((pending (fn-omk-at 5 c)))
     (and (fn-omk-widthp effect 10) (fn-omk-widthp pending 10)
          (natp stage) (equal stage (fn-omk-at 3 c))
-         (equal effect pending) (fn-hpi-grant-matchesp c ledger))))
+         (equal effect pending) (fn-hpi-grant-matchesp c ledger)
+         (fn-osj-native-backingp (fn-omk-at 22 c)))))
 
 ; The host receives one exact FD role, offset/count and already-written
 ; scratch selector. It neither computes page addresses nor maps region labels.
@@ -20,17 +22,24 @@
       (cond
        ((and (eq tag :write-page) (eq phase :wait-write)
              (natp buffer) (< buffer 5) (natp (fn-omk-at 7 effect))
-             (equal (fn-omk-at 8 effect) 16384))
+             (equal (fn-omk-at 8 effect) 16384)
+             (fn-osj-native-slicep (fn-omk-at 7 (fn-omk-at 22 c))
+                                   (fn-omk-at 7 effect) 16384))
         (list :io :write :target (fn-omk-at 7 effect) 16384 buffer nil))
        ((and (eq tag :read-stage) (eq phase :wait-stage-read)
              (natp (fn-omk-at 6 effect)) (natp (fn-omk-at 7 effect))
-             (< 0 (fn-omk-at 7 effect)) (<= (fn-omk-at 7 effect) 64))
+             (< 0 (fn-omk-at 7 effect)) (<= (fn-omk-at 7 effect) 64)
+             (fn-osj-native-slicep (fn-omk-at 7 (fn-omk-at 22 c))
+                                   (fn-omk-at 6 effect) (fn-omk-at 7 effect)))
         (list :io :read :target (fn-omk-at 6 effect) (fn-omk-at 7 effect) nil nil))
        ((and (member-eq tag '(:write-spool :read-spool))
              (eq phase (if (eq tag :write-spool) :wait-spool-write :wait-spool-read))
              (member-eq (fn-omk-at 4 effect) '(:data :table))
              (natp (fn-omk-at 6 effect)) (equal (fn-omk-at 7 effect) 32)
-             (or (eq tag :read-spool) (fn-hpi-octets-p 32 (fn-omk-at 9 effect))))
+             (or (eq tag :read-spool) (fn-hpi-octets-p 32 (fn-omk-at 9 effect)))
+             (fn-osj-native-slicep
+              (fn-omk-at (if (eq (fn-omk-at 4 effect) :data) 8 9) (fn-omk-at 22 c))
+              (fn-omk-at 6 effect) 32))
         (list :io (if (eq tag :write-spool) :write :read)
               (if (eq (fn-omk-at 4 effect) :data) :data-spool :table-spool)
               (fn-omk-at 6 effect) 32 nil (fn-omk-at 9 effect)))
@@ -91,3 +100,18 @@
         (if (eq word :word)
             (mv :octet (logand 255 (ash (ifix w) (- (* 8 (mod i 8))))))
           (mv :unwritten 0))))))
+
+; Exact host-called plan: no IO projection outside its live captured extent.
+(defthm fn-hie-issued-plan-has-representable-interval
+ (let ((plan (fn-hie-plan c effect stage ledger)))
+  (implies (equal (fn-omk-at 0 plan) :io)
+   (let ((extent (fn-omk-at
+                  (case (fn-omk-at 2 plan) (:target 7) (:data-spool 8) (otherwise 9))
+                  (fn-omk-at 22 c))))
+    (and (fn-hie-currentp c effect stage ledger)
+         (fn-osj-native-slicep extent (fn-omk-at 3 plan) (fn-omk-at 4 plan))
+         (natp (fn-omk-at 3 plan)) (natp (fn-omk-at 4 plan))
+         (<= (+ (fn-omk-at 3 plan) (fn-omk-at 4 plan))
+             (fn-osj-native-offset-max))))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (enable fn-hie-plan fn-osj-native-slicep fn-omk-at))))

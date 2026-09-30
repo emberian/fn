@@ -112,3 +112,16 @@ The final proper-local evidence is
 `planning/evidence/history-pool-tagged-refinement-source-2026-09-30.json`;
 its proof body took29.39 ACL2 seconds/10,608,053 steps in the composed source
 world, with no matched proof-cost or qualification claim.
+
+The actual writer growth call now uses the selected Linux x86-64 signed-long
+backing profile, and every retained grant check also checks that profile.
+The exact effect projection admits I/O only within its captured target or
+spool extent and the signed offset domain. Profile refusal preserves the
+complete cursor, ledger, five buffers and digest state. Its oversized-layout
+fixture is a corrupted-state case; it does not claim a valid huge census
+passes earlier current-format constraints. An actual funded first page,
+out-of-extent pending-request mutation and uncertain-write recovery passed
+in the same composed source world. The full cold image trajectory was rerun
+against the changed controller. This establishes no whole-operation INIT
+adequacy, whole writer invariant/progress or native execution claim; exact
+source evidence is `planning/evidence/history-image-native-profile-source-2026-09-30.json`.
