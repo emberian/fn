@@ -110,6 +110,9 @@ native wrapper; `host/native/config.lisp` registers the diagnostic protocol
 naturals representable in u64; a partial table, zero or overflow is
 refused. Absence remains absent in the normalized record, and `show`
 preserves the exact supplied values through the loader round trip.
+Resolving relative configuration paths preserves this explicit policy and
+the listener's selected TLS port. It changes only path fields; it cannot
+erase the resource policy and thereby bypass its operator refusal.
 These fields describe an operational cold-resource policy, separate from
 the durable Store profile. At this source frontier `run` refuses an explicit
 policy as `cold_resources`: the supported allocator baseline and launcher

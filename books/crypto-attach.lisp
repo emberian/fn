@@ -1,43 +1,19 @@
-; fn: the realiser of the two digest seams: BLAKE3.
+; fn: executable BLAKE3 for the identity digest seam.
 ;
-; `books/crypto-seam.lisp' constrains `fn-digest' and `books/frame-octets.lisp'
-; constrains `fn-frame-digest'.  A constrained function has no executable
-; counterpart, so without an attachment every term mentioning either one is
-; un-evaluable: the served path could not digest anything, and the host would
-; compute identities in Python or host Lisp, the twin AGENTS.md's one-owner
-; rule forbids.  This book attaches BLAKE3 to both seams (ember, 2026-09-28:
-; BLAKE3 wherever fn chooses the algorithm; SHA-256 only where an RFC puts it
-; on the wire, which is RFC 8315's Cancel-Lock hash, books/control-authority.lisp
-; and books/cancel-lock.lisp).  The realiser is `fn-blake3-stobj'
-; (books/blake3-stobj.lisp, the octets copied once into a buffer and hashed
-; in place), attached under `fn-blake3-stobj-is-blake3', the theorem that it
-; equals `fn-blake3' (books/blake3.lisp), the list definition, on every
-; object.  Every statement below is about `fn-blake3'; the executable is the
-; buffer twin.  Until 2026-09-28 the realiser was SHA-256 (`fn-sha256-stobj'):
-; the change is store format 10 (every stored digest changes; lane
-; format-bump-10 owns the format number and the reader).
+; fn-digest remains constrained and attached to fn-blake3-stobj. Signature
+; seams remain constrained. Frame integrity now has a concrete, closed
+; fn-frame-digest definition in frame-octets, with the same BLAKE3 bytes
+; computed before this change. It needs no attachment. The shape lemmas
+; below remain public for existing consumers of either boundary.
 ;
-; WHAT THE ATTACHMENT CHANGES IN THE LOGIC: nothing.  `defattach' introduces
-; no axiom.  It obliges ACL2 to prove that the attached function satisfies
-; EVERY constraint the `encapsulate' states -- here, the shape theorems
-; re-proved just below for `fn-blake3' -- and in exchange makes ground terms
-; over the constrained function evaluate.  Every theorem that was true of the
-; seam before is the same theorem now, with the same hypotheses.
-;
-; WHAT REMAINS ASSUMED: collision resistance and preimage resistance, which
-; are A-CRYPTO (specs/failures.md, books/assumptions.lisp), now of BLAKE3:
-; about 2^-128 per chosen pair (the birthday bound over a 256-bit output) is
-; the figure to quote, not the 2^-256 second-preimage one.  They were never
-; consequences of the seam and are not consequences of the attachment.  The
-; seam's own local witness is the constant zero digest, under which every
-; preimage collides, and `tests/acl2/crypto-seam-tests.lisp' still attaches a
-; colliding toy realiser to make that visible.  A later `defattach' for the
-; same function replaces an earlier one, so a test book re-attaching a toy
-; realiser after including this one gets the toy.
-;
-; SCOPE.  Signature verification is NOT touched.  `fn-sig-sign',
-; `fn-sig-verify' and `fn-sig-public-key' (crypto-seam) and
-; `fn-anchor-sig-verify' (books/anchor.lisp) stay constrained.
+; Defattach adds no axiom: the identity attachment discharges its shape
+; constraint only. Computing BLAKE3 proves neither collision resistance nor
+; preimage resistance. Those remain A-CRYPTO, separately stated in
+; assumptions.lisp and specs/failures.md. Pessimistic generic collision work
+; for the 256-bit digest is about 2^128 operations; the second-preimage
+; figure is not a substitute for that scope. The identity seam's colliding
+; toy attachment still witnesses that its shape constraint proves no such
+; security property. SHA-256 remains RFC 8315's Cancel-Lock algorithm.
 
 (in-package "ACL2")
 (include-book "crypto-seam")
@@ -97,7 +73,6 @@
 ; The attachments.
 
 (defattach fn-digest fn-blake3-stobj)
-(defattach fn-frame-digest fn-blake3-stobj)
 
 ; -----------------------------------------------------------------------------
 ; The coercion is the identity on the domain fn actually digests: on an

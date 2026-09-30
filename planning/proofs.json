@@ -1475,7 +1475,7 @@
         "PRF-007"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "note": "Decisions D14-b (lane w10/kernel-freedom, the record arm) and D14-c (lane w11/bytestore-k2, the frontier arm K2f). The recognizer is a SECOND one: fn-sf-crash-imagep is unchanged and stays the reliance predicate that fn-own-reopen gates on and every reopen theorem takes as a premise, because widening it is false for the composition -- an owner reopened on an image is a recovery-window state whose own success history is empty while its ledger names records earlier processes acknowledged, and which of a state's records are fenced is a fact about the byte store's pending list, not about the kernel state. The counterexample is mechanized in tests/acl2/owner-tests.lisp (the owner half) and tests/acl2/store-observed-traces-tests.lisp (the kernel half). This target retires the open row K2r of specs/crash-model-v2.md; crash-model-v2 K2, whose conclusion this predicate is, remains open on the byte side, and what it waits on is now only K1's three remaining scan clauses: the frontier sub-case K2f is modelled, so K2's STATEMENT is true of every image the platform can leave in the window.",
       "events": [
         "fn-sf-recovery-crash-realizes-every-admissible-image",
@@ -1556,7 +1556,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "note": "Lane w11/workflow-replay, book books/bp-workflow-replay-status.lisp, teeth in tests/acl2/bp-workflow-records-tests.lisp. The subject of the first two keystones is what host/workflow-host.lisp:63 (fn-workflow-work-status) calls; of the last two, what host/workflow-host.lisp:73 (fn-workflow-work-origin) calls on the list host/workflow-host.lisp:8 records. Certified on hbox, run-20260921T005523Z-05dc, build/acl2/certify-20260921T005528Z-1361353. Before the ION extension, the native workflow host called fn-bprl-replay-journal, which also interprets :undertake and :release; fn-bprl-replay-work-status-is-durable-status-restarted certifies that successful predecessor path, with an extended reachable journal and a malformed-suffix must-fail tooth in tests/acl2/bp-release-tests.lisp (persvati manifests certify-20260923T173933Z-2312844.json and certify-20260923T174038Z-2322911.json). The earlier fn-bp replay theorem remains scoped to its original record language. The :enqueue kind hypothesis of fn-bp-durable-enqueue-after-open-reads-enqueued has a constructed rather than a reached tooth, and the test book says so: fn-bp-prepare-attempt only prepares an attempt for a work the image holds, so the composed machine reaches no :attempt pending over an image that holds none. Current scope correction (2026-09-24): host/workflow-host.lisp fn-workflow-install-replay now calls fn-bpiw-replay-journal, whose mixed FNWF stream includes :ion-route and :ion-observed. The two certified single-record structural projections in books/bp-ion-workflow.lisp do not yet lift the work-status theorem through that complete replay. A named actual-caller correspondence with a reachable mixed-history witness remains open; predecessor certificates do not discharge it. Hence the target is in-progress, while its existing component theorems remain intact. Replay fence (lane ion-replay-fence, 2026-09-24): fn-bpiw-replay-records now reconstructs the unrecorded reopen fence before a :recovery outcome (fn-bpiw-replay-fence, books/bp-ion-workflow.lisp), as fn-bp-replay-records does; before it, a journal holding a recovery outcome could not be reopened and the history preflight refused every recovery outcome (planning/evidence/m4-app-receipt-2026-09-24.md finding 4). The keystone's subject is fn-bpiw-replay-journal, called by host/workflow-host.lisp:13 (fn-workflow-install-replay) and :107 (fn-workflow-preflight-history), against fn-bpiw-apply as host/workflow-host.lisp:112 (fn-workflow-apply-record) calls it; book books/bp-ion-workflow-replay.lisp, teeth in tests/acl2/bp-ion-workflow-replay-tests.lisp (reachable enqueue, attempt and ION-carrying cuts; must-fail without the recovery-outcome and live-acceptance hypotheses; the open-success hypothesis has no separating witness because a failed open's image holds no fence, and the test book shows that refusal). Scope: one recovery outcome applied right after an open; the general live-suffix correspondence across later records is not claimed, and a live re-attempt of a :restart-observed attempt without a journaled retry request is refused by the history (the must-fail witness), which is the host's intended gate. Evidence: planning/evidence/ion-replay-fence-2026-09-24.md.",
       "evidence": [
         "books/bp-workflow-replay-status.lisp",
@@ -2029,7 +2029,7 @@
         "PRF-035"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-feed-journal-next-is-bounded-progress",
         "fn-feed-journal-uncertainty-survives-all-later-observations"
@@ -2726,7 +2726,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-clock-domain.lisp",
         "tests/acl2/bp-clock-domain-tests.lisp",
@@ -3403,7 +3403,7 @@
         "PRF-012"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-request-plan.lisp",
         "tests/acl2/bp-request-plan-tests.lisp",
@@ -4381,7 +4381,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-blake3-of-prefixed-buffer-is-blake3",
         "fn-sidb-subject-id-is-id-subject-of-payload"
@@ -5655,7 +5655,7 @@
         "PRF-124"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/key-statements.lisp",
         "tests/acl2/key-statements-tests.lisp",
@@ -6026,7 +6026,7 @@
         "PRF-140"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/key-statements.lisp",
         "tests/acl2/key-statements-tests.lisp",
@@ -7359,8 +7359,8 @@
     },
     {
       "id": "PRF-203",
-      "title": "Completion by token and the shared transition: fn-cat-complete commits the pending PreparedCommit's row at its expected position with no history search and refuses a stale token or a mismatched expected by name; fn-sn-finish-held over the held record and its context is fn-sn-finish on the article arm; the keyring generation names the keyring; the pinned view is a version",
-      "statement": "books/catalog-commit.lisp. fn-cat-complete-by-token: for a PreparedCommit PENDING (fn-pc-p), TOKEN its token and its EXPECTED the catalog count, (fn-cat-complete token pending fn-cat) commits the row (fn-cat-at expected C') = (fn-cat-assign held C), the count is expected + 1, the pending is cleared and the result is the :article delta of that row (fn-delta-of-row); fn-cat-complete-stale-refused and fn-cat-complete-expected-mismatch-refused: a token that is not the pending's, or an expected that is not the count, is refused by name and nothing changes; fn-cat-abandon-clears, fn-cat-abandon-stale-refused; fn-cat-token-of-abandoned-attempt-is-stale: a token from an abandoned attempt cannot complete the next attempt when the txids differ (the txid is consumed per attempt; the test book shows equal txids let it through). fn-sn-finish-held-is-finish (KEYSTONE, the shared transition): for a store S (fn-sn-statep), W its completing record (fn-sn-completion-record, kept as the meaning), W an article record, H a held record with (fn-held-wire h bytes(W)) = W (alpha), bytes(W) the node's pending bytes, and CTX the context of bytes(W) under S's keyring and generation, (fn-sn-finish-held s h ctx) = (fn-sn-finish s): the finish with the record supplied and the verdict and identity delta from the context, no walk of the history, no read of the bytes. fn-sn-finish-held-refuses-a-stale-context: a context whose generation is not the store's leaves the store unchanged. fn-sn-context-fixed-between-prepare-and-finish: every transition the owner and the host apply (fn-snrt-step and its arms, fn-sn-io, fn-sn-finish, fn-sn-finish-held, fn-sn-with-configuration) leaves the keyring and its generation, and fn-sn-set-keyring leaves the keyring whenever it leaves the generation; fn-sn-set-keyring-advances-the-generation is the writer's negative (unreachable-in-composition: no native host line calls it). books/catalog-delta.lisp: fn-cat-apply-delta-step-bounded (a step touches at most its quantum of rows); the delta grammar, its one-shot application and its resumable form are defined and guard-verified, and that the resumable run under any quanta equals the one-shot application is OPEN (not proved in this lane's budget; the ground check in the test book passes by computation and is not a proof); fn-view-cancel-after-target: a cancel of a row committed when the count is W withdraws it at W, a reader at version V with target < V <= W still sees it, a reader at W + 1 does not. The composite (kind 4), retention, consumer and topic arms keep fn-sn-finish over the event; the equation with fn-own-refresh's view is PRF-202.",
+      "title": "Completion by token and the shared transition: fn-cat-complete commits the pending PreparedCommit's row at its expected position with no history search and refuses a stale token or a mismatched expected by name; fn-sn-finish-held over the held record and its context is fn-sn-finish on the article arm; the ARTICLE interval preserves its context and coherent recovery resolves retained snapshots; the pinned view is a version",
+      "statement": "books/catalog-commit.lisp. fn-cat-complete-by-token: for a PreparedCommit PENDING (fn-pc-p), TOKEN its token and its EXPECTED the catalog count, (fn-cat-complete token pending fn-cat) commits the row (fn-cat-at expected C') = (fn-cat-assign held C), the count is expected + 1, the pending is cleared and the result is the :article delta of that row (fn-delta-of-row); fn-cat-complete-stale-refused and fn-cat-complete-expected-mismatch-refused: a token that is not the pending's, or an expected that is not the count, is refused by name and nothing changes; fn-cat-abandon-clears, fn-cat-abandon-stale-refused; fn-cat-token-of-abandoned-attempt-is-stale: a token from an abandoned attempt cannot complete the next attempt when the txids differ (the txid is consumed per attempt; the test book shows equal txids let it through). fn-sn-finish-held-is-finish (KEYSTONE, the shared transition): for a store S (fn-sn-statep), W its completing record (fn-sn-completion-record, kept as the meaning), W an article record, H a held record with (fn-held-wire h bytes(W)) = W (alpha), bytes(W) the node's pending bytes, and CTX the context of bytes(W) under S's keyring and generation, (fn-sn-finish-held s h ctx) = (fn-sn-finish s): the finish with the record supplied and the verdict and identity delta from the context, no walk of the history, no read of the bytes. fn-sn-finish-held-refuses-a-stale-context: a context whose generation is not the store's leaves the store unchanged. fn-sn-context-fixed-between-prepare-and-finish: outside :replaying and when the completing record is not a key snapshot, fn-snrt-step, fn-sn-io, fn-sn-finish, fn-sn-finish-held and fn-sn-with-configuration preserve the keyring and generation; fn-sn-set-keyring leaves the keyring whenever it leaves the generation. Durable snapshot completion publishes the accepted snapshot; recovery derives its table and generation from the supplied replay snapshots, so neither is an unconditional old-keyring frame. fn-sn-recover-keeps-coherent-context requires fn-snh-recovery-context-coherentp: the source table and generation resolve its retained snapshots, and these snapshots equal actual identity replay of the retained history. books/catalog-context-recovery.lisp proves fn-osr-ready-establishes-catalog-recovery-context: the unchanged full fn-osr-retainedp at :ready establishes that coherence, without assuming source/recovered keyring equality. Literal ARTICLE and nonempty snapshot-recovery witnesses, reachable omission witnesses at snapshot completion and post-publication crash, and a corrupted same-generation/different-table witness distinguish these cases. fn-sn-set-keyring-advances-the-generation remains unreachable-in-composition: no native host line calls it. books/catalog-delta.lisp: fn-cat-apply-delta-step-bounded (a step touches at most its quantum of rows); the delta grammar, its one-shot application and its resumable form are defined and guard-verified, and that the resumable run under any quanta equals the one-shot application is OPEN (not proved in this lane's budget; the ground check in the test book passes by computation and is not a proof); fn-view-cancel-after-target: a cancel of a row committed when the count is W withdraws it at W, a reader at version V with target < V <= W still sees it, a reader at W + 1 does not. The composite (kind 4), retention, consumer and topic arms keep fn-sn-finish over the event; the equation with fn-own-refresh's view is PRF-202. fn-osr-ready-crash-recovery-keeps-catalog-context composes full retained readiness with every fn-sn-crash image choice and actual fn-sn-recover: crashed identity context is coherent and recovered keyring/generation equal the original. Coherence is established, not assumed as recovered equality. Readiness removal is refuted by a reachable published-before-finish snapshot, and full-carry removal by a ready corrupted generation. This is a model image/recovery dependency, not the physical canonical writer/load/owner installation boundary.",
       "milestone": "M5",
       "requirements": [
         "REP-013",
@@ -7379,10 +7379,12 @@
         "books/catalog-delta.lisp",
         "tests/acl2/catalog-commit-tests.lisp",
         "tests/acl2/catalog-delta-tests.lisp",
-        "planning/evidence/manifests/certify-20260926T212645Z-2809134.json"
+        "planning/evidence/manifests/certify-20260926T212645Z-2809134.json",
+        "books/catalog-context-recovery.lisp",
+        "tests/acl2/catalog-context-recovery-tests.lisp"
       ],
-      "progress_note": "Lane catalog-slice-2 (Fable, 2026-09-26, wave 5 lane 2 continuation, D33): steps 4 and 5 of the brief certified. The chosen form of the context theorem is the re-decide form (the phase gate is not a theorem of the machine: fn-sn-set-keyring has no phase check); the host re-decides a refused context from the arena (step 8, PKT-585).",
-      "pending_subject": "No host line calls fn-cat-prepare, fn-cat-complete or fn-sn-finish-held yet: the host's finish is fn-owner-finish-submission -> fn-ccar-own-finish -> fn-ccar-sn-finish-enabled (host/owner-host.lisp), the walk the token replaces; moving it is step 8 of PKT-585. Until then the keystones' subjects are reached only by the test books."
+      "progress_note": "Snapshot recovery successor: repaired the false unconditional keyring frame with the actual ARTICLE phase/kind frame and retained-snapshot recovery coherence; exact constructor writer equations are named -by-definition and not cited as keystones. Clean source admission and literal witnesses are source evidence only. Full retained-ready establishment is proved by the context recovery composition with literal nonempty enrollment, readiness removal and corrupted-carry removal witnesses; host adoption and qualification remain open. General ready/crash/actual-recover composition now admitted in a clean proper source root with complete literal positive and both hypothesis-removal witnesses; status remains planned.",
+      "pending_subject": "Proved catalog context source components are not yet reached through the actual owner cold recovery boundary. Physical writer/load and owner adoption remain open."
     },
     {
       "id": "PRF-204",
@@ -8423,7 +8425,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-smid-record-decode-of-seal",
         "fn-smid-payload-decode-of-payload",
@@ -8923,7 +8925,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-log.lisp",
         "tests/acl2/store-log-tests.lisp",
@@ -9036,7 +9038,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-bpah-handoff-report-is-application-disposition",
         "fn-bpah-persist-delivery-reports-the-record",
@@ -9249,7 +9251,7 @@
       "assumptions": [
         "A-CRYPTO-TRAILER"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-log-crash.lisp",
         "planning/evidence/w6-log-core-2026-09-27.md",
@@ -9284,7 +9286,7 @@
       "assumptions": [
         "A-CRYPTO-TRAILER"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-log-kernel.lisp",
         "planning/evidence/w6-log-core-2026-09-27.md",
@@ -11051,7 +11053,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/provenance-inspect.lisp",
         "tests/acl2/provenance-inspect-tests.lisp",
@@ -11444,7 +11446,7 @@
         "PRF-344"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/history-pages.lisp",
         "tests/acl2/history-pages-tests.lisp",
@@ -11673,7 +11675,7 @@
         "A-CRYPTO",
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/frame-digest-buffer.lisp",
         "books/store-checkpoint-reader.lisp",
@@ -12967,7 +12969,7 @@
         "PRF-346"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/catalog.lisp",
         "books/served-catalog-view.lisp",
@@ -13269,7 +13271,7 @@
         "PRF-366"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-export-durability.lisp",
         "tests/acl2/store-export-durability-tests.lisp",
@@ -13298,7 +13300,7 @@
       "assumptions": [
         "A-PGS-HOST-IO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/history-records.lisp",
         "tests/acl2/history-records-tests.lisp",
@@ -13820,7 +13822,7 @@
       "assumptions": [
         "A-PGS-HOST-IO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/history-records-disk.lisp",
         "books/store-records-field.lisp",
@@ -13917,7 +13919,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-feed.lisp",
         "books/feed-restart-domain.lisp",
@@ -14155,7 +14157,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-carry-control.lisp",
         "books/bp-carry-frame.lisp",
@@ -14762,7 +14764,7 @@
         "PRF-232"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-mount-identity.lisp",
         "tests/acl2/store-mount-identity-tests.lisp"
@@ -15077,7 +15079,7 @@
         "PRF-914"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-carry-waiver.lisp",
         "books/bp-carry-control.lisp",
@@ -15105,7 +15107,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/msgid-pages.lisp",
         "tests/acl2/msgid-pages-tests.lisp",
@@ -15166,7 +15168,7 @@
         "PRF-957"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/msgid-pages-exec.lisp",
         "tests/acl2/msgid-pages-exec-tests.lisp",
@@ -15198,7 +15200,7 @@
         "PRF-969"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/catalog.lisp",
         "tests/acl2/msgid-pages-exec-tests.lisp",
@@ -15726,7 +15728,7 @@
         "PRF-944"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-host-sequence.lisp",
         "host/bp-node-host.lisp",
@@ -15749,7 +15751,7 @@
         "PRF-983"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-host-sequence.lisp",
         "host/bp-node-host.lisp",
@@ -15851,7 +15853,7 @@
         "PRF-969"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/msgid-pages-exec.lisp",
         "tests/acl2/msgid-pages-exec-tests.lisp",
@@ -16203,7 +16205,7 @@
         "PRF-991"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/msgid-pages-exec.lisp",
         "tests/acl2/msgid-pages-exec-tests.lisp",
@@ -17003,7 +17005,7 @@
         "PRF-270"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-log-lineage.lisp",
         "tests/acl2/store-log-lineage-tests.lisp",
@@ -17087,7 +17089,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-machine-codec.lisp",
         "host/bp-node-machine-host.lisp",
@@ -17110,7 +17112,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-fnbs-delivery-publication.lisp",
         "tests/acl2/bp-fnbs-delivery-publication-tests.lisp"
@@ -17326,7 +17328,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-host-machine.lisp",
         "tests/acl2/bp-node-host-machine-tests.lisp"
@@ -17413,7 +17415,7 @@
         "PRF-1018"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/catalog.lisp",
         "books/msgid-pages-exec.lisp",
@@ -17494,7 +17496,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-host-machine.lisp",
         "books/bp-node-machine-codec.lisp",
@@ -17786,7 +17788,7 @@
     {
       "id": "PRF-1057",
       "title": "Issued cold page reads retain identity and worker ownership through cancellation and late completion",
-      "statement": "Host/native/extent.lisp fnn-extent-complete-read calls fn-pio-complete. Publication requires its exact immutable token (process-local read ID, original CID, file incarnation ID, offset, length, expected trailer), phase issued and successful full commitment check, and settles once. fn-pio-cancel retains token and unsettled ownership even after deadline/client loss. fnn-extent-close calls fn-pio-file-clear-p over carried valid ownership rows: every issued/cancelled worker naming a retired file prevents close independently of the arena-reader generation gate. Duplicate/stale completions cannot publish or settle twice. Host OS/thread/mutex/table fidelity is A-HOST; observed worker death and join (or definite failed launch) is required before settlement. Incarnation allocator fn-pio-file-issue derives process-local identities and successive admitted allocations are distinct; a failed open spends its name and invalid carried counter refuses rather than resetting. No funded read-pool admission or memory bound is claimed; repeated detached workers remain P12 open. The operator-funded local file namespace can exhaust before open without wrapping or refunding a spent name; admitted resource-pool tokens establish the identical owned read row and use the ledger\u2019s single counter. These are partial algebra/lifetime subjects; supported profile installation, retained runtime storage and legacy large-frame streaming remain open.",
+      "statement": "Host/native/extent.lisp fnn-extent-complete-read calls fn-pio-complete. Publication requires its exact immutable token (process-local read ID, original CID, file incarnation ID, offset, length, expected trailer), phase issued and successful full commitment check, and settles once. fn-pio-cancel retains token and unsettled ownership even after deadline/client loss. fnn-extent-close calls fn-pio-file-clear-p over carried valid ownership rows: every issued/cancelled worker naming a retired file prevents close independently of the arena-reader generation gate. Duplicate/stale completions cannot publish or settle twice. Host OS/thread/mutex/table fidelity is A-HOST; observed worker death and join (or definite failed launch) is required before settlement. Incarnation allocator fn-pio-file-issue derives process-local identities and successive admitted allocations are distinct; a failed open spends its name and invalid carried counter refuses rather than resetting. No funded read-pool admission or memory bound is claimed; repeated detached workers remain P12 open. The operator-funded local file namespace can exhaust before open without wrapping or refunding a spent name; admitted resource-pool tokens establish the identical owned read row and use the ledger’s single counter. These are partial algebra/lifetime subjects; supported profile installation, retained runtime storage and legacy large-frame streaming remain open.",
       "milestone": "M5",
       "requirements": [
         "STO-017"
@@ -18647,7 +18649,7 @@
         "planning/evidence/history-decoded-record-cursor-source-2026-09-30.json",
         "planning/evidence/history-symbol-normalize-row-union-2026-09-30.json"
       ],
-      "progress_note": "Resident include-order checkpoint292129ade passed cached row\u2192scalar\u2192record proper-local. Borrowed raw span begin/tick/supply guard verification, exact wire residual/invariant, string/octet abstraction to existing codec and productive-work/request split admitted in protected source replay. Tests cover exact payload streams, opcode6zero\u2192NIL, quantum resume, wrong/replayed position refusal, all five supply-refinement removals and nine initial-span removals. The initial u64 sum premise has no practical removal witness; semantic span-domain and supply-progress literal teeth remain partial. No host caller, certification/native/image or full producer claim. Full target planned: decoded tree opaque-collapse, symbol normalizer, outer epoch/pass/pin/serial authority, general tree progress, padded placement/profile bridge, controller funding and qualification. Span begin individual u64 checks precede addition; fresh contextual record123forms23.97s/4243305steps and97tests .17s/5529steps pass in hrcnil2 with valid-format refinement unchanged. NIL-tail probe begin/tick/supply guards, initialization, preservation, terminal nullness through fn-hdc-abstract, productive progress and capture/lease identity passed proper-local hrcnil2 after cached row:26sourceforms .91s/147873steps and32testforms .03s/747steps. Four supply and five progress removals plus five initial removals pass; initial u64 sum and abstraction-domain teeth remain partial. The repaired normalizer22f contextual union also passed hrcnil2 after cached row, record008 and NIL32:53sourceforms9.86s1459180steps and26testforms .05s489steps; exact evidence history-symbol-normalize-row-union-2026-09-30.json. This closes only that library source-order refusal; full cold controller and physical/host composition remain open."
+      "progress_note": "Resident include-order checkpoint292129ade passed cached row→scalar→record proper-local. Borrowed raw span begin/tick/supply guard verification, exact wire residual/invariant, string/octet abstraction to existing codec and productive-work/request split admitted in protected source replay. Tests cover exact payload streams, opcode6zero→NIL, quantum resume, wrong/replayed position refusal, all five supply-refinement removals and nine initial-span removals. The initial u64 sum premise has no practical removal witness; semantic span-domain and supply-progress literal teeth remain partial. No host caller, certification/native/image or full producer claim. Full target planned: decoded tree opaque-collapse, symbol normalizer, outer epoch/pass/pin/serial authority, general tree progress, padded placement/profile bridge, controller funding and qualification. Span begin individual u64 checks precede addition; fresh contextual record123forms23.97s/4243305steps and97tests .17s/5529steps pass in hrcnil2 with valid-format refinement unchanged. NIL-tail probe begin/tick/supply guards, initialization, preservation, terminal nullness through fn-hdc-abstract, productive progress and capture/lease identity passed proper-local hrcnil2 after cached row:26sourceforms .91s/147873steps and32testforms .03s/747steps. Four supply and five progress removals plus five initial removals pass; initial u64 sum and abstraction-domain teeth remain partial. The repaired normalizer22f contextual union also passed hrcnil2 after cached row, record008 and NIL32:53sourceforms9.86s1459180steps and26testforms .05s489steps; exact evidence history-symbol-normalize-row-union-2026-09-30.json. This closes only that library source-order refusal; full cold controller and physical/host composition remain open."
     },
     {
       "id": "PRF-1094",

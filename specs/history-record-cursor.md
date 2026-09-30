@@ -316,3 +316,11 @@ u64-size hypothesis has no practically executable removal witness at this
 stage; it is not represented as fully toothed. Full cold-source and actual controller
 proof, funding, matched measurements, actual producer calls and coalesced
 qualification remain open under the original S7/P12 portfolio.
+
+The NIL probe also replays in the standalone source world, before cached
+history-pages-row is included. Its optional MIDX rewrite exclusions remove a
+literal rune from an existing hint theory, so the hint is valid whether that
+row theorem exists or not. The same exact bytes replay again after the cached
+row include in hrcscan2; runtime and theorem statements are unchanged. This
+is source admission, not certification. The normalized-span followup remains
+a separate source increment.
