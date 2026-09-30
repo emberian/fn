@@ -115,11 +115,13 @@ exposure admission decides (the id, or NIL when it refused)."
                 (declare (ignore starttls more))
                 (unwind-protect
                      (loop
-                       (multiple-value-bind (part rest donep)
+                       (multiple-value-bind (part rest donep yieldedp)
                            (fnn-owner-render-next-quantum service cid plan :reader)
                          (setq reply (concatenate 'fnn-octets reply part))
                          (when donep (return))
-                         (setq plan rest)))
+                         (setq plan rest)
+                         (when yieldedp
+                           (sleep (/ (fnn-core 'fn-splan-cursor-resume-ms) 1000)))))
                   (fnn-owner-response-unpin service cid))
                 (setq closing close)
                 (when (and (zerop consumed) (not close))
@@ -232,6 +234,16 @@ exposure admission decides (the id, or NIL when it refused)."
                       (fnn-web-respond face fd channel code fields
                                        (fnn-web-slice out 0 (fnn-web-len out)) bodyp))
                     (return))
+                   (:health
+                    (fnn-owner-space-preobserve service t)
+                    (setq flow (second action)
+                          event (list :health-observation
+                                      (fnn-owner-serialized
+                                       service nil
+                                       (lambda ()
+                                         (fnn-owner-core 'fn-web-host-health-observe
+                                                         (fnn-owner-sched-snapshot service)))
+                                       :reader))))
                    (:open
                     (destructuring-bind (fam addr protected next) (rest action)
                       (setq flow next

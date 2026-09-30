@@ -1505,6 +1505,9 @@ strict bar stands).
 13. **Consumers**: whether a non-owner peer's bound requests are ever admitted
     on the consumer socket (PKT-673); a revoked author's retry settles only
     through the stored copy (PKT-322, default keep the gate order).
+    PKT-673 RESOLVED 2026-09-29 by ember: authenticated remote consumer
+    access is in scope, restricted to the account's readable groups; operator
+    controls stay private. See the resolution below. PKT-322 is unchanged.
 14. **Compression dictionaries and Bao** (optional per GPT-6): persist
     dictionaries as configuration events (the lane's recommendation) or not;
     Bao for resumable large transfers or not.
@@ -1643,3 +1646,27 @@ occurring below NOT cannot establish the skipped guard; that case now refuses.
 The native comparison records zero raw owner entries while this obligation
 remains open. The DTN image loads an explicit generated raw declaration scope;
 an absent target refuses instead of silently dropping its declaration.
+
+### 2026-09-29: authenticated remote consumers (PKT-673)
+
+Ember's explicit answer to whether a remote agent may poll and acknowledge
+with account credentials, restricted to that account's readable groups:
+
+> Yes—add authenticated remote access scoped to the account; keep operator controls private.
+
+DECIDED: authenticated non-owner consumer access is part of the intended
+product. Remote polling and acknowledgement must obey the bound account's
+readable scope. The private owner control socket and operator capabilities
+are not exposed by this decision. The implementation must define and verify
+the authenticated remote protocol and its authorization boundary; this
+decision alone establishes neither a protocol nor a completed implementation.
+
+This resolves the PKT-673 choice blocking PKT-255. The original remote and
+multi-group consumer requirements, authenticated version contract, view rebasing,
+restore/compaction cursor mapping and stale acknowledgement after re-registration
+remain owed. Existing refusal, withdrawal, durable progress and account-revocation
+guarantees still apply. No live-node deployment is authorized here.
+
+Authority: ember's direct answer in the active fn coordination conversation,
+2026-09-29 local time (recorded 2026-09-30 UTC). Consumer remainder owner:
+`consumer_remainder`; affected specification: `specs/consumer-progress.md`.

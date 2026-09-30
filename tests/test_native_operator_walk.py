@@ -23,6 +23,7 @@ import shutil
 import signal
 import sys
 import socket
+import ssl
 import subprocess
 import tempfile
 import threading
@@ -40,7 +41,6 @@ ARTICLE_BOUND = 1048576
 # health (docs/operator.md "health"): every state clear; the node not running
 # (fn-nh-not-running-report); unavailable-peer held (20 + its index, 6).
 HEALTH_CLEAR, HEALTH_NOT_RUNNING, HEALTH_UNAVAILABLE_PEER = 0, 18, 26
-OPENSSL = os.environ.get("FN_TEST_OPENSSL_BIN") or "openssl"
 
 
 def text(result):
@@ -163,20 +163,14 @@ class OperatorWalkTests(unittest.TestCase):
 
     def node(self, name):
         """A node whose fn.toml `mission` writes (loopback, a fresh port),
-        with the self-signed certificate the mission names at ROOT/tls."""
+        with the self-signed pair the image makes at ROOT/tls (row Q10a:
+        `--tls-name', no `openssl' program)."""
         root = Path(tempfile.mkdtemp(prefix=name + "-", dir=self.tmp))
         node = Node(self, IMAGE, root=root, name=name, launcher=str(self.fn), control=False,
                     port=free_port())
         node.config.unlink()
-        node.operator("mission", MISSION, "--port", str(node.port), expect=EXIT.OK)
-        (root / "tls").mkdir(exist_ok=True)
-        subprocess.run([OPENSSL, "req", "-x509", "-newkey", "ec", "-pkeyopt",
-                        "ec_paramgen_curve:P-256", "-nodes", "-days", "2",
-                        "-subj", "/CN=127.0.0.1", "-addext", "subjectAltName=IP:127.0.0.1",
-                        "-keyout", str(root / "tls" / "key.pem"),
-                        "-out", str(root / "tls" / "cert.pem")],
-                       check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        os.chmod(root / "tls" / "key.pem", 0o600)
+        node.operator("mission", MISSION, "--port", str(node.port),
+                      "--tls-name", "127.0.0.1", expect=EXIT.OK)
         node.log = root / "log" / "fn.log"
         return self.timed(node)
 
@@ -340,7 +334,8 @@ class OperatorWalkTests(unittest.TestCase):
         a.stop()
         self.mark("second run")
 
-        # The restore, on a copy with rewritten paths and its own port.
+        # The restore, on a copy with its own port.  Row S8: the mission's
+        # paths are relative to fn.toml's directory, so no path is rewritten.
         # Beside A, not inside it: store/control.sock must stay within a Unix
         # socket's 103 octets.
         copy = Path(tempfile.mkdtemp(prefix="c-", dir=self.tmp))
@@ -348,8 +343,8 @@ class OperatorWalkTests(unittest.TestCase):
             subprocess.run(["cp", "-a", str(backup / part), str(copy / part)], check=True)
         (copy / "log").mkdir()
         port = free_port()
-        config = (backup / "fn.toml").read_text(encoding="utf-8").replace(
-            str(a.root) + "/", str(copy) + "/")
+        config = (backup / "fn.toml").read_text(encoding="utf-8")
+        self.assertNotIn(str(a.root), config, "the mission wrote an absolute node path")
         config = re.sub(r"(?m)^port=\d+$", "port={}".format(port), config)
         c = self.timed(Node(self, IMAGE, root=copy, name="copy", launcher=str(self.fn),
                             control=False, port=port))
@@ -365,6 +360,97 @@ class OperatorWalkTests(unittest.TestCase):
         self.assertIn("DUPLICATE", text(again), "the backup's article is new")
         self.assertIn("ACCEPTED", text(later), "a later article was restored")
         c.operator("health", expect=HEALTH_CLEAR)
+
+    def test_a_node_moved_by_copying_its_directory(self):
+        """Row S8, moving a node: stop, copy the node directory elsewhere,
+        start the copy.  fn.toml's paths are relative to its own directory,
+        so the copy serves its own store, log and socket and the original is
+        left as it was; nothing in fn.toml is edited."""
+        a = self.initialized("m", "m.walk.invalid")
+        a.start()
+        self.post(a, "moved-1")
+        a.stop()
+        before = sorted(p.name for p in (a.root / "store").iterdir())
+        moved = Path(tempfile.mkdtemp(prefix="mv-", dir=self.tmp)) / "node"
+        subprocess.run(["cp", "-a", str(a.root), str(moved)], check=True)
+        written = (moved / "fn.toml").read_bytes()
+        self.assertNotIn(str(a.root).encode(), written, "fn.toml names the old directory")
+        m = self.timed(Node(self, IMAGE, root=moved, name="moved", launcher=str(self.fn),
+                            control=False, port=a.port))
+        m.config.write_bytes(written)  # the harness wrote its own; the copy's, byte for byte
+        m.log = moved / "log" / "fn.log"
+        # Same file system: nothing to rebind; `status' opens the moved store.
+        m.operator("status", expect=EXIT.OK)
+        m.start()
+        self.mark("moved node listening")
+        self.assertIn("DUPLICATE", text(self.post(m, "moved-1")), "the moved store")
+        self.assertIn("ACCEPTED", text(self.post(m, "moved-2")))
+        m.stop()
+        self.assertGreater(m.log.stat().st_size, 0, "the moved node logs in its own directory")
+        # The original was not written by the moved node.
+        self.assertEqual(sorted(p.name for p in (a.root / "store").iterdir()), before)
+        a.start()
+        self.assertIn("ACCEPTED", text(self.post(a, "moved-2")), "the original's own store")
+        a.stop()
+
+    def no_openssl_path(self):
+        """A PATH with every program of /usr/bin and /bin but `openssl'."""
+        bin_dir = Path(tempfile.mkdtemp(prefix="no-openssl-", dir=self.tmp))
+        for source in (Path("/usr/bin"), Path("/bin")):
+            for program in source.iterdir():
+                target = bin_dir / program.name
+                if program.name != "openssl" and not target.exists():
+                    target.symlink_to(program)
+        return str(bin_dir)
+
+    def test_a_node_on_tls_from_the_mission_with_no_openssl_program(self):
+        """Row Q10a: `mission --tls-port P --tls-name 127.0.0.1' with no
+        `openssl' program on PATH writes the self-signed pair beside fn.toml
+        (the key at 0600), the node serves NNTP over TLS on P with it, a
+        client that trusts tls/cert.pem verifies the handshake against the
+        name 127.0.0.1, and `tls self-signed' refuses to replace it."""
+        path = self.no_openssl_path()
+        env = {"PATH": path}
+        root = Path(tempfile.mkdtemp(prefix="tls-", dir=self.tmp))
+        node = self.timed(Node(self, IMAGE, root=root, name="tls", launcher=str(self.fn),
+                               control=False, port=free_port()))
+        node.config.unlink()
+        tls_port = free_port()
+        node.operator("mission", MISSION, "--port", str(node.port), "--tls-port", str(tls_port),
+                      "--tls-name", "127.0.0.1", "--tls-name", "localhost",
+                      env=env, expect=EXIT.OK)
+        cert, key = root / "tls" / "cert.pem", root / "tls" / "key.pem"
+        self.assertTrue(cert.read_bytes().startswith(b"-----BEGIN CERTIFICATE-----\n"))
+        self.assertTrue(key.read_bytes().startswith(b"-----BEGIN EC PRIVATE KEY-----\n"))
+        self.assertEqual(key.stat().st_mode & 0o777, 0o600)
+        self.assertIn("tls_port = {}".format(tls_port), node.config.read_text(encoding="utf-8"))
+        node.log = root / "log" / "fn.log"
+        node.operator("init", env=env, expect=EXIT.OK)
+        node.start(env=env)
+        context = ssl.create_default_context(cafile=str(cert))
+        for name in ("127.0.0.1", "localhost"):
+            with socket.create_connection(("127.0.0.1", tls_port), timeout=30) as raw:
+                with context.wrap_socket(raw, server_hostname=name) as tls:
+                    self.assertEqual(tls.getpeercert()["subject"], ((("commonName", "127.0.0.1"),),))
+                    self.assertRegex(tls.recv(512), rb"^20[01] ")
+        # A name the certificate does not carry fails verification.
+        with socket.create_connection(("127.0.0.1", tls_port), timeout=30) as raw:
+            with self.assertRaises(ssl.SSLCertVerificationError):
+                context.wrap_socket(raw, server_hostname="news.example.org")
+        node.stop()
+        # Refused by name, and nothing written, while the pair is there.
+        before = cert.read_bytes()
+        refused = node.operator("tls", "self-signed", "127.0.0.1", env=env, expect=EXIT.REFUSED)
+        self.assertIn(b"EXISTS", refused.stdout + refused.stderr)
+        self.assertEqual(cert.read_bytes(), before)
+        # With both files gone it makes a new pair (other names, 2 days).
+        cert.unlink()
+        key.unlink()
+        node.operator("tls", "self-signed", "localhost", "--days", "2", env=env, expect=EXIT.OK)
+        self.assertNotEqual(cert.read_bytes(), before)
+        self.assertEqual(key.stat().st_mode & 0o777, 0o600)
+        bad = node.operator("tls", "self-signed", "0.0.0.0", env=env, expect=EXIT.REFUSED)
+        self.assertIn(b"TLS-NAME", bad.stdout + bad.stderr)
 
     def test_sigkill_of_the_owner_then_status_recover_run_and_health(self):
         a = self.initialized("a", "a.walk.invalid")

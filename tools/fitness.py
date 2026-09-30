@@ -243,8 +243,8 @@ class Node:
         sys.path.insert(0, str(ROOT / "tools"))
         import native_env                                # noqa: E402
         # init sizes the profile against a budget; the harness stores name
-        # hbox's (tools/native_env.py harness_store_env).
-        self.env = native_env.harness_store_env(dict(os.environ, ACL2_CUSTOMIZATION="NONE"))
+        # hbox's at init (tools/native_env.py HARNESS_INIT_WORDS).
+        self.env = dict(os.environ, ACL2_CUSTOMIZATION="NONE")
         self.env.pop("ACL2_SYSTEM_BOOKS", None)
         self.env.pop("FN_HOST", None)
         self.extra_env = {}
@@ -855,7 +855,8 @@ def prepare(node: Node, events: Events, fixture=None, groups=GROUPS, profile=())
         # exercises the live admin path too (PKT-867 removed the argv word
         # bound that first forced this split).
         first, rest = list(groups[:4]), list(groups[4:])
-        init = node.op("init", *profile, *first)
+        import native_env                                # noqa: E402
+        init = node.op("init", *native_env.HARNESS_INIT_WORDS, *profile, *first)
         events.emit("init", node=node.name, rc=init.returncode,
                     out=(init.stdout + init.stderr).decode("utf-8", "replace")[-400:])
         if init.returncode:

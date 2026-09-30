@@ -389,8 +389,12 @@ The owner computes the subject from its received transit octets before
 intent and logs `article-subject=` beside `bytes-subject=` and `authority=`.
 Its equality under the stored relay rendering follows from
 `fn-asj-project-of-relay-article`. This first increment adds observability;
-the durable reception column, original Message-ID→article-subject binding,
-conflict refusal and retained tombstone identity remain a finite follow-up.
+FN-RCL2 now retains that commitment through the host per-event reclaim
+rewrite (PRF-1089), beside the original byte-content commitment. The durable
+reception column, original Message-ID→article-subject decision and conflict
+retention remain a finite follow-up. Commitment equality after body removal
+does not prove exact projection equality; generic BLAKE3-256 collision work
+remains approximately 2^128 under A-CRYPTO.
 Until those land, reconciliation remains the existing protocol scope,
 guaranteed only when the caller knows the article identity. Obligations
 continue to refer to the unchanged bytes commitment; recording per-kind

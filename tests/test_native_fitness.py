@@ -48,6 +48,7 @@ class ShortSoakTests(unittest.TestCase):
                 [sys.executable, str(ROOT / "tools" / "fitness.py"), "soak", "--image", IMAGE,
                  "--work", str(work), "--minutes", MINUTES, "--sample-minutes", "1",
                  "--client-minutes", "0", "--posters", "8", "--readers", "8",
+                 "--init-flag=--profile", "--init-flag=default",
                  "--init-flag=--max-transactions", "--init-flag=65536",
                  "--init-flag=--max-history-octets", "--init-flag=268435456",
                  "--init-flag=--max-article-octets", "--init-flag=32768"],

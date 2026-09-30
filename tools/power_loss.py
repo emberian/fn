@@ -195,9 +195,9 @@ def config2_for(work, store, port):
 
 def native(image, *argv, timeout=1800):
     # Lane membership-budget: the scale stores here are made for hbox; name
-    # that target budget (tools/native_env.py, once), or `init' refuses a
+    # that target budget at init (tools/native_env.py HARNESS_INIT_WORDS), or `init' refuses a
     # profile its unit cannot hold.
-    env = native_env.harness_store_env()
+    env = dict(os.environ)
     r = subprocess.run([str(image), "--fn"] + [str(a) for a in argv], stdout=subprocess.PIPE,
                        stderr=subprocess.PIPE, timeout=timeout, env=env)
     return r.returncode, r.stdout.decode("utf-8", "replace"), r.stderr.decode("utf-8", "replace")
@@ -420,7 +420,7 @@ def workload(a):
     else:
         stmt_art = {}
     mark("phase:init")
-    code, so, se = native(image, "operator", cfg, "init", *init)
+    code, so, se = native(image, "operator", cfg, "init", *native_env.HARNESS_INIT_WORDS, *init)
     out_line(log, tag="init", exit=code, stdout=so[-400:], stderr=se[-400:], argv=init)
     if code:
         raise SystemExit("init failed")
@@ -1052,7 +1052,7 @@ def check_init(ctx, violations):
     if len(stages) > 1:
         violations.append("init-stages-%d" % len(stages))
         return rec
-    code, so, se = native(image, "operator", cfg, "init", "--profile", "scale", GROUP)
+    code, so, se = native(image, "operator", cfg, "init", *native_env.HARNESS_INIT_WORDS, "--profile", "scale", GROUP)
     rec["reinit"], rec["reinit_out"] = code, (so + se).strip()[-300:]
     if stages:
         want = "reason=interrupted-init stage=%s" % stages[0]
@@ -1060,7 +1060,7 @@ def check_init(ctx, violations):
             violations.append("init-leftover-not-named:init-%d" % code)
             return rec
         shutil.rmtree(stages[0])
-        code, so, se = native(image, "operator", cfg, "init", "--profile", "scale", GROUP)
+        code, so, se = native(image, "operator", cfg, "init", *native_env.HARNESS_INIT_WORDS, "--profile", "scale", GROUP)
         rec["init_after_removal"] = code
     if code:
         violations.append("init-stuck:init-%d" % code)

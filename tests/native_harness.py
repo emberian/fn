@@ -1102,7 +1102,8 @@ class Node:
     when a verb names no image; `use_tls` adds an implicit-TLS listener."""
 
     def __init__(self, case, image, *, root=None, name="node", listener=True,
-                 control=True, tls=None, extra="", env=None, port=None, launcher=None):
+                 control=True, tls=None, extra="", env=None, port=None, launcher=None,
+                 cold_resources=None):
         self.case = case
         self.image = Path(image)
         self.launcher = launcher
@@ -1118,6 +1119,8 @@ class Node:
         self.env = dict(env or {})
         self.process = None
         self.processes = []
+        # An explicit scenario profile, never an inferred runtime default.
+        self.cold_resources = dict(cold_resources) if cold_resources is not None else None
         self.write_config(listener=listener, tls=tls, extra=extra)
         case.addCleanup(self.stop_all)
 
@@ -1134,6 +1137,10 @@ class Node:
         if protected_only:
             text += "[auth]\nprotected_only = true\n"
         text += extra
+        if self.cold_resources is not None:
+            text += "\n[resources]\n"
+            text += "".join("{} = {}\n".format(key, value)
+                            for key, value in self.cold_resources.items())
         self.config.write_text(text, encoding="utf-8")
 
     def use_tls(self, *, alt_name=False, protected_only=True):

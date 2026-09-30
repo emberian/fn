@@ -167,3 +167,7 @@
                            (fn-bpnf-family-replay-rows
                             fn-bpnf-family-replay-rows-aux))))
   :rule-classes nil)
+
+; Executable prerequisites of the host-called family recovery fold.
+(verify-guards fn-bpnf-conflict-apply)
+(verify-guards fn-bpnf-family-replay-row-record)

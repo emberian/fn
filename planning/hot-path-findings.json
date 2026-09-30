@@ -121,10 +121,6 @@
       "class": "unexpected",
       "packet": "PKT-308"
     },
-    "fn-bpnf-find-arrival*1* recursion F": {
-      "class": "unexpected",
-      "packet": "PKT-308"
-    },
     "fn-bpnf-find-held recursion F": {
       "class": "unexpected",
       "packet": "PKT-308"
@@ -721,6 +717,76 @@
     "fnn-bp-profile-session length F": {
       "class": "unexpected",
       "packet": "PKT-448 (f)"
+    },
+    "fn-ag-rev-onto recursion F": {
+      "class": "unexpected",
+      "packet": "PKT-308",
+      "note": "E7 union fc12333a actual BP host reach exposes the existing retained job/held traversal through its loop implementation (or rev-onto output copy). Same finite debt; stack safety does not bound scheduling work. No matched cost or completion claim."
+    },
+    "fn-ag-rev-onto recursion J": {
+      "class": "unexpected",
+      "packet": "PKT-308",
+      "note": "E7 union fc12333a actual BP host reach exposes the existing retained job/held traversal through its loop implementation (or rev-onto output copy). Same finite debt; stack safety does not bound scheduling work. No matched cost or completion claim."
+    },
+    "fn-bpah-apply-delivery-loop recursion F": {
+      "class": "unexpected",
+      "packet": "PKT-308",
+      "note": "E7 union fc12333a actual BP host reach exposes the existing retained job/held traversal through its loop implementation (or rev-onto output copy). Same finite debt; stack safety does not bound scheduling work. No matched cost or completion claim."
+    },
+    "fn-bpfj-candidate*1* recursion F": {
+      "class": "unexpected",
+      "packet": "PKT-308 (1), (5)",
+      "note": "E7 union fc12333a actual fragment-effects/foundation-step reach: retained fragment candidate/family planning walk. The 70-fragment and 10 MiB criteria remain open; no resumable scheduling classification or measured bound claimed."
+    },
+    "fn-bpfj-plan*1* len F": {
+      "class": "unexpected",
+      "packet": "PKT-308 (1), (5)",
+      "note": "E7 union fc12333a actual fragment-effects/foundation-step reach: retained fragment candidate/family planning walk. The 70-fragment and 10 MiB criteria remain open; no resumable scheduling classification or measured bound claimed."
+    },
+    "fn-bpn-append-loop recursion J": {
+      "class": "unexpected",
+      "packet": "PKT-308",
+      "note": "E7 union fc12333a actual BP host reach exposes the existing retained job/held traversal through its loop implementation (or rev-onto output copy). Same finite debt; stack safety does not bound scheduling work. No matched cost or completion claim."
+    },
+    "fn-bpn-jobs-octets-loop recursion J": {
+      "class": "unexpected",
+      "packet": "PKT-308",
+      "note": "E7 union fc12333a actual BP host reach exposes the existing retained job/held traversal through its loop implementation (or rev-onto output copy). Same finite debt; stack safety does not bound scheduling work. No matched cost or completion claim."
+    },
+    "fn-bpn-replace-job-loop recursion J": {
+      "class": "unexpected",
+      "packet": "PKT-308",
+      "note": "E7 union fc12333a actual BP host reach exposes the existing retained job/held traversal through its loop implementation (or rev-onto output copy). Same finite debt; stack safety does not bound scheduling work. No matched cost or completion claim."
+    },
+    "fn-bpn-report-apply-delete-loop recursion F": {
+      "class": "unexpected",
+      "packet": "PKT-308",
+      "note": "E7 union fc12333a actual BP host reach exposes the existing retained job/held traversal through its loop implementation (or rev-onto output copy). Same finite debt; stack safety does not bound scheduling work. No matched cost or completion claim."
+    },
+    "fn-bpn-resume-jobs-loop recursion J": {
+      "class": "unexpected",
+      "packet": "PKT-308",
+      "note": "E7 union fc12333a actual BP host reach exposes the existing retained job/held traversal through its loop implementation (or rev-onto output copy). Same finite debt; stack safety does not bound scheduling work. No matched cost or completion claim."
+    },
+    "fn-bpnf-held-octets-loop recursion F": {
+      "class": "unexpected",
+      "packet": "PKT-308",
+      "note": "E7 union fc12333a actual BP host reach exposes the existing retained job/held traversal through its loop implementation (or rev-onto output copy). Same finite debt; stack safety does not bound scheduling work. No matched cost or completion claim."
+    },
+    "fn-bpnf-zero-family-keys*1* recursion F": {
+      "class": "unexpected",
+      "packet": "PKT-308 (1), (5)",
+      "note": "E7 union fc12333a actual fragment-effects/foundation-step reach: retained fragment candidate/family planning walk. The 70-fragment and 10 MiB criteria remain open; no resumable scheduling classification or measured bound claimed."
+    },
+    "fn-bpnp-forward-plan-rows-loop recursion F": {
+      "class": "unexpected",
+      "packet": "PKT-504 (b)",
+      "note": "E7 union fc12333a actual fnn-bpnode-forward-contact reach exposes the loop implementation of the already tracked forward scan. PKT-808 retains the per-session scan and 1,000-bundle drain evidence; no completion claim."
+    },
+    "fn-bpnp-forward-unrouted-rows-loop recursion F": {
+      "class": "unexpected",
+      "packet": "PKT-504 (b)",
+      "note": "E7 union fc12333a actual fnn-bpnode-forward-contact reach exposes the loop implementation of the already tracked forward scan. PKT-808 retains the per-session scan and 1,000-bundle drain evidence; no completion claim."
     }
   },
   "note": "Every traversal of retained state that tools/hot_path_check.py finds on a path from a host entry, keyed 'function primitive dimension', with the packet that owns it (planning/backlog-2026-09-25.md; PKT-448's lettered items are the finds no earlier packet owned). This is a list, not a baseline: every entry here is a find the report prints, whatever its class. --strict fails on an unexpected find not listed here (NEW) and on a listed key that no longer occurs (STALE): remove an entry by removing the walk, in the same commit. 'confirmed' names the scaling row (planning/evidence/hot-path-checker-2026-09-26.md) that measured it; absent means static only."
