@@ -37,3 +37,9 @@
               (append (list (nth 1 answer)) (fn-9p-ge-remaining (nth 2 answer)))))))
 (defthm ninep-host-directory-complete-positive
  (ninep-host-directory-positive the-state) :rule-classes nil)
+
+(defthm ninep-host-refusal-complete-positive
+ (and (equal (mv-nth 0 (fn-ninep-refusal-reply 18 0 :read-only the-state))
+       '(:refused :read-only (18 0 0 0 107 0 0 9 0 114 101 97 100 32 111 110 108 121)))
+      (equal (mv-nth 1 (fn-ninep-refusal-reply 18 0 :read-only the-state)) the-state))
+ :rule-classes nil)

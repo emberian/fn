@@ -100,3 +100,5 @@ exact binary/dotted/long article ranges through both paths, paged directories,
 commit invisibility, reclamation while source is held, readonly refusals,
 partial walks and Flush/disconnect cleanup. Source, committed proof manifests,
 qualified image and deployment remain separate coordinates.
+
+The actual `fn-ninep-refusal-reply` delegates to guarded `fn-9p-refusal-reply`: core emits fixed Rerror octets for read-only, no-authentication and mount-unavailable outcomes. Tag must be below NOTAG and the complete reply must fit the negotiated msize; otherwise the core directs close. Reply metadata/text is at most26 octets, independent of stored article size. This emitter does not decide mount authorization or install a listener. Native caller allocation and runtime funding remain open.

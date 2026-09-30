@@ -76,3 +76,14 @@
           (e/d (fn-ninep-group-directory-step)
                (fn-9p-ge-step fn-9p-ge-remaining))
           :use fn-9p-ge-step-preserves-ordered-directory)))
+
+(include-book "../books/ninep-refusal")
+
+(defun fn-ninep-refusal-reply (msize tag reason state)
+ (declare (xargs :stobjs state :guard t))
+ (mv (fn-9p-refusal-reply msize tag reason) state))
+
+(defthm fn-ninep-refusal-reply-is-core-and-preserves-state
+ (and (equal (mv-nth 0 (fn-ninep-refusal-reply msize tag reason state))
+             (fn-9p-refusal-reply msize tag reason))
+      (equal (mv-nth 1 (fn-ninep-refusal-reply msize tag reason state)) state)))
