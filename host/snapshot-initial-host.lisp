@@ -7,6 +7,13 @@
 
 (defun fn-owner-recovery-initial-admit (source fn-page-read-pool state)
   (declare (xargs :stobjs (fn-page-read-pool state) :mode :program))
+  ; NIL requests the genuine already-issued current source readout. It is
+  ; never a source token, installation/refresh request or authority. A
+  ; supplied nonNIL token, including a stale one, is checked unchanged.
+  (mv-let (read-erp source state)
+    (if (null source) (fn-owner-recovery-source-token state)
+      (mv nil source state))
+    (if read-erp (mv read-erp source fn-page-read-pool state)
   (mv-let (erp descriptor state) (fn-owner-recovery-startup-source source state)
     (if (or erp (not (eq (fn-prl-nth 0 descriptor) :recovery-census)))
         (mv erp descriptor fn-page-read-pool state)
@@ -27,7 +34,7 @@
                     (let ((fn-page-read-pool
                            (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
                       (mv nil answer fn-page-read-pool state))
-                  (mv nil answer fn-page-read-pool state))))))))))
+                  (mv nil answer fn-page-read-pool state))))))))))))
 
 (defun fn-owner-recovery-initial-livep (source maintenance fn-page-read-pool state)
   (declare (xargs :stobjs (fn-page-read-pool state) :mode :program))

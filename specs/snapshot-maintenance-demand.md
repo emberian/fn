@@ -140,3 +140,14 @@ turn. There is no reader RETURN accepting page status, aliases set NIL, or a
 joined Boolean. Actual private holder/return observations, two independent
 outer reference readers and their distinct later growth, runtime/default
 creator allowances and full native startup remain open.
+
+The actual INITIAL caller treats a NIL input as a request for one internally
+read genuine current recovery source token through
+`fn-owner-recovery-source-token(STATE)`. The readout never issues, installs or
+refreshes a source. A supplied nonNIL stale token is checked unchanged and
+refuses. Both branches then use the same actual startup-source and immutable
+runtime-family/role-table gates. Missing source and missing runtime authority
+remain distinct typed refusals with the pool ledger retained. Native code may
+retain only the internally returned admitted packet's source; NIL is never
+authenticated as a token. Pre-admission metadata/readout allocation still
+needs the genuine bootstrap/caller allowance; this branch supplies none.
