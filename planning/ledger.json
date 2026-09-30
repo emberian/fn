@@ -1635,9 +1635,9 @@
     "books": 1695,
     "books_in_root_closure": 1692,
     "roots": 1628,
-    "theorems": 27709,
+    "theorems": 27710,
     "functions": 18145,
-    "assert_events": 22991,
+    "assert_events": 22992,
     "must_fails": 2496,
     "prover_refusals": 0,
     "encapsulates": 156,
@@ -1647,7 +1647,7 @@
       "default-guarded": 9854,
       "default-unguarded": 2733
     },
-    "suspect_theorems": 1216,
+    "suspect_theorems": 1217,
     "export_hygiene_warnings": 317,
     "enabled_projection_warnings": 52,
     "teeth_form_warnings": 272,
@@ -4634,7 +4634,7 @@
       "book": "books/bp-node-control.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 4,
+      "theorems": 5,
       "functions": 9,
       "guards": {
         "verified": 0,
@@ -4655,7 +4655,9 @@
         "native-control"
       ],
       "system_includes": [],
-      "suspects": [],
+      "suspects": [
+        "fn-bpnc-socket-open-run-by-definition"
+      ],
       "read_error": null
     },
     {
@@ -33246,7 +33248,7 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 11,
+      "assert_events": 12,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 6,
@@ -51966,6 +51968,15 @@
       "line": 1166,
       "reasons": [
         "instance-corollary: the statement is fn-bpn-effect-listp-excludes-release instantiated, discharging nothing"
+      ]
+    },
+    {
+      "theorem": "fn-bpnc-socket-open-run-by-definition",
+      "book": "books/bp-node-control.lisp",
+      "line": 125,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
+        "definition-restated: the conclusion is the body of fn-bpnc-socket-open-run"
       ]
     },
     {
