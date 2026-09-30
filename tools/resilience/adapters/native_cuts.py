@@ -492,6 +492,8 @@ class Run:
     """One scenario on IMAGE under WORK: the recorder every family shares."""
 
     def __init__(self, scenario: Scenario, image: Path, work: Path, fault_hook: bool = True):
+        from tools.resilience import payload_corpus
+        payload_corpus.preflight(scenario.posts(), scenario.initial.get("payload_preparation_budget"))
         # Absolute: the served node runs its verbs with its own directory as cwd.
         self.s, self.image, self.work = scenario, Path(image).resolve(), Path(work).resolve()
         self.hook = fault_hook
@@ -508,7 +510,15 @@ class Run:
         self.node = None
         for o in scenario.posts():
             p = self.work / (o.id + ".payload")
-            if scenario.initial["recipe"] == "served-node":
+            if "boundary_payload" in o.args:
+                if scenario.initial["recipe"] == "served-node":
+                    envelope = article(mid(o.id), o.id, "", o.args["groups"])
+                    prefix, suffix = envelope[:-2], b"\r\n"
+                else:
+                    prefix, suffix = b"", b""
+                retained = payload_corpus.write(p, o.args["boundary_payload"], prefix, suffix)
+                self.j.environment("boundary-payload-prepared", operation=o.id, **retained)
+            elif scenario.initial["recipe"] == "served-node":
                 p.write_bytes(article(mid(o.id), o.id, o.args["payload"] + " protected content",
                                       o.args["groups"]))
             else:
