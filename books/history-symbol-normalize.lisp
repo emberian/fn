@@ -2,7 +2,7 @@
 ; Only the existing package import table is inspected. Arbitrary source names
 ; remain borrowed spans; execution never interns or assembles a source name.
 (in-package "ACL2")
-(include-book "history-decode-stream")
+(include-book "store-tree-codec")
 (local (include-book "arithmetic/top" :dir :system))
 
 (defconst *fn-hdsn-acl2-imports* (pkg-imports "ACL2"))
