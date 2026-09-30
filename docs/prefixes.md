@@ -373,6 +373,11 @@ Host-only wrappers in `host/*.lisp` use `fn-store-`, `fn-bpreq-`, `fn-bpwf-`,
 it and `host/store-host.lisp` marshals under it. A host wrapper never decides
 anything a book does not already decide.
 
+| `fn-vd-` | view-delta | W9 keyed aggregate logical oracle and delta rules |
+| `fn-vdc-` | view-delta-concrete | W9 bounded-key radix aggregate representation |
+| `fn-rov-` | retention-obligation-view | W9 total and independent subject contributions |
+| `fn-oqg-` | obligation-subject-grammar | W9 read-only subject inspection grammar and typed FNLS argument |
+| `fn-oqr-` | obligation-subject-report | W9 exact keyed count/charge report and reconstruction boundary |
 | `fn-pct-` | `productive-transfer`, `tests/acl2/productive-transfer-tests` | Productive outbound NNTP offer and requested article effect; local journal and attempt, explicit quiet/refused outcomes; no remote acceptance claim (W6b) |
 | `fn-gat-`, `gat-` | `tests/acl2/group-authority-tests` | Explicit authority publication and replay teeth; distinct posting policy and principal bindings. |
 
@@ -380,6 +385,7 @@ anything a book does not already decide.
 | `fn-ssr-`, `ssrt-` | `statement-recover-stream`, `tests/acl2/statement-recover-stream-tests` | Sequential frozen statement-context replay, with resident chunk composition and extent/compressed refinement including arena effects. |
 | `fn-skp-`, `skpt-` | `statement-keyring-publication`, `tests/acl2/statement-keyring-publication-tests` | Carried active keyring/generation resolution at durable identity publication. |
 | `fn-nsm-` | `native-statement-material` | ACL2-owned legacy statement material, rendering and supplied-key verification for the statement-sign native command. |
+| `fn-vcs-` | view-delta-space | W9 exact radix updater and cold-fold retained cons-cell accounting |
 | `fn-bprpf-`, `bprpft-` | `bp-recovery-profile`, `tests/acl2/bp-recovery-profile-tests` | Current profile admission of checkpoint seeds, saved rows, and actual recovered held data before installation. |
 | `fn-cvcg-` | `store-config-generation` | Actual configuration replay generation/cardinality and profile-aware publication count bridge |
 

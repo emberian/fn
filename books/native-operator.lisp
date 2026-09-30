@@ -19,6 +19,7 @@
 (include-book "outcome-class")
 ; PKT-209: `control log' and `control evidence MESSAGE-ID'.
 (include-book "control-evidence-grammar")
+(include-book "obligation-subject-grammar")
 
 ; PKT-867 (D27): no word count and no word length.  The kernel admits the
 ; argv (its ARG_MAX); the parse is one pass over it, and every field a word
@@ -846,7 +847,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "pins")
          "usage: fn operator CONFIG pins (retention pins and each open connection's configuration pin)")
         ((equal subject "obligations")
-         "usage: fn operator CONFIG obligations (the retention ledger's held obligations)")
+         "usage: fn operator CONFIG obligations [subject SUBJECT] (list individual held obligations, or inspect active obligation count and charge for one immutable subject)")
         ((equal subject "recover") "usage: fn operator CONFIG recover [--repair truncate SEGMENT:OFFSET] (the repair only as a log-damaged refusal names it: the damaged segment is kept under quarantine/, then the log is truncated before the damage)")
         ((equal subject "store")
          "usage: fn operator CONFIG store {export ARCHIVE-DIR | export --status | bless-snapshot SNAPSHOT-DIR | import ARCHIVE-DIR [--FIELD N ...] | compact | checkpoint | reclaim [--dry-run | --recorded] | inspect MESSAGE-ID | inspect --group GROUP | rebind-filesystem [--storage-require-durable on|off]} (import and rebind-filesystem offline, refused while an owner runs; export, compact, checkpoint, reclaim and inspect answer on the running owner too; rebind-filesystem records the filesystem the store is on now, after a deliberate move or a restore; import makes a new store: the configured store must not exist, and the archive's profile, with any field raised, is the new store's)")
@@ -1211,10 +1212,14 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                                         "retire" config rest))))
                    (t (fn-nop-usage :unexpected-arguments "retire" config rest))))
             ((or (equal command "pins") (equal command "obligations"))
-             (if (null rest)
-                 (fn-nop-result :accepted :plan command config
-                                (list (if (equal command "pins") :pins :obligations)))
-               (fn-nop-usage :unexpected-arguments command config rest)))
+             (cond ((null rest)
+                    (fn-nop-result :accepted :plan command config
+                                   (list (if (equal command "pins") :pins :obligations))))
+                   ((and (equal command "obligations")
+                         (equal (car (fn-oqg-parse rest)) :kind))
+                    (fn-nop-result :accepted :plan command config
+                                   (list (cadr (fn-oqg-parse rest)))))
+                   (t (fn-nop-usage :unexpected-arguments command config rest))))
             ((equal command "recover")
              ; Lane log-corruption: `recover --repair truncate SEGMENT:OFFSET',
              ; the operator's confirmation of the one repair a log-damaged

@@ -32,6 +32,7 @@
           ;; the payload in the arena and the memberships' rows, which share
           ;; the history budget H (fn-heap-store-history-holds-payload-and-memberships)
           (cons :state-history (fn-heap-store-history-octets profile))
+          (cons :obligation-view-carry-and-rebuild (fn-heap-obligation-view-reserve tt))
           (cons :state-handles (* *fn-heap-handle-octets* tt))
           (cons :state-records (* 2 tt *fn-heap-record-octets*))
           ;; the records' header columns (lane heap-bounds, B2), charged to
