@@ -78,3 +78,8 @@ class TypedWindowModelTests(unittest.TestCase):
             verdict = judge_scenario(Scenario.from_json(data), observe(text, i), i)
             self.assertEqual(verdict.kind, "consistent")
             self.assertIn("typed-window-settled", verdict.witnesses_observed)
+
+    def test_boolean_is_not_observed_worker_count(self):
+        journal = observe("FN_W7_TYPED trial=0 step=0 answer=:CANCELLED phase=:CANCELLED-RUNNING bytes=320 workers=1 close=:READ-FILE-HELD", 0)
+        journal.records[0]["workers"] = True
+        self.assertEqual(judge([Step("cancel", "cancel")], journal, 0).kind, "harness-failure")

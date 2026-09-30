@@ -160,7 +160,9 @@ def judge(steps, journal, trial):
             or any(r.get("event") != "typed-window-step" for r in rows)):
         return Verdict("harness-failure", cause="typed-window-incomplete-trial", **base).sign()
     for step, row, view in zip(steps, rows, expected):
-        if any(field not in row for field in view):
+        if (any(field not in row for field in view)
+                or any(type(row[field]) is not int or row[field] < 0 for field in ("charged_bytes", "workers"))
+                or any(not isinstance(row[field], str) for field in ("answer", "phase", "close"))):
             return Verdict("harness-failure", cause="typed-window-incomplete-observation", **base).sign()
         actual = {field: row[field] for field in view}
         if actual != view:
