@@ -55,7 +55,9 @@
   (let* ((plan (fn-hie-plan c effect stage ledger))
          (outcome (fn-hie-outcome (fn-omk-at 4 plan) got status))
          (tag (fn-omk-at 0 effect)))
-    (if (not (eq (fn-omk-at 0 plan) :io)) '(:refused :image-effect)
+    ; This function is called after actual syscall return. A lost/stale
+    ; authority cannot retroactively establish that IO was not issued.
+    (if (not (eq (fn-omk-at 0 plan) :io)) '(:retained :image-effect-observation)
       (cond
        ((eq tag :write-page)
         (list :written (fn-omk-at 1 effect) stage (fn-omk-at 3 effect)

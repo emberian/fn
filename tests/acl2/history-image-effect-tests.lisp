@@ -12,4 +12,4 @@
  (and (equal (fn-hie-plan nil nil 7 nil) '(:refused :image-effect))
       (equal (fn-hie-read-count nil nil 7 nil 64 :ok) 0)
       (equal (fn-hie-observation nil nil 7 nil 16384 :ok nil)
-             '(:refused :image-effect))))
+             '(:retained :image-effect-observation))))
