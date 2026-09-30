@@ -1079,6 +1079,7 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertIn(b"pinned=yes", self.sender_status().stdout)
         self.kill_at_durable_cut(
             "FN_BP_APP_TEST_PAUSE_AFTER_DECISION", b"BP APP DECISION DURABLE")
+        accepted_octets = self.receiver_article(self.msgid)
         replayed = self.dispatch_receiver()
         self.assertEqual(replayed.returncode, EXIT.OK, replayed.stdout + replayed.stderr)
         self.assertIn(b"BP application handoff durable", replayed.stdout)
@@ -1134,11 +1135,13 @@ class NativeBpNodeTests(unittest.TestCase):
         self.wait_for_output(sender, b"BP node delivery receipt-accepted", timeout=120)
         sender.stop(grace=5)
         self.assertEqual(self.receiver_articles(), 1)
+        self.assertEqual(self.receiver_article(self.msgid), accepted_octets)
         self.assertIn(b"pinned=no", self.sender_status().stdout)
         self.assertIn(b"pinned=yes", self.unrelated_status().stdout)
         code, out, err = self.rotate_receiver()
         self.assertEqual(code, EXIT.OK, out + err)
         self.assertEqual(self.receiver_articles(), 1)
+        self.assertEqual(self.receiver_article(self.msgid), accepted_octets)
 
     def test_dropped_receipt_contact_is_reoffered_by_the_next_pass(self):
         """Spec 4.3.2: an uncertain receipt transfer is connection-local.
