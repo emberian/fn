@@ -17751,6 +17751,15 @@
           "name": "fn-bpfs-send-observations-failed-only-at-first-transfer"
         }
       ]
+    },
+    {
+      "id": "PRF-1136",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-orri-recover-installs-historical-reader-relation"
+        }
+      ]
     }
   ]
 }

@@ -231,3 +231,12 @@ record kind is the open item below.
   `Owner.submit` in `tools/run_owner.py` runs the durable path for it and
   feeds the outcome back through `fn-owner-outcome` / `(:outcome id outcome)`,
   which the book ignores until the fold gives it a meaning.
+
+Checkpoint recovery establishes the historical reader premise (PRF-1136):
+`fn-orri-recover-installs-historical-reader-relation` proves `fn-ocri-relation`
+for the actual `fn-ock-recover-extended` over a complete captured prefix plus
+suffix whenever installation does not return `:fault`. It uses the named
+full-recovery equality and existing live-owner relation establishment. This
+is establishment at recovery; preservation and later reader captures remain
+the existing separate obligations. The concrete witness contains nonempty
+retention/configuration history; it does not qualify a future schema union.

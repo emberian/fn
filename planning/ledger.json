@@ -278,6 +278,7 @@
     "tests/acl2/store-checkpoint-open-tests",
     "books/owner-checkpoint-open",
     "tests/acl2/owner-checkpoint-open-tests",
+    "tests/acl2/owner-reader-establishment-tests",
     "tests/acl2/store-checkpoint-tables-tests",
     "tests/acl2/store-checkpoint-arena-tests",
     "books/heap-store-figure",
@@ -1748,13 +1749,13 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1811,
-    "books_in_root_closure": 1808,
-    "roots": 1744,
-    "theorems": 29049,
+    "books": 1813,
+    "books_in_root_closure": 1810,
+    "roots": 1745,
+    "theorems": 29052,
     "functions": 18787,
-    "assert_events": 23813,
-    "must_fails": 2517,
+    "assert_events": 23815,
+    "must_fails": 2518,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
@@ -1767,7 +1768,7 @@
     "export_hygiene_warnings": 337,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2509,
+    "include_hygiene_warnings": 2513,
     "host_names_warnings": 2156,
     "hand_written_record_warnings": 18
   },
@@ -20750,6 +20751,33 @@
         "fn-psrv-prepare-refuses-unserved",
         "fn-psrv-prepare-when-served"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-reader-establishment.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 3,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-owner-read-invariants",
+        "owner-checkpoint-open"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -46339,6 +46367,33 @@
       "system_includes": [
         "std/testing/must-fail"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/owner-reader-establishment-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 2,
+      "must_fails": 1,
+      "prover_refusals": 0,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-reader-establishment",
+        "must-fail-checked"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -74468,6 +74523,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/owner-reader-establishment.lisp",
+        "line": 2,
+        "include": "config-owner-read-invariants",
+        "included": "books/config-owner-read-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-reader-establishment.lisp",
+        "line": 3,
+        "include": "owner-checkpoint-open",
+        "included": "books/owner-checkpoint-open.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/owner-reader-read.lisp",
         "line": 50,
         "include": "owner-reader-view",
@@ -82683,6 +82752,20 @@
         "line": 10,
         "include": "owner-log-ocl-tests",
         "included": "tests/acl2/owner-log-ocl-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-reader-establishment-tests.lisp",
+        "line": 2,
+        "include": "../../books/owner-reader-establishment",
+        "included": "books/owner-reader-establishment.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-reader-establishment-tests.lisp",
+        "line": 3,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
