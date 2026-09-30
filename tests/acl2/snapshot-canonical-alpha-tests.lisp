@@ -189,3 +189,157 @@
    (and (not (fn-orm-rowsp rows)) (natp 0)
         (not (equal (fn-replay-identity (fn-orm-capture rows 0))
                      (fn-replay-identity rows)))))))
+
+; Actual sequential recovery rows, a full configured prefix, and the next
+; ordinary ARTICLE. Both histories originated in the real intern worker.
+(make-event `(defconst *osac-step-a*
+ ',(fn-cnode-node (fn-replay-result-node
+     (fn-cpr-replay *osac-id-configs* (take 3 *osac-id-rows*))))))
+(make-event `(defconst *osac-step-b*
+ ',(fn-cnode-node (fn-replay-result-node
+     (fn-cpr-replay *osac-id-configs*
+       (fn-orm-capture (take 3 *osac-id-rows*) 0))))))
+(defconst *osac-id-source* '((99) (65 13 10) (66 13 10)))
+(defconst *osac-id-target* '((65 13 10) (66 13 10)))
+(defconst *osac-step-row* (nth 3 *osac-id-rows*))
+(defthm osac-actual-node-replay-positive-tooth
+ (let ((new-a (fn-replay-apply-record *osac-step-a* *osac-step-row*))
+       (new-b (fn-replay-apply-record *osac-step-b* (fn-orm-row *osac-step-row* 1))))
+  (and (fn-node-statep *osac-step-a*) (fn-node-statep *osac-step-b*)
+       (equal (fn-osa-node-alpha *osac-step-a* *osac-id-source*)
+              (fn-osa-node-alpha *osac-step-b* *osac-id-target*))
+       (fn-store-event-p *osac-step-row*) (natp 1)
+       (equal (fn-orm-payload-bytes (fn-orm-row *osac-step-row* 1) *osac-id-target*)
+              (fn-orm-payload-bytes *osac-step-row* *osac-id-source*))
+       (consp (fn-state-articles (fn-node-acceptance *osac-step-a*)))
+       (not (equal *osac-step-a* *osac-step-b*))
+       (consp new-a) (equal (len (fn-state-articles (fn-node-acceptance new-a))) 2)
+       (equal (consp new-a) (consp new-b))
+       (equal (fn-osa-node-alpha new-a *osac-id-source*)
+              (fn-osa-node-alpha new-b *osac-id-target*))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+          (enable fn-osa-node-alpha fn-osa-acceptance-alpha fn-osa-pending-alpha
+                  fn-articles-wire-of fn-handle-bytes fn-orm-payload-bytes
+                  fn-row-bytes))))
+; Logical corrupted-state removals of each independently required node type.
+(defun osac-corrupt-first-payload (node)
+ (declare (xargs :guard t :verify-guards nil))
+ (update-nth 0
+  (update-nth 2
+   (list (update-nth 1 -1 (car (fn-state-articles (fn-node-acceptance node)))))
+   (fn-node-acceptance node)) node))
+(defthm osac-node-replay-source-state-removal-tooth
+ (let* ((a (osac-corrupt-first-payload *osa-a*)) (b *osa-b*)
+         (row (nth 1 *osac-rows*)) (source *osa-source-arena*) (target '(nil (4 5)))
+         (new-a (fn-replay-apply-record a row))
+         (new-b (fn-replay-apply-record b (fn-orm-row row 1))))
+   (and (not (fn-node-statep a)) (fn-node-statep b)
+        (equal (fn-osa-node-alpha a source) (fn-osa-node-alpha b target))
+        (fn-store-event-p row) (natp 1)
+        (equal (fn-orm-payload-bytes (fn-orm-row row 1) target)
+               (fn-orm-payload-bytes row source))
+        (not (and (equal (consp new-a) (consp new-b))
+                  (equal (fn-osa-node-alpha new-a source)
+                         (fn-osa-node-alpha new-b target))))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+          (enable fn-osa-node-alpha fn-osa-acceptance-alpha fn-osa-pending-alpha
+                  fn-articles-wire-of fn-handle-bytes fn-orm-payload-bytes
+                  fn-row-bytes osac-corrupt-first-payload))))
+(defthm osac-node-replay-target-state-removal-tooth
+ (let* ((a *osa-a*) (b (osac-corrupt-first-payload *osa-b*))
+         (row (nth 1 *osac-rows*)) (source '((99) nil (4 5))) (target *osa-target-arena*)
+         (new-a (fn-replay-apply-record a row))
+         (new-b (fn-replay-apply-record b (fn-orm-row row 1))))
+   (and (fn-node-statep a) (not (fn-node-statep b))
+        (equal (fn-osa-node-alpha a source) (fn-osa-node-alpha b target))
+        (fn-store-event-p row) (natp 1)
+        (equal (fn-orm-payload-bytes (fn-orm-row row 1) target)
+               (fn-orm-payload-bytes row source))
+        (not (and (equal (consp new-a) (consp new-b))
+                  (equal (fn-osa-node-alpha new-a source)
+                         (fn-osa-node-alpha new-b target))))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+          (enable fn-osa-node-alpha fn-osa-acceptance-alpha fn-osa-pending-alpha
+                  fn-articles-wire-of fn-handle-bytes fn-orm-payload-bytes
+                  fn-row-bytes osac-corrupt-first-payload))))
+; Remove full incoming alpha, retaining two valid nodes and the actual byte map.
+(defthm osac-node-replay-incoming-alpha-removal-tooth
+ (let* ((a *osa-a*) (b *osa-initial*) (row (nth 1 *osac-rows*))
+        (source *osa-source-arena*) (target *osa-target-arena*)
+        (new-a (fn-replay-apply-record a row))
+        (new-b (fn-replay-apply-record b (fn-orm-row row 1))))
+  (and (fn-node-statep a) (fn-node-statep b)
+       (not (equal (fn-osa-node-alpha a source) (fn-osa-node-alpha b target)))
+       (fn-store-event-p row) (natp 1)
+       (equal (fn-orm-payload-bytes (fn-orm-row row 1) target)
+              (fn-orm-payload-bytes row source))
+       (not (and (equal (consp new-a) (consp new-b))
+                 (equal (fn-osa-node-alpha new-a source)
+                        (fn-osa-node-alpha new-b target))))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+          (enable fn-osa-node-alpha fn-osa-acceptance-alpha fn-osa-pending-alpha
+                  fn-articles-wire-of fn-handle-bytes fn-orm-payload-bytes
+                  fn-row-bytes osac-corrupt-first-payload))))
+; Source row corruption can be repaired by the outer remap; source refusal
+; must not be erased merely because target metadata and referenced bytes fit.
+(defthm osac-node-replay-corrupted-row-removal-tooth
+ (let* ((a *osa-a*) (b *osa-b*) (row (update-nth 4 -1 (nth 1 *osac-rows*)))
+         (source *osa-source-arena*) (target '((1 2 3) nil))
+         (new-a (fn-replay-apply-record a row))
+         (new-b (fn-replay-apply-record b (fn-orm-row row 1))))
+   (and (fn-node-statep a) (fn-node-statep b)
+        (equal (fn-osa-node-alpha a source) (fn-osa-node-alpha b target))
+        (not (fn-store-event-p row)) (natp 1)
+        (equal (fn-orm-payload-bytes (fn-orm-row row 1) target)
+               (fn-orm-payload-bytes row source))
+        (not (and (equal (consp new-a) (consp new-b))
+                  (equal (fn-osa-node-alpha new-a source)
+                         (fn-osa-node-alpha new-b target))))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+          (enable fn-osa-node-alpha fn-osa-acceptance-alpha fn-osa-pending-alpha
+                  fn-articles-wire-of fn-handle-bytes fn-orm-payload-bytes
+                  fn-row-bytes osac-corrupt-first-payload))))
+; Negative target handle is an independent logical removal: both referenced
+; byte values are NIL, but only the source's handle is a valid held coordinate.
+(defthm osac-node-replay-natural-handle-removal-tooth
+ (let* ((a *osa-a*) (b *osa-b*) (row (nth 1 *osac-rows*))
+         (source '((99) (1 2 3) nil)) (target *osa-target-arena*)
+         (new-a (fn-replay-apply-record a row))
+         (new-b (fn-replay-apply-record b (fn-orm-row row -1))))
+   (and (fn-node-statep a) (fn-node-statep b)
+        (equal (fn-osa-node-alpha a source) (fn-osa-node-alpha b target))
+        (fn-store-event-p row) (not (natp -1))
+        (equal (fn-orm-payload-bytes (fn-orm-row row -1) target)
+               (fn-orm-payload-bytes row source))
+        (not (and (equal (consp new-a) (consp new-b))
+                  (equal (fn-osa-node-alpha new-a source)
+                         (fn-osa-node-alpha new-b target))))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+          (enable fn-osa-node-alpha fn-osa-acceptance-alpha fn-osa-pending-alpha
+                  fn-articles-wire-of fn-handle-bytes fn-orm-payload-bytes
+                  fn-row-bytes osac-corrupt-first-payload))))
+; Mutation of the newly referenced payload: all retained hypotheses stay true.
+(defthm osac-node-replay-payload-map-removal-tooth
+ (let* ((a *osa-a*) (b *osa-b*) (row (nth 1 *osac-rows*))
+        (source *osa-source-arena*) (target '((1 2 3) (88)))
+        (new-a (fn-replay-apply-record a row))
+        (new-b (fn-replay-apply-record b (fn-orm-row row 1))))
+  (and (fn-node-statep a) (fn-node-statep b)
+       (equal (fn-osa-node-alpha a source) (fn-osa-node-alpha b target))
+       (fn-store-event-p row) (natp 1)
+       (not (equal (fn-orm-payload-bytes (fn-orm-row row 1) target)
+                   (fn-orm-payload-bytes row source)))
+       (not (and (equal (consp new-a) (consp new-b))
+                 (equal (fn-osa-node-alpha new-a source)
+                        (fn-osa-node-alpha new-b target))))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+          (enable fn-osa-node-alpha fn-osa-acceptance-alpha fn-osa-pending-alpha
+                  fn-articles-wire-of fn-handle-bytes fn-orm-payload-bytes
+                  fn-row-bytes osac-corrupt-first-payload))))

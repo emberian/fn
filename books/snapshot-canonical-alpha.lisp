@@ -287,3 +287,392 @@
            (equal (fn-replay-identity (fn-orm-capture rows handle))
                   (fn-replay-identity rows)))
   :hints (("Goal" :in-theory (enable fn-replay-identity))))
+
+; Actual node interpreter boundary. Symmetric alpha relations are used by
+; explicit instances, not as bidirectional rewrite rules. The four runtime
+; branches retain their status as well as every node abstraction field.
+(local
+ (defthm fn-osa-advance-keeps-full-node-alpha
+   (implies (and (fn-node-statep a) (fn-node-statep b)
+                 (equal (fn-osa-node-alpha a source)
+                        (fn-osa-node-alpha b target)))
+            (equal (fn-osa-node-alpha (fn-replay-advance-txid a txid) source)
+                   (fn-osa-node-alpha (fn-replay-advance-txid b txid) target)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-osa-node-alpha fn-osa-acceptance-alpha
+                             fn-osa-pending-alpha fn-replay-advance-txid)
+                            (fn-node-statep fn-statep fn-node-make-state
+                             fn-make-state fn-handle-bytes fn-articles-wire-of))))))
+(local
+ (defthm fn-osa-alpha-keeps-pending-match
+   (implies (and (fn-node-statep a) (fn-node-statep b)
+                 (equal (fn-osa-node-alpha a source)
+                        (fn-osa-node-alpha b target)))
+            (equal (fn-node-pending-matchesp a txid generation)
+                   (fn-node-pending-matchesp b txid generation)))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-osa-node-alpha fn-osa-acceptance-alpha
+                             fn-osa-pending-alpha fn-node-pending-matchesp
+                             fn-pending-matchesp)
+                            (fn-handle-bytes fn-articles-wire-of))))))
+(local
+ (defthm fn-osa-alpha-keeps-replay-controls
+   (implies (equal (fn-osa-node-alpha a source) (fn-osa-node-alpha b target))
+            (and (equal (fn-state-next-txid (fn-node-acceptance a))
+                        (fn-state-next-txid (fn-node-acceptance b)))
+                 (equal (fn-node-stage a) (fn-node-stage b))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-osa-node-alpha fn-osa-acceptance-alpha)
+                                   (fn-osa-pending-alpha fn-articles-wire-of))))))
+(local
+ (defthm fn-osa-empty-node-alpha-does-not-depend-on-arena
+   (equal (fn-osa-node-alpha nil source) '((nil nil nil nil nil nil) nil nil nil))
+   :hints (("Goal" :in-theory (enable fn-osa-node-alpha fn-osa-acceptance-alpha
+                                     fn-osa-pending-alpha fn-articles-wire-of)))))
+(local
+ (defthm fn-osa-remapped-held-keeps-article-inputs
+   (let ((new (fn-orm-held row handle)))
+     (and (equal (fn-record-txid new) (fn-record-txid row))
+          (equal (fn-record-generation new) (fn-record-generation row))
+          (equal (fn-record-msgid new) (fn-record-msgid row))
+          (equal (fn-record-payload new) handle)
+          (equal (fn-record-groups new) (fn-record-groups row))
+          (equal (fn-record-obligation-id new) (fn-record-obligation-id row))
+          (equal (fn-record-content-subject new) (fn-record-content-subject row))
+          (equal (fn-record-release-evidence new) (fn-record-release-evidence row))
+          (equal (fn-record-charge new) (fn-record-charge row))
+          (equal (fn-record-stamp new) (fn-record-stamp row))))
+   :hints (("Goal" :in-theory (enable fn-orm-held fn-held-internals fn-record-internals)))))
+(local
+ (defthm fn-osa-node-state-is-nonempty-by-definition
+   (implies (fn-node-statep node) (consp node))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-node-statep fn-node-state-shapep)))))
+(local
+ (defthm fn-osa-held-replay-keeps-node-alpha
+   (implies (and (fn-node-statep a) (fn-node-statep b)
+                 (equal (fn-osa-node-alpha a source) (fn-osa-node-alpha b target))
+                 (fn-held-p row) (natp handle)
+                 (equal (fn-handle-bytes (fn-held-payload row) source)
+                        (fn-handle-bytes handle target)))
+            (let ((new-a (fn-replay-apply-record a row))
+                  (new-b (fn-replay-apply-record b (fn-orm-held row handle))))
+              (and (equal (consp new-a) (consp new-b))
+                   (equal (fn-osa-node-alpha new-a source)
+                          (fn-osa-node-alpha new-b target)))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-osa-alpha-keeps-replay-controls)
+                  (:instance fn-osa-alpha-keeps-replay-controls
+                   (a (fn-replay-advance-txid a (fn-record-txid row)))
+                   (b (fn-replay-advance-txid b (fn-record-txid row))))
+                  (:instance fn-osa-advance-keeps-full-node-alpha (txid (fn-held-txid row)))
+                  (:instance fn-osa-prepare-keeps-full-node-alpha (a (fn-replay-advance-txid a (fn-held-txid
+                    row))) (b (fn-replay-advance-txid b (fn-held-txid row))) (generation (fn-held-generation
+                    row)) (msgid (fn-held-msgid row)) (p (fn-held-payload row)) (q handle) (groups
+                    (fn-held-groups row)) (id (fn-held-obligation-id row)) (subject (fn-held-content-subject
+                    row)) (evidence (fn-held-release-evidence row)) (charge (fn-held-charge row)) (stamp
+                    (fn-held-stamp row)))
+                  (:instance fn-osa-alpha-keeps-pending-match (a (fn-node-prepare (fn-replay-advance-txid a
+                    (fn-held-txid row)) (fn-record-generation row) (fn-record-msgid row) (fn-record-payload
+                    row) (fn-record-groups row) (fn-record-obligation-id row) (fn-record-content-subject
+                    row) (fn-record-release-evidence row) (fn-record-charge row) (fn-record-stamp row))) (b
+                    (fn-node-prepare (fn-replay-advance-txid b (fn-held-txid row)) (fn-record-generation
+                    (fn-orm-held row handle)) (fn-record-msgid (fn-orm-held row handle)) (fn-record-payload
+                    (fn-orm-held row handle)) (fn-record-groups (fn-orm-held row handle))
+                    (fn-record-obligation-id (fn-orm-held row handle)) (fn-record-content-subject
+                    (fn-orm-held row handle)) (fn-record-release-evidence (fn-orm-held row handle))
+                    (fn-record-charge (fn-orm-held row handle)) (fn-record-stamp (fn-orm-held row handle))))
+                    (txid (fn-held-txid row)) (generation (fn-held-generation row)))
+                  (:instance fn-osa-complete-keeps-full-node-alpha (a (fn-node-prepare
+                    (fn-replay-advance-txid a (fn-held-txid row)) (fn-record-generation row)
+                    (fn-record-msgid row) (fn-record-payload row) (fn-record-groups row)
+                    (fn-record-obligation-id row) (fn-record-content-subject row)
+                    (fn-record-release-evidence row) (fn-record-charge row) (fn-record-stamp row))) (b
+                    (fn-node-prepare (fn-replay-advance-txid b (fn-held-txid row)) (fn-record-generation
+                    (fn-orm-held row handle)) (fn-record-msgid (fn-orm-held row handle)) (fn-record-payload
+                    (fn-orm-held row handle)) (fn-record-groups (fn-orm-held row handle))
+                    (fn-record-obligation-id (fn-orm-held row handle)) (fn-record-content-subject
+                    (fn-orm-held row handle)) (fn-record-release-evidence (fn-orm-held row handle))
+                    (fn-record-charge (fn-orm-held row handle)) (fn-record-stamp (fn-orm-held row handle))))
+                    (txid (fn-held-txid row)) (generation (fn-held-generation row)) (status :durable))
+                  (:instance fn-held-p-forward-shape (x row))
+                  (:instance fn-orm-held-preserves-the-held-shape)
+                  (:instance fn-osa-node-state-is-nonempty-by-definition (node (fn-node-complete
+                    (fn-node-prepare (fn-replay-advance-txid a (fn-record-txid row)) (fn-record-generation
+                    row) (fn-record-msgid row) (fn-record-payload row) (fn-record-groups row)
+                    (fn-record-obligation-id row) (fn-record-content-subject row)
+                    (fn-record-release-evidence row) (fn-record-charge row) (fn-record-stamp row))
+                    (fn-record-txid row) (fn-record-generation row) :durable)))
+                  (:instance fn-osa-node-state-is-nonempty-by-definition (node (fn-node-complete
+                    (fn-node-prepare (fn-replay-advance-txid b (fn-record-txid row)) (fn-record-generation
+                    (fn-orm-held row handle)) (fn-record-msgid (fn-orm-held row handle)) (fn-record-payload
+                    (fn-orm-held row handle)) (fn-record-groups (fn-orm-held row handle))
+                    (fn-record-obligation-id (fn-orm-held row handle)) (fn-record-content-subject
+                    (fn-orm-held row handle)) (fn-record-release-evidence (fn-orm-held row handle))
+                    (fn-record-charge (fn-orm-held row handle)) (fn-record-stamp (fn-orm-held row handle)))
+                    (fn-record-txid row) (fn-record-generation row) :durable))))
+            :in-theory
+            (union-theories
+             (theory 'minimal-theory)
+             '(fn-replay-apply-record fn-store-event-txid
+               fn-osa-empty-node-alpha-does-not-depend-on-arena
+               fn-osa-remapped-held-keeps-article-inputs
+               fn-osa-node-state-is-nonempty-by-definition
+               fn-held-accessors-are-the-wire-accessors fn-held-p-fields
+               fn-held-is-no-wire-event fn-cstp-held-kind-facts
+               fn-node-prepare-preserves-state fn-node-complete-preserves-state
+               fn-replay-advance-preserves-node-statep))))))
+(local
+ (defthm fn-osa-composite-replay-keeps-node-alpha
+   (implies (and (fn-node-statep a) (fn-node-statep b)
+                 (equal (fn-osa-node-alpha a source) (fn-osa-node-alpha b target))
+                 (fn-held-p row) (fn-stxa-p stxa) (natp handle)
+                 (equal (fn-handle-bytes (fn-held-payload row) source)
+                        (fn-handle-bytes handle target)))
+            (let ((new-a (fn-replay-apply-record a (fn-hstxa-make stxa row)))
+                  (new-b (fn-replay-apply-record b (fn-hstxa-make stxa (fn-orm-held row handle)))))
+              (and (equal (consp new-a) (consp new-b))
+                   (equal (fn-osa-node-alpha new-a source)
+                          (fn-osa-node-alpha new-b target)))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-osa-alpha-keeps-replay-controls)
+                  (:instance fn-osa-alpha-keeps-replay-controls
+                   (a (fn-replay-advance-txid a (fn-stxa-txid stxa)))
+                   (b (fn-replay-advance-txid b (fn-stxa-txid stxa))))
+                  (:instance fn-osa-advance-keeps-full-node-alpha (txid (fn-stxa-txid stxa)))
+                  (:instance fn-osa-prepare-keeps-full-node-alpha (a (fn-replay-advance-txid a (fn-stxa-txid
+                    stxa))) (b (fn-replay-advance-txid b (fn-stxa-txid stxa))) (generation
+                    (fn-held-generation row)) (msgid (fn-held-msgid row)) (p (fn-held-payload row)) (q
+                    handle) (groups (fn-held-groups row)) (id (fn-held-obligation-id row)) (subject
+                    (fn-held-content-subject row)) (evidence (fn-held-release-evidence row)) (charge
+                    (fn-held-charge row)) (stamp (fn-held-stamp row)))
+                  (:instance fn-osa-alpha-keeps-pending-match (a (fn-node-prepare (fn-replay-advance-txid a
+                    (fn-stxa-txid stxa)) (fn-record-generation row) (fn-record-msgid row) (fn-record-payload
+                    row) (fn-record-groups row) (fn-record-obligation-id row) (fn-record-content-subject
+                    row) (fn-record-release-evidence row) (fn-record-charge row) (fn-record-stamp row))) (b
+                    (fn-node-prepare (fn-replay-advance-txid b (fn-stxa-txid stxa)) (fn-record-generation
+                    (fn-orm-held row handle)) (fn-record-msgid (fn-orm-held row handle)) (fn-record-payload
+                    (fn-orm-held row handle)) (fn-record-groups (fn-orm-held row handle))
+                    (fn-record-obligation-id (fn-orm-held row handle)) (fn-record-content-subject
+                    (fn-orm-held row handle)) (fn-record-release-evidence (fn-orm-held row handle))
+                    (fn-record-charge (fn-orm-held row handle)) (fn-record-stamp (fn-orm-held row handle))))
+                    (txid (fn-held-txid row)) (generation (fn-held-generation row)))
+                  (:instance fn-osa-complete-keeps-full-node-alpha (a (fn-node-prepare
+                    (fn-replay-advance-txid a (fn-stxa-txid stxa)) (fn-record-generation row)
+                    (fn-record-msgid row) (fn-record-payload row) (fn-record-groups row)
+                    (fn-record-obligation-id row) (fn-record-content-subject row)
+                    (fn-record-release-evidence row) (fn-record-charge row) (fn-record-stamp row))) (b
+                    (fn-node-prepare (fn-replay-advance-txid b (fn-stxa-txid stxa)) (fn-record-generation
+                    (fn-orm-held row handle)) (fn-record-msgid (fn-orm-held row handle)) (fn-record-payload
+                    (fn-orm-held row handle)) (fn-record-groups (fn-orm-held row handle))
+                    (fn-record-obligation-id (fn-orm-held row handle)) (fn-record-content-subject
+                    (fn-orm-held row handle)) (fn-record-release-evidence (fn-orm-held row handle))
+                    (fn-record-charge (fn-orm-held row handle)) (fn-record-stamp (fn-orm-held row handle))))
+                    (txid (fn-held-txid row)) (generation (fn-held-generation row)) (status :durable))
+                  (:instance fn-held-p-forward-shape (x row))
+                  (:instance fn-orm-held-preserves-the-held-shape)
+                  (:instance fn-osa-node-state-is-nonempty-by-definition (node (fn-node-complete
+                    (fn-node-prepare (fn-replay-advance-txid a (fn-stxa-txid stxa)) (fn-record-generation
+                    row) (fn-record-msgid row) (fn-record-payload row) (fn-record-groups row)
+                    (fn-record-obligation-id row) (fn-record-content-subject row)
+                    (fn-record-release-evidence row) (fn-record-charge row) (fn-record-stamp row))
+                    (fn-record-txid row) (fn-record-generation row) :durable)))
+                  (:instance fn-osa-node-state-is-nonempty-by-definition (node (fn-node-complete
+                    (fn-node-prepare (fn-replay-advance-txid b (fn-stxa-txid stxa)) (fn-record-generation
+                    (fn-orm-held row handle)) (fn-record-msgid (fn-orm-held row handle)) (fn-record-payload
+                    (fn-orm-held row handle)) (fn-record-groups (fn-orm-held row handle))
+                    (fn-record-obligation-id (fn-orm-held row handle)) (fn-record-content-subject
+                    (fn-orm-held row handle)) (fn-record-release-evidence (fn-orm-held row handle))
+                    (fn-record-charge (fn-orm-held row handle)) (fn-record-stamp (fn-orm-held row handle)))
+                    (fn-record-txid row) (fn-record-generation row) :durable))))
+            :in-theory
+            (union-theories
+             (theory 'minimal-theory)
+             '(fn-replay-apply-record fn-store-event-txid
+               fn-replay-composite-held fn-hstxa-p-of-make
+               fn-hstxa-accessors-of-make fn-hstxa-is-not-held
+               fn-hstxa-is-no-wire-event
+               fn-osa-empty-node-alpha-does-not-depend-on-arena
+               fn-osa-remapped-held-keeps-article-inputs
+               fn-osa-node-state-is-nonempty-by-definition
+               fn-held-accessors-are-the-wire-accessors fn-held-p-fields
+               fn-held-is-no-wire-event fn-cstp-held-kind-facts
+               fn-node-prepare-preserves-state fn-node-complete-preserves-state
+               fn-replay-advance-preserves-node-statep))))))
+(local
+ (defthm fn-osa-neutral-replay-keeps-node-alpha
+   (implies (and (fn-node-statep a) (fn-node-statep b)
+                 (equal (fn-osa-node-alpha a source) (fn-osa-node-alpha b target)))
+            (let ((new-a (fn-replay-apply-identity-neutral a event))
+                  (new-b (fn-replay-apply-identity-neutral b event)))
+              (and (equal (consp new-a) (consp new-b))
+                   (equal (fn-osa-node-alpha new-a source)
+                          (fn-osa-node-alpha new-b target)))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-osa-advance-keeps-full-node-alpha
+                             (txid (fn-store-event-txid event)))
+                  (:instance fn-osa-alpha-keeps-replay-controls
+                             (a (fn-replay-advance-txid a (fn-store-event-txid event)))
+                             (b (fn-replay-advance-txid b (fn-store-event-txid event))))
+                  (:instance fn-osa-advance-keeps-full-node-alpha
+                             (a (fn-replay-advance-txid a (fn-store-event-txid event)))
+                             (b (fn-replay-advance-txid b (fn-store-event-txid event)))
+                             (txid (1+ (fn-store-event-txid event))))
+                  (:instance fn-osa-node-state-is-nonempty-by-definition
+                             (node (fn-replay-advance-txid
+                                    (fn-replay-advance-txid a (fn-store-event-txid event))
+                                    (1+ (fn-store-event-txid event)))))
+                  (:instance fn-osa-node-state-is-nonempty-by-definition
+                             (node (fn-replay-advance-txid
+                                    (fn-replay-advance-txid b (fn-store-event-txid event))
+                                    (1+ (fn-store-event-txid event))))))
+            :in-theory
+            (union-theories (theory 'minimal-theory)
+             '(fn-replay-apply-identity-neutral
+               fn-osa-empty-node-alpha-does-not-depend-on-arena
+               fn-replay-advance-preserves-node-statep))))))
+(local
+ (defthm fn-osa-retention-replacement-keeps-alpha
+   (implies (equal (fn-osa-node-alpha a source) (fn-osa-node-alpha b target))
+            (equal (fn-osa-node-alpha (fn-replay-node-with-retention a r) source)
+                   (fn-osa-node-alpha (fn-replay-node-with-retention b r) target)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-replay-node-with-retention fn-osa-node-alpha)
+                                   (fn-osa-acceptance-alpha))))))
+(local
+ (defthm fn-osa-retention-controls-by-definition
+   (implies (equal (fn-osa-node-alpha a source) (fn-osa-node-alpha b target))
+            (and (equal (fn-node-retention a) (fn-node-retention b))
+                 (equal (fn-node-bindings a) (fn-node-bindings b))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-osa-node-alpha) (fn-osa-acceptance-alpha))))))
+(local
+ (defthm fn-osa-retention-replacement-is-nrt-by-definition
+   (equal (fn-replay-node-with-retention node r) (fn-nrt-node-with-retention node r))
+   :hints (("Goal" :in-theory (enable fn-replay-node-with-retention fn-nrt-node-with-retention)))))
+(local
+ (defthm fn-osa-retention-completion-keeps-alpha
+   (implies (and (equal (fn-osa-node-alpha a source) (fn-osa-node-alpha b target))
+                 (fn-node-statep (fn-replay-node-with-retention a r))
+                 (fn-node-statep (fn-replay-node-with-retention b r)))
+            (and (equal (consp (fn-replay-complete-retention a r event))
+                        (consp (fn-replay-complete-retention b r event)))
+                 (equal (fn-osa-node-alpha (fn-replay-complete-retention a r event) source)
+                        (fn-osa-node-alpha (fn-replay-complete-retention b r event) target))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-osa-retention-replacement-keeps-alpha)
+                  (:instance fn-osa-advance-keeps-full-node-alpha
+                   (a (fn-replay-node-with-retention a r))
+                   (b (fn-replay-node-with-retention b r))
+                   (txid (1+ (fn-store-event-txid event))))
+                  (:instance fn-osa-node-state-is-nonempty-by-definition
+                   (node (fn-replay-advance-txid (fn-replay-node-with-retention a r)
+                                               (1+ (fn-store-event-txid event)))))
+                  (:instance fn-osa-node-state-is-nonempty-by-definition
+                   (node (fn-replay-advance-txid (fn-replay-node-with-retention b r)
+                                               (1+ (fn-store-event-txid event))))))
+            :in-theory (union-theories (theory 'minimal-theory)
+                         '(fn-replay-complete-retention
+                           fn-replay-advance-preserves-node-statep))))))
+(local
+ (defthm fn-osa-retention-replay-keeps-node-alpha
+   (implies (and (fn-node-statep a) (fn-node-statep b)
+                 (equal (fn-osa-node-alpha a source) (fn-osa-node-alpha b target))
+                 (fn-store-retention-event-p event))
+            (let ((new-a (fn-replay-apply-retention-event a event))
+                  (new-b (fn-replay-apply-retention-event b event)))
+              (and (equal (consp new-a) (consp new-b))
+                   (equal (fn-osa-node-alpha new-a source)
+                          (fn-osa-node-alpha new-b target)))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-osa-advance-keeps-full-node-alpha (txid (fn-store-event-txid event)))
+                  (:instance fn-osa-alpha-keeps-replay-controls (a (fn-replay-advance-txid a
+                    (fn-store-event-txid event))) (b (fn-replay-advance-txid b (fn-store-event-txid
+                    event))))
+                  (:instance fn-osa-retention-controls-by-definition (a (fn-replay-advance-txid a
+                    (fn-store-event-txid event))) (b (fn-replay-advance-txid b (fn-store-event-txid
+                    event))))
+                  (:instance fn-osa-retention-completion-keeps-alpha (a (fn-replay-advance-txid a
+                    (fn-store-event-txid event))) (b (fn-replay-advance-txid b (fn-store-event-txid event)))
+                    (r (fn-retain-admit (fn-node-retention (fn-replay-advance-txid a (fn-store-event-txid
+                    event))) (fn-store-event-obligation-id event) (fn-store-event-subject event) :forward
+                    (fn-store-event-evidence event) (fn-store-event-charge event))))
+                  (:instance fn-osa-retention-completion-keeps-alpha (a (fn-replay-advance-txid a
+                    (fn-store-event-txid event))) (b (fn-replay-advance-txid b (fn-store-event-txid event)))
+                    (r (fn-retain-release (fn-node-retention (fn-replay-advance-txid a (fn-store-event-txid
+                    event))) (fn-store-event-obligation-id event) (fn-store-event-subject event) :forward
+                    (fn-store-event-evidence event)))))
+            :in-theory
+            (union-theories (theory 'minimal-theory)
+             '(fn-replay-apply-retention-event
+               fn-osa-empty-node-alpha-does-not-depend-on-arena
+               fn-osa-retention-replacement-is-nrt-by-definition
+               fn-replay-advance-preserves-node-statep
+               fn-nrt-node-admit-preserves-statep
+               fn-nrt-node-release-preserves-statep))))))
+(local
+ (defthm fn-osa-row-bytes-is-referenced-handle-by-definition
+   (equal (fn-row-bytes row fn-arena)
+          (fn-handle-bytes (fn-record-payload row) fn-arena))
+   :hints (("Goal" :in-theory (enable fn-row-bytes fn-handle-bytes)))))
+(local
+ (defthm fn-osa-valid-composite-reconstruction-by-definition
+   (implies (fn-hstxa-p row)
+            (equal (fn-hstxa-make (fn-hstxa-stxa row) (fn-hstxa-held row)) row))
+   :hints (("Goal" :in-theory (e/d (fn-hstxa-p fn-hstxa-make fn-hstxa-stxa fn-hstxa-held)
+                                   (fn-stxa-p fn-held-p))))))
+(local
+ (defthm fn-osa-nonarticle-row-keeps-actual-node-replay
+   (implies (and (fn-node-statep a) (fn-node-statep b)
+                 (equal (fn-osa-node-alpha a source) (fn-osa-node-alpha b target))
+                 (not (fn-held-p row)) (not (fn-hstxa-p row)))
+            (let ((new-a (fn-replay-apply-record a row))
+                  (new-b (fn-replay-apply-record b row)))
+              (and (equal (consp new-a) (consp new-b))
+                   (equal (fn-osa-node-alpha new-a source)
+                          (fn-osa-node-alpha new-b target)))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-osa-alpha-keeps-replay-controls)
+                  (:instance fn-osa-retention-replay-keeps-node-alpha (event row))
+                  (:instance fn-osa-neutral-replay-keeps-node-alpha (event row)))
+            :in-theory (union-theories (theory 'minimal-theory)
+                         '(fn-replay-apply-record
+                           fn-osa-empty-node-alpha-does-not-depend-on-arena))))))
+(defthm fn-osa-canonical-row-keeps-actual-node-replay
+  (implies (and (fn-node-statep a) (fn-node-statep b)
+                (equal (fn-osa-node-alpha a source) (fn-osa-node-alpha b target))
+                (fn-store-event-p row) (natp handle)
+                (equal (fn-orm-payload-bytes (fn-orm-row row handle) target)
+                       (fn-orm-payload-bytes row source)))
+           (let ((new-a (fn-replay-apply-record a row))
+                 (new-b (fn-replay-apply-record b (fn-orm-row row handle))))
+             (and (equal (consp new-a) (consp new-b))
+                  (equal (fn-osa-node-alpha new-a source)
+                         (fn-osa-node-alpha new-b target)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :cases ((fn-held-p row) (fn-hstxa-p row))
+           :use ((:instance fn-osa-alpha-keeps-replay-controls) (:instance
+             fn-osa-held-replay-keeps-node-alpha)
+                 (:instance fn-osa-composite-replay-keeps-node-alpha
+                            (stxa (fn-hstxa-stxa row)) (row (fn-hstxa-held row)))
+                 (:instance fn-osa-nonarticle-row-keeps-actual-node-replay))
+           :in-theory
+           (union-theories (theory 'minimal-theory)
+            '(fn-osa-row-on-valid-input-by-definition fn-orm-payload-bytes
+              fn-osa-row-bytes-is-referenced-handle-by-definition
+              fn-osa-valid-composite-reconstruction-by-definition
+              fn-osa-remapped-held-keeps-article-inputs
+              fn-osa-empty-node-alpha-does-not-depend-on-arena
+              fn-held-is-no-wire-event fn-hstxa-is-no-wire-event
+              fn-hstxa-is-not-held fn-hstxa-p-fields fn-hstxa-p-of-make
+              fn-hstxa-accessors-of-make fn-held-accessors-are-the-wire-accessors
+              fn-orm-held-preserves-the-held-shape fn-held-p-fields
+              fn-cstp-held-kind-facts)))))

@@ -17510,9 +17510,13 @@
         {
           "kind": "theorem",
           "name": "fn-osa-canonical-history-keeps-complete-identity-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osa-canonical-row-keeps-actual-node-replay"
         }
       ],
-      "pending_subject": "Full actual canonical configured recovery and owner/controller composition remain open. Cited events are proved component boundaries over actual fn-node-prepare, fn-node-complete and fn-orm-capture, not a host-level completion claim."
+      "pending_subject": "Full actual canonical configured recovery and owner/controller composition remain open. Cited events include the actual fn-replay-apply-record full-node row boundary, not a complete configured-open or host-level completion claim."
     }
   ]
 }

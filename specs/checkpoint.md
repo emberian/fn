@@ -383,3 +383,16 @@ compare complete results. These component equalities leave configured node
 replay, remapped opening success, physical writer/load correspondence and
 owner/controller composition open, together with the mandatory coherent
 schema migration.
+
+The node replay boundary now names the function the configured replay fold
+actually calls: `fn-replay-apply-record`.
+`fn-osa-canonical-row-keeps-actual-node-replay` preserves both its refusal
+presence and its complete `fn-osa-node-alpha` result across the remapped row.
+Its literal hypotheses are two valid input nodes, equality of their full
+alpha, a valid Store row, a natural target handle, and equality of the
+ordinary or composite-held referenced payload bytes. The proof covers
+article, accepted-statement composite, identity-neutral and retention
+branches. A real configured replay prefix supplies the nonempty positive;
+logical corrupted-state/input and payload mutation teeth remove each of the
+six hypotheses independently. This is the actual row boundary, not yet the
+whole configured fold or a physical writer/load/owner adoption claim.
