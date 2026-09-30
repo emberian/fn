@@ -28,16 +28,29 @@
  (declare (xargs :guard t))
  (list :admission-grant nonce (fn-prl-nth 0 identity) (fn-prl-nth 1 identity)
        (fn-prl-nth 2 identity) (fn-prl-nth 3 identity) (fn-prl-nth 4 identity)))
+(defun fn-apr-widthp (n x)
+ (declare (xargs :guard (natp n) :measure (nfix n)))
+ (if (zp n) (null x)
+  (and (consp x) (fn-apr-widthp (1- n) (cdr x)))))
+(defun fn-apr-tokenp (token)
+ (declare (xargs :guard t))
+ (and (fn-apr-widthp 7 token) (eq (fn-prl-nth 0 token) :admission-grant)
+      (natp (fn-prl-nth 1 token)) (natp (fn-prl-nth 2 token))
+      (natp (fn-prl-nth 3 token)) (natp (fn-prl-nth 4 token))
+      (natp (fn-prl-nth 5 token))
+      (member-eq (fn-prl-nth 6 token) '(:article :identity :retention :consumer :topic :config))))
 (defun fn-apr-livep (token row)
  (declare (xargs :guard t))
- (and token (equal token (fn-prl-nth 0 row))
+ (and (fn-apr-widthp 5 row) (fn-apr-tokenp token)
+      (fn-apr-tokenp (fn-prl-nth 0 row))
+      (equal token (fn-prl-nth 0 row))
       (member-eq (fn-prl-nth 2 row) '(:reserved :produced :uncertain))))
 
 ; Internal algebra only: CURRENT is fetched from the actual exclusive owner
 ; pending slot in the atomic STATE+pool wrapper, never accepted from its caller.
-; Current row stores (token charged phase next-ready10). C includes this row
+; Current row stores (token charged phase borrowed-base next-ready10). C includes this row
 ; under the joint pool+owner-slot relation; PRL bindings remain untouched.
-(defun fn-apr-issue (identity demand rescue current ledger)
+(defun fn-apr-issue (identity demand rescue base current ledger)
  (declare (xargs :guard t))
  (if current (mv :admission-busy current ledger)
   (if (not (and (fn-apr-identityp identity) (fn-prs-vectorp demand)
@@ -49,7 +62,7 @@
                  (fn-prl-nth 4 (fn-prl-nth 0 ledger)) demand)
     (if (not (eq word :admitted)) (mv word current ledger)
      (mv :reserved
-         (list (fn-apr-token (fn-prl-nth 2 ledger) identity) demand :reserved nil)
+         (list (fn-apr-token (fn-prl-nth 2 ledger) identity) demand :reserved base nil)
          (fn-prl-build (fn-prl-nth 0 ledger) charged next
                        (fn-prl-nth 3 ledger) (fn-prl-baseline ledger))))))))
 
@@ -58,13 +71,13 @@
  (if (not (and (fn-apr-livep token current)
                 (eq (fn-prl-nth 2 current) :reserved)))
   (mv :stale current)
-  (mv :produced (list token (fn-prl-nth 1 current) :produced next-ready))))
+  (mv :produced (list token (fn-prl-nth 1 current) :produced (fn-prl-nth 3 current) next-ready))))
 (defun fn-apr-uncertain (token current)
  (declare (xargs :guard t))
  (if (not (fn-apr-livep token current)) (mv :stale current)
   (if (eq (fn-prl-nth 2 current) :uncertain) (mv :uncertain current)
   (mv :uncertain (list token (fn-prl-nth 1 current) :uncertain
-                      (fn-prl-nth 3 current))))))
+                      (fn-prl-nth 3 current) (fn-prl-nth 4 current))))))
 
 ; Neither cancellation nor ambiguous completion relinquishes old/new graphs.
 ; Settlement is permitted only after the actual owner has joined publication
@@ -88,8 +101,8 @@
 
 (defthm fn-apr-busy-preserves-shared-authority
  (implies current
-  (and (equal (mv-nth 1 (fn-apr-issue identity demand rescue current ledger)) current)
-       (equal (mv-nth 2 (fn-apr-issue identity demand rescue current ledger)) ledger))))
+  (and (equal (mv-nth 1 (fn-apr-issue identity demand rescue base current ledger)) current)
+       (equal (mv-nth 2 (fn-apr-issue identity demand rescue base current ledger)) ledger))))
 (defthm fn-apr-stale-callback-cannot-refund
  (implies (not (fn-apr-livep token current))
   (and (equal (mv-nth 1 (fn-apr-release token joined current ledger)) current)

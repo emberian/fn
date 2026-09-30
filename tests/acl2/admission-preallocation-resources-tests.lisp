@@ -8,15 +8,15 @@
 (defconst *aprt-rescue* '(10 20 0 0 0))
 (defconst *aprt-row*
  (mv-let (word row ledger)
-   (fn-apr-issue *aprt-identity* *aprt-demand* *aprt-rescue* nil *aprt-ledger*)
+   (fn-apr-issue *aprt-identity* *aprt-demand* *aprt-rescue* '(:captured-old-owner) nil *aprt-ledger*)
   (declare (ignore word ledger)) row))
 (defconst *aprt-issued*
  (mv-let (word row ledger)
-   (fn-apr-issue *aprt-identity* *aprt-demand* *aprt-rescue* nil *aprt-ledger*)
+   (fn-apr-issue *aprt-identity* *aprt-demand* *aprt-rescue* '(:captured-old-owner) nil *aprt-ledger*)
   (declare (ignore word row)) ledger))
 (assert-event
  (and (equal (aprt3 0 (fn-apr-issue *aprt-identity* *aprt-demand*
-                                    *aprt-rescue* nil *aprt-ledger*)) :reserved)
+                                    *aprt-rescue* '(:captured-old-owner) nil *aprt-ledger*)) :reserved)
       (equal (fn-prl-nth 0 *aprt-row*) '(:admission-grant 0 7 5 9 17 :article))
       (equal (fn-prl-nth 1 *aprt-issued*) *aprt-demand*)
       (equal (fn-prl-nth 2 *aprt-issued*) 1)
@@ -25,11 +25,11 @@
 ; A second predecessor cannot replace the current grant or consume a nonce.
 (assert-event
  (and (equal (aprt3 0 (fn-apr-issue '(7 6 10 18 :identity) *aprt-demand*
-                                     *aprt-rescue* *aprt-row* *aprt-issued*)) :admission-busy)
+                                     *aprt-rescue* '(:another-base) *aprt-row* *aprt-issued*)) :admission-busy)
       (equal (aprt3 1 (fn-apr-issue '(7 6 10 18 :identity) *aprt-demand*
-                                     *aprt-rescue* *aprt-row* *aprt-issued*)) *aprt-row*)
+                                     *aprt-rescue* '(:another-base) *aprt-row* *aprt-issued*)) *aprt-row*)
       (equal (aprt3 2 (fn-apr-issue '(7 6 10 18 :identity) *aprt-demand*
-                                     *aprt-rescue* *aprt-row* *aprt-issued*)) *aprt-issued*)))
+                                     *aprt-rescue* '(:another-base) *aprt-row* *aprt-issued*)) *aprt-issued*)))
 ; Same seq/txid in another process epoch is a stale callback.
 (assert-event
  (equal (aprt3 2 (fn-apr-release '(:admission-grant 0 8 5 9 17 :article)
@@ -53,3 +53,24 @@
  (eq (aprt3 0 (fn-apr-release (fn-prl-nth 0 *aprt-row*) :joined *aprt-row*
                (fn-prl-build '(10000 10000 100 100 100) '(99 200 0 0 1)
                               1 nil '(0 0 0 0 0)))) :invalid-resource-state))
+; The same operation retains its borrowed BASE and produced NEXTready across
+; uncertainty; changing the current publication pointer does not settle it.
+(assert-event
+ (let* ((token (fn-prl-nth 0 *aprt-row*))
+        (next '(:ready 7 6 original-context field-carries consumer-context
+                       consumer-carries pool rows source))
+        (produced (aprt2 1 (fn-apr-produced token next *aprt-row*)))
+        (uncertain (aprt2 1 (fn-apr-uncertain token produced))))
+  (and (eq (fn-prl-nth 2 produced) :produced)
+       (equal (fn-prl-nth 3 produced) '(:captured-old-owner))
+       (equal (fn-prl-nth 4 produced) next)
+       (eq (fn-prl-nth 2 uncertain) :uncertain)
+       (equal (fn-prl-nth 3 uncertain) (fn-prl-nth 3 produced))
+       (equal (fn-prl-nth 4 uncertain) next)
+       (equal (aprt3 2 (fn-apr-release token :uncertain uncertain *aprt-issued*))
+              *aprt-issued*))))
+; Malformed token nesting cannot enter stored token equality or release charge.
+(assert-event
+ (and (not (fn-apr-tokenp '(:admission-grant (nested old row) 7 5 9 17 :article)))
+      (eq (aprt3 0 (fn-apr-release '(:admission-grant (nested old row) 7 5 9 17 :article)
+                                  :joined *aprt-row* *aprt-issued*)) :stale)))
