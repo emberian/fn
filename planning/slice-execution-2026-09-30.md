@@ -214,3 +214,32 @@ A planned fixed-size RX buffer bounds a scheduling step, not stored data.
 The paged owner owns this carrier and setup machine; the admission owner owns
 its native job integration. Neither the old whole-buffer REPLACE path nor
 source-only constructor counts establish this runtime contract.
+
+## Fixed storage for input-copy control
+
+The list-based input-copy controller allocates fresh control cells on every
+quantum. Clearing aliases is not an observation that the collector reclaimed
+them; charging the entire copy's cumulative allocation would also make
+admission depend on total input length despite a fixed live workspace.
+The selected served implementation therefore uses an admitted fixed controller
+stobj, with a named abstraction to the carrier, holder row and copy plan above.
+The pool and controller transition together under the existing authority;
+there is no independently spendable controller budget.
+
+The fixed fields carry backing identity/capacity, current holder identity and
+phase, refundable charge, copy kind/total/quantum/offset, pending range and
+proposed installed capacity. Next and acknowledgement exchange scalar multiple
+values rather than allocating a new grant or range list each time. The retained
+native job and its token are constructed once after admission. Initial and
+preserved correspondence, cancellation, failed replacement, release and actual
+constructor costs remain obligations of this representation change.
+
+The actual native caller matters: `fnn-call` constructs a `multiple-value-list`
+on every invocation. The served controller therefore needs a selected,
+guarded compiled callback returning scalar multiple values directly, with
+established caller preconditions and no generic fallback. Fixed core fields
+alone do not remove dispatcher allocation. Scalar arithmetic, callback frames
+and actual array-dimension domains need matching runtime evidence; no arbitrary
+stored-data ceiling or blanket garbage-collector adequacy claim is introduced.
+The paged owner implements the representation, admission owns the actual
+scheduler/callback join, and the runtime owner supplies the matching evidence.
