@@ -1,8 +1,11 @@
 (in-package "ACL2")
 (include-book "../../books/snapshot-row-source-remap")
+(include-book "../../books/stx-keyring-records")
+(defconst *osmt-binding*
+ (fn-ab-make :native-source (append *fn-ab-subject-head* (make-list 32 :initial-element 0))))
 (defconst *osmt-wire*
  (fn-record-make 0 0 0 "<one@example>" '(1 2 3) '("fn.test")
-                 "p" "c" "r" 1 841000000))
+                 "p" "c" "r" 1 841000000 *osmt-binding*))
 (defconst *osmt-held* (fn-held-plain *osmt-wire* 65536))
 (defconst *osmt-keyring* (fn-stxk-make 7 6 1 7 '(116 101 115 116) '(1 2 3 4)))
 ; A shape-only composite wrapper checks shallow dispatch and statement
@@ -15,11 +18,13 @@
       (mv-let (mapped next) (fn-osm-row-source (list :resident *osmt-held*) 0)
         (and (equal next 1) (fn-held-p (cadr mapped))
              (equal (fn-held-payload (cadr mapped)) 0)
+             (equal (fn-held-binding (cadr mapped)) *osmt-binding*)
              (equal (fn-orm-tail 5 (cadr mapped)) (fn-orm-tail 5 *osmt-held*))))
       (mv-let (mapped next) (fn-osm-row-source (list :resident *osmt-composite*) 1)
         (and (equal next 2)
              (equal (fn-hstxa-stxa (cadr mapped)) :original-statement)
-             (equal (fn-held-payload (fn-hstxa-held (cadr mapped))) 1)))))
+             (equal (fn-held-payload (fn-hstxa-held (cadr mapped))) 1)
+             (equal (fn-held-binding (fn-hstxa-held (cadr mapped))) *osmt-binding*)))))
 ; No duplicate offer or completion advances either counter.
 (defconst *osmt-source* '(9 (12 2) 0 0))
 (defconst *osmt-begin* (fn-osm-begin *osmt-source*))

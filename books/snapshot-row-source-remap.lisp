@@ -2,19 +2,19 @@
 ; separate core counters. A pending row advances only after its consumer ACK.
 (in-package "ACL2")
 (include-book "snapshot-held-remap")
-(include-book "store-events")
+(include-book "held-composite-fields")
 (include-book "snapshot-decode-remap")
 (include-book "snapshot-source-token")
 (defun fn-osm-resident-held-headp (row)
   (declare (xargs :guard t))
-  (and (consp row) (natp (car row)) (consp (fn-orm-tail 14 row))))
+  (and (consp row) (natp (car row)) (consp (fn-orm-tail 15 row))))
 (defun fn-osm-node-held-headp (node)
   (declare (xargs :guard t))
   (let ((tag (fn-hdc-car node)))
     (and (fn-omk-widthp tag 2) (eq (fn-omk-at 0 tag) :atom)
-         (natp (fn-omk-at 1 tag)) (fn-odm-prefixp 15 node))))
+         (natp (fn-omk-at 1 tag)) (fn-odm-prefixp 16 node))))
 ; The captured Store event relation supplies grammar. Ordinary retained
-; rows have a natural sequence head and at least fifteen cells. Short
+; rows have a natural sequence head and at least sixteen cells. Short
 ; numeric-headed keyring/topic events are excluded by that fixed prefix.
 ; Fixed HSTXA normalization supplies the composite head. Terminal NIL
 ; may remain a borrowed symbol/octet span, so no raw-tail NIL test is used.

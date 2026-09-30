@@ -1785,3 +1785,5 @@ constant work for further passes; a premature restart refuses. Provider row corr
 complete source refinement remain required before producer completion.
 
 The low fixed-prefix held remap now preserves mandatory held16 binding in the borrowed suffix. Exact source-only evidence is `planning/evidence/snapshot-held16-tail-source-2026-09-30/coordinate.json`; the full resident/decoded row dispatcher migration and Store/physical alpha composition remain open. The actual unconditional wire-projection statement was preserved.
+
+The actual source-remap controller now checks sixteen held-prefix cells in both resident and decoded paths and preserves the mandatory binding tail; a narrow exact composite-fields leaf replaces its broad Store dependency. Source evidence `planning/evidence/snapshot-row16-source-2026-09-30/coordinate.json` does not qualify captured Store grammar or full physical remap alpha.
