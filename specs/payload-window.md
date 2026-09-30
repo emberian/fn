@@ -287,6 +287,7 @@ domain from its entry index and two pointwise octet reads: both offsets are
 within the fixed3494-byte Huffman table, high-byte multiplication is at most
 65280 and the actual assembled value is natural below65536. These are the
 existing decoder table representation sizes, not a stored-data ceiling.
-Five complete literal guarded-positive and retained-premise removal teeth
-accompany the actual helper theorem. No table scan, invented primitive count,
+A complete positive produced by actual reset/input-pull/fixed-header action,
+four retained-premise removals and a separately labeled corrupted maximal-octet
+representation witness accompany the actual helper theorem. No table scan, invented primitive count,
 compiled getter/arithmetic allocation or whole-job tariff is asserted.
