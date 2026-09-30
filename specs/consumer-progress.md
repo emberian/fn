@@ -888,3 +888,12 @@ The current fixed CPE grammar has a scalar exact encoded charge in
 `fn-cec-event-charge`, corresponding to `fn-cpe-encode` without allocating
 the encoding for admission. This does not authorize remote/staged event tags
 or establish their canonical retained-context demand.
+
+The existing CPE native publication path now consumes
+`fn-cpb-event-verdict-carried` through
+`fn-owner-consumer-publication-verdict` before frontier allocation.
+Its payload charge equals the maintained Store history row charge, while
+retaining all existing release debt and the maintenance reserve. The atomic
+prepared-event/completion pipeline still owns durable acceptance. This
+preflight does not establish physical-frame or canonical allocation funding,
+and remote/staged events remain unavailable until those producers agree.

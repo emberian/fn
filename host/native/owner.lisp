@@ -2137,7 +2137,11 @@ reason before any Store call.  An ordinary article's groups are unchanged."
 (defun fnn-owner-consumer-commit (service event)
   "Publish one ACL2-constructed consumer event through the durable Store gate."
   (let ((store (fnn-owner-service-store service)))
-    (fnn-owner-preflight-publication service :consumer)
+    ;; ACL2 admits the actual constructed event charge against the current
+    ;; carried profile before allocating a transaction/frontier reservation.
+    (unless (eq (fnn-owner-core 'fn-owner-consumer-publication-verdict event)
+                :admissible)
+      (fnn-refuse "Store transaction budget refuses consumer transaction"))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
           (*fnn-finish-callback* #'fnn-owner-finish))
       (fnn-advance-frontier store

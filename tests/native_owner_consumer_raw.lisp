@@ -6,13 +6,9 @@
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
 
-;; The deployed forms this boundary runs, loaded by name so a rename fails
-;; here rather than leaving a stale stub in its place.  Since m5-capacity
-;; (ce27b18d) the host holds no count and no bound: the capacity refusal is
-;; the owner's verdict, asked by the deployed fnn-owner-preflight-publication
-;; (host/native/owner.lisp) through fn-owner-publication-verdict
-;; (host/owner-host.lisp), whose word is books/store-capacity-vector.lisp
-;; fn-cvec-verdict-at's.  Both are loaded here; only the ACL2 call is recorded.
+;; The deployed native wrapper calls the ACL2 actual-event verdict before
+;; taking a transaction ID. This test records ordering and preserves the
+;; opaque event identity; source ACL2 tests establish charge correspondence.
 (defun load-deployed-forms (path wanted)
   (let ((missing (copy-list wanted)))
     (with-open-file (stream path)
@@ -45,37 +41,7 @@
         ((consp tree) (append (keyword-leaves (car tree)) (keyword-leaves (cdr tree))))
         (t nil)))
 
-;; ACL2's verdict words.  The host's verdict call is fn-pvc-verdict-carried
-;; (books/store-profile-carried.lisp, the profile's carried constants; PRF-284),
-;; which KEYSTONE fn-pvc-verdict-carried-is-cvec-verdict-at equates with
-;; fn-cvec-verdict-at (the capacity vector over fn-sbud-verdict-at, PRF-138):
-;; :admissible when the record fits with the release's room kept and one other
-;; word otherwise; that word is the one the owner hands the host at capacity.
-;; Its body also names the kind :release, which is no verdict word.
-(defun read-acl2-defthm (path name)
-  "The form (defthm NAME ...) of the ACL2 file PATH, read, never evaluated."
-  (with-open-file (stream path)
-    (loop for form = (read stream nil :eof)
-          until (eq form :eof)
-          when (and (consp form) (eq (car form) 'defthm) (eq (cadr form) name))
-            do (return form)
-          finally (error "~a has no defthm ~a" path name))))
-(defparameter *verdict-words*
-  (let ((host (read-acl2-defun "host/owner-host.lisp" 'fn-owner-publication-verdict))
-        (bridge (read-acl2-defthm "books/store-profile-carried.lisp"
-                                  'fn-pvc-verdict-carried-is-cvec-verdict-at))
-        (book (read-acl2-defun "books/store-capacity-vector.lisp" 'fn-cvec-verdict-at)))
-    (unless (tree-mentions (cdddr host) 'fn-pvc-verdict-carried)
-      (error "fn-owner-publication-verdict no longer answers fn-pvc-verdict-carried's word"))
-    (unless (and (tree-mentions bridge 'fn-pvc-verdict-carried)
-                 (tree-mentions bridge 'fn-cvec-verdict-at))
-      (error "fn-pvc-verdict-carried-is-cvec-verdict-at no longer equates the two"))
-    (let ((words (remove :release
-                         (remove :guard (remove-duplicates (keyword-leaves (car (last book))))))))
-      (unless (and (= (length words) 2) (member :admissible words))
-        (error "fn-cvec-verdict-at's words changed: ~s" words))
-      words)))
-(defparameter *at-capacity* (car (remove :admissible *verdict-words*)))
+(defparameter *at-capacity* :unaffordable)
 
 (defvar *fnn-observe-callback* nil)
 (defvar *fnn-finish-callback* nil)
@@ -84,16 +50,17 @@
 (defvar *verdict* :admissible)
 (defstruct mock-service store)
 (define-condition consumer-refusal (error) ())
+(define-condition consumer-indeterminate (error) ())
 (defun fnn-refuse (&rest args) (declare (ignore args)) (error 'consumer-refusal))
 (defun fnn-indeterminate (&rest args) (declare (ignore args))
-  (error "indeterminate consumer publication"))
+  (error 'consumer-indeterminate))
 (defun fnn-owner-service-store (service) (mock-service-store service))
 (defun fnn-owner-observe (&rest args) (declare (ignore args)) nil)
 (defun fnn-owner-finish (&rest args) (declare (ignore args)) nil)
 (defun fnn-owner-core (name &rest args)
   (push (list* :core name args) *calls*)
   (case name
-    (fn-owner-publication-verdict *verdict*)
+    (fn-owner-consumer-publication-verdict *verdict*)
     (fn-owner-next-txid 7)
     (otherwise (error "wrong core call ~s" name))))
 (defun fnn-nat (x) (unless (and (integerp x) (<= 0 x)) (error "not nat")) x)
@@ -108,11 +75,39 @@
   (declare (ignore service)) (push (list :publish label) *calls*) :durable)
 
 (load-deployed-forms "host/native/owner.lisp"
-                     '((defun fnn-owner-preflight-publication)
-                       (defun fnn-owner-consumer-commit)))
+                     '((defun fnn-owner-consumer-commit)))
 
 (defun check (condition description)
   (unless condition (error "~a" description)))
+
+;; Load the actual ACL2-mode wrapper body in a recording host harness.
+;; Only stobj/ACL2 declaration syntax is removed. The proved ACL2 charge and
+;; budget decisions are opaque stubs here: this tests argument routing and
+;; cached history/debt plumbing, not their mathematics or guard translation.
+(defmacro mv-let (bindings expression &body body)
+  `(multiple-value-bind ,bindings ,expression ,@body))
+(defun mv (&rest values) (values-list values))
+(defvar *budget-input* nil)
+(defun fn-owner-record-octets (hist state) (values 100 hist state))
+(defun fn-owner-record-debt (hist state) (values 2 hist state))
+(defun fn-owner-store (state) (declare (ignore state)) :store)
+(defun fn-owner-profile-carry (state) (declare (ignore state)) :carry)
+(defun fn-owner-store-profile (state) (declare (ignore state)) :profile)
+(defun fn-sn-files (store) (declare (ignore store)) :files)
+(defun fn-sf-records-count (files) (declare (ignore files)) 3)
+(defun fn-cpb-event-verdict-carried (&rest args)
+  (setf *budget-input* args) :admissible)
+(let* ((form (read-acl2-defun "host/owner-host.lisp"
+                              'fn-owner-consumer-publication-verdict))
+       (body (remove-if (lambda (x) (and (consp x) (eq (car x) 'declare)))
+                        (cdddr form))))
+  (eval (list* 'defun (second form) (third form) body)))
+(multiple-value-bind (error verdict hist state)
+    (fn-owner-consumer-publication-verdict :event :hist :state)
+  (check (and (null error) (eq verdict :admissible) (eq hist :hist)
+              (eq state :state)
+              (equal *budget-input* '(:carry :profile 3 100 2 :event)))
+         "owner actual-event verdict misrouted current profile/count/bytes/debt/charge"))
 
 (let* ((event '(:consumer :opaque-acl2-event))
        (service (make-mock-service :store :store)))
@@ -120,7 +115,7 @@
   (check (eq (fnn-owner-consumer-commit service event) :durable)
          "prepared event did not become durable")
   (check (equal (reverse *calls*)
-                (list '(:core fn-owner-publication-verdict :consumer)
+                (list (list :core 'fn-owner-consumer-publication-verdict event)
                       '(:core fn-owner-next-txid)
                       '(:advance 7)
                       (list :action 'fn-owner-prepare-consumer event)
@@ -132,21 +127,23 @@
                        (error "refused event published"))
     (consumer-refusal () nil))
   (check (equal (reverse *calls*)
-                (list '(:core fn-owner-publication-verdict :consumer)
+                (list (list :core 'fn-owner-consumer-publication-verdict event)
                       '(:core fn-owner-next-txid)
                       '(:advance 7)
                       (list :action 'fn-owner-prepare-consumer event)
                       '(:action fn-owner-refuse-reservation)))
          "refused reservation was not consumed before refusal")
 
-  ;; At capacity the owner's verdict is fn-cvec-verdict-at's refusing word: the
-  ;; deployed preflight refuses on it before a transaction id is taken, the
-  ;; frontier advanced or anything prepared.
-  (setf *verdict* *at-capacity* *prepare-result* :prepared *calls* nil)
-  (handler-case (progn (fnn-owner-consumer-commit service event)
-                       (error "capacity refusal missed"))
-    (consumer-refusal () nil))
-  (check (equal (reverse *calls*)
-                '((:core fn-owner-publication-verdict :consumer)))
-         "capacity refusal advanced the frontier or was not the owner's verdict"))
+  ;; Every non-admissible verdict refuses before the frontier, including a
+  ;; missing/malformed result. The host cannot turn an unknown word into an
+  ;; admitted event or spend a reservation to discover budget refusal.
+  (dolist (verdict (list *at-capacity* nil :unexpected))
+    (setf *verdict* verdict *prepare-result* :prepared *calls* nil)
+    (handler-case (progn (fnn-owner-consumer-commit service event)
+                         (error "capacity refusal missed"))
+      (consumer-refusal () nil))
+    (check (equal (reverse *calls*)
+                  (list (list :core 'fn-owner-consumer-publication-verdict event)))
+           "capacity refusal advanced the frontier or was not the owner's verdict")))
+
 (format t "native owner consumer boundary passed~%")

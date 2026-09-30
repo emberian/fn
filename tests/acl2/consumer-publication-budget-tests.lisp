@@ -53,3 +53,42 @@
                                     10 100000 0 0) :unaffordable)
       (equal (fn-cpb-verdict-carried *cpbt-carry* *cpbt-profile*
                                     -1 100000 0 1024) :unaffordable)))
+
+; Complete literal antecedent/conclusion for the actual event decision and
+; the maintained Store history-row charge. No physical frame/canonical claim.
+(defconst *cpbt-event* (fn-cpe-make 0 0 0 '(:bootstrap (1) (2))))
+(assert-event
+ (and (equal (fn-cpb-event-verdict-carried *cpbt-carry* *cpbt-profile*
+                                          10 100000 1 *cpbt-event*) :admissible)
+      (fn-cpe-eventp *cpbt-event*)
+      (equal (fn-cec-event-charge *cpbt-event*) (fn-sbud-row-octets *cpbt-event*))
+      (posp (fn-sbud-row-octets *cpbt-event*))
+      (fn-pvc-history-admissiblep *cpbt-v* *cpbt-profile* 100000
+                                   (fn-sbud-row-octets *cpbt-event*))
+      (fn-pvc-roomp *cpbt-v* *cpbt-profile* 11
+                     (+ 100000 (fn-sbud-row-octets *cpbt-event*))
+                     (fn-cvec-debt-step :consumer 1))))
+(assert-event
+ (and (not (fn-cpe-eventp '(:consumer 1 1 1 (:remote-register))))
+      (equal (fn-cpb-event-verdict-carried *cpbt-carry* *cpbt-profile*
+                10 100000 1 '(:consumer 1 1 1 (:remote-register))) :unaffordable)))
+
+; Exact event charge admits a complete small publication that a fixed512
+; estimate refuses, while retaining the same maintenance-release room.
+(assert-event
+ (let* ((charge (fn-cec-event-charge *cpbt-event*))
+        (bytes (- *cpbt-h* (+ charge (fn-smr-reserve-octets)))))
+   (and (fn-cpe-eventp *cpbt-event*) (equal charge 22) (natp bytes)
+        (equal (fn-pvc-verdict-carried *cpbt-carry* *cpbt-profile*
+                                       :consumer 10 bytes 0) :unaffordable)
+        (equal (fn-cpb-event-verdict-carried *cpbt-carry* *cpbt-profile*
+                                             10 bytes 0 *cpbt-event*) :admissible)
+        (fn-pvc-roomp *cpbt-v* *cpbt-profile* 11 (+ bytes charge) 0))))
+; Remove admission: a valid event at full H affirmatively fails the actual
+; history-fit conclusion. No proof-search refusal is used as a witness.
+(assert-event
+ (and (fn-cpe-eventp *cpbt-event*)
+      (equal (fn-cpb-event-verdict-carried *cpbt-carry* *cpbt-profile*
+                                           10 *cpbt-h* 0 *cpbt-event*) :unaffordable)
+      (not (fn-pvc-history-admissiblep *cpbt-v* *cpbt-profile* *cpbt-h*
+                                      (fn-sbud-row-octets *cpbt-event*)))))

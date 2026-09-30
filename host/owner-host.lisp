@@ -132,6 +132,9 @@
 ; (fn-pvc-make; fn-pvc-article-budget-carried, fn-pvc-verdict-carried,
 ; fn-pvc-post-boundary-carried).
 (include-book "../books/store-profile-carried")
+; Consumer event actual encoded charge, admitted before frontier allocation.
+(include-book "../books/consumer-event-charge")
+(include-book "../books/consumer-publication-budget")
 ; The served POST's admission with the keyed Message-ID index (fn-pak-).
 (include-book "../books/post-admission-keyed")
 (include-book "../books/checkpoint-auxiliary")
@@ -1229,6 +1232,21 @@
                                        (fn-owner-store-profile state) kind
                                        (fn-sf-records-count (fn-sn-files s)) bytes debt)
                fn-hist state)))))
+
+; Exact current CPE encoded charge, not the historical fixed512 ceiling.
+; The cached history/debt getters are shared with all owner publications.
+; Invalid or not-yet-supported event tags have zero charge and are refused.
+; Variable remote/account schemas remain unavailable until funded constructors
+; and canonical carries are installed; this does not enable a remote endpoint.
+(defun fn-owner-consumer-publication-verdict (event fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
+    (mv-let (debt fn-hist state) (fn-owner-record-debt fn-hist state)
+      (let ((s (fn-owner-store state)))
+        (mv nil (fn-cpb-event-verdict-carried
+                 (fn-owner-profile-carry state) (fn-owner-store-profile state)
+                 (fn-sf-records-count (fn-sn-files s)) bytes debt event)
+            fn-hist state)))))
 
 ; The identity preflight's verdict on one ACL2-constructed EVENT (lane
 ; bp-retention-leftovers).  Its kind is the WIRE event's
