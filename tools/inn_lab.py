@@ -148,6 +148,7 @@ INN_STREAM_ID = "<inn-lab-inn-stream-{tag}@example.invalid>"
 INN_CANCEL_TARGET_ID = "<inn-lab-cancel-target-{tag}@example.invalid>"
 INN_CANCEL_BAD_ID = "<inn-lab-cancel-wrong-{tag}@example.invalid>"
 INN_CANCEL_GOOD_ID = "<inn-lab-cancel-good-{tag}@example.invalid>"
+FN_THROTTLE_ID = "<inn-lab-throttle-{tag}@example.invalid>"
 FN_EXPIRE_ID = "<inn-lab-expire-{tag}@example.invalid>"
 FN_DIST_WORLD_ID = "<inn-lab-dist-world-{tag}@example.invalid>"
 FN_DIST_MATCH_ID = "<inn-lab-dist-match-{tag}@example.invalid>"
@@ -157,7 +158,7 @@ ID_TEMPLATES = ("FED_ID", "LOOP_ID", "LOOP2_ID", "FN_POST_ID", "FN_OPERATOR_ID",
                 "FN_LOOP_ID", "FN_FROM_ID", "FN_PATH_ID", "FN_STREAM_ID", "INN_STREAM_ID",
                 "FN_DIST_WORLD_ID", "FN_DIST_MATCH_ID", "FN_DIST_NONE_ID",
                 "FN_PROTECTED_ID", "INN_CHECKGROUPS_ID", "INN_CANCEL_TARGET_ID",
-                "INN_CANCEL_BAD_ID", "INN_CANCEL_GOOD_ID", "FN_EXPIRE_ID", "ABSENT_ID")
+                "INN_CANCEL_BAD_ID", "INN_CANCEL_GOOD_ID", "FN_EXPIRE_ID", "FN_THROTTLE_ID", "ABSENT_ID")
 
 
 def message_ids(tag: str) -> dict:
@@ -853,11 +854,11 @@ def pump(source, sink, pair, conn, way):
             data = source.recv(65536)
             if not data:
                 break
-            note(t=time.time(), pair=pair, conn=conn, way=way,
+            note(t=time.time(), mono=time.monotonic(), pair=pair, conn=conn, way=way,
                  data=base64.b64encode(data).decode())
             sink.sendall(data)
     except Exception as error:
-        note(t=time.time(), pair=pair, conn=conn, way=way, error=repr(error))
+        note(t=time.time(), mono=time.monotonic(), pair=pair, conn=conn, way=way, error=repr(error))
     finally:
         for one in (source, sink):
             try:
@@ -970,6 +971,8 @@ class InnLab(deploy_gate.DeployGate):
         "innfeed-feeds-fn": (
             "INN's innfeed offered an article to fn and fn took it (238/239 or "
             "335/235)", ("",)),
+        "inn-throttle-blocked": ("INN actual 400 dials back off while fn retains an accepted source and offers no bytes", ("",)),
+        "inn-throttle-resumed": ("the queued source survives fn cold restart and actual feed delivery resumes after INN go", ("",)),
         "inn-cancel-key": ("actual innfeed preserves target/key traffic; wrong key retains bytes and correct key withdraws only on fn", ("",)),
         "inn-cancel-restart": ("the transported cancellation remains withdrawn after fn SIGTERM/recover/restart", ("",)),
         "inn-expiry-restart": ("fn retains the same bytes after INN expiry and fn SIGTERM/recover/restart", ("",)),
@@ -1045,7 +1048,8 @@ class InnLab(deploy_gate.DeployGate):
                  lab_root=DEFAULT_LAB_ROOT, native_openssl_prefix=None,
                  extra_overlays=(), feed_wait=90, inn_streaming=False, inn_distribution=False,
                  inn_security=False, inn_security_port=INN_SECURITY_PORT,
-                 inn_security_feed=False, inn_controls=False, inn_cancel=False, inn_expiry=False, **kwargs):
+                 inn_security_feed=False, inn_controls=False, inn_cancel=False, inn_expiry=False,
+                 inn_throttle=False, **kwargs):
         super().__init__(*args, **kwargs)
         if not native_image:
             raise GateError("the fn side is the native image or the lab does not run "
@@ -1059,6 +1063,10 @@ class InnLab(deploy_gate.DeployGate):
         self.inn_controls = inn_controls
         self.inn_cancel = inn_cancel
         self.inn_expiry = inn_expiry
+        self.inn_throttle = inn_throttle
+        if not inn_throttle:
+            self.ASSERTIONS = {name: value for name, value in self.ASSERTIONS.items()
+                               if not name.startswith("inn-throttle-")}
         for selected, key in ((inn_cancel, "inn-cancel-key"), (inn_expiry, "inn-expiry-local")):
             if not selected:
                 self.ASSERTIONS = {name: value for name, value in self.ASSERTIONS.items() if name not in (key, "inn-cancel-restart" if key == "inn-cancel-key" else "inn-expiry-restart")}
@@ -1082,7 +1090,8 @@ class InnLab(deploy_gate.DeployGate):
                 (inn_streaming, "both actual streaming feeds and duplicate retry"),
                 (inn_distribution, "per-peer Distribution positive/excluded controls"),
                 (inn_cancel, "transported Cancel-Key with INN docancels none"),
-                (inn_expiry, "isolated INN expiry with default fn retention")):
+                (inn_expiry, "isolated INN expiry with default fn retention"),
+                (inn_throttle, "INN 400/backoff and restart/go/resume")):
             if enabled:
                 selected_scopes.append(label)
         if selected_scopes:
@@ -2599,6 +2608,116 @@ printf '{group}\\n' | "$P/bin/expireover" -f - -Z {run}/expiry.lowmark
             self.check(key, ok, "fn lifecycle result changed after cold reopen",
                        observed=str(back.get("article", "")))
 
+    @staticmethod
+    def temporary_dials(text, pair):
+        """One complete 400 greeting and its first observation time per dial."""
+        streams, stamps = {}, {}
+        for line in text.splitlines():
+            try:
+                row = json.loads(line)
+            except ValueError:
+                continue
+            if row.get("pair") != pair or row.get("way") != "server" or "data" not in row:
+                continue
+            conn = row["conn"]
+            stamps.setdefault(conn, row.get("mono"))
+            streams[conn] = streams.get(conn, b"") + base64.b64decode(row["data"])
+        out = []
+        for conn in sorted(streams):
+            lines = _crlf_lines(streams[conn])
+            if lines and lines[0].split()[:1] == [b"400"]:
+                stamp = stamps[conn]
+                if isinstance(stamp, (int, float)) and not isinstance(stamp, bool):
+                    out.append((stamp, lines[0].decode("utf-8", "replace")))
+        return out
+
+    def wait_temporary_dials(self, prior):
+        clock = time.monotonic()
+        pair = "{}>{}".format(self.tap_out_port, self.inn_port)
+        dials = []
+        while time.monotonic() - clock <= self.feed_wait:
+            self.read_tap()
+            if not self.tap_text.startswith(prior):
+                break
+            dials = self.temporary_dials(self.tap_text[len(prior):], pair)
+            if len(dials) >= 2:
+                break
+            time.sleep(2)
+        self.steps.append(Step("INN temporary feed dials", "read relay log after ctlinnd throttle", 0,
+                               json.dumps(dials), time.monotonic() - clock, "", None))
+        return dials
+
+    def scenario_throttle(self):
+        """SCN-1062: real INN temporary failure, durable queue replay, then go."""
+        self.read_tap()
+        prior = self.tap_text
+        reason = "fn-inn-lab-" + self.tag
+        throttled = self.sh("throttle scratch INN", "{} -t 10 throttle '{}'".format(
+            self.bin("ctlinnd"), reason), expect=None)
+        if throttled.rc != 0:
+            for key in ("inn-throttle-blocked", "inn-throttle-resumed"):
+                self.record(key, deploy_gate.NOT_EXERCISED,
+                            "ctlinnd throttle was refused", blocker=throttled.first_line)
+            return
+        blocked, reopened, stored, go = False, False, b"", None
+        msgid = self.ids["FN_THROTTLE_ID"]
+        try:
+            source = article(msgid, "queued across actual INN throttle", self.date)
+            path = self.put_article("throttle", source)
+            entry = self.payload(self.drive_inn("post", "--port {} --msgid '{}' --file {}".format(
+                self.fn_port, msgid, path), name="POST while INN is throttled"))
+            stored = self.octets_of(entry)
+            dials = self.wait_temporary_dials(prior)
+            offered = find_exchange(self.tap_text[len(prior):],
+                                    "{}>{}".format(self.tap_out_port, self.inn_port), msgid)
+            source_diff = header_differences(source, stored)
+            blocked = (str(entry.get("result", "")).startswith("240")
+                       and str(entry.get("article", "")).startswith("220") and bool(stored)
+                       and header_value(stored, "Message-ID") == msgid and offered is None
+                       and source_diff["body_identical"] and not source_diff["changed"]
+                       and not source_diff["only_first"]
+                       and len(dials) >= 2 and dials[1][0] - dials[0][0] >= 0.8)
+            self.check("inn-throttle-blocked", blocked,
+                       "actual INN400/retry delay or retained local acceptance was not observed",
+                       observed="POST {}; ARTICLE {}; dials {}; offers {}".format(
+                           entry.get("result"), entry.get("article"), dials, self.reply_summary(offered)))
+            if blocked:
+                stopped = self.stop_fn("SIGTERM fn with INN still throttled")
+                recover = self.sh("recover fn pending feed", self.cd(self.operator("recover")),
+                                  timeout=1800, expect=None)
+                reopened = ("OWNER-GONE" in stopped.output and recover.rc == 0
+                            and self.start_fn("after-throttle"))
+                if reopened:
+                    after = self.payload(self.drive_inn("fetch", "--port {} --msgid '{}'".format(
+                        self.fn_port, msgid), name="fn queued source after cold reopen"))
+                    reopened = (str(after.get("article", "")).startswith("220")
+                                and self.octets_of(after) == stored)
+        finally:
+            # Leave the persistent lab unthrottled even if fn's observer fails.
+            go = self.sh("unthrottle scratch INN", "{} -t 10 go '{}'".format(
+                self.bin("ctlinnd"), reason), expect=None)
+        if not blocked or not reopened or go.rc != 0:
+            self.record("inn-throttle-resumed", deploy_gate.NOT_EXERCISED,
+                        "actual block, cold pending-source reopen and INN go are all required",
+                        blocker="temporary-failure/reopen/go prerequisite did not complete")
+            return
+        found = self.wait_tap((self.tap_out_port, self.inn_port), msgid, "resume after INN go")
+        back = self.payload(self.drive_inn("fetch", "--port {} --msgid '{}'".format(
+            self.nnrpd_port, msgid), name="INN source after go"))
+        fed, received = (found or {}).get("article") or b"", self.octets_of(back)
+        transfer_ok = bool(found and ((found["verbs"] == ["IHAVE"]
+            and found["offer"].startswith("335") and found["result"].startswith("235"))
+            or streaming_transfer_completed(found, msgid)))
+        ok = (transfer_ok and bool(fed) and bool(received)
+              and str(back.get("article", "")).startswith("220")
+              and header_value(fed, "Message-ID") == msgid
+              and header_value(received, "Message-ID") == msgid
+              and relay_changes_permitted(header_differences(stored, fed))
+              and relay_changes_permitted(header_differences(fed, received)))
+        self.check("inn-throttle-resumed", ok,
+                   "queued source did not resume through the actual feed with exact receiver content",
+                   observed=self.reply_summary(found))
+
     # -- the whole lab ----------------------------------------------------
     def execute(self):
         self.preflight()
@@ -2636,6 +2755,8 @@ printf '{group}\\n' | "$P/bin/expireover" -f - -Z {run}/expiry.lowmark
             self.scenario_cancel()
         if self.inn_expiry:
             self.scenario_expiry()
+        if self.inn_throttle:
+            self.scenario_throttle()
         if self.inn_security_feed:
             self.scenario_protected_feed()
         self.scenario_fn_term()
@@ -2703,6 +2824,8 @@ def main(argv=None) -> int:
     parser.add_argument("--inn-security", action="store_true",
                         help="add certificate-verified STARTTLS and USER/PASS reader "
                              "checks; requires a separate TLS-capable --inn-prefix")
+    parser.add_argument("--inn-throttle", action="store_true",
+                        help="actual INN 400/backoff then native restart/go/resumed actual feed")
     parser.add_argument("--inn-cancel", action="store_true",
                         help="carry actual wrong/right Cancel-Key control traffic through INN innfeed")
     parser.add_argument("--inn-expiry", action="store_true",
@@ -2762,7 +2885,7 @@ def main(argv=None) -> int:
                  inn_streaming=args.inn_streaming, inn_distribution=args.inn_distribution,
                  inn_security=args.inn_security, inn_security_port=args.inn_security_port,
                  inn_security_feed=args.inn_security_feed, inn_controls=args.inn_controls,
-                 inn_cancel=args.inn_cancel, inn_expiry=args.inn_expiry)
+                 inn_cancel=args.inn_cancel, inn_expiry=args.inn_expiry, inn_throttle=args.inn_throttle)
     started = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     clock = time.monotonic()
     failure = None

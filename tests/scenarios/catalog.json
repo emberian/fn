@@ -7176,7 +7176,7 @@
       ],
       "expected": [
         "All local POSTs return240 and retain the exact subject, Distribution and body.",
-        "Matching and absent controls complete335/235 or subject-matched238/239, with only Path/Xref differences.",
+        "Matching and absent controls complete 335/235 or subject-matched 238/239, with only Path/Xref differences.",
         "World is never offered, INN answers430 and fn serves unchanged220 bytes. Failed positive controls cannot establish exclusion."
       ],
       "evidence": [
@@ -7241,6 +7241,34 @@
         "planning/evidence/peering-inn-lifecycle-source-2026-09-30.json"
       ],
       "execution_scope": "Source-present observer only. Scripted peers/local shell tests do not establish actual INN/native behavior. No matching current executable exists; original Q12 criteria remain open."
+    },
+    {
+      "id": "SCN-1062",
+      "title": "Actual INN400/backoff, queued fn cold replay and actual feed delivery after ctlinnd go",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-045"
+      ],
+      "steps": [
+        "Select --inn-throttle before protected injection pauses the clear feed; record the relay prefix, then ctlinnd throttle the owned scratch INN.",
+        "POST a fresh subject to native fn; require local 240/220 and unchanged authored fields/body, two actual INN 400 greetings on new feed dials, at least 0.8 seconds between monotonic observations, and no offer for that subject.",
+        "SIGTERM/recover/restart fn while INN remains throttled; fetch exact queued-source bytes from the new view.",
+        "Always run ctlinnd go with the same reason, including observer failure; then require the actual fn feed and exact INN readback."
+      ],
+      "expected": [
+        "Rejected throttle prevents source submission; a failed temporary-failure/reopen/go prerequisite is NOT EXERCISED for the dependent resume row.",
+        "INN400 is observed, rather than inferred from absent delivery. The retry-delay measurement is external evidence for the peer-add 1000 ms profile, with 0.2 second tolerance; it is not an ACL2 timing theorem.",
+        "The actual queued-source publication must survive cold restart and cross the actual outbound feed after go with matching Message-ID and unchanged body/fields except Path/Xref.",
+        "No scripted server, direct relay client or socket ACK stands in for the native feed. No 431/436 mid-body/capacity or power-loss claim."
+      ],
+      "evidence": [
+        "tools/inn_lab.py",
+        "tests/test_inn_lab.py",
+        "docs/interop-inn.md",
+        "planning/evidence/peering-inn-throttle-source-2026-09-30.json"
+      ],
+      "execution_scope": "Source-present actual-INN observation stage; local scripted fixture accounting only. No matching current native executable exists; actual INN/native NOT RUN. Original bidirectional S9 and all eight Q12 anchors remain open."
     }
   ]
 }

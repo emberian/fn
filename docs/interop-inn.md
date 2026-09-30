@@ -463,3 +463,25 @@ protected-injection phase pauses the clear feed. The driver orders them
 that way when combined. The new shell-policy and mutation tests exercise
 the harness only. Real pinned INN and a source-matched native executable
 are still required; all original eight Q12 criteria remain open.
+
+
+## Actual INN temporary refusal and queued-source replay
+
+`--inn-throttle` selects SCN-1062. The lab records its prior relay prefix,
+throttles the owned scratch INN and POSTs a fresh source through native fn.
+It requires local 240/220, two actual 400 greetings on new feed dials and no
+offer of that fresh subject. The relay records monotonic stamps; the
+observed retry delay must be at least 0.8 seconds for the peer's 1000 ms
+initial-backoff profile (0.2 second lab tolerance).
+
+fn then stops, recovers and restarts while INN remains throttled. Its
+source must read back byte-identical before `ctlinnd go` resumes INN with
+the same reason. The actual outbound feed must complete, and INN must
+serve the exact subject/body/fields apart from Path/Xref. The finally arm
+attempts `go` even when observation fails. The local INN control operation
+follows its primary [ctlinnd manual](https://www.eyrie.org/~eagle/software/inn/docs-2.7/ctlinnd.html).
+
+This is a source-present actual-peer test stage. Scripted accounting tests
+are not an INN/native verdict. The original reverse-capacity 431/436,
+body-interruption/power-loss cases, and every original Q12 anchor remain
+open pending their own complete executable evidence.
