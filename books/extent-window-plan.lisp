@@ -6,11 +6,11 @@
 (in-package "ACL2")
 (include-book "packed-octets")
 
-; State = (phase file eoff elen woff wn expected pos ticket incarnation lease).
+; State = (phase file eoff elen woff wn expected pos ticket incarnation lease poff plen offset).
 ; WOFF is absolute within the protected prefix, not a file offset.
-(defun fn-ewp-state (phase file eoff elen woff wn expected pos ticket incarnation lease)
+(defun fn-ewp-state (phase file eoff elen woff wn expected pos ticket incarnation lease poff plen offset)
   (declare (xargs :guard t))
-  (list phase file eoff elen woff wn expected pos ticket incarnation lease))
+  (list phase file eoff elen woff wn expected pos ticket incarnation lease poff plen offset))
 
 (defun fn-ewp-begin (file eoff elen poff plen offset ticket incarnation lease expected)
   (declare (xargs :guard (and (natp file) (natp eoff) (natp elen)
@@ -20,8 +20,8 @@
            (<= offset plen))
       (fn-ewp-state (if (zp elen) :trailer :scan)
                     file eoff elen (+ (- poff eoff) offset)
-                    (min 16384 (- plen offset)) expected 0 ticket incarnation lease)
-    (fn-ewp-state :bounds file eoff elen 0 0 expected 0 ticket incarnation lease)))
+                    (min 16384 (- plen offset)) expected 0 ticket incarnation lease poff plen offset)
+    (fn-ewp-state :bounds file eoff elen 0 0 expected 0 ticket incarnation lease poff plen offset)))
 
 (defun fn-ewp-demand (s)
   (declare (xargs :guard (true-listp s)))
@@ -41,7 +41,8 @@
 (defun fn-ewp-with-phase-pos (phase pos s)
   (declare (xargs :guard (true-listp s)))
   (fn-ewp-state phase (nth 1 s) (nth 2 s) (nth 3 s) (nth 4 s) (nth 5 s)
-                (nth 6 s) pos (nth 8 s) (nth 9 s) (nth 10 s)))
+                (nth 6 s) pos (nth 8 s) (nth 9 s) (nth 10 s)
+                (nth 11 s) (nth 12 s) (nth 13 s)))
 
 ; A completion is consumed only for the exact outstanding effect, including
 ; physical incarnation and lease. The caller feeds/copies its bytes BEFORE

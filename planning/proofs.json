@@ -161,7 +161,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-duplicate-accepted-prepare-is-no-op",
         "fn-complete-preserves-existing-message-id-binding",
@@ -560,7 +560,7 @@
         "PRF-001"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-index-build-correspondence",
         "fn-index-range-query-correct"
@@ -594,7 +594,7 @@
         "A-CRYPTO",
         "A-POLICY"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-exchange-merge-idempotent",
         "fn-exchange-merge-commutative-member",
@@ -1556,7 +1556,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "note": "Lane w11/workflow-replay, book books/bp-workflow-replay-status.lisp, teeth in tests/acl2/bp-workflow-records-tests.lisp. The subject of the first two keystones is what host/workflow-host.lisp:63 (fn-workflow-work-status) calls; of the last two, what host/workflow-host.lisp:73 (fn-workflow-work-origin) calls on the list host/workflow-host.lisp:8 records. Certified on hbox, run-20260921T005523Z-05dc, build/acl2/certify-20260921T005528Z-1361353. Before the ION extension, the native workflow host called fn-bprl-replay-journal, which also interprets :undertake and :release; fn-bprl-replay-work-status-is-durable-status-restarted certifies that successful predecessor path, with an extended reachable journal and a malformed-suffix must-fail tooth in tests/acl2/bp-release-tests.lisp (persvati manifests certify-20260923T173933Z-2312844.json and certify-20260923T174038Z-2322911.json). The earlier fn-bp replay theorem remains scoped to its original record language. The :enqueue kind hypothesis of fn-bp-durable-enqueue-after-open-reads-enqueued has a constructed rather than a reached tooth, and the test book says so: fn-bp-prepare-attempt only prepares an attempt for a work the image holds, so the composed machine reaches no :attempt pending over an image that holds none. Current scope correction (2026-09-24): host/workflow-host.lisp fn-workflow-install-replay now calls fn-bpiw-replay-journal, whose mixed FNWF stream includes :ion-route and :ion-observed. The two certified single-record structural projections in books/bp-ion-workflow.lisp do not yet lift the work-status theorem through that complete replay. A named actual-caller correspondence with a reachable mixed-history witness remains open; predecessor certificates do not discharge it. Hence the target is in-progress, while its existing component theorems remain intact. Replay fence (lane ion-replay-fence, 2026-09-24): fn-bpiw-replay-records now reconstructs the unrecorded reopen fence before a :recovery outcome (fn-bpiw-replay-fence, books/bp-ion-workflow.lisp), as fn-bp-replay-records does; before it, a journal holding a recovery outcome could not be reopened and the history preflight refused every recovery outcome (planning/evidence/m4-app-receipt-2026-09-24.md finding 4). The keystone's subject is fn-bpiw-replay-journal, called by host/workflow-host.lisp:13 (fn-workflow-install-replay) and :107 (fn-workflow-preflight-history), against fn-bpiw-apply as host/workflow-host.lisp:112 (fn-workflow-apply-record) calls it; book books/bp-ion-workflow-replay.lisp, teeth in tests/acl2/bp-ion-workflow-replay-tests.lisp (reachable enqueue, attempt and ION-carrying cuts; must-fail without the recovery-outcome and live-acceptance hypotheses; the open-success hypothesis has no separating witness because a failed open's image holds no fence, and the test book shows that refusal). Scope: one recovery outcome applied right after an open; the general live-suffix correspondence across later records is not claimed, and a live re-attempt of a :restart-observed attempt without a journaled retry request is refused by the history (the must-fail witness), which is the host's intended gate. Evidence: planning/evidence/ion-replay-fence-2026-09-24.md.",
       "evidence": [
         "books/bp-workflow-replay-status.lisp",
@@ -2690,7 +2690,7 @@
         "PRF-046"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/tcpcl-delivery.lisp",
         "books/tcpcl-delivery-invariants.lisp",
@@ -5333,7 +5333,7 @@
         "PRF-087"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-arena-seal-keeps-sealed",
         "fn-arena-seals-keep-sealed",
@@ -9034,7 +9034,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-bpah-handoff-report-is-application-disposition",
         "fn-bpah-persist-delivery-reports-the-record",
@@ -9125,7 +9125,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-bpfr-step-resumes",
         "fn-bpfr-run-is-reassemble",
@@ -12315,7 +12315,7 @@
         "PRF-014"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/records-shape.lisp",
         "books/acceptance.lisp",
@@ -12510,7 +12510,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/web-session.lisp",
         "books/web-session-keystones.lisp",
@@ -13756,7 +13756,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/tcpcl-delivery.lisp",
         "books/tcpcl-delivery-invariants.lisp",
@@ -16731,7 +16731,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "title": "The live arena's off-mutex readers pin a generation; a retirement is released only when every live reader pinned after it (row A6, the generation pin)",
       "statement": "Subject (books/arena-reader-pins.lisp): fn-arpn-step, which the host calls for every event of the arena readers' generation state (host/native/io.lisp fnn-arena-pins-step under its own lock; fnn-arena-pin/-unpin around a checkpoint publication's thread, host/native/owner.lisp fnn-owner-maybe-publish and fnn-owner-publish-captured; fnn-arena-retire and fnn-arena-release-due in the COMPLETE's reseat, fnn-log-reseat-fenced; fnn-arena-stamp/-clear-p for the installing reclaim pass). The state is (CUR PINS PEND): the current generation, the live pins as a strictly ascending table of (G . N) with every G <= CUR (fn-arpn-okp, established by fn-arpn-initial and preserved by every event: fn-arpn-step-preserves-okp), and the pending retirements (S . ITEMS). A :pin answers CUR (fn-arpn-pin-answers-the-generation); a :retire stamps CUR, which is at or above every live pin, and advances the generation (fn-arpn-retire-stamp-covers-every-live-pin; fn-arpn-step-generation-never-decreases). KEYSTONE fn-arpn-release-postdates-every-live-pin: every retirement :release answers was pending and its stamp is below every live pin, so no reader live at the retirement is live at its release; fn-arpn-release-keeps-every-covered-retirement: a retirement some live reader is pinned at or below stays pending. Generalizes the single off-mutex reader count (*fnn-arena-off-mutex-readers*, removed): an old retirement is released as soon as the readers older than it end, whatever newer readers run.",
       "evidence": [
@@ -17017,7 +17017,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/tcpcl-octets.lisp",
         "host/tcpcl-host.lisp",
@@ -17375,7 +17375,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/tcpcl-delivery.lisp",
         "tests/acl2/tcpcl-delivery-tests.lisp"
@@ -17772,7 +17772,7 @@
     {
       "id": "PRF-1057",
       "title": "Issued cold page reads retain identity and worker ownership through cancellation and late completion",
-      "statement": "Host/native/extent.lisp fnn-extent-complete-read calls fn-pio-complete. Publication requires its exact immutable token (process-local read ID, original CID, file incarnation ID, offset, length, expected trailer), phase issued and successful full commitment check, and settles once. fn-pio-cancel retains token and unsettled ownership even after deadline/client loss. fnn-extent-close calls fn-pio-file-clear-p over carried valid ownership rows: every issued/cancelled worker naming a retired file prevents close independently of the arena-reader generation gate. Duplicate/stale completions cannot publish or settle twice. Host OS/thread/mutex/table fidelity is A-HOST; observed worker death and join (or definite failed launch) is required before settlement. Incarnation allocator fn-pio-file-issue derives process-local identities and successive admitted allocations are distinct; a failed open spends its name and invalid carried counter refuses rather than resetting. No funded read-pool admission or memory bound is claimed; repeated detached workers remain P12 open. The operator-funded local file namespace can exhaust before open without wrapping or refunding a spent name; admitted resource-pool tokens establish the identical owned read row and use the ledger\u2019s single counter. These are partial algebra/lifetime subjects; supported profile installation, retained runtime storage and legacy large-frame streaming remain open.",
+      "statement": "Host/native/extent.lisp fnn-extent-complete-read calls fn-pio-complete. Publication requires its exact immutable token (process-local read ID, original CID, file incarnation ID, offset, length, expected trailer), phase issued and successful full commitment check, and settles once. fn-pio-cancel retains token and unsettled ownership even after deadline/client loss. fnn-extent-close calls fn-pio-file-clear-p over carried valid ownership rows: every issued/cancelled worker naming a retired file prevents close independently of the arena-reader generation gate. Duplicate/stale completions cannot publish or settle twice. Host OS/thread/mutex/table fidelity is A-HOST; observed worker death and join (or definite failed launch) is required before settlement. Incarnation allocator fn-pio-file-issue derives process-local identities and successive admitted allocations are distinct; a failed open spends its name and invalid carried counter refuses rather than resetting. No funded read-pool admission or memory bound is claimed; repeated detached workers remain P12 open. The operator-funded local file namespace can exhaust before open without wrapping or refunding a spent name; admitted resource-pool tokens establish the identical owned read row and use the ledger’s single counter. These are partial algebra/lifetime subjects; supported profile installation, retained runtime storage and legacy large-frame streaming remain open.",
       "milestone": "M5",
       "requirements": [
         "STO-017"
@@ -18003,6 +18003,9 @@
       ],
       "progress_note": "Latest semantic source increment on transit c4ec51e55 / snapshot607c: clean protected hbox REPL osr-final loads five source dependencies in proper encapsulates, with292 matching cached books. All119 book forms and50 test-file forms (46 body forms after include hoisting) pass;17.54 ACL2 seconds/4,574,965 steps, with corrected literal topic-live assertion replayed. Strict narrow teeth:23 assert-events,23 witnesses,0 findings. Actual sequential intern of enrollment, ordinary ARTICLE, rotation and ordinary ARTICLE proves two retained verdicts and frozen epochs1/2 at active generation2. Full retained-field theorem has literal positive and affirmative hypothesis removals: altered-generation corrupted state keeps readiness, linked-unfinished ARTICLE keeps full carry but differs on recovered verdicts; initialization without successful open refuses. Proper-listness proved redundant and removed from full-carry initialization; dotted-history refusal labeled separately. Source typing helper formerly stalled25s/9 steps now proves in302 steps after two small typed-field lemmas. Existing independent live-carry finish/configuration preservation remains proved; preservation of the new full retained carry across actual transitions, canonical writer/load alpha, actual host capture integration and matching union manifest/native producer evidence remain pending. The fn-snrt-run trace theorem stays library-only, omitted from production events. No new trust assumption or certificate/native verdict. Subsequent CONFIG preservation tranche replays its one local helper and two public forms inside a clean scoped encapsulate after undoing discovery events:0.08 ACL2seconds/4,410steps, then four literal fixture forms pass. Real capacity20 and third configuration record affirm changed behavior; corrupted-generation omission checks the sole full-carry premise. Matching union certification and actual finish/other transition preservation remain open.",
       "events": [
+        "fn-osr-open-establishes-full-retained-carry",
+        "fn-osr-ready-capture-keeps-retained-fields",
+        "fn-osr-configure-durable-preserves-full-retained-carry",
         "fn-osr-open-establishes-live-carry",
         "fn-osr-live-capture-opens",
         "fn-osr-ready-capture-keeps-established-projections",
@@ -18505,7 +18508,6 @@
         "A-CRYPTO"
       ],
       "status": "planned",
-      "events": [],
       "evidence": [
         "books/extent-window-plan.lisp",
         "books/extent-window-buffer.lisp",
@@ -18513,7 +18515,9 @@
         "specs/extent-window-read.md",
         "tests/acl2/extent-window-plan-tests.lisp",
         "tests/acl2/extent-window-buffer-tests.lisp",
-        "tests/acl2/extent-window-capture-tests.lisp"
+        "tests/acl2/extent-window-capture-tests.lisp",
+        "books/extent-window-refinement.lisp",
+        "tests/acl2/extent-window-refinement-tests.lisp"
       ],
       "progress_note": "Source component proofs and concrete copy witnesses only. No served host call, certificate, image, native or P12 completion claim."
     }

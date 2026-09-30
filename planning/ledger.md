@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1736 |
+| Books read | 1744 |
 | Certification roots in the Makefile | 1673 |
 | Books inside the root closure | 1733 |
-| `defthm` and `defthmd` events | 28058 |
-| `defun` events | 18400 |
+| `defthm` and `defthmd` events | 28076 |
+| `defun` events | 18419 |
 | Functions with verified guards | 3481 |
-| Functions declared `:verify-guards nil` and never verified | 2101 |
-| Functions left at the default with an explicit guard | 10053 |
+| Functions declared `:verify-guards nil` and never verified | 2103 |
+| Functions left at the default with an explicit guard | 10070 |
 | Functions left at the default with no guard | 2765 |
-| `assert-event` checks | 23300 |
+| `assert-event` checks | 23311 |
 | `must-fail` checks | 2504 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 157 |
 | Theorems flagged SUSPECT by shape | 1230 |
-| Export-hygiene warnings | 324 |
+| Export-hygiene warnings | 325 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2436 |
+| Include-hygiene warnings | 2440 |
 | Host-names warnings | 2137 |
 | Hand-written-record warnings | 18 |
 
@@ -426,6 +426,10 @@ that `make certify` requests.
 | `books/expiry-verdict.lisp` | root | 6 | 3 | 0/0/3/0 | 0 | 0 | 1 |
 | `books/expiry.lisp` | root | 22 | 33 | 1/5/27/0 | 0 | 0 | 0 |
 | `books/extent-retire.lisp` | root | 16 | 10 | 4/1/4/1 | 0 | 0 | 0 |
+| `books/extent-window-buffer.lisp` | - | 3 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/extent-window-capture.lisp` | - | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/extent-window-plan.lisp` | - | 11 | 12 | 0/0/12/0 | 0 | 0 | 0 |
+| `books/extent-window-refinement.lisp` | - | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/feed-auth-profile.lisp` | root | 4 | 8 | 8/0/0/0 | 0 | 0 | 0 |
 | `books/feed-connection-invariants.lisp` | root | 48 | 22 | 2/0/20/0 | 0 | 0 | 1 |
 | `books/feed-connection.lisp` | root | 9 | 50 | 49/0/1/0 | 0 | 0 | 1 |
@@ -1340,6 +1344,10 @@ that `make certify` requests.
 | `tests/acl2/exchange-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 162 | 0 | 0 |
 | `tests/acl2/expiry-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 42 | 5 | 0 |
 | `tests/acl2/extent-retire-tests.lisp` | root | 10 | 4 | 0/2/0/2 | 6 | 7 | 0 |
+| `tests/acl2/extent-window-buffer-tests.lisp` | - | 1 | 1 | 0/1/0/0 | 2 | 0 | 0 |
+| `tests/acl2/extent-window-capture-tests.lisp` | - | 0 | 1 | 0/1/0/0 | 1 | 0 | 0 |
+| `tests/acl2/extent-window-plan-tests.lisp` | - | 0 | 3 | 0/0/3/0 | 6 | 0 | 0 |
+| `tests/acl2/extent-window-refinement-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
 | `tests/acl2/feed-auth-profile-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 0 | 0 |
 | `tests/acl2/feed-connection-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 7 | 0 |
 | `tests/acl2/feed-connection-teeth-tests.lisp` | root | 6 | 0 | 0/0/0/0 | 87 | 16 | 0 |

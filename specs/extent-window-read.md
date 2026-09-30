@@ -15,8 +15,9 @@ physical incarnation and resource lease accompany the ticket for the entire
 scan, trailer check, private result and borrower lifetime.
 
 The controller state is
-`(phase file eoff elen woff wn expected pos ticket incarnation lease)`.
-WOFF is relative to the protected prefix. `fn-ewp-effect` is either NIL or
+`(phase file eoff elen woff wn expected pos ticket incarnation lease poff plen offset)`.
+WOFF is relative to the protected prefix. The original payload offset,
+length and requested offset also remain captured; phase changes preserve them. `fn-ewp-effect` is either NIL or
 `(ticket incarnation lease file absolute-offset count phase)`. It authorizes
 at most 64 prefix bytes or the 32 trailer bytes. `fn-ewp-complete-read` accepts
 only that exact effect and exact byte count. Stale effects preserve state;
