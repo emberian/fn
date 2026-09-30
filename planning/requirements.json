@@ -5816,9 +5816,12 @@
       "evidence": [
         "books/consumer-remote-codec.lisp",
         "tests/acl2/consumer-remote-codec-tests.lisp",
-        "planning/consumer-remote-implementation.md"
+        "planning/consumer-remote-implementation.md",
+        "books/consumer-remote-position.lisp",
+        "tests/acl2/consumer-remote-position-tests.lisp",
+        "planning/evidence/consumer-remote-components-2026-09-30.md"
       ],
-      "implementation_note": "The separate FNCR request codec is implemented and guard-verified in source, with a protected-channel/consumer-only admission theorem and all eight operation witnesses. No remote host caller or listener exists yet. Durable immutable query schema, account-incarnation authority, current view generation, owner publication, concrete buffer refinement, restore/compaction mapping and matching native TLS evidence remain required. PKT-255 is not complete."
+      "implementation_note": "Source request codec and logical remote-position kernel only. Remote10 metadata, atomic kernel proposals, fresh-epoch rebasing and metadata-preserving ACK exist; durable event encoding/reservation and authenticated host dispatch remain unimplemented. Original full remote/multigroup/restore contract remains open."
     }
   ]
 }

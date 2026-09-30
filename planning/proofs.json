@@ -6055,7 +6055,7 @@
     {
       "id": "PRF-167",
       "title": "The consumer count is the operator's profile field 9: the served registration refuses exactly past it and the table stays within it",
-      "statement": "The consumer registration the owner serves (fn-cp-register-within, called by books/consumer-owner-local.lisp fn-col-register from host/owner-host.lisp fn-owner-consumer-local-register with MAX = fn-store-profile-max-consumers of the carried profile, host/store-host.lisp) is (:refused :max-consumers) iff fn-cp-register answers :write and the table already holds (nfix MAX) entries, and is fn-cp-register's answer otherwise (fn-cp-register-within-refuses-exactly-past-the-operator-bound, no hypothesis). From a table of at most MAX entries, applying any non-register event or the served decision's write keeps at most MAX (fn-cp-apply-preserves-consumer-capacity); with fn-profile-upgrade-keeps-namespace-counts the bound survives reopen. Replay re-runs the validity decision fn-cp-register, not the admission bound.",
+      "statement": "The consumer registration the owner serves (fn-cp-register-within, called by books/consumer-owner-local.lisp fn-col-register from host/owner-host.lisp fn-owner-consumer-local-register with MAX = fn-store-profile-max-consumers of the carried profile, host/store-host.lisp) is (:refused :max-consumers) iff fn-cp-register answers :write and the table already holds (nfix MAX) entries, and is fn-cp-register's answer otherwise (fn-cp-register-within-refuses-exactly-past-the-operator-bound, no hypothesis). From a table of at most MAX entries, applying an event outside both :register and :remote-register, or a write proposed by fn-cp-register-within or fn-cp-remote-register, keeps at most MAX (fn-cp-apply-preserves-consumer-capacity); with fn-profile-upgrade-keeps-namespace-counts the bound survives reopen. Replay re-runs the validity decision fn-cp-register, not the admission bound. The remote producer is a logical kernel extension only: the durable CPE codec currently rejects :remote-register, so the actual served registration path remains the named local producer. Both variants enforce the same operator count and the source theorem covers both.",
       "milestone": "M5",
       "requirements": [
         "STO-021"
@@ -18708,9 +18708,12 @@
       "evidence": [
         "books/consumer-remote-codec.lisp",
         "tests/acl2/consumer-remote-codec-tests.lisp",
-        "planning/consumer-remote-implementation.md"
+        "planning/consumer-remote-implementation.md",
+        "books/consumer-remote-position.lisp",
+        "tests/acl2/consumer-remote-position-tests.lisp",
+        "planning/evidence/consumer-remote-components-2026-09-30.md"
       ],
-      "progress_note": "Clean protected source REPL consumer-remote-clean: guards and all 18 book forms admitted; 29 test forms / 22 assertions passed. Four dependency books loaded from matching source inside encapsulates. No certification, native endpoint, image or deployment claim."
+      "progress_note": "Clean protected source REPL consumer-remote-clean: guards and all 18 book forms admitted; 29 test forms / 22 assertions passed. Four dependency books loaded from matching source inside encapsulates. No certification, native endpoint, image or deployment claim. The CP kernel now admits remote10 entries and remote register/rebase proposals, preserves metadata across ACK, and generalizes its state/capacity preservation to those operations. Exact definition installation and ACK preservation were source-admitted with literal positive/removal witnesses. The durable CPE codec still refuses remote operation tags; no remote host path is reachable."
     }
   ]
 }

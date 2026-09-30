@@ -145,3 +145,17 @@ current-format schema extension, not a migration fallback. Before doing so:
 
 These are implementation dependencies, not new approval gates or a reduced
 single-group remote profile.
+
+CP kernel progress after the codec component: `fn-cp-entryp` now recognizes
+local8 and remote10; remote fields8/9 are the canonical group octet list and
+account-incarnation ID. `fn-cp-remote-register` and `fn-cp-remote-rebase` emit
+nine-field operations (`tag consumer principal query qver view epoch groups
+account`); `fn-cp-entry-with-ack` preserves the appended fields. All kernel
+guards, state preservation and the capacity theorem (local OR remote admitted
+registration) have been source-admitted. Exact-definition/ACK proofs and
+literal teeth are in the new remote-position book/tests. Durable CPE encoding,
+reservation/profile/canonical carries and the remote host remain pending; the
+existing durable codec still rejects these new tags. The generic CP state
+retains its six fields. The size-carry owner has the exact proposed schema and
+requires constructor child carries for the variable group tree, not a later
+whole-tree size walk.

@@ -820,3 +820,16 @@ The complete authority and durability implementation remains the work in
 [the remote implementation plan](../planning/consumer-remote-implementation.md).
 Existing FNCT response and reason codecs are the response contract to reuse.
 No downgrade to a local request frame is permitted on the remote endpoint.
+
+The logical CP kernel additionally represents remote entries as the existing
+eight cursor/progress fields followed by a canonical ordered group-octet list
+and a durable account-incarnation ID. Its `:remote-register` and
+`:remote-rebase` proposals carry those fields atomically with scope;
+identical retries preserve the current position, while any exact definition
+or account-incarnation change requires explicit rebase and a fresh
+registration epoch, even when the opaque query ID happens to compare equal.
+ACK preserves both metadata fields. `books/consumer-remote-position.lisp`
+proves exact installation and ACK preservation, and the kernel state/capacity
+invariants cover the extended shape. These proposals are not yet accepted by
+the durable CPE event codec, so the remote path remains unreachable in the
+served composition; authentication and persistence are still unimplemented.

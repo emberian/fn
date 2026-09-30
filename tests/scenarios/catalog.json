@@ -6729,8 +6729,12 @@
       },
       "evidence": [
         "tests/acl2/consumer-remote-codec-tests.lisp",
-        "planning/consumer-remote-implementation.md"
-      ]
+        "planning/consumer-remote-implementation.md",
+        "books/consumer-remote-position.lisp",
+        "tests/acl2/consumer-remote-position-tests.lisp",
+        "planning/evidence/consumer-remote-components-2026-09-30.md"
+      ],
+      "execution_scope": "Source request codec and logical remote-position kernel only. Remote10 metadata, atomic kernel proposals, fresh-epoch rebasing and metadata-preserving ACK exist; durable event encoding/reservation and authenticated host dispatch remain unimplemented. Original full remote/multigroup/restore contract remains open."
     }
   ]
 }
