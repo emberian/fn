@@ -18049,9 +18049,10 @@
         "planning/evidence/connection-start-join-2026-09-30",
         "books/connection-operation-start.lisp",
         "tests/acl2/connection-operation-start-tests.lisp",
-        "planning/evidence/connection-start-native-source-2026-09-30"
+        "planning/evidence/connection-start-native-source-2026-09-30",
+        "planning/evidence/connection-start-opaque-guard-2026-09-30"
       ],
-      "progress_note": "Actual prepare/start guards, public receipt theorem and both raw callback preservation/frame declarations admitted in isolated matching source world. START carries the genuine pool invariant established by PREPARE; its mutations preserve the allocation frame. Six transaction cases, literal positive/removal teeth and declaration checks pass. PREPARE frame proof reduced to 0.38s/238329 steps including local lemmas; genuine full operation installer/runtime allowance and native closure qualification remain open."
+      "progress_note": "Actual prepare/start guards, public receipt theorem and both raw callback preservation/frame declarations admitted in isolated matching source world. START carries the genuine pool invariant established by PREPARE; its mutations preserve the allocation frame. Six transaction cases, literal positive/removal teeth and declaration checks pass. PREPARE frame proof reduced to 0.38s/238329 steps including local lemmas; genuine full operation installer/runtime allowance and native closure qualification remain open. Hint-only successor keeps the carried pool predicate opaque during START guard verification: normal matched cached-root run passed 3 fresh/108 reused, START guard 1.05s/93095 steps versus prior 19.75s/1021990. Native rerun and complete runtime qualification remain separate coordinates."
     },
     {
       "id": "PRF-1162",

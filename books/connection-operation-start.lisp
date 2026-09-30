@@ -136,7 +136,7 @@
           (:instance true-listp-update-nth (l x) (key 1) (val phase)))))))
 
 (verify-guards fn-owner-index-connection-start
- :hints (("Goal" :in-theory (e/d (true-listp-update-nth) (fn-mio-connection-reserve-register fn-cop-issuer-domainp fn-owner-core fn-cop-octets-match fn-owner-connection-operation-ticket fn-owner-connection-operation-installation fn-omk-widthp)))))
+ :hints (("Goal" :in-theory (e/d (true-listp-update-nth) (fn-aec-pool-statep fn-mio-connection-reserve-register fn-cop-issuer-domainp fn-owner-core fn-cop-octets-match fn-owner-connection-operation-ticket fn-owner-connection-operation-installation fn-omk-widthp)))))
 
 (defthm fn-owner-index-connection-reserved-has-registered-receipt
  (implies
