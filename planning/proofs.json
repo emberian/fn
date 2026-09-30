@@ -18091,7 +18091,9 @@
         "specs/snapshot-maintenance-demand.md",
         "planning/evidence/snapshot-maintenance-growth-2026-09-30.md",
         "host/snapshot-maintenance-host.lisp",
-        "tests/acl2/snapshot-maintenance-host-tests.lisp"
+        "tests/acl2/snapshot-maintenance-host-tests.lisp",
+        "tests/acl2/snapshot-maintenance-pagestore-world-tests.lisp",
+        "planning/evidence/snapshot-maintenance-pagestore-world-2026-09-30.md"
       ],
       "progress_note": "Source-only backing-growth component; complete original operation-derived demand/admission/release and selected-runtime adequacy remain open. No served/certificate/image claim."
     }

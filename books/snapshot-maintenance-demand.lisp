@@ -162,7 +162,12 @@
             (mv-nth 0 (fn-osj-grow ledger maintenance source stage request))
             (mv-nth 1 (fn-osj-grow ledger maintenance source stage request))))
   :rule-classes nil
-  :hints (("Goal" :in-theory
+  :hints (("Goal"
+           :use ((:instance fn-osj-vector-fields
+                    (xs (fn-prl-nth 0
+                         (cdr (fn-prl-binding maintenance
+                                              (fn-prl-nth 3 ledger)))))))
+           :in-theory
            (enable fn-osj-grow fn-osj-grant-livep fn-pmn-grow fn-prl-nth
                    fn-prl-build fn-prl-binding fn-osj-keep-grant
                    fn-osj-growth-disk fn-osj-growth-requestp

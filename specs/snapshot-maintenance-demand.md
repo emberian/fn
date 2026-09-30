@@ -48,3 +48,8 @@ The actual funded-pool stobj boundary is
 `fn-owner-snapshot-grant-livep(grant,pool)`. Both require funded mode. A named
 refinement equates the actual host-called growth and resulting ledger to
 `fn-osj-grow`; an unfunded instance cannot obtain the backing grant.
+
+The grant proof carries explicit natural ledger-field facts in its hint so it
+composes with pagestore normalization. A dedicated composed-world scenario
+replays the actual demand/host boundary and existing literal teeth; the full
+writer source union retains its separate exact source coordinate.
