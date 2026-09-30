@@ -958,8 +958,6 @@
         (fn-scar-view-indexedp (fn-ocfg-owner oc))
         (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
         (fn-scol-okp fn-arena fn-cat)
-        (natp i)
-        (natp end)
         conn
         completed
         (equal (fn-oct-slice-list i end fn-octets) (append line (quote (13 10))))
@@ -979,7 +977,6 @@
         (equal (fn-nntp-session-openp session) t)
         (fn-nntp-session-projected session)
         (fn-nntp-command-inputp line)
-        (fn-nntp-command-arguments-at-mostp (list *fn-pcr-article-keyword* token))
         (equal (fn-nntp-tokenize line) (list *fn-pcr-article-keyword* token))
         (or
           (fn-nntp-number-tokenp token)
@@ -1029,7 +1026,9 @@
              (fn-ocfg-owner oc)
              (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))
        fn-pcr-command-input-is-plain-line
-       fn-scol-okp-arena-p)
+       fn-scol-okp-arena-p
+       fn-pcr-command-slice-has-natural-bounds
+       fn-pcr-article-token-fits-command-argument)
      :in-theory
      (theory (quote minimal-theory)))))
 

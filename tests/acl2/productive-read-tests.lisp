@@ -3,3 +3,5 @@
 (in-package "ACL2")
 (include-book "productive-read-message-id-tests")
 (include-book "productive-read-absent-tests")
+
+(include-book "productive-read-credit-tests")

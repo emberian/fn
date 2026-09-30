@@ -737,6 +737,49 @@
    :hints (("Goal" :use fn-pcr-command-syntax-is-plain-line
             :in-theory (union-theories '(fn-nntp-command-inputp) (theory 'minimal-theory))))))
 
+; Derived bounds, proved before removing these premises from final READ.
+(local
+  (defthm
+    fn-pcr-crlf-suffix-is-nonempty
+    (consp (append line (quote (13 10))))
+    :hints
+    (("Goal" :in-theory (enable append)))))
+
+(defthm
+  fn-pcr-command-slice-has-natural-bounds
+  (implies
+    (equal (fn-oct-slice-list i end fn-octets) (append line (quote (13 10))))
+    (and (natp i) (natp end)))
+  :rule-classes
+  nil
+  :hints
+  (("Goal"
+     :expand
+     ((fn-oct-slice-list i end fn-octets))
+     :in-theory
+     (e/d (fn-oct-slice-list) (fn-octets-get)))))
+
+(defthm
+  fn-pcr-article-token-fits-command-argument
+  (implies
+    (or (fn-nntp-number-tokenp token) (fn-nntp-message-id-tokenp token))
+    (fn-nntp-command-arguments-at-mostp (list *fn-pcr-article-keyword* token)))
+  :rule-classes
+  nil
+  :hints
+  (("Goal"
+     :in-theory
+     (e/d
+       (fn-nntp-command-arguments-at-mostp
+         fn-nntp-argument-tokens
+         fn-nntp-each-token-at-mostp
+         fn-nntp-number-tokenp
+         fn-nntp-message-id-tokenp)
+       (fn-nntp-decimal-tokenp
+         fn-nntp-decimal-value
+         fn-nntp-printable-tokenp
+         fn-nntp-message-id-tailp)))))
+
 (defthm
   fn-pcr-host-called-read-produces-the-numbered-article
   (let*
@@ -803,8 +846,6 @@
         (fn-scar-view-indexedp (fn-ocfg-owner oc))
         (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
         (fn-scol-okp fn-arena fn-cat)
-        (natp i)
-        (natp end)
         conn
         completed
         (equal (fn-oct-slice-list i end fn-octets) (append line (quote (13 10))))
@@ -824,7 +865,6 @@
         (equal (fn-nntp-session-openp session) t)
         (fn-nntp-session-projected session)
         (fn-nntp-command-inputp line)
-        (fn-nntp-command-arguments-at-mostp (list *fn-pcr-article-keyword* token))
         (equal (fn-nntp-tokenize line) (list *fn-pcr-article-keyword* token))
         (fn-nntp-number-tokenp token)
         group
@@ -874,6 +914,8 @@
              (fn-ocfg-owner oc)
              (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))
        fn-pcr-command-input-is-plain-line
-       fn-scol-okp-arena-p)
+       fn-scol-okp-arena-p
+       fn-pcr-command-slice-has-natural-bounds
+       fn-pcr-article-token-fits-command-argument)
      :in-theory
      (theory (quote minimal-theory)))))
