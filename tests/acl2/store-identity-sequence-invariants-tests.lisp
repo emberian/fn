@@ -15,6 +15,11 @@
 (assert-event (fn-sn-identity-sequencep *sis-before-enrollment*))
 (assert-event (fn-sn-identity-sequencep *sis-reserved*))
 (assert-event (fn-sn-identity-sequencep *sis-completing*))
+; PRF-050 fn-sn-finish-preserves-identity-sequence: the reached completing
+; enrollment affirms the sole hypothesis and the complete conclusion.
+(assert-event
+ (and (fn-sn-identity-sequencep *sis-completing*)
+      (fn-sn-identity-sequencep (fn-sn-finish *sis-completing*))))
 
 ; The reached staged enrollment has a typed candidate at the carried next
 ; sequence.  Each premise matters: a moved cursor, an invalid candidate, or
