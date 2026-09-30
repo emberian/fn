@@ -437,3 +437,20 @@ its companion source getter derives the retained association. This is neither
 alias settlement nor re-enable after an uncertain turn. The fixed pending
 allocation, primitive callback overlap and actual array observation binding
 remain part of canonical runtime demand/refinement. No return/reset exists.
+
+The receiver's unread suffix is retained with the exact committed recipient.
+The internal pending bridge reads that recipient's current receipt once and
+projects source plus consumed from its SAME saved step, rejecting malformed
+scalar consumption before any transfer. The named scalar/step equality is
+conditional on the producer's carried step domain; a committed phase alone
+cannot validate a corrupted full step. The current bridge is unadmitted.
+
+The query context extension reserves field9 for the fixed custody row, keeping
+payload5/effects6/origin7/receipt8 unchanged. Its source projection stores the
+original range, bounded unread offset/end, exact recipient and actual actor
+holder-root references. Empty unregistered fields are not terminal authority.
+The actual query/render/response/cold/worker acquisition and return protocols
+must preserve each holder identity and phase, including simultaneous aliases.
+Terminal source publication must precede clearing query inputs. Only that real
+all-alias disposition may resume the same immutable input at its saved suffix;
+query completion, lexical return, STOPPING, counts or a joined flag may not.
