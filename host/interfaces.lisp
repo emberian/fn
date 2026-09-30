@@ -4670,8 +4670,6 @@
 (definterface fn-osp-fold-tick :class :common-lisp-compliant)
 
 
-(definterface fn-osp-assemble :class :common-lisp-compliant)
-(definterface fn-owner-osn-prepared-run :class :program)
 ; Serialized BP listener installation and actual owner configuration control.
 (definterface fn-bplc-step
   :class ::common-lisp-compliant
