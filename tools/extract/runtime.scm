@@ -24,6 +24,18 @@
 (define-constant acl2-t '|COMMON-LISP::T|)
 (define-inline (a-bool x) (if x '|COMMON-LISP::T| '()))
 
+;; An extracted world has no ACL2 undo/redefinition operations. Registry
+;; identities distinguish congruent stobj names in stobj-table fields.
+(define a-stobj-table-keys (make-hash-table eq?))
+(define (a-register-stobj-names names)
+  (for-each (lambda (name)
+              (unless (hash-table-exists? a-stobj-table-keys name)
+                (hash-table-set! a-stobj-table-keys name (gensym)))) names))
+(define (a-stobj-table-key name)
+  (if (hash-table-exists? a-stobj-table-keys name)
+      (hash-table-ref a-stobj-table-keys name)
+      (error "stobj-table key is not in the extracted registry" name)))
+
 ;; --- symbols -----------------------------------------------------------------
 (define (a-split-symbol s)
   ;; "PKG::NAME" -> (values "PKG" "NAME"); package names hold no ':'.

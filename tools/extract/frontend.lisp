@@ -304,11 +304,32 @@
   (if (or (endp args) (keywordp (car args))) nil
     (cons (car args) (xt-strip-keyword-args (cdr args)))))
 
+(defun xt-table-field-names (field renaming)
+  (list (defstobj-fnname field :accessor :stobj-table renaming)
+        (defstobj-fnname field :updater :stobj-table renaming)
+        (defstobj-fnname field :boundp :stobj-table renaming)
+        (defstobj-fnname field :remove :stobj-table renaming)
+        (defstobj-fnname field :count :stobj-table renaming)
+        (defstobj-fnname field :clear :stobj-table renaming)
+        (defstobj-fnname field :init :stobj-table renaming)))
+
+(defun xt-world-stobj-names (tail w acc)
+  (if (endp tail) acc
+    (let ((entry (car tail)))
+      (xt-world-stobj-names
+       (cdr tail) w
+       (if (and (eq (cadr entry) 'stobj)
+                (not (member-eq (car entry) acc))
+                (getpropc (car entry) 'stobj nil w))
+           (cons (car entry) acc)
+         acc)))))
+
 (defun xt-json-field (d renaming first channel state)
   (let* ((field (if (consp d) (car d) d))
          (opts (if (consp d) (cdr d) nil))
          (type (xt-keyword-value :type opts t))
          (arrayp (and (consp type) (eq (car type) 'array)))
+         (tablep (and (consp type) (eq (car type) 'stobj-table)))
          (names (xt-field-names field renaming arrayp))
          (state (if first state (princ$ "," channel state)))
          (state (princ$ "{\"field\":" channel state))
@@ -320,7 +341,11 @@
          (state (princ$ ",\"resizable\":" channel state))
          (state (princ$ (if (xt-keyword-value :resizable opts nil) "true" "false") channel state))
          (state (princ$ ",\"names\":" channel state))
-         (state (xt-json-symlist names channel state)))
+         (state (xt-json-symlist names channel state))
+         (state (if tablep
+                    (let ((state (princ$ ",\"table_names\":" channel state)))
+                      (xt-json-symlist (xt-table-field-names field renaming) channel state))
+                  state)))
     (princ$ "}" channel state)))
 
 (defun xt-json-fields (ds renaming first channel state)
@@ -622,7 +647,12 @@
                (state (xt-json-entries entries t channel state))
                (state (princ$ "],\"stobjs\":[" channel state))
                (state (xt-json-stobjs (xt-stobj-closure-1 stobjs nil w) t channel state))
-               (state (princ$ "]}" channel state))
+               (state (princ$ "],\"stobj_names\":" channel state))
+               ; A table may test a valid name whose creator is outside this
+               ; executable closure. Export the actual live world registry,
+               ; rather than guessing validity from reachable primitives.
+               (state (xt-json-symlist (xt-world-stobj-names w w nil) channel state))
+               (state (princ$ "}" channel state))
                (state (newline channel state))
                (state (close-output-channel channel state)))
           (value (len entries)))))))))
