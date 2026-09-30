@@ -17433,12 +17433,12 @@
         {
           "kind": "theorem",
           "name": "fn-ics-reserved-has-registered-receipt",
-          "pending_subject": "Guarded actual public STATE start source; raw PREPARE declaration and selected installer/native full closure remain unactivated."
+          "pending_subject": "Guarded actual public STATE start and raw PREPARE source; selected installer/native full closure remain unactivated."
         },
         {
           "kind": "theorem",
           "name": "fn-owner-index-connection-reserved-has-registered-receipt",
-          "pending_subject": "Guarded actual public STATE start source; raw PREPARE declaration and selected installer/native full closure remain unactivated."
+          "pending_subject": "Guarded actual public STATE start and raw PREPARE source; selected installer/native full closure remain unactivated."
         }
       ]
     },

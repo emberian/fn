@@ -76,7 +76,8 @@ sys.path.insert(0, str(ROOT))
 from tools import ledger  # noqa: E402
 
 SOURCES = ("host/interfaces.lisp", "host/interfaces-extract.lisp",
-           "host/allocation-epoch-host.lisp", "host/connection-operation-ticket-host.lisp")
+           "host/allocation-epoch-host.lisp", "host/connection-operation-ticket-host.lisp",
+           "host/index-connection-start-host.lisp")
 REGISTRY = ROOT / "planning" / "interfaces.json"
 ROOTS_SH = ROOT / "tools" / "extract" / "roots.sh"
 RAW_DECLARATIONS = ROOT / "host" / "interfaces-raw.lisp"

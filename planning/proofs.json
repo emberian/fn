@@ -18050,7 +18050,7 @@
         "books/connection-operation-start.lisp",
         "tests/acl2/connection-operation-start-tests.lisp"
       ],
-      "progress_note": "Actual public prepare/start definitions and guards plus public receipt theorem admitted in current MIO/provider world; six SAMEpool/STATE transactions and literal positive/removal teeth pass. Raw PREPARE preservation declaration, genuine full operation installer and native start join remain open."
+      "progress_note": "Actual prepare/start guards, public receipt theorem and raw PREPARE preservation/frame declarations admitted; six transaction cases, literal positive/removal teeth and declaration checks pass. Frame proof cost optimization and genuine full operation installer/native start join remain open."
     },
     {
       "id": "PRF-1162",

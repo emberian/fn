@@ -158,3 +158,41 @@
                   (fuel (nfix (fn-omk-at 13 (fn-owner-connection-operation-ticket state))))
                   (backing (fn-mio$c-provider fn-mio$c)) (pool fn-page-read-pool)))))
  :rule-classes nil)
+
+(local
+ (defthm fn-cops-entry-pool-state
+  (implies (fn-aec-pool-statep fn-page-read-pool)
+   (fn-aec-pool-statep (mv-nth 3 (fn-ats-enter-internal slot role fn-allocation-turn-slots fn-page-read-pool))))
+  :hints (("Goal" :in-theory (disable fn-ats-enter-internal fn-aec-pool-statep)
+   :use fn-atsh-entry-preserves-carried-pool-state))))
+(local
+ (defthm fn-cops-refuse-pool-state
+  (implies (fn-aec-pool-statep fn-page-read-pool)
+   (fn-aec-pool-statep (mv-nth 4 (fn-owner-index-connection-refuse-internal slot nonce reason fn-allocation-turn-slots fn-page-read-pool state))))
+  :hints (("Goal" :in-theory (disable fn-ats-finish-owned fn-aec-pool-statep)
+   :use fn-atsh-finish-preserves-carried-pool-state))))
+
+(defthm fn-owner-index-connection-prepare-preserves-carried-pool
+ (implies (fn-aec-pool-statep fn-page-read-pool)
+  (fn-aec-pool-statep
+   (mv-nth 5 (fn-owner-index-connection-prepare kind family address peer slot fn-allocation-turn-slots fn-mio$c fn-page-read-pool state))))
+ :hints (("Goal" :in-theory
+  (disable fn-ats-enter-internal fn-ats-prepay-body-internal fn-owner-index-connection-refuse-internal
+           fn-aec-pool-statep fn-cop-evaluate fn-owner-connection-operation-ticket
+           fn-owner-connection-operation-installation fn-owner-core fn-omk-at)))
+ :rule-classes nil)
+
+(defthm fn-owner-index-connection-prepare-retains-installed-roots
+ (let ((next (fn-owner-index-connection-prepare kind family address peer slot fn-allocation-turn-slots fn-mio$c fn-page-read-pool state)))
+  (and (equal (mv-nth 4 next) fn-mio$c)
+       (equal (fn-prp-alloc-installation (mv-nth 5 next)) (fn-prp-alloc-installation fn-page-read-pool))
+       (equal (fn-prp-alloc-epoch (mv-nth 5 next)) (fn-prp-alloc-epoch fn-page-read-pool))
+       (equal (fn-prp-alloc-occupied (mv-nth 5 next)) (fn-prp-alloc-occupied fn-page-read-pool))
+       (equal (fn-ats-association (mv-nth 3 next)) (fn-ats-association fn-allocation-turn-slots))
+       (equal (fn-ats-count (mv-nth 3 next)) (fn-ats-count fn-allocation-turn-slots))
+       (equal (nth 2 (mv-nth 3 next)) (nth 2 fn-allocation-turn-slots))))
+ :hints (("Goal" :in-theory
+  (disable nth update-nth fn-aec-enter fn-aec-body fn-aec-leave-owned fn-aec-collection-issue
+           fn-cop-evaluate fn-owner-connection-operation-ticket fn-owner-connection-operation-installation
+           fn-owner-core fn-omk-at fn-omk-widthp)))
+ :rule-classes nil)

@@ -88,8 +88,9 @@ retained start intent and double fault; declaration-removal cases fail as requir
 
 Current coordinate: the two core leaves and narrow completion leaf and their
 stated tests are source-admitted; prepare/start guards and the public registered-receipt theorem are admitted
-in the actual provider/MIO source world. Raw PREPARE preservation declarations
-and the actual installed/native operation join remain open. No complete selected-runtime operation
+in the actual provider/MIO source world. Raw PREPARE pool preservation and installation frame declarations are admitted;
+START uses an ordinary guarded declaration. The actual installed/native
+operation join remains open. No complete selected-runtime operation
 allowance, genuine installation, native activation or certification is claimed.
 
 The public start definitions and registered-receipt theorem live in

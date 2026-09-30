@@ -157,3 +157,13 @@
  (if ok (value '(value-triple :passed-public-hypothesis-removal)) (er soft 'start "public removal failed"))))
 
 (assert-event (and (eq (getpropc (quote fn-owner-index-connection-prepare) (quote symbol-class) nil (w state)) :common-lisp-compliant) (eq (getpropc (quote fn-owner-index-connection-start) (quote symbol-class) nil (w state)) :common-lisp-compliant)))
+
+(assert-event
+ (and (not (fn-di-raw-with-problem 'fn-owner-index-connection-prepare
+       (cdr (assoc-eq 'fn-owner-index-connection-prepare (table-alist 'fn-interfaces (w state)))) (w state)))
+      (not (fn-di-get :raw-with
+       (cdr (assoc-eq 'fn-owner-index-connection-start (table-alist 'fn-interfaces (w state))))))))
+
+(assert-event
+ (fn-di-raw-with-problem 'fn-owner-index-connection-prepare
+  '(:class :common-lisp-compliant :raw-with (fn-owner-index-connection-prepare-retains-installed-roots)) (w state)))
