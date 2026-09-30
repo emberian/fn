@@ -213,23 +213,47 @@ whose own failure would raise a new condition here."
 
 (defvar *fnn-octets* nil)
 
+;; EXTENT owns and initializes this mutex later in the native load order.
+;; Declaring it here keeps the early I/O entry points dynamically bound.
+(declaim (special *fnn-extent-lock*))
+
+(define-condition fnn-incoming-buffer-busy (serious-condition)
+  ((operation :initarg :operation :reader fnn-incoming-buffer-busy-operation))
+  (:report (lambda (condition stream)
+             (format stream "incoming buffer busy during ~(~a~)"
+                     (fnn-incoming-buffer-busy-operation condition)))))
+
+(defmacro fnn-with-incoming-mutation ((operation &optional token) &body body)
+  "Check the actual pool and mutate under one extent-lock acquisition.
+The owner scheduler handles FNN-INCOMING-BUFFER-BUSY as a resource
+continuation. It is neither a Store fault nor permission to keep using old
+bytes. Ordinary callers carry no token; a setup caller may pass its retained
+token, which only the core may authorize. Selected copy/backing
+actions have their own core-issued authorization. Never acquire owner here."
+  `(sb-thread:with-recursive-lock (*fnn-extent-lock*)
+     (unless (fnn-incoming-generic-mutation-allowedp ,token)
+       (error 'fnn-incoming-buffer-busy :operation ,operation))
+     ,@body))
+
 (defun fnn-live-octets ()
   (or *fnn-octets*
       (setq *fnn-octets*
             (or (cdr (assoc 'fn-octets (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the octet buffer stobj is not in this image")))))
 
-(defun fnn-octets-fill (vector)
+(defun fnn-octets-fill (vector &optional token)
   "Make VECTOR's bytes the buffer's contents; return the live stobj."
-  (let* ((st (fnn-live-octets)) (n (length vector)))
-    (fn-octets$c-reserve n st)
-    (replace (the fnn-octets (svref st 0)) vector)
-    (setf (svref st 1) n)
-    st))
+  (fnn-with-incoming-mutation (:fill token)
+    (let* ((st (fnn-live-octets)) (n (length vector)))
+      (fn-octets$c-reserve n st)
+      (replace (the fnn-octets (svref st 0)) vector)
+      (setf (svref st 1) n)
+      st)))
 
-(defun fnn-octets-clear ()
+(defun fnn-octets-clear (&optional token)
   "Empty the buffer (the fill count to 0; the array is kept)."
-  (setf (svref (fnn-live-octets) 1) 0))
+  (fnn-with-incoming-mutation (:clear token)
+    (setf (svref (fnn-live-octets) 1) 0)))
 
 ;;; The PUBLICATION buffer: `fn-octets-pub' (books/owner-checkpoint-stream.lisp),
 ;;; a second abstract stobj congruent to `fn-octets' with its own live
@@ -246,16 +270,17 @@ whose own failure would raise a new condition here."
             (or (cdr (assoc 'fn-octets-pub (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the publication buffer stobj is not in this image")))))
 
-(defun fnn-octets-release ()
+(defun fnn-octets-release (&optional token)
   "Empty the buffer and give its array back: after the state checkpoint's
 load the array holds the whole file, which the served attempts (one request
 each) never need again; they regrow it to one request's size.  A bound on
 retained memory only (the logical value, the empty list, is unchanged by the
 array's size); it decides nothing ACL2 decides."
-  (let ((st (fnn-live-octets)))
-    (setf (svref st 1) 0)
-    (setf (svref st 0) (make-array 0 :element-type '(unsigned-byte 8)))
-    st))
+  (fnn-with-incoming-mutation (:release token)
+    (let ((st (fnn-live-octets)))
+      (setf (svref st 1) 0)
+      (setf (svref st 0) (make-array 0 :element-type '(unsigned-byte 8)))
+      st)))
 
 (defun fnn-octets-pub-release ()
   "Empty the publication buffer and give its array back after a checkpoint's
@@ -294,19 +319,21 @@ empty list, is unchanged, and it decides nothing ACL2 decides."
     (setf (svref st 1) n)
     st))
 
-(defun fnn-octets-reserve (n)
+(defun fnn-octets-reserve (n &optional token)
   "Grow the buffer's array so that N octets fit; contents and count unchanged."
-  (fn-octets$c-reserve n (fnn-live-octets)))
+  (fnn-with-incoming-mutation (:reserve token)
+    (fn-octets$c-reserve n (fnn-live-octets))))
 
-(defun fnn-octets-append-vector (vector)
+(defun fnn-octets-append-vector (vector &optional token)
   "Append VECTOR's bytes at the buffer's fill point (the same boundary as
 `fnn-octets-fill': the host asserts the cells it wrote hold these bytes);
 return the index the bytes begin at."
-  (let* ((st (fnn-live-octets)) (fill (svref st 1)) (n (length vector)))
-    (fn-octets$c-reserve (+ fill n) st)
-    (replace (the fnn-octets (svref st 0)) vector :start1 fill)
-    (setf (svref st 1) (+ fill n))
-    fill))
+  (fnn-with-incoming-mutation (:append token)
+    (let* ((st (fnn-live-octets)) (fill (svref st 1)) (n (length vector)))
+      (fn-octets$c-reserve (+ fill n) st)
+      (replace (the fnn-octets (svref st 0)) vector :start1 fill)
+      (setf (svref st 1) (+ fill n))
+      fill)))
 
 ;;; The PAYLOAD ARENA (books/payload-arena.lisp; the records flip,
 ;;; books/store-intern.lisp): `fn-arena' is the abstract stobj whose logical
@@ -1367,6 +1394,23 @@ its own scalar refusals remain results, while execution escapes are faults."
            (:ok nil)
            (:thrown (fnn-fault "ACL2 raw evaluation escaped in ~(~a~)" ,name))
            (otherwise (fnn-fault "ACL2 error in ~(~a~): ~a" ,name ,outcome)))))))
+
+(defvar *fnn-incoming-mutation-callback* nil)
+
+(defun fnn-incoming-mutation-start ()
+  "Install the verified compiled predicate before any generic buffer use.
+Startup and the resource scheduler must join this gate as one source batch;
+there is no unguarded or interpreted fallback when the callback is absent."
+  (setf *fnn-incoming-mutation-callback* nil)
+  (setf *fnn-incoming-mutation-callback*
+        (fnn-fixed-raw-callback 'fn-owner-incoming-mutation-allowedp)))
+
+(defun fnn-incoming-generic-mutation-allowedp (token)
+  "Caller holds the extent mutex through the subsequent physical mutation."
+  (unless *fnn-incoming-mutation-callback*
+    (fnn-fault "incoming mutation callback is not installed"))
+  (fnn-core-mv 'fn-owner-incoming-mutation-allowedp
+    (funcall *fnn-incoming-mutation-callback* token (fnn-live-page-read-pool))))
 
 (defun fnn-core (name &rest args)
   "A state-free wrapper's single value."
