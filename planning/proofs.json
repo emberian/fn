@@ -17850,7 +17850,7 @@
         "host/bp-native-app-host.lisp",
         "planning/evidence/bp-listener-control-2026-09-29.md"
       ],
-      "progress_note": "Clean persvati proof REPL bplc-final admitted32/32 forms,109830 prover steps; exact teeth41/41 from#3 (package/include already loaded). Source host/interface/ledger gates pending; combined certification/image/native evidence pending."
+      "progress_note": "Clean persvati proof REPL bplc-final admitted32/32 forms,109830 prover steps; exact teeth41/41 from#3 (package/include already loaded). Source host/interface/ledger gates passed at 8ade3b181: default raw bare load47/47 and DTN31/31 zero findings; combined certification/image/native evidence pending."
     },
     {
       "id": "PRF-1076",
@@ -17880,7 +17880,7 @@
         "host/bp-native-app-host.lisp",
         "planning/evidence/bp-listener-control-2026-09-29.md"
       ],
-      "progress_note": "Clean persvati proof REPL bplc-final admitted32/32 forms,109830 prover steps; exact teeth41/41 from#3 (package/include already loaded). Source host/interface/ledger gates pending; combined certification/image/native evidence pending."
+      "progress_note": "Clean persvati proof REPL bplc-final admitted32/32 forms,109830 prover steps; exact teeth41/41 from#3 (package/include already loaded). Source host/interface/ledger gates passed at 8ade3b181: default raw bare load47/47 and DTN31/31 zero findings; combined certification/image/native evidence pending."
     },
     {
       "id": "PRF-1067",
