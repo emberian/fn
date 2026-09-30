@@ -5839,6 +5839,27 @@
         "planning/evidence/bpsec-target-cursor-source-2026-09-30.json"
       ],
       "implementation_note": "Additive source cursor and logical span abstraction. Guards and consumed-prefix component theorems admitted in exact persvati w28 source sessions; not normal certification. Every-schedule refinement, cursor invariant preservation, actual immutable provider/lifetime, target graph, crypto/key/nonce policy and served admission remain open. Structural parsing never implies verification."
+    },
+    {
+      "id": "REP-018",
+      "title": "BPSec receiver completion matches bounded immutable references and current authority",
+      "specification": "specs/bp-design.md#4-security-posture",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1185"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/bpsec-operation.lisp",
+        "tests/acl2/bpsec-operation-tests.lisp",
+        "planning/evidence/bpsec-operation-source-2026-09-30.json"
+      ],
+      "implementation_note": "Receiver-only fixed metadata matching and logical retirement. Actual immutable registry/interning, canonical input construction, completion provenance, nonreused token allocator and serialized current-policy lease remain open. No crypto or application admission capability follows from shaped references."
     }
   ]
 }

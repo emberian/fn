@@ -19121,6 +19121,28 @@
         "planning/evidence/bpsec-target-cursor-source-2026-09-30.json"
       ],
       "progress_note": "Logical graph/reference data-match premise plus bounded metadata cursor source. Final fresh16fixtureforms15.82s7199127steps with6proper-local source/test dependencies and7matchingcached dependencies. Guards, unconditional quantum work bound and complete-cursor/work quantum-composition event admitted; literal quantum1/17/reference cases and provider-byte substitution refusal pass. Full state preservation/every-schedule reference equivalence, actual pinned provider/caller, complete post-decrypt graph, normal certification/native security gate remain open."
+    },
+    {
+      "id": "PRF-1185",
+      "title": "BPSec evidence requires exact issued operation and current verified completion",
+      "statement": "Additive subject fn-bps-op-complete emits evidence only for valid issued state, matching valid verified completion and exact wellformed current held/policy/key/input references. Completion and cancellation preserve valid operation state; cancelled and settled operations never reopen or emit evidence. The subject is not installed on the actual BP host yet. Trusted primitive provenance, immutable reference registry, canonical inputs, nonreused token allocation and actual current-policy lease are separate caller obligations. Source matching is not cryptographic security or application acceptance.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-018"
+      ],
+      "depends_on": [
+        "PRF-1178",
+        "PRF-1179"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": [
+        "books/bpsec-operation.lisp",
+        "tests/acl2/bpsec-operation-tests.lisp",
+        "planning/evidence/bpsec-operation-source-2026-09-30.json"
+      ],
+      "progress_note": "Source-only exact protected persvati w28 admission; fresh31fixtureforms1.09s211704steps, model/operation proper-local and4matchingcached deps/0missing. All guards and four evidence/preservation/retirement events admitted. First reservedSTATE formal refusal repaired without weakening guard; evidence rewrite orientation repaired by rule-classes nil. Full actual provider/provenance/current lease/native gate and normal certification remain open."
     }
   ]
 }

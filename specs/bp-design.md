@@ -1062,9 +1062,41 @@ and `fn-bps-window-backing-matchp`. A same-ID/same-offset byte substitution
 fails this relation. The predicate specifies the required provider premise;
 it does not establish a physical provider or authorize a supplied window.
 
+REP-018: Receiver-only BPSec completion compares fixed immutable-reference
+metadata against the exact issued operation and current authority snapshot.
+Only a valid verified completion for that operation may emit descriptor-bound
+evidence. Revocation, cancellation, duplication and uncertainty never reopen a
+retired token or imply application acceptance. This remains specified until the
+actual immutable registry, canonical plan, primitive provenance and serialized
+current-policy lease are established at the BP caller.
+
+`books/bpsec-operation.lisp` implements the frozen receiver completion layout
+from architectural contract 6b42c2a93 §5.1. `fn-bps-op-complete` always returns
+`(:bps-completed disposition reason next-state evidence)`; malformed and foreign
+completions preserve the rightful state, exact cancelled/stale completions settle
+without evidence, and duplicate completions are ignored. The closed primitive
+status/detail pairs keep unavailable/fault observations uncertain. Verified BIB
+has nil output; verified BCB has an immutable plaintext reference. These are
+bounded record-shape checks, not authentic primitive observations. The literal
+operation descriptor is twelve cells including its tag, following the frozen
+field order; no padding or extra wire field is introduced.
+
+References are `(:bps-ref slot incarnation)` with uint64 fields, in distinct
+token/held/policy/key/input namespaces. A named injective immutable registry
+relation must bind them to actual held objects, policy/key generations and
+ACL2-produced canonical input plans; it is not established here. Byte spans in
+this completion leaf additionally require uint64 backing IDs. Resolved scope is
+0..7 after profile validation; separate tags retain exact spans, while a
+ciphertext-tail tag has nil expected reference and requires upstream exact input
+construction. The actual host obtains current references under its serialized
+policy lease. No full ASB, bundle, key, plan or plaintext is traversed by the
+completion decision. PRF-1185 and SCN-1068 cover matching and logical retirement,
+not crypto, physical worker return, charge refund, pin release or native policy
+admission. A retry after uncertainty requires a fresh nonreused token.
+
 Full cursor invariant preservation, equality for every chunk/quantum
 schedule, operational span refinement, served target graph (PRF-1179), canonical
-cryptographic inputs, descriptor-bound primitive completion, explicit key
+cryptographic inputs, actual descriptor-bound primitive completion, explicit key
 policy, durable nonce allocation and native admission remain open. Actual
 ACL2 admission is component evidence; normal certification and the matching
 native security trajectory are separate coordinates.

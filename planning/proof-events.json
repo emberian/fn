@@ -17834,6 +17834,31 @@
           "pending_subject": "Additive metadata cursor scheduling component. No BP host installs fn-bps-target-step; full reference equivalence/state preservation and carried immutable provider/data-binding relation remain open. Source admission only, not normal certificate or actual-bundle authority."
         }
       ]
+    },
+    {
+      "id": "PRF-1185",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bps-op-evidence-requires-issued-current-verified",
+          "pending_subject": "Receiver-only fixed metadata component; actual BP host does not yet call fn-bps-op-complete. Immutable registry/provider, canonical input and primitive provenance/current lease remain caller obligations. Source admission is not normal certification or actual acceptance."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-op-complete-preserves-operation",
+          "pending_subject": "Receiver-only fixed metadata component; actual BP host does not yet call fn-bps-op-complete. Immutable registry/provider, canonical input and primitive provenance/current lease remain caller obligations. Source admission is not normal certification or actual acceptance."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-op-cancel-preserves-operation",
+          "pending_subject": "Receiver-only fixed metadata component; actual BP host does not yet call fn-bps-op-complete. Immutable registry/provider, canonical input and primitive provenance/current lease remain caller obligations. Source admission is not normal certification or actual acceptance."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-op-completion-never-reopens-retired-operation",
+          "pending_subject": "Receiver-only fixed metadata component; actual BP host does not yet call fn-bps-op-complete. Immutable registry/provider, canonical input and primitive provenance/current lease remain caller obligations. Source admission is not normal certification or actual acceptance."
+        }
+      ]
     }
   ]
 }

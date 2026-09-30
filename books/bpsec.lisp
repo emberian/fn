@@ -5,3 +5,4 @@
 (include-book "bpsec-target")
 (include-book "bpsec-target-cursor")
 (include-book "bpsec-provider-model")
+(include-book "bpsec-operation")
