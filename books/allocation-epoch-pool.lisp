@@ -122,3 +122,26 @@
          (a (fn-prp-alloc-allocated pool)) (n (fn-prp-alloc-active-turns pool))
          (g (fn-prp-alloc-gc-nonce pool))))))
  :rule-classes nil)
+
+(defthm fn-aec-pool-prepay-preserves-installed-state
+ (implies (and (fn-aec-pool-statep pool)
+               (not (eq (fn-prp-alloc-mode pool) :uninstalled)))
+  (let ((next (mv-nth 1 (fn-aec-pool-collect-prepay-internal pool))))
+   (and (fn-aec-pool-statep next)
+        (not (eq (fn-prp-alloc-mode next) :uninstalled)))))
+ :hints (("Goal"
+  :in-theory (disable fn-aec-statep fn-aec-at fn-aec-ceiling fn-aed-ordinary-prepay)
+  :use ((:instance fn-aec-collect-prepay-preserves-state
+         (i (fn-prp-alloc-installation pool)) (m (fn-prp-alloc-mode pool))
+         (e (fn-prp-alloc-epoch pool)) (l (fn-prp-alloc-occupied pool))
+         (a (fn-prp-alloc-allocated pool)) (n (fn-prp-alloc-active-turns pool))
+         (g (fn-prp-alloc-gc-nonce pool))))))
+ :rule-classes nil)
+
+(defthm fn-aec-keep-ledger-preserves-installed-state
+ (and (equal (fn-aec-pool-statep (fn-owner-page-read-keep-ledger ledger pool))
+             (fn-aec-pool-statep pool))
+      (equal (fn-prp-alloc-mode (fn-owner-page-read-keep-ledger ledger pool))
+             (fn-prp-alloc-mode pool)))
+ :hints (("Goal" :in-theory (disable fn-aec-statep)))
+ :rule-classes nil)

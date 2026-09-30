@@ -22,11 +22,23 @@
           (fn-aec-nats-below (cdr xs) domain))
    (equal xs nil)))
 
+; Association6 is fixed by the genuine installer, never supplied by a request.
+; Runtime coordinate binds selected executable/image/source units. Shape alone
+; does not authenticate installation. Geometry is immutable in this association.
+(defun fn-aec-runtime-associationp (x domain)
+ (declare (xargs :guard t))
+ (and (true-listp x) (equal (len x) 6)
+      (eq (fn-aec-at 0 x) :allocation-epoch-association)
+      (fn-aec-at 1 x) (fn-aec-at 2 x) (fn-aec-at 3 x)
+      (natp domain) (posp (fn-aec-at 4 x))
+      (<= (fn-aec-at 4 x) domain)
+      (natp (fn-aec-at 5 x)) (<= (fn-aec-at 5 x) domain) t))
+
 (defun fn-aec-installationp (x)
  (declare (xargs :guard t))
  (and (true-listp x) (equal (len x) 12)
       (eq (fn-aec-at 0 x) :allocation-epoch-installation)
-      (fn-aec-at 1 x)
+      (fn-aec-runtime-associationp (fn-aec-at 1 x) (fn-aec-at 2 x))
       (posp (fn-aec-at 2 x))
       (and (natp (fn-aec-at 3 x)) (<= (fn-aec-at 3 x) (fn-aec-at 2 x)))
       (and (natp (fn-aec-at 4 x)) (<= (fn-aec-at 4 x) (fn-aec-at 2 x)))
@@ -95,7 +107,11 @@
 (defun fn-aec-body (installation mode epoch occupied allocated turns nonce body cleanup)
  (declare (ignore epoch nonce) (xargs :guard (and (fn-aec-statep installation mode epoch occupied allocated turns nonce)
                             (natp body) (booleanp cleanup))))
- (cond ((or (not (eq mode :active)) (zp turns))
+ (cond ((and (eq mode :draining) (posp turns))
+        ;; The already paid gate owns its no-effect epilogue; drain forbids
+        ;; new body allocation but must let that turn yield and settle.
+        (mv :yield :draining allocated))
+       ((or (not (eq mode :active)) (zp turns))
         (mv :recovery-required :recovery allocated))
        (t
         (mv-let (word next)
@@ -126,7 +142,8 @@
 ; both allocation charge and any shared-issuer intent. No new counter exists.
 (defun fn-aec-collect-prepay (installation mode epoch occupied allocated turns nonce)
  (declare (xargs :guard (fn-aec-statep installation mode epoch occupied allocated turns nonce)))
- (cond ((not (and (eq mode :draining) (equal turns 0) (not nonce)))
+ (cond ((eq mode :recovery) (mv :recovery-required :recovery allocated))
+       ((not (and (eq mode :draining) (equal turns 0) (not nonce)))
         (mv :not-quiescent mode allocated))
        ((not (< epoch (fn-aec-at 2 installation)))
         (mv :recovery-required :recovery allocated))

@@ -56,7 +56,7 @@ collection loop. A breached promised collection reserve is recovery, not an
 ordinary connection refusal.
 
 The native barrier, genuine installation producer, source tariffs, selected
-collector observation conversion, shared nonce issuance, and once-only turn
+native collector composition and once-only turn
 receipt joins remain open. No live GC or daemon activation is implied by the
 internal source proof. Root owns those composition boundaries.
 
@@ -71,3 +71,51 @@ exhaustion and cleanup headroom. Literal positive and hypothesis-removal teeth
 cover entry/body/turn/reset/footprint preservation; corrupted-state cases are
 marked separately and evaluated as total logical functions outside executable
 guards. These fixtures establish no real runtime installation.
+
+## Internal native collector join (PRF-1158, PRF-1159)
+
+Installation cell 1 is association6:
+`(:allocation-epoch-association runtime-coordinate profile-coordinate pool-coordinate page-octets dynamic-reservation)`.
+The runtime coordinate binds selected executable, image and source units;
+profile and SAMEpool identities remain immutable. This shape predicate does
+not confer installation authority. No pool field is added by this refinement.
+
+`fn-aec-pool-collect-observed-internal(requested-nonce, observed-association,
+observed-epoch, observed-nonce, status, pages, page-octets, reservation, pool)`
+returns `(word, pool)`. The nonce-only native wrapper obtains these scalar
+observations from its installed, preallocated primitive carrier. ACL2 checks
+the installed association and geometry; it checks pages against reservation
+divided by page size before multiplying. The installed reservation is already
+bounded by the immediate domain. Thus rejected observations cannot construct
+an oversized product, and accepted occupied bytes match installed geometry.
+The checked dynamic prefix is not total process residency; other spaces and
+external resources belong to their separately qualified baseline/envelope.
+
+`fn-aec-pool-collection-request-internal(pool)` returns
+`(word, association, epoch, nonce, pool)`. It prepays Qcollect and retains the
+collecting intent before invoking the actual existing `fn-prs-issue` with the
+fixed identity demand `(0 0 0 0 1)`. The actual ledger supplies baseline, budget,
+charged resources and NEXT. The committed ledger contains NEXT+1; the returned
+and retained collection nonce is the exact old NEXT. Existing binding roots
+remain unchanged. No new counter, demand parameter or binding-list allocation
+is introduced. Constant-size resource scalar checks prevent overflow in the
+existing issuer's arithmetic. Refused issuance retains Qcollect and enters
+recovery; a repeated request in recovery remains `:recovery-required`.
+
+Collector identity rescue remains an explicit installation/composition
+obligation. This code does not fabricate rescue capacity: exhausted identities
+produce recovery after the retained prepaid intent. A completed collector nonce
+stays spent in shared PRS accounting.
+
+A gate-owned turn whose body was not prepaid when draining begins yields with
+unchanged A, then consumes its already prepaid no-effect epilogue. A body-owned
+turn continues its prepaid closure while draining, without another entry/body
+call. The worker-slot receipt integration owns those distinctions.
+
+Additional exact scenarios are in `allocation-epoch-observation-tests.lisp`
+and `allocation-epoch-collection-request-tests.lisp`: actual same-pool raw
+completion, installed geometry mismatch, stale request/epoch/nonce, deferred
+collector, reservation overflow, shared nonce issuance and replay, worker drain,
+identity exhaustion, and the draining gate-owned yield. Native process-wide
+barrier, genuine installation/source tariffs and once-only turn producer remain
+separate joins; these tests use explicitly synthetic producer fixtures.
