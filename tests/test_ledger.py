@@ -8,12 +8,15 @@ flagged nothing.
 """
 
 import importlib.util
+import contextlib
+import io
 import json
 from pathlib import Path
 import re
 import sys
 import tempfile
 import unittest
+import weakref
 from unittest import mock
 
 SPEC = importlib.util.spec_from_file_location(
@@ -366,6 +369,120 @@ class SuspectTests(unittest.TestCase):
               (implies (acceptablep r t) (consp r)))
         ''')
         self.assertEqual(flagged, {})
+
+
+class NormalizationBudgetTests(unittest.TestCase):
+    def test_unfold_keeps_temporary_inputs_alive_for_identity_memo(self):
+        tree = tree_from({"books/a.lisp":
+                         "(defun f (x) (list x 17)) (defun g (x) (list x 99))"})
+        original = ledger.beta_apply
+        references = []
+
+        class Temporary(list):
+            """A weak-referenceable list with unchanged term semantics."""
+
+        def observed_beta(*args):
+            # Every prior temporary is still an identity-keyed memo input.
+            # Its address must not become available for another expansion.
+            self.assertTrue(all(reference() is not None for reference in references))
+            term = Temporary(original(*args))
+            references.append(weakref.ref(term))
+            return term
+
+        with mock.patch.object(ledger, "beta_apply", observed_beta):
+            result = tree.unfold(ledger.read_forms("(equal (f x) (g x))")[0])
+        self.assertEqual(result, ledger.read_forms("(equal (list x 17) (list x 99))")[0])
+        self.assertEqual(len(references), 2)
+
+    @staticmethod
+    def doubling(depth, *, projected=True):
+        bindings = " ".join(f"(v{i} (cons v{i-1} v{i-1}))" for i in range(1, depth + 1))
+        value = f"v{depth}"
+        if projected:
+            for _ in range(depth):
+                value = f"(car {value})"
+        return ledger.read_forms(f"(let* ((v0 x) {bindings}) {value})")[0]
+
+    def test_projection_discards_exponential_observer_arms_before_expansion(self):
+        # The unprojected tree has 2**40 leaves; only this selected path is
+        # needed. Bound the actual normalizer work, not elapsed machine time.
+        normalizer = ledger._Normalizer(limit=100)
+        self.assertEqual(normalizer.normalize(self.doubling(40)), ledger.Sym("x"))
+        self.assertLess(normalizer.work, 10_000)
+
+    def test_unprojected_growth_fails_before_materializing_tree(self):
+        normalizer = ledger._Normalizer(limit=50)
+        with self.assertRaises(ledger.AnalysisIncomplete):
+            normalizer.normalize(self.doubling(40, projected=False))
+        self.assertLess(len(normalizer.terms), 100)
+
+    def test_large_virtual_tree_stays_shared_through_comparison_walkers(self):
+        normalizer = ledger._Normalizer(limit=500)
+        term = normalizer.normalize(self.doubling(40, projected=False))
+        self.assertLess(normalizer.allocated, 500)
+        self.assertGreater(ledger.size(term), 2**40)
+        self.assertIs(term[1], term[2])
+        self.assertTrue(ledger.same(term, ledger.normalise_eq(term)))
+        grounded = ledger.replace_form(term, ledger.Sym("x"), ledger.Sym("t"))
+        self.assertIs(grounded[1], grounded[2])
+        self.assertTrue(ledger.ground(grounded))
+
+    def test_deliberate_finite_detector_boundary_is_not_analysis_failure(self):
+        tree = tree_from({"books/a.lisp": "(defun f (x) x)"})
+        term = ledger.read_forms("(f x)")[0]
+        self.assertIsNone(tree.unfold_fully(term, budget=0))
+        self.assertIsNone(tree.unfold_fully(ledger.read_forms("(list a b)")[0], limit=2))
+
+    def test_parallel_sequential_shadowing_quote_and_function_namespace(self):
+        cases = {
+            "(let ((x y) (y z)) (list x y))": "(list y z)",
+            "(let* ((x y) (y z)) (list x y))": "(list y z)",
+            "(let* ((x y) (z x)) (list x z))": "(list y y)",
+            "(let ((x a)) (let ((x b) (y x)) (list x y)))": "(list b a)",
+            "((lambda (x y) (list x y)) y z)": "(list y z)",
+            "(let ((f x)) (f f 'f))": "(f x 'f)",
+            "(nth -1 (list a b))": "a",
+            "(cadr (cons ignored (cons chosen tail)))": "chosen",
+        }
+        for source, expected in cases.items():
+            with self.subTest(source=source):
+                self.assertEqual(ledger.beta(ledger.read_forms(source)[0]),
+                                 ledger.read_forms(expected)[0])
+
+    def test_unfold_projection_detects_actual_definition_restatement(self):
+        bindings = " ".join(f"(v{i} (cons v{i-1} v{i-1}))" for i in range(1, 31))
+        body = f"(let* ((v0 x) {bindings}) v30)"
+        projection = "(f x)"
+        for _ in range(30):
+            projection = f"(car {projection})"
+        tree = tree_from({"books/a.lisp": f"(defun f (x) {body})\n"
+                          f"(defthm projected (equal {projection} x))"})
+        self.assertTrue(any("definition-restated" in r for r in tree.suspects["projected"]))
+
+    def test_incomplete_analysis_is_visible_and_book_command_fails_closed(self):
+        tree = tree_from({"books/a.lisp": "(defun f (x) x) (defthm t1 (equal (f x) x))"})
+        tree._suspects = None
+        with mock.patch.object(tree, "definitional_statement",
+                               side_effect=ledger.AnalysisIncomplete("test cap")):
+            reasons = tree.suspects_of(tree.books["books/a.lisp"].theorems)
+        self.assertTrue(any(r.startswith("analysis-incomplete:") for r in reasons["t1"]))
+        tree._suspects = reasons
+        self.assertTrue(ledger.analysis_problems(tree))
+        with self.assertRaises(ledger.AnalysisIncomplete):
+            ledger._checked_tree(tree, lazy=False)
+        self.assertIs(ledger._checked_tree(tree, lazy=True), tree)
+        with mock.patch.object(ledger, "load_tree", return_value=tree), \
+                contextlib.redirect_stdout(io.StringIO()) as out, \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            self.assertEqual(ledger.book_report(["books/a.lisp"]), 1)
+        self.assertIn("analysis-incomplete", out.getvalue())
+        self.assertIn("analysis-incomplete", err.getvalue())
+        with mock.patch.object(ledger, "load_tree", return_value=tree), \
+                mock.patch.object(ledger, "load_proof_events") as read_registry:
+            self.assertTrue(ledger.write_all())
+            read_registry.assert_not_called()
+
+    # -- must be flagged ------------------------------------------------
 
 
 class CitedSuspectAdviceTests(unittest.TestCase):

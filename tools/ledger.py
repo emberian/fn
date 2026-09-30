@@ -359,12 +359,16 @@ def keyword_plist(items: list) -> dict[str, object]:
     return result
 
 
-def conjuncts(form: object) -> list:
+def conjuncts(form: object, _seen: set[int] | None = None) -> list:
     """Flatten a top-level ``and``."""
     if head(form) == "and":
+        _seen = set() if _seen is None else _seen
+        if id(form) in _seen:
+            return []  # repeated shared AND is idempotent
+        _seen.add(id(form))
         out: list = []
         for item in form[1:]:
-            out.extend(conjuncts(item))
+            out.extend(conjuncts(item, _seen))
         return out
     return [form]
 
@@ -379,33 +383,58 @@ def split_implication(statement: object) -> tuple[list, object]:
     return hypotheses, current
 
 
-def calls(form: object, found: set[str] | None = None) -> set[str]:
+def calls(form: object, found: set[str] | None = None,
+          _seen: set[int] | None = None) -> set[str]:
     """Every symbol in function position, quoted subforms excluded."""
     found = set() if found is None else found
     if not isinstance(form, list) or not form:
         return found
     if head(form) == "quote":
         return found
+    _seen = set() if _seen is None else _seen
+    if id(form) in _seen:
+        return found
+    _seen.add(id(form))
     if isinstance(form[0], Sym):
         found.add(str(form[0]))
     for item in form[1:] if isinstance(form[0], Sym) else form:
-        calls(item, found)
+        calls(item, found, _seen)
     return found
 
 
 def substitute(form: object, bindings: dict[str, object]) -> object:
     """Replace free variable occurrences.  Binding forms are not tracked; see
     ``docs/proofs.md`` for what that costs the suspect detector."""
-    if isinstance(form, Sym):
-        return bindings.get(str(form), form)
-    if isinstance(form, list):
-        if head(form) == "quote":
-            return form
-        return [substitute(item, bindings) for item in form]
-    return form
+    memo: dict[int, object] = {}
+    work = 0
+    allocated = 0
+
+    def walk(term: object) -> object:
+        nonlocal work, allocated
+        work += 1
+        if work > NORMALIZATION_WORK:
+            raise AnalysisIncomplete("substitution work budget exhausted")
+        if isinstance(term, Sym):
+            return bindings.get(str(term), term)
+        if not isinstance(term, list) or head(term) == "quote":
+            return term
+        if id(term) in memo:
+            return memo[id(term)]
+        allocated += len(term) + 1
+        if allocated > NORMALIZATION_LIMIT:
+            raise AnalysisIncomplete("substitution allocation budget exhausted")
+        result: list = []
+        for index, item in enumerate(term):
+            # ACL2 has separate function/variable namespaces.
+            value = item if index == 0 and isinstance(item, Sym) else walk(item)
+            result.append(value)
+        memo[id(term)] = result
+        return result
+
+    return walk(form)
 
 
-def normalise_null(form: object) -> object:
+def normalise_null(form: object, _memo: dict | None = None) -> object:
     """Rewrite every ``(null x)`` to ``(equal x nil)``.
 
     The two are the same proposition and the shape detectors below must not
@@ -421,9 +450,13 @@ def normalise_null(form: object) -> object:
     change and the stability was an artefact.
     """
     if isinstance(form, list):
-        parts = [normalise_null(part) for part in form]
+        _memo = {} if _memo is None else _memo
+        if id(form) in _memo:
+            return _memo[id(form)]
+        parts = [normalise_null(part, _memo) for part in form]
         if head(form) == "null" and len(parts) == 2:
-            return [Sym("equal"), parts[1], Sym("nil")]
+            parts = [Sym("equal"), parts[1], Sym("nil")]
+        _memo[id(form)] = parts
         return parts
     return form
 
@@ -433,13 +466,21 @@ def same(left: object, right: object) -> bool:
     return same_exact(normalise_null(left), normalise_null(right))
 
 
-def same_exact(left: object, right: object) -> bool:
+def same_exact(left: object, right: object, _memo: dict | None = None) -> bool:
     """Structural equality that keeps symbols and string literals distinct."""
     if isinstance(left, Sym) != isinstance(right, Sym):
         return False
     if isinstance(left, list) and isinstance(right, list):
-        return (len(left) == len(right)
-                and all(same_exact(a, b) for a, b in zip(left, right)))
+        _memo = {} if _memo is None else _memo
+        key = (id(left), id(right))
+        if key in _memo:
+            return _memo[key]
+        if len(_memo) > NORMALIZATION_WORK:
+            raise AnalysisIncomplete("comparison work budget exhausted")
+        equal = (len(left) == len(right)
+                 and all(same_exact(a, b, _memo) for a, b in zip(left, right)))
+        _memo[key] = equal
+        return equal
     if isinstance(left, list) or isinstance(right, list):
         return False
     return type(left) is type(right) and left == right
@@ -1290,30 +1331,50 @@ class Tree:
     # -- unfolding -------------------------------------------------------
 
     def unfold(self, form: object, depth: int = 3) -> object:
-        """Expand non-recursive local defuns.  Bounded; recursion is left alone."""
-        if depth <= 0 or not isinstance(form, list) or not form:
-            return form
-        if head(form) == "quote":
-            return form
-        expanded = [form[0]] + [self.unfold(item, depth - 1) for item in form[1:]]
-        name = head(expanded)
-        function = self.functions.get(name) if name else None
-        if function is None or not isinstance(function.formals, list):
+        """Bounded local unfolding, retaining shared argument subgraphs."""
+        # Keep each input graph alive alongside its answer. beta_apply below
+        # creates temporary graphs: caching only their ids lets Python reuse
+        # a dead graph's identity for a different function expansion.
+        memo: dict[tuple[int, int], tuple[object, object]] = {}
+        allocated = 0
+
+        def walk(term, remaining):
+            nonlocal allocated
+            if remaining <= 0 or not isinstance(term, list) or not term or head(term) == "quote":
+                return term
+            key = (id(term), remaining)
+            if key in memo:
+                return memo[key][1]
+            allocated += len(term) + 1
+            if allocated > NORMALIZATION_LIMIT:
+                raise AnalysisIncomplete("bounded unfolding allocation budget exhausted")
+            expanded = [term[0]] + [walk(item, remaining - 1) for item in term[1:]]
+            name = head(expanded)
+            function = self.functions.get(name) if name else None
+            if (function is not None and isinstance(function.formals, list)
+                    and name not in calls(function.body)
+                    and len(function.formals) == len(expanded) - 1):
+                bindings = {str(f): arg for f, arg in zip(function.formals, expanded[1:])
+                            if isinstance(f, Sym)}
+                expanded = walk(beta_apply(logic_body(function), bindings), remaining - 1)
+            memo[key] = (term, expanded)
             return expanded
-        if name in calls(function.body):
-            return expanded  # recursive: unfolding would not terminate
-        if len(function.formals) != len(expanded) - 1:
-            return expanded
-        bindings = {str(formal): argument
-                    for formal, argument in zip(function.formals, expanded[1:])
-                    if isinstance(formal, Sym)}
-        # beta first: substituting into a `let` body could otherwise capture.
-        return self.unfold(substitute(beta(logic_body(function)), bindings), depth - 1)
+
+        return walk(form, depth)
 
     # -- detectors -------------------------------------------------------
 
     def suspect_reasons(self, theorem: Theorem) -> list[str]:
         reasons: list[str] = []
+        try:
+            return self._suspect_reasons(theorem, reasons)
+        except (AnalysisIncomplete, RecursionError) as error:
+            # Resource exhaustion is an unresolved analysis, never evidence
+            # that this theorem escaped all assurance detectors.
+            reasons.append(f"analysis-incomplete: {type(error).__name__}: {error}")
+            return sorted(set(reasons))
+
+    def _suspect_reasons(self, theorem: Theorem, reasons: list[str]) -> list[str]:
         hypotheses, conclusion = split_implication(theorem.statement)
         clauses = hint_clauses(theorem.hints)
 
@@ -1399,7 +1460,7 @@ class Tree:
                     continue
                 bindings = {str(f): a for f, a in zip(function.formals, left[1:])
                             if isinstance(f, Sym)}
-                body = substitute(logic_body(function), bindings)
+                body = beta_apply(logic_body(function), bindings)
                 if same(body, right):
                     return (f"definition-restated: the conclusion is the body of "
                             f"{function.name}")
@@ -1419,7 +1480,7 @@ class Tree:
                 continue
             bindings = {str(f): a for f, a in zip(function.formals, hypothesis[1:])
                         if isinstance(f, Sym)}
-            if same(substitute(logic_body(function), bindings), conclusion):
+            if same(beta_apply(logic_body(function), bindings), conclusion):
                 return (f"recognizer-body-conclusion: the conclusion is the body "
                         f"of the hypothesis {function.name}")
         return None
@@ -1435,7 +1496,7 @@ class Tree:
                 continue
             bindings = {str(f): a for f, a in zip(function.formals, call[1:])
                         if isinstance(f, Sym)}
-            body = substitute(beta(logic_body(function)), bindings)
+            body = beta_apply(logic_body(function), bindings)
             for test, then, otherwise in if_branches(body):
                 for hypothesis in hypotheses:
                     target = negated_form(hypothesis)
@@ -1500,8 +1561,7 @@ class Tree:
                 continue
             bindings = {str(f): a for f, a in zip(function.formals, call[1:])
                         if isinstance(f, Sym)}
-            body = normalise_eq(expand_cond(beta(substitute(
-                beta(logic_body(function)), bindings))))
+            body = normalise_eq(expand_cond(beta_apply(logic_body(function), bindings)))
             arm, decided = select_arm(body, hypotheses)
             if decided and arm is not None and same(arm, value):
                 fixed.append((call, value))
@@ -1524,8 +1584,7 @@ class Tree:
                 continue
             bindings = {str(f): a for f, a in zip(function.formals, call[1:])
                         if isinstance(f, Sym)}
-            body = normalise_eq(expand_cond(beta(substitute(
-                beta(logic_body(function)), bindings))))
+            body = normalise_eq(expand_cond(beta_apply(logic_body(function), bindings)))
             if head(body) != "if" or len(body) != 4:
                 continue
             _, t, then, otherwise = body
@@ -1556,41 +1615,16 @@ class Tree:
 
     def unfold_fully(self, form: object, budget: int = 200,
                      limit: int = 4000) -> object | None:
-        """Expand non-recursive definitions and constructor projections to a
-        fixpoint; ``None`` when the budget or the term size runs out."""
-        state = {"budget": budget}
+        """Finite definitional detector: None outside its existing envelope.
 
-        def walk(term: object) -> object:
-            if not isinstance(term, list) or not term or head(term) == "quote":
-                return term
-            if not isinstance(term[0], Sym):
-                return term
-            term = [term[0]] + [walk(item) for item in term[1:]]
-            reduced = project(term)
-            if reduced is not term:
-                return walk(reduced)
-            name = str(term[0])
-            function = self.functions.get(name)
-            if function is None or not isinstance(function.formals, list):
-                return term
-            if len(function.formals) != len(term) - 1:
-                return term
-            body = logic_body(function)
-            if name in calls(body):
-                return term
-            state["budget"] -= 1
-            if state["budget"] < 0:
-                raise OverflowError
-            bindings = {str(f): a for f, a in zip(function.formals, term[1:])
-                        if isinstance(f, Sym)}
-            expanded = beta(substitute(beta(body), bindings))
-            if size(expanded) > limit:
-                raise OverflowError
-            return walk(expanded)
-
+        This detector deliberately stops after BUDGET definitions or LIMIT
+        term cells. Those established boundaries differ from an unexpected
+        normalization work/recursion failure, which invalidates analysis.
+        """
         try:
-            return walk(beta(form))
-        except (OverflowError, RecursionError):
+            return _Normalizer(limit=limit, functions=self.functions,
+                               unfold_budget=budget, finite_detector=True).normalize(form)
+        except DetectorBoundary:
             return None
 
     def preserves_without_subject(self, theorem: Theorem) -> str | None:
@@ -1727,33 +1761,208 @@ def negated_form(hypothesis: object) -> object | None:
     return None
 
 
-def beta(form: object) -> object:
-    """Inline ``let``, ``let*`` and literal lambda applications.
+# Analysis budgets bound tooling expansion, not source/runtime data. An
+# exhausted budget is emitted as unresolved assurance analysis.
+NORMALIZATION_LIMIT = 100_000
+NORMALIZATION_WORK = 1_000_000
 
-    ACL2's ``let`` is a lambda application, so this changes no meaning.  It is
-    what lets the branch detector see through a definition that names its
-    branch test with a local variable.
+
+class AnalysisIncomplete(RuntimeError):
+    pass
+
+
+class DetectorBoundary(RuntimeError):
+    """The definitional detector's established finite search envelope."""
+
+
+def bounded_size(form: object, limit: int, memo: dict[int, int]) -> int:
+    """Expanded tree weight of a shared term; stop before expanding its DAG."""
+    if not isinstance(form, list):
+        return 1
+    if id(form) in memo:
+        return memo[id(form)]
+    total = 1
+    for item in form:
+        total += bounded_size(item, limit, memo)
+        if total > limit:
+            raise AnalysisIncomplete("normalization term budget exhausted")
+    memo[id(form)] = total
+    return total
+
+
+@dataclass
+class _Binding:
+    term: object
+    environment: dict
+
+
+class _Normalizer:
+    """Demand-driven beta/projection with shared binding values.
+
+    Expose a constructor before traversing its children. CAR/CDR/NTH choose
+    the needed arm while it is still syntax, so discarded observer traces
+    never become expanded trees. Binding environments implement parallel
+    LET/lambda and sequential LET* without copying substituted bodies.
     """
-    if not isinstance(form, list) or not form or head(form) == "quote":
-        return form
-    name = head(form)
-    if name == "let" and len(form) >= 3 and isinstance(form[1], list):
-        bindings = {str(pair[0]): beta(pair[1]) for pair in form[1]
-                    if isinstance(pair, list) and len(pair) == 2
-                    and isinstance(pair[0], Sym)}
-        return beta(substitute(strip_declares(form[2:]), bindings))
-    if name == "let*" and len(form) >= 3 and isinstance(form[1], list):
-        body = strip_declares(form[2:])
-        for pair in reversed(form[1]):
-            if isinstance(pair, list) and len(pair) == 2 and isinstance(pair[0], Sym):
-                body = [Sym("let"), [pair], body]
-        return beta(body)
-    if isinstance(form[0], list) and head(form[0]) == "lambda" and len(form[0]) >= 3:
-        formals = form[0][1] if isinstance(form[0][1], list) else []
-        bindings = {str(f): beta(a) for f, a in zip(formals, form[1:])
-                    if isinstance(f, Sym)}
-        return beta(substitute(form[0][-1], bindings))
-    return [beta(item) for item in form]
+
+    def __init__(self, *, limit: int = NORMALIZATION_LIMIT,
+                 functions: dict | None = None, unfold_budget: int = 200,
+                 finite_detector: bool = False):
+        self.limit = limit
+        self.functions = functions or {}
+        self.unfold_budget = unfold_budget
+        self.work = 0
+        self.memo: dict[tuple[int, int], object] = {}
+        self.sizes: dict[int, int] = {}
+        self.environments: list[dict] = []   # prevent identity reuse
+        self.terms: list[object] = []
+        self.recursive: dict[str, bool] = {}
+        self.finite_detector = finite_detector
+        self.allocated = 0
+
+    def weight(self, term: object) -> int:
+        try:
+            return bounded_size(term, self.limit, self.sizes)
+        except AnalysisIncomplete:
+            if self.finite_detector:
+                raise DetectorBoundary("definitional term boundary reached") from None
+            raise
+
+    def tick(self) -> None:
+        self.work += 1
+        if self.work > NORMALIZATION_WORK:
+            raise AnalysisIncomplete("normalization work budget exhausted")
+
+    def scope(self, parent: dict) -> dict:
+        self.work += len(parent) + 1
+        if self.work > NORMALIZATION_WORK:
+            raise AnalysisIncomplete("binding environment budget exhausted")
+        environment = parent.copy()
+        self.environments.append(environment)
+        return environment
+
+    def expose(self, term: object, environment: dict) -> tuple[object, dict]:
+        while True:
+            self.tick()
+            if isinstance(term, Sym) and str(term) in environment:
+                binding = environment[str(term)]
+                term, environment = binding.term, binding.environment
+                continue
+            if not isinstance(term, list) or not term or head(term) == "quote":
+                return term, environment
+            name = head(term)
+            if name in ("let", "let*") and len(term) >= 3 and isinstance(term[1], list):
+                current = self.scope(environment)
+                for pair in term[1]:
+                    if isinstance(pair, list) and len(pair) == 2 and isinstance(pair[0], Sym):
+                        outer = self.scope(current) if name == "let*" else environment
+                        current[str(pair[0])] = _Binding(pair[1], outer)
+                term, environment = strip_declares(term[2:]), current
+                continue
+            if isinstance(term[0], list) and head(term[0]) == "lambda" and len(term[0]) >= 3:
+                formals = term[0][1] if isinstance(term[0][1], list) else []
+                current = self.scope(environment)
+                for formal, argument in zip(formals, term[1:]):
+                    if isinstance(formal, Sym):
+                        current[str(formal)] = _Binding(argument, environment)
+                term, environment = term[0][-1], current
+                continue
+            match = CXR.match(name or "")
+            if match and len(term) == 2 and len(match.group(1)) > 1:
+                inner = term[1]
+                for letter in reversed(match.group(1)):
+                    inner = [Sym("car" if letter == "a" else "cdr"), inner]
+                    self.terms.append(inner)
+                term = inner
+                continue
+            if name in ("car", "cdr") and len(term) == 2:
+                argument, outer = self.expose(term[1], environment)
+                if head(argument) == "cons" and len(argument) == 3:
+                    term, environment = argument[1 if name == "car" else 2], outer
+                    continue
+                if head(argument) == "list":
+                    if len(argument) == 1:
+                        return Sym("nil"), outer
+                    if name == "car":
+                        term, environment = argument[1], outer
+                        continue
+                    term = [Sym("list")] + argument[2:] if len(argument) > 2 else Sym("nil")
+                    self.terms.append(term)
+                    environment = outer
+                    continue
+            if name == "nth" and len(term) == 3 and isinstance(term[1], int):
+                argument, outer = self.expose(term[2], environment)
+                if head(argument) == "list":
+                    index = max(0, term[1])  # ACL2's NFIX, not Python negative indexing
+                    term = argument[index + 1] if index + 1 < len(argument) else Sym("nil")
+                    environment = outer
+                    continue
+            function = self.functions.get(name)
+            if function is not None and isinstance(function.formals, list) and len(function.formals) == len(term) - 1:
+                if name not in self.recursive:
+                    self.recursive[name] = name in calls(logic_body(function))
+                if not self.recursive[name]:
+                    self.unfold_budget -= 1
+                    if self.unfold_budget < 0:
+                        raise DetectorBoundary("definition unfolding boundary reached")
+                    current = self.scope({})
+                    for formal, argument in zip(function.formals, term[1:]):
+                        if isinstance(formal, Sym):
+                            current[str(formal)] = _Binding(argument, environment)
+                    term, environment = logic_body(function), current
+                    continue
+            return term, environment
+
+    def normalize(self, term: object, environment: dict | None = None) -> object:
+        if environment is None:
+            environment = self.scope({})
+        key = (id(term), id(environment))
+        if key in self.memo:
+            return self.memo[key]
+        value, outer = self.expose(term, environment)
+        exposed_key = (id(value), id(outer))
+        if exposed_key in self.memo:
+            self.memo[key] = self.memo[exposed_key]
+            return self.memo[key]
+        if not isinstance(value, list) or not value or head(value) == "quote":
+            if self.finite_detector:
+                self.weight(value)
+            self.memo[key] = value
+            self.memo[exposed_key] = value
+            return value
+        self.allocated += len(value) + 1
+        if self.allocated > (NORMALIZATION_LIMIT if self.finite_detector else self.limit):
+            raise AnalysisIncomplete("normalization allocation budget exhausted")
+        result: list = []
+        total = 1
+        for index, item in enumerate(value):
+            normalized = (item if index == 0 and isinstance(item, Sym)
+                          else self.normalize(item, outer))
+            if self.finite_detector:
+                total += self.weight(normalized)
+                if total > self.limit:
+                    raise DetectorBoundary("definitional term boundary reached")
+            result.append(normalized)
+        if self.finite_detector:
+            self.sizes[id(result)] = total
+        self.memo[key] = result
+        self.memo[exposed_key] = result
+        self.terms.append(result)
+        return result
+
+
+def beta(form: object) -> object:
+    """Normalize bindings and sound constructor projections before expansion."""
+    return _Normalizer().normalize(form)
+
+
+def beta_apply(form: object, bindings: dict[str, object]) -> object:
+    """Bind call arguments lazily, then beta/project before duplication."""
+    normalizer = _Normalizer()
+    environment = normalizer.scope({})
+    for name, argument in bindings.items():
+        environment[name] = _Binding(argument, {})
+    return normalizer.normalize(form, environment)
 
 
 def strip_declares(body: list) -> object:
@@ -1765,39 +1974,45 @@ EQUALITY_SPELLINGS = ("eq", "eql", "=")
 
 
 def normalise_eq(form: object) -> object:
-    """``eq``/``eql``/``=`` as ``equal`` and ``null`` as ``(equal x nil)``:
-    one proposition, several spellings (a definition says ``eq`` where its
-    lemma says ``equal``)."""
+    """Equality spellings, preserving sharing in normalized observer terms."""
     form = normalise_null(form)
-    if isinstance(form, list) and form and head(form) != "quote":
-        parts = [normalise_eq(part) for part in form]
-        if head(form) in EQUALITY_SPELLINGS and len(parts) == 3:
-            return [Sym("equal"), parts[1], parts[2]]
-        if head(form) == "list" and len(parts) > 1 and all(literal(p) for p in parts[1:]):
-            # `(list :refused :bound)' and `'(:refused :bound)' are one value.
-            return [Sym("quote"), [p[1] if head(p) == "quote" else p
-                                   for p in parts[1:]]]
+    memo: dict[int, object] = {}
+
+    def walk(term):
+        if not isinstance(term, list) or not term or head(term) == "quote":
+            return term
+        if id(term) in memo:
+            return memo[id(term)]
+        parts = [walk(part) for part in term]
+        if head(term) in EQUALITY_SPELLINGS and len(parts) == 3:
+            parts = [Sym("equal"), parts[1], parts[2]]
+        elif head(term) == "list" and len(parts) > 1 and all(literal(p) for p in parts[1:]):
+            parts = [Sym("quote"), [p[1] if head(p) == "quote" else p for p in parts[1:]]]
+        memo[id(term)] = parts
         return parts
-    return form
+
+    return walk(form)
 
 
-def expand_cond(form: object) -> object:
-    """``cond`` as nested ``if`` (an arm with no value is its test)."""
+def expand_cond(form: object, _memo: dict | None = None) -> object:
+    """COND as nested IF, without copying shared subterms."""
     if not isinstance(form, list) or not form or head(form) == "quote":
         return form
+    _memo = {} if _memo is None else _memo
+    if id(form) in _memo:
+        return _memo[id(form)]
     if head(form) == "cond":
         result: object = Sym("nil")
         for clause in reversed(form[1:]):
             if not isinstance(clause, list) or not clause:
                 continue
-            test = expand_cond(clause[0])
-            value = expand_cond(clause[-1]) if len(clause) > 1 else test
-            if same(test, Sym("t")):
-                result = value
-            else:
-                result = [Sym("if"), test, value, result]
-        return result
-    return [expand_cond(item) for item in form]
+            test = expand_cond(clause[0], _memo)
+            value = expand_cond(clause[-1], _memo) if len(clause) > 1 else test
+            result = value if same(test, Sym("t")) else [Sym("if"), test, value, result]
+    else:
+        result = [expand_cond(item, _memo) for item in form]
+    _memo[id(form)] = result
+    return result
 
 
 def literal(form: object) -> bool:
@@ -1816,7 +2031,14 @@ def non_nil_literal(form: object) -> bool:
     return head(form) in ("cons", "list", "list*") and len(form) > 1
 
 
-def decide(test: object, facts: list) -> bool | None:
+def decide(test: object, facts: list, _memo: dict | None = None) -> bool | None:
+    memo = {} if _memo is None else _memo
+    if id(test) not in memo:
+        memo[id(test)] = _decide(test, facts, memo)
+    return memo[id(test)]
+
+
+def _decide(test: object, facts: list, memo: dict) -> bool | None:
     """The truth of TEST from literal arithmetic and the hypotheses FACTS."""
     if any(same(test, fact) for fact in facts):
         return True
@@ -1826,10 +2048,10 @@ def decide(test: object, facts: list) -> bool | None:
         return not (same(test, Sym("nil")) or same(test, [Sym("quote"), Sym("nil")]))
     name = head(test)
     if name == "not" and len(test) == 2:
-        inner = decide(test[1], facts)
+        inner = decide(test[1], facts, memo)
         return None if inner is None else not inner
     if name in ("and", "or"):
-        values = [decide(part, facts) for part in test[1:]]
+        values = [decide(part, facts, memo) for part in test[1:]]
         if name == "and":
             if any(v is False for v in values):
                 return False
@@ -1886,28 +2108,41 @@ GROUND_FUNCTIONS = {"not", "equal", "member-equal", "member", "and", "or",
                     "keywordp", "<", "<=", ">", ">=", "cons", "list", "car", "cdr"}
 
 
-def ground(form: object) -> bool:
+def ground(form: object, _memo: dict | None = None) -> bool:
     if isinstance(form, Sym):
         return literal(form)
-    if not isinstance(form, list):
+    if not isinstance(form, list) or head(form) == "quote":
         return True
-    if head(form) == "quote":
-        return True
-    return head(form) in GROUND_FUNCTIONS and all(ground(item) for item in form[1:])
+    memo = {} if _memo is None else _memo
+    if id(form) not in memo:
+        memo[id(form)] = (head(form) in GROUND_FUNCTIONS
+                          and all(ground(item, memo) for item in form[1:]))
+    return memo[id(form)]
 
 
-def replace_form(form: object, target: object, value: object) -> object:
+def replace_form(form: object, target: object, value: object,
+                 _memo: dict | None = None) -> object:
+    memo = {} if _memo is None else _memo
+    if id(form) in memo:
+        return memo[id(form)]
     if same(form, target):
-        return value
-    if isinstance(form, list) and head(form) != "quote":
-        return [replace_form(item, target, value) for item in form]
-    return form
+        result = value
+    elif isinstance(form, list) and head(form) != "quote":
+        result = [replace_form(item, target, value, memo) for item in form]
+    else:
+        result = form
+    memo[id(form)] = result
+    return result
 
 
-def size(form: object) -> int:
-    if isinstance(form, list):
-        return 1 + sum(size(item) for item in form)
-    return 1
+def size(form: object, _memo: dict | None = None) -> int:
+    """Virtual tree size, computed over its physical DAG only once."""
+    if not isinstance(form, list):
+        return 1
+    memo = {} if _memo is None else _memo
+    if id(form) not in memo:
+        memo[id(form)] = 1 + sum(size(item, memo) for item in form)
+    return memo[id(form)]
 
 
 CXR = re.compile(r"c([ad]{1,4})r\Z")
@@ -1935,18 +2170,24 @@ def project(term: list) -> object:
     if name == "nth" and len(term) == 3 and isinstance(term[1], int) \
             and head(term[2]) == "list":
         items = term[2][1:]
-        return items[term[1]] if term[1] < len(items) else Sym("nil")
+        index = max(0, term[1])
+        return items[index] if index < len(items) else Sym("nil")
     return term
 
 
-def if_branches(form: object, found: list | None = None) -> list:
+def if_branches(form: object, found: list | None = None,
+                _seen: set[int] | None = None) -> list:
     """Every ``(if TEST THEN ELSE)`` as a triple."""
     found = [] if found is None else found
     if isinstance(form, list) and head(form) != "quote":
+        _seen = set() if _seen is None else _seen
+        if id(form) in _seen:
+            return found
+        _seen.add(id(form))
         if head(form) == "if" and len(form) == 4:
             found.append((form[1], form[2], form[3]))
         for item in form:
-            if_branches(item, found)
+            if_branches(item, found, _seen)
     return found
 
 
@@ -3149,6 +3390,15 @@ def _tree_cache_write(directory: Path, key: str, tree: Tree) -> None:
         pass
 
 
+def _checked_tree(tree: Tree, *, lazy: bool) -> Tree:
+    if not lazy:
+        problems = analysis_problems(tree)
+        if problems:
+            raise AnalysisIncomplete(f"{len(problems)} unresolved detector analyses: "
+                                     + "; ".join(problems[:10]))
+    return tree
+
+
 def load_tree(*, lazy: bool = False) -> Tree:
     """The analysed tree, computed once per content of its inputs.
 
@@ -3182,7 +3432,7 @@ def load_tree(*, lazy: bool = False) -> Tree:
         digest.update(b"\0")
     key = digest.hexdigest()
     if _TREE_CACHE is not None and _TREE_CACHE[0] == key:
-        return _TREE_CACHE[1]
+        return _checked_tree(_TREE_CACHE[1], lazy=lazy)
     roots = makefile_roots()
     directory = _tree_cache_dir()
     persistent = None
@@ -3203,7 +3453,7 @@ def load_tree(*, lazy: bool = False) -> Tree:
         tree = _tree_cache_read(directory, persistent)
         if tree is not None:
             _TREE_CACHE = (key, tree)
-            return tree
+            return _checked_tree(tree, lazy=lazy)
     tree = Tree({relative: analyze_book(path, relative) for path, relative in books},
                 roots,
                 {relative: analyze_host(path, relative) for path, relative in hosts},
@@ -3212,6 +3462,7 @@ def load_tree(*, lazy: bool = False) -> Tree:
     _TREE_CACHE = (key, tree)
     if lazy:
         return tree
+    _checked_tree(tree, lazy=False)
     if directory is not None:
         _tree_cache_write(directory, persistent, tree)
     return tree
@@ -3694,6 +3945,13 @@ def lane_generated(relative: str, expected: str) -> bool:
     return True
 
 
+def analysis_problems(tree: Tree) -> list[str]:
+    """Incomplete detector runs cannot establish a clean ledger."""
+    return [f"{tree.theorems[name].book}: {name}: {reason}"
+            for name, reasons in tree.suspects.items() for reason in reasons
+            if reason.startswith("analysis-incomplete:")]
+
+
 def check_problems(tree: "Tree | None" = None) -> list[str]:
     """Everything `make check` must fail on.
 
@@ -3702,6 +3960,7 @@ def check_problems(tree: "Tree | None" = None) -> list[str]:
     """
     problems: list[str] = []
     tree = load_tree() if tree is None else tree
+    problems.extend(analysis_problems(tree))
     for book in tree.books.values():
         if book.read_error:
             problems.append(f"{book.path}: unreadable: {book.read_error}")
@@ -3729,6 +3988,9 @@ def check_problems(tree: "Tree | None" = None) -> list[str]:
 
 def write_all() -> list[str]:
     tree = load_tree()
+    incomplete = analysis_problems(tree)
+    if incomplete:
+        return incomplete  # preserve generated evidence until analysis completes
     curated = load_proof_events()
     problems, regenerated = validate_events(tree, curated)
     ledger = build_ledger(tree)
@@ -3763,6 +4025,7 @@ def book_report(paths: list[str]) -> int:
     tree = load_tree(lazy=True)
     out = []
     missing = []
+    incomplete = []
     for given in paths:
         path = Path(given)
         relative = (path.resolve().relative_to(ROOT).as_posix() if path.is_absolute()
@@ -3774,15 +4037,28 @@ def book_report(paths: list[str]) -> int:
         suspects = tree.suspects_of(book.theorems)
         row = book_row_with(book, tree, suspects)
         row["suspect_reasons"] = {name: suspects[name] for name in sorted(suspects)}
+        for name, reasons in suspects.items():
+            incomplete.extend(f"{relative}: {name}: {reason}" for reason in reasons
+                              if reason.startswith("analysis-incomplete:"))
         out.append(row)
     print(json.dumps(out, indent=1, sort_keys=True))
     for given in missing:
         print(f"ledger --book: {given}: not a book this tree reads "
               "(books/*.lisp, tests/acl2/*.lisp)", file=sys.stderr)
-    return 2 if missing else 0
+    for problem in incomplete:
+        print(f"ledger --book: {problem}", file=sys.stderr)
+    return 2 if missing else 1 if incomplete else 0
 
 
 def main(argv: list[str] | None = None) -> int:
+    try:
+        return _main(argv)
+    except AnalysisIncomplete as error:
+        print(f"ERROR: analysis-incomplete: {error}", file=sys.stderr)
+        return 1
+
+
+def _main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--write", action="store_true",
                         help="regenerate ledger.json, ledger.md and proofs.json events")
@@ -3805,7 +4081,10 @@ def main(argv: list[str] | None = None) -> int:
         tree = load_tree()
         print(f"ledger --load-tree: {len(tree.books)} books, "
               f"{time.monotonic() - started:.1f} s")
-        return 0
+        problems = analysis_problems(tree)
+        for problem in problems:
+            print(f"ERROR: {problem}", file=sys.stderr)
+        return 1 if problems else 0
     if arguments.book:
         return book_report(arguments.book)
     if arguments.check:
@@ -3825,11 +4104,15 @@ def main(argv: list[str] | None = None) -> int:
         problems = write_all()
         for problem in problems:
             print(f"ERROR: {problem}", file=sys.stderr)
-        print(f"Wrote {LEDGER_JSON.relative_to(ROOT)}, {LEDGER_MD.relative_to(ROOT)} "
-              f"and the {PROOFS.relative_to(ROOT)} event arrays.")
+        if any("analysis-incomplete:" in problem for problem in problems):
+            print("Ledger generation refused: incomplete detector analysis.", file=sys.stderr)
+        else:
+            print(f"Wrote {LEDGER_JSON.relative_to(ROOT)}, {LEDGER_MD.relative_to(ROOT)} "
+                  f"and the {PROOFS.relative_to(ROOT)} event arrays.")
         return 1 if problems else 0
-    report(load_tree())
-    return 0
+    tree = load_tree()
+    report(tree)
+    return 1 if analysis_problems(tree) else 0
 
 
 # What _tree_cache_dir compares against: the functions as this file defines them.
