@@ -22,9 +22,18 @@ NAME=${FN_CORE_NAME:-fn-core}
 case $NAME in fn-core|fn-host|fn-host-developer|fn-host-dtn|fn-host-dtn-developer) ;; *)
     echo "core: unsupported product name: $NAME" >&2; exit 2 ;; esac
 case $NAME in
-    fn-host-dtn*) VARIANT=dtn; BUILD=host/native/build-dtn.lisp; DEFAULT_IMAGE=fn-host-dtn ;;
-    *) VARIANT=default; BUILD=host/native/build.lisp; DEFAULT_IMAGE=fn-host ;;
+    fn-core) VARIANT=${FN_EXTRACT_VARIANT:-default} ;;
+    fn-host-dtn*) VARIANT=dtn ;;
+    *) VARIANT=default ;;
 esac
+case $VARIANT in
+    dtn) BUILD=host/native/build-dtn.lisp; DEFAULT_IMAGE=fn-host-dtn ;;
+    default) BUILD=host/native/build.lisp; DEFAULT_IMAGE=fn-host ;;
+    *) echo "core: unsupported variant: $VARIANT" >&2; exit 2 ;;
+esac
+if [ -n "${FN_EXTRACT_VARIANT:-}" ] && [ "$FN_EXTRACT_VARIANT" != "$VARIANT" ]; then
+    echo "core: product name $NAME requires $VARIANT variant" >&2; exit 2
+fi
 case $NAME in
     fn-core) PROFILE=${FN_NATIVE_PROFILE:-developer} ;;
     *-developer) PROFILE=developer ;;
