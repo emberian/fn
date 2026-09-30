@@ -17976,6 +17976,54 @@
         "planning/evidence/allocation-epoch-core-2026-09-30"
       ],
       "progress_note": "Protected source admission and guard verification with exact teeth; source manifest records scope. Runner certification/native coordinate pending; real installation and composition joins remain open."
+    },
+    {
+      "id": "PRF-1158",
+      "title": "Internal collector occupancy binds installed geometry before bounded multiplication",
+      "statement": "fn-aec-observed-occupancy is called by actual fn-aec-pool-collect-observed-internal. An observed result implies exact installed association/page size/reservation, natural occupied bytes within reservation and immediate domain, and exact pages times page size. The product is constructed only after division bounds succeed. This is an internal selected-observer projection, not authority to supply measurements or install a runtime.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-10001"
+      ],
+      "depends_on": [
+        "PRF-1154"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-aec-observed-occupancy-binds-installed-geometry"
+      ],
+      "evidence": [
+        "books/allocation-epoch-observation.lisp",
+        "tests/acl2/allocation-epoch-observation-tests.lisp",
+        "specs/allocation-epoch.md",
+        "planning/evidence/allocation-epoch-collection-join-2026-09-30"
+      ],
+      "progress_note": "Protected exact source admission and guards plus literal positive/removal and actual SAMEpool fixtures. No installed runtime, native barrier or qualification transfer."
+    },
+    {
+      "id": "PRF-1159",
+      "title": "Collection request spends actual sharedPRS identity and retains exact old NEXT",
+      "statement": "fn-aec-collection-issue is called by actual fn-aec-pool-collection-request-internal after retained Qcollect prepayment. Issued implies returned nonce equals actual old ledger NEXT, committed NEXT increments once, fixed identity demand is charged, and budget/bindings/baseline remain unchanged. Refused issue fences without refunding Qcollect. Public native process barrier and genuine installed source allowance remain separate.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-10001"
+      ],
+      "depends_on": [
+        "PRF-1154"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-aec-collection-issue-binds-shared-nonce"
+      ],
+      "evidence": [
+        "books/allocation-epoch-collection-request.lisp",
+        "tests/acl2/allocation-epoch-collection-request-tests.lisp",
+        "specs/allocation-epoch.md",
+        "planning/evidence/allocation-epoch-collection-join-2026-09-30"
+      ],
+      "progress_note": "Protected exact source admission and guards plus literal positive/removal and actual SAMEpool fixtures. No installed runtime, native barrier or qualification transfer."
     }
   ]
 }

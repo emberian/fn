@@ -207,7 +207,7 @@
         "tests/evidence/2026-09-18-assurance.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Primitive/record full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 \u00a74.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema1-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
+      "implementation_note": "Primitive/record full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 §4.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema1-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
       "keystones": [
         "fn-cbor-value-round-trip",
         "fn-cbor-accepted-input-is-canonical",
@@ -1456,7 +1456,7 @@
     },
     {
       "id": "NNT-008",
-      "title": "NEWNEWS answers from this node\u2019s durable acceptance stamp",
+      "title": "NEWNEWS answers from this node’s durable acceptance stamp",
       "specification": "specs/nntp.md#polling-newnews",
       "milestone": "M3",
       "status": "implemented",
@@ -1474,7 +1474,7 @@
         "specs/nntp.md",
         "specs/nntp-audit.md"
       ],
-      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner\u2019s durable whole-second acceptance stamp; an article without a natural stamp uses the nearest later stamped acceptance, else the pinned reader wall second, else remains visible; no record carries such a stamp since schema 0 was deleted (no migrations: fresh deploys at 6.6.0), and deleting this horizon is open. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
+      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner’s durable whole-second acceptance stamp; an article without a natural stamp uses the nearest later stamped acceptance, else the pinned reader wall second, else remains visible; no record carries such a stamp since schema 0 was deleted (no migrations: fresh deploys at 6.6.0), and deleting this horizon is open. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
       "note": "The DATE-to-NEWNEWS no-miss guarantee across a reader pin and in-flight prepare remains T6 under A-CLOCK."
     },
     {
@@ -5702,7 +5702,9 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-1154"
+        "PRF-1154",
+        "PRF-1158",
+        "PRF-1159"
       ],
       "verification": [
         "proof",
@@ -5712,9 +5714,13 @@
         "books/allocation-epoch-domain.lisp",
         "books/allocation-epoch.lisp",
         "books/allocation-epoch-pool.lisp",
-        "tests/acl2/allocation-epoch-tests.lisp"
+        "tests/acl2/allocation-epoch-tests.lisp",
+        "books/allocation-epoch-observation.lisp",
+        "books/allocation-epoch-collection-request.lisp",
+        "tests/acl2/allocation-epoch-observation-tests.lisp",
+        "tests/acl2/allocation-epoch-collection-request-tests.lisp"
       ],
-      "implementation_note": "Internal guarded scalar and same-pool source only. Actual installed runtime/source tariffs, process-wide barrier, nonce/observer and once-only allocating-turn producer joins remain open; no activation or constructor funding claim."
+      "implementation_note": "Internal guarded scalar, same-pool, installed-geometry observation and actual sharedPRS nonce source. Genuine runtime/source tariff installation, process-wide barrier, identity rescue and once-only allocating-turn producer joins remain open; no activation/funding claim."
     }
   ]
 }

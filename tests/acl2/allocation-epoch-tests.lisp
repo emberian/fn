@@ -3,7 +3,8 @@
 ; outside their executable guards. Production functions remain guard-verified.
 (set-guard-checking nil)
 ; Synthetic internal producer fixtures establish no runtime installation.
-(defconst *aec-i* '(:allocation-epoch-installation :fixture 1000 800 2 20 20 20 50 10 20 7))
+(defconst *aec-assoc* '(:allocation-epoch-association :runtime :profile :pool 10 1000))
+(defconst *aec-i* (list :allocation-epoch-installation *aec-assoc* 1000 800 2 20 20 20 50 10 20 7))
 ; Positive: complete antecedent and conclusion of enter preservation.
 (assert-event
  (and (fn-aec-statep *aec-i* :active 3 100 20 0 nil)
@@ -67,7 +68,7 @@
 (assert-event
  (and (fn-aec-statep *aec-i* :collecting 3 100 90 0 42)
   (mv-let (w m e l a g)
-   (fn-aec-collect-complete *aec-i* :collecting 3 100 90 0 42 :fixture 3 42 :completed 80)
+   (fn-aec-collect-complete *aec-i* :collecting 3 100 90 0 42 *aec-assoc* 3 42 :completed 80)
    (and (member-eq w '(:resume :resource-unavailable))
         (equal (list w m e l a g) '(:resume :active 4 80 7 nil))
         (fn-aec-statep *aec-i* m e l a 0 g)
@@ -83,15 +84,15 @@
         (not (and (fn-aec-statep *aec-bad-i* m e l a 0 g)
                   (equal e (+ 1 3)) (equal l 80) (equal a (fn-aec-at 11 *aec-bad-i*))))))))
 ; Mutation/raw-uncertainty cases retain all accounting and identity.
-(assert-event (equal (mv-list 6 (fn-aec-collect-complete *aec-i* :collecting 3 100 90 0 42 :fixture 3 41 :completed 80))
+(assert-event (equal (mv-list 6 (fn-aec-collect-complete *aec-i* :collecting 3 100 90 0 42 *aec-assoc* 3 41 :completed 80))
                      '(:recovery-required :recovery 3 100 90 42)))
-(assert-event (equal (mv-list 6 (fn-aec-collect-complete *aec-i* :collecting 3 100 90 0 42 :fixture 3 42 :uncertain 80))
+(assert-event (equal (mv-list 6 (fn-aec-collect-complete *aec-i* :collecting 3 100 90 0 42 *aec-assoc* 3 42 :uncertain 80))
                      '(:recovery-required :recovery 3 100 90 42)))
-(assert-event (equal (mv-list 6 (fn-aec-collect-complete *aec-i* :collecting 3 100 90 0 42 :fixture 3 42 :deferred 80))
+(assert-event (equal (mv-list 6 (fn-aec-collect-complete *aec-i* :collecting 3 100 90 0 42 *aec-assoc* 3 42 :deferred 80))
                      '(:recovery-required :recovery 3 100 90 42)))
-(assert-event (equal (mv-list 6 (fn-aec-collect-complete *aec-i* :collecting 3 100 90 0 42 :fixture 3 42 :completed 1001))
+(assert-event (equal (mv-list 6 (fn-aec-collect-complete *aec-i* :collecting 3 100 90 0 42 *aec-assoc* 3 42 :completed 1001))
                      '(:recovery-required :recovery 3 100 90 42)))
-(assert-event (equal (mv-list 6 (fn-aec-collect-complete *aec-i* :collecting 3 100 90 0 42 :fixture 3 42 :completed 320))
+(assert-event (equal (mv-list 6 (fn-aec-collect-complete *aec-i* :collecting 3 100 90 0 42 *aec-assoc* 3 42 :completed 320))
                      '(:resource-unavailable :draining 4 320 7 42)))
 (assert-event (equal (mv-list 3 (fn-aec-collect-prepay *aec-i* :draining 4 320 7 0 42))
                      '(:not-quiescent :draining 7)))

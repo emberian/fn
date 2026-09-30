@@ -19,7 +19,7 @@
         (mv-let (prepare fn-page-read-pool) (fn-aec-pool-collect-prepay-internal fn-page-read-pool)
          (mv-let (issued fn-page-read-pool) (fn-aec-pool-collect-issued-internal 42 fn-page-read-pool)
           (mv-let (complete fn-page-read-pool)
-           (fn-aec-pool-collect-complete-internal :fixture 3 42 :completed 80 fn-page-read-pool)
+           (fn-aec-pool-collect-complete-internal *aec-assoc* 3 42 :completed 80 fn-page-read-pool)
            (let* ((fn-page-read-pool (fn-owner-page-read-keep-ledger :released-logical-grant fn-page-read-pool))
                   (fn-page-read-pool (fn-aec-pool-uncertain-internal fn-page-read-pool)))
             (mv (and (equal (list entry body left prepare issued complete)

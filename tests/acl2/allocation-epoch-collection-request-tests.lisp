@@ -1,0 +1,62 @@
+(in-package "ACL2")
+(defconst *aec-ledger* '((100 100 100 100 100) (0 0 0 0 42) 42 (:existing-binding) (1 1 1 1 1)))
+; Complete accepted antecedent/conclusion: old NEXT is returned and exactly
+; one shared identity is spent; unrelated binding roots remain unchanged.
+(assert-event
+ (mv-let (word nonce next-ledger) (fn-aec-collection-issue *aec-ledger* 1000)
+  (and (eq word :issued)
+       (equal nonce (fn-prl-nth 2 *aec-ledger*))
+       (equal (fn-prl-nth 2 next-ledger) (+ 1 (fn-prl-nth 2 *aec-ledger*)))
+       (equal (fn-prl-nth 0 next-ledger) (fn-prl-nth 0 *aec-ledger*))
+       (equal (fn-prl-nth 1 next-ledger) (fn-prs-plus (fn-prl-nth 1 *aec-ledger*) '(0 0 0 0 1)))
+       (equal (fn-prl-nth 3 next-ledger) (fn-prl-nth 3 *aec-ledger*))
+       (equal (fn-prl-nth 4 next-ledger) (fn-prl-nth 4 *aec-ledger*)))))
+; Hypothesis removal: failed issue retains old NEXT and returns no nonce,
+; falsifying the complete accepted conclusion.
+(assert-event
+ (mv-let (word nonce next-ledger) (fn-aec-collection-issue *aec-ledger* 42)
+  (and (not (eq word :issued))
+       (not (and (equal nonce (fn-prl-nth 2 *aec-ledger*))
+                  (equal (fn-prl-nth 2 next-ledger) (+ 1 (fn-prl-nth 2 *aec-ledger*)))
+                  (equal (fn-prl-nth 0 next-ledger) (fn-prl-nth 0 *aec-ledger*))
+                  (equal (fn-prl-nth 1 next-ledger) (fn-prs-plus (fn-prl-nth 1 *aec-ledger*) '(0 0 0 0 1)))
+                  (equal (fn-prl-nth 3 next-ledger) (fn-prl-nth 3 *aec-ledger*))
+                  (equal (fn-prl-nth 4 next-ledger) (fn-prl-nth 4 *aec-ledger*))))
+       (equal next-ledger *aec-ledger*))))
+
+(defun aect-request-run (ledger turns)
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn-page-read-pool
+  (mv-let (result fn-page-read-pool)
+   (let* ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool))
+          (fn-page-read-pool (update-fn-prp-alloc-installation *aec-i* fn-page-read-pool))
+          (fn-page-read-pool (update-fn-prp-alloc-mode :draining fn-page-read-pool))
+          (fn-page-read-pool (update-fn-prp-alloc-epoch 3 fn-page-read-pool))
+          (fn-page-read-pool (update-fn-prp-alloc-occupied 100 fn-page-read-pool))
+          (fn-page-read-pool (update-fn-prp-alloc-allocated 70 fn-page-read-pool))
+          (fn-page-read-pool (update-fn-prp-alloc-active-turns turns fn-page-read-pool)))
+    (mv-let (word association epoch nonce fn-page-read-pool)
+     (fn-aec-pool-collection-request-internal fn-page-read-pool)
+     (let ((before-a (fn-prp-alloc-allocated fn-page-read-pool))
+           (before-mode (fn-prp-alloc-mode fn-page-read-pool)))
+      (mv-let (repeat ra re rn fn-page-read-pool)
+       (fn-aec-pool-collection-request-internal fn-page-read-pool)
+       (declare (ignore ra re rn))
+       (mv (list word association epoch nonce before-mode before-a repeat
+                 (fn-prp-alloc-allocated fn-page-read-pool)
+                 (fn-prp-alloc-gc-nonce fn-page-read-pool)
+                 (fn-prl-nth 2 (fn-owner-page-read-ledger fn-page-read-pool))
+                 (fn-prl-nth 1 (fn-owner-page-read-ledger fn-page-read-pool))
+                 (fn-prl-nth 3 (fn-owner-page-read-ledger fn-page-read-pool))
+                 (fn-aec-pool-statep fn-page-read-pool)) fn-page-read-pool)))))
+   result)))
+(assert-event (equal (aect-request-run *aec-ledger* 0)
+ (list :collect *aec-assoc* 3 42 :collecting 90 :not-quiescent 90 42 43 '(0 0 0 0 43) '(:existing-binding) t)))
+(assert-event (equal (aect-request-run *aec-ledger* 1)
+ (list :not-quiescent nil nil nil :draining 70 :not-quiescent 70 nil 42 '(0 0 0 0 42) '(:existing-binding) t)))
+; Identity reserve exhaustion is recovery after prepaid intent, never a fresh
+; counter, invented rescue or refunded charge.
+(assert-event (equal (aect-request-run '((100 100 100 100 42) (0 0 0 0 42) 42 (:existing-binding) (0 0 0 0 0)) 0)
+ (list :recovery-required nil nil nil :recovery 90 :recovery-required 90 nil 42 '(0 0 0 0 42) '(:existing-binding) t)))
+(assert-event (equal (mv-list 3 (fn-aec-body *aec-i* :draining 3 100 30 1 nil 40 nil))
+                     '(:yield :draining 30)))
