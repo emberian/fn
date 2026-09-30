@@ -1405,3 +1405,46 @@
                  fn-sn-identity-next fn-sn-verdicts fn-sn-index fn-sn-event-index
                  fn-sn-statep fn-sf-statep fn-sn-row-verdicts fn-sn-index-of-rows
                  fn-ssk-keyring-of-snapshots fn-ssk-generation)))))
+
+(local (defthm fn-osr-with-configuration-keeps-retained-snapshots
+  (equal (fn-sn-keyring-snapshots
+           (fn-sn-with-configuration s groups capacity node configs))
+         (fn-sn-keyring-snapshots s))
+  :hints (("Goal" :in-theory
+           (e/d (fn-sn-with-configuration fn-sn-keyring-snapshots fn-store-event-nth)
+                (fn-sn-make-v6))))))
+
+(defthm fn-osr-configure-durable-keeps-retained-fields
+  (let ((b (fn-cpo-configure-durable s record)))
+    (and (equal (fn-sn-keyring b) (fn-sn-keyring s))
+         (equal (fn-sn-keyring-generation b) (fn-sn-keyring-generation s))
+         (equal (fn-sn-keyring-snapshots b) (fn-sn-keyring-snapshots s))
+         (equal (fn-sn-verdicts b) (fn-sn-verdicts s))
+         (equal (fn-sn-index b) (fn-sn-index s))
+         (equal (fn-sn-event-index b) (fn-sn-event-index s))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-cpo-configure-durable fn-cpo-install)
+                (fn-cpo-history-relation fn-cpr-replay fn-sn-statep
+                 fn-sn-with-configuration fn-cnode-statep
+                 fn-replay-advance-okp fn-replay-advance-txid
+                 fn-sn-keyring fn-sn-keyring-generation fn-sn-keyring-snapshots
+                 fn-sn-verdicts fn-sn-index fn-sn-event-index)))))
+
+(defthm fn-osr-configure-durable-preserves-full-retained-carry
+  (implies (fn-osr-retainedp s)
+           (fn-osr-retainedp (fn-cpo-configure-durable s record)))
+  :hints (("Goal" :use (fn-osr-configure-durable-keeps-retained-fields
+                        fn-osr-configure-durable-keeps-projections
+                        fn-osr-configure-durable-preserves-live-carry)
+           :in-theory
+           (e/d (fn-osr-retainedp fn-skp-resolvedp fn-osr-verdict-prefixp
+                 fn-osr-frozen-index-prefixp)
+                (fn-cpo-configure-durable fn-osr-livep
+                 fn-sn-keyring fn-sn-keyring-generation fn-sn-keyring-snapshots
+                 fn-sn-verdicts fn-sn-index fn-sn-event-index
+                 fn-sn-identity-next fn-sn-files fn-sf-records
+                 fn-sn-row-verdicts fn-sn-index-of-rows
+                 fn-ssk-keyring-of-snapshots fn-ssk-generation
+                 fn-osr-configure-durable-keeps-retained-fields
+                 fn-osr-configure-durable-keeps-projections
+                 fn-osr-configure-durable-preserves-live-carry)))))
