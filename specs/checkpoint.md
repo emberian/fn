@@ -319,3 +319,16 @@ separate from the Store statement keytable. Canonical row handles and paused
 checkpoint summaries do not become identical to live fields by assertion.
 Existing publication assumptions connect verified bytes to checkpoint tables;
 this carry adds no new assumption and does not replace that boundary.
+
+### Captured record source identity (PRF-1099; controller remains open)
+
+The source protocol borrows the captured records-field and immutable based
+handle. Snoc order restoration copies one cell per scheduling step and retains
+the prepared ordered suffix for subsequent census and column passes. A fixed
+thirteen-cell cursor carries scalar epoch, capture lease, pass and row ordinal;
+only a completion matching that exact issued token advances the source. A
+restart requires a drained pass, increases its pass serial and reuses the
+prepared pointer. It refuses while a row request is outstanding or rows remain.
+Delayed completions from an earlier pass cannot supply a new pass's row. This
+protocol does not establish decoder contents, authenticated page mapping,
+funded reversal scratch or the complete online producer.

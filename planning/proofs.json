@@ -18121,7 +18121,7 @@
     {
       "id": "PRF-1099",
       "title": "Captured based-history source cursor binds row completion identity and resumes snoc order restoration",
-      "statement": "Library subjects fn-osrc-begin/tick borrow the captured records-field and scalar total count, epoch and capture lease. No fn-sfr-list, fn-sfr-nth or eager fn-hp-x-at is called. Snoc order restoration copies one cell per tick; completed rows advance exactly one ordinal and preserve source field, count, base handle, epoch and lease. A based row completion is emitted only for the current issued token (epoch,lease,ordinal); executable cursor natural counters are established and preserved without a suffix recognizer. Outputs distinguish resident suffix rows from concrete decoded nodes. The completed ordered suffix pointer remains retained as rows drain; fn-osrc-restart resets the ordinal in constant work and reuses that same prepared pointer for further census/column passes, refusing before suffix preparation is complete. Correctness of provider row contents, complete source-list refinement, span remap, funded reversal scratch, private fixed-page decoder and actual producer controller remain open; protocol progress alone is not a full bounded snapshot claim.",
+      "statement": "Library subjects fn-osrc-begin/tick borrow the captured records-field and scalar total count, epoch and capture lease. No fn-sfr-list, fn-sfr-nth or eager fn-hp-x-at is called. Snoc order restoration copies one cell per tick; completed rows advance exactly one ordinal and preserve source field, count, base handle, epoch and lease. A based row completion is emitted only for the current issued token (epoch,lease,pass,ordinal); executable cursor natural counters are established and preserved without a suffix recognizer. Outputs distinguish resident suffix rows from concrete decoded nodes. The completed ordered suffix pointer remains retained as rows drain; The fixed thirteen-cell cursor carries a pass serial. fn-osrc-restart requires a fully drained pass, increments that serial, resets the ordinal in constant work and reuses the same prepared pointer. It refuses while a prefix request is outstanding or rows remain; delayed completions from a preceding pass cannot match the new token. Correctness of provider row contents, complete source-list refinement, span remap, funded reversal scratch, private fixed-page decoder and actual producer controller remain open; protocol progress alone is not a full bounded snapshot claim.",
       "milestone": "M5",
       "requirements": [
         "HST-040"
@@ -18135,13 +18135,14 @@
         "fn-osrc-decoded-completion-requires-the-issued-token",
         "fn-osrc-row-advances-one-ordinal-and-keeps-capture",
         "fn-osrc-reversal-copies-exactly-one-suffix-cell",
-        "fn-osrc-continuation-keeps-the-executable-cursor"
+        "fn-osrc-continuation-keeps-the-executable-cursor",
+        "fn-osrc-restart-advances-pass-and-preserves-source-identity"
       ],
       "evidence": [
         "books/snapshot-source-cursor.lisp",
         "tests/acl2/snapshot-source-cursor-tests.lisp"
       ],
-      "progress_note": "Clean proper-local persvati osrc69 loads source in one encapsulate: 29 test forms, zero refusals, 91,506 steps / 0.15 ACL2 sec, including prepared-pointer replay and premature restart refusal. Session stopped; provider abstract-row inverse/host composition pending. No certification/image/native claim."
+      "progress_note": "Clean proper-local persvati osrc75 loads source in one encapsulate: 31 test forms, zero refusals, 130,524 steps / 0.18 ACL2 sec, including prepared-pointer replay, drained restart, outstanding restart refusal and delayed prior-pass completion refusal. Session stopped; provider abstract-row inverse/host composition pending. No certification/image/native claim."
     }
   ]
 }

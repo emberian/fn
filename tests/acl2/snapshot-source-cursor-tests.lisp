@@ -19,7 +19,7 @@
              (cons (car (fn-osrc-at 7 *osrc-0*)) (fn-osrc-at 8 *osrc-0*)))))
 (assert-event (equal (fn-osrc-at 8 *osrc-2*) '(first second)))
 (assert-event (equal *osrc-need* (list :need-row 0 '(:hrs-handle file root 0 1 (8 8 8 8 8) (1 2 3 4 5) 6)
-                                    '(epoch (8 3) 0) *osrc-wait*)))
+                                    '(epoch (8 3) 0 0) *osrc-wait*)))
 (assert-event
  (let* ((obs (list :decoded *osrc-token* '(:atom original)))
         (result (fn-osrc-tick *osrc-wait* obs))
@@ -36,7 +36,7 @@
         (equal (fn-osrc-at 10 next) (fn-osrc-at 10 *osrc-wait*)))))
 ; Stale lease completion: retained phase/opcode/ordinal/epoch, token differs.
 (assert-event
- (let ((obs '(:decoded (epoch (7 3) 0) (:atom original))))
+ (let ((obs '(:decoded (epoch (7 3) 0 0) (:atom original))))
    (and (equal (fn-osrc-at 0 *osrc-wait*) :waiting)
         (consp obs) (equal (car obs) :decoded)
         (not (equal (fn-osrc-at 1 obs) (fn-osrc-token *osrc-wait*)))
@@ -49,14 +49,14 @@
 (assert-event (equal (fn-osrc-at 2 *osrc-first*) '(:resident first)))
 (assert-event (equal (fn-osrc-at 2 *osrc-second*) '(:resident second)))
 (assert-event (equal (fn-osrc-tick (fn-osrc-at 4 *osrc-second*) nil)
-                     '(:done (epoch (8 3) 3))))
+                     '(:done (epoch (8 3) 0 3))))
 ; Duplicate ordinal cannot advance the next prefix request's token.
 (assert-event (equal (fn-osrc-tick (fn-osrc-at 4 *osrc-prefix-row*)
                                  (list :decoded *osrc-token* '(:atom original)))
                      (list :yield *osrc-suffix-start*)))
 ; Malformed captures are separate from valid-provider correspondence.
 (assert-event (equal (fn-osrc-tick (fn-osrc-begin '(:snoc 2 first) 2 'epoch 'lease) nil)
-                     '(:yield (:reverse (:snoc 2 first) 0 2 0 nil 1 nil (first) epoch lease nil))))
+                     '(:yield (:reverse (:snoc 2 first) 0 2 0 nil 1 nil (first) epoch lease nil 0))))
 
 (assert-event (and (natp 3) (fn-osrc-guardp *osrc-0*)))
 (assert-event
@@ -77,7 +77,30 @@
         (equal (fn-osrc-at 8 cursor) '(first second))
         (equal (fn-osrc-at 11 cursor) '(first second))
         (equal (fn-osrc-at 1 cursor) *osrc-source*)
-        (equal (fn-osrc-token cursor) '(epoch (8 3) 0))
+        (equal (fn-osrc-token cursor) '(epoch (8 3) 1 0))
         (equal (car (fn-osrc-tick cursor nil)) :need-row))))
 (assert-event (equal (fn-osrc-restart *osrc-0*)
-                     (list :refused :source-not-prepared *osrc-0*)))
+                     (list :refused :source-not-drained *osrc-0*)))
+
+; Prior-pass sameordinal completion is now stale after restart, even though
+; the source/epoch/lease are intentionally shared across all column passes.
+(assert-event
+ (let* ((old (fn-osrc-at 4 *osrc-second*))
+        (restarted (cadr (fn-osrc-restart old)))
+        (need (fn-osrc-tick restarted nil))
+        (waiting (fn-osrc-at 4 need))
+        (stale (fn-osrc-tick waiting (list :decoded *osrc-token* '(:atom original)))))
+   (and (fn-osrc-guardp old)
+        (equal (car (fn-osrc-restart old)) :restarted)
+        (fn-osrc-guardp restarted)
+        (equal (fn-osrc-at 12 restarted) (1+ (fn-osrc-at 12 old)))
+        (equal (fn-osrc-at 2 restarted) 0)
+        (equal (fn-osrc-at 1 restarted) (fn-osrc-at 1 old))
+        (equal (fn-osrc-at 9 restarted) (fn-osrc-at 9 old))
+        (equal (fn-osrc-at 10 restarted) (fn-osrc-at 10 old))
+        (equal (fn-osrc-at 8 restarted) (fn-osrc-at 11 old))
+        (equal (car need) :need-row)
+        (not (equal *osrc-token* (fn-osrc-token waiting)))
+        (equal stale (list :refused :row-completion waiting)))))
+(assert-event (equal (fn-osrc-restart *osrc-wait*)
+                     (list :refused :source-not-drained *osrc-wait*)))
