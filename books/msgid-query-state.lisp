@@ -41,3 +41,22 @@
          (equal (fn-miq-msgid next) (fn-miq-msgid query))
          (equal (fn-miq-tag next) (fn-miq-tag query))))
   :hints (("Goal" :in-theory (enable fn-miq-with-progress))))
+
+; Both record observations must come from the one held row returned by the
+; captured provider. A caller cannot submit a Boolean for exact identity.
+(defun fn-miq-confirm (query ordinal record-seq record-msgid)
+  (declare (xargs :guard t))
+  (if (not (and (equal (fn-miq-phase query) :candidate)
+                (equal (fn-miq-pending query) ordinal)
+                (natp ordinal) (natp (fn-miq-count query))
+                (< ordinal (fn-miq-count query))
+                (natp record-seq) (natp (fn-miq-frontier query))
+                (< record-seq (fn-miq-frontier query))
+                (or (null (fn-miq-best query))
+                    (natp (fn-miq-best query)))))
+      (mv :recovery-required query)
+    (let* ((best (fn-miq-best query))
+           (best1 (if (and (equal record-msgid (fn-miq-msgid query))
+                           (or (null best) (< ordinal best))) ordinal best)))
+      (mv :continue
+          (fn-miq-with-progress query (fn-miq-cursor query) nil best1 :probing)))))
