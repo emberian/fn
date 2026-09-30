@@ -132,3 +132,8 @@ load with all four source dependencies encapsulated: 27 test-root forms,
 and four ground semantic proofs passed. The narrow theory and teeth checks have
 zero findings. These are source admissions; no certificate, host invocation,
 qualified image or full decoder inverse is claimed.
+
+The normalizer now includes only `store-tree-codec`, so encoders can consume it
+without importing the byte parser. A clean protected persvati `hdsn4` test-root
+replay with the normalizer in one encapsulate passed all 27 forms, 3,628,003
+prover steps and 8.29 ACL2 seconds. Its narrow API and semantics are unchanged.
