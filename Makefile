@@ -930,6 +930,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/legacy-parser-validity-tests \
 	books/legacy-parser-values \
 	tests/acl2/legacy-parser-values-tests \
+	books/legacy-parser-catalog \
+	tests/acl2/legacy-parser-catalog-tests \
 	books/nntp-article-pass \
 	books/nntp-responses \
 	books/nntp-article-block \

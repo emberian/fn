@@ -6622,12 +6622,13 @@
         "Mutate continuation position, source handle, first-header selection and whitespace normalization separately.",
         "Check the literal actual value-transition invariant and remove its value correspondence, phase, line-budget and valid-byte hypotheses individually while affirming all retained hypotheses; verify folded completed source spans and absent-versus-empty first hits.",
         "Check literal arbitrary-line theorem instances for actual new-field/fold runs, completed source spans, selected name and preserved earlier columns; remove source-value correspondence and fold-local visibility independently.",
-        "Assert complete literal new-field/fold/header traversal premises and conclusions; remove every retained line-step premise and both traversal premises separately, including corrupted source-span state and malformed physical continuations."
+        "Assert complete literal new-field/fold/header traversal premises and conclusions; remove every retained line-step premise and both traversal premises separately, including corrupted source-span state and malformed physical continuations.",
+        "Assert the literal full actual arena-tick NOV equation on octet sources, including five first/repeated/folded fields, invalid folds, opaque body NUL and tombstones. Remove the sole octet-domain premise with non-octet opaque body input; affirm negative-handle equality after removing that redundant premise. Check complete tombstone prefix antecedents and remove natural position and sufficient bytes independently."
       ],
       "expected": [
         "Each tick consumes and reports at most its fuel, preserves handle and pin and makes bounded progress. No final tick walks or copies the full source or field.",
         "The body count equals the actual catalog function even for a rejected header parse.",
-        "For every successful actual parser result, the complete byte traversal's five spans normalize to the exact first-header NOV content. The arena-tick and final catalog record join remains open."
+        "For every successful actual parser result, the complete byte traversal's five spans normalize to the exact first-header NOV content. The full actual arena-tick NOV record equals fn-hnov-of under the sole octet source premise, including invalid parses and tombstones."
       ],
       "evidence": [
         "books/legacy-parser-cursor.lisp",
@@ -6641,7 +6642,10 @@
         "planning/evidence/legacy-parser-value-run-source.md",
         "books/legacy-parser-columns.lisp",
         "tests/acl2/legacy-parser-columns-tests.lisp",
-        "planning/evidence/legacy-parser-columns-source.md"
+        "planning/evidence/legacy-parser-columns-source.md",
+        "books/legacy-parser-catalog.lisp",
+        "tests/acl2/legacy-parser-catalog-tests.lisp",
+        "planning/evidence/legacy-parser-catalog-source.md"
       ]
     },
     {

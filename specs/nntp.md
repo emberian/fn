@@ -1943,14 +1943,18 @@ new-field and folded lines, first-field closure, the separator and body.
 spans with the actual five `fn-nov-header-content` values; its only premise
 is success of the actual article parser. Literal removal witnesses distinguish
 invalid grammar, a missing current field, an overlong physical line and a
-corrupted source/span invariant. Final arena-tick/catalog composition remains.
+corrupted source/span invariant. The catalog join now also proves complete
+actual arena-tick NOV equality with `fn-hnov-of`, including invalid grammar
+and the actual tombstone magic/89-byte threshold, under only the octet source
+domain. The actual parser and begin decide oversized sources alike, so the
+final equation assumes no codec-ceiling premise. A natural-handle premise
+was removed after proving the stronger logical arena abstraction.
 
-This component is not served yet. `fn-lpc-agreesp` states the full remaining
-comparison with actual `fn-hnov-of` and `fn-hf-body-lines-of`; it is a
-predicate, not a proved theorem. The byte-machine acceptance and successful
-field content theorems are proved separately; their arena/catalog join,
-allocation accounting, actual cursor composition
-and matched runtime measurements remain open. The source stores fixed-size
+This component is not served yet. `fn-lpc-agrees-with-actual-catalog` proves
+the full `fn-lpc-agreesp` comparison with actual `fn-hnov-of` and
+`fn-hf-body-lines-of` under the octet source domain. The formal allocation
+accounting, actual served cursor/formatter composition and matched runtime
+measurements remain open. The source stores fixed-size
 records and source references and reports raw-byte work; that statement
 alone is not a physical allocation or latency qualification.
 
