@@ -6,6 +6,7 @@
 (defvar *fnn-bpck-prefix-observe-callback* nil)
 (defvar *fnn-bpck-close-next-callback* nil)
 (defvar *fnn-bpck-close-observe-callback* nil)
+(defvar *fnn-bpck-cancelled-observe-callback* nil)
 
 (defstruct (fnn-bpck-registered-io (:constructor %make-fnn-bpck-registered-io))
   controller stage action fd (close-result :closed) (outcome :idle)
@@ -110,3 +111,32 @@ No native CURRENT, checkpoint job or digest stobj is authoritative here."
   (let ((*fnn-bpck-prefix-next-callback* *fnn-bpck-close-next-callback*)
         (*fnn-bpck-prefix-observe-callback* *fnn-bpck-close-observe-callback*))
     (fnn-bps-registered-checkpoint-prefix-turn record fuel)))
+
+(defun fnn-bps-registered-checkpoint-cancelled-result-turn (record fuel)
+  "Join an already attempted primitive after cancellation; perform no I/O."
+  (unless *fnn-bpck-cancelled-observe-callback*
+    (fnn-fault "guarded registered BP cancelled observation callback unavailable"))
+  (sb-thread:with-mutex ((fnn-bpck-registered-io-action-lock record) :wait-p nil)
+   (let ((action (fnn-bpck-registered-io-action record)))
+    (when action
+     (handler-case
+      (sb-thread:with-mutex (*fnn-extent-lock*)
+       (multiple-value-bind (word left registry)
+        (funcall *fnn-bpck-cancelled-observe-callback*
+         (fnn-bpck-registered-io-controller record) (second action) (third action)
+         (fnn-bpck-registered-io-outcome record) fuel
+         (fnn-live-bp-controller-registry))
+        (declare (ignore left registry))
+        (setf (fnn-bpck-registered-io-status record) word)
+        (case word
+         ((:cancelled-observed :cancelled-uncertain)
+          ;; Only the exact registered settlement can retire this result.
+          ;; No descriptor, stage, or ledger debt is inferred released.
+          (setf (fnn-bpck-registered-io-action record) nil
+                (fnn-bpck-registered-io-outcome record) :idle
+                (fnn-bpck-registered-io-core-failure record) nil))
+         (:yield nil)
+         (otherwise (setf (fnn-bpck-registered-io-core-failure record) word)))))
+      (error (condition)
+       (setf (fnn-bpck-registered-io-core-failure record) condition))))))
+  record)

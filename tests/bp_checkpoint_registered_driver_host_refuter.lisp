@@ -169,3 +169,26 @@
  (fnn-bps-registered-checkpoint-close-turn record 6)
  (assert (eq (fnn-bpck-registered-io-status record) :close-uncertain)))
 (format t "registered checkpoint close recording refuter PASS~%")
+; An old primitive result refused by ordinary dispatch can be joined only
+; through the exact cancelled-job observation, without another I/O attempt.
+(dolist (settlement '(:stale-checkpoint-observation :cancelled-observed :cancelled-uncertain))
+ (let* ((record (%make-fnn-bpck-registered-io :controller :controller :stage "unused"
+                  :fd 123 :close-result :open :core-failure :stale-checkpoint-observation
+                  :action '(:bp-checkpoint-io-action :job 8 :emit 17 (1 2 3))
+                  :outcome :unknown))
+        (opens *opens*) (writes *writes*)
+        (*fnn-bpck-cancelled-observe-callback*
+         (lambda (controller token revision outcome fuel registry)
+          (assert (eq controller :controller)) (assert (eq token :job))
+          (assert (= revision 8)) (assert (eq outcome :unknown))
+          (values settlement fuel registry))))
+  (fnn-bps-registered-checkpoint-cancelled-result-turn record 6)
+  (assert (= *opens* opens)) (assert (= *writes* writes))
+  (assert (= (fnn-bpck-registered-io-fd record) 123))
+  (assert (eq (fnn-bpck-registered-io-close-result record) :open))
+  (if (eq settlement :stale-checkpoint-observation)
+   (progn (assert (fnn-bpck-registered-io-action record))
+          (assert (fnn-bpck-registered-io-core-failure record)))
+   (progn (assert (null (fnn-bpck-registered-io-action record)))
+          (assert (null (fnn-bpck-registered-io-core-failure record)))))))
+(format t "registered checkpoint cancelled-result recording refuter PASS~%")

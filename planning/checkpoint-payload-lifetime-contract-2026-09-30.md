@@ -121,3 +121,12 @@ fixture are **unadmitted**: the retained proof world expired before the send.
 No bootstrap or native qualification was performed. The old cancelled primitive
 result still needs a separate retentive settlement join before preparing close;
 this source does not discharge that obligation or authorize constructors.
+
+The additive cancelled-result handler now supplies the missing source
+composition: only phase `:cancelled` and the retained exact action token/revision
+may settle an already attempted open/write. It keeps that phase and the original
+claim/CURRENT; definite result moves I/O toward cancelled close, unknown keeps
+uncertain close. The dormant native settlement caller performs no primitive and
+clears its old result only on this named registered disposition. Recording
+callbacks demonstrate this caller custody; the actual registered trajectory
+fixture and source guards remain unadmitted after proof-world expiry.
