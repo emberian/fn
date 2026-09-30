@@ -991,6 +991,13 @@ now has additive ASB source in `books/bpsec-model.lisp`,
 `books/bpsec-head.lisp` and `books/bpsec-asb.lisp` (REP-017, PRF-1178).
 This does not add a security gate to the served BP admission path.
 
+REP-017: BPSec ASB parsing preserves the exact received sequence through
+bounded immutable windows under the operator's supported profile. Structural
+validity, unsupported interpretation, cryptographic results and host
+uncertainty remain distinct; only descriptor-bound verified operations may
+satisfy an actual admission requirement. This requirement remains specified
+until the complete cursor/provider/graph/security boundary is established.
+
 **ASB cursor contract (source in progress).** RFC 9172 §3.6's ASB is an
 unwrapped CBOR sequence. `fn-bps-asb-start` pins kind, immutable backing ID,
 absolute start offset, exact declared block-data length and an operator

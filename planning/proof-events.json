@@ -17784,6 +17784,41 @@
     {
       "id": "PRF-1151",
       "events": []
+    },
+    {
+      "id": "PRF-1178",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bps-head-drive-consumes-at-most-quantum",
+          "pending_subject": "Component scheduling subject only: actual BP host has no installed fn-bps-asb-step immutable provider or admission gate. Full cursor invariant/partition equivalence and provider lifetime remain open; proper-local source admission is not normal certification."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-head-drive-consumes-at-most-window",
+          "pending_subject": "Component scheduling subject only: actual BP host has no installed fn-bps-asb-step immutable provider or admission gate. Full cursor invariant/partition equivalence and provider lifetime remain open; proper-local source admission is not normal certification."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-head-drive-rest-is-exact-unconsumed-suffix",
+          "pending_subject": "Component scheduling subject only: actual BP host has no installed fn-bps-asb-step immutable provider or admission gate. Full cursor invariant/partition equivalence and provider lifetime remain open; proper-local source admission is not normal certification."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-drive-consumes-at-most-quantum",
+          "pending_subject": "Component scheduling subject only: actual BP host has no installed fn-bps-asb-step immutable provider or admission gate. Full cursor invariant/partition equivalence and provider lifetime remain open; proper-local source admission is not normal certification."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-drive-consumes-at-most-window",
+          "pending_subject": "Component scheduling subject only: actual BP host has no installed fn-bps-asb-step immutable provider or admission gate. Full cursor invariant/partition equivalence and provider lifetime remain open; proper-local source admission is not normal certification."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-drive-rest-is-exact-unconsumed-suffix",
+          "pending_subject": "Component scheduling subject only: actual BP host has no installed fn-bps-asb-step immutable provider or admission gate. Full cursor invariant/partition equivalence and provider lifetime remain open; proper-local source admission is not normal certification."
+        }
+      ]
     }
   ]
 }
