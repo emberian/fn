@@ -1764,6 +1764,11 @@ ordinary and composite-held rows before the inverse becomes a full restore
 claim. SCN-215 names the genuine producer/restore/cut scenario; current
 orphan/remap teeth are component evidence only. History/page preparation,
 funded capture/controller and matching native execution remain pending.
+The current native producer uses the source-row `fn-osm-` pending/ACK machine.
+The unused captured12 native preparation/writer chain and direct owner import
+of this older `fn-orm-` component are removed; its standalone alpha target and
+SCN-215 full-restore obligation remain open. This dependency separation does
+not prove the current producer alpha, funding or recovery composition.
 
 Snapshot capture admission calls `fn-osl-ready-acquire` (PRF-1074) on the
 carried `fn-sf-phase` field. A phase other than `:ready` refuses before changing
