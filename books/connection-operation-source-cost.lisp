@@ -1,0 +1,256 @@
+; Executable source observers for the ACTUAL connection evaluator. No tariff
+; coefficient producer, installation setter, second issuer or served entry.
+(in-package "ACL2")
+(include-book "connection-operation-cost")
+(include-book "allocation-turn-source-cost")
+(local (include-book "arithmetic-5/top" :dir :system))
+
+; Observation fields are value, explicit constructor cells, ordered arithmetic
+; operands, and exact callee/argument sites. These proof-only lists are uncharged.
+(defun fn-copc-pack (value ops calls)
+ (declare (xargs :guard t)) (list value 0 ops calls))
+(defun fn-copc-call (name args)
+ (declare (xargs :guard t)) (list (list name args)))
+(local (defthm fn-copc-raw-fields
+ (and (equal (fn-atsc-value (list value cells ops calls)) value)
+      (equal (fn-atsc-ops (list value cells ops calls)) ops)
+      (equal (fn-atsc-sites (list value cells ops calls)) calls))
+ :hints (("Goal" :in-theory (enable fn-atsc-value fn-atsc-ops fn-atsc-sites fn-atsc-at)))))
+(local (defthm fn-copc-fields
+ (and (equal (fn-atsc-value (fn-copc-pack value ops calls)) value)
+      (equal (fn-atsc-ops (fn-copc-pack value ops calls)) ops)
+      (equal (fn-atsc-sites (fn-copc-pack value ops calls)) calls))
+ :hints (("Goal" :in-theory (enable fn-atsc-value fn-atsc-ops fn-atsc-sites fn-atsc-at)))))
+(local (defthm fn-copc-at-is-mv-nth
+ (implies (natp n) (equal (fn-atsc-at n x) (mv-nth n x)))
+ :hints (("Goal" :induct (fn-atsc-at n x) :in-theory (enable fn-atsc-at)))))
+
+(defun fn-copc-times-room (a b domain)
+ (declare (xargs :guard t))
+ (fn-copc-pack (fn-cop-times-roomp a b domain)
+  (if (and (natp a) (natp b) (natp domain) (<= a domain) (<= b domain) (not (zp b)))
+      (list (list :floor (list domain b))) nil)
+  (fn-copc-call 'fn-cop-times-roomp (list a b domain))))
+(defthm fn-copc-times-room-observes-result
+ (equal (fn-atsc-value (fn-copc-times-room a b domain)) (fn-cop-times-roomp a b domain)))
+
+; The call roster retains the exact input/fuel at EACH reachable comparison
+; step. Its named compiled subject fixes the short-circuit predicate order;
+; no comparison is replaced by a length-only bound or host-supplied answer.
+(defun fn-copc-octets-left (x fuel)
+ (declare (xargs :guard (natp fuel) :measure (nfix fuel)))
+ (let ((calls (fn-copc-call 'fn-cop-octets-left (list x fuel))))
+  (cond ((null x) (fn-copc-pack (list :counted fuel) nil calls))
+        ((or (atom x) (zp fuel) (not (integerp (car x)))
+             (< (car x) 0) (<= 256 (car x)))
+         (fn-copc-pack (list :refused fuel) nil calls))
+        (t (let ((tail (fn-copc-octets-left (cdr x) (1- fuel))))
+             (fn-copc-pack (fn-atsc-value tail)
+               (cons (list :subtract (list fuel 1)) (fn-atsc-ops tail))
+               (fn-atsc-append calls (fn-atsc-sites tail))))))))
+(defthm fn-copc-octets-left-observes-complete-result
+ (equal (fn-atsc-value (fn-copc-octets-left x fuel)) (fn-cop-octets-left x fuel))
+ :hints (("Goal" :induct (fn-copc-octets-left x fuel))))
+
+(defun fn-copc-octets-match (x y fuel)
+ (declare (xargs :guard (natp fuel) :measure (nfix fuel)))
+ (let ((calls (fn-copc-call 'fn-cop-octets-match (list x y fuel))))
+  (cond ((or (atom x) (atom y))
+         (fn-copc-pack (and (null x) (null y)) nil calls))
+        ((not (and (not (zp fuel)) (integerp (car x)) (<= 0 (car x)) (< (car x) 256)
+                   (integerp (car y)) (<= 0 (car y)) (< (car y) 256)
+                   (eql (car x) (car y))))
+         (fn-copc-pack nil nil calls))
+        (t (let ((tail (fn-copc-octets-match (cdr x) (cdr y) (1- fuel))))
+             (fn-copc-pack (fn-atsc-value tail)
+               (cons (list :subtract (list fuel 1)) (fn-atsc-ops tail))
+               (fn-atsc-append calls (fn-atsc-sites tail))))))))
+(defthm fn-copc-octets-match-observes-result
+ (equal (fn-atsc-value (fn-copc-octets-match x y fuel)) (fn-cop-octets-match x y fuel))
+ :hints (("Goal" :induct (fn-copc-octets-match x y fuel))))
+
+(defun fn-copc-input-left (kind family address peer fuel)
+ (declare (xargs :guard (natp fuel)))
+ (let ((calls (fn-copc-call 'fn-cop-input-left (list kind family address peer fuel))))
+  (if (not (case kind
+            (:reader (and (null family) (null address) (null peer)))
+            (:peer (and (null family) (null address)))
+            (:exposure (or (and (eq family :inet) (fn-omk-widthp address 4))
+                           (and (eq family :inet6) (fn-omk-widthp address 16))))
+            (otherwise nil)))
+      (fn-copc-pack (list :refused fuel) nil calls)
+    (let* ((a (fn-copc-octets-left address fuel))
+           (word (fn-atsc-at 0 (fn-atsc-value a)))
+           (left (fn-atsc-at 1 (fn-atsc-value a))))
+     (if (not (eq word :counted))
+         (fn-copc-pack (fn-atsc-value a) (fn-atsc-ops a)
+           (fn-atsc-append calls (fn-atsc-sites a)))
+       (let ((p (fn-copc-octets-left peer (nfix left))))
+        (fn-copc-pack (fn-atsc-value p)
+          (fn-atsc-append (fn-atsc-ops a) (fn-atsc-ops p))
+          (fn-atsc-append calls (fn-atsc-append (fn-atsc-sites a) (fn-atsc-sites p))))))))))
+(local (defthm fn-copc-left-result-width2
+ (equal (list (mv-nth 0 (fn-cop-octets-left x fuel))
+              (mv-nth 1 (fn-cop-octets-left x fuel)))
+        (fn-cop-octets-left x fuel))
+ :hints (("Goal" :induct (fn-cop-octets-left x fuel)))))
+(defthm fn-copc-input-left-observes-complete-result
+ (equal (fn-atsc-value (fn-copc-input-left kind family address peer fuel))
+        (fn-cop-input-left kind family address peer fuel))
+ :hints (("Goal" :in-theory (e/d (fn-cop-input-left)
+  (fn-copc-octets-left fn-cop-octets-left fn-atsc-value fn-atsc-ops fn-atsc-sites
+   fn-copc-left-result-width2))
+  :use ((:instance fn-copc-left-result-width2 (x address))
+        (:instance fn-copc-left-result-width2 (x nil))))))
+
+(defun fn-copc-body-demand (base per-input input per-level levels domain)
+ (declare (xargs :guard t))
+ (let* ((i (fn-copc-times-room per-input input domain))
+        (l (if (fn-atsc-value i) (fn-copc-times-room per-level levels domain)
+             (fn-copc-pack nil nil nil)))
+        (prefixops (fn-atsc-append (fn-atsc-ops i) (fn-atsc-ops l)))
+        (calls (fn-atsc-append (fn-copc-call 'fn-cop-body-demand
+                               (list base per-input input per-level levels domain))
+                 (fn-atsc-append (fn-atsc-sites i) (fn-atsc-sites l)))))
+  (if (not (and (fn-atsc-value i) (fn-atsc-value l)))
+      (fn-copc-pack (list :unavailable nil) prefixops calls)
+    (let* ((input-cost (* per-input input)) (level-cost (* per-level levels))
+           (room (fn-atsc-add-room base input-cost domain))
+           (ops (fn-atsc-append prefixops
+                   (fn-atsc-append (list (list :multiply (list per-input input))
+                                        (list :multiply (list per-level levels))) (fn-atsc-ops room)))))
+      (if (not (fn-atsc-value room))
+          (fn-copc-pack (list :unavailable nil) ops calls)
+        (let* ((prefix (+ base input-cost))
+               (last (fn-atsc-add-room prefix level-cost domain))
+               (ops (fn-atsc-append ops (cons (list :add (list base input-cost))
+                                                            (fn-atsc-ops last)))))
+         (if (fn-atsc-value last)
+             (fn-copc-pack (list :derived (+ prefix level-cost))
+               (fn-atsc-append ops (list (list :add (list prefix level-cost)))) calls)
+           (fn-copc-pack (list :unavailable nil) ops calls))))))))
+(defthm fn-copc-body-demand-observes-complete-result
+ (equal (fn-atsc-value (fn-copc-body-demand base per-input input per-level levels domain))
+        (fn-cop-body-demand base per-input input per-level levels domain))
+ :hints (("Goal" :in-theory (disable fn-copc-times-room fn-cop-times-roomp
+                    fn-atsc-add-room fn-aed-add-roomp fn-atsc-value fn-atsc-ops fn-atsc-sites))))
+
+(defun fn-copc-evaluate (installation kind family address peer depth)
+ (declare (xargs :guard t))
+ (let* ((domain (fn-omk-at 4 installation)) (quantum (fn-omk-at 9 installation))
+        (calls (fn-copc-call 'fn-cop-evaluate (list installation kind family address peer depth))))
+  (if (not (and (fn-omk-widthp installation 10)
+                (eq (fn-omk-at 0 installation) :connection-operation-installation)
+                (natp (fn-omk-at 1 installation))
+                (natp domain) (natp quantum) (<= quantum domain)
+                (natp depth) (< depth domain)))
+      (fn-copc-pack (list :unsupported-runtime nil 0 0 0) nil calls)
+    (let* ((input (fn-copc-input-left kind family address peer quantum))
+           (word (fn-atsc-at 0 (fn-atsc-value input)))
+           (left (fn-atsc-at 1 (fn-atsc-value input)))
+           (ops (fn-atsc-ops input))
+           (calls (fn-atsc-append calls (fn-atsc-sites input))))
+      (if (not (eq word :counted))
+          (fn-copc-pack (list :refused nil 0 0 quantum) ops calls)
+        (let* ((levels (+ 1 depth))
+               (room (fn-copc-times-room 8 levels domain))
+               (ops (fn-atsc-append ops (cons (list :add (list 1 depth)) (fn-atsc-ops room))))
+               (calls (fn-atsc-append calls (fn-atsc-sites room))))
+         (if (not (fn-atsc-value room))
+             (fn-copc-pack (list :unsupported-runtime nil 0 0 quantum) ops calls)
+           (let* ((body (fn-copc-body-demand (fn-omk-at 6 installation)
+                           (fn-omk-at 7 installation) (- quantum (nfix left))
+                           (fn-omk-at 8 installation) levels domain))
+                  (ops (fn-atsc-append ops (cons (list :subtract (list quantum (nfix left)))
+                                                                  (fn-atsc-ops body))))
+                  (calls (fn-atsc-append calls (fn-atsc-sites body))))
+            (if (eq (fn-atsc-at 0 (fn-atsc-value body)) :derived)
+                (fn-copc-pack (list :derived (fn-omk-at 5 installation) (* 8 levels)
+                                     (fn-atsc-at 1 (fn-atsc-value body)) quantum)
+                  (fn-atsc-append ops (list (list :multiply (list 8 levels)))) calls)
+              (fn-copc-pack (list :unsupported-runtime nil 0 0 quantum) ops calls))))))))))
+(defthm fn-copc-evaluate-observes-complete-actual-result
+ (equal (fn-atsc-value (fn-copc-evaluate installation kind family address peer depth))
+        (fn-cop-evaluate installation kind family address peer depth))
+ :hints (("Goal" :in-theory
+ (disable fn-copc-input-left fn-cop-input-left fn-copc-times-room fn-cop-times-roomp
+          fn-copc-body-demand fn-cop-body-demand fn-atsc-value fn-atsc-ops fn-atsc-sites)))
+ :rule-classes nil)
+
+; Actual START issuer-domain predicate: two checked sums at each of all five
+; coordinates, and the separate all-coordinate budget-domain pass. Short-circuit
+; failures retain only operators reached in the actual source.
+(defun fn-copc-vector-room (used charged demand domain fuel)
+ (declare (xargs :guard (natp fuel) :measure (nfix fuel)))
+ (let ((calls (fn-copc-call 'fn-cop-vector-room (list used charged demand domain fuel))))
+  (if (zp fuel)
+      (fn-copc-pack (and (null used) (null charged) (null demand)) nil calls)
+    (if (not (and (consp used) (consp charged) (consp demand)))
+        (fn-copc-pack nil nil calls)
+      (let ((first (fn-atsc-add-room (car used) (car charged) domain)))
+       (if (not (fn-atsc-value first))
+           (fn-copc-pack nil (fn-atsc-ops first) calls)
+         (let* ((sum (+ (car used) (car charged)))
+                (second (fn-atsc-add-room sum (car demand) domain))
+                (ops (fn-atsc-append (fn-atsc-ops first)
+                       (cons (list :add (list (car used) (car charged))) (fn-atsc-ops second)))))
+          (if (not (fn-atsc-value second))
+              (fn-copc-pack nil ops calls)
+            (let ((tail (fn-copc-vector-room (cdr used) (cdr charged) (cdr demand) domain (1- fuel))))
+             (fn-copc-pack (fn-atsc-value tail)
+               (fn-atsc-append ops (cons (list :subtract (list fuel 1)) (fn-atsc-ops tail)))
+               (fn-atsc-append calls (fn-atsc-sites tail))))))))))))
+(defthm fn-copc-vector-room-observes-result
+ (equal (fn-atsc-value (fn-copc-vector-room used charged demand domain fuel))
+        (fn-cop-vector-room used charged demand domain fuel))
+ :hints (("Goal" :induct (fn-copc-vector-room used charged demand domain fuel)
+  :in-theory (disable fn-atsc-add-room fn-aed-add-roomp fn-atsc-value fn-atsc-ops fn-atsc-sites))))
+
+(defun fn-copc-issuer-domain (ledger demand domain)
+ (declare (xargs :guard t))
+ (let* ((budget (fn-prl-nth 0 ledger)) (next (fn-prl-nth 2 ledger))
+        (calls (fn-copc-call 'fn-cop-issuer-domainp (list ledger demand domain))))
+  (if (not (and (natp domain) (natp next) (< next domain)
+                (fn-omk-widthp budget 5) (fn-omk-widthp demand 5)))
+      (fn-copc-pack nil nil calls)
+    (let ((b (fn-copc-vector-room '(0 0 0 0 0) budget '(0 0 0 0 0) domain 5)))
+     (if (not (and (fn-atsc-value b) (equal (fn-prl-nth 4 demand) 1)))
+         (fn-copc-pack nil (fn-atsc-ops b) (fn-atsc-append calls (fn-atsc-sites b)))
+       (let ((u (fn-copc-vector-room (fn-prl-baseline ledger) (fn-prl-nth 1 ledger) demand domain 5)))
+        (fn-copc-pack (fn-atsc-value u)
+          (fn-atsc-append (fn-atsc-ops b) (fn-atsc-ops u))
+          (fn-atsc-append calls (fn-atsc-append (fn-atsc-sites b) (fn-atsc-sites u))))))))))
+(defthm fn-copc-issuer-domain-observes-result
+ (equal (fn-atsc-value (fn-copc-issuer-domain ledger demand domain))
+        (fn-cop-issuer-domainp ledger demand domain))
+ :hints (("Goal" :in-theory (disable fn-copc-vector-room fn-cop-vector-room
+                  fn-atsc-value fn-atsc-ops fn-atsc-sites))))
+
+(local (defthm fn-copc-append-length
+ (equal (len (fn-atsc-append a b)) (+ (len a) (len b)))
+ :hints (("Goal" :induct (fn-atsc-append a b)))))
+(local (defthm fn-copc-room-ops-bound
+ (<= (len (fn-atsc-ops (fn-atsc-add-room a b domain))) 1) :rule-classes :linear))
+(local (defthm fn-copc-times-ops-bound
+ (<= (len (fn-atsc-ops (fn-copc-times-room a b domain))) 1) :rule-classes :linear))
+(defthm fn-copc-body-demand-source-operation-bound
+ (<= (len (fn-atsc-ops (fn-copc-body-demand base per-input input per-level levels domain))) 8)
+ :hints (("Goal" :in-theory
+  (disable fn-copc-times-room fn-cop-times-roomp fn-atsc-add-room fn-aed-add-roomp
+           fn-atsc-value fn-atsc-ops fn-atsc-sites)))
+ :rule-classes nil)
+(defthm fn-copc-octets-left-source-consumption
+ (implies (natp fuel)
+  (equal (len (fn-atsc-ops (fn-copc-octets-left x fuel)))
+         (- fuel (mv-nth 1 (fn-cop-octets-left x fuel)))))
+ :hints (("Goal" :induct (fn-copc-octets-left x fuel))))
+(defthm fn-copc-octets-match-source-operation-bound
+ (implies (natp fuel)
+  (<= (len (fn-atsc-ops (fn-copc-octets-match x y fuel))) fuel))
+ :hints (("Goal" :induct (fn-copc-octets-match x y fuel))))
+(defthm fn-copc-input-left-source-consumption
+ (implies (natp fuel)
+  (equal (len (fn-atsc-ops (fn-copc-input-left kind family address peer fuel)))
+         (- fuel (mv-nth 1 (fn-cop-input-left kind family address peer fuel)))))
+ :hints (("Goal" :in-theory
+  (disable fn-copc-octets-left fn-cop-octets-left fn-atsc-value fn-atsc-ops fn-atsc-sites))))
