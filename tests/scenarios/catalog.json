@@ -6298,7 +6298,9 @@
         "tests/test_native_obligation_subject.py",
         "tests/acl2/retention-obligation-view-tests.lisp",
         "tests/acl2/obligation-subject-tests.lisp",
-        "tests/acl2/owner-obligation-recovery-tests.lisp"
+        "tests/acl2/owner-obligation-recovery-tests.lisp",
+        "tests/acl2/owner-obligation-completion-tests.lisp",
+        "tests/acl2/retention-obligation-view-bounds-tests.lisp"
       ],
       "execution_scope": "Written, not run. Matching coalesced developer image pending runner. Duplicate release and subject-clear mutation teeth are logical; no duplicate native receipt pass claimed."
     },

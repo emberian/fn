@@ -8,8 +8,9 @@
 ; Fixed carry overhead includes view/count and one global-table binding.
 ; One path edge has branch spine+entry = two 16-byte conses. The terminal
 ; adds three conses (spine, entry and contribution pair). Each count/charge
-; is at most the accepted wire/profile uint64 bound; reserve 32 bytes each
-; for integer representation/alignment rather than assume a fixnum.
+; is reserved at the uint64 bound: retention-obligation-view-bounds proves
+; this conditional on ledger capacity. The actual configured-owner bridge
+; remains open. Reserve 32 bytes for representation/alignment per integer.
 (defconst *fn-ovb-cons-octets* 16)
 (defconst *fn-ovb-integer-octets* 32)
 (defconst *fn-ovb-branch-width* 257)

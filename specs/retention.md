@@ -254,8 +254,13 @@ rebuilt view and recovered ledger together; a producer-to-swap theorem derives
 correspondence from the actual nonfault rebuild result. The cold reconstruction
 correspondence is unconditional: its earlier pin-typing hypothesis was removed
 after proving the weaker statement; executable entry guards are unchanged.
-Other prepare variants and durable completion remain separate open writer
-obligations. These proofs do not turn the eager rebuild into a bounded source
+The actual `fn-owner-finish-synced` also preserves correspondence. Its direct
+carried-path proof needs only prior correspondence: the earlier Store typing
+and valid-carry proof hypotheses were removed after stronger proofs passed.
+The guard-verified entry keeps its executable guards. Literal positive and
+corrupted-view witnesses accompany live signed commit/ready checks, with exact
+nonempty subject count/charge compared against reconstruction. Other prepare
+variants and other owner installations remain open writer obligations. These proofs do not turn the eager rebuild into a bounded source
 traversal or establish every native producer premise.
 
 For the exact `fn-vdc-put` updater, a count/charge pair grows the resulting
@@ -266,3 +271,11 @@ These are retained tree-shape bounds, not allocator/collector measurements or
 bounds on numeric object sizes. Connecting admitted transaction history to
 the cumulative subject support and bounded integers remains necessary for the
 physical reservation claim above.
+
+The carried total and each keyed count/charge are bounded by the retention
+ledger's capacity under the ledger invariant and view correspondence. They fit
+uint64 when that capacity is below 2^64. This is a conditional numeric bound,
+with explicit invalid-ledger, corrupt-view and over-word-capacity witnesses;
+it is not a runtime ceiling or permission to truncate. The actual configured
+owner capacity bridge, cumulative path support and physical allocation proof
+remain part of the reservation obligation.
