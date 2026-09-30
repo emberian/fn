@@ -289,3 +289,27 @@ ACL2-derived region positions. After all regions are complete, the private
 staged file is scanned for data-page digests and metadata spools. This keeps
 two source passes, avoids a per-record length spool, and never constructs a
 whole image or by-address hash. Final composed stream/root proof remains open.
+
+## Record bytes into the pool buffer
+
+`fn-hpe-begin(source,capture,lease)` creates seven cells: phase, byte-codec
+continuation, partial-word byte count, partial u64 accumulator, emitted byte
+count, capture reference and resource lease reference. `fn-hpe-tick(c,fn-hpb)`
+returns verdict, summary, next cursor and scratch. It invokes at most one
+actual codec tick and writes at most one u64. A full scratch page returns
+`:page-full` with both states unchanged before consuming a source byte. The
+owner completes its positional write before resetting that scratch and
+resuming the same cursor. A terminal aligned row emits no extra word; a
+nonempty partial word emits exact current-format zero padding. `:prepared`
+returns the exact unpadded encoded byte count for column construction.
+
+Named component boundaries establish byte-total conservation, carried codec
+invariant, concrete scratch/identity preservation, and exact eighth-byte and
+final padded-word effects against `fn-hp-pack8`. They do not yet constitute
+a whole-record stream induction to `fn-hp-pe`, nor authenticate source span
+responses or establish disk publication. Literal tests exercise an actual
+16400-octet row across a full-page yield/reset/resume and compare both pages
+with the old logical packing. The full per-literal helper premise audit and
+complete page/record induction remain open. Encoded counts and final padded
+region capacities must already have passed census/profile admission before
+this emitter owns a served reservation.

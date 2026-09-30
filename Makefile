@@ -1497,6 +1497,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-key-cursor-tests \
 	tests/acl2/history-image-columns-tests \
 	tests/acl2/history-census-controller-tests \
+	tests/acl2/history-pool-emitter-tests \
 	tests/acl2/snapshot-prepare-tests \
 	tests/acl2/snapshot-capture-lease-tests \
 	tests/acl2/snapshot-publication-tests \

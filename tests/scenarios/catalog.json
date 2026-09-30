@@ -6285,7 +6285,8 @@
         "Stream the salted Message-ID FNV one byte per tick, including an empty string terminal and an incorrectly attributed source byte.",
         "Finalize canonical capacity domain with valid regional lengths whose combined rounded image overflows; emit a real padded scalar-column cell into concrete scratch.",
         "Offer two resident rows to the census controller and interleave actual codec ticks; try stale/duplicate offers and corrupted count, pool, codec completion, row attribution and premature completion.",
-        "Write distinct words into each of five region scratch pages; exercise every selected-prefix domain/capacity hypothesis independently."
+        "Write distinct words into each of five region scratch pages; exercise every selected-prefix domain/capacity hypothesis independently.",
+        "Run the actual byte codec and pool packer for partial/aligned rows and a16400octet row crossing a full page; retry fullpage unchanged, reset after simulated completion and resume."
       ],
       "expected": [
         "Each valid tick emits one exact original descriptor or yields without losing remaining writes.",
@@ -6299,7 +6300,8 @@
         "The completed key equals existing fn-hp-mkey for a nonempty held row; wrong source byte breaks the exact residual while retained premises hold.",
         "Total canonical image overflow refuses; successful cell write equals current row model and preserves concrete scratch/lease.",
         "Successful row completion gives the exact existing count and independently padded history pool; continuations retain both totals and codec residual, and each omitted completion premise has a literal retained-premise counterexample.",
-        "Only the selected concrete prefix changes; all region invariants and identities are preserved. Invalid logical state/domain witnesses falsify the exact boundary after omitting each premise."
+        "Only the selected concrete prefix changes; all region invariants and identities are preserved. Invalid logical state/domain witnesses falsify the exact boundary after omitting each premise.",
+        "Pool stream equals current logical padded packing; fullpage consumes no source byte; prepared count is exact, with no extra aligned word. Literal eighth/final-word source-attribution and corrupted terminal invariant witnesses accompany the boundaries."
       ],
       "implementation": {
         "test": "tests/acl2/history-page-cursor-tests.lisp",
@@ -6316,7 +6318,8 @@
         "tests/acl2/history-key-cursor-tests.lisp",
         "tests/acl2/history-image-columns-tests.lisp",
         "tests/acl2/history-census-controller-tests.lisp",
-        "tests/acl2/history-page-buffers-tests.lisp"
+        "tests/acl2/history-page-buffers-tests.lisp",
+        "tests/acl2/history-pool-emitter-tests.lisp"
       ],
       "execution_scope": "Library component only; no actual host or funded producer completion claim."
     },
