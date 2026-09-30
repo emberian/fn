@@ -1863,3 +1863,25 @@ the producer adopts these entries. Existing global oldest-pin retirement
 stays in place for unmigrated readers, whose live arena placement lookup
 still precedes physical lease acquisition; the new API alone cannot justify
 weakening that protection.
+
+### Exact requested-window resource lifetime
+
+PRF-1119 / SCN-1025 introduce a typed window lease containing a fresh ticket
+and `(file eoff elen poff plen offset trailer)`. Supplied demand covers the
+fixed input, digest, output and optional decoder representations; ELEN is
+metadata and does not select a whole-extent allocation. The separate
+selected-runtime demand helper must establish adequacy before activation.
+
+An admitted window prevents its exact file's close. Worker return changes
+only its phase and keeps every charge. After the worker has relinquished its
+private activation and the consumer has released every output alias, final
+release refunds reusable resources once. One worker credit remains held
+through the output borrow, conservatively bounding outstanding job/buffer
+leases by the admitted worker budget. Cancellation and deadline expiry do
+not establish physical return. Ordinary verified-extent cache settlement
+cannot consume this typed token. Each repeated request gets a fresh ticket.
+
+The source stobj adapters have complete answer/effect equations. They remain
+unreachable in composition pending actual authenticated window execution,
+its allocator demand and persistent worker dispatch. Return is a physical
+observation, never proof that the bytes passed digest or decoder checks.

@@ -220,7 +220,14 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
                      (fnn-err "PAGE-IO dispatch-failed token=~s worker=retained buffer=none" token)
                      (error 'fnn-extent-fault :message "arena-extent-read: injected job dispatch error"))
                  (fnn-extent-prefetch token))
-             (serious-condition (condition) condition))))
+             ;; Our extent faults carry a diagnostic string. An arbitrary
+             ;; runtime condition may retain its datum/arguments, including
+             ;; the private vector. Do not let that alias escape in RESULT.
+             (fnn-extent-fault (condition) condition)
+             (serious-condition (condition)
+               (declare (ignore condition))
+               (make-condition 'fnn-extent-fault
+                               :message "arena-extent-read: cold executor runtime failure")))))
     (sb-thread:with-mutex (*fnn-extent-lock*)
       (setf (fnn-cold-worker-result worker) result))))
 
@@ -636,6 +643,9 @@ only observed worker relinquishment allows owner settlement/publication."
         (loop until (probe-file hold) do (sleep 0.05)))
       (when (equal mode "error")
         (error 'fnn-extent-fault :message "arena-extent-read: injected pread error"))
+      (when (equal mode "runtime-error")
+        ;; Exercise a condition that actually retains the private array.
+        (error 'type-error :datum octets :expected-type 'null))
       (let ((got (if (equal mode "short") 0 (fnn-extent-pread fd octets eoff))))
         (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
           (list (if (= got (+ elen 32))
