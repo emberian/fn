@@ -363,3 +363,16 @@ component does not establish arbitrary controller schedules, accumulated digest,
 selected dictionary/captured source authority, private native holder or full
 selected runtime demand. Native compressed execution remains refused.
 See `planning/evidence/decoded-window-input-trajectory-source-2026-09-30.md`.
+
+The actual codec tick also carries each selected private-window cell against
+`APPEND(previous decoded prefix, actual returned stored scratch)`, and returned
+TOUT equals the appended length. Earlier selected cells retain their bytes;
+current overlap copies the corresponding scratch bytes. The prefix position
+and prior cell carry are explicit proof invariants, with no new runtime scan.
+Actual BEGIN/read/hash/codec witnesses exercise input64+6 and a selected8-byte
+window crossing the tick boundary; corrupted carried cell and incorrect prefix
+position separately fail the conclusion while preserving other hypotheses.
+This source boundary still needs arbitrary controller/canonical iteration and
+accumulated digest composition, exact captured-source/private-holder authority
+and full selected runtime funding. Native compressed execution remains refused.
+See `planning/evidence/decoded-window-selected-trajectory-source-2026-09-30.md`.

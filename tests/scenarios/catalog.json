@@ -6679,9 +6679,12 @@
         "planning/evidence/decoded-window-stored-trajectory-source-2026-09-30.md",
         "books/decoded-window-input-trajectory.lisp",
         "tests/acl2/decoded-window-input-trajectory-tests.lisp",
-        "planning/evidence/decoded-window-input-trajectory-source-2026-09-30.md"
+        "planning/evidence/decoded-window-input-trajectory-source-2026-09-30.md",
+        "books/decoded-window-selected-trajectory.lisp",
+        "tests/acl2/decoded-window-selected-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-selected-trajectory-source-2026-09-30.md"
       ],
-      "execution_scope": "Protected source composition and literal local-buffer witnesses only; no native served enablement or qualification."
+      "execution_scope": "Protected source composition and literal local-buffer witnesses only; no native served enablement or qualification.  Actual FN-EWZ-CODEC-TICK carries the selected private-window cell against APPEND(previous semantic output prefix, actual returned stored scratch), and returned TOUT equals appended length. The prior cell carry and TOUT/prefix position are explicit; actual INIT/read/hash/codec positives check newly written and retained cells across two input buffers, with separate corrupted-buffer and corrupted-prefix removals. This is source output accumulation, not arbitrary canonical iteration/digest, captured source custody, runtime adequacy or native activation."
     },
     {
       "id": "SCN-1039",

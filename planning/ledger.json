@@ -1158,6 +1158,7 @@
     "tests/acl2/decoded-window-stored-trajectory-tests",
     "tests/acl2/decoded-window-canonical-trajectory-tests",
     "tests/acl2/decoded-window-input-trajectory-tests",
+    "tests/acl2/decoded-window-selected-trajectory-tests",
     "tests/acl2/records-freeze-tests",
     "tests/acl2/catalog-record-tests",
     "tests/acl2/catalog-tests",
@@ -1828,18 +1829,18 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1912,
-    "books_in_root_closure": 1904,
-    "roots": 1824,
-    "theorems": 30262,
-    "functions": 19099,
+    "books": 1914,
+    "books_in_root_closure": 1906,
+    "roots": 1825,
+    "theorems": 30272,
+    "functions": 19100,
     "assert_events": 23990,
     "must_fails": 2516,
     "prover_refusals": 0,
     "encapsulates": 169,
     "guards": {
       "verified": 3513,
-      "declared-off": 2281,
+      "declared-off": 2282,
       "default-guarded": 10410,
       "default-unguarded": 2895
     },
@@ -1847,7 +1848,7 @@
     "export_hygiene_warnings": 340,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2582,
+    "include_hygiene_warnings": 2584,
     "host_names_warnings": 2199,
     "hand_written_record_warnings": 18
   },
@@ -11479,6 +11480,35 @@
         "page-window-executor"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/decoded-window-selected-trajectory.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 5,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "decoded-window-read",
+        "extent-window-compressed-refinement"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -41721,6 +41751,33 @@
       "includes": [
         "../../books/decoded-window-read",
         "decoded-window-begin-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/decoded-window-selected-trajectory-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/decoded-window-selected-trajectory",
+        "extent-window-compressed-refinement-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -83156,6 +83213,20 @@
         "line": 3,
         "include": "decoded-window-begin-tests",
         "included": "tests/acl2/decoded-window-begin-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/decoded-window-selected-trajectory-tests.lisp",
+        "line": 3,
+        "include": "../../books/decoded-window-selected-trajectory",
+        "included": "books/decoded-window-selected-trajectory.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/decoded-window-selected-trajectory-tests.lisp",
+        "line": 4,
+        "include": "extent-window-compressed-refinement-tests",
+        "included": "tests/acl2/extent-window-compressed-refinement-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
