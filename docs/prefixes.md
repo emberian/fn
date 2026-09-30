@@ -370,3 +370,4 @@ anything a book does not already decide.
 
 | `fn-lpc-` | `legacy-parser-cursor`, `legacy-parser-reference`, `legacy-parser-header` | Bounded immutable-span legacy cursor and concrete arena/body facts refinement; full header equality remains open |
 | `fn-lpv-`, `fn-lpvt-`, `lpvt-`, `lpvrt-` | `legacy-parser-values`, `legacy-parser-value-run`, their ACL2 test books | Logical source-slice and unfolded value normalization invariants; never served materialization |
+| `fn-nlpc-` | `legacy-parser-composition` | Arbitrary-source acceptance composition of the actual legacy byte machine and article parser; logical proof vocabulary |
