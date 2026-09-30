@@ -494,6 +494,15 @@
      :in-theory (e/d (fn-hdcl-source-statep fn-hdcl-borrowed-statep
                        fn-hdc-stack-in-poolp fn-hdc-result)
        (fn-hdcl-weighted-statep fn-hdcl-scalar-statep fn-hdc-statep fn-hdc-node-in-poolp))))))
+(defthm fn-hdcl-successful-source-result-retains-node-bounds
+  (implies (and (fn-hdcl-source-statep s offset)
+                (equal (car (fn-hdc-result s)) :ok))
+           (fn-hdc-node-in-poolp (cadr (fn-hdc-result s)) (nth 8 s)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+    :in-theory (e/d (fn-hdcl-source-statep fn-hdcl-borrowed-statep
+                      fn-hdc-stack-in-poolp fn-hdc-result)
+      (fn-hdcl-weighted-statep fn-hdcl-scalar-statep fn-hdc-statep fn-hdc-node-in-poolp)))))
 (defthm fn-hdcl-successful-source-result-is-cold-codec-domain
   (implies (and (fn-hdcl-source-statep s offset)
                 (< (nth 8 s) *fn-hrcur-u64-bound*) (<= (nth 8 s) (len pool))

@@ -508,3 +508,34 @@ these unconditional output boundaries using the actual child runtimes.
 A reachable initial tick, resumed borrowed-span supply and malformed-state
 fixture check the full conclusions. The writer owns its write effects;
 this status fact alone proves no persistence, funding or I/O completion.
+
+## Actual based-provider decoder carry
+
+`books/snapshot-based-provider-decoder-lineage.lisp` joins the existing
+`fn-obp-begin` and `fn-obp-tick` to the actual decoder's numeric, consumed-byte
+weight and borrowed-span lineage. Its immutable pool relation is proof-only;
+the runtime and seventeen-cell provider representation are unchanged. The
+begin law checks the declared pool against the logical pool length. The tick
+law assumes the existing cursor guard and carried lineage, and preserves that
+lineage through metadata, CHECK, decoder, padding, key and completion phases.
+It does not require exact source-byte equality merely to preserve numeric or
+span bounds. Successful `:done` completion yields the full cold codec domain
+and node extents without a caller node-domain hypothesis.
+
+The separate matched-byte equation names the actual `fn-obp-tick` call and
+actual `fn-hdc-feed` result. Its premises are decode phase, current fixed-field
+byte matching, and equality of the supplied scalar to the immutable pool's
+current parser position. A terminal decoder freezes under feed, so an earlier
+result=`:yield` premise was proved redundant and removed. The physical reader
+owner must establish the exact pool observation equation and source4/pass/root
+pin authority; this companion does not claim native authentication or lifetime.
+
+Eleven ground witnesses include a complete actual metadata/decode/padding/key
+trajectory ending in decoded output and practical hypothesis removals. Stale
+serial and wrong-source observations are argument mutations; reassigned phases
+and over-bound numeric cursors are labeled corrupted states. The carry guard's
+u64-header removal remains partial because a materialized pool of that size
+is not a practical fixture. Source admission reuses unchanged public events;
+no certification, full parser inverse, controller funding, image or deployment
+claim follows. Exact source and donor digests live in
+`planning/evidence/snapshot-based-provider-decoder-lineage-source-2026-09-30.json`.
