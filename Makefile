@@ -687,6 +687,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-progress-invariants \
 	books/bp-node-progress-guards \
 	books/bp-node-job-offer-guards \
+	books/bp-node-waits \
+	tests/acl2/bp-node-waits-tests \
 	books/bp-node-control \
 	books/bp-node-listener-control \
 	books/bp-node-progress-premises \

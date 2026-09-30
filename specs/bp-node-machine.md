@@ -4991,3 +4991,20 @@ its octet and arrival scalars. This execution contract adds no runtime
 whole-held-state recognizer and leaves replay's logical result unchanged.
 SCN-1008's native recovery cases and the original scale cases still require
 matching image evidence; a guard proof is not a timing or deployment claim.
+
+### Volatile waits across dispatch and forwarding publication (PKT-064)
+
+`fn-bpnj-step`, called by `fnn-bps-foundation-step`, preserves unrelated local
+backoff waits when it proposes transit dispatch and when that dispatch is known
+durable or refused. Progress first prunes waits against current held rows;
+PRF-1116 names that pruned table rather than asserting that all progress keeps
+all waits. Kind-8/9 result proposal and refused publication also preserve waits.
+An uncertain persistence result still clears volatile waits and leaves an
+uncertain operation; a later refused callback cannot resume it.
+
+SCN-1038 uses two independent actual receptions: local arrival 0 becomes busy,
+transit arrival 1 progresses while its wait survives. The literal host-subject
+keystones and complete hypothesis-removal teeth are in `bp-node-waits` and its
+teeth book. This is an fn scheduling guarantee, not an RFC BP requirement.
+Clean source admission is recorded in `planning/evidence/bp-waits-2026-09-30.md`;
+matching certification and native observation are still pending.

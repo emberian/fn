@@ -662,7 +662,8 @@
              (fn-bpnp-with-waits st waits)
              (list (list :progress-wait key :credit free))))
         (fn-bpnf-answer
-         (fn-bpnf-state-with-arrival
+         (fn-bpnp-with-waits
+          (fn-bpnf-state-with-arrival
           (fn-bpnf-base st) (fn-bpnf-held-list st)
           (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
           (fn-bpnf-correlation st)
@@ -670,6 +671,7 @@
                              :dispatch record :pending)
           (fn-bpnf-waits st) (fn-bpnf-epoch st)
           (1+ (fn-bpnf-next-op st)) (fn-bpnf-next-arrival st))
+          (fn-bpnp-waits st))
          (list (list :persist-dispatch (fn-bpnf-epoch st)
                      (fn-bpnf-next-op st) record)))))))
 
@@ -773,7 +775,8 @@
                        (fn-bpnf-next-arrival st))))
                 (fn-bpnf-answer
                  (fn-bpnp-with-credit
-                  settled (1+ (nfix (fn-bpnp-used st)))
+                  (fn-bpnp-with-waits settled (fn-bpnp-waits st))
+                  (1+ (nfix (fn-bpnp-used st)))
                   (+ (nfix (fn-bpnp-debt st)) delta))
                  (list (list :dispatch-ready
                              (fn-bpnp-wait-key (fn-bpn-nth 2 applied))
@@ -781,7 +784,8 @@
         (if (equal result :refused)
             (fn-bpnf-answer
              (fn-bpnp-with-credit
-              (fn-bpnf-with-issued st nil)
+              (fn-bpnp-with-waits (fn-bpnf-with-issued st nil)
+                                  (fn-bpnp-waits st))
               (fn-bpnp-used st) (fn-bpnp-debt st))
              (list (list :dispatch-answer :refused)))
           (fn-bpnf-answer
@@ -987,7 +991,9 @@
         (if (equal result :refused)
             (fn-bpnf-answer
              (fn-bpnp-with-runtime
-              (fn-bpnp-with-issued st nil) (fn-bpnp-sessions st) nil)
+              (fn-bpnp-with-waits (fn-bpnp-with-issued st nil)
+                                   (fn-bpnp-waits st))
+              (fn-bpnp-sessions st) nil)
              (list (list :forward-answer :refused)))
           (fn-bpnf-answer
            (fn-bpnp-with-runtime
@@ -1047,7 +1053,8 @@
           (fn-bpnf-answer
            (fn-bpnp-with-runtime
             (fn-bpnp-with-credit
-             (fn-bpnf-state-with-arrival
+             (fn-bpnp-with-waits
+              (fn-bpnf-state-with-arrival
               (fn-bpnf-base st) (fn-bpnf-held-list st)
               (fn-bpnf-outcomes st) (fn-bpnf-handoffs st)
               (fn-bpnf-correlation st)
@@ -1056,6 +1063,7 @@
                :forward-result record :pending)
               (fn-bpnf-waits st) (fn-bpnf-epoch st)
               (1+ (fn-bpnf-next-op st)) (fn-bpnf-next-arrival st))
+              (fn-bpnp-waits st))
              (fn-bpnp-used st) (fn-bpnp-debt st))
             (fn-bpnp-sessions st) nil)
            (list (list :persist-forward-result
@@ -1104,7 +1112,7 @@
                              (fn-bpn-nth 8 record)))))))
         (if (equal result :refused)
             (fn-bpnf-answer
-             (fn-bpnp-with-issued st nil)
+             (fn-bpnp-with-waits (fn-bpnp-with-issued st nil) (fn-bpnp-waits st))
              (list (list :forward-answer :refused)))
           (fn-bpnf-answer
            (fn-bpnp-with-issued
