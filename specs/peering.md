@@ -1667,6 +1667,33 @@ exist; the original eight Q12 anchors remain open, including invitation,
 withdrawal-provider, Path projection, wide streaming/soak and broader
 failure/audit scope. The coordinator alone schedules matching execution.
 
+### 5.5 Actual INN temporary refusal, pending restart and resume
+
+SCN-1062 selects `--inn-throttle` before the protected-injection phase.
+The observer saves the prior relay prefix and successfully throttles the
+owned scratch INN before POSTing a fresh source through native fn. It
+requires local 240/220 with the authored subject/fields/body intact, two
+actual 400 greeting observations on new fn feed dials, and no offer of
+that subject. The delay between the relay's monotonic observations must
+be at least 0.8 seconds for `peer add`'s 1000 ms initial-backoff profile; the
+0.2 second measurement tolerance is lab policy, not a timing theorem.
+RFC 3977 section 3.2.1 makes 400 temporary; the observer never treats absence
+of delivery alone as evidence that this reply occurred.
+
+While INN remains throttled, fn is SIGTERMed, recovered and restarted.
+The source must read back exactly, then INN resumes with the same throttle
+reason. A finally arm attempts `go` even if the observer fails. The actual
+fn feed must now complete 335/235 or subject-matched 238/239 and INN must
+serve that same subject/content with only Path/Xref changes. A refused
+setup prevents submission; a failed temporary/reopen/go prerequisite
+leaves the dependent resume observation NOT EXERCISED.
+
+Source fixture accounting is present; matching real-INN/native execution
+remains open. This isolates the temporary greeting/replay/resume route,
+not original S9's bidirectional 431/436 capacity route, process-death
+uncertainty after an article body, or power loss. Original Q12 remains
+open at its eight anchors.
+
 ## 6. The inter-agent angle
 
 Agents are principals ([identity](identity.md), `fn-prin-`): a 32-octet id

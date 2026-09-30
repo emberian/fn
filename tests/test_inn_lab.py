@@ -1007,6 +1007,77 @@ class InnLifecycleFixtureTests(unittest.TestCase):
             self.assertEqual(checks[0], ("inn-cancel-restart", mutation != "wrong-answer"))
             self.assertEqual(checks[1], ("inn-expiry-restart", expected))
 
+class InnThrottleFixtureTests(unittest.TestCase):
+    """Real-INN stage accounting with scripted observations only."""
+
+    def test_temporary_greetings_keep_connections_and_complete_lines_distinct(self):
+        text = "\n".join((
+            json.dumps(dict(pair="a>b", conn=1, way="server", t=1, mono=1, data=base64.b64encode(b"400 tem").decode())),
+            json.dumps(dict(pair="a>b", conn=1, way="server", t=1.1, mono=1.1, data=base64.b64encode(b"porary\r\n").decode())),
+            json.dumps(dict(pair="a>b", conn=2, way="server", t=2.1, mono=2.1, data=base64.b64encode(b"400 again\r\n").decode())),
+            json.dumps(dict(pair="a>b", conn=3, way="server", t=3, mono=3, data=base64.b64encode(b"400 incomplete").decode())),
+            json.dumps(dict(pair="other", conn=4, way="server", t=4, mono=4, data=base64.b64encode(b"400 other\r\n").decode()))))
+        self.assertEqual(inn_lab.InnLab.temporary_dials(text, "a>b"),
+                         [(1, "400 temporary"), (2.1, "400 again")])
+
+    def fixture(self, mutation=None):
+        lab = ProtectedReaderFixtureTests().lab()
+        lab.read_tap = lambda: None
+        lab.tap_text = ""
+        payloads, checks, commands = {}, [], []
+        lab.put_article = lambda name, data: payloads.setdefault(name, data) and name
+        def shell(name, command, **kwargs):
+            commands.append((name, command))
+            fail = mutation == "throttle-refused" and name == "throttle scratch INN"
+            fail = fail or mutation == "go-refused" and name == "unthrottle scratch INN"
+            fail = fail or mutation == "recover-refused" and name == "recover fn pending feed"
+            return inn_lab.Step(name, command, 2 if fail else 0, "refused" if fail else "accepted", 0)
+        lab.sh = shell
+        lab.stop_fn = lambda name: inn_lab.Step(name, "stop recorded fn", 0, "OWNER-GONE", 0)
+        lab.start_fn = lambda tag: mutation != "restart-failed"
+        lab.wait_temporary_dials = lambda prior: [(0, "400 unavailable"), (0.1 if mutation == "retry-fast" else 1.2, "400 unavailable")]
+        def drive(phase, extra, name):
+            data = payloads["throttle"]
+            if mutation == "source-changed" and "cold reopen" in name: data += b"changed\r\n"
+            if mutation == "receiver-content" and "after go" in name: data += b"changed\r\n"
+            if mutation == "receiver-subject" and "after go" in name:
+                data = data.replace(lab.ids["FN_THROTTLE_ID"].encode(), b"<wrong@x>")
+            result = dict(article="220 article", octets=base64.b64encode(data).decode())
+            if phase == "post": result.update(result="441 refused" if mutation == "post-refused" else "240 accepted")
+            return inn_lab.Step(name, extra, 0, json.dumps(result), 0)
+        lab.drive_inn = drive
+        lab.wait_tap = lambda pair, msgid, name: dict(verbs=["CHECK", "TAKETHIS"], offer="238 " + msgid,
+            result="239 " + ("<wrong@x>" if mutation == "reply-subject" else msgid), article=payloads["throttle"])
+        lab.check = lambda key, ok, *args, **kwargs: checks.append((key, ok))
+        lab.record = lambda key, verdict, *args, **kwargs: checks.append((key, verdict))
+        return lab, checks, commands, payloads
+
+    def test_actual_temporary_failure_and_cold_reopen_then_resumed_content(self):
+        for mutation, blocked, resumed in ((None, True, True), ("retry-fast", False, None),
+                ("post-refused", False, None), ("recover-refused", True, None),
+                ("restart-failed", True, None), ("source-changed", True, None),
+                ("go-refused", True, None), ("receiver-content", True, False),
+                ("receiver-subject", True, False), ("reply-subject", True, False)):
+            lab, checks, commands, _ = self.fixture(mutation)
+            lab.scenario_throttle()
+            self.assertEqual(checks, [("inn-throttle-blocked", blocked),
+                ("inn-throttle-resumed", inn_lab.deploy_gate.NOT_EXERCISED if resumed is None else resumed)], mutation)
+            self.assertEqual(commands[-1][0], "unthrottle scratch INN")
+
+    def test_refused_throttle_prevents_submission_and_is_not_a_weak_failure_scenario(self):
+        lab, checks, commands, payloads = self.fixture("throttle-refused")
+        lab.scenario_throttle()
+        self.assertFalse(payloads)
+        self.assertEqual(len(commands), 1)
+        self.assertEqual(checks, [("inn-throttle-blocked", inn_lab.deploy_gate.NOT_EXERCISED),
+                                 ("inn-throttle-resumed", inn_lab.deploy_gate.NOT_EXERCISED)])
+
+    def test_exception_still_restores_inn_go(self):
+        lab, _, commands, _ = self.fixture()
+        lab.drive_inn = lambda *args, **kwargs: (_ for _ in ()).throw(inn_lab.GateError("observer stopped"))
+        with self.assertRaises(inn_lab.GateError): lab.scenario_throttle()
+        self.assertEqual(commands[-1][0], "unthrottle scratch INN")
+
 
 if __name__ == "__main__":
     unittest.main()
