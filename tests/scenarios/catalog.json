@@ -6340,7 +6340,10 @@
         "planning/evidence/legacy-parser-columns-source.md",
         "books/legacy-parser-catalog.lisp",
         "tests/acl2/legacy-parser-catalog-tests.lisp",
-        "planning/evidence/legacy-parser-catalog-source.md"
+        "planning/evidence/legacy-parser-catalog-source.md",
+        "books/legacy-parser-allocation.lisp",
+        "tests/acl2/legacy-parser-allocation-tests.lisp",
+        "planning/evidence/legacy-parser-allocation-source.md"
       ]
     },
     {
