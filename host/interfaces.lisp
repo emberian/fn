@@ -4825,10 +4825,15 @@
 ;; Staged exact raw extent window. Demand/allocator and served reachability
 ;; are separate obligations; these declarations do not activate a consumer.
 (definterface fn-crw-supportedp :class :common-lisp-compliant)
-(definterface fn-ews-begin :class :common-lisp-compliant)
-(definterface fn-ews-effect :class :common-lisp-compliant)
-(definterface fn-ews-tick :class :common-lisp-compliant)
+(definterface fn-ews-begin :class :common-lisp-compliant
+  :kinds ((file natp) (eoff natp) (elen natp) (poff natp) (plen natp)
+          (offset natp) (expected natp)))
+(definterface fn-ews-effect :class :common-lisp-compliant
+  :kinds ((s true-listp)))
+(definterface fn-ews-tick :class :common-lisp-compliant
+  :kinds ((s true-listp)))
 (definterface fn-ews-read :class :common-lisp-compliant
+  :kinds ((s true-listp))
   :keystones ((fn-ews-read-publication-requires-core-integrity :via fn-ews-read)))
 (definterface fn-owner-page-read-ledger :class :common-lisp-compliant)
 (definterface fn-pwx-tokenp :class :common-lisp-compliant

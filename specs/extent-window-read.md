@@ -207,3 +207,25 @@ index in ACL2 before private buffer supply. Its decoded-ready branch is
 unreachable-in-composition under the current raw-only physical predicate;
 the shared OR-kind lifecycle and full decoded/dictionary trajectory must
 land before activation. The initializer join is not that semantic proof.
+
+### Actual bounded copy trajectory component
+
+The actual `fn-zin-copy` splits K1+K2 copied bytes into two calls with
+identical final ring position, ring bytes and output. The actual mode12
+`fn-ewz-codec-tick` binds complete decoder/ring/table/scratch/private-window
+effects to its actual64-byte copy and ACL2-selected overlap. Its source
+conditions include positive quantum, pending copy count, funded output room,
+retained input span, and actual fixed history/table readiness. The stored
+wrapper consumes one action for that copy fragment. Literal witnesses reach
+the controller through actual initialize/hash-prime/read/codec transitions,
+affirm every condition and effect, and falsify each condition separately.
+The63-byte allowance witness distinguishes sentinel room from funded copy.
+
+A251-octet repeated-match archive produces identical octets in the existing
+whole stored decoder and the authenticated bounded controller. General
+faithfulness still requires state/output stuttering: room-dependent copy
+and literal batching changes scheduling action consumption, so equal
+action-budget output splitting is not assumed. Complete decoder/dictionary
+trajectory, total budget adequacy, compiler/runtime demand and native
+lifecycle/consumer activation remain open. This is source component
+evidence, not certification or a qualified served path.

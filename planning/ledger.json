@@ -1146,6 +1146,7 @@
     "tests/acl2/decoded-window-lease-tests",
     "tests/acl2/decoded-window-begin-tests",
     "tests/acl2/decoded-window-read-tests",
+    "tests/acl2/decoded-window-copy-trajectory-tests",
     "tests/acl2/records-freeze-tests",
     "tests/acl2/catalog-record-tests",
     "tests/acl2/catalog-tests",
@@ -1816,18 +1817,18 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1890,
-    "books_in_root_closure": 1882,
-    "roots": 1812,
-    "theorems": 29753,
-    "functions": 19040,
-    "assert_events": 23984,
+    "books": 1892,
+    "books_in_root_closure": 1884,
+    "roots": 1813,
+    "theorems": 29780,
+    "functions": 19041,
+    "assert_events": 23985,
     "must_fails": 2516,
     "prover_refusals": 0,
     "encapsulates": 169,
     "guards": {
       "verified": 3513,
-      "declared-off": 2268,
+      "declared-off": 2269,
       "default-guarded": 10403,
       "default-unguarded": 2856
     },
@@ -1835,7 +1836,7 @@
     "export_hygiene_warnings": 340,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2561,
+    "include_hygiene_warnings": 2563,
     "host_names_warnings": 2198,
     "hand_written_record_warnings": 18
   },
@@ -11158,6 +11159,32 @@
       "includes": [
         "decoded-window-descriptor",
         "extent-window-compressed"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/decoded-window-copy-trajectory.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 9,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "decoded-window-read"
       ],
       "system_includes": [],
       "suspects": [],
@@ -41084,6 +41111,33 @@
       "encapsulates": 0,
       "includes": [
         "../../books/decoded-window-begin"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/decoded-window-copy-trajectory-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 18,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/decoded-window-copy-trajectory",
+        "extent-window-compressed-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -82374,6 +82428,20 @@
         "line": 8,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/decoded-window-copy-trajectory-tests.lisp",
+        "line": 2,
+        "include": "../../books/decoded-window-copy-trajectory",
+        "included": "books/decoded-window-copy-trajectory.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/decoded-window-copy-trajectory-tests.lisp",
+        "line": 3,
+        "include": "extent-window-compressed-tests",
+        "included": "tests/acl2/extent-window-compressed-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

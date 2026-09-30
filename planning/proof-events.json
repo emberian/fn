@@ -17767,6 +17767,22 @@
         }
       ],
       "pending_subject": "Native window dispatch is staged: no served descriptor/admission join. Adapter equations name the actual executor subjects. Demand adequacy, authentic native trajectory and served reachability remain open."
+    },
+    {
+      "id": "PRF-1131",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-copy-split-effects",
+          "note": "Exact actual copied-byte/ring/output split; full positive and all three natural-counter removals. Not scheduling-action equivalence."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-codec-copy-effects",
+          "note": "Actual mode12 fn-ewz-codec-tick complete decoder/ring/table/scratch/private-window effects; reachable source initialize/hash-prime/read/first-tick positive and all13 condition removals."
+        }
+      ],
+      "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. Full decoder/dictionary stuttering, total action-budget completeness, compiled workspace funding and actual typed lifetime/consumer joins remain open; these component events do not complete PRF-1131."
     }
   ]
 }

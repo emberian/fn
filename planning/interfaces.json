@@ -25163,7 +25163,36 @@
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "file",
+          "natp"
+        ],
+        [
+          "eoff",
+          "natp"
+        ],
+        [
+          "elen",
+          "natp"
+        ],
+        [
+          "poff",
+          "natp"
+        ],
+        [
+          "plen",
+          "natp"
+        ],
+        [
+          "offset",
+          "natp"
+        ],
+        [
+          "expected",
+          "natp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -25180,7 +25209,12 @@
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "s",
+          "true-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -25197,7 +25231,12 @@
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "s",
+          "true-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -25214,7 +25253,12 @@
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "s",
+          "true-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [
         {

@@ -6610,7 +6610,8 @@
         "Assert every literal scratch-copy/decoded/new-integrity antecedent and conclusion; remove only natural output index, decoded result or no-prior-publication as labelled.",
         "Affirm actual real-input carry in nonempty scan/codec and empty final-drain transitions; corrupted-state removal keeps every remaining hypothesis true and fails the conclusion.",
         "Affirm active TOUT<=min(N,storedAllowance(C)) after actual begin/codec/read/hash; codec establishes the carry without pre-call hypotheses. Separately labelled corrupted-state read and scan-hash removals falsify only carried-output evidence and the conclusion.",
-        "Check exact scalar NTH boundary and distinct decoded token11, unknown dictionary refusal, immutable shipped lookup, supplied-demand funding/file hold positives and hypothesis removals; retain native/runtime adequacy as open."
+        "Check exact scalar NTH boundary and distinct decoded token11, unknown dictionary refusal, immutable shipped lookup, supplied-demand funding/file hold positives and hypothesis removals; retain native/runtime adequacy as open.",
+        "Compare the actual whole decoder and authenticated bounded controller on a251-octet repeated match; reach pending mode12 through actual initialize/hash-prime/read/codec transitions, affirm the full copy-effect antecedent/conclusion, and remove each of13 conditions as separately labelled logical corrupted-state/request witnesses. Affirm complete actual copy-split effects and all three counter hypothesis removals."
       ],
       "expected": [
         "The exact requested bytes remain private until accepted codec terminal/exactN and full raw extent integrity.",
@@ -6637,7 +6638,10 @@
         "tests/acl2/decoded-window-begin-tests.lisp",
         "books/decoded-window-read.lisp",
         "tests/acl2/decoded-window-read-tests.lisp",
-        "planning/evidence/decoded-window-read-source-2026-09-30.md"
+        "planning/evidence/decoded-window-read-source-2026-09-30.md",
+        "books/decoded-window-copy-trajectory.lisp",
+        "tests/acl2/decoded-window-copy-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-copy-source-2026-09-30.md"
       ],
       "execution_scope": "Protected source composition and literal local-buffer witnesses only; no native served enablement or qualification."
     },
