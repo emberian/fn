@@ -29,6 +29,21 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bpaj-listener-ports (fn-owner-config state))))
 
+(include-book "../books/bp-node-listener-control")
+
+; Actual owner configuration is captured on this sole serialized writer.
+(defun fn-owner-bplc-recover (mode state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bplc-recover mode (fn-owner-config state))))
+
+(defun fn-owner-bplc-begin (carry mode state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bplc-begin carry mode (fn-owner-config state))))
+
+(defun fn-owner-bplc-turn-plan (ownerp admin carry state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-bplc-turn-plan ownerp admin (fn-owner-config state) carry)))
+
 (defun fn-owner-bp-request-trustedp (view state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bpah-request-trustedp view (fn-owner-config state))))

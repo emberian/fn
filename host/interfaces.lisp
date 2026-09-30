@@ -1345,9 +1345,6 @@
   :class :common-lisp-compliant
   :kinds ((group-octets fn-octet-list-listp)))
 
-(definterface fn-owner-bp-listener-ports
-  :class ::program)
-
 (definterface fn-owner-bp-receipt-gatep
   :class ::program)
 
@@ -4598,9 +4595,6 @@
 (definterface fn-bpnc-startup
   :class ::common-lisp-compliant
   :keystones (fn-bpnc-ready-startup-binds-the-parsed-store))
-(definterface fn-bpnc-turn-plan
-  :class ::common-lisp-compliant
-  :keystones (fn-bpnc-grant-is-the-authorized-route-plan))
 (definterface fn-bpnc-socket-initial
   :class ::common-lisp-compliant
   :keystones (fn-bpnc-open-run-live-iff-both-completions-succeed))
@@ -4618,9 +4612,27 @@
 (definterface fn-di-raw-with-problem
   :class :program
   :direct "Image-build declaration lint over the loaded world; no client data or served decision")
+
+; Serialized BP listener installation and actual owner configuration control.
+(definterface fn-bplc-step
+  :class ::common-lisp-compliant
+  :keystones (fn-bplc-failed-completion-fences-without-rollback
+              fn-bplc-installed-runtime-is-the-completed-target
+              fn-bplc-step-preserves-listener-credit
+              fn-bplc-bind-and-retire-account-exact-descriptor-completions
+              fn-bplc-rebind-retains-the-accepted-session-generation))
+(definterface fn-bplc-action :class ::common-lisp-compliant)
+(definterface fn-bplc-accept-plan :class ::common-lisp-compliant)
+(definterface fn-bplc-runtime-line :class ::common-lisp-compliant)
+(definterface fn-bplc-cut-plan
+  :class ::common-lisp-compliant
+  :keystones (fn-bplc-every-death-cut-is-a-fenced-process-crash))
+(definterface fn-owner-bplc-recover :class ::program)
+(definterface fn-owner-bplc-begin :class ::program)
+(definterface fn-owner-bplc-turn-plan :class ::program)
+
 (definterface fn-pio-reap-work :class :common-lisp-compliant)
 (definterface fn-pio-worker-death-step :class :common-lisp-compliant
   :kinds ((deadp booleanp)))
-
 (definterface fn-pio-file-issue :class :common-lisp-compliant
   :keystones ((fn-pio-successive-file-issues-have-distinct-identities :via fn-pio-file-issue)))

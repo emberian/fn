@@ -17423,6 +17423,48 @@
     {
       "id": "PRF-1066",
       "events": []
+    },
+    {
+      "id": "PRF-1075",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bplc-owner-listener-ports-refines-the-configured-listener-set"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bplc-failed-completion-fences-without-rollback"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bplc-installed-runtime-is-the-completed-target"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bplc-rebind-retains-the-accepted-session-generation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bplc-every-death-cut-is-a-fenced-process-crash"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1076",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bplc-grant-is-the-authorized-bp-configuration-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bplc-step-preserves-listener-credit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bplc-bind-and-retire-account-exact-descriptor-completions"
+        }
+      ]
     }
   ]
 }

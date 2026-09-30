@@ -322,6 +322,7 @@
 (include-book "bp-workflow-constructors")
 (include-book "bp-channel-ingress")
 (include-book "bp-listener-set")
+(include-book "bp-node-listener-control")
 (include-book "owner")
 (include-book "bp-transit-join")
 (include-book "bp-release-authority")

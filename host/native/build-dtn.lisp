@@ -384,6 +384,7 @@
         ; The node: FNBS, the owner Store and FNRJ/FNWF under one
         ; `bp-node serve' (specs/bp-node-machine.md).  `bp send' and `bp
         ; receive' above stay as the lab's transport tools.
+        (load "host/native/bp-listener-control.lisp")
         (load "host/native/bp-control.lisp")
         (load "host/native/bp-node.lisp")
         ; `acl2 session': developer images only (the test fixtures' ACL2).
