@@ -6520,7 +6520,10 @@
         "Assert the literal general parser projection and five-column composition conclusions and independently expected output.",
         "Exercise bare empty field, orphan fold, NUL header, bare LF, missing separator, body framing error and empty first line followed by a fold.",
         "Mutate expected first-match selection and initial TAB normalization; assert inequality.",
-        "Exercise literal byte-control commutation, exact body acceptance and new-field/fold physical-line conclusions; remove each retained hypothesis with all other hypotheses checked."
+        "Exercise literal byte-control commutation, exact body acceptance and new-field/fold physical-line conclusions; remove each retained hypothesis with all other hypotheses checked.",
+        "Assert exact actual-byte start/bad result for arbitrary physical lines: missing/invalid colon or name, non-WSP first value, NUL/non-ASCII bytes, orphan and whitespace-only folds, exact 998 and 999 lengths; remove each retained start/length/nonempty/CRLF-free hypothesis while checking all others.",
+        "Assert exact separator/body acceptance, rejection of unfinished headers with or without trailing CR, absorbing bare LF and universal CR/non-LF refusal; every retained hypothesis has an affirmative removal witness.",
+        "Check source-dominated parser counters, each of three retained inequality removals with others affirmed, and unconditional actual widest-parser counter-error exclusion on a nonempty successful article; label reduced profile-limit mutation separately."
       ],
       "expected": [
         "Exactly the first matching fields, one initial SP removed, folding CRLF removed and TAB scrubbed to SP.",
@@ -6651,6 +6654,95 @@
         "planning/history-decode-contract.md"
       ],
       "execution_scope": "Source component tests only. General stream inverse, page-source authentication, integrated native caller and full producer remain open."
+    },
+    {
+      "id": "SCN-1006",
+      "title": "Fixed-block page digest continuation and current word-digest identity",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-035",
+        "HST-040"
+      ],
+      "steps": [
+        "Capture exact immutable source and lease names; census final64-byte blockcount before digest begin.",
+        "Tick empty,64-byte,1,024-byte,1024+64-byte and2048+64-byte word streams, yielding between split search, block and parent phases.",
+        "Compare terminal natural to the existing actual pgs-x-words-digest; mutate source and separately corrupt continuation depth.",
+        "After general refinement/progress/allocation proofs, wire into the disk-backed two-pass preparation controller and run matching producer/image evidence.",
+        "Capture exact byte-total for protected extents and stream partial final blocks with canonical zero padding; compare exact digest octets to the existing concrete fn-blake3."
+      ],
+      "expected": [
+        "No whole directory staging; each input quantum is at most eight u64 words and one compression; source is read-only.",
+        "Finished digest preserves current persistent-format value and capture/lease names.",
+        "Source change is distinguished in ground evidence; corrupted-depth continuation returns invalid with unchanged state.",
+        "No producer/resource-admission completion until actual composition, general proof and matching evidence.",
+        "Exact-byte step preserves page-step behavior on aligned lengths and returns the exact residual byte count; constrained frame-digest composition remains explicit."
+      ],
+      "evidence": [
+        "books/pagestore-digest-cursor.lisp",
+        "tests/acl2/pagestore-digest-cursor-tests.lisp",
+        "planning/page-digest-cursor-contract.md",
+        "books/pagestore-digest-cursor-refinement.lisp",
+        "tests/acl2/pagestore-digest-cursor-refinement-tests.lisp",
+        "planning/evidence/page-digest-cursor-refinement-2026-09-30.md",
+        "books/pagestore-digest-byte-cursor.lisp",
+        "books/pagestore-digest-byte-refinement.lisp",
+        "tests/acl2/pagestore-digest-byte-cursor-tests.lisp",
+        "planning/evidence/page-digest-byte-source-2026-09-30.md"
+      ],
+      "execution_scope": "Guard-verified source library plus clean phase equations and conditional actual-digest terminal bridge. Literal semantic carry and matching-block removal with distinct output mutation pass. Maintained trajectory/progress/domain/allocation and host composition remain open."
+    },
+    {
+      "id": "SCN-1019",
+      "title": "Repeated semantic refusals preserve accepted history and exhaust identities without wraparound",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-017"
+      ],
+      "steps": [
+        "Commit a nonempty held article through actual reserve, prepare, order and finish; repeat actual reserve/refuse20times.",
+        "Open a valid nonempty persisted history with allocator frontier two below its codec ceiling; complete real recovery barriers and repeat9 refusals.",
+        "Compare actual fn-bs-frontier-next with remaining headroom at one, two and nine attempts.",
+        "Remove the ready-boundary hypothesis using the reachable reserved phase; check the expected frontier and exhaustion claims both fail."
+      ],
+      "expected": [
+        "The frontier grows by min(attempts, remaining headroom); no allocation wraps or reuses an identity.",
+        "Record history, served groups and capacity remain unchanged, even without the readiness hypothesis.",
+        "The host-used allocation predicate returns NIL at exactly exhausted headroom; the native maps this to its existing named refusal before log mutation."
+      ],
+      "evidence": [
+        "tests/acl2/refusal-headroom-tests.lisp"
+      ],
+      "execution_scope": "Logical reference composition and actual observed-open witnesses. Matching native owner trace and physical funding evidence remain open."
+    },
+    {
+      "id": "SCN-1017",
+      "title": "Authenticated checkpoint mapping resumes with fixed scratch",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [],
+      "steps": [
+        "Scan actual directory codec entries across a 16KiB page boundary, retaining only six selected words.",
+        "Check literal invariant, identity, one-word progress, exact selection, accumulated malformed flag and terminal extraction claims, with each removable hypothesis contradicted separately.",
+        "Detect a newer txid in an unselected entry and nonzero trailing padding.",
+        "Compare incremental txid/padding and directory/table verdicts with current logical codecs; check digest damage priority and literal hypothesis removals.",
+        "Planned: bind exact file incarnation and fresh buffer identity to root-directory-table-data authentication and demonstrate stale completion refusal."
+      ],
+      "expected": [
+        "Selected entry matches existing pgs-decode-table exactly, including a straddling entry.",
+        "One word of scanner work and at most six retained words per tick.",
+        "Full digest/request/physical composition remains open until integrated; extraction alone authorizes no data."
+      ],
+      "implementation": {
+        "test": "tests/acl2/history-page-reader-tests.lisp"
+      },
+      "evidence": [
+        "tests/acl2/history-page-reader-tests.lisp",
+        "specs/history-auth-reader.md",
+        "tests/acl2/history-page-reader-verdict-tests.lisp"
+      ],
+      "execution_scope": "Scanner component source only; authenticated continuation and host integration remain open."
     }
   ]
 }
