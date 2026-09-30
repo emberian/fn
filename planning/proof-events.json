@@ -17870,9 +17870,29 @@
           "kind": "theorem",
           "name": "fn-pws-actual-codec-tick-carries-selected-prefix",
           "note": "Actual FN-EWZ-CODEC-TICK carries the selected private-window cell against APPEND(previous semantic output prefix, actual returned stored scratch), and returned TOUT equals appended length. The prior cell carry and TOUT/prefix position are explicit; actual INIT/read/hash/codec positives check newly written and retained cells across two input buffers, with separate corrupted-buffer and corrupted-prefix removals. This is source output accumulation, not arbitrary canonical iteration/digest, captured source custody, runtime adequacy or native activation."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwdg-actual-compressed-begin-establishes-digest-trajectory",
+          "note": "Actual FN-EWZ-BEGIN establishes the existing captured-source BLAKE3 trajectory under supported natural depth<=63, octet source/exact ELEN and selected tree stack support; complete actual BEGIN positive and all five domain removals. These are digest representation/profile premises, not new stored-data policy."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwdg-actual-compressed-read-preserves-digest-trajectory",
+          "note": "Actual FN-EWZ-READ preserves the existing captured-source digest invariant at retained actual plan ELEN under incoming carry and faithful source slice when scanning. Full actual scan/read positive, omitted source-slice witness and separately corrupted incoming-CV carry removal. The native source/view binding remains open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwdg-actual-compressed-hash-preserves-digest-trajectory",
+          "note": "Actual FN-EWZ-HASH-TICK preserves the captured-source digest invariant at retained plan ELEN under incoming carry. Actual decoded/return-to-root positive and corrupted output carry removal; source-only, no whole runtime grant."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwdg-actual-compressed-publication-authenticates-captured-source",
+          "note": "New publication from actual FN-EWZ-READ plus carried faithful-source digest proves actual trailer and expected commitment equal BLAKE3(captured source). Actual BEGIN/read/codec/hash/trailer publication positive yields selected (66 67); complete prior-private, success/bad-trailer and corrupted semantic-carry removals. General canonical schedules, actual captured view/private worker custody and native funding remain open."
         }
       ],
-      "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. The exact two-window input-refill/canonical answer boundary does not complete arbitrary controller iteration, accumulated digest, selected dictionary/captured source authority, whole compiled workspace funding or retained native buffer/view/consumer joins; PRF-1131 remains incomplete."
+      "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. Actual selected-prefix cell accumulation and faithful-source compressed digest BEGIN/READ/HASH/new-publication are source-proved, with source-slice binding explicit. Arbitrary canonical decoder/controller iteration, selected dictionary/captured-view authority, full compiled workspace funding and retained native buffer/view/consumer joins remain open; PRF-1131 remains incomplete."
     }
   ]
 }

@@ -376,3 +376,17 @@ This source boundary still needs arbitrary controller/canonical iteration and
 accumulated digest composition, exact captured-source/private-holder authority
 and full selected runtime funding. Native compressed execution remains refused.
 See `planning/evidence/decoded-window-selected-trajectory-source-2026-09-30.md`.
+
+Actual compressed BEGIN/READ/HASH establish and preserve the existing faithful
+captured-source BLAKE3 trajectory at retained raw-plan ELEN. BEGIN names natural
+supported depth<=63, octet source/exact ELEN and selected tree stack support;
+these are digest profile/representation premises, not a stored-data policy.
+READ requires the exact captured source slice when the raw subplan scans.
+HASH requires incoming carry. A newly published window from actual compressed
+READ therefore has trailer and expected commitment equal to BLAKE3 of that
+source. Fifteen complete actual positives/removals include a selected (66 67)
+publication, omitted source slice, bad trailer and separately corrupted digest
+states. No executable whole-source revalidation was added. Native source/view/
+private-buffer custody, general canonical scheduling and total runtime funding
+remain open; native compressed execution remains refused.
+See `planning/evidence/decoded-window-digest-trajectory-source-2026-09-30.md`.

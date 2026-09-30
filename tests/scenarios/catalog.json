@@ -6682,9 +6682,12 @@
         "planning/evidence/decoded-window-input-trajectory-source-2026-09-30.md",
         "books/decoded-window-selected-trajectory.lisp",
         "tests/acl2/decoded-window-selected-trajectory-tests.lisp",
-        "planning/evidence/decoded-window-selected-trajectory-source-2026-09-30.md"
+        "planning/evidence/decoded-window-selected-trajectory-source-2026-09-30.md",
+        "books/decoded-window-digest-trajectory.lisp",
+        "tests/acl2/decoded-window-digest-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-digest-trajectory-source-2026-09-30.md"
       ],
-      "execution_scope": "Protected source composition and literal local-buffer witnesses only; no native served enablement or qualification.  Actual FN-EWZ-CODEC-TICK carries the selected private-window cell against APPEND(previous semantic output prefix, actual returned stored scratch), and returned TOUT equals appended length. The prior cell carry and TOUT/prefix position are explicit; actual INIT/read/hash/codec positives check newly written and retained cells across two input buffers, with separate corrupted-buffer and corrupted-prefix removals. This is source output accumulation, not arbitrary canonical iteration/digest, captured source custody, runtime adequacy or native activation."
+      "execution_scope": "Protected source composition and literal local-buffer witnesses only; no native served enablement or qualification.  Actual FN-EWZ-CODEC-TICK carries the selected private-window cell against APPEND(previous semantic output prefix, actual returned stored scratch), and returned TOUT equals appended length. The prior cell carry and TOUT/prefix position are explicit; actual INIT/read/hash/codec positives check newly written and retained cells across two input buffers, with separate corrupted-buffer and corrupted-prefix removals. This is source output accumulation, not arbitrary canonical iteration/digest, captured source custody, runtime adequacy or native activation. Actual compressed BEGIN/READ/HASH now establish and preserve the existing captured-source BLAKE3 trajectory at the retained plan ELEN, with faithful read slices explicit. New compressed READ publication authenticates both trailer and expected commitment against that source. Fifteen complete positives/removals include actual selected (66 67) publication and separately corrupted digest states. This is source authentication composition; arbitrary canonical decoder/controller iteration, physical captured-source/private-holder association and complete selected runtime funding remain open."
     },
     {
       "id": "SCN-1039",

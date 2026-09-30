@@ -1170,6 +1170,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/decoded-window-canonical-trajectory-tests \
 	tests/acl2/decoded-window-input-trajectory-tests \
 	tests/acl2/decoded-window-selected-trajectory-tests \
+	tests/acl2/decoded-window-digest-trajectory-tests \
 	tests/acl2/records-freeze-tests \
 	tests/acl2/catalog-record-tests \
 	tests/acl2/catalog-tests \
