@@ -137,3 +137,36 @@ The normalizer now includes only `store-tree-codec`, so encoders can consume it
 without importing the byte parser. A clean protected persvati `hdsn4` test-root
 replay with the normalizer in one encapsulate passed all 27 forms, 3,628,003
 prover steps and 8.29 ACL2 seconds. Its narrow API and semantics are unchanged.
+
+
+The generic current-format inverse is now a source proof in
+`books/history-decode-refinement.lisp`: `fn-hdc-current-codec-refinement`
+equates the abstraction of repeated public `fn-hdc-feed` calls followed by
+`fn-hdc-result` to `fn-scc-decode-tree` over every natural in-bounds slice of
+an immutable octet pool. Malformed programs and nonminimal scalar spellings
+are included. `fn-hdc-result` returns `(:ok node)`, `(:yield)` or
+`(:refused :tree)` with fixed-depth access. The whole-pool model runner and
+abstraction are proof-only, never served functions.
+
+The per-feed inverse requires coherent carried parser state, an octet pool,
+end within that pool, an octet supplied byte, and equality of that byte with
+the immutable source at the parser position. A separate recursive invariant
+names proper atom/pair/span shape and every span's nonnegative start/count
+with start+count at most captured end. Actual feed preserves it. It is carried
+proof vocabulary and never evaluated as a whole-tree runtime check. General
+run-level epoch/lease preservation and fuel partition justify suspension
+within payload and early malformed refusal. They do not establish physical
+pin lifetime, allocation funding or authenticated provider bytes.
+
+Literal source tests assert complete inverse premises and conclusion for
+NIL, empty octets, nonminimal numbers, import NIL alias, arbitrary symbol,
+string/CONS, embedded slices and malformed opcode/package/stack/length
+programs. Source-byte hypothesis removal and separately labeled corrupted
+cached-tag/stack witnesses affirm all retained premises and conclusion
+failure. The octet-pool and negative-offset removal candidates remain
+unestablished; failed proof search is not evidence of necessity.
+
+PRF-1102 remains planned because authenticated page-byte mapping, outer token
+matching, row columns/padding/MKEY, canonical cold reencoding, concrete node
+funding and the actual host composition remain open. Source admissions carry
+no certificate, qualified image or deployment coordinate.

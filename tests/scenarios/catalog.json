@@ -6673,9 +6673,11 @@
       "evidence": [
         "tests/acl2/history-decode-cursor-tests.lisp",
         "planning/history-decode-contract.md",
-        "tests/acl2/history-symbol-normalize-tests.lisp"
+        "tests/acl2/history-symbol-normalize-tests.lisp",
+        "tests/acl2/history-decode-refinement-tests.lisp",
+        "planning/evidence/history-decode-refinement-source-2026-09-30.json"
       ],
-      "execution_scope": "Source component tests only. General stream inverse, page-source authentication, integrated native caller and full producer remain open. Symbol normalization source tests and ground semantic witnesses cover aliases, NIL/T, case-sensitive arbitrary names, duplicate replies, corruption, yield/resume and measured table cost."
+      "execution_scope": "Clean source component replay only. General stream inverse, recursive node span bounds, lifetime and fuel partition source proofs pass with literal witnesses; page-source authentication, canonical reencoding, integrated native caller, funded storage and full producer remain open. No certificate or image claim."
     },
     {
       "id": "SCN-1006",

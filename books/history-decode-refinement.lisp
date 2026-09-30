@@ -779,7 +779,7 @@
 ; and accepted nonminimal scalar spellings. Source I/O/authentication and row
 ; metadata checks are outside this byte/tree representation boundary.
 (local
- (defthm fn-hdc-begin-coordinates
+ (defthm fn-hdc-begin-coordinates-unfolds
    (and (equal (nth 7 (fn-hdc-begin offset count epoch lease)) offset)
         (equal (nth 8 (fn-hdc-begin offset count epoch lease)) (+ offset count)))
    :hints (("Goal" :in-theory (enable fn-hdc-begin fn-hdc-state)))))
@@ -809,3 +809,50 @@
                             fn-hdc-begin fn-hdc-state fn-hdc-model-run fn-hdc-result fn-hdc-denote
                             fn-hdc-abstract-result fn-scc-decode-tree
                             fn-hdc-coherent take nthcdr)))))
+
+; Scheduler quantum partition and opaque source ownership survive arbitrary
+; runs, including an early malformed-program refusal.
+(defthm fn-hdc-model-run-preserves-lifetime
+  (and (equal (nth 10 (fn-hdc-model-run fuel s pool)) (nth 10 s))
+       (equal (nth 11 (fn-hdc-model-run fuel s pool)) (nth 11 s)))
+  :hints (("Goal" :induct (fn-hdc-model-run fuel s pool)
+           :in-theory (e/d (fn-hdc-model-run) (fn-hdc-feed)))))
+
+(defthm fn-hdc-model-run-fuel-partition
+  (implies (and (natp first) (natp second))
+           (equal (fn-hdc-model-run second (fn-hdc-model-run first s pool) pool)
+                  (fn-hdc-model-run (+ first second) s pool)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-hdc-model-run first s pool)
+           :in-theory (e/d (fn-hdc-model-run) (fn-hdc-feed)))))
+
+; Carried borrowed-node representation validity; never rescanned at runtime.
+(defun-nx fn-hdc-node-in-poolp (node end)
+ (declare (xargs :measure (acl2-count node)))
+ (and (true-listp node)
+      (cond ((eq (car node) :atom) (equal (len node) 2))
+            ((eq (car node) :pair)
+             (and (equal (len node) 3)
+                  (fn-hdc-node-in-poolp (cadr node) end)
+                  (fn-hdc-node-in-poolp (caddr node) end)))
+            ((eq (car node) :span)
+             (and (equal (len node) 5) (member-equal (cadr node) '(3 4 6))
+                  (natp (caddr node)) (< (caddr node) 3)
+                  (natp (nth 3 node)) (natp (nth 4 node))
+                  (<= (+ (nth 3 node) (nth 4 node)) end)))
+            (t nil))))
+(defun-nx fn-hdc-stack-in-poolp (stack end)
+ (if (consp stack)
+     (and (fn-hdc-node-in-poolp (car stack) end)
+          (fn-hdc-stack-in-poolp (cdr stack) end))
+   (null stack)))
+(defthm fn-hdc-feed-preserves-borrowed-node-bounds
+ (implies (and (fn-hdc-coherent s pool) (fn-scc-octetp byte)
+               (fn-hdc-stack-in-poolp (nth 9 s) (nth 8 s)))
+          (fn-hdc-stack-in-poolp (nth 9 (fn-hdc-feed byte s)) (nth 8 s)))
+ :hints (("Goal" :do-not-induct t
+          :in-theory (enable fn-hdc-coherent fn-hdc-feed fn-hdc-feed-raw
+                             fn-hdc-move fn-hdc-finish-number fn-hdc-state
+                             fn-hdc-stack-in-poolp fn-hdc-node-in-poolp
+                             fn-hdc-atom fn-hdc-pair fn-hdc-span
+                             fn-hdc-payload-node))))
