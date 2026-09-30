@@ -398,6 +398,12 @@ dictionary: the first four octets of its BLAKE3 digest, 0 for none
   `books/deflate-inflate.lisp`). The COMPRESS wire uses the same inflater.
   An :ok answer is exactly N octets, and the stream ended at its final
   block or at a sync flush at the end of its input.
+  Stored decoding now uses the resumable loop with a declared-total-input
+  expansion allowance; the COMPRESS wire retains its consumed-prefix bound.
+  A complete sync flush is checked in decoder state, so a truncated stored
+  header is refused even when its partial output has length N. Final-block
+  trailing bytes remain allowed. See [the bounded window contract](payload-window.md)
+  for the exact policy, representation bounds and remaining integration.
 - **The encoder is untrusted.** The image's SBCL deflater
   (`host/native/deflate.lisp` `fnn-ldf-deflate-payload`, zlib's level-9
   search limits, over the current dictionary) proposes C; it replaced

@@ -1390,7 +1390,7 @@
         "PRF-004"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "note": "The transit path's DURABLE provenance is not covered: fn-peer-injection-arguments still passes fn-peer-evidence's rendering, and fn-peer-evidence-is-the-legacy-rendering is the equation between the typed record and that string, not evidence that the record reaches the store. books/peer-inbound and books/peer-inbound-invariants have no certificate on dev (blocked on fn-peer-echo-reply-effects-well-formed), so those two events are admitted, not certified, and are not listed here.",
       "events": [
         "fn-provp-of-string",
@@ -1556,7 +1556,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "note": "Lane w11/workflow-replay, book books/bp-workflow-replay-status.lisp, teeth in tests/acl2/bp-workflow-records-tests.lisp. The subject of the first two keystones is what host/workflow-host.lisp:63 (fn-workflow-work-status) calls; of the last two, what host/workflow-host.lisp:73 (fn-workflow-work-origin) calls on the list host/workflow-host.lisp:8 records. Certified on hbox, run-20260921T005523Z-05dc, build/acl2/certify-20260921T005528Z-1361353. Before the ION extension, the native workflow host called fn-bprl-replay-journal, which also interprets :undertake and :release; fn-bprl-replay-work-status-is-durable-status-restarted certifies that successful predecessor path, with an extended reachable journal and a malformed-suffix must-fail tooth in tests/acl2/bp-release-tests.lisp (persvati manifests certify-20260923T173933Z-2312844.json and certify-20260923T174038Z-2322911.json). The earlier fn-bp replay theorem remains scoped to its original record language. The :enqueue kind hypothesis of fn-bp-durable-enqueue-after-open-reads-enqueued has a constructed rather than a reached tooth, and the test book says so: fn-bp-prepare-attempt only prepares an attempt for a work the image holds, so the composed machine reaches no :attempt pending over an image that holds none. Current scope correction (2026-09-24): host/workflow-host.lisp fn-workflow-install-replay now calls fn-bpiw-replay-journal, whose mixed FNWF stream includes :ion-route and :ion-observed. The two certified single-record structural projections in books/bp-ion-workflow.lisp do not yet lift the work-status theorem through that complete replay. A named actual-caller correspondence with a reachable mixed-history witness remains open; predecessor certificates do not discharge it. Hence the target is in-progress, while its existing component theorems remain intact. Replay fence (lane ion-replay-fence, 2026-09-24): fn-bpiw-replay-records now reconstructs the unrecorded reopen fence before a :recovery outcome (fn-bpiw-replay-fence, books/bp-ion-workflow.lisp), as fn-bp-replay-records does; before it, a journal holding a recovery outcome could not be reopened and the history preflight refused every recovery outcome (planning/evidence/m4-app-receipt-2026-09-24.md finding 4). The keystone's subject is fn-bpiw-replay-journal, called by host/workflow-host.lisp:13 (fn-workflow-install-replay) and :107 (fn-workflow-preflight-history), against fn-bpiw-apply as host/workflow-host.lisp:112 (fn-workflow-apply-record) calls it; book books/bp-ion-workflow-replay.lisp, teeth in tests/acl2/bp-ion-workflow-replay-tests.lisp (reachable enqueue, attempt and ION-carrying cuts; must-fail without the recovery-outcome and live-acceptance hypotheses; the open-success hypothesis has no separating witness because a failed open's image holds no fence, and the test book shows that refusal). Scope: one recovery outcome applied right after an open; the general live-suffix correspondence across later records is not claimed, and a live re-attempt of a :restart-observed attempt without a journaled retry request is refused by the history (the must-fail witness), which is the host's intended gate. Evidence: planning/evidence/ion-replay-fence-2026-09-24.md.",
       "evidence": [
         "books/bp-workflow-replay-status.lisp",
@@ -1599,7 +1599,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "note": "Lane w11/one-owner. Keystones fn-frame-protected-plus-trailer-is-seal, fn-frame-decode-of-host-framing and their store instances fn-frame-store-protected-plus-trailer-is-seal and fn-frame-store-decode-of-host-framing, all in books/frame-trailer.lisp. Subject-to-host: the host lines that call fn-frame-trailer are tools/frame_bridge.py FrameSession.trailer (called by seal and digest_of), host/native/io.lisp fnn-trailer (called by fnn-seal and fnn-digest-of) and tools/run_owner.py Acl2Owner.trailer (called by feed_frames and feed_replay_frame); each replaced a separate SHA-256 in that host. Teeth in tests/acl2/frame-trailer-tests.lisp: 25 assert-events, including two FIPS 180-4 vectors, the exact store prefix and trailer octets, the :bad boundary arm, and one violating value per clause (a magic whose third octet is 300 for the shape clause keystone 1 needs, a max-payload of 2 for the bound clause keystone 2 needs, and a non-octet record for the store instance). Byte identity with the deleted host copies was cross-checked outside ACL2 against CPython hashlib.sha256 at 32, 4096, 32768, 262144 and 1048576 octets. NOT closed by this target: fn-frame-digest's collision resistance, and the marshalling cost of sealing a 4 MiB staged inbound bundle through the decimal-octet bridge. Lane rep-sha256 (D27 boundary 3, 2026-09-25): the executable digest is fn-sha256-stobj, SHA-256 over a word stobj (books/sha256-stobj.lisp), attached in crypto-attach under fn-sha256-stobj-is-sha256; fn-sha256-stobj-is-sha256-of-octets is its instance on octet lists and fn-sha256-of-string-is-sha256-of-octets covers the string entry the host sha256 verb calls (host/native/io.lisp, the verb; the host SHA-256 twin fnn-sha256 is deleted). Teeth in tests/acl2/sha256-stobj-tests.lisp: the FIPS vectors through both entries, the padding boundaries against the list model, a must-fail and a separating witness for the string theorem's stringp; the keystone has no hypothesis. No statement of an existing theorem moved.",
       "events": [
         "fn-frame-protected-plus-trailer-is-seal",
@@ -2029,7 +2029,7 @@
         "PRF-035"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-feed-journal-next-is-bounded-progress",
         "fn-feed-journal-uncertainty-survives-all-later-observations"
@@ -2725,7 +2725,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-clock-domain.lisp",
         "tests/acl2/bp-clock-domain-tests.lisp",
@@ -3402,7 +3402,7 @@
         "PRF-012"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-request-plan.lisp",
         "tests/acl2/bp-request-plan-tests.lisp",
@@ -4380,7 +4380,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-blake3-of-prefixed-buffer-is-blake3",
         "fn-sidb-subject-id-is-id-subject-of-payload"
@@ -5333,7 +5333,7 @@
         "PRF-087"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-arena-seal-keeps-sealed",
         "fn-arena-seals-keep-sealed",
@@ -8421,7 +8421,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-smid-record-decode-of-seal",
         "fn-smid-payload-decode-of-payload",
@@ -8921,7 +8921,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-log.lisp",
         "tests/acl2/store-log-tests.lisp",
@@ -9034,7 +9034,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-bpah-handoff-report-is-application-disposition",
         "fn-bpah-persist-delivery-reports-the-record",
@@ -9247,7 +9247,7 @@
       "assumptions": [
         "A-CRYPTO-TRAILER"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-log-crash.lisp",
         "planning/evidence/w6-log-core-2026-09-27.md",
@@ -9282,7 +9282,7 @@
       "assumptions": [
         "A-CRYPTO-TRAILER"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-log-kernel.lisp",
         "planning/evidence/w6-log-core-2026-09-27.md",
@@ -9560,7 +9560,7 @@
         "PRF-909"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/payload-deflate.lisp",
         "books/deflate-inflate.lisp",
@@ -11049,7 +11049,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/provenance-inspect.lisp",
         "tests/acl2/provenance-inspect-tests.lisp",
@@ -11671,7 +11671,7 @@
         "A-CRYPTO",
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/frame-digest-buffer.lisp",
         "books/store-checkpoint-reader.lisp",
@@ -13267,7 +13267,7 @@
         "PRF-366"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-export-durability.lisp",
         "tests/acl2/store-export-durability-tests.lisp",
@@ -13915,7 +13915,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-feed.lisp",
         "books/feed-restart-domain.lisp",
@@ -14153,7 +14153,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-carry-control.lisp",
         "books/bp-carry-frame.lisp",
@@ -14760,7 +14760,7 @@
         "PRF-232"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-mount-identity.lisp",
         "tests/acl2/store-mount-identity-tests.lisp"
@@ -14872,7 +14872,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-inspect-group.lisp",
         "tests/acl2/owner-inspect-group-tests.lisp",
@@ -15075,7 +15075,7 @@
         "PRF-914"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-carry-waiver.lisp",
         "books/bp-carry-control.lisp",
@@ -15482,14 +15482,14 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/deflate-inflate.lisp",
         "tests/acl2/deflate-inflate-tests.lisp",
         "tests/acl2/deflate-inflate-vectors.lisp",
         "planning/evidence/compress-2026-09-28/zin_vectors.py"
       ],
-      "progress_note": "Lane compress (Opus 5.5, 2026-09-28). Witnesses from zlib (fixed, dynamic and stored blocks; every two-read cut of a session; 7-action quanta; 10-octet output bounds) and one hand-built stream per refusal; removal witnesses and must-fails for each resumption hypothesis. Host wiring (the COMPRESS layer in host/native/mux.lisp) is the next increment: until then fn-zin-feed has no host caller. Measure at convergence: inflate microseconds per octet (REPL, persvati: 573 KB of docs text in 0.34 s).",
+      "progress_note": "Lane compress (Opus 5.5, 2026-09-28). Witnesses from zlib (fixed, dynamic and stored blocks; every two-read cut of a session; 7-action quanta; 10-octet output bounds) and one hand-built stream per refusal; removal witnesses and must-fails for each resumption hypothesis. Host wiring (the COMPRESS layer in host/native/mux.lisp) is the next increment: until then fn-zin-feed has no host caller. Measure at convergence: inflate microseconds per octet (REPL, persvati: 573 KB of docs text in 0.34 s). Stored-window continuation: canonical stored decode now uses plain resumable loop with total-input allowance and terminal validation; source admitted in persvati pzwfinal, current certificates/images pending. See planning/evidence/payload-window-2026-09-30.md.",
       "events": [
         "fn-zin-loop-split-input",
         "fn-zin-loop-split-budget",
@@ -15513,12 +15513,12 @@
         "PRF-909"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/deflate-inflate.lisp",
         "tests/acl2/deflate-inflate-tests.lisp"
       ],
-      "progress_note": "Lane compress (Opus 5.5, 2026-09-28). The hypothesis (natp start) was proved redundant and removed; the bomb-okp removal witness is a state already past the bound.",
+      "progress_note": "Lane compress (Opus 5.5, 2026-09-28). The hypothesis (natp start) was proved redundant and removed; the bomb-okp removal witness is a state already past the bound. Stored-window continuation: canonical stored decode now uses plain resumable loop with total-input allowance and terminal validation; source admitted in persvati pzwfinal, current certificates/images pending. See planning/evidence/payload-window-2026-09-30.md.",
       "events": [
         "fn-zin-feed-bomb-bound",
         "fn-zin-reset-okp",
@@ -15556,7 +15556,7 @@
     {
       "id": "PRF-948",
       "title": "The payload decoder's window frame: it writes only ring cells below min(TOUT, 32 KiB) and never the preset half",
-      "statement": "books/deflate-frame.lisp (lane compress-3). KEYSTONE fn-zfr-loop-ahead-frame: from any state whose ring position W satisfies fn-zfr-posp (W below 32 KiB, and W = TOUT while TOUT is below 32 KiB), fn-zin-loop-ahead (the store's payload decoder, with its fast path) returns a state that satisfies it again, does not decrease TOUT, and a window equal to its input from cell min(TOUT', 32768) on: the preset half is never written and the ring only below the octets produced. Per-function frame lemmas for emit, copy, match, lits, lit-loop, act, step, f-copy, f-sym, fast and ahead-fast. Subject of PRF-949's pool invariant.",
+      "statement": "books/deflate-frame.lisp (lane compress-3). KEYSTONE fn-zfr-loop-frame: from any state whose ring position W satisfies fn-zfr-posp (W below 32 KiB, and W = TOUT while TOUT is below 32 KiB), fn-zin-loop (the canonical resumable stored decoder) returns a state that satisfies it again, does not decrease TOUT, and a window equal to its input from cell min(TOUT', 32768) on: the preset half is never written and the ring only below the octets produced. Per-function frame lemmas for emit, copy, match, lits, lit-loop, act, step, f-copy, f-sym, fast and ahead-fast. Subject of PRF-949's pool invariant.",
       "milestone": "M5",
       "requirements": [
         "STO-037"
@@ -15565,19 +15565,19 @@
         "PRF-909"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/deflate-frame.lisp"
       ],
-      "progress_note": "Lane compress-3 (Opus 5.5, 2026-09-29): REPL-green on hbox; certification in persvati run-20260929T042101Z-6c3f.",
+      "progress_note": "Lane compress-3 (Opus 5.5, 2026-09-29): REPL-green on hbox; certification in persvati run-20260929T042101Z-6c3f. Stored-window continuation: canonical stored decode now uses plain resumable loop with total-input allowance and terminal validation; source admitted in persvati pzwfinal, current certificates/images pending. See planning/evidence/payload-window-2026-09-30.md.",
       "events": [
-        "fn-zfr-loop-ahead-frame"
+        "fn-zfr-loop-frame"
       ]
     },
     {
       "id": "PRF-949",
       "title": "The served read's pooled payload decoder: fn-zpl-decode-bufs is fn-pzd-decode over a window kept across payloads, and keeps its pool invariant",
-      "statement": "books/deflate-pool.lisp (lane compress-3). The host keeps, with each buffer set, ACL2's POOL value (DICT H DIRTY) or NIL; fn-zpl-pool-okp: the window is DICT's ready window (fn-zin-payload-ready's) from cell DIRTY on, H its preset length. fn-zpl-decode-bufs re-zeroes only the DIRTY cells and remakes the table when the pool names the same dictionary (an equal that is eq for the shared table entry), else makes the buffers whole. KEYSTONES fn-zpl-decode-bufs-is-decode (under fn-zpl-pool-okp: the answer's status is fn-pzd-decode's, on :ok the output buffer holds its octets, and the returned pool satisfies fn-zpl-pool-okp; fn-zpl-pool-okp-of-nil: the host's starting pool does) and fn-zpl-decode-bufs-is-the-lz-value (an :ok answer's octets are fn-lzr-lz-value, the value A-DURABLE-LZ names). Host subject: host/native/deflate.lisp fnn-pzd-decode calls fn-zpl-decode-bufs (the realizer host/native/extent.lisp fn-durable-realize-lz). Witnesses: tests/acl2/deflate-pool-tests.lisp (two reads over one buffer set, the second through the reuse branch; a forged pool without the invariant answers other octets; must-fail without fn-zpl-pool-okp). Measured (hbox, load ~18, same session, held-out 9,733 20news articles): 223 us median vs 497-526 us for fn-pzd-decode-bufs, 0 mismatches; measure at convergence.",
+      "statement": "books/deflate-pool.lisp (lane compress-3). The host keeps, with each buffer set, ACL2's POOL value (DICT H DIRTY) or NIL; fn-zpl-pool-okp: the window is DICT's ready window (fn-zin-payload-ready's) from cell DIRTY on, H its preset length. fn-zpl-decode-bufs re-zeroes only the DIRTY cells and remakes the table when the pool names the same dictionary (an equal that is eq for the shared table entry), else makes the buffers whole. KEYSTONES fn-zpl-decode-bufs-is-decode (under fn-zpl-pool-okp: the answer's status is fn-pzd-decode's, on :ok the output buffer holds its octets, and the returned pool satisfies fn-zpl-pool-okp; fn-zpl-pool-okp-of-nil: the host's starting pool does) and fn-zpl-decode-bufs-is-the-lz-value (an :ok answer's octets are fn-lzr-lz-value, the value A-DURABLE-LZ names). Host subject: host/native/deflate.lisp fnn-pzd-decode calls fn-zpl-decode-bufs (the realizer host/native/extent.lisp fn-durable-realize-lz). Witnesses: tests/acl2/deflate-pool-tests.lisp (two reads over one buffer set, the second through the reuse branch; a forged pool without the invariant answers other octets; must-fail without fn-zpl-pool-okp). Historical prior-lookahead measurement, not transferred to the current stored policy (hbox, load ~18, same session, held-out 9,733 20news articles): 223 us median vs 497-526 us for fn-pzd-decode-bufs, 0 mismatches; measure at convergence.",
       "milestone": "M5",
       "requirements": [
         "STO-037"
@@ -15595,7 +15595,7 @@
         "tests/acl2/deflate-pool-tests.lisp",
         "host/native/deflate.lisp"
       ],
-      "progress_note": "Lane compress-3 (Opus 5.5, 2026-09-29): certified persvati certify-20260929T044758Z-3044112. Lane compress-4: books/deflate-pool-check.lisp's fn-zpl-pool-check is the invariant's executable twin (KEYSTONE fn-zpl-pool-check-is-pool-okp, on fn-zpl-ready-window-is-list: the ready window is 32 KiB of zeros, the preset, zeros); tests/acl2/deflate-pool-tests.lisp evaluates it on the pool and window each pooled read returned (t, t) and, labelled corrupted-state, on a window with one cell above DIRTY flipped and on a forged pool (nil, nil).",
+      "progress_note": "Lane compress-3 (Opus 5.5, 2026-09-29): certified persvati certify-20260929T044758Z-3044112. Lane compress-4: books/deflate-pool-check.lisp's fn-zpl-pool-check is the invariant's executable twin (KEYSTONE fn-zpl-pool-check-is-pool-okp, on fn-zpl-ready-window-is-list: the ready window is 32 KiB of zeros, the preset, zeros); tests/acl2/deflate-pool-tests.lisp evaluates it on the pool and window each pooled read returned (t, t) and, labelled corrupted-state, on a window with one cell above DIRTY flipped and on a forged pool (nil, nil). Stored-window continuation: canonical stored decode now uses plain resumable loop with total-input allowance and terminal validation; source admitted in persvati pzwfinal, current certificates/images pending. See planning/evidence/payload-window-2026-09-30.md.",
       "events": [
         "fn-zpl-decode-bufs-is-decode",
         "fn-zpl-decode-bufs-is-the-lz-value",
@@ -15724,7 +15724,7 @@
         "PRF-944"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-host-sequence.lisp",
         "host/bp-node-host.lisp",
@@ -15747,7 +15747,7 @@
         "PRF-983"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-host-sequence.lisp",
         "host/bp-node-host.lisp",
@@ -16785,7 +16785,7 @@
         "PRF-294"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "title": "The payload arena counts, per durable file, the extent entries naming it; a file whose count is 0 is named by no handle (row A6, the file count for online disk release)",
       "statement": "Subject (books/payload-arena-extent.lisp): fn-arx-files-unnamed-p over the live arena's concrete fn-arena$x, which the owner's checkpoint release (host/native/owner.lisp, lane online-reclaim-3, replacing the bounded fn-xrt-scan walk) calls under the owner mutex before closing a retired file's descriptor. The count column fn-arena$x-files is kept by fn-arx-mark (every seal, reseat and lz variant: the replaced entry's file loses one, the written entry's file gains one) and emptied by fn-arena$x-clear; fn-arena$xcorr carries fn-arx-files-agree (the column equals the tally of the extent column for every file id), so every export of the abstract stobj preserves it and the live arena satisfies it. KEYSTONE fn-arx-files-unnamed-names-none: under the correspondence, for FS a list of file ids the check passes, no entry at any handle H names a file of FS (fn-arx-entry-file, which is the file the realizer reads: fn-arx-entry-file-of-extent-by-definition). fn-arx-file-count-zero-names-none: the same for one file whose count is 0.",
       "evidence": [
@@ -16989,7 +16989,7 @@
         "PRF-270"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-log-lineage.lisp",
         "tests/acl2/store-log-lineage-tests.lisp",
@@ -17073,7 +17073,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-machine-codec.lisp",
         "host/bp-node-machine-host.lisp",
@@ -17096,7 +17096,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-fnbs-delivery-publication.lisp",
         "tests/acl2/bp-fnbs-delivery-publication-tests.lisp"
@@ -17312,7 +17312,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-host-machine.lisp",
         "tests/acl2/bp-node-host-machine-tests.lisp"
@@ -17480,7 +17480,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-host-machine.lisp",
         "books/bp-node-machine-codec.lisp",
@@ -17772,7 +17772,7 @@
     {
       "id": "PRF-1057",
       "title": "Issued cold page reads retain identity and worker ownership through cancellation and late completion",
-      "statement": "Host/native/extent.lisp fnn-extent-complete-read calls fn-pio-complete. Publication requires its exact immutable token (process-local read ID, original CID, file incarnation ID, offset, length, expected trailer), phase issued and successful full commitment check, and settles once. fn-pio-cancel retains token and unsettled ownership even after deadline/client loss. fnn-extent-close calls fn-pio-file-clear-p over carried valid ownership rows: every issued/cancelled worker naming a retired file prevents close independently of the arena-reader generation gate. Duplicate/stale completions cannot publish or settle twice. Host OS/thread/mutex/table fidelity is A-HOST; observed worker death and join (or definite failed launch) is required before settlement. Incarnation allocator fn-pio-file-issue derives process-local identities and successive admitted allocations are distinct; a failed open spends its name and invalid carried counter refuses rather than resetting. No funded read-pool admission or memory bound is claimed; repeated detached workers remain P12 open. The operator-funded local file namespace can exhaust before open without wrapping or refunding a spent name; admitted resource-pool tokens establish the identical owned read row and use the ledger\u2019s single counter. These are partial algebra/lifetime subjects; supported profile installation, retained runtime storage and legacy large-frame streaming remain open.",
+      "statement": "Host/native/extent.lisp fnn-extent-complete-read calls fn-pio-complete. Publication requires its exact immutable token (process-local read ID, original CID, file incarnation ID, offset, length, expected trailer), phase issued and successful full commitment check, and settles once. fn-pio-cancel retains token and unsettled ownership even after deadline/client loss. fnn-extent-close calls fn-pio-file-clear-p over carried valid ownership rows: every issued/cancelled worker naming a retired file prevents close independently of the arena-reader generation gate. Duplicate/stale completions cannot publish or settle twice. Host OS/thread/mutex/table fidelity is A-HOST; observed worker death and join (or definite failed launch) is required before settlement. Incarnation allocator fn-pio-file-issue derives process-local identities and successive admitted allocations are distinct; a failed open spends its name and invalid carried counter refuses rather than resetting. No funded read-pool admission or memory bound is claimed; repeated detached workers remain P12 open. The operator-funded local file namespace can exhaust before open without wrapping or refunding a spent name; admitted resource-pool tokens establish the identical owned read row and use the ledger’s single counter. These are partial algebra/lifetime subjects; supported profile installation, retained runtime storage and legacy large-frame streaming remain open.",
       "milestone": "M5",
       "requirements": [
         "STO-017"
@@ -18538,7 +18538,6 @@
       "depends_on": [],
       "assumptions": [],
       "status": "planned",
-      "events": [],
       "evidence": [
         "books/pagestore-digest-cursor.lisp",
         "tests/acl2/pagestore-digest-cursor-tests.lisp",
@@ -18554,6 +18553,28 @@
         "planning/evidence/page-digest-byte-source-2026-09-30.md"
       ],
       "progress_note": "Guarded fixed-block executable library remains source-only. New proof-only refinement admits all actual step phase denotation equations, split carry, initialization and conditional terminal equality to actual pgs-x-words-digest via its existing BLAKE3 theorem. The semantic carry is a hypothesis; maintained trajectory invariant, progress, supported-domain stack sufficiency, actual allocation and caller composition remain open. Fresh protected pdcrt2 admits22 core forms,61 refinement forms and9 sent test forms with zero refusals:2.09 ACL2 seconds /765,727 steps. Literal reachable node/chunk and terminal positives, matching-block and semantic-carry removal, and separately labelled corrupted output mutation pass. No manifest, image, native or producer/admission claim. Compatible exact-byte wrapper now separately guarded, leaves page source/proofs unchanged. Partial-tail denotation, exact final count <=64, page-step compatibility and conditional terminal octet equality to fn-blake3 admit. Fresh pdcbt2: four source books plus13 sent tests, zero refusals,3.13 ACL2 seconds /813,342 steps. Empty and partial/tree boundary witnesses, complete terminal/tail positives, matching-block/semantic-carry removal, separate stale-padding mutation pass. Actual constrained frame-digest joint attachment remains a consumer residual."
+    },
+    {
+      "id": "PRF-1112",
+      "title": "Bounded stored DEFLATE requested-window component (served composition open)",
+      "statement": "books/payload-window.lisp reuses the resumable inflater with explicit stored total-input policy 256*C+65536, at most64 input/output bytes and1024 actions per call. All seven outputs/effects refine the logical credited resumable run; returned input counter counts actual bytes, total output has one overflow sentinel, and private decoded implies exactN, complete input and final/sync terminal. Canonical whole and pooled stored entries use the same policy, fixing incomplete LEN/NLEN acceptance. New terminal marker establishment has literal retained-hypothesis/removal teeth. Full requested-window copy/extent authentication/physical funding/host integration, boundary teeth, action-budget completeness and runtime allocation/cost remain open. No stored/network refusal equality or served completion is claimed.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-037"
+      ],
+      "depends_on": [
+        "PRF-909",
+        "PRF-949"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/payload-window.lisp",
+        "tests/acl2/payload-window-tests.lisp",
+        "specs/payload-window.md",
+        "planning/evidence/payload-window-2026-09-30.md"
+      ],
+      "progress_note": "Protected persvati pzwfinal source admission and literal regressions only; component keystones not cited as served events until composed host boundary and complete teeth exist. Qualified images, deployment and matched measurements absent."
     }
   ]
 }

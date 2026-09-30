@@ -4,7 +4,7 @@
 ; tests/acl2/payload-lz-record-tests.lisp.
 (in-package "ACL2")
 (include-book "../../books/deflate-pool-check")
-(include-book "payload-lz-record-tests")
+(include-book "payload-deflate-vectors")
 (include-book "must-fail-checked")
 
 ; Reads over one buffer set: POOLED = the pool the first read starts from is
