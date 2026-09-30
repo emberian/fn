@@ -2919,6 +2919,19 @@ failure, name mismatch, interrupted handshake, or protected I/O failure closes
 that peer-local connection and reaches the existing durable `fn-feed-lost`
 requeue path; it never retries cleartext.
 
+The owner installs ACL2's selected feed connection and form before publishing
+`:ready` from TLS completion (`fn-owner-feed-tls-established`, PKT-599(b),
+SCN-1022). This immediate branch is reachable after STARTTLS when neither
+AUTHINFO nor MODE STREAM is configured. Implicit TLS still waits for the
+protected greeting; login and streaming still wait for their replies, whose
+existing ready branch installs the connection. Pending and invalid TLS reports
+do not install a feed. The native adapter supplies the live payload arena to
+this entry through `fnn-owner-feed-arena-step`, using the entry's actual trailing
+stobjs; it does not decide the connection or its article form. The host-source
+fixture checks the installed owner as well as the publication. The scratch
+native scenario observes an IHAVE and the transferred article on that same TLS
+connection; matching-image execution remains a qualification obligation.
+
 This authenticates the destination of an outbound connection.  It does not
 authenticate an inbound connection as the configured named peer, repair the
 shared/source-address ambiguity in the current inbound projection, prove

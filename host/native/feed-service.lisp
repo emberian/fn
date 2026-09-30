@@ -195,7 +195,7 @@ closed by this worker, preserving the one-closer rule."
   (fnn-owner-transit-serialized
    service nil
    (lambda ()
-     (let* ((publication (fnn-owner-feed-step 'fn-owner-feed-tls-established
+     (let* ((publication (fnn-owner-feed-arena-step 'fn-owner-feed-tls-established
                                               (fnn-feed-link-peer-octets link)))
             (word (fnn-feed-checked-word
                    (fnn-owner-feed-word publication)
