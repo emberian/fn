@@ -570,6 +570,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bpsec-asb-spine-tests \
 	tests/acl2/bpsec-target-spine-tests \
 	tests/acl2/bpsec-asb-control-tests \
+	tests/acl2/bpsec-asb-position-tests \
 	books/bp-status-report \
 	books/bp-status-report-invariants \
 	tests/acl2/bp-status-report-tests \

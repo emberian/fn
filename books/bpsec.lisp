@@ -10,3 +10,4 @@
 (include-book "bpsec-asb-spine")
 (include-book "bpsec-target-spine")
 (include-book "bpsec-asb-control")
+(include-book "bpsec-asb-position")
