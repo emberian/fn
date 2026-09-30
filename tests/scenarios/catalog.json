@@ -6391,6 +6391,32 @@
         "docs/interop-inn.md"
       ],
       "execution_scope": "Source-present partial W3 fixture. Narrow scripted-peer and harness tests do not establish real INN or fn-image behavior. No real protected-reader run yet; native protected feed, actual Control-header behavior, Distribution/cancel/expiry and broader Q12/W3 criteria remain open. INN authentication is an external implementation observation, not an fn theorem."
+    },
+    {
+      "id": "SCN-1030",
+      "title": "Native fn protected feed injects a fresh article into pinned INN nnrpd over verified STARTTLS and USER/PASS, without a clear delivery race",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-005",
+        "NNT-048"
+      ],
+      "steps": [
+        "Select the isolated real INN fixture with --inn-security --inn-security-feed; keep the native owner running after the baseline clear scenarios.",
+        "Apply peer feed inn pause; only after it succeeds, add outbound-only inn-security with verified STARTTLS, scratch FNAUTH1 profile, allow-clear false and streaming false.",
+        "POST a fresh article, wait for the matching native accepted feed code235, read its Message-ID over authenticated protected nnrpd and inspect the clear transit relay."
+      ],
+      "expected": [
+        "Refused clear pause or refused protected peer stops this row before its fresh POST.",
+        "The accepted native feed observation names exactly inn-security, the fresh Message-ID and code235. Duplicate/refused/uncertain outcomes or another peer/subject cannot pass.",
+        "INN serves the same Message-ID, Subject and body over verified STARTTLS and authenticated read, and the clear relay never offered this fresh article. Injection-header changes are outside the transit Path/Xref-only claim."
+      ],
+      "evidence": [
+        "tools/inn_lab.py",
+        "tests/test_inn_lab.py",
+        "docs/interop-inn.md"
+      ],
+      "execution_scope": "Source-present partial W3 fixture. Scripted harness assertions check verdict accounting and race detection only; no real INN or matching native-image run yet. The native parsed reply is recorded, not an invented decrypted wire transcript. Actual Control-header behavior and the wider W3/Q12 remainder remain open."
     }
   ]
 }

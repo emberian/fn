@@ -1594,6 +1594,23 @@ bidirectional streaming, failure cases beyond process death and the wider
 RFC audit remain separate original finite work. The legacy `inn-control`
 row is an IHAVE exchange, not a Control-header scenario.
 
+### 5.2 Native protected injection into INN (W3 source continuation)
+
+SCN-1030 selects `--inn-security --inn-security-feed`. The native owner
+pauses its clear feed, then applies an outbound-only nnrpd peer with
+STARTTLS, verified IP name/anchor and USER/PASS FNAUTH1 profile; clear
+credential carriage is disabled. A fresh POST follows the accepted pause
+and configuration. The row requires the actual native feed's accepted235
+observation for that Message-ID, a protected read of the same
+Message-ID/Subject/body and no clear-relay offer for that article.
+
+This exercises native fn's protected preamble into an external injecting
+endpoint. nnrpd can alter injection fields; the row is distinct from the
+innd transit preservation assertion. It records the native parsed reply,
+not a claimed decrypted TLS wire trace. The source fixture and scoped
+harness assertions are present; real INN/matching-image evidence and the
+remaining original W3/Q12 arms are still open.
+
 ## 6. The inter-agent angle
 
 Agents are principals ([identity](identity.md), `fn-prin-`): a 32-octet id
