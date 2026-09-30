@@ -1,0 +1,26 @@
+(in-package "CL-USER")
+(let* ((pool (list :escape-pool))
+       (gate (fnn-runtime-participants-install-for-image pool))
+       (receipt (list :retained-escape-receipt))
+       (fenced 0)
+       (binding (%fnn-runtime-cleanup-binding
+                 gate :recording-escape
+                 (lambda (subject) (declare (ignore subject))
+                   (values :admitted receipt))
+                 (lambda () (throw 'participant-escape :escaped))
+                 (lambda (token) (declare (ignore token))
+                   (error "escaped-complete-ran"))
+                 (lambda (token cause)
+                   (assert (eq token receipt))
+                   (assert (eq cause :nonlocal-escape))
+                   (incf fenced)))))
+  (fnn-with-runtime-participants-parked (gate pool) nil)
+  (assert (eq :escaped
+              (catch 'participant-escape
+                (fnn-runtime-participant-cleanup-one binding))))
+  (assert (= fenced 1))
+  (assert (eq receipt (fnn-runtime-cleanup-binding-receipt binding)))
+  (assert (eq :nonlocal-escape (fnn-runtime-participants-fault gate)))
+  (assert (not (fnn-runtime-participants-active gate)))
+  (fnn-runtime-participants-stop-and-join gate)
+  (format t "NONLOCAL-ESCAPE-RECEIPT-FENCE-JOIN-PASS~%"))
