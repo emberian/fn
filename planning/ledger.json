@@ -1141,6 +1141,10 @@
     "tests/acl2/extent-window-compressed-input-tests",
     "books/extent-window-compressed-output",
     "tests/acl2/extent-window-compressed-output-tests",
+    "tests/acl2/durable-lz-octet-tests",
+    "tests/acl2/decoded-window-descriptor-tests",
+    "tests/acl2/decoded-window-lease-tests",
+    "tests/acl2/decoded-window-begin-tests",
     "tests/acl2/records-freeze-tests",
     "tests/acl2/catalog-record-tests",
     "tests/acl2/catalog-tests",
@@ -1811,27 +1815,27 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1881,
-    "books_in_root_closure": 1873,
-    "roots": 1807,
-    "theorems": 29744,
-    "functions": 19024,
-    "assert_events": 23965,
+    "books": 1888,
+    "books_in_root_closure": 1880,
+    "roots": 1811,
+    "theorems": 29749,
+    "functions": 19036,
+    "assert_events": 23983,
     "must_fails": 2516,
     "prover_refusals": 0,
     "encapsulates": 169,
     "guards": {
       "verified": 3513,
-      "declared-off": 2267,
-      "default-guarded": 10388,
+      "declared-off": 2268,
+      "default-guarded": 10399,
       "default-unguarded": 2856
     },
     "suspect_theorems": 1248,
     "export_hygiene_warnings": 340,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2559,
-    "host_names_warnings": 2190,
+    "include_hygiene_warnings": 2560,
+    "host_names_warnings": 2198,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -11126,6 +11130,87 @@
       "encapsulates": 2,
       "includes": [
         "records-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/decoded-window-begin.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 2,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "decoded-window-descriptor",
+        "extent-window-compressed"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/decoded-window-descriptor.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 9,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 9,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "payload-lz-dicts",
+        "payload-window"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/decoded-window-lease.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 2,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "decoded-window-descriptor",
+        "page-read-ledger"
       ],
       "system_includes": [],
       "suspects": [],
@@ -40951,6 +41036,84 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/decoded-window-begin-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/decoded-window-begin"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/decoded-window-descriptor-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 11,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/decoded-window-descriptor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/decoded-window-lease-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 5,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/decoded-window-lease"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/defevent-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -41169,6 +41332,32 @@
       "includes": [
         "../../books/codec-attach",
         "../../books/native-operator"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/durable-lz-octet-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/durable-lz-octet"
       ],
       "system_includes": [],
       "suspects": [],
@@ -72557,6 +72746,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/decoded-window-descriptor.lisp",
+        "line": 4,
+        "include": "payload-window",
+        "included": "books/payload-window.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/deflate-pool-check.lisp",
         "line": 18,
         "include": "deflate-pool",
@@ -94845,6 +95041,62 @@
         "name": "fnn-core-cold-values",
         "source": "host/native/extent.lisp",
         "reason": "defined in host/native/extent.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/extent-decoded.lisp",
+        "line": 45,
+        "name": "fnn-core-cold-single",
+        "source": "host/native/extent.lisp",
+        "reason": "defined in host/native/extent.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/extent-decoded.lisp",
+        "line": 45,
+        "name": "*fnn-extent-window-worker*",
+        "source": "host/native/extent.lisp",
+        "reason": "defined in host/native/extent.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/extent-decoded.lisp",
+        "line": 45,
+        "name": "fnn-extent-decoded-window-byte-at",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/extent-decoded.lisp",
+        "line": 45,
+        "name": "*fnn-extent-window-token*",
+        "source": "host/native/extent.lisp",
+        "reason": "defined in host/native/extent.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/extent-decoded.lisp",
+        "line": 45,
+        "name": "throw",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/native/extent-decoded.lisp",
+        "line": 64,
+        "name": "*fnn-extent-window-mode*",
+        "source": "host/native/extent.lisp",
+        "reason": "defined in host/native/extent.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/extent-decoded.lisp",
+        "line": 64,
+        "name": "fnn-core",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/extent-decoded.lisp",
+        "line": 64,
+        "name": "fn-durable-realize-lz",
+        "source": "books/assumptions-durable.lisp",
+        "reason": "defined in books/assumptions-durable.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/extent.lisp",

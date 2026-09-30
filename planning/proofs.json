@@ -18646,9 +18646,19 @@
         "planning/evidence/extent-window-input-source-2026-09-30.md",
         "books/extent-window-compressed-output.lisp",
         "tests/acl2/extent-window-compressed-output-tests.lisp",
-        "planning/evidence/extent-window-output-source-2026-09-30.md"
+        "planning/evidence/extent-window-output-source-2026-09-30.md",
+        "books/durable-lz-octet.lisp",
+        "books/payload-arena-extent.lisp",
+        "books/decoded-window-descriptor.lisp",
+        "books/decoded-window-begin.lisp",
+        "books/decoded-window-lease.lisp",
+        "tests/acl2/durable-lz-octet-tests.lisp",
+        "tests/acl2/decoded-window-descriptor-tests.lisp",
+        "tests/acl2/decoded-window-lease-tests.lisp",
+        "planning/evidence/decoded-window-source-2026-09-30.md",
+        "tests/acl2/decoded-window-begin-tests.lisp"
       ],
-      "progress_note": "Source composition only. Literal local-stobj witnesses affirm the complete antecedents/conclusions without materializing large logical pool terms; removal and actual regressions have separate checks. C0 with a nonzero protected-prefix offset waits in drain until positional completion. Clean protected sol-ewzu1 source union admitted13core+3testbooks with zero refusals,40.15ACL2s/19,615,494steps; no manifest/image/native campaign by this lane. Successor input carry: fresh sol-ewzi4 proper encapsulated source union15core+4test books passed47.26ACL2s/23,095,331steps, including8literal positive/removal defthms. Codec/read preservation require only carried evidence; redundant mode/input-length/pool-shape/coordinate hypotheses were removed after proving weakened statements. Native/progress/trajectory/funding remain open. Output carry fresh sol-ewzot1 proper encapsulated source replay16core+5testbooks passed50.92ACL2s/24,386,057steps and6literal positive/removal witnesses. This remains source-only; no native enablement."
+      "progress_note": "Source composition only. Literal local-stobj witnesses affirm the complete antecedents/conclusions without materializing large logical pool terms; removal and actual regressions have separate checks. C0 with a nonzero protected-prefix offset waits in drain until positional completion. Clean protected sol-ewzu1 source union admitted13core+3testbooks with zero refusals,40.15ACL2s/19,615,494steps; no manifest/image/native campaign by this lane. Successor input carry: fresh sol-ewzi4 proper encapsulated source union15core+4test books passed47.26ACL2s/23,095,331steps, including8literal positive/removal defthms. Codec/read preservation require only carried evidence; redundant mode/input-length/pool-shape/coordinate hypotheses were removed after proving weakened statements. Native/progress/trajectory/funding remain open. Output carry fresh sol-ewzot1 proper encapsulated source replay16core+5testbooks passed50.92ACL2s/24,386,057steps and6literal positive/removal witnesses. This remains source-only; no native enablement. Typed decoded descriptor/immutable dictionary and supplied-demand lease kernel source admitted; actual arena getter now uses exact NTH-of-existing-realizer scalar boundary. Source admission is not certification. Native dispatcher, dictionary trajectory, runtime adequacy and complete scheduling remain open."
     },
     {
       "id": "PRF-1132",

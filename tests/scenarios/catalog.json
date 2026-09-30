@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6609,7 +6609,8 @@
         "Refuse truncated/malformed streams, wrongN, short read, protected-prefix corruption and wrong trailer commitment.",
         "Assert every literal scratch-copy/decoded/new-integrity antecedent and conclusion; remove only natural output index, decoded result or no-prior-publication as labelled.",
         "Affirm actual real-input carry in nonempty scan/codec and empty final-drain transitions; corrupted-state removal keeps every remaining hypothesis true and fails the conclusion.",
-        "Affirm active TOUT<=min(N,storedAllowance(C)) after actual begin/codec/read/hash; codec establishes the carry without pre-call hypotheses. Separately labelled corrupted-state read and scan-hash removals falsify only carried-output evidence and the conclusion."
+        "Affirm active TOUT<=min(N,storedAllowance(C)) after actual begin/codec/read/hash; codec establishes the carry without pre-call hypotheses. Separately labelled corrupted-state read and scan-hash removals falsify only carried-output evidence and the conclusion.",
+        "Check exact scalar NTH boundary and distinct decoded token11, unknown dictionary refusal, immutable shipped lookup, supplied-demand funding/file hold positives and hypothesis removals; retain native/runtime adequacy as open."
       ],
       "expected": [
         "The exact requested bytes remain private until accepted codec terminal/exactN and full raw extent integrity.",
@@ -6623,7 +6624,17 @@
         "specs/extent-window-read.md",
         "planning/evidence/extent-window-compressed-source-2026-09-30.md",
         "tests/acl2/extent-window-compressed-input-tests.lisp",
-        "planning/evidence/extent-window-input-source-2026-09-30.md"
+        "planning/evidence/extent-window-input-source-2026-09-30.md",
+        "books/durable-lz-octet.lisp",
+        "books/payload-arena-extent.lisp",
+        "books/decoded-window-descriptor.lisp",
+        "books/decoded-window-begin.lisp",
+        "books/decoded-window-lease.lisp",
+        "tests/acl2/durable-lz-octet-tests.lisp",
+        "tests/acl2/decoded-window-descriptor-tests.lisp",
+        "tests/acl2/decoded-window-lease-tests.lisp",
+        "planning/evidence/decoded-window-source-2026-09-30.md",
+        "tests/acl2/decoded-window-begin-tests.lisp"
       ],
       "execution_scope": "Protected source composition and literal local-buffer witnesses only; no native served enablement or qualification."
     },

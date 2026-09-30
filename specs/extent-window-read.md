@@ -183,3 +183,20 @@ This authentication safety trajectory leaves positional tree-frontier
 scheduling completeness, physical honest-source realization, full decoded
 trajectory and runtime allocation/funding open. It adds no native or
 image qualification claim.
+
+## Decoded scalar cold boundary (source stage)
+
+The actual arena scalar compressed branch uses fn-durable-realize-lz-octet,
+whose logical value is exactly NTH I of the existing durable decoded value.
+A singleton replacement of the whole-list boundary is invalid at nonzero I.
+The separate :decoded-window token binds ticket and the complete nine-field
+stored descriptor: file, extent offset/length, compressed payload offset/C,
+decoded offset, trailer, N, shipped dictionary ID. The immutable shipped
+lookup is canonical; unknown dictionaries refuse. Physical C63 alone does
+not impose N63. Operator profile validation and runtime representation must
+cover the full accepted storedAllowance(C) range.
+
+The new lease admission accounts a supplied vector and holds the file.
+Selected-runtime compressed demand adequacy, complete decoder trajectory,
+shared lifecycle/publication and native activation remain open. This source
+stage adds no served compressed or matching image claim.

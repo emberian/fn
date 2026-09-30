@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1881 |
-| Certification roots in the Makefile | 1807 |
-| Books inside the root closure | 1873 |
-| `defthm` and `defthmd` events | 29744 |
-| `defun` events | 19024 |
+| Books read | 1888 |
+| Certification roots in the Makefile | 1811 |
+| Books inside the root closure | 1880 |
+| `defthm` and `defthmd` events | 29749 |
+| `defun` events | 19036 |
 | Functions with verified guards | 3513 |
-| Functions declared `:verify-guards nil` and never verified | 2267 |
-| Functions left at the default with an explicit guard | 10388 |
+| Functions declared `:verify-guards nil` and never verified | 2268 |
+| Functions left at the default with an explicit guard | 10399 |
 | Functions left at the default with no guard | 2856 |
-| `assert-event` checks | 23965 |
+| `assert-event` checks | 23983 |
 | `must-fail` checks | 2516 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 169 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 340 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2559 |
-| Host-names warnings | 2190 |
+| Include-hygiene warnings | 2560 |
+| Host-names warnings | 2198 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -414,6 +414,9 @@ that `make certify` requests.
 | `books/control-visible.lisp` | root | 74 | 37 | 7/0/30/0 | 0 | 0 | 2 |
 | `books/crypto-attach.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/crypto-seam.lisp` | root | 19 | 14 | 0/0/10/4 | 0 | 0 | 0 |
+| `books/decoded-window-begin.lisp` | closure | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/decoded-window-descriptor.lisp` | closure | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
+| `books/decoded-window-lease.lisp` | closure | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/defevent.lisp` | root | 0 | 14 | 0/0/0/14 | 0 | 0 | 0 |
 | `books/definterface.lisp` | root | 0 | 42 | 0/0/0/42 | 0 | 0 | 0 |
 | `books/defkeystone.lisp` | root | 0 | 28 | 0/0/0/28 | 0 | 0 | 0 |
@@ -1408,6 +1411,9 @@ that `make certify` requests.
 | `tests/acl2/control-visible-indexed-tests.lisp` | root | 0 | 7 | 0/2/0/5 | 6 | 2 | 0 |
 | `tests/acl2/control-visible-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 22 | 9 | 0 |
 | `tests/acl2/crypto-seam-tests.lisp` | root | 11 | 7 | 0/0/7/0 | 18 | 0 | 0 |
+| `tests/acl2/decoded-window-begin-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 1 | 0 | 0 |
+| `tests/acl2/decoded-window-descriptor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 0 | 0 |
+| `tests/acl2/decoded-window-lease-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/defevent-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 19 | 1 | 0 |
 | `tests/acl2/definterface-tests.lisp` | root | 8 | 9 | 0/0/6/3 | 39 | 23 | 1 |
 | `tests/acl2/defkeystone-tests.lisp` | root | 2 | 1 | 0/0/1/0 | 17 | 6 | 0 |
@@ -1416,6 +1422,7 @@ that `make certify` requests.
 | `tests/acl2/deflate-pool-tests.lisp` | root | 4 | 2 | 0/0/1/1 | 0 | 1 | 0 |
 | `tests/acl2/defrecord-tests.lisp` | root | 37 | 20 | 9/0/11/0 | 39 | 1 | 2 |
 | `tests/acl2/docs-operator-grammar-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 4 | 0 | 0 |
+| `tests/acl2/durable-lz-octet-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 1 | 0 | 0 |
 | `tests/acl2/exchange-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 162 | 0 | 0 |
 | `tests/acl2/expiry-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 42 | 5 | 0 |
 | `tests/acl2/extent-retire-tests.lisp` | root | 10 | 4 | 0/2/0/2 | 6 | 7 | 0 |
