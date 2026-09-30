@@ -445,3 +445,23 @@ effects retained. Comparing a coordinate does not install those runtime
 facts. This component excludes source value arithmetic, initializer inlining,
 callbacks, frames, collector/first-use and alias lifetimes; full INITIAL
 admission and central assumptions integration remain open.
+
+
+The actual issuer/worker/initializer constructor component now binds the
+entire typed decoded request to the SAME ledger and assigned worker before
+`fn-pwz-begin`. Its complete six-result boundary preserves charged demand,
+budget and permanent baseline, source-file hold, plan descriptor, digest
+capture/lease and old frame array, and all three concrete array refinements.
+Larger old WIN/TAB/OUT capacities survive as max(old,65536/3494/64); the
+source retained-plus-requested payload accounts for them. The selected UB8
+capacity qualifier (<2^44) is conditionally preserved, never inferred from a
+ready flag. Successful assignment of the actual admission result already
+implies admission; that redundant premise was proved and removed.
+
+This is a required logical constructor invariant for the dormant actual
+`fnn-extent-decoded-window-drive` path. Supplied resource demand is not
+adequacy. No installed source-root/private-buffer producer or complete
+compiled constructor/frame/GC/lifetime operation envelope exists yet;
+the production initializer must remain unavailable before those allocations.
+The snapshot startup INITIAL issuer is a separate operation, including its
+actual private role creators and retained recovery/account roots.

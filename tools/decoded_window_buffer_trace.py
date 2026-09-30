@@ -38,7 +38,7 @@ def generate():
   if orig=='fn-oct-back-loop':decl=' (declare (xargs :measure (nfix (- (nfix end) (nfix dst))) :ruler-extenders :all))'
   if orig=='fn-oct-write-list':decl=' (declare (xargs :measure (len xs) :ruler-extenders :all))'
   out.append(f'(defun-nx {name} {params}\n{decl}\n {gen.expr(f[-1])})');introduced.append(name)
-  disabled=' '.join(sorted(set(SELECTED+tuple(introduced)+tuple(BORROWED)+('binary-append',))- {name,orig,"mbt"}))
+  disabled=' '.join(sorted(set(SELECTED+tuple(introduced)+tuple(BORROWED)+('binary-append',)+(('nfix',) if orig=='fn-piwc-begin' else ()))- {name,orig,"mbt"}))
   hint=f':induct ({orig} {args})' if orig in ('fn-oct-back-loop','fn-oct-write-list') else ":do-not '(preprocess)"
   out.append(f'(defthm {name}-value-and-effects-projection\n (equal (car ({name} {args})) ({orig} {args}))\n :hints (("Goal" {hint} :in-theory (e/d ({name} {orig}) ({disabled})))))')
   out.append(f'(in-theory (disable {name}))')

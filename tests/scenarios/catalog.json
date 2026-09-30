@@ -6360,7 +6360,8 @@
         "Assert actual resize request/old-capacity source roster in output/history/table order, full initializer refinement and conditional primary-object bound for fresh/preallocated/mixed states. Check all three full typed-array removals, explicit unqualified component refusal, and separate source-order/domain/primary-charge mutations.",
         "Assert the full actual initializer tuple/effect and exact register/digest setter argument domains for empty/shipped presets. Remove selected native offset profile and affirm full conclusion failure at logical ELEN2^80. Check literal index/value/mode/capture mutants and actual B2049 digest temporary264 versus final257 override.",
         "Assert the complete actual fresh/preallocated/mixed six-output initializer write-domain boundary, each typed-array removal via malformed retained tail, and labelled out-of-capacity byte/fill and non-UB8 value mutations.",
-        "Assert complete actual empty/shipped register roster, tuple/effect and conditional standalone zero-primary-object sum; check qualified candidate versus shape-only unavailable, index/value/count mutations."
+        "Assert complete actual empty/shipped register roster, tuple/effect and conditional standalone zero-primary-object sum; check qualified candidate versus shape-only unavailable, index/value/count mutations.",
+        "Affirm actual issued+assigned source/pool and complete six-result typed initializer relation on fresh and larger retained arrays; remove each of three typed-array hypotheses and exact worker assignment literally, and refute changed-ticket and shrink-backing mutations. Prove explicit admission redundant from actual assignment before removing it. Preserve supplied-demand and installed-runtime authority gaps."
       ],
       "expected": [
         "Bit buffer remains at most39bits and exact length-relative Huffman carry is preserved only on non-error exits; every walker exit remains within the stated fixed scalar bounds.",
@@ -6455,7 +6456,10 @@
         "tests/acl2/decoded-window-initial-array-write-domains-tests.lisp",
         "planning/evidence/decoded-window-initial-array-write-domains-2026-09-30/README.md",
         "tests/acl2/decoded-window-initial-register-objects-tests.lisp",
-        "planning/evidence/decoded-window-initial-register-objects-2026-09-30/README.md"
+        "planning/evidence/decoded-window-initial-register-objects-2026-09-30/README.md",
+        "books/decoded-window-initial-owner-source.lisp",
+        "tests/acl2/decoded-window-initial-owner-source-tests.lisp",
+        "planning/evidence/decoded-window-initial-owner-source-2026-09-30/README.md"
       ],
       "execution_scope": "Protected source replay only; the codec/runtime/controller/host composition remains open."
     },
