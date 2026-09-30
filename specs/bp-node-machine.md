@@ -5171,3 +5171,17 @@ legacy symbol decoder. Evidence is in
 The reader remains unhooked: charged workspace, installed supported format
 bound, exact file integrity and registered native recovery/publication joins
 still precede activation and whole delivery/restart qualification.
+
+The internal `fn-bpck-registered-census-turn` now uses the registered
+controller directory to fetch the retained CURRENT, job payload and revision.
+It preflights both directory traversals, refuses a stale revision/phase before
+census work, applies the actual bounded census producer, and replaces the
+registered continuation before returning only scalar revision/phase status.
+Actual seeded-storage tests exercise revision 1→2, stale callback refusal and
+retentive cancellation preserving job, I/O control, digest binding, CURRENT
+and claim. The test factory is explicitly unfunded. Guard/source evidence is
+`planning/evidence/bp-registered-checkpoint-census-handler-20260930/manifest.json`.
+No supported operation allowance/profile is installed: the public
+`fn-owner-bp-checkpoint-turn` returns `:bp-runtime-unavailable` before registry
+lookup or semantic allocation. Native installation, effect observations,
+charged workspace and whole checkpoint reopen remain open.
