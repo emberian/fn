@@ -5,14 +5,59 @@ source capture, payload view and every new buffer, file or write. The lease
 retains all phase resources through actual return/join, relinquished aliases
 and definite staging/spool cleanup or publication. A timeout does not refund.
 
-The initial constructor must derive five fixed 2048-u64 page states, native
-page conversion, authenticated reader/digest, parser/codec/context stacks,
-ordered suffix, old/new root and payload-view coexistence, cleanup and all
-source/target/spool descriptors. Its nonzero disk footprint is the actual
-FNSI wrapper/header base. Census precedes target/spool creation; final encoded
-sizes cannot be guessed from row count. Current resident-suffix size carry
-and compiled runtime envelopes are not yet installed, so initial adequacy
-and served activation remain explicitly open.
+The actual INITIAL creator cut is finite: five private 2048-u64 page states,
+native page conversion, writer and authenticated reader digests, reader buffer,
+job26/workspace3 controls, retained source/Store/CP/account-publication roots,
+view/root holders, caller and cleanup work. Existing graphs are borrowed under
+baseline custody; a tree cursor begins with fixed spines and charges its growing
+retained stack per actual turn. INITIAL does not require a guessed source-depth
+maximum or terminal canonical pool before census. Runtime default images, old/new
+backing overlap, compiled frames, first-use, errors and collector/epoch debt still
+need their actual installed envelopes.
+
+`fn-owner-recovery-initial-admit(source,pool,STATE)` obtains the actual completed
+source descriptor internally and reads the SAME immutable runtime operation
+family and role table through the two owner getters. It accepts no supplied
+five-vector or installation record. Both runtime getters currently return
+unavailable; the actual host refuses before root/view/job/private constructors.
+This PROGRAM boundary is source-admitted, while the request/custody core is
+guard-verified. It is not native activation or complete INITIAL adequacy.
+
+The family has fifteen fields:
+`(:runtime-operation-family kind runtime-coordinate image-coordinate profile-coordinate
+pool-association source-coordinate primary-requests caller-requests first-use-requests
+collector-requests external-requests control-requests retained-roots cleanup-contract)`.
+Each ordered request is `(:request role source-body-coordinate octets count)`;
+the installed table maps each role to `(role memory-class actual-body-coordinate)`.
+The six streams are evaluated with exact role/body matching. Heap, stack, TLS and
+external units enter resident demand according to that qualified role mapping.
+Shape alone supplies no installation authority. Missing qualification refuses.
+The derived initial resource vector is `(resident 16384 3 1 1)`: the header reserve
+is real disk credit and the three FDs are private stage/data-spool/table-spool.
+The actual source PRF pin has its own additional SAME-pool FD/read-ID demand;
+it is not free baseline credit. Census precedes private target/spool creation.
+
+A successful core issue returns five fields
+`(:admitted source-token maintenance resource roles)` and retains an INITIAL
+receipt in maintenance row slot3. The source token PROCESS epoch is distinct
+from its captured Store frontier; the maintenance epoch is the source-context
+frontier and its suffix count is derived from the actual records field.
+The fixed roles are source-root, payload-view, workspace, job, allocation-turn,
+reader and private-backing. Actual acquire/release boundaries must atomically
+claim/return each exact token before a holder escapes or after its real return.
+A role helper is not an allocator observation or proof of relinquished aliases.
+ConstructorBegin must hold allocation-turn before creators, through their actual
+runtime epilogue; unavailable epilogue retains custody on failure.
+
+Maintenance growth and backing-receipt replacement preserve row slot3 for every
+outcome. A naked maintenance release refuses INITIAL custody with the exact
+ledger unchanged. Ordinary three-field maintenance rows retain their previous
+behavior. The BP transfer/release boundaries separately refuse foreign INITIAL
+custody. No timeout, NIL alias assignment or supplied joined Boolean clears the
+INITIAL receipt or resets allocation debt. A genuine joined settlement remains
+open. SCN-1048 now includes exact issue/role literal teeth, growth preservation,
+dependent-role refusal, retained charges after role return, and actual host
+current-source/runtime-unavailable and stale-source refusal fixtures.
 
 The actual writer emits ten fields:
 `(:checkpoint-growth source4 stage maintenance N T M stage-end data-spool table-spool)`.
@@ -35,9 +80,9 @@ Refusal preserves the original ledger.
 its worker/identity ownership and descriptor/disk credit. The writer must
 recheck it before backing initialization or write effects. Unknown later
 frame/arena bytes require their own actual growth before append; this grant
-covers only the image and named metadata spools. `fn-pmn-release` remains
-permitted only after definite joined cleanup; the initial host lifecycle and
-physical cleanup fidelity are still required composition proofs.
+covers only the image and named metadata spools. `fn-pmn-release` refuses any retained INITIAL custody. Ordinary maintenance
+release and a future INITIAL settlement still require definite joined cleanup;
+actual lifecycle and physical cleanup fidelity remain composition obligations.
 
 This is safe-attempt ownership, not the complete accepted-obligation rescue
 reserve. Source proofs about the actual ledger functions do not establish

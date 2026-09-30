@@ -529,6 +529,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/decoded-window-profile-tests \
 	tests/acl2/payload-table-runtime-domain-tests \
 	tests/acl2/payload-pull-runtime-workspace-tests \
+	books/snapshot-initial-request \
+	books/snapshot-initial-custody \
+	tests/acl2/snapshot-initial-custody-tests \
+	tests/acl2/snapshot-initial-host-tests \
 	books/snapshot-maintenance-profile \
 	tests/acl2/snapshot-maintenance-profile-tests \
 	tests/acl2/snapshot-maintenance-host-tests \

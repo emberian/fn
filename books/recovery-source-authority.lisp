@@ -1,0 +1,77 @@
+; PRF-1149: a cold issuer is distinct from a live source4 capture.
+; Loaded checkpoint/region authenticity and actual SSR decision lineage are
+; carried producer premises. These fixed guards add no graph validation.
+(in-package "ACL2")
+(include-book "snapshot-source-token")
+
+(defun fn-rsa-regionp (r)
+  (declare (xargs :guard t))
+  (and (fn-omk-widthp r 5) (eq (fn-omk-at 0 r) :summary-region)
+       (natp (fn-omk-at 1 r)) (natp (fn-omk-at 2 r))
+       (<= (fn-omk-at 1 r) (fn-omk-at 2 r))
+       (eq (fn-omk-at 3 r) :R) (equal (fn-omk-at 4 r) 1)))
+(defun fn-rsa-metap (m)
+  (declare (xargs :guard t))
+  (and (fn-omk-widthp m 7) (eq (fn-omk-at 0 m) :verified-checkpoint)
+       (consp (fn-omk-at 1 m)) (fn-omk-widthp (fn-omk-at 2 m) 7)
+       (eq (fn-omk-at 0 (fn-omk-at 2 m)) :fn-store-checkpoint)
+       (fn-rsa-regionp (fn-omk-at 3 m))
+       (fn-omk-widthp (fn-omk-at 4 m) 2)
+       (natp (fn-omk-at 0 (fn-omk-at 4 m)))
+       (natp (fn-omk-at 5 m)) (natp (fn-omk-at 6 m))))
+(defun fn-rsa-context-count (ctx)
+  (declare (xargs :guard t))
+  (if (and (fn-omk-widthp ctx 6) (eq (fn-omk-at 0 ctx) :ok)
+           (natp (fn-omk-at 1 ctx)))
+      (fn-omk-at 1 ctx) :unavailable))
+; phase,ticket,process-epoch,borrowed-loader-meta,actual-count,frontier,
+; ORIGINAL ctx pointer,ack-serial,loader-generation.
+(defun fn-rsa-begin (ticket epoch generation meta)
+  (declare (xargs :guard t))
+  (let* ((ctx (fn-omk-at 3 (fn-omk-at 2 meta)))
+         (prefix (fn-omk-at 6 meta)))
+    (if (not (and (natp ticket) (natp epoch) (natp generation)
+                  (fn-rsa-metap meta) (equal (fn-rsa-context-count ctx) prefix)))
+        (mv :refused nil)
+      (mv :issued (list :recovering ticket epoch meta prefix (fn-omk-at 5 meta)
+                        ctx 0 generation)))))
+(defun fn-rsa-token (c)
+  (declare (xargs :guard t))
+  (list :recovery-source (fn-omk-at 1 c) (fn-omk-at 2 c) (fn-omk-at 7 c)))
+(defun fn-rsa-currentp (c token epoch generation)
+  (declare (xargs :guard t))
+  (and (fn-omk-widthp c 9) (eq (fn-omk-at 0 c) :recovering)
+       (natp (fn-omk-at 1 c)) (natp (fn-omk-at 2 c))
+       (natp (fn-omk-at 4 c)) (natp (fn-omk-at 5 c))
+       (natp (fn-omk-at 7 c)) (natp (fn-omk-at 8 c))
+       (fn-omk-widthp token 4) (eq (fn-omk-at 0 token) :recovery-source)
+       (equal (fn-omk-at 1 token) (fn-omk-at 1 c))
+       (equal (fn-omk-at 2 token) epoch) (equal epoch (fn-omk-at 2 c))
+       (equal (fn-omk-at 3 token) (fn-omk-at 7 c))
+       (equal generation (fn-omk-at 8 c))))
+; The caller passes ORIGINAL ctx from the one actual SSR decision, and the
+; actual txid-fold result. It never supplies a guessed final event count.
+; Count may advance by a funded chunk; the serial advances even for empty
+; chunks, preventing duplicate completion. Allocation admission precedes
+; that actual producer call and is a separate required boundary.
+(defun fn-rsa-observe (c token epoch generation ctx frontier)
+  (declare (xargs :guard t))
+  (let ((count (fn-rsa-context-count ctx)))
+    (if (not (and (fn-rsa-currentp c token epoch generation) (natp count)
+                  (<= (nfix (fn-omk-at 4 c)) count) (natp frontier)
+                  (<= (nfix (fn-omk-at 5 c)) frontier)))
+        (mv :refused c)
+      (mv :counted (list :recovering (fn-omk-at 1 c) epoch (fn-omk-at 3 c)
+                        count frontier ctx (+ 1 (nfix (fn-omk-at 7 c))) generation)))))
+; ACTUALCOUNT/FRONTIER are read from the same completed recovery Store,
+; not supplied by native code. Seal is consumed in the actual atomic install.
+(defun fn-rsa-seal (c token epoch generation actualcount actualfrontier)
+  (declare (xargs :guard t))
+  (if (not (and (consp c) (fn-rsa-currentp c token epoch generation)
+                (natp actualcount) (equal actualcount (fn-omk-at 4 c))
+                (natp actualfrontier) (equal actualfrontier (fn-omk-at 5 c))))
+      (mv :refused nil c)
+    (mv :sealed (list actualfrontier (list (fn-omk-at 1 c) actualcount) 0 0)
+        (cons :sealed (cdr c)))))
+(in-theory (disable fn-rsa-regionp fn-rsa-metap fn-rsa-context-count fn-rsa-begin
+                    fn-rsa-token fn-rsa-currentp fn-rsa-observe fn-rsa-seal))
