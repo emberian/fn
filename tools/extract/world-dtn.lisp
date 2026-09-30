@@ -149,6 +149,7 @@
 (include-book "../../books/page-discovery-ledger")
 (include-book "../../books/cold-read-layout")
 (include-book "../../books/cold-guard-bootstrap")
+(include-book "../../books/page-read-pool-state")
 (include-book "../../host/page-read-host")
 (include-book "../../books/page-read-executor")
 (include-book "../../books/page-file-lease")

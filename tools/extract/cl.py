@@ -479,10 +479,14 @@ class CL(Backend):
         inv["macros"] = [m["name"] for m in self.macros]
         out.append("(|ACL2|::|XL-REGISTER-STOBJ-NAMES| '(%s))" %
                    " ".join(sym(n) for n in self.ir.get("stobj_names", [s["name"] for s in self.ir["stobjs"]])))
-        # the live stobjs, made at start (a saved core may hold constants in
-        # read-only space): every stobj of the closure by its name, as ACL2's
-        # user-stobj-alist holds the live objects
-        out.append("(defun |ACL2|::|XL-MAKE-LIVE-STOBJS| () (setq |ACL2|::|*XL-USER-STOBJ-ALIST*| (list %s)))"
+        # Build the live registry once. Saved native bootstrap bindings retain
+        # these exact objects; restart must preserve their aliases and state.
+        # An empty registry is valid, so NIL alone cannot signal uninitialized.
+        out.append("(defun |ACL2|::|XL-MAKE-LIVE-STOBJS| () "
+                   "(unless |ACL2|::|*XL-LIVE-STOBJS-INITIALIZED-P*| "
+                   "(setq |ACL2|::|*XL-USER-STOBJ-ALIST*| (list %s)) "
+                   "(setq |ACL2|::|*XL-LIVE-STOBJS-INITIALIZED-P*| t)) "
+                   "|ACL2|::|*XL-USER-STOBJ-ALIST*|)"
                    % " ".join("(cons '%s %s)" % (sym(s["name"]), self.creator_form(s["name"]))
                               for s in self.ir["stobjs"]))
         return "\n".join(out) + "\n", inv

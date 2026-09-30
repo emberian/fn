@@ -80,6 +80,7 @@
 (include-book "page-discovery-ledger")
 (include-book "cold-read-layout")
 (include-book "cold-guard-bootstrap")
+(include-book "page-read-pool-state")
 (include-book "accounts")
 (include-book "history-columns-relation")
 (include-book "open-frontier")

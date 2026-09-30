@@ -182,6 +182,8 @@
 (include-book "books/feed-connection")
 (include-book "books/feed-connection-invariants")
 (include-book "books/native-operator")
+(include-book "books/runtime-bootstrap-admission")
+(include-book "books/runtime-operation-source")
 ; The process heap from the store profile (PKT-016): host/native/heap.lisp.
 (include-book "books/heap-figure")
 ;; Lane f1-bisect: host/native/io.lisp fnn-open-nursery calls
@@ -452,6 +454,8 @@
         (fnn-deflate-initialize)
         (defun fn-native-entry (st)
           (declare (ignore st))
+          ; Bootstrap precedes facility constructors and ordinary cleanup.
+          (fnn-runtime-bootstrap-startup)
           ; A refused start exits 5 with its reason (io.lisp).
           (fnn-native-startup (lambda ()
                                 (fnn-crypto-startup)
@@ -544,6 +548,9 @@
         ; The saved image is a host, not a session: no ACL2 banner on stdout,
         ; and `--noinform' below keeps SBCL's own banner off it too.  The
         ; `model' verb writes reply octets to stdout and nothing else may.
+        (load "host/native/runtime-collector.lisp")
+        (load "host/native/runtime-bootstrap.lisp")
+        (fnn-runtime-bootstrap-image-prepare)
         (setq *print-startup-banner* nil))
 (defttag nil)
 (value-triple (prog2$ (cw "FN_NATIVE_BUILD_LOADED~%") :loaded))

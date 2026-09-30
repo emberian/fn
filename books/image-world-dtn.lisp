@@ -150,6 +150,7 @@
 (include-book "page-discovery-ledger")
 (include-book "cold-read-layout")
 (include-book "cold-guard-bootstrap")
+(include-book "page-read-pool-state")
 (include-book "../host/page-read-host")
 (include-book "page-read-executor")
 (include-book "page-file-lease")

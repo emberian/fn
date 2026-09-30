@@ -51,6 +51,7 @@
 
 ;;; --- the live stobjs (cl.py's xl-make-live-stobjs fills this at start) ----
 (defvar *xl-user-stobj-alist* nil)
+(defvar *xl-live-stobjs-initialized-p* nil)
 (defvar *xl-stobj-table-keys* (make-hash-table :test 'eq))
 (defun xl-make-stobj-table (size &optional rehash-size rehash-threshold)
   (apply #'make-hash-table :test 'eq

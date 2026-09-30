@@ -1821,11 +1821,11 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1902,
+    "books": 1905,
     "books_in_root_closure": 1885,
     "roots": 1817,
     "theorems": 29856,
-    "functions": 19120,
+    "functions": 19127,
     "assert_events": 24066,
     "must_fails": 2519,
     "prover_refusals": 0,
@@ -1833,15 +1833,15 @@
     "guards": {
       "verified": 3539,
       "declared-off": 2287,
-      "default-guarded": 10434,
-      "default-unguarded": 2860
+      "default-guarded": 10439,
+      "default-unguarded": 2862
     },
     "suspect_theorems": 1258,
     "export_hygiene_warnings": 350,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2572,
-    "host_names_warnings": 2193,
+    "include_hygiene_warnings": 2574,
+    "host_names_warnings": 2199,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -22844,6 +22844,32 @@
       "read_error": null
     },
     {
+      "book": "books/page-read-pool-state.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "page-read-ledger"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/page-read-resources.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -26935,6 +26961,58 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/runtime-bootstrap-admission.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "page-read-pool-state"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/runtime-operation-source.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "page-read-pool-state"
+      ],
       "system_includes": [],
       "suspects": [],
       "read_error": null
@@ -77927,6 +78005,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/runtime-bootstrap-admission.lisp",
+        "line": 4,
+        "include": "page-read-pool-state",
+        "included": "books/page-read-pool-state.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/runtime-operation-source.lisp",
+        "line": 4,
+        "include": "page-read-pool-state",
+        "included": "books/page-read-pool-state.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/scheduler-invariants.lisp",
         "line": 15,
         "include": "bp-workflow-invariants",
@@ -94282,7 +94374,7 @@
       },
       {
         "host": "host/native/build.lisp",
-        "line": 388,
+        "line": 390,
         "name": "assert-event",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
@@ -100889,6 +100981,48 @@
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
+        "host": "host/native/runtime-bootstrap.lisp",
+        "line": 7,
+        "name": "fnn-live-page-read-pool",
+        "source": "host/native/extent.lisp",
+        "reason": "defined in host/native/extent.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/runtime-bootstrap.lisp",
+        "line": 7,
+        "name": "make-fnn-runtime-collection",
+        "source": "host/native/runtime-collector.lisp",
+        "reason": "defined in host/native/runtime-collector.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/runtime-bootstrap.lisp",
+        "line": 7,
+        "name": "fnn-fixed-raw-callback",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/runtime-bootstrap.lisp",
+        "line": 17,
+        "name": "fnn-fixed-callback-fail",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/runtime-bootstrap.lisp",
+        "line": 17,
+        "name": "user-stobj-alist",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/runtime-bootstrap.lisp",
+        "line": 17,
+        "name": "fnn-core-mv",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
         "host": "host/native/signature-command.lisp",
         "line": 4,
         "name": "fnn-read-regular-bounded",
@@ -102306,15 +102440,15 @@
         "host": "host/page-executor-host.lisp",
         "line": 7,
         "name": "fn-owner-page-read-ledger",
-        "source": "host/page-read-host.lisp",
-        "reason": "defined in host/page-read-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+        "source": "books/page-read-pool-state.lisp",
+        "reason": "defined in books/page-read-pool-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/page-executor-host.lisp",
         "line": 7,
         "name": "fn-owner-page-read-keep-ledger",
-        "source": "host/page-read-host.lisp",
-        "reason": "defined in host/page-read-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+        "source": "books/page-read-pool-state.lisp",
+        "reason": "defined in books/page-read-pool-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/page-executor-host.lisp",
@@ -102362,8 +102496,8 @@
         "host": "host/page-file-lease-host.lisp",
         "line": 6,
         "name": "fn-owner-page-read-ledger",
-        "source": "host/page-read-host.lisp",
-        "reason": "defined in host/page-read-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+        "source": "books/page-read-pool-state.lisp",
+        "reason": "defined in books/page-read-pool-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/page-file-lease-host.lisp",
@@ -102383,8 +102517,8 @@
         "host": "host/page-file-lease-host.lisp",
         "line": 6,
         "name": "fn-owner-page-read-keep-ledger",
-        "source": "host/page-read-host.lisp",
-        "reason": "defined in host/page-read-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+        "source": "books/page-read-pool-state.lisp",
+        "reason": "defined in books/page-read-pool-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/page-file-lease-host.lisp",
@@ -102416,42 +102550,42 @@
       },
       {
         "host": "host/page-read-host.lisp",
-        "line": 11,
-        "name": "fn-prp-data",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/page-read-host.lisp",
-        "line": 11,
-        "name": "fn-prp-mode",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/page-read-host.lisp",
-        "line": 18,
+        "line": 15,
         "name": "member-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/page-read-host.lisp",
-        "line": 18,
+        "line": 15,
+        "name": "fn-prp-mode",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/page-read-host.lisp",
+        "line": 15,
         "name": "update-fn-prp-mode",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/page-read-host.lisp",
-        "line": 18,
+        "line": 15,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/page-read-host.lisp",
-        "line": 41,
+        "line": 30,
+        "name": "fn-prp-data",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/page-read-host.lisp",
+        "line": 38,
         "name": "update-fn-prp-data",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
@@ -102460,15 +102594,15 @@
         "host": "host/page-window-executor-host.lisp",
         "line": 7,
         "name": "fn-owner-page-read-ledger",
-        "source": "host/page-read-host.lisp",
-        "reason": "defined in host/page-read-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+        "source": "books/page-read-pool-state.lisp",
+        "reason": "defined in books/page-read-pool-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/page-window-executor-host.lisp",
         "line": 7,
         "name": "fn-owner-page-read-keep-ledger",
-        "source": "host/page-read-host.lisp",
-        "reason": "defined in host/page-read-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+        "source": "books/page-read-pool-state.lisp",
+        "reason": "defined in books/page-read-pool-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/page-window-executor-host.lisp",
@@ -102530,15 +102664,15 @@
         "host": "host/page-window-lease-host.lisp",
         "line": 7,
         "name": "fn-owner-page-read-ledger",
-        "source": "host/page-read-host.lisp",
-        "reason": "defined in host/page-read-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+        "source": "books/page-read-pool-state.lisp",
+        "reason": "defined in books/page-read-pool-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/page-window-lease-host.lisp",
         "line": 7,
         "name": "fn-owner-page-read-keep-ledger",
-        "source": "host/page-read-host.lisp",
-        "reason": "defined in host/page-read-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+        "source": "books/page-read-pool-state.lisp",
+        "reason": "defined in books/page-read-pool-state.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/page-window-lease-host.lisp",

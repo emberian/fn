@@ -4884,3 +4884,8 @@
 (definterface fn-par-host-accept-record-plan
   :class ::common-lisp-compliant
   :delegates fn-par-accept-record-plan)
+
+(definterface fn-owner-runtime-bootstrap-admit
+ :class :common-lisp-compliant :root :extract
+ :raw-guarded (5 (nil nil nil nil fn-page-read-pool)
+                 (nil nil fn-page-read-pool)))

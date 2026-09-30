@@ -10,15 +10,15 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1902 |
+| Books read | 1905 |
 | Certification roots in the Makefile | 1817 |
 | Books inside the root closure | 1885 |
 | `defthm` and `defthmd` events | 29856 |
-| `defun` events | 19120 |
+| `defun` events | 19127 |
 | Functions with verified guards | 3539 |
 | Functions declared `:verify-guards nil` and never verified | 2287 |
-| Functions left at the default with an explicit guard | 10434 |
-| Functions left at the default with no guard | 2860 |
+| Functions left at the default with an explicit guard | 10439 |
+| Functions left at the default with no guard | 2862 |
 | `assert-event` checks | 24066 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 350 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2572 |
-| Host-names warnings | 2193 |
+| Include-hygiene warnings | 2574 |
+| Host-names warnings | 2199 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -783,6 +783,7 @@ that `make certify` requests.
 | `books/page-read-executor.lisp` | root | 11 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/page-read-ledger.lisp` | root | 9 | 16 | 0/0/16/0 | 0 | 0 | 0 |
 | `books/page-read-ownership.lisp` | root | 12 | 11 | 0/0/11/0 | 0 | 0 | 0 |
+| `books/page-read-pool-state.lisp` | - | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `books/page-read-resources.lisp` | root | 7 | 11 | 0/0/11/0 | 0 | 0 | 1 |
 | `books/page-window-executor.lisp` | root | 12 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/page-window-lease.lisp` | root | 4 | 5 | 0/0/5/0 | 0 | 0 | 0 |
@@ -925,6 +926,8 @@ that `make certify` requests.
 | `books/retention-invariants.lisp` | root | 17 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/retention.lisp` | root | 55 | 45 | 41/0/4/0 | 0 | 0 | 2 |
 | `books/rev-onto.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/runtime-bootstrap-admission.lisp` | - | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/runtime-operation-source.lisp` | - | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/sasl.lisp` | root | 23 | 25 | 0/0/25/0 | 0 | 0 | 0 |
 | `books/scheduler-invariants.lisp` | root | 59 | 0 | 0/0/0/0 | 0 | 0 | 2 |
 | `books/scheduler-peers.lisp` | root | 26 | 22 | 1/0/21/0 | 0 | 0 | 0 |
