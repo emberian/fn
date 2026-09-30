@@ -103533,77 +103533,77 @@
       },
       {
         "host": "tools/extract/frontend.lisp",
-        "line": 332,
+        "line": 357,
         "name": "w",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/extract/frontend.lisp",
-        "line": 332,
+        "line": 357,
         "name": "get-event",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/extract/frontend.lisp",
-        "line": 384,
+        "line": 409,
         "name": "string-downcase",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/extract/frontend.lisp",
-        "line": 384,
+        "line": 409,
         "name": "guard",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/extract/frontend.lisp",
-        "line": 455,
+        "line": 480,
         "name": "*nil*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/extract/frontend.lisp",
-        "line": 474,
+        "line": 499,
         "name": "caar",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/extract/frontend.lisp",
-        "line": 565,
+        "line": 590,
         "name": "set-difference-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/extract/frontend.lisp",
-        "line": 565,
+        "line": 590,
         "name": "strip-cars",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/extract/frontend.lisp",
-        "line": 607,
+        "line": 632,
         "name": "open-output-channel",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/extract/frontend.lisp",
-        "line": 607,
+        "line": 632,
         "name": "newline",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "tools/extract/frontend.lisp",
-        "line": 607,
+        "line": 632,
         "name": "close-output-channel",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
