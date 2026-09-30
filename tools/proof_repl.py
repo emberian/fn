@@ -294,6 +294,9 @@ CRASH_MARKS = ("ABORTING from raw Lisp", "Unhandled memory fault", "Memory fault
                "debugger invoked on", "Heap exhausted", "Raw Lisp Break")
 RESEND_QUIET_SECONDS = 3.0
 STALE_SENTINEL = re.compile(re.escape(SENTINEL) + r" [0-9]+")
+RAW_DEBUGGER_PROMPT = re.compile(r"^\s*[0-9]+\](?:\s|$)", re.MULTILINE)
+ACL2_PROMPT = re.compile(r"^\s*ACL2\s+[!ps]*>", re.MULTILINE)
+PROTOCOL_ERROR = "ACL2 Error [Protocol]: "
 RECOVERED_NOTE = ("[raw-Lisp abort: ACL2 discarded the pending input and is back at "
                   "its prompt; the session is live (:pbt :max shows where the world is)]")
 
@@ -534,6 +537,7 @@ class Acl2:
         # group. Its unreaped PID cannot be reused for an unrelated group.
         self.pgid = self.process.pid
         self._terminated = False
+        self.protocol_error: str | None = None
         self.lines: queue.Queue = queue.Queue()
         self.counter = 0
         self.reader = threading.Thread(target=self._pump, daemon=True)
@@ -550,6 +554,15 @@ class Acl2:
     def alive(self) -> bool:
         return self.process.returncode is None and self.reader.is_alive()
 
+    def invalidate(self, collected: list[str], reason: str) -> tuple[str, bool]:
+        """A raw debugger can evaluate the sentinel without admitting ACL2 events."""
+        self.protocol_error = PROTOCOL_ERROR + reason + "; session invalidated; start fresh"
+        self.log.write(self.protocol_error + "\n")
+        self.log.flush()
+        collected.append(self.protocol_error + "\n")
+        self.kill()
+        return "".join(collected), False
+
     def send(self, form: str, timeout: float, quiet: float = RESEND_QUIET_SECONDS
              ) -> tuple[str, bool]:
         """Deliver one form; answer (what ACL2 printed, timed out?).
@@ -562,6 +575,8 @@ class Acl2:
         seconds, the sentinel is sent once more; a sentinel that was not
         swallowed after all shows up later as a stale marker and is dropped.
         """
+        if self.protocol_error:
+            return self.protocol_error + "\n", False
         assert self.process.stdin is not None
         self.counter += 1
         marker = f"{SENTINEL} {self.counter}"
@@ -574,6 +589,7 @@ class Acl2:
         deadline = time.monotonic() + timeout
         suspect = is_keyword_command(form)
         resent = False
+        recovery_prompt = False
         last_line = time.monotonic()
         while True:
             remaining = deadline - time.monotonic()
@@ -583,7 +599,7 @@ class Acl2:
                 line = self.lines.get(timeout=min(remaining, 0.5))
             except queue.Empty:
                 if not self.alive():
-                    return "".join(collected) + "\n[ACL2 exited]\n", False
+                    return self.invalidate(collected, "ACL2 exited before the completion marker")
                 if (suspect and not resent and time.monotonic() - last_line >= quiet):
                     resent = True
                     self.log.write(">>> (sentinel again: the first was swallowed)\n")
@@ -592,17 +608,25 @@ class Acl2:
                         self.process.stdin.flush()
                 continue
             if line is None:
-                return "".join(collected) + "\n[ACL2 exited]\n", False
+                return self.invalidate(collected, "ACL2 exited before the completion marker")
             last_line = time.monotonic()
             text = line.strip()
+            if "debugger invoked on" in line or RAW_DEBUGGER_PROMPT.search(line):
+                collected.append(line)
+                return self.invalidate(collected, "raw Lisp debugger is not the ACL2 event loop")
             if text == marker:
-                if resent and crashed("".join(collected)):
+                if crashed("".join(collected)) and not recovery_prompt:
+                    return self.invalidate(collected, "raw Lisp abort did not return to an ACL2 prompt")
+                if resent and recovery_prompt and crashed("".join(collected)):
                     collected.append(RECOVERED_NOTE + "\n")
                 return "".join(collected), False
             if STALE_SENTINEL.fullmatch(text):
                 continue  # a resent sentinel ACL2 did not swallow after all
             if any(mark in line for mark in CRASH_MARKS):
                 suspect = True
+                recovery_prompt = False
+            elif suspect and ACL2_PROMPT.search(line):
+                recovery_prompt = True
             collected.append(line)
 
     def kill(self) -> None:
@@ -657,7 +681,8 @@ def errored(output: str) -> bool:
     caught error.  A crash, ACL2 Halted, a FAILED banner, or error text with
     no summary after it (a query, a translation error) is a refusal.
     """
-    if any(mark in output for mark in CRASH_MARKS) or "ACL2 Halted" in output:
+    if (any(mark in output for mark in CRASH_MARKS) or "ACL2 Halted" in output
+            or RAW_DEBUGGER_PROMPT.search(output) or PROTOCOL_ERROR in output):
         return True
     if FAILED_BANNER in output:
         return True
@@ -1277,6 +1302,10 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
                 if active:
                     state["last_active"] = time.time()
                 answer = handle(request, acl2, state, limit)
+                if acl2.protocol_error:
+                    state["ready"] = False
+                    state["error"] = acl2.protocol_error
+                    state["ended"] = "invalidated ACL2 protocol"
                 if active:
                     state["last_active"] = time.time()
                 if request.get("op") == "stop" and request.get("reason"):
@@ -1302,6 +1331,9 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
             server.close()
         if acl2 is not None:
             acl2.kill()
+            if acl2.protocol_error:
+                state["error"] = acl2.protocol_error
+                state["ended"] = "invalidated ACL2 protocol"
         state["ready"] = False
         save()
         if bound:
