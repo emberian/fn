@@ -144,6 +144,62 @@ class BoundLaunchTests(unittest.TestCase):
         self.assertEqual(run.returncode, 2)
         self.assertIn("invalid bound FN selector", run.stderr)
 
+    def emit_package(self, *extra):
+        self.output = self.root / "package-binding.json"
+        command = [sys.executable, str(TOOL.with_name("bind_package.py")),
+                   "--output", str(self.output)]
+        for role, path in self.paths.items():
+            command.extend(["--" + role.replace("_", "-"), str(path)])
+        return subprocess.run(command + list(extra), env={"PATH": os.defpath},
+                              capture_output=True, text=True, timeout=10)
+
+    def test_emitted_package_binding_launches_actual_recording_runtime(self):
+        self.bind_environment()
+        run = self.emit_package("--environment", "FN_NATIVE_PROFILE=production",
+                                "--library", "FN_BLAKE3_LIBRARY=" + str(self.library))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        result = json.loads(run.stdout)
+        self.assertEqual(result["qualification"], "not-established")
+        self.assertEqual(result["sha256"], launch.digest(self.output))
+        self.manifest, self.expected = self.output, result["sha256"]
+        launched = self.run_cli()
+        self.assertEqual(launched.returncode, 0, launched.stderr)
+        self.assertEqual(json.loads(launched.stdout)["fn"]["FN_BLAKE3_LIBRARY"],
+                         str(self.library.resolve()))
+        self.assertEqual(self.capsule["units"], [])
+
+    def test_emitter_never_replaces_existing_binding(self):
+        run = self.emit_package()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        before = self.output.read_bytes()
+        run = self.emit_package()
+        self.assertEqual(run.returncode, 2)
+        self.assertEqual(self.output.read_bytes(), before)
+
+    def test_emitter_requires_actual_matching_capsule_export(self):
+        self.capsule["coordinate"]["profile_sha256"] = "0" * 64
+        self.paths["capsule"].write_text(json.dumps(self.capsule))
+        run = self.emit_package()
+        self.assertEqual(run.returncode, 2)
+        self.assertIn("capsule export", run.stderr)
+        self.assertFalse(self.output.exists())
+        self.assertEqual(list(self.root.glob(".fn-binding-*")), [])
+
+    def test_emitter_requires_all_artifacts_to_exist(self):
+        self.paths["capsule"].unlink()
+        run = self.emit_package()
+        self.assertEqual(run.returncode, 2)
+        self.assertFalse(self.output.exists())
+
+    def test_emitter_refuses_duplicate_or_unbound_selectors(self):
+        for args in (("--environment", "FN_A=one", "--environment", "FN_A=two"),
+                     ("--environment", "FN_BLAKE3_LIBRARY=/unhashed"),
+                     ("--environment", "LD_PRELOAD=/unbound")):
+            with self.subTest(args=args):
+                run = self.emit_package(*args)
+                self.assertEqual(run.returncode, 2)
+                self.assertFalse(self.output.exists())
+
     def test_actual_process_gets_only_fixed_geometry_and_literal_app_arguments(self):
         run = self.run_cli("--", "--fn", "store", "path with spaces", "$(literal)",
                            override="--dynamic-space-size 4GB --control-stack-size 65536KB")
