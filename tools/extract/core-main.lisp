@@ -22,9 +22,12 @@
 ;; ACL2's global compilation policy: the image compiles host/native under it
 (proclaim '(optimize (compilation-speed 0) (speed 3) (space 1) (safety 0)))
 (load (cl-user::xl-path "host-block.lisp"))
-(setq acl2::*xl-user-stobj-alist* nil)
 (when (sb-ext:posix-getenv "XL_PROF") (require :sb-sprof))
 (defun cl-user::xl-toplevel ()
+  ;; The saved native baseline authorizes launch before profiling, ordinary
+  ;; argument handling or facility startup. Refusal/uncertainty exits here;
+  ;; the native trampoline returns only after actual ACL2 acceptance.
+  (acl2::fnn-runtime-bootstrap-startup)
   ;; a profiling build (XL_PROF at build and at run): a statistical profile of
   ;; the command, reported to stderr at exit.  A measurement tool only.
   (when (and (find-package "SB-SPROF") (sb-ext:posix-getenv "XL_PROF"))
@@ -46,6 +49,8 @@
                                                                    (sb-ext:exit :code 99 :abort t)))))
                             :thread t)
          (parse-integer secs)))))
+  ;; This is an idempotent lookup after image construction. The saved native
+  ;; bootstrap and the live registry must keep the same stobj identities.
   (acl2::xl-make-live-stobjs)
   ;; A developer core's evaluation hook for the extraction gate's boundary
   ;; probes (tools/extract/probes.py run-core): `fn-core --xl-load FILE'
