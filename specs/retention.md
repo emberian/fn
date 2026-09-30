@@ -79,6 +79,14 @@ never roll back within the owner lifetime. The grant must be cleared at owner
 reinstallation; stale callbacks cannot claim a later grant. Complete joins to
 that isolation and the existing logged-prefix recovery proof remain open.
 
+The protected ordinary-refusal trace reference (`identity-reserve-trace.lisp`)
+composes the actual reservation gate with the actual reserve/refuse functions.
+From a ready Store whose promised release IDs are already funded, every bounded
+trace retains readiness and that headroom; records, groups and capacity stay
+unchanged. Its reachable twenty-refusal witness reaches the protected boundary
+and still admits the exact release. The reference driver is not a served or
+guard-verified implementation and does not establish callback or crash isolation.
+
 If a release reservation fails before durable publication, its debt stays open
 while its live ID is spent; another grant requires enough remaining identities
 and other resources. Finite one-ID-per-release funding cannot promise eventual

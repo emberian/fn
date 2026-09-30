@@ -324,6 +324,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/refusal-effect \
 	books/refusal-headroom \
 	books/store-identity-reserve \
+	books/identity-reserve-trace \
+	tests/acl2/identity-reserve-trace-tests \
 	tests/acl2/store-identity-reserve-tests \
 	tests/acl2/refusal-headroom-tests \
 	books/closure-open \

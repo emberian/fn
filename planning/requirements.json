@@ -5805,9 +5805,11 @@
         "tests/acl2/refusal-headroom-tests.lisp",
         "books/store-identity-reserve.lisp",
         "tests/acl2/store-identity-reserve-tests.lisp",
-        "tests/test_native_identity_reserve.py"
+        "tests/test_native_identity_reserve.py",
+        "books/identity-reserve-trace.lisp",
+        "tests/acl2/identity-reserve-trace-tests.lisp"
       ],
-      "implementation_note": "Persistent source draft implements operation-derived one-ID release grants, ordinary carried-forward-debt protection, new-undertaking prepayment and exact single-use owner binding. Source tests pass near the actual uint32 ceiling through open/recovery and reserve/refuse. OPEN: matching host/runtime refinement, stale-callback/incarnation isolation and existing logged-prefix recovery joins (PRF269 permits cross-crash reuse of neverlogged speculative metadata), actual local producer census/grants, current profile/codec/runtime joins and full W8."
+      "implementation_note": "Persistent source draft implements operation-derived one-ID release grants, ordinary carried-forward-debt protection, new-undertaking prepayment and exact single-use owner binding. Source tests pass near the actual uint32 ceiling through open/recovery and reserve/refuse. OPEN: matching host/runtime refinement, stale-callback/incarnation isolation and existing logged-prefix recovery joins (PRF269 permits cross-crash reuse of neverlogged speculative metadata), actual local producer census/grants, current profile/codec/runtime joins and full W8. Protected ordinary-refusal trace component now composes the actual fn-idr-reservation gate with fn-sn-refuse-reservation/fn-olr-sn-reserve. Under ready-state and already-funded release headroom, arbitrary bounded traces preserve both readiness and promised identity headroom; records/groups/capacity are an unconditional frame. Fresh idrt2 source replay passed four literal witnesses, including both hypothesis removals. This logical reference driver is not guard-verified or served; host incarnation, local grants and full continuation remain open."
     }
   ]
 }
