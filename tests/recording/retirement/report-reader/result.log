@@ -1,0 +1,12 @@
+Runtime SBCL 2.6.8
+PASS input=0 valid=T output=0 exit=0 reader-explicit-vector-allocations=0
+PASS input=24 valid=T output=24 exit=0 reader-explicit-vector-allocations=0
+PASS input=600 valid=T output=600 exit=0 reader-explicit-vector-allocations=0
+PASS input=13 valid=T output=13 exit=0 reader-explicit-vector-allocations=0
+PASS input=602 valid=NIL output=0 exit=4 reader-explicit-vector-allocations=0
+PASS input=603 valid=NIL output=0 exit=4 reader-explicit-vector-allocations=0
+PASS input=603 valid=NIL output=0 exit=4 reader-explicit-vector-allocations=0
+PASS input=604 valid=NIL output=0 exit=4 reader-explicit-vector-allocations=0
+PASS input=603 valid=NIL output=0 exit=4 reader-explicit-vector-allocations=0
+PASS input=601 valid=NIL output=0 exit=4 reader-explicit-vector-allocations=0
+PASS actual bounded host consumer / real binary streams; extracted ACL2 bodies and recording dispatcher, no activation/funding claim

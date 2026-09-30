@@ -195,3 +195,60 @@ The caller publishes its final run status after caller/Store teardown, using
 the final settlement exit. A late physical close uncertainty cannot follow an
 earlier accepted status. Actual caller recording fixtures inject log/Store
 close faults and require only final uncertain3 with retained authority.
+
+The additive actual CLI consumer `fnn-operator-read-retire-report-bounded`
+uses a fixed three-slot validation cursor with at most four pending octets.
+It reads one octet per validation turn, observes valid EOF, rewinds the same
+opened descriptor, then reads and writes one octet per copy turn. ACL2's
+`fn-oru-reader-step` emits no output during validation or rewind; an output
+requires a validated cursor and the copy phase. The complete logical reader
+fold accepts exactly when the actual uncapped `fn-wildmat-decode-aux` accepts.
+The command-token limit is not a report limit. RFC 3977 section 9 supplies
+this UTF-8 requirement; malformed, overlong, surrogate, out-of-range and
+truncated encodings remain distinct from successful reading.
+
+Normal narrow manifest `certify-20260930T145454Z-706713` covers the reader and
+its tests, with four matching source subjects (two fresh roots and two reused
+dependencies). Complete positive and affirmative invariant/octet/proper-prefix/
+width/phase removal witnesses accompany the source boundaries. The scalar and
+exact consumed rest of a complete code-unit prefix also refine the actual
+shared next decoder. Internal accumulator and prefix-acceptance support are
+not advertised as keystones.
+
+The literal additive consumer and extracted ACL2 bodies passed real binary
+stream/codecs recording tests on SBCL 2.6.8: empty, all four widths including
+U+10FFFF, and a 600-octet valid report reproduce the original bytes; six
+malformed/truncated encodings after a 600-octet valid prefix produce zero
+output. The reader requests no explicit output vector in these witnesses. The
+recording dispatcher and xargs/MV normalization are explicit; this is neither
+native-image qualification nor a universal library/cost proof. The public
+`fnn-operator-execute-retire` still selects its previous whole-buffer reader.
+Selecting the successor requires the literal SBCL decode/reencode byte
+boundary, an immutable opened report across both passes, I/O/fault and output
+effects, descriptor close lifetime, and selected-runtime buffer/frame/GC grants.
+The frozen report writer and final producer fence remain open independently.
+
+The separate normal four-subject scalar-domain manifest
+`certify-20260930T151121Z-884226` proves successful actual shared UTF-8 next
+results are natural and at most 1114111, without a host supplied width.
+All four width maxima and a success-hypothesis removal witness pass. This
+provides only the decoded scalar domain for the reader primitive roster;
+report counts, charges and decimal operands still need their actual installed
+producer/profile relation, and no multiplication/frame/GC/I/O tariff follows.
+
+The additive consumer is unreachable-in-composition until the public CLI
+selects it. The authoritative native build includes the normally certified
+low reader leaf solely to provide its actual core ABI; regenerated native
+image/extractor umbrellas have no new full-world certificate or image claim.
+
+The recording also preserves the literal outcome-class boundary: successful
+reading returns accepted0; malformed UTF-8 matches the prior SBCL decoder
+fault4 via the actual fnn-exit-code-for and ACL2 outcome table. It is not
+misclassified as refused1 or fenced/uncertain3. BOM/noncharacter UTF-8
+witnesses also reproduce bytes without normalization.
+
+The additive reader retained-prefix model counts the two adopted three-slot
+cursors and this turn's singleton output: at most fifteen cells under its
+fixed ready predicate. It does not count temporary decoder objects, host
+arguments, stream buffers, frames/GC or descriptor lifetime. Those actual
+allocation and effect obligations remain open before public selection.

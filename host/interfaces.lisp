@@ -4892,3 +4892,17 @@
 (definterface fn-owner-page-file-pin-file :class :common-lisp-compliant)
 (definterface fn-owner-page-file-pin-read :class :common-lisp-compliant
   :keystones ((fn-prd-admit-preserves-pool-funding :via fn-prd-admit)))
+
+; Additive two-pass retire-report reader consumer; public CLI selection and
+; selected-runtime/library/descriptor lifetime funding remain open.
+(definterface fn-oru-start
+  :class :common-lisp-compliant
+  :keystones (fn-oru-start-establishes-invariant))
+
+(definterface fn-oru-reader-action
+  :class :common-lisp-compliant)
+
+(definterface fn-oru-reader-step
+  :class :common-lisp-compliant
+  :keystones (fn-oru-reader-step-preserves-invariant
+              fn-oru-reader-output-needs-validation-and-rewind))

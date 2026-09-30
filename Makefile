@@ -1305,6 +1305,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/operator-report-fields \
 	books/operator-report-fields-text \
 	books/operator-report-fields-native-reference \
+	books/operator-report-reader \
+	books/operator-report-reader-space \
+	tests/acl2/operator-report-reader-space-tests \
+	books/operator-report-reader-domain \
+	tests/acl2/operator-report-reader-domain-tests \
+	tests/acl2/operator-report-reader-tests \
 	books/operator-report-descriptors \
 	books/owner-report-owner-accessors \
 	books/owner-report-selectors \

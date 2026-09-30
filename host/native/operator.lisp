@@ -582,6 +582,33 @@ fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
 ;;; window, books/owner-retire.lisp fn-oret-drain-step-ends-by-the-window,
 ;;; and its stop by the deadline, PRF-357), then prints the report the owner
 ;;; fenced before it stopped.  No report is uncertain, never success.
+;;; Additive bounded report-reader consumer. Public retire selection remains
+;;; OPEN until the selected SBCL decode/reencode byte boundary, immutable
+;;; opened-report descriptor and runtime buffer/frame/lifetime grants are
+;;; joined. This function is the concrete consumer subject for that boundary;
+;;; the existing caller below is not silently relabeled as bounded.
+(defun fnn-operator-read-retire-report-bounded (in out)
+  (let ((cursor (fnn-core 'fn-oru-start)) (phase :validate))
+    (loop
+      (case (fnn-core 'fn-oru-reader-action cursor phase)
+        ((:read-validate :read-copy)
+         (let ((observed (read-byte in nil nil)))
+           (destructuring-bind (next next-phase output)
+               (fnn-call 'fn-oru-reader-step cursor phase (or observed 0)
+                         (null observed) t)
+             (setf cursor next phase next-phase)
+             (when output (write-byte (car output) out)))))
+        (:rewind
+         (destructuring-bind (next next-phase output)
+             (fnn-call 'fn-oru-reader-step cursor phase 0 nil
+                       (file-position in 0))
+           (declare (ignore output))
+           (setf cursor next phase next-phase)))
+        (:close-valid (finish-output out) (return +fnn-exit-ok+))
+        (:close-invalid (fnn-fault "ACL2 refused malformed retire report UTF-8"))
+        (:close-error (fnn-fault "retire report descriptor did not rewind"))
+        (otherwise (fnn-fault "ACL2 returned an unknown report-reader action"))))))
+
 (defun fnn-operator-execute-retire (result root)
   (let ((code (fnn-operator-execute-owner-request
                result root
