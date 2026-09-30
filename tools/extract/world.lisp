@@ -200,6 +200,8 @@
 (include-book "../../books/store-log-walk-once")
 (include-book "../../books/store-log-extend")
 (include-book "../../books/store-init-log-publication")
+(include-book "../../host/page-read-host")
+(include-book "../../books/page-read-executor")
 (include-book "../../books/history-columns-relation")
 (include-book "../../books/open-frontier")
 (include-book "../../books/poster-bytes")

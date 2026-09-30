@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6437,6 +6437,32 @@
         "tests/acl2/native-operator-tests.lisp"
       ],
       "execution_scope": "Model/adapter source REPL only; native scenario and actual allocator/profile refinement pending. This is not a checkpoint/suffix rescue completion claim."
+    },
+    {
+      "id": "SCN-1004",
+      "title": "Fixed funded executor jobs remain owned through cancel, stale reuse and startup failure",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Install explicit operator worker/descriptor/read/file budgets, baseline-fund and preallocate fixed executors and tables before owner recovery.",
+        "Hold actual pread on every admitted worker and cancel clients repeatedly; issue another read while the pool is full.",
+        "Release one worker result, verify owner settlement then reuse that worker for a newer exact token; deliver its older token again.",
+        "Fail executor startup partway, exercise process death with queued/running/returned jobs, and restart without publishing old results."
+      ],
+      "expected": [
+        "Admission refuses before new buffer/thread/job allocation when all slots remain charged. Cancellation neither releases the slot nor closes the held file.",
+        "One admitted token owns one executor slot. Returned result stays charged until matching settled I/O and physical publication/discard.",
+        "Old token cannot return or free a reused worker; cached buffer remains charged until actual eviction. Permanent executor/table storage remains baseline-funded through shutdown.",
+        "Partial startup tears down only resources actually created, joins created workers and fences ambiguous close; restart derives fresh process-local identity state."
+      ],
+      "evidence": [
+        "books/page-read-executor.lisp",
+        "tests/acl2/page-read-executor-tests.lisp"
+      ],
+      "execution_scope": "Pure executor model source REPL and folded literal teeth only. Native executor/refinement, real process-death cuts and supported funding/profile consumer pending; not a full P12 claim."
     }
   ]
 }

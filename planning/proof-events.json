@@ -17300,6 +17300,14 @@
         {
           "kind": "theorem",
           "name": "fn-pio-successive-file-issues-have-distinct-identities"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-admitted-resource-token-establishes-owned-read"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-bounded-file-issue-spends-a-fresh-representable-name"
         }
       ]
     },
@@ -17568,6 +17576,28 @@
         }
       ],
       "pending_subject": "Host launcher calls component. Explicit supported policy factory/init consumer and actual image/native evidence pending; positive explicit-policy operator branch currently unreachable-in-composition."
+    },
+    {
+      "id": "PRF-1080",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pxe-assignment-requires-idle-and-fresh-job"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pxe-stale-completion-cannot-return-a-reused-worker"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pxe-commit-requires-returned-settled-exact-job"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pxe-acquired-token-cannot-own-a-second-worker"
+        }
+      ],
+      "pending_subject": "Native executor invokes the subjects through named answer/effect adapter equations. Persistent installation remains unreachable-in-composition until funded startup constructs the workers; matching manifest/image and productive allocator/profile evidence pending."
     }
   ]
 }

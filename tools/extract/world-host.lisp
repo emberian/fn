@@ -9,6 +9,8 @@
           (set-compiler-enabled nil state)
           (value :fn-image-world-prologue)))
 (ld "../../host/store-host.lisp" :ld-error-action :error)
+(ld "../../host/page-read-host.lisp" :ld-error-action :error)
+(ld "../../host/page-executor-host.lisp" :ld-error-action :error)
 (ld "../../host/store-node-host.lisp" :ld-error-action :error)
 (ld "../../host/checkpoint-host.lisp" :ld-error-action :error)
 (ld "../../host/config-host.lisp" :ld-error-action :error)

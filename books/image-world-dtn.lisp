@@ -146,6 +146,8 @@
 (include-book "store-log-segments")
 (include-book "store-log-extend")
 (include-book "store-init-log-publication")
+(include-book "../host/page-read-host")
+(include-book "page-read-executor")
 (include-book "history-columns-relation")
 (include-book "open-frontier")
 (include-book "poster-bytes")
