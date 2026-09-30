@@ -343,9 +343,9 @@ class Lab:
     def path(self, name):
         return self.work / name
 
-    def fn(self, tag, *args, timeout=180):
+    def fn(self, tag, *args, timeout=180, image=None):
         log = self.path("{}.log".format(tag))
-        out = subprocess.run([str(self.image), "--fn", *map(str, args)],
+        out = subprocess.run([str(image or self.image), "--fn", *map(str, args)],
                              capture_output=True, text=True, timeout=timeout,
                              env=self.env, cwd=str(ROOT))
         log.write_text("$ fn {}\n{}{}\n# rc={}\n".format(
@@ -353,14 +353,15 @@ class Lab:
         self.logs[tag] = log
         return out
 
-    def spawn(self, tag, *args):
+    def spawn(self, tag, *args, image=None):
         log = self.path("{}.log".format(tag))
         handle = log.open("wb")
         handle.write(("$ fn {}\n".format(" ".join(map(str, args)))).encode())
         handle.flush()
-        proc = subprocess.Popen([str(self.image), "--fn", *map(str, args)],
+        proc = subprocess.Popen([str(image or self.image), "--fn", *map(str, args)],
                                 stdout=handle, stderr=subprocess.STDOUT,
                                 env=self.env, cwd=str(ROOT))
+        handle.close()
         self.procs.append(dict(tag=tag, pid=proc.pid, proc=proc))
         self.logs[tag] = log
         return proc, log
@@ -393,6 +394,45 @@ class Lab:
             entry["stopped"] = "exited rc={}".format(proc.returncode)
 
 
+def post_producer_articles(lab, image, store, articles):
+    """Post through the production owner; retrieve the core's served bytes.
+
+    Stop the owner before the caller opens Store through FNWF or BP.
+    ARTICLES is (tag, message-id, payload-path); input bytes are never used
+    as a substitute for the injected article.
+    """
+    from tests.native_harness import Client
+    port = free_port()
+    config = lab.path("producer.toml")
+    config.write_text('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
+                      '[control]\npath = "{}"\n[log]\npath = "{}"\n'.format(
+                          store, port, lab.path("producer.sock"),
+                          lab.path("producer-service.log")), encoding="ascii")
+    out = lab.fn("producer-path", "operator", config, "policy", "set",
+                 "path-identity", "sender.bp.gate.invalid", image=image)
+    if out.returncode:
+        raise RuntimeError("producer policy refused or uncertain: rc={}".format(out.returncode))
+    owner, log = lab.spawn("producer-owner", "operator", config, "run", image=image)
+    served = {}
+    try:
+        if not lab.wait_log(log, r"LISTENING ", 120):
+            raise RuntimeError("producer owner did not become ready")
+        for tag, message_id, payload in articles:
+            out = lab.fn(tag, "operator", config, "post", "--message-id", message_id,
+                         "--payload", payload, "--group", "fn.test", image=image)
+            if out.returncode:
+                raise RuntimeError("producer post refused or uncertain: rc={}".format(out.returncode))
+            with Client(port) as client:
+                article = client.article(message_id)
+            if article is None:
+                raise RuntimeError("producer core did not serve posted article")
+            lab.path(tag + ".stored-article").write_bytes(article)
+            served[message_id] = article
+        return served
+    finally:
+        lab.stop(owner)
+
+
 def author_request(article):
     """ACL2 authors the request: a developer image's own session
     (tests/native_harness.Acl2Session; FN_NATIVE_DEVELOPER_HOST names it)."""
@@ -407,6 +447,8 @@ def author_request(article):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--image", required=True)
+    ap.add_argument("--producer-image", required=True, type=Path,
+                    help="matching DEFAULT production image for operator posting and ARTICLE retrieval")
     ap.add_argument("--dtn7-repo", type=Path)
     ap.add_argument("--work", required=True, type=Path)
     ap.add_argument("--relays", type=int, default=1, choices=(0, 1, 2))
@@ -429,7 +471,7 @@ def main(argv=None):
                          "`releases-for' the receiver's EID, so a receipt it "
                          "relays may release the obligation; `none' leaves "
                          "only `carries', and the receipt must release nothing")
-    ap.add_argument("--signed-receipts", type=Path,
+    ap.add_argument("--signed-receipts", type=Path, required=True,
                     help="signed receipts: B signs its receipts with its own keys, "
                          "A enrolls them (this DEFAULT image's control socket), "
                          "A's receiver boundary names B's principal as its receipt "
@@ -444,7 +486,9 @@ def main(argv=None):
     if args.relays and not args.dtn7_repo:
         ap.error("--dtn7-repo is required unless --relays 0")
     lab = Lab(args)
-    report = dict(image=str(lab.image), relays=args.relays, dtn_time_ms=lab.wall, native=args.native,
+    report = dict(producer_image=str(args.producer_image.resolve()),
+                  producer_image_sha256=hashlib.sha256(args.producer_image.read_bytes()).hexdigest(),
+                  image=str(lab.image), relays=args.relays, dtn_time_ms=lab.wall, native=args.native,
                   topology=["fn-a"] + ["dtn7-r{}".format(i + 1)
                                        for i in range(args.relays)] + ["fn-b"])
     if args.relays:
@@ -454,8 +498,7 @@ def main(argv=None):
             capture_output=True, text=True).stdout.strip()
     body = b"".join(b"line %04d of the m4 application receipt article\r\n" % i
                     for i in range(120))
-    article = (b"Path: sender.bp.gate.invalid!not-for-mail\r\n"
-               b"From: sender@example.invalid\r\nNewsgroups: fn.test\r\n"
+    article = (b"From: sender@example.invalid\r\nNewsgroups: fn.test\r\n"
                b"Subject: m4 application receipt across dtn7\r\n"
                b"Date: Thu, 24 Sep 2026 20:00:00 +0000\r\n"
                b"Message-ID: " + MSGID + b"\r\n\r\n" + body)
@@ -498,10 +541,22 @@ def main(argv=None):
         setup = []
         for store in (a_store, b_store):
             setup.append(lab.fn("setup-init-" + store.name, "store", store, "init", "fn.test").returncode)
+        if any(setup):
+            raise RuntimeError("store initialization refused or uncertain: {}".format(setup))
         (lab.path("article")).write_bytes(article)
+        producer_articles = [("setup-post", MSGID.decode(), lab.path("article"))]
+        for work, msgid in extra_works:
+            payload = lab.path(work + ".article")
+            payload.write_bytes(article.replace(MSGID, msgid.encode()).replace(
+                b"m4 application receipt across dtn7", work.encode()))
+            producer_articles.append(("setup-post-" + work, msgid, payload))
+        stored = post_producer_articles(lab, args.producer_image.resolve(), a_store,
+                                        producer_articles)
+        article = stored[MSGID.decode()]
+        report["producer_articles"] = {
+            mid: dict(octets=len(value), sha256=hashlib.sha256(value).hexdigest())
+            for mid, value in stored.items()}
         for tag, argv in (
-            ("setup-post", ("store", a_store, "post", MSGID.decode(), lab.path("article"),
-                            "-", "-", "fn.test")),
             ("setup-wf-init", ("app-journal", "workflow-init", a_store, a_wf, SENDER,
                                RECEIVER, "native-policy", RECEIVER, 3600000,
                                "origin-native", "wire-auth")),
@@ -511,12 +566,7 @@ def main(argv=None):
             ("setup-undertake", ("bp-obligation", "undertake", a_store, a_wf, WORK, 3))):
             setup.append(lab.fn(tag, *argv).returncode)
         for i, (work, msgid) in enumerate(extra_works):
-            extra = article.replace(MSGID, msgid.encode()).replace(
-                b"m4 application receipt across dtn7", work.encode())
-            lab.path(work + ".article").write_bytes(extra)
             for tag, argv in (
-                ("setup-post-" + work, ("store", a_store, "post", msgid,
-                                        lab.path(work + ".article"), "-", "-", "fn.test")),
                 ("setup-enqueue-" + work, ("app-journal", "workflow-enqueue", a_store, a_wf,
                                            2 + i, 0, work, msgid, "forward-" + work,
                                            RECEIVER, "native-policy", "terms-native")),
