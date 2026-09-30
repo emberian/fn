@@ -1870,11 +1870,11 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1977,
+    "books": 1978,
     "books_in_root_closure": 1938,
     "roots": 1866,
-    "theorems": 30249,
-    "functions": 19290,
+    "theorems": 30251,
+    "functions": 19291,
     "assert_events": 24064,
     "must_fails": 2519,
     "prover_refusals": 0,
@@ -1882,14 +1882,14 @@
     "guards": {
       "verified": 3547,
       "declared-off": 2350,
-      "default-guarded": 10527,
+      "default-guarded": 10528,
       "default-unguarded": 2866
     },
     "suspect_theorems": 1266,
     "export_hygiene_warnings": 348,
     "enabled_projection_warnings": 55,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2712,
+    "include_hygiene_warnings": 2713,
     "host_names_warnings": 2193,
     "hand_written_record_warnings": 18
   },
@@ -16182,6 +16182,33 @@
         "index-publication-shape",
         "index-range-controller",
         "over-row-state"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/index-range-render-custody.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 2,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "index-range-controller",
+        "receiver-render-custody"
       ],
       "system_includes": [],
       "suspects": [],
@@ -78672,6 +78699,13 @@
         "line": 7,
         "include": "over-row-state",
         "included": "books/over-row-state.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/index-range-render-custody.lisp",
+        "line": 4,
+        "include": "index-range-controller",
+        "included": "books/index-range-controller.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
