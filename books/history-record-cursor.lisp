@@ -435,7 +435,8 @@
 (local
  (defthm fn-hrcur-octet-listp-append
    (implies (and (fn-scc-octet-listp a) (fn-scc-octet-listp b))
-            (fn-scc-octet-listp (append a b)))))
+            (fn-scc-octet-listp (append a b)))
+   :hints (("Goal" :in-theory (enable fn-scc-octet-listp)))))
 
 (local
  (defun fn-hrcur-prefix-ind (n x)
@@ -476,7 +477,7 @@
                      (and (not (consp left)) left)))
             (not (fn-scc-octet-listp x)))
    :hints (("Goal" :use ((:instance fn-scc-octet-listp-facts))
-            :in-theory (disable nthcdr fn-scc-octet-listp-facts)))))
+            :in-theory (e/d (fn-scc-octetp) (nthcdr fn-scc-octet-listp-facts))))))
 
 (local
  (defthm fn-hrcur-nthcdr-consp-length
