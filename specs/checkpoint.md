@@ -405,3 +405,12 @@ ACL2 addressing seam for eliminating the native by-address hash. Registered
 reader extents already include the FNSI base; their relative requests must not
 add it again. The physical/controller layer still owns matching request tokens,
 short/ambiguous I/O verdicts and cancellation/pin lifetime.
+
+The MKEY column uses the existing salted32-bit FNV over Message-ID characters.
+`books/history-key-cursor.lisp` (PRF-1096) supplies a bounded one-byte core and a
+resident string client. Initial, residual and terminal refinements connect it
+to `fn-hist-hash` and `fn-hp-mkey`; scalar hash domain and progress are preserved.
+Cold string spans supply one authenticated source byte to the same core,
+without whole-string construction. Capture/root/source-position authority
+belongs to the surrounding source cursor. Absent Message-IDs keep the existing
+zero key; a present string returns one plus its FNV result. No format changes.
