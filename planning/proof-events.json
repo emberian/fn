@@ -17806,6 +17806,28 @@
           "name": "fn-fc-temporary-mode-refusal-closes-without-stopping"
         }
       ]
+    },
+    {
+      "id": "PRF-1135",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-fragment-outcome-refines-ordered-send"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfs-send-observations-failed-only-at-first-transfer"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1136",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-orri-recover-installs-historical-reader-relation"
+        }
+      ]
     }
   ]
 }

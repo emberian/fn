@@ -608,3 +608,46 @@ alpha. A nonempty accepted ARTICLE followed by a group-creation configuration
 checks the full positive; corrupted-state witnesses remove either input type,
 and a valid-state witness removes incoming alpha. Event-bearing configured
 replay, opening success and physical writer/load/owner composition remain open.
+
+
+After capacity computation, `fn-hcl-admit` also checks that the entire canonical
+image, `16384*(1+4*column-cap+pool-cap)`, fits the current u64 image-byte domain.
+Valid individual region lengths do not imply this after power-of-two rounding.
+This final check precedes emission and is separate from physical layout and
+runtime/profile file-extent admission. The same component emits one of the four
+scalar-column words via `fn-hcl-put`; its effect is exactly the corresponding
+`fn-hp-cells-of` entry, with per-row pad8 and overflow refusal preserved.
+
+
+`books/history-pool-columns.lisp` extends PRF-1096 with an actual twelve-cell
+pool-to-column dispatcher. `fn-hpcx-begin(count, pool, token, capture, lease)`
+retains the admitted census scalars and independent capture/resource references.
+The source token keeps the existing natural epoch, two-cell capture ticket/count,
+pass and ordinal API, extracted verbatim to `snapshot-source-token.lisp`.
+`fn-hpcx-offer(cursor, ordinal, source, token, key)` accepts only the expected
+ordinal in need-row phase with matching scalar source identity and u64 producer
+MKEY. It does not authenticate a source, rescan a row or hash a Message-ID.
+
+`fn-hpcx-tick` returns a verdict, bounded summary, next cursor and five buffers.
+A pool tick calls actual `fn-hpe-tick`. Its prepared exact length is captured
+once; a scalar `fn-hcc-row` check rejects unrepresentable padded offsets/counts,
+census excess or a final pool total different from census before any column
+writes. Columns 0..3 call existing `fn-hcl-cell` and `fn-hpq-put`, storing key,
+length, previous pool offset and padded length separately. One tick stores at
+most one cell. Full pages yield unchanged and keep the pending column across
+an outer reset. The row ordinal and cumulative offset advance only after
+column3 stores. Pending and terminal offers are stale, preventing double count.
+The outer producer remains responsible for canonical `fn-hcl-admit` after
+capacity rounding, authenticated source/MKEY attribution and funded ownership.
+
+Named conditional boundaries connect actual prepared length to the current
+codec count and each stored column prefix to `fn-hp-cells-of`. The dispatcher
+preserves shape, all five concrete buffer invariants and their identities,
+and capture/resource references. SCN-1007 has reachable partial/aligned rows,
+column1 full/reset/resume, stale offers, complete prefix/attribution literal
+premise removals, and separately labelled logical width-edge mutations. The
+page-full phase premise was removed only after proving the general unchanged
+boundary. The child count invariant is carried proof state, never a runtime
+whole-row validator. This source library has no host caller. Whole-producer
+stream/terminal refinement, full cold encoder, progress, funding, physical I/O
+and publication remain open under the original preparation contract.
