@@ -141,9 +141,13 @@
          (equal (fn-ovw-expand (fn-nntp-result-effects cat) *scct-a* *scct-c*)
                 (fn-nntp-result-effects pinned))
          (equal (take 3 (cadr (car (fn-nntp-result-effects pinned)))) (list 50 50 52))
-         (< 3 (len (fn-nntp-result-effects (fn-ovw-expand-result cat *scct-a* *scct-c*))))))
+         (< 3 (len (cadr (car (fn-nntp-result-effects pinned)))))
+         ;; the cursor itself: group fn.test, numbers 1..3 (the range 1-3
+         ;; clamped to the group's next number), view 3, OVER, status owed
+         (equal (car (fn-nntp-result-effects cat))
+                (fn-ovw-cursor-effect (fn-ovw-cursor "fn.test" 1 3 3 nil t)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-ovw-expand fn-ovw-expand-result fn-ovw-cursor-effectp
+  :hints (("Goal" :in-theory (enable fn-ovw-expand fn-ovw-cursor-effect fn-ovw-cursor-effectp
                                      fn-ovw-cursor-octets fn-ovw-lines fn-ovw-reply fn-ovw-status
                                      fn-ovw-empty-text fn-ovw-cursor))))
 
@@ -182,14 +186,17 @@
 ;; states them for the carried read).  Each attempt runs in the keystone and
 ;; the minimal theory, where the complete statement proves (the control
 ;; below): what fails is the keystone's use without the hypothesis.
+;; The conclusion is the keystone's since lane join-f2-12: the results'
+;; components, the effects modulo the OVER cursor (fn-scr-tls-agrees).
 (defthm scct-read-span-control
   (implies (and (fn-ocl-relation oc)
                 (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                 (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                 (natp i) (natp end))
-           (equal (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
-                  (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
+           (fn-scr-tls-agrees
+             (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
+             (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
@@ -201,8 +208,9 @@
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                  (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                  (natp i) (natp end))
-            (equal (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
-                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
+            (fn-scr-tls-agrees
+             (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
+             (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
    :hints (("Goal" :do-not-induct t
             :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
                                        (theory 'minimal-theory))))))
@@ -213,8 +221,9 @@
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                  (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                  (natp i) (natp end))
-            (equal (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
-                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
+            (fn-scr-tls-agrees
+             (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
+             (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
    :hints (("Goal" :do-not-induct t
             :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
                                        (theory 'minimal-theory))))))
@@ -229,8 +238,9 @@
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                  (fn-gacc-okp cache)
                  (natp i) (natp end))
-            (equal (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
-                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
+            (fn-scr-tls-agrees
+             (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
+             (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
    :hints (("Goal" :do-not-induct t
             :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
                                        (theory 'minimal-theory))))))
@@ -246,8 +256,9 @@
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                  (fn-scol-okp fn-arena fn-cat)
                  (natp i) (natp end))
-            (equal (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
-                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
+            (fn-scr-tls-agrees
+             (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
+             (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
    :hints (("Goal" :do-not-induct t
             :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
                                        (theory 'minimal-theory))))))
@@ -258,8 +269,9 @@
                  (fn-scar-view-indexedp (fn-ocfg-owner oc))
                  (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                  (natp i) (natp end))
-            (equal (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
-                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
+            (fn-scr-tls-agrees
+             (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
+             (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
    :hints (("Goal" :do-not-induct t
             :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
                                        (theory 'minimal-theory))))))
@@ -271,8 +283,9 @@
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                  (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                  (natp end))
-            (equal (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
-                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
+            (fn-scr-tls-agrees
+             (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
+             (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
    :hints (("Goal" :do-not-induct t
             :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
                                        (theory 'minimal-theory))))))
@@ -284,8 +297,9 @@
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                  (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                  (natp i))
-            (equal (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
-                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
+            (fn-scr-tls-agrees
+             (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
+             (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
    :hints (("Goal" :do-not-induct t
             :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
                                        (theory 'minimal-theory))))))

@@ -137,6 +137,41 @@ the one tagged result line."
     (fnn-operator-emit-status :accepted "show")
     +fnn-exit-ok+))
 
+;;; Row Q10a: the self-signed pair ACL2 asks for (books/tls-self-signed.lisp;
+;;; host/native/tls.lisp fnn-tls-self-signed-write).  NIL when there is none
+;;; to make or it was written; else ACL2's refusal, to emit.
+(defun fnn-operator-make-self-signed (result)
+  (let ((request (fnn-core 'fn-native-operator-host-result-self-signed result)))
+    (when request
+      (destructuring-bind (names days cert-octets key-octets) request
+        (unless (and (fnn-octet-list-p cert-octets) (fnn-octet-list-p key-octets))
+          (fnn-fault "ACL2 returned malformed self-signed paths"))
+        (let* ((cert-path (fnn-octets-string (fnn-octets cert-octets)))
+               (key-path (fnn-octets-string (fnn-octets key-octets)))
+               (outcome (fnn-core 'fn-native-operator-host-self-signed-outcome result
+                                  (and (fnn-lstat cert-path) t)
+                                  (and (fnn-lstat key-path) t))))
+          (if (not (eq (fnn-core 'fn-native-operator-host-result-status outcome) :accepted))
+              outcome
+            (let ((written (fnn-tls-self-signed-write names days cert-path key-path)))
+              (if (eq written :written)
+                  (progn (fnn-out "wrote ~a and ~a" cert-path key-path) nil)
+                (fnn-core 'fn-native-operator-host-self-signed-refused result written)))))))))
+
+(defun fnn-operator-execute-tls-self-signed (result)
+  "`tls self-signed NAME... [--days N]': the pair at tls_cert and tls_key."
+  (handler-case
+      (let ((refused (fnn-operator-make-self-signed result)))
+        (if refused
+            (progn (fnn-operator-emit-result refused)
+                   (fnn-core 'fn-native-operator-host-result-exit-code refused))
+          (progn (fnn-operator-emit-status :accepted "tls")
+                 +fnn-exit-ok+)))
+    (error (condition)
+      (let ((code (fnn-exit-code-for condition)))
+        (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "tls" condition)
+        code))))
+
 (defun fnn-operator-execute-mission (result config-path)
   "Write the mission's fn.toml, ACL2's rendering, at CONFIG-PATH (PKT-097).
 
@@ -165,6 +200,13 @@ overwritten.  The directories ACL2 names are created if absent."
                 (dolist (dir dirs)
                   (let ((path (fnn-octets-string (fnn-octets dir))))
                     (unless (fnn-lstat path) (fnn-mkdir path #o700))))
+                ;; Row Q10a: `--tls-port' -- the pair first, so fn.toml never
+                ;; names files the image did not make.
+                (let ((refused (fnn-operator-make-self-signed result)))
+                  (when refused
+                    (fnn-operator-emit-result refused)
+                    (return-from fnn-operator-execute-mission
+                      (fnn-core 'fn-native-operator-host-result-exit-code refused))))
                 (let ((fd (fnn-open config-path
                                     (logior sb-posix:o-wronly sb-posix:o-creat
                                             sb-posix:o-excl +fnn-o-nofollow+)
@@ -290,7 +332,10 @@ observation into the outcome and this function only carries it out."
                                   'fn-native-operator-host-result-init-profile result)))
                     (unless (consp request)
                       (fnn-fault "ACL2 accepted an init plan with no store profile"))
-                    (fnn-heap-init-decision-noted request))
+                    (fnn-heap-init-decision-noted
+                     request
+                     (fnn-core 'fn-native-operator-host-result-init-budget result)
+                     (fnn-core 'fn-native-operator-host-result-init-sizing result)))
               (let* ((line (fnn-core 'fn-heap-init-report-line decision))
                      (warning (fnn-core 'fn-heap-init-budget-note-line note))
                      (profile (fnn-core 'fn-heap-init-decision-request decision))
@@ -438,6 +483,15 @@ observation into the outcome and this function only carries it out."
 ;;; value under the current epoch's `fn/posting-account/v1' key
 ;;; (books/native-operator.lisp fn-nop-account-hash), and the value is
 ;;; printed to stdout.  The secret is never printed; nothing is written.
+(defun fnn-operator-store-max-credentials (root)
+  "The store profile's max-credentials (D27, PRF-102), read from config.json
+without the writer lock: principal administration does not open the store.
+The profile is written once, at init or import (D34), so this read sees the
+bound the owner loads under."
+  (let ((store (make-fnn-store root)))
+    (fnn-load-config store)
+    (fnn-profile-nat 'fn-store-profile-max-credentials store)))
+
 (defun fnn-operator-execute-account-hash (result)
   (let ((root (fnn-core 'fn-native-operator-host-result-store-root result))
         (login (fnn-core 'fn-native-operator-host-result-account-hash-login result))
@@ -515,6 +569,43 @@ fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
    'fn-native-operator-host-result-compaction-control-path-octets
    'fn-native-operator-host-result-compaction-argv))
 
+;;; Row S9: `retire [--drain SECONDS]'.  The running owner is asked
+;;; (books/native-retire.lisp's vector; host/native/admin.lisp
+;;; fnn-owner-retire-begin answers `retire draining' or refuses by name); with
+;;; no owner the verb is refused by name (nothing drains a stopped node).
+;;; After the answer the operator waits while ACL2's liveness decision over
+;;; the socket and the lock says an owner runs (the owner's drain ends by its
+;;; window, books/owner-retire.lisp fn-oret-drain-step-ends-by-the-window,
+;;; and its stop by the deadline, PRF-357), then prints the report the owner
+;;; fenced before it stopped.  No report is uncertain, never success.
+(defun fnn-operator-execute-retire (result root)
+  (let ((code (fnn-operator-execute-owner-request
+               result root
+               (lambda ()
+                 (fnn-out "~a" (fnn-octets-string (fnn-octets (fnn-core 'fn-nret-not-running-line))))
+                 +fnn-exit-refused+)
+               'fn-native-operator-host-result-retire-control-path-octets
+               'fn-native-operator-host-result-retire-argv)))
+    (if (not (eql code +fnn-exit-ok+))
+        code
+      (let* ((live *fnn-operator-live-owner*)
+             (path-list (fnn-core 'fn-native-operator-host-result-retire-control-path-octets
+                                  result)))
+        (loop while (member (funcall (fnn-olo-admin-observe live) root path-list nil)
+                            '(:live :held))
+              do (sleep 1))
+        (let ((report (fnn-join root (fnn-octets-string
+                                      (fnn-octets (fnn-core 'fn-nret-report-file-name))))))
+          (if (probe-file report)
+              (with-open-file (in report :element-type '(unsigned-byte 8))
+                (let ((buffer (make-array (file-length in) :element-type '(unsigned-byte 8))))
+                  (read-sequence buffer in)
+                  (fnn-emit *fnn-stdout* (fnn-octets-string buffer))
+                  +fnn-exit-ok+))
+            (progn
+              (fnn-out "~a" (fnn-octets-string (fnn-octets (fnn-core 'fn-nret-no-report-line))))
+              +fnn-exit-uncertain+)))))))
+
 (defun fnn-operator-execute-store-action (result action)
   (let ((root (fnn-core 'fn-native-operator-host-result-store-root result)))
     (handler-case
@@ -575,6 +666,11 @@ fnn-owner-compaction-request).  With no owner, OFFLINE runs as before."
                                 +fnn-exit-refused+)
                          (t (fnn-out "~a" (fnn-core 'fn-oex-status-no-owner-line))
                             +fnn-exit-refused+)))
+                      (:bless-snapshot
+                       (fnn-command-store-bless-snapshot
+                        (fnn-octets-string
+                         (fnn-core 'fn-native-operator-host-result-archive-path-octets
+                                   result))))
                       (:import
                        (fnn-command-store-import
                         root
@@ -645,8 +741,8 @@ nothing answers and nothing holds the lock."
                                        (fnn-operator-last-run result))))
          ;; Row S3: a stopped store's status is its checkpoint header's
          ;; (fnn-command-stopped-status); `--replay' asks for the replay.
-         ;; Row S1 (limits-live): an answered status also prints the
-         ;; store's limit values (fnn-lim-print-values).
+         ;; PRF-996: an offline `status' then names each live limit's three
+         ;; values, funded=none (fnn-lim-print-values).
          (let ((code (if (and (eq kind :status)
                               (not (and result (fnn-core 'fn-omr-status-replayp result))))
                          (fnn-command-stopped-status root)
@@ -1018,10 +1114,11 @@ answer that is neither the report nor a refusal (the transport) is uncertain."
         (case action
           (:help (fnn-operator-execute-help result))
           (:show (fnn-operator-execute-show result))
+          (:tls-self-signed (fnn-operator-execute-tls-self-signed result))
           (:init (fnn-operator-execute-init result))
           (:status (fnn-operator-execute-status result))
           (:health (fnn-operator-execute-health result))
-          ((:recover :compact :checkpoint :export :export-status :import
+          ((:recover :compact :checkpoint :export :export-status :import :bless-snapshot
             :reclaim :reclaim-dry-run :reclaim-recorded :rebind-filesystem)
            (fnn-operator-execute-store-action result action))
           (:inspect (fnn-operator-execute-inspect result))
@@ -1029,6 +1126,8 @@ answer that is neither the report nor a refusal (the transport) is uncertain."
           (:admin (fnn-operator-execute-admin result))
           (:account-invite (fnn-operator-execute-account-invite result))
           (:account-hash (fnn-operator-execute-account-hash result))
+          (:retire (fnn-operator-execute-retire
+                    result (fnn-core 'fn-native-operator-host-result-store-root result)))
           (:owner-required
            (fnn-operator-emit-status :usage "action" "requires native owner callback")
            +fnn-exit-usage+)
@@ -1037,6 +1136,16 @@ answer that is neither the report nor a refusal (the transport) is uncertain."
 (defvar *fnn-operator-config-octets* nil
   "The profile octets this operator command loaded (for `run': ACL2's plan
 of the node's web face from the same octets, books/web-config.lisp).")
+
+;;; Row S8: fn.toml's relative paths are resolved under its own directory.
+;;; The host observes its working directory and hands it with the path as
+;;; given; ACL2 decides the directory and the resolution
+;;; (books/native-config-paths.lisp).
+(defun fnn-operator-run-at (config-path config-octets argv-octets)
+  (fnn-core 'fn-native-operator-host-run-at
+            (fnn-octet-list (fnn-string-octets (sb-posix:getcwd)))
+            (fnn-octet-list (fnn-string-octets config-path))
+            config-octets argv-octets))
 
 (defun fnn-command-operator (config-path argv)
   (let* ((argv-octets (fnn-operator-argv-octets argv))
@@ -1052,7 +1161,7 @@ of the node's web face from the same octets, books/web-config.lisp).")
                (config-octets (fnn-operator-read-config config-path config-bound))
                (*fnn-operator-config-octets* config-octets))
           (fnn-operator-dispatch-plan
-           (fnn-core 'fn-native-operator-host-run config-octets argv-octets)))
+           (fnn-operator-run-at config-path config-octets argv-octets)))
       (fnn-operator-dispatch-plan preflight))))
 
 (fnn-register-verb "operator"

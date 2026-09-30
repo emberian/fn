@@ -112,3 +112,14 @@
    epoch op (fn-bpn-nth 3 h) (fn-bpah-held-primary-identity h)
    (fn-bpn-nth 3 ingress) (fn-bpn-nth 1 ingress) (fn-bpn-nth 2 ingress)
    (fn-digest wire)))
+
+;; The *1* class (Q4a item 2, bp-remainder-5): the host-called publication
+;; wrappers call these; verified so that their wrappers can be.
+(verify-guards fn-bpnf-conflict-recordp)
+(verify-guards fn-bpnf-conflict-values)
+(verify-guards fn-bpnf-conflict-frame)
+
+; Executable prerequisites of the host-called family recovery fold.
+(verify-guards fn-bpnf-conflict-record)
+(verify-guards fn-bpnf-conflict-from-values)
+(verify-guards fn-bpnf-conflict-unframe)

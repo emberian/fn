@@ -491,11 +491,19 @@ ordinary live reconfiguration, and on :applied served at once."
     (fnn-owner-serialized
      service nil
      (lambda ()
-       (let* ((values (fnn-lim-recorded-profile store))
+       (let* ((carry (fnn-owner-core 'fn-owner-limit-carried))
+              ;; The history's requested profile and what this process
+              ;; serves and admits under before D, both carried by the
+              ;; owner from its open (host/owner-host.lisp
+              ;; fn-owner-limit-carry; fn-lim-carry-after-is-the-history):
+              ;; no walk of the configuration history per request.
+              (values (car carry))
+              (funded (cdr carry))
               (use (fnn-owner-core 'fn-owner-limit-use))
-              (d (fnn-lim-decision store plan values use run-mb core observations))
-              ;; What this process serves and admits under before D.
-              (funded (fnn-store-config store))
+              (d (progn
+                   (unless (and (consp carry) values funded)
+                     (fnn-fault "owner carries no limit profile"))
+                   (fnn-lim-decision store plan values use run-mb core observations)))
               (line (fnn-lim-line plan d store values funded)))
          (fnn-err "LIMIT ~a" line)
          (if (not (eq (fnn-core 'fn-lim-decision-status d) :accepted))
@@ -515,11 +523,12 @@ ordinary live reconfiguration, and on :applied served at once."
                 ;; history this record ended (fn-lim-effective-of-append-
                 ;; record) -- else the one already served: a recorded change
                 ;; does not fund.
-                (let ((served (fnn-core 'fn-lim-funded-after d funded
-                                        (fnn-core 'fn-lim-apply-row values
-                                                  (fnn-lim-plan-field plan)
-                                                  (fnn-lim-plan-n plan)))))
-                  (unless (eq served funded)
+                ;; The carry moves to fn-lim-carry-after (the record is
+                ;; published); its funded half is the answer.
+                (let ((served (fnn-owner-core 'fn-owner-limit-decided
+                                              (fnn-lim-plan-field plan)
+                                              (fnn-lim-plan-n plan) d)))
+                  (unless (equal served funded)
                     (unless (eq (fnn-owner-core 'fn-owner-apply-limit-profile served)
                                 :installed)
                       (fnn-indeterminate
@@ -553,6 +562,11 @@ or answer the one owner request an admin vector carries (PKT-868: the
 compaction request; row S3: the inspect request; Q16: the reclaim request;
 ACL2's fn-native-admin-result-owner-requestp, -inspect-msgid and
 -reclaim-mode; row S1: a store limit, fnn-owner-limit-serialized)."
+  ;; Row S9: the retire request, before any administrative plan.
+  (let ((retire (fnn-core 'fn-nret-request argv)))
+    (when retire
+      (return-from fnn-owner-live-admin-serialized
+        (fnn-owner-retire-begin service (second retire)))))
   (let ((plan (fnn-core 'fn-native-admin-host-plan argv)))
     (when (fnn-core 'fn-native-admin-host-owner-requestp plan)
       (let ((mode (fnn-core 'fn-native-admin-host-reclaim-mode plan))

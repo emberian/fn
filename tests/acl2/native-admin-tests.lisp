@@ -430,6 +430,76 @@
          (fn-native-admin-plan
           (fn-na-test-argv '("policy" "set" "exposure-trusted" "192.168.1.0/33"))))
         :policy))
+; PRF-986 (row W2a): the per-source handshake allowances, a :set-policy row
+; admitted exactly when the owner's parse lists it; the owner's read of the
+; configuration the plan's delta makes is that list.
+(defconst *fn-na-hs-overrides*
+  (fn-native-admin-plan
+   (fn-na-test-argv '("policy" "set" "tls-handshake-source-overrides"
+                      "100.64.0.1=600,2001:db8:1:2::/64=120"))))
+(assert-event (equal (fn-native-admin-result-kind *fn-na-hs-overrides*) :set-policy))
+(assert-event (equal (fn-native-admin-plan-deltas *fn-na-hs-overrides*)
+                     (list (fn-cfg-set-policy "tls-handshake-source-overrides"
+                                              "100.64.0.1=600,2001:db8:1:2::/64=120"))))
+(assert-event
+ (equal (fn-hsb-config-overrides
+         (fn-cfg-apply (fn-cfg-value (fn-cfg-initial)) 1 0
+                       (fn-native-admin-plan-deltas *fn-na-hs-overrides*)))
+        (list (cons '(:inet 100 64 0 1) 600)
+              (cons '(:inet6 32 1 13 184 0 1 0 2) 120))))
+(assert-event
+ (equal (fn-native-admin-result-kind
+         (fn-native-admin-plan
+          (fn-na-test-argv '("policy" "set" "tls-handshake-source-overrides" "none"))))
+        :set-policy))
+; Refused by the parse's name: an address that does not parse, a zero rate,
+; and one entry past the profile's 64.
+(assert-event
+ (equal (fn-native-admin-result-reason
+         (fn-native-admin-plan
+          (fn-na-test-argv '("policy" "set" "tls-handshake-source-overrides"
+                             "100.64.0.300=600"))))
+        :override-address))
+(assert-event
+ (equal (fn-native-admin-result-reason
+         (fn-native-admin-plan
+          (fn-na-test-argv '("policy" "set" "tls-handshake-source-overrides"
+                             "100.64.0.1=0"))))
+        :override-address))
+(defun fn-na-hs-many (n)
+  (if (zp n) "10.0.0.1=5"
+    (concatenate 'string "10.0.0.1=5," (fn-na-hs-many (1- n)))))
+(assert-event
+ (equal (fn-native-admin-result-status
+         (fn-native-admin-plan
+          (fn-na-test-argv (list "policy" "set" "tls-handshake-source-overrides"
+                                 (fn-na-hs-many 63)))))
+        :accepted))
+(assert-event
+ (equal (fn-native-admin-result-reason
+         (fn-native-admin-plan
+          (fn-na-test-argv (list "policy" "set" "tls-handshake-source-overrides"
+                                 (fn-na-hs-many 64)))))
+        :overrides-full))
+; PRF-986 item 4: the trusted PROXY peers, a :set-policy row of CIDR ranges;
+; the owner's read of the configuration the plan's delta makes is those
+; ranges; a malformed range is not admitted.
+(defconst *fn-na-proxy-peers*
+  (fn-native-admin-plan
+   (fn-na-test-argv '("policy" "set" "tls-proxy-trusted-peers" "10.0.0.0/8,fd00::/8"))))
+(assert-event (equal (fn-native-admin-result-kind *fn-na-proxy-peers*) :set-policy))
+(assert-event
+ (equal (fn-pxy-config-peers
+         (fn-cfg-apply (fn-cfg-value (fn-cfg-initial)) 1 0
+                       (fn-native-admin-plan-deltas *fn-na-proxy-peers*)))
+        (fn-exp-trusted-of-word "10.0.0.0/8,fd00::/8")))
+(assert-event (fn-pxy-trusted-peer '(:inet 10 9 8 7)
+                                   (fn-exp-trusted-of-word "10.0.0.0/8,fd00::/8")))
+(assert-event
+ (not (equal (fn-native-admin-result-status
+              (fn-native-admin-plan
+               (fn-na-test-argv '("policy" "set" "tls-proxy-trusted-peers" "10.0.0.0/33"))))
+             :accepted)))
 ; The other kinds carry no value.
 (assert-event (null (fn-native-admin-result-value *fn-na-create*)))
 (assert-event (null (fn-native-admin-result-value *fn-na-capacity*)))
@@ -474,6 +544,22 @@
 (assert-event (equal (fn-native-admin-result-status
                       (fn-native-admin-plan (fn-na-test-argv '("peer" "show")))
                       )
+                     :refused))
+
+; Row Q10c: `consumer show' is its own query (the consumer bindings), never
+; `account list''s; both read the configuration without the writer lock.
+(assert-event
+ (let ((plan (fn-native-admin-plan (fn-na-test-argv '("consumer" "show")))))
+   (and (equal (fn-native-admin-result-status plan) :accepted)
+        (equal (fn-native-admin-result-kind plan) :list-consumers)
+        (fn-native-admin-result-queryp plan)
+        (equal (fn-native-admin-result-report-kind plan) :consumers))))
+(assert-event
+ (let ((plan (fn-native-admin-plan (fn-na-test-argv '("account" "list")))))
+   (and (equal (fn-native-admin-result-kind plan) :list-accounts)
+        (equal (fn-native-admin-result-report-kind plan) :accounts))))
+(assert-event (equal (fn-native-admin-result-status
+                      (fn-native-admin-plan (fn-na-test-argv '("consumer" "show" "x"))))
                      :refused))
 
 ; The report: the record `peer add` wrote, read back in the order `peer add`
@@ -1545,6 +1631,26 @@
                      (fn-native-admin-plan (fn-na-test-argv '("reclaim" "request"))))))
 (assert-event (not (fn-native-admin-result-owner-requestp
                     (fn-native-admin-plan (fn-na-test-argv '("reclaim" "now"))))))
+; PRF-996: `policy set LIVE-FIELD N' takes any decimal natural; past the
+; u32 the plan is accepted as :set-store-limit carrying N, and the ceiling
+; is fn-lim-decide's refusal by name (tests/acl2/limits-live-tests.lisp),
+; never the parser's.
+(assert-event
+ (let ((plan (fn-native-admin-plan
+              (fn-na-test-argv '("policy" "set" "max-history-octets" "4294967296")))))
+   (and (equal (fn-native-admin-result-status plan) :accepted)
+        (equal (fn-native-admin-result-kind plan) :set-store-limit)
+        (equal (fn-native-admin-result-capacity plan) 4294967296))))
+(assert-event (fn-native-admin-naturalp "4294967296"))
+(assert-event (not (fn-native-admin-decimalp "4294967296")))
+(assert-event (not (fn-native-admin-naturalp "04096")))
+(assert-event (not (fn-native-admin-naturalp "4k")))
+(assert-event (not (fn-native-admin-naturalp "")))
+(assert-event
+ (not (equal (fn-native-admin-result-status
+              (fn-native-admin-plan
+               (fn-na-test-argv '("policy" "set" "max-history-octets" "04096"))))
+             :accepted)))
 
 ; Row S3b (lane operability-7): the running owner's export request and its
 ; status poll are owner requests (no configuration record), the DIR in the
@@ -1576,3 +1682,13 @@
                                                   (fn-record-string-octets "/tmp/a")
                                                   (fn-record-string-octets "extra"))))
                      :refused))
+
+; Positive anchors for the negative malformed-input witnesses above: typed
+; deltas, well-shaped argv, an in-range canonical count and a creatable name
+; are accepted.  A constantly-false recognizer cannot satisfy these cases.
+(assert-event (fn-cfg-deltap
+               (fn-cfg-create-group "fn.test" *fn-cfg-default-policy-id*)))
+(assert-event (fn-native-admin-argvp
+               (fn-na-test-argv '("policy" "set" "max-history-octets" "4096"))))
+(assert-event (fn-native-admin-decimalp "4294967295"))
+(assert-event (fn-native-admin-group-name-creatablep "fn.test"))

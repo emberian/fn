@@ -123,6 +123,20 @@ generation at 3. A reader that has not seen a reconfiguration need not be
 advanced to answer correctly, and "the reply is consistent with exactly one
 generation" stays true across a busy posting period.
 
+The actual native replay has the same count meaning: on success,
+`fn-cvcg-config-replay-generation-counts-records` equates the generation of
+`fn-cnode-config-replay` with the number of configuration records supplied.
+`fn-cvcg-accepted-publication-count-fits-profile` then states that an
+accepted `fn-cvec-native-admin-authorize` names exactly one plus the
+existing count and that this next count fits the operator profile's
+`max-config-generations`. These source theorems live in
+`books/store-config-generation.lisp` (PRF-1097, PKT-183). The host caller is
+`fn-store-cfg-native-admin-authorize` in `host/store-node-host.lisp`;
+publication still uses its existing lock, candidate-open and namespace
+observations. This is fn's configuration contiguity guarantee. The witnesses
+exercise a successful two-record replay and actual publication, then stale
+sequence replay and a refused publication beyond the profile count.
+
 ### 1.4 The record kind
 
 The journal becomes a two-kind stream. The frame layer already carries a kind
@@ -1540,3 +1554,33 @@ records)`: the decoded configuration journal and the decoded Store journal.
   `fn-ocfg-config-replay-of-one-more-record` stay model-level lemmas over
   `fn-cnode-config-replay`; the equation above carries an `:ok` of the
   called replay to them, not the reverse.
+
+### Explicit group authority (SUB-007, PRF-1061)
+
+The executable group entry is `(name created-gen created-stamp retired-gen
+policy-id next authority authority-gen)`. Posting policy remains a string in
+`policy-id`. `authority` is either the empty string, meaning ungoverned, or a
+canonical 64-character lowercase hexadecimal principal. `authority-gen` names
+the local configuration generation that installed or removed that binding.
+Fresh creation and revival explicitly start ungoverned at generation zero;
+retirement and posting-policy changes preserve the authority fields.
+
+`operator CONFIG group authority NAME HEX|ungoverned` plans
+`(:set-group-authority NAME HEX 0 nil)` (code **29**; code28 belongs to
+`:reclaim-note`). The ordinary configuration-record publication admits only a
+live configured group, a valid principal spelling or the empty string, and
+zero/nil unused fields. It persists the delta and replays it through
+`fn-cfg-apply-delta`. `fn-cfg-set-group-authority-installs-binding` states the
+installed principal and generation and preserves all six prior group fields;
+its sole antecedent is that the named group exists. The positive witness uses
+four replayed records (creation, installation, replacement, removal); the
+hypothesis-removal tooth starts with no group and fails the conclusion.
+
+`fn-owner-transit-decide` reads authority from the transit connection's pinned
+configuration through `fn-ocfg-conn-config`. A replacement governs later
+connections, leaving an old connection's authority pin intact. Byte admission
+still uses the current delivery configuration. An authority binding names a
+principal and does not enroll keys or manufacture a verified statement.
+Native qualification of this source is pending the runner's new immutable
+image; the legacy statement key index and hybrid snapshot bridge is the next
+finite slice before a productive `:admitted` authority claim.

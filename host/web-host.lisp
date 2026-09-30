@@ -96,3 +96,9 @@
 (defun fn-web-host-action-kind (action)
   (declare (xargs :mode :program))
   (and (consp action) (member (car action) '(:respond :open :send :close)) (car action)))
+
+; Q10d: observe only the fixed scheduler/disk and checkpoint values, no
+; whole-state walk. Called under the existing owner mutex by the web face.
+(defun fn-web-host-health-observe (sched state)
+  (declare (xargs :mode :program :stobjs state))
+  (fn-whl-observe sched (fn-owner-sco-deferred state)))

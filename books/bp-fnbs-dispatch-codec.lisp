@@ -82,3 +82,14 @@
                         (fn-frame-parse-value parsed))))
               (if (equal (fn-bpnp-dispatch-frame row) octets)
                   row nil))))))))
+
+;; The *1* class (Q4a item 2, bp-remainder-5): the host-called publication
+;; wrappers call these; verified so that their wrappers can be.
+(verify-guards fn-bpnp-dispatch-recordp)
+(verify-guards fn-bpnp-dispatch-values)
+(verify-guards fn-bpnp-dispatch-frame)
+
+; Executable prerequisites of the host-called family recovery fold.
+(verify-guards fn-bpnp-dispatch-record)
+(verify-guards fn-bpnp-dispatch-from-values)
+(verify-guards fn-bpnp-dispatch-unframe)

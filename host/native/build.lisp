@@ -56,6 +56,11 @@
 ;; fn-splan-window and the gate calls fn-osch-next (books/owner-scheduler).
 (include-book "books/served-reply-buffer")
 (include-book "books/served-plan")
+;; Lane join-f2-13 (PRF-1020): the plan's cursor quantum, the host's
+;; continuation of a served OVER/XOVER range (fnn-owner-cursor-step calls
+;; fn-splan-cursor-step; fnn-owner-render-next asks fn-splan-at-cursorp).
+(include-book "books/served-plan-cursor")
+(include-book "books/response-plan-pins")
 (include-book "books/owner-scheduler")
 (include-book "books/owner-commit-class")
 ;; PKT-688 (4) slice 2 (PRF-267): the gate calls fn-ocs-next and the committer
@@ -183,6 +188,7 @@
 ;; fn-heap-open-nursery-trigger (the open's trigger sized to its history).
 (include-book "books/heap-open-nursery")
 (include-book "books/heap-reservation")
+(include-book "books/cold-read-reservation")
 (include-book "books/native-control")
 (include-book "books/native-control-reason")
 ; PKT-209: `control log' and `control evidence'.
@@ -254,6 +260,8 @@
 (include-book "books/bp-report-author")
 (include-book "books/bp-node-progress")
 (include-book "books/bp-node-progress-guards")
+(include-book "books/bp-node-job-offer-guards")
+(include-book "books/bp-node-control")
 ;; PKT-261: per-destination dispatch and the forward plan
 ;; (fnn-bpnode-dispatch-one, fnn-bpnode-forward-contact).
 (include-book "books/bp-node-forward-plan")
@@ -265,6 +273,8 @@
 (include-book "books/bp-node-rotation-buffer")
 ;; The held projection at open: fnn-bps-open calls fn-bphp-recover-auto-event.
 (include-book "books/bp-held-projection")
+(include-book "books/bp-recovery-guards")
+(include-book "books/bp-recovery-profile")
 (include-book "books/bp-node-retire")
 ;; Natural rotation at a node verb's open (fnn-bps-rotate-when-due calls
 ;; fn-bpnrd-due-rotation-event; profile 3).
@@ -295,6 +305,9 @@
 ;; fnn-command-init-published asks fn-bs-init-pub-admission.
 (include-book "books/store-init-publication")
 (ld "host/store-host.lisp" :ld-error-action :error)
+(ld "host/page-read-host.lisp" :ld-error-action :error)
+(ld "host/page-executor-host.lisp" :ld-error-action :error)
+(ld "host/page-file-lease-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
 ;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.
 (include-book "books/store-checkpoint-buffer")
@@ -330,6 +343,7 @@
 (ld "host/anchor-server-host.lisp" :ld-error-action :error)
 (ld "host/reader-host.lisp" :ld-error-action :error)
 (ld "host/owner-host.lisp" :ld-error-action :error)
+(ld "host/page-read-host.lisp" :ld-error-action :error)
 (ld "host/native-config-host.lisp" :ld-error-action :error)
 (ld "host/native-auth-host.lisp" :ld-error-action :error)
 (ld "host/native-auth-admin-host.lisp" :ld-error-action :error)
@@ -391,6 +405,9 @@
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
         (load "host/native/io.lisp")
+        ;; D40: the raw-dispatched entries, from the fn-interfaces table of
+        ;; this world (an unknown or unverified target stops the build).
+        (fnn-install-raw-dispatch)
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")
         ; DEFLATE (lib/libfn-deflate, vendored zlib; untrusted: ACL2's
@@ -456,6 +473,7 @@
         ; derivation, serialization, reporting and persistence transitions.
         (load "host/native/auth-admin.lisp")
         (load "host/native/immutable-publish.lisp")
+        (load "host/native/auth-read.lisp")
         (load "host/native/admin.lisp")
         ; The writable NNTP owner.  It registers the `owner' verb and calls
         ; only host/owner-host.lisp wrappers for protocol and state decisions.
@@ -468,6 +486,7 @@
         (load "host/native/feed-service.lisp")
         ; The NEWNEWS pull feed, the same owner's other lifecycle extension.
         (load "host/native/pull-service.lisp")
+        (load "host/native/control-transport.lisp")
         (load "host/native/control.lisp")
         (load "host/native/topic-local.lisp")
         (load "host/native/consumer-local.lisp")
@@ -495,6 +514,7 @@
         ; The node's own web face: an owner start hook the operator's `run'
         ; installs when ACL2 planned one from the profile's [web] table.
         (load "host/native/web-host.lisp")
+        (load "host/native/operator-control-client.lisp")
         (load "host/native/operator-live.lisp")
         (load "host/native/checkpoint.lisp")
         ; The attach-stobj prototype's smoke verb (developer image only).
@@ -510,6 +530,8 @@
         (load "host/native/bp-contact.lisp")
         ; After FNBS: `bp-obligation request' hands its ADU to the carrier.
         (load "host/native/bp-obligation.lisp")
+        (load "host/native/bp-listener-control.lisp")
+        (load "host/native/bp-control.lisp")
         (load "host/native/bp-node.lisp")
         ; `acl2 session': developer images only (the test fixtures' ACL2).
         (load "host/native/acl2-session.lisp")

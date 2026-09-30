@@ -124,6 +124,14 @@
           "kind": "theorem",
           "name": "fn-ocmt-sn-finish-preserves-cst-relation",
           "note": "fn-cst-relation (the configured store's history relation) survives fn-sn-finish on every arm: the completing phase's link equates the node fn-sn-finish installs with the replay of the unchanged history. Teeth: tests/acl2/owner-advance-carried-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-replay-receiver-is-receiver-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-replay-rest-receiver-is-receiver-replay-rest"
         }
       ]
     },
@@ -629,6 +637,14 @@
           "kind": "theorem",
           "name": "fn-bpr-live-receipt-regenerated-after-restart-of-host-open",
           "note": "The receipt-regeneration theorem with the restart reopening through fn-cpo-open-observed; added hypotheses fn-sob-configured-openp and fn-sonb-configured-before-eventsp. No ground witness (the fixed-table keystone has none either)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-replay-receiver-is-receiver-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-replay-rest-receiver-is-receiver-replay-rest"
         }
       ]
     },
@@ -812,6 +828,14 @@
         {
           "kind": "theorem",
           "name": "fn-bpr-live-state-is-replay-of-journal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-replay-receiver-is-receiver-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-replay-rest-receiver-is-receiver-replay-rest"
         }
       ]
     },
@@ -2561,6 +2585,10 @@
         {
           "kind": "theorem",
           "name": "fn-olog-connection-line-is-one-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-olog-socket-connection-line-is-one-line"
         }
       ]
     },
@@ -8062,7 +8090,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cbud-deltas-refusal-keeps-the-capacity-held"
+          "name": "fn-cbud-deltas-refusal-keeps-the-machine-held"
         },
         {
           "kind": "theorem",
@@ -8241,6 +8269,11 @@
         {
           "kind": "theorem",
           "name": "fn-cbind-poll-over-is-poll-unless-a-held-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-consumer-lines-are-the-list-lines-of-the-consumer-rows",
+          "note": "Q10c exact consumer-only row filter; nonempty mixed invitation/binding literal witness in account-list-tests. Composed host report bridge is PRF-089 fn-nls-report-of-query-kind-is-query-report."
         }
       ]
     },
@@ -14828,6 +14861,10 @@
         {
           "kind": "theorem",
           "name": "fn-ars-current-plan-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ars-parse-lines-acc-is-parse-lines"
         }
       ]
     },
@@ -15145,17 +15182,17 @@
         {
           "kind": "theorem",
           "name": "fn-bpfj-query-is-the-query",
-          "note": "KEYSTONE. Subject fn-bpfj-query. Host: none yet (the dispatcher and bp-service's stepping loop are the next increment; until then the subject is reached by the test book). Teeth: tests/acl2/bp-node-fragment-job-tests.lisp."
+          "note": "KEYSTONE. Subject fn-bpfj-query. Host: host/native/bp-service.lisp fnn-bps-fragment-progress starts, steps and offers the job; the (:family anchor observation job limit) and (:persist-result epoch op result job limit) events reach fn-bpfj-propose-step / fn-bpfj-persist-step through fn-bpnj-step -> fn-bpnp-step -> fn-bpn-report-author-step -> fn-bpn-report-step -> fn-bpnf-fragment-step (books/bp-node-fragment-step). Teeth: tests/acl2/bp-node-fragment-job-tests.lisp."
         },
         {
           "kind": "theorem",
           "name": "fn-bpfj-plan-refuses-past-the-limit-by-name",
-          "note": "KEYSTONE. Subject fn-bpfj-plan. Host: none yet (the dispatcher and bp-service's stepping loop are the next increment; until then the subject is reached by the test book). Teeth: tests/acl2/bp-node-fragment-job-tests.lisp."
+          "note": "KEYSTONE. Subject fn-bpfj-plan. Host: host/native/bp-service.lisp fnn-bps-fragment-progress starts, steps and offers the job; the (:family anchor observation job limit) and (:persist-result epoch op result job limit) events reach fn-bpfj-propose-step / fn-bpfj-persist-step through fn-bpnj-step -> fn-bpnp-step -> fn-bpn-report-author-step -> fn-bpn-report-step -> fn-bpnf-fragment-step (books/bp-node-fragment-step). Teeth: tests/acl2/bp-node-fragment-job-tests.lisp."
         },
         {
           "kind": "theorem",
           "name": "fn-bpfj-plan-is-the-plan-within-the-limit",
-          "note": "KEYSTONE. Subject fn-bpfj-plan. Host: none yet (the dispatcher and bp-service's stepping loop are the next increment; until then the subject is reached by the test book). Teeth: tests/acl2/bp-node-fragment-job-tests.lisp."
+          "note": "KEYSTONE. Subject fn-bpfj-plan. Host: host/native/bp-service.lisp fnn-bps-fragment-progress starts, steps and offers the job; the (:family anchor observation job limit) and (:persist-result epoch op result job limit) events reach fn-bpfj-propose-step / fn-bpfj-persist-step through fn-bpnj-step -> fn-bpnp-step -> fn-bpn-report-author-step -> fn-bpn-report-step -> fn-bpnf-fragment-step (books/bp-node-fragment-step). Teeth: tests/acl2/bp-node-fragment-job-tests.lisp."
         },
         {
           "kind": "theorem",
@@ -15268,7 +15305,35 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-hsb-scratch-within-the-reservation"
+          "name": "fn-hsb-scratch-within-the-machine-term"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsb-buckets-are-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsb-mapped-address-is-one-source"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsb-overrides-of-word-is-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pxy-direct-unless-trusted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pxy-step-reads-within-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pxy-handover-keeps-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pxy-observe-keeps-the-read-bound"
         }
       ]
     },
@@ -17213,6 +17278,464 @@
         {
           "kind": "theorem",
           "name": "fn-ovw-step-of-withdraw-pinned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-over-range-ovw-expands-to-over-range-cat"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-cursor-effect-expands-to-run"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-splan-cw-drain-is-the-expanded-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-splan-cw-residual-rendering"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-splan-cw-drain-of-the-arm-is-the-unbounded-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-over-range-ovw-emits-a-fresh-cursor"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-splan-cursor-step-of-okp-is-ok"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-run-of-start-is-cursor-octets"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1008",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpfj-record-anchor-of-family-record-at",
+          "note": "Subject fn-bpfj-record-anchor. The record's anchor is the anchor the proposal was made for (the equalities' hypothesis reads the state's own anchor)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfj-propose-step-is-the-propose-step",
+          "note": "KEYSTONE. Subject fn-bpfj-propose-step. Within the profile's limit, a finished well-formed job proposes exactly what fn-bpnf-family-propose-step proposes (fn-bpfj-plan-at-is-the-plan-at, fn-bpfj-apply-at-is-the-apply-at). Host: host/native/bp-service.lisp fnn-bps-fragment-progress starts, steps and offers the job; the (:family anchor observation job limit) and (:persist-result epoch op result job limit) events reach fn-bpfj-propose-step / fn-bpfj-persist-step through fn-bpnj-step -> fn-bpnp-step -> fn-bpn-report-author-step -> fn-bpn-report-step -> fn-bpnf-fragment-step (books/bp-node-fragment-step). Teeth: tests/acl2/bp-node-fragment-step-job-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfj-plan-at-ready-binds-live-source-rows",
+          "note": "Subject fn-bpfj-plan-at. A ready job plan binds live source rows, as fn-bpnf-family-plan-at-ready-binds-live-source-rows does for the family plan; fn-bpnf-fragment-step-family-publication-has-live-sources uses both."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1009",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpfj-persist-step-is-the-persist-step",
+          "note": "KEYSTONE. Subject fn-bpfj-persist-step. Within the profile's limit, the kind-18 :persist-result over the finished job applies exactly what fn-bpnf-family-persist-step applies (fn-bpfj-apply-at-is-the-apply-at). Host: host/native/bp-service.lisp fnn-bps-fragment-progress starts, steps and offers the job; the (:family anchor observation job limit) and (:persist-result epoch op result job limit) events reach fn-bpfj-propose-step / fn-bpfj-persist-step through fn-bpnj-step -> fn-bpnp-step -> fn-bpn-report-author-step -> fn-bpn-report-step -> fn-bpnf-fragment-step (books/bp-node-fragment-step). Teeth: tests/acl2/bp-node-fragment-step-job-tests.lisp."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1059",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rpin-step-preserves-funded-ownership"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rpin-acquire-holds-the-captured-generation"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1060",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-owner-orcp-rebuild-establishes-retain-carry"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1057",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pio-completion-publishes-only-the-issued-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-cancellation-retains-worker-ownership"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-close-waits-for-every-worker"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-successive-file-issues-have-distinct-identities"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-admitted-resource-token-establishes-owned-read"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-bounded-file-issue-spends-a-fresh-representable-name"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1067",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-owner-retain-carry-of-put"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-retain-carry-of-other-global-put"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-retain-carry-put-frames-global-association"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1058",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-asj-permitted-relay-transform-preserves-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-asj-body-of-strip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-asj-strip-preserves-byte-order"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1061",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-set-group-authority-installs-binding"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1063",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnc-ready-startup-binds-the-parsed-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnc-grant-is-the-authorized-route-plan"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1064",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnc-open-run-live-iff-both-completions-succeed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnc-retirement-stops-the-control-listener"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1066",
+      "events": []
+    },
+    {
+      "id": "PRF-1075",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bplc-owner-listener-ports-refines-the-configured-listener-set"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bplc-failed-completion-fences-without-rollback"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bplc-installed-runtime-is-the-completed-target"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bplc-rebind-retains-the-accepted-session-generation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bplc-every-death-cut-is-a-fenced-process-crash"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1076",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bplc-grant-is-the-authorized-bp-configuration-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bplc-step-preserves-listener-credit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bplc-bind-and-retire-account-exact-descriptor-completions"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1070",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-skp-finish-preserves-resolution"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1078",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ssr-resident-step-of-append"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1079",
+      "events": []
+    },
+    {
+      "id": "PRF-1089",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-event-retains-article-subject"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1090",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bprpf-admitted-row-has-bounded-adu"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprpf-admitted-checkpoint-bounds-every-held-adu"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprpf-ready-recovery-bounds-every-held-adu"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1065",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-prl-admit-preserves-pool-funding"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-completion-refunds-at-most-once"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-settle-never-reuses-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prd-admit-preserves-pool-funding"
+        }
+      ],
+      "pending_subject": "Guard-verified stobj adapter calls these subjects; native caller integration, matching proof manifest/image and allocator/profile refinement pending."
+    },
+    {
+      "id": "PRF-1073",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-orln-a-refused-cold-line-is-answered-unavailable"
+        }
+      ],
+      "pending_subject": "Owner program adapter calls core subject; native served admission/refusal routing pending."
+    },
+    {
+      "id": "PRF-1082",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-crv-accepted-launch-fits-observed-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-crv-accepted-launch-funds-pool-dynamic-allowance"
+        }
+      ],
+      "pending_subject": "Host launcher calls component. Explicit supported policy factory/init consumer and actual image/native evidence pending; positive explicit-policy operator branch currently unreachable-in-composition."
+    },
+    {
+      "id": "PRF-1080",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pxe-assignment-requires-idle-and-fresh-job"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pxe-stale-completion-cannot-return-a-reused-worker"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pxe-commit-requires-returned-settled-exact-job"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pxe-acquired-token-cannot-own-a-second-worker"
+        }
+      ],
+      "pending_subject": "Native executor invokes the subjects through named answer/effect adapter equations. Persistent installation remains unreachable-in-composition until funded startup constructs the workers; matching manifest/image and productive allocator/profile evidence pending."
+    },
+    {
+      "id": "PRF-1091",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-replay-receiver-is-receiver-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-replay-rest-receiver-is-receiver-replay-rest"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1068",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-osr-finish-preserves-full-retained-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-open-establishes-full-retained-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-ready-capture-keeps-retained-fields"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-configure-durable-preserves-full-retained-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-open-establishes-live-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-live-capture-opens"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-ready-capture-keeps-established-projections"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-finish-preserves-identity-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-finish-preserves-live-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-configure-durable-preserves-live-carry"
+        }
+      ],
+      "pending_subject": "Pure actual capture/recovery inverse dependency with full retained semantic fields. Actual producer capture/canonical writer/load payload alpha and complete live transition/owner installation bridges remain open; no full producer completion claim."
+    },
+    {
+      "id": "PRF-1097",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cvcg-config-replay-generation-counts-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvcg-accepted-publication-count-fits-profile"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1100",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-whl-success-requires-observed-clear-owner",
+          "note": "Q10d reachable live-owner readiness; literal positive and hypothesis-removal teeth in web-health-tests/web-session-tests. Physical observations and no-second-process are native scope, not a theorem."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-whl-answer-body-is-bounded",
+          "note": "Q10d reachable live-owner readiness; literal positive and hypothesis-removal teeth in web-health-tests/web-session-tests. Physical observations and no-second-process are native scope, not a theorem."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-web-health-step-preserves-sessions-and-bounds-body",
+          "note": "Q10d reachable live-owner readiness; literal positive and hypothesis-removal teeth in web-health-tests/web-session-tests. Physical observations and no-second-process are native scope, not a theorem."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1106",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-prf-acquire-preserves-pool-funding"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prf-acquired-file-is-held"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1122",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-fc-temporary-mode-refusal-closes-without-stopping"
         }
       ]
     }

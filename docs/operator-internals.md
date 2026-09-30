@@ -279,7 +279,7 @@ T, H or R, or `--profile development|scale`, is written as named and never
 resized when the budget holds it; past the budget it is refused
 `init-budget-cannot-hold-profile` with both figures (exit 1,
 `fn-heap-init-decide-refuses-the-operators-request-past-the-budget`),
-unless FN_INIT_BUDGET_MB names a target budget that holds it: then it is
+unless `init --budget MB` names a target budget that holds it: then it is
 written with `within-budget=no target-budget=MB MB`. A named budget below
 the budget init observes without it (init run outside the service's
 memory limit) is written for the named budget and warned on stderr by name
@@ -666,10 +666,22 @@ is not a `<path-identity>`. Set the policy instead.
 What `run` admits of fn.toml, key by key (`fn-native-config-unsupported-key`,
 books/native-config.lisp): `[store]`, `[listener]` (a numeric address or a
 loopback alias, TLS paths paired), `[auth]` (`protected_only` only with a TLS
-pair), `[posting] enabled`, `[control]`, and `[log] path` when it is absolute.
-It refuses, naming the key, `[posting] agent`, `[anchor]`, `[acl2]` and a
-relative `[log] path`: `usage operator run (UNSUPPORTED-PROFILE agent)` and
-exit 5. The offline verbs above still accept such a file.
+pair), `[posting] enabled`, `[control]`, and `[log] path`.
+It refuses, naming the key, `[posting] agent`, `[anchor]` and `[acl2]`:
+`usage operator run (UNSUPPORTED-PROFILE agent)` and exit 5. The offline
+verbs above still accept such a file.
+
+Row S8 (moving a node): every verb resolves fn.toml's relative paths
+(`[store] path`, `tls_cert`, `tls_key`, `[auth] path`, `[log] path`,
+`[control] path`) under fn.toml's own directory before it plans
+(`books/native-operator.lisp` `fn-native-operator-run-at`, called by
+`host/native/operator.lisp` `fnn-operator-run-at` with the process's working
+directory and the path as given; `books/native-config-paths.lisp`, keystone
+`fn-ncpath-config-octets-load-the-resolved-configuration`: the octets the
+operator loads are the resolved configuration's rendering). A resolved path
+past 512 octets is refused `resolved-path-bounds`. `mission` writes
+`store`, `tls/cert.pem`, `tls/key.pem`, `store/auth.toml`, `log/fn.log` and
+`store/control.sock`.
 
 `help` does not read the configuration file. `run` uses the normalized native
 owner callback. Missing, nonregular or oversized configuration is usage (5);
@@ -897,11 +909,7 @@ C=/var/fn/fn.toml
 useradd -d /var/fn -s /sbin/nologin -c fn-node _fn
 install -d -o _fn -g _fn -m 0700 /var/fn /var/fn/tls /var/fn/log
 cd /var/fn
-su -s /bin/sh _fn -c "$F operator $C mission small-community --host 10.0.2.15 --port 11563"
-openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 3650 \
-  -subj /CN=fnbsd.friends.fn.invalid -addext subjectAltName=IP:10.0.2.15 \
-  -keyout /var/fn/tls/key.pem -out /var/fn/tls/cert.pem
-chown _fn:_fn /var/fn/tls/*.pem && chmod 600 /var/fn/tls/key.pem
+su -s /bin/sh _fn -c "$F operator $C mission small-community --host 10.0.2.15 --port 11563 --tls-name 10.0.2.15"
 su -s /bin/sh _fn -c "$F operator $C init"
 su -s /bin/sh _fn -c "$F operator $C policy set path-identity fnbsd.friends.fn.invalid"
 su -s /bin/sh _fn -c "$F operator $C principal set-password ember --posting"
@@ -1819,7 +1827,12 @@ redeemed account the file does not name as the configuration holds it
 (`fn-lb-sync-binds-file-logins-as-the-file-does-and-keeps-account-bindings`),
 so it survives restarts (`fn-lb-an-account-binding-survives-the-next-start`);
 a file login's binding stays the file's.
-`principal set-password` asks the same (control request 14): the owner
+`principal set-password` (= `account set-password`) and, for a login the
+file holds, `account delete` (row S6, PRF-1019,
+`books/native-auth-admin.lisp` `fn-native-auth-admin-delete`, whose
+keystone `fn-native-auth-admin-delete-decides-by-the-file` sends a login the
+file does not hold to the configuration's `account delete` record) ask the
+same (control request 14): the owner
 rebuilds its credential table from the file with the load it ran at start
 (`host/native/auth.lisp` `fnn-native-auth-reload-config`, ACL2's
 `fn-native-auth-host-load`) before republishing the bindings, so a new
@@ -2663,21 +2676,21 @@ tar xzf fn-8fb3768e8439-linux-x86_64.tar.gz
 F=$N/fn-8fb3768e8439/bin/fn
 C=$N/node/fn.toml
 mkdir -p node
-$F operator $C mission small-community --host 192.168.50.120 --port 11990
+$F operator $C mission small-community --host 192.168.50.120 --port 11990 --tls-name 192.168.50.120
 ```
 
 `mission` writes `fn.toml`: the listener on that address, `[auth] required`
 and `protected_only` (a login is needed, and only after STARTTLS), a TLS
-pair under `node/tls/`, the log under `node/log/`. It does not make the TLS
-pair. Make one whose subjectAltName is the address the other node will dial
-(the other node verifies the handshake against this certificate and that
-name):
+pair under `node/tls/`, the log under `node/log/`. With `--tls-name` it
+makes that pair (row Q10a, books/tls-self-signed.lisp): the image generates
+a P-256 key, ACL2 renders the certificate body (subject, validity, a
+subjectAltName entry per name), the image signs it and writes both files,
+the key at 0600. Name the address the other node will dial (the other node
+verifies the handshake against this certificate and that name). For a node
+written without `--tls-name`:
 
 ```sh
-openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 3650 \
-  -subj /CN=persvati.friends.fn.invalid -addext subjectAltName=IP:192.168.50.120 \
-  -keyout node/tls/key.pem -out node/tls/cert.pem
-chmod 600 node/tls/key.pem
+$F operator $C tls self-signed 192.168.50.120        # docs-check: skip (no tls_cert in the grammar book configuration)
 $F operator $C init                                   # local.general, local.test
 $F operator $C policy set path-identity persvati.friends.fn.invalid
 printf 'PASSWORD\nPASSWORD\n' | $F operator $C principal set-password ember --posting
@@ -2918,3 +2931,13 @@ names a group this node does not carry is refused `UNKNOWN-GROUP` (exit
   (PKT-431).
 - One credential slot per peer serves both directions, so a credentialed
   pull needs outbound groups too (PKT-431).
+
+
+`store bless-snapshot DIR` is S7a's read-only checker of an existing copy
+(`specs/host.md`, HST-039). `host/native/io.lisp`
+`fnn-command-store-bless-snapshot` supplies the marker, open and key
+observations to `fn-osn-bless-word`; ACL2 selects the first failure and
+renders the line. No source store is opened and no file is repaired.
+The running snapshot producer, including bounded capture and key/config
+ownership, is a separate unfinished S7 increment. The native checker
+fixtures are stopped copies with an explicit completion observation.

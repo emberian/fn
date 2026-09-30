@@ -347,6 +347,59 @@ third conjunct is `fn-lace-merge-commutative-ids`. Restated over the transit
 path in §6 as S3's keystones: ids are the union, a fork is visible after the
 merge, and the fork survives every later merge.
 
+### 2.4 Versioned legacy article subjects (relay-v1; OBJ-008 / PRF-1058)
+
+Four objects remain distinct: the received/stored-byte commitment
+(`fn-id-subject-of-payload`), the route-independent legacy article subject
+(`fn-asj-subject`), the reception record (peer, provenance, event identity and
+bytes commitment), and operation identity. The existing bytes commitment is
+unchanged. Native signed objects retain their exact signed-source subject;
+a legacy article subject is not authenticated authored identity.
+
+The `relay-v1` projection calls `fn-pu-strip` with `dropping=nil`: remove
+exactly every complete top-level Path and Xref field, case-insensitively,
+including their continuation lines. Preserve every other header byte, field
+order, separator and body byte exactly; no unfolding or normalization.
+RFC 5537 §3.2.1 and §3.6 steps 7–8 allow the trace updates, and §3.6/§3.7's
+last paragraphs forbid other alterations. The projection is fn's guarantee
+under that named profile, not a new RFC identity requirement.
+
+The preimage is `"fn/article-subject/v1" || 0 || u32(len(profile)) ||
+profile || u32(len(projection)) || projection`; the rendered identity uses
+that distinct label, identity version 1 and BLAKE3 algorithm 2. The u32
+field is a representation bound; this change adds no admission ceiling.
+Profile evolution receives a new profile/version rather than changing an
+existing commitment's meaning. A-CRYPTO's pessimistic generic collision
+work for BLAKE3-256 is approximately 2^128; projection equality implies
+digest equality without a cryptographic assumption, while the converse
+requires collision resistance and is not an ACL2 theorem.
+
+`fn-asj-permitted-relay-transformp` describes removal followed by a finite
+sequence of arbitrary complete trace-field insertions at valid header
+boundaries (including mid-header and folded fields). Its invariant, fn's
+own relay invariant, and projection idempotence are admitted in
+`books/article-subject.lisp`. The complement proves the original body suffix
+is preserved and, for proper input lists, the projection is a subsequence
+of the original octets: every kept byte is original and remains in order.
+Inserting before another field's continuation is not a permitted boundary;
+the affirmative counterexample in `tests/acl2/article-subject-tests.lisp`
+checks this, as well as changed protected body and Subject bytes.
+
+The owner computes the subject from its received transit octets before
+intent and logs `article-subject=` beside `bytes-subject=` and `authority=`.
+Its equality under the stored relay rendering follows from
+`fn-asj-project-of-relay-article`. This first increment adds observability;
+FN-RCL2 now retains that commitment through the host per-event reclaim
+rewrite (PRF-1089), beside the original byte-content commitment. The durable
+reception column, original Message-ID→article-subject decision and conflict
+retention remain a finite follow-up. Commitment equality after body removal
+does not prove exact projection equality; generic BLAKE3-256 collision work
+remains approximately 2^128 under A-CRYPTO.
+Until those land, reconciliation remains the existing protocol scope,
+guaranteed only when the caller knows the article identity. Obligations
+continue to refer to the unchanged bytes commitment; recording per-kind
+subject-only versus byte-retention duties belongs to that follow-up.
+
 ## 3. Group policy on inbound transit
 
 The gate on a peer-transit article is `fn-pol-admitp`, evaluated against **this
@@ -1103,3 +1156,57 @@ silently taken.
    forging. The poster's client attaches it (`fn statement sign` then
    `fn statement attach`), and the ACL2 fact that licenses attaching it
    anywhere is S1's `fn-stx-payload-ignores-the-carrier-field`.
+
+
+### Retained enrollment and statement authority bridge (PRF-1070/1078/1079)
+
+The running gate's explicit group authority identifies the existing stable,
+operator-enrolled principal. A valid retained hybrid enrollment projects its
+ML-DSA-65 public key into the existing `A-SIG-NATIVE` FN-Statement suite;
+revocation removes that principal. This bridge does not reinterpret
+FN-Authorship's hybrid signature or derive another principal from a key.
+`fn-ssk-keyring-of-snapshots` defines the oldest-to-newest resolution oracle.
+A newly completed kind-3 snapshot applies one publication to the carried
+keyring and generation. An identical repeat of an older generation advances
+only the identity cursor, preserving the current keyring. The carried
+`fn-skp-resolvedp` relates those fields to retained snapshots; identity finish
+preserves it with that invariant as the sole hypothesis. The invariant is a
+proof predicate, never a scan on each served admission.
+
+Native recovery calls `fn-ssr-intern-step`. Each decoded event is interned
+under the keyring and generation active immediately before that event.
+After a new enrollment/revocation the next event receives the new epoch.
+The same sequential worker handles resident, extent and compressed records;
+its refinement theorems compare the complete worker result and arena effects
+under their named arena/placement hypotheses. Full replay clears any selected
+checkpoint and starts at the initial epoch. Checkpoint suffix replay starts
+at the selected checkpoint's captured identity context and arena, rather
+than the current running owner's keyring. Canonical open retains the frozen
+row deltas as its statement index and reconstructs every accepted article's
+historical verdict, including ordinary held ARTICLE rows and carried
+composites. The extra row-projection walk at finalize is currently linear in
+retained rows; carrying a captured index for suffix-only work remains a cost
+continuation and is not a bounded-suffix claim.
+
+Frozen index membership is evidence of historical verification. Before a
+later authority decision the chosen current policy is verified again under
+the active keyring. Rotation therefore refuses an old-key policy as
+`no-policy` until an active-key policy is published. Retained poster and
+policy forks remain equivocation evidence across rotation and reopen. The
+existing uniform-context lace correspondence theorem retains its exact
+hypotheses; it does not prove a multi-epoch trust policy merely because the
+carried Store invariant holds.
+
+`statement-sign PRINCIPAL INCARNATION SEQUENCE article|policy GROUP
+ML-PRIVATE-PEM ML-PUBLIC-PEM SOURCE OUTPUT` produces a client carrier for this
+existing statement suite. ACL2 parses the source, chooses the statement
+payload and preimage, renders the carrier and verifies the supplied public
+key/signature. The host performs only key-file I/O and the native ML-DSA
+primitive. Policy source-body octets become policy terms; membership stays
+empty in this smallest self-authority slice. Real productive authority,
+restart, rotation, old-policy refusal and both fork outcomes are exercised
+by `NativeProductiveGroupAuthorityTests`; that witness requires
+`FN_RUN_HYBRID_E2E=1` and a matching new immutable runner image. Source REPL
+admission, an abstract signature attachment and this pending native fixture
+are separate coordinates. No durable article-subject/Message-ID conflict
+binding or store adoption is asserted by this bridge.

@@ -319,13 +319,25 @@
     (fn-bpnp-keeps-base-p st (fn-bpnf-family-persist-step st epoch op result))
     :hints (("Goal" :do-not-induct t
              :in-theory (union-theories '(fn-bpnf-family-persist-step) (theory 'fn-bpnp-keep-all)))))
+  ;; The twins over the host-carried reassembly job (Q4a increment B): the
+  ;; job steps answer with the family steps' state shapes.
+  (defthm fn-bpnp-job-propose-step-keeps-base
+    (fn-bpnp-keeps-base-p st (fn-bpfj-propose-step st anchor-arrival observation job limit))
+    :hints (("Goal" :do-not-induct t
+             :in-theory (union-theories '(fn-bpfj-propose-step) (theory 'fn-bpnp-keep-all)))))
+  (defthm fn-bpnp-job-persist-step-keeps-base
+    (fn-bpnp-keeps-base-p st (fn-bpfj-persist-step st epoch op result job limit))
+    :hints (("Goal" :do-not-induct t
+             :in-theory (union-theories '(fn-bpfj-persist-step) (theory 'fn-bpnp-keep-all)))))
   (defthm fn-bpnp-fragment-step-keeps-base
     (fn-bpnp-keeps-base-p st (fn-bpnf-fragment-step st event))
     :hints (("Goal" :do-not-induct t
              :in-theory (union-theories '(fn-bpnf-fragment-step
                                           fn-bpnp-foundation-step-keeps-base
                                           fn-bpnp-family-propose-step-keeps-base
-                                          fn-bpnp-family-persist-step-keeps-base)
+                                          fn-bpnp-family-persist-step-keeps-base
+                                          fn-bpnp-job-propose-step-keeps-base
+                                          fn-bpnp-job-persist-step-keeps-base)
                                         (theory 'fn-bpnp-keep-all)))))
   (defthm fn-bpnp-delete-propose-step-keeps-base
     (fn-bpnp-keeps-base-p st (fn-bpn-report-delete-propose-step st obs enabled))
@@ -421,6 +433,21 @@
                              fn-bpf-fragment-listp-car-and-cdr
                              fn-bpf-fragmentp-fields))))))
 (local
+ (defthm fn-bpnpg-nth-past-the-end
+   (implies (and (true-listp e) (natp n) (<= (len e) n))
+            (not (nth n e)))
+   :hints (("Goal" :induct (nth n e)))))
+(local
+ (defthm fn-bpnpg-nth-3-of-a-three-list
+   (implies (and (true-listp e) (equal (len e) 3))
+            (equal (fn-bpn-nth 3 e) nil))
+   :hints (("Goal" :in-theory (enable fn-bpn-nth-is-nth-on-true-lists)))))
+(local
+ (defthm fn-bpnpg-nth-4-of-a-four-list
+   (implies (and (true-listp e) (equal (len e) 4))
+            (equal (fn-bpn-nth 4 e) nil))
+   :hints (("Goal" :in-theory (enable fn-bpn-nth-is-nth-on-true-lists)))))
+(local
  (defthm fn-bpnp-delegate-event-guard
    (implies (and (fn-bpnp-host-eventp event)
                  (not (equal (fn-cbor-ag-car event) :progress)))
@@ -429,13 +456,20 @@
                  (or (not (equal (fn-cbor-ag-car event) :recover-fnbs))
                      (and (true-listp (fn-bpn-nth 2 event))
                           (<= (len (fn-bpn-nth 2 event))
-                              *fn-bpn-machine-max-records*)))))
+                              *fn-bpn-machine-max-records*)))
+                 (or (not (equal (fn-cbor-ag-car event) :family))
+                     (not (fn-bpn-nth 3 event))
+                     (fn-bpfj-readable-jobp (fn-bpn-nth 3 event)))
+                 (or (not (equal (fn-cbor-ag-car event) :persist-result))
+                     (not (fn-bpn-nth 4 event))
+                     (fn-bpfj-readable-jobp (fn-bpn-nth 4 event)))))
    :hints (("Goal" :do-not-induct t
             :in-theory (e/d (fn-bpnp-host-eventp fn-bpnf-host-eventp)
                             (fn-bpn-machine-eventp fn-bpb-bundlep
                              fn-bpp-blockp fn-bpn-nth-is-nth-on-true-lists
                              fn-bpf-fragment-listp-is-a-true-list
-                             fn-bpf-fragment-listp fn-bpf-fragmentp fn-cp-idp))))
+                             fn-bpf-fragment-listp fn-bpf-fragmentp fn-cp-idp
+                             fn-bpfj-readable-jobp))))
    :rule-classes nil))
 (local
  (defthm fn-bpnp-held-list-of-with-runtime-for-guard

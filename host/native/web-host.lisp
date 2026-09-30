@@ -113,11 +113,16 @@ exposure admission decides (the id, or NIL when it refused)."
                 (sleep (/ (min (second results) 1000) 1000))
               (destructuring-bind (plan close starttls consumed &rest more) results
                 (declare (ignore starttls more))
-                (loop
-                  (multiple-value-bind (part rest donep) (fnn-owner-render-next plan)
-                    (setq reply (concatenate 'fnn-octets reply part))
-                    (when donep (return))
-                    (setq plan rest)))
+                (unwind-protect
+                     (loop
+                       (multiple-value-bind (part rest donep yieldedp)
+                           (fnn-owner-render-next-quantum service cid plan :reader)
+                         (setq reply (concatenate 'fnn-octets reply part))
+                         (when donep (return))
+                         (setq plan rest)
+                         (when yieldedp
+                           (sleep (/ (fnn-core 'fn-splan-cursor-resume-ms) 1000)))))
+                  (fnn-owner-response-unpin service cid))
                 (setq closing close)
                 (when (and (zerop consumed) (not close))
                   (fnn-fault "owner consumed no octets of a web command"))
@@ -126,6 +131,7 @@ exposure admission decides (the id, or NIL when it refused)."
     (fnn-store-error () :gone)))
 
 (defun fnn-web-close (service cid)
+  (fnn-owner-response-unpin service cid)
   (ignore-errors
     (fnn-owner-serialized service cid (lambda () (fnn-owner-action 'fn-owner-close cid)) :reader))
   (ignore-errors
@@ -228,6 +234,16 @@ exposure admission decides (the id, or NIL when it refused)."
                       (fnn-web-respond face fd channel code fields
                                        (fnn-web-slice out 0 (fnn-web-len out)) bodyp))
                     (return))
+                   (:health
+                    (fnn-owner-space-preobserve service t)
+                    (setq flow (second action)
+                          event (list :health-observation
+                                      (fnn-owner-serialized
+                                       service nil
+                                       (lambda ()
+                                         (fnn-owner-core 'fn-web-host-health-observe
+                                                         (fnn-owner-sched-snapshot service)))
+                                       :reader))))
                    (:open
                     (destructuring-bind (fam addr protected next) (rest action)
                       (setq flow next

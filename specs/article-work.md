@@ -20,8 +20,16 @@ Every input-dependent traversal called by the parser has a costed counterpart:
 - The bounded source-length preflight and subsequent octet validation are
   separate passes, including malformed-input and early-exit cases.
 - Physical-line and colon scans include their accumulated-prefix reversals.
-- Field-name validation, value-byte validation, visible-character scanning and
-  name downcasing are separate passes, with the original short-circuit order.
+- Field-name validation, value-byte validation and name downcasing are separate
+  passes. An initial WSP-only value remains open; closure requires a VCHAR.
+  The logical reference's visible-value closure scan has a conservative
+  `1 + len(current-value)` charge on each active line, including lines that
+  return before closing. This bound overcounts those early returns.
+- The executed list and buffer accumulators carry the visible flag. Their fold
+  costs at most `3 + 2*len(line)` structural units, including a first visible
+  scan when the flag is false, independent of accumulated field length. Their
+  close reads that flag. The whole-parse envelope below models the logical
+  reference, whose value equals those executed loops by named refinements.
 - Both occurrences of a line-length calculation and the conditional field-count
   calculation are charged independently.
 - Each fold copies the old raw-line-list prefix and the old unfolded-value

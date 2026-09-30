@@ -16,9 +16,10 @@
 #
 #   tools/hbox_native.sh [options] REV MODULE...
 #
-# REV is a commit (shipped with `git archive`, so the tree is exactly that
-# revision) or `.` (this working tree, uncommitted edits included, rsynced with
-# farm.py's excludes).  MODULE is a unittest name: tests.test_native_owner or
+# REV is a commit (shipped with a gzip-compressed `git archive`, so the tree
+# is exactly that revision) or `.` (this working tree, uncommitted edits
+# included, rsynced with farm.py's excludes). MODULE is a unittest name:
+# tests.test_native_owner or
 # tests.test_native_owner.SomeTests.
 #
 # On the box, under BASE/NAME/native-LABEL/ (NAME is the lane: the
@@ -450,6 +451,9 @@ BOX
 # (limits-live-5, decision-keystones-3; obstructions-5 item 34).
 step world-check python3 tools/extract/world.py --check
 step interfaces-check python3 tools/interface_emit.py --check
+# A repository declaration is not evidence its book is in this image.
+# Reject a missing native entry before spending time on certification.
+step host-books python3 tools/host_check.py --books
 toolchain=\$(python3 tools/acl2_toolchain.py identity "\$ACL2") || finish 14
 step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
 step certify $WRAP python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
@@ -646,6 +650,9 @@ ssh -n "$HOST" "mkdir -p $S/tree $S/logs" || { echo "hbox_native: cannot create 
 # --no-build keeps the tree's certificates: its images and any REPL session
 # there were made against them, and a re-ship that deleted them left those
 # sessions refusing include-book (2026-09-28).  A build run re-installs them.
+# Compress the complete immutable archive at level 1. Historical evidence is
+# part of that tree too: compressing its transport retains every tracked path
+# while avoiding repeated uncompressed transfers before the detached run starts.
 KEEP=
 [ $BUILD -eq 1 ] || KEEP="--exclude=*.cert --exclude=*.port --exclude=*.fasl"
 if [ "$REV" = . ]; then
@@ -655,11 +662,11 @@ if [ "$REV" = . ]; then
         "$HERE/" "$HOST:$S/tree/" || { echo "hbox_native: rsync failed" >&2; exit 3; }
 elif [ $BUILD -eq 0 ]; then
     ssh -n "$HOST" "find $S/tree -mindepth 1 -path $S/tree/build -prune -o -type f ! -name '*.cert' ! -name '*.port' ! -name '*.fasl' -exec rm -f {} +" || exit 3
-    git -C "$HERE" archive --format=tar "$FULL" | ssh "$HOST" "tar -x -C $S/tree" \
+    git -C "$HERE" archive --format=tar.gz -1 "$FULL" | ssh "$HOST" "tar -xz -C $S/tree" \
         || { echo "hbox_native: shipping $FULL failed" >&2; exit 3; }
 else
     ssh -n "$HOST" "find $S/tree -mindepth 1 -maxdepth 1 ! -name build -exec rm -rf {} +" || exit 3
-    git -C "$HERE" archive --format=tar "$FULL" | ssh "$HOST" "tar -x -C $S/tree" \
+    git -C "$HERE" archive --format=tar.gz -1 "$FULL" | ssh "$HOST" "tar -xz -C $S/tree" \
         || { echo "hbox_native: shipping $FULL failed" >&2; exit 3; }
 fi
 box_script "$@" | ssh "$HOST" "cat > $S/run.sh" || exit 3

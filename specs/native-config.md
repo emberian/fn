@@ -101,3 +101,26 @@ defaults, not values computed by the raw host. `host/native-config-host.lisp`
 exposes `fn-native-config-host-load` and the ACL2-owned byte bound for the
 native wrapper; `host/native/config.lisp` registers the diagnostic protocol
 `config check PROFILE-PATH` when included by the saved-image build.
+
+
+### Explicit cold resources (P12 staged grammar)
+
+`[resources]` accepts `cold_heap_octets`, `cold_workers`,
+`cold_descriptors`, `cold_read_ids` and `cold_file_ids` together. All five are positive
+naturals representable in u64; a partial table, zero or overflow is
+refused. Absence remains absent in the normalized record, and `show`
+preserves the exact supplied values through the loader round trip.
+These fields describe an operational cold-resource policy, separate from
+the durable Store profile. At this source frontier `run` refuses an explicit
+policy as `cold_resources`: the supported allocator baseline and launcher
+consumer have not yet landed. Parsing/showing it is not a funding verdict.
+The pending consumer must reserve peak persistent table capacity, worker
+stack/runtime, protected read buffers and retained cached buffers, and
+charge each registered incarnation until physical close. Native pressure,
+actual pread stall, completion/cache/close observations are SCN-1002.
+Checkpoint/recovery rescue and compressed decoder highwater need additional
+grounded funding; this grammar does not establish them.
+
+The file-incarnation namespace is distinct from the read namespace. The
+operator limits each independently, with no wrapped identity reuse; the
+local file allocator refuses before opening beyond `cold_file_ids`.

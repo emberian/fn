@@ -8,7 +8,11 @@
 
 (defun fn-bpnf-publication-authorize
   (st epoch operation-id held lock-owned final-absent)
-  (declare (xargs :guard t))
+  ;; The *1* class (Q4a item 2): host-called (bp-service's kind-5
+  ;; publication); the guard names the kinds the host passes (the entry
+  ;; guard checks them by name) and the wrapper runs raw.
+  (declare (xargs :guard (and (fn-frame-natp epoch) (fn-frame-natp operation-id))
+                  :verify-guards nil))
   (let* ((issued (fn-bpnf-issued st))
          (record (fn-bpnf-stored-record epoch operation-id held)))
     (if (and (fn-bpnf-operationp issued)
@@ -48,11 +52,25 @@
        (equal (nth 6 operation) (fn-jpub-initial t))))
 
 (defun fn-bpnf-publication-operation-name (operation)
-  (declare (xargs :guard t)) (nth 4 operation))
+  (declare (xargs :guard (true-listp operation))) (nth 4 operation))
 (defun fn-bpnf-publication-operation-frame (operation)
-  (declare (xargs :guard t)) (nth 5 operation))
+  (declare (xargs :guard (true-listp operation))) (nth 5 operation))
 (defun fn-bpnf-publication-operation-publisher (operation)
-  (declare (xargs :guard t)) (nth 6 operation))
+  (declare (xargs :guard (true-listp operation))) (nth 6 operation))
+
+(verify-guards fn-bpnf-publication-authorize
+  :hints (("Goal" :in-theory (disable fn-bpnf-stored-recordp
+                                      fn-bpnf-stored-record-frame
+                                      fn-bpnf-stored-record-name
+                                      fn-bpnf-operationp
+                                      fn-bpnf-operation-matchp))))
+(verify-guards fn-bpnf-publication-operationp
+  :hints (("Goal" :in-theory (disable fn-bpnf-stored-recordp
+                                      fn-bpnf-stored-record-frame
+                                      fn-bpnf-stored-record-name))))
+(verify-guards fn-bpnf-publication-operation-name)
+(verify-guards fn-bpnf-publication-operation-frame)
+(verify-guards fn-bpnf-publication-operation-publisher)
 
 ; This is the intended authorization subject for the native publisher.  In
 ; particular a successful result cannot be manufactured from a stale

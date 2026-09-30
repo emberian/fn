@@ -22,7 +22,9 @@
   (when (string= (or (fnn-developer-selector selector) "") "1")
     (fnn-out "~a" marker)
     (finish-output)
-    (loop (sleep 1))))
+    (loop
+      (when *fnn-bpnode-control-pump* (funcall *fnn-bpnode-control-pump*))
+      (sleep 1))))
 
 (defun fnn-bpnode-source-decision (view)
   "Print ACL2's D23 source decision for VIEW; the host classifies nothing."
@@ -933,7 +935,7 @@ uncertain, as it does everywhere else."
     (listen-port once journal-root store-root receipt-root workflow-root
      node-id peer-id destination policy issuer contact-host contact-port
      lifetime crc-type hop-limit transfer-mru wall wall-error reports-enabled
-     &optional receipt-signer)
+     &optional receipt-signer control-config)
   ;; Signed receipts: the directory of this node's receipt-signing keys, or
   ;; nil (bare receipts, the delegation profile).
   (setq *fnn-bpnode-receipt-signer* receipt-signer)
@@ -942,12 +944,17 @@ uncertain, as it does everywhere else."
          ;; sequence operation.  There is exactly one BP lifecycle owner.
          (bp (fnn-bps-open-node journal-root config wall wall-error))
          (owner nil)
+         (control nil)
+         (*fnn-bpnode-control-pump* nil)
          (listener nil)
          (session-word nil))
     (setq *fnn-bpnode-budgets* (fnn-bpnode-read-budgets journal-root))
     (unwind-protect
          (progn
            (setq owner (fnn-owner-install store-root 1))
+           (when control-config
+             (setq control (fnn-bpnc-start control-config store-root owner)
+                   *fnn-bpnode-control-pump* (lambda () (fnn-bpnc-pump control))))
            (fnn-bpc-advance-clock bp (fnn-bp-observation wall wall-error))
            (fnn-bpnode-delete-expired bp reports-enabled)
            (fnn-bpnode-observe-reports bp node-id)
@@ -975,24 +982,24 @@ uncertain, as it does everywhere else."
              ;; no other; a numeric PORT is the one-row case.  The loop
              ;; stays serialized: poll(2) picks the next ready listener and
              ;; that session runs to its end before the next (spec 9.1).
-             (let ((ports (if (eq listen-port :boundaries)
-                              (fnn-owner-core 'fn-owner-bp-listener-ports)
-                            (list listen-port))))
-               (unless ports
-                 (fnn-refuse "bp-node serve: the configuration admits no transport-bp boundary listener"))
-               (dolist (port ports)
-                 (multiple-value-bind (bound bound-port)
-                     (fnn-tcl-listen port)
-                   (push bound listener)
-                   (fnn-out "BP NODE LISTENING ~d" bound-port)))
-               (setq listener (nreverse listener)))
-             (fnn-accept-any-loop
-              listener
+             (setq listener (fnn-bplc-start listen-port))
+             (when control (setf (fnn-bpnc-listeners control) listener))
+             (fnn-bpnc-accept-loop
+              control listener
               (lambda (socket &aux (profile-started (get-internal-real-time)))
                 (let* ((session-counter
                          (incf (fnn-bps-next-session bp)))
                        (observed-channel
                          (fnn-bpnode-observed-channel socket))
+                       (session-fd (fnn-socket-fd socket))
+                       (parent-waiter *fnn-fd-waiter*)
+                       (*fnn-fd-waiter*
+                         (if control
+                             (lambda (fd direction seconds)
+                               (if (and (= fd session-fd) (eq direction :input))
+                                   (fnn-bpnc-wait-input control fd seconds)
+                                 (funcall parent-waiter fd direction seconds)))
+                           parent-waiter))
                        (*fnn-tcl-deliver*
                          (lambda (conn xfer-id octets)
                            (fnn-bp-deliver-node
@@ -1006,6 +1013,8 @@ uncertain, as it does everywhere else."
                        (*fnn-tcl-progress*
                          (lambda (conn)
                            (declare (ignore conn))
+                           (when *fnn-bpnode-control-pump*
+                             (funcall *fnn-bpnode-control-pump*))
                            (when (eq (fnn-bps-outcome bp) :fenced)
                              (fnn-indeterminate
                               "BP node custody publication uncertain; recovery required"))
@@ -1074,12 +1083,16 @@ uncertain, as it does everywhere else."
                      (fnn-core 'fn-bprc-note
                                (fnn-bp-run-evidence (fnn-bps-tally bp))
                                session-word)))
-      (dolist (bound listener) (fnn-socket-shut bound))
-      (when owner
-        (ignore-errors (fnn-owner-action 'fn-owner-app-unbind-receipt-store))
-        (fnn-owner-feed-close-all owner)
-        (fnn-store-close (fnn-owner-service-store owner)))
-      (fnn-bps-release bp))))
+      (unwind-protect
+           (when control (fnn-bpnc-retire control))
+        (unwind-protect
+             (when listener (fnn-bplc-close-all listener))
+          (unwind-protect
+               (when owner
+                 (ignore-errors (fnn-owner-action 'fn-owner-app-unbind-receipt-store))
+                 (fnn-owner-feed-close-all owner)
+                 (fnn-store-close (fnn-owner-service-store owner)))
+            (fnn-bps-release bp)))))))
 
 (defun fnn-dispatch-bp-node (command args)
   (when (string= command "resume")
@@ -1117,6 +1130,12 @@ uncertain, as it does everywhere else."
        (if (fourth args) (parse-integer (fourth args)) 0))))
   (unless (member command '("serve" "dispatch") :test #'string=)
     (error 'fnn-usage-error :message "bp-node: expected serve, dispatch, resume, checkpoint or profile"))
+  (let ((control-config nil))
+  (let ((where (position "--control-config" args :test #'string=)))
+    (when where
+      (unless (= (+ where 2) (length args))
+        (error 'fnn-usage-error :message "--control-config CONFIG must be the final pair"))
+      (setq control-config (nth (1+ where) args) args (subseq args 0 where))))
   (let ((offset (if (string= command "serve") 1 0)))
     (when (< (length args) (+ offset 11))
       (error 'fnn-usage-error
@@ -1141,6 +1160,6 @@ uncertain, as it does everywhere else."
        (number 14 +fnn-bp-hop-limit+) (number 15 +fnn-tcl-transfer-mru+)
        (optional-number 16) (number 17 0)
        (string= (arg 18 "0") "1")
-       (arg 19)))))
+       (arg 19) control-config)))))
 
 (fnn-register-verb "bp-node" (fnn-bp-verb #'fnn-dispatch-bp-node))

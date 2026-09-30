@@ -9,7 +9,10 @@
 ;;; function by function.
 ;;;
 ;;; Calls into ACL2 go through `fnn-call`, which applies the executable
-;;; counterpart (ACL2_*1*_ACL2) of the selected wrapper or logical function.
+;;; counterpart (ACL2_*1*_ACL2) of the selected wrapper or logical function,
+;;; or -- for an entry declared `:raw-with' (D40, RAW DISPATCH below) -- its
+;;; guard-verified definition, the guard's carried conjuncts held by the
+;;; named preservation theorems instead of evaluated per call.
 ;;; This does not prove that every inner call rechecks its guards. In particular,
 ;;; :program host wrappers are not guard-verified caller proofs; their raw
 ;;; execution can rely on arguments/global state satisfying a callee's guards.
@@ -1140,13 +1143,85 @@ offered to the writer while the owner runs (PKT-508), else written here."
 
 ;;; ---------------------------------------------------------------------------
 ;;; Calls into the certified core: the executable counterpart of each host
-;;; wrapper, exactly as the interpreted bridge evaluates it.
+;;; wrapper, exactly as the interpreted bridge evaluates it -- or, for an
+;;; entry declared `:raw-with' (D40), the guard-verified definition itself.
 
 (defun fnn-counterpart (name)
   (let ((symbol (find-symbol (symbol-name name) "ACL2_*1*_ACL2")))
     (unless (and symbol (fboundp symbol))
       (fnn-fault "ACL2 executable counterpart missing: ~a" name))
     symbol))
+
+;;; RAW DISPATCH (D40, lane depth-debt-9).  The executable counterpart
+;;; (*1*) of a guard-verified entry evaluates the entry's whole guard and
+;;; then runs the raw definition; for the owner's served entries that guard
+;;; is fn-sn-statep of the live Store -- the whole-node revalidation
+;;; AGENTS.md forbids on a served path -- and it cannot be a stobj invariant
+;;; (fn-sn-statep depends on fn-digest, which has an attachment;
+;;; stobj-attachment-restrictions).  Guard verification is the condition
+;;; for faithful raw execution: where the guard holds, the raw definition IS
+;;; the logical function.  So an entry whose guard is an invariant the host
+;;; establishes at the open and every transition preserves -- named, per
+;;; entry, by the theorems of its `:raw-with' declaration
+;;; (host/interfaces.lisp; books/definterface.lisp refuses the annotation at
+;;; image build unless the theorems exist in the loaded world and conclude
+;;; the guard's carried conjuncts) -- is dispatched to its raw definition.
+;;; The entry guard (arity and kind checks, below) runs before either
+;;; dispatch, exactly as before; what raw dispatch skips is the carried
+;;; conjuncts alone.
+;;;
+;;; The table is derived from the loaded world at image build
+;;; (fnn-install-raw-dispatch, called by host/native/build.lisp after this
+;;; file loads): each `:raw-with' entry of the `fn-interfaces' table, refused
+;;; unless its raw symbol is bound and its symbol-class is
+;;; :common-lisp-compliant, so an unknown dispatch target stops the build.
+;;; The developer selector FN_NATIVE_DISPATCH_COUNTERPART=1 keeps the
+;;; counterpart path for every entry (tests.test_native_owner runs the served
+;;; POST both ways and requires identical replies); a production image has no
+;;; selector and always dispatches raw.  planning/interfaces.json lists the
+;;; raw-dispatched entries (tools/interface_emit.py).
+
+(defvar *fnn-raw-dispatch* (make-hash-table :test 'eq)
+  "entry name -> its raw (guard-verified, compiled) function symbol")
+
+(defvar *fnn-dispatch-counterpart* nil
+  "T when the developer selector keeps the executable-counterpart path.")
+
+(defun fnn-install-raw-dispatch ()
+  "Fill *fnn-raw-dispatch* from the fn-interfaces table of the loaded world:
+the :raw-with entries, each checked against the world; the count."
+  (let ((wrld (w *the-live-state*)))
+    (clrhash *fnn-raw-dispatch*)
+    (dolist (entry (table-alist 'fn-interfaces wrld))
+      (let ((name (car entry))
+            (theorems (cadr (assoc-keyword :raw-with (cdr entry)))))
+        (when theorems
+          ;; Recheck the loaded table at the dispatch installation boundary,
+          ;; rather than assuming every table entry came from definterface.
+          (let ((problem (fn-di-raw-with-problem name (cdr entry) wrld)))
+            (when problem
+              (error "fnn-install-raw-dispatch: ~a has a refused declaration: ~s"
+                     name problem)))
+          (let ((raw (find-symbol (symbol-name name) "ACL2")))
+            (unless (and raw (fboundp raw))
+              (error "fnn-install-raw-dispatch: ~a is declared :raw-with but has no raw definition" name))
+            (unless (eq (symbol-class name wrld) :common-lisp-compliant)
+              (error "fnn-install-raw-dispatch: ~a is declared :raw-with but is ~a, not guard-verified"
+                     name (symbol-class name wrld)))
+            (setf (gethash name *fnn-raw-dispatch*) raw)
+            (format t "~&FN_RAW_DISPATCH ~(~a~) ~(~a~) invariant-risk=~a with=~(~a~)~%"
+                    name (symbol-class name wrld)
+                    (if (getpropc name 'invariant-risk nil wrld) "t" "nil")
+                    theorems)))))
+    (hash-table-count *fnn-raw-dispatch*)))
+
+(defun fnn-dispatch-function (name)
+  "The function fnn-call applies for NAME: its raw definition when NAME is
+raw-dispatched and the counterpart selector is off, else its executable
+counterpart."
+  (or (and (not *fnn-dispatch-counterpart*)
+           (gethash name *fnn-raw-dispatch*))
+      (fnn-counterpart name)))
 
 ;;; The entry guard (lane entry-guards, 2026-09-27).  Every call into the
 ;;; core passes through fnn-call; before the counterpart runs, the host checks
@@ -1249,7 +1324,7 @@ execution-boundary fault, never a claim that the core refused an input."
     (setq values
           (catch 'raw-ev-fncall
             (handler-case
-                (prog1 (multiple-value-list (apply (fnn-counterpart name) args))
+                (prog1 (multiple-value-list (apply (fnn-dispatch-function name) args))
                   (setq outcome :ok))
               (serious-condition (c)
                 (setq outcome (princ-to-string c))
@@ -1359,19 +1434,15 @@ configured node, and opens the observed store through `fn-cpo-open-observed'
 (host/store-node-host.lisp `fn-store-sn-recover-rows'); a store with no
 configuration record never reaches here.
 
-The history goes over in CHUNKS (PKT-823; books/store-recover-stream.lisp).
-NEXT-CHUNK answers ACL2's decode of the next chunk, or :END: the file reader
-(`fnn-recover-file-chunks') answers `fn-srs-checked-decode' of a numbered
-chunk, the pack path (`fnn-recover-record-chunks') `fn-store-decode-records'
-(`fn-srs-decode') of a chunk of records already checked.  Per chunk the
-guard-verified `fn-srs-intern-step' interns it into the arena, accumulating
-the rows; the arena is cleared first and updated only by those direct calls,
-so no :program entry updates it (invariant-risk: flip-L6-2).  KEYSTONES
-fn-srs-steps-are-one-step-of-the-concatenation (every chunking gives the rows
-and arena one step over the whole history gives) and
-fn-srs-checked-step-is-the-step (a numbered chunk's two calls are the step
-over its records).  The host supplies octets, passes ACL2's values back
-unread, and decides nothing about them."
+The history goes over in chunks. The file reader uses fn-srs-checked-decode;
+the pack path uses fn-store-decode-records. The guard-verified sequential
+worker fn-ssr-intern-step carries the active statement keyring, generation
+and identity cursor between records. fn-ssr-resident-step-of-append equates
+arbitrary resident chunking, including the resulting arena. Its physical
+modes refine that resident worker under fn-arena-p and faithful placement:
+fn-ssr-extent-step-refines-resident and fn-ssr-lz-step-refines-resident.
+The host passes ACL2's values back unchanged. Full replay clears the arena
+and any previous selected checkpoint before initializing the epoch."
   (let ((replay (fnn-bridge-recover-begin)))
     (loop
       (let ((decoded (funcall next-chunk)))
@@ -1385,24 +1456,25 @@ unread, and decides nothing about them."
 ;; fnn-bridge-recover's three parts, in its order, for a history that arrives
 ;; a record at a time (the open, fnn-recover-log-stream-replay): the
 ;; arena cleared, each decoded chunk interned by the guard-verified
-;; fn-srs-intern-step (the accumulated rows in a one-slot cell), then the open
+;; fn-ssr-intern-step (rows and the statement epoch in one cell), then the open
 ;; over the rows.
 (defun fnn-bridge-recover-begin ()
+  (fnn-core-state 'fn-store-sco-clear)
   (fnn-call 'fn-arena-clear (fnn-live-arena))
-  (list nil))
+  (list (fnn-core 'fn-ssr-seed (fnn-core 'fn-stxk-initial-context 0))))
 
 (defun fnn-bridge-recover-step (replay decoded)
   "Intern one decoded chunk; NIL when ACL2 answered :bad (a fault)."
-  (let ((acc (first (fnn-call 'fn-srs-intern-step (car replay) decoded (fnn-live-arena)))))
+  (let ((acc (first (fnn-call 'fn-ssr-intern-step (car replay) decoded nil nil :resident nil (fnn-live-arena)))))
     (setf (car replay) acc)
     (not (eq acc :bad))))
 
 
 (defun fnn-bridge-recover-step-extents (replay decoded chunk places)
   "fnn-bridge-recover-step with the chunk's octets and places: the guard-
-verified fn-arx-intern-step (books/payload-extent.lisp) seals a placed
-record whose place holds its payload as an extent; NIL on :bad."
-  (let ((acc (first (fnn-call 'fn-arx-intern-step (car replay) decoded chunk places
+verified fn-ssr-intern-step :extent preserves the sequential identity epoch
+and seals a faithful payload placement; NIL on :bad."
+  (let ((acc (first (fnn-call 'fn-ssr-intern-step (car replay) decoded chunk places :extent nil
                               (fnn-live-arena)))))
     (unless (eq acc :bad)
       (setf (car replay) acc)
@@ -1410,10 +1482,10 @@ record whose place holds its payload as an extent; NIL on :bad."
 
 (defun fnn-bridge-recover-step-lz (replay decoded stored places)
   "fnn-bridge-recover-step-extents for a chunk holding compressed records:
-the guard-verified fn-lzr-intern-step (books/payload-lz-replay.lisp) over
+the guard-verified fn-ssr-intern-step :lz over
 the decoded expansions, the octets the log holds (STORED) and their places,
 with the store's dictionaries; NIL on :bad."
-  (let ((acc (first (fnn-call 'fn-lzr-intern-step (car replay) decoded stored places
+  (let ((acc (first (fnn-call 'fn-ssr-intern-step (car replay) decoded stored places :lz
                               (fnn-lz-dicts) (fnn-live-arena)))))
     (unless (eq acc :bad)
       (setf (car replay) acc)
@@ -1421,7 +1493,7 @@ with the store's dictionaries; NIL on :bad."
 
 (defun fnn-bridge-recover-end (replay frontier config-records)
   (fnn-action (fnn-core-state 'fn-store-sn-recover-rows
-                              (fnn-core 'fn-srs-rows (car replay)) frontier
+                              (fnn-core 'fn-ssr-rows (car replay)) frontier
                               (mapcar #'fnn-octet-list config-records))))
 
 (defun fnn-recover-record-chunks (records)
@@ -2490,39 +2562,27 @@ empties it first (fnn-bridge-recover)."
           (values :refused 0)))))
 
 (defun fnn-recover-suffix-intern (suffix configs acc)
-  "The suffix over the loaded checkpoint (SUFFIX, the records as octet
-vectors; CONFIGS, the configuration records as ACL2's octet lists) decoded
-and interned ON TOP of the arena the load left, a chunk at a time: the
-chunks `fnn-recover-record-chunks' closes (fn-srs-chunk-fullp), each
-decoded (fn-store-decode-records, which is fn-srs-decode) and interned by
-the guard-verified fn-srs-intern-step, as the full replay's chunks are.
-Answers (values ROWS ACC2): ROWS oldest first (fn-srs-rows), or :bad when
-the configuration history or any chunk does not decode or intern; ACC2 the
-txid fold (fn-ofw-wire-next) of every decoded event over
-ACC, or ACC when ROWS is :bad.
-
-Lane heap-bounds (row B3): the suffix was converted to octet lists and
-decoded WHOLE (sixteen heap octets an octet and its decode beside it), so a
-checkpoint's long suffix held two list copies of every suffix octet at once
--- the reopen of a 100,000-post store with a 19,082-record suffix exhausted
-the heap at the launcher's own figure, whose open term is a chunk.  Any
-chunking interns what one step over the whole suffix interns
-(books/store-recover-stream.lisp KEYSTONES
-fn-srs-steps-are-one-step-of-the-concatenation and
-fn-srs-one-step-is-the-intern-of-the-decode, for any arena: here the
-checkpoint's), which is the fn-intern-events of the decode that
-fn-scka-recover-rows makes (books/store-checkpoint-arena.lisp)."
+  "Intern decoded suffix chunks over the arena left by the selected checkpoint.
+fn-store-statement-replay-seed reads the selected fn-store-sco-current
+checkpoint's captured identity epoch; it never uses the current live keyring.
+fn-ssr-intern-step :resident carries that keyring, generation and cursor
+between every record and chunk. fn-ssr-resident-step-of-append proves the
+chunk composition, including arena effects, under true-listp of the first
+chunk. The result is (values ROWS ACC2), rows oldest first (fn-ssr-rows),
+or :bad on invalid configuration, decode or identity replay. ACC2 is
+fn-ofw-wire-next over decoded events, starting at ACC. The suffix is decoded
+one work quantum at a time using fn-srs-chunk-fullp."
   (if (eq (fnn-core 'fn-store-sn-recover-records nil configs) :bad)
       (values :bad acc)
-      (let ((next (fnn-recover-record-chunks suffix)) (rows nil) (fold acc))
+      (let ((next (fnn-recover-record-chunks suffix)) (rows (fnn-core-state 'fn-store-statement-replay-seed)) (fold acc))
         (loop
           (let ((decoded (funcall next)))
             (when (eq decoded :end) (return))
             (when (eq decoded :bad) (return-from fnn-recover-suffix-intern (values :bad acc)))
             (setq fold (fnn-core 'fn-ofw-wire-next decoded fold)
-                  rows (first (fnn-call 'fn-srs-intern-step rows decoded (fnn-live-arena))))
+                  rows (first (fnn-call 'fn-ssr-intern-step rows decoded nil nil :resident nil (fnn-live-arena))))
             (when (eq rows :bad) (return-from fnn-recover-suffix-intern (values :bad acc)))))
-        (values (fnn-core 'fn-srs-rows rows) fold))))
+        (values (fnn-core 'fn-ssr-rows rows) fold))))
 
 (defun fnn-recover-suffix-rows (store suffix config-records &optional (interned nil internedp))
   "The open from the loaded checkpoint: the suffix decoded and interned ON
@@ -4423,6 +4483,29 @@ by fn-bs-imp-classify."
         (fnn-out "imported records=~d configuration=~d" count (length configs))
         +fnn-exit-ok+))))
 
+(defun fnn-command-store-bless-snapshot (dir)
+  "S7a: read-only validation of an existing copy, not a snapshot producer.
+
+ACL2 decides which observation is needed, its first refusal, the report and
+exit.  A regular SNAPSHOT is a producer completion observation, not evidence
+that this host produced an atomic copy.  The read-only open checks the copy's
+own lineage; no observation of the currently configured store is used."
+  (let* ((markerp (and (fnn-check-regular (fnn-join dir "SNAPSHOT")) t))
+         (opened :never-observed) (count 0) (keysp nil))
+    (when (fnn-core 'fn-osn-bless-open-needed markerp)
+      (handler-case
+          (multiple-value-bind (store records) (fnn-open-live-store dir nil)
+            (unwind-protect
+                 (setf opened :ok count records
+                       keysp (and (fnn-node-secret-read-entry
+                                   (fnn-node-secret-path store) "node secret") t))
+              (fnn-store-close store)))
+        (fnn-store-open-refusal (condition)
+          (setf opened (fnn-message condition)))))
+    (let ((word (fnn-core 'fn-osn-bless-word markerp opened keysp)))
+      (fnn-out "~a" (fnn-core 'fn-osn-bless-line word dir opened count))
+      (fnn-core 'fn-outcome-code (fnn-core 'fn-osn-bless-status word)))))
+
 (defun fnn-read-up-to (fd n)
   "At most N octets from FD's position, fewer only at end of file."
   (let ((data (fnn-make-octets n)) (at 0))
@@ -5777,6 +5860,11 @@ tree root), or stop the build."
 ;;; not (review of the dabebb84 campaign, F4 to F6).
 (defparameter +fnn-developer-selectors+
   '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
+    ;; lane join-f2-13: the OVER/XOVER cursor quantum (numbers per hold of
+    ;; the owner mutex) for the natives; ACL2's fn-splan-cursor-window
+    ;; decides the value (books/served-plan-cursor.lisp).
+    "FN_NATIVE_OVER_WINDOW"
+    "FN_NATIVE_OVER_TEST_PAUSE_AFTER_QUANTUM"
     ;; the extraction gate's stateful differential (tools/extract/stateful.py):
     ;; a recorded clock observation and a recorded entropy stream, the
     ;; environment readings the image and the extracted program then share.
@@ -5785,10 +5873,14 @@ tree root), or stop the build."
     "FN_NATIVE_CHECKPOINT_BUDGET_TEST" "FN_NATIVE_RECLAIM_FAULT"
     "FN_NATIVE_TEST_RECLAIM_STALL_FILE" "FN_NATIVE_RECLAIM_HOLD"
     "FN_NATIVE_PAGE_READ_HOLD"
+    "FN_NATIVE_PAGE_IO_HOLD" "FN_NATIVE_PAGE_IO_RESULT"
     "FN_NATIVE_DISK_FREE"
     "FN_NATIVE_EXTENT_CACHE_TEST_OFF"
     ;; host/native/digest.lisp: the matched measurement's reference arm.
     "FN_NATIVE_DIGEST_TEST_OFF"
+    ;; D40: the executable-counterpart path for every :raw-with entry, so a
+    ;; native compares the served path both ways (fnn-dispatch-function).
+    "FN_NATIVE_DISPATCH_COUNTERPART"
     "FN_NATIVE_IMPORT_COMPRESS_MIN_TEST"
     "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
     "FN_NATIVE_AUTH_ADMIN_FAULT" "FN_NATIVE_KEY_STATEMENT_FAULT"
@@ -5808,6 +5900,7 @@ tree root), or stop the build."
     "FN_BP_NODE_TEST_PAUSE_AFTER_OUTBOX"
     "FN_BP_NODE_TEST_PAUSE_AFTER_REPORT_OUTBOX"
     "FN_BP_ROTATION_TEST_STOP"
+    "FN_BP_LISTENER_TEST_PAUSE_CUT"
     "FN_BP_OBLIGATION_TEST_PAUSE_AFTER_ATTEMPT"
     "FN_BP_OBLIGATION_TEST_PAUSE_AFTER_SUBMIT"
     "FN_TCPCL_TEST_FAIL_STAGING_UNLINK" "FN_TCPCL_TEST_FAIL_STAGING_BARRIER"
@@ -6855,18 +6948,16 @@ segment's records from 1, taken from the same decode (fn-lgb-decode-next) and
 handed to the stream at the segment's end (*fnn-log-stream-finish*).  The
 chunks close where ACL2 says (fn-srs-chunk-fullp before a record is added, one
 record always taken first), as fnn-recover-record-chunks closes them; any
-chunking opens the same Store (PRF-261
-fn-srs-steps-are-one-step-of-the-concatenation)."
+chunking gives the same statement-context replay and arena
+(fn-ssr-resident-step-of-append; physical modes refine the resident worker)."
   (setq *fnn-lz-tally* nil)
   (list (fnn-bridge-recover-begin) nil 0 0 nil 1 nil))
 
 (defun fnn-recover-log-stream-flush (replay)
-  "The open chunk decoded and interned.  With places (the stream's, FIFTH),
-the chunk goes to `fn-arx-intern-step' (books/payload-extent.lisp): a record
-whose place holds its payload is sealed as an EXTENT, no octets on the heap
-(PRF-294; KEYSTONE fn-arx-steps-are-one-step-of-the-concatenation: over any
-chunking, the rows and arena of one resident step over the history, each
-placed record faithful at its place)."
+  "Decode and intern the open chunk with its sequential statement epoch.
+Physical placement modes of fn-ssr-intern-step refine its resident mode
+under fn-arena-p and fn-arx-faithful-p, including rows and arena effects
+(fn-ssr-extent-step-refines-resident, fn-ssr-lz-step-refines-resident)."
   (when (second replay)
     (let* ((chunk (nreverse (second replay)))
            (places (nreverse (fifth replay)))
@@ -8019,6 +8110,17 @@ segment' (tests/test_native_topic_local.py)."
                  ((string= command "digest") (fnn-command-store-digest root))
                  ((string= command "journal") (fnn-command-store-journal root))
                  ((string= command "export") (need 4) (fnn-command-store-export root (first rest)))
+                 ((string= command "bless-snapshot")
+                  ;; The direct store entry reuses the operator's grammar.
+                  ;; ROOT is the CLI context, never the copy that is opened.
+                  (let ((plan (fnn-core 'fn-nop-parse-store (cons command rest) nil)))
+                    (if (eq (fnn-core 'fn-native-operator-host-result-status plan) :accepted)
+                        (fnn-command-store-bless-snapshot
+                         (fnn-octets-string
+                          (fnn-core 'fn-native-operator-host-result-archive-path-octets plan)))
+                      (progn
+                        (fnn-operator-emit-result plan)
+                        (fnn-core 'fn-native-operator-host-result-exit-code plan)))))
                  ((string= command "import") (need 4) (fnn-command-store-import root (first rest) nil))
                  ((string= command "retention") (fnn-command-retention root))
                  ((string= command "compression") (fnn-command-compression root))
@@ -8357,6 +8459,12 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
                  (fnn-developer-selector-gate argv)
                  (unless (eq (fnn-global 'guard-checking-on) t)
                    (fnn-fault "guard-checking-on is not t in the saved image"))
+                 ;; D40: a developer image may keep the counterpart path.
+                 (setq *fnn-dispatch-counterpart*
+                       (equal (fnn-developer-selector "FN_NATIVE_DISPATCH_COUNTERPART") "1"))
+                 (when *fnn-dispatch-counterpart*
+                   (fnn-err "fn-dispatch: counterpart for ~d raw-dispatched entries (FN_NATIVE_DISPATCH_COUNTERPART)"
+                            (hash-table-count *fnn-raw-dispatch*)))
                  (fnn-dispatch argv))
              (fnn-usage-error (e)
                (fnn-err "fn-host: error: ~a" e)

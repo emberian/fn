@@ -309,11 +309,19 @@ fn operator /etc/fn/fn.toml group moderate fn.announce --off
 Add a login, or change its password. It is asked twice:
 
 ```
-fn operator CONFIG principal set-password alice --posting
+fn operator CONFIG account set-password alice --posting
 ```
 
-`--no-posting` makes a login that can read but not post. Restart the node
-after you add a login or change a password this way.
+`--no-posting` makes a login that can read but not post. The login is
+written to `auth.toml` and a running node takes it at once: the last word
+of the answer says when it applies (see "Signed posts" below).
+`principal set-password` is the same command.
+
+It works for a friend's account too. A friend who made their account from a
+code and forgot the password gets a new one this way: the login is then
+written to `auth.toml`, whose password comes first. `account delete` then
+removes the `auth.toml` login, and the old password works again; run it a
+second time to end the account itself.
 
 ### Accounts and invitation codes
 
@@ -344,6 +352,8 @@ fn operator CONFIG account list
 4. From then on they log in normally. No restart is needed.
 
 `account list` shows accounts and unused codes, never passwords or codes.
+An unused code's line gives the time it stops working, in UTC:
+`pending expires 2026-10-06T12:00:00Z`.
 
 To end an account, for example a test login:
 
@@ -362,8 +372,10 @@ fn operator CONFIG account delete probe
   without it) or a consumer bound to it (`consumer unbind NAME`). Remove
   those first. Its group access rule does not block it.
 - It works on a running node, and on a stopped one.
-- It removes accounts made with invitation codes. A login in `auth.toml`
-  is removed by editing that file.
+- A login in `auth.toml` (one made with `account set-password`) is removed
+  from that file instead, at once on a running node. It is refused while
+  `principal bind` ties it to a key (`principal unbind` first). It is not
+  kept as deleted: `account set-password` can add it again.
 
 ### Private groups
 
@@ -447,6 +459,9 @@ fn operator CONFIG consumer unbind agent-bob
 fn operator CONFIG consumer show
 ```
 
+`consumer show` lists only `consumer NAME account LOGIN` bindings.
+It does not print invitations, redeemed accounts or account access rules.
+
 Bind a consumer after `fn consumer register` made it: a name no consumer
 has is refused (`unknown-consumer`). A bound consumer uses its account's
 password. Outside the account's rule it is refused and keeps its place. See [agents](agents.md#programs-on-the-nodes-own-machine).
@@ -473,6 +488,26 @@ the certificate in use:
 ```
 tls names=fn.fg-goose.online not-after=2026-12-25T22:23:43Z
 ```
+
+### A self-signed certificate, made by fn
+
+`mission ... --tls-name NAME` makes one when it writes `fn.toml`. For a
+node that has none, or to replace one you have removed:
+
+```sh
+fn operator /etc/fn/fn.toml tls self-signed news.example.org 203.0.113.7 --days 365   # docs-check: skip (the grammar book configuration names no tls_cert)
+```
+
+fn makes a P-256 key and a certificate naming each name (a DNS name or an
+IP address; the first is also its subject), valid from an hour ago for
+`--days` days (365 when not given), and writes them at `tls_cert` and
+`tls_key`, the key at mode 0600. No `openssl` program is needed. It is
+refused, and writes nothing, when either file is there (`exists`), when a
+name is not a DNS name or an address (`tls-name`; `0.0.0.0` and `::` are
+nobody's name), or when the first name is over 64 octets
+(`tls-common-name-length`). Give people the certificate file to trust.
+Then start the node, or `tls reload` a running one when the names are the
+same as the old certificate's.
 
 ### A certificate from a public authority
 
@@ -541,7 +576,7 @@ In order, these set:
 
 A TLS handshake costs the node work and memory before anyone has logged in.
 fn decides every handshake, on 563 and after STARTTLS alike, before it
-starts one (books/tls-handshake-budget.lisp):
+starts one (books/tls-handshake-decision.lisp):
 
 ```
 fn operator /etc/fn/fn.toml policy set tls-handshakes-per-source-per-minute 30
@@ -569,18 +604,60 @@ What this proves (PRF-986): whatever is offered, the node starts at most 16
 handshakes in any second and holds at most 16, and one source is admitted at
 most 30 + 30 x (seconds / 60) handshakes over any interval.
 
+Each handshake in progress holds up to 128 KiB of the TLS library's memory,
+so with TLS configured the node's memory check at start counts 16 x 128 KiB
+(2 MiB) beside its threads (the `fixed=` part of a
+`connections-exceed-memory` refusal). Raising `tls-handshakes-in-flight`
+live is checked against the same machine: a raise the machine cannot hold
+beside the connection capacity is refused `handshakes-exceed-memory`, and a
+lowered value keeps the higher charge until the next restart (handshakes
+admitted before may still be running).
+
 What it cannot do: from one shared address the node cannot tell many
 people from one attacker. Everyone behind one carrier-grade NAT, one office
-router or one proxy shares one budget; raise it for that address with the
-policy above if your readers arrive that way, and the node's own bound still
-holds. A flood from many addresses is held by the node's bound, so honest
-readers then wait their turn too.
+router or one proxy shares one budget. If your readers arrive that way,
+give that address (or IPv6 /64) its own rate, leaving everyone else's alone:
+
+```
+fn operator /etc/fn/fn.toml policy set tls-handshake-source-overrides 100.64.0.1=600,2001:db8:1:2::/64=120
+fn operator /etc/fn/fn.toml policy set tls-handshake-source-overrides none
+```
+
+Each entry is `ADDRESS=N` or `ADDRESS/64=N`, N handshakes a minute; `none`
+clears the list. It applies live. The list holds at most 64 entries (the
+profile's `tls-handshake-source-overrides`); one more is refused
+`overrides-full`, and an entry that does not parse is refused
+`override-address`; a refused list changes nothing. The node's own bound still
+holds for every source. A flood from many addresses is held by the node's
+bound, so honest readers then wait their turn too.
 
 You do not need a proxy to be safe. A TCP proxy in front of fn adds nothing
-here and costs the per-address limits (fn sees the proxy's address); fn does
-not read PROXY headers. A proxy that terminates TLS is a different profile
-again: it holds the TLS session, so channel binding (SCRAM-PLUS's
-`tls-exporter` under TLS 1.3) cannot reach fn through it.
+here, and by default it costs the per-address limits: fn sees the proxy's
+address. If you run one that passes TLS through untouched (HAProxy
+`mode tcp`, nginx `stream`) and sends the PROXY protocol header (version 1
+or 2), name it, and fn reads the original client's address from it:
+
+```
+fn operator /etc/fn/fn.toml policy set tls-proxy-trusted-peers 10.0.0.5/32
+fn operator /etc/fn/fn.toml policy set tls-handshake-source-overrides 10.0.0.5=6000
+```
+
+Only a connection from an address in `tls-proxy-trusted-peers` (CIDR
+ranges, `none` clears) is read for a header, on the TLS port, and such a
+connection must send one; nothing any other client sends is ever taken as a
+header. The header is read in bounded pieces (at most 528 octets, never into
+the TLS octets after it) within `tls-handshake-ms`; a malformed one is
+refused `tls refused reason=proxy-malformed proxy=ADDRESS`, a late one
+`reason=proxy-timeout`. Both addresses pay: the proxy's own per-source
+budget when the connection arrives (give it its own rate, as above, or put
+it in `exposure-trusted`), and the original client's when the header names
+it; both count against the node's 16 in flight. A connection through a
+proxy is never recognized as a peer (direct peering uses the kernel's address).
+
+Terminating TLS in the proxy is a different profile, and fn does not build
+it: the proxy then holds the TLS session, so SCRAM-PLUS's channel binding
+(`tls-exporter` under TLS 1.3, RFC 9266) binds the client to the proxy, not
+to fn, and cannot reach fn through it. Pass TLS through instead.
 
 ## 8. Peers
 
@@ -656,6 +733,19 @@ the release first (`BP carry recovered waiver release work=WORK`).
 Copying while the node runs may miss the newest article. Keep the `keys`
 folder private: it holds the node's secret.
 
+A copy produced as a snapshot can be checked without starting it:
+
+```text
+fn operator /path/to/fn.toml store bless-snapshot /var/backups/fn-snapshot
+```
+
+This checks the copy's `SNAPSHOT` completion marker, opens its own store
+history read-only, and checks the node secret. It names a missing marker,
+a refused open (including `foreign-lineage`), or a missing secret; a valid
+copy prints `blessed snapshot=DIR transactions=N`. It does not check how
+recent the copy is. The running `store snapshot` producer is still under
+development; ordinary folder copies do not have its completion marker.
+
 **Restoring an older copy reissues article numbers.** Articles posted or
 fed after the backup are gone from the restored store, and the next ones
 take their numbers again. A reader who saw number 42 as one article now
@@ -710,6 +800,54 @@ name while another export runs (`export-in-flight`) or when DIR exists
 export's state or the last outcome (the node's log has `EXPORT done
 archive=DIR records=N configuration=M`). With the node stopped the same
 command runs to completion by itself.
+
+### Move the node
+
+1. Stop the node.
+2. Copy the whole node folder to its new place (`cp -a /var/lib/fn
+   /srv/fn`).
+3. If the new place is on another disk, record it:
+   `fn operator /srv/fn/fn.toml store rebind-filesystem`.
+4. Start the node from the new `fn.toml`. With `install.sh`, run it again
+   with `--node /srv/fn` so the service may write there.
+
+Nothing in `fn.toml` needs changing when its paths are relative (as
+`mission` writes them). An absolute path still names the same place after
+the move.
+
+### Retire the node
+
+When a node goes away for good, let it hand on what it owes first:
+
+```sh
+fn operator /var/lib/fn/fn.toml retire --drain 600
+```
+
+From that moment the node answers every new connection with
+`502 this node is retiring and accepts no new connections` and closes it
+(on a TLS port it closes without the line), stops pulling from its peers,
+and keeps offering its feeds for at most 600 seconds (0 without `--drain`,
+at most 86400; more is refused as `drain-seconds-over-bound`). Readers
+already connected keep their sessions until it stops. When nothing is left
+to offer, or the time is up, the node takes a final checkpoint and stops,
+and `retire` prints what it wrote to `STORE/retire-report.txt`:
+
+```
+retire peer=friend undelivered=3 dropped=0
+obligations=2 reserved=4096
+obligation id=... kind=forward charge=2048 subject=...
+retired state=deadline undelivered=3 obligations=2
+retire release: what stays is released only by `carry drop WORK --abandon REASON' on the stopped store
+```
+
+`undelivered` is what the peer was never given; `dropped` is the part the
+feed gave up on at its retry limit. The obligations are the lines
+`obligations` prints. Nothing is released for you: on the stopped node,
+`carry drop WORK --abandon REASON` releases a carry you will not deliver
+(see `help carry`), and `store export` makes the archive. `retire` on a
+stopped node is refused (`retire refused reason=not-running`): nothing
+drains there. If the node stops without writing its report, `retire` says
+`retire uncertain reason=no-report` and exits 3; its log says why.
 
 ### New releases
 
@@ -825,6 +963,12 @@ journalctl -u fn -n 20
 Without a service it is on the screen, or in `log/fn.log` when `fn.toml`
 names a `[log] path`. A program that starts fn and keeps its error output
 in a file must show that file: the reason is there.
+Each accepted NNTP socket has one connection line with `client-address`,
+using the kernel source directly or the asserted source from an admitted
+trusted PROXY header. The asserted address grants no peer identity. The field is
+the observed source IP address (IPv6 is expanded lowercase hexadecimal).
+Malformed or unavailable observations read `unobserved`; this field is
+independent of the peer record's name.
 
 `health` and `status` say so too. When nothing runs where the node should
 (its control socket does not answer and nothing holds the store), `health`
@@ -1020,7 +1164,7 @@ before the article is saved. The full figures are in
 
 `[store] path`; `[listener] host`, `port`, `tls_cert`, `tls_key`,
 `tls_port`; `[auth] required`, `protected_only`; `[posting] enabled`;
-`[control] path`; `[log] path` (absolute); `[alerts] headroom_min_percent`
+`[control] path`; `[log] path`; `[alerts] headroom_min_percent`
 (default 10). `[listener] host` takes one or more addresses, comma
 separated, IPv4 or IPv6 (`[::1], 192.0.2.7`), or `localhost`; `0.0.0.0` and
 `::` are refused. Groups, peers and policies are not in this file: they are
@@ -1028,11 +1172,17 @@ kept in the store and changed with commands. `run` refuses `[posting] agent`,
 `[anchor]` and `[acl2]` (set the node's name with `policy set path-identity`).
 Restart after editing the file.
 
+A path that does not start with `/` is inside the folder `fn.toml` is in,
+whatever folder you run `fn` from: `path = "store"` next to
+`/var/lib/fn/fn.toml` is `/var/lib/fn/store`. `mission` writes the paths
+this way. `[alerts] command` must start with `/`.
+
 ### Store settings
 
 A store's size limits are set by `init`. A store admits
-one transaction fewer than `--max-transactions`: the last one is kept so
-the store can always record a maintenance release, even when full. A
+one transaction fewer than `--max-transactions`: the last record slot is
+reserved for a maintenance release. This reserves record capacity; other
+resource limits and the finite transaction-identity range still apply. A
 store made with `--max-transactions 128` takes 127 posts and other
 changes; `status`'s `maintenance-reserve ... held` line shows the kept one.
 Under a `mission`, `init` takes group names only and picks the limits for
@@ -1070,17 +1220,29 @@ refuses and makes nothing:
 (exit code 1). The first number is what the store would need at its
 limits, the second what this machine can give. Choose smaller limits, or,
 to make a store for a bigger machine, name that machine's memory with
-`FN_INIT_BUDGET_MB=16384`: `init` then writes it and says
+`init --budget 16384 ...`: `init` then writes it and says
 `within-budget=no target-budget=16384 MB`, and fn refuses to run that
 store here, with `fn: refused machine-cannot-hold-profile`.
 
-The same variable sizes a store for a memory limit smaller than this
+The same word sizes a store for a memory limit smaller than this
 machine: a service under `MemoryMax=1536M` needs a store `init` made with
-`FN_INIT_BUDGET_MB=1536`, or made by an `init` run under that limit. When
+`init --budget 1536` (a `mission`'s `init` takes it too), or made by an
+`init` run under that limit. When
 the named budget is below what this machine gives (an `init` run outside
 the service's limit), `init` writes the store for the named budget and
 warns on stderr with both numbers, exit code 0:
-`fn: warning init-budget-below-machine named-budget=1536 MB machine-budget=5818 MB: the store is sized for FN_INIT_BUDGET_MB, not this machine; run init under the service's memory limit, and give the service at least 1536 MB`.
+`fn: warning init-budget-below-machine named-budget=1536 MB machine-budget=5818 MB: the store is sized for init --budget, not this machine; run init under the service's memory limit, and give the service at least 1536 MB`.
+
+A limit you name with no `--profile` (`--max-transactions`,
+`--max-history-octets` or `--max-record-octets`) is laid over the
+development preset, so the other limits are development's, never the
+default preset's 1 TiB of history; write `--profile default` to start from
+the default preset. When the limits you name do not fit together, `init`
+refuses by the name of the rule and prints the numbers and the value to
+pass, for example
+`init: max-history-octets 1000 is below max-record-octets 17138486; pass --max-history-octets 17138486 or more, or a smaller --max-record-octets`.
+`init --largest` asks for the largest preset this machine (or `--budget`)
+holds instead of the conservative sizes below.
 
 `init` with no `--profile` and no limit (and every `init` under a
 `mission`) picks the largest of four sizes this machine's memory holds:
@@ -1121,4 +1283,5 @@ with `policy set max-transactions N` (and `max-history-octets`,
   `charge-capacity` next to `charge-reserved`, the part held articles use
   (review item 15; [the ledger](operator-internals.md)).
 - `pins`, `obligations`: what the store is holding, and why.
+- `retire [--drain SECONDS]`: drain the feeds, report, checkpoint and stop a node that goes away for good ([Retire the node](#retire-the-node)).
 - `run`: what the service runs.

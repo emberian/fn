@@ -211,10 +211,22 @@
   (fn-bpnf-family-persist-step st epoch op result)
   (fn-bpnf-family-persist-step)))
 
+;; The twins over the host-carried reassembly job (Q4a increment B) answer
+;; with the family steps' effect shapes.
+(local
+ (fn-bpnpb-defquiet bpnpb-job-propose-step
+  (fn-bpfj-propose-step st anchor-arrival observation job limit)
+  (fn-bpfj-propose-step)))
+
+(local
+ (fn-bpnpb-defquiet bpnpb-job-persist-step
+  (fn-bpfj-persist-step st epoch op result job limit)
+  (fn-bpfj-persist-step)))
+
 (local
  (fn-bpnpb-defquiet bpnpb-fragment-step (fn-bpnf-fragment-step st event)
   (fn-bpnf-fragment-step bpnpb-foundation-step bpnpb-family-propose-step
-   bpnpb-family-persist-step)))
+   bpnpb-family-persist-step bpnpb-job-propose-step bpnpb-job-persist-step)))
 
 (local
  (fn-bpnpb-defquiet bpnpb-delete-propose-step

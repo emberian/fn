@@ -51,25 +51,80 @@
 (defvar *fnn-extent-incarnations* (make-hash-table))
 ;; guarded-by: *fnn-extent-lock* (file id -> (device . inode) of the file opened)
 (defvar *fnn-extent-bases* (make-hash-table)) ; guarded-by: *fnn-extent-lock* (file id -> page 0's offset)
-(defvar *fnn-extent-next-id* 1)
+(defvar *fnn-extent-next-id* nil)
 (defvar *fnn-extent-cache* nil)
+(defvar *fnn-extent-cache-tokens* (make-hash-table :test #'eq))
+;; Verified vector -> immutable charged token. Capacity is a static pool
+;; allowance, not a per-entry credit that eviction pretends to reclaim.
 ;; ((file eoff elen trailer . octets) ...), most recent first: the verified
 ;; entries, each under the descriptor identity it was verified for
 (defvar *fnn-extent-stats* (list 0 0 0))      ; hits, misses (preads), refusals
+(defvar *fnn-extent-issued* (make-hash-table :test #'equal))
+;; guarded-by: *fnn-extent-lock*. Token -> ACL2 ownership row (PRF-1057).
+;; Removed only by actual worker completion, never a request's timeout.
+
+(defun fnn-extent-pool-storage-start (file-capacity worker-capacity cache-capacity)
+  "Install the admitted fixed peak capacities before any live registration.
+ACL2 supplied capacities include cache insertion overlap; table backing is
+permanent baseline, never refunded when an association is removed."
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (unless (and (zerop (hash-table-count *fnn-extent-fds*))
+                 (zerop (hash-table-count *fnn-extent-paths*))
+                 (zerop (hash-table-count *fnn-extent-incarnations*))
+                 (zerop (hash-table-count *fnn-extent-bases*))
+                 (zerop (hash-table-count *fnn-extent-issued*))
+                 (zerop (hash-table-count *fnn-extent-cache-tokens*))
+                 (null *fnn-extent-cache*))
+      (fnn-fault "cold pool installation follows physical registration"))
+    (setf *fnn-extent-fds* (make-hash-table :size file-capacity :rehash-threshold 1.0 :rehash-size 1)
+          *fnn-extent-paths* (make-hash-table :size file-capacity :rehash-threshold 1.0 :rehash-size 1)
+          *fnn-extent-incarnations* (make-hash-table :size file-capacity :rehash-threshold 1.0 :rehash-size 1)
+          *fnn-extent-bases* (make-hash-table :size file-capacity :rehash-threshold 1.0 :rehash-size 1)
+          *fnn-extent-issued* (make-hash-table :test #'equal :size worker-capacity :rehash-threshold 1.0 :rehash-size 1)
+          *fnn-extent-cache-tokens* (make-hash-table :test #'eq :size cache-capacity :rehash-threshold 1.0 :rehash-size 1))))
 
 (defun fnn-extent-register (path)
-  "A new file id for PATH: a read-only descriptor held for the process's life,
-and the durable incarnation (device . inode) it opened."
-  (let* ((fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
-         (st (fnn-fstat fd))
-         (incarnation (cons (sb-posix:stat-dev st) (sb-posix:stat-ino st))))
+  "Reserve ACL2's fresh incarnation name and funded path lease before open.
+Failed constructors spend the name; refund only after definite OS release.
+The core explicitly distinguishes an unfunded offline registration."
+  (let ((id nil) (funded nil))
     (sb-thread:with-mutex (*fnn-extent-lock*)
-      (let ((id *fnn-extent-next-id*))
-        (incf *fnn-extent-next-id*)
-        (setf (gethash id *fnn-extent-fds*) fd
-              (gethash id *fnn-extent-paths*) path
-              (gethash id *fnn-extent-incarnations*) incarnation)
-        id))))
+      (destructuring-bind (word next issued)
+          (fnn-core-page-read-pool 'fn-owner-page-file-issue *fnn-extent-next-id*)
+        (unless (member word '(:issued :unfunded-offline))
+          (fnn-fault (format nil "extent incarnation refused: ~a" word)))
+        (setf *fnn-extent-next-id* next id issued)
+        (when (eq word :issued)
+          (let ((registered
+                  (first (fnn-core-page-read-pool 'fn-owner-page-read-register-path id path))))
+            (unless (eq registered :registered)
+              (fnn-fault (format nil "extent incarnation resources refused: ~a" registered)))
+            (setq funded t)))))
+    (let ((fd nil) (installed nil))
+      (unwind-protect
+           (progn
+             (setq fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
+             (let* ((st (fnn-fstat fd))
+                    (incarnation (cons (sb-posix:stat-dev st) (sb-posix:stat-ino st))))
+               (sb-thread:with-mutex (*fnn-extent-lock*)
+                 (setf (gethash id *fnn-extent-fds*) fd
+                       (gethash id *fnn-extent-paths*) path
+                       (gethash id *fnn-extent-incarnations*) incarnation
+                       installed t)))
+             id)
+        (unless installed
+          ;; An ambiguous close aborts this cleanup before any credit refund.
+          (when fd (fnn-close fd))
+          (sb-thread:with-mutex (*fnn-extent-lock*)
+            ;; A failed table installation may have installed a prefix.
+            ;; Purge it only after the descriptor is definitely released.
+            (remhash id *fnn-extent-fds*)
+            (remhash id *fnn-extent-paths*)
+            (remhash id *fnn-extent-incarnations*)
+            (remhash id *fnn-extent-bases*)
+            (when funded
+              (unless (eq (first (fnn-core-page-read-pool 'fn-owner-page-read-close id)) :closed)
+                (fnn-fault "failed extent constructor retained its resource lease")))))))))
 
 (defun fnn-extent-incarnation (file)
   "The (device . inode) file id FILE opened, or NIL.  Called with the
@@ -130,6 +185,158 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
       (setq *fnn-octets-rd*
             (or (cdr (assoc 'fn-octets-rd (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the realizer's buffer stobj is not in this image")))))
+
+(defvar *fnn-page-read-pool* nil)
+
+(defun fnn-live-page-read-pool ()
+  (or *fnn-page-read-pool*
+      (setq *fnn-page-read-pool*
+            (or (cdr (assoc 'fn-page-read-pool (user-stobj-alist *the-live-state*)))
+                (fnn-fault "the cold pool stobj is not in this image")))))
+
+(defun fnn-core-page-read-pool (name &rest arguments)
+  "The extent mutex serializes the pool; never acquire owner from here."
+  (apply #'fnn-call name (append arguments (list (fnn-live-page-read-pool)))))
+
+(defstruct (fnn-cold-worker (:constructor %make-fnn-cold-worker))
+  row thread token result phase next
+  (ready (sb-thread:make-waitqueue :name "fn cold job")))
+
+;; Allocated only after the installed baseline covers every persistent
+;; thread/stack, waitqueue and slot. NEXT is an intrusive idle-slot stack;
+;; removing a job never pretends to release native stack-cache storage.
+(defvar *fnn-cold-workers* nil)
+(defvar *fnn-cold-free* nil)
+(defvar *fnn-cold-stopping* nil)
+
+(declaim (notinline fnn-extent-executor-job))
+(defun fnn-extent-executor-job (worker)
+  "Publish a private result, but do not yet announce relinquishment."
+  (let* ((token (fnn-cold-worker-token worker))
+         (result
+           (handler-case
+               (if (equal (fnn-developer-selector "FN_NATIVE_PAGE_IO_RESULT") "launch-error")
+                   (progn
+                     (fnn-err "PAGE-IO dispatch-failed token=~s worker=retained buffer=none" token)
+                     (error 'fnn-extent-fault :message "arena-extent-read: injected job dispatch error"))
+                 (fnn-extent-prefetch token))
+             (serious-condition (condition) condition))))
+    (sb-thread:with-mutex (*fnn-extent-lock*)
+      (setf (fnn-cold-worker-result worker) result))))
+
+(defun fnn-extent-executor-loop (worker)
+  (loop
+    (sb-thread:with-mutex (*fnn-extent-lock*)
+      (loop until (eq (fnn-cold-worker-phase worker) :queued) do
+        (when *fnn-cold-stopping* (return-from fnn-extent-executor-loop nil))
+        (sb-thread:condition-wait (fnn-cold-worker-ready worker) *fnn-extent-lock*))
+      (setf (fnn-cold-worker-phase worker) :working))
+    ;; This call has returned before RETURNED is made observable. No worker
+    ;; activation still consumes the token/fd/vector when owner takes it.
+    (fnn-extent-executor-job worker)
+    (sb-thread:with-mutex (*fnn-extent-lock*)
+      (destructuring-bind (word row)
+          (fnn-call 'fn-pxe-return (fnn-cold-worker-row worker) (fnn-cold-worker-token worker))
+        (unless (eq word :returned) (fnn-fault "cold worker returned a different job"))
+        (setf (fnn-cold-worker-row worker) row
+              (fnn-cold-worker-phase worker) :returned))
+      (sb-thread:condition-broadcast (fnn-cold-worker-ready worker)))))
+
+(defun fnn-extent-executor-start (workers)
+  "Called once after ACL2 baseline installation, before recovery/listen."
+  (when *fnn-cold-workers* (fnn-fault "cold executor already installed"))
+  (setq *fnn-cold-stopping* nil)
+  (handler-case
+      (dotimes (slot workers)
+        (let ((worker (%make-fnn-cold-worker :row (fnn-core 'fn-pxe-new slot) :phase :idle)))
+          ;; Keep partially constructed slots for definite cleanup on failure.
+          (push worker *fnn-cold-workers*)
+          (setf (fnn-cold-worker-thread worker)
+                (sb-thread:make-thread (lambda () (fnn-extent-executor-loop worker))
+                                       :name "fn cold executor"))
+          (sb-thread:with-mutex (*fnn-extent-lock*)
+            (setf (fnn-cold-worker-next worker) *fnn-cold-free*
+                  *fnn-cold-free* worker))))
+    (serious-condition (condition)
+      (fnn-extent-executor-stop)
+      (error condition))))
+
+(defun fnn-extent-executor-stop ()
+  "Stop clients first. Join every worker before closing any shared file.
+No cancellation, timeout or thread termination releases a job or baseline."
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (setq *fnn-cold-stopping* t)
+    (dolist (worker *fnn-cold-workers*)
+      (sb-thread:condition-broadcast (fnn-cold-worker-ready worker))))
+  (dolist (worker *fnn-cold-workers*)
+    (when (fnn-cold-worker-thread worker)
+      (sb-thread:join-thread (fnn-cold-worker-thread worker) :default nil))))
+
+(defun fnn-extent-executor-acquire (token)
+  "Extent lock held; the ledger already funded this exact job."
+  (let ((worker *fnn-cold-free*))
+    (unless (and worker (not *fnn-cold-stopping*))
+      (fnn-fault "admitted cold job lacks its funded executor slot"))
+    (destructuring-bind (word row &rest ignored)
+        (fnn-core-page-read-pool 'fn-owner-page-executor-acquire (fnn-cold-worker-row worker) token)
+      (declare (ignore ignored))
+      (unless (eq word :assigned) (fnn-fault "cold executor refused admitted job ~a" word))
+      (setq *fnn-cold-free* (fnn-cold-worker-next worker))
+      (setf (fnn-cold-worker-row worker) row
+            (fnn-cold-worker-token worker) token
+            (fnn-cold-worker-next worker) nil
+            (fnn-cold-worker-result worker) nil
+            (fnn-cold-worker-phase worker) :queued)
+      (sb-thread:condition-broadcast (fnn-cold-worker-ready worker)))
+    worker))
+
+(defun fnn-extent-executor-observe-returned (worker)
+  "Extent lock held. An unexpected death requires a real join before failure
+settlement; the dead executor is never reused for another admitted job."
+  (unless (eq (fnn-cold-worker-phase worker) :returned)
+    (when (eq (fnn-core 'fn-pio-worker-death-step
+                        (not (sb-thread:thread-alive-p (fnn-cold-worker-thread worker)))) :settle)
+      (sb-thread:join-thread (fnn-cold-worker-thread worker) :default nil)
+      (destructuring-bind (word row)
+          (fnn-call 'fn-pxe-return (fnn-cold-worker-row worker) (fnn-cold-worker-token worker))
+        (unless (eq word :returned) (fnn-fault "dead cold worker lost its exact job"))
+        (setf (fnn-cold-worker-row worker) row
+              (fnn-cold-worker-phase worker) :returned
+              (fnn-cold-worker-result worker)
+              (make-condition 'fnn-extent-fault :message "arena-extent-read: cold executor died")))))
+  (eq (fnn-cold-worker-phase worker) :returned))
+
+(defun fnn-extent-executor-returned-p (worker)
+  "Physical observation only; ACL2 still decides exact settlement."
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (fnn-extent-executor-observe-returned worker)))
+
+(defun fnn-extent-executor-wait (worker seconds)
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (unless (eq (fnn-cold-worker-phase worker) :returned)
+      (sb-thread:condition-wait (fnn-cold-worker-ready worker) *fnn-extent-lock* :timeout seconds))))
+
+(defun fnn-extent-executor-commit (worker io token cachedp)
+  "Extent lock held, worker relinquished and cache transfer already done."
+  (destructuring-bind (word row &rest ignored)
+      (fnn-core-page-read-pool 'fn-owner-page-executor-commit
+                               (fnn-cold-worker-row worker) io token cachedp)
+    (declare (ignore ignored))
+    (unless (eq word :committed) (fnn-fault "cold executor settlement refused ~a" word))
+    (setf (fnn-cold-worker-row worker) row
+          (fnn-cold-worker-token worker) nil
+          (fnn-cold-worker-result worker) nil
+          (fnn-cold-worker-phase worker) :idle)
+    (when (and (not *fnn-cold-stopping*)
+               (sb-thread:thread-alive-p (fnn-cold-worker-thread worker)))
+      (setf (fnn-cold-worker-next worker) *fnn-cold-free*
+            *fnn-cold-free* worker))))
+
+(defun fnn-extent-cache-release (tokens)
+  "After physical eviction, release only ACL2's exact cached charge."
+  (dolist (token tokens)
+    (unless (eq (first (fnn-core-page-read-pool 'fn-owner-page-cache-evict token)) :evicted)
+      (fnn-fault "cold cache eviction lacks its exact resource binding"))))
 
 (defmacro fnn-with-octets-rd ((st octets fill) &body body)
   "BODY with the realizer's buffer ST holding OCTETS (its array) at FILL;
@@ -192,31 +399,57 @@ or the file holds fewer octets.  Called with the realizer's lock held."
 ;;; stobjs) is discarded, and the host reads the entry OUTSIDE the owner mutex
 ;;; (fnn-extent-prefetch) within ACL2's dependency deadline
 ;;; (fn-otb-dependency-step).  A hit is a hit either way: the warm path does
-;;; no more work than before.  With a cache limit of 0 nothing a prefetch
-;;; reads is kept, so the no-I/O mode is never used (fnn-extent-no-io-usable-p).
+;;; no more work than before. Diagnostic cache-off refuses a cold command
+;;; through ACL2 resource admission; it never enables an unfunded fallback.
 (defvar *fnn-extent-no-io* nil)
 
 (defun fnn-extent-no-io-usable-p ()
-  (plusp (fnn-extent-cache-limit)))
+  ;; Every served miss enters ACL2 admission, including diagnostic cache-off.
+  t)
 
-(defun fnn-extent-entry (file eoff elen trailer)
-  "The verified entry (its protected prefix at [EOFF, EOFF+ELEN) of FILE
-and its trailer) of the descriptor whose expected trailer is TRAILER, from
-the cache under that identity or read once and decided by ACL2 against it
-(fnn-extent-entry-verdict); every verdict but :ok is refused by name.
-Called with the realizer's lock held."
-  (let ((hit (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)
-                                       (eql (third e) elen) (eql (fourth e) trailer)))
-                      *fnn-extent-cache*)))
-    (if hit
-        (progn (incf (first *fnn-extent-stats*))
-               (unless (eq hit (first *fnn-extent-cache*))
-                 (setq *fnn-extent-cache* (cons hit (delete hit *fnn-extent-cache* :test #'eq))))
-               (cddddr hit))
-      (let* ((octets (if *fnn-extent-no-io*
-                         (throw 'fnn-extent-cold (list file eoff elen trailer))
-                         (fnn-extent-read-entry file eoff elen)))
-             (verdict (fnn-extent-entry-verdict octets elen trailer)))
+(defun fnn-extent-cache-forget (entries)
+  "Extent lock held. Forget exact vector bindings, returning eviction tokens
+for the core resource ledger. No timeout or cancellation invokes this."
+  (let ((tokens nil))
+    (dolist (entry entries)
+      (let* ((octets (cddddr entry))
+             (token (gethash octets *fnn-extent-cache-tokens*)))
+        (when token (push token tokens))
+        (remhash octets *fnn-extent-cache-tokens*)))
+    (nreverse tokens)))
+
+(defun fnn-extent-cache-store (file eoff elen trailer octets &optional token)
+  "Extent lock held. Return keptp and exact tokens of evicted buffers."
+  (let ((limit (fnn-extent-cache-limit)) (evicted nil))
+    (when (plusp limit)
+      (push (list* file eoff elen trailer octets) *fnn-extent-cache*)
+      (when token (setf (gethash octets *fnn-extent-cache-tokens*) token))
+      (when (> (length *fnn-extent-cache*) limit)
+        (setq evicted (fnn-extent-cache-forget (nthcdr limit *fnn-extent-cache*)))
+        (setq *fnn-extent-cache* (subseq *fnn-extent-cache* 0 limit))))
+    (values (plusp limit) evicted)))
+
+(defun fnn-extent-cache-drop-files (files)
+  "Extent lock held. Remove physical buffers and return their exact tokens."
+  (let ((keep nil) (drop nil))
+    (dolist (entry *fnn-extent-cache*)
+      (if (member (first entry) files) (push entry drop) (push entry keep)))
+    (setq *fnn-extent-cache* (nreverse keep))
+    (fnn-extent-cache-forget (nreverse drop))))
+
+(defun fnn-extent-end-recovery-cache ()
+  "Before serving, drop startup-only borrows and every direct/offline cache.
+No recovery activation remains. Retained decoder array highwater is separate."
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (let ((tokens (fnn-extent-cache-forget *fnn-extent-cache*)))
+      (setq *fnn-extent-cache* nil *fnn-extent-lz-last* nil)
+      (fnn-extent-cache-release tokens))))
+
+(defun fnn-extent-read-verified (file eoff elen trailer)
+  "Synchronous private read/verifier activation. Caller already owns a lease
+or explicitly selected offline mode; extent lock remains held."
+  (let* ((octets (fnn-extent-read-entry file eoff elen))
+         (verdict (fnn-extent-entry-verdict octets elen trailer)))
         (unless (eq verdict :ok)
           (incf (third *fnn-extent-stats*))
           (error 'fnn-extent-fault
@@ -231,29 +464,106 @@ Called with the realizer's lock held."
                    (t
                     (format nil "arena-extent-verdict: ACL2 answered ~s for the entry at ~a"
                             verdict (fnn-extent-where file eoff))))))
-        (let ((limit (fnn-extent-cache-limit)))
-          (when (plusp limit)
-            (push (list* file eoff elen trailer octets) *fnn-extent-cache*)
-            (when (> (length *fnn-extent-cache*) limit)
-              (setq *fnn-extent-cache* (subseq *fnn-extent-cache* 0 limit)))))
-        octets))))
+    octets))
+
+(defun fnn-extent-sync-settle (row token verdict cachedp)
+  "The synchronous read activation returned or unwound before this call.
+The local exact I/O row belongs only to this activation, under extent lock."
+  (destructuring-bind (settled answer) (fnn-call 'fn-pio-complete row token verdict)
+    (declare (ignore settled))
+    (when (eq answer :stale) (fnn-fault "synchronous cold completion lost its token"))
+    (unless (eq (first (fnn-core-page-read-pool 'fn-owner-page-read-settle token cachedp)) :settled)
+      (fnn-fault "synchronous cold completion lost its resource lease"))))
+
+(defun fnn-extent-entry-direct (file eoff elen trailer)
+  "A synchronous miss reserves before allocation. Its execution slot is
+conservatively charged while the persistent native worker baseline stays put.
+A served result transfers to the cache before the caller borrows the vector."
+  (let ((mode (first (fnn-core-page-read-pool 'fn-owner-page-read-direct-mode))))
+    (when (eq mode :offline)
+      (let ((octets (fnn-extent-read-verified file eoff elen trailer)))
+        (multiple-value-bind (cachedp evicted)
+            (fnn-extent-cache-store file eoff elen trailer octets)
+          (declare (ignore cachedp))
+          (fnn-extent-cache-release evicted))
+        (return-from fnn-extent-entry-direct octets)))
+    (unless (eq mode :funded-pool) (fnn-refuse "extent read refused: ~a" mode))
+    (let ((cache-mode (fnn-core 'fn-pxe-cache-mode (plusp (fnn-extent-cache-limit)))))
+      (unless (eq cache-mode :ready) (fnn-refuse "extent read refused: ~a" cache-mode)))
+    (destructuring-bind (word token &rest ignored)
+        (fnn-core-page-read-pool 'fn-owner-page-read-admit 0 file eoff elen trailer)
+      (declare (ignore ignored))
+      (unless (eq word :admitted) (fnn-refuse "extent read refused: ~a" word))
+      (let ((row (fnn-core 'fn-pio-own-admitted-token token))
+            (octets nil) (transferring nil))
+        (unless row (fnn-fault "synchronous admitted token lacks its owned read"))
+        (unwind-protect
+             (progn
+               (setq octets (fnn-extent-read-verified file eoff elen trailer))
+               ;; Once cache mutation begins, an exceptional transfer retains
+               ;; the lease: uncertainty about an alias never authorizes refund.
+               (setq transferring t)
+               (multiple-value-bind (cachedp evicted)
+                   (fnn-extent-cache-store file eoff elen trailer octets token)
+                 (unless cachedp (fnn-fault "funded synchronous result has no cache owner"))
+                 (fnn-extent-cache-release evicted)
+                 (fnn-extent-sync-settle row token :ok t))
+               octets)
+          (unless transferring
+            ;; Read/verifier stack and its buffer-stobj alias have unwound.
+            (setq octets nil)
+            (fnn-extent-sync-settle row token :error nil)))))))
+
+(defun fnn-extent-entry (file eoff elen trailer)
+  "The verified vector under the complete descriptor identity. Called with
+extent lock held; caller keeps that lock until its final vector borrow ends."
+  (let ((hit (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)
+                                       (eql (third e) elen) (eql (fourth e) trailer)))
+                      *fnn-extent-cache*)))
+    (if hit
+        (progn (incf (first *fnn-extent-stats*))
+               (unless (eq hit (first *fnn-extent-cache*))
+                 (setq *fnn-extent-cache* (cons hit (delete hit *fnn-extent-cache* :test #'eq))))
+               (cddddr hit))
+      (if *fnn-extent-no-io*
+          (throw 'fnn-extent-cold (list file eoff elen trailer))
+        (fnn-extent-entry-direct file eoff elen trailer)))))
+
+(defun fnn-extent-discovery-release (token)
+  "Extent lock held. Caller relinquished the exact unverified buffer lease."
+  (when token
+    (unless (eq (first (fnn-core-page-read-pool 'fn-owner-page-read-discovery-release token)) :released)
+      (fnn-fault "discovery buffer lost its exact resource lease"))))
 
 (defun fnn-extent-entry-fresh (file eoff elen)
-  "The entry at [EOFF, EOFF+ELEN+32) of FILE read once for a descriptor not
-yet made (the publication's reseat, host/native/owner.lisp
-fnn-owner-release-extents: ACL2 then compares the frame's payloads with the
-arena's and makes the descriptors from the frame's own trailer,
-books/extent-retire.lisp fn-xrt-reseat-one), self-consistency checked by
-ACL2 (fnn-extent-entry-ok) and refused by name otherwise; never cached (a
-cache entry needs the identity a descriptor gives it).  Called with the
-realizer's lock held."
-  (let ((octets (fnn-extent-read-entry file eoff elen)))
-    (unless (eq (fnn-extent-entry-ok octets elen) t)
-      (incf (third *fnn-extent-stats*))
-      (error 'fnn-extent-fault
-             :message (format nil "arena-extent-digest: the entry at ~a does not match its trailer"
-                              (fnn-extent-where file eoff))))
-    octets))
+  "Return the self-consistent vector AND its discovery lease. The caller
+keeps that lease until its last buffer borrow ends. Extent lock held."
+  (let ((mode (first (fnn-core-page-read-pool 'fn-owner-page-read-direct-mode)))
+        (token nil) (octets nil) (handed-off nil))
+    (case mode
+      (:offline nil)
+      (:funded-pool
+       (destructuring-bind (word lease &rest ignored)
+           (fnn-core-page-read-pool 'fn-owner-page-read-discovery-admit file eoff elen)
+         (declare (ignore ignored))
+         (unless (eq word :admitted) (fnn-refuse "extent discovery refused: ~a" word))
+         (setq token lease)))
+      (otherwise (fnn-refuse "extent discovery refused: ~a" mode)))
+    (unwind-protect
+         (progn
+           (setq octets (fnn-extent-read-entry file eoff elen))
+           (unless (eq (fnn-extent-entry-ok octets elen) t)
+             (incf (third *fnn-extent-stats*))
+             (error 'fnn-extent-fault
+                    :message (format nil "arena-extent-digest: the entry at ~a does not match its trailer"
+                                     (fnn-extent-where file eoff))))
+           (setq handed-off t)
+           (values octets token))
+      (unless handed-off
+        ;; The synchronous pread and verifier have returned/unwound; their
+        ;; private vector is no longer borrowed, even on allocation failure.
+        (setq octets nil)
+        (fnn-extent-discovery-release token)))))
 
 ;;; The entry a cold span needs, read into the cache (a store fault is
 ;;; signalled as always: the caller re-signals it in the owner's thread).
@@ -264,48 +574,73 @@ realizer's lock held."
 ;;; realizer's one buffer -- and keep it).  The entry is decided against the
 ;;; descriptor's TRAILER (fnn-extent-entry-verdict) and cached under that
 ;;; identity, exactly as fnn-extent-entry decides and caches it.
-(defun fnn-extent-prefetch (file eoff elen trailer)
-  (let ((fd nil)
-        (octets (make-array (+ elen 32) :element-type '(unsigned-byte 8))))
+(defun fnn-extent-issue-read (cid file eoff elen trailer)
+  "Acquire the cold worker's ownership BEFORE launching it. NIL means warm."
+  (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+    (let ((mode (fnn-core 'fn-pxe-cache-mode (plusp (fnn-extent-cache-limit)))))
+      (unless (eq mode :ready) (return-from fnn-extent-issue-read (values nil mode))))
+    (when (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)
+                                   (eql (third e) elen) (eql (fourth e) trailer)))
+                  *fnn-extent-cache*)
+      (return-from fnn-extent-issue-read nil))
+    (unless (gethash file *fnn-extent-fds*)
+      (error 'fnn-extent-fault
+             :message (format nil "arena-extent-read: no durable file ~a is registered" file)))
+    (destructuring-bind (word token &rest ignored)
+        (fnn-core-page-read-pool 'fn-owner-page-read-admit cid file eoff elen trailer)
+      (declare (ignore ignored))
+      (unless (eq word :admitted)
+        (return-from fnn-extent-issue-read (values nil word)))
+      (let ((row (fnn-core 'fn-pio-own-admitted-token token)))
+        (unless row (fnn-fault "admitted cold token lacks its owned read"))
+        (setf (gethash token *fnn-extent-issued*) row)
+        (values token :admitted (fnn-extent-executor-acquire token))))))
+
+(defun fnn-extent-cancel-read (token)
+  "Revoke this request's publication right; the worker still owns its fd."
+  (when token
     (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-      (when (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)
-                                      (eql (third e) elen) (eql (fourth e) trailer)))
-                     *fnn-extent-cache*)
-        (return-from fnn-extent-prefetch t))
-      (setq fd (gethash file *fnn-extent-fds*))
-      (incf (second *fnn-extent-stats*))
-      (unless fd
-        (incf (third *fnn-extent-stats*))
-        (error 'fnn-extent-fault
-               :message (format nil "arena-extent-read: no durable file ~a is registered" file))))
-    (let ((got (fnn-extent-pread fd octets eoff)))
+      (let ((row (gethash token *fnn-extent-issued*)))
+        (when row
+          (setf (gethash token *fnn-extent-issued*) (fnn-core 'fn-pio-cancel row token))
+          (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")
+            (fnn-err "PAGE-IO cancelled token=~s" token)))))))
+
+(defun fnn-extent-complete-read (token verdict)
+  "ACL2's completion decision, with the extent lock held. Only actual I/O
+settlement calls this. A missing/stale token has no publish or release."
+  (destructuring-bind (row answer)
+      (fnn-call 'fn-pio-complete (gethash token *fnn-extent-issued*) token verdict)
+    (unless (eq answer :stale)
+      (setf (gethash token *fnn-extent-issued*) row)
+      (remhash token *fnn-extent-issued*))
+    (values answer row)))
+
+(defun fnn-extent-prefetch (token)
+  "Read and verify TOKEN, off owner mutex. Return its private verified result;
+only observed worker relinquishment allows owner settlement/publication."
+  (unless token (return-from fnn-extent-prefetch (list :ok nil)))
+  (destructuring-bind (id cid file eoff elen trailer) token
+    (declare (ignore id cid))
+    (let ((fd nil)
+          (octets (make-array (+ elen 32) :element-type '(unsigned-byte 8)))
+          (hold (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD"))
+          (mode (fnn-developer-selector "FN_NATIVE_PAGE_IO_RESULT")))
       (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-        (unless (= got (+ elen 32))
-          (incf (third *fnn-extent-stats*))
-          (error 'fnn-extent-fault
-                 :message (format nil "arena-extent-read: ~a holds fewer than ~a octets"
-                                  (fnn-extent-where file eoff) (+ elen 32))))
-        (let ((verdict (fnn-extent-entry-verdict octets elen trailer)))
-          (unless (eq verdict :ok)
-            (incf (third *fnn-extent-stats*))
-            (error 'fnn-extent-fault
-                   :message
-                   (case verdict
-                     (:trailer
-                      (format nil "arena-extent-trailer: the entry at ~a is not the extent's: its recorded trailer is not the descriptor's"
-                              (fnn-extent-where file eoff)))
-                     (:digest
-                      (format nil "arena-extent-digest: the entry at ~a does not match its trailer"
-                              (fnn-extent-where file eoff)))
-                     (t
-                      (format nil "arena-extent-verdict: ACL2 answered ~s for the entry at ~a"
-                              verdict (fnn-extent-where file eoff)))))))
-        (let ((limit (fnn-extent-cache-limit)))
-          (when (plusp limit)
-            (push (list* file eoff elen trailer octets) *fnn-extent-cache*)
-            (when (> (length *fnn-extent-cache*) limit)
-              (setq *fnn-extent-cache* (subseq *fnn-extent-cache* 0 limit)))))
-        t))))
+        (setq fd (gethash file *fnn-extent-fds*))
+        (incf (second *fnn-extent-stats*)))
+      (unless fd
+        (error 'fnn-extent-fault :message "arena-extent-read: issued file closed"))
+      (when (and hold (plusp (length hold)) (not (probe-file hold)))
+        (fnn-err "PAGE-IO held token=~s file=~d" token file)
+        (loop until (probe-file hold) do (sleep 0.05)))
+      (when (equal mode "error")
+        (error 'fnn-extent-fault :message "arena-extent-read: injected pread error"))
+      (let ((got (if (equal mode "short") 0 (fnn-extent-pread fd octets eoff))))
+        (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+          (list (if (= got (+ elen 32))
+                    (fnn-extent-entry-verdict octets elen trailer) :read)
+                octets))))))
 
 ;;; The realizer (A-DURABLE-EXTENT's constrained function), raw and *1*.
 ;;; The descriptor's guard (books/payload-arena-extent-logic.lisp
@@ -324,15 +659,18 @@ realizer's lock held."
 ;;; cache lookup or one pread and one verdict, one list of PLEN octets built
 ;;; from the verified buffer.
 (defun fn-durable-realize-octets (file eoff elen poff plen trailer)
-  (let ((entry (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-                 (fnn-extent-entry file eoff elen trailer)))
-        (start (- poff eoff))
-        (acc nil))
-    (declare (type (simple-array (unsigned-byte 8) (*)) entry)
-             (type fixnum start plen))
-    (loop for i of-type fixnum from (+ start plen -1) downto start do
-      (push (aref entry i) acc))
-    acc))
+  ;; Keep this vector borrow under the cache lock: an eviction may release
+  ;; its lease only after the last borrowed byte has been copied. The caller
+  ;; still owes the resulting list's separate response/maintenance budget.
+  (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+    (let ((entry (fnn-extent-entry file eoff elen trailer))
+          (start (- poff eoff))
+          (acc nil))
+      (declare (type (simple-array (unsigned-byte 8) (*)) entry)
+               (type fixnum start plen))
+      (loop for i of-type fixnum from (+ start plen -1) downto start do
+        (push (aref entry i) acc))
+      acc)))
 
 (defun acl2_*1*_acl2::fn-durable-realize-octets (file eoff elen poff plen trailer)
   (fn-durable-realize-octets file eoff elen poff plen trailer))
@@ -469,24 +807,43 @@ realizer's lock held."
       (sort ids #'<))))
 
 (defun fnn-extent-close (ids)
-  "Close the descriptors of IDS (ACL2's close set) and forget every cached
-entry of them: a closed id is never reused, so no later hit can name it.
-Answers the count closed."
+  "Physical retirement: workers keep descriptors; cache credits release on
+actual eviction, descriptor credits only after successful OS close."
   (sb-thread:with-mutex (*fnn-extent-lock*)
-    (let ((closed 0))
+    (let ((closed 0) (keep nil)
+          (rows (loop for row being the hash-values of *fnn-extent-issued* collect row)))
       (dolist (id ids)
-        (let ((fd (gethash id *fnn-extent-fds*)))
-          (remhash id *fnn-extent-fds*)
-          (remhash id *fnn-extent-paths*)
-          (remhash id *fnn-extent-incarnations*)
-          (when fd
-            (fnn-close fd)
-            (incf closed))))
-      (setq *fnn-extent-cache*
-            (remove-if (lambda (e) (member (first e) ids)) *fnn-extent-cache*))
-      (when (and *fnn-extent-lz-last* (member (first (first *fnn-extent-lz-last*)) ids))
-        (setq *fnn-extent-lz-last* nil))
-      closed)))
+        (if (fnn-core 'fn-pio-file-clear-p id rows)
+            (progn
+              (fnn-extent-cache-release (fnn-extent-cache-drop-files (list id)))
+              (when (and *fnn-extent-lz-last* (eql (first (first *fnn-extent-lz-last*)) id))
+                (setq *fnn-extent-lz-last* nil))
+              (let* ((word (first (fnn-core-page-read-pool 'fn-owner-page-read-close-preview id)))
+                     (fd (gethash id *fnn-extent-fds*)))
+                (case word
+                  ((:closable :unfunded-offline :stale)
+                   (when (and fd (eq word :stale))
+                     (fnn-fault "registered incarnation lacks its resource lease"))
+                   ;; Any error escapes with the tables/lease intact. The
+                   ;; owner fences; ambiguous close never refunds and resumes.
+                   (when fd (fnn-close fd) (incf closed))
+                   (unless (eq word :unfunded-offline)
+                     (let ((settled (first (fnn-core-page-read-pool 'fn-owner-page-read-close id))))
+                       (unless (member settled '(:closed :stale))
+                         (fnn-fault "closed incarnation still has a resource owner"))))
+                   (remhash id *fnn-extent-fds*)
+                   (remhash id *fnn-extent-paths*)
+                   (remhash id *fnn-extent-incarnations*)
+                   (remhash id *fnn-extent-bases*)
+                   (when (and fd (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD"))
+                     (fnn-err "PAGE-IO closed file=~d" id)))
+                  (:read-file-held (push id keep))
+                  (otherwise (fnn-fault "invalid incarnation close preview ~a" word)))))
+          (progn
+            (push id keep)
+            (when (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD")
+              (fnn-err "PAGE-IO close-held file=~d" id)))))
+      (values closed (nreverse keep)))))
 
 (defun fnn-extent-open-count ()
   "The descriptors the realizer holds (the natives' observation)."

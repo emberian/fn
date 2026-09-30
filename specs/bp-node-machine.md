@@ -3211,7 +3211,11 @@ fragment's total ADU length) is past `max-adu-octets` is refused
 answer unchanged (`fn-bpnpf-admission-within-profile-is-the-channel-answer`).
 A family therefore never grows an ADU its profile does not admit. The held
 image's bound is `max-held-octets`: the step and the family plan check the
-machine state's max-octets. The lifecycle-record count between rotations is
+machine state's max-octets. The job host reads `fn-bpnpf-held-octets` for
+its `:family` and matching `:persist-result` image limit; the received-wire
+`max-bundle-octets` bound is not reused for the reassembled image. This
+allows a family whose fragments fit the wire budget and whose whole image
+fits held capacity even when the whole image exceeds one received wire. The lifecycle-record count between rotations is
 a work bound.
 
 | Limit | Value today | Must satisfy |
@@ -4823,3 +4827,167 @@ dispatch, durable receipt handoff, or returned receipt release. Those are A3
 composition obligations; a TCPCL transfer ACK proves none of them. The
 namespace planner's current ACL2 behavior is certified, while its guard
 verification remains open through the inherited lifecycle helper chain.
+
+
+### Native job-offer guard boundary (2026-09-29)
+
+`host/native/bp-service.lisp`'s `fnn-bps-foundation-step` calls
+`fn-bpnj-step`. `books/bp-node-job-offer-guards.lisp` verifies that entry
+and its start/contact/result chain under the existing machine-shape,
+session-list, held-list and host-event guards. The host-event recognizer is
+verified after the progress guard closure, rather than before that closure
+is available. The contact proof carries the opened contact list's shape;
+the result proof derives a typed key from a found job and matching attempt
+token. Neither strengthens the existing executable entry's guard nor adds a
+whole-state check to its body. The existing job-offer keystones and their
+reachable/mutation witnesses remain in `bp-node-job-offer-tests`.
+
+The kind-10 and kind-18 codecs' constructors, and the forwarding record
+constructors, are guard-verified in the books where those constructors are
+defined. A verification available only in a later umbrella cannot discharge
+a codec book's independent certification. This is an execution-domain
+boundary, not a claim about physical persistence or transport success.
+
+### Serialized live route control (2026-09-29, Q4e first increment)
+
+`bp-node serve ... --control-config CONFIG` opts this run into local control.
+CONFIG is read under the existing native-config octet bound. ACL2's
+`fn-bpnc-startup` parses it, requires its actual `[store].path` octets to equal
+the Store argument, and derives its control socket path, adjacent lease path
+and command-frame bound. A mismatch is refused before a control listener is
+installed. The protected live node is not part of this test surface.
+
+The same-owner socket observation and the existing FNCT concrete-buffer
+refinement are reused. `fn-bpnc-turn-plan` grants exactly the parsed accepted
+`bp-route add` or `bp-route remove` plan, rejecting other request and admin
+kinds. `fnn-bpnc-execute` uses the ordinary owner scheduler's control class and
+`fnn-owner-live-reconfigure-locked`: acceptance follows durable configuration
+publication and installation. There is no direct Store fallback after a live
+transport ambiguity. The operator's actual CONFIG selects the same path.
+
+No control worker mutates the ACL2 image. One synchronous request is serviced
+between BP sessions and at the transfer progress boundary; it is read under
+one absolute ten-second I/O deadline and the ACL2 command-frame bound, then
+answered under the existing ten-second send deadline, and its descriptor is
+closed on every exit. At most one request is consumed per pump. The developer
+receipt hold also pumps these turns; the existing production selector gate
+still refuses that hold in a production image. A fenced or faulted owner
+cannot resume BP semantic mutation after its answer.
+
+The host follows `fn-bpnc-socket-action` and records observed bind, install and
+retire outcomes through `fn-bpnc-socket-step`. Both successful completions are
+necessary and sufficient for the open run to reach live; stop requests retire
+before closing. Cleanup removes only this run's installed socket inode while
+retaining the adjacent lease, then releases it. SIGKILL is handled by the
+existing stale-socket liveness protocol at a later operator/startup.
+PRF-1063 covers exact startup binding and route-only authority. PRF-1064 covers
+the complete socket effect/outcome protocol. The ACL2 teeth exercise actual
+parsed config/admin vectors, both open failures, retirement success/failure
+and a corrupt-phase hypothesis removal. Matching native route mutation and
+receipt ordering are SCN-218; until its image/run is recorded they are pending.
+BP boundary mutation, listener rebinding and listener generation refresh
+remain Q4e work; this increment exposes only routes.
+
+### Live listener generations after configuration publication (2026-09-29, Q4e)
+
+With `bp-node serve - ... --control-config CONFIG`, the actual owner
+configuration determines the complete listener set. A numeric PORT retains
+its explicit listener (including the kernel-assigned port requested by zero).
+The local configuration-only endpoint additionally accepts parsed
+`bp-boundary add` and removal of a peer whose actual configured transport is
+BP. It refuses non-BP peer operations and every other service operation. A
+boundary mutation is granted only while the carried listener machine is
+stable. The same-owner credential, parsed CONFIG Store binding, bounded FNCT
+frame and absolute read/reply deadlines remain the existing control contract.
+
+`fn-bplc-turn-plan` is called through the current owner, and `fn-bplc-begin`
+reads that owner's actual durable configuration after its publication.
+`fn-bplc-owner-listener-ports` projects the carried valid configuration without
+rechecking its whole-state recognizer; its named refinement equals
+`fn-bpaj-listener-ports` under configuration validity. Configuration generation
+and listener ports are never derived by host policy or by a second Store read.
+
+Durable configuration acceptance and runtime installation are distinct.
+The serialized listener machine reuses unchanged ports, reserves one temporary
+listener-descriptor credit before an added-port bind, observes that bind's
+completion, installs the complete target generation/set only after all added
+binds complete, and retires removed listening descriptors. Each primitive has
+an explicit completion. Credits count BP listening descriptors plus the one
+in-flight bind reservation; their carried peak records the old/new overlap.
+Control sockets and accepted TCPCL session descriptors have separate ownership.
+No fixed implementation ceiling limits the number of configured listeners.
+The operating system may fail a bind; no prepublication bind guarantee is made.
+
+A post-publication bind, installation or retirement failure fences/stops the
+node and returns uncertain. The durable configuration is retained; there is
+no silent rollback and no successful operator result claiming an uninstalled
+runtime. On restart, the machine has no runtime descriptors or session pins;
+its target is rederived from the recovered durable owner configuration. Cold
+`serve -` with no admitted boundary listener is refused by name. A live removal
+of the final boundary may leave an empty installed set while its control
+endpoint remains available for a later addition.
+
+The sole writer accepts a BP session only from the installed stable generation.
+Its accepted-generation/port pin survives configuration bind/install/retire;
+retiring a listening descriptor never closes that accepted session's FD.
+This pin is transport provenance: application authorization still uses the
+current configured authority and can refuse a revoked boundary. No mutation
+runs concurrently with a core call. During an idle TCPCL read, the same thread
+polls its BP FD and control FD under the original absolute read deadline;
+control wakeups do not manufacture TCPCL timeouts or reset that deadline.
+Actual BP readiness wins simultaneous readiness. One bounded control request
+is processed at a time; its existing absolute transport deadlines remain in
+force. A configuration change completes its serialized listener effects before
+another session can be accepted or a success reply emitted.
+
+SCN-1001 names the actual running-node successful rebind with an old
+established session, an occupied-port uncertainty followed by cold restart,
+and process death at every new listener-effect boundary. Developer selector
+`FN_BP_LISTENER_TEST_PAUSE_CUT` names `configuration-published`, `before-bind`,
+`after-bind`, `before-install`, `after-install`, `before-retire`, or
+`after-retire`. Each site calls `fn-bplc-cut-plan` in its actual reached phase;
+the plan carries the explicit `:crash` transition, which clears runtime
+credits and session pins while retaining durable target provenance. Production
+images refuse the selector before opening Store/socket state. Narrow proofs
+(PRF-1075/1076), qualified images and these native outcomes are separate
+coordinates; pending native cases are not claimed executed.
+
+
+### Recovery admission of ADU bounds (PKT-311a; PRF-1090)
+
+fn additionally rechecks the current operator profile during actual native
+recovery; this is a local admission policy, stronger than the BP wire grammar.
+`fnn-bps-open` checks the selected checkpoint with
+`fn-bprpf-selection-admit` before replay; `fnn-bps-read-received-rows` checks
+each saved frame with `fn-bprpf-row-admit` before retaining it for the fold.
+This includes receptions that a later row deletes. The ADU reading is the
+receive boundary's `fn-bpnpf-bundle-adu-length`: a fragment's total ADU length
+(RFC 9171 section 4.3.1), otherwise the payload length. No new ceiling is
+introduced. Saved wire also must fit the current profile's bundle bound.
+
+The final `fn-bprpf-admit-recovery` consumes the exact
+`fn-bphp-recover-auto-event` result before installation. Every held member of
+a ready admitted result fits the current ADU bound. A mismatched profile
+produces `:adu-beyond-profile` (or `:profile` for unsupported profile), fences
+the open with uncertainty, and leaves durable data intact. An existing replay
+fault stays a fault. These checks apply equally to checkpoint-seeded held
+rows and suffix receptions and run at open, never per served request.
+
+The input work bounds are separate: `fn-bpnf-stored-frame-limit` bounds each
+raw FNBS read before decode; `fn-bpnr-read-bound` and `fn-bpnr-depth-budget`
+bound checkpoint input under the profile. ADU admission does not prove those
+limits or make the full open resumable. Profile repair after a mismatched
+restore and codec/runtime profile widening remain PKT-311b/c. SCN-1008 names
+the actual row and checkpoint restart cases; matching native execution is
+pending, so this source increment is not a qualified recovery claim.
+
+
+The actual recovered-held event builder `fn-bphp-recover-auto-event` and its
+checkpoint-seeded replay fold are guard-verified by `bp-recovery-guards`
+(PRF-214). The caller `fnn-bps-open` supplies the base-state predicate through
+its existing initial machine invariant gate. Decoded row facts establish the
+natural epoch/operation frontier and the kind-5 bundle shape; the fold carries
+its octet and arrival scalars. This execution contract adds no runtime
+whole-held-state recognizer and leaves replay's logical result unchanged.
+SCN-1008's native recovery cases and the original scale cases still require
+matching image evidence; a guard proof is not a timing or deployment claim.

@@ -201,12 +201,12 @@
         (equal (fn-sf-phase (fn-sn-files (fn-sn-recover s))) :recovering))
    (equal
     (fn-sn-verdicts (fn-sn-recover s))
-    (fn-replay-verdict-pairs
-     (fn-stxk-context-verdicts
-      (fn-replay-identity
-       (fn-sf-records
-        (fn-sf-recover (fn-sn-files s)
-                       (fn-sn-groups s) (fn-sn-capacity s))))))))
+    ; The acceptance table includes ordinary held ARTICLE contexts and
+    ; composite durable verdict events, in exact acceptance order.
+    (fn-sn-row-verdicts
+     (fn-sf-records
+      (fn-sf-recover (fn-sn-files s)
+                     (fn-sn-groups s) (fn-sn-capacity s))))))
   :hints (("Goal"
            :in-theory
            (e/d (fn-sn-recover)

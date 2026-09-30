@@ -99,7 +99,19 @@ refusal exactly when the reservation cannot hold the requested profile
 (`fn-lim-resource-refusal-is-the-reservations`), the same words a start that
 cannot fund its store refuses with. `policy set` replies with the decision
 and `limit FIELD requested=R funded=U ceiling=C`; an offline `status` prints
-that line for each field with `funded=none`.
+that line for each field with `funded=none`. Its inexpensive stopped report
+retains the sealed header's profile; `status --replay` opens the history and
+reports its effective limits. A restart installs that effective profile as
+both requested and funded. The live-limit parser accepts canonical decimal
+naturals including values beyond u32 so `fn-lim-decide` names the representation
+ceiling; malformed numbers remain a parser refusal.
+Replay admits a record under the history at its position, never under a
+limit value (PRF-1026, `fn-rhl-extend-open-is-limit-free`): the open's
+configuration fold is the same, up to the configuration's limits, for two
+histories that differ only in their `:set-limit` values, so an article
+accepted before A is lowered below its size is replayed after the lowering.
+What replay decides historically is the retention capacity (`:set-capacity`),
+carried in the node.
 
 STO-015: a namespace the store holds is bounded by the operator's profile,
 never by a constant (D27). Configuration generations and AUTHINFO
@@ -1247,12 +1259,23 @@ exactly "no obligation in the flattened list names the article" together
 with the rule.
 
 **The tombstone** replaces the payload octets of the article record and
-nothing else: NUL `FN-RCL1`, a source flag, the payload's BLAKE3 digest, the
-BLAKE3 digest of its D25 source under its own agent, the payload length and that
-agent (`books/reclaim-tombstone`). The record keeps its Message-ID,
+nothing else: NUL `FN-RCL2`, a source flag, the payload's BLAKE3 digest, the
+BLAKE3 digest of its D25 source under its own agent, the payload length, the
+56-octet typed `relay-v1` article commitment and the injecting agent (`books/reclaim-tombstone`). The record keeps its Message-ID,
 sequence, txid, generation, groups, memberships, obligation identity,
 content subject, release evidence, charge and stamp, so the history entry,
 the numbers, the group bindings and the content identity stay.
+`fn-rclp-event-retains-article-subject` (PRF-1089) names the host-called
+per-event rewrite and proves that its decoded tombstone retains exactly
+`fn-asj-subject` of the original payload. The constructor uses the subject's
+existing u32 projection-length representation; the rewrite checks that
+profile before calling it and never truncates a protected projection.
+The fixed part is 145 octets, followed by the injecting agent. There is one
+current tombstone format; no RCL1 reader or migration exists (D34/D38).
+The genesis schema commitment includes this layout. This increment preserves
+the commitment; the existing D25 decision does not yet consult the new field.
+It proves no converse from digest equality to equality of removed bytes.
+
 Acceptance never reads a stored payload, so replaying the record with the
 tombstone reaches the reclaimed state, and every other record's step
 commutes with reclamation (`fn-rcl-prepare-commutes-with-reclaim`).
@@ -1332,6 +1355,46 @@ node transition is the identity per entry; the full-store POST's footprint
 is one transaction id (`fn-rfx-refused-post-consumes-one-txid`), and that
 path never spends a recovery barrier
 (`fn-hkn-refusal-keeps-the-recovery-barriers`).
+
+The corrected W8 relation is `alpha(s) = (L(s), R(s))`: physical maintenance
+preserves promised logical obligations while an explicit abstract maintenance
+transition changes resources. Operations admitted on both sides preserve their
+promised results; capacity responses may differ. A checker retains every
+refused event and explains that difference through resource state. It must not
+filter refused operations out to obtain equality. Once one side accepts work
+that the other refuses, their later logical histories can differ; the common
+admission condition cannot simply be forgotten at the next operation.
+
+The source component `books/history-resource-refinement.lisp` (PRF-1101,
+SCN-1013) makes that separation for the retention ledger: `L` contains active
+obligation identity, subject, kind, evidence and permanent release history;
+`R` contains capacity, reserved amount and each pin's charge. Its maintenance
+square covers `fn-hkn-release-retention`; its operation lemmas cover actual
+`fn-retain-admit` and `fn-retain-release`. These ledger units are not a physical
+memory/disk/descriptor/slot accounting vector. The component's projection is
+not the full node abstraction: selected subject profiles, authority/version,
+conflict evidence, numbering, snapshot carry and physical ownership must be
+framed by the complete host-called owner/reclamation bridge. That bridge,
+revocation, refused-request identity headroom and the bounded continuation
+checker remain open. The component is not a served whole-state traversal.
+
+The post-reservation refusal iteration is now an explicit reference component
+in `books/refusal-headroom.lisp` (PRF-1110, SCN-1019). It composes the actual
+reserve and semantic-refusal subjects. From a typed idle Store whose node may
+advance to the allocator successor, `n` such attempts leave the frontier at
+`min(UINT32_MAX, frontier + n)`, keep all records, groups and capacity, and
+make the actual host-used `fn-bs-frontier-next` return no successor exactly
+when the available identity headroom has been consumed. The native reserve
+path converts that no-successor result into its existing named finite
+transaction-ID domain refusal before mutating the log kernel. This does not
+make post-reservation refusal free: the headroom is consumed. A preflight
+refusal before reserve is a separate zero-identity-use case. The iteration
+is proof machinery over the existing boundary drivers; matching native owner
+traces and transient physical rescue funding remain separate open obligations.
+The bound also exposes that post-reservation refusals can consume all remaining
+identities; it does not reserve identities for maintenance/recovery. The funded
+rescue argument must include that finite identity-space demand, or justify the
+named terminal state for each remaining path.
 
 The two operations (the Fable mandate, section 8):
 
@@ -1442,6 +1505,47 @@ pack (the decision that dropped the derived checkpoint, published, selected and
 retired a pack generation, with its reclaim-* cuts), whose native steps
 PKT-838 deleted.
 
+#### Issued page reads across retirement (PRF-1057, SCN-216)
+
+A cold extent read issued off the owner mutex has an immutable process-local
+token: monotonically allocated read identity, original connection identity,
+file incarnation identity, entry offset, protected length and expected
+trailer. The token is distinct from an OS descriptor, a Message-ID, a
+connection slot and a durable transaction identity. ACL2 also derives fresh
+process-local incarnation names: successive admitted file allocations are
+distinct; failed opens spend their name and invalid carried counters refuse
+instead of resetting. Definite launch failure settles without a worker or
+buffer being created. Its ACL2 ownership row
+(`books/page-read-ownership.lisp`) begins `:issued`. Timeout or cancellation
+changes it to `:cancelled`, retaining its identity and worker ownership;
+neither observation establishes that pread stopped. Actual worker death observed by the owner and joined completion
+settles the matching row once. Only a still-issued matching completion whose
+full read passed the commitment verdict can publish into the verified
+extent cache. Cancelled success discards its data; short read, error or
+failed integrity check settles with a named fault; stale or duplicate
+completion publishes and releases nothing. A late store fault stops the
+owner even after its original request returned 403.
+
+Retirement additionally waits for every issued or cancelled worker naming
+the file. The generation-pin gate still applies independently. The host
+acquires issued ownership under the owner mutex at validated descriptor
+capture, before launching the worker or allowing retirement; it preserves deferred
+close groups and retries them after actual completion, after dropping the
+extent mutex. This is a stronger fn resource-ownership guarantee around
+RFC 3977 section 3.2.1's 403 reply, not an RFC descriptor-lifetime rule.
+The host's OS calls, mutexes, thread-launch outcome and faithful storage of
+ACL2's ownership rows remain in A-HOST. The theorem concerns the host-called
+completion and close decisions, not OS thread correctness.
+
+Scope: this increment does not establish funded admission for cold read
+buffers or workers. Repeated timeouts can still accumulate detached workers;
+this is a P12 blocker. The operator-supported resource vector must charge
+each issued worker, its buffer and shared file incarnation before allocation,
+retain charges through cancellation, refund worker resources only on actual
+settlement, and keep cached-buffer charges until eviction.
+No guessed ceiling on stored articles or a connection-count shortcut closes
+that obligation.
+
 ### The maintenance reservation (STO-019)
 
 STO-019: Admission leaves room for the release record and checks maintenance's temporary space against the disk, so a full store can always finish or safely abandon its own maintenance.
@@ -1531,6 +1635,99 @@ then fails before the selection; the store reopens and the rerun converges
 (the pack publication's cuts), so the outcome is refused or uncertain, never
 torn. `status` prints `maintenance-reserve octets=R transactions=N debt=D
 held|short`.
+
+
+The P12 cold-pool increment (PRF-1065, SCN-1002) separates resident octets,
+disk octets, registered descriptor credits, executing worker slots and
+spent process-local read identities. A named refused cold issue emits one
+403 resource-unavailable line (PRF-1073), consumes that command only and
+preserves its session. Identity exhaustion names the required restart.
+These are admission refusals, with no invented deadline observation.
+Its ACL2 adapter admits only a funded
+charge and binds the whole read token to it. Refusal is unchanged; timeout
+or cancellation cannot refund. Native settlement must follow observed
+worker relinquishment, with unexpectedly dead workers joined first. Cached vectors retain their charge until eviction,
+and incarnations retain FD credit until physical close. The persistent installation entry reserves a supplied permanent baseline
+before native allocation, and every ledger transition preserves it. Job
+settlement refunds only the execution lease; idle worker storage remains
+charged until process shutdown. Hash arrays that retain capacity after
+removal belong to that baseline. Its measured sizing and actual native
+installation are still required. This implementation
+is partial: supplied charges are not an allocator refinement, and the
+performed checkpoint/recovery demand, old/new coexistence, productive
+supported profile and suffix rescue admission still need implementation.
+
+Direct reads distinguish explicit offline operation from served operation;
+an absent pool grants neither a descriptor identity nor permission to read.
+The owner marks the served context before recovery in a funded run. A
+separate typed discovery lease covers a not-yet-verified extent: no trailer
+is guessed. Its descriptor stays held until the caller has relinquished
+the charged buffer. `fnn-extent-entry-fresh` reserves before vector
+allocation and returns both vector and lease; `fnn-owner-release-extents`
+keeps the lease through checkpoint reseating and clears the publication
+buffer alias before release, including scheduling refusal and fault unwind.
+This lease cannot enter the verified cache through the ordinary read
+settlement entry. Derived list/decoder allocation, native
+startup wiring and the missing-policy startup surface remain integration
+obligations; the supplied protected-vector demand does not fund them.
+
+The launcher component PRF-1082 extends its existing ACL2 reservation by
+explicit cold-pool heap octets and persistent executor stacks/runtime. Its
+accepted decision covers the rounded dynamic allowance and, for a valid
+policy, fits the observed machine. It does not establish an allocator
+bound or a maintenance reserve. The current operator rejects explicit
+resources as an unsupported profile until native pool initialization and
+the concrete funding consumer are integrated; this positive policy arm is
+currently unreachable in composition.
+
+The persistent executor follow-on (PRF-1080, SCN-1004) retains each
+worker's stack/runtime allowance through service shutdown and owns one
+fresh admitted token per reusable worker. A returned job is not idle:
+its exact I/O row must settle and its result must transfer to funded cache
+or be discarded before the slot can be reused. The model binds each issued
+token to one executor slot, and stale completion from a prior job cannot
+return a reused worker. The native adapter now uses an intrusive idle-slot
+list and a fixed worker set; a job activation returns before the worker
+announces relinquishment. The owner's private result-transfer activation
+also returns before refund: readiness exposes only a predicate, never a
+borrowed result, and the transfer clears the worker's result slot before
+returning vector-free settlement metadata. Shutdown joins before shared-file close.
+The host stobj adapters have named answer-and-effect refinement equations.
+`fnn-owner-cold-await` waits and settles an already captured read outside
+the owner mutex without parsing or retrying a request. Its caller retains
+the logical response/cursor pin and must return to the charged scheduler
+for another attempt; rollback does not erase work already performed.
+Supported startup demand and matching native evidence are pending.
+Legacy large protected entries and compressed decode/cache storage still
+need productive bounded operations and accounting; a fixture's finite
+read pool establishes no general profile productivity.
+Direct reads distinguish explicit offline operation from served operation;
+an absent pool grants neither a descriptor identity nor permission to read.
+The owner marks the served context before recovery in a funded run. A
+separate typed discovery lease covers a not-yet-verified extent: no trailer
+is guessed. Its descriptor stays held until the caller has relinquished
+the charged buffer. `fnn-extent-entry-fresh` reserves before vector
+allocation and returns both vector and lease; `fnn-owner-release-extents`
+keeps the lease through checkpoint reseating and clears the publication
+buffer alias before release, including scheduling refusal and fault unwind.
+This lease cannot enter the verified cache through the ordinary read
+settlement entry. Ordinary synchronous misses use `fnn-extent-entry-direct`: an
+explicit offline context may read directly; a funded context admits an exact
+verified-read token before allocation, waits for the private read/verifier
+activation to return, then transfers its vector to the charged cache and
+settles the local I/O row. Failed cache transfer retains the lease when an
+alias may remain. Cache-off refuses before allocation. Derived list/decoder allocation, native
+startup wiring and the missing-policy startup surface remain integration
+obligations; the supplied protected-vector demand does not fund them.
+
+The launcher component PRF-1082 extends its existing ACL2 reservation by
+explicit cold-pool heap octets and persistent executor stacks/runtime. Its
+accepted decision covers the rounded dynamic allowance and, for a valid
+policy, fits the observed machine. It does not establish an allocator
+bound or a maintenance reserve. The current operator rejects explicit
+resources as an unsupported profile until native pool initialization and
+the concrete funding consumer are integrated; this positive policy arm is
+currently unreachable in composition.
 
 
 ### Compaction of any length (P5; STO-012)
@@ -1729,3 +1926,29 @@ and init hold an exclusive flock on `ROOT.lock` for the whole program and
 re-check ROOT's absence under it immediately before rename(2); the residual
 (a process ignoring the lock creates an empty directory at ROOT in that
 window) is an operator constraint (docs/operator.md).
+
+The new snapshot source bridge (PRF-1106, SCN-1016) separates one immutable
+checkpoint's physical file retention from a logical view pin. While holding
+the owner capture mutex, `fnn-snapshot-source-root-acquire` acquires a typed
+file pin before releasing that mutex; the controller keeps it across all
+census and column scans. This pin reserves one descriptor/retention credit
+in addition to the registered file's actual descriptor credit, conservatively
+bounding their combined ledger rows without occupying a read worker. It
+cannot settle as a cached verified read.
+
+Each `fnn-snapshot-source-read-page` call resolves the active file pin and
+admits a separate buffer lease under owner then extent locks, then preads one
+fixed 16 KiB page off those locks. Registered history bases already skip the
+FNSI wrapper; ACL2 checks and adds the region-relative page offset, including
+the selected signed 64-bit positional-I/O representation. The caller retains
+the fresh exact buffer token until its authentication/decoder cursor has
+finished and cleared every alias. Root cleanup follows the final scan and
+worker completion. Releasing a root never refunds an outstanding page.
+
+This physical bridge does not authenticate directory/table/data bytes or
+establish the captured history's logical contents. Those are the bounded
+source cursor's obligations. It remains unreachable in composition until
+the producer adopts these entries. Existing global oldest-pin retirement
+stays in place for unmigrated readers, whose live arena placement lookup
+still precedes physical lease acquisition; the new API alone cannot justify
+weakening that protection.
