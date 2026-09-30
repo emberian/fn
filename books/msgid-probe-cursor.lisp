@@ -59,3 +59,27 @@
 
 (verify-guards fn-mpr-next
   :hints (("Goal" :in-theory (enable fn-mpr-cursorp))))
+
+; The same circular slot order for placement. :full means the funded table
+; has wrapped, rather than that a two-page scheduling quantum was exhausted.
+; The caller must bind this cursor to one table generation while it yields.
+(defun fn-mpr-place (tag seq cursor fuel fn-mpxt)
+  (declare (xargs :stobjs fn-mpxt :measure (nfix fuel)
+                  :guard (and (posp tag) (< tag *fn-mpxt-word-limit*)
+                              (natp seq) (< (+ 1 seq) *fn-mpxt-word-limit*)
+                              (fn-mpxt-wfp fn-mpxt)
+                              (fn-mpr-cursorp cursor (fn-mpxt-pages fn-mpxt))
+                              (natp fuel) (<= fuel *fn-mpr-slot-quantum*))
+                  :verify-guards nil))
+  (cond ((equal (nth 1 cursor) 0) (mv :full cursor fuel fn-mpxt))
+        ((zp fuel) (mv :yield cursor 0 fn-mpxt))
+        (t
+         (let* ((page (nth 0 cursor)) (slot (nth 2 cursor))
+                (next (fn-mpr-advance cursor (fn-mpxt-pages fn-mpxt))))
+           (if (equal (fn-mpxt-tag-at page slot fn-mpxt) 0)
+               (let ((fn-mpxt (fn-mpxt-write-slot page slot tag seq fn-mpxt)))
+                 (mv :placed next (- fuel 1) fn-mpxt))
+             (fn-mpr-place tag seq next (- fuel 1) fn-mpxt))))))
+
+(verify-guards fn-mpr-place
+  :hints (("Goal" :in-theory (enable fn-mpr-cursorp))))

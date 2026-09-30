@@ -745,8 +745,9 @@
   (implies (and (fn-frame-digestp prev) (fn-lg-chunkp chunk max))
            (fn-cbor-octet-listp (fn-lg-frame prev chunk)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (disable fn-lg-frame-body fn-lg-frame-kind fn-lg-chunkp
-                               fn-lg-chunk-body-bound)
+           :in-theory (e/d (fn-cbor-octet-listp fn-cbor-octetp)
+                           (fn-lg-frame-body fn-lg-frame-kind fn-lg-chunkp
+                            fn-lg-chunk-body-bound))
            :use (fn-lg-chunk-body-bound
                  (:instance fn-cbor-u32-bytes-are-octets
                             (n (+ *fn-frame-trailer-octets* (len (fn-lg-frame-body chunk)))))))))
@@ -777,7 +778,7 @@
            (equal (fn-lg-declared-len (append (fn-lg-frame prev chunk) x))
                   (len (fn-lg-frame prev chunk))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-lg-declared-len fn-lg-frame)
+           :in-theory (e/d (fn-lg-declared-len fn-lg-frame fn-cbor-octet-listp fn-cbor-octetp)
                            (fn-cbor-u32-bytes fn-cbor-u32-from fn-lg-frame-body
                             fn-lg-frame-kind fn-lg-chunkp fn-lg-chunk-body-bound
                             fn-lg-frame-len fn-lg-frame-octets))
@@ -1495,7 +1496,8 @@
             (fn-lg-writes-within (fn-bs-tear-write op selectors i unit)
                                  (len (nth 3 op))))
    :hints (("Goal" :induct (fn-bs-tear-write op selectors i unit)
-            :in-theory (e/d (fn-bs-tear-write) (fn-bs-unit-count))))))
+            :in-theory (e/d (fn-bs-tear-write)
+                            (nth adt-nth-0 adt-nth-1+ fn-bs-unit-count))))))
 
 ; The content inode 0 holds after any crash of the one-inode store with the
 ; one pending write WRITTEN at offset 0 is no longer than WRITTEN.
