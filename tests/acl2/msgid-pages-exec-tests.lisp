@@ -307,3 +307,84 @@
 
 (assert-event ; mpxe-not-skewed-witness: 1,000 entries under tag 7 (2 pages: page 1 not full)
   (equal (mpxe-skew 1000) '(2 1000 nil 1 t nil 1 t 1)))
+
+; P2 structural collision: put a different row under A's exact stored tag
+; beside its own ordinary mapping. This is an overinclusive candidate set,
+; not a claim to have found a BLAKE3 collision. Both table entries really
+; carry the same tag; the exported concrete reader must compare Message-IDs.
+; The full faithful antecedent still holds: every own mapping is retained.
+(defun mpxe-exact-collision (rows)
+  (declare (xargs :guard (true-listp rows)
+                  :guard-hints (("Goal" :in-theory (disable fn-mpxt-seqs
+                    fn-mpxt-faithful fn-mpxt-candidates)))))
+  (with-local-stobj fn-mpxt
+    (mv-let (result fn-mpxt)
+      (let* ((fn-mpxt (fn-mpxt-set-key *mpxe-key* fn-mpxt))
+             (fn-mpxt (mpxe-build 0 rows fn-mpxt)))
+        (mv-let (word fn-mpxt)
+          (mpxe-add1 (fn-mpxt-tag "<a@x>" *mpxe-key*) 1 fn-mpxt)
+          (mv (list word (fn-mpxt-faithful rows fn-mpxt)
+                    (fn-mpxt-candidates (fn-mpxt-tag "<a@x>" *mpxe-key*) fn-mpxt)
+                    (fn-mpxt-seqs "<a@x>" rows fn-mpxt)
+                    (fn-mpxt-spec-from 0 "<a@x>" rows)
+                    (fn-mpxt-seqs "<b@x>" rows fn-mpxt)
+                    (fn-mpxt-spec-from 0 "<b@x>" rows))
+              fn-mpxt)))
+      result)))
+
+(assert-event ; positive structural collision, full antecedent and conclusion
+  (and (fn-cat-rowsp *mpxe-rows*)
+       (not (equal (fn-record-msgid (nth 0 *mpxe-rows*))
+                   (fn-record-msgid (nth 1 *mpxe-rows*))))
+       (equal (mpxe-exact-collision *mpxe-rows*)
+              '(:placed t (0 1 2) (0 2) (0 2) (1) (1)))))
+
+(defun mpxe-grow1 (fn-mpxt)
+  (declare (xargs :stobjs fn-mpxt :guard (fn-mpxt-wfp fn-mpxt)
+                  :guard-hints (("Goal" :in-theory (disable fn-mpxt-grow)))))
+  (with-local-stobj fn-mpxt2
+    (mv-let (ok fn-mpxt fn-mpxt2)
+      (fn-mpxt-grow fn-mpxt fn-mpxt2)
+      (mv ok fn-mpxt))))
+
+(defthm mpxe-grow1-shape
+  (implies (and (fn-mpxtp fn-mpxt) (fn-mpxt-wfp fn-mpxt))
+           (and (fn-mpxtp (mv-nth 1 (mpxe-grow1 fn-mpxt)))
+                (fn-mpxt-wfp (mv-nth 1 (mpxe-grow1 fn-mpxt)))))
+  :hints (("Goal" :in-theory (disable fn-mpxt-grow))))
+(in-theory (disable mpxe-grow1))
+
+; Growing a saturated same-tag generation succeeds for its existing2048
+; mappings; it cannot create room for the2049th equal-tag entry. Exercise
+; the actual ADD verdict after actual GROW, preserving every candidate,
+; key, count, page cardinality and health bit through refusal.
+(defun mpxe-saturated-grow (n)
+  (declare (xargs :guard (and (natp n) (< (+ 1 n) *fn-mpxt-word-limit*))
+                  :guard-hints (("Goal" :in-theory (disable fn-mpxt-candidates
+                    fn-mpxt-saturatedp fn-mpxt-key-octets)))))
+  (with-local-stobj fn-mpxt
+    (mv-let (result fn-mpxt)
+      (let* ((fn-mpxt (fn-mpxt-set-key *mpxe-key* fn-mpxt))
+             (fn-mpxt (mpxe-add-same 7 n 0 fn-mpxt))
+             (before (fn-mpxt-candidates 7 fn-mpxt))
+             (saturated (fn-mpxt-saturatedp 7 fn-mpxt)))
+        (mv-let (ok fn-mpxt)
+          (mpxe-grow1 fn-mpxt)
+          (let ((grown (list (fn-mpxt-pages fn-mpxt) (fn-mpxt-count fn-mpxt)
+                            (fn-mpxt-stuck fn-mpxt) (fn-mpxt-key-octets fn-mpxt)
+                            (fn-mpxt-candidates 7 fn-mpxt))))
+            (mv-let (word fn-mpxt)
+              (mpxe-add1 7 n fn-mpxt)
+              (mv (list saturated ok (len before)
+                        (equal before (fn-mpxt-candidates 7 fn-mpxt))
+                        (nth 0 grown) (nth 1 grown) word
+                        (fn-mpxt-saturatedp 7 fn-mpxt)
+                        (equal grown
+                          (list (fn-mpxt-pages fn-mpxt) (fn-mpxt-count fn-mpxt)
+                                (fn-mpxt-stuck fn-mpxt) (fn-mpxt-key-octets fn-mpxt)
+                                (fn-mpxt-candidates 7 fn-mpxt))))
+                  fn-mpxt)))))
+      result)))
+
+(assert-event
+  (equal (mpxe-saturated-grow 2048) '(t t 2048 t 16 2048 :mpx-saturated t t)))

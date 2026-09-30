@@ -521,7 +521,8 @@ GPT-6's 2026-09-29 calls (planning/review-2026-09-29-gpt6-decisions.md):
   condition "no page and its successor are both full" nothing is refused.
 - **Fixtures are structural**: direct tags, a home page and its overflow
   filled by 2,048 entries under one tag, an equal-tag/different-Message-ID
-  exact-compare witness (open), a saturated-grow witness (open) -- not
+  exact-compare witness and a saturated-grow/refused-add witness
+  (SCN-1034, concrete stobj source REPL) -- not
   claims about BLAKE3.
 - **B.6, corrected**: a verdict of a concrete structure behind an abstract
   stobj needs its inputs in the logic: the saturated export takes the key

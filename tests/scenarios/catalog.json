@@ -6407,6 +6407,29 @@
         "tests/acl2/page-read-host-tests.lisp"
       ],
       "execution_scope": "Clean source algebra17forms passed; represented demand and native controller integration pending."
+    },
+    {
+      "id": "SCN-1034",
+      "title": "Concrete paged Message-ID collision confirmation and saturated growth preserve exact mappings",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-027"
+      ],
+      "steps": [
+        "Build the concrete table for rows A, B, A under the actual keyed tag function; add B under the same stored tag as A while retaining its original own-tag mapping.",
+        "Check the full faithful predicate, actual candidate sequence (0 1 2), and fn-mpxt-seqs against the exact row scan for both Message-IDs.",
+        "Build 2048 entries under one direct tag, grow the actual table from eight to sixteen pages, and try fn-mpxt-add for entry2049."
+      ],
+      "expected": [
+        "The false candidate B is discarded by exact Message-ID comparison; A returns (0 2) and B returns (1).",
+        "Growth preserves all2048 candidate identities and the generation key/count. The next equal-tag add returns :mpx-saturated, retaining all candidates, key, count, page cardinality and stuck bit."
+      ],
+      "evidence": [
+        "tests/acl2/msgid-pages-exec-tests.lisp",
+        "planning/evidence/paged-resource-pool/p2-collision-2026-09-30.md"
+      ],
+      "execution_scope": "Concrete stobj source REPL witnesses; direct stored tags model structural collisions without claiming a BLAKE3 collision. This does not close owner transaction rejection preservation or matching native qualification."
     }
   ]
 }

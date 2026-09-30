@@ -22,6 +22,17 @@ a suitable correspondence/checking argument exists.
 
 STO-027: The catalog is the served store's executable: the Message-ID binding, the local numbers, a row's visibility to a version and the retained octets are columns of `fn-cat` read in constant time, never rediscovered by a walk of the history (wave 5, D33).
 
+SCN-1034 exercises the concrete Message-ID reader with equal stored tags
+for different Message-IDs while affirming the full faithful relation.
+The candidate set includes the unrelated row; `fn-mpxt-seqs` removes it by
+exact row comparison and equals the scan for both IDs. A separate actual
+GROW of a saturated 2,048-entry same-tag table preserves every mapping;
+the next ADD remains `:mpx-saturated`, preserving its candidates, key, count,
+page cardinality and health bit. These direct-tag structural fixtures make
+no claim to a found BLAKE3 collision. Source tests do not close the separate
+owner-level transaction rejection or image qualification obligations.
+
+
 The Message-ID column's keyed page table has a bounded home/overflow probe
 and confirms exact Message-IDs against candidate rows. Its admission outcome
 `:mpx-saturated` is distinct from a reader's absence: the served POST refuses

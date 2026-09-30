@@ -15045,7 +15045,7 @@
         "tests/acl2/msgid-pages-exec-tests.lisp",
         "planning/design-paged-history-2026-09-29.md"
       ],
-      "progress_note": "2026-09-29 lane paged-history-2: the executable table and its reader keystone REPL-admitted on persvati; certification manifest at the READY sha. Not yet on a host path: the catalog's concrete stobj adopts the table in the row's next edit (the switch and the deletion of fn-cat$c-msgids are one edit: the reader is behind the abstract stobj, no host line names it). 2026-09-29 paged-history-3: the tag is KEYED (fn-mpxt-tag msgid key; the key in the stobj, PRF-991); the theorems are unchanged in substance.",
+      "progress_note": "2026-09-29 lane paged-history-2: the executable table and its reader keystone REPL-admitted on persvati; certification manifest at the READY sha. Not yet on a host path: the catalog's concrete stobj adopts the table in the row's next edit (the switch and the deletion of fn-cat$c-msgids are one edit: the reader is behind the abstract stobj, no host line names it). 2026-09-29 paged-history-3: the tag is KEYED (fn-mpxt-tag msgid key; the key in the stobj, PRF-991); the theorems are unchanged in substance. 2026-09-30: SCN-1034 adds a structural equal-tag/different-Message-ID positive witness on the concrete stobj. Original own mappings remain, fn-mpxt-faithful is asserted, candidates are (0 1 2), and fn-mpxt-seqs confirms only (0 2) for A and (1) for B. This is not a found BLAKE3 collision. Clean source REPL only.",
       "events": [
         "fn-mpxt-seqs-is-spec-from",
         "fn-mpxt-confirm-is-the-spec",
@@ -15807,7 +15807,7 @@
         "planning/design-paged-history-2026-09-29.md",
         "planning/decisions.md"
       ],
-      "progress_note": "2026-09-29 lane paged-history-3: ember's 06:34Z ruling (W2 row, PKT-774 -> W2b) with GPT-6's 2026-09-29 calls folded in (one key per generation; the structural bound separate from admission capacity; the fourth outcome; exact comparisons in the work bound; structural fixtures). REPL-admitted on persvati; certification manifest at the READY sha. The served refusal :mpx-saturated and the crafted-collision native land with THE SWITCH (row P2), since no host line reads the table before it.",
+      "progress_note": "2026-09-29 lane paged-history-3: ember's 06:34Z ruling (W2 row, PKT-774 -> W2b) with GPT-6's 2026-09-29 calls folded in (one key per generation; the structural bound separate from admission capacity; the fourth outcome; exact comparisons in the work bound; structural fixtures). REPL-admitted on persvati; certification manifest at the READY sha. The served refusal :mpx-saturated and the crafted-collision native land with THE SWITCH (row P2), since no host line reads the table before it. 2026-09-30: SCN-1034 grows the actual 2048-entry same-tag table from eight to sixteen pages, preserves every candidate and the key/count, then actual fn-mpxt-add refuses the 2049th entry :mpx-saturated with candidates/key/count/pages/stuck unchanged. Clean source REPL only; owner-level refused-transaction composition remains separate.",
       "events": [
         "fn-mpxt-candidates-page-need",
         "fn-mpxt-run-counted-is-run",
