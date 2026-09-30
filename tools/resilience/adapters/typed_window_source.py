@@ -13,6 +13,7 @@ import subprocess
 import sys
 
 from ..checker import Verdict
+from ..journal import Journal
 from ..scenario import check
 from ..typed_window_model import driver, from_scenario, judge_scenario, observe
 
@@ -29,7 +30,7 @@ class SourceBackend:
         if type(timeout) is not int or timeout < 1 or type(limit) is not int or limit < 1:
             raise ValueError("positive experimental timeout/form budget required")
         self.session, self.host, self.timeout, self.limit = session, host, timeout, limit
-        self.trial, self.live = 0, False
+        self.trial, self.live, self.failed = 0, False, False
 
     def command(self, *arguments):
         return subprocess.run([sys.executable, str(ROOT / "tools/proof_repl.py"), *arguments],
@@ -69,14 +70,14 @@ class SourceBackend:
             (self.out / "start.stderr").write_text(result.stderr)
             if result.returncode != 0:
                 raise RuntimeError("typed source prefix refused; retain startup output")
-        except BaseException:
-            self.close()
+        except BaseException as error:
+            self._close_preserving(error)
             raise
         return self
 
     def execute(self, scenario):
-        if not self.live:
-            raise RuntimeError("typed source session is not owned/live")
+        if not self.live or self.failed:
+            raise RuntimeError("typed source session is not owned/live or a prior trial is incomplete")
         check(scenario)
         steps = from_scenario(scenario)
         trial = self.trial
@@ -87,16 +88,38 @@ class SourceBackend:
         marker = f"FN_W7_TYPED_COMPLETE trial={trial}"
         path = directory / "driver.lisp"
         path.write_text(driver(steps, trial) + f'(value-triple (cw "{marker}~%"))\n')
-        result = self.command("send-file", self.session, str(path.relative_to(ROOT)), "--limit", str(self.limit))
-        (directory / "send.stdout").write_text(result.stdout)
-        (directory / "send.stderr").write_text(result.stderr)
-        self.fetch("log", directory / "log")
+        stage = "send-file"
+        try:
+            result = self.command("send-file", self.session, str(path.relative_to(ROOT)), "--limit", str(self.limit))
+            (directory / "send.stdout").write_text(result.stdout)
+            (directory / "send.stderr").write_text(result.stderr)
+            stage = "fetch-log"
+            self.fetch("log", directory / "log")
+        except (OSError, subprocess.SubprocessError, ValueError) as error:
+            self.failed = True
+            def diagnostic(value):
+                return value.decode(errors="backslashreplace") if isinstance(value, bytes) else value
+            failure = dict(stage=stage, exception=type(error).__name__, message=str(error),
+                           session=self.session, host=self.host,
+                           stdout=diagnostic(getattr(error, "stdout", None)),
+                           stderr=diagnostic(getattr(error, "stderr", None)),
+                           owned_session_requires_stop=True)
+            (directory / "failure.json").write_text(json.dumps(failure, indent=2) + "\n")
+            journal = Journal(scenario.id)
+            journal.environment("source-transport-incomplete", **failure)
+            journal.write(directory / "journal.jsonl")
+            verdict = Verdict("harness-failure", scenario_id=scenario.id,
+                              journal_digest=journal.digest(),
+                              cause="typed-source-trial-transport-incomplete").sign()
+            (directory / "verdict.json").write_text(json.dumps(verdict.__dict__, indent=2) + "\n")
+            return verdict
         text = (directory / "log").read_text(errors="backslashreplace")
         journal = observe(text, trial)
         journal.write(directory / "journal.jsonl")
         # Literal completion has no CW format escapes. Exclude source echo.
         complete = re.search(r"(?m)^(?:ACL2[^\n>]*>)?" + re.escape(marker) + r"\s*$", text) is not None
         if result.returncode != 0 or not complete:
+            self.failed = True
             verdict = Verdict("harness-failure", scenario_id=scenario.id,
                               journal_digest=journal.digest(), cause="typed-source-trial-did-not-complete").sign()
         else:
@@ -114,5 +137,24 @@ class SourceBackend:
             self.live = False
             self.fetch("state.json", self.out / "state.json")
 
-    def __exit__(self, *exception):
-        self.close()
+    def _close_preserving(self, primary):
+        try:
+            self.close()
+        except BaseException as cleanup:
+            # A failed stop is still an owned handle, never an idle verdict.
+            (self.out / "stop-failure.json").write_text(json.dumps(dict(
+                session=self.session, host=self.host, exception=type(cleanup).__name__,
+                message=str(cleanup), owned_session_requires_stop=self.live), indent=2) + "\n")
+            primary.add_note("Owned typed session cleanup failed; see " + str(self.out / "stop-failure.json"))
+
+    def __exit__(self, kind, error, traceback):
+        if error is None:
+            try:
+                self.close()
+            except BaseException as cleanup:
+                (self.out / "stop-failure.json").write_text(json.dumps(dict(
+                    session=self.session, host=self.host, exception=type(cleanup).__name__,
+                    message=str(cleanup), owned_session_requires_stop=self.live), indent=2) + "\n")
+                raise
+        else:
+            self._close_preserving(error)
