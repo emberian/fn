@@ -6,6 +6,7 @@
 (include-book "../books/allocation-turn-raw-bridge")
 (include-book "owner-host")
 (include-book "../books/index-writer-ticket")
+(include-book "../books/index-writer-source-fence")
 (program)
 
 ; Missing selected-runtime BODY lowering is this exact unit. An available
@@ -223,6 +224,7 @@
   (if (not (and (fn-omk-widthp ticket 12)
                 (eq (fn-omk-at 0 ticket) :index-writer-ticket)
                 (eq (fn-omk-at 1 ticket) :started)
+                (fn-owner-index-writer-currentp ticket fn-mio$c)
                 (fn-ats-role-bodyp (fn-omk-at 2 ticket) (fn-omk-at 3 ticket) :index-writer
                                   fn-allocation-turn-slots fn-page-read-pool)))
       (mv :recovery-required fuel fn-mio$c state)
@@ -242,6 +244,7 @@
   (if (not (and (fn-omk-widthp ticket 12)
                 (eq (fn-omk-at 0 ticket) :index-writer-ticket)
                 (eq (fn-omk-at 1 ticket) :started)
+                (fn-owner-index-writer-currentp ticket fn-mio$c)
                 (fn-ats-role-bodyp (fn-omk-at 2 ticket) (fn-omk-at 3 ticket) :index-writer
                  fn-allocation-turn-slots fn-page-read-pool)))
       (mv :recovery-required (nfix fuel) fn-mio$c state)
