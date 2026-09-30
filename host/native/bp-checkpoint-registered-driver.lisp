@@ -9,7 +9,7 @@
 (defvar *fnn-bpck-cancelled-observe-callback* nil)
 
 (defstruct (fnn-bpck-registered-io (:constructor %make-fnn-bpck-registered-io))
-  controller stage action fd (close-result :closed) (outcome :idle)
+  controller job-token stage action fd (close-result :closed) (outcome :idle)
   (action-lock (sb-thread:make-mutex)) (source-result :returned)
   status failure core-failure)
 
@@ -59,7 +59,8 @@ No native CURRENT, checkpoint job or digest stobj is authoritative here."
             (unless callback (fnn-fault "registered BP prefix callback unavailable"))
             (sb-thread:with-mutex (*fnn-extent-lock*)
               (multiple-value-bind (word effect left registry)
-                  (funcall callback (fnn-bpck-registered-io-controller record) fuel
+                  (funcall callback (fnn-bpck-registered-io-controller record)
+                           (fnn-bpck-registered-io-job-token record) fuel
                            (fnn-live-bp-controller-registry))
                 (declare (ignore left registry))
                 (setf (fnn-bpck-registered-io-status record) word)

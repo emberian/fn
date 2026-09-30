@@ -130,3 +130,21 @@ uncertain close. The dormant native settlement caller performs no primitive and
 clears its old result only on this named registered disposition. Recording
 callbacks demonstrate this caller custody; the actual registered trajectory
 fixture and source guards remain unadmitted after proof-world expiry.
+
+## Per-job holder association and operation-family request
+
+The named `bp-checkpoint-registered-job` family request binds the native
+holder and registered workspace creator roster to the actual SAME-pool job
+claim/intent. Its executor role, BODY cost projection and constructor issuer
+are not installed; storage-ready/constructing and callback presence authorize
+none of its constructors. The public allocator still refuses first.
+
+The holder is now twelve fields: immutable actual job token joins the controller
+and native stage, surviving action-free turns. The genuine issuer must derive
+that token internally. Native passes this identity to the literal
+`fn-owner-bp-checkpoint-prefix-next-for-job` or `-close-next-for-job`; core
+reads the actual pending job and rejects mismatch before preparing any effect.
+The old eleven-field observation is historical runtime geometry only, not
+current authority. These additive core guards/registered tests are unadmitted
+while the combined-source proof replay is pending. Raw recording holders
+remain explicitly unfunded.

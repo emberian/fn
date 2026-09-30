@@ -33,7 +33,8 @@
           (error () t)))
 (assert (= *gets* 0)) (assert (= *opens* 0))
 (let ((*fnn-bpck-prefix-next-callback*
-       (lambda (controller fuel registry)
+       (lambda (controller job-token fuel registry)
+          (assert (eq job-token :job))
         (assert (eq controller :controller)) (assert (= fuel 6))
         (assert (eq registry :actual-registry))
         (assert (sb-thread:holding-mutex-p *fnn-extent-lock*))
@@ -58,7 +59,7 @@
            (progn (fnn-bps-registered-checkpoint-record :controller "unused") nil)
            (error () t)))
  (assert (= *gets* 0)) (assert (= *nexts* 0))
- (multiple-value-bind (word record) (values :raw-unfunded (%make-fnn-bpck-registered-io :controller :controller :stage "unused"))
+ (multiple-value-bind (word record) (values :raw-unfunded (%make-fnn-bpck-registered-io :controller :controller :job-token :job :stage "unused"))
   (assert (eq word :raw-unfunded))
   (assert (eq (fnn-bps-registered-checkpoint-prefix-turn record 6) record))
   (assert (= *opens* 1)) (assert (= *observes* 0))
@@ -83,8 +84,9 @@
 (setf *opens* 0 *writes* 0 *nexts* 0 *observes* 0
       *hold-open* (sb-thread:make-semaphore)
       *release-open* (sb-thread:make-semaphore))
-(let* ((next-callback (lambda (controller fuel registry)
+(let* ((next-callback (lambda (controller job-token fuel registry)
                        (declare (ignore controller fuel))
+          (assert (eq job-token :job))
                        (incf *nexts*)
                        (values :action-prepared
                         '(:bp-checkpoint-io-action :job-token 2 :open 0 nil) 3 registry)))
@@ -94,7 +96,7 @@
                           (values (if (eq observation :ok) :observed :uncertain) 3 registry)))
        (*fnn-bpck-prefix-next-callback* next-callback)
        (*fnn-bpck-prefix-observe-callback* observe-callback))
- (multiple-value-bind (word record) (values :raw-unfunded (%make-fnn-bpck-registered-io :controller :controller :stage "unused"))
+ (multiple-value-bind (word record) (values :raw-unfunded (%make-fnn-bpck-registered-io :controller :controller :job-token :job :stage "unused"))
   (assert (eq word :raw-unfunded))
   (let ((worker (sb-thread:make-thread
                  (lambda ()
@@ -125,10 +127,11 @@
  (when *close-fails* (error "injected ambiguous close")))
 (dolist (ambiguous '(nil t))
  (let* ((*closes* 0) (*close-fails* ambiguous) (issued nil) (settled nil)
-        (record (%make-fnn-bpck-registered-io :controller :controller :stage "unused"
+        (record (%make-fnn-bpck-registered-io :controller :controller :job-token :job :stage "unused"
                   :fd 123 :close-result :open))
         (*fnn-bpck-close-next-callback*
-         (lambda (controller fuel registry)
+         (lambda (controller job-token fuel registry)
+          (assert (eq job-token :job))
           (assert (eq controller :controller))
           (if issued (values :close-not-required nil fuel registry)
            (progn (setf issued t)
@@ -151,11 +154,12 @@
   (assert (= *closes* 1))))
 ; A detached ambiguous descriptor is not an already-closed positive.
 (let ((*closes* 0)
-      (record (%make-fnn-bpck-registered-io :controller :controller :stage "unused"
+      (record (%make-fnn-bpck-registered-io :controller :controller :job-token :job :stage "unused"
                 :fd nil :close-result :uncertain))
       (*fnn-bpck-close-next-callback*
-       (lambda (controller fuel registry)
+       (lambda (controller job-token fuel registry)
         (declare (ignore controller))
+          (assert (eq job-token :job))
         (values :action-prepared '(:bp-checkpoint-io-action :job 10 :close 17 nil)
                 fuel registry)))
       (*fnn-bpck-close-observe-callback*
@@ -172,7 +176,7 @@
 ; An old primitive result refused by ordinary dispatch can be joined only
 ; through the exact cancelled-job observation, without another I/O attempt.
 (dolist (settlement '(:stale-checkpoint-observation :cancelled-observed :cancelled-uncertain))
- (let* ((record (%make-fnn-bpck-registered-io :controller :controller :stage "unused"
+ (let* ((record (%make-fnn-bpck-registered-io :controller :controller :job-token :job :stage "unused"
                   :fd 123 :close-result :open :core-failure :stale-checkpoint-observation
                   :action '(:bp-checkpoint-io-action :job 8 :emit 17 (1 2 3))
                   :outcome :unknown))
@@ -196,11 +200,12 @@
 ; the placeholder unknown while an actual open is held in another thread.
 (let* ((*hold-open* (sb-thread:make-semaphore :count 0))
        (*release-open* (sb-thread:make-semaphore :count 0))
-       (record (%make-fnn-bpck-registered-io :controller :controller :stage "unused"))
+       (record (%make-fnn-bpck-registered-io :controller :controller :job-token :job :stage "unused"))
        (settlements 0)
        (*fnn-bpck-prefix-next-callback*
-        (lambda (controller fuel registry)
+        (lambda (controller job-token fuel registry)
          (declare (ignore controller))
+          (assert (eq job-token :job))
          (values :action-prepared '(:bp-checkpoint-io-action :job 11 :open 0 nil)
                  fuel registry)))
        (*fnn-bpck-cancelled-observe-callback*
