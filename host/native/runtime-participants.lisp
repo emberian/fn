@@ -193,3 +193,20 @@
     (error "runtime-participant-image-hooks-unavailable"))
   (pushnew 'fnn-runtime-participants-save-hook sb-ext:*save-hooks*)
   (pushnew 'fnn-runtime-participants-init-hook sb-ext:*init-hooks*))
+
+(defun fnn-runtime-system-finalizer-one (scratch)
+  ;; Exact one-action system target from the selected runner. No user finalizer,
+  ;; hook, compiler batch, or original runner is called by this entry.
+  (sb-vm::immobile-code-dealloc-1 scratch))
+
+(defun %fnn-runtime-system-cleanup-binding (gate subject claim complete fence)
+  ;; Image-private construction; scratch and closure are retained baseline.
+  ;; CLAIM must resolve the qualified unit for this exact target, or refuse.
+  (unless (compiled-function-p
+           (symbol-function 'sb-vm::immobile-code-dealloc-1))
+    (error "runtime-system-cleanup-unavailable"))
+  (let ((scratch (list 0)))
+    (%fnn-runtime-cleanup-binding
+     gate subject claim
+     (lambda () (fnn-runtime-system-finalizer-one scratch))
+     complete fence)))
