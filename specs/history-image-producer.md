@@ -450,3 +450,27 @@ Fresh source/fixture evidence is committed in
 Region advance, full source/pool and private stage/spool/digest/root/progress,
 actual retained FD/source authority, INITIAL and native qualification remain
 open. Runtime is unchanged; PRF-1144 remains planned with no cited events.
+
+Actual padding scheduling is now connected in
+`fn-hpi-complete-padding-region-advances-with-canonical-carry` and
+`fn-hpi-complete-padding-starts-digest-with-canonical-carry`. A complete
+region context, original five-region carry, selectedpage-at-cap and actual
+`:continue` give exactly the region increment, retain the canonical carry,
+and frame every buffer/effect/ledger/digest. At final region5, explicit
+completed page counts and the five-region invariant establish that all
+five used tails are empty. Actual `:continue` then gives exactly the
+`:data-digest-start` phase update and unchanged canonical fields/frames.
+This names scheduling completion; canonicality of earlier physical pages
+still depends on the actual acknowledged-write trace and role/FD assumptions.
+
+Thirty complete literal assertions run actual decoded-source trajectories
+through each region's prior writes and ACKs, and through allfive regions for
+the final boundary. Body-phase/buffer corruption and receipt removal affirm
+all other premises and fail the full conclusion. Five unfinished-region
+alternatives are reachable zero-insertion branches with page-at-cap false;
+a premature final-region mutation is explicitly corrupted state. Fresh
+source/fixture evidence is in
+`planning/evidence/history-image-padding-phase-source-2026-09-30.json`.
+Full source/pool/private stage/spool/digest/root fidelity, finite progress,
+actual retained FD/source authority, INITIAL and native qualification remain
+open. Runtime is unchanged; PRF-1144 stays planned with no cited events.
