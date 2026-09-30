@@ -131,6 +131,78 @@
                             fn-scc-le-value fn-scc-intern fn-scs-octets
                             fn-scs-summary fn-oct-slice-list-is-take-nthcdr)))))
 
+(defun fn-scsr-info-provenancep (info x)
+ (declare (xargs :measure (acl2-count x) :verify-guards nil))
+ (if (not (fn-scs-carryp (fn-scsr-info-root info))) t
+   (and (equal (fn-scsr-info-root info) (fn-scs-summary x))
+        (if (consp (fn-scsr-cdr info))
+            (let ((a (fn-scsr-car (fn-scsr-cdr info)))
+                  (d (fn-scsr-cdr (fn-scsr-cdr info))))
+              (and (consp x)
+                   (fn-scs-carryp (fn-scsr-info-root a))
+                   (fn-scs-carryp (fn-scsr-info-root d))
+                   (fn-scsr-info-provenancep a (car x))
+                   (fn-scsr-info-provenancep d (cdr x))))
+          t))))
+
+(defun fn-scsr-stack-provenancep (infos stack)
+ (declare (xargs :verify-guards nil))
+ (if (consp stack)
+     (and (consp infos) (fn-scsr-info-provenancep (car infos) (car stack))
+          (fn-scsr-stack-provenancep (cdr infos) (cdr stack)))
+   (null infos)))
+
+(local (defthm fn-scsr-provenance-valid-root
+ (implies (and (fn-scsr-info-provenancep info x)
+               (fn-scs-carryp (fn-scsr-info-root info)))
+          (equal (fn-scsr-info-root info) (fn-scs-summary x)))
+ :hints (("Goal" :expand ((fn-scsr-info-provenancep info x))))))
+
+(local (defthm fn-scsr-pair-info-preserves-provenance
+ (implies (and (fn-scsr-info-provenancep a x)
+               (fn-scsr-info-provenancep d y))
+          (fn-scsr-info-provenancep (fn-scsr-pair-info a d) (cons x y)))
+ :hints (("Goal" :do-not-induct t
+          :use ((:instance fn-scsr-provenance-valid-root (info a))
+                (:instance fn-scsr-provenance-valid-root (info d) (x y))
+                (:instance fn-scs-cons-preserves-canonical-size
+                           (a (fn-scsr-info-root a)) (d (fn-scsr-info-root d))))
+          :expand ((fn-scsr-info-provenancep (fn-scsr-pair-info a d) (cons x y))
+                   (fn-scsr-info-provenancep (list* (fn-scs-summary (cons x y)) a d)
+                                           (cons x y))
+                   (fn-scsr-info-provenancep nil (cons x y)))
+          :in-theory (e/d (fn-scsr-pair-info fn-scsr-info-pair fn-scsr-info-root
+                           fn-scsr-car fn-scsr-cdr)
+                          (fn-scsr-info-provenancep fn-scs-summary))))))
+
+(local (defthm fn-scsr-supported-scalar-summary
+ (implies (or (integerp x) (characterp x) (stringp x) (symbolp x))
+          (equal (fn-scs-atom x) (fn-scs-summary x)))
+ :hints (("Goal" :use fn-scs-atom-establishes-summary))))
+
+(defthm fn-scsr-step-preserves-partial-provenance
+ (implies (and (fn-octets-p fn-octets) (natp i) (natp end) (< i end)
+               (<= end (len fn-octets))
+               (fn-scsr-stack-provenancep infos stack)
+               (consp (fn-sccr-step i end stack fn-octets)))
+          (fn-scsr-stack-provenancep
+           (mv-nth 1 (fn-scsr-step i end stack infos fn-octets))
+           (car (fn-sccr-step i end stack fn-octets))))
+ :hints (("Goal" :do-not-induct t
+          :use (fn-scsr-octet-carry-is-actual-canonical-size
+                (:instance fn-scsr-pair-info-preserves-provenance
+                           (a (cadr infos)) (d (car infos))
+                           (x (cadr stack)) (y (car stack))))
+          :expand ((fn-scsr-stack-provenancep infos stack)
+                   (fn-scsr-stack-provenancep (cdr infos) (cdr stack)))
+          :in-theory (e/d (fn-scsr-step fn-sccr-step fn-scsr-stack-provenancep
+                            fn-scsr-info-leaf fn-scsr-info-provenancep
+                            fn-scsr-info-root fn-scsr-car fn-scsr-cdr)
+                           (fn-scs-summary fn-scs-atom fn-scs-octets
+                            fn-sccr-read-nat fn-sccr-read-string fn-sccr-cell
+                            fn-scc-intern fn-scsr-pair-info
+                            fn-oct-slice-list-is-take-nthcdr)))))
+
 (defun fn-sctsr-step (i end stack infos table info-table fn-octets)
   (declare (xargs :stobjs fn-octets
                   :guard (and (natp i) (natp end) (< i end)
@@ -328,6 +400,19 @@
  (equal (mv-nth 0 (fn-sctsr-decode-programs fa fb pa pb ea eb ra rb fn-octets))
         (fn-sctr-decode-programs fa fb pa pb ea eb ra rb fn-octets))
  :hints (("Goal" :use fn-sctsr-decode-programs-result-is-existing-by-definition))))
+; The unchanged tables reader exports NEXT-RUN shape and RESTP facts.
+; Its first-frame lemma is local, so expose only the needed local guard fact.
+(local (defthm fn-sctsr-planp-first-frame-for-guards
+ (implies (and (fn-sccr-planp plan pos fn-octets) (consp plan))
+          (and (true-listp (car plan)) (consp (car plan))
+               (fn-scc-octet-listp (car (car plan)))
+               (fn-scc-octet-listp (fn-sccr-at 0 (car plan)))))
+ :hints (("Goal" :expand ((fn-sccr-planp plan pos fn-octets))
+          :in-theory (enable fn-sccr-framep)))))
+(verify-guards fn-sctsr-load
+ :hints (("Goal" :in-theory (disable fn-sctr-next-run fn-sctr-restp
+                                    fn-scc-parse-header fn-sccr-planp fn-sccr-framep))))
+
 (defthm fn-sctsr-load-result-is-existing-by-definition
  (equal (mv-nth 0 (fn-sctsr-load plan fn-octets)) (fn-sct-load plan fn-octets))
  :rule-classes nil
@@ -335,6 +420,13 @@
                                  (fn-sctsr-decode-programs fn-sctr-decode-programs
                                   fn-sctr-next-run fn-sccr-planp fn-scc-parse-header
                                   fn-sct-tables-f fn-sco-at)))))
+
+(defthm fn-sctsr-load-existing-result-true-listp
+ (true-listp (mv-nth 0 (fn-sctsr-load plan fn-octets)))
+ :hints (("Goal" :use fn-sctsr-load-result-is-existing-by-definition
+          :in-theory (e/d (fn-sct-load fn-sctr-next-run fn-sctr-run-decode fn-sctr-decode-programs)
+                          (fn-sctsr-load fn-sccr-planp fn-scc-parse-header fn-sccr-join
+                           fn-sctr-decode-rows fn-cei-build fn-sct-f-rowp)))))
 
 (in-theory (disable fn-scsr-info-root fn-scsr-info-leaf fn-scsr-info-pair
                     fn-scsr-pair-info fn-scsr-step fn-sctsr-step

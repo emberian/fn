@@ -225,6 +225,157 @@
                                     (list :refused :close)
                                   tables)))))))))))))))))
 
+(local
+ (defthm fn-sctr-take-frames-loop-is-revappend
+   (equal (fn-sctr-take-frames-loop n plan acc)
+          (revappend acc (fn-sctr-take-frames n plan)))
+   :hints (("Goal" :induct (fn-sctr-take-frames-loop n plan acc)
+                   :in-theory (union-theories '(fn-sctr-take-frames-loop fn-sctr-take-frames revappend car-cons cdr-cons)
+                                              (theory 'minimal-theory))))))
+
+(verify-guards fn-sctr-take-frames-loop)
+
+(verify-guards fn-sctr-take-frames
+  :hints (("Goal"
+           :in-theory
+           (union-theories '(revappend fn-sctr-take-frames)
+                           (union-theories (theory 'minimal-theory)
+                                           (executable-counterpart-theory :here)))
+           :use
+           ((:instance fn-sctr-take-frames-loop-is-revappend (acc nil))))))
+
+(local
+ (defun fn-sctr-frames-ind (n plan pos)
+   (if (or (zp n) (not (consp plan)))
+       (list plan pos)
+     (fn-sctr-frames-ind (1- n) (cdr plan) (fn-sccr-at 2 (car plan))))))
+
+(defthm fn-sctr-take-frames-planp
+  (implies (fn-sccr-planp plan pos fn-octets)
+           (fn-sccr-planp (fn-sctr-take-frames n plan) pos fn-octets))
+  :hints (("Goal" :induct (fn-sctr-frames-ind n plan pos)
+           :in-theory (e/d (fn-sccr-planp) (fn-sccr-framep)))
+          ("Subgoal *1/1" :use ((:instance fn-sccr-planp-pos)))))
+
+(defthm fn-sctr-drop-frames-planp
+  (implies (fn-sccr-planp plan pos fn-octets)
+           (fn-sccr-planp (fn-sctr-drop-frames n plan)
+                          (fn-sctr-plan-end (fn-sctr-take-frames n plan) pos)
+                          fn-octets))
+  :hints (("Goal" :induct (fn-sctr-frames-ind n plan pos)
+           :in-theory (e/d (fn-sccr-planp) (fn-sccr-framep)))))
+
+(local
+ (defthm fn-sctr-parse-header-count-natp
+   (implies (and (fn-scc-octet-listp seg) (fn-scc-parse-header seg))
+            (natp (nth 1 (fn-scc-parse-header seg))))
+   :hints (("Goal" :in-theory (enable fn-scc-parse-header fn-scc-u64-at)))))
+
+(local
+ (defthm fn-sctr-planp-first-frame
+   (implies (and (fn-sccr-planp plan pos fn-octets) (consp plan))
+            (and (true-listp (car plan))
+                 (consp (car plan))
+                 (fn-scc-octet-listp (car (car plan)))
+                 (fn-scc-octet-listp (fn-sccr-at 0 (car plan)))))
+   :hints (("Goal" :expand ((fn-sccr-planp plan pos fn-octets))
+            :in-theory (enable fn-sccr-framep)))))
+
+(verify-guards fn-sctr-drop-frames)
+
+(verify-guards fn-sctr-plan-end)
+
+(verify-guards fn-sctr-run-decode :hints (("Goal" :in-theory (disable fn-scc-parse-header fn-sccr-join fn-sccr-planp fn-sccr-framep))))
+
+(local
+ (defthm fn-sctr-plan-end-is-first-a
+   (implies (and (fn-sccr-planp plan pos fn-octets)
+                 (consp (fn-sctr-drop-frames n plan)))
+            (equal (fn-sccr-at 1 (car (fn-sctr-drop-frames n plan)))
+                   (fn-sctr-plan-end (fn-sctr-take-frames n plan) pos)))
+   :hints (("Goal" :induct (fn-sctr-frames-ind n plan pos)
+            :in-theory (e/d (fn-sccr-planp) (fn-sccr-framep fn-sccr-at-is-nth))))))
+
+(local
+ (defthm fn-sctr-join-end-is-plan-end
+   (implies (and (fn-sccr-planp plan pos fn-octets)
+                 (eq (car (fn-sccr-join plan pos index count sequence prev fn-octets)) :ok))
+            (equal (nth 1 (fn-sccr-join plan pos index count sequence prev fn-octets))
+                   (fn-sctr-plan-end plan pos)))
+   :hints (("Goal" :induct (fn-sccr-join plan pos index count sequence prev fn-octets)
+            :in-theory (e/d (fn-sccr-join fn-sccr-planp)
+                            (fn-sccr-open-frame fn-sccr-framep fn-sccr-at-is-nth))))))
+
+(local
+ (defthm fn-sctr-run-decode-ok-shape
+   (implies (and (fn-sccr-planp plan pos fn-octets)
+                 (eq (car (fn-sctr-run-decode plan pos s fn-octets)) :ok))
+            (and (equal (nth 1 (fn-sctr-run-decode plan pos s fn-octets)) pos)
+                 (natp (nth 2 (fn-sctr-run-decode plan pos s fn-octets)))
+                 (<= pos (nth 2 (fn-sctr-run-decode plan pos s fn-octets)))
+                 (<= (nth 2 (fn-sctr-run-decode plan pos s fn-octets)) (len fn-octets))
+                 (natp pos)
+                 (fn-sccr-planp (nth 3 (fn-sctr-run-decode plan pos s fn-octets))
+                                (nth 2 (fn-sctr-run-decode plan pos s fn-octets))
+                                fn-octets)))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-sccr-join-ok-end
+                             (plan (fn-sctr-take-frames
+                                    (nth 1 (fn-scc-parse-header (fn-sccr-at 0 (car plan)))) plan))
+                             (index 0)
+                             (count (nth 1 (fn-scc-parse-header (fn-sccr-at 0 (car plan)))))
+                             (sequence s) (prev *fn-scc-genesis*))
+                  (:instance fn-sctr-drop-frames-planp
+                             (n (nth 1 (fn-scc-parse-header (fn-sccr-at 0 (car plan))))))
+                  (:instance fn-sctr-join-end-is-plan-end
+                             (plan (fn-sctr-take-frames
+                                    (nth 1 (fn-scc-parse-header (fn-sccr-at 0 (car plan)))) plan))
+                             (index 0)
+                             (count (nth 1 (fn-scc-parse-header (fn-sccr-at 0 (car plan)))))
+                             (sequence s) (prev *fn-scc-genesis*))
+                  (:instance fn-sccr-planp-pos))
+            :in-theory (e/d (fn-sctr-run-decode)
+                            (fn-scc-parse-header fn-sccr-join fn-sccr-planp
+                             fn-sccr-join-ok-end fn-sctr-drop-frames-planp
+                             fn-sctr-join-end-is-plan-end fn-sccr-planp-pos
+                             fn-sccr-at-is-nth))))))
+
+(local
+ (defthm fn-sctr-planp-from-first-a
+   (implies (and (fn-sccr-planp plan pos fn-octets) (consp plan))
+            (fn-sccr-planp plan (fn-sccr-at 1 (car plan)) fn-octets))
+   :hints (("Goal" :expand ((fn-sccr-planp plan pos fn-octets)
+                            (fn-sccr-planp plan (fn-sccr-at 1 (car plan)) fn-octets))))))
+
+(verify-guards fn-sctr-restp)
+
+(verify-guards fn-sctr-next-run)
+
+(defthm fn-sctr-next-run-ok-shape
+   (implies (and (fn-sctr-restp rest fn-octets)
+                 (eq (car (fn-sctr-next-run rest s fn-octets)) :ok))
+            (and (natp (nth 1 (fn-sctr-next-run rest s fn-octets)))
+                 (natp (nth 2 (fn-sctr-next-run rest s fn-octets)))
+                 (<= (nth 1 (fn-sctr-next-run rest s fn-octets))
+                     (nth 2 (fn-sctr-next-run rest s fn-octets)))
+                 (<= (nth 2 (fn-sctr-next-run rest s fn-octets)) (len fn-octets))
+                 (fn-sctr-restp (nth 3 (fn-sctr-next-run rest s fn-octets)) fn-octets)))
+   :hints (("Goal" :use ((:instance fn-sctr-run-decode-ok-shape (plan rest)
+                                    (pos (fn-sccr-at 1 (car rest))))
+                         (:instance fn-sctr-planp-from-first-a
+                                    (plan (nth 3 (fn-sctr-run-decode rest (fn-sccr-at 1 (car rest))
+                                                                     s fn-octets)))
+                                    (pos (nth 2 (fn-sctr-run-decode rest (fn-sccr-at 1 (car rest))
+                                                                    s fn-octets)))))
+            :in-theory (e/d (fn-sctr-next-run fn-sctr-restp)
+                            (fn-sctr-run-decode fn-sctr-run-decode-ok-shape
+                             fn-sctr-planp-from-first-a fn-sccr-planp fn-sccr-at-is-nth)))))
+
+(defthm fn-sctr-restp-of-plan
+   (implies (fn-sccr-planp plan (if (consp plan) (fn-sccr-at 1 (car plan)) 0) fn-octets)
+            (fn-sctr-restp plan fn-octets))
+   :hints (("Goal" :in-theory (enable fn-sctr-restp))))
+
 (defun fn-scsr-car (x)
   (declare (xargs :guard t))
   (if (consp x) (car x) nil))
@@ -352,6 +503,78 @@
                            (fn-sccr-read-nat fn-sccr-read-string fn-sccr-cell
                             fn-scc-le-value fn-scc-intern fn-scs-octets
                             fn-scs-summary fn-oct-slice-list-is-take-nthcdr)))))
+
+(defun fn-scsr-info-provenancep (info x)
+ (declare (xargs :measure (acl2-count x) :verify-guards nil))
+ (if (not (fn-scs-carryp (fn-scsr-info-root info))) t
+   (and (equal (fn-scsr-info-root info) (fn-scs-summary x))
+        (if (consp (fn-scsr-cdr info))
+            (let ((a (fn-scsr-car (fn-scsr-cdr info)))
+                  (d (fn-scsr-cdr (fn-scsr-cdr info))))
+              (and (consp x)
+                   (fn-scs-carryp (fn-scsr-info-root a))
+                   (fn-scs-carryp (fn-scsr-info-root d))
+                   (fn-scsr-info-provenancep a (car x))
+                   (fn-scsr-info-provenancep d (cdr x))))
+          t))))
+
+(defun fn-scsr-stack-provenancep (infos stack)
+ (declare (xargs :verify-guards nil))
+ (if (consp stack)
+     (and (consp infos) (fn-scsr-info-provenancep (car infos) (car stack))
+          (fn-scsr-stack-provenancep (cdr infos) (cdr stack)))
+   (null infos)))
+
+(local (defthm fn-scsr-provenance-valid-root
+ (implies (and (fn-scsr-info-provenancep info x)
+               (fn-scs-carryp (fn-scsr-info-root info)))
+          (equal (fn-scsr-info-root info) (fn-scs-summary x)))
+ :hints (("Goal" :expand ((fn-scsr-info-provenancep info x))))))
+
+(local (defthm fn-scsr-pair-info-preserves-provenance
+ (implies (and (fn-scsr-info-provenancep a x)
+               (fn-scsr-info-provenancep d y))
+          (fn-scsr-info-provenancep (fn-scsr-pair-info a d) (cons x y)))
+ :hints (("Goal" :do-not-induct t
+          :use ((:instance fn-scsr-provenance-valid-root (info a))
+                (:instance fn-scsr-provenance-valid-root (info d) (x y))
+                (:instance fn-scs-cons-preserves-canonical-size
+                           (a (fn-scsr-info-root a)) (d (fn-scsr-info-root d))))
+          :expand ((fn-scsr-info-provenancep (fn-scsr-pair-info a d) (cons x y))
+                   (fn-scsr-info-provenancep (list* (fn-scs-summary (cons x y)) a d)
+                                           (cons x y))
+                   (fn-scsr-info-provenancep nil (cons x y)))
+          :in-theory (e/d (fn-scsr-pair-info fn-scsr-info-pair fn-scsr-info-root
+                           fn-scsr-car fn-scsr-cdr)
+                          (fn-scsr-info-provenancep fn-scs-summary))))))
+
+(local (defthm fn-scsr-supported-scalar-summary
+ (implies (or (integerp x) (characterp x) (stringp x) (symbolp x))
+          (equal (fn-scs-atom x) (fn-scs-summary x)))
+ :hints (("Goal" :use fn-scs-atom-establishes-summary))))
+
+(defthm fn-scsr-step-preserves-partial-provenance
+ (implies (and (fn-octets-p fn-octets) (natp i) (natp end) (< i end)
+               (<= end (len fn-octets))
+               (fn-scsr-stack-provenancep infos stack)
+               (consp (fn-sccr-step i end stack fn-octets)))
+          (fn-scsr-stack-provenancep
+           (mv-nth 1 (fn-scsr-step i end stack infos fn-octets))
+           (car (fn-sccr-step i end stack fn-octets))))
+ :hints (("Goal" :do-not-induct t
+          :use (fn-scsr-octet-carry-is-actual-canonical-size
+                (:instance fn-scsr-pair-info-preserves-provenance
+                           (a (cadr infos)) (d (car infos))
+                           (x (cadr stack)) (y (car stack))))
+          :expand ((fn-scsr-stack-provenancep infos stack)
+                   (fn-scsr-stack-provenancep (cdr infos) (cdr stack)))
+          :in-theory (e/d (fn-scsr-step fn-sccr-step fn-scsr-stack-provenancep
+                            fn-scsr-info-leaf fn-scsr-info-provenancep
+                            fn-scsr-info-root fn-scsr-car fn-scsr-cdr)
+                           (fn-scs-summary fn-scs-atom fn-scs-octets
+                            fn-sccr-read-nat fn-sccr-read-string fn-sccr-cell
+                            fn-scc-intern fn-scsr-pair-info
+                            fn-oct-slice-list-is-take-nthcdr)))))
 
 (defun fn-sctsr-step (i end stack infos table info-table fn-octets)
   (declare (xargs :stobjs fn-octets
@@ -554,6 +777,18 @@
         (fn-sctr-decode-programs fa fb pa pb ea eb ra rb fn-octets))
  :hints (("Goal" :use fn-sctsr-decode-programs-result-is-existing-by-definition))))
 
+(local (defthm fn-sctsr-planp-first-frame-for-guards
+ (implies (and (fn-sccr-planp plan pos fn-octets) (consp plan))
+          (and (true-listp (car plan)) (consp (car plan))
+               (fn-scc-octet-listp (car (car plan)))
+               (fn-scc-octet-listp (fn-sccr-at 0 (car plan)))))
+ :hints (("Goal" :expand ((fn-sccr-planp plan pos fn-octets))
+          :in-theory (enable fn-sccr-framep)))))
+
+(verify-guards fn-sctsr-load
+ :hints (("Goal" :in-theory (disable fn-sctr-next-run fn-sctr-restp
+                                    fn-scc-parse-header fn-sccr-planp fn-sccr-framep))))
+
 (defthm fn-sctsr-load-result-is-existing-by-definition
  (equal (mv-nth 0 (fn-sctsr-load plan fn-octets)) (fn-sct-load plan fn-octets))
  :rule-classes nil
@@ -561,6 +796,13 @@
                                  (fn-sctsr-decode-programs fn-sctr-decode-programs
                                   fn-sctr-next-run fn-sccr-planp fn-scc-parse-header
                                   fn-sct-tables-f fn-sco-at)))))
+
+(defthm fn-sctsr-load-existing-result-true-listp
+ (true-listp (mv-nth 0 (fn-sctsr-load plan fn-octets)))
+ :hints (("Goal" :use fn-sctsr-load-result-is-existing-by-definition
+          :in-theory (e/d (fn-sct-load fn-sctr-next-run fn-sctr-run-decode fn-sctr-decode-programs)
+                          (fn-sctsr-load fn-sccr-planp fn-scc-parse-header fn-sccr-join
+                           fn-sctr-decode-rows fn-cei-build fn-sct-f-rowp)))))
 
 (in-theory (disable fn-scsr-info-root fn-scsr-info-leaf fn-scsr-info-pair
                     fn-scsr-pair-info fn-scsr-step fn-sctsr-step
@@ -638,3 +880,40 @@
    (mv-let (ok fn-octets) (fn-scsr-live-four-runs fn-octets) ok)))
 
 (make-event (value (list 'assert-event (fn-scsr-live-four-runs-local))))
+
+(defun fn-scsr-fixture-frame (program a)
+ (declare (xargs :mode :program))
+ (let ((header (fn-scc-header 0 1 (len program) 1)))
+  (list header a (+ a (len program))
+        (fn-scc-seal *fn-scc-genesis* header program))))
+
+(defun fn-scsr-fixture-plan (fn-octets)
+ (declare (xargs :stobjs fn-octets :mode :program))
+ (let* ((ctx '(:ok 9 ((:key "abc" (4 5))) ((1 2 3 "<a@b>" :carried (7 8) 4 (9))) nil :none))
+        (f (fn-scc-program '(3 1 1 "rev" nil 2)))
+        (p (fn-scc-program '(7 8))) (e (fn-scc-program '(7 8)))
+        (r (append (fn-scc-program nil) (fn-scc-program ctx)
+                   (fn-scc-program nil) (fn-scc-program nil)))
+        (fb (len f)) (pb (+ fb (len p))) (eb (+ pb (len e)))
+        (plan (list (fn-scsr-fixture-frame f 0) (fn-scsr-fixture-frame p fb)
+                    (fn-scsr-fixture-frame e pb) (fn-scsr-fixture-frame r eb)))
+        (fn-octets (fn-octets-clear fn-octets))
+        (fn-octets (fn-octets-append-list (append f p e r) fn-octets)))
+  (mv plan fn-octets)))
+
+(defun fn-scsr-live-full-load (fn-octets)
+ (declare (xargs :stobjs fn-octets :mode :program))
+ (mv-let (plan fn-octets) (fn-scsr-fixture-plan fn-octets)
+  (mv-let (decoded info) (fn-sctsr-load plan fn-octets)
+   (mv-let (status root fields) (fn-sctsr-original-context-carries info)
+    (mv (and (equal decoded (fn-sct-load plan fn-octets))
+             (eq (car decoded) :ok) (eq status :ready)
+             (equal root (fn-scs-summary (cadr (nth 3 (cadr decoded)))))
+             (fn-scs-correspondsp fields (cadr (nth 3 (cadr decoded))))) fn-octets)))))
+
+(defun fn-scsr-live-full-load-local ()
+ (declare (xargs :mode :program))
+ (with-local-stobj fn-octets
+   (mv-let (ok fn-octets) (fn-scsr-live-full-load fn-octets) ok)))
+
+(make-event (value (list 'assert-event (fn-scsr-live-full-load-local))))
