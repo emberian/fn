@@ -337,3 +337,14 @@ build/flush, commit allocation/digests, or the native by-address hash. Those are
 replaced by the selected census plus disk-backed bounded-buffer design in
 [the preparation contract](../planning/history-page-cursor-contract.md), whose
 full representation, effect and funded-publication proofs remain open.
+
+The next private-writer component, `books/history-page-layout.lisp` (PRF-1092),
+computes scalar physical layout after the census supplies data-page count N.
+The existing fresh allocator reserves the directory first at address 1, then
+allocates data and table pages contiguously. The executable constructor returns
+N, table count T, directory span M, data base `1+M`, table base `1+M+N` and high
+water `1+M+N+T`; a single-address operation computes one member. Both refine
+`pgs-alloc` without constructing its list of singles. It uses the concrete
+constant-work table-count function and current-format u64/u32 checks. This
+removes whole-run allocation planning from the proposed private writer; it
+neither allocates backing pages nor proves platform file-offset representation.

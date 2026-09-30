@@ -1494,6 +1494,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-export-request-tests \
 	books/owner-snapshot-request \
 	tests/acl2/history-page-cursor-tests \
+	tests/acl2/history-page-layout-tests \
 	tests/acl2/owner-snapshot-request-tests \
 	books/owner-snapshot-recovery \
 	tests/acl2/owner-snapshot-recovery-tests \
