@@ -146,3 +146,22 @@ Reachable witnesses cover every scheduling phase and both return kinds.
 This scheduling lemma supplies the reader's sequential stream join; it does
 not itself prove the reader's byte/scanner trajectory, complete authentication
 refinement, progress, physical funding, or the general M+2 request count.
+
+The proof-only `history-auth-reader-stream` carries bounded u32 scratch words,
+even two-half packing, and scanner position/phase/count/tag alignment. Begin
+establishes this carry and all public transitions preserve it; phase opening
+retains its existing nested I/O mode premise. Reachable whole-chain teeth check
+the literal antecedent and conclusion at every actual transition. This does
+not yet tie scratch or scanner content to an immutable phase message, nor
+establish the general request census or producer read census.
+
+The scalar `history-auth-reader-source` bridge begins the reader with the
+captured `(ticket count)` projection and source epoch while retaining the
+physical root ticket separately. Its verified-byte entry checks the current
+source pass/ordinal token, root ticket, epoch, capture projection, logical page
+and offset before returning a buffer-byte demand and provider completion
+skeleton. The provider checks its own phase and supply serial when accepting
+that skeleton. These scalar fences require a separate correspondence from the
+actual captured Store and admitted root pin; they do not assert that lineage
+merely because scalar fields agree. Native loop integration and that
+correspondence remain open.
