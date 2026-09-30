@@ -3,6 +3,7 @@
 ; whole reassembly, and the profile's limit refuses an image by name.
 (in-package "ACL2")
 (include-book "../../books/bp-node-fragment-job")
+(include-book "../../books/bp-node-profile")
 (include-book "bp-node-fragment-plan-tests")
 (include-book "bp-fragment-resume-tests")
 
@@ -90,3 +91,42 @@
 (assert-event (equal (fn-bpfj-plan *bpnfp-tight-state* *bpnff-p3* *bpfjt-done*
                                    *fn-bpnf-max-held-image*)
                      '(:capacity)))
+
+; SCN-077 regression: received fragments fit the wire limit, while their
+; whole image exceeds it and fits the held budget. The host supplies the
+; latter to both the family proposal and its persistence completion.
+(defconst *bpfjt-profile* '(8 1048576 1024 256))
+(defconst *bpfjt-large-b0*
+  (fn-bpnfft-bundle *bpnff-base-primary* 0 (make-list 128 :initial-element 65) 256))
+(defconst *bpfjt-large-b1*
+  (fn-bpnfft-bundle *bpnff-base-primary* 128 (make-list 128 :initial-element 65) 256))
+(defconst *bpfjt-large-h0*
+  (fn-bpnfft-held '(112) 0 *bpfjt-large-b0* '(:dispatch-pending) nil))
+(defconst *bpfjt-large-h1*
+  (fn-bpnfft-held '(112) 1 *bpfjt-large-b1* '(:dispatch-pending) nil))
+(defconst *bpfjt-large-state*
+  (fn-bpnf-state (fn-bpn-initial-machine-state *bpnff-config* 8 1048576)
+                (list *bpfjt-large-h0* *bpfjt-large-h1*)
+                nil nil nil nil nil 3 0))
+(defconst *bpfjt-large-job0* (fn-bpfj-start *bpfjt-large-state* *bpfjt-large-h0*))
+(defconst *bpfjt-large-done*
+  (fn-bpfj-job (fn-bpfj-job-cells *bpfjt-large-job0*)
+              (fn-bpfj-job-total *bpfjt-large-job0*)
+              (fn-bpfr-run (fn-bpfj-job-sweep *bpfjt-large-job0*) 64)))
+(assert-event
+ (and (fn-bpnpf-profilep *bpfjt-profile*)
+      (fn-bpn-machine-statep (fn-bpnf-base *bpfjt-large-state*))
+      (fn-bpfj-wf *bpfjt-large-state* *bpfjt-large-h0* *bpfjt-large-done*)
+      (fn-bpfj-finishedp *bpfjt-large-done*)
+      (<= (len (fn-bpb-encode *bpfjt-large-b0*)) (fn-bpnpf-bundle-octets *bpfjt-profile*))
+      (<= (len (fn-bpb-encode *bpfjt-large-b1*)) (fn-bpnpf-bundle-octets *bpfjt-profile*))
+      (< (fn-bpnpf-bundle-octets *bpfjt-profile*)
+         (fn-bpfj-image-octets *bpfjt-large-state* *bpfjt-large-h0*))
+      (<= (fn-bpfj-image-octets *bpfjt-large-state* *bpfjt-large-h0*)
+          (fn-bpnpf-held-octets *bpfjt-profile*))
+      (equal (car (fn-bpfj-plan *bpfjt-large-state* *bpfjt-large-h0*
+                                *bpfjt-large-done* (fn-bpnpf-held-octets *bpfjt-profile*)))
+             :ready)
+      (equal (fn-bpfj-plan *bpfjt-large-state* *bpfjt-large-h0*
+                           *bpfjt-large-done* (fn-bpnpf-bundle-octets *bpfjt-profile*))
+             '(:refused :bundle-beyond-profile))))

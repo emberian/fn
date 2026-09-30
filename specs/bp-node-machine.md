@@ -3211,7 +3211,11 @@ fragment's total ADU length) is past `max-adu-octets` is refused
 answer unchanged (`fn-bpnpf-admission-within-profile-is-the-channel-answer`).
 A family therefore never grows an ADU its profile does not admit. The held
 image's bound is `max-held-octets`: the step and the family plan check the
-machine state's max-octets. The lifecycle-record count between rotations is
+machine state's max-octets. The job host reads `fn-bpnpf-held-octets` for
+its `:family` and matching `:persist-result` image limit; the received-wire
+`max-bundle-octets` bound is not reused for the reassembled image. This
+allows a family whose fragments fit the wire budget and whose whole image
+fits held capacity even when the whole image exceeds one received wire. The lifecycle-record count between rotations is
 a work bound.
 
 | Limit | Value today | Must satisfy |
