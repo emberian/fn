@@ -17789,7 +17789,17 @@
         {
           "kind": "theorem",
           "name": "fn-pwz-actual-ready-literal-step-is-action-trajectory",
-          "note": "Actual ready mode8 fn-zin-step full state/history/table/output equals emitted-count existing fn-zin-act calls under positive room, fresh fields and complete readiness including strict bomb bound. Actual initializer/basic scheduling positive plus four exact condition removals; fast-path, general trajectory and scheduling budget remain open."
+          "note": "Actual ready mode8 fn-zin-step full state/history/table/output equals emitted-count existing fn-zin-act calls under positive room, fresh fields and complete readiness including strict bomb bound. Actual initializer/basic scheduling positive plus four exact condition removals; general output-window trajectory and scheduling budget remain open; legacy fast/ahead is unreachable in this composition."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-step-is-action-trajectory",
+          "note": "Actual positive-room STEP full tuple equals existing ACT sequence for all modes/refusals. Reachable actual initializer/basic chunk positive and exact room-removal witness; semantic ACT count is distinct from charged STEP/native cost."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-codec-is-action-trajectory",
+          "note": "Actual fn-ewz-codec-tick complete seven-value tuple equals ACT/PULL replay with identical charged schedule, stored credit, selected private writes and next mode under fixed history/table readiness. Actual initializer/basic chunk positive and both full buffer-removal witnesses. Output-window confluence, total budget and native binding/funding remain open."
         }
       ],
       "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. Full decoder/dictionary stuttering, total action-budget completeness, compiled workspace funding and actual typed lifetime/consumer joins remain open; these component events do not complete PRF-1131."

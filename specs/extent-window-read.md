@@ -265,6 +265,22 @@ terminal-register identity; no served state revalidation is introduced.
 Actual initializer/basic scheduling reachability and all four exact
 hypothesis removals accompany this component. The existing runtime is
 unchanged; the withdrawn zero-K proposal is refuted because actual
-readiness excludes that frontier. Fast-path equivalence, general
-input/dictionary trajectory, scheduling budget and native funding remain
+readiness excludes that frontier. General input/dictionary/output-window
+trajectory, scheduling budget and native funding remain
 open. See planning/evidence/decoded-window-literal-source-2026-09-30.md.
+
+
+The actual basic-loop STEP now has one full-tuple ACT normalization at
+positive room, including clipped copies, complete ready literals, bomb
+refusals and every fallback mode. Semantic ACT count is positive and at
+most room; it is not the charged scheduling count or a native tariff.
+The actual basic loop, stored credit/cleared-output wrapper and complete
+fn-ewz-codec-tick tuple agree with the same ACT/PULL replay while retaining
+the original charged schedule, statuses, input cursor, all decoder/pool
+state, selected private writes and next-mode decision. Fixed history/table
+readiness is explicit at the caller boundary. This removes the prior
+branch-specific decoder relation; arbitrary output-limit confluence and
+adequate initial budget still require proof. Legacy fast/ahead has no
+caller in this current composed stored cold path. Native decoded dispatch
+remains refused until exact retained buffer/view binding and full matched
+runtime demand exist. See planning/evidence/decoded-window-step-source-2026-09-30.md.

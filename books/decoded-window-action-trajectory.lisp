@@ -248,3 +248,24 @@
            :in-theory (e/d (fn-zin-bomb-limit mv-nth)
                            (fn-ewz-codec-tick fn-pwz-action-sequence fn-zin-copy
                             fn-ewb-copy fn-pzw-select fn-pzw-room fn-pzw-quantum)))) )
+
+; Exact match normalization for arbitrary positive output room. The semantic
+; action count is the actual clipped copy length, not one charged STEP.
+(defthm fn-pwz-actual-clipped-match-is-action-trajectory
+  (let ((k (min (fn-zin-n fn-zin-st)
+                (min (nfix room)
+                     (nfix (- (fn-zin-bomb-limit fn-zin-st)
+                              (fn-zin-tout fn-zin-st)))))))
+    (implies (and (equal (fn-zin-mode fn-zin-st) 12) (posp k))
+             (equal (let ((r (fn-zin-match room fn-zin-st fn-zin-win fn-zin-out)))
+                      (mv (car r) (mv-nth 1 r) (mv-nth 2 r) fn-zin-tab (mv-nth 3 r)))
+                    (fn-pwz-action-sequence k fn-zin-st fn-zin-win fn-zin-tab fn-zin-out))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-pwz-copy-actions-full-effects
+                          (k (min (fn-zin-n fn-zin-st)
+                                  (min (nfix room)
+                                       (nfix (- (fn-zin-bomb-limit fn-zin-st)
+                                                (fn-zin-tout fn-zin-st))))))))
+           :in-theory (e/d (fn-zin-match min nfix)
+                           (fn-pwz-action-sequence fn-zin-copy fn-zin-copy-out-free
+                            fn-zin-match-out-free)))))
