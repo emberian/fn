@@ -88,7 +88,11 @@ class NativeBpNodeTests(unittest.TestCase):
         unrelated_id = b"<bp-node-unrelated@example.invalid>"
         injected = post_articles(self, PRODUCER, self.sender_store,
                                  [(self.msgid, self.article),
-                                  (unrelated_id, self.article.replace(self.msgid, unrelated_id))])
+                                  (unrelated_id, self.article.replace(self.msgid, unrelated_id))],
+                                 observer=(getattr(self, "resilience_observer", None)
+                                           if self._testMethodName ==
+                                           "test_disconnected_delivery_restarts_and_releases_only_matching_obligation"
+                                           else None))
         self.article = injected[self.msgid]
         for args in (
             ("app-journal", "workflow-init", self.sender_store,
