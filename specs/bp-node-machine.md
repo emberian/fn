@@ -4991,3 +4991,25 @@ its octet and arrival scalars. This execution contract adds no runtime
 whole-held-state recognizer and leaves replay's logical result unchanged.
 SCN-1008's native recovery cases and the original scale cases still require
 matching image evidence; a guard proof is not a timing or deployment claim.
+
+### Ordered fragment transfer observations (PRF-1135)
+
+`fnn-bps-send-effect` sends fragments in order and stops observing transfers
+at the first nonaccepted outcome. `fn-bpfs-send-observations` models that
+finite observation trace. Under `fn-bpfs-accepted-prefixp` of the preceding
+outcomes, the host-called `fn-bpfs-fragment-outcome` equals the trace's answer
+(`fn-bpfs-fragment-outcome-refines-ordered-send`). With a one-based starting
+index the trace answers `:failed` exactly when its first observation is
+`:failed` at index one (`fn-bpfs-send-observations-failed-only-at-first-transfer`).
+A failed later transfer after accepted fragments therefore leaves the attempt
+`:uncertain`; refusal and uncertainty remain distinct.
+
+This is a local fn policy about transport observations. RFC 9171 section 5.8
+specifies fragmentation, and RFC 9174 section 5.4.1 specifies Transfer MRU;
+neither transport acceptance nor this theorem establishes durable remote
+acceptance. The model covers the ordered transfer loop's reported outcomes,
+not the host's outer exception handler or unobserved physical effects.
+`tests/acl2/bp-fragment-send-tests.lisp` supplies nonempty accepted-prefix,
+first-failure, later-failure, refusal and uncertain traces, and explicit
+hypothesis-removal witnesses. Matching certification and native composition
+remain separate evidence coordinates.
