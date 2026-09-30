@@ -18928,7 +18928,7 @@
         "tests/acl2/owner-feed-reconfigure-counted-tests.lisp",
         "tests/acl2/owner-retire-counted-tests.lisp"
       ],
-      "progress_note": "Protected source admissions: exact count/live/replay relations; guarded full-result live and target-fold refinements; same-pass durable outcome/configuration projections and aggregate/count relation preservation. Literal live, corrupted-count and aggregate witnesses pass. No committed certification manifest or native qualification. Installed composite carriage, funding and producer/barrier settlement remain open."
+      "progress_note": "Protected source admissions: exact count/live/replay relations; guarded full-result live and target-fold refinements; same-pass durable outcome/configuration projections and aggregate/count relation preservation. Literal live, corrupted-count and aggregate witnesses pass. No committed certification manifest or native qualification. Explicit physical log join observations, ACL2 journal-close disposition and uncertain held-writer exit have protected source admissions and literal fixtures. Installed composite carriage, funding and complete producer/barrier settlement remain open."
     }
   ]
 }

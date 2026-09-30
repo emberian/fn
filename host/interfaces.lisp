@@ -4750,6 +4750,25 @@
   :keystones (fn-ort-window-step-never-drained
               fn-ort-window-step-deadline-is-counted-deadline))
 
+(definterface fn-ort-log-close-action
+  :class :common-lisp-compliant
+  :keystones (fn-ort-log-close-joined-requires-settlement))
+
+(definterface fn-ort-log-close-exit
+  :class :common-lisp-compliant
+  :kinds ((prior integerp) (uncertain integerp))
+  :keystones (fn-ort-log-close-held-is-uncertain))
+
+(definterface fn-log-sink-pending-lines
+  :class :common-lisp-compliant)
+
+(definterface fn-log-sink-pending-octets
+  :class :common-lisp-compliant)
+
+(definterface fn-ort-report-close-action
+  :class :common-lisp-compliant
+  :keystones (fn-ort-report-close-requires-journal-settlement))
+
 (definterface fn-ort-intake-action
   :class :common-lisp-compliant)
 

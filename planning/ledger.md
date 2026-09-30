@@ -13,17 +13,17 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1847 |
 | Certification roots in the Makefile | 1779 |
 | Books inside the root closure | 1843 |
-| `defthm` and `defthmd` events | 29506 |
-| `defun` events | 18924 |
+| `defthm` and `defthmd` events | 29509 |
+| `defun` events | 18927 |
 | Functions with verified guards | 3544 |
 | Functions declared `:verify-guards nil` and never verified | 2249 |
-| Functions left at the default with an explicit guard | 10302 |
+| Functions left at the default with an explicit guard | 10305 |
 | Functions left at the default with no guard | 2829 |
-| `assert-event` checks | 23919 |
+| `assert-event` checks | 23922 |
 | `must-fail` checks | 2516 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 159 |
-| Theorems flagged SUSPECT by shape | 1253 |
+| Theorems flagged SUSPECT by shape | 1254 |
 | Export-hygiene warnings | 351 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
@@ -741,7 +741,7 @@ that `make certify` requests.
 | `books/owner-results.lisp` | root | 23 | 69 | 8/5/55/1 | 0 | 0 | 1 |
 | `books/owner-retain-state.lisp` | closure | 5 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/owner-retention-preparation.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/owner-retire-counted.lisp` | root | 5 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/owner-retire-counted.lisp` | root | 8 | 7 | 0/0/7/0 | 0 | 0 | 1 |
 | `books/owner-retire-cursor.lisp` | root | 5 | 7 | 7/0/0/0 | 0 | 0 | 1 |
 | `books/owner-retire-stream.lisp` | - | 2 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/owner-retire.lisp` | root | 4 | 9 | 0/0/9/0 | 0 | 0 | 0 |
@@ -1650,7 +1650,7 @@ that `make certify` requests.
 | `tests/acl2/owner-results-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 49 | 2 | 0 |
 | `tests/acl2/owner-retain-state-tests.lisp` | root | 3 | 4 | 0/0/1/3 | 0 | 0 | 0 |
 | `tests/acl2/owner-retention-preparation-tests.lisp` | root | 0 | 3 | 0/2/0/1 | 5 | 1 | 0 |
-| `tests/acl2/owner-retire-counted-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 0 | 0 |
+| `tests/acl2/owner-retire-counted-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 0 | 0 |
 | `tests/acl2/owner-retire-cursor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/owner-scheduler-tests.lisp` | root | 0 | 2 | 0/1/1/0 | 26 | 4 | 0 |
 | `tests/acl2/owner-served-bound-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 8 | 2 | 0 |
@@ -2462,6 +2462,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-orr-read-span-without-a-capture-is-the-span-read-by-definition` | `books/owner-reader-read.lisp` | 349 | arm-of-definition: the hypotheses select one IF/COND arm of fn-orr-read-span and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-orr-read-span and the conclusion is that branch's value |
 | `fn-orr-tls-result-of-make` | `books/owner-reader-read.lisp` | 280 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-orr-with-view-owner` | `books/owner-reader-read.lisp` | 254 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-ort-log-close-held-is-uncertain` | `books/owner-retire-counted.lisp` | 36 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ort-log-close-exit and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-ort-log-close-exit and the conclusion is that branch's value |
 | `fn-orv-conn-config-of-with-view` | `books/owner-reader-view.lisp` | 331 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-osb-install-refuses-unadmitted-by-definition` | `books/owner-served-bound.lisp` | 96 | arm-of-definition: the hypotheses select one IF/COND arm of fn-osb-install and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-osb-install and the conclusion is that branch's value |
 | `fn-osb-own-config-of-configure` | `books/owner-served-bound.lisp` | 43 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

@@ -12,6 +12,45 @@
   (declare (xargs :guard t))
   (nfix received))
 
+; A physical timeout retains the writer and its descriptor authority. Even
+; an absent/joined writer is not settlement while accounted work remains.
+(defun fn-ort-log-close-action (join-observation pending-lines pending-octets queuedp)
+  (declare (xargs :guard t))
+  (if (and (or (equal join-observation :joined)
+               (equal join-observation :absent))
+           (equal pending-lines 0) (equal pending-octets 0)
+           (equal queuedp nil))
+      :joined
+    :held))
+
+(defthm fn-ort-log-close-joined-requires-settlement
+  (implies (equal (fn-ort-log-close-action observation lines octets queuedp) :joined)
+           (and (or (equal observation :joined) (equal observation :absent))
+                (equal lines 0) (equal octets 0) (equal queuedp nil)))
+  :rule-classes nil)
+
+(defun fn-ort-log-close-exit (prior uncertain action)
+  (declare (xargs :guard (and (integerp prior) (integerp uncertain))))
+  (if (equal action :joined) prior uncertain))
+
+(defthm fn-ort-log-close-held-is-uncertain
+  (implies (not (equal action :joined))
+           (equal (fn-ort-log-close-exit prior uncertain action) uncertain)))
+
+(defun fn-ort-report-close-action (log-action journal-observation)
+  (declare (xargs :guard t))
+  (if (and (equal log-action :joined)
+           (or (equal journal-observation :closed)
+               (equal journal-observation :absent)))
+      :joined
+    :held))
+
+(defthm fn-ort-report-close-requires-journal-settlement
+  (implies (equal (fn-ort-report-close-action log-action observation) :joined)
+           (and (equal log-action :joined)
+                (or (equal observation :closed) (equal observation :absent))))
+  :rule-classes nil)
+
 (defun fn-ort-drain-step-counted (s0 s seconds pending intake-fenced producers-settled)
   (declare (xargs :guard t))
   (cond ((and (equal intake-fenced t) (equal producers-settled t)
@@ -52,4 +91,6 @@
                    s0 s seconds pending intake-fenced producers-settled) :wait)))
 
 (in-theory (disable fn-ort-drain-step-counted fn-ort-intake-action
-                    fn-ort-fenced-input-consumed fn-ort-window-step))
+                    fn-ort-fenced-input-consumed fn-ort-window-step
+                    fn-ort-log-close-action fn-ort-log-close-exit
+                    fn-ort-report-close-action))

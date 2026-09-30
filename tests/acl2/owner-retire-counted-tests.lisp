@@ -1,6 +1,31 @@
 (in-package "ACL2")
 (include-book "../../books/owner-retire-counted")
 
+(assert-event
+ (and (equal (fn-ort-report-close-action :joined :closed) :joined)
+      (equal (fn-ort-report-close-action :joined :absent) :joined)
+      (not (equal :held :joined))
+      (equal (fn-ort-report-close-action :held :closed) :held)
+      (not (member-equal :uncertain '(:closed :absent)))
+      (equal (fn-ort-report-close-action :joined :uncertain) :held)))
+
+; Physical join observation and every zero-work observation are present.
+(assert-event
+ (and (equal (fn-ort-log-close-action :joined 0 0 nil) :joined)
+      (equal (fn-ort-log-close-action :absent 0 0 nil) :joined)
+      (equal (fn-ort-log-close-exit 0 75 :joined) 0)))
+; Mutation witnesses remove one settlement observation at a time while
+; preserving every other input, and affirmatively fail joined disposition.
+(assert-event
+ (and (not (member-equal :timeout '(:joined :absent)))
+      (equal (fn-ort-log-close-action :timeout 0 0 nil) :held)
+      (not (equal 1 0))
+      (equal (fn-ort-log-close-action :joined 1 0 nil) :held)
+      (equal (fn-ort-log-close-action :joined 0 1 nil) :held)
+      (not (equal t nil))
+      (equal (fn-ort-log-close-action :joined 0 0 t) :held)
+      (equal (fn-ort-log-close-exit 0 75 :held) 75)))
+
 ; Reachable input observation: before window, zero with both producer fences.
 (assert-event
  (and (< (fn-osd-elapsed nil nil) 10000)

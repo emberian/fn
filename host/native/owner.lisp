@@ -4213,13 +4213,12 @@ the node retires (row S9), refuse it by name instead."
 ;;; (books/native-retire.lisp fn-nret-request) starts the retire: from then
 ;;; on new connections are refused by name (host/native/owner.lisp
 ;;; fnn-owner-launch-client), the pull service stops, and at each accept-loop
-;;; tick ACL2 decides from a scheduler snapshot and the owner's feed table
-;;; whether the drain goes on (books/owner-retire.lisp fn-oret-drain-step,
-;;; which never waits past the window).  When it ends the owner takes its
-;;; final checkpoint, writes ACL2's report to STORE/retire-report.txt (fenced
-;;; before the stop, so the operator reads it from the stopped node) and
-;;; stops as a SIGTERM stops it: the POSTs in flight answered first
-;;; (fnn-owner-drain-service), then the fence.
+;;; tick ACL2 checks the independent drain window, then carried pending
+;;; under the owner mutex (fn-ort-window-step and fn-ort-drain-step-counted).
+;;; Producer settlement remains unestablished, so zero alone cannot end the
+;;; drain. The deadline stops intake and starts SIGTERM cleanup. Report
+;;; observation follows worker and committer joins; definite log/journal
+;;; settlement, funded bounded rendering and final checkpoint remain OPEN.
 (defun fnn-owner-retire-report-path (service)
   (fnn-join (fnn-store-root (fnn-owner-service-store service))
             (fnn-octets-string (fnn-octets (fnn-core 'fn-nret-report-file-name)))))
@@ -4271,8 +4270,9 @@ renamed into place, the directory fenced."
     (when (and retire (not *fnn-sigterm-requested*)
                (not (fnn-owner-service-stopping service)))
       (destructuring-bind (s0 seconds) retire
-        (let* ((s (progn (fnn-owner-space-preobserve service t)
-                         (fnn-owner-sched-snapshot service)))
+        ;; The drain-window observation needs only recorded time. Do not put
+        ;; a filesystem free-space I/O observation ahead of that deadline.
+        (let* ((s (fnn-owner-sched-snapshot service))
                (window-step (fnn-core 'fn-ort-window-step s0 s seconds))
                (step (if (eq window-step :deadline)
                          window-step
@@ -4289,14 +4289,23 @@ renamed into place, the directory fenced."
             (setf *fnn-sigterm-requested* t)))))))
 
 (defun fnn-owner-retire-final-report (service)
-  "All producer joins and close hooks precede this frozen observation."
+  "Observe after worker/committer cleanup; complete settlement remains OPEN."
   (let ((step (third (fnn-owner-service-retire service))))
     (when step
-      ;; No concurrent owner mutation remains. This direct core call avoids
+      ;; Worker/committer joins precede this call; log settlement is still OPEN.
+      ;; This direct core call avoids
       ;; reentering the stopped service's scheduling gate.
       (let ((report (fnn-owner-core 'fn-owner-retire-report step)))
-        (fnn-owner-retire-write-report service report)
-        (fnn-log-line (fnn-core 'fn-nret-end-log-line step))))))
+        (fnn-owner-retire-write-report service report)))))
+
+(defun fnn-owner-log-settlement ()
+  "Observe the physical join and let ACL2 decide descriptor settlement."
+  (let ((observation (fnn-log-writer-stop)))
+    (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+      (fnn-core 'fn-ort-log-close-action observation
+                (fnn-core 'fn-log-sink-pending-lines *fnn-log-sink*)
+                (fnn-core 'fn-log-sink-pending-octets *fnn-log-sink*)
+                (and *fnn-log-queue-head* t)))))
 
 (defun fnn-owner-wait-workers (service)
   "Join client workers before closing any shared journal or Store object."
@@ -5374,10 +5383,15 @@ torn last entry follows.  Answers the offset the writer resumes at."
       (fnn-close rfd))))
 
 (defun fnn-owner-journal-close ()
-  "After the writer stopped: close the journal's descriptor."
+  "After the writer stopped: observe descriptor close without silent release."
   (let ((fd *fnn-journal-fd*))
-    (setq *fnn-journal-fd* nil *fnn-journal-w* nil)
-    (when fd (ignore-errors (fnn-close fd)))))
+    (if fd
+        (handler-case
+            (progn (fnn-close fd)
+                   (setq *fnn-journal-fd* nil *fnn-journal-w* nil)
+                   :closed)
+          (error () :uncertain))
+      :absent)))
 
 (defun fnn-owner-open-log (path)
   (fnn-open path
@@ -5551,6 +5565,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
   (setq *fnn-owner-measure*
         (equal (sb-ext:posix-getenv "FN_OWNER_MEASURE") "1"))
   (let ((service nil) (listener nil) (tls-listener nil) (more-listeners nil)
+        (log-close-action nil)
         (old-active *fnn-sigterm-owner-active*)
         (old-requested *fnn-sigterm-requested*)
         (old-wakeup-fd *fnn-sigterm-wakeup-fd*))
@@ -5698,16 +5713,34 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                     (dolist (hook (fnn-owner-service-close-hooks service))
                       (ignore-errors (funcall hook service)))
                     (fnn-owner-feed-close-all service)
-                    (fnn-owner-retire-final-report service)
-                    (fnn-store-close (fnn-owner-service-store service)))
+                    (let ((step (third (fnn-owner-service-retire service))))
+                      (when step
+                        (fnn-log-line (fnn-core 'fn-nret-end-log-line step))))
+                    (setq log-close-action (fnn-owner-log-settlement))
+                    (when (eq log-close-action :joined)
+                      (setq log-close-action
+                            (fnn-core 'fn-ort-report-close-action log-close-action
+                                      (fnn-owner-journal-close)))
+                      (when (eq log-close-action :joined)
+                        (fnn-owner-retire-final-report service)))
+                    (fnn-store-close (fnn-owner-service-store service))
+                    (unless (eq log-close-action :joined)
+                      (return-from fnn-owner-run
+                        (fnn-core 'fn-ort-log-close-exit
+                                  (fnn-owner-service-exit-code service)
+                                  +fnn-exit-uncertain+ log-close-action))))
                (setq *fnn-sigterm-wakeup-fd* nil)
                (dolist (extra more-listeners) (fnn-socket-shut extra))
                (when tls-listener (fnn-socket-shut tls-listener))
                (when listener (fnn-socket-shut listener)))))
       ;; Drain and stop the writer before the caller closes `[log] path'.
       (setq *fnn-owner-time-service* nil)
-      (fnn-log-writer-stop)
-      (fnn-owner-journal-close)
+      (unless log-close-action
+        (setq log-close-action (fnn-owner-log-settlement)))
+      ;; A timed-out writer still owns the journal descriptor. Keep it live
+      ;; until process death rather than closing underneath that producer.
+      (when (eq log-close-action :joined)
+        (fnn-owner-journal-close))
       (setq *fnn-sigterm-wakeup-fd* old-wakeup-fd
             *fnn-sigterm-requested* old-requested
             *fnn-sigterm-owner-active* old-active))))

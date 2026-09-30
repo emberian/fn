@@ -1076,21 +1076,27 @@ fn-log-sink-close-wait-seconds.  A writer still blocked on its sink then is
 left running (lines keep being offered and dropped, never waited on) and the
 process exits without it: what it had queued, a wedged sink would lose
 anyway."
+  ;; Return only the physical join observation. A caller must not turn the
+  ;; bounded wait into a claim that the journal producer relinquished its job.
   (let ((thread (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
                   (when *fnn-log-writer*
                     (fnn-log-queue-push (list :stop))
                     *fnn-log-writer*))))
-    (when thread
+    (if thread
       (multiple-value-bind (value outcome)
           (sb-thread:join-thread thread
                                  :timeout (fnn-core 'fn-log-sink-close-wait-seconds)
                                  :default :timeout)
         (declare (ignore value))
-        (unless (eq outcome :timeout)
-          (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
-            (setq *fnn-log-writer* nil
-                  *fnn-log-queue-head* nil
-                  *fnn-log-queue-tail* nil)))))))
+        (if (eq outcome :timeout)
+            :timeout
+          (progn
+            (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+              (setq *fnn-log-writer* nil
+                    *fnn-log-queue-head* nil
+                    *fnn-log-queue-tail* nil))
+            :joined)))
+      :absent)))
 
 (defun fnn-log-swap-fd (fd)
   "Install FD as the service log: through the writer's queue while it runs

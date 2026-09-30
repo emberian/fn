@@ -51,6 +51,15 @@ disk and scratch funding. No old concurrent versions are retained solely
 for this report. Scalar widths, admission funding, mutation preservation,
 the producer fence and report streaming all remain open.
 
+The current source shutdown seam distinguishes the physical log writer's
+`:joined`, `:absent` and `:timeout` observations. ACL2's
+`fn-ort-log-close-action` permits journal close and report observation only
+after a joined/absent writer with zero accounted lines/octets and no queued
+job. A held writer retains its journal descriptor, suppresses report
+publication and returns uncertain through `fn-ort-log-close-exit`. Literal
+mutation fixtures cover each unsettled observation. These source admissions
+do not establish the complete native producer fence or funded report.
+
 ## Unactivated cursor contract
 
 `books/owner-retire-cursor.lisp` is an independently admitted source
