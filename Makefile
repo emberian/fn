@@ -501,6 +501,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/payload-table-runtime-workspace-tests \
 	books/decoded-window-profile \
 	books/decoded-window-initial-funding-domain \
+	books/decoded-window-initial-source-trace \
+	books/decoded-window-initial-source-counts \
+	books/decoded-window-initial-retained-state \
+	tests/acl2/decoded-window-initial-source-counts-tests \
 	tests/acl2/decoded-window-initial-funding-domain-tests \
 	tests/acl2/decoded-window-profile-tests \
 	tests/acl2/payload-table-runtime-domain-tests \

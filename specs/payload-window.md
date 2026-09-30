@@ -337,3 +337,27 @@ Four complete premise-removal tests and an actual reset/pull/header-produced
 table positive accompany the weakened theorem. The central assumptions
 umbrella inclusion is a mandatory separate convergence patch before a
 compliance/completion claim; full INIT/job demand remains open.
+
+
+The actual initializer now has a generated trusted-source observer with a
+complete returned-value/effects projection. Its source roster establishes
+35 explicit constructor cells,21 decoder field writes,3 ceiling sites,
+69094 requested reserve octets and69030 populated history/table octets.
+Observer-created trace/MV lists are excluded from the target constructor count.
+Every typed buffer operation, field write and immutable preset lookup remains
+an explicit borrowed site; this roster does not price those transitive runtime
+implementations as zero. Under the selected native offset profile, the digest
+byte/block ceilings and temporary/final word counts fit their proved scalar
+bounds. No typed-token hypothesis is needed for that normalized digest scalar
+component.
+
+Actual begin preserves the inactive64-frame array. Concrete buffer reserve
+keeps an existing larger vector, or grows exactly to the requested capacity;
+only in the growing branch are the old and new payload capacities bounded by
+twice the request. Logical fixed fill length does not authorize discarding
+older retained vector/frame charges. Complete fresh/shipped source positives,
+a trace mutation, a reachable prior split frame, larger retained buffer and
+literal offset/natural premise removals accompany the component. The actual
+installed Store/CP7/pool/source lineage, native callbacks/constructors/frames,
+cache/GC/lifetime and activation-to-definite-cleanup demand remain open before
+INITIAL admission.
