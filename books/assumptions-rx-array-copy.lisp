@@ -20,6 +20,9 @@
          (nthcdr count destination))
   :hints (("Goal" :induct (fn-rxac-copy-prefix source destination count))))
 
+; STABLE names the environment obligation: immutable source and exclusive
+; destination mutation by this primitive for the duration of the operation.
+; A supplied T is not evidence of either physical fact.
 (defun fn-rxac-domain-p (source-id destination-id source destination old-fill end stable)
   (and source-id destination-id (not (equal source-id destination-id))
        (equal stable t)
@@ -29,7 +32,8 @@
 
 ; Observation: status, source identity, destination identity, source bytes,
 ; destination bytes, resulting fill, capacity, association, quarantined.
-; The association names the already registered provider/carry/pool context.
+; Association is immutable issued identity context: token/instance/backing/root.
+; It excludes mutable readiness/capacity; uncertain fencing may clear capacity.
 ; It is borrowed unchanged, not a host-created authority or capacity receipt.
 (defun fn-rxac-observation-contract-p
   (observation source-id destination-id source destination old-fill end association outcome)
@@ -53,6 +57,8 @@
          (:uncertain
           ; A partial copy or escaped fill may have changed bytes or fill.
           ; No rollback, successful publication, retry or refund follows.
+          ; Quarantine must block reuse, via provider or composed service fence;
+          ; an attempted fence that itself escapes is not an effective fence.
           (and (fn-rxac-bytes-p (nth 4 observation))
                (equal (len (nth 4 observation)) (len destination))
                (natp (nth 5 observation))
