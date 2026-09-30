@@ -306,6 +306,11 @@
 ;; `operator init` publishes the empty store by the same program (PKT-647):
 ;; fnn-command-init-published asks fn-bs-init-pub-admission.
 (include-book "books/store-init-publication")
+(include-book "books/consumer-remote-buffer")
+(include-book "books/consumer-remote-dispatch")
+(include-book "books/consumer-remote-query-profile")
+(include-book "books/consumer-remote-operation-source")
+(include-book "books/consumer-remote-event-buffer")
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/page-read-host.lisp" :ld-error-action :error)
 (ld "host/page-executor-host.lisp" :ld-error-action :error)
@@ -348,6 +353,7 @@
 (ld "host/reader-host.lisp" :ld-error-action :error)
 (ld "host/owner-host.lisp" :ld-error-action :error)
 (ld "host/page-read-host.lisp" :ld-error-action :error)
+(ld "host/consumer-remote-host.lisp" :ld-error-action :error)
 (ld "host/native-config-host.lisp" :ld-error-action :error)
 (ld "host/native-auth-host.lisp" :ld-error-action :error)
 (ld "host/native-auth-admin-host.lisp" :ld-error-action :error)
@@ -497,6 +503,7 @@
         (load "host/native/control.lisp")
         (load "host/native/topic-local.lisp")
         (load "host/native/consumer-local.lisp")
+        (load "host/native/consumer-remote.lisp")
         (load "host/native/hybrid-control.lisp")
         ; Public operator grammar follows the owner so its normalized run
         ; callback is present; it can call the already-loaded private admin

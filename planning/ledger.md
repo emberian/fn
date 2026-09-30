@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2161 |
-| Certification roots in the Makefile | 1977 |
-| Books inside the root closure | 2104 |
-| `defthm` and `defthmd` events | 32282 |
-| `defun` events | 20576 |
+| Books read | 2186 |
+| Certification roots in the Makefile | 2002 |
+| Books inside the root closure | 2134 |
+| `defthm` and `defthmd` events | 32329 |
+| `defun` events | 20681 |
 | Functions with verified guards | 3709 |
-| Functions declared `:verify-guards nil` and never verified | 2509 |
-| Functions left at the default with an explicit guard | 11364 |
+| Functions declared `:verify-guards nil` and never verified | 2529 |
+| Functions left at the default with an explicit guard | 11449 |
 | Functions left at the default with no guard | 2994 |
-| `assert-event` checks | 24363 |
+| `assert-event` checks | 24426 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 160 |
-| Theorems flagged SUSPECT by shape | 1289 |
+| Theorems flagged SUSPECT by shape | 1291 |
 | Export-hygiene warnings | 381 |
 | Enabled-projection warnings | 69 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2809 |
-| Host-names warnings | 2339 |
+| Include-hygiene warnings | 2817 |
+| Host-names warnings | 2366 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -414,19 +414,19 @@ that `make certify` requests.
 | `books/connection-receiver-source.lisp` | closure | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/consumer-account-adoption-driver.lisp` | root | 0 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/consumer-account-adoption-state.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
-| `books/consumer-account-adoption.lisp` | - | 10 | 27 | 0/0/27/0 | 0 | 0 | 0 |
+| `books/consumer-account-adoption.lisp` | closure | 10 | 27 | 0/0/27/0 | 0 | 0 | 0 |
 | `books/consumer-account-availability.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/consumer-account-binding-codec-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/consumer-account-binding-codec.lisp` | root | 0 | 8 | 0/0/8/0 | 0 | 0 | 0 |
-| `books/consumer-account-carried.lisp` | - | 14 | 15 | 1/0/14/0 | 0 | 0 | 0 |
+| `books/consumer-account-carried.lisp` | closure | 14 | 15 | 1/0/14/0 | 0 | 0 | 0 |
 | `books/consumer-account-carries-state.lisp` | - | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/consumer-account-config-commit.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/consumer-account-config-marker-invariants.lisp` | root | 24 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/consumer-account-config-marker.lisp` | root | 0 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/consumer-account-config-preparation.lisp` | root | 0 | 10 | 0/0/10/0 | 0 | 0 | 0 |
-| `books/consumer-account-index-carry.lisp` | - | 20 | 13 | 0/1/12/0 | 0 | 0 | 0 |
-| `books/consumer-account-index-shape.lisp` | - | 24 | 10 | 0/0/10/0 | 0 | 0 | 3 |
-| `books/consumer-account-index.lisp` | - | 7 | 6 | 0/0/6/0 | 0 | 0 | 0 |
+| `books/consumer-account-index-carry.lisp` | closure | 20 | 13 | 0/1/12/0 | 0 | 0 | 0 |
+| `books/consumer-account-index-shape.lisp` | closure | 24 | 10 | 0/0/10/0 | 0 | 0 | 3 |
+| `books/consumer-account-index.lisp` | closure | 7 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/consumer-account-input.lisp` | root | 0 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/consumer-account-state.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/consumer-account-transaction-driver.lisp` | root | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
@@ -450,6 +450,21 @@ that `make certify` requests.
 | `books/consumer-publication-budget.lisp` | - | 5 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/consumer-publication-charge.lisp` | - | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/consumer-reason.lisp` | root | 21 | 28 | 5/0/23/0 | 0 | 0 | 2 |
+| `books/consumer-remote-buffer.lisp` | root | 1 | 15 | 0/0/15/0 | 0 | 0 | 0 |
+| `books/consumer-remote-completion-model.lisp` | root | 2 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/consumer-remote-completion.lisp` | root | 0 | 6 | 0/0/6/0 | 0 | 0 | 0 |
+| `books/consumer-remote-dispatch.lisp` | root | 3 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/consumer-remote-event-buffer.lisp` | root | 1 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/consumer-remote-event-codec.lisp` | root | 6 | 16 | 0/0/16/0 | 0 | 0 | 0 |
+| `books/consumer-remote-event-model.lisp` | root | 4 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/consumer-remote-fields.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/consumer-remote-ingress.lisp` | root | 3 | 6 | 0/0/6/0 | 0 | 0 | 0 |
+| `books/consumer-remote-operation-source.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/consumer-remote-query-profile-model.lisp` | root | 3 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/consumer-remote-query-profile.lisp` | root | 0 | 8 | 0/0/8/0 | 0 | 0 | 0 |
+| `books/consumer-remote-scope-model.lisp` | root | 21 | 6 | 0/5/1/0 | 0 | 0 | 2 |
+| `books/consumer-remote-scope.lisp` | root | 0 | 6 | 0/0/6/0 | 0 | 0 | 0 |
+| `books/consumer-remote-wire-charge.lisp` | root | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/consumer-store-events.lisp` | root | 1 | 13 | 13/0/0/0 | 0 | 0 | 0 |
 | `books/consumer-store-invariants.lisp` | root | 101 | 5 | 0/5/0/0 | 0 | 0 | 8 |
 | `books/consumer-store-projection.lisp` | root | 2 | 4 | 4/0/0/0 | 0 | 0 | 0 |
@@ -1620,6 +1635,16 @@ that `make certify` requests.
 | `tests/acl2/consumer-poll-projection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 0 | 0 |
 | `tests/acl2/consumer-position-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 48 | 10 | 0 |
 | `tests/acl2/consumer-reason-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 58 | 1 | 0 |
+| `tests/acl2/consumer-remote-buffer-tests.lisp` | root | 1 | 2 | 0/0/2/0 | 2 | 0 | 0 |
+| `tests/acl2/consumer-remote-completion-tests.lisp` | root | 0 | 15 | 0/12/3/0 | 19 | 0 | 0 |
+| `tests/acl2/consumer-remote-event-buffer-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 4 | 0 | 0 |
+| `tests/acl2/consumer-remote-event-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 7 | 0 | 0 |
+| `tests/acl2/consumer-remote-ingress-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 10 | 0 | 0 |
+| `tests/acl2/consumer-remote-operation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 1 | 0 | 0 |
+| `tests/acl2/consumer-remote-query-profile-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
+| `tests/acl2/consumer-remote-scope-tests.lisp` | root | 0 | 4 | 0/2/2/0 | 7 | 0 | 0 |
+| `tests/acl2/consumer-remote-transaction-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
+| `tests/acl2/consumer-remote-wire-charge-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 4 | 0 | 0 |
 | `tests/acl2/consumer-store-events-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 6 | 1 | 0 |
 | `tests/acl2/consumer-store-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 34 | 4 | 0 |
 | `tests/acl2/consumer-store-node-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 32 | 0 | 0 |
@@ -2483,6 +2508,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-crf-withdrawn-of-with-numbers` | `books/catalog-refresh.lisp` | 79 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-crl-payload-of-with-context` | `books/catalog-relation.lisp` | 344 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-crl-payload-of-with-withdrawn` | `books/catalog-relation.lisp` | 339 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-crsm-groups-of-atom` | `books/consumer-remote-scope-model.lisp` | 101 | branch-of-definition: the hypothesis is a branch test of fn-crsm-groups and the conclusion is that branch's value |
+| `fn-crsm-hidden-first` | `books/consumer-remote-scope-model.lisp` | 151 | definition-restated: the conclusion is the body of fn-mod-queue-hiddenp |
 | `fn-csi-files-of-update-replayed` | `books/consumer-store-invariants.lisp` | 85 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-csi-files-of-with-consumer` | `books/consumer-store-invariants.lisp` | 79 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-csi-files-of-with-topic` | `books/consumer-store-invariants.lisp` | 73 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

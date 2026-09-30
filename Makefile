@@ -1989,7 +1989,32 @@ ACL2_BOOKS ?= books/defrecord \
     books/served-plan-shape \
     books/served-plan-window \
     books/served-render-holder \
-    books/store-node-files-selector
+    books/store-node-files-selector \
+    books/consumer-remote-buffer \
+    books/consumer-remote-completion-model \
+    books/consumer-remote-completion \
+    books/consumer-remote-dispatch \
+    books/consumer-remote-event-buffer \
+    books/consumer-remote-event-codec \
+    books/consumer-remote-event-model \
+    books/consumer-remote-fields \
+    books/consumer-remote-ingress \
+    books/consumer-remote-operation-source \
+    books/consumer-remote-query-profile-model \
+    books/consumer-remote-query-profile \
+    books/consumer-remote-scope-model \
+    books/consumer-remote-scope \
+    books/consumer-remote-wire-charge \
+    tests/acl2/consumer-remote-buffer-tests \
+    tests/acl2/consumer-remote-completion-tests \
+    tests/acl2/consumer-remote-event-buffer-tests \
+    tests/acl2/consumer-remote-event-tests \
+    tests/acl2/consumer-remote-ingress-tests \
+    tests/acl2/consumer-remote-operation-tests \
+    tests/acl2/consumer-remote-query-profile-tests \
+    tests/acl2/consumer-remote-scope-tests \
+    tests/acl2/consumer-remote-transaction-tests \
+    tests/acl2/consumer-remote-wire-charge-tests
 
 .PHONY: host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none

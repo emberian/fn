@@ -738,3 +738,63 @@ passed in their stated scopes, followed by native signed poll, advancing
 ACK/reopen and fenced-clone cursor checks on `1d26e01f`. General authenticated
 multi-group selection and the two-store trace remain open; the one-node
 two-consumer transaction/ACK join is CNS-002.
+
+The additive FNCR source caller captures the real current CP, dense event count,
+canonical process coordinate, ready account publication and installed owner
+post-config in the same serialized span. Every scope tick reauthenticates the
+explicit login and rechecks its account creation, namespace/revision and current
+configured generation. The resettable canonical coordinate is not source
+freshness or custody. A genuine retained-source issuer and its revalidation are
+still required before article lookup or a mutation.
+
+The source scope producer borrows the installed READ table, served groups and
+closed moderation entries. It follows first-match READ precedence and hides a
+shared queue unless the named login moderates every queued group. One access
+row, served group, closed entry, moderator cell or output spine cell is processed
+per tick. The carried key must agree before any such step. Its logical
+continuation refinement and positive/hypothesis-removal source witnesses are
+implemented; no whole configured table is reconstructed or revalidated.
+
+The concrete FNCR source decoder locates the definition blob in a retained
+client octet buffer. Fixed-width fields are parsed separately; group count is
+checked against the supported profile before allocating a name, and each group
+step preflights its codec width before copying or grammar work. Stored query
+order is canonical and strictly increasing, which also rejects duplicates in
+linear total work. There is no historical article-grammar 65535 group ceiling
+on this producer. A truncated stream is refused rather than silently shortened.
+These are source components of CNS-011. The actual digest/parser refinement,
+installed transport admission/custody, durable variable CPE publication and full
+native endpoint/scenarios remain open.
+
+The selected source registration cursor compares one stored/request group cell
+per tick; new-registration capacity counts the borrowed CP table one cell per
+tick. A retry with the exact current durable account creation and ordered query
+keeps its old query version, registration epoch and position. A changed register
+refuses with rebase-required. Explicit new/rebased definitions use consumerID as
+the opaque queryID and the maintained fresh CP registration epoch as qver. The
+current authority revision and account creation remain separate scope fields.
+
+The source definition cursor carries its exact uint16-name wire octet sum and
+query count during the existing accept/reverse pass. FNCE version4, codes6/7,
+represents remote-register/remote-rebase independently of local FNCE1, account
+adoption FNCE2 and signing binding FNCE3. Its bounded producer emits one fixed
+header or one <=256-octet name chunk per step, and refuses changed source keys or
+mismatched remaining count/charge. Chunk residual and measure correspondence
+are source theorems; the full logical decoder is a recovery reference. It is
+not called on the served path. Concrete buffer/replay refinement, exact carried
+Store budget/atomic finish and installed source custody remain open. A consumer
+query profile cardinality must be independently configured/validated; it cannot
+be inferred from per-article groups or a historical 65535 codec ceiling.
+
+The required operator dimension is the typed current-C limit
+`max-consumer-query-groups`, separate from article group cardinality and the
+fixed storage-profile format. The bounded producer borrows the current limit
+tail, examines one row per tick, and preserves first-match semantics. It
+refuses changed current-source coordinates or Store R, and returns unavailable
+when the row is absent. Accepted source policy requires a valid FNCR field
+grammar and payload width plus the FNCE4 worst-case record charge below the
+actual admitted Store R. No arbitrary default or 65535 query ceiling applies.
+This policy is not allocation authority: selected host representation and
+retained current-source custody require their genuine installed issuer, which
+is currently unavailable. The existing typed C delta codec carries the row;
+atomic current-C publication remains the actual collector's responsibility.

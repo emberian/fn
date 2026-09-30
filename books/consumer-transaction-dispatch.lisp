@@ -1,8 +1,9 @@
-; One fnce namespace: local1, account2, binding3, reserved remote4.
+; One fnce namespace: local1, account2, binding3, remote4.
 ; Dispatch is by the bounded version field, never the shared magic alone.
 (in-package "ACL2")
 (include-book "consumer-store-events")
 (include-book "consumer-account-binding-codec")
+(include-book "consumer-remote-event-codec")
 
 (defun fn-cae-eventp (event)
  (declare (xargs :guard t))
@@ -18,9 +19,8 @@
   (1 (fn-cpe-decode-exact bytes))
   (2 (fn-cac-decode-exact bytes))
   (3 (fn-cab-decode-exact bytes))
-  ; The separately owned bounded remote parser must replace this arm in its
-  ; coherent Store packet. Never interpret its bytes as account authority.
-  (4 '(:error :remote-consumer-decoder-unavailable))
+  ; Logical recovery reference; served located parsing is separately funded.
+  (4 (fn-crev-decode-exact bytes))
   (otherwise '(:error :consumer-envelope-version))))
 
 (defthm fn-cae-event-shape
