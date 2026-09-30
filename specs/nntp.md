@@ -1931,6 +1931,14 @@ CRLFCRLF search and body framing run independently of header rejection:
 body NUL or an unterminated final body line produces zero count even when
 the article parser accepts those opaque body octets.
 
+The logical value invariant relates a raw source slice to the actual parser's
+unfolded value after the one-SP rule and `fn-nov-scrub`. The actual value and
+fold-byte transitions preserve it; a complete physical CRLF pair preserves
+the value, and the completed line endpoint identifies the normalized span.
+Normalization also commutes with the projection's first-hit update, keeping
+a present empty value distinct from an absent column. These component
+theorems do not yet establish whole-header correspondence.
+
 This component is not served yet. `fn-lpc-agreesp` states the full remaining
 comparison with actual `fn-hnov-of` and `fn-hf-body-lines-of`; it is a
 predicate, not a proved theorem. General header-verdict/field refinement,
