@@ -1065,3 +1065,15 @@ seven-field carries. It creates empty adopted/pending account metadata and no
 usable authority namespace or account authentication root. Nonempty restore
 must retain metadata established by the same actual durable stage replay; seven
 field child sizes alone cannot reconstruct maintained row/trie annotations.
+
+The complete account publication relation is proof-only. Ordered authority rows
+correspond to exact maintained trie bindings, valid credentials and their encoded
+descriptors; complete reconstruction excludes phantom entries. Credentials are
+exactly the live-row projection. One-cell preparation preserves the complete row
+sequence while extending its prepared credential prefix. Seal preserves the
+relation, and fence publishes the complete root under the explicit agreement of
+pending and preparation watermarks. The actual current-binding lookup belongs to
+the adopted rows and returns the exact requested live account. These constituent
+proofs do not establish universal begin/stage construction, carried size metadata,
+cold provenance, funding or actual owner publication. Served callers consume the
+maintained relation; they never execute its whole-graph predicates.
