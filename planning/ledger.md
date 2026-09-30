@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2035 |
-| Certification roots in the Makefile | 1858 |
-| Books inside the root closure | 1957 |
-| `defthm` and `defthmd` events | 31425 |
-| `defun` events | 20038 |
-| Functions with verified guards | 3695 |
-| Functions declared `:verify-guards nil` and never verified | 2436 |
-| Functions left at the default with an explicit guard | 11007 |
-| Functions left at the default with no guard | 2900 |
-| `assert-event` checks | 24180 |
+| Books read | 2059 |
+| Certification roots in the Makefile | 1875 |
+| Books inside the root closure | 1974 |
+| `defthm` and `defthmd` events | 31494 |
+| `defun` events | 20138 |
+| Functions with verified guards | 3696 |
+| Functions declared `:verify-guards nil` and never verified | 2445 |
+| Functions left at the default with an explicit guard | 11084 |
+| Functions left at the default with no guard | 2913 |
+| `assert-event` checks | 24238 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
-| Theorems flagged SUSPECT by shape | 1281 |
+| Theorems flagged SUSPECT by shape | 1282 |
 | Export-hygiene warnings | 381 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2653 |
-| Host-names warnings | 2259 |
+| Include-hygiene warnings | 2663 |
+| Host-names warnings | 2271 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -400,12 +400,22 @@ that `make certify` requests.
 | `books/config.lisp` | root | 115 | 286 | 33/0/253/0 | 0 | 0 | 1 |
 | `books/connection-budget.lisp` | root | 38 | 35 | 0/0/35/0 | 0 | 0 | 3 |
 | `books/connection-receiver-source.lisp` | - | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
+| `books/consumer-account-adoption-driver.lisp` | root | 0 | 8 | 0/0/8/0 | 0 | 0 | 0 |
+| `books/consumer-account-adoption-state.lisp` | root | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/consumer-account-adoption.lisp` | - | 10 | 27 | 0/0/27/0 | 0 | 0 | 0 |
+| `books/consumer-account-binding-codec-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/consumer-account-binding-codec.lisp` | root | 0 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/consumer-account-carried.lisp` | - | 14 | 15 | 1/0/14/0 | 0 | 0 | 0 |
 | `books/consumer-account-carries-state.lisp` | - | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/consumer-account-config-commit.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/consumer-account-config-marker-invariants.lisp` | root | 24 | 0 | 0/0/0/0 | 0 | 0 | 1 |
+| `books/consumer-account-config-marker.lisp` | root | 0 | 12 | 0/0/12/0 | 0 | 0 | 0 |
+| `books/consumer-account-config-preparation.lisp` | root | 0 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/consumer-account-index-carry.lisp` | - | 20 | 13 | 0/1/12/0 | 0 | 0 | 0 |
 | `books/consumer-account-index-shape.lisp` | - | 24 | 10 | 0/0/10/0 | 0 | 0 | 3 |
 | `books/consumer-account-index.lisp` | - | 7 | 6 | 0/0/6/0 | 0 | 0 | 0 |
+| `books/consumer-account-input.lisp` | root | 0 | 6 | 0/0/6/0 | 0 | 0 | 0 |
+| `books/consumer-account-transaction-driver.lisp` | root | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/consumer-artifact-retry.lisp` | root | 21 | 3 | 0/0/2/1 | 0 | 0 | 0 |
 | `books/consumer-authority-codec.lisp` | closure | 23 | 19 | 0/0/19/0 | 0 | 0 | 0 |
 | `books/consumer-authority-revision.lisp` | - | 2 | 3 | 0/0/3/0 | 0 | 0 | 0 |
@@ -575,9 +585,10 @@ that `make certify` requests.
 | `books/hybrid-store-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/hybrid-store.lisp` | closure | 23 | 25 | 2/0/23/0 | 0 | 0 | 1 |
 | `books/ideal.lisp` | root | 9 | 16 | 0/2/14/0 | 0 | 0 | 7 |
+| `books/identity-hex.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/identity-invariants.lisp` | root | 43 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/identity-retain-carried.lisp` | root | 15 | 14 | 12/0/2/0 | 0 | 0 | 1 |
-| `books/identity.lisp` | root | 2 | 22 | 4/0/18/0 | 0 | 0 | 0 |
+| `books/identity.lisp` | root | 2 | 20 | 4/0/16/0 | 0 | 0 | 0 |
 | `books/image-world-dtn.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/image-world-store-test.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/image-world.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -668,6 +679,9 @@ that `make certify` requests.
 | `books/native-retire.lisp` | root | 6 | 15 | 0/0/15/0 | 0 | 0 | 1 |
 | `books/native-statement-material.lisp` | root | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/native-status-columns.lisp` | closure | 23 | 12 | 1/8/3/0 | 0 | 0 | 1 |
+| `books/ninep-fields.lisp` | - | 11 | 8 | 1/0/7/0 | 0 | 0 | 0 |
+| `books/ninep-header.lisp` | - | 1 | 6 | 0/1/5/0 | 0 | 0 | 0 |
+| `books/ninep-version.lisp` | - | 3 | 7 | 0/1/6/0 | 0 | 0 | 0 |
 | `books/nntp-article-block.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/nntp-article-pass.lisp` | root | 19 | 12 | 0/0/10/2 | 0 | 0 | 2 |
 | `books/nntp-auth-fold.lisp` | root | 78 | 4 | 0/3/1/0 | 0 | 0 | 0 |
@@ -1511,6 +1525,12 @@ that `make certify` requests.
 | `tests/acl2/config-stream-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 42 | 0 | 0 |
 | `tests/acl2/config-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 104 | 0 | 0 |
 | `tests/acl2/connection-budget-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 64 | 12 | 0 |
+| `tests/acl2/consumer-account-binding-codec-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 22 | 0 | 0 |
+| `tests/acl2/consumer-account-config-commit-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 4 | 0 | 0 |
+| `tests/acl2/consumer-account-config-marker-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 18 | 0 | 0 |
+| `tests/acl2/consumer-account-config-preparation-tests.lisp` | root | 0 | 3 | 0/1/2/0 | 4 | 0 | 0 |
+| `tests/acl2/consumer-account-input-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 5 | 0 | 0 |
+| `tests/acl2/consumer-account-transaction-driver-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 5 | 0 | 0 |
 | `tests/acl2/consumer-artifact-retry-tests.lisp` | root | 0 | 8 | 0/2/0/6 | 8 | 2 | 0 |
 | `tests/acl2/consumer-bound-tests.lisp` | root | 0 | 23 | 0/11/0/12 | 62 | 5 | 0 |
 | `tests/acl2/consumer-event-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 3 | 0 |
@@ -1695,6 +1715,10 @@ that `make certify` requests.
 | `tests/acl2/native-operator-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 374 | 28 | 0 |
 | `tests/acl2/native-retire-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 31 | 2 | 0 |
 | `tests/acl2/native-status-columns-tests.lisp` | root | 0 | 9 | 0/9/0/0 | 8 | 5 | 0 |
+| `tests/acl2/ninep-fields-tests.lisp` | - | 6 | 6 | 0/0/0/6 | 0 | 0 | 0 |
+| `tests/acl2/ninep-header-tests.lisp` | - | 4 | 4 | 0/0/0/4 | 0 | 0 | 0 |
+| `tests/acl2/ninep-protocol-host-tests.lisp` | - | 2 | 2 | 0/0/0/2 | 0 | 0 | 0 |
+| `tests/acl2/ninep-version-tests.lisp` | - | 7 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `tests/acl2/nntp-article-block-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 17 | 0 | 0 |
 | `tests/acl2/nntp-auth-fold-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 2 | 0 |
 | `tests/acl2/nntp-auth-sasl-tests.lisp` | root | 0 | 21 | 0/4/1/16 | 139 | 26 | 0 |
@@ -2296,6 +2320,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bs-staging-del-durable` | `books/byte-store-keystones.lisp` | 329 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bs-staging-del-durable-records` | `books/byte-store-keystones.lisp` | 367 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bs-unit-of-fn-bs-make` | `books/byte-store.lisp` | 83 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-cacm-values-variant` | `books/consumer-account-config-marker-invariants.lisp` | 184 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-cais-get-preserves-alphabet` | `books/consumer-account-index-shape.lisp` | 119 | preserves-no-subject-call: the statement never calls fn-cais-get or a fn-cais-get- transition |
 | `fn-cais-get-preserves-trie` | `books/consumer-account-index-shape.lisp` | 157 | preserves-no-subject-call: the statement never calls fn-cais-get or a fn-cais-get- transition |
 | `fn-cais-put-preserves-alphabet` | `books/consumer-account-index-shape.lisp` | 124 | preserves-no-subject-call: the statement never calls fn-cais-put or a fn-cais-put- transition |

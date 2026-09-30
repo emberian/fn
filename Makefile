@@ -14,6 +14,23 @@ FN_CERTIFY_JOBS ?= 1
 # its slot: the brief's three-minute rule, with a minute of slack.
 FN_LD_TIMEOUT_SECONDS ?= 240
 ACL2_BOOKS ?= books/defrecord \
+	books/consumer-account-input \
+	books/consumer-account-adoption-driver \
+	books/consumer-account-adoption-state \
+	books/consumer-account-binding-codec \
+	books/consumer-account-binding-codec-invariants \
+	books/consumer-account-config-marker \
+	books/consumer-account-config-marker-invariants \
+	books/identity-hex \
+	books/consumer-account-config-preparation \
+	books/consumer-account-config-commit \
+	books/consumer-account-transaction-driver \
+	tests/acl2/consumer-account-input-tests \
+	tests/acl2/consumer-account-binding-codec-tests \
+	tests/acl2/consumer-account-config-marker-tests \
+	tests/acl2/consumer-account-config-preparation-tests \
+	tests/acl2/consumer-account-config-commit-tests \
+	tests/acl2/consumer-account-transaction-driver-tests \
 	books/owner-connection-state \
 	books/owner-connection-callbacks \
 	books/owner-connection-callback-refinement \

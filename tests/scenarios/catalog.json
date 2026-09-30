@@ -7380,6 +7380,77 @@
         "planning/evidence/bpsec-asb-source-2026-09-30.json"
       ],
       "execution_scope": "ACL2 source grammar tests only; no AES/HMAC execution, key grant, target plan, crypto gate or native receipt."
+    },
+    {
+      "id": "SCN-1031",
+      "title": "Authenticated remote multi-group consumers remain scoped and rebase explicitly across authority and store changes",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "CNS-011"
+      ],
+      "steps": [
+        "Round-trip all eight FNCR operations with explicit login and credential; refuse plaintext observation, local FNCT owner frames, private verbs, damaged/unknown-version frames, over-profile groups and mismatched ACK names.",
+        "Run two accounts over the dedicated TLS listener, including matching passwords across accounts, revocation/deletion/recreation and resumed WAIT after revocation.",
+        "Register overlapping immutable multi-group queries atomically; observe a crosspost once, filtered/empty windows and unavailable gaps without false progress.",
+        "Change effective read view, explicitly rebase to zero, reject old query/view/incarnation/registration ACKs, and exercise restore, compaction, reply loss and process death."
+      ],
+      "expected": [
+        "Only consumer operations in FNCR enter the remote dispatcher; FNCT operator dispatch remains private.",
+        "Every operation derives authoritative scope from current committed state, and all accepted metadata writes survive exact replay.",
+        "Accepted, refused and uncertain outcomes remain distinct; no processing or retention claim follows from an ACK."
+      ],
+      "implementation": {
+        "test": "tests/acl2/consumer-remote-codec-tests.lisp",
+        "native": false,
+        "note": "Only the logical request codec component is implemented; full endpoint and all integration steps remain pending."
+      },
+      "evidence": [
+        "tests/acl2/consumer-remote-codec-tests.lisp",
+        "planning/consumer-remote-implementation.md",
+        "books/consumer-remote-position.lisp",
+        "tests/acl2/consumer-remote-position-tests.lisp",
+        "planning/evidence/consumer-remote-components-2026-09-30.md",
+        "books/consumer-authority-carried-result.lisp",
+        "books/consumer-authority-carried-result-model.lisp",
+        "tests/acl2/consumer-authority-carried-result-tests.lisp",
+        "planning/evidence/consumer-authority-carried-result-2026-09-30/source.json",
+        "books/store-tree-size-info.lisp",
+        "books/consumer-checkpoint-carry-map.lisp",
+        "books/consumer-checkpoint-carry-map-model.lisp",
+        "books/consumer-checkpoint-carry-attribution.lisp",
+        "tests/acl2/consumer-checkpoint-carry-map-tests.lisp",
+        "tests/acl2/consumer-checkpoint-carry-attribution-tests.lisp",
+        "planning/evidence/consumer-checkpoint-carry-map-2026-09-30/source.json",
+        "tests/acl2/consumer-account-config-commit-tests.lisp",
+        "tests/acl2/consumer-account-transaction-driver-tests.lisp",
+        "planning/evidence/account-transaction-source-2026-09-30/coordinate.json"
+      ],
+      "execution_scope": "Source request codec and logical remote-position kernel only. Remote10 metadata, atomic kernel proposals, fresh-epoch rebasing and metadata-preserving ACK exist; durable event encoding/reservation and authenticated host dispatch remain unimplemented. Original full remote/multigroup/restore contract remains open. Paired account/config source fixture now executes E begin/row/required binding/seal/resumable preparation and sole typed C commit; verifies same account root/credential/signing config with E frontier unchanged, missing binding and legacy E fence refusal. Source-only. Actual pooled startup/reload remains unavailable before construction; complete runtime/restart and all remote acceptance steps remain pending.",
+      "note": " Selected final local CPE proposal and application now consume the same prepared first-match/removal instead of table scans; exact original decision/application boundary and local8/remote10 ACK canonical carry proofs have executable literal teeth. Four local carried outcomes execute against complete fixed5 annotation, but whole fixed5 completion preservation, actual current-source/all-writer establishment, profile/quantum/retirement funding, carried shared live/cfg-first replay and remote definition producer/endpoint remain open. Remote register/rebase explicitly unavailable at this component until the bounded parsed definition is integrated. Paired guarded account/config source now retains one actual decision as full6 CP7/root/fence-count/metadata5/rootcarry. Actual create/delete/tombstone/recreate and config executions preserve complete produced values; canonical namespace40/revision slots and stale/swapped publication rejection execute against the actual bounded availability accessor. Packing facts are existing-boundary corollaries, not new publication keystones. High Store callback and attributed same-load cfg-first metadata remain NOTREADY; all-writer source/funding/atomic owner installation/remote endpoint and original full Q13 remain OPEN. Bounded checkpoint carry mapper/source boundaries and explicit parser child-coverage teeth pass; ghost infos are not wire observations. Full CP7 attributed metadata, retained root/policy, cfg-first caller/source/funding and endpoint remain open. Normal affected-root certification establishes the bounded actual account candidate feed/tick denotation and complete ready output with literal first-source duplicate, oversized-name/refusal and selected-row codec witnesses (certify-20260930T194919Z-473745; 51 subjects,45 matching cached,6 fresh). Global ordered-input invariant, signing provenance, request/job admission, typed C account/config publication, same-pass configured cold replay and endpoint remain open; PRF1140 planned."
+    },
+    {
+      "id": "SCN-1064",
+      "title": "Read-only9P committed capture with bounded messages and retained sources",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "HST-043"
+      ],
+      "steps": [
+        "Negotiate base9P2000 on scratchloopback with tinymsize; attach a genuinely issued committed capture, walk groups/localnumber and by-id paths, page directory stat entries and read exact source ranges.",
+        "Commit a new article while old fids hold the original capture; old mount stays fixed until remount. Refuse unsupported writes/auth/extensions appropriately and degrade only unservable article framing.",
+        "Flush an outstanding cold read and disconnect/clunk; suppress cancelled reply but retain issued worker/query/source aliases until actual completion and final join."
+      ],
+      "expected": [
+        "Names/numbers/qids/lengths/wirebytes originate in actual core and registered provider; ordinal0 is valid. Exact stored binary/dotted source is neither NNTPstuffed nor whole-store materialized.",
+        "Directory reads honor stable offsets and integral stat entries; message/body size is checked against the supported representable profile before allocation.",
+        "No newercommit appears in retained old capture; no grant/root release from shape, copied payload or Flush alone. Missing genuine issuer remains unavailable."
+      ],
+      "evidence": [
+        "tests/acl2/ninep-header-tests.lisp"
+      ],
+      "scope_note": "Specified native acceptance scenario, not executed. Current source header witnesses are separate from native mounted source/lifetime qualification."
     }
   ]
 }
