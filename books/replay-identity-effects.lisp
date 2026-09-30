@@ -61,7 +61,7 @@
 
 (verify-guards fn-replay-identity-effects)
 
-(defthm fn-replay-identity-effects-context-is-original-by-definition
+(defthm fn-replay-identity-effects-context-is-replay-by-definition
  (equal (mv-nth 0 (fn-replay-identity-effects ctx event))
         (fn-replay-identity-step ctx event))
  :rule-classes nil

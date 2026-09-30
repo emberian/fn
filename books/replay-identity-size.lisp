@@ -29,7 +29,7 @@
 (defthm fn-ris-step-is-actual-replay-by-definition
   (equal (mv-nth 0 (fn-ris-step ctx carries event child-carry))
          (fn-replay-identity-step ctx event))
-  :hints (("Goal" :use fn-replay-identity-effects-context-is-original-by-definition
+  :hints (("Goal" :use fn-replay-identity-effects-context-is-replay-by-definition
            :in-theory (e/d (fn-ris-step)
                            (fn-replay-identity-effects fn-replay-identity-step)))))
 

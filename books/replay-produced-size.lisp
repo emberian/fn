@@ -91,7 +91,7 @@
  :rule-classes nil
  :hints (("Goal"
  :use (fn-replay-identity-produced-has-original-context-and-effects
-       fn-replay-identity-effects-context-is-original-by-definition)
+       fn-replay-identity-effects-context-is-replay-by-definition)
  :in-theory (e/d (fn-ris-produced-step fn-ris-produced-step-with-effects)
   (fn-replay-identity-produced-effects fn-replay-identity-effects
    fn-replay-identity-step fn-ics-carriesp fn-scs-carryp
