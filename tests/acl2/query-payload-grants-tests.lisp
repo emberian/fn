@@ -18,6 +18,8 @@
          ; Literal cancellation debt equality.
          (equal (fn-qpg-active (nth 1 cancelled)) (fn-qpg-active pool))
          (equal (nth 0 cancelled) :retained)
+         (equal (mv-list 2 (fn-qpg-cancel token (nth 1 cancelled)))
+                (list :retained (nth 1 cancelled)))
          (not (eq :cancelled :joined))
          (equal (nth 2 pending) (nth 1 cancelled))
          ; Full exact live/join/count antecedent and release conclusion.

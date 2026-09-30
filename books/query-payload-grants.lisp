@@ -59,12 +59,14 @@
   (if (not (fn-qpg-livep token fn-query-payload-grants))
       (mv :stale fn-query-payload-grants)
     (let* ((slot (fn-qpg-slot token))
-           (row (fn-qpg-rowsi slot fn-query-payload-grants))
-           (fn-query-payload-grants
-            (update-fn-qpg-rowsi slot
-                                (list token (fn-omk-at 1 row) :cancelled (fn-omk-at 3 row))
-                                fn-query-payload-grants)))
-      (mv :retained fn-query-payload-grants))))
+           (row (fn-qpg-rowsi slot fn-query-payload-grants)))
+      (if (eq (fn-omk-at 2 row) :cancelled)
+          (mv :retained fn-query-payload-grants)
+        (let ((fn-query-payload-grants
+               (update-fn-qpg-rowsi slot
+                                   (list token (fn-omk-at 1 row) :cancelled (fn-omk-at 3 row))
+                                   fn-query-payload-grants)))
+          (mv :retained fn-query-payload-grants))))))
 (defun fn-qpg-release (token settlement fn-query-payload-grants)
   (declare (xargs :stobjs fn-query-payload-grants :guard t))
   (cond ((not (fn-qpg-livep token fn-query-payload-grants))
