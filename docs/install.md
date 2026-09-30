@@ -301,9 +301,13 @@ service does. `--prefix` and `--node` name other places, as for an install.
 ### Moving a store
 
 `store export` and `store import` move a store between installs of the
-same format, for example to raise a limit fixed at `init`, or to another
-machine ([back up](operator.md#back-up)). Export with the node stopped,
-as root (the service account cannot make a folder in `/var/lib`; the
+same format, for example to another machine ([back up](operator.md#back-up)).
+To change `max-transactions`, `max-history-octets` or `max-article-octets`
+in the existing store, use [`policy set`](operator.md#store-settings);
+its reply says whether the change applies now or at the next start.
+Export can run while the node serves: the owner writes an archive of the
+history at the request's arrival. Run the command as root for the example
+below (the service account cannot make a folder in `/var/lib`; the
 `chown` lets it read the export):
 
 ```sh
