@@ -495,6 +495,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/payload-action-header16-workspace \
 	books/assumptions-selected-runtime-pull \
 	books/payload-pull-runtime-workspace \
+	books/payload-table-runtime-domain \
+	tests/acl2/payload-table-runtime-domain-tests \
 	tests/acl2/payload-pull-runtime-workspace-tests \
 	books/snapshot-maintenance-profile \
 	tests/acl2/snapshot-maintenance-profile-tests \
