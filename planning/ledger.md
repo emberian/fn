@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1831 |
-| Certification roots in the Makefile | 1764 |
-| Books inside the root closure | 1828 |
-| `defthm` and `defthmd` events | 29365 |
-| `defun` events | 18855 |
-| Functions with verified guards | 3508 |
-| Functions declared `:verify-guards nil` and never verified | 2249 |
-| Functions left at the default with an explicit guard | 10269 |
-| Functions left at the default with no guard | 2829 |
-| `assert-event` checks | 23874 |
+| Books read | 1833 |
+| Certification roots in the Makefile | 1766 |
+| Books inside the root closure | 1830 |
+| `defthm` and `defthmd` events | 29377 |
+| `defun` events | 18859 |
+| Functions with verified guards | 3518 |
+| Functions declared `:verify-guards nil` and never verified | 2246 |
+| Functions left at the default with an explicit guard | 10262 |
+| Functions left at the default with no guard | 2833 |
+| `assert-event` checks | 23895 |
 | `must-fail` checks | 2516 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 159 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 339 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2520 |
+| Include-hygiene warnings | 2525 |
 | Host-names warnings | 2156 |
 | Hand-written-record warnings | 18 |
 
@@ -236,14 +236,15 @@ that `make certify` requests.
 | `books/bp-node-receive-boundary.lisp` | root | 1 | 8 | 8/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-records.lisp` | root | 4 | 13 | 12/0/1/0 | 0 | 0 | 0 |
 | `books/bp-node-report-step.lisp` | root | 2 | 4 | 0/3/1/0 | 0 | 0 | 0 |
-| `books/bp-node-retire.lisp` | root | 18 | 21 | 7/4/10/0 | 0 | 0 | 0 |
+| `books/bp-node-retire.lisp` | root | 18 | 21 | 8/3/10/0 | 0 | 0 | 0 |
 | `books/bp-node-rotation-buffer.lisp` | root | 23 | 13 | 4/1/7/1 | 0 | 0 | 1 |
-| `books/bp-node-rotation-codec.lisp` | root | 32 | 35 | 32/0/2/1 | 0 | 0 | 0 |
-| `books/bp-node-rotation-due.lisp` | root | 6 | 3 | 0/1/2/0 | 0 | 0 | 0 |
+| `books/bp-node-rotation-codec.lisp` | root | 32 | 35 | 33/0/1/1 | 0 | 0 | 0 |
+| `books/bp-node-rotation-due.lisp` | root | 6 | 3 | 3/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-rotation-slice.lisp` | root | 12 | 2 | 0/0/1/1 | 0 | 0 | 0 |
 | `books/bp-node-rotation-step.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 1 |
-| `books/bp-node-rotation.lisp` | root | 28 | 12 | 1/1/10/0 | 0 | 0 | 0 |
+| `books/bp-node-rotation.lisp` | root | 28 | 12 | 6/0/6/0 | 0 | 0 | 0 |
 | `books/bp-node-run-class.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/bp-node-waits.lisp` | root | 12 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node.lisp` | root | 25 | 32 | 23/0/9/0 | 0 | 0 | 2 |
 | `books/bp-outbound.lisp` | root | 10 | 13 | 2/0/11/0 | 0 | 0 | 0 |
 | `books/bp-primary-cbor.lisp` | root | 86 | 16 | 12/0/3/1 | 0 | 0 | 1 |
@@ -1252,6 +1253,7 @@ that `make certify` requests.
 | `tests/acl2/bp-node-rotation-codec-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 4 | 2 | 0 |
 | `tests/acl2/bp-node-rotation-due-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 15 | 4 | 0 |
 | `tests/acl2/bp-node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 44 | 0 | 0 |
+| `tests/acl2/bp-node-waits-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 21 | 0 | 0 |
 | `tests/acl2/bp-outbound-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 35 | 0 | 0 |
 | `tests/acl2/bp-outbound-tests.lisp` | root | 0 | 3 | 0/2/0/1 | 38 | 0 | 0 |
 | `tests/acl2/bp-primary-tests.lisp` | root | 1 | 5 | 0/0/3/2 | 140 | 0 | 1 |
