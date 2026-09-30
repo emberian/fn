@@ -1076,14 +1076,27 @@ class NativeBpNodeTests(unittest.TestCase):
         The source owner has already stopped after the durable NNTP POST in
         setUp. A transport result cannot release either sender obligation.
         """
-        self.assertIn(b"pinned=yes", self.sender_status().stdout)
+        observer = getattr(self, "resilience_observer", None)
+
+        def observe(event, **values):
+            if observer is not None:
+                observer(event, **values)
+
+        pinned = self.sender_status()
+        self.assertIn(b"pinned=yes", pinned.stdout)
+        observe("fixture", source=self.image_source, msgid=self.msgid,
+                accepted_octets=self.article, status=pinned.stdout,
+                exit_code=pinned.returncode)
         self.kill_at_durable_cut(
             "FN_BP_APP_TEST_PAUSE_AFTER_DECISION", b"BP APP DECISION DURABLE")
         accepted_octets = self.receiver_article(self.msgid)
+        observe("decision-cut-readback", octets=accepted_octets)
         replayed = self.dispatch_receiver()
         self.assertEqual(replayed.returncode, EXIT.OK, replayed.stdout + replayed.stderr)
         self.assertIn(b"BP application handoff durable", replayed.stdout)
         self.assertIn(b"BP node receipt queued", replayed.stdout)
+        observe("application-replay", exit_code=replayed.returncode,
+                stdout=replayed.stdout, stderr=replayed.stderr)
         self.assertIn(b"pinned=yes", self.sender_status().stdout)
 
         # A second carrier reaches the durable outbox. Reconfigure the live
@@ -1105,6 +1118,10 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(self.receiver_articles(), 1)
         self.assertIn(b"pinned=yes", self.sender_status().stdout)
 
+        observe("outbox-process-death", exit_code=receiver.returncode,
+                retry_exit_code=retry.returncode, retry_stdout=retry.stdout,
+                retry_stderr=retry.stderr)
+
         sender, sender_port = self.start_node(False, once=False)
         self.relay.route(sender_port, cut_after=80)
         interrupted = self.dispatch_receiver()
@@ -1115,13 +1132,18 @@ class NativeBpNodeTests(unittest.TestCase):
                      if line.startswith(b"BP transport work=") and
                      b"status=attempted" in line]
         self.assertTrue(attempted, interrupted.stdout)
+        observe("receipt-contact-uncertain", exit_code=interrupted.returncode,
+                stdout=interrupted.stdout, stderr=interrupted.stderr,
+                attempted=attempted)
         sender.stop(grace=5)
         self.assertIn(b"pinned=yes", self.sender_status().stdout)
         self.assertIn(b"pinned=yes", self.unrelated_status().stdout)
 
         # Checkpoint publication dies before selection. Recovery must retain
         # the same owed receipt jobs and the accepted article.
-        self.rotate_receiver("stage")
+        cut_code, cut_out, cut_err = self.rotate_receiver("stage")
+        observe("checkpoint-stage-cut", exit_code=cut_code,
+                stdout=cut_out, stderr=cut_err)
         sender, sender_port = self.start_node(False, once=False)
         self.relay.route(sender_port)
         resumed = self.dispatch_receiver()
@@ -1132,16 +1154,28 @@ class NativeBpNodeTests(unittest.TestCase):
         attempted_work = {line.split(b"work=")[1].split()[0] for line in attempted}
         forwarded_work = {line.split(b"work=")[1].split()[0] for line in forwarded}
         self.assertTrue(attempted_work <= forwarded_work, resumed.stdout)
+        observe("receipt-contact-resumed", exit_code=resumed.returncode,
+                stdout=resumed.stdout, stderr=resumed.stderr,
+                attempted_work=sorted(attempted_work),
+                forwarded_work=sorted(forwarded_work))
         self.wait_for_output(sender, b"BP node delivery receipt-accepted", timeout=120)
         sender.stop(grace=5)
         self.assertEqual(self.receiver_articles(), 1)
         self.assertEqual(self.receiver_article(self.msgid), accepted_octets)
-        self.assertIn(b"pinned=no", self.sender_status().stdout)
-        self.assertIn(b"pinned=yes", self.unrelated_status().stdout)
+        matching = self.sender_status()
+        unrelated = self.unrelated_status()
+        self.assertIn(b"pinned=no", matching.stdout)
+        self.assertIn(b"pinned=yes", unrelated.stdout)
+        observe("receipt-obligation-settlement", matching=matching.stdout,
+                unrelated=unrelated.stdout, matching_exit=matching.returncode,
+                unrelated_exit=unrelated.returncode)
         code, out, err = self.rotate_receiver()
         self.assertEqual(code, EXIT.OK, out + err)
         self.assertEqual(self.receiver_articles(), 1)
-        self.assertEqual(self.receiver_article(self.msgid), accepted_octets)
+        final_octets = self.receiver_article(self.msgid)
+        self.assertEqual(final_octets, accepted_octets)
+        observe("checkpoint-complete-readback", exit_code=code,
+                stdout=out, stderr=err, octets=final_octets)
 
     def test_dropped_receipt_contact_is_reoffered_by_the_next_pass(self):
         """Spec 4.3.2: an uncertain receipt transfer is connection-local.
