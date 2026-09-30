@@ -4511,8 +4511,9 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
                          state)))
             (value (if (equal security :implicit) :await-tls :await-greeting))))))))
 
-(defun fn-owner-feed-tls-established (peer-octets state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-feed-tls-established (peer-octets fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program
+                  :guard (fn-cbor-octet-listp peer-octets)))
   (let* ((peer (fn-store-octets->string peer-octets))
          (inputs (f-get-global 'fn-owner-feed-inputs state))
          (step (and (not (equal peer :bad))
@@ -4520,15 +4521,25 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
     (if (null step) (value (fn-owner-feed-word-publication :invalid nil nil))
       (let ((state (f-put-global 'fn-owner-feed-inputs
                                  (fn-fc-table-put peer (fn-fc-next-state step) inputs) state)))
-        (value
-         (case (fn-fc-kind step)
-           (:mode (fn-owner-feed-word-publication :mode (fn-fc-mode-command) nil))
-           (:auth-user
-            (fn-owner-feed-word-publication
-             :auth-user (fn-fc-auth-user-command (fn-fc-next-state step)) nil))
-           (:ready (fn-owner-feed-word-publication :ready nil nil))
-           (:need-input (fn-owner-feed-word-publication :need-input nil nil))
-           (otherwise (fn-owner-feed-word-publication :invalid nil nil))))))))
+        (case (fn-fc-kind step)
+          (:ready
+           ;; STARTTLS without login or streaming reaches ready here, with
+           ;; no later greeting/MODE reply to install the owner's feed.
+           ;; Use the same ACL2 connection decision as reply-chunk's :ready.
+           (mv-let (erp word state)
+             (fn-owner-feed-connect peer-octets
+                                    (fn-fc-conn (fn-fc-next-state step))
+                                    (fn-fc-connection-form (fn-fc-next-state step))
+                                    fn-arena state)
+             (if erp (mv erp word state)
+               (value (fn-owner-feed-word-publication
+                       (if (equal word :ok) :ready :fault) nil nil)))))
+          (:mode (value (fn-owner-feed-word-publication :mode (fn-fc-mode-command) nil)))
+          (:auth-user
+           (value (fn-owner-feed-word-publication
+                   :auth-user (fn-fc-auth-user-command (fn-fc-next-state step)) nil)))
+          (:need-input (value (fn-owner-feed-word-publication :need-input nil nil)))
+          (otherwise (value (fn-owner-feed-word-publication :invalid nil nil))))))))
 
 (defun fn-owner-feed-read-limit ()
   "ACL2-owned upper bound for one native feed socket-read observation."

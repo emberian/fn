@@ -1535,6 +1535,10 @@
   :class ::program
   :kinds ((peer-octets fn-cbor-octet-listp)))
 
+(definterface fn-owner-feed-tls-established
+  :class ::program
+  :kinds ((peer-octets fn-cbor-octet-listp)))
+
 (definterface fn-owner-finish
   :class :common-lisp-compliant)
 

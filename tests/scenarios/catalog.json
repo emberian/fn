@@ -6468,6 +6468,39 @@
         "tests/acl2/page-read-executor-tests.lisp"
       ],
       "execution_scope": "Pure executor model source REPL and folded literal teeth only. Native executor/refinement, real process-death cuts and supported funding/profile consumer pending; not a full P12 claim."
+    },
+    {
+      "id": "SCN-1022",
+      "title": "TLS completion installs the outbound nonstreaming feed without a login",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-045",
+        "NNT-048"
+      ],
+      "steps": [
+        "Configure a scratch native owner with one source-address outbound peer, streaming false, no credential, and a pinned STARTTLS destination. Post one article; observe the scripted loopback TLS peer.",
+        "Repeat with implicit TLS, where the peer sends its greeting after the handshake.",
+        "Run the actual owner TLS entry from reachable STARTTLS, implicit, MODE, AUTHINFO and invalid phases; inspect the installed owner, not only the publication word."
+      ],
+      "expected": [
+        "The STARTTLS connection sends STARTTLS, completes one authenticated TLS handshake and sends IHAVE for the posted article on that same connection, with neither AUTHINFO nor MODE STREAM.",
+        "Implicit TLS sends IHAVE only after the protected greeting.",
+        "A ready TLS publication installs the ACL2 connection/form transition; pending and invalid phases leave the owner feed unchanged."
+      ],
+      "evidence": [
+        "tests/owner-feed-tls-ready-host.lsp",
+        "tests/native_feed_service_raw.lisp",
+        "tests/test_native_feed_tls_ready.py"
+      ],
+      "implementation": {
+        "test": "tests.test_native_feed_tls_ready",
+        "cases": [
+          "NativeFeedTlsReadyTests.test_starttls_installs_ready_feed_without_login_or_streaming",
+          "NativeFeedTlsReadyTests.test_implicit_tls_installs_feed_after_greeting"
+        ],
+        "native": true
+      }
     }
   ]
 }

@@ -4072,9 +4072,11 @@
         "books/owner.lisp",
         "host/owner-host.lisp",
         "tests/test_native_peering.py",
-        "planning/evidence/transit-streaming-2026-09-26.md"
+        "planning/evidence/transit-streaming-2026-09-26.md",
+        "tests/owner-feed-tls-ready-host.lsp",
+        "tests/test_native_feed_tls_ready.py"
       ],
-      "implementation_note": "RFC 4644 sections 2.3 to 2.5 and RFC 3977 section 6.3.2 are RFC requirements; one admission decision for the three forms is the fn guarantee; 436 after TAKETHIS, the 431 past max-inflight (16 from `peer add`) and the IHAVE fallback on 500/501 are local policy. fn chooses the form by MODE STREAM, not CAPABILITIES (PKT-599)."
+      "implementation_note": "RFC 4644 sections 2.3 to 2.5 and RFC 3977 section 6.3.2 are RFC requirements; one admission decision for the three forms is the fn guarantee; 436 after TAKETHIS, the 431 past max-inflight (16 from `peer add`) and the IHAVE fallback on 500/501 are local policy. fn chooses the form by MODE STREAM, not CAPABILITIES (PKT-599). PKT-599(b): the owner TLS completion now installs the feed connection/form before publishing ready for STARTTLS without streaming or login; SCN-1022 exercises that path and the implicit-TLS greeting control. Matching native observation is pending."
     },
     {
       "id": "HST-021",
