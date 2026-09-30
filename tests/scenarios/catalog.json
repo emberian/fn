@@ -6779,6 +6779,34 @@
         ],
         "native": true
       }
+    },
+    {
+      "id": "SCN-1028",
+      "title": "Temporary MODE STREAM 400 backs off and resumes delivery",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-035",
+        "NNT-045"
+      ],
+      "steps": [
+        "Start one scratch native owner and a scripted loopback peer that answers MODE STREAM 400 on three connections, then 203 on the fourth. Post one article."
+      ],
+      "expected": [
+        "No process stop is recorded. The first three connections send no offer; retry delays increase from the configured 1000 ms base to 2000 ms and 4000 ms.",
+        "The fourth connection streams the queued article with CHECK/TAKETHIS; the same owner remains running."
+      ],
+      "evidence": [
+        "tests/test_native_feed_temporary.py",
+        "tests/acl2/feed-connection-tests.lisp"
+      ],
+      "implementation": {
+        "test": "tests.test_native_feed_temporary",
+        "cases": [
+          "NativeFeedTemporaryTests.test_temporary_mode_refusals_back_off_and_then_deliver"
+        ],
+        "native": true
+      }
     }
   ]
 }

@@ -17729,6 +17729,15 @@
           "name": "fn-prf-acquired-file-is-held"
         }
       ]
+    },
+    {
+      "id": "PRF-1122",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-fc-temporary-mode-refusal-closes-without-stopping"
+        }
+      ]
     }
   ]
 }

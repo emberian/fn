@@ -2901,6 +2901,25 @@ independent durable anchor. The scanner retains existing
 `fn-feed-apply-record` semantics for valid records; it does not retroactively
 enforce `fn-feed-drivenp` against configuration changes or historical no-ops.
 
+## Temporary MODE STREAM unavailability
+
+RFC 3977 section 3.2.1 permits a 400 response to terminate a connection and
+recommends increasing delays before retry. On a complete MODE STREAM 400,
+`fn-fc-step` closes the current connection without classifying it as a
+permanent streaming refusal (PKT-599(d), PRF-1122). The owner therefore does
+not enter this peer in its process stop table. The native `:closed` path
+uses the existing loss and exponential link-backoff handling; a later dial
+may negotiate streaming again. A 500/501 still falls back to IHAVE on the
+same connection; other refusals, including 502, retain the process stop.
+
+The keystone proves the closed result/phase, preserved connection descriptor
+and absence of a streaming stop under a valid MODE-phase state and a decoded
+400. Decoding 400 itself implies a complete bounded framer observation; a
+local lemma removes those redundant hypotheses. SCN-1028 observes the
+composed retry delays and eventual transfer on a scratch native owner; its
+matching-image execution remains pending. This theorem alone does not prove
+the host scheduler's elapsed-time behavior.
+
 ## Outbound authenticated TLS transport (2026-09-21)
 
 An NNTP transport is versioned as `(:nntp 1 host port security)`.  `security`

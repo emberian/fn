@@ -5209,7 +5209,7 @@
     {
       "id": "PRF-130",
       "title": "The operator walk: no store is a refusal (exit 6) before any open, a MODE STREAM refusal stops the dial, and a snapshot rollback's loss is counted",
-      "statement": "Over fn-native-operator-store-outcome (books/native-operator.lisp), which host/native/operator.lisp fnn-operator-store-outcome calls through fn-native-operator-host-store-outcome on every accepted plan before fnn-operator-dispatch-plan executes it: fn-native-operator-absent-store-is-refused, an accepted plan whose native action opens a store (fn-native-operator-result-needs-storep), over an observation that found none of *fn-nop-store-markers* beside the configured root, is refused with reason :no-store, exit code 6 (*fn-nop-no-store-exit*) and native action :none, so no open is attempted and the outcome is never the fault code 4; fn-native-operator-store-outcome-passes-a-present-store, with any marker observed or a plan that needs no store the plan passes unchanged. Over fn-fc-step, fn-fc-streaming-refusal-p and fn-fc-dial-allowedp (books/feed-connection.lisp), which host/owner-host.lisp fn-owner-feed-reply-chunk and fn-owner-feed-has-queued call (host/native/feed-service.lisp fnn-feed-reply-step, fnn-feed-dial-plan): fn-fc-mode-stream-refusal-stops-the-dial, a complete peer line other than 203, 500 or 501 in the :mode phase (RFC 4644 section 2.3; since PRF-207, 500 and 501 are the IHAVE fallback, the old form a must-fail in tests/acl2/feed-connection-tests.lisp) is a refusal that closes the connection, is classified as a streaming refusal, and once the owner records the peer with :mode-stream-refused the dial is not allowed for that peer whatever it has queued; fn-fc-dial-allowedp-of-put-other, other peers keep their dial. Over fn-native-operator-snapshot-loss: fn-native-operator-snapshot-loss-counts-the-suffix, :loses exactly when the first list is an element-wise prefix of the second, and the count is the number of elements after it. Until 2026-09-26 the host handed it (sequence . file length) descriptors, which is not a history comparison (gpt-6's answers section 7); the verb's history claim is PRF-141, over exact committed records, and this lemma is the list-level function PRF-141's fold equals.",
+      "statement": "Over fn-native-operator-store-outcome (books/native-operator.lisp), which host/native/operator.lisp fnn-operator-store-outcome calls through fn-native-operator-host-store-outcome on every accepted plan before fnn-operator-dispatch-plan executes it: fn-native-operator-absent-store-is-refused, an accepted plan whose native action opens a store (fn-native-operator-result-needs-storep), over an observation that found none of *fn-nop-store-markers* beside the configured root, is refused with reason :no-store, exit code 6 (*fn-nop-no-store-exit*) and native action :none, so no open is attempted and the outcome is never the fault code 4; fn-native-operator-store-outcome-passes-a-present-store, with any marker observed or a plan that needs no store the plan passes unchanged. Over fn-fc-step, fn-fc-streaming-refusal-p and fn-fc-dial-allowedp (books/feed-connection.lisp), which host/owner-host.lisp fn-owner-feed-reply-chunk and fn-owner-feed-has-queued call (host/native/feed-service.lisp fnn-feed-reply-step, fnn-feed-dial-plan): fn-fc-mode-stream-refusal-stops-the-dial, a complete peer line other than 203, 400, 500 or 501 in the :mode phase (RFC 4644 section 2.3; since PRF-1122, 400 closes temporarily and leaves the peer eligible for a backed-off retry; since PRF-207, 500 and 501 are the IHAVE fallback, the old form a must-fail in tests/acl2/feed-connection-tests.lisp) is a refusal that closes the connection, is classified as a streaming refusal, and once the owner records the peer with :mode-stream-refused the dial is not allowed for that peer whatever it has queued; fn-fc-dial-allowedp-of-put-other, other peers keep their dial. Over fn-native-operator-snapshot-loss: fn-native-operator-snapshot-loss-counts-the-suffix, :loses exactly when the first list is an element-wise prefix of the second, and the count is the number of elements after it. Until 2026-09-26 the host handed it (sequence . file length) descriptors, which is not a history comparison (gpt-6's answers section 7); the verb's history claim is PRF-141, over exact committed records, and this lemma is the list-level function PRF-141's fold equals.",
       "milestone": "M4",
       "requirements": [
         "HST-008"
@@ -18762,6 +18762,31 @@
         "tests/acl2/page-file-lease-tests.lisp"
       ],
       "progress_note": "Source library and physical bridge only; no startup activation, native/image execution, bounded page authentication, or full P12 claim. Clean source gates recorded in persistent-cold-executor evidence."
+    },
+    {
+      "id": "PRF-1122",
+      "title": "Temporary MODE STREAM unavailability closes this link without stopping the peer",
+      "statement": "Over host-called fn-fc-step and fn-fc-streaming-refusal-p in books/feed-connection.lisp, called by host/owner-host.lisp fn-owner-feed-reply-chunk-synced: fn-fc-temporary-mode-refusal-closes-without-stopping. A well-formed connection in mode phase whose framer decodes response 400 yields kind closed, phase closed, the same connection descriptor and no streaming-refusal stop. Complete-line and bounded-chunk premises follow from decoding 400 and are proved in a local lemma, not redundant keystone hypotheses. Existing owner/native closed handling drops the link and applies existing link backoff; that host composition is observed separately by SCN-1028, not proved by this theorem.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-035",
+        "NNT-045"
+      ],
+      "depends_on": [
+        "PRF-130",
+        "PRF-376"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/feed-connection.lisp",
+        "tests/acl2/feed-connection-tests.lisp",
+        "tests/test_native_feed_temporary.py"
+      ],
+      "events": [
+        "fn-fc-temporary-mode-refusal-closes-without-stopping"
+      ],
+      "progress_note": "Clean protected source admission and full positive/hypothesis-removal witnesses passed; certification and matching-image native observation pending."
     }
   ]
 }
