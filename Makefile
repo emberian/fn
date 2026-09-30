@@ -16,6 +16,8 @@ FN_LD_TIMEOUT_SECONDS ?= 240
 ACL2_BOOKS ?= books/defrecord \
 	books/defkeystone \
 	books/definterface \
+	host/allocation-epoch-host \
+	books/allocation-epoch-collection-request \
 	books/defevent \
 	books/deftransition \
 	books/rev-onto \

@@ -17376,6 +17376,56 @@
           "name": "fn-bpnc-retirement-stops-the-control-listener"
         }
       ]
+    },
+    {
+      "id": "PRF-1154",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-aec-enter-preserves-allocation-state",
+          "pending_subject": "Internal allocation-epoch subject, reached by its same-pool guarded composition; native installed dispatch/producer integration remains separately open. No served activation claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-aec-body-preserves-allocation-state",
+          "pending_subject": "Internal allocation-epoch subject, reached by its same-pool guarded composition; native installed dispatch/producer integration remains separately open. No served activation claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-aec-consumed-turn-settlement-preserves-state",
+          "pending_subject": "Internal allocation-epoch subject, reached by its same-pool guarded composition; native installed dispatch/producer integration remains separately open. No served activation claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-aec-collector-reset-preserves-state",
+          "pending_subject": "Internal allocation-epoch subject, reached by its same-pool guarded composition; native installed dispatch/producer integration remains separately open. No served activation claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-aec-state-footprint-bound",
+          "pending_subject": "Internal allocation-epoch subject, reached by its same-pool guarded composition; native installed dispatch/producer integration remains separately open. No served activation claim."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1158",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-aec-observed-occupancy-binds-installed-geometry",
+          "pending_subject": "Internal allocation-epoch subject, reached by its same-pool guarded composition; native installed dispatch/producer integration remains separately open. No served activation claim."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1159",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-aec-collection-issue-binds-shared-nonce",
+          "pending_subject": "Internal allocation-epoch subject, reached by its same-pool guarded composition; native installed dispatch/producer integration remains separately open. No served activation claim."
+        }
+      ]
     }
   ]
 }

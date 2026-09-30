@@ -119,3 +119,19 @@ collector, reservation overflow, shared nonce issuance and replay, worker drain,
 identity exhaustion, and the draining gate-owned yield. Native process-wide
 barrier, genuine installation/source tariffs and once-only turn producer remain
 separate joins; these tests use explicitly synthetic producer fixtures.
+
+## Verified raw dispatch leaf
+
+`host/allocation-epoch-host.lisp` declares the three actual collector entries
+with `:raw-with`: collection request, raw observation completion, and uncertainty.
+ACL2's declaration checker verifies their existing executable guards, positive
+preservation of the actual returned pool, and the named retained-root frame
+proofs. Per-call observation scalars acquire no authority from this declaration.
+The association and carried state still require the genuine installed producer;
+a declaration is not installation or activation.
+
+Every `:not-quiescent` request occurs before Qcollect debit. Its caller must
+already own the prepaid control/turn suffix covering dispatch, result handling
+and no-effect return. Qcollect funds the successful quiescent request's issuer
+and ledger work; it cannot fund repeated non-quiescent polling retroactively.
+Permanent baseline is not a substitute for cumulative allocation accounting.
