@@ -415,6 +415,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/retention-obligation-view-node \
 	books/obligation-subject-grammar \
 	books/obligation-subject-report \
+	books/obligation-view-budget \
+	tests/acl2/obligation-view-budget-tests \
 	tests/acl2/retention-obligation-view-node-tests \
 	tests/acl2/obligation-subject-tests \
 	tests/acl2/retention-obligation-view-tests \
