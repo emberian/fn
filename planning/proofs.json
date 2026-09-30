@@ -18039,7 +18039,7 @@
     {
       "id": "PRF-1132",
       "title": "Carried scalar widths and input span for bounded stored DEFLATE (funding open)",
-      "statement": "Actual fn-pzw-initialize establishes bit-buffer, Huffman-register and header-width carry without prior-state hypotheses. Actual fn-pzw-stored-chunk preserves bit carry under octet input, strong Huffman carry on every exit except bad-code, fixed Huffman scalar bounds on every exit, and header bounds under the carried fixed table representation. Returned IP is natural and in [START,END] under natural START and START<=END. These component facts do not establish primitive operation counts, selected-runtime allocation adequacy, old-success/action-budget completeness or served admission.",
+      "statement": "Actual fn-pzw-initialize establishes bit-buffer, Huffman-register and header-width carry without prior-state hypotheses. Actual fn-pzw-stored-chunk preserves bit carry under octet input, strong Huffman carry on every exit except bad-code, fixed Huffman scalar bounds on every exit, and header bounds under the carried fixed table representation. Returned IP is natural and in [START,END] under natural START and START<=END. These component facts do not establish primitive operation counts, selected-runtime allocation adequacy, old-success/action-budget completeness or served admission. Actual stored-input credit establishes and the actual inner loop preserves credited TIN plus unread span<=2*C and produced plus remaining output room<=N+1 from captured source containment and produced-length carry. Under supported signed63-bit C/N, actual bomb, output-plus-preset and budget expressions have73/64/68-bit magnitude bounds.",
       "milestone": "M5",
       "requirements": [
         "STO-037"
@@ -18056,7 +18056,10 @@
         "planning/evidence/payload-window-width-2026-09-30.md",
         "books/payload-window-register-width.lisp",
         "tests/acl2/payload-window-register-width-tests.lisp",
-        "planning/evidence/payload-window-register-width-2026-09-30.md"
+        "planning/evidence/payload-window-register-width-2026-09-30.md",
+        "books/payload-window-profile-width.lisp",
+        "tests/acl2/payload-window-profile-width-tests.lisp",
+        "planning/evidence/payload-window-profile-width-2026-09-30.md"
       ],
       "progress_note": "Protected source-only component proof and literal teeth checkpoint. No new served keystone/certificate/image/native claim; source proof coordinates and remaining funding obligations are recorded in the evidence file."
     }

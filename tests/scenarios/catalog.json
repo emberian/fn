@@ -6342,20 +6342,25 @@
         "Check actual suspended and malformed/refused Huffman walks, remove carried registers and non-error premises, and distinguish a bit-count mutation.",
         "Check an actual consuming input span and both natural-start/order hypothesis removals.",
         "Run actual stored chunk for whole-quantum Huffman/header carry; affirm strong non-bad-code and all-exit scalar conclusions, each retained hypothesis removal and labelled register mutants.",
-        "Run actual initializer on corrupt prior Huffman/header/preset fields; affirm unconditional postconditions and exact three-byte preset."
+        "Run actual initializer on corrupt prior Huffman/header/preset fields; affirm unconditional postconditions and exact three-byte preset.",
+        "Affirm actual stored-chunk internal profile carry with a consuming byte, remove each captured containment/profile hypothesis literally, and test a labelled TIN-update mutant.",
+        "Check literal boundary73/64/68-bit arithmetic witnesses, each retained-hypothesis removal and separate coefficient mutations; confirm72bits fails at the supported maximum C."
       ],
       "expected": [
         "Bit buffer remains at most39bits and exact length-relative Huffman carry is preserved only on non-error exits; every walker exit remains within the stated fixed scalar bounds.",
         "Returned input IP is natural and in the requested span; a reversed or negative logical span is an explicit counterexample outside host guards.",
         "No selected-runtime allocation bound, native activation, new data ceiling or full old-success guarantee is inferred.",
-        "Whole stored quantum preserves header fields under captured table representation; malformed-code exits retain fixed scalar bounds even when the stronger length-relative carry fails."
+        "Whole stored quantum preserves header fields under captured table representation; malformed-code exits retain fixed scalar bounds even when the stronger length-relative carry fails.",
+        "Internal credited-input plus unread span is<=2C and produced plus remaining scratch room is<=N+1; actual bomb/output-plus-preset/budget are below2^73/2^64/2^68 under explicit supported profiles."
       ],
       "evidence": [
         "tests/acl2/payload-window-width-tests.lisp",
         "specs/payload-window.md",
         "planning/evidence/payload-window-width-2026-09-30.md",
         "tests/acl2/payload-window-register-width-tests.lisp",
-        "planning/evidence/payload-window-register-width-2026-09-30.md"
+        "planning/evidence/payload-window-register-width-2026-09-30.md",
+        "tests/acl2/payload-window-profile-width-tests.lisp",
+        "planning/evidence/payload-window-profile-width-2026-09-30.md"
       ],
       "execution_scope": "Protected source replay only; the codec/runtime/controller/host composition remains open."
     }

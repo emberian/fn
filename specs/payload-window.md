@@ -137,3 +137,21 @@ sequence premise. At signed63-bit C, even `512*C + 65,536` needs up to73
 magnitude bits. None of these source facts supplies a selected-runtime
 allocation bound or authorizes native admission. The evidence file records
 the exact component and the remaining width, count and runtime obligations.
+
+
+`books/payload-window-profile-width.lisp` connects the captured source
+sequence and output carry to the actual internal loop. Its cheap scalar
+invariant keeps credited TIN plus unread input <=2*C and TOUT plus remaining
+scratch room <=N+1. Actual stored-credit establishment and stored-chunk
+preservation are proved; no previous scratch-list validity is required at
+the entry because that scratch is cleared. The inner proof covers pulls,
+bulk/single output actions, yielded and refused exits.
+
+Under explicit supported signed63-bit C/N, actual `fn-zin-bomb-limit` is
+below2^73, actual TOUT+PRESET below2^64, and actual `fn-pzd-budget` below2^68.
+Natural-C/N hypotheses on the standalone budget-width theorem were proved
+redundant and removed in favor of bounds on their normalized inputs. These
+are operand/result magnitude bounds, not primitive allocation counts. Their
+supporting upper-bound lemmas are explicit-use facts without generic global
+rewrite/linear rules. Literal teeth include an actual maximum-profile bomb
+above2^72, retained-hypothesis removals and labelled coefficient mutations.
