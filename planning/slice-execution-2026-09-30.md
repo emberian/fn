@@ -1,5 +1,35 @@
 # Completing whole slices
 
+## Batch captures retain publication backing before connections exist
+
+The actual `fn-ocv-capture` protocol retains at most two reader views, D and
+N, independently of connections. Their matching concrete publications need
+the same lifetime: START captures D before the working publication advances,
+and START-NEXT captures N before its drain. A connection may first open at D
+while a barrier is in flight, when no earlier connection or query holds that
+generation. Connection/query reference counts alone therefore do not protect
+the backing required by this reachable schedule.
+
+The core capture transition retains the exact publication associated with
+each newly captured view. Repeated START or NEXT that leaves the logical
+capture unchanged must not acquire another hold. UNNEXT releases N and keeps
+D; COMPLETE releases D and transfers N's existing hold to the D slot, or
+releases D if there is no N; DROP releases both. These effects follow the
+actual logical transition atomically, including its unchanged cases. A
+connection opened or repinned from a capture acquires its own reference
+before that batch hold can be released. Physical reclamation still waits for
+all batch, connection, query and writer holds and their outstanding effects.
+
+Use two bounded core slots and the shared charged generation registry, not
+a host lookup by version or an immortal history map. The index owner owns
+generation accounting, the admission owner owns the real capture hooks, and
+the READ/OVER owners consume the resulting matching publication. Required
+composition evidence includes zero connections at START, a working-root
+advance, first connection open during the barrier, COMPLETE, and a continued
+read through the connection's retained publication. This is a newly explicit
+join obligation; it is not a claim that the old served path has a demonstrated
+reclamation defect.
+
 Ember's 2026-09-30 correction changes the execution practice: identify the obstruction to a complete capability, remove it confidently, and close its associated original work together. This does not change the finite scope, completion criteria, evidence standards or model policy (Sol execution, Astra only architectural synthesis).
 
 | Slice | Integration owner | Acceptance path and helper roles |
