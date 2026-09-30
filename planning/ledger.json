@@ -1634,26 +1634,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1701,
+    "books": 1705,
     "books_in_root_closure": 1694,
     "roots": 1630,
-    "theorems": 27828,
-    "functions": 18145,
-    "assert_events": 22991,
+    "theorems": 27948,
+    "functions": 18178,
+    "assert_events": 23014,
     "must_fails": 2496,
     "prover_refusals": 0,
     "encapsulates": 156,
     "guards": {
       "verified": 3462,
-      "declared-off": 2086,
-      "default-guarded": 9862,
-      "default-unguarded": 2735
+      "declared-off": 2090,
+      "default-guarded": 9871,
+      "default-unguarded": 2755
     },
-    "suspect_theorems": 1227,
+    "suspect_theorems": 1228,
     "export_hygiene_warnings": 318,
     "enabled_projection_warnings": 52,
     "teeth_form_warnings": 272,
-    "include_hygiene_warnings": 2419,
+    "include_hygiene_warnings": 2421,
     "host_names_warnings": 2087,
     "hand_written_record_warnings": 18
   },
@@ -12322,15 +12322,45 @@
       "read_error": null
     },
     {
+      "book": "books/history-decode-refinement.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 63,
+      "functions": 15,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 15
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-decode-stream"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-hdc-begin-coordinates-unfolds"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/history-decode-stream.lisp",
       "in_root_closure": false,
       "is_root": false,
       "theorems": 12,
-      "functions": 9,
+      "functions": 10,
       "guards": {
         "verified": 1,
         "declared-off": 0,
-        "default-guarded": 8,
+        "default-guarded": 9,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -13195,6 +13225,34 @@
         "assumptions",
         "history-pages-import",
         "history-pages-view"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/history-symbol-normalize.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 33,
+      "functions": 13,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 8,
+        "default-unguarded": 5
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-tree-codec"
       ],
       "system_includes": [
         "arithmetic/top"
@@ -39202,6 +39260,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/history-decode-refinement-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 20,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-decode-refinement"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/history-fold-refinement-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -39660,6 +39744,32 @@
       "includes": [
         "../../books/history-records",
         "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/history-symbol-normalize-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 4,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 19,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-symbol-normalize"
       ],
       "system_includes": [],
       "suspects": [],
@@ -53522,6 +53632,14 @@
       ]
     },
     {
+      "theorem": "fn-hdc-begin-coordinates-unfolds",
+      "book": "books/history-decode-refinement.lisp",
+      "line": 781,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
       "theorem": "fn-heap-reserve-decide-keeps-heap-figures-refusals",
       "book": "books/heap-reservation.lisp",
       "line": 219,
@@ -67306,6 +67424,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/history-symbol-normalize.lisp",
+        "line": 5,
+        "include": "store-tree-codec",
+        "included": "books/store-tree-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/hybrid-carrier.lisp",
         "line": 10,
         "include": "rev-onto",
@@ -76648,6 +76773,13 @@
         "line": 20,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/history-decode-refinement-tests.lisp",
+        "line": 2,
+        "include": "../../books/history-decode-refinement",
+        "included": "books/history-decode-refinement.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
