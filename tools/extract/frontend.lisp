@@ -31,6 +31,8 @@
 ; the live state: the runtime shim implements them.
 (defconst *xt-shims*
   '(boundp-global f-boundp-global get-global f-get-global put-global f-put-global
+    w fgetprop sgetprop table-alist symbol-class stobjs-in stobjs-out guard
+    get-stobj-creator get-stobj-recognizer get-event
     fmt-to-comment-window fmt-to-comment-window! fmt-to-comment-window+
     fmt-to-comment-window!+ cw-print-base-radix
     hard-error illegal throw-nonexec-error error1 er-cmp-fn

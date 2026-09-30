@@ -1205,7 +1205,7 @@ offered to the writer while the owner runs (PKT-508), else written here."
 (defvar *fnn-dispatch-counterpart* nil
   "T when the developer selector keeps the executable-counterpart path.")
 
-(defun fnn-install-raw-dispatch ()
+(defun fnn-install-raw-dispatch (&key (report t))
   "Fill *fnn-raw-dispatch* from the fn-interfaces table of the loaded world:
 the :raw-with and :raw-guarded entries, checked against the world; the count."
   (let ((wrld (w *the-live-state*)))
@@ -1231,7 +1231,7 @@ the :raw-with and :raw-guarded entries, checked against the world; the count."
                 (values nil name))
             (when target-problem
               (error "fnn-install-raw-dispatch: refused creator target for ~a: ~s" name target-problem))
-            (let ((raw (find-symbol (symbol-name target) "ACL2")))
+            (let ((raw target))
             (when (and raw (macro-function raw))
               (error "fnn-install-raw-dispatch: ~a resolved to a macro, not a raw function" name))
             (unless (and raw (fboundp raw))
@@ -1242,10 +1242,11 @@ the :raw-with and :raw-guarded entries, checked against the world; the count."
             (when (and guarded (not (compiled-function-p (symbol-function raw))))
               (error "fnn-install-raw-dispatch: ~a has no compiled guarded callback" name))
             (setf (gethash name *fnn-raw-dispatch*) raw)
-            (format t "~&FN_RAW_DISPATCH ~(~a~) ~(~a~) invariant-risk=~a with=~(~a~)~%"
-                    name (symbol-class name wrld)
-                    (if (getpropc name 'invariant-risk nil wrld) "t" "nil")
-                    (if guarded (cadr guarded) theorems)))))))
+            (when report
+              (format t "~&FN_RAW_DISPATCH ~(~a~) ~(~a~) invariant-risk=~a with=~(~a~)~%"
+                      name (symbol-class name wrld)
+                      (if (getpropc name 'invariant-risk nil wrld) "t" "nil")
+                      (if guarded (cadr guarded) theorems))))))))
     (hash-table-count *fnn-raw-dispatch*)))
 
 (defun fnn-dispatch-function (name)

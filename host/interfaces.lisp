@@ -4919,9 +4919,44 @@
   :raw-guarded (2 (nil fn-rx-provider) (nil)))
 (definterface fn-rxp-token :class :common-lisp-compliant :root :extract
   :raw-guarded (1 (fn-rx-provider) (nil)))
+(definterface fn-owner-rx-capacity-reserve
+  :class :common-lisp-compliant :root :extract
+  :raw-guarded (3 (nil nil fn-page-read-pool) (nil nil fn-page-read-pool)))
+(definterface fn-owner-rx-capacity-install
+  :class :common-lisp-compliant :root :extract
+  :raw-guarded (3 (nil fn-rx-provider fn-page-read-pool)
+                 (nil fn-rx-provider fn-page-read-pool)))
 
 (definterface fn-di-raw-guarded-target :class :program
   :direct "Startup-only exact registered abstract creator EXEC resolution.")
 (definterface fn-di-raw-guarded-problem
  :class :program
  :direct "Startup declaration validator over the loaded world; no per-request decision")
+
+; Receiver STATE bridges retain their existing PROGRAM owner installer.
+; Extraction is supported; these are not paid raw-guarded callbacks.
+(definterface fn-owner-rx-chunk-span :class :program :root :extract)
+(definterface fn-owner-rx-unavailable-line-at :class :program :root :extract)
+(definterface fn-owner-rx-resource-unavailable-line-at :class :program :root :extract)
+(definterface fn-owner-rx-line-end :class :program :root :extract)
+
+; Creator-only fixed receiver turn. Begin/settlement authority is separate.
+(definterface create-fn-receiver-turn
+  :class :common-lisp-compliant :root :extract
+  :raw-guarded (0 () (fn-receiver-turn)))
+
+; Current immutable installation anchor; authority/settlement remain separate.
+(definterface fn-owner-rx-capacity-install-turn
+ :class :common-lisp-compliant :root :extract
+ :raw-guarded (4 (nil fn-rx-provider fn-receiver-turn fn-page-read-pool)
+                 (nil fn-rx-provider fn-receiver-turn fn-page-read-pool)))
+(definterface fn-owner-rx-turn-begin
+ :class :common-lisp-compliant :root :extract
+ :raw-guarded (5 (nil nil fn-rx-provider fn-receiver-turn fn-page-read-pool)
+                 (nil fn-receiver-turn fn-page-read-pool)))
+(definterface fn-owner-rx-turn-source
+ :class :common-lisp-compliant :root :extract
+ :raw-guarded (1 (fn-receiver-turn) (nil)))
+(definterface fn-rxt-installed-anchor-p
+ :class :common-lisp-compliant :root :extract
+ :raw-guarded (3 (nil fn-rx-provider fn-receiver-turn) (nil)))

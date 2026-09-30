@@ -67,3 +67,13 @@
       (value (if (and p1 p2 p3 p4)
                  '(value-triple :corrupted-creator-metadata-refused)
                '(assert-event nil)))))))))
+
+; Absence must be refused even when an extracted abstract alias is callable.
+(make-event
+ (mv-let (problem target)
+  (fn-di-raw-guarded-target 'create-fn-octets
+   '(:class :common-lisp-compliant :raw-guarded (0 () (fn-octets)))
+   (putprop 'fn-octets 'absstobj-info nil (w state)))
+  (declare (ignore target))
+  (value (if problem '(value-triple :missing-abstract-metadata-refused)
+           '(assert-event nil)))))

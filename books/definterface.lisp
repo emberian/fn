@@ -561,7 +561,11 @@
              (info (and creatorp (getpropc st 'absstobj-info nil w))))
         (if (and candidatep (not creatorp))
             (mv (msg "~x0 lacks its registered stobj creator role" name) nil)
-          (if (not info) (mv nil name)
+          (if (not info)
+              (if (and creatorp
+                       (not (eq (car (get-event st w)) 'defstobj)))
+                  (mv (msg "~x0 lacks registered abstract creator metadata" name) nil)
+                (mv nil name))
           (let* ((foundation (and (consp info) (car info)))
                  (entry (and (true-listp info) (alistp (cdr info))
                              (assoc-eq name (cdr info))))
