@@ -1804,26 +1804,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1869,
+    "books": 1871,
     "books_in_root_closure": 1864,
     "roots": 1800,
-    "theorems": 29607,
-    "functions": 18989,
-    "assert_events": 23952,
+    "theorems": 29612,
+    "functions": 18993,
+    "assert_events": 23956,
     "must_fails": 2516,
     "prover_refusals": 0,
     "encapsulates": 159,
     "guards": {
       "verified": 3557,
       "declared-off": 2250,
-      "default-guarded": 10352,
+      "default-guarded": 10356,
       "default-unguarded": 2830
     },
     "suspect_theorems": 1255,
     "export_hygiene_warnings": 363,
     "enabled_projection_warnings": 62,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2582,
+    "include_hygiene_warnings": 2584,
     "host_names_warnings": 2155,
     "hand_written_record_warnings": 18
   },
@@ -22047,15 +22047,42 @@
       "read_error": null
     },
     {
+      "book": "books/owner-retire-stream-space.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 3,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "operator-report-fields-space",
+        "owner-retire-stream"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/owner-retire-stream.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 15,
-      "functions": 13,
+      "theorems": 17,
+      "functions": 15,
       "guards": {
         "verified": 2,
         "declared-off": 1,
-        "default-guarded": 10,
+        "default-guarded": 12,
         "default-unguarded": 0
       },
       "verify_guards_events": 2,
@@ -48291,6 +48318,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/owner-retire-stream-space-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-retire-stream-space"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/owner-retire-stream-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -67619,19 +67672,19 @@
       {
         "theorem": "fn-orr-peer-line-is-reference",
         "book": "books/owner-retire-stream.lisp",
-        "line": 276,
+        "line": 303,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-orr-peer-fields-reference",
         "book": "books/owner-retire-stream.lisp",
-        "line": 283,
+        "line": 310,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-orr-obligation-fields-reference",
         "book": "books/owner-retire-stream.lisp",
-        "line": 288,
+        "line": 315,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -77392,6 +77445,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/owner-retire-stream-space.lisp",
+        "line": 5,
+        "include": "operator-report-fields-space",
+        "included": "books/operator-report-fields-space.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/owner-retire-stream.lisp",
         "line": 5,
         "include": "owner-retire-report-model",
@@ -85999,6 +86059,13 @@
         "line": 2,
         "include": "../../books/owner-retire-stream-reference",
         "included": "books/owner-retire-stream-reference.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-retire-stream-space-tests.lisp",
+        "line": 2,
+        "include": "../../books/owner-retire-stream-space",
+        "included": "books/owner-retire-stream-space.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

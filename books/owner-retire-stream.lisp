@@ -80,6 +80,28 @@
        (stringp (fn-retain-obligation-subject pin))
        (natp (fn-retain-obligation-charge pin))))
 
+ ; Execution checks exactly the cursor prefix, never a remaining graph/list.
+(defun fn-orr-fixed-spinep (x slots)
+  (declare (xargs :guard (natp slots) :measure (nfix slots)))
+  (if (zp slots) (equal x nil)
+    (and (consp x) (fn-orr-fixed-spinep (cdr x) (+ -1 slots)))))
+
+(defthm fn-orr-fixed-spine-is-shape
+  (implies (natp slots)
+           (equal (fn-orr-fixed-spinep x slots)
+                  (and (true-listp x) (equal (len x) slots)))))
+
+(defun fn-orr-ready-p (cursor)
+  (declare (xargs :guard t))
+  (and (mbe :logic (and (true-listp cursor) (equal (len cursor) 10))
+            :exec (fn-orr-fixed-spinep cursor 10))
+       (natp (nth 4 cursor)) (natp (nth 5 cursor)) (natp (nth 6 cursor))
+       (if (equal (nth 0 cursor) :emit)
+           (and (fn-orf-ready-p (nth 8 cursor))
+                (member-eq (nth 9 cursor) '(:peers :obligations :release :done)))
+         (and (member-eq (nth 0 cursor) '(:count-pins :peers :obligations :release :done))
+              (equal (nth 8 cursor) nil) (equal (nth 9 cursor) nil)))))
+
 (defun fn-orr-invariant (cursor)
   (declare (xargs :guard t))
   (and (true-listp cursor) (equal (len cursor) 10)
@@ -90,11 +112,16 @@
          (and (member-eq (nth 0 cursor) '(:count-pins :peers :obligations :release :done))
               (equal (nth 8 cursor) nil) (equal (nth 9 cursor) nil)))))
 
+(defthm fn-orr-invariant-implies-ready
+  (implies (fn-orr-invariant cursor) (fn-orr-ready-p cursor))
+  :hints (("Goal" :in-theory
+           (enable fn-orr-invariant fn-orr-ready-p fn-orf-invariant))))
+
 ; Actual output ABI matches fn-orf: (mv next-cursor octets done).
 ; One turn counts one pin, schedules one fixed descriptor spine, or performs
 ; one emitter quantum. A pending continuation emits no octet itself.
 (defun fn-orr-step (cursor)
-  (declare (xargs :guard (fn-orr-invariant cursor) :verify-guards nil))
+  (declare (xargs :guard (fn-orr-ready-p cursor) :verify-guards nil))
   (let ((phase (nth 0 cursor)) (feeds (nth 1 cursor))
         (pins (nth 2 cursor)) (root (nth 3 cursor))
         (u (nfix (nth 4 cursor))) (held (nfix (nth 5 cursor)))
@@ -140,7 +167,7 @@
       (otherwise (mv cursor nil t)))))
 
 (verify-guards fn-orr-step
-  :hints (("Goal" :in-theory (enable fn-orr-invariant fn-orf-invariant))))
+  :hints (("Goal" :in-theory (enable fn-orr-ready-p))))
 
 (defthm fn-orr-start-invariant
   (fn-orr-invariant (fn-orr-start step oc))

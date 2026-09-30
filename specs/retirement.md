@@ -166,3 +166,12 @@ zero reserves its final digit. The normal six-book source certificate is
 supported-profile operand ceiling or selected-runtime division/frame/GC tariff.
 It also supplies no report-stage or old/new cursor coexistence lifetime grant.
 The actual frozen report writer and CLI reader still require bounded consumers.
+
+The frozen cursor carries the emitter provenance/scratch relation through all
+actual descriptor scheduling and STEP branches. Its execution guard checks a
+fixed ten-slot prefix and the current emitter prefix; full field and digit
+relations remain carried ghost invariants. Current guard/refinement/space and
+complete literal report bridge are normally certified by
+`certify-20260930T114500Z-1836457`. A malformed later field demonstrates that
+ready checks the current prefix without claiming that corrupted state is valid.
+Profile, primitive and coexistence/staging lifetime funding remain separate.

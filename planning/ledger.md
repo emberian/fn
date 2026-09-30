@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1869 |
+| Books read | 1871 |
 | Certification roots in the Makefile | 1800 |
 | Books inside the root closure | 1864 |
-| `defthm` and `defthmd` events | 29607 |
-| `defun` events | 18989 |
+| `defthm` and `defthmd` events | 29612 |
+| `defun` events | 18993 |
 | Functions with verified guards | 3557 |
 | Functions declared `:verify-guards nil` and never verified | 2250 |
-| Functions left at the default with an explicit guard | 10352 |
+| Functions left at the default with an explicit guard | 10356 |
 | Functions left at the default with no guard | 2830 |
-| `assert-event` checks | 23952 |
+| `assert-event` checks | 23956 |
 | `must-fail` checks | 2516 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 159 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 363 |
 | Enabled-projection warnings | 62 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2582 |
+| Include-hygiene warnings | 2584 |
 | Host-names warnings | 2155 |
 | Hand-written-record warnings | 18 |
 
@@ -759,7 +759,8 @@ that `make certify` requests.
 | `books/owner-retire-cursor.lisp` | root | 5 | 7 | 7/0/0/0 | 0 | 0 | 1 |
 | `books/owner-retire-report-model.lisp` | root | 0 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/owner-retire-stream-reference.lisp` | root | 13 | 9 | 5/0/4/0 | 0 | 0 | 0 |
-| `books/owner-retire-stream.lisp` | root | 15 | 13 | 2/1/10/0 | 0 | 0 | 0 |
+| `books/owner-retire-stream-space.lisp` | - | 3 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/owner-retire-stream.lisp` | root | 17 | 15 | 2/1/12/0 | 0 | 0 | 0 |
 | `books/owner-retire.lisp` | root | 4 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/owner-scheduler.lisp` | root | 27 | 34 | 0/0/34/0 | 0 | 0 | 1 |
 | `books/owner-served-bound.lisp` | root | 6 | 2 | 0/0/2/0 | 0 | 0 | 2 |
@@ -1673,6 +1674,7 @@ that `make certify` requests.
 | `tests/acl2/owner-retire-counted-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 0 | 0 |
 | `tests/acl2/owner-retire-cursor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/owner-retire-stream-reference-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 4 | 0 | 0 |
+| `tests/acl2/owner-retire-stream-space-tests.lisp` | - | 0 | 1 | 0/0/1/0 | 4 | 0 | 0 |
 | `tests/acl2/owner-retire-stream-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/owner-scheduler-tests.lisp` | root | 0 | 2 | 0/1/1/0 | 26 | 4 | 0 |
 | `tests/acl2/owner-served-bound-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 8 | 2 | 0 |
