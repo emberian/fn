@@ -44,6 +44,7 @@
 (in-package "ACL2")
 (include-book "byte-store-invariants")
 (include-book "assumptions-durable") ; A-DURABLE-EXTENT, A-DURABLE-LZ
+(include-book "assumptions-rx-array-copy") ; A-RX-ARRAY-COPY, conditional RX semantics
 
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
