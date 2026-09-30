@@ -401,3 +401,4 @@ anything a book does not already decide.
 | `pgs-dc-`, `pgs-dcr-`, `pgs-dcb-`, `pgs-dbr-` | `pagestore-digest-cursor`, `pagestore-digest-cursor-refinement`, `pagestore-digest-byte-cursor`, `pagestore-digest-byte-refinement` | Bounded page and byte digest continuation; conditional phase/terminal proof vocabulary, full maintained trajectory remains open. |
 | `fn-hsr-` | `history-page-reader`, `history-page-reader-verdict` | Selected page-entry scanner and canonical word verdict components; authentication/controller composition remains open. |
 | `fn-rfh-` | `refusal-headroom` | Reference iteration over actual reserve/refuse subjects; exact finite identity consumption, without rescue preservation claim. |
+| `fn-nlpc-` | `legacy-parser-composition` | Arbitrary-source acceptance composition of the actual legacy byte machine and article parser; logical proof vocabulary |
