@@ -1,8 +1,8 @@
 ; fn: the transaction record's shape, without its codec.
 ;
-; The logical record is the eleven-element tuple
+; The logical record is the twelve-element tuple
 ;   (sequence txid generation msgid payload groups obligation-id
-;    content-subject release-evidence charge stamp)
+;    content-subject release-evidence charge stamp binding)
 ; where all text-like fields are ACL2 strings.  `msgid` and every group name
 ; are ASCII.  The three metadata fields are nonempty octet-domain strings:
 ; every character has a code in 0..255.  `payload` alone is an arbitrary list
@@ -22,9 +22,10 @@
 (in-package "ACL2")
 (include-book "cbor")
 (include-book "defrecord")
+(include-book "acceptance-binding")
 
 (defconst *fn-record-magic* '(102 110 45 114))
-(defconst *fn-record-schema-version* 2)
+(defconst *fn-record-schema-version* 4)
 ; Bounds (D27, planning/decisions.md; design 2026-09-25-bounds §2.3).  None
 ; of these is a policy on the data a store holds: the operator's bounds are
 ; the store profile's, and every served path applies the profile's bound
@@ -69,12 +70,12 @@
 ; produce while the frontier (the profile's T) and the charge are u32, and
 ; the one a saved profile's R was checked against: `fn-record-encoded-
 ; octets-ceiling' below, which the profile relation reads.
-(defconst *fn-record-fixed-overhead-octets* 1083)
+(defconst *fn-record-fixed-overhead-octets* 1141)
 ; The same for any record, wide or not (packet P6): every uint head at 9
 ; octets, the wide CBOR uint's longest.  Loose by 8 (the schema octet and the
 ; group count are never wide).  Only the unconditional length bound reads it;
 ; a profile's R is not required to hold it.
-(defconst *fn-record-wide-overhead-octets* 1111)
+(defconst *fn-record-wide-overhead-octets* 1169)
 ;
 ; The five octets every accepted record begins with: the CBOR byte-string
 ; head of length 4 (h'44') and "fn-r".  The sixth octet is the schema
@@ -527,7 +528,7 @@
 (fn-defrecord fn-record
   :constructor (fn-record-make sequence txid generation msgid payload groups
                                obligation-id content-subject release-evidence
-                               charge stamp)
+                               charge stamp binding)
   :fields ((fn-record-sequence fn-record-uint64p)
            (fn-record-txid fn-record-uint64p)
            (fn-record-generation fn-record-uint64p)
@@ -538,7 +539,8 @@
            (fn-record-content-subject fn-record-metadata-bytes-p)
            (fn-record-release-evidence fn-record-metadata-bytes-p)
            (fn-record-charge fn-record-uint64p)
-           (fn-record-stamp fn-record-stampp))
+           (fn-record-stamp fn-record-stampp)
+           (fn-record-binding fn-ab-p))
   :recognizer fn-record-p
   :recognizer-verify-guards nil
   :car-fn fn-cbor-ag-car
@@ -558,7 +560,7 @@
 
 (defun fn-record-schema-octet (record)
   (declare (xargs :guard t))
-  (if (fn-record-widep record) 2 1))
+  (if (fn-record-widep record) 4 3))
 
 (defun fn-record-with-stamp (record stamp)
   (declare (xargs :guard t))
@@ -572,7 +574,7 @@
                   (fn-record-content-subject record)
                   (fn-record-release-evidence record)
                   (fn-record-charge record)
-                  stamp))
+                  stamp (fn-record-binding record)))
 
 
 ; -----------------------------------------------------------------------------
@@ -829,7 +831,7 @@
     (:d fn-record-txid) (:d fn-record-generation) (:d fn-record-msgid)
     (:d fn-record-payload) (:d fn-record-groups) (:d fn-record-obligation-id)
     (:d fn-record-content-subject) (:d fn-record-release-evidence)
-    (:d fn-record-charge) (:d fn-record-stamp) (:d fn-record-parse-shapep) (:d fn-record-parse-ok)
+    (:d fn-record-charge) (:d fn-record-stamp) (:d fn-record-binding) (:d fn-record-parse-shapep) (:d fn-record-parse-ok)
     (:d fn-record-parse-error) (:d fn-record-parse-okp)
     (:d fn-record-parse-value) (:d fn-record-parse-rest)
     (:d fn-record-result-ok) (:d fn-record-result-okp)
