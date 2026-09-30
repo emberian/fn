@@ -379,3 +379,7 @@ anything a book does not already decide.
 | `fn-nsm-` | `native-statement-material` | ACL2-owned legacy statement material, rendering and supplied-key verification for the statement-sign native command. |
 | `fn-bprpf-`, `bprpft-` | `bp-recovery-profile`, `tests/acl2/bp-recovery-profile-tests` | Current profile admission of checkpoint seeds, saved rows, and actual recovered held data before installation. |
 | `fn-cvcg-` | `store-config-generation` | Actual configuration replay generation/cardinality and profile-aware publication count bridge |
+
+| `fn-hrsc-` | `history-scalar-cursor` | Bounded scalar codec cursor and exact residual proof vocabulary; library component. |
+| `fn-hcc-`, `fn-hch-` | `history-image-census`, `history-image-header` | Resumable history census and current-format header emission; library components. |
+| `fn-hrf-` | `history-resource-refinement` | Retained obligation logical/resource projection and component refinement. |

@@ -911,6 +911,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-session \
 	books/nntp-projection \
 	books/nov-fields \
+	books/nov-line-projection \
+	tests/acl2/nov-line-projection-tests \
 	books/nntp-article-pass \
 	books/nntp-responses \
 	books/nntp-article-block \
@@ -1531,6 +1533,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-control-post-reason-tests \
 	tests/acl2/owner-export-request-tests \
 	books/owner-snapshot-request \
+	books/history-scalar-cursor \
+	tests/acl2/history-scalar-cursor-tests \
 	tests/acl2/history-page-cursor-tests \
 	tests/acl2/history-page-layout-tests \
 	tests/acl2/history-page-buffer-tests \
