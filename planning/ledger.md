@@ -13,10 +13,10 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1853 |
 | Certification roots in the Makefile | 1780 |
 | Books inside the root closure | 1850 |
-| `defthm` and `defthmd` events | 29446 |
-| `defun` events | 18899 |
+| `defthm` and `defthmd` events | 29456 |
+| `defun` events | 18901 |
 | Functions with verified guards | 3515 |
-| Functions declared `:verify-guards nil` and never verified | 2263 |
+| Functions declared `:verify-guards nil` and never verified | 2265 |
 | Functions left at the default with an explicit guard | 10290 |
 | Functions left at the default with no guard | 2831 |
 | `assert-event` checks | 23911 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 339 |
 | Enabled-projection warnings | 55 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2557 |
+| Include-hygiene warnings | 2558 |
 | Host-names warnings | 2156 |
 | Hand-written-record warnings | 18 |
 
@@ -666,7 +666,7 @@ that `make certify` requests.
 | `books/outcome-class.lisp` | root | 8 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/over-byte-cursor.lisp` | root | 23 | 12 | 4/0/8/0 | 0 | 0 | 1 |
 | `books/over-byte-invariants.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/over-byte-parser-relation.lisp` | root | 6 | 2 | 0/2/0/0 | 0 | 0 | 0 |
+| `books/over-byte-parser-relation.lisp` | root | 11 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/over-byte-row-relation.lisp` | root | 16 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/over-cursor-shape.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 1 |
 | `books/over-row-pieces.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
@@ -1588,7 +1588,7 @@ that `make certify` requests.
 | `tests/acl2/open-one-pass-tests.lisp` | root | 0 | 8 | 0/6/0/2 | 56 | 1 | 0 |
 | `tests/acl2/outcome-class-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 37 | 7 | 0 |
 | `tests/acl2/over-byte-cursor-tests.lisp` | root | 1 | 6 | 0/5/0/1 | 11 | 0 | 0 |
-| `tests/acl2/over-byte-parser-relation-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 3 | 0 | 0 |
+| `tests/acl2/over-byte-parser-relation-tests.lisp` | root | 5 | 5 | 0/5/0/0 | 3 | 0 | 0 |
 | `tests/acl2/over-byte-row-relation-tests.lisp` | root | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/over-window-tests.lisp` | root | 6 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/owner-ack-after-barrier-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 40 | 0 | 0 |

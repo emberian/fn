@@ -70,3 +70,115 @@
 ; fn-obc-one-preserves-parser-prefix: both premise and conclusion fail.
 (assert-event (mv-let (good fn-arena fn-cat) (obcpt-corrupt-prefix fn-arena fn-cat)
                 (mv good fn-arena fn-cat)) :stobjs-out '(nil fn-arena fn-cat))
+
+(defun obcpt-advance (s steps fn-arena fn-cat)
+ (declare (xargs :stobjs (fn-arena fn-cat) :measure (nfix steps)
+                 :verify-guards nil))
+ (if (zp steps) s
+  (mv-let (out next) (fn-obc-one s fn-arena fn-cat)
+   (declare (ignore out))
+   (obcpt-advance next (1- steps) fn-arena fn-cat))))
+
+(defun-nx obcpt-terminal-row-conclusionp (s number fn-arena fn-cat)
+ (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+ (let* ((parser (mv-nth 0 (fn-lpc-tick (nth 3 s) 1 fn-arena)))
+        (bytes (nth (fn-obc-selected-handle s fn-cat) fn-arena))
+        (nov (fn-hnov-of bytes)))
+  (equal (fn-npw-remaining (fn-obc-parser-pieces number parser) 0 fn-arena)
+   (append (fn-nov-line number
+    (list :ok (fn-record-string-octets (fn-hnov-subject nov))
+              (fn-record-string-octets (fn-hnov-from nov))
+              (fn-record-string-octets (fn-hnov-date nov))
+              (fn-record-string-octets (fn-hnov-msgid nov))
+              (fn-record-string-octets (fn-hnov-references nov))
+              (len bytes) (fn-hf-body-lines-of bytes))) '(13 10)))))
+
+; Reachable positive: the state is obtained by actual ONE transitions from
+; the original range over a numbered visible legacy row, not an EOF state
+; that the complete machine has already left.
+(defthm obcpt-terminal-row-reachable-positive
+ (let* ((fn-arena (list *obct-source*))
+        (wire (fn-record-make 0 1 0 "<e@x>" *obct-source*
+                              '("fn.test") "o" "s" "e" 1 5))
+        (fn-cat (list (fn-held-with-numbers (fn-held-plain wire 0)
+                                           '(("fn.test" . 1)))))
+        (s (obcpt-advance
+            (fn-obc-begin (fn-ovw-cursor "fn.test" 1 1 1 nil t) (obct-token))
+            (len *obct-source*) fn-arena fn-cat)))
+  (and (fn-obc-statep s fn-arena)
+       (equal (nth 2 s) :parse)
+       (fn-obc-parser-prefix-p s fn-arena fn-cat)
+       (not (equal (fn-lpc-verdict (mv-nth 0 (fn-lpc-tick (nth 3 s) 1 fn-arena))) :yield))
+       (fn-cbor-octet-listp (nth (fn-obc-selected-handle s fn-cat) fn-arena))
+       (let* ((parser (mv-nth 0 (fn-lpc-tick (nth 3 s) 1 fn-arena)))
+              (h (fn-obc-selected-handle s fn-cat)) (bytes (nth h fn-arena)))
+        (and (equal parser (fn-lpc-feed bytes (fn-lpc-begin h (len bytes) (nth 1 s))))
+             (equal (fn-lpc-nov-value parser fn-arena) (fn-hnov-of bytes))
+             (equal (fn-lpc-body-lines parser) (fn-hf-body-lines-of bytes))))
+       (obcpt-terminal-row-conclusionp s 1 fn-arena fn-cat)))
+ :rule-classes nil)
+
+; Corrupted-state literal removals: every retained hypothesis is affirmed,
+; the named omitted hypothesis fails, and the whole row conclusion fails.
+(defthm obcpt-terminal-row-without-phase-corrupted-state
+ (let* ((fn-arena (list *obct-source*)) (fn-cat nil)
+        (parser (fn-lpc-feed '(65 13 10 13 10) (fn-lpc-begin 0 5 :pin)))
+        (s (fn-obc-make nil :pin :seek parser nil 0)))
+  (and (not (equal (nth 2 s) :parse))
+       (fn-obc-parser-prefix-p s fn-arena fn-cat)
+       (not (equal (fn-lpc-verdict (mv-nth 0 (fn-lpc-tick (nth 3 s) 1 fn-arena))) :yield))
+       (fn-cbor-octet-listp (nth (fn-obc-selected-handle s fn-cat) fn-arena))
+       (let* ((out (mv-nth 0 (fn-lpc-tick (nth 3 s) 1 fn-arena)))
+              (h (fn-obc-selected-handle s fn-cat)) (bytes (nth h fn-arena)))
+        (and (not (equal out (fn-lpc-feed bytes (fn-lpc-begin h (len bytes) (nth 1 s)))))
+             (not (equal (fn-lpc-nov-value out fn-arena) (fn-hnov-of bytes)))
+             (not (equal (fn-lpc-body-lines out) (fn-hf-body-lines-of bytes)))))
+       (not (obcpt-terminal-row-conclusionp s 1 fn-arena fn-cat))))
+ :rule-classes nil)
+
+(defthm obcpt-terminal-row-without-prefix-corrupted-state
+ (let* ((fn-arena (list *obct-source*)) (fn-cat nil)
+        (parser (fn-lpc-feed '(65 13 10 13 10) (fn-lpc-begin 0 5 :pin)))
+        (s (fn-obc-make nil :pin :parse parser nil 0)))
+  (and (equal (nth 2 s) :parse)
+       (not (fn-obc-parser-prefix-p s fn-arena fn-cat))
+       (not (equal (fn-lpc-verdict (mv-nth 0 (fn-lpc-tick (nth 3 s) 1 fn-arena))) :yield))
+       (fn-cbor-octet-listp (nth (fn-obc-selected-handle s fn-cat) fn-arena))
+       (let* ((out (mv-nth 0 (fn-lpc-tick (nth 3 s) 1 fn-arena)))
+              (h (fn-obc-selected-handle s fn-cat)) (bytes (nth h fn-arena)))
+        (and (not (equal out (fn-lpc-feed bytes (fn-lpc-begin h (len bytes) (nth 1 s)))))
+             (not (equal (fn-lpc-nov-value out fn-arena) (fn-hnov-of bytes)))
+             (not (equal (fn-lpc-body-lines out) (fn-hf-body-lines-of bytes)))))
+       (not (obcpt-terminal-row-conclusionp s 1 fn-arena fn-cat))))
+ :rule-classes nil)
+
+(defthm obcpt-terminal-row-without-terminal-corrupted-state
+ (let* ((fn-arena (list *obct-source*)) (fn-cat nil)
+        (s (fn-obc-make nil :pin :parse
+                        (fn-lpc-begin 0 (len *obct-source*) :pin) nil 0)))
+  (and (equal (nth 2 s) :parse)
+       (fn-obc-parser-prefix-p s fn-arena fn-cat)
+       (equal (fn-lpc-verdict (mv-nth 0 (fn-lpc-tick (nth 3 s) 1 fn-arena))) :yield)
+       (fn-cbor-octet-listp (nth (fn-obc-selected-handle s fn-cat) fn-arena))
+       (let* ((out (mv-nth 0 (fn-lpc-tick (nth 3 s) 1 fn-arena)))
+              (h (fn-obc-selected-handle s fn-cat)) (bytes (nth h fn-arena)))
+        (and (not (equal out (fn-lpc-feed bytes (fn-lpc-begin h (len bytes) (nth 1 s)))))
+             (not (equal (fn-lpc-nov-value out fn-arena) (fn-hnov-of bytes)))
+             (not (equal (fn-lpc-body-lines out) (fn-hf-body-lines-of bytes)))))
+       (not (obcpt-terminal-row-conclusionp s 1 fn-arena fn-cat))))
+ :rule-classes nil)
+
+(defthm obcpt-terminal-row-without-octets-corrupted-state
+ (let* ((bytes (append (butlast *obct-source* 3) '(256 13 10)))
+        (fn-arena (list bytes)) (fn-cat nil)
+        (s (fn-obc-make nil :pin :parse
+            (fn-lpc-feed (butlast bytes 1) (fn-lpc-begin 0 (len bytes) :pin)) nil 0)))
+  (and (equal (nth 2 s) :parse)
+       (fn-obc-parser-prefix-p s fn-arena fn-cat)
+       (not (equal (fn-lpc-verdict (mv-nth 0 (fn-lpc-tick (nth 3 s) 1 fn-arena))) :yield))
+       (not (fn-cbor-octet-listp (nth (fn-obc-selected-handle s fn-cat) fn-arena)))
+       (not (equal
+              (fn-lpc-nov-value (mv-nth 0 (fn-lpc-tick (nth 3 s) 1 fn-arena)) fn-arena)
+              (fn-hnov-of bytes)))
+       (not (obcpt-terminal-row-conclusionp s 1 fn-arena fn-cat))))
+ :rule-classes nil)

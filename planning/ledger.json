@@ -1787,15 +1787,15 @@
     "books": 1853,
     "books_in_root_closure": 1850,
     "roots": 1780,
-    "theorems": 29446,
-    "functions": 18899,
+    "theorems": 29456,
+    "functions": 18901,
     "assert_events": 23911,
     "must_fails": 2516,
     "prover_refusals": 0,
     "encapsulates": 159,
     "guards": {
       "verified": 3515,
-      "declared-off": 2263,
+      "declared-off": 2265,
       "default-guarded": 10290,
       "default-unguarded": 2831
     },
@@ -1803,7 +1803,7 @@
     "export_hygiene_warnings": 339,
     "enabled_projection_warnings": 55,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2557,
+    "include_hygiene_warnings": 2558,
     "host_names_warnings": 2156,
     "hand_written_record_warnings": 18
   },
@@ -19296,7 +19296,7 @@
       "book": "books/over-byte-parser-relation.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 6,
+      "theorems": 11,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -19313,7 +19313,8 @@
       "encapsulates": 0,
       "includes": [
         "legacy-parser-continuation",
-        "over-byte-cursor"
+        "over-byte-cursor",
+        "over-byte-row-relation"
       ],
       "system_includes": [],
       "suspects": [],
@@ -45890,11 +45891,11 @@
       "book": "tests/acl2/over-byte-parser-relation-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
-      "functions": 3,
+      "theorems": 5,
+      "functions": 5,
       "guards": {
         "verified": 0,
-        "declared-off": 3,
+        "declared-off": 5,
         "default-guarded": 0,
         "default-unguarded": 0
       },
@@ -75680,6 +75681,13 @@
         "line": 5,
         "include": "legacy-parser-continuation",
         "included": "books/legacy-parser-continuation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-byte-parser-relation.lisp",
+        "line": 6,
+        "include": "over-byte-row-relation",
+        "included": "books/over-byte-row-relation.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

@@ -2011,3 +2011,323 @@ results add no admission ceiling and do not select a machine fixnum width or
 establish compiler, primitive workspace, stack or allocation correspondence.
 
 
+The proof-only `fn-lpr-prefix-p` ties the resumed cursor to the exact consumed
+prefix of its immutable full source, from the same handle/length/origin pin.
+Begin establishes it, and actual arena ticks with fuel one preserve it under
+exact selected-source binding. Under this carried correspondence, a nonyield
+verdict implies equality with the complete source feed. Rejected header grammar
+still yields until EOF because independent body facts require the remaining
+source bytes. This theorem enables repeated scheduling steps to use the full
+catalog equation; the predicate itself is never evaluated on the served path.
+Actual consumer reply refinement and runtime funding remain separate obligations.
+
+
+## Public exposure (NNT-031)
+
+NNT-031: A reader port facing strangers admits, paces and closes connections within operator limits ACL2 decides, and an unauthenticated session under the none policy reaches no reader or posting command
+
+A listener off loopback answers people the operator never met. What it
+owes them is RFC 3977's, and what it will spend on them is the operator's,
+decided in `books/public-exposure.lisp` (PRF-161) over rows of the live
+configuration (`fn operator CONFIG policy set SLOT VALUE`, applied to the
+running owner like every configuration record). The host counts nothing: it
+passes the kernel's source address, the connection id and the owner's clock,
+and sends, waits or closes as the answer says.
+
+| Slot | Decides | The client sees | Loopback default | Public default |
+| --- | --- | --- | --- | --- |
+| `exposure-connections` | the connection capacity: connections held at once (NNT-043) | `400 too many connections; try again later`, then close (RFC 3977 §5.1.1) | <!--limit:max-connections - 1-->31<!--/limit--> | <!--limit:max-connections - 1-->31<!--/limit--> |
+| `exposure-per-address` | connections held from one source address outside `exposure-trusted` | `400 too many connections from this address; try again later` | the total | <!--limit:exposure-per-address-->8<!--/limit--> |
+| `exposure-steps-per-second` | served steps one address starts per 1000 ms (one step: one host read, D27 work) | nothing: the connection waits for the next quantum (TCP backpressure) | unlimited | <!--limit:exposure-steps-per-second-->64<!--/limit--> |
+| `exposure-first-seconds` | wait for the first command (RFC 3977 §3.1 permits a shorter one) | close, no reply (§3.1) | none | <!--limit:exposure-first-seconds-->60<!--/limit--> |
+| `exposure-idle-seconds` | autologout after that (§3.1: at least three minutes) | close, no reply | none | <!--limit:exposure-idle-seconds-->600<!--/limit--> |
+| `exposure-auth-failures` | `481` answers one address may draw per minute | `400 too many authentication failures; closing connection`, and at the next accept `400 too many authentication failures from this address` | unlimited | <!--limit:exposure-auth-failures-->10<!--/limit--> |
+| `exposure-posts-per-minute` | submissions per authenticated principal per minute | nothing: the principal's connections wait for the next minute | unlimited | <!--limit:exposure-posts-per-minute-->60<!--/limit--> |
+| `anonymous` (policy) | what an unauthenticated session may do: `none` or `open` | under `none`, `480 authentication required` for every reader and posting command (RFC 4643 §2.2) | as `[auth] required` | `none` |
+
+Progress that resets the timers is an answered command or 512 octets
+consumed since the last progress (§3.1's "significant amount of data"), so a
+client trickling one octet at a time is closed by the first-command or idle
+timer. After every served step the observation reads two facts of the
+step's reply and nothing else: whether it sent any octet, and how many of its
+replies begin `481 ` at a line start. It reads them by one scan of the step's
+effects, never by building a copy of the reply, so a step whose reply is
+several MiB (the ARTICLE of an article at the operator's bound, an OVER over
+a large group) is observed in constant stack; its decisions are those over
+the reply octets (SCN-111, PKT-481). `anonymous open` never weakens `[auth]
+required`. A row that is absent
+takes the listener's default: loopback keeps the behaviour every store had
+before this section; a listener outside 127.0.0.0/8 and `::1` takes the
+public column. What the proof covers, what the host adds and what is not
+covered is PRF-161's statement and the record
+`planning/evidence/public-exposure-2026-09-26.md`; `operator CONFIG health`
+prints the exposure lines after its eight states.
+
+Which of these is an RFC requirement, an fn guarantee and a local policy:
+the 400/502 greeting and the immediate close after it, and the 480 for an
+unauthenticated command, are RFC 3977 §5.1 and RFC 4643 §2.2; the silent
+close on the timer is RFC 3977 §3.1's SHOULD; every number, the per-address
+accounting and waiting instead of refusing are local policy.
+
+## Connection capacity and the trusted range (NNT-043)
+
+NNT-043: The reader port holds exactly the operator's connection capacity and refuses the next connection with RFC 3977's 400 by name, and an address in the operator's trusted range is never refused on the per-address rule
+
+The capacity is the `exposure-connections` row, a natural up to the limit
+rows' width (the CBOR uint32 maximum); with no row it is 31, the figure a
+run held before. No fixed ceiling sits under it: the owner a run installs is
+bounded one past that width (`*fn-exp-owner-connection-bound*`,
+books/public-exposure-rows.lisp), so the owner's own bound never refuses what
+the row admits, and the private connection a live `policy set` stages
+through always finds room. Below the capacity a connection is refused only
+by the per-address or failed-login rule; at it, every connection reads `400
+too many connections; try again later` and is closed
+(`fn-exp-open-refuses-exactly-at-the-capacity`, PRF-211). A raised row takes
+effect at the next accept.
+
+`exposure-trusted` (a policy row: `none`, or one or more comma-separated
+ranges `ADDRESS/BITS`, each address in `[listener] host`'s grammar, BITS at
+most 32 or 128, a bare address meaning the whole address) names the sources
+exempt from `exposure-per-address`. A node behind a home router whose NAT
+loopback presents every LAN reader as the router's address is the case: its
+readers would otherwise share one address's allowance. The exemption is from
+that rule alone: the capacity, the step budget and the failed-login limit
+apply to a trusted source as to any other
+(`fn-exp-trusted-address-is-never-refused-by-address`,
+`fn-exp-untrusted-address-is-refused-exactly-at-its-limit`). A range is
+matched by the kernel's family and the first BITS bits of the source
+address; an IPv4 range does not match an IPv4-mapped IPv6 source, which no
+admitted listener receives (NNT-041 refuses `::` and the mapped range).
+
+`operator CONFIG health` and `operator CONFIG status` print `exposure
+capacity connections=N capacity=C per-address=P trusted=RANGES`: the
+connections the owner holds, the capacity in force, the per-address limit
+and the trusted word (`none` when there is none).
+
+That the port refuses with 400 past a limit is RFC 3977 §5.1.1; the capacity,
+its default and the trusted range are local policy.
+
+## Listener addresses (NNT-041)
+
+NNT-041: The reader listener binds every address `[listener] host` names, IPv4 and IPv6 alike, exactly as ACL2 admitted it, and a refused address names why
+
+`[listener] host` is one address or a comma-separated list. Each is an IPv4
+dotted quad, an IPv6 literal in RFC 4291 §2.2's text forms (optionally
+bracketed as RFC 3986 §3.2.2's IP-literal; the port is `[listener] port`,
+never inside the host) or the name `localhost` (the IPv4 loopback, never
+resolved). ACL2 (`fn-native-config-listener-addresses`,
+books/native-config.lisp) projects the list to the family and octets the
+owner binds, one listener per address on the same port, and one
+implicit-TLS listener per address when `tls_port` is set (the TLS listener
+itself is unchanged). PRF-197 is the keystone: every admitted list is
+nonempty, duplicate-free, and each element is an AF_INET quad other than
+`0.0.0.0` or an AF_INET6 address other than `::` and `::ffff:0:0/96`.
+A refusal is `listener-address` (not the grammar), `listener-unspecified`
+(a wildcard), `listener-mapped` (an IPv4-mapped IPv6 address: write the IPv4
+address) or `listener-duplicate`. RFC requirement: the text forms (RFC 4291
+§2.2, RFC 3986 §3.2.2). Local policy: the wildcard and mapped refusals, and
+one listener per written address rather than a dual-stack wildcard socket
+(OpenBSD's AF_INET6 sockets never carry IPv4, so one address per family is
+the portable form). The node is public when any listener is
+(`fn-exp-address-publicp` per address). A live reconfiguration does not
+rebind listeners (PKT-464 (a)); a changed `host` takes effect at restart.
+What remains: PKT-577.
+
+## Transit streaming (NNT-045)
+
+NNT-045: A streaming peer's CHECK and TAKETHIS get the answer IHAVE would get from the same admission decision, the pipeline is bounded by the peer's max-inflight, and fn's feed streams to a peer that permits it and falls back to IHAVE on one that does not
+
+A peer connection (a configured peer with an inbound half) accepts MODE
+STREAM with 203 (RFC 4644 §2.3; stateless: IHAVE stays available), CHECK
+(§2.4) and TAKETHIS (§2.5). The three forms are answered from two ACL2
+decisions of books/peer-inbound.lisp: `fn-peer-decide-offer` before the
+article (IHAVE's first reply, CHECK's only reply) and
+`fn-peer-decide-transfer` after it (IHAVE's second reply, TAKETHIS's only
+reply; it has no command formal). PRF-207 states the correspondence on the
+codes a peer reads off the socket:
+
+| decision | IHAVE (RFC 3977 §6.3.2) | streaming (RFC 4644) |
+| --- | --- | --- |
+| offer wanted / held / deferred or refused | 335 / 435 / 436, 435 | CHECK 238 / 438 / 431, 438 |
+| transfer durable / refused or held / deferred or uncertain | 235 / 437 / 436 | TAKETHIS 239 / 439 / 436 |
+
+RFC requirements: the codes and the Message-ID echoed by every CHECK and
+TAKETHIS reply. fn guarantee: one admission decision for all three forms,
+so no article is admitted under one form that another would refuse, and a
+duplicate is refused under every form. Local policy: 436 after TAKETHIS
+(RFC 4644 §2.5 names 400; innfeed retries 436 and a 400 closes the
+connection with every pipelined article behind it), and the pipeline
+bound: each 238 is a promise counted on the connection, a TAKETHIS retires
+one, and a CHECK with the peer record's inbound max-inflight outstanding
+(16 from `peer add`) answers 431, so a peer may pipeline without limit and
+fn's work per connection stays bounded (D27; the unbounded part is the
+peer's queue, not fn's).
+
+Outbound, fn sends MODE STREAM after the greeting when the peer record
+says streaming. 203: the feed offers with CHECK and transfers with
+TAKETHIS. 500 or 501 (RFC 3977 §3.2.1: the command or its argument is
+unknown, which is what a server without RFC 4644 answers): the same
+connection goes on with IHAVE, the owner logs one line
+(`fn-fc-fallback-log-line`) and records no stop; the next connection asks
+again. Any other answer is a refusal and stops the dial for the owner
+process (PRF-130). The form is per connection: `fn-own-feed-connect` sets
+it at every connect. RFC 4644 §2.3 prefers CAPABILITIES for discovery; fn
+asks MODE STREAM, which every legacy server answers (PKT-599).
+
+## Pipelined articles (NNT-044)
+
+NNT-044: Pipelined articles are each admitted and answered in order: two TAKETHIS or two POST articles in one socket read lose neither, and what is consumed from a stream does not depend on where it was cut
+
+A client may send a command before the previous reply arrives and the
+server must neither discard data nor lose synchronisation (RFC 3977 §3.5);
+a streaming peer pipelines TAKETHIS with its article (RFC 4644 §2.5), and
+innfeed does. One socket read can therefore carry several complete
+articles. The served read yields after the octet that completed an
+article's submission (books/served-tls-prefix.lisp `fn-served-feed-counted`,
+the span fold books/served-span.lisp `fn-scar-feed-span`): the host commits
+the article and sends the replies of the read and the article's outcome,
+then feeds the unconsumed rest of the read as the next read
+(host/native/owner.lisp, the serve loop's retained suffix). Every step's
+work is bounded by the read (D27); no octet is dropped or read twice.
+
+RFC requirement: pipelined data is neither lost nor reordered. fn guarantee
+(PRF-213): the loop driven to exhaustion is one read of the whole input
+(`fn-served-drain-is-step`), so the commands and articles consumed and their
+answers are the same wherever the network or a yield cut the stream
+(`fn-served-drain-run-is-boundary-independent`); a yield carries at most one
+submission and the ones taken are all of them
+(`fn-served-drain-takes-every-submission`); the outcome of an article is on
+the wire before the reply to any command after it. Before PKT-600 was
+repaired the second article of a read was never admitted and never
+answered.
+
+## Compression: COMPRESS (NNT-054, NNT-055)
+
+NNT-054: COMPRESS DEFLATE (RFC 8054): a client may compress its session after authentication; the inbound stream is decoded by ACL2, bounded, resumable and bomb-refusing, the outbound by vendored zlib behind the trust boundary
+
+NNT-055: fn extension: COMPRESS DEFLATE with a shipped preset dictionary named by its BLAKE3 digest (RFC 9842-shaped), and stored payloads carried as they are stored between fn peers
+
+RFC 8054 adds `COMPRESS DEFLATE`: after `206`, every octet in both
+directions is a raw DEFLATE stream (RFC 1951), flushed after each response
+(section 2.2.2). fn serves it. The fn extension NNT-055
+(docs/extensions/nntp-compress-dict.md) presets a shipped dictionary, named
+by its BLAKE3 digest, in both streams and carries stored payloads as they
+are stored. Its stored-payload half is served: `XFN-DICT` in CAPABILITIES
+lists the shipped digests and `XFN-ZARTICLE <message-id> <digest>...`
+answers `229 <digest> <length> <stored-length>` with the stored block,
+yEnc-style escaped in lines of at most 128 octets (RFC 3977 section 3.1.1:
+no NUL, CR or LF in a block), when the peer listed the block's dictionary,
+and ARTICLE's answer otherwise. The preset dictionary on the COMPRESS
+streams is not yet served. It replaces the `COMPRESS
+LZ4` extension that was planned before the compression survey: fn uses one
+DEFLATE inflater for the wire and the store (the 2026-09-28 decision).
+
+What the RFC requires, and where fn stands:
+
+- **RFC requirement.** The label is `COMPRESS` with the algorithm list, never
+  advertised once a layer is active; a second `COMPRESS`, `STARTTLS` or
+  `AUTHINFO` after `206` is `502`; an unknown algorithm is `503`, a malformed
+  one `501`; the command is not pipelined (section 2.2.2). Invalid compressed
+  data closes the connection.
+- **Stronger fn guarantee: the inbound stream is decoded in ACL2.** The
+  client's stream is untrusted input on the served path, so its decoder is
+  `fn-zin-feed` (books/deflate-inflate.lisp, PRF-909): total and
+  guard-verified, a call bounded by its budget, its input and an output
+  bound LIM that the host sets to one served read (D27: a quantum yields,
+  never truncates). KEYSTONES `fn-zin-loop-split-input`,
+  `fn-zin-loop-split-budget`, `fn-zin-loop-out-free`, `fn-zin-loop-is-run`
+  and `fn-zin-run-append`: calls over whatever reads the network delivered,
+  in whatever quanta, are one run over the concatenated stream.
+  Malformed streams are refused by name (`fn-zin-refusal-text`: block type
+  3, stored LEN/NLEN, code counts, incomplete or over-subscribed codes, an
+  unassigned bit sequence, length code 286/287, distance code 30/31, a
+  distance before the stream's first octet).
+- **Stronger fn guarantee: the bomb is refused by name (PRF-910).** The
+  plaintext a connection's stream produces never exceeds 256 times the
+  compressed octets it read plus 65,536 (KEYSTONE `fn-zin-feed-bomb-bound`,
+  about the octets actually appended); the octet that would pass it is
+  refused (`compress-bomb`) and the connection closes. DEFLATE's own
+  ceiling is about 1032:1; NNTP commands and articles compress 2 to 10
+  times.
+- **Local policy.** A final block (BFINAL) ends the client's layer, which
+  RFC 8054 never ends; fn refuses it by name (`compress-ended`) and closes.
+- **Trust boundary: the outbound stream is zlib's.** The server's own
+  stream is written by vendored zlib 1.3.1 (host/native/fn-deflate.c,
+  `deflateInit2` with negative window bits, `Z_SYNC_FLUSH` after each
+  rendered window, RFC 8054 section 4). libdeflate cannot write it: its
+  streams always end with a final block. A zlib fault can only garble what
+  the server sends; nothing the server reads or stores passes through it,
+  and ACL2 decides every octet before it is compressed.
+
+## Scope
+
+No moderation, automated control-message execution, private-mail confidentiality,
+or unrestricted federation is implied by this profile. Those need explicit
+policy and authorization. First client acceptance tests should include an actual
+newsreader and an independent transcript client, rather than only fn talking to
+itself. Legacy convenience aliases are added only with documented semantics.
+
+The dormant `served-plan-byte-cursor` adapter retains the entire untouched
+effect tail and saved quantum inside each returned full plan. A caller must
+retain that returned plan before another atomic call can cold-throw.
+`fn-spbc-finish` publishes exactly the last returned quantum's prefix once
+and retains its exact continuation with the captured response origin.
+Resuming with a different origin token returns `:stale-pin` without changing
+the plan. The adapter requires a cursor at the effect head: initial
+nonreply-prefix positioning is still an explicit composed-boundary obligation,
+so it never hides an uncharged effect-spine scan. Cached and legacy real-row
+fixtures drain through several quantum splits with a retained effect tail.
+These are source components only. Full original reply refinement, actual
+`fn-splan-cursor-step`/host activation, window cancellation and scalar/funding
+joins remain open together; no partial default activation is claimed.
+
+The dormant actual OVER machine now carries exact selected-source parser
+correspondence through `fn-obc-one`. Its terminal parser theorem concerns
+the result of the one-byte tick inside ONE: a nonyield verdict immediately
+changes phase, so no retained parse-at-EOF machine state is assumed. Under
+that correspondence the returned parser equals complete source feed and
+its actual NOV/body-line facts. These observers are proof/test vocabulary
+only; ONE and the host never call them. Full original reply and piece/catalog
+composition, full literal final-tick removals and served activation remain open.
+
+### Actual legacy OVER row rendering source join (PRF-1066)
+
+`fn-obc-parser-pieces` retains the five source spans and resumable decimal
+references. Under a natural source start for each present field, its complete
+logical residual equals the original `fn-nov-line` over the returned parser's
+NOV string columns, followed by CRLF. The metadata is the declared source
+octet count and the parser's body-line count; connecting those values to the
+actual selected source uses the terminal parser bridge.
+
+The span bridge needs only a natural start when a span is present. Handle
+and length natural premises were removed after proving the weakened theorem.
+The string/octet roundtrip applies to the normalized span value, which always
+contains octets. Exact runtime piece constructors and original line renderer
+definitions and guard verifications are moved into narrow books; their names
+and definitions are unchanged. No logical residual runs on the served path.
+
+`over-byte-row-relation-tests` checks a real complete legacy feed and the
+whole row equation. Five corrupted-state fixtures remove one literal field
+start premise apiece, affirm every retained premise, and affirm failure of
+the row equation. Separate fixtures check the span bridge and its sole
+hypothesis removal. These source components do not establish selected-range
+visibility, complete old reply equality, funded host scheduling, physical
+window ownership or a qualified served activation.
+
+### Actual terminal legacy OVER row (PRF-1066)
+
+`fn-obc-final-parser-row-is-actual-selected-source-row` joins the row pieces
+of the actual final parser tick inside ONE to the original NOV line over
+the selected source, followed by CRLF. Its hypotheses are the parse phase,
+the carried selected-source prefix, a terminal tick verdict, and an octet
+source. Field starts are natural because that prefix preserves the existing
+cursor bounds; the row's declared count is the full selected source length.
+No new served validator or traversal is introduced.
+
+The positive witness reaches the final parse input through actual ONE
+transitions from a numbered visible legacy row. Four separately labelled
+corrupted-state removals affirm all retained hypotheses, failure of the
+omitted hypothesis and failure of the whole row conclusion. They also
+check literal removals of the prior terminal feed, NOV and body-line bridges.
+The full selected-range residual, funded prefix positioning, actual fullplan
+host/physical binding and matching qualification remain open.
