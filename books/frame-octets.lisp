@@ -7,6 +7,7 @@
 
 (in-package "ACL2")
 (include-book "cbor-invariants")
+(include-book "blake3-stobj")
 (local (include-book "arithmetic/top" :dir :system))
 
 ; The CBOR big-endian conversions are this part's subject, so its proofs open
@@ -43,22 +44,36 @@
 (defconst *fn-frame-u32-modulus* 4294967296)
 
 ; -----------------------------------------------------------------------------
-; A-CRYPTO: the integrity trailer function
+; Concrete integrity trailer computation. Security remains A-CRYPTO.
+;
+; This is the same BLAKE3 implementation previously installed by defattach,
+; now named in the logical function so streamed implementations can prove a
+; real correspondence to the frame check. The definition stays closed for
+; consumers. Neither computation nor equality establishes collision or
+; preimage resistance; those remain separately named assumptions.
+(defun fn-frame-digest (octets)
+  (declare (xargs :guard t))
+  (fn-blake3-stobj octets))
 
-; The only thing ACL2 knows about the trailer function is that it yields 32
-; octets.  Collision resistance, preimage resistance and the concrete SHA-256
-; algorithm are outside the logic; no theorem below claims any of them.  The
-; local witness proves the constraints are satisfiable.
-(encapsulate
-  (((fn-frame-digest *) => *))
-  (local (defun fn-frame-digest (octets)
-           (declare (ignore octets))
-           '(0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-             0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-  (defthm fn-frame-digest-octet-listp
-    (fn-cbor-octet-listp (fn-frame-digest octets)))
-  (defthm fn-frame-digest-length
-    (equal (len (fn-frame-digest octets)) *fn-frame-trailer-octets*)))
+(local
+ (defthm fn-frame-b3-octet-listp-is-cbor
+   (equal (fn-b3-octet-listp xs) (fn-cbor-octet-listp xs))
+   :hints (("Goal" :in-theory (enable fn-b3-octet-listp
+                                      fn-cbor-octet-listp fn-cbor-octetp)))))
+
+(defthm fn-frame-digest-octet-listp
+  (fn-cbor-octet-listp (fn-frame-digest octets))
+  :hints (("Goal" :use ((:instance fn-blake3-shape (m octets)))
+           :in-theory (disable fn-blake3-shape))))
+
+(defthm fn-frame-digest-length
+  (equal (len (fn-frame-digest octets)) *fn-frame-trailer-octets*))
+
+(defthm fn-frame-digest-is-blake3
+  (equal (fn-frame-digest octets) (fn-blake3 octets))
+  :rule-classes nil)
+
+(in-theory (disable fn-frame-digest))
 
 (defun fn-frame-digestp (xs)
   (declare (xargs :guard t))

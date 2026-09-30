@@ -1105,6 +1105,7 @@
     "tests/acl2/payload-extent-tests",
     "tests/acl2/payload-commit-extent-tests",
     "tests/acl2/frame-digest-buffer-tests",
+    "tests/acl2/frame-digest-concrete-tests",
     "tests/acl2/records-freeze-tests",
     "tests/acl2/catalog-record-tests",
     "tests/acl2/catalog-tests",
@@ -1772,26 +1773,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1835,
-    "books_in_root_closure": 1832,
-    "roots": 1768,
-    "theorems": 29376,
-    "functions": 18860,
-    "assert_events": 23921,
+    "books": 1836,
+    "books_in_root_closure": 1833,
+    "roots": 1769,
+    "theorems": 29379,
+    "functions": 18861,
+    "assert_events": 23928,
     "must_fails": 2518,
     "prover_refusals": 0,
-    "encapsulates": 159,
+    "encapsulates": 158,
     "guards": {
       "verified": 3508,
-      "declared-off": 2249,
-      "default-guarded": 10272,
-      "default-unguarded": 2831
+      "declared-off": 2250,
+      "default-guarded": 10273,
+      "default-unguarded": 2830
     },
-    "suspect_theorems": 1248,
+    "suspect_theorems": 1246,
     "export_hygiene_warnings": 339,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2522,
+    "include_hygiene_warnings": 2523,
     "host_names_warnings": 2156,
     "hand_written_record_warnings": 18
   },
@@ -7215,9 +7216,7 @@
         "bp-transit-join"
       ],
       "system_includes": [],
-      "suspects": [
-        "fn-bprf-request-ref-parts"
-      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -11874,7 +11873,7 @@
       "book": "books/frame-digest-buffer.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 5,
+      "theorems": 7,
       "functions": 4,
       "guards": {
         "verified": 0,
@@ -11990,13 +11989,13 @@
       "book": "books/frame-octets.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 29,
+      "theorems": 31,
       "functions": 8,
       "guards": {
         "verified": 3,
         "declared-off": 0,
-        "default-guarded": 4,
-        "default-unguarded": 1
+        "default-guarded": 5,
+        "default-unguarded": 0
       },
       "verify_guards_events": 3,
       "assert_events": 0,
@@ -12004,8 +12003,9 @@
       "prover_refusals": 0,
       "defconsts": 9,
       "defmacros": 0,
-      "encapsulates": 1,
+      "encapsulates": 0,
       "includes": [
+        "blake3-stobj",
         "cbor-invariants"
       ],
       "system_includes": [
@@ -29414,7 +29414,6 @@
       "suspects": [
         "fn-lgc-committed-of-lgk-make",
         "fn-lgc-of-make",
-        "fn-lgx-rotation-entry-is-entry",
         "fn-lgx-rotation-frame-is-frame",
         "fn-lgx-trailer-is-trailer"
       ],
@@ -40902,6 +40901,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/frame-digest-concrete-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 3,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/frame-digest-buffer"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/frame-journal-kinds-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -43791,7 +43816,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 37,
+      "assert_events": 38,
       "must_fails": 1,
       "prover_refusals": 0,
       "defconsts": 9,
@@ -53318,7 +53343,7 @@
       "book": "tests/acl2/store-open-pre-c1-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 2,
+      "theorems": 0,
       "functions": 10,
       "guards": {
         "verified": 0,
@@ -53327,7 +53352,7 @@
         "default-unguarded": 10
       },
       "verify_guards_events": 0,
-      "assert_events": 18,
+      "assert_events": 21,
       "must_fails": 6,
       "prover_refusals": 0,
       "defconsts": 5,
@@ -53337,7 +53362,6 @@
         "../../books/codec-attach",
         "../../books/crypto-attach",
         "../../books/frame-journal",
-        "../../books/sha256",
         "../../books/store-open-pre-c1",
         "must-fail-checked"
       ],
@@ -56170,7 +56194,6 @@
       "book": "books/bp-receiver-state-invariants.lisp",
       "line": 95,
       "reasons": [
-        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "definition-restated: the conclusion is the body of fn-bpr-context-from-request"
       ]
     },
@@ -56186,14 +56209,6 @@
       "theorem": "fn-bpr-payload-of-held-wire-2",
       "book": "books/bp-receipt.lisp",
       "line": 441,
-      "reasons": [
-        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
-      ]
-    },
-    {
-      "theorem": "fn-bprf-request-ref-parts",
-      "book": "books/bp-request-reference.lisp",
-      "line": 123,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -58024,19 +58039,10 @@
       ]
     },
     {
-      "theorem": "fn-lgx-rotation-entry-is-entry",
-      "book": "books/store-log-kernel-concrete.lisp",
-      "line": 644,
-      "reasons": [
-        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
-      ]
-    },
-    {
       "theorem": "fn-lgx-rotation-frame-is-frame",
       "book": "books/store-log-kernel-concrete.lisp",
       "line": 629,
       "reasons": [
-        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "reflexive-conclusion: a conjunct is (equal X X)"
       ]
     },
@@ -68690,7 +68696,7 @@
       {
         "check": "ncpt-resolve-is-identity",
         "book": "tests/acl2/native-config-paths-tests.lisp",
-        "line": 32,
+        "line": 38,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -81011,6 +81017,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/frame-digest-concrete-tests.lisp",
+        "line": 5,
+        "include": "../../books/frame-digest-buffer",
+        "included": "books/frame-digest-buffer.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/frame-journal-kinds-tests.lisp",
         "line": 18,
         "include": "must-fail-checked",
@@ -86409,21 +86422,21 @@
       },
       {
         "book": "tests/acl2/store-open-pre-c1-tests.lisp",
-        "line": 15,
+        "line": 18,
         "include": "../../books/store-open-pre-c1",
         "included": "books/store-open-pre-c1.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/store-open-pre-c1-tests.lisp",
-        "line": 17,
+        "line": 20,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/store-open-pre-c1-tests.lisp",
-        "line": 20,
+        "line": 23,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
