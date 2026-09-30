@@ -23,6 +23,7 @@
 ; at open only.
 (in-package "ACL2")
 (include-book "config-observed")
+(include-book "store-checkpoint-consumer-publication")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md
@@ -186,9 +187,15 @@
 
 (defun fn-sco-consumer-resume (consumer events expected)
   (declare (xargs :guard t :verify-guards nil))
-  (if (and (consp consumer) (eq (car consumer) :ok))
-      (fn-cpe-projection-replay (fn-cp-nth 1 consumer) events expected)
-    consumer))
+  (cond
+   ((and (fn-omk-widthp consumer 4) (eq (fn-omk-at 0 consumer) :ok))
+    ; A published policy cannot disappear through the old CP-only fold.
+    ; The paired cfg-first producer will replace this named suffix gate.
+    (if (null events) (fn-cpub-readout consumer)
+      '(:refused :consumer-publication-resume)))
+   ((and (consp consumer) (eq (car consumer) :ok))
+    (fn-cpe-projection-replay (fn-cp-nth 1 consumer) events expected))
+   (t consumer)))
 
 ; The capture of a record prefix.  The record list is normalized to a true
 ; list; `append' does the same to its first argument, so the capture of any

@@ -782,6 +782,17 @@ journal replays.
   from E as `fn-sco-capture` does. The dedupe is by equality with P[s]
   (`fn-sct-refp`); a signed composite's carried record is a distinct
   object with distinct bytes, so its payload in R stays literal (PKT-583).
+  The selected account-aware producer extends R child2 to
+  `(:ok CP7 committed-account-root fence-event-count)`, retaining the actual
+  completed publication's policy/index/credentials alongside its CP decision.
+  Non-fence decisions retain that root/count; count is dense Store event count,
+  not allocator frontier. The four-row/run layout and generic tree codec stay
+  the same. Rootless legacy2 cannot establish adopted or pending authority;
+  genuine untouched initial authority is the only initialized rootless case.
+  Source component `fn-cpub-*` and same-current-loader readout are implemented;
+  paired cfg-first production, changed capture alpha/roundtrip, annotation/source
+  association, full INITIAL and whole native restart remain open. New4 nonempty
+  suffix resume explicitly refuses until that producer is joined.
 - **The frame.** Each run is `fn-scc-chunks` of its rows' programs in
   segments of at most the profile's record bound, framed and chained from
   the genesis by the unchanged FNSC frame (schema byte 3, sequence S);

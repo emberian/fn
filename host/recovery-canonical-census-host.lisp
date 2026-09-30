@@ -1,0 +1,57 @@
+; Internal same-source cold census plumbing. This source WIP does not
+; issue INITIAL, publish source4, or install canonical readiness.
+(in-package "ACL2")
+(include-book "recovery-census-source-host")
+(include-book "../books/owner-recovery-canonical-census")
+
+(defun fn-owner-recovery-census-begin (token resource state)
+ (declare (xargs :stobjs state :mode :program))
+ (mv-let (erp descriptor state) (fn-owner-recovery-census-source token state)
+  (if (or erp (not (eq (fn-omk-at 0 descriptor) :recovery-census)))
+      (mv erp descriptor state)
+   (mv-let (erp sized state) (fn-owner-recovery-source-sized-readout token state)
+    (if (or erp (not (eq (fn-omk-at 0 sized) :ready)))
+        (mv erp sized state)
+     (let ((issued (fn-owner-recovery-global 'fn-owner-recovery-source state)))
+      ; CP metadata has no attributed configured producer yet. NIL remains
+      ; unavailable; current STATE's account tuple is not a restart seed.
+      (mv-let (word source collector)
+       (fn-rcc-begin descriptor (fn-omk-at 6 issued) (fn-omk-at 2 sized)
+                     nil resource)
+       (value (if (eq word :census)
+                  (list :census source collector)
+                (list :unavailable word))))))))))
+
+(defun fn-owner-recovery-census-current (collector state)
+ (declare (xargs :stobjs state :mode :program))
+ (let ((descriptor (fn-omk-at 1 collector))
+       (issued (fn-owner-recovery-global 'fn-owner-recovery-source state)))
+  (if (not (fn-rcc-currentp collector issued (fn-owner-canonical-epoch state)
+                          (fn-store-sco-recovery-source-generation-value state)))
+      (value '(:unavailable :recovery-collector))
+   (mv-let (erp current state)
+           (fn-owner-recovery-census-source (fn-omk-at 1 descriptor) state)
+    ; No equality over borrowed Store/root graphs. The startup producer
+    ; holds the exclusive no-writer interval; every mutation retires it.
+    (if (or erp (not (and (eq (fn-omk-at 0 current) :recovery-census)
+                          (equal (fn-omk-at 6 current) (fn-omk-at 6 descriptor))
+                          (equal (fn-omk-at 7 current) (fn-omk-at 7 descriptor)))))
+        (if erp (mv erp current state)
+          (value '(:unavailable :recovery-store-lineage)))
+      (value (list :current (fn-omk-at 1 descriptor))))))))
+
+(defun fn-owner-recovery-census-offer (collector source remapper census state)
+ (declare (xargs :stobjs state :mode :program))
+ (mv-let (erp current state) (fn-owner-recovery-census-current collector state)
+  (if (or erp (not (eq (fn-omk-at 0 current) :current)))
+      (mv erp current state)
+   (mv-let (word next) (fn-rcc-offer collector source remapper census)
+    (value (list word next))))))
+
+(defun fn-owner-recovery-census-readout (collector source remapper census state)
+ (declare (xargs :stobjs state :mode :program))
+ (mv-let (erp current state) (fn-owner-recovery-census-current collector state)
+  (if (or erp (not (eq (fn-omk-at 0 current) :current)))
+      (mv erp current state)
+   (mv-let (word payload next) (fn-rcc-readout collector source remapper census)
+    (value (list word payload next))))))

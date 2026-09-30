@@ -4943,7 +4943,7 @@
 (definterface fn-ssr-at :class :common-lisp-compliant
   :kinds ((n natp)))
 
-(definterface fn-owner-recovery-source-reset :class ::program)
+(definterface fn-owner-recovery-source-reset :class :program)
 
 (definterface fn-owner-recovery-source-observe-sized :class :program)
 (definterface fn-store-statement-replay-seed-sized :class :program)
@@ -4952,3 +4952,7 @@
 
 (definterface fn-owner-recovery-source-observe-seed-sized :class :program)
 (definterface fn-owner-recovery-census-source :class :program)
+(definterface fn-owner-recovery-census-current :class :program)
+(definterface fn-owner-recovery-census-offer :class :program)
+(definterface fn-owner-recovery-census-readout :class :program)
+(definterface fn-owner-osn-consumer-publication-capture :class :program)

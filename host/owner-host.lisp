@@ -31,6 +31,8 @@
 (include-book "../books/state-globals")
 (include-book "recovery-source-sized-host")
 (include-book "recovery-census-source-host")
+(include-book "recovery-canonical-census-host")
+(include-book "store-checkpoint-consumer-host")
 (include-book "../books/owner-retain-state")
 ; The compression threshold (fn-owner-compress-min-octets; PRF-341).
 (include-book "../books/payload-lz-append")
@@ -969,6 +971,16 @@
            (fn-owner-canonical-availablep (fn-omk-at 2 context) state))
       (value (fn-owner-canonical-ready-capture state))
     (value '(:unavailable :canonical-size))))
+
+(defun fn-owner-osn-consumer-publication-capture (context state)
+ (declare (xargs :stobjs state :mode :program))
+ (if (and (fn-omk-widthp context 6) (eq (fn-omk-at 0 context) :ready)
+          (fn-owner-canonical-availablep (fn-omk-at 2 context) state))
+     (let ((st (fn-own-store (fn-owner-core state))))
+      (value (fn-cpub-capture (fn-sn-consumer st)
+               (fn-owner-account-root-state state)
+               (fn-owner-canonical-epoch state) (fn-omk-at 2 context))))
+   (value '(:unavailable :consumer-capture))))
 
 (defun fn-owner-osn-source-begin (capture)
   (declare (xargs :mode :program))

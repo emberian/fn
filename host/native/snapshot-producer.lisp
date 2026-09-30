@@ -9,7 +9,7 @@
   observation completion log-position (log-phase :unfrozen) (phase :source) outcome
   census pending-row cold-mapping (pipeline-phase :census) writer key-cursor remapper
   (action-lock (sb-thread:make-mutex :name "snapshot action"))
-  (returned :returned) (stage :none))
+  (returned :returned) (stage :none) account-publication)
 
 (defun fnn-snapshot-job-open (service captured root maintenance payload-view)
   "The caller holds the owner mutex and has admitted maintenance, acquired
@@ -18,6 +18,78 @@ that immutable source; no records accessor or history materializer is used."
   (%make-fnn-snapshot-job
    :service service :capture captured :root root :maintenance maintenance
    :payload-view payload-view :source (fnn-snapshot-source-begin captured)))
+
+
+(defun %fnn-snapshot-recovery-job-open
+    (service begun root maintenance payload-view)
+  "Internal constructor after the actual operation allowance and root/view
+acquisitions. BEGUN is the one returned fn-owner-recovery-census-begin packet;
+it is not a supplied capture/ready tuple. Startup keeps its no-writer interval
+until measurement/seal or definite joined cleanup. This source entry does not
+install the still-missing INITIAL factory or publication capability."
+  (destructuring-bind (word source collector) begun
+    (unless (eq word :census)
+      (fnn-refuse-io "recovery census begin unavailable: ~a" word))
+    (%make-fnn-snapshot-job
+     :service service :capture nil :root root :maintenance maintenance
+     :payload-view payload-view :source source :canonical collector
+     :remapper (fnn-core 'fn-omk-at 2 collector)
+     :census (fnn-core 'fn-omk-at 3 collector))))
+
+(defun fnn-snapshot-recovery-census-step (job)
+  "One action of the existing source/remap/census pipeline, followed by the
+actual retained collector offer/readout. The startup caller retains exclusive
+Store custody; source-token checks alone cannot prove same-count nonmutation.
+A lost token leaves every root and lease held. There is no writer restart here."
+  (sb-thread:with-mutex ((fnn-snapshot-job-action-lock job))
+    (let* ((service (fnn-snapshot-job-service job))
+           (current (sb-thread:with-mutex ((fnn-owner-service-lock service))
+                      (fnn-core-state 'fn-owner-recovery-census-current
+                                      (fnn-snapshot-job-canonical job)))))
+      (unless (eq (first current) :current)
+        (return-from fnn-snapshot-recovery-census-step current))
+      ; The core terminal transition is single-use. Retain its collector;
+      ; calling the core readout again returns :pending, never a new result.
+      (when (eq (fnn-core 'fn-omk-at 0 (fnn-snapshot-job-canonical job)) :measured)
+        (return-from fnn-snapshot-recovery-census-step '(:retained :measured)))
+      (setf (fnn-snapshot-job-returned job) :running)
+      (unwind-protect
+           (handler-case
+               (let* ((action (%fnn-snapshot-job-source-step job))
+                      (terminal (and (consp action) (eq (first action) :census-complete)))
+                      (retained
+                       (sb-thread:with-mutex ((fnn-owner-service-lock service))
+                         (if terminal
+                             (fnn-core-state 'fn-owner-recovery-census-readout
+                              (fnn-snapshot-job-canonical job)
+                              (fnn-snapshot-job-source job)
+                              (fnn-snapshot-job-remapper job)
+                              (fnn-snapshot-job-census job))
+                           (fnn-core-state 'fn-owner-recovery-census-offer
+                            (fnn-snapshot-job-canonical job)
+                            (fnn-snapshot-job-source job)
+                            (fnn-snapshot-job-remapper job)
+                            (fnn-snapshot-job-census job))))))
+                 (cond
+                   ((eq (first retained) :retained)
+                    (setf (fnn-snapshot-job-canonical job) (second retained))
+                    action)
+                   ((eq (first retained) :measured)
+                    (setf (fnn-snapshot-job-canonical job) (third retained))
+                    retained)
+                   (t
+                    ; Actual source steps may already have returned I/O.
+                    ; Refusal cannot erase their held buffer or current root.
+                    (setf (fnn-snapshot-job-phase job) :recovery-required
+                          (fnn-snapshot-job-outcome job) :uncertain)
+                    retained)))
+             (fnn-snapshot-read-not-issued (condition)
+               (setf (fnn-snapshot-job-outcome job) :refused)
+               (error condition))
+             (error (condition)
+               (setf (fnn-snapshot-job-outcome job) :uncertain)
+               (error condition)))
+        (setf (fnn-snapshot-job-returned job) :returned)))))
 
 (defun %fnn-snapshot-job-row-step (job)
   "One source/provider/auth-reader action. A row is offered once, with its
@@ -362,6 +434,7 @@ An exception leaves the job's remaining leases for recovery/definite cleanup."
   (setf (fnn-snapshot-job-phase job) :cancelling
         (fnn-snapshot-job-pipeline-phase job) :cancelling
         (fnn-snapshot-job-canonical job) nil
+        (fnn-snapshot-job-account-publication job) nil
         (fnn-snapshot-job-remapper job) nil
           (fnn-snapshot-job-key-cursor job) nil
           (fnn-snapshot-job-census job) nil
@@ -475,7 +548,7 @@ ambiguous barrier retains the job; cancellation does not erase it."
   "MAINTENANCE is an already admitted, operation-derived demand. Recheck
 its exact live ledger binding before acquiring a root or capture. This
 operational fence does not claim the complete rescue reserve is installed."
-  (let ((captured nil) (canonical nil) (root nil) (view nil) (job nil))
+  (let ((captured nil) (canonical nil) (publication nil) (root nil) (view nil) (job nil))
     (unwind-protect
          (fnn-owner-gated (service :control)
            ; The retirement observation is read at the same serialized
@@ -501,6 +574,11 @@ operational fence does not claim the complete rescue reserve is installed."
              (setq canonical (fnn-core-state 'fn-owner-osn-canonical-capture context))
              (unless (eq (first canonical) :ready)
                (fnn-refuse-io "snapshot canonical context is unavailable"))
+             (setq publication
+                   (fnn-core-state 'fn-owner-osn-consumer-publication-capture context))
+             (unless (eq (first publication) :ok)
+               (fnn-refuse-io "snapshot consumer publication is unavailable: ~a"
+                             (second publication)))
              (when (second plan)
                (setq root (fnn-snapshot-source-root-acquire service (second plan) maintenance)))
              (setq captured (fnn-core-state 'fn-owner-osn-capture))
@@ -513,6 +591,7 @@ operational fence does not claim the complete rescue reserve is installed."
                (setq view holder))
              (setq job (fnn-snapshot-job-open service captured root maintenance view))
              (setf (fnn-snapshot-job-canonical job) canonical)
+             (setf (fnn-snapshot-job-account-publication job) publication)
              (fnn-snapshot-job-freeze-log job)))
       ; No worker exists yet on this refusal path. The owner gate has
       ; returned before these cleanup calls acquire it again.

@@ -90,3 +90,23 @@ Its sole canonical pass uses the existing source cursor, OSM row remapper and
 HCT row census. CP metadata comes from the actual configured authority producer;
 nonempty CP metadata cannot be reconstructed from shape or an empty seed.
 This input boundary is source WIP, not yet admitted or an installed collector.
+
+The private cold collector adapter reuses the existing snapshot job and its
+source/remapper/census steps. Its canonical slot retains collector8 rather than
+a live ready10 tuple; no new job slot or duplicate history walk is introduced.
+The PROGRAM begin reads ORIGINAL context and same-pass fields internally. Until
+an attributed configured consumer producer exists, CP metadata stays NIL. Each
+returned source action is offered to the core collector after a current-token
+check. Terminal readout is single-use and produces `:measured`; it neither seals
+source4 nor installs readiness. A lost token retains all root and resource
+aliases until the actual action has returned and cleanup settles them.
+
+The actual startup caller must complete this pipeline before `fn-store-sco-clear`
+and physical prefix release, and before owner mutations. The retained no-writer
+interval excludes equal-count mutations; scalar count/frontier coincidence is
+not Store identity. Configurations can advance the installed frontier beyond the
+suffix txid fold, so the current gate accepts the issuer frontier below that
+captured actual frontier. Final seal still uses the actual named same-context
+observation and its returned successor. The complete INITIAL factory, configured
+CP metadata, collector source relation and composed native startup remain open;
+the new private adapter is source WIP and has no activated startup caller.

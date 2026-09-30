@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1934 |
+| Books read | 1942 |
 | Certification roots in the Makefile | 1793 |
-| Books inside the root closure | 1904 |
-| `defthm` and `defthmd` events | 29932 |
-| `defun` events | 19297 |
-| Functions with verified guards | 3532 |
+| Books inside the root closure | 1905 |
+| `defthm` and `defthmd` events | 29942 |
+| `defun` events | 19316 |
+| Functions with verified guards | 3536 |
 | Functions declared `:verify-guards nil` and never verified | 2315 |
-| Functions left at the default with an explicit guard | 10578 |
-| Functions left at the default with no guard | 2872 |
-| `assert-event` checks | 24154 |
+| Functions left at the default with an explicit guard | 10592 |
+| Functions left at the default with no guard | 2873 |
+| `assert-event` checks | 24166 |
 | `must-fail` checks | 2520 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 161 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 346 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2582 |
-| Host-names warnings | 2243 |
+| Include-hygiene warnings | 2585 |
+| Host-names warnings | 2263 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -385,6 +385,7 @@ that `make certify` requests.
 | `books/config-stream.lisp` | root | 21 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/config.lisp` | root | 115 | 285 | 33/0/252/0 | 0 | 0 | 1 |
 | `books/connection-budget.lisp` | root | 38 | 35 | 0/0/35/0 | 0 | 0 | 3 |
+| `books/consumer-account-publication-state.lisp` | - | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/consumer-artifact-retry.lisp` | root | 21 | 3 | 0/0/2/1 | 0 | 0 | 0 |
 | `books/consumer-bound.lisp` | root | 26 | 15 | 7/1/7/0 | 0 | 0 | 5 |
 | `books/consumer-event-index.lisp` | root | 29 | 20 | 4/1/15/0 | 0 | 0 | 0 |
@@ -757,6 +758,7 @@ that `make certify` requests.
 | `books/owner-reclaim-ready.lisp` | closure | 10 | 4 | 0/2/2/0 | 0 | 0 | 0 |
 | `books/owner-reclaim.lisp` | root | 15 | 9 | 1/2/6/0 | 0 | 0 | 1 |
 | `books/owner-recover-ocl.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/owner-recovery-canonical-census.lisp` | - | 1 | 5 | 1/0/4/0 | 0 | 0 | 0 |
 | `books/owner-refresh-indexed.lisp` | root | 9 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/owner-resource-line.lisp` | root | 3 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/owner-results.lisp` | root | 23 | 69 | 8/5/55/1 | 0 | 0 | 1 |
@@ -1017,16 +1019,19 @@ that `make certify` requests.
 | `books/store-capacity-vector.lisp` | root | 52 | 22 | 0/4/17/1 | 0 | 0 | 5 |
 | `books/store-carried-folds.lisp` | root | 12 | 5 | 0/2/3/0 | 0 | 0 | 2 |
 | `books/store-checkpoint-arena-load.lisp` | root | 55 | 7 | 2/1/3/1 | 0 | 0 | 3 |
+| `books/store-checkpoint-arena-size-load-all.lisp` | - | 1 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-arena-size-load.lisp` | closure | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-arena-size-refinement.lisp` | - | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-arena-writer.lisp` | root | 65 | 23 | 11/1/11/0 | 0 | 0 | 3 |
 | `books/store-checkpoint-arena.lisp` | root | 56 | 27 | 5/11/11/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-buffer.lisp` | root | 31 | 9 | 3/0/6/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-codec.lisp` | root | 39 | 18 | 9/1/8/0 | 0 | 0 | 0 |
+| `books/store-checkpoint-consumer-publication.lisp` | closure | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-digest.lisp` | closure | 3 | 5 | 0/0/4/1 | 0 | 0 | 2 |
 | `books/store-checkpoint-open.lisp` | root | 42 | 30 | 11/0/19/0 | 0 | 0 | 2 |
 | `books/store-checkpoint-reader.lisp` | root | 65 | 17 | 0/2/15/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-share.lisp` | root | 6 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/store-checkpoint-size-reader-all.lisp` | - | 8 | 3 | 2/0/0/1 | 0 | 0 | 0 |
 | `books/store-checkpoint-size-reader.lisp` | closure | 44 | 23 | 6/2/12/3 | 0 | 0 | 0 |
 | `books/store-checkpoint-tables-reader.lisp` | root | 43 | 13 | 3/0/9/1 | 0 | 0 | 1 |
 | `books/store-checkpoint-tables.lisp` | root | 71 | 42 | 3/4/34/1 | 1 | 0 | 4 |
@@ -1712,6 +1717,7 @@ that `make certify` requests.
 | `tests/acl2/owner-reclaim-ready-tests.lisp` | root | 1 | 1 | 0/1/0/0 | 18 | 2 | 0 |
 | `tests/acl2/owner-reclaim-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 26 | 2 | 0 |
 | `tests/acl2/owner-recover-ocl-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 3 | 0 |
+| `tests/acl2/owner-recovery-canonical-census-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 6 | 0 | 0 |
 | `tests/acl2/owner-refresh-indexed-tests.lisp` | root | 0 | 8 | 0/6/0/2 | 5 | 0 | 0 |
 | `tests/acl2/owner-resource-line-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 7 | 0 | 0 |
 | `tests/acl2/owner-results-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 49 | 2 | 0 |
@@ -1887,6 +1893,8 @@ that `make certify` requests.
 | `tests/acl2/store-capacity-vector-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 76 | 3 | 0 |
 | `tests/acl2/store-carried-folds-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 37 | 3 | 0 |
 | `tests/acl2/store-checkpoint-arena-tests.lisp` | root | 4 | 20 | 0/19/1/0 | 34 | 1 | 0 |
+| `tests/acl2/store-checkpoint-consumer-host-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `tests/acl2/store-checkpoint-consumer-publication-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 6 | 0 | 0 |
 | `tests/acl2/store-checkpoint-digest-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 4 | 0 |
 | `tests/acl2/store-checkpoint-open-tests.lisp` | root | 1 | 1 | 0/1/0/0 | 33 | 10 | 0 |
 | `tests/acl2/store-checkpoint-tables-tests.lisp` | root | 2 | 8 | 0/8/0/0 | 18 | 9 | 0 |
@@ -2871,8 +2879,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-scl-with-live-fields` | `books/served-chunk-live-free.lisp` | 50 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-scl-with-live-of-conn-with-wire` | `books/served-chunk-live-free.lisp` | 75 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-scl-with-live-of-make-conn-live` | `books/served-chunk-live-free.lisp` | 65 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sco-fault-of-fault` | `books/store-checkpoint-open.lisp` | 449 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-sco-identity-step-when-faulted` | `books/store-checkpoint-open.lisp` | 425 | arm-of-definition: the hypotheses select one IF/COND arm of fn-replay-identity-step and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-replay-identity-step and the conclusion is that branch's value |
+| `fn-sco-fault-of-fault` | `books/store-checkpoint-open.lisp` | 456 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-sco-identity-step-when-faulted` | `books/store-checkpoint-open.lisp` | 432 | arm-of-definition: the hypotheses select one IF/COND arm of fn-replay-identity-step and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-replay-identity-step and the conclusion is that branch's value |
 | `fn-sco-select-named-refuses-schema` | `books/store-checkpoint-tables.lisp` | 1114 | arm-of-definition: constant arguments select one IF/COND arm of fn-sco-select-named and the conclusion is that arm's value |
 | `fn-sco-select-named-unfolds` | `books/store-checkpoint-tables.lisp` | 1109 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sco-select-named and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-sco-select-named and the conclusion is that branch's value |
 | `fn-scr-auth-view-archive-unrestricted` | `books/served-catalog-chain.lisp` | 693 | arm-of-definition: the hypotheses select one IF/COND arm of fn-auth-view-archive and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-auth-view-archive and the conclusion is that branch's value |
