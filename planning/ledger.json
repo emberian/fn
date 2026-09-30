@@ -1945,6 +1945,7 @@
     "tests/acl2/bpsec-asb-spine-tests",
     "tests/acl2/bpsec-target-spine-tests",
     "tests/acl2/bpsec-asb-control-tests",
+    "tests/acl2/bpsec-asb-position-tests",
     "tests/acl2/bpsec-target-cursor-tests",
     "tests/acl2/bpsec-target-tests",
     "tests/acl2/post-identity-source-cursor-source-complete-tests",
@@ -2058,26 +2059,26 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2242,
-    "books_in_root_closure": 2192,
-    "roots": 2054,
-    "theorems": 32561,
-    "functions": 20876,
-    "assert_events": 24510,
+    "books": 2246,
+    "books_in_root_closure": 2196,
+    "roots": 2055,
+    "theorems": 32600,
+    "functions": 20880,
+    "assert_events": 24523,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 166,
     "guards": {
       "verified": 3738,
       "declared-off": 2536,
-      "default-guarded": 11592,
+      "default-guarded": 11596,
       "default-unguarded": 3010
     },
     "suspect_theorems": 1295,
     "export_hygiene_warnings": 382,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2885,
+    "include_hygiene_warnings": 2890,
     "host_names_warnings": 2419,
     "hand_written_record_warnings": 19
   },
@@ -8544,6 +8545,32 @@
       "read_error": null
     },
     {
+      "book": "books/bpsec-asb-position.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 37,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bpsec-asb"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/bpsec-asb-quanta.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -8829,6 +8856,7 @@
       "includes": [
         "bpsec-asb",
         "bpsec-asb-control",
+        "bpsec-asb-position",
         "bpsec-asb-quanta",
         "bpsec-asb-spine",
         "bpsec-operation",
@@ -35767,12 +35795,12 @@
       "book": "books/statement-codec.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 38,
-      "functions": 7,
+      "theorems": 32,
+      "functions": 2,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 6,
+        "default-guarded": 1,
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
@@ -35783,7 +35811,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "statement-items"
+        "statement-items",
+        "statement-items-reference"
       ],
       "system_includes": [],
       "suspects": [
@@ -35820,15 +35849,15 @@
       "read_error": null
     },
     {
-      "book": "books/statement-items.lisp",
+      "book": "books/statement-items-reference.lisp",
       "in_root_closure": true,
-      "is_root": true,
-      "theorems": 2,
-      "functions": 7,
+      "is_root": false,
+      "theorems": 7,
+      "functions": 5,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 7,
+        "default-guarded": 5,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -35839,7 +35868,35 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "crypto-seam"
+        "cbor",
+        "statement-results"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/statement-items.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "crypto-seam",
+        "statement-results"
       ],
       "system_includes": [],
       "suspects": [],
@@ -35901,10 +35958,34 @@
       "read_error": null
     },
     {
+      "book": "books/statement-results.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 6,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/statement-seam.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 12,
+      "theorems": 13,
       "functions": 4,
       "guards": {
         "verified": 0,
@@ -35921,7 +36002,8 @@
       "encapsulates": 1,
       "includes": [
         "statement-codec",
-        "statement-items"
+        "statement-items",
+        "statement-items-reference"
       ],
       "system_includes": [],
       "suspects": [],
@@ -46099,6 +46181,32 @@
       "encapsulates": 0,
       "includes": [
         "../../books/bpsec-asb-control"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bpsec-asb-position-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 13,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bpsec-asb-position"
       ],
       "system_includes": [],
       "suspects": [],
@@ -75561,7 +75669,7 @@
     {
       "theorem": "fn-stmt-impl-encode-items-of-atom",
       "book": "books/statement-codec.lisp",
-      "line": 392,
+      "line": 337,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-stmt-encode-items-impl and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-stmt-encode-items-impl and the conclusion is that branch's value"
@@ -83866,6 +83974,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/bpsec-asb-position.lisp",
+        "line": 4,
+        "include": "bpsec-asb",
+        "included": "books/bpsec-asb.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/bpsec-asb-quanta.lisp",
         "line": 4,
         "include": "bpsec-asb",
@@ -83996,6 +84111,13 @@
         "line": 12,
         "include": "bpsec-asb-control",
         "included": "books/bpsec-asb-control.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec.lisp",
+        "line": 13,
+        "include": "bpsec-asb-position",
+        "included": "books/bpsec-asb-position.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -90838,6 +90960,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/statement-items-reference.lisp",
+        "line": 4,
+        "include": "statement-results",
+        "included": "books/statement-results.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/statement-items.lisp",
+        "line": 13,
+        "include": "statement-results",
+        "included": "books/statement-results.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/statement-keyring-publication.lisp",
         "line": 4,
         "include": "hybrid-lifecycle-store-invariants",
@@ -94104,6 +94240,13 @@
         "line": 2,
         "include": "../../books/bpsec-asb-control",
         "included": "books/bpsec-asb-control.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bpsec-asb-position-tests.lisp",
+        "line": 2,
+        "include": "../../books/bpsec-asb-position",
+        "included": "books/bpsec-asb-position.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

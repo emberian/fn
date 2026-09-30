@@ -1956,6 +1956,7 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/bpsec-asb-spine-tests \
     tests/acl2/bpsec-target-spine-tests \
     tests/acl2/bpsec-asb-control-tests \
+    tests/acl2/bpsec-asb-position-tests \
     tests/acl2/bpsec-target-cursor-tests \
     tests/acl2/bpsec-target-tests \
     tests/acl2/post-identity-source-cursor-source-complete-tests \

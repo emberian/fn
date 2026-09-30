@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2242 |
-| Certification roots in the Makefile | 2054 |
-| Books inside the root closure | 2192 |
-| `defthm` and `defthmd` events | 32561 |
-| `defun` events | 20876 |
+| Books read | 2246 |
+| Certification roots in the Makefile | 2055 |
+| Books inside the root closure | 2196 |
+| `defthm` and `defthmd` events | 32600 |
+| `defun` events | 20880 |
 | Functions with verified guards | 3738 |
 | Functions declared `:verify-guards nil` and never verified | 2536 |
-| Functions left at the default with an explicit guard | 11592 |
+| Functions left at the default with an explicit guard | 11596 |
 | Functions left at the default with no guard | 3010 |
-| `assert-event` checks | 24510 |
+| `assert-event` checks | 24523 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 166 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 382 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2885 |
+| Include-hygiene warnings | 2890 |
 | Host-names warnings | 2419 |
 | Hand-written-record warnings | 19 |
 
@@ -316,6 +316,7 @@ that `make certify` requests.
 | `books/bp-workflow-transport-invariants.lisp` | root | 32 | 2 | 0/0/2/0 | 0 | 0 | 3 |
 | `books/bp-workflow.lisp` | root | 2 | 113 | 4/0/109/0 | 0 | 0 | 0 |
 | `books/bpsec-asb-control.lisp` | closure | 22 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/bpsec-asb-position.lisp` | closure | 37 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/bpsec-asb-quanta.lisp` | closure | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bpsec-asb-spine.lisp` | closure | 18 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/bpsec-asb.lisp` | closure | 3 | 21 | 0/0/21/0 | 0 | 0 | 0 |
@@ -1231,12 +1232,14 @@ that `make certify` requests.
 | `books/state-digest.lisp` | root | 23 | 29 | 0/0/25/4 | 0 | 0 | 0 |
 | `books/state-globals.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/statement-attach.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/statement-codec.lisp` | root | 38 | 7 | 0/0/6/1 | 0 | 0 | 1 |
+| `books/statement-codec.lisp` | root | 32 | 2 | 0/0/1/1 | 0 | 0 | 1 |
 | `books/statement-invariants.lisp` | root | 57 | 1 | 0/0/0/1 | 0 | 0 | 1 |
-| `books/statement-items.lisp` | root | 2 | 7 | 0/0/7/0 | 0 | 0 | 0 |
+| `books/statement-items-reference.lisp` | closure | 7 | 5 | 0/0/5/0 | 0 | 0 | 0 |
+| `books/statement-items.lisp` | root | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/statement-keyring-publication.lisp` | root | 12 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/statement-recover-stream.lisp` | root | 8 | 7 | 0/0/7/0 | 0 | 0 | 0 |
-| `books/statement-seam.lisp` | root | 12 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/statement-results.lisp` | closure | 0 | 6 | 0/0/6/0 | 0 | 0 | 0 |
+| `books/statement-seam.lisp` | root | 13 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/statement-snapshot-keyring.lisp` | root | 8 | 7 | 2/0/5/0 | 0 | 0 | 0 |
 | `books/statement.lisp` | root | 24 | 56 | 0/0/56/0 | 0 | 0 | 13 |
 | `books/store-budget-article.lisp` | root | 9 | 7 | 0/0/7/0 | 0 | 0 | 0 |
@@ -1589,6 +1592,7 @@ that `make certify` requests.
 | `tests/acl2/bp-workflow-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/bp-workflow-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 50 | 7 | 0 |
 | `tests/acl2/bpsec-asb-control-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 7 | 0 | 0 |
+| `tests/acl2/bpsec-asb-position-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 13 | 0 | 0 |
 | `tests/acl2/bpsec-asb-quanta-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 8 | 0 | 0 |
 | `tests/acl2/bpsec-asb-spine-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 6 | 0 | 0 |
 | `tests/acl2/bpsec-asb-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 14 | 0 | 0 |
@@ -3445,7 +3449,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-stmt-header-preds-of-fn-stmt-make-header` | `books/statement.lisp` | 594 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-stmt-header-ref-of-fn-stmt-make-header` | `books/statement.lisp` | 600 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-stmt-header-sequence-of-fn-stmt-make-header` | `books/statement.lisp` | 591 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-stmt-impl-encode-items-of-atom` | `books/statement-codec.lisp` | 392 | arm-of-definition: the hypotheses select one IF/COND arm of fn-stmt-encode-items-impl and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-stmt-encode-items-impl and the conclusion is that branch's value |
+| `fn-stmt-impl-encode-items-of-atom` | `books/statement-codec.lisp` | 337 | arm-of-definition: the hypotheses select one IF/COND arm of fn-stmt-encode-items-impl and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-stmt-encode-items-impl and the conclusion is that branch's value |
 | `fn-stmt-payload-of-fn-stmt-make` | `books/statement.lisp` | 607 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-stmt-receipt-evidence-of-fn-stmt-make-receipt` | `books/statement.lisp` | 623 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-stmt-receipt-obligation-of-fn-stmt-make-receipt` | `books/statement.lisp` | 617 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

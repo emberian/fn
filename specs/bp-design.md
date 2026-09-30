@@ -1059,6 +1059,24 @@ quantum-one transition, then corrupt only the stage field and affirmatively
 check failure of both the omitted premise and drive/step conclusion. Other
 mutable fields, grammar semantics and window/provider refinement remain open.
 
+`books/bpsec-asb-position.lisp` proves the actual drive/step retain their
+readonly source subject (kind, backing ID, start, declared length and limits)
+and advance a natural cursor offset by exactly the consumed byte prefix.
+Internal metadata transitions do not move the offset. Literal witnesses use
+absolute start 100 and verify the full equation through each one-byte,
+quantum-one transition, plus missing input, zero quantum and wrong backing ID.
+Omitting the readonly-key or natural-offset premise has explicit counterexamples;
+absent offset is a separately labelled corrupted-state case. Equal IDs and
+offsets remain insufficient for provider byte equality or pinned lifetime.
+
+The same position book establishes natural start/declared-length/offset
+with `start <= offset <= start + declared-length` and preserves the entire
+range through the actual drive and step. Its ghost predicate is never served
+revalidation. Literal witnesses check every exercised byte/metadata transition,
+each omitted natural start coordinate, and an offset-only below-start corruption.
+This range property is separate from grammar validity, emitted span semantics
+and physical provider provenance.
+
 The logical target-graph reference in `books/bpsec-target.lisp` binds each
 ASB as `(block-number . ASB)`, checks actual block existence/type, unique
 service/target pairs, forbidden security targets and payload BCB flags. Every

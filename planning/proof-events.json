@@ -17857,6 +17857,41 @@
           "kind": "theorem",
           "name": "fn-bps-asb-step-preserves-grammar-control",
           "pending_subject": "Actual ASB grammar-stage field invariant component. Exact spine and declared control set remain distinct from full field/grammar/window reference invariant. Ghost predicate never served; actual BP caller/provider remains open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-drive-preserves-readonly-subject",
+          "pending_subject": "Actual ASB readonly-source and consumed-offset component. No installed BP provider/caller; equal source IDs/coordinates do not prove immutable bytes or pinned lifetime. Full mutable grammar/span/window reference invariant remains open; proper-local source admission is not normal certification."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-step-preserves-source-coordinate",
+          "pending_subject": "Actual ASB readonly-source and consumed-offset component. No installed BP provider/caller; equal source IDs/coordinates do not prove immutable bytes or pinned lifetime. Full mutable grammar/span/window reference invariant remains open; proper-local source admission is not normal certification."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-drive-offset-is-consumed-prefix",
+          "pending_subject": "Actual ASB readonly-source and consumed-offset component. No installed BP provider/caller; equal source IDs/coordinates do not prove immutable bytes or pinned lifetime. Full mutable grammar/span/window reference invariant remains open; proper-local source admission is not normal certification."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-step-offset-is-consumed-prefix",
+          "pending_subject": "Actual ASB readonly-source and consumed-offset component. No installed BP provider/caller; equal source IDs/coordinates do not prove immutable bytes or pinned lifetime. Full mutable grammar/span/window reference invariant remains open; proper-local source admission is not normal certification."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-start-establishes-source-range",
+          "pending_subject": "Actual ASB natural source-range invariant component; ghost predicate never served. Immutable provider bytes/lifetime, full grammar/span/window refinement and installed BP caller remain open; source admission only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-drive-preserves-source-range",
+          "pending_subject": "Actual ASB natural source-range invariant component; ghost predicate never served. Immutable provider bytes/lifetime, full grammar/span/window refinement and installed BP caller remain open; source admission only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-step-preserves-source-range",
+          "pending_subject": "Actual ASB natural source-range invariant component; ghost predicate never served. Immutable provider bytes/lifetime, full grammar/span/window refinement and installed BP caller remain open; source admission only."
         }
       ]
     },
