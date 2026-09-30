@@ -11,3 +11,5 @@
 (include-book "bpsec-target-spine")
 (include-book "bpsec-asb-control")
 (include-book "bpsec-asb-position")
+(include-book "bpsec-head-invariant")
+(include-book "bpsec-asb-head-invariant")

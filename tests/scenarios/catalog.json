@@ -7346,7 +7346,8 @@
         "Check the exact ordered cursor spine through every exercised one-byte/quantum-one transition, including need-input, invalid-start refusal and wrong-window refusal.",
         "Carry the finite grammar-stage control invariant through every exercised one-byte/quantum-one transition; mutate only the real stage field to unknown and affirmatively check missing-premise/output failures.",
         "Start at absolute offset 100 and check readonly source coordinate plus exact offset increment through each one-byte/quantum-one transition; exercise temporary missing input, zero quantum and wrong backing ID. Separately omit readonly-key and numeric-offset premises with literal counterexamples.",
-        "Carry natural start/length/offset and start <= offset <= declared end through every exercised transition; omit each natural start coordinate separately and mutate offset below start with quantum zero."
+        "Carry natural start/length/offset and start <= offset <= declared end through every exercised transition; omit each natural start coordinate separately and mutate offset below start with quantum zero.",
+        "Carry the stronger active CBOR-head profile through uint64 maximum and interrupted heads, invalid octets, nonminimal and unsupported heads; carry the same nested field through every actual ASB byte/metadata transition."
       ],
       "expected": [
         "Complete targets/results and exact source/result octets survive every exercised resume.",
@@ -7356,7 +7357,8 @@
         "Start establishes the fixed34-field spine and actual drive/step preserve it. Dropping a real key invalidates both the antecedent and preservation conclusion; mutable-value/grammar/provider invariants remain separate.",
         "Actual ASB start/drive/step keep control within the declared20 stages. No served invariant revalidation is added; full remaining mutable-field and provider/window refinement remain open.",
         "Actual drive/step retain the readonly source subject and offset equals old offset plus consumed bytes. Non-readonly offset changes; absent offset corruption defeats both numeric-premise equations. Equal backing ID/offset does not establish provider bytes or lifetime.",
-        "Start establishes and drive/step preserve the entire source range. Each omitted start hypothesis and the separately corrupted carried range have explicit failing conclusions; source range is not grammar validity or provider provenance."
+        "Start establishes and drive/step preserve the entire source range. Each omitted start hypothesis and the separately corrupted carried range have explicit failing conclusions; source range is not grammar validity or provider provenance.",
+        "Actual head feed/drive preserve the carried profile and READY implies a supported major/uint64 pair. Actual ASB start/drive/step preserve the nested profile. Omit READY while retaining profile, or corrupt argument major while retaining READY, and explicitly defeat the typed-result conclusion; this does not establish complete grammar/span/provider refinement."
       ],
       "evidence": [
         "tests/acl2/bpsec-asb-tests.lisp",
@@ -7373,7 +7375,11 @@
         "books/bpsec-asb-position.lisp",
         "tests/acl2/bpsec-asb-position-tests.lisp",
         "planning/evidence/bpsec-asb-position-source-2026-09-30.json",
-        "planning/evidence/bpsec-asb-range-source-2026-09-30.json"
+        "planning/evidence/bpsec-asb-range-source-2026-09-30.json",
+        "books/bpsec-head-invariant.lisp",
+        "books/bpsec-asb-head-invariant.lisp",
+        "tests/acl2/bpsec-head-invariant-tests.lisp",
+        "planning/evidence/bpsec-head-invariant-source-2026-09-30.json"
       ],
       "execution_scope": "ACL2 literal source fixture only; full every-schedule theorem and operational provider/native execution remain open."
     },

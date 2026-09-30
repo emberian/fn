@@ -1077,6 +1077,18 @@ each omitted natural start coordinate, and an offset-only below-start corruption
 This range property is separate from grammar validity, emitted span semantics
 and physical provider provenance.
 
+`books/bpsec-head-invariant.lisp` carries the stronger active-head profile:
+argument/ready phases have a supported major, argument phases have a known
+width and positive remaining count, and ready phases have zero remaining
+count. Actual feed/drive preserve it, including refused or unsupported outcomes;
+READY then yields exactly a supported-major/uint64 pair. The shape-only
+head recognizer alone is insufficient: a corrupted unsupported major in
+argument phase is an explicit omission witness retaining READY.
+`books/bpsec-asb-head-invariant.lisp` establishes and preserves this nested
+field through the actual ASB start/drive/step. Ghost predicates never enter
+the served body. This is a typed field basis for further span/grammar proof,
+not complete ASB refinement or an immutable provider/crypto claim.
+
 The logical target-graph reference in `books/bpsec-target.lisp` binds each
 ASB as `(block-number . ASB)`, checks actual block existence/type, unique
 service/target pairs, forbidden security targets and payload BCB flags. Every
