@@ -27,7 +27,8 @@ class BoundLaunchTests(unittest.TestCase):
         self.paths["runtime"].write_text(
             '#!' + sys.executable + '\nimport json,os,sys\n'
             'print(json.dumps({"argv":sys.argv[1:],"home":os.environ["SBCL_HOME"],'
-            '"override":os.environ.get("SBCL_USER_ARGS")}))\n')
+            '"override":os.environ.get("SBCL_USER_ARGS"),'
+            '"fn":{k:v for k,v in os.environ.items() if k.startswith("FN_")}}))\n')
         self.paths["runtime"].chmod(0o755)
         self.paths["launcher"].write_text(
             "#!/bin/sh\n# literal generated product shape\n"
@@ -56,11 +57,92 @@ class BoundLaunchTests(unittest.TestCase):
         self.manifest.write_text(json.dumps(self.binding))
         self.expected = launch.digest(self.manifest)
 
-    def run_cli(self, *extra, override=""):
+    def run_cli(self, *extra, override="", environment=None):
+        # The positive fixture declares its environment. In particular macOS
+        # harness MallocNanoZone is tested as an explicit refusal below.
+        env = {"PATH": os.defpath, "SBCL_USER_ARGS": override}
+        env.update(environment or {})
         return subprocess.run([sys.executable, str(TOOL), "--binding", str(self.manifest),
                                "--expected-sha256", self.expected, *extra],
-                              env=dict(os.environ, SBCL_USER_ARGS=override),
+                              env=env,
                               capture_output=True, text=True, timeout=10)
+
+    def bind_environment(self):
+        self.library = self.root / "libfn-blake3.dylib"
+        self.library.write_bytes(b"recording library artifact, not executable code")
+        self.binding["foreign_libraries"] = {"FN_BLAKE3_LIBRARY": {
+            "path": self.library.name, "sha256": launch.digest(self.library)}}
+        self.binding["environment"] = {"FN_NATIVE_PROFILE": "production"}
+        self.capsule["coordinate"]["environment"] = self.binding["environment"].copy()
+        self.capsule["coordinate"]["foreign_libraries"] = {
+            "FN_BLAKE3_LIBRARY": launch.digest(self.library)}
+        self.paths["capsule"].write_text(json.dumps(self.capsule))
+        self.binding["artifacts"]["capsule"]["sha256"] = launch.digest(self.paths["capsule"])
+        self.pin()
+
+    def test_bound_library_and_profile_reach_actual_process(self):
+        self.bind_environment()
+        for inherited in ({}, {"FN_NATIVE_PROFILE": "production",
+                              "FN_BLAKE3_LIBRARY": str(self.library)}):
+            run = self.run_cli(environment=inherited)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertEqual(json.loads(run.stdout)["fn"], {
+                "FN_NATIVE_PROFILE": "production", "FN_BLAKE3_LIBRARY": str(self.library.resolve())})
+
+    def test_changed_or_missing_library_refuses_before_process(self):
+        self.bind_environment()
+        self.library.write_bytes(b"changed")
+        run = self.run_cli()
+        self.assertEqual(run.returncode, 2)
+        self.assertIn("foreign-library digest mismatch", run.stderr)
+        self.assertEqual(run.stdout, "")
+        self.library.unlink()
+        run = self.run_cli()
+        self.assertEqual(run.returncode, 2)
+        self.assertEqual(run.stdout, "")
+
+    def test_foreign_library_or_profile_override_refuses(self):
+        self.bind_environment()
+        other = self.root / "different-library"
+        other.write_bytes(self.library.read_bytes())
+        for env in ({"FN_BLAKE3_LIBRARY": str(other)}, {"FN_BLAKE3_LIBRARY": ""},
+                    {"FN_NATIVE_PROFILE": "developer"}):
+            with self.subTest(environment=env):
+                run = self.run_cli(environment=env)
+                self.assertEqual(run.returncode, 2)
+                self.assertEqual(run.stdout, "")
+
+    def test_unbound_effectful_environment_refuses(self):
+        for key in ("FN_BLAKE3_LIBRARY", "FN_BP_TEST_PROFILE", "FN_EXTRACT_VARIANT",
+                    "LD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES", "MALLOC_CONF",
+                    "MallocNanoZone", "GLIBC_TUNABLES", "ASAN_OPTIONS", "SBCL_FAKE"):
+            with self.subTest(key=key):
+                # Direct resolver covers loader variables macOS may strip when
+                # spawning a platform executable; subprocess covers its path too.
+                with self.assertRaises(launch.BindingError):
+                    launch.resolve_plan(self.manifest, self.expected, environment={key: "1"})
+                if not key.startswith("DYLD_"):
+                    run = self.run_cli(environment={key: "1"})
+                    self.assertEqual(run.returncode, 2)
+                    self.assertEqual(run.stdout, "")
+
+    def test_environment_capsule_mismatch_refuses_even_when_rehashed(self):
+        self.bind_environment()
+        self.capsule["coordinate"]["environment"]["FN_NATIVE_PROFILE"] = "developer"
+        self.paths["capsule"].write_text(json.dumps(self.capsule))
+        self.binding["artifacts"]["capsule"]["sha256"] = launch.digest(self.paths["capsule"])
+        self.pin()
+        run = self.run_cli()
+        self.assertEqual(run.returncode, 2)
+        self.assertIn("capsule export", run.stderr)
+        self.assertEqual(run.stdout, "")
+
+    def test_library_selectors_cannot_be_bound_as_unhashed_scalars(self):
+        self.binding["environment"] = {"FN_BLAKE3_LIBRARY": "/unhashed"}
+        self.pin()
+        run = self.run_cli()
+        self.assertEqual(run.returncode, 2)
+        self.assertIn("invalid bound FN selector", run.stderr)
 
     def test_actual_process_gets_only_fixed_geometry_and_literal_app_arguments(self):
         run = self.run_cli("--", "--fn", "store", "path with spaces", "$(literal)",

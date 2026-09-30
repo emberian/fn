@@ -105,7 +105,7 @@ def parse_launcher(text):
     return runtime, core, home, geometry, argv
 
 
-def resolve(binding_path, expected_sha256, user_runtime_args="", app_args=()):
+def resolve_plan(binding_path, expected_sha256, user_runtime_args="", app_args=(), environment=None):
     binding_path = Path(binding_path).resolve()
     binding = json.loads(checked_bytes(binding_path, expected_sha256))
     if (not isinstance(binding, dict) or type(binding.get("schema")) is not int
@@ -137,9 +137,54 @@ def resolve(binding_path, expected_sha256, user_runtime_args="", app_args=()):
     expected_coordinate = {role + "_sha256": binding["artifacts"][role]["sha256"]
                            for role in ("runtime", "source_manifest", "profile")}
     expected_coordinate["options"] = geometry
+    selected = binding.get("environment", {})
+    libraries = binding.get("foreign_libraries", {})
+    if not isinstance(selected, dict) or not isinstance(libraries, dict):
+        raise BindingError("invalid bound environment")
+    if set(selected) & set(libraries):
+        raise BindingError("duplicate bound environment selector")
+    for key, value in selected.items():
+        if (not isinstance(key, str) or not re.fullmatch(r"FN_[A-Z0-9_]+", key)
+                or key.endswith("_LIBRARY") or not isinstance(value, str) or "\0" in value):
+            raise BindingError("invalid bound FN selector")
+    library_paths = {}
+    library_hashes = {}
+    for key, record in libraries.items():
+        if (not isinstance(key, str) or not re.fullmatch(r"FN_[A-Z0-9_]+_LIBRARY", key)
+                or not isinstance(record, dict)):
+            raise BindingError("invalid foreign-library binding")
+        path = Path(record["path"])
+        path = (binding_path.parent / path).resolve() if not path.is_absolute() else path.resolve()
+        expected = record.get("sha256")
+        if not isinstance(expected, str) or not re.fullmatch(r"[0-9a-f]{64}", expected):
+            raise BindingError("missing foreign-library digest")
+        if digest(path) != expected:
+            raise BindingError("foreign-library digest mismatch: " + key)
+        library_paths[key] = str(path)
+        library_hashes[key] = expected
+    if selected:
+        expected_coordinate["environment"] = selected
+    if libraries:
+        expected_coordinate["foreign_libraries"] = library_hashes
     if (not isinstance(capsule, dict) or type(capsule.get("schema")) is not int
             or capsule["schema"] != 1 or capsule.get("coordinate") != expected_coordinate):
-        raise BindingError("capsule export belongs to a different runtime/source/profile/options")
+        raise BindingError("capsule export belongs to a different runtime/source/profile/options/environment")
+    env = dict(os.environ if environment is None else environment)
+    for key, value in env.items():
+        if (key.startswith(("LD_", "DYLD_", "MALLOC_", "Malloc"))
+                or key in {"GLIBC_TUNABLES", "ASAN_OPTIONS", "LSAN_OPTIONS", "TSAN_OPTIONS"}
+                or (key.startswith("SBCL_") and key not in {"SBCL_HOME", "SBCL_USER_ARGS"})):
+            raise BindingError("unbound runtime environment selector: " + key)
+        if key.startswith("FN_"):
+            if key in library_paths:
+                if not value or str(Path(value).resolve()) != library_paths[key]:
+                    raise BindingError("foreign-library selector mismatch: " + key)
+            elif key not in selected or value != selected[key]:
+                raise BindingError("unbound or mismatched FN selector: " + key)
+    env.update(selected)
+    env.update(library_paths)
+    env["SBCL_HOME"] = home
+    env.pop("SBCL_USER_ARGS", None)
     # Neither a status string nor a caller-supplied boolean establishes admission.
     # Unit evidence is deliberately left to the saved core's actual installer.
     overrides = shlex.split(user_runtime_args)
@@ -154,7 +199,13 @@ def resolve(binding_path, expected_sha256, user_runtime_args="", app_args=()):
         overrides = overrides[2:]
     argv[0] = str(paths["runtime"])
     argv[argv.index("--core") + 1] = str(paths["core"])
-    return argv + list(app_args), home
+    return argv + list(app_args), home, env
+
+
+def resolve(binding_path, expected_sha256, user_runtime_args="", app_args=(), environment=None):
+    """Compatibility identity resolver; process launch uses the bound environment."""
+    argv, home, _ = resolve_plan(binding_path, expected_sha256, user_runtime_args, app_args, environment)
+    return argv, home
 
 
 def main():
@@ -166,14 +217,12 @@ def main():
     args = parser.parse_args()
     try:
         app_args = args.app_args[1:] if args.app_args[:1] == ["--"] else args.app_args
-        argv, home = resolve(args.binding, args.expected_sha256,
-                             os.environ.get("SBCL_USER_ARGS", ""), app_args)
+        argv, home, env = resolve_plan(args.binding, args.expected_sha256,
+                                       os.environ.get("SBCL_USER_ARGS", ""), app_args)
         if args.check:
             print(json.dumps({"identity": "matched", "qualification": "not-established",
                               "argv": argv, "SBCL_HOME": home}))
             return 0
-        env = dict(os.environ, SBCL_HOME=home)
-        env.pop("SBCL_USER_ARGS", None)
         os.execve(argv[0], argv, env)
     except (BindingError, OSError, ValueError, KeyError, TypeError) as error:
         print("bound launch refused: " + str(error), file=sys.stderr)
