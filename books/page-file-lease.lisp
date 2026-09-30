@@ -25,7 +25,7 @@
         (let ((token (list :file-pin next file)))
           (mv :admitted token
               (fn-prl-build budget charged1 next1
-                            (cons (cons token (list demand :file-pin nil))
+                            (cons (cons token (list demand :file-pin nil 0))
                                   (fn-prl-nth 3 ledger))
                             (fn-prl-nth 4 ledger))))))))
 
@@ -153,3 +153,46 @@
   (and (true-listp token) (equal (len token) 3)
        (natp (fn-prl-nth 1 token)) (posp (fn-prl-nth 2 token))
        (fn-prf-file ledger token) (fn-prl-nth 1 token)))
+
+; Per-root spent discovery census. The atomic pin-read caller records this
+; immediately after successful issuer admission, before allocation or pread.
+; Legacy binding lookup/remove is profile-bounded scan/copy, not O(1).
+(defun fn-prf-issued-count (ledger root)
+  (declare (xargs :guard t))
+  (let ((row (cdr (fn-prl-binding root (fn-prl-nth 3 ledger)))))
+    (if (and (fn-prf-file ledger root) (natp (fn-prl-nth 3 row)))
+        (mv :count (fn-prl-nth 3 row))
+      (mv :stale-root 0))))
+(defun fn-prf-note-admitted-read (ledger root request buffer-token)
+  (declare (xargs :guard t))
+  (let* ((rows (fn-prl-nth 3 ledger))
+         (root-row (cdr (fn-prl-binding root rows)))
+         (buffer-row (cdr (fn-prl-binding buffer-token rows))))
+    (if (not (and (fn-prf-file ledger root) (natp (fn-prl-nth 3 root-row))
+                  (equal (fn-prl-nth 0 buffer-token) :discovery)
+                  (equal (fn-prl-nth 1 buffer-row) :discovery)
+                  (equal (fn-prl-nth 2 buffer-token) (fn-prf-file ledger root))
+                  (equal (fn-prl-nth 1 request) (fn-prl-nth 1 root))
+                  (null (fn-prl-nth 3 buffer-row))))
+        (mv :unrecorded ledger)
+      (mv :recorded
+          (fn-prl-build (fn-prl-nth 0 ledger) (fn-prl-nth 1 ledger)
+                        (fn-prl-nth 2 ledger)
+                        (cons (cons root (list (fn-prl-nth 0 root-row) :file-pin nil
+                                               (+ 1 (nfix (fn-prl-nth 3 root-row)))))
+                              (cons (cons buffer-token
+                                          (list (fn-prl-nth 0 buffer-row) :discovery
+                                                (fn-prl-nth 2 buffer-row)
+                                                (list root request :issued)))
+                                    (fn-prl-remove buffer-token (fn-prl-remove root rows))))
+                        (fn-prl-baseline ledger))))))
+(defthm fn-prf-recording-preserves-issued-pool-charge
+  (equal (fn-prl-nth 1 (mv-nth 1 (fn-prf-note-admitted-read ledger root request buffer-token)))
+         (fn-prl-nth 1 ledger))
+  :hints (("Goal" :in-theory (e/d (fn-prf-note-admitted-read fn-prl-build fn-prl-nth)
+                                (fn-prf-file fn-prl-binding fn-prl-remove)))))
+(defthm fn-prf-recording-preserves-spent-identity-counter
+  (equal (fn-prl-nth 2 (mv-nth 1 (fn-prf-note-admitted-read ledger root request buffer-token)))
+         (fn-prl-nth 2 ledger))
+  :hints (("Goal" :in-theory (e/d (fn-prf-note-admitted-read fn-prl-build fn-prl-nth)
+                                (fn-prf-file fn-prl-binding fn-prl-remove)))))

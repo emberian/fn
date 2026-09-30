@@ -4596,3 +4596,5 @@
 (definterface fn-owner-page-file-read-result :class :common-lisp-compliant)
 
 (definterface fn-owner-page-file-pin-ticket :class :common-lisp-compliant)
+
+(definterface fn-owner-page-file-issued-count :class :common-lisp-compliant)

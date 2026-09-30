@@ -17704,9 +17704,10 @@
         "host/native/owner.lisp",
         "tests/acl2/page-file-lease-tests.lisp",
         "tests/acl2/page-file-read-result-tests.lisp",
-        "planning/evidence/page-file-read-result-source-2026-09-30.md"
+        "planning/evidence/page-file-read-result-source-2026-09-30.md",
+        "planning/evidence/page-file-issued-census-source-2026-09-30.md"
       ],
-      "progress_note": "Source-only actual fixed-page read result projection binds live root/request/discovery token before returning fresh buffer ID/count/status. Native single syscall returns six values; short/error reads retain their exact buffer and charge for uncertain auth completion. Funding, retained pool highwater, compiled allocation/condition scope and actual joined reader fixture remain open."
+      "progress_note": "Source-only actual fixed-page read result projection binds live root/request/discovery token before returning fresh buffer ID/count/status. Native single syscall returns six values; short/error reads retain their exact buffer and charge for uncertain auth completion. Funding, retained pool highwater, compiled allocation/condition scope and actual joined reader fixture remain open. Per-root issued census is recorded atomically after actual discovery admission and before allocation/pread, preserving C and NEXT. Exact discovery row stores root/request association; duplicate recording refuses. Native count getter observes legitimate zero distinctly; admitted-but-unrecorded corruption is uncertain with the exact token retained. Count box width/growth and profile-bounded legacy binding scans/copies remain funding obligations."
     },
     {
       "id": "PRF-1119",

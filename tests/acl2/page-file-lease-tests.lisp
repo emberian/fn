@@ -66,3 +66,29 @@
 (assert-event (and (equal (fn-prl-close-preview *prf-root-gone* 11) :read-file-held)
               (equal (mv-nth 0 (mv-list 4 (fn-prf-page-placement *prf-root-gone* *prf-token* *prf-request* 16384)))
                      :invalid-page-placement)))
+
+; Root census belongs to the actual admitted discovery, not IO serial.
+(defconst *prf-count-read* (mv-list 3 (fn-prd-admit *prf-held* 11 49152 16384 '(256 0 0 1 1))))
+(defconst *prf-count-token* (nth 1 *prf-count-read*))
+(defconst *prf-count-before* (nth 2 *prf-count-read*))
+(defconst *prf-count-note* (mv-list 2 (fn-prf-note-admitted-read *prf-count-before* *prf-token* *prf-request* *prf-count-token*)))
+(defconst *prf-count-after* (nth 1 *prf-count-note*))
+; Complete charge and spent-identity conservation conclusions.
+(assert-event (and (equal (nth 0 *prf-count-read*) :admitted)
+  (equal (nth 0 *prf-count-note*) :recorded)
+  (equal (mv-list 2 (fn-prf-issued-count *prf-held* *prf-token*)) '(:count 0))
+  (equal (mv-list 2 (fn-prf-issued-count *prf-count-after* *prf-token*)) '(:count 1))
+  (equal (fn-prl-nth 1 *prf-count-after*) (fn-prl-nth 1 *prf-count-before*))
+  (equal (fn-prl-nth 2 *prf-count-after*) (fn-prl-nth 2 *prf-count-before*))))
+; Duplicate recording preserves count, ownership and spent issuer.
+(assert-event (equal (mv-list 2 (fn-prf-note-admitted-read *prf-count-after* *prf-token* *prf-request* *prf-count-token*))
+                     (list :unrecorded *prf-count-after*)))
+; Short syscall observation does not mutate root census or settle its borrow.
+(assert-event (and
+  (equal (mv-list 4 (fn-prf-read-result *prf-count-after* *prf-token* *prf-request* 16384 *prf-count-token* 20 :ok))
+         (list :read-result (fn-prl-nth 1 *prf-count-token*) 20 :short-read))
+  (equal (mv-list 2 (fn-prf-issued-count *prf-count-after* *prf-token*)) '(:count 1))
+  (equal (fn-prl-close-preview *prf-count-after* 11) :read-file-held)))
+(defconst *prf-count-settled* (nth 1 (mv-list 2 (fn-prd-release *prf-count-after* *prf-count-token*))))
+(assert-event (equal (mv-list 2 (fn-prf-issued-count *prf-count-settled* *prf-token*)) '(:count 1)))
+(assert-event (equal (mv-list 2 (fn-prf-issued-count *prf-count-after* '(:file-pin 999 11))) '(:stale-root 0)))
