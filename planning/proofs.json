@@ -17935,7 +17935,7 @@
     {
       "id": "PRF-1093",
       "title": "Fixed private page scratch preserves the exact written prefix",
-      "statement": "Library fn-hpb is a fixed 2048-u64 concrete page scratch with used counter and borrowed capture/lease identities. Guardverified begin resets the prefix without clearing/copying the backing array; put stores one word or leaves a full page unchanged; word refuses unwritten offsets with no stale-word exposure. fn-hpb-put-refines-prefix relates concrete writes to logical prefix append under natural counter and available-capacity hypotheses. begin/put preserve the concrete representation invariant and capture/lease values as stated. Each raw recognizer is bounded by one format page, never total stored data. Resource funding, exclusion while an I/O worker owns the buffer, serialization and joined image effects belong to the pending producer composition; no host caller or served completion claim.",
+      "statement": "Library fn-hpb is a fixed 2048-u64 concrete page scratch with used counter and borrowed capture/lease identities. Guardverified begin resets the prefix without clearing/copying the backing array; put stores one word or leaves a full page unchanged; word refuses unwritten offsets with no stale-word exposure. fn-hpb-put-refines-prefix relates concrete writes to logical prefix append under natural counter and available-capacity hypotheses. begin/put preserve the concrete representation invariant and capture/lease values as stated. Each raw recognizer is bounded by one format page, never total stored data. Resource funding, exclusion while an I/O worker owns the buffer, serialization and joined image effects belong to the pending producer composition; no host caller or served completion claim. The selected five-region scratch uses four congruent column stobjs plus the original pool buffer. fn-hpq-put writes one selected word, refining the same exact prefix and preserving all other concrete region states, all five invariants and capture/lease identity. Backing allocation, served admission and pending I/O ownership remain distinct.",
       "milestone": "M5",
       "requirements": [
         "HST-040"
@@ -17947,9 +17947,11 @@
       "evidence": [
         "books/history-page-buffer.lisp",
         "tests/acl2/history-page-buffer-tests.lisp",
-        "planning/history-page-cursor-contract.md"
+        "planning/history-page-cursor-contract.md",
+        "books/history-page-buffers.lisp",
+        "tests/acl2/history-page-buffers-tests.lisp"
       ],
-      "progress_note": "Clean protected auto-selected persvati hpbt63 admitted source in proper encapsulate plus9testbodyforms,zero refusal,0.14ACL2seconds/12267steps. Tests cover nonempty exact prefix, stale physical word after reset, actual2048word full state, capacity removal and mutation; negative counter is a proved ground logical corrupted-state witness because the raw bounded field cannot physically hold it. No certificate/native/host claim."
+      "progress_note": "Clean protected auto-selected persvati hpbt63 admitted source in proper encapsulate plus9testbodyforms,zero refusal,0.14ACL2seconds/12267steps. Tests cover nonempty exact prefix, stale physical word after reset, actual2048word full state, capacity removal and mutation; negative counter is a proved ground logical corrupted-state witness because the raw bounded field cannot physically hold it. No certificate/native/host claim. Five-region source and original scratch loaded in proper encapsulates on clean protected auto-persvati hpq63 plus6test forms,0.42ACL2seconds/27450steps,zero refusals. Selected prefix, other-region frame, all5 concrete invariants and identity proofs admitted; every selected-prefix premise has a literal corrupted-domain/state counterexample. Full per-literal helper audit, actual I/O loan and host composition remain open."
     },
     {
       "id": "PRF-1096",

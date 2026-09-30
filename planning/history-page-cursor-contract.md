@@ -263,3 +263,29 @@ admission must include that transient overlap and both child frontiers until
 the old cursor is released. A successful offer allocates the two-cell child
 capture/ordinal context as well. This is an allocation description, not a
 numeric rescue reserve; Lisp cell/header representation remains runtime-specific.
+
+## Five-region emission scratch
+
+The selected producer representation has five separately funded page buffers:
+four columns and one byte-pool stream. Four `fn-hpq0` through `fn-hpq3` stobjs
+are ACL2-congruent to the existing `fn-hpb` pool buffer. All five use the same
+proved prefix abstraction and scalar-reset operation. `fn-hpq-put` writes one
+word into exactly the selected region; the other four concrete states are
+unchanged. `fn-hpq-begin` resets five used counters and capture/lease metadata,
+without copying or clearing their backing arrays. Creation is startup backing
+allocation, distinct from admitting its exclusive use for a served snapshot.
+
+Retained backing totals five arrays of 2048 u64 words, five used counters, and
+five capture/lease reference pairs. Native serialization/I/O buffers and any
+pending write overlap are additional charged resources. A full buffer remains
+owned until its exact positional write completion is acknowledged; only then
+may its prefix be reset. The snapshot controller supplies that lifetime rule;
+the standalone scratch dispatcher does not claim I/O completion fencing.
+
+During the second source pass, record bytes fill the pool buffer. When a row
+finishes, its exact length/padded length/offset and streamed Message-ID key
+supply the four column cells. Full column buffers flush independently at the
+ACL2-derived region positions. After all regions are complete, the private
+staged file is scanned for data-page digests and metadata spools. This keeps
+two source passes, avoids a per-record length spool, and never constructs a
+whole image or by-address hash. Final composed stream/root proof remains open.
