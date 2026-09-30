@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -7329,6 +7329,55 @@
         "planning/evidence/peering-inn-advisory-source-2026-09-30.json"
       ],
       "execution_scope": "Source-present original S4 CHECK advisory observation. Scripted observer fixtures only; actual INN/native NOT RUN, no new proof or matching executable claim. All eight original Q12 anchors remain OPEN."
+    },
+    {
+      "id": "SCN-1065",
+      "title": "BPSec ASB resumes across one-byte windows and quantum-one metadata scans",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-017"
+      ],
+      "steps": [
+        "Encode a two-target BIB sequence with distinct per-target result bytes.",
+        "Supply exact immutable backing slices one octet at a time, with quantum one so internal duplicate scans and reversals also resume.",
+        "Compare the complete span abstraction and target/result order with the literal reference object; exercise zero quantum and temporary missing input."
+      ],
+      "expected": [
+        "Complete targets/results and exact source/result octets survive every exercised resume.",
+        "No enclosing ASB array is emitted.",
+        "Zero quantum yields unchanged; absent input is need-input, not truncated."
+      ],
+      "evidence": [
+        "tests/acl2/bpsec-asb-tests.lisp",
+        "planning/evidence/bpsec-asb-source-2026-09-30.json"
+      ],
+      "execution_scope": "ACL2 literal source fixture only; full every-schedule theorem and operational provider/native execution remain open."
+    },
+    {
+      "id": "SCN-1066",
+      "title": "BPSec malformed, unknown and ciphertext-tail ASBs keep distinct results",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-017"
+      ],
+      "steps": [
+        "Refuse empty/duplicate targets, trailing data, declared truncated byte strings and explicitly empty parameters.",
+        "Retain reserved read flags and mark an unknown security context unsupported with original wire.",
+        "Decode context2 with explicit twelve-byte IV and empty per-target result array without inventing a tag field.",
+        "Reject a mismatched input backing and keep uncertain outside the primitive result enum."
+      ],
+      "expected": [
+        "Malformed known grammar refuses; unsupported never verifies.",
+        "Reserved flags do not change the accepted source object; encoder clears them.",
+        "Ciphertext-tail tag extraction requires later exact target binding and is not performed by ASB parsing."
+      ],
+      "evidence": [
+        "tests/acl2/bpsec-asb-tests.lisp",
+        "planning/evidence/bpsec-asb-source-2026-09-30.json"
+      ],
+      "execution_scope": "ACL2 source grammar tests only; no AES/HMAC execution, key grant, target plan, crypto gate or native receipt."
     }
   ]
 }

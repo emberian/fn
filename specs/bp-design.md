@@ -985,8 +985,51 @@ verification function as a **constrained** function under an `encapsulate`,
 `(fn-bps-verify context params key-ref target-octets result) -> :verified |
 :failed | :unsupported`, whose real implementation is the host's trusted
 cryptographic primitive (HST-004, A-CRYPTO). Nothing in the certified books
-computes an HMAC. Packet 8 has not been started: no `fn-bps-*` definition
-exists, and `books/bp-primary.lisp` keeps RFC 9172 and RFC 9173 out of scope.
+establishes the security of a real HMAC. The existing logical HMAC-SHA256
+book is distinct from the selected RFC 9173 primitive realization. Packet 8
+now has additive ASB source in `books/bpsec-model.lisp`,
+`books/bpsec-head.lisp` and `books/bpsec-asb.lisp` (REP-017, PRF-1178).
+This does not add a security gate to the served BP admission path.
+
+**ASB cursor contract (source in progress).** RFC 9172 §3.6's ASB is an
+unwrapped CBOR sequence. `fn-bps-asb-start` pins kind, immutable backing ID,
+absolute start offset, exact declared block-data length and an operator
+profile. `fn-bps-asb-step` consumes a contiguous `:bps-window` under a work
+quantum, returning the exact consumed prefix and remaining window. A unit
+consumes one octet or processes one metadata cell; target duplicate checks
+and order restoration resume across quanta. Completed byte/text values
+remain spans, including the source EID text. `fn-bps-asb-span-alpha` is the
+logical abstraction through a unique immutable backing map. Equal ID and
+offset do not establish correct bytes: the window provider must establish
+the exact backing-slice relation and pin its lifetime. The actual BP caller
+has no such installed provider yet.
+
+The profile names total bytes, targets, parameters, results per target,
+value bytes and aggregate metadata units. Counts and lengths are checked
+before their corresponding metadata/value handling. Codec representability
+is explicit; generic `fn-bpc-dec` limits and the existing bundle block-count
+constant are not new BPSec limits. A temporarily missing window returns
+`:need-input`; exhausted declared length mid-field refuses `:truncated`;
+quantum exhaustion returns `:more`. Reserved ASB flags are retained and
+ignored on read, then cleared on generation, as the RFC requires.
+
+Context 1 supports variants 5/6/7 with default 6 and exact 32/48/64-byte
+results (RFC 9173 §§3.3–3.4); context 2 supports variants 1/3 with default 3,
+8–16-byte IVs, and 16-byte separate tags or an empty per-target result
+array for ciphertext-carried tags (§§4.3–4.4). The selected decryption
+profile requires an explicit IV. Scope defaults to 7 and fits uint16.
+Duplicate known parameter/result IDs are refused as fn's stronger ambiguity
+policy; unknown contexts or IDs are unsupported with original wire retained,
+never verified. Explicit empty parameters are refused in this supported
+profile. Literal codec scenarios are SCN-1065/1066. Structural parsing is
+distinct from target-graph validity and cryptographic verification.
+
+Full cursor invariant preservation, equality for every chunk/quantum
+schedule, operational span refinement, target graph (PRF-1179), canonical
+cryptographic inputs, descriptor-bound primitive completion, explicit key
+policy, durable nonce allocation and native admission remain open. Actual
+ACL2 admission is component evidence; normal certification and the matching
+native security trajectory are separate coordinates.
 
 What the receiver would verify, under a per-peer security policy:
 
