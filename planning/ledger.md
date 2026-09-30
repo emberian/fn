@@ -10,15 +10,15 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1872 |
-| Certification roots in the Makefile | 1793 |
-| Books inside the root closure | 1868 |
-| `defthm` and `defthmd` events | 29559 |
-| `defun` events | 18958 |
+| Books read | 1875 |
+| Certification roots in the Makefile | 1796 |
+| Books inside the root closure | 1871 |
+| `defthm` and `defthmd` events | 29573 |
+| `defun` events | 18961 |
 | Functions with verified guards | 3516 |
-| Functions declared `:verify-guards nil` and never verified | 2282 |
+| Functions declared `:verify-guards nil` and never verified | 2284 |
 | Functions left at the default with an explicit guard | 10326 |
-| Functions left at the default with no guard | 2834 |
+| Functions left at the default with no guard | 2835 |
 | `assert-event` checks | 23945 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 339 |
 | Enabled-projection warnings | 55 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2577 |
+| Include-hygiene warnings | 2583 |
 | Host-names warnings | 2156 |
 | Hand-written-record warnings | 18 |
 
@@ -631,7 +631,7 @@ that `make certify` requests.
 | `books/nntp-range-indexed.lisp` | root | 4 | 5 | 2/0/3/0 | 0 | 0 | 0 |
 | `books/nntp-reader-compat.lisp` | root | 33 | 28 | 21/2/5/0 | 0 | 0 | 7 |
 | `books/nntp-reclaimed.lisp` | root | 13 | 1 | 0/1/0/0 | 0 | 0 | 0 |
-| `books/nntp-responses.lisp` | root | 32 | 179 | 167/0/12/0 | 0 | 0 | 0 |
+| `books/nntp-responses.lisp` | root | 31 | 176 | 165/0/11/0 | 0 | 0 | 0 |
 | `books/nntp-search-scope.lisp` | root | 12 | 1 | 0/1/0/0 | 0 | 0 | 1 |
 | `books/nntp-session.lisp` | root | 14 | 40 | 35/0/5/0 | 0 | 0 | 3 |
 | `books/nntp-syntax.lisp` | root | 9 | 48 | 43/0/5/0 | 0 | 0 | 0 |
@@ -654,6 +654,7 @@ that `make certify` requests.
 | `books/nov-decimal-window.lisp` | root | 11 | 2 | 1/0/1/0 | 0 | 0 | 0 |
 | `books/nov-fields.lisp` | root | 3 | 5 | 5/0/0/0 | 0 | 0 | 0 |
 | `books/nov-line-projection.lisp` | root | 13 | 8 | 0/8/0/0 | 0 | 0 | 0 |
+| `books/nov-overview-source.lisp` | root | 1 | 3 | 2/0/1/0 | 0 | 0 | 0 |
 | `books/nov-piece-window.lisp` | root | 32 | 9 | 2/2/3/2 | 0 | 0 | 0 |
 | `books/nov-render-line.lisp` | root | 0 | 9 | 9/0/0/0 | 0 | 0 | 0 |
 | `books/nov-row-capture.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
@@ -670,6 +671,7 @@ that `make certify` requests.
 | `books/outcome-class.lisp` | root | 8 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/over-byte-cursor.lisp` | root | 23 | 12 | 4/0/8/0 | 0 | 0 | 1 |
 | `books/over-byte-invariants.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/over-byte-old-row-relation.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/over-byte-parser-relation.lisp` | root | 11 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/over-byte-row-relation.lisp` | root | 16 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/over-cursor-shape.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 1 |
@@ -1603,6 +1605,7 @@ that `make certify` requests.
 | `tests/acl2/open-one-pass-tests.lisp` | root | 0 | 8 | 0/6/0/2 | 56 | 1 | 0 |
 | `tests/acl2/outcome-class-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 37 | 7 | 0 |
 | `tests/acl2/over-byte-cursor-tests.lisp` | root | 1 | 6 | 0/5/0/1 | 11 | 0 | 0 |
+| `tests/acl2/over-byte-old-row-relation-tests.lisp` | root | 7 | 3 | 0/2/0/1 | 0 | 0 | 0 |
 | `tests/acl2/over-byte-parser-relation-tests.lisp` | root | 5 | 5 | 0/5/0/0 | 3 | 0 | 0 |
 | `tests/acl2/over-byte-row-relation-tests.lisp` | root | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/over-window-tests.lisp` | root | 6 | 2 | 0/0/0/2 | 0 | 0 | 0 |
