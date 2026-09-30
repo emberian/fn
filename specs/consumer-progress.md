@@ -883,3 +883,8 @@ retained old/new-map coexistence and release debt before frontier allocation.
 Concurrent static and redeemed changes serialize or reject/rebase against
 the exact authority base. These producer, replay and funding obligations
 remain open; the representation recognizers are proof/recovery predicates.
+
+The current fixed CPE grammar has a scalar exact encoded charge in
+`fn-cec-event-charge`, corresponding to `fn-cpe-encode` without allocating
+the encoding for admission. This does not authorize remote/staged event tags
+or establish their canonical retained-context demand.

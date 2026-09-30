@@ -404,3 +404,5 @@ anything a book does not already decide.
 
 | `fn-cpb-` | `consumer-publication-budget` | Current carried-profile admission for the actual consumer event charge, retaining transaction/history/release headroom; constructor/canonical correspondence remains separate. |
 | `fn-carv-` | `consumer-authority-revision` | Fixed-field active authority revision transition, nonwrapping refusal and pending adoption invalidation; actual atomic publisher/replay integration remains separate. |
+
+| `fn-cec-` | `consumer-event-charge` | Scalar exact encoded length for the currently admitted fixed CPE grammar; variable remote/adoption events remain disabled. |
