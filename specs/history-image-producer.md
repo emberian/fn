@@ -96,3 +96,19 @@ row denotation. Five complete positives and fifteen hypothesis-removal
 witnesses passed, including a wrong NIL-classifier byte. This does not
 establish source lineage, strict productive progress or the whole image
 writer invariant.
+
+The tagged pool boundary now preserves the complete concrete page prefix plus
+canonical pending words through the actual `fn-hpe-tick` and attributed
+`fn-hpe-supply`. The proof reuses the original pack8 and eight-byte-prefix
+lemmas. It includes partial words, eighth-byte writes, final padding and
+full-page supply without consumption. A proof-only finite schedule calls the
+actual tick, supply and page reset; conditional completion yields exactly the
+original codec's packed words and byte count for either resident or cold rows.
+Seven complete positives and thirteen premise-removal witnesses passed; the
+malformed logical-buffer cases are corrupted-state examples. A logical page
+transfer proves no physical write acknowledgment or release. Source lineage,
+productive termination and whole writer phase/effect/authority remain open.
+The final proper-local evidence is
+`planning/evidence/history-pool-tagged-refinement-source-2026-09-30.json`;
+its proof body took29.39 ACL2 seconds/10,608,053 steps in the composed source
+world, with no matched proof-cost or qualification claim.
