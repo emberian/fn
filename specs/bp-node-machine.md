@@ -5137,3 +5137,20 @@ malformed disposition join. A bounded decoder may then reject unsupported leaf
 families without INTERN; its refinement, resource envelope and actual native
 reopening are still open. Source admission manifest:
 `planning/evidence/bp-checkpoint-value-domain-20260930/manifest.json`.
+
+The unhooked `bp-node-checkpoint-reader` continuation now reads at most one
+external octet or performs one constructor/reversal action per tick. Its
+host-bound candidate `fn-bpcr-run` is guard-verified and bounds both kinds of
+work by its scheduling quantum. Names are matched against the finite grammar's
+cold keyword table; unsupported symbol/string/character families are refused
+without INTERN. Octet-list reversal itself yields between cells.
+
+`fn-bpcr-run-preserves-completion` relates every finite quantum to the exact
+remaining logical decoder trajectory. The trajectory endpoint is explicitly
+non-executable; served turns never compute its graph measure. Literal evidence
+includes the real reassembled CK7 and produced handoff, interrupted resumption,
+every permitted keyword, and complete strict-progress hypothesis removals.
+The committed source transcript is in
+`planning/evidence/bp-bounded-checkpoint-reader-20260930/manifest.json`.
+This is not yet the universal refinement to `fn-bpnr-enc`/legacy decoding,
+registered funding, file/header/trailer reopen, or native recovery qualification.
