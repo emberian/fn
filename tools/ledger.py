@@ -1332,7 +1332,10 @@ class Tree:
 
     def unfold(self, form: object, depth: int = 3) -> object:
         """Bounded local unfolding, retaining shared argument subgraphs."""
-        memo: dict[tuple[int, int], object] = {}
+        # Keep each input graph alive alongside its answer. beta_apply below
+        # creates temporary graphs: caching only their ids lets Python reuse
+        # a dead graph's identity for a different function expansion.
+        memo: dict[tuple[int, int], tuple[object, object]] = {}
         allocated = 0
 
         def walk(term, remaining):
@@ -1341,7 +1344,7 @@ class Tree:
                 return term
             key = (id(term), remaining)
             if key in memo:
-                return memo[key]
+                return memo[key][1]
             allocated += len(term) + 1
             if allocated > NORMALIZATION_LIMIT:
                 raise AnalysisIncomplete("bounded unfolding allocation budget exhausted")
@@ -1354,7 +1357,7 @@ class Tree:
                 bindings = {str(f): arg for f, arg in zip(function.formals, expanded[1:])
                             if isinstance(f, Sym)}
                 expanded = walk(beta_apply(logic_body(function), bindings), remaining - 1)
-            memo[key] = expanded
+            memo[key] = (term, expanded)
             return expanded
 
         return walk(form, depth)
