@@ -380,3 +380,25 @@ Actual column issuance/page-payload and padding, full source/pool residual,
 private stage/spool/digest/root fidelity, whole-image progress, producer/FD
 source authority, INITIAL and native qualification remain open. Runtime is
 unchanged; PRF-1144 remains planned with no cited completion events.
+
+The preceding actual column issuance is now bound by
+`fn-hpi-column-page-handoff-is-complete-canonical-page`. Its literal premises
+are full `fn-hpicol-writer-ready-p` and actual `:write`. The selected prefix
+is exactly 2048 words of the original canonical column at its page base.
+The entire output equals the existing `fn-hpi-await-region` result over the
+retained body/controller; ledger, all five complete buffers and digest are
+unchanged. The next controller establishes the exact column ACK context
+required by the reset law. This binds canonical payload to the existing
+positional issuer without host page math, a new codec or premature row ACK.
+
+Four constructed supported phase positives and two retained-premise mutations
+per column check every literal clause. Selected-word corruption removes full
+ready carry while retaining actual write; receipt removal retains full ready
+carry but removes write. Both fail the complete conclusion. The expected
+positional effect and continuation come from independently calling the actual
+pure issuer. All twelve assertions and the fresh source body are recorded in
+`planning/evidence/history-image-column-handoff-source-2026-09-30.json`.
+These are conditional phase/source claims: full source/pool and padding,
+private stage/spool/digest/root fidelity, productive progress, actual retained
+FD/source authority, INITIAL and native qualification remain open. PRF-1144
+remains planned with no cited completion events; runtime is unchanged.
