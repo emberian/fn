@@ -13,12 +13,12 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1973 |
 | Certification roots in the Makefile | 1866 |
 | Books inside the root closure | 1938 |
-| `defthm` and `defthmd` events | 30205 |
-| `defun` events | 19266 |
+| `defthm` and `defthmd` events | 30223 |
+| `defun` events | 19270 |
 | Functions with verified guards | 3545 |
-| Functions declared `:verify-guards nil` and never verified | 2341 |
+| Functions declared `:verify-guards nil` and never verified | 2344 |
 | Functions left at the default with an explicit guard | 10521 |
-| Functions left at the default with no guard | 2859 |
+| Functions left at the default with no guard | 2860 |
 | `assert-event` checks | 24064 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
@@ -717,7 +717,7 @@ that `make certify` requests.
 | `books/over-row-pieces.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/over-row-state.lisp` | closure | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/over-selected-held-cell.lisp` | - | 8 | 4 | 1/0/3/0 | 0 | 0 | 0 |
-| `books/over-selected-source-carry.lisp` | - | 4 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/over-selected-source-carry.lisp` | - | 11 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/over-window.lisp` | root | 30 | 6 | 1/3/2/0 | 0 | 0 | 0 |
 | `books/owner-ack-after-barrier.lisp` | root | 34 | 27 | 0/1/26/0 | 0 | 0 | 3 |
 | `books/owner-advance-carried.lisp` | root | 33 | 7 | 0/2/5/0 | 0 | 0 | 0 |
@@ -1690,7 +1690,7 @@ that `make certify` requests.
 | `tests/acl2/over-held-row-establishment-tests.lisp` | - | 6 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `tests/acl2/over-held-row-tests.lisp` | - | 6 | 2 | 0/1/1/0 | 0 | 0 | 0 |
 | `tests/acl2/over-selected-held-cell-tests.lisp` | - | 13 | 4 | 0/4/0/0 | 0 | 0 | 0 |
-| `tests/acl2/over-selected-source-carry-tests.lisp` | - | 2 | 1 | 0/0/0/1 | 0 | 0 | 0 |
+| `tests/acl2/over-selected-source-carry-tests.lisp` | - | 13 | 5 | 0/3/0/2 | 0 | 0 | 0 |
 | `tests/acl2/over-window-tests.lisp` | root | 6 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/owner-ack-after-barrier-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 40 | 0 | 0 |
 | `tests/acl2/owner-advance-carried-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 64 | 16 | 0 |
