@@ -145,3 +145,24 @@ A-HPI-POSITIONAL-IO's visible-byte assumption needs exact held FD/private role
 and ordered trace composition and does not establish durability. Whole byte
 fidelity, productive progress, initial demand and native qualification remain
 open. PRF-1144 remains planned with no completion events.
+
+
+`history-image-private-trace` now connects a full acknowledged write to an
+exact later read under A-HPI-POSITIONAL-IO, and connects the actual complete
+nine-field read observation to that named visible range. The interleaved
+stage/data-spool/table-spool trace carries a stable pairwise-distinct file
+identity triple and an explicit visible frame for every untouched role on
+every write. A full count on the selected role alone supplies no such frame.
+Local functional-instance witnesses exercise all literal read/readback
+premises and complete outputs; corrupt abstract bytes and improper payloads
+are labelled separately from actual controller-issued operations.
+
+These are conditional proof-only byte-trace laws. Their helper definitions
+are not served entries or guard-verified executable implementations. Actual
+held FD-to-file identity/nonalias lifetime correspondence and association of
+trace payloads with issued HPI effects still need the composed writer proof,
+alongside canonical phase invariants, productive progress and whole-operation
+INIT/native qualification. The named visible-byte assumptions establish no
+durability. Exact source evidence is
+`planning/evidence/history-image-private-trace-source-2026-09-30.json`;
+PRF-1144 remains planned with no completion events.
