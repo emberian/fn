@@ -1599,8 +1599,15 @@ or be discarded before the slot can be reused. The model binds each issued
 token to one executor slot, and stale completion from a prior job cannot
 return a reused worker. The native adapter now uses an intrusive idle-slot
 list and a fixed worker set; a job activation returns before the worker
-announces relinquishment, and shutdown joins before shared-file close.
+announces relinquishment. The owner's private result-transfer activation
+also returns before refund: readiness exposes only a predicate, never a
+borrowed result, and the transfer clears the worker's result slot before
+returning vector-free settlement metadata. Shutdown joins before shared-file close.
 The host stobj adapters have named answer-and-effect refinement equations.
+`fnn-owner-cold-await` waits and settles an already captured read outside
+the owner mutex without parsing or retrying a request. Its caller retains
+the logical response/cursor pin and must return to the charged scheduler
+for another attempt; rollback does not erase work already performed.
 Supported startup demand and matching native evidence are pending.
 Legacy large protected entries and compressed decode/cache storage still
 need productive bounded operations and accounting; a fixture's finite

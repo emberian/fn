@@ -6289,7 +6289,7 @@
       ],
       "expected": [
         "Admission refuses before new buffer/thread/job allocation when all slots remain charged. Cancellation neither releases the slot nor closes the held file.",
-        "One admitted token owns one executor slot. Returned result stays charged until matching settled I/O and physical publication/discard.",
+        "One admitted token owns one executor slot. Returned result stays charged until matching settled I/O and physical publication/discard; both worker and owner result-transfer activations have returned before refund, and readiness never lends the private result.",
         "Old token cannot return or free a reused worker; cached buffer remains charged until actual eviction. Permanent executor/table storage remains baseline-funded through shutdown.",
         "Partial startup tears down only resources actually created, joins created workers and fences ambiguous close; restart derives fresh process-local identity state."
       ],

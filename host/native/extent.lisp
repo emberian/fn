@@ -209,6 +209,7 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
 (defvar *fnn-cold-free* nil)
 (defvar *fnn-cold-stopping* nil)
 
+(declaim (notinline fnn-extent-executor-job))
 (defun fnn-extent-executor-job (worker)
   "Publish a private result, but do not yet announce relinquishment."
   (let* ((token (fnn-cold-worker-token worker))
