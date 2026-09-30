@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1726 |
-| Certification roots in the Makefile | 1649 |
-| Books inside the root closure | 1717 |
-| `defthm` and `defthmd` events | 28036 |
-| `defun` events | 18247 |
+| Books read | 1727 |
+| Certification roots in the Makefile | 1650 |
+| Books inside the root closure | 1719 |
+| `defthm` and `defthmd` events | 28018 |
+| `defun` events | 18246 |
 | Functions with verified guards | 3468 |
-| Functions declared `:verify-guards nil` and never verified | 2100 |
-| Functions left at the default with an explicit guard | 9928 |
+| Functions declared `:verify-guards nil` and never verified | 2101 |
+| Functions left at the default with an explicit guard | 9926 |
 | Functions left at the default with no guard | 2751 |
-| `assert-event` checks | 23011 |
+| `assert-event` checks | 23022 |
 | `must-fail` checks | 2497 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 156 |
-| Theorems flagged SUSPECT by shape | 1236 |
-| Export-hygiene warnings | 325 |
+| Theorems flagged SUSPECT by shape | 1233 |
+| Export-hygiene warnings | 323 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 272 |
-| Include-hygiene warnings | 2589 |
+| Include-hygiene warnings | 2588 |
 | Host-names warnings | 2087 |
 | Hand-written-record warnings | 18 |
 
@@ -639,7 +639,6 @@ that `make certify` requests.
 | `books/owner-control-post-reason.lisp` | closure | 2 | 2 | 0/0/2/0 | 0 | 0 | 1 |
 | `books/owner-control-read.lisp` | root | 63 | 2 | 0/2/0/0 | 0 | 0 | 2 |
 | `books/owner-credits.lisp` | root | 29 | 21 | 0/0/21/0 | 0 | 0 | 3 |
-| `books/owner-cursor-domain.lisp` | - | 23 | 2 | 0/0/2/0 | 0 | 0 | 3 |
 | `books/owner-descriptions-read.lisp` | root | 17 | 0 | 0/0/0/0 | 0 | 0 | 2 |
 | `books/owner-enrollment-read.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-export-request.lisp` | closure | 4 | 9 | 0/0/9/0 | 0 | 0 | 0 |
@@ -702,7 +701,7 @@ that `make certify` requests.
 | `books/owner-served-carried.lisp` | root | 12 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/owner-served-invariants.lisp` | root | 22 | 6 | 0/0/6/0 | 0 | 0 | 1 |
 | `books/owner-signed-post.lisp` | root | 30 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/owner-snapshot-recovery.lisp` | root | 111 | 10 | 0/6/3/1 | 0 | 0 | 11 |
+| `books/owner-snapshot-recovery.lisp` | root | 115 | 11 | 0/7/3/1 | 0 | 0 | 11 |
 | `books/owner-snapshot-request.lisp` | root | 8 | 15 | 0/0/15/0 | 0 | 0 | 0 |
 | `books/owner-state-accessors.lisp` | closure | 2 | 3 | 0/0/3/0 | 0 | 0 | 2 |
 | `books/owner-stop-drain.lisp` | root | 8 | 10 | 0/0/10/0 | 0 | 0 | 0 |
@@ -913,6 +912,7 @@ that `make certify` requests.
 | `books/store-capacity-config.lisp` | root | 5 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/store-capacity-vector.lisp` | root | 52 | 22 | 0/4/17/1 | 0 | 0 | 5 |
 | `books/store-carried-folds.lisp` | root | 12 | 5 | 0/2/3/0 | 0 | 0 | 2 |
+| `books/store-charge-domain.lisp` | closure | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-arena-load.lisp` | root | 55 | 7 | 2/1/3/1 | 0 | 0 | 3 |
 | `books/store-checkpoint-arena-writer.lisp` | root | 65 | 23 | 11/1/11/0 | 0 | 0 | 3 |
 | `books/store-checkpoint-arena.lisp` | root | 56 | 27 | 5/11/11/0 | 0 | 0 | 0 |
@@ -939,7 +939,7 @@ that `make certify` requests.
 | `books/store-finalize-incremental.lisp` | root | 42 | 12 | 5/2/5/0 | 0 | 0 | 2 |
 | `books/store-finalize-published.lisp` | root | 12 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/store-genesis.lisp` | root | 14 | 28 | 11/0/17/0 | 0 | 0 | 0 |
-| `books/store-host-boundary.lisp` | closure | 9 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/store-host-boundary.lisp` | closure | 9 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/store-identity-sequence-invariants.lisp` | root | 28 | 1 | 1/0/0/0 | 0 | 0 | 1 |
 | `books/store-import-publication.lisp` | root | 123 | 56 | 0/52/4/0 | 0 | 0 | 0 |
 | `books/store-import-stream.lisp` | root | 30 | 18 | 3/4/11/0 | 0 | 0 | 2 |
@@ -1553,7 +1553,7 @@ that `make certify` requests.
 | `tests/acl2/owner-served-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 2 | 0 |
 | `tests/acl2/owner-served-invariants-tests.lisp` | root | 0 | 18 | 0/7/0/11 | 88 | 12 | 0 |
 | `tests/acl2/owner-signed-post-tests.lisp` | root | 0 | 14 | 0/3/0/11 | 70 | 27 | 0 |
-| `tests/acl2/owner-snapshot-recovery-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 27 | 0 | 0 |
+| `tests/acl2/owner-snapshot-recovery-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 34 | 0 | 0 |
 | `tests/acl2/owner-snapshot-request-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 47 | 0 | 0 |
 | `tests/acl2/owner-stop-drain-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 49 | 5 | 0 |
 | `tests/acl2/owner-store-budget-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 11 | 4 | 0 |
@@ -1685,6 +1685,7 @@ that `make certify` requests.
 | `tests/acl2/store-capacity-config-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 14 | 1 | 0 |
 | `tests/acl2/store-capacity-vector-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 76 | 3 | 0 |
 | `tests/acl2/store-carried-folds-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 37 | 3 | 0 |
+| `tests/acl2/store-charge-domain-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/store-checkpoint-arena-tests.lisp` | root | 4 | 20 | 0/19/1/0 | 34 | 1 | 0 |
 | `tests/acl2/store-checkpoint-digest-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 4 | 0 |
 | `tests/acl2/store-checkpoint-open-tests.lisp` | root | 1 | 1 | 0/1/0/0 | 33 | 10 | 0 |
@@ -2443,10 +2444,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-own-view-version-of-fn-own-view-make` | `books/owner.lisp` | 822 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-own-view-version-of-make-group-indexed` | `books/owner.lisp` | 736 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-owner-core-is-configured-owner-by-definition` | `books/owner-state-accessors.lisp` | 22 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
-| `fn-owner-cursor-store-by-definition` | `books/owner-cursor-domain.lisp` | 54 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-owner-orcp-swap-preserves-retain-carry-by-definition` | `books/owner-recovery-retain.lisp` | 93 | closed-theory-corollary: proved only by fn-owner-orcp-swap-installs-retain-carry |
-| `fn-owner-recovered-install-establishes-cursor` | `books/owner-cursor-domain.lisp` | 257 | closed-theory-corollary: proved only by fn-owner-cursor-retained-implies-sequence, fn-owner-install-extended-store-effect-by-definition, fn-owner-recovery-establishes-retained-store |
-| `fn-owner-recovery-establishes-retained-store` | `books/owner-cursor-domain.lisp` | 227 | closed-theory-corollary: proved only by fn-owner-cursor-recovered-full-has-retained-fields, fn-owner-recover-from-checkpoint-equals-full-recover |
 | `fn-owner-store-is-configured-store-by-definition` | `books/owner-state-accessors.lisp` | 26 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-oxr-xref-server-of-reader-env` | `books/owner-xref-read.lisp` | 24 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-pa-served-post-word-is-the-served-word-otherwise` | `books/peer-authored-accept.lisp` | 655 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pa-served-post-word and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-pa-served-post-word and the conclusion is that branch's value |

@@ -254,6 +254,7 @@
     "books/store-init-publication",
     "tests/acl2/store-init-publication-tests",
     "tests/acl2/store-host-boundary-tests",
+    "tests/acl2/store-charge-domain-tests",
     "tests/acl2/bp-node-host-sequence-tests",
     "books/bp-node-host-machine",
     "tests/acl2/bp-node-host-machine-tests",
@@ -1653,26 +1654,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1726,
-    "books_in_root_closure": 1717,
-    "roots": 1649,
-    "theorems": 28036,
-    "functions": 18247,
-    "assert_events": 23011,
+    "books": 1727,
+    "books_in_root_closure": 1719,
+    "roots": 1650,
+    "theorems": 28018,
+    "functions": 18246,
+    "assert_events": 23022,
     "must_fails": 2497,
     "prover_refusals": 0,
     "encapsulates": 156,
     "guards": {
       "verified": 3468,
-      "declared-off": 2100,
-      "default-guarded": 9928,
+      "declared-off": 2101,
+      "default-guarded": 9926,
       "default-unguarded": 2751
     },
-    "suspect_theorems": 1236,
-    "export_hygiene_warnings": 325,
+    "suspect_theorems": 1233,
+    "export_hygiene_warnings": 323,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 272,
-    "include_hygiene_warnings": 2589,
+    "include_hygiene_warnings": 2588,
     "host_names_warnings": 2087,
     "hand_written_record_warnings": 18
   },
@@ -18438,39 +18439,6 @@
       "read_error": null
     },
     {
-      "book": "books/owner-cursor-domain.lisp",
-      "in_root_closure": false,
-      "is_root": false,
-      "theorems": 23,
-      "functions": 2,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 2,
-        "default-unguarded": 0
-      },
-      "verify_guards_events": 0,
-      "assert_events": 0,
-      "must_fails": 0,
-      "prover_refusals": 0,
-      "defconsts": 0,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "consumer-store-invariants",
-        "owner-recovery-retain",
-        "owner-snapshot-recovery",
-        "record-width-producers"
-      ],
-      "system_includes": [],
-      "suspects": [
-        "fn-owner-cursor-store-by-definition",
-        "fn-owner-recovered-install-establishes-cursor",
-        "fn-owner-recovery-establishes-retained-store"
-      ],
-      "read_error": null
-    },
-    {
       "book": "books/owner-descriptions-read.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -20307,11 +20275,11 @@
       "book": "books/owner-snapshot-recovery.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 111,
-      "functions": 10,
+      "theorems": 115,
+      "functions": 11,
       "guards": {
         "verified": 0,
-        "declared-off": 6,
+        "declared-off": 7,
         "default-guarded": 3,
         "default-unguarded": 1
       },
@@ -26641,6 +26609,33 @@
       "read_error": null
     },
     {
+      "book": "books/store-charge-domain.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 1,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "identity-invariants",
+        "post-fields"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/store-checkpoint-arena-load.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -27421,11 +27416,11 @@
       "in_root_closure": true,
       "is_root": false,
       "theorems": 9,
-      "functions": 3,
+      "functions": 2,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 3,
+        "default-guarded": 2,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -27440,6 +27435,7 @@
         "container",
         "frame-octets",
         "identity-invariants",
+        "store-charge-domain",
         "store-genesis",
         "store-profile-facts",
         "store-profile-open"
@@ -45171,10 +45167,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 27,
+      "assert_events": 34,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 16,
+      "defconsts": 18,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -48830,6 +48826,32 @@
         "owner-store-indexed-tests",
         "peer-carriage-tests",
         "store-capacity-vector-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/store-charge-domain-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-charge-domain"
       ],
       "system_includes": [],
       "suspects": [],
@@ -57466,35 +57488,11 @@
       ]
     },
     {
-      "theorem": "fn-owner-cursor-store-by-definition",
-      "book": "books/owner-cursor-domain.lisp",
-      "line": 54,
-      "reasons": [
-        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
-      ]
-    },
-    {
       "theorem": "fn-owner-orcp-swap-preserves-retain-carry-by-definition",
       "book": "books/owner-recovery-retain.lisp",
       "line": 93,
       "reasons": [
         "closed-theory-corollary: proved only by fn-owner-orcp-swap-installs-retain-carry"
-      ]
-    },
-    {
-      "theorem": "fn-owner-recovered-install-establishes-cursor",
-      "book": "books/owner-cursor-domain.lisp",
-      "line": 257,
-      "reasons": [
-        "closed-theory-corollary: proved only by fn-owner-cursor-retained-implies-sequence, fn-owner-install-extended-store-effect-by-definition, fn-owner-recovery-establishes-retained-store"
-      ]
-    },
-    {
-      "theorem": "fn-owner-recovery-establishes-retained-store",
-      "book": "books/owner-cursor-domain.lisp",
-      "line": 227,
-      "reasons": [
-        "closed-theory-corollary: proved only by fn-owner-cursor-recovered-full-has-retained-fields, fn-owner-recover-from-checkpoint-equals-full-recover"
       ]
     },
     {
@@ -63453,18 +63451,6 @@
         "theorem": "fn-ccar-own-finish-installs-ccar-own-complete-by-definition",
         "book": "books/owner-commit-carried.lisp",
         "line": 709,
-        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
-      },
-      {
-        "theorem": "fn-owner-install-extended-store-effect-by-definition",
-        "book": "books/owner-cursor-domain.lisp",
-        "line": 244,
-        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
-      },
-      {
-        "theorem": "fn-owner-orcp-swap-store-effect-by-definition",
-        "book": "books/owner-cursor-domain.lisp",
-        "line": 279,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -71745,13 +71731,6 @@
         "line": 28,
         "include": "nntp-control",
         "included": "books/nntp-control.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/owner-cursor-domain.lisp",
-        "line": 6,
-        "include": "record-width-producers",
-        "included": "books/record-width-producers.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -96881,91 +96860,91 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 430,
+        "line": 429,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 430,
+        "line": 429,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 430,
+        "line": 429,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 446,
+        "line": 445,
         "name": "with-local-stobj",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 736,
+        "line": 735,
         "name": "member-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 847,
+        "line": 846,
         "name": "atom",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 847,
+        "line": 846,
         "name": "reverse",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1079,
+        "line": 1078,
         "name": "fn-hist-count",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1532,
+        "line": 1531,
         "name": "fn-arena-count",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1688,
+        "line": 1687,
         "name": "fn-octets-len",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1688,
+        "line": 1687,
         "name": "fn-octets-list",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2674,
+        "line": 2698,
         "name": "assoc-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 4120,
+        "line": 4144,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
@@ -98584,8 +98563,8 @@
         "host": "host/store-write-host.lisp",
         "line": 1552,
         "name": "fn-store-charge",
-        "source": "books/store-host-boundary.lisp",
-        "reason": "defined in books/store-host-boundary.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+        "source": "books/store-charge-domain.lisp",
+        "reason": "defined in books/store-charge-domain.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-write-host.lisp",

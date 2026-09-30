@@ -14,6 +14,7 @@
 (include-book "store-profile-facts")
 (include-book "store-genesis")
 (include-book "identity-invariants")
+(include-book "store-charge-domain")
 (include-book "container")
 (include-book "frame-octets")
 
@@ -21,9 +22,7 @@
 ; The three entries, exactly as the host file defined them (the read bound
 ; fixes its summand, which changes no value: `+' fixes its arguments).
 
-(defun fn-store-charge (length)
-  (declare (xargs :guard t))
-  (if (natp length) (fn-charge-for-payload length) 0))
+; fn-store-charge is defined unchanged in store-charge-domain.
 
 (defun fn-store-publication-admissibility (profile committed-count
                                                    prospective-payload-octets)

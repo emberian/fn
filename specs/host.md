@@ -1619,3 +1619,21 @@ its committed frontier and concurrent key/configuration changes, and its
 marker-last durability program need their own implementation and evidence.
 SCN-217 uses stopped copies with explicitly supplied completion-observation
 fixtures; it establishes no running-capture guarantee.
+
+### Pre-intern charge producer domain (PRF-1111)
+
+The actual `fn-store-charge` entry used by `fnn-charge` yields a positive
+uint32 charge for every length admitted by `fn-pfld-payload-sizep`, up to
+the complete record codec payload ceiling. Its unchanged definition lives
+in `books/store-charge-domain.lisp`; `store-host-boundary` includes it.
+The proof bounds the producer before record interning, independently of
+a later Store staging decision. Tests cover zero, a length beyond the old
+32768-byte proof premise, and the codec maximum. A numeric input beyond
+the codec domain refutes hypothesis removal without allocating a payload;
+it is not a reachable supported-profile request.
+
+This establishes only the charge field. The actual owner's journal cursor,
+reserved allocator, clock, metadata, resolved groups and catalog handles
+still need their maintained producer relations before raw dispatch can be
+enabled. The theorem adds no admission ceiling and makes no image or cost
+claim.
