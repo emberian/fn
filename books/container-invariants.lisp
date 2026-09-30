@@ -71,7 +71,7 @@
                              s generation (fn-ct-article-msgid a)
                              (fn-arena-count fn-arena) groups
                              (fn-ct-obligation-string obligation-digest)
-                             (fn-ct-subject-string a) evidence (fn-ct-charge a) stamp)
+                             (fn-ct-subject-string a) evidence (fn-ct-charge a) stamp (fn-ab-for-received :relay-v1 (fn-ct-article-octets a)))
                             s))
                 (equal (fn-ct-result-state
                         (mv-nth 0 (fn-ct-publish-article s a digest articles digests
@@ -83,7 +83,7 @@
                          s generation (fn-ct-article-msgid a)
                          (fn-arena-count fn-arena) groups
                          (fn-ct-obligation-string obligation-digest)
-                         (fn-ct-subject-string a) evidence (fn-ct-charge a) stamp)
+                         (fn-ct-subject-string a) evidence (fn-ct-charge a) stamp (fn-ab-for-received :relay-v1 (fn-ct-article-octets a)))
                         (fn-state-next-txid (fn-node-acceptance s))
                         generation :durable))))
   ; A `:use` fact, not a rewrite rule: the conjunct `(equal completion
@@ -314,12 +314,12 @@
 (local
  (defthm fn-ct-prepare-on-non-state-by-definition
    (implies (not (fn-node-statep s))
-            (equal (fn-node-prepare s g m p gr o sub e c stamp) s))
+            (equal (fn-node-prepare s g m p gr o sub e c stamp binding) s))
    :hints (("Goal" :in-theory (enable fn-node-prepare)))))
 
 (local
  (defthm fn-ct-prepare-changed-means-acceptance-changed
-   (implies (not (equal (fn-node-prepare s g m p gr o sub e c stamp) s))
+   (implies (not (equal (fn-node-prepare s g m p gr o sub e c stamp binding) s))
             (not (equal (fn-accept-prepare (fn-node-acceptance s) g m p gr stamp)
                         (fn-node-acceptance s))))
    :hints (("Goal" :in-theory (e/d (fn-node-prepare)
@@ -329,8 +329,8 @@
 
 (local
  (defthm fn-ct-prepare-acceptance
-   (implies (not (equal (fn-node-prepare s g m p gr o sub e c stamp) s))
-            (equal (fn-node-acceptance (fn-node-prepare s g m p gr o sub e c stamp))
+   (implies (not (equal (fn-node-prepare s g m p gr o sub e c stamp binding) s))
+            (equal (fn-node-acceptance (fn-node-prepare s g m p gr o sub e c stamp binding))
                    (fn-accept-prepare (fn-node-acceptance s) g m p gr stamp)))
    :hints (("Goal" :in-theory (e/d (fn-node-prepare fn-node-make-state
                                     fn-node-acceptance)
@@ -340,8 +340,8 @@
 
 (local
  (defthm fn-ct-prepare-stage
-   (implies (not (equal (fn-node-prepare s g m p gr o sub e c stamp) s))
-            (consp (fn-node-stage (fn-node-prepare s g m p gr o sub e c stamp))))
+   (implies (not (equal (fn-node-prepare s g m p gr o sub e c stamp binding) s))
+            (consp (fn-node-stage (fn-node-prepare s g m p gr o sub e c stamp binding))))
    :hints (("Goal" :in-theory (e/d (fn-node-prepare fn-node-make-state
                                     fn-node-stage fn-node-make-stage)
                                    (fn-node-statep fn-retain-admissiblep
@@ -392,8 +392,8 @@
 (local
  (defthm fn-ct-prepared-pending-matches
    (implies (and (fn-node-statep s)
-                 (not (equal (fn-node-prepare s g m p gr o sub e c stamp) s)))
-            (fn-node-pending-matchesp (fn-node-prepare s g m p gr o sub e c stamp)
+                 (not (equal (fn-node-prepare s g m p gr o sub e c stamp binding) s)))
+            (fn-node-pending-matchesp (fn-node-prepare s g m p gr o sub e c stamp binding)
                                       (fn-state-next-txid (fn-node-acceptance s))
                                       g))
    :hints (("Goal" :in-theory (e/d (fn-node-pending-matchesp)
@@ -408,12 +408,12 @@
                                        fn-article-msgid)))))
 
 (defthm fn-ct-prepare-then-durable-complete-accepts
-  (implies (not (equal (fn-node-prepare s g m p gr o sub e c stamp) s))
+  (implies (not (equal (fn-node-prepare s g m p gr o sub e c stamp binding) s))
            (fn-acceptedp
             m
             (fn-state-articles
              (fn-node-acceptance
-              (fn-node-complete (fn-node-prepare s g m p gr o sub e c stamp)
+              (fn-node-complete (fn-node-prepare s g m p gr o sub e c stamp binding)
                                 (fn-state-next-txid (fn-node-acceptance s))
                                 g :durable)))))
   :hints (("Goal" :do-not-induct t
@@ -429,7 +429,7 @@
                             (obligation-id o) (subject sub) (evidence e)
                             (charge c))
                  (:instance fn-ct-node-statep-acceptance
-                            (s (fn-node-prepare s g m p gr o sub e c stamp)))
+                            (s (fn-node-prepare s g m p gr o sub e c stamp binding)))
                  (:instance fn-ct-accept-prepare-changed
                             (s (fn-node-acceptance s)))
                  (:instance fn-ct-durable-complete-installs

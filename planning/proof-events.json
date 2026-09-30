@@ -17508,22 +17508,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-osr-finish-preserves-full-retained-carry"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-osr-open-establishes-full-retained-carry"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-osr-ready-capture-keeps-retained-fields"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-osr-configure-durable-preserves-full-retained-carry"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-osr-open-establishes-live-carry"
         },
         {
@@ -17545,6 +17529,22 @@
         {
           "kind": "theorem",
           "name": "fn-osr-configure-durable-preserves-live-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-finish-preserves-full-retained-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-open-establishes-full-retained-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-ready-capture-keeps-retained-fields"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-configure-durable-preserves-full-retained-carry"
         }
       ],
       "pending_subject": "Pure actual capture/recovery inverse dependency with full retained semantic fields. Actual producer capture/canonical writer/load payload alpha and complete live transition/owner installation bridges remain open; no full producer completion claim."
@@ -17749,6 +17749,44 @@
         {
           "kind": "theorem",
           "name": "fn-fc-temporary-mode-refusal-closes-without-stopping"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1072",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-owner-prepare-identity-preserves-retain-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-prepare-identity-preserves-retain-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-finish-synced-preserves-retain-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-install-extended-establishes-retain-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-orcp-swap-installs-retain-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-install-extended-establishes-retain-state"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1111",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-store-charge-is-positive-and-representable"
         }
       ]
     }

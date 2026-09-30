@@ -318,9 +318,9 @@
 
 (defthm fn-ndh-node-prepare
   (equal (fn-node-prepare (fn-ndh-node n) generation msgid (fn-ndh-handle payload) groups
-                          obligation-id subject evidence charge stamp)
+                          obligation-id subject evidence charge stamp binding)
          (fn-ndh-node (fn-node-prepare n generation msgid payload groups
-                                       obligation-id subject evidence charge stamp)))
+                                       obligation-id subject evidence charge stamp binding)))
   :hints (("Goal" :in-theory (e/d (fn-node-prepare) (fn-node-statep fn-accept-prepare fn-ndh-handle)))))
 
 (defthm fn-ndh-node-pending-matchesp-statep

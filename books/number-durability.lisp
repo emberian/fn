@@ -146,7 +146,7 @@
 (defthm fn-ndur-node-prepare-keeps-articles
   (equal (fn-state-articles (fn-node-acceptance
                              (fn-node-prepare s generation msgid payload groups
-                                              obligation-id subject evidence charge stamp)))
+                                              obligation-id subject evidence charge stamp binding)))
          (fn-state-articles (fn-node-acceptance s)))
   :hints (("Goal" :in-theory (e/d (fn-node-prepare)
                                   (fn-node-statep fn-accept-prepare fn-retain-admissiblep

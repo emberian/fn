@@ -14,6 +14,7 @@
 ; it did not write).  Last, the executed functions are shown not to reach the
 ; quadratic walks: the statement about the executed function.
 (in-package "ACL2")
+(include-book "node-binding-fixture")
 (include-book "../../books/owner")
 (include-book "must-fail-checked")
 
@@ -78,7 +79,7 @@
                          (concatenate 'string "archive-" (car keys))
                          (concatenate 'string "content-" (car keys))
                          (concatenate 'string "release-" (car keys))
-                         1 841000000)
+                         1 841000000 *nbft-binding*)
         txid 9 :durable)
        (cdr keys) (+ 1 txid))
     s))

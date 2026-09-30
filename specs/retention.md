@@ -186,3 +186,108 @@ Initially retain duplicate-history entries as well; D13 must settle their later
 pruning policy. Until reclamation is implemented and justified, released objects
 may remain physically stored. Keeping extra bytes does not license accepting
 unaccounted new obligations.
+
+## Incremental obligation views (W9 bounded pilot)
+
+The pilot maintains one active-obligation count and one keyed aggregate of
+active count and charge per immutable subject. An obligation contributes by its
+own identity: discharging one contribution does not discharge another hold on
+the same subject, and a refused duplicate discharge changes no contribution.
+The exact reconstruction oracle is `fn-vd-oracle-at` over the ledger's
+contributions. Initialization and each admitted/retracted contribution preserve
+that answer (`books/retention-obligation-view.lisp`).
+
+The concrete keyed view is a string-indexed radix trie. Lookup and a delta touch
+the subject path and its finite character branches, independent of ledger size.
+Initialization is a tail-recursive fold; it is separate from served reads.
+The delta updater has no reconstruction fallback and releases use the new
+release record plus the reservation change, rather than searching for a pin.
+The owner-state book names the actual installation function and proves its
+owner/view/global effects; separate cold and rebuilt installations establish
+the correspondence. The status substitution preserves the exact report under
+that correspondence. The host now uses these boundaries: cold open constructs once, ordinary installation applies a delta, and online reclaim supplies the rebuilt view from its off-mutex fold. Status reads the cached total at the committed reader view. An unavailable carried view is a named refusal, never a reconstruction fallback.
+
+At this checkpoint these are source definitions with clean REPL evidence, not
+a served implementation claim. Every actual host writer preservation, matching native status
+and obligation scenarios, charged retained trie paths (including zero entries
+until rebuild), and measured cost remain open. The pilot introduces no general
+dataflow runtime and no irreversible action triggered by a retraction.
+
+RET-009: `operator CONFIG obligations subject SUBJECT` reads the active count
+and reserved charge for one immutable content subject. It uses the existing
+record metadata type (nonempty octet string, currently at most 256 octets),
+with request admission before report work. ACL2 parses and formats the query.
+The exact reply is `subject-hex=HEX obligations=N charge=M` plus LF; hex
+encodes the supplied subject octets unambiguously. An absent subject has zero
+count and charge. The live answer uses one trie lookup; a stopped store uses
+the replayed ledger oracle. FNLS report request kind 3/code 12 carries the
+query. The identity listing remains unchanged. These values are diagnostic:
+release predicates still name and validate an individual obligation, and no
+aggregate authorizes release or reclamation. SCN-1003 covers the composed
+query; native evidence is pending.
+The subject query is one FNLS page and retains no report-cache entry keyed by
+subject. Unsupported continuation/oversize replies are named refusals; the
+request does not grow the owner cache. The underlying existing FNLS framing
+entries remain unguarded :ideal functions; no guard-verified composed framing
+claim is made by this source checkpoint.
+
+The W9 reservation model charges the persisted lifetime transaction budget T,
+not the current row or live-pin count: `fn-heap-obligation-view-reserve` is
+33,216*T + 2,130,560 octets on the stated 16-byte-cons representation.
+It reserves old/new trie coexistence and collector copies, metadata paths,
+count/charge integer margins and one path-copy delta transient. Both the
+store figure and offline list-operation figure include it; the breakdown
+names it `:obligation-view-carry-and-rebuild`. The small preset contributes
+546,341,504 octets. This is arithmetic-model source evidence, not a physical
+allocation theorem or measurement. Supported-profile acceptance uses the
+resulting figure and may refuse budgets that previously fitted; it never
+silently reduces an explicitly requested profile. The carried trie support,
+uint64 value bounds and actual collector/allocator lifetimes remain open.
+
+The actual `fn-owner-prepare-identity` entry now has a preservation theorem
+for the carried obligation correspondence and exact unchanged view/ledger
+effects. Its reachable signed-post fixture stages the composite through that
+same host function; a corrupted-total fixture demonstrates why correspondence
+cannot be dropped. The actual cold installer establishes correspondence for a nonfault recovered
+owner passing the successful open check. The actual atomic reclaim swap installs the
+rebuilt view and recovered ledger together; a producer-to-swap theorem derives
+correspondence from the actual nonfault rebuild result. The cold reconstruction
+correspondence is unconditional: its earlier pin-typing hypothesis was removed
+after proving the weaker statement; executable entry guards are unchanged.
+The actual `fn-owner-finish-synced` also preserves correspondence. Its direct
+carried-path proof needs only prior correspondence: the earlier Store typing
+and valid-carry proof hypotheses were removed after stronger proofs passed.
+The guard-verified entry keeps its executable guards. Literal positive and
+corrupted-view witnesses accompany live signed commit/ready checks, with exact
+nonempty subject count/charge compared against reconstruction. Other prepare
+variants and other owner installations remain open writer obligations. These proofs do not turn the eager rebuild into a bounded source
+traversal or establish every native producer premise.
+
+For the exact `fn-vdc-put` updater, a count/charge pair grows the resulting
+trie's cons-cell count by at most 2*subject-length + 3. The cold fold's bound
+is the seed's count plus twice the summed key lengths plus three times the
+number of contributions; this bound is unconditional on contribution typing.
+These are retained tree-shape bounds, not allocator/collector measurements or
+bounds on numeric object sizes. Connecting admitted transaction history to
+the cumulative subject support and bounded integers remains necessary for the
+physical reservation claim above.
+
+The carried total and each keyed count/charge are bounded by the retention
+ledger's capacity under the ledger invariant and view correspondence. They fit
+uint64 when that capacity is below 2^64. This is a conditional numeric bound,
+with explicit invalid-ledger, corrupt-view and over-word-capacity witnesses;
+it is not a runtime ceiling or permission to truncate. The phase-aware `fn-cst-relation` now establishes uint32 capacity for the actual
+Store node through ready, reserved, pending, completing and recovery/fault
+branches. Together with view correspondence it implies all three uint64
+results without a separate numeric capacity premise. The two-hold observed-open
+witness and corrupted-view/configuration-link witnesses exercise that boundary.
+Actual owner configured-domain preservation, cumulative path support and physical
+allocation proof remain part of the reservation obligation.
+
+`fn-rov-update` now has an unconditional retained trie cons bound: the old trie
+plus twice the visited subject length plus three conses. This covers arrival
+and release as well as no-change/invalid arms. The largest metadata-path
+witness releases its last hold and still retains 515 trie conses at total zero;
+a duplicate release retains that same tree. Both arrivals and releases must
+therefore be charged against cumulative durable transaction credit before the
+reservation model can be claimed as a physical bound. No served scan is added.

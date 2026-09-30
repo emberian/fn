@@ -272,6 +272,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-init-publication \
 	tests/acl2/store-init-publication-tests \
 	tests/acl2/store-host-boundary-tests \
+	tests/acl2/store-charge-domain-tests \
 	tests/acl2/bp-node-host-sequence-tests \
 	books/bp-node-host-machine \
 	tests/acl2/bp-node-host-machine-tests \
@@ -418,6 +419,33 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-reclaim-holders \
 	tests/acl2/store-reclaim-holders-tests \
 	tests/acl2/native-status-columns-tests \
+	books/view-delta \
+	books/view-delta-concrete \
+	books/view-delta-space \
+	tests/acl2/view-delta-space-tests \
+	books/retention-obligation-view \
+	books/retention-obligation-view-status \
+	books/owner-obligation-state \
+	books/owner-obligation-writers \
+	books/owner-obligation-recovery \
+	books/owner-obligation-completion \
+	tests/acl2/owner-obligation-completion-tests \
+	books/obligation-view-growth \
+	tests/acl2/obligation-view-growth-tests \
+	books/obligation-configured-bounds \
+	tests/acl2/obligation-configured-bounds-tests \
+	books/retention-obligation-view-bounds \
+	tests/acl2/retention-obligation-view-bounds-tests \
+	tests/acl2/owner-obligation-recovery-tests \
+	tests/acl2/owner-obligation-writers-tests \
+	books/retention-obligation-view-node \
+	books/obligation-subject-grammar \
+	books/obligation-subject-report \
+	books/obligation-view-budget \
+	tests/acl2/obligation-view-budget-tests \
+	tests/acl2/retention-obligation-view-node-tests \
+	tests/acl2/obligation-subject-tests \
+	tests/acl2/retention-obligation-view-tests \
 	tests/acl2/native-live-pages-tests \
 	books/feed-link-backoff \
 	tests/acl2/feed-link-backoff-tests \
@@ -1552,6 +1580,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-reclaim-pass-tests \
 	tests/acl2/owner-reclaim-carry-tests \
 	tests/acl2/owner-retain-state-tests \
+	tests/acl2/owner-retain-transitions-tests \
+	tests/acl2/owner-recovery-retain-tests \
 	tests/acl2/owner-reclaim-ready-tests \
 	tests/acl2/control-request-word-tests \
 	tests/acl2/packed-submission-tests \

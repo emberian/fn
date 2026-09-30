@@ -5,6 +5,7 @@
 ; configuration, session and wire event.  Guard-world audit first, then the
 ; configuration record, then the transcripts, then the teeth.
 (in-package "ACL2")
+(include-book "node-binding-fixture")
 (include-book "../../books/peer-inbound-invariants")
 (include-book "../../books/codec-attach")
 (include-book "must-fail-checked")
@@ -257,7 +258,7 @@
 (assert-event (equal (nth 0 *pt-t1*)
                      (fn-node-prepare *pt-node0* 1 "<a1@example.invalid>" 0 '("fn.letters")
                                       "ob-a1" "subject-a1" "peer-transit:innA" (fn-charge-for-payload (len *pt-a1-stored*))
-                                      (fn-record-stamp-of-observation *pt-obs*))))
+                                      (fn-record-stamp-of-observation *pt-obs*) (fn-ab-for-received :relay-v1 *pt-a1*))))
 (defconst *pt-no-wall* (fn-clock-observation 1000000 0 0 nil))
 (assert-event
  (equal (fn-peer-decision-kind
@@ -280,7 +281,7 @@
             *pt-node0* *pt-cfg* "innA" *pt-id1* *pt-a1* 1
             "ob-a1" "subject-a1" *pt-no-wall*)))
     (fn-node-prepare *pt-node0* (nth 0 a) (nth 1 a) 0 (nth 3 a)
-                     (nth 4 a) (nth 5 a) (nth 6 a) (nth 7 a) (nth 8 a)))
+                     (nth 4 a) (nth 5 a) (nth 6 a) (nth 7 a) (nth 8 a) (fn-ab-for-received :relay-v1 *pt-a1*)))
   *pt-node0*))
 ; The separating witness: the same arguments with a usable stamp stage, so
 ; the clock is the refusal (the handle 0 is a payload the acceptance state
@@ -291,7 +292,7 @@
                  *pt-node0* *pt-cfg* "innA" *pt-id1* *pt-a1* 1
                  "ob-a1" "subject-a1" *pt-obs*)))
          (fn-node-prepare *pt-node0* (nth 0 a) (nth 1 a) 0 (nth 3 a)
-                          (nth 4 a) (nth 5 a) (nth 6 a) (nth 7 a) (nth 8 a)))
+                          (nth 4 a) (nth 5 a) (nth 6 a) (nth 7 a) (nth 8 a) (fn-ab-for-received :relay-v1 *pt-a1*)))
        *pt-node0*)))
 ; Nothing is published by the prepare: the archive is unchanged until the
 ; store's :durable completion.

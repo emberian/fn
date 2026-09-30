@@ -650,7 +650,7 @@
                                 (fn-record-content-subject article)
                                 (fn-record-release-evidence article)
                                 (fn-record-charge article)
-                                (fn-record-stamp article))))
+                                (fn-record-stamp article) (fn-held-binding article))))
           (if (not (fn-node-pending-matchesp
                     prepared
                     (fn-record-txid article)

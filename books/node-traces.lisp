@@ -19,7 +19,7 @@
 ; Explicit event grammar
 
 ; Events are:
-;   (:prepare generation msgid payload groups obligation-id subject evidence charge)
+;   (:prepare generation msgid payload groups obligation-id subject evidence charge stamp binding)
 ;   (:complete txid generation :durable|:aborted|:indeterminate)
 ;   (:recover txid generation :committed|:absent)
 ;
@@ -58,6 +58,8 @@
   (declare (xargs :guard (true-listp event))) (nth 8 event))
 (defun fn-node-prepare-stamp (event)
   (declare (xargs :guard (true-listp event))) (nth 9 event))
+(defun fn-node-prepare-binding (event)
+  (declare (xargs :guard (true-listp event))) (nth 10 event))
 (defun fn-node-complete-txid (event)
   (declare (xargs :guard (true-listp event))) (nth 1 event))
 (defun fn-node-complete-generation (event)
@@ -74,7 +76,7 @@
 (defun fn-node-prepare-eventp (event)
   (declare (xargs :guard t))
   (and (true-listp event)
-       (equal (len event) 10)
+       (equal (len event) 11)
        (equal (car event) :prepare)
        (natp (fn-node-prepare-generation event))
        (stringp (fn-node-prepare-msgid event))
@@ -85,7 +87,8 @@
        (stringp (fn-node-prepare-subject event))
        (stringp (fn-node-prepare-evidence event))
        (posp (fn-node-prepare-charge event))
-       (fn-record-stampp (fn-node-prepare-stamp event))))
+       (fn-record-stampp (fn-node-prepare-stamp event))
+       (fn-ab-p (fn-node-prepare-binding event))))
 
 (defun fn-node-complete-eventp (event)
   (declare (xargs :guard t))
@@ -126,7 +129,7 @@
                        (fn-node-prepare-subject event)
                        (fn-node-prepare-evidence event)
                        (fn-node-prepare-charge event)
-                       (fn-node-prepare-stamp event))
+                       (fn-node-prepare-stamp event) (fn-node-prepare-binding event))
     (if (fn-node-complete-eventp event)
         (fn-node-complete s
                           (fn-node-complete-txid event)
@@ -212,7 +215,7 @@
             old
             (fn-node-bindings
              (fn-node-prepare s generation msgid payload groups
-                              obligation-id subject evidence charge stamp))))
+                              obligation-id subject evidence charge stamp binding))))
   :hints (("Goal" :in-theory (disable fn-node-prepare))))
 
 (defthm fn-node-complete-preserves-old-bindings

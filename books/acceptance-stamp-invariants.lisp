@@ -102,12 +102,12 @@
                 (null (fn-node-stage node))
                 (fn-node-pending-matchesp
                  (fn-node-prepare node generation msgid payload groups
-                                  obligation-id subject evidence charge stamp)
+                                  obligation-id subject evidence charge stamp binding)
                  txid generation))
            (let ((pending (fn-state-pending
                            (fn-node-acceptance
                             (fn-node-prepare node generation msgid payload groups
-                                             obligation-id subject evidence charge stamp)))))
+                                             obligation-id subject evidence charge stamp binding)))))
              (and (equal (fn-pending-msgid pending) msgid)
                   (equal (fn-pending-stamp pending) stamp))))
   :hints (("Goal" :do-not-induct t
@@ -126,7 +126,7 @@
         (null (fn-node-stage node))
         (fn-node-pending-matchesp
          (fn-node-prepare node generation msgid payload groups
-                          obligation-id subject evidence charge stamp)
+                          obligation-id subject evidence charge stamp binding)
          txid generation))
    (equal
     (fn-article-stamp
@@ -136,14 +136,14 @@
        (fn-node-acceptance
         (fn-node-complete
          (fn-node-prepare node generation msgid payload groups
-                          obligation-id subject evidence charge stamp)
+                          obligation-id subject evidence charge stamp binding)
          txid generation :durable)))))
     stamp))
   :hints (("Goal"
            :use (fn-stamp-prepare-pending-fields-when-staged
                  (:instance fn-node-complete-installs-pending-stamp
                             (node (fn-node-prepare node generation msgid payload groups
-                                                   obligation-id subject evidence charge stamp))))
+                                                   obligation-id subject evidence charge stamp binding))))
            :in-theory (disable fn-node-prepare fn-node-complete
                                fn-node-pending-matchesp fn-node-statep fn-statep
                                fn-find-article)))
@@ -344,7 +344,7 @@
            (equal (fn-state-articles
                    (fn-node-acceptance
                     (fn-node-prepare node generation msgid payload groups
-                                     obligation-id subject evidence charge stamp)))
+                                     obligation-id subject evidence charge stamp binding)))
                   (fn-state-articles (fn-node-acceptance node))))
   :hints (("Goal" :in-theory (enable fn-node-prepare fn-accept-prepare))))
 

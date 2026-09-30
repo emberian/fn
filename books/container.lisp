@@ -348,7 +348,7 @@
              (prepared (fn-node-prepare s generation msgid
                                         (fn-arena-count fn-arena) groups
                                         obligation-id subject evidence
-                                        (fn-ct-charge a) stamp)))
+                                        (fn-ct-charge a) stamp (fn-ab-for-received :relay-v1 (fn-ct-article-octets a)))))
         (if (equal prepared s)
             (mv (list :refused s nil) fn-arena)
           (let* ((done (fn-node-complete prepared txid generation completion))

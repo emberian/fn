@@ -3,6 +3,7 @@
 ; whose receipts arrive either directly from B's boundary ("receiver-peer")
 ; or through the relay boundary "relay".
 (in-package "ACL2")
+(include-book "node-binding-fixture")
 (include-book "../../books/bp-release-authority")
 (include-book "../../books/codec-attach")
 (include-book "must-fail-checked")
@@ -18,7 +19,7 @@
   (fn-node-complete
    (fn-node-prepare (fn-node-initial-state *bra-groups* 16) 9
                     "<bra@example.invalid>" 0 *bra-groups*
-                    "archive-bra" "subject-bra" "operator-release" 4 841000000)
+                    "archive-bra" "subject-bra" "operator-release" 4 841000000 *nbft-binding*)
    0 9 :durable))
 (defconst *bra-config*
   (fn-bp-make-config "dtn://home/" "dtn://receiver/" "policy-1"

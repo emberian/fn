@@ -1,6 +1,7 @@
 ; Sender composition traces over an actual committed node article and durable
 ; workflow work/attempt.
 (in-package "ACL2")
+(include-book "node-binding-fixture")
 (include-book "../../books/bp-outbound")
 (include-book "arena-lift")
 
@@ -21,7 +22,7 @@
   (fn-node-prepare
    (fn-node-initial-state *bpo-groups* 32)
    4 *bpo-msgid* *bpo-article-handle* *bpo-groups*
-   "archive:out" "subject:out" "release:out" 1 841000000))
+   "archive:out" "subject:out" "release:out" 1 841000000 *nbft-binding*))
 (defconst *bpo-node*
   (fn-node-complete *bpo-node-prepared* 0 4 :durable))
 (defconst *bpo-config-record*

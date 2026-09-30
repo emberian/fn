@@ -5,6 +5,7 @@
 ; Every negative case is a concrete violating value that ACL2 evaluates.  A
 ; call outside a transition's guard is made under `with-guard-checking :none'.
 (in-package "ACL2")
+(include-book "node-binding-fixture")
 (include-book "../../books/node-traces")
 
 ; The three node transitions, the matching test, the dispatcher and the fold
@@ -33,14 +34,14 @@
 ; A resource refusal changes neither the acceptance nor retention component.
 (assert-event
  (equal (fn-node-prepare *node-empty* 9 "<a@example.invalid>" *node-payload*
-                         *node-groups* "archive-a" "content-a" "release-a" 9 841000000)
+                         *node-groups* "archive-a" "content-a" "release-a" 9 841000000 *nbft-binding*)
         *node-empty*))
 
 ; The successful preparation stages both sides but publishes neither groups nor
 ; a committed archive pin.  The archive subject is not the Message-ID.
 (defconst *node-prepared*
   (fn-node-prepare *node-empty* 9 "<a@example.invalid>" *node-payload*
-                   *node-groups* "archive-a" "content-a" "release-a" 5 841000000))
+                   *node-groups* "archive-a" "content-a" "release-a" 5 841000000 *nbft-binding*))
 (assert-event (fn-node-statep *node-prepared*))
 (assert-event (equal (fn-state-articles
                       (fn-node-acceptance *node-prepared*)) nil))
@@ -55,7 +56,7 @@
 ; The reservation blocks competing work before durable completion.
 (assert-event
  (equal (fn-node-prepare *node-prepared* 9 "<b@example.invalid>" *node-payload*
-                         '("fn.letters") "archive-b" "content-b" "release-b" 4 841000000)
+                         '("fn.letters") "archive-b" "content-b" "release-b" 4 841000000 *nbft-binding*)
         *node-prepared*))
 
 ; Wrong transaction/generation cannot publish either component.
@@ -73,7 +74,7 @@
    (fn-node-retention *node-prepared*)
    (fn-node-make-stage "<a@example.invalid>" 9 "archive-a" "other-content"
                        "release-a" 5
-                       (fn-node-stage-retention (fn-node-stage *node-prepared*)))
+                       (fn-node-stage-retention (fn-node-stage *node-prepared*)) *nbft-binding*)
    (fn-node-bindings *node-prepared*)))
 (assert-event (not (fn-node-statep *node-subject-mismatch*)))
 (assert-event
@@ -99,13 +100,13 @@
 (assert-event
  (equal (fn-node-prepare *node-committed* 9 "<a@example.invalid>" *node-payload*
                          *node-groups* "archive-retry" "other-subject"
-                         "other-release" 1 841000000)
+                         "other-release" 1 841000000 *nbft-binding*)
         *node-committed*))
 
 ; A known abort releases the staged capacity and consumes the acceptance txid.
 (defconst *node-abort-prepared*
   (fn-node-prepare *node-committed* 9 "<b@example.invalid>" *node-payload*
-                   '("fn.letters") "archive-b" "content-b" "release-b" 2 841000000))
+                   '("fn.letters") "archive-b" "content-b" "release-b" 2 841000000 *nbft-binding*))
 (defconst *node-aborted* (fn-node-complete *node-abort-prepared* 1 9 :aborted))
 (assert-event (equal (fn-retain-reserved (fn-node-retention *node-aborted*)) 5))
 (assert-event (equal (fn-state-next-txid (fn-node-acceptance *node-aborted*)) 2))
@@ -115,14 +116,14 @@
 ; recovery alone chooses whether to promote or discard the staged archive pin.
 (defconst *node-uncertain-prepared*
   (fn-node-prepare *node-aborted* 9 "<b@example.invalid>" *node-payload*
-                   '("fn.letters") "archive-b" "content-b" "release-b" 2 841000000))
+                   '("fn.letters") "archive-b" "content-b" "release-b" 2 841000000 *nbft-binding*))
 (defconst *node-uncertain*
   (fn-node-complete *node-uncertain-prepared* 2 9 :indeterminate))
 (assert-event (equal (fn-state-fenced (fn-node-acceptance *node-uncertain*)) t))
 (assert-event (consp (fn-node-stage *node-uncertain*)))
 (assert-event
  (equal (fn-node-prepare *node-uncertain* 9 "<c@example.invalid>" *node-payload*
-                         '("fn.test") "archive-c" "content-c" "release-c" 1 841000000)
+                         '("fn.test") "archive-c" "content-c" "release-c" 1 841000000 *nbft-binding*)
         *node-uncertain*))
 (defconst *node-recovered-absent*
   (fn-node-recover *node-uncertain* 2 9 :absent))
@@ -208,13 +209,13 @@
 
 (defconst *node-teeth-prepared*
   (fn-node-prepare *node-teeth-empty* 9 "<a@example.invalid>" *node-teeth-payload*
-                   *node-teeth-groups* "archive-a" "content-a" "release-a" 5 841000000))
+                   *node-teeth-groups* "archive-a" "content-a" "release-a" 5 841000000 *nbft-binding*))
 (defconst *node-teeth-committed*
   (fn-node-complete *node-teeth-prepared* 0 9 :durable))
 (defconst *node-teeth-staged-again*
   (fn-node-prepare *node-teeth-committed* 9 "<b@example.invalid>"
                    1 '("fn.letters")
-                   "archive-b" "content-b" "release-b" 4 841000000))
+                   "archive-b" "content-b" "release-b" 4 841000000 *nbft-binding*))
 
 (assert-event (fn-node-statep *node-teeth-empty*))
 (assert-event (fn-node-statep *node-teeth-prepared*))
@@ -314,7 +315,7 @@
 
 (defconst *node-trace-first-prepare*
   '(:prepare 9 "<a@example.invalid>" 0
-             ("fn.letters" "fn.test") "archive-a" "content-a" "release-a" 5 841000000))
+             ("fn.letters" "fn.test") "archive-a" "content-a" "release-a" 5 841000000 (:relay-v1 (102 110 47 115 117 98 106 101 99 116 47 118 49 0 1 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))))
 (defconst *node-trace-after-first-prepare*
   (fn-node-step *node-trace-empty* *node-trace-first-prepare*))
 
@@ -333,7 +334,7 @@
 (assert-event (not (fn-node-eventp '(:unknown 1 2 3))))
 (assert-event (not (fn-node-eventp '(:complete "not-a-txid" 0 :durable))))
 (assert-event (not (fn-node-eventp '(:prepare 0 "<bad>" (not-octets)
-                                     ("fn.letters") "id" "subject" "e" 1 841000000))))
+                                     ("fn.letters") "id" "subject" "e" 1 841000000 (:relay-v1 (102 110 47 115 117 98 106 101 99 116 47 118 49 0 1 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))))))
 (assert-event (equal (fn-node-step *node-trace-empty* '(:unknown 1 2 3))
                      *node-trace-empty*))
 (assert-event (equal (fn-node-step *node-trace-empty*
@@ -346,28 +347,28 @@
 ; old binding while later transactions exercise the remaining branches.
 (defconst *node-trace-events*
   '((:prepare 9 "<a@example.invalid>" 0
-              ("fn.letters" "fn.test") "archive-a" "content-a" "release-a" 5 841000000)
+              ("fn.letters" "fn.test") "archive-a" "content-a" "release-a" 5 841000000 (:relay-v1 (102 110 47 115 117 98 106 101 99 116 47 118 49 0 1 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
     (:prepare 9 "<b@example.invalid>" 0
-              ("fn.letters") "archive-b" "content-b" "release-b" 2 841000000)
+              ("fn.letters") "archive-b" "content-b" "release-b" 2 841000000 (:relay-v1 (102 110 47 115 117 98 106 101 99 116 47 118 49 0 1 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
     (:complete 99 9 :durable)
     (:complete 0 9 :durable)
     (:prepare 9 "<c@example.invalid>" 0
-              ("fn.test") "archive-c" "content-c" "release-c" 1 841000000)
+              ("fn.test") "archive-c" "content-c" "release-c" 1 841000000 (:relay-v1 (102 110 47 115 117 98 106 101 99 116 47 118 49 0 1 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
     (:complete 1 9 :indeterminate)
     (:recover 1 9 :absent)
     (:prepare 9 "<b@example.invalid>" 0
-              ("fn.letters") "archive-b" "content-b" "release-b" 2 841000000)
+              ("fn.letters") "archive-b" "content-b" "release-b" 2 841000000 (:relay-v1 (102 110 47 115 117 98 106 101 99 116 47 118 49 0 1 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
     (:complete 99 9 :durable)
     (:complete 2 9 :indeterminate)
     (:prepare 9 "<d@example.invalid>" 0
-              ("fn.test") "archive-d" "content-d" "release-d" 1 841000000)
+              ("fn.test") "archive-d" "content-d" "release-d" 1 841000000 (:relay-v1 (102 110 47 115 117 98 106 101 99 116 47 118 49 0 1 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
     (:complete 99 9 :durable)
     (:recover 2 9 :committed)
     (:prepare 9 "<d@example.invalid>" 0
-              ("fn.test") "archive-d" "content-d" "release-d" 1 841000000)
+              ("fn.test") "archive-d" "content-d" "release-d" 1 841000000 (:relay-v1 (102 110 47 115 117 98 106 101 99 116 47 118 49 0 1 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
     (:complete 3 9 :aborted)
     (:prepare 9 "<d@example.invalid>" 0
-              ("fn.test") "archive-d" "content-d" "release-d" 1 841000000)
+              ("fn.test") "archive-d" "content-d" "release-d" 1 841000000 (:relay-v1 (102 110 47 115 117 98 106 101 99 116 47 118 49 0 1 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
     (:complete 4 9 :durable)))
 
 (defconst *node-trace-result*
@@ -411,15 +412,15 @@
 (defconst *node-trace-prefix*
   (fn-node-trace *node-trace-empty*
                  '((:prepare 9 "<a@example.invalid>" 0
-                             ("fn.letters") "archive-a" "content-a" "release-a" 3 841000000)
+                             ("fn.letters") "archive-a" "content-a" "release-a" 3 841000000 (:relay-v1 (102 110 47 115 117 98 106 101 99 116 47 118 49 0 1 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
                    (:complete 0 9 :durable))))
 (defconst *node-trace-suffix*
   '((:bogus)
     (:complete 88 9 :durable)
     (:prepare 9 "<bad-group@example.invalid>" 1
-              ("fn.missing") "archive-bad" "content-bad" "release-bad" 2 841000000)
+              ("fn.missing") "archive-bad" "content-bad" "release-bad" 2 841000000 (:relay-v1 (102 110 47 115 117 98 106 101 99 116 47 118 49 0 1 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
     (:prepare 9 "<b@example.invalid>" 1
-              ("fn.test") "archive-b" "content-b" "release-b" 2 841000000)
+              ("fn.test") "archive-b" "content-b" "release-b" 2 841000000 (:relay-v1 (102 110 47 115 117 98 106 101 99 116 47 118 49 0 1 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
     (:complete 1 9 :indeterminate)
     (:recover 1 9 :absent)))
 (defconst *node-trace-prefix-suffix*

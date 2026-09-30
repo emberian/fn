@@ -1,6 +1,7 @@
 ; Teeth for books/bp-carry-waiver.lisp (lane carry-abandon, PRF-950): the
 ; operator's waiver of a BP carry obligation (`carry drop WORK --abandon').
 (in-package "ACL2")
+(include-book "node-binding-fixture")
 (include-book "../../books/bp-carry-waiver")
 (include-book "../../books/bp-carry-frame")
 (include-book "must-fail-checked")
@@ -11,7 +12,7 @@
 (defconst *cw-node*
   (fn-node-complete
    (fn-node-prepare (fn-node-initial-state *cw-groups* 16) 9 "<cw@example.invalid>" 0
-                    *cw-groups* "archive-cw" "subject-cw" "operator-release" 4 841000000)
+                    *cw-groups* "archive-cw" "subject-cw" "operator-release" 4 841000000 *nbft-binding*)
    0 9 :durable))
 (defconst *cw-config*
   (fn-bp-make-config "dtn://home/fn" "dtn://peer/fn" "policy-1"

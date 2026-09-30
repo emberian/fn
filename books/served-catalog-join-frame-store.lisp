@@ -310,7 +310,7 @@
   (equal (fn-state-articles
           (fn-node-acceptance
            (fn-node-prepare node generation msgid payload groups
-                            obligation-id subject evidence charge stamp)))
+                            obligation-id subject evidence charge stamp binding)))
          (fn-state-articles (fn-node-acceptance node)))
   :hints (("Goal" :in-theory (e/d (fn-node-prepare fn-accept-prepare)
                                   (fn-retain-admissiblep fn-retain-admit fn-allocate-memberships

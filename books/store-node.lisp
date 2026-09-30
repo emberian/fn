@@ -929,7 +929,7 @@
                    (fn-record-obligation-id record)
                    (fn-record-content-subject record)
                    (fn-record-release-evidence record) (fn-record-charge record)
-                   (fn-record-stamp record)))
+                   (fn-record-stamp record) (fn-held-binding record)))
 
 (verify-guards fn-sn-prepare-node)
 

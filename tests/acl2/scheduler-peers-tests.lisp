@@ -6,6 +6,7 @@
 ; contact and its own retry budget.
 
 (in-package "ACL2")
+(include-book "node-binding-fixture")
 (include-book "../../books/scheduler-peers")
 
 ; -----------------------------------------------------------------------------
@@ -21,12 +22,12 @@
   (fn-node-complete
    (fn-node-prepare *tp-node-0* 9 "<small@fn.invalid>" *tp-payload-small*
                     *tp-groups* "archive-small" "subject-small"
-                    "release-small" 4 841000000)
+                    "release-small" 4 841000000 *nbft-binding*)
    0 9 :durable))
 (defconst *tp-node*
   (fn-node-complete
    (fn-node-prepare *tp-node-1* 10 "<big@fn.invalid>" *tp-payload-big*
-                    *tp-groups* "archive-big" "subject-big" "release-big" 4 841000000)
+                    *tp-groups* "archive-big" "subject-big" "release-big" 4 841000000 *nbft-binding*)
    1 10 :durable))
 
 (defconst *tp-config*

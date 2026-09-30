@@ -230,7 +230,7 @@
       },
       "profile": "default",
       "latest": "a resend at a later second is answered duplicate where the image before D25 answered conflict ([d25-dup-conflict](evidence/d25-dup-conflict-2026-09-24.md)).",
-      "obstruction": "no two-node matrix or operator campaign on an image with D25; a poster Date equal to fn's rendering of the injection second is outside the invariance theorems; D25's provenance question (review §D25) is open.",
+      "obstruction": "no two-node matrix or operator campaign on an image with D25; a poster Date equal to fn's rendering of the injection second is outside the invariance theorems; D25's provenance question (review \u00a7D25) is open.",
       "next": "the shared qualification of an image carrying D25, with the transit duplicate rows and K1's died-present resubmissions answered duplicate."
     },
     {
@@ -441,6 +441,36 @@
       "latest": "reader_index 4/4, served_differential 7/7, the peering duplicate rows ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
       "obstruction": "the per-event `fn-peer-sessionp` evaluation, not the history scan, is the served cost at the N the CLI reaches (ember's decision); the fast path's reuse after refresh is not a theorem.",
       "next": "the measured cost sentence for the indexed read and the IHAVE/CHECK path at the scale profile, with its exponent and distance from the bound."
+    },
+    {
+      "id": "W9",
+      "name": "bounded obligation views",
+      "contract": "Read-only live total and immutable-subject active count/charge equal the committed retention ledger reconstruction; independent holds remain independent.",
+      "host": {
+        "function": "fn-oqr-live-answer",
+        "file": "host/native-live-status-host.lisp"
+      },
+      "keystone": "fn-oqr-live-answer-is-reconstruction",
+      "profile": "persisted operator profile; existing record metadata subject type",
+      "latest": "Clean narrow source REPL evidence includes actual identity prepare, cold installation/rebuild-swap and durable finish; phase-aware configured Store capacity yields uint64 carried values under correspondence, and exact delta retained-cons growth includes release zero paths. Report/query boundaries are proved; no certification or matching native pass.",
+      "obstruction": "PRF-1052 planned: remaining prepare variants/owner installations and native producer premises; actual owner configured-domain preservation/cumulative zero-path funding; physical allocation and matched actual costs/native scenarios remain open. E739 POST scale timed out after 2261 accepted posts and is not a matching W9 measurement.",
+      "next": "Prove actual owner transition preservation and funded representation; runner coalesced certification and status_live_posts/capacity_vector/obligation_subject natives, then matched cost evidence.",
+      "tested": null
+    },
+    {
+      "id": "D40",
+      "name": "owner carry and entry guards",
+      "contract": "Actual signed identity prepare preserves the bound-owner, configured Store relation and retention carry; synchronized completion preserves the carry. Real-owner raw dispatch stays disabled until initialization, all transitions and native producer premises justify literal entry guards.",
+      "host": {
+        "function": "fnn-owner-identity-commit",
+        "file": "host/native/owner.lisp"
+      },
+      "keystone": "fn-owner-prepare-identity-preserves-retain-state",
+      "profile": "carried owner state; supported persisted operator profile",
+      "latest": "Source8ad7d76b2: exact cold install and live swap COMMON-LISP-COMPLIANT in fresh source replay; full cold retained-owner invariant and literal positive/hypothesis-removal witnesses. Signed prepare and carry-only completion effects retained. Matching union manifest and host/native evidence remain pending.",
+      "obstruction": "Real-owner raw annotations remain disabled. Article prepare producer record/catalog domains, full completion/swap relation and maintained native premises prevent full D40 qualification.",
+      "next": "Runner checks matching union host world and native dispatch paths; continue record/profile/codec producer and catalog guard contracts, complete completion/swap relations, then signed-POST curve.",
+      "tested": null
     }
   ],
   "other_deployments": [

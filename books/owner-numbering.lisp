@@ -116,11 +116,11 @@
 (local (defthm fn-own-node-prepare-keeps-committed
   (and (equal (fn-state-nexts (fn-node-acceptance
                                (fn-node-prepare s generation msgid payload groups
-                                                obligation-id subject evidence charge stamp)))
+                                                obligation-id subject evidence charge stamp binding)))
               (fn-state-nexts (fn-node-acceptance s)))
        (equal (fn-state-articles (fn-node-acceptance
                                   (fn-node-prepare s generation msgid payload groups
-                                                   obligation-id subject evidence charge stamp)))
+                                                   obligation-id subject evidence charge stamp binding)))
               (fn-state-articles (fn-node-acceptance s))))
   :hints (("Goal" :in-theory (e/d (fn-node-prepare)
                                   (fn-node-statep fn-accept-prepare fn-retain-admissiblep
@@ -181,7 +181,7 @@
                                 (fn-record-content-subject (if (fn-hstxa-p record) (fn-replay-composite-held record) record))
                                 (fn-record-release-evidence (if (fn-hstxa-p record) (fn-replay-composite-held record) record))
                                 (fn-record-charge (if (fn-hstxa-p record) (fn-replay-composite-held record) record))
-                                (fn-record-stamp (if (fn-hstxa-p record) (fn-replay-composite-held record) record))))
+                                (fn-record-stamp (if (fn-hstxa-p record) (fn-replay-composite-held record) record)) (fn-held-binding (if (fn-hstxa-p record) (fn-replay-composite-held record) record))))
                             (txid (fn-record-txid (if (fn-hstxa-p record) (fn-replay-composite-held record) record)))
                             (generation (fn-record-generation (if (fn-hstxa-p record) (fn-replay-composite-held record) record)))
                             (status :durable))))))

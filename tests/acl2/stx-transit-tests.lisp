@@ -13,6 +13,7 @@
 ; every constant that reaches the realiser is built by make-event.
 
 (in-package "ACL2")
+(include-book "node-binding-fixture")
 (include-book "crypto-seam-tests")
 (include-book "must-fail-checked")
 (include-book "../../books/stx-epochs")
@@ -263,7 +264,7 @@
 ; and the lace of the live node is read through the arena (ALPHA below).
 (defconst *stxt-live-1*
   (fn-node-prepare *stxt-live-0* 9 "<1>" 0
-                   '("fn.test") "archive-1" "content-1" "release-1" 5 841000000))
+                   '("fn.test") "archive-1" "content-1" "release-1" 5 841000000 *nbft-binding*))
 (assert-event (fn-node-statep *stxt-live-1*))
 (assert-event (not (equal *stxt-live-1* *stxt-live-0*)))
 (assert-event (fn-node-pending-matchesp *stxt-live-1* 0 9))
@@ -355,7 +356,7 @@
 ; re-read, and it is the wire lace of the rows' articles through the arena.
 (defconst *stxt-w1*
   (fn-record-make 1 0 9 "<1>" (fn-article-payload *stxt-r1*) '("fn.test")
-                  "archive-1" "content-1" "release-1" 5 841000000))
+                  "archive-1" "content-1" "release-1" 5 841000000 *nbft-binding*))
 (assert-event (fn-record-p *stxt-w1*))
 ; The rows' HANDLE articles, as the acceptance node would list them (newest
 ; first, each payload the row's handle): the correspondence hypothesis of

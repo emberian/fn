@@ -18122,16 +18122,16 @@
       ],
       "progress_note": "Latest semantic source increment on transit c4ec51e55 / snapshot607c: clean protected hbox REPL osr-final loads five source dependencies in proper encapsulates, with292 matching cached books. All119 book forms and50 test-file forms (46 body forms after include hoisting) pass;17.54 ACL2 seconds/4,574,965 steps, with corrected literal topic-live assertion replayed. Strict narrow teeth:23 assert-events,23 witnesses,0 findings. Actual sequential intern of enrollment, ordinary ARTICLE, rotation and ordinary ARTICLE proves two retained verdicts and frozen epochs1/2 at active generation2. Full retained-field theorem has literal positive and affirmative hypothesis removals: altered-generation corrupted state keeps readiness, linked-unfinished ARTICLE keeps full carry but differs on recovered verdicts; initialization without successful open refuses. Proper-listness proved redundant and removed from full-carry initialization; dotted-history refusal labeled separately. Source typing helper formerly stalled25s/9 steps now proves in302 steps after two small typed-field lemmas. Existing independent live-carry finish/configuration preservation remains proved; preservation of the new full retained carry across actual transitions, canonical writer/load alpha, actual host capture integration and matching union manifest/native producer evidence remain pending. The fn-snrt-run trace theorem stays library-only, omitted from production events. No new trust assumption or certificate/native verdict. Subsequent CONFIG preservation tranche replays its one local helper and two public forms inside a clean scoped encapsulate after undoing discovery events:0.08 ACL2seconds/4,410steps, then four literal fixture forms pass. Real capacity20 and third configuration record affirm changed behavior; corrupted-generation omission checks the sole full-carry premise. Matching union certification and actual finish/other transition preservation remain open. Actual FINISH tranche: nine source forms replay together in a proper local encapsulate, all green at1.33 ACL2sec/456,801steps. The complete full-carry antecedent/conclusion is witnessed by actual third ordinary ARTICLE completion under generation2; missing historical verdicts corrupted-state omission retains the real completion gate but fails full carry before and after finish. No codec opened at book top and no new trust assumption. Further component maintenance: retained-view congruence694steps/0.07sec; actual prepare/refuse/abort and IO maintenance plus one proper local selector helper66,479steps/1.71sec. Full view includes keyring/gen/snapshots/verdicts/index/retired field and completed rows. Literal actual staged ARTICLE, successful record-directory append, complete congruence antecedent/conclusion and all three congruence hypothesis removals plus wrong-cursor IO omission pass; strict teeth34/34/0. These field/prefix components remain dependencies of actual owner full-carry composition, not a narrowed inverse or an independent producer readiness claim. Fresh final source replay osr-clean-final2 on hbox loads all136 book forms and69 test-file forms (65 body forms), all green36.09 ACL2seconds/4,899,108steps with five proper source dependency encapsulates and292 matching cached books. This fresh replay fixes a whole-book local-theory interaction in the FINISH verdict helper by explicitly deriving the valid completion Store-kind fact from the existing gate; no hypothesis/conclusion changed. Narrow prior FINISH green was not treated as a whole-book result. No implicit certification fallback.",
       "events": [
-        "fn-osr-finish-preserves-full-retained-carry",
-        "fn-osr-open-establishes-full-retained-carry",
-        "fn-osr-ready-capture-keeps-retained-fields",
-        "fn-osr-configure-durable-preserves-full-retained-carry",
         "fn-osr-open-establishes-live-carry",
         "fn-osr-live-capture-opens",
         "fn-osr-ready-capture-keeps-established-projections",
         "fn-osr-finish-preserves-identity-prefix",
         "fn-osr-finish-preserves-live-carry",
-        "fn-osr-configure-durable-preserves-live-carry"
+        "fn-osr-configure-durable-preserves-live-carry",
+        "fn-osr-finish-preserves-full-retained-carry",
+        "fn-osr-open-establishes-full-retained-carry",
+        "fn-osr-ready-capture-keeps-retained-fields",
+        "fn-osr-configure-durable-preserves-full-retained-carry"
       ]
     },
     {
@@ -18891,6 +18891,106 @@
         "fn-fc-temporary-mode-refusal-closes-without-stopping"
       ],
       "progress_note": "Clean protected source admission and full positive/hypothesis-removal witnesses passed; certification and matching-image native observation pending."
+    },
+    {
+      "id": "PRF-1052",
+      "title": "W9 bounded total and immutable-subject obligation contributions equal reconstruction through actual owner transitions",
+      "statement": "Host/native-live-status-host.lisp fn-native-live-status-host-answer calls fn-rov-answer-report and fn-oqr-live-report over the carried owner obligation view. The pilot must establish and preserve fn-rov-owner-correspondp through cold initialization, actual prepare/prepare-buffer/prepare-identity/finish-synced and paired off-mutex rebuild/swap, and frame every other owner installation. Under correspondence the direct total equals ledger pin count and the keyed report equals the exact fn-vd-oracle-at reconstruction, including charge and exact reply octets. Arrival/release changes one obligation contribution; a duplicate release leaves other holds intact. Concrete radix lookup/update must have bounded actual work and funded cumulative subject paths, collector/coexistence/transient allocation. This is an open composed target: component definitions and conditional boundary lemmas alone do not establish it.",
+      "milestone": "M5",
+      "requirements": [
+        "RET-001",
+        "RET-002",
+        "RET-004",
+        "RET-009"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "planned",
+      "evidence": [
+        "books/view-delta-concrete.lisp",
+        "books/view-delta-space.lisp",
+        "tests/acl2/view-delta-space-tests.lisp",
+        "books/retention-obligation-view.lisp",
+        "books/retention-obligation-view-node.lisp",
+        "books/owner-obligation-state.lisp",
+        "books/owner-obligation-writers.lisp",
+        "tests/acl2/owner-obligation-writers-tests.lisp",
+        "books/owner-reclaim-carry.lisp",
+        "books/retention-obligation-view-status.lisp",
+        "books/obligation-subject-report.lisp",
+        "books/obligation-view-budget.lisp",
+        "tests/acl2/obligation-view-budget-tests.lisp",
+        "tests/acl2/retention-obligation-view-tests.lisp",
+        "tests/acl2/retention-obligation-view-node-tests.lisp",
+        "tests/acl2/obligation-subject-tests.lisp",
+        "tests/test_native_obligation_subject.py",
+        "books/owner-obligation-recovery.lisp",
+        "tests/acl2/owner-obligation-recovery-tests.lisp",
+        "books/owner-obligation-completion.lisp",
+        "tests/acl2/owner-obligation-completion-tests.lisp",
+        "books/retention-obligation-view-bounds.lisp",
+        "tests/acl2/retention-obligation-view-bounds-tests.lisp",
+        "books/obligation-configured-bounds.lisp",
+        "tests/acl2/obligation-configured-bounds-tests.lisp",
+        "books/obligation-view-growth.lisp",
+        "tests/acl2/obligation-view-growth-tests.lisp"
+      ],
+      "progress_note": "Clean narrow hbox source REPL evidence covers concrete delta/oracle, actual identity prepare, cold initialization and actual rebuild/swap, durable finish, report/codec/operator boundaries and literal/live/corrupted-state teeth. Cold reconstruction typing and finish Store/carry proof premises were removed after stronger proofs passed; executable guards are unchanged. The lifetime-T arithmetic reserve is included in store/offline figures. Exact radix updater and cold-fold retained cons growth are proved. The phase-aware fn-cst-relation now forces node retention capacity to uint32, including pending/completing and recovery phases; combined with view correspondence, total and keyed count/charge fit uint64. The exact fn-rov-update retained cons bound covers arrival, release and no-change, including retained zero terminals. Literal positive and corrupted-state witnesses exercise the numeric premises. Remaining actual prepare variants/owner installations, actual owner configured-domain preservation and cumulative zero-path support, physical allocator/coexistence/collector bounds, matched real-caller costs and coalesced native scenarios remain open. No committed certification manifest, matching native execution or W9 completion claim."
+    },
+    {
+      "id": "PRF-1072",
+      "title": "Actual owner carry writers preserve the carried entry state",
+      "statement": "Subject: books/owner-retain-transitions.lisp fn-owner-prepare-identity, called by host/native/owner.lisp fnn-owner-identity-commit, and fn-owner-finish-synced, called by host/owner-host.lisp fn-owner-finish. Each preserves fn-prc-carryp of returned live state under fn-prc-carryp at entry. Identity prepare additionally preserves proof-only fn-owner-retain-statep (owner bound, fn-lgoc-invariantp configured owner, and fn-prc-carryp carry), which implies its literal entry guard. Subject books/owner-recovery-retain.lisp fn-owner-install-extended establishes fn-prc-carryp after a nonfault owner passes fn-onb-open-okp; refused/damaged opens leave prior carry unchanged. Actual fn-owner-orcp-swap, called by host/native/owner.lisp fnn-owner-reclaim-pass, installs exactly rebuilt field 2 through every later state effect; PRF-1060 establishes validity of that exact native producer field. Swap guard is verified under true-listp rebuilt and bound owner; the exact rebuild produces a true list. The cold install is guard-verified: successful-arm inputs require a typed recovered Store and the 32-byte catalog key. The exact recovery and node-secret key producers imply that literal guard. With fn-onb-open-okp and fn-lgoc-invariantp of the supplied configured owner, the actual cold installer establishes fn-owner-retain-statep through all state effects; the nonfault premise was proved redundant and removed. Article prepare domains, complete completion owner relation, maintained native premises and matching image evidence remain open. No real-owner raw annotations or signed POST cost claim. Local policy; no RFC requirement.",
+      "depends_on": [
+        "PRF-1067",
+        "PRF-289",
+        "PRF-1060"
+      ],
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-retain-transitions.lisp",
+        "tests/acl2/owner-retain-transitions-tests.lisp",
+        "books/owner-recovery-retain.lisp",
+        "tests/acl2/owner-recovery-retain-tests.lisp"
+      ],
+      "progress_note": "Fresh ecinitclean hbox source replay: 427 matching cached books plus 26 source dependencies in encapsulates; 14 own test forms, 1010894 aggregate prover steps, 15.17 seconds ACL2 time, no refusal. Cold install and swap both COMMON-LISP-COMPLIANT. Full invariant witnesses affirm retained hypotheses and failures of each omitted premise; actual signed prepare/completion and cold/reclaim carry witnesses retained. Source-only; matching certification, composed host load and native execution remain runner-owned and pending. Article prepare domains, full completion/swap relation and maintained native premises remain open.",
+      "events": [
+        "fn-owner-prepare-identity-preserves-retain-carry",
+        "fn-owner-prepare-identity-preserves-retain-state",
+        "fn-owner-finish-synced-preserves-retain-carry",
+        "fn-owner-install-extended-establishes-retain-carry",
+        "fn-owner-orcp-swap-installs-retain-carry",
+        "fn-owner-install-extended-establishes-retain-state"
+      ]
+    },
+    {
+      "id": "PRF-1111",
+      "title": "Native charge producer fits the complete codec payload domain",
+      "statement": "Actual fn-store-charge, called by host/native/io.lisp fnn-charge, returns a positive uint32 charge whenever fn-pfld-payload-sizep admits the payload length, including the complete record codec payload ceiling. The same host-called definition is extracted unchanged into books/store-charge-domain.lisp; this proves the producer field before article record interning, without assuming later staging success. This closes the charge-width component only; owner cursor/allocator/clock/field/group and catalog domains remain separate obligations. Local representation guarantee, not an RFC limit or additional admission ceiling.",
+      "depends_on": [
+        "PRF-961"
+      ],
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-charge-domain.lisp",
+        "tests/acl2/store-charge-domain-tests.lisp"
+      ],
+      "progress_note": "Fresh ecchargeclean hbox replay:22 matching cached dependencies, one proper source encapsulate,6 own test forms,186 aggregate prover steps,0.04s ACL2, no refusals. Literal full-antecedent/conclusion tests at0,32769 and codec maximum; numeric out-of-codec hypothesis-removal witness is domain evidence, not a reachable supported-profile payload. Matching shared manifest/image pending; actual definition and guard unchanged.",
+      "events": [
+        "fn-store-charge-is-positive-and-representable"
+      ]
     }
   ]
 }

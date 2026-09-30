@@ -96,9 +96,10 @@
 (local (in-theory (enable (tau-system))))
 (defun fn-ppc-node-prepare (s generation msgid payload groups
                               obligation-id subject evidence charge stamp
-                              dup carry)
+                              dup carry binding)
   (declare (xargs :guard (fn-node-statep s) :verify-guards nil))
-  (if (mbe :logic (not (fn-node-statep s)) :exec nil)
+  (if (or (not (fn-ab-p binding))
+          (mbe :logic (not (fn-node-statep s)) :exec nil))
       s
     (let ((retention (fn-node-retention s)))
       (if (not (fn-prc-admissiblep retention obligation-id subject :archive
@@ -121,7 +122,7 @@
                (cons (fn-retain-make-obligation obligation-id subject :archive
                                                 evidence charge)
                      (fn-retain-pins retention))
-               (fn-retain-releases retention)))
+               (fn-retain-releases retention)) binding)
              (fn-node-bindings s))))))))
 (verify-guards fn-ppc-node-prepare
   :hints (("Goal" :in-theory (enable fn-node-statep))))
@@ -129,7 +130,7 @@
 
 (defcong iff equal (fn-ppc-node-prepare s generation msgid payload groups
                                         obligation-id subject evidence charge stamp
-                                        dup carry) 11
+                                        dup carry binding) 11
   :hints (("Goal" :in-theory (e/d (fn-ppc-node-prepare)
                                   (fn-node-statep fn-prc-admissiblep
                                    fn-retain-make-state fn-retain-make-obligation
@@ -141,9 +142,9 @@
                               (fn-pidx-find-article msgid
                                                     (fn-state-articles (fn-node-acceptance s))
                                                     view)
-                              carry)
+                              carry binding)
          (fn-prc-node-prepare s generation msgid payload groups
-                              obligation-id subject evidence charge stamp view carry))
+                              obligation-id subject evidence charge stamp view carry binding))
   :hints (("Goal" :in-theory (e/d (fn-ppc-node-prepare fn-prc-node-prepare
                                    fn-ppc-accept-prepare-is-pidx)
                                   (fn-node-statep fn-prc-admissiblep fn-pidx-find-article
@@ -155,9 +156,9 @@
   (implies (and (fn-prc-carryp carry)
                 (iff dup (fn-acceptedp msgid (fn-state-articles (fn-node-acceptance s)))))
            (equal (fn-ppc-node-prepare s generation msgid payload groups
-                                       obligation-id subject evidence charge stamp dup carry)
+                                       obligation-id subject evidence charge stamp dup carry binding)
                   (fn-node-prepare s generation msgid payload groups
-                                   obligation-id subject evidence charge stamp)))
+                                   obligation-id subject evidence charge stamp binding)))
   :hints (("Goal" :in-theory (e/d (fn-ppc-node-prepare fn-node-prepare fn-retain-admit
                                    fn-prc-admissiblep-is-admissiblep
                                    fn-ppc-accept-prepare-is-accept-prepare)
@@ -179,7 +180,7 @@
                        (fn-record-release-evidence record)
                        (fn-record-charge record)
                        (fn-record-stamp record)
-                       dup carry))
+                       dup carry (fn-held-binding record)))
 
 (verify-guards fn-ppc-sn-prepare-node)
 
@@ -211,7 +212,7 @@
                             (subject (fn-record-content-subject record))
                             (evidence (fn-record-release-evidence record))
                             (charge (fn-record-charge record))
-                            (stamp (fn-record-stamp record)))))))
+                            (stamp (fn-record-stamp record)) (binding (fn-held-binding record)))))))
 
 (defthm fn-ppc-sn-prepare-node-is-sn-prepare-node
   (implies (and (fn-prc-carryp carry)

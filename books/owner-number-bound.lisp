@@ -39,11 +39,11 @@
                                              (fn-state-nexts (fn-node-acceptance s))))
                 (fn-state-pending (fn-node-acceptance
                                    (fn-node-prepare s generation msgid payload groups id subject
-                                                    evidence charge stamp))))
+                                                    evidence charge stamp binding))))
            (fn-snb-groups-fitp (fn-pending-groups
                                 (fn-state-pending (fn-node-acceptance
                                                    (fn-node-prepare s generation msgid payload groups id subject
-                                                                    evidence charge stamp))))
+                                                                    evidence charge stamp binding))))
                                (fn-state-nexts (fn-node-acceptance s))))
   :hints (("Goal" :in-theory (e/d (fn-node-prepare)
                                   (fn-node-statep fn-accept-prepare fn-retain-admissiblep fn-retain-admit
@@ -85,7 +85,7 @@
   (implies (and (fn-onb-node-boundp s)
                 (fn-snb-groups-fitp groups (fn-state-nexts (fn-node-acceptance s))))
            (fn-onb-node-boundp (fn-node-prepare s generation msgid payload groups id subject
-                                                evidence charge stamp)))
+                                                evidence charge stamp binding)))
   :hints (("Goal" :in-theory (e/d (fn-onb-node-boundp) (fn-snb-groups-fitp fn-nntp-nexts-boundedp fn-node-prepare))
            :use ((:instance fn-onb-node-prepare-pending-fits)))))
 

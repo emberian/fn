@@ -6,6 +6,7 @@
 ; kernel's staged record (tests/acl2/store-node-tests.lisp) and the node
 ; machine's committed article (tests/acl2/node-tests.lisp).
 (in-package "ACL2")
+(include-book "node-binding-fixture")
 (include-book "store-reclaim-pack-tests")
 (include-book "store-node-tests")
 (include-book "node-tests")
@@ -151,10 +152,10 @@
 ; (fn-hkn-retry-refused-after-release-as-before); the antecedent holds.
 (assert-event (fn-acceptedp *hk-msgid* (fn-state-articles (fn-node-acceptance *node-committed*))))
 (assert-event (equal (fn-node-prepare *hk-rel* 9 *hk-msgid* 7 '("fn.test")
-                                      "archive-c" "content-c" "release-c" 1 841000000)
+                                      "archive-c" "content-c" "release-c" 1 841000000 *nbft-binding*)
                      *hk-rel*))
 (assert-event (equal (fn-node-prepare *node-committed* 9 *hk-msgid* 7 '("fn.test")
-                                      "archive-c" "content-c" "release-c" 1 841000000)
+                                      "archive-c" "content-c" "release-c" 1 841000000 *nbft-binding*)
                      *node-committed*))
 
 ; Continuation: a receipt / release naming the obligation discharges the same
@@ -203,10 +204,10 @@
 ; capacity alone, and it fits the freed charge.
 (defconst *hk-post-before*
   (fn-node-prepare *node-committed* 9 "<b@example.invalid>" 0 '("fn.letters")
-                   "archive-b" "content-b" "release-b" 4 841000000))
+                   "archive-b" "content-b" "release-b" 4 841000000 *nbft-binding*))
 (defconst *hk-post-after*
   (fn-node-prepare *hk-rel* 9 "<b@example.invalid>" 0 '("fn.letters")
-                   "archive-b" "content-b" "release-b" 4 841000000))
+                   "archive-b" "content-b" "release-b" 4 841000000 *nbft-binding*))
 (assert-event (equal *hk-post-before* *node-committed*))
 (assert-event (and (not (equal *hk-post-after* *hk-rel*))
                    (consp (fn-node-stage *hk-post-after*))))
@@ -226,18 +227,18 @@
 (must-fail-checked
  (defthm hk-naive-continuation-equivalence-is-false
    (equal (equal (fn-node-prepare (fn-hkn-release node m tomb)
-                                  generation msgid payload groups id subject evidence charge stamp)
+                                  generation msgid payload groups id subject evidence charge stamp *nbft-binding*)
                  (fn-hkn-release node m tomb))
-          (equal (fn-node-prepare node generation msgid payload groups id subject evidence charge stamp)
+          (equal (fn-node-prepare node generation msgid payload groups id subject evidence charge stamp *nbft-binding*)
                  node))
    :rule-classes nil))
 ; A POST of charge 1 is admitted in both: it never depended on the release.
 (assert-event (and (consp (fn-node-stage
                            (fn-node-prepare *node-committed* 9 "<c@example.invalid>" 0 '("fn.letters")
-                                            "archive-c" "content-c" "release-c" 1 841000000)))
+                                            "archive-c" "content-c" "release-c" 1 841000000 *nbft-binding*)))
                    (consp (fn-node-stage
                            (fn-node-prepare *hk-rel* 9 "<c@example.invalid>" 0 '("fn.letters")
-                                            "archive-c" "content-c" "release-c" 1 841000000)))))
+                                            "archive-c" "content-c" "release-c" 1 841000000 *nbft-binding*)))))
 
 ; -----------------------------------------------------------------------------
 ; 4. Refusal footprints.

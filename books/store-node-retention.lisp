@@ -37,7 +37,7 @@
   (implies (> (+ (fn-retain-reserved (fn-node-retention s)) charge)
               (fn-retain-capacity (fn-node-retention s)))
            (equal (fn-node-prepare s generation msgid payload groups
-                                   obligation-id subject evidence charge stamp)
+                                   obligation-id subject evidence charge stamp binding)
                   s))
   :hints (("Goal" :in-theory (enable fn-node-prepare fn-retain-admissiblep))))
 
@@ -68,7 +68,7 @@
                                    :archive evidence charge)
                   (fn-node-retention s))
            (equal (fn-node-prepare s generation msgid payload groups
-                                   obligation-id subject evidence charge stamp)
+                                   obligation-id subject evidence charge stamp binding)
                   s))
   :hints (("Goal" :in-theory (e/d (fn-node-prepare)
                                   (fn-retain-admissiblep fn-retain-admit))
@@ -109,7 +109,7 @@
                    (subject (fn-record-content-subject record))
                    (evidence (fn-record-release-evidence record))
                    (charge (fn-record-charge record))
-                   (stamp (fn-record-stamp record))))))))
+                   (stamp (fn-record-stamp record)) (binding (fn-held-binding record))))))))
 (defthm fn-spc-prepare-refuses-unaffordable-obligation
   (implies (> (+ (fn-retain-reserved (fn-node-retention (fn-sn-node s)))
                  (fn-record-charge record))
@@ -226,7 +226,7 @@
  (defthm fn-snrt-prepare-keeps-retention
    (equal (fn-node-retention
            (fn-node-prepare s generation msgid payload groups
-                            obligation-id subject evidence charge stamp))
+                            obligation-id subject evidence charge stamp binding))
           (fn-node-retention s))
    :hints (("Goal" :in-theory (enable fn-node-prepare)))))
 (local
@@ -235,7 +235,7 @@
             (equal (fn-state-articles
                     (fn-node-acceptance
                      (fn-node-prepare s generation msgid payload groups
-                                      obligation-id subject evidence charge stamp)))
+                                      obligation-id subject evidence charge stamp binding)))
                    (fn-state-articles (fn-node-acceptance s))))
    :hints (("Goal" :in-theory (enable fn-node-prepare fn-accept-prepare)))))
 (local
@@ -246,25 +246,25 @@
                                            (fn-node-acceptance
                                             (fn-node-complete
                                              (fn-node-prepare n generation msgid payload groups
-                                                              obligation-id subject evidence charge stamp)
+                                                              obligation-id subject evidence charge stamp binding)
                                              txid gen status)))))
                  (implies (member-equal p (fn-retain-pins (fn-node-retention n)))
                           (member-equal p (fn-retain-pins
                                            (fn-node-retention
                                             (fn-node-complete
                                              (fn-node-prepare n generation msgid payload groups
-                                                              obligation-id subject evidence charge stamp)
+                                                              obligation-id subject evidence charge stamp binding)
                                              txid gen status)))))))
    :hints (("Goal" :in-theory '(fn-snrt-prepare-keeps-retention
                                 fn-snrt-prepare-keeps-articles
                                 fn-node-prepare-preserves-state)
             :use ((:instance fn-snrt-complete-keeps-articles
                    (s (fn-node-prepare n generation msgid payload groups
-                                       obligation-id subject evidence charge stamp))
+                                       obligation-id subject evidence charge stamp binding))
                    (generation gen))
                   (:instance fn-snrt-complete-keeps-pins
                    (s (fn-node-prepare n generation msgid payload groups
-                                       obligation-id subject evidence charge stamp))
+                                       obligation-id subject evidence charge stamp binding))
                    (generation gen)))))))
 (local
  (defthm fn-snrt-matching-stage-keeps-pins
@@ -300,7 +300,7 @@
                                     fn-store-retention-event-p
                                     fn-stxe-p fn-stxk-p fn-stxa-p fn-cpe-eventp
                                     fn-th-topic-eventp fn-record-p
-                                    fn-replay-composite-record
+                                    fn-replay-composite-held
                                     fn-node-pending-matchesp
                                     fn-record-shape-vocabulary
                                     fn-record-record-vocabulary
@@ -308,18 +308,18 @@
             :use ((:instance fn-replay-advance-preserves-node-statep (recorded-txid (fn-store-event-txid record)))
                   (:instance fn-snrt-prepare-then-complete-keeps-articles-and-pins
                    (n (fn-replay-advance-txid node (fn-store-event-txid record)))
-                   (generation (fn-record-generation (fn-replay-composite-record record)))
-                   (msgid (fn-record-msgid (fn-replay-composite-record record)))
-                   (payload (fn-record-payload (fn-replay-composite-record record)))
-                   (groups (fn-record-groups (fn-replay-composite-record record)))
-                   (obligation-id (fn-record-obligation-id (fn-replay-composite-record record)))
-                   (subject (fn-record-content-subject (fn-replay-composite-record record)))
-                   (evidence (fn-record-release-evidence (fn-replay-composite-record record)))
-                   (charge (fn-record-charge (fn-replay-composite-record record)))
-                   (stamp (fn-record-stamp (fn-replay-composite-record record)))
-                   (txid (fn-record-txid (fn-replay-composite-record record)))
-                   (gen (fn-record-generation (fn-replay-composite-record record)))
-                   (status :durable))
+                   (generation (fn-record-generation (fn-replay-composite-held record)))
+                   (msgid (fn-record-msgid (fn-replay-composite-held record)))
+                   (payload (fn-record-payload (fn-replay-composite-held record)))
+                   (groups (fn-record-groups (fn-replay-composite-held record)))
+                   (obligation-id (fn-record-obligation-id (fn-replay-composite-held record)))
+                   (subject (fn-record-content-subject (fn-replay-composite-held record)))
+                   (evidence (fn-record-release-evidence (fn-replay-composite-held record)))
+                   (charge (fn-record-charge (fn-replay-composite-held record)))
+                   (stamp (fn-record-stamp (fn-replay-composite-held record)))
+                   (txid (fn-record-txid (fn-replay-composite-held record)))
+                   (gen (fn-record-generation (fn-replay-composite-held record)))
+                   (status :durable) (binding (fn-held-binding (fn-replay-composite-held record))))
                   (:instance fn-snrt-prepare-then-complete-keeps-articles-and-pins
                    (n (fn-replay-advance-txid node (fn-store-event-txid record)))
                    (generation (fn-record-generation record))
@@ -333,7 +333,7 @@
                    (stamp (fn-record-stamp record))
                    (txid (fn-record-txid record))
                    (gen (fn-record-generation record))
-                   (status :durable)))))))
+                   (status :durable) (binding (fn-held-binding record))))))))
 (local
  (defthm fn-snrt-retention-event-keeps-articles
    (equal (fn-state-articles

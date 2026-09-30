@@ -22,6 +22,7 @@
 ; relation (step 6) rules out.
 
 (in-package "ACL2")
+(include-book "node-binding-fixture")
 (include-book "../../books/catalog-commit")
 (include-book "store-node-tests")
 (include-book "held-rows-tests")
@@ -50,7 +51,7 @@
           (fn-record-string-octets "line2") '(13 10)))
 
 (defun cct-w (seq txid)
-  (fn-record-make seq txid 0 "<a@x>" *cct-art* '("fn.test") "o" "s" "e" 1 5))
+  (fn-record-make seq txid 0 "<a@x>" *cct-art* '("fn.test") "o" "s" "e" 1 5 *nbft-binding*))
 
 (defconst *cct-w1* (cct-w 0 1))
 (defconst *cct-w2* (cct-w 1 2))
@@ -346,7 +347,7 @@
   (let ((s (fn-sn-update *cct-s* (fn-sn-files *cct-s*)
                         (fn-node-prepare (fn-sn-node *sn-initial*) 0 "<sn@example>" 1
                                          *sn-groups* "sn-pin" "sn-content" "sn-release"
-                                         2 841000000))))
+                                         2 841000000 *nbft-binding*))))
     (and (fn-sn-statep s)
          (equal (fn-sn-completion-record s) *cct-h*)
          (fn-held-p *cct-h*)

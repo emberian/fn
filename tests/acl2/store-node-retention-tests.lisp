@@ -5,6 +5,7 @@
 ; is a ground instance of a keystone's conclusion at a reachable state where
 ; the dropped hypothesis is false, so ACL2 refuses it by evaluation.
 (in-package "ACL2")
+(include-book "node-binding-fixture")
 (include-book "../../books/store-node-retention")
 (include-book "../../books/codec-attach")
 (include-book "held-rows-tests")
@@ -29,7 +30,7 @@
                   (if (equal id "snrt-pin-1") "<snrt-first@example.invalid>"
                     "<snrt-second@example.invalid>")
                   '(65 66) '("fn.test") id "snrt-subject" "snrt-release"
-                  charge 841000000))
+                  charge 841000000 *nbft-binding*))
 ; by specification: the flip -- the store retains held rows
 ; (books/held-record.lisp), so the Store is handed the row the entry interns:
 ; the first record on a fresh arena (handle 0); every later record is
@@ -99,7 +100,7 @@
 (defun snrt-node-prepare (charge)
   (fn-node-prepare *snrt-node* 1 "<snrt-second@example.invalid>" 1
                    '("fn.test") "snrt-pin-2" "snrt-subject" "snrt-release"
-                   charge 841000000))
+                   charge 841000000 *nbft-binding*))
 (assert-event (fn-node-statep *snrt-node*))
 (assert-event (equal (snrt-node-prepare 9) *snrt-node*))
 (assert-event (consp (fn-node-stage (snrt-node-prepare 8))))
@@ -129,7 +130,7 @@
 ; by specification: the flip -- the payload is the handle 1, not (65 66).
 (assert-event (equal (fn-node-prepare *snrt-node* 1 "<snrt-second@example.invalid>"
                                       1 '("fn.test") "snrt-pin-1"
-                                      "snrt-subject" "snrt-release" 1 841000000)
+                                      "snrt-subject" "snrt-release" 1 841000000 *nbft-binding*)
                      *snrt-node*))
 
 ; fn-retain-admit-is-a-no-op-exactly-when-inadmissible has no hypothesis;

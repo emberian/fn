@@ -8,6 +8,7 @@
 ; in books/container-invariants.lisp in which the conclusion fails without it.
 
 (in-package "ACL2")
+(include-book "node-binding-fixture")
 (include-book "../../books/container-invariants")
 
 (defconst *ct-profile* (fn-ct-make-profile 4 64 4 2 16))
@@ -249,7 +250,7 @@
               (fn-node-prepare *ct-node* 1 "<t@example.invalid>" 0
                                *ct-groups* (fn-ct-obligation-string *ct-obligation-1*)
                                (fn-ct-subject-string *ct-t*) "release"
-                               (fn-ct-charge *ct-t*) 841000000)
+                               (fn-ct-charge *ct-t*) 841000000 (fn-ab-for-received :relay-v1 (fn-ct-article-octets *ct-t*)))
               0 1 :durable)
              *ct-node*)))
 (assert-event (equal (fn-ct-result-state *ct-t-result*) *ct-node*))

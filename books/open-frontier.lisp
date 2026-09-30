@@ -81,13 +81,13 @@
   (implies (and (fn-node-statep s)
                 (null (fn-node-stage s))
                 (fn-node-pending-matchesp
-                 (fn-node-prepare s generation msgid payload groups id subject evidence charge stamp)
+                 (fn-node-prepare s generation msgid payload groups id subject evidence charge stamp binding)
                  txid gen))
            (and (equal (fn-state-next-txid (fn-node-acceptance s)) txid)
                 (equal (fn-state-next-txid
                         (fn-node-acceptance
                          (fn-node-prepare s generation msgid payload groups id subject evidence
-                                          charge stamp)))
+                                          charge stamp binding)))
                        (+ 1 txid))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-node-prepare fn-accept-prepare fn-node-pending-matchesp
@@ -176,7 +176,7 @@
                             (charge (fn-record-charge record))
                             (stamp (fn-record-stamp record))
                             (txid (fn-record-txid record))
-                            (gen (fn-record-generation record)))
+                            (gen (fn-record-generation record)) (binding (fn-held-binding record)))
                  (:instance fn-ofr-prepare-matching-consumes-next
                             (s (fn-replay-advance-txid node (fn-store-event-txid record)))
                             (generation (fn-record-generation (fn-replay-composite-held record)))
@@ -189,7 +189,7 @@
                             (charge (fn-record-charge (fn-replay-composite-held record)))
                             (stamp (fn-record-stamp (fn-replay-composite-held record)))
                             (txid (fn-record-txid (fn-replay-composite-held record)))
-                            (gen (fn-record-generation (fn-replay-composite-held record)))))
+                            (gen (fn-record-generation (fn-replay-composite-held record))) (binding (fn-held-binding (fn-replay-composite-held record)))))
            :in-theory (e/d (fn-replay-apply-record fn-replay-apply-retention-event
                             fn-replay-apply-identity-neutral fn-replay-complete-retention
                             fn-replay-advance-okp fn-replay-node-with-retention)

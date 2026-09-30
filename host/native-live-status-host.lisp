@@ -9,6 +9,9 @@
 ; lane scale-reads: the owner's reclaim line reads the catalog's tombstone
 ; column, one walk (books/native-status-columns.lisp fn-nsc-answer-report).
 (include-book "../books/native-status-columns")
+(include-book "../books/retention-obligation-view-status")
+(include-book "../books/owner-obligation-state")
+(include-book "../books/obligation-subject-report")
 ; HST-023: the owner's scheduler lines on `health' (books/owner-scheduler.lisp);
 ; HST-026 (lane time-model): the disk line on `health' and `status'
 ; (books/owner-time-model.lisp fn-otm-health-lines, fn-otm-disk-lines).
@@ -23,13 +26,17 @@
   ; `status', `pins', `obligations' and `peer list' with no owner running:
   ; the Store and configuration this process replayed, no connection.
   (declare (xargs :stobjs (fn-arena state) :mode :program))
-  (if (fn-cev-report-kindp kind)
+  (if (fn-oqg-kindp kind)
+      (fn-oqr-oracle-report (cdr kind)
+        (fn-retain-pins (fn-node-retention
+          (fn-sn-node (f-get-global 'fn-store-sn state)))))
+    (if (fn-cev-report-kindp kind)
       ;; PKT-209: the records decided as recovery decides them.
       (fn-cev-offline-report kind (f-get-global 'fn-store-sn state))
     (fn-nls-offline-report kind profile
                            (f-get-global 'fn-store-sn state)
                            (f-get-global 'fn-store-cfg state)
-                           obs fn-arena)))
+                           obs fn-arena))))
 
 (defun fn-native-live-status-host-answer (request cached obs min log-sink sched fn-arena fn-cat state)
   ; The running owner's page for one FNLS request, under its mutex
@@ -54,6 +61,16 @@
      ;; whole-report exchange refuses it by name (fn-nlp-pagedp).
      ((fn-nlp-pagedp (cadr decoded))
       (list (fn-nls-reply-encode :refused 0 nil *fn-nlp-refusal-paged*) cached))
+     ; A missing/invalid delta is observable. Never replace it by a ledger
+     ; scan or quietly render zero. Valid owner writers carry this object.
+     ((and (or (member-equal (cadr decoded) '(:status :pins :obligations))
+               (fn-oqg-kindp (cadr decoded)))
+           (not (consp (fn-owner-obligation-view state))))
+      (list (fn-nls-reply-encode :refused 0 nil
+               (append (fn-nls-text "obligation-view-unavailable") *fn-nls-lf*)) cached))
+     ((fn-oqg-kindp (cadr decoded))
+      (fn-oqr-live-answer (cdr (cadr decoded))
+        (fn-owner-obligation-view state) (caddr decoded) cached))
      (t
       (let* ((kind (cadr decoded))
              (offset (caddr decoded))
@@ -78,7 +95,7 @@
                    (append
                     ;; fn-nsc-answer-report-is-answer-report: under the
                     ;; column relation F this is fn-nh-answer-report.
-                    (fn-nsc-answer-report kind
+                    (fn-rov-answer-report kind
                                          (fn-owner-store-profile state)
                                          ;; PKT-885: at the reader view while
                                          ;; a batch is in flight, so the
@@ -107,6 +124,7 @@
                                          ;; scheduler value the disk lines
                                          ;; below are rendered from.
                                          (fn-otm-health-disk sched)
+                                         (fn-rov-count (fn-owner-obligation-view state))
                                          fn-arena fn-cat)
                     (cond ((equal kind :health)
                            ;; PKT-508 (PRF-187): the log sink's line last;

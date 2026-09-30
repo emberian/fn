@@ -13,6 +13,7 @@
 
 (in-package "ACL2")
 (include-book "acceptance")
+(include-book "acceptance-binding")
 (include-book "retention")
 (include-book "defrecord")
 
@@ -20,12 +21,12 @@
 ; Node state and a staged archive obligation
 
 ; Stage: (message-id generation obligation-id immutable-content-subject
-;         release-evidence charge prospective-retention-state).  The explicit
-; content subject is not a Message-ID and this model makes no claim that it
+;         release-evidence charge prospective-retention-state acceptance-binding).
+; The explicit content subject is not a Message-ID and this model makes no claim that it
 ; is a verified hash.
 (fn-defrecord fn-node-stage
   :constructor (fn-node-make-stage msgid generation id subject evidence
-                                   charge retention)
+                                   charge retention binding)
   :fields ((fn-node-stage-msgid stringp)
            (fn-node-stage-generation natp)
            (fn-node-stage-id stringp)
@@ -51,7 +52,8 @@
                                     (fn-node-stage-subject x)
                                     :archive
                                     (fn-node-stage-evidence x)
-                                    (fn-node-stage-charge x)))))
+                                    (fn-node-stage-charge x))))
+           (fn-node-stage-binding fn-ab-p))
   :recognizer-formals (acceptance committed)
   :recognizer-guard (fn-retain-statep committed)
   :recognizer-verify-guards nil)
@@ -370,9 +372,10 @@
 ; subject, and a positive abstract charge that includes retention's permanent
 ; history unit.  No cryptographic verification occurs in this machine.
 (defun fn-node-prepare (s generation msgid payload groups
-                          obligation-id subject evidence charge stamp)
+                          obligation-id subject evidence charge stamp binding)
   (declare (xargs :guard (fn-node-statep s) :verify-guards nil))
-  (if (mbe :logic (not (fn-node-statep s)) :exec nil)
+  (if (or (not (fn-ab-p binding))
+          (mbe :logic (not (fn-node-statep s)) :exec nil))
       s
     (if (not (fn-retain-admissiblep (fn-node-retention s)
                                     obligation-id subject :archive evidence
@@ -393,7 +396,7 @@
              next-acceptance
              (fn-node-retention s)
              (fn-node-make-stage msgid generation obligation-id subject
-                                 evidence charge next-retention)
+                                 evidence charge next-retention binding)
              (fn-node-bindings s))))))))
 
 (defun fn-node-complete (s txid generation completion-status)
@@ -525,7 +528,7 @@
                                              obligation-id subject :archive
                                              evidence charge)))
            (equal (fn-node-prepare s generation msgid payload groups
-                                   obligation-id subject evidence charge stamp)
+                                   obligation-id subject evidence charge stamp binding)
                   s))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-node-prepare))))
@@ -535,11 +538,11 @@
            (and (equal (fn-state-articles
                         (fn-node-acceptance
                          (fn-node-prepare s generation msgid payload groups
-                                          obligation-id subject evidence charge stamp)))
+                                          obligation-id subject evidence charge stamp binding)))
                        (fn-state-articles (fn-node-acceptance s)))
                 (equal (fn-node-retention
                         (fn-node-prepare s generation msgid payload groups
-                                         obligation-id subject evidence charge stamp))
+                                         obligation-id subject evidence charge stamp binding))
                        (fn-node-retention s))))
   :hints (("Goal" :in-theory (enable fn-node-prepare fn-node-statep))))
 

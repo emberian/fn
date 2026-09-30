@@ -9,6 +9,7 @@
 ; the reachable witness that its hypotheses are satisfiable.
 
 (in-package "ACL2")
+(include-book "node-binding-fixture")
 (include-book "../../books/scheduler-invariants")
 
 ; -----------------------------------------------------------------------------
@@ -24,12 +25,12 @@
   (fn-node-complete
    (fn-node-prepare *sched-node-0* 9 "<small@fn.invalid>" *sched-payload-small*
                     *sched-groups* "archive-small" "subject-small"
-                    "release-small" 4 841000000)
+                    "release-small" 4 841000000 *nbft-binding*)
    0 9 :durable))
 (defconst *sched-node-2*
   (fn-node-complete
    (fn-node-prepare *sched-node-1* 10 "<big@fn.invalid>" *sched-payload-big*
-                    *sched-groups* "archive-big" "subject-big" "release-big" 4 841000000)
+                    *sched-groups* "archive-big" "subject-big" "release-big" 4 841000000 *nbft-binding*)
    1 10 :durable))
 
 (defconst *sched-config*

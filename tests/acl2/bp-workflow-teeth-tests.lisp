@@ -8,6 +8,7 @@
 ; the first and the must-fail rules out reading the theorem as the second.
 
 (in-package "ACL2")
+(include-book "node-binding-fixture")
 (include-book "../../books/bp-workflow-invariants")
 (include-book "must-fail-checked")
 
@@ -25,7 +26,7 @@
   (fn-node-complete
    (fn-node-prepare (fn-node-initial-state *bpw-teeth-groups* 16)
                     9 "<bp@example.invalid>" *bpw-teeth-payload*
-                    *bpw-teeth-groups* "archive-bp" "subject-bp" "release-bp" 4 841000000)
+                    *bpw-teeth-groups* "archive-bp" "subject-bp" "release-bp" 4 841000000 *nbft-binding*)
    0 9 :durable))
 (defconst *bpw-teeth-config*
   (fn-bp-make-config "dtn://home/fn" "dtn://peer/fn" "policy-1"

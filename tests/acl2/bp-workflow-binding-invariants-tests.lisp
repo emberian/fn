@@ -1,5 +1,6 @@
 ; Executable witnesses for the joint workflow/node binding invariant.
 (in-package "ACL2")
+(include-book "node-binding-fixture")
 (include-book "../../books/bp-workflow-binding-invariants")
 (include-book "must-fail-checked")
 
@@ -13,7 +14,7 @@
 (defconst *bpb-node-prepared*
   (fn-node-prepare *bpb-node-empty* 17 "<bound@example.invalid>"
                    0 *bpb-groups*
-                   "archive-bound" "subject-bound" "release-bound" 8 841000000))
+                   "archive-bound" "subject-bound" "release-bound" 8 841000000 *nbft-binding*))
 (defconst *bpb-node*
   (fn-node-complete *bpb-node-prepared* 0 17 :durable))
 (defconst *bpb-config*

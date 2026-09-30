@@ -456,11 +456,33 @@ leaves that read unchanged (PRF-1067). The actual carry writers use this
 setter. These state effects do not establish the validity of the supplied
 value or the invariant across a whole owner transition.
 
+The exact signed identity prepare and synchronized completion definitions
+live in `books/owner-retain-transitions.lisp` (PRF-1072). Each preserves a
+valid retention carry across the returned live state's effects. Identity
+prepare also preserves the bound-owner, configured Store-relation and carry
+invariant, which implies its literal entry guard. These functions remain
+guard-verified with their existing behavior. The actual cold open and reclaim swap live in
+`books/owner-recovery-retain.lisp`: a nonfault, number-bound open establishes
+the retention carry, while swap installs exactly field 2 from the rebuilt
+argument through all subsequent state effects. The exact off-mutex builder
+provides a true list and a valid field 2. Swap is guard-verified with the
+structural rebuilt-list and bound-owner premises. Cold open is guard-verified
+under its recovered Store and catalog key domains; the exact recovery and
+node-secret key producers imply that guard. With a configured-owner invariant
+and `fn-onb-open-okp`, cold install establishes the full retained-owner state
+invariant, including the owner binding, configured Store relation and carry.
+Refused opens do not establish
+a carry from an invalid prior state. The other writers' complete entry
+domains, completion's full owner relation and the
+native producer premises remain separate obligations; no real-owner raw
+annotation or cost qualification follows from these bounded properties.
+
 The off-mutex owner reclamation rebuild calls the logical entry
 `fn-owner-orcp-rebuild` (books/owner-reclaim-carry.lisp). Its returned field 2
 always satisfies `fn-prc-carryp` (PRF-1060), including a refused open's nil
-carry. This initializes a returned value; live installation and later carry
-preservation remain separate obligations. Its cold callees are not all
+carry. The actual swap installs that same field through all later state effects
+(PRF-1072); the full maintained owner relation and later writer domains
+remain separate obligations. Its cold callees are not all
 guard-verified, so the entry remains `:ideal`; this theorem enables no raw
 owner dispatch.
 
@@ -1637,3 +1659,21 @@ its committed frontier and concurrent key/configuration changes, and its
 marker-last durability program need their own implementation and evidence.
 SCN-217 uses stopped copies with explicitly supplied completion-observation
 fixtures; it establishes no running-capture guarantee.
+
+### Pre-intern charge producer domain (PRF-1111)
+
+The actual `fn-store-charge` entry used by `fnn-charge` yields a positive
+uint32 charge for every length admitted by `fn-pfld-payload-sizep`, up to
+the complete record codec payload ceiling. Its unchanged definition lives
+in `books/store-charge-domain.lisp`; `store-host-boundary` includes it.
+The proof bounds the producer before record interning, independently of
+a later Store staging decision. Tests cover zero, a length beyond the old
+32768-byte proof premise, and the codec maximum. A numeric input beyond
+the codec domain refutes hypothesis removal without allocating a payload;
+it is not a reachable supported-profile request.
+
+This establishes only the charge field. The actual owner's journal cursor,
+reserved allocator, clock, metadata, resolved groups and catalog handles
+still need their maintained producer relations before raw dispatch can be
+enabled. The theorem adds no admission ceiling and makes no image or cost
+claim.

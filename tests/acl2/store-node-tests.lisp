@@ -1,12 +1,13 @@
 ; Executable live-node/file-kernel composition and spoofed-completion checks.
 (in-package "ACL2")
+(include-book "node-binding-fixture")
 (include-book "../../books/store-node-invariants")
 (include-book "../../books/codec-attach")
 
 (defconst *sn-groups* '("fn.letters" "fn.test"))
 (defconst *sn-record*
   (fn-record-make 0 0 0 "<sn@example>" '(65 66) *sn-groups*
-                  "sn-pin" "sn-content" "sn-release" 2 841000000))
+                  "sn-pin" "sn-content" "sn-release" 2 841000000 *nbft-binding*))
 ; The store retains held rows (records-flip, books/held-record.lisp): the
 ; wire record's eleven positions with a payload handle in the arena.  No
 ; check below reads the bytes, so the row is the plain held row at handle 0.
@@ -55,7 +56,7 @@
 (defun fn-sn-test-mismatched-pending (payload groups id subject evidence charge)
   (fn-sn-update *sn-completing* (fn-sn-files *sn-completing*)
     (fn-node-prepare (fn-sn-node *sn-initial*) 0 "<sn@example>" payload groups
-                     id subject evidence charge 841000000)))
+                     id subject evidence charge 841000000 *nbft-binding*)))
 (assert-event (let ((s (fn-sn-test-mismatched-pending
                         1 *sn-groups* "sn-pin" "sn-content" "sn-release" 2)))
                 (and (fn-sn-statep s) (equal (fn-sn-finish s) s))))

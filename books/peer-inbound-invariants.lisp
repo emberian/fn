@@ -26,7 +26,7 @@
  (defthm fn-peer-invalid-stamp-prepare-is-no-op
    (implies (not (fn-record-stampp stamp))
             (equal (fn-node-prepare node generation msgid payload groups
-                                    obligation-id subject evidence charge stamp)
+                                    obligation-id subject evidence charge stamp binding)
                    node))
    :hints (("Goal" :in-theory (enable fn-node-prepare fn-accept-prepare)))))
 
@@ -60,7 +60,7 @@
            (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock generation id subject h))
                   (let ((a (fn-peer-injection-arguments node cfg peer msgid octets generation id subject clock)))
                     (fn-node-prepare node (nth 0 a) (nth 1 a) h (nth 3 a)
-                                     (nth 4 a) (nth 5 a) (nth 6 a) (nth 7 a) (nth 8 a)))))
+                                     (nth 4 a) (nth 5 a) (nth 6 a) (nth 7 a) (nth 8 a) (fn-ab-for-received :relay-v1 octets)))))
   :hints (("Goal" :cases ((natp (fn-record-stamp-of-observation clock)))
            :in-theory (e/d (fn-peer-transfer)
                            (fn-peer-decide-transfer fn-node-prepare
@@ -503,13 +503,13 @@
 (local
  (defthm fn-peer-node-prepare-stages-the-payload
    (implies (not (equal (fn-node-prepare s generation msgid payload groups
-                                         obligation-id subject evidence charge stamp)
+                                         obligation-id subject evidence charge stamp binding)
                         s))
             (equal (fn-pending-payload
                     (fn-state-pending
                      (fn-node-acceptance
                       (fn-node-prepare s generation msgid payload groups
-                                       obligation-id subject evidence charge stamp))))
+                                       obligation-id subject evidence charge stamp binding))))
                    payload))
    :hints (("Goal" :in-theory (enable fn-node-prepare fn-accept-prepare)))))
 

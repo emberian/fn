@@ -46,10 +46,10 @@
 
 (defthm fn-sjh-idf-prepare-matched-facts
   (implies (fn-node-pending-matchesp (fn-node-prepare node generation msgid payload groups
-                                                      obligation-id subject evidence charge stamp)
+                                                      obligation-id subject evidence charge stamp binding)
                                      txid gen2)
            (let ((p (fn-node-prepare node generation msgid payload groups
-                                     obligation-id subject evidence charge stamp)))
+                                     obligation-id subject evidence charge stamp binding)))
              (implies (null (fn-node-stage node))
                       (and (equal (fn-state-articles (fn-node-acceptance p))
                                   (fn-state-articles (fn-node-acceptance node)))
@@ -86,8 +86,8 @@
 
 (defthm fn-sjh-idf-complete-prepare-articles
   (implies (and (null (fn-node-stage n))
-                (fn-node-pending-matchesp (fn-node-prepare n g m pl gr o su e c st) tx g2))
-           (let ((after (fn-node-complete (fn-node-prepare n g m pl gr o su e c st) tx g2 :durable)))
+                (fn-node-pending-matchesp (fn-node-prepare n g m pl gr o su e c st binding) tx g2))
+           (let ((after (fn-node-complete (fn-node-prepare n g m pl gr o su e c st binding) tx g2 :durable)))
              (and (equal (fn-state-articles (fn-node-acceptance after))
                          (cons (car (fn-state-articles (fn-node-acceptance after)))
                                (fn-state-articles (fn-node-acceptance n))))
@@ -99,9 +99,9 @@
                             (groups gr) (obligation-id o) (subject su) (evidence e) (charge c) (stamp st)
                             (txid tx) (gen2 g2))
                  (:instance fn-sjh-idf-matched-acceptance-statep
-                            (p (fn-node-prepare n g m pl gr o su e c st)) (txid tx) (gen g2))
+                            (p (fn-node-prepare n g m pl gr o su e c st binding)) (txid tx) (gen g2))
                  (:instance fn-scj-node-complete-articles
-                            (node (fn-node-prepare n g m pl gr o su e c st)) (txid tx) (generation g2))))))
+                            (node (fn-node-prepare n g m pl gr o su e c st binding)) (txid tx) (generation g2))))))
 
 (defthm fn-sjh-idf-apply-composite-articles
   (let ((after (fn-replay-apply-record node r)))

@@ -6906,6 +6906,42 @@
         ],
         "native": true
       }
+    },
+    {
+      "id": "SCN-1003",
+      "title": "Live and offline keyed obligation inspection retains independent archive hold after forwarding receipt and reopen",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "RET-009",
+        "RET-004"
+      ],
+      "steps": [
+        "Create archive and forwarding obligations for the same immutable content subject; inspect individual obligations and the subject query.",
+        "Start the owner; query the same subject and an absent subject through FNLS; commit an unrelated live POST and query again.",
+        "Stop the owner, deliver the actual BP receipt, inspect the remaining archive contribution, reopen and compare exact reply octets."
+      ],
+      "expected": [
+        "The query returns count 2 and the sum of the two independent reserved charges, matching the existing identity listing.",
+        "Live and offline answers agree exactly; absent subject returns count/charge zero; unrelated completion preserves the old subject.",
+        "Receipt release changes only the forwarding contribution; archive count 1 survives reopening. Aggregate values never authorize release."
+      ],
+      "implementation": {
+        "test": "tests.test_native_obligation_subject",
+        "cases": [
+          "NativeObligationSubjectTests.test_live_offline_release_and_reopen_keep_independent_hold"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "tests/test_native_obligation_subject.py",
+        "tests/acl2/retention-obligation-view-tests.lisp",
+        "tests/acl2/obligation-subject-tests.lisp",
+        "tests/acl2/owner-obligation-recovery-tests.lisp",
+        "tests/acl2/owner-obligation-completion-tests.lisp",
+        "tests/acl2/retention-obligation-view-bounds-tests.lisp"
+      ],
+      "execution_scope": "Written, not run. Matching coalesced developer image pending runner. Duplicate release and subject-clear mutation teeth are logical; no duplicate native receipt pass claimed."
     }
   ]
 }
