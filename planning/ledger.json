@@ -855,8 +855,6 @@
     "books/bp-transit-join",
     "tests/acl2/bp-transit-join-tests",
     "books/bp-release-authority",
-    "books/receipt-revocation",
-    "tests/acl2/receipt-revocation-tests",
     "tests/acl2/bp-release-authority-tests",
     "books/bp-receiver-store-invariants",
     "books/bp-receiver-context-invariants",
@@ -926,7 +924,9 @@
     "books/legacy-parser-columns",
     "tests/acl2/legacy-parser-columns-tests",
     "books/legacy-parser-catalog",
+    "books/legacy-parser-allocation",
     "tests/acl2/legacy-parser-catalog-tests",
+    "tests/acl2/legacy-parser-allocation-tests",
     "books/nntp-article-pass",
     "books/nntp-responses",
     "books/nntp-article-block",
@@ -1023,6 +1023,7 @@
     "books/catalog-record",
     "books/catalog",
     "books/catalog-commit",
+    "books/catalog-context-recovery",
     "books/catalog-delta",
     "books/catalog-relation",
     "books/catalog-view",
@@ -1104,6 +1105,7 @@
     "tests/acl2/catalog-record-tests",
     "tests/acl2/catalog-tests",
     "tests/acl2/catalog-commit-tests",
+    "tests/acl2/catalog-context-recovery-tests",
     "tests/acl2/catalog-delta-tests",
     "tests/acl2/catalog-relation-tests",
     "tests/acl2/catalog-view-tests",
@@ -1750,26 +1752,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1814,
-    "books_in_root_closure": 1811,
-    "roots": 1746,
-    "theorems": 29057,
-    "functions": 18792,
-    "assert_events": 23823,
-    "must_fails": 2515,
+    "books": 1815,
+    "books_in_root_closure": 1812,
+    "roots": 1748,
+    "theorems": 29070,
+    "functions": 18794,
+    "assert_events": 23820,
+    "must_fails": 2516,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
-      "verified": 3507,
-      "declared-off": 2205,
-      "default-guarded": 10252,
-      "default-unguarded": 2828
+      "verified": 3508,
+      "declared-off": 2207,
+      "default-guarded": 10258,
+      "default-unguarded": 2821
     },
-    "suspect_theorems": 1240,
+    "suspect_theorems": 1242,
     "export_hygiene_warnings": 337,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2516,
+    "include_hygiene_warnings": 2513,
     "host_names_warnings": 2156,
     "hand_written_record_warnings": 18
   },
@@ -8693,12 +8695,12 @@
       "book": "books/catalog-commit.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 59,
-      "functions": 33,
+      "theorems": 65,
+      "functions": 34,
       "guards": {
         "verified": 15,
         "declared-off": 0,
-        "default-guarded": 18,
+        "default-guarded": 19,
         "default-unguarded": 0
       },
       "verify_guards_events": 15,
@@ -8719,8 +8721,37 @@
         "fn-cat-abandon-stale-refused",
         "fn-cat-complete-expected-mismatch-refused",
         "fn-cat-complete-stale-refused",
-        "fn-cat-prepare-refused-when-pending"
+        "fn-cat-prepare-refused-when-pending",
+        "fn-snh-ctx-recover",
+        "fn-snh-keyring-of-updates"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/catalog-context-recovery.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 4,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "catalog-commit",
+        "owner-snapshot-recovery"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -15633,6 +15664,32 @@
       "read_error": null
     },
     {
+      "book": "books/legacy-parser-allocation.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 6,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "legacy-parser-cursor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/legacy-parser-catalog.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -15851,7 +15908,7 @@
       ],
       "system_includes": [],
       "suspects": [
-        "fn-lpv-run-atom"
+        "fn-lpv-run-atom-by-definition"
       ],
       "read_error": null
     },
@@ -24540,33 +24597,6 @@
       "suspects": [
         "fn-rdc-store-selection-unfolds"
       ],
-      "read_error": null
-    },
-    {
-      "book": "books/receipt-revocation.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 10,
-      "functions": 0,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 0
-      },
-      "verify_guards_events": 0,
-      "assert_events": 0,
-      "must_fails": 0,
-      "prover_refusals": 0,
-      "defconsts": 0,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "bp-release-authority",
-        "hybrid-lifecycle-store-invariants"
-      ],
-      "system_includes": [],
-      "suspects": [],
       "read_error": null
     },
     {
@@ -34756,7 +34786,7 @@
       "book": "tests/acl2/bp-held-payload-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 3,
+      "theorems": 5,
       "functions": 3,
       "guards": {
         "verified": 0,
@@ -34766,7 +34796,7 @@
       },
       "verify_guards_events": 0,
       "assert_events": 2,
-      "must_fails": 1,
+      "must_fails": 2,
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
@@ -37845,17 +37875,46 @@
         "default-unguarded": 8
       },
       "verify_guards_events": 0,
-      "assert_events": 6,
+      "assert_events": 11,
       "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 12,
+      "defconsts": 14,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/catalog-commit",
+        "../../books/crypto-attach",
         "held-rows-tests",
         "must-fail-checked",
         "store-node-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/catalog-context-recovery-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/catalog-context-recovery",
+        "../../books/codec-attach",
+        "../../books/crypto-attach"
       ],
       "system_includes": [],
       "suspects": [],
@@ -42425,6 +42484,32 @@
         "../../books/codec-attach",
         "../../books/lace-invariants",
         "crypto-seam-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/legacy-parser-allocation-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 3,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/legacy-parser-allocation"
       ],
       "system_includes": [],
       "suspects": [],
@@ -47713,7 +47798,7 @@
       "book": "tests/acl2/payload-arena-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 22,
+      "theorems": 23,
       "functions": 13,
       "guards": {
         "verified": 0,
@@ -48897,64 +48982,6 @@
       "includes": [
         "../../books/reader-open-carried",
         "owner-advance-carried-tests"
-      ],
-      "system_includes": [],
-      "suspects": [],
-      "read_error": null
-    },
-    {
-      "book": "tests/acl2/receipt-revocation-store-fixtures.lisp",
-      "in_root_closure": true,
-      "is_root": false,
-      "theorems": 0,
-      "functions": 6,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 6
-      },
-      "verify_guards_events": 0,
-      "assert_events": 4,
-      "must_fails": 0,
-      "prover_refusals": 0,
-      "defconsts": 8,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "../../books/codec-attach",
-        "../../books/crypto-attach",
-        "../../books/hybrid-store",
-        "../../books/store-observed",
-        "held-rows-tests"
-      ],
-      "system_includes": [],
-      "suspects": [],
-      "read_error": null
-    },
-    {
-      "book": "tests/acl2/receipt-revocation-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 0,
-      "functions": 1,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 1
-      },
-      "verify_guards_events": 0,
-      "assert_events": 14,
-      "must_fails": 0,
-      "prover_refusals": 0,
-      "defconsts": 4,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "../../books/receipt-revocation",
-        "bp-release-authority-tests",
-        "receipt-revocation-store-fixtures"
       ],
       "system_includes": [],
       "suspects": [],
@@ -53405,7 +53432,7 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 2,
+      "assert_events": 3,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 1,
@@ -55866,7 +55893,7 @@
     {
       "theorem": "fn-cat-abandon-stale-refused",
       "book": "books/catalog-commit.lisp",
-      "line": 299,
+      "line": 293,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-cat-abandon and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-cat-abandon and the conclusion is that branch's value"
@@ -55891,7 +55918,7 @@
     {
       "theorem": "fn-cat-complete-expected-mismatch-refused",
       "book": "books/catalog-commit.lisp",
-      "line": 289,
+      "line": 283,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-cat-complete and the conclusion is that branch's value"
       ]
@@ -55899,7 +55926,7 @@
     {
       "theorem": "fn-cat-complete-stale-refused",
       "book": "books/catalog-commit.lisp",
-      "line": 284,
+      "line": 278,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-cat-complete and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-cat-complete and the conclusion is that branch's value"
@@ -55908,7 +55935,7 @@
     {
       "theorem": "fn-cat-prepare-refused-when-pending",
       "book": "books/catalog-commit.lisp",
-      "line": 229,
+      "line": 223,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-cat-prepare and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-cat-prepare and the conclusion is that branch's value"
@@ -57455,7 +57482,7 @@
       ]
     },
     {
-      "theorem": "fn-lpv-run-atom",
+      "theorem": "fn-lpv-run-atom-by-definition",
       "book": "books/legacy-parser-value-run.lisp",
       "line": 39,
       "reasons": [
@@ -62911,6 +62938,22 @@
       ]
     },
     {
+      "theorem": "fn-snh-ctx-recover",
+      "book": "books/catalog-commit.lisp",
+      "line": 712,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-recover and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-snh-keyring-of-updates",
+      "book": "books/catalog-commit.lisp",
+      "line": 585,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
       "theorem": "fn-sni-replaying-has-no-indexed-rows",
       "book": "books/store-node-invariants.lisp",
       "line": 992,
@@ -64998,7 +65041,7 @@
       {
         "theorem": "fn-sn-set-keyring-advances-the-generation",
         "book": "books/catalog-commit.lisp",
-        "line": 706,
+        "line": 774,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -67232,13 +67275,12 @@
           "books/owner-prepare-served-ocl.lisp",
           "books/owner-signed-post.lisp",
           "books/owner-snapshot-recovery.lisp",
-          "books/receipt-revocation.lisp",
           "books/served-catalog-join-host-identity-finish.lisp",
           "books/store-checkpoint-open.lisp",
           "books/store-identity-sequence-invariants.lisp",
           "books/store-open-pre-c1.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 9 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 8 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-stxk-context-next",
@@ -67259,10 +67301,10 @@
         "book": "books/stx-keyring-records.lisp",
         "line": 132,
         "stated_in": [
+          "books/catalog-commit.lisp",
           "books/hybrid-lifecycle-store-invariants.lisp",
           "books/owner-signed-post.lisp",
           "books/owner-snapshot-recovery.lisp",
-          "books/receipt-revocation.lisp",
           "books/statement-keyring-publication.lisp",
           "books/store-finalize-incremental.lisp",
           "books/store-node.lisp"
@@ -67288,9 +67330,10 @@
         "book": "books/stx-keyring-records.lisp",
         "line": 142,
         "stated_in": [
+          "books/catalog-commit.lisp",
           "books/statement-keyring-publication.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-transfer-work-value",
@@ -68587,7 +68630,7 @@
       {
         "check": "rst-bp-transit-without-the-submit",
         "book": "tests/acl2/relay-source-routes-tests.lisp",
-        "line": 253,
+        "line": 258,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -73654,6 +73697,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/legacy-parser-allocation.lisp",
+        "line": 6,
+        "include": "legacy-parser-cursor",
+        "included": "books/legacy-parser-cursor.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/legacy-parser-catalog.lisp",
         "line": 3,
         "include": "legacy-parser-columns",
@@ -74946,20 +74996,6 @@
         "line": 79,
         "include": "protocol-table",
         "included": "books/protocol-table.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/receipt-revocation.lisp",
-        "line": 6,
-        "include": "bp-release-authority",
-        "included": "books/bp-release-authority.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/receipt-revocation.lisp",
-        "line": 7,
-        "include": "hybrid-lifecycle-store-invariants",
-        "included": "books/hybrid-lifecycle-store-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -79079,6 +79115,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/catalog-context-recovery-tests.lisp",
+        "line": 4,
+        "include": "../../books/catalog-context-recovery",
+        "included": "books/catalog-context-recovery.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/catalog-context-recovery-tests.lisp",
+        "line": 5,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/catalog-delta-tests.lisp",
         "line": 18,
         "include": "must-fail-checked",
@@ -80973,6 +81023,13 @@
         "line": 7,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/legacy-parser-allocation-tests.lisp",
+        "line": 3,
+        "include": "../../books/legacy-parser-allocation",
+        "included": "books/legacy-parser-allocation.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -83927,41 +83984,6 @@
         "line": 6,
         "include": "owner-advance-carried-tests",
         "included": "tests/acl2/owner-advance-carried-tests.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/receipt-revocation-store-fixtures.lisp",
-        "line": 8,
-        "include": "../../books/codec-attach",
-        "included": "books/codec-attach.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/receipt-revocation-store-fixtures.lisp",
-        "line": 14,
-        "include": "held-rows-tests",
-        "included": "tests/acl2/held-rows-tests.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/receipt-revocation-tests.lisp",
-        "line": 3,
-        "include": "../../books/receipt-revocation",
-        "included": "books/receipt-revocation.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/receipt-revocation-tests.lisp",
-        "line": 4,
-        "include": "bp-release-authority-tests",
-        "included": "tests/acl2/bp-release-authority-tests.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/receipt-revocation-tests.lisp",
-        "line": 5,
-        "include": "receipt-revocation-store-fixtures",
-        "included": "tests/acl2/receipt-revocation-store-fixtures.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

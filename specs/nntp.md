@@ -1958,6 +1958,13 @@ measurements remain open. The source stores fixed-size
 records and source references and reports raw-byte work; that statement
 alone is not a physical allocation or latency qualification.
 
+The analysis-only `fn-lpa-tick-conses` source observer counts transient
+constructor sites, including closing span and copied fields spines, and
+tracks the actual tick's arena reads/transitions. Its demand is at most
+`4 + 39 * actual-work`, hence `4 + 39 * fuel` for natural fuel. This bound
+covers that structural CONS inventory, not compiled allocator behavior,
+integer buffers, stack, first-use state or native call wrappers. A selected
+runtime refinement and actual funding/served composition remain open.
 
 
 ## Public exposure (NNT-031)

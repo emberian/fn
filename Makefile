@@ -937,7 +937,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/legacy-parser-columns \
 	tests/acl2/legacy-parser-columns-tests \
 	books/legacy-parser-catalog \
+	books/legacy-parser-allocation \
 	tests/acl2/legacy-parser-catalog-tests \
+	tests/acl2/legacy-parser-allocation-tests \
 	books/nntp-article-pass \
 	books/nntp-responses \
 	books/nntp-article-block \
@@ -1034,6 +1036,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-record \
 	books/catalog \
 	books/catalog-commit \
+	books/catalog-context-recovery \
 	books/catalog-delta \
 	books/catalog-relation \
 	books/catalog-view \
@@ -1115,6 +1118,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-record-tests \
 	tests/acl2/catalog-tests \
 	tests/acl2/catalog-commit-tests \
+	tests/acl2/catalog-context-recovery-tests \
 	tests/acl2/catalog-delta-tests \
 	tests/acl2/catalog-relation-tests \
 	tests/acl2/catalog-view-tests \
