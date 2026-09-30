@@ -1936,7 +1936,16 @@ group match either the filing group or the named group. Whether to stop
 offering a withdrawn target is open; it would add a new FNFD settlement,
 `:withdrawn`.
 
-**Reader-visible metadata.** `HDR :fn-control` on an article in `control.*`
+**Reader-visible metadata.** The private items use `HDR`, not the ordinary
+field's legacy `XHDR` spelling. `:fn-verified` accepts the current-article
+form (no final argument), one local article number or range in the selected
+group, or one complete Message-ID. `:fn-control` and `:fn-enrollment` require
+exactly one complete Message-ID; omitted, numbered, range or extra arguments
+answer `501 syntax error`. Their successful responses contain one `0 ITEM`
+line under `225`. These argument forms are private-extension behavior under
+RFC 3977 sections 3.3.3 and 8.5, not additional stored article headers.
+
+`HDR :fn-control <message-id>` on an article in `control.*`
 answers `executed withdrawal <msgid> author|authority`, `executed
 reconfigure generation <n>`, `owed`, `declined <reason>` or `report
 <serial>`. It is the node's historical claim, like `:fn-verified`, and

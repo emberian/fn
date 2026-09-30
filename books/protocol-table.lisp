@@ -815,7 +815,7 @@
              (503 :refused :reader :no-control-status "503 control status unavailable")
              (503 :refused :reader :no-projection "503 archive projection unavailable")
              (480 :refused :auth :auth-required "480 authentication required"))
-   :faq "One header field for a range; also :fn-verified, :fn-control and :fn-enrollment.")
+   :faq "One ordinary header field by Message-ID, local number, range or current article. :fn-verified accepts those same forms. :fn-control and :fn-enrollment require exactly one Message-ID; other argument shapes answer 501. Private items use HDR, not XHDR.")
 
   ("XHDR"
    :rfc "RFC 2980 2.6" :dispatch :archive
@@ -841,7 +841,7 @@
              (503 :refused :reader :no-framing "503 stored article framing unavailable")
              (503 :refused :reader :no-projection "503 archive projection unavailable")
              (480 :refused :auth :auth-required "480 authentication required"))
-   :faq "HDR's older spelling.")
+   :faq "HDR's older spelling for ordinary fields; private :fn-* items use HDR.")
 
   ("XPAT"
    :rfc "RFC 2980 2.9" :dispatch :archive

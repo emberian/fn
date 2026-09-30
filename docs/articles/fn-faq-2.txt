@@ -5,7 +5,7 @@ Date: Mon, 28 Sep 2026 12:02:00 +0000
 Message-ID: <fn-faq-2-20260928@fn.fg-goose.online>
 Archive-name: fn-faq/part2
 Posting-Frequency: when fn changes
-Last-modified: 2026-09-28
+Last-modified: 2026-09-29
 Summary: Newsreaders, the web reader, and cancelling your own post.
 
 Any newsreader with TLS works.
@@ -59,9 +59,12 @@ where the node requires one (480 otherwise).
 - OVER * (RFC 3977 8.3): Overview lines (subject, author, date, ids,
   size) for a range.
 - XOVER * (RFC 2980 2.8): OVER's older spelling.
-- HDR * (RFC 3977 8.5): One header field for a range; also :fn-verified,
-  :fn-control and :fn-enrollment.
-- XHDR * (RFC 2980 2.6): HDR's older spelling.
+- HDR * (RFC 3977 8.5): One ordinary header field by Message-ID, local
+  number, range or current article. :fn-verified accepts those same
+  forms. :fn-control and :fn-enrollment require exactly one Message-ID;
+  other argument shapes answer 501. Private items use HDR, not XHDR.
+- XHDR * (RFC 2980 2.6): HDR's older spelling for ordinary fields;
+  private :fn-* items use HDR.
 - XPAT * (RFC 2980 2.9): XHDR filtered by a wildmat on the field's
   content.
 - LIST * (RFC 3977 7.6; RFC 6048): Lists groups and server data; the

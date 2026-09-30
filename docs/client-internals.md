@@ -350,6 +350,22 @@ the RFC 2047 encoded-word an agent writes for itself.
 
 ### Checking a verdict without trusting fn
 
+The private HDR items have these wire argument forms:
+
+| Item | Arguments |
+| --- | --- |
+| `HDR :fn-verified` | No last argument means the current article; one local number or range uses the selected group; one complete Message-ID looks up that article. |
+| `HDR :fn-control <message-id>` | Exactly one complete Message-ID, including its angle brackets. |
+| `HDR :fn-enrollment <message-id>` | Exactly one complete Message-ID, including its angle brackets. |
+
+The latter two do not accept an omitted argument, local article number,
+range or extra word: those forms answer `501 syntax error`. Their successful
+Message-ID response is one line beginning `0`, under the usual `225`
+multiline reply. Use `HDR` for these private items; `XHDR` is the legacy
+spelling for ordinary article fields. These are node metadata claims,
+separate from headers present in the stored article. The forms follow
+[the NNTP extension specification](../specs/peering.md).
+
 `HDR :fn-verified <id>` is the node's word that a principal signed an
 article. [`tools/fn_verify.py`](../tools/fn_verify.py) checks that word
 against the article's bytes with code fn does not own. It fetches `ARTICLE`
