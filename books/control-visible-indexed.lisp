@@ -95,17 +95,18 @@
  (defthm fn-ctl-symbol-headed-events
    (and (implies (fn-store-retention-event-p x) (equal (car x) :retention))
         (implies (fn-cpe-eventp x) (equal (car x) :consumer))
+        (implies (fn-cac-eventp x) (equal (car x) :consumer-authority))
         (implies (fn-th-topic-eventp x)
                  (member-equal (car x)
                                '(:topic-anchor :topic-admit :topic-admin-install))))
    :rule-classes nil
    :hints (("Goal" :in-theory (e/d (fn-store-retention-event-p fn-store-event-nth
-                                    fn-cpe-eventp fn-cp-nth
+                                    fn-cpe-eventp fn-cac-eventp fn-cp-nth
                                     fn-th-topic-eventp fn-th-local-admin-eventp
                                     fn-th-at)
                                    (fn-th-source-id-p fn-th-auth-ref-p
                                     fn-th-exact-octets-p fn-th-parents-p
-                                    fn-record-uint32p fn-cpe-operationp fn-cp-uintp
+                                    fn-record-uint32p fn-cpe-operationp fn-cac-operationp fn-cac-u64p fn-cp-uintp
                                     fn-record-metadata-bytes-p))))))
 
 (local
@@ -136,11 +137,12 @@
                                    (fn-held-p fn-hstxa-p))))))
 (local
  (defthm fn-ctl-row-okp-of-symbol-headed
-   (implies (or (fn-store-retention-event-p e) (fn-cpe-eventp e) (fn-th-topic-eventp e))
+   (implies (or (fn-store-retention-event-p e) (fn-cpe-eventp e)
+                (fn-cac-eventp e) (fn-th-topic-eventp e))
             (fn-ctl-row-okp e))
    :hints (("Goal" :in-theory (e/d (fn-ctl-row-okp fn-ctl-event-row fn-cei-event-article)
                                    (fn-held-p fn-hstxa-p fn-store-retention-event-p
-                                    fn-cpe-eventp fn-th-topic-eventp))
+                                    fn-cpe-eventp fn-cac-eventp fn-th-topic-eventp))
             :use ((:instance fn-ctl-symbol-headed-events (x e))
                   (:instance fn-hstxa-p-forward-shape (x e)))))))
 (local
@@ -155,7 +157,7 @@
            (fn-ctl-row-okp e))
   :hints (("Goal" :in-theory (e/d (fn-store-event-p)
                                   (fn-ctl-row-okp fn-held-p fn-hstxa-p fn-stxe-p fn-stxk-p
-                                   fn-store-retention-event-p fn-cpe-eventp
+                                   fn-store-retention-event-p fn-cpe-eventp fn-cac-eventp
                                    fn-th-topic-eventp)))))
 
 (defthm fn-ctl-rows-okp-of-sf-record-listp

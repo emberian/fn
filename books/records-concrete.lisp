@@ -68,7 +68,7 @@
 (defun fn-rcon-wire-event-p (x)
   (declare (xargs :guard t))
   (or (fn-rcon-record-p x) (fn-store-retention-event-p x)
-      (fn-stxe-p x) (fn-stxk-p x) (fn-stxa-p x) (fn-cpe-eventp x)
+      (fn-stxe-p x) (fn-stxk-p x) (fn-stxa-p x) (fn-cac-eventp x) (fn-cpe-eventp x)
       (fn-th-topic-eventp x)))
 
 (defthm fn-rcon-wire-event-p-is-wire-event-p
@@ -85,6 +85,7 @@
         ((fn-stxe-p x) (fn-stxe-sequence x))
         ((fn-stxk-p x) (fn-stxk-sequence x))
         ((fn-stxa-p x) (fn-stxa-sequence x))
+        ((fn-cac-eventp x) (fn-cp-nth 1 x))
         ((fn-cpe-eventp x) (fn-cpe-sequence x))
         ((fn-th-topic-eventp x) (fn-th-at 1 x))
         (t nil)))
@@ -103,6 +104,7 @@
         ((fn-stxe-p x) (fn-stxe-txid x))
         ((fn-stxk-p x) (fn-stxk-txid x))
         ((fn-stxa-p x) (fn-stxa-txid x))
+        ((fn-cac-eventp x) (fn-cp-nth 2 x))
         ((fn-cpe-eventp x) (fn-cpe-txid x))
         ((fn-th-topic-eventp x) (fn-th-at 2 x))
         (t nil)))
@@ -121,6 +123,7 @@
         ((fn-stxe-p x) (fn-stxe-generation x))
         ((fn-stxk-p x) (fn-stxk-generation x))
         ((fn-stxa-p x) (fn-stxa-generation x))
+        ((fn-cac-eventp x) (fn-cp-nth 3 x))
         ((fn-cpe-eventp x) (fn-cpe-generation x))
         ((fn-th-topic-eventp x) (fn-th-at 3 x))
         (t nil)))
@@ -199,7 +202,9 @@
 
 (defun fn-rcon-cpe-projection-step (s event expected)
   (declare (xargs :guard t :verify-guards nil))
-  (if (or (not (fn-rcon-store-event-p event))
+  (if (fn-cac-eventp event)
+      (list :refused :authority-interpreter-required)
+    (if (or (not (fn-rcon-store-event-p event))
           (not (fn-cp-uintp expected))
           (equal expected *fn-cbor-max-uint*)
           (not (equal (fn-rcon-store-event-sequence event) expected)))
@@ -230,7 +235,7 @@
          ((equal (fn-cpe-projection-decision s op) (list :write op))
           (list :ok (fn-cpe-projection-advance (fn-cp-apply s op)
                                                  (1+ expected))))
-         (t (list :refused :operation)))))))
+         (t (list :refused :operation))))))))
 
 (defthm fn-rcon-cpe-projection-step-is-cpe-projection-step
   (equal (fn-rcon-cpe-projection-step s event expected)
@@ -332,6 +337,7 @@
         ((fn-stxe-p event) (fn-stxe-encode event))
         ((fn-stxk-p event) (fn-stxk-encode event))
         ((fn-stxa-p event) (fn-stxa-encode event))
+        ((fn-cac-eventp event) (fn-cac-encode event))
         ((fn-cpe-eventp event) (fn-cpe-encode event))
         ((fn-th-topic-eventp event) (fn-th-topic-event-encode event))
         (t nil)))

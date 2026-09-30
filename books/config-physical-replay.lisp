@@ -15,16 +15,7 @@
 ;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
 (local (in-theory (disable (tau-system))))
 
-(defun fn-cpr-config-firstp (configs events)
-  (declare (xargs :guard t))
-  (and (consp configs)
-       (or (not (consp events))
-           (<= (nfix (fn-cfg-record-txid (car configs)))
-               (nfix (fn-store-event-txid (car events)))))))
-
-(defthm fn-cpr-config-firstp-has-config
-  (implies (fn-cpr-config-firstp configs events) (consp configs))
-  :hints (("Goal" :in-theory (enable fn-cpr-config-firstp))))
+(include-book "config-record-order")
 
 (defun fn-cpr-event-servedp (cn event)
   ; The served-domain check belongs only to events that create an article.

@@ -27,6 +27,17 @@
 ; these are the facts a book above needs about an event, and proving them
 ; there means opening the recognizer again -- which is a 15018-way splitter
 ; case in books/store-files (measured 2026-09-22).
+(local
+ (defthm fn-replay-authority-record-shape
+   (implies (fn-cac-eventp record)
+            (and (true-listp record)
+                 (natp (fn-cp-nth 1 record))
+                 (natp (fn-cp-nth 2 record))
+                 (natp (fn-cp-nth 3 record))))
+   :hints (("Goal" :in-theory
+            (e/d (fn-cac-eventp fn-cac-u64p)
+                 (fn-cac-operationp fn-cp-nth))))))
+
 (defthm fn-replay-record-is-a-true-list
    (implies (fn-store-event-p record) (true-listp record))
    :rule-classes :forward-chaining
@@ -98,7 +109,8 @@
                   fn-replay-stxe-counters-are-natural
                   fn-replay-stxk-counters-are-natural
                   fn-replay-stxa-counters-are-natural
-                  fn-replay-cpe-counters-are-natural)
+                  fn-replay-cpe-counters-are-natural
+                  fn-replay-authority-record-shape)
             :cases ((fn-held-p record)
                     (fn-store-retention-event-p record)
                     (fn-stxe-p record)
@@ -108,7 +120,7 @@
             (e/d (fn-store-event-p fn-store-event-sequence
                                    fn-store-event-txid fn-store-event-generation)
                  (fn-record-p fn-held-p fn-hstxa-p fn-store-retention-event-p fn-stxe-p fn-stxk-p
-                              fn-stxa-p fn-cpe-eventp
+                              fn-stxa-p fn-cpe-eventp fn-cac-eventp
                               fn-replay-article-counters-are-natural
                               fn-replay-retention-counters-are-natural
                               fn-replay-stxe-counters-are-natural
@@ -622,8 +634,8 @@
   (if (fn-store-retention-event-p record)
       (fn-replay-apply-retention-event node record)
     (if (or (fn-stxe-p record) (fn-stxk-p record) (fn-cpe-eventp record)
-            (fn-th-topic-eventp record))
-        (if (and (or (fn-cpe-eventp record) (fn-th-topic-eventp record))
+            (fn-cac-eventp record) (fn-th-topic-eventp record))
+        (if (and (or (fn-cpe-eventp record) (fn-cac-eventp record) (fn-th-topic-eventp record))
                  (not (null (fn-node-stage node))))
             nil
           (fn-replay-apply-identity-neutral node record))

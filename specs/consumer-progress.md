@@ -976,3 +976,42 @@ width work, old/new/retired graph coexistence and measured heap. Admission
 must fund them and fit the actual quantum, or use a resumable path update,
 before an account stage can activate. No owner sidecar is marked ready merely
 from these component proofs.
+
+
+The shared source interpreter `fn-carf-event-step` retains four result fields:
+`(:ok next-CP7 new-account-root-or-nil fence-event-count-or-nil)`. It invokes
+one account adoption decision, preserving its returned root and the actual
+fence event coordinate. The generic older CPE projection refuses private
+authority records. The Store/concrete codec recognizes the version2 authority
+subtype; shape dispatch distinguishes it from topic records. Wire recognition
+alone never authorizes BP metadata or an account change.
+
+Visibility classification is produced by the actual control refresh. The
+withdrawal companion returns the exact existing withdrawal result and a
+conservative effect, reusing its one new-plan decision and existing target
+lookup. A typed cancel plan or an arriving target of an older withdrawal
+fences current cursors, including withdrawal reports whose previous visible
+article list is empty. The visible companion reuses the existing verdict-growth
+predicate: an ordinary noncontrol, nontargeted plain or verified append
+preserves the revision; a verdict change to an older article fences it.
+Generic discontinuity conservatively fences. Keyring, topic, retention and
+configuration changes are also conservatively fenced. This is not a
+changed-if-and-only-if claim or a bound on the existing withdrawal scans.
+
+The pre-frontier candidate overlay selects the oldest existing history row
+first, even after its article expired. It selects the candidate only when no
+older row matches. Its boundary equates row/plan/withdrawal selection with
+appending that candidate to the captured history without cloning the history.
+The pure proposal refuses exhausted revision before an allocator call. The
+actual owner still must bind the candidate to projected transaction/frontier,
+owner/config/authority epochs and immutable binding, fund the entire change,
+and revalidate after any yield before allocation. Completion must consume the
+same decision once and publish CP7, seven canonical carries and account root
+atomically. Those actual owner/native ordering joins remain open.
+
+The shared source joint fold uses the exact physical journal comparator:
+configurations at the same transaction coordinate precede the Store event.
+Its model effect annotations are explicit model inputs, never host Boolean
+assertions or a replacement for recovery's retained withdrawal/visible
+accumulator. Actual recovery must call the same core producer at each event.
+The source component does not activate the remote endpoint or close Q13.

@@ -1051,7 +1051,8 @@
       "milestone": "M4",
       "status": "specified",
       "requirements": [
-        "CNS-001"
+        "CNS-001",
+        "CNS-011"
       ],
       "steps": [
         "Commit the immutable signed report in a separately administered Store while the consumer sleeps; register under a pinned history, incarnation, query and view, then query consumer status.",
@@ -1067,7 +1068,7 @@
         "A linked Store candidate is either absent or replayed once at recovery; no stale live projection is accepted as progress.",
         "Old incarnation, registration epoch and view cursors are refused without mutation; independent stores and consumers keep separate positions."
       ],
-      "note": "The ACL2 Store model is witnessed by tests/acl2/consumer-store-invariants-tests.lisp and its scoped manifest. Native image 1d26e01f passed signed local-owner poll, read-only repeat, advancing ACK with killed reply/reopen and fenced clone cursor recovery, as recorded in planning/evidence/native-poll-reader-clone-1d26-2026-09-23.md. The local consumer-status command is an experimental v1 diagnostic and has no v0 gate. The Mini consumer-owned transaction/ACK/reply join and complete two-store E2-01.. trace set remain unqualified; component passes do not establish the whole scenario. Actual legacy consumer preflight now uses exact constructed event payload charge before frontier allocation; raw deployed-form routing/order and refusal cuts pass, with ACL2 row-charge/release-headroom source witnesses. This is not whole-image execution, remote authentication, canonical funding or whole-scenario qualification. Version2 account row/fence codec preserves complete source events and scalar charge at u64 coordinates, including deletion and fence arms; actual adoption/revocation/WAIT reauthentication/restart remains unqualified.",
+      "note": "The ACL2 Store model is witnessed by tests/acl2/consumer-store-invariants-tests.lisp and its scoped manifest. Native image 1d26e01f passed signed local-owner poll, read-only repeat, advancing ACK with killed reply/reopen and fenced clone cursor recovery, as recorded in planning/evidence/native-poll-reader-clone-1d26-2026-09-23.md. The local consumer-status command is an experimental v1 diagnostic and has no v0 gate. The Mini consumer-owned transaction/ACK/reply join and complete two-store E2-01.. trace set remain unqualified; component passes do not establish the whole scenario. Actual legacy consumer preflight now uses exact constructed event payload charge before frontier allocation; raw deployed-form routing/order and refusal cuts pass, with ACL2 row-charge/release-headroom source witnesses. This is not whole-image execution, remote authentication, canonical funding or whole-scenario qualification. Version2 account row/fence codec preserves complete source events and scalar charge at u64 coordinates, including deletion and fence arms; actual adoption/revocation/WAIT reauthentication/restart remains unqualified. Narrow source producer fixtures now exercise ordinary verified/plain preservation, cancellation and pending-target fencing, older verdict changes, oldest-history candidate selection, full root/fence-count retention and cfg-first pending invalidation. Actual owner/config/recovery hook, funding and preallocation revalidation are not executed; no native or whole-scenario qualification.",
       "evidence": [
         "tests/test_native_owner_consumer_raw.sh",
         "tests/test_native_owner_consumer_local_raw.sh",
@@ -1076,7 +1077,13 @@
         "tests/acl2/consumer-authority-codec-tests.lisp",
         "books/consumer-account-adoption.lisp",
         "tests/acl2/consumer-account-adoption-tests.lisp",
-        "planning/evidence/consumer-account-adoption-source-2026-09-30.json"
+        "planning/evidence/consumer-account-adoption-source-2026-09-30.json",
+        "books/consumer-authority-fold.lisp",
+        "books/control-visible-effect.lisp",
+        "tests/acl2/consumer-authority-fold-tests.lisp",
+        "tests/acl2/consumer-authority-store-tests.lisp",
+        "tests/acl2/control-visible-effect-tests.lisp",
+        "planning/evidence/consumer-authority-producer-source-2026-09-30.json"
       ]
     },
     {

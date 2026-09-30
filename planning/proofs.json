@@ -18823,9 +18823,24 @@
         "books/consumer-account-adoption.lisp",
         "tests/acl2/consumer-account-adoption-tests.lisp",
         "tests/acl2/consumer-account-index-shape-tests.lisp",
-        "planning/evidence/consumer-account-adoption-source-2026-09-30.json"
+        "planning/evidence/consumer-account-adoption-source-2026-09-30.json",
+        "books/config-record-order.lisp",
+        "books/config-physical-replay.lisp",
+        "books/control-visible-effect.lisp",
+        "books/control-visible-indexed.lisp",
+        "books/owner-refresh-indexed.lisp",
+        "books/consumer-authority-fold.lisp",
+        "books/store-events.lisp",
+        "books/store-events-carried.lisp",
+        "books/consumer-store-projection.lisp",
+        "books/records-concrete.lisp",
+        "books/replay.lisp",
+        "tests/acl2/control-visible-effect-tests.lisp",
+        "tests/acl2/consumer-authority-fold-tests.lisp",
+        "tests/acl2/consumer-authority-store-tests.lisp",
+        "planning/evidence/consumer-authority-producer-source-2026-09-30.json"
       ],
-      "progress_note": "Source-only seven-arm account codec and shared staged interpreter; exact persisted-stage token48, literal identity retention/deletion tombstones/recreation, bounded merge and durable one-cell reversal, exact ready fence/root and authority-substream replay fixtures. Full carried authority/index correspondence, per-node canonical carry/funding, actual Store/config/owner atomic completion, request reauthentication and native activation remain open. Stable inherited claim lineage is consumer-remote plus consumer-remainder; no IDs renumbered."
+      "progress_note": "Source-only seven-arm account codec and shared staged interpreter; exact persisted-stage token48, literal identity retention/deletion tombstones/recreation, bounded merge and durable one-cell reversal, exact ready fence/root and authority-substream replay fixtures. Full carried authority/index correspondence, per-node canonical carry/funding, actual Store/config/owner atomic completion, request reauthentication and native activation remain open. Stable inherited claim lineage is consumer-remote plus consumer-remainder; no IDs renumbered. Shared Store/authority source interpreter and exact control/candidate producer boundary source-admitted at private held15 coordinate, with cancellation/pending-target/older-verdict fences and ordinary signed/plain append preservation. Exact cfg-first comparator extracted unchanged. Actual owner/config/recovery joins, per-node canonical producer/funding, capture revalidation and endpoint remain open; no original Q13 or current union evidence transfer."
     }
   ]
 }
