@@ -402,3 +402,28 @@ These are conditional phase/source claims: full source/pool and padding,
 private stage/spool/digest/root fidelity, productive progress, actual retained
 FD/source authority, INITIAL and native qualification remain open. PRF-1144
 remains planned with no cited completion events; runtime is unchanged.
+
+The actual padding branch is now connected to the original canonical model
+in `fn-hpi-padding-step-preserves-original-canonical-region` and
+`fn-hpi-padding-page-handoff-is-original-canonical-page`. Under complete
+padding-ready carry and actual `:continue`, one zero is appended to the
+original `fn-hp-wpad` region suffix, used advances once, selected epoch/lease
+are retained, and the controller/effect, every other complete buffer, ledger
+and digest are unchanged. Under the same carry and actual `:write`, exactly
+2048 original padded words are handed to the existing region issuer with the
+entire MV output and all buffer/ledger/digest frames. Original ADT padding and
+packing laws are reused; no second padding codec or capacity algorithm exists.
+
+Thirty complete literal assertions use actual decoded-source trajectories to
+reach both used1 and used2048 in each of five regions. They execute real
+maintenance admission/growth, zero/header writes, source supply/columns and
+all preceding padded-region writes/ACKs. Each establishes a full reachable
+baseline before selected-word corruption or retained-receipt removal. The
+mutations affirmatively preserve the other premise and fail the full
+conclusion. Every framed backing word and digest scalar/frame is compared.
+Fresh proof-body and fixture coordinates are committed in
+`planning/evidence/history-image-padding-source-2026-09-30.json`.
+Padding ACK/reset/region advance, full source/pool and whole-image/private
+trace/progress, actual retained FD/source authority, INITIAL and native
+qualification remain open. Runtime is unchanged; PRF-1144 remains planned
+with no cited completion events.
