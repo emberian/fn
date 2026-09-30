@@ -917,7 +917,8 @@ and remote/staged events remain unavailable until those producers agree.
 The source account staging codec uses a distinct `fnce` version2 envelope
 and the logical tag `:consumer-authority`. Its bounded operations are
 `authority-begin`, `authority-row`, `authority-tombstone`,
-`authority-fence` and `authority-discard`. The envelope carries three u64
+`authority-seal`, `authority-prepare`, `authority-fence` and
+`authority-discard`. The envelope carries three u64
 coordinates; each row carries the exact candidate/base comparison and
 creation identity. A credential row uses the existing native AUTHINFO
 login domain (at most64octets), principal32, salt16, three32octet
@@ -956,3 +957,22 @@ work and allocation demands with the admitted quantum/profile and otherwise
 yield through a cursor. Per-node canonical carry production, old/new/retired
 root funding and the atomic owner/recovery joins remain unimplemented. No
 remote endpoint or new Store-event admission is activated by this source unit.
+
+The source carried trie mutator `fn-cait-put-octets` returns the existing
+exact trie together with parallel four-field annotations for each branch-list
+node: root carry, value carry, child annotation and tail annotation. It
+rebuilds the selected path and borrows untouched annotations. Its boundary
+proof equates the actual changed trie to `fn-cai-put-octets` and the returned
+annotation to the proof-only canonical abstraction, including root size.
+Neither that abstraction nor `fn-scs-summary` runs on the update path. The
+bounded new account/binding constructor must supply the exact value carry.
+
+This component does not yet thread those annotations through durable account
+stages or actual owner publication. The older259cons structural allowance
+excludes annotations; the new conservative primitive-constructor allowance
+is `5439 * (login-length + 1)`, and entry visits are bounded by
+`771 * (login-length + 1)`. These quantities exclude caller metadata, scalar
+width work, old/new/retired graph coexistence and measured heap. Admission
+must fund them and fit the actual quantum, or use a resumable path update,
+before an account stage can activate. No owner sidecar is marked ready merely
+from these component proofs.
