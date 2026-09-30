@@ -272,6 +272,12 @@
                            fn-sn-with-configuration-preserves-unselected-slot
                            (k 13))))))
 
+(local
+ (defthm fn-sn-nth2-is-caddr
+   (equal (nth 2 x) (caddr x))
+   :hints (("Goal" :expand ((nth 2 x) (nth 1 (cdr x)) (nth 0 (cddr x)))
+            :in-theory (enable nth zp)))))
+
 (defthm fn-sn-files-of-fn-sn-with-configuration
   (equal (fn-sn-files
           (fn-sn-with-configuration s groups capacity node config-history))
@@ -279,8 +285,8 @@
   :hints (("Goal"
            :use ((:instance fn-sn-with-configuration-preserves-unselected-slot (k 2)))
            :in-theory
-           (e/d (fn-sn-files nth)
-                (fn-sn-with-configuration
+           (e/d (fn-sn-files fn-sn-nth2-is-caddr)
+                (fn-sn-with-configuration nth
                  fn-sn-with-configuration-preserves-unselected-slot)))))
 
 (defthm fn-sn-groups-of-fn-sn-with-configuration
