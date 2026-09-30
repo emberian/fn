@@ -6319,14 +6319,20 @@
         "Tick through data, table, directory and terminal phases, checking the literal residual theorem and identity preservation each time.",
         "Corrupt the directory counter; separately mutate an emitted selector.",
         "Compute a nonempty scalar layout and compare its directory/data/table allocation with the actual fresh allocator; exercise each range/type hypothesis independently.",
-        "Write a nonempty scratch prefix, reset while physical words remain, then fill a whole2048word page and attempt another put."
+        "Write a nonempty scratch prefix, reset while physical words remain, then fill a whole2048word page and attempt another put.",
+        "Reduce completed codec lengths for actual nonempty rows; reject stale ordinal/overflow; resume scalar capacity and fill the current header one concrete word per tick.",
+        "Stream342current-format metadata entries across two scratch pages, yielding within an entry; reset only after consumption and resume the same ordinal/component. Supply one incorrectly attributed digest separately.",
+        "Request positional writes for last/adjacent pages under the admitted extent; try the framed-region boundary and one-byte-short extent."
       ],
       "expected": [
         "Each valid tick emits one exact original descriptor or yields without losing remaining writes.",
         "The captured lease and source epoch are unchanged.",
         "Invalid counter fails both the invariant and theorem conclusion; selector mutation fails exact plan equality.",
         "Scalar addresses equal indexed fresh allocation without building an allocation list in execution; representation overflow refuses before allocation.",
-        "Each stored word extends exactly the logical prefix; reset prevents stale-word exposure; full page refuses further writes without changing prefix or identities."
+        "Each stored word extends exactly the logical prefix; reset prevents stale-word exposure; full page refuses further writes without changing prefix or identities.",
+        "Census equals existing individually padded history regions; capacity preserves the canonical result; emitted scratch page equals the current header, including zeros, with identities and representation preserved.",
+        "Concatenated test pages equal existing encoded directory run including padding; page-full/done leave state unchanged; wrong digest fails the exact source-attribution conclusion.",
+        "Accepted whole-file offsets preserve the FNSI wrapper base, stay before framed segments and do not overlap; domain/extent violations refuse before I/O."
       ],
       "implementation": {
         "test": "tests/acl2/history-page-cursor-tests.lisp",
@@ -6335,7 +6341,11 @@
       "evidence": [
         "tests/acl2/history-page-cursor-tests.lisp",
         "tests/acl2/history-page-layout-tests.lisp",
-        "tests/acl2/history-page-buffer-tests.lisp"
+        "tests/acl2/history-page-buffer-tests.lisp",
+        "tests/acl2/history-image-census-tests.lisp",
+        "tests/acl2/history-image-header-tests.lisp",
+        "tests/acl2/history-page-metadata-tests.lisp",
+        "tests/acl2/history-page-io-tests.lisp"
       ],
       "execution_scope": "Library component only; no actual host or funded producer completion claim."
     },
@@ -6468,6 +6478,179 @@
         "tests/acl2/page-read-executor-tests.lisp"
       ],
       "execution_scope": "Pure executor model source REPL and folded literal teeth only. Native executor/refinement, real process-death cuts and supported funding/profile consumer pending; not a full P12 claim."
+    },
+    {
+      "id": "SCN-1010",
+      "title": "Resumable atom encoding preserves exact current scalar bytes",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [],
+      "steps": [
+        "Begin every supported scalar class with explicit capture and lease identities; walk actual counting, prefix, digits, body and terminal states.",
+        "Affirm complete invariant, residual, verdict, octet, identity and nonterminal progress antecedents/conclusions at every reached state; compare the final stream with fn-scc-atom-octets.",
+        "Interrupt and resume a nonempty string stream; preserve every emitted byte.",
+        "Exercise the actual 255-digit positive and negative codec limits and refuse the first overwide natural.",
+        "For each theorem hypothesis, label the mutation or corrupted state, affirm all retained hypotheses, and demonstrate both omitted-hypothesis and literal-conclusion failure."
+      ],
+      "expected": [
+        "No eager scalar byte list or source-string copying.",
+        "One octet maximum per step; quantum exhaustion retains resumable state.",
+        "Current codec bytes, package indices and capture/lease identities remain exact.",
+        "Logical evidence is a library component; no composed host or physical-resource conclusion is inferred."
+      ],
+      "implementation": {
+        "test": "tests/acl2/history-scalar-cursor-tests.lisp"
+      },
+      "evidence": [
+        "tests/acl2/history-scalar-cursor-tests.lisp",
+        "specs/history-scalar-cursor.md"
+      ],
+      "execution_scope": "Scalar source library only; full tree/census/producer and native qualification remain open."
+    },
+    {
+      "id": "SCN-1015",
+      "title": "Actual parser first-five NOV projection, first match and exact refusals",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "NNT-006"
+      ],
+      "steps": [
+        "Parse a nonempty article with repeated Subject, folded values, TAB-first From, whitespace-only first References line and binary CRLF body.",
+        "Assert the literal general parser projection and five-column composition conclusions and independently expected output.",
+        "Exercise bare empty field, orphan fold, NUL header, bare LF, missing separator, body framing error and empty first line followed by a fold.",
+        "Mutate expected first-match selection and initial TAB normalization; assert inequality.",
+        "Exercise literal byte-control commutation, exact body acceptance and new-field/fold physical-line conclusions; remove each retained hypothesis with all other hypotheses checked."
+      ],
+      "expected": [
+        "Exactly the first matching fields, one initial SP removed, folding CRLF removed and TAB scrubbed to SP.",
+        "All invalid/error classifications match the actual parser; binary NUL body remains valid.",
+        "Both component keystones are unconditional after redundant accumulator typing was proved unnecessary.",
+        "Whitespace-only continuation after an already visible field is rejected independently of field-wide visibility."
+      ],
+      "evidence": [
+        "tests/acl2/nov-line-projection-tests.lisp",
+        "planning/evidence/nov-line-projection-source.md",
+        "tests/acl2/legacy-parser-validity-tests.lisp",
+        "planning/evidence/legacy-parser-validity-source.md"
+      ],
+      "execution_scope": "Clean source REPL only; no served cursor or native completion claim."
+    },
+    {
+      "id": "SCN-1013",
+      "title": "Retained obligation logic survives explicit resource maintenance",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-017",
+        "STO-014"
+      ],
+      "steps": [
+        "Build a nonempty ledger by actual fn-retain-admit and reduce one retained pin through fn-hkn-release-retention.",
+        "Check the full logical/resource commuting square and each promised obligation field.",
+        "Admit the same affordable request on both ledgers and release with matching evidence.",
+        "Retain both observations when a larger request is capacity-refused before maintenance and admitted afterward.",
+        "Affirm retained hypotheses, falsify each omitted literal hypothesis and conclusion; corrupt accounting and mutate evidence separately."
+      ],
+      "expected": [
+        "Maintenance preserves logical obligations and release history, and changes resources exactly through the abstract maintenance step.",
+        "Common-admitted requests and matching releases have equal logical results.",
+        "Capacity disagreement is observed; no refusal event is dropped and unrestricted future equivalence is not claimed."
+      ],
+      "evidence": [
+        "tests/acl2/history-resource-refinement-tests.lisp"
+      ],
+      "execution_scope": "ACL2 retained-ledger component witnesses only; complete owner lifecycle and external-history checker integration remain open."
+    },
+    {
+      "id": "SCN-1005",
+      "title": "Resumable history record codec preserves exact current-format bytes",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [],
+      "steps": [
+        "Capture a nonempty opaque octet leaf with explicit capture and lease identities.",
+        "Advance classification, prefix and body phases one cell or byte per tick; interrupt before the body is complete and resume the returned cursor.",
+        "Check each reached state against complete invariant, permitted verdict and exact pre/post residual equation; compare final bytes with fn-scc-encode.",
+        "Separately corrupt the prefix byte or count relation and affirm failure of the omitted invariant hypothesis and theorem conclusion.",
+        "Feed varied bytes through the scalar word accumulator; assert complete partial/eighth-byte/final-pad antecedents, exact existing fn-hp-pack8 outputs and no extra word after an aligned stream.",
+        "For every remaining word-boundary hypothesis, retain all other hypotheses and affirm both failure of the removed premise and failure of the literal conclusion in a labeled argument/cursor mutation.",
+        "Traverse a nonempty nested/dotted resident row with source-reference descriptors; check every literal invariant/residual/capture antecedent and compare interpreted output with fn-scc-encode.",
+        "Classify a 200-byte prefix ending in a non-byte symbol and complete within810 descriptor ticks using maintained non-octets suffix tasks.",
+        "Compose descriptor traversal with scalar and opaque leaf byte cursors; assert every per-byte invariant/residual and exact current-codec output before and after a scheduling interruption.",
+        "Feed the complete resident byte stream through bounded word push/finish and compare packed zero-padded output with the current pack8 oracle.",
+        "Census the identical captured row without retaining encoded bytes; interrupt/resume, compare the terminal exact count with codec length and explicitly refuse a corrupted census total at the u64 edge."
+      ],
+      "expected": [
+        "No source-list copy or whole-row encoding occurs at begin or tick.",
+        "Quantum exhaustion yields a resumable cursor, never truncation or false prepared.",
+        "Every emitted byte and identity agrees with the current codec and original capture.",
+        "Corrupted-state witnesses are separately labeled; no native or composed reachability is inferred."
+      ],
+      "implementation": {
+        "test": "tests/acl2/history-record-cursor-tests.lisp"
+      },
+      "evidence": [
+        "tests/acl2/history-record-cursor-tests.lisp",
+        "specs/history-record-cursor.md"
+      ],
+      "execution_scope": "Resident descriptor, scalar/leaf byte composition, exact byte census and scalar word-boundary source libraries only. Borrowed cold spans, general progress, total padded placement/producer/profile bridge and native qualification remain open."
+    },
+    {
+      "id": "SCN-1009",
+      "title": "Byte-budgeted legacy NOV hydration keeps exact first headers and body facts",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-023"
+      ],
+      "steps": [
+        "Seal an article in the arena and begin a cursor with its handle, length and origin pin. Resume across every byte boundary, including a split CRLF, colon, first value SP and folded line.",
+        "Exercise five selected fields, mixed-case and repeated names, empty initial values completed by folds, TAB versus exactly one initial SP, missing fields and physical lines of 998 and 999 octets.",
+        "Exercise invalid names, orphan folds, empty final fields, missing separator, bare CR/LF, header NUL, body NUL and unterminated body; compare terminal results with fn-hnov-of and fn-hf-body-lines-of.",
+        "Mutate continuation position, source handle, first-header selection and whitespace normalization separately.",
+        "Check the literal actual value-transition invariant and remove its value correspondence, phase, line-budget and valid-byte hypotheses individually while affirming all retained hypotheses; verify folded completed source spans and absent-versus-empty first hits."
+      ],
+      "expected": [
+        "Each tick consumes and reports at most its fuel, preserves handle and pin and makes bounded progress. No final tick walks or copies the full source or field.",
+        "The body count equals the actual catalog function even for a rejected header parse.",
+        "The five spans materialize to the existing first-header NOV semantics. This last general refinement is open; ground fixtures currently supply examples only."
+      ],
+      "evidence": [
+        "books/legacy-parser-cursor.lisp",
+        "books/legacy-parser-reference.lisp",
+        "tests/acl2/legacy-parser-cursor-tests.lisp",
+        "books/legacy-parser-values.lisp",
+        "tests/acl2/legacy-parser-values-tests.lisp",
+        "planning/evidence/legacy-parser-values-source.md"
+      ]
+    },
+    {
+      "id": "SCN-1014",
+      "title": "Byte-fed current history decode preserves values and source lifetime",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [],
+      "steps": [
+        "Feed nonempty little-endian digits one at a time, including a nonminimal leading-zero spelling, and compare the existing numeric codec.",
+        "Decode nonempty strings, opaque symbol spans, fixed HSTXA, paired values and empty opcode6; cut and resume within payload.",
+        "Remove each residual hypothesis literally; check malformed package, truncated number/string and stack underflow refusal.",
+        "Compose authenticated captured root pages, exact source tokens, padding/MKEY checks, borrowed row remap and canonical reencoding."
+      ],
+      "expected": [
+        "Every live byte step consumes exactly one byte and retains source epoch/lease; no whole string coerce, intern, reverse, row decode or pool preflight occurs in the tick.",
+        "Spans name raw payload bytes in the captured immutable pool, and general borrowed-tree abstraction equals the old decoder result.",
+        "No partial row escapes malformed input; stale/uncertain physical I/O cannot advance or release a borrowed source."
+      ],
+      "implementation": {
+        "test": "tests/acl2/history-decode-cursor-tests.lisp",
+        "native": false
+      },
+      "evidence": [
+        "tests/acl2/history-decode-cursor-tests.lisp",
+        "planning/history-decode-contract.md"
+      ],
+      "execution_scope": "Source component tests only. General stream inverse, page-source authentication, integrated native caller and full producer remain open."
     }
   ]
 }

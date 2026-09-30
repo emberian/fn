@@ -18017,7 +18017,7 @@
     {
       "id": "PRF-1066",
       "title": "Byte-bounded NOV continuation over immutable cached column references (served integration open)",
-      "statement": "Q5c/J1 implementation component, not yet host-called or a served scheduling completion claim. books/nov-byte-window.lisp fn-nbw-step retains string references plus position and bounded owned octet pieces; each byte and empty-piece transition spends one fuel unit, preserves the shape/position invariant, emits at most fuel bytes and work, and preserves exact produced prefix plus logical residual. Library theorem fn-nbw-step-makes-bounded-progress: under pieces shape, natural offset, positive fuel and live pieces, complete residual equality, invariant preservation, positive work bounded by fuel, output bounded by fuel and strictly reduced complete remaining demand all hold. fn-nbw-step-pays-exact-demand accounts for every transition. books/nov-column-window.lisp fn-nbw-column-pieces copies a fixed number of cached NOV field references, numeric pieces and separators. Library theorem fn-nbw-column-pieces-refine-article-row: under maintained column relation F, facts equal to the actual lookup and decided ok verdict, the abstraction of its pieces equals the complete fn-nov-line over the article bytes, including CRLF. Removed redundant nonnil facts and explicit column-shape premises after proving the weakened statement; literal retained hypotheses have positive/removal witnesses. OPEN: install byte cursor in actual fn-splan continuation with the full composed remaining theorem, bounded legacy parse/cache hydration when old checkpoints lack NOV, actual codec/profile bridge for numerical setup, lookup cost, allocator/runtime cost and matching native measurements. No whole payload parser or complete field/row allocation may remain in the final served quantum.",
+      "statement": "Q5c/J1 implementation component, not yet host-called or a served scheduling completion claim. books/nov-byte-window.lisp fn-nbw-step retains string references plus position and bounded owned octet pieces; each byte and empty-piece transition spends one fuel unit, preserves the shape/position invariant, emits at most fuel bytes and work, and preserves exact produced prefix plus logical residual. Library theorem fn-nbw-step-makes-bounded-progress: under pieces shape, natural offset, positive fuel and live pieces, complete residual equality, invariant preservation, positive work bounded by fuel, output bounded by fuel and strictly reduced complete remaining demand all hold. fn-nbw-step-pays-exact-demand accounts for every transition. books/nov-decimal-window.lisp provides a general fuel-bounded resumable decimal division loop with exact residual, character-count/work accounting, guard preservation and strict numeric progress; under natural n <= the selected record codec max-octets, ten divisions finish with at most ten characters equal to the complete decimal expansion. This conditional codec component does not bound total composite article length or prove an actual served profile/writer bridge. fn-nbw-step-keeps-octets proves the produced representation remains octets under pieces shape and an octet accumulator; offset, fuel and used premises are unnecessary for this property, and both retained hypotheses have separate corrupted-state removal witnesses. books/nov-column-window.lisp fn-nbw-column-pieces copies a fixed number of cached NOV field references, numeric pieces and separators. Library theorem fn-nbw-column-pieces-refine-article-row: under maintained column relation F, facts equal to the actual lookup and decided ok verdict, the abstraction of its pieces equals the complete fn-nov-line over the article bytes, including CRLF. Removed redundant nonnil facts and explicit column-shape premises after proving the weakened statement; literal retained hypotheses have positive/removal witnesses. books/nov-span-window.lisp supplies guard-verified immutable-span normalization with pending CR, exact unconditional residual to fn-nov-scrub, slice abstraction under natural start, endpoint preservation under natural start/length, octet output under octet accumulator, per-fuel read/output/work bounds and strict progress under natural remaining length, positive fuel and active state. Literal retained hypotheses have positive/removal teeth; a lost-CR mutation and real arena execution cover split folds. Direct-row fn-nrf-facts reads the selected catalog row once without a Message-ID history scan. Under F and cache existence its facts are exactly the row payload facts; under F, a valid cache and exact article/row payload identity, its cached pieces denote the actual complete article NOV row. Selection visibility and membership are not inferred from cache existence. The guard-verified mixed fn-npw-tick composes strings, pinned spans, decimal setup and character draining under one fuel budget. Library boundary fn-npw-tick-makes-bounded-progress proves representation and octet preservation, positive work at most fuel, output at most fuel, exact complete residual and strict natural demand reduction under pieces shape, natural position, positive fuel and live pieces; each retained hypothesis has a literal removal witness. No whole field or final decimal conversion executes at a quantum boundary. OPEN: install byte cursor in actual fn-splan continuation with the full composed remaining theorem, bounded legacy parse/cache hydration when old checkpoints lack NOV, actual codec/profile bridge for numerical setup, lookup cost, allocator/runtime cost and matching native measurements. No whole payload parser or complete field/row allocation may remain in the final served quantum.",
       "milestone": "M5",
       "requirements": [
         "HST-023"
@@ -18030,11 +18030,19 @@
       "status": "planned",
       "evidence": [
         "books/nov-byte-window.lisp",
+        "books/nov-decimal-window.lisp",
+        "tests/acl2/nov-decimal-window-tests.lisp",
         "books/nov-column-window.lisp",
         "tests/acl2/nov-byte-window-tests.lisp",
-        "tests/acl2/nov-column-window-tests.lisp"
+        "tests/acl2/nov-column-window-tests.lisp",
+        "books/nov-span-window.lisp",
+        "tests/acl2/nov-span-window-tests.lisp",
+        "books/nov-row-facts.lisp",
+        "tests/acl2/nov-row-facts-tests.lisp",
+        "books/nov-piece-window.lisp",
+        "tests/acl2/nov-piece-window-tests.lisp"
       ],
-      "progress_note": "Clean persvati REPL: gpt61-nbw4 25/25 forms (21 same +2 macro named forms), gpt61-nbwt4 12/12 (11 named exact), gpt61-nbwc2 10/10 (6 named exact), gpt61-nbwct3 16/16 including actual intern/commit/lookup positive and literal hypothesis removal for F, exact facts and ok. All stopped. Source-dependency loads are not certificates. No host call, qualified image, allocator measurement or completed Q5c/J1 claim. Work/fuel models loop iterations and output length, not measured physical resources. Numeric setup still requires maintained codec/profile premise. Legacy parse/cache hydration remains owned open. The two named library theorems are retained as component evidence, not cited registry events: no served keystone is claimed until the actual host-called byte cursor composes them."
+      "progress_note": "Clean persvati REPL: gpt61-nbw4 25/25 forms (21 same +2 macro named forms), gpt61-nbwt4 12/12 (11 named exact), gpt61-nbwc2 10/10 (6 named exact), gpt61-nbwct3 16/16 including actual intern/commit/lookup positive and literal hypothesis removal for F, exact facts and ok. All stopped. Source-dependency loads are not certificates. No host call, qualified image, allocator measurement or completed Q5c/J1 claim. Work/fuel models loop iterations and output length, not measured physical resources. Numeric setup still requires maintained codec/profile premise. Legacy parse/cache hydration remains owned open. Current component replay: over2nbwt 15/15 forms with source-loaded nov-byte-window and octet output/removal teeth; over2dectfinal 11/11 with source-loaded nov-decimal-window, codec-bound and natural hypothesis removals, zero/max, wide continuation and positive-fuel progress. Decimal work counts divisions, not machine bit complexity; actual metadata bounds, integration and measurements remain open. The named library theorems are retained as component evidence, not cited registry events: no served keystone is claimed until the actual host-called byte cursor composes them. Span component final clean persvati over2spant replay: 15/15 forms, 2,291,506 prover steps including source-loaded article/article-fields/nov-fields/nov-span-window; test book diff 13/13 named events. This is source admission, not certification or served integration. Direct row component: clean hbox over2rowt loaded 8/8 forms, 14,651,088 prover steps including its matching source dependencies and actual intern/commit fixtures. Public component events 4 same, one local absent from encapsulated dependency as expected; test definitions 2 same. The facts and row-rendering refinements have positive and literal retained-hypothesis removal witnesses for F, cache existence, ok and selected payload identity. No served lookup or numeric setup switch is claimed. Mixed row-piece component clean persvati over2piecet: 15/15 forms, 4,347,769 prover steps, 8.85 seconds including matching source dependencies; 22 public events same, 13 locals absent from encapsulate as expected, 8 macro forms; test events 13 same. Full literal positive/removal teeth, mixed complete row, CRLF split and origin pin, empty pieces/zero, 30-digit continuation, lost-carry mutation and concrete arena execution pass. Work counts scalar transitions/divisions; physical bignum/allocator cost and actual served composition remain open."
     },
     {
       "id": "PRF-1086",
@@ -18057,7 +18065,7 @@
     {
       "id": "PRF-1092",
       "title": "Private history scalar layout refines fresh page allocation",
-      "statement": "Library fn-hpl-layout computes current-format data/table/directory page counts and physical bases without materializing allocation runs. An accepted layout has exactly the directory start, contiguous singles and high water of pgs-alloc on fresh state (nil 1). fn-hpl-single-address returns exactly the indexed allocated single under natural in-range index/count and positive directory span. Uses pgs-x-ntables rather than the logical pgs-ntables execution loop. Current u64 image count/address and u32 directory-span representation checks refuse by name. This is the physical-address component of the census-driven disk-backed private writer; page I/O effects, file-offset platform representation, resource admission, history census and root/binding composition remain open. No host caller or producer completion claim.",
+      "statement": "Library fn-hpl-layout computes current-format data/table/directory page counts and physical bases without materializing allocation runs. An accepted layout has exactly the directory start, contiguous singles and high water of pgs-alloc on fresh state (nil 1). fn-hpl-single-address returns exactly the indexed allocated single under natural in-range index/count and positive directory span. Uses pgs-x-ntables rather than the logical pgs-ntables execution loop. Current u64 image count/address and u32 directory-span representation checks refuse by name. This is the physical-address component of the census-driven disk-backed private writer; page I/O effects, file-offset platform representation, resource admission, history census and root/binding composition remain open. No host caller or producer completion claim. The positional fn-hpi-region/page component computes the unchanged FNSI whole-file page ranges against an admitted runtime/profile extent. Accepted requests stay inside the current image region, distinct pages do not overlap, and adjacent pages match the sequential format. Reader registered-region offsets differ: their stored base already skips the wrapper. Actual pwrite completion/uncertainty and token authority remain the controller/physical boundary.",
       "milestone": "M5",
       "requirements": [
         "HST-040"
@@ -18068,9 +18076,11 @@
       "evidence": [
         "books/history-page-layout.lisp",
         "tests/acl2/history-page-layout-tests.lisp",
-        "planning/history-page-cursor-contract.md"
+        "planning/history-page-cursor-contract.md",
+        "books/history-page-io.lisp",
+        "tests/acl2/history-page-io-tests.lisp"
       ],
-      "progress_note": "Clean protected auto-persvati hplt62 admitted source in proper encapsulate and12testbodyforms,0.06ACL2seconds/6152steps,zero refusal. Three literal hypothesis-removal assertions then passed in same clean session. Source guardverified; no certificate/native claim. Named library theorems are component evidence only; served event citations await an actual composed host caller."
+      "progress_note": "Clean protected auto-persvati hplt62 admitted source in proper encapsulate and12testbodyforms,0.06ACL2seconds/6152steps,zero refusal. Three literal hypothesis-removal assertions then passed in same clean session. Source guardverified; no certificate/native claim. Named library theorems are component evidence only; served event citations await an actual composed host caller. Additional clean auto-persvati hpit62 source encapsulate+8testforms passed0.03s/10647steps; positional plan guardverified, no native call yet."
     },
     {
       "id": "PRF-1075",
@@ -18541,6 +18551,196 @@
         "specs/store-size-carry.md"
       ],
       "progress_note": "Clean source-only REPL and literal teeth for insertion, duplicates, conflict, scalar-width crossing, and each removed hypothesis. Bounded decoder output, replay-composite translation, actual owner global installation and consumer/topic sidecars remain open. No manifest or host/image claim."
+    },
+    {
+      "id": "PRF-1095",
+      "title": "Resumable scalar cursor refines the current Store atom codec",
+      "statement": "Library component: fn-hrsc-begin captures an atom and opaque capture/lease references; guarded fn-hrsc-tick counts and emits current fn-scc-atom-octets one byte at a time. Under the carried logical invariant it preserves exact residual output, permitted verdicts, empty terminal residual and invariant, and strictly decreases remaining work outside done. Every emitted value is an octet; identities are preserved even on refusal. Strings and symbol names use indexed source references; integer remainders use the actual 255-digit codec domain. No whole scalar list encoding occurs in runtime begin/tick. Host/tree/controller composition, physical funding, maintained source/profile representability, matching certification and native image evidence remain open.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/history-scalar-cursor.lisp",
+        "tests/acl2/history-scalar-cursor-tests.lisp",
+        "specs/history-scalar-cursor.md",
+        "planning/evidence/history-scalar-cursor-source-2026-09-30.json"
+      ],
+      "progress_note": "Clean persvati hrsct8 source-dependency admission with proper local scope: 6.00 ACL2 seconds / 4,810,489 prover steps; 27 test forms include 23 passing literal witnesses. Runtime begin/tick helpers are guard verified. Static teeth: 23 witnesses, 0 findings; narrow theory check green. No certification, host, image or physical-resource claim; library events remain component evidence, with full target planned."
+    },
+    {
+      "id": "PRF-1103",
+      "title": "Actual article parser has an exact first-five NOV line projection",
+      "statement": "Logical component for fn-lpc header refinement: fn-novlp-parse-lines projects fn-article-parse-lines on all arguments and preserves every error result; fn-novlp-five-columns-are-overview-content equates the five normalized first matches with the actual fn-nov-header-content values consumed by fn-hnov-of-parsed. These are unconditional theorems. The reference carries only selected completed values and the open field. It is proof vocabulary, not a host-called implementation or a bounded-work claim. Byte cursor simulation, guards of any served executable, host integration and matching qualification remain open. The byte-side component fn-nlv-control-byte-is-actual-header-byte proves exact commutation of the actual header byte transition with its five-scalar grammar projection. General physical-line equations cover grammatical new fields and folded values, including independent per-fold visibility, and body acceptance agrees with fn-article-body-crlfp. Arbitrary malformed header rejection and full cursor-to-parser simulation remain open.",
+      "milestone": "M6",
+      "requirements": [
+        "NNT-006"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/nov-line-projection.lisp",
+        "tests/acl2/nov-line-projection-tests.lisp",
+        "planning/evidence/nov-line-projection-source.md",
+        "books/legacy-parser-validity.lisp",
+        "tests/acl2/legacy-parser-validity-tests.lisp",
+        "planning/evidence/legacy-parser-validity-source.md"
+      ],
+      "progress_note": "Protected clean persvati nlp2 admitted 23 source forms including source dependencies: 5.55 ACL2 seconds / 2239851 prover steps. General parser projection 51441 steps. Fifteen test forms passed. Source admission only; no committed certification manifest, host/image or native claim. Byte-side clean protected persvati nlvfinal admitted31forms,9.83s/5824331steps including source dependencies;22testforms passed. This is source evidence, not certification or full header simulation."
+    },
+    {
+      "id": "PRF-1096",
+      "title": "Resumable census and canonical header emission preserve current history image",
+      "statement": "Component fn-hcc-row reduces one completed codec byte count into exact record and individually padded payload totals, refusing stale ordinals or current u64 format overflow without changing totals. Named refinement relates successful reduction to fn-hp-pes-len and completed region lengths to fn-hp-lens. fn-hcc-cap-tick performs one capacity doubling with residual adt-pow2-at-least preservation; scalar starts/pages refine canonical adt-starts-l/adt-end-l. fn-hch-word and concrete fn-hch-tick emit one exact current fn-hp-hdr2 word into fixed page scratch, preserving its representation and capture/lease identities. Full source decoder/encoder, row census traversal, canonical body/table/directory effects, funding and publication composition remain open. No actual host caller or served completion claim.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-040"
+      ],
+      "depends_on": [
+        "PRF-1093"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/history-image-census.lisp",
+        "books/history-image-header.lisp",
+        "tests/acl2/history-image-census-tests.lisp",
+        "tests/acl2/history-image-header-tests.lisp",
+        "planning/history-page-cursor-contract.md"
+      ],
+      "progress_note": "Clean protected auto-persvati hcht63 loaded census, scratch and header source in proper encapsulates plus9header test forms with zero refusals:1.09ACL2seconds/35708steps. All15census testbodyforms then passed in the same clean session. Source guardverified and named component refinements admitted; full per-literal hypothesis audit and composed keystone remain open. No certificate/native/host claim."
+    },
+    {
+      "id": "PRF-1101",
+      "title": "W8 retention ledger logical/resource maintenance refinement component",
+      "statement": "Planned composition target; source component in books/history-resource-refinement.lisp. fn-hrf-alpha separates logical active obligation id/subject/kind/evidence plus permanent release history from resource capacity/reserved/per-pin charges. fn-hrf-release-refines-abstract-maintenance proves a commuting square for existing fn-hkn-release-retention under an alist pin domain; fn-hrf-maintenance-preserves-logical-obligations preserves the logical projection. fn-hrf-common-admission-preserves-logical-equivalence proves equal logical outcomes for actual fn-retain-admit when initial logical projections match and both ledgers admit. fn-hrf-release-preserves-logical-equivalence proves matching logical results for actual fn-retain-release under both ledger invariants and initial logical equivalence. These are retained-ledger component theorems, not registry keystones over the complete host-called owner. OPEN: actual reclaim eligibility and owner transition bridge, immutable selected subject/profile and conflict evidence, policy/revocation history, snapshot carry inverse, physical resource vector/funded settlement, bounded continuation induction and complete external histories retaining every capacity refusal. No unrestricted future-observation equivalence or byte-accurate funding claim.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-017",
+        "STO-014"
+      ],
+      "depends_on": [
+        "PRF-998"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/history-resource-refinement.lisp",
+        "tests/acl2/history-resource-refinement-tests.lisp"
+      ],
+      "progress_note": "Clean protected persvati hrf3 admitted all21 source forms (20/20 named events match), then17 fixture forms/11 literal witness assertions. Source and7 source-loaded dependencies cost30.74 ACL2 seconds/8,326,300 prover steps; all sessions stopped. Static teeth11/0 and scoped theory0 findings, ID claims checked. Source-dependency loads are not certificates; no host wiring, image/native or full W8 completion claim. Named theorems are component evidence, not cited events until actual host composition."
+    },
+    {
+      "id": "PRF-1097",
+      "title": "Actual configuration replay counts and publication namespace bound",
+      "statement": "A successful fn-cnode-config-replay has configuration generation equal to the exact input record count. An accepted fn-cvec-native-admin-authorize publishes generation one plus the existing configuration count, and that count fits the profile max-config-generations.",
+      "milestone": "M2",
+      "requirements": [
+        "STO-020",
+        "STO-023"
+      ],
+      "depends_on": [
+        "PRF-138",
+        "PRF-171"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-cvcg-config-replay-generation-counts-records",
+        "fn-cvcg-accepted-publication-count-fits-profile"
+      ],
+      "evidence": [
+        "books/store-config-generation.lisp",
+        "tests/acl2/store-config-generation-tests.lisp",
+        "specs/reconfiguration.md",
+        "planning/evidence/store-config-generation-2026-09-29.md"
+      ],
+      "progress_note": "PKT-183 configuration contiguity component. Actual native caller host/store-node-host.lisp fn-store-cfg-native-admin-authorize invokes fn-cvec-native-admin-authorize, whose fn-native-admin-publication-authorize obtains generation from fn-cnode-config-replay. No behavior changes or added full-state scans. Fresh protected cg3 loaded the complete 16-form test root with source dependencies, no refusal, 54.68 ACL2 seconds including dependencies. Four witness assertions and two expected must-fail removals cover both keystones. Strict reach hosts both events; no matching certification manifest or qualified image is claimed. Serialized credential-size component of original PKT-183 remains separate/open."
+    },
+    {
+      "id": "PRF-1088",
+      "title": "Bounded history record cursor refines current image codec",
+      "statement": "S7/P12/D33 planned union: an explicit source-reference task cursor incrementally validates/counts and emits tree codec bytes, packs padded u64 words, and supplies exact census/placement inputs to the private snapshot producer. No whole-record encoder, source-list scan or image resize occurs in a bounded tick. Resident descriptor, scalar/leaf byte composition and byte census components refine existing fn-scc-encode and its exact length; scalar word boundaries refine fn-hp-pack8. Carried invariants and capture/lease identities persist. This library has no host caller and does not complete borrowed decoded spans, general progress, controller funding, publication, Message-ID key hashing or fn-hp-x-blocks composition.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [
+        "PRF-1095"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/history-record-cursor.lisp",
+        "tests/acl2/history-record-cursor-tests.lisp",
+        "specs/history-record-cursor.md",
+        "planning/evidence/history-record-cursor-source-2026-09-30.json"
+      ],
+      "progress_note": "Clean protected proper-local hrc11 on persvati:94 source body forms inside one encapsulate,2.99 ACL2s/2559174 steps;62 testbody forms inside one encapsulate,0.06s/4249 steps. Scalar dependency admitted separately with its locals confined. Runtime begin/tick/push/finish guards verified. Resident tree descriptors, scalar/leaf byte composition, exact byte census and scalar word boundaries refine current codec. Reachable nested/dotted source, string/symbol, quantum resume, full/partial/aligned words, census edge refusal and literal invariant/domain removals covered. No actual host caller, certification/native/image or full producer claim. Full target remains planned:borrowed cold spans,general progress,padded placement/profile bridge,initial encoded-size hypothesis witnesses,controller funding and qualification remain open."
+    },
+    {
+      "id": "PRF-1094",
+      "title": "Bounded legacy hydration cursor and exact catalog refinement (header simulation open)",
+      "statement": "Q5c/J1 source component: fn-lpc-begin captures an immutable arena handle, known length and origin pin. Guard-verified fn-lpc-tick consumes at most fuel source bytes, returns consumed/work <= fuel, preserves source/pin and its scalar ready guard, and makes progress with positive fuel before EOF. Fields are five handle/start/length/pin spans; no terminal parse, reverse, coerce or flatten is executed. fn-lpc-tick-is-source-list-tick connects the concrete arena accessor to the exact source scan. fn-lpc-tick-full-body-lines unconditionally equates the completed tick body count with actual fn-hf-body-lines-of, including invalid headers; redundant arena/handle/true-list hypotheses were removed after proving the stronger statement. fn-lpc-tick-preserves-bounds establishes maintained immutable span bounds from begin; fn-lpc-field-read-is-ready discharges the raw arena read guard from those carried bounds. General equality of final verdict and materialized five spans with actual fn-hnov-of remains OPEN, as do allocator cost and actual served composition. The full grammar is implemented and checked against actual fn-hnov-of, but examples are not its missing general proof. The source-value component proves actual value-byte and folded-byte transitions preserve scrub(source span)=scrub(value-content unfolded value), proves complete CRLF framing preserves that value and the completed line span, and proves normalization commutes with the parser projection first-hit update. These are component invariants, not the outstanding whole-header theorem.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-1066"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/legacy-parser-cursor.lisp",
+        "books/legacy-parser-reference.lisp",
+        "tests/acl2/legacy-parser-cursor-tests.lisp",
+        "books/legacy-parser-header.lisp",
+        "tests/acl2/legacy-parser-header-tests.lisp",
+        "books/legacy-parser-values.lisp",
+        "tests/acl2/legacy-parser-values-tests.lisp",
+        "planning/evidence/legacy-parser-values-source.md"
+      ],
+      "progress_note": "Source component only; no host call, qualified image, certification manifest or completed Q5c/J1 claim. Runtime work counts raw byte transitions; constant-size record allocation is explicit in source, while a proved allocation accounting bound and physical measurement remain open. Clean protected REPL evidence is recorded in LANEDUMP.md. fn-lpc-agreesp states the full outstanding catalog equality and is not a theorem. Fixforward from 8c6750b42: whitespace-only folded physical lines now reject independently of earlier visible field content. Exact pre-fix counterexample was admitted; W=1 regression and full source replay passed. Per-line fold mode is distinct from accumulated field visibility. Clean protected persvati legacy-values-clean admitted12testforms including source dependencies,7.13ACL2seconds/3490146steps. Literal actual-transition positive and all four hypothesis removals passed. No certificate or host call implied."
+    },
+    {
+      "id": "PRF-1104",
+      "title": "Bounded metadata spool emission preserves current table and directory words",
+      "statement": "Component fn-hpm-tick writes one metadata word into fixed scratch and advances a scalar ordinal/component/remaining continuation, or returns done/page-full/refused unchanged. Entry words match existing pgs-entry-words; indexed stream and concrete prefix effect refine existing pgs-encode-run, with table encoding the single-page case. Directory entries may straddle page boundaries; continuation survives scratch reset. Source digest attribution is an explicit theorem premise supplied by the staged spool lease/reader, not guessed by the writer. Scalar domain, concrete scratch invariant, identities and progress are preserved. Full spool admission/authentication, stream induction to completed root binding and producer integration remain open.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-040"
+      ],
+      "depends_on": [
+        "PRF-1093"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/history-page-metadata.lisp",
+        "tests/acl2/history-page-metadata-tests.lisp",
+        "planning/history-page-cursor-contract.md"
+      ],
+      "progress_note": "Clean protected auto-persvati hpmt63 source-loaded scratch and metadata in proper encapsulates plus15testforms:0.46ACL2seconds/69691steps,zero refusals. Guardverified tick preserves scalar domain/concrete scratch/identities; current run effect and progress admitted. Actual342entry two-page crossing matches complete existing encoding. Full per-literal hypothesis audit and served composition remain open; no certificate/image/native claim."
+    },
+    {
+      "id": "PRF-1102",
+      "title": "Bounded current-format history byte decoder and borrowed row abstraction",
+      "statement": "Planned full source-row boundary: authenticated captured history page bytes consumed in bounded ticks decode to a concrete borrowed node whose fn-hdc-abstract equals the actual current fn-scc-decode-tree result, with unchanged root/epoch/lease, exact padding/MKEY refusal and bounded funded storage. Current library components: fn-hdc-number-feed-preserves-value preserves the little-endian residual under positive remaining digits and a natural consumed byte; fn-hdc-number-is-current-codec refines the existing numeric reader including nonminimal spellings. fn-hdc-feed is guard-verified, preserves its fixed-size shape and lifetime fields, and consumes exactly one byte per active call. Payloads remain source spans; a fixed HSTXA comparison avoids arbitrary symbol interning. Full stream semantic inverse, source authentication, funding and actual host composition remain open. This row cites no production event before that boundary exists.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/history-decode-cursor.lisp",
+        "books/history-decode-nodes.lisp",
+        "books/history-decode-stream.lisp",
+        "tests/acl2/history-decode-cursor-tests.lisp",
+        "planning/history-decode-contract.md",
+        "specs/checkpoint.md"
+      ],
+      "progress_note": "Protected source REPL admissions only, no certificate or qualified image. Producer/encoder consume the tagged node API. Numeric residual theorem was weakened after proving cursor shape and upper octet bound redundant to its algebra; execution still requires a valid cursor and octet. General decoder inverse is not established by the finite compatibility witnesses."
     }
   ]
 }

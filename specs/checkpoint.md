@@ -397,3 +397,68 @@ not a data-capacity limit. Buffer allocation needs its actual runtime charge,
 and reuse must wait for completion/join of every I/O owner. The proof-only
 prefix collector is excluded from the host path; serialization and complete
 image effect composition remain open.
+
+`books/history-image-census.lisp` and `books/history-image-header.lisp`
+(PRF-1096) connect scalar census to current-format header emission. A completed
+row contributes its exact resumable-codec byte count and its own pad8 bytes;
+a stale ordinal or u64 field overflow leaves census totals unchanged. The
+four scalar regions each occupy `8*count` used bytes. Two scalar capacity
+cursors suffice for those columns and the payload region; a tick doubles once,
+with no recursive capacity calculation. Their results produce the canonical
+five starts and page count. `fn-hch-tick` writes one word of the existing
+FNADTSN2 header into the fixed scratch and returns done only after that page is
+full. The named effect theorem connects the concrete prefix to `fn-hp-hdr2`;
+no header-sized list or zero vector is constructed by execution.
+
+These are component boundaries: the exact codec count is supplied by a
+separate resumable encoder, and capture/lease identities remain in its parent
+cursor and the scratch. Captured based histories require the new bounded
+current-format decoder, including borrowed string/symbol/octet spans; resident
+suffix rows remain borrowed references. Neither an eager `fn-sf-records`
+conversion nor terminal span materialization is permitted. Canonical body,
+table/directory emission, offset-domain checks, resource admission and complete
+publication refinement remain open. This source increment carries no served
+keystone or certification claim.
+
+`books/history-page-metadata.lisp` (PRF-1104) emits the existing six-word
+address/transaction/digest entry into the same scratch. `fn-hpm-tick` carries
+ordinal, component and remaining run words; each stored word advances once.
+Page-full, done and address/ordinal refusal preserve cursor and scratch. The
+ordinal/component survives scratch consumption/reset, since a directory entry
+may straddle physical pages. Named entry, run-position and concrete effect
+refinements use `pgs-entry-words` and `pgs-encode-run`; a table is the single-page
+case, with its341entries and two final zeros. Digest source attribution remains
+an explicit premise: the spool reader must return the exact captured/staged
+digest at that ordinal. The emitter retains only one256-bit digest and scalar
+state. It preserves concrete scratch representation and epoch/lease identity.
+Complete spool admission, authenticated reads, final root binding and served
+composition remain open; no host caller or certification claim is added.
+
+The scalar layout component also exposes `fn-hpi-region/page` in
+`books/history-page-io.lisp`: positional whole-file requests use the unchanged
+FNSI base plus the physical page offset. Accepted ranges fit the image region
+and admitted runtime/profile extent, and different pages do not overlap. The
+extent is an admission input, not a hard-coded storage ceiling. This is the
+ACL2 addressing seam for eliminating the native by-address hash. Registered
+reader extents already include the FNSI base; their relative requests must not
+add it again. The physical/controller layer still owns matching request tokens,
+short/ambiguous I/O verdicts and cancellation/pin lifetime.
+
+### Bounded borrowed history decoding (planned, PRF-1102 / SCN-1014)
+
+The captured history source is decoded incrementally using the unchanged tree
+codec. `books/history-decode-stream.lisp` consumes one verified byte per active
+step and retains source epoch and lease; raw string, symbol and octet payloads
+remain borrowed spans in `books/history-decode-nodes.lisp`. Its non-executable
+abstraction denotes the existing logical row. Numeric decoding refines the
+current little-endian reader, including accepted nonminimal spellings. The
+canonical encoder must classify pair-shaped octet lists incrementally and
+canonicalize empty octet spans to NIL rather than copy old instruction bytes.
+
+The full requirement remains open: captured-root directory/table/data
+validation, exact row semantic inverse, padding and MKEY validation, carried
+source-token binding, funded node/stack allocation, guard-verified host
+composition and matching native evidence. Neither a source parser nor a
+fixed page buffer alone establishes that boundary. See
+[the concrete contract](../planning/history-decode-contract.md).
+

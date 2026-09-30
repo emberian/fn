@@ -121,3 +121,29 @@
                                   (fn-nbw-step-aux pieces pos fuel acc used)))
                   :in-theory (e/d (fn-nbw-step-aux fn-nbw-demand)
                                  ((:executable-counterpart fn-nbw-step-aux))))))
+
+; Literal output-invariant witnesses: full character range plus immutable
+; byte pieces. Only the two retained representation hypotheses are needed.
+(defthm nbwt-octets-positive
+  (let* ((pieces (list (coerce (list (code-char 0) (code-char 255)) 'string)
+                       '(9 13 10)))
+         (acc '(128))
+         (next (mv-list 4 (fn-nbw-step-aux pieces 0 4 acc 0))))
+    (and (fn-nbw-piecesp pieces) (fn-cbor-octet-listp acc)
+         (fn-cbor-octet-listp (first next))
+         (equal (first next) '(128 0 255 9))))
+  :rule-classes nil)
+
+(defthm nbwt-octets-without-pieces-corrupted-state
+  (let* ((pieces '((256))) (acc nil)
+         (next (mv-list 4 (fn-nbw-step-aux pieces 0 1 acc 0))))
+    (and (not (fn-nbw-piecesp pieces)) (fn-cbor-octet-listp acc)
+         (not (fn-cbor-octet-listp (first next)))))
+  :rule-classes nil)
+
+(defthm nbwt-octets-without-accumulator-corrupted-state
+  (let* ((pieces '("A")) (acc '(256))
+         (next (mv-list 4 (fn-nbw-step-aux pieces 0 1 acc 0))))
+    (and (fn-nbw-piecesp pieces) (not (fn-cbor-octet-listp acc))
+         (not (fn-cbor-octet-listp (first next)))))
+  :rule-classes nil)

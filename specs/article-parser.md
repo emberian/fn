@@ -137,3 +137,31 @@ successful parsing establishes `fn-article-syntax-p`, source/body length at most
 hypothesis. These results are in the [assurance checkpoint](../tests/evidence/2026-09-18-assurance.md).
 Full parser work/allocation proofs and other semantic fields remain open.
 None of these properties establishes full RFC article validity.
+
+### Logical NOV line projection (PRF-1103)
+
+`books/nov-line-projection.lisp` supplies the proof boundary used by the
+productive legacy OVER cursor: `fn-novlp-parse-lines` preserves every result
+of the actual `fn-article-parse-lines` while retaining only the first selected
+completed values and the current field. The generalized theorem has no
+hypotheses; a former accumulator typing premise was proved redundant and removed.
+`fn-novlp-five-columns-are-overview-content` connects its normalized five values
+to the actual `fn-nov-header-content` functions used by `fn-hnov-of-parsed`.
+Repeated fields retain the first match; normalization removes exactly one
+initial SP, removes folding CRLF and scrubs TAB. Errors and closed-field
+checks are unchanged. SCN-1015 exercises these boundaries, including an empty
+or whitespace-only first line, folds, binary body and malformed input.
+
+This line reference is proof vocabulary. It is not a served implementation,
+a constant-space parser, or evidence of byte-cursor correctness; that simulation,
+its guard and work obligations and matching host/image evidence remain open.
+
+The byte-side proof vocabulary in `books/legacy-parser-validity.lisp` now
+commutes exactly with the actual `fn-lpc-header-byte` transition. Its control
+projection retains phase, physical-line length, current-field presence,
+field-wide visibility and a separate physical-fold visibility mode. General
+new-field and continuation-line equations and an exact article-body grammar
+bridge are proved. The separation of visibility was necessary: a previous
+visible value cannot make a whitespace-only continuation valid. These pieces
+still require the general malformed-header rejection and complete source-span
+simulation before claiming the cursor refines the actual parser.

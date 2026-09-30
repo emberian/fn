@@ -17687,6 +17687,19 @@
         }
       ],
       "pending_subject": "Constructor component; currently unreachable-in-composition. Actual owner writer installation and bounded bootstrap are open; no live funding/reserve claim."
+    },
+    {
+      "id": "PRF-1097",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cvcg-config-replay-generation-counts-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvcg-accepted-publication-count-fits-profile"
+        }
+      ]
     }
   ]
 }
