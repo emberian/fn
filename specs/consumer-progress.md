@@ -1213,3 +1213,32 @@ committed event count (`event.sequence + 1`), independent of allocator txid.
 No parsed shape or size carry establishes authority; nonempty old results do
 not acquire a missing committed root from a current STATE getter. The actual
 cfg-first producer/decoder association remains an open join.
+
+
+The paired configured recovery continuation `fn-capr-tick` selects the actual
+configuration-first C/E position from retained journal tails. Typed C adopts
+through the same full8 account/config decision before ordinary config semantics;
+ordinary C aborts preparation. E consumes the same SSR-produced identity packet
+and the actual physical decision, deriving withdrawals and visibility effect
+from the exact installed prefix, then retaining CP7/metadata5/preparation16 and
+publication4 together. The persisted begin cut is the begin row's E sequence,
+matching the live transaction driver, rather than the count after that row.
+
+This high callback is source work, not yet an admitted/guard-verified recovery
+entry. The current loader installs history only after full open; an actual
+append-before-callback prefix FILES/history source must be added. Passing the
+final history would expose future control targets and is invalid. The paired
+callback's ordinary physical projection additionally requires carried source
+metadata; typed C has a new typed reference, not equality to old generic-config
+refusal. Initial/cold relation, complete source/prefix refinement, every crash
+cut, allocation/retirement funding and actual caller installation remain open.
+
+The ordinary control helper `fn-ctl-config-at` independently applies generic
+C records; it cannot consume a typed adoption marker. The paired C callback
+therefore retains its literal evidence plus the actual resulting configuration,
+C generation/sequence/txid and keyring generation in a nonauthorizing
+`typed-config-source-required` descriptor. The E callback explicitly yields
+`typed-control-config-source` until the actual maintained pinned historical
+configuration lookup/source is installed. This is an implementation gap, not
+a permanent semantic exclusion for plain or signed append. The original
+ordinary C history is preserved; no large synthesized account delta is emitted.

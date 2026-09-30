@@ -141,6 +141,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-account-config-commit \
 	books/consumer-account-transaction-driver \
 	books/consumer-transaction-dispatch \
+	books/consumer-authority-carried-fold \
+	books/consumer-configured-authority-replay \
 	books/consumer-account-initial \
 	books/consumer-account-relation \
 	books/consumer-account-relation-stage \
@@ -186,6 +188,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-account-config-commit-tests \
 	tests/acl2/consumer-account-transaction-driver-tests \
 	tests/acl2/consumer-transaction-dispatch-tests \
+	tests/acl2/consumer-configured-authority-replay-tests \
 	tests/acl2/store-binding-stage-routing-tests \
 	tests/acl2/consumer-account-initial-tests \
 	tests/acl2/consumer-account-relation-tests \
