@@ -1394,6 +1394,61 @@
                           fn-scr-dispatch-events-is-scar-dispatch-events
                           fn-nntp-article-idp-is-consp fn-scat-article-idp-is-msgid-idp)))
 
+; A publication-changing command is isolated from preceding reply effects.
+; The original scanner remains the logical full-span reference. This entry
+; will be called only after the request producer owns the applicable source;
+; standalone GROUP/LISTGROUP additionally require offered-source custody.
+(defun fn-scr-source-change-eventsp (events)
+ (declare (xargs :guard t))
+ (and (consp events)
+      (or (fn-served-advance-eventp (car events))
+          (fn-scr-source-change-eventsp (cdr events)))))
+
+(defun fn-scr-source-scan-span-loop
+ (conn i end live trie lver arts cache fn-octets fn-arena fn-cat consumed acc)
+ (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
+                 :guard (and (fn-wire-fast-statep (fn-served-conn-wire conn))
+                             (natp i) (natp end) (<= i end)
+                             (<= end (fn-octets-len fn-octets))
+                             (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)
+                             (acl2-numberp consumed))
+                 :measure (nfix (- end i)) :verify-guards nil
+                 :hints (("Goal" :in-theory (disable fn-scr-dispatch-events
+                                                     fn-served-submission)))))
+ (if (or (not (natp i)) (not (natp end)) (>= i end)
+         (fn-served-closed-wirep (fn-served-conn-wire conn))
+         (fn-served-haltedp conn))
+     (fn-served-counted-make consumed
+       (fn-served-make-result conn (fn-ag-rev-onto acc nil)))
+   (let* ((w (fn-wire-scan (fn-served-conn-wire conn) i end fn-octets))
+          (next (fn-wsp-next w))
+          (changing (fn-scr-source-change-eventsp (fn-wsp-events w))))
+     (if (and changing (consp acc))
+         ; Do not install the scanned wire: the entire command is unconsumed.
+         (fn-served-counted-make consumed
+           (fn-served-make-result conn (fn-ag-rev-onto acc nil)))
+       (let ((here (fn-scr-dispatch-events
+                    (fn-served-conn-with-wire conn (fn-wsp-state w))
+                    (fn-wsp-events w) live trie lver arts cache fn-arena fn-cat)))
+         (if (or changing (fn-served-submission (fn-served-result-effects here)))
+             (fn-served-counted-make (+ consumed (- next i))
+               (fn-served-make-result (fn-served-result-conn here)
+                 (fn-ag-rev-onto acc (fn-served-result-effects here))))
+           (fn-scr-source-scan-span-loop (fn-served-result-conn here) next end
+             live trie lver arts cache fn-octets fn-arena fn-cat
+             (+ consumed (- next i))
+             (fn-ag-rev-onto (fn-served-result-effects here) acc))))))))
+
+(defun fn-scr-source-scan-span (conn i end live trie lver arts cache fn-octets fn-arena fn-cat)
+ (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
+                 :guard (and (fn-wire-fast-statep (fn-served-conn-wire conn))
+                             (natp i) (natp end) (<= i end)
+                             (<= end (fn-octets-len fn-octets))
+                             (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                 :verify-guards nil))
+ (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+                              fn-octets fn-arena fn-cat 0 nil))
+
 (defun fn-scr-scan-span-loop (conn i end live trie lver arts cache fn-octets fn-arena fn-cat
                                    consumed acc)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
@@ -1902,6 +1957,83 @@
                               (<= end (fn-octets-len fn-octets))
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
   (let ((result (fn-scr-own-read-span (fn-ocfg-owner oc) id i end cache fn-octets fn-arena fn-cat)))
+    (fn-own-tls-make-result
+     (fn-own-tls-result-consumed result)
+     (fn-own-tls-result-effects result)
+     (fn-ocfg-with-read-owner oc id (fn-own-tls-result-owner result)
+                              (fn-own-tls-result-repinned result))
+     (fn-own-tls-result-repinned result))))
+
+; Source-bounded caller chain, pending consumed-prefix refinement and guards.
+(defun fn-scr-source-step-span-core (conn i end live trie lver arts cache fn-octets fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
+                  :guard (and (fn-wire-fast-statep (fn-served-conn-wire conn))
+                              (natp i) (natp end) (<= i end)
+                              (<= end (fn-octets-len fn-octets))
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :verify-guards nil))
+  (let* ((wire (fn-served-conn-wire conn))
+         (fed (fn-scr-source-scan-span conn i end live trie lver arts cache fn-octets fn-arena fn-cat))
+         (result (fn-served-counted-result fed))
+         (wire2 (fn-served-conn-wire (fn-served-result-conn result))))
+    (fn-served-counted-make
+     (fn-served-counted-consumed fed)
+     (fn-served-make-result
+      (fn-served-result-conn result)
+      (mbe :logic
+           (append (fn-served-result-effects result)
+                   (if (and (not (fn-served-closed-wirep wire))
+                            (fn-served-closed-wirep wire2))
+                       (list (fn-nntp-close-effect))
+                     nil))
+           :exec
+           (fn-ag-append
+            (fn-served-result-effects result)
+            (if (and (not (fn-served-closed-wirep wire))
+                     (fn-served-closed-wirep wire2))
+                (list (fn-nntp-close-effect))
+              nil)))))))
+
+(defun fn-scr-source-step-span-fast (conn i end live trie lver arts cache fn-octets fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
+                  :guard (and (natp i) (natp end) (<= i end)
+                              (<= end (fn-octets-len fn-octets))
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :verify-guards nil))
+  (if (not (fn-wire-fast-statep (fn-served-conn-wire conn)))
+      (fn-served-counted-make 0 (fn-served-make-result conn nil))
+    (fn-scr-source-step-span-core conn i end live trie lver arts cache fn-octets fn-arena fn-cat)))
+
+(defun fn-scr-source-own-read-span (o id i end cache fn-octets fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
+                  :guard (and (natp i) (natp end) (<= i end)
+                              (<= end (fn-octets-len fn-octets))
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :verify-guards nil))
+  (let ((conn (fn-own-find-conn id (fn-own-conns o)))
+        (live (fn-sn-node (fn-own-store o)))
+        (trie (fn-own-view-index (fn-own-view o)))
+        (lver (fn-own-view-version (fn-own-view o)))
+        (arts (fn-state-articles (fn-own-view-archive (fn-own-view o)))))
+    (if conn
+        (let* ((counted
+                 (fn-scr-source-step-span-fast
+                  (fn-own-tls-served-conn o conn) i end live trie lver arts cache fn-octets fn-arena fn-cat))
+               (result
+                 (fn-scar-finish-read
+                  o conn (fn-served-counted-result counted) live)))
+          (fn-own-tls-make-result
+           (fn-served-counted-consumed counted) (car result) (cdr result)
+           (fn-own-result-repinned (fn-served-counted-result counted))))
+      (fn-own-tls-make-result (nfix (- end i)) nil o nil))))
+
+(defun fn-scr-ocfg-source-read-span (oc id i end cache fn-octets fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
+                  :guard (and (natp i) (natp end) (<= i end)
+                              (<= end (fn-octets-len fn-octets))
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :verify-guards nil))
+  (let ((result (fn-scr-source-own-read-span (fn-ocfg-owner oc) id i end cache fn-octets fn-arena fn-cat)))
     (fn-own-tls-make-result
      (fn-own-tls-result-consumed result)
      (fn-own-tls-result-effects result)

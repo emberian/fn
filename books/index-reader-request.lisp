@@ -5,7 +5,9 @@
 (logic)
 (include-book "index-query-slot-issuer")
 (include-book "index-backing-generations")
+(include-book "index-backing-connection-pins")
 (include-book "index-range-controller")
+(include-book "owner-read-result")
 
 (defun fn-irr-receipt-request (receipt)
  (declare (xargs :guard t)) (fn-omk-at 6 receipt))
@@ -20,6 +22,8 @@
  (declare (xargs :guard t)) (fn-omk-at 6 request))
 (defun fn-irr-request-rc (request)
  (declare (xargs :guard t)) (fn-omk-at 5 request))
+(defun fn-irr-request-holder (request)
+ (declare (xargs :guard t)) (fn-omk-at 8 request))
 (defun fn-irr-request-pin (request)
  (declare (xargs :guard t)) (fn-omk-at 2 request))
 (defun fn-irr-request-publication (request)
@@ -130,6 +134,158 @@
       (equal (fn-ipub-number-id a) (fn-ipub-number-id b))
       (equal (fn-ipub-arena-incarnation a) (fn-ipub-arena-incarnation b))
       (equal (fn-ipub-arena-prefix a) (fn-ipub-arena-prefix b))))
+
+; Only this receipt phase transition couples a connection alias to a request.
+; Each successful registry effect is recorded before another action can run.
+(defun fn-irr-receipt-phase (receipt phase)
+ (declare (xargs :guard t))
+ (list (fn-omk-at 0 receipt) (fn-omk-at 1 receipt)
+       (fn-omk-at 2 receipt) (fn-omk-at 3 receipt)
+       (fn-omk-at 4 receipt) (fn-omk-at 5 receipt)
+       (fn-omk-at 6 receipt) phase (fn-omk-at 8 receipt)))
+
+(defun fn-irr-request-acquire-alias (nonce fuel fn-index-backing)
+ (declare (xargs :stobjs fn-index-backing :guard (natp fuel)))
+ (let* ((receipt (fn-ibp-request-pending fn-index-backing))
+        (request (fn-irr-receipt-request receipt))
+        (holder (fn-irr-request-holder request))
+        (phase (fn-omk-at 7 receipt))
+        (depth (fn-ibp-slot-depth fn-index-backing)))
+  (cond ((not (and (posp nonce) (equal nonce (fn-omk-at 2 receipt))
+                   (eq (fn-omk-at 0 receipt) :index-request-receipt)))
+         (mv :stale fuel fn-index-backing))
+        ((member-eq phase '(:alias-held :query-owned :source-owned :read-ready :committed))
+         (mv :owned fuel fn-index-backing))
+        ((not (eq phase :reserved)) (mv :recovery-required fuel fn-index-backing))
+        ((< fuel (* 2 (+ 1 depth))) (mv :yield fuel fn-index-backing))
+        (t (mv-let (word row left)
+            (fn-ibp-connection-read holder fuel fn-index-backing)
+            (mv-let (source-word pin)
+              (fn-ich-row-source (fn-omk-at 1 request) row)
+              (if (not (and (eq word :present) (eq source-word :current)
+                            (equal (fn-omk-at 1 pin)
+                                   (fn-omk-at 1 (fn-irr-request-pin request)))
+                            (fn-irr-publication-coordinatesp
+                              (fn-omk-at 2 pin) (fn-irr-request-publication request))))
+                  (mv :unavailable left fn-index-backing)
+                (mv-let (acquired ignored remaining fn-index-backing)
+                  (fn-ibp-connection-event holder :acquire (fn-omk-at 1 request)
+                                            nil left fn-index-backing)
+                  (declare (ignore ignored))
+                  (let* ((ok (eq acquired :acquired))
+                         (fn-index-backing
+                          (update-fn-ibp-request-pending
+                            (fn-irr-receipt-phase receipt
+                              (if ok :alias-held :recovery-required)) fn-index-backing)))
+                    (mv (if ok :owned :recovery-required) remaining fn-index-backing))))))))))
+
+(defun fn-irr-request-return-alias (nonce fuel fn-index-backing)
+ (declare (xargs :stobjs fn-index-backing :guard (natp fuel)))
+ (let* ((receipt (fn-ibp-request-pending fn-index-backing))
+        (request (fn-irr-receipt-request receipt))
+        (phase (fn-omk-at 7 receipt)))
+  (cond ((not (and (posp nonce) (equal nonce (fn-omk-at 2 receipt))
+                   (eq (fn-omk-at 0 receipt) :index-request-receipt)))
+         (mv :stale fuel fn-index-backing))
+        ((member-eq phase '(:source-owned :read-ready :committed)) (mv :owned fuel fn-index-backing))
+        ((not (eq phase :query-owned)) (mv :recovery-required fuel fn-index-backing))
+        ((<= fuel (fn-ibp-slot-depth fn-index-backing)) (mv :yield fuel fn-index-backing))
+        (t (mv-let (returned ignored left fn-index-backing)
+             (fn-ibp-connection-event (fn-irr-request-holder request) :return
+                                      (fn-omk-at 1 request) nil fuel fn-index-backing)
+             (declare (ignore ignored))
+             (let* ((ok (eq returned :returned))
+                    (fn-index-backing
+                     (update-fn-ibp-request-pending
+                       (fn-irr-receipt-phase receipt
+                         (if ok :source-owned :recovery-required)) fn-index-backing)))
+               (mv (if ok :owned :recovery-required) left fn-index-backing)))))))
+
+; The pending request owns its own generation query reference before the
+; owner commits RC or yields. Adoption transfers this reference unchanged.
+; Initial reservation alone is not a source lifetime; duplicate retention
+; never increments a counter again. This is internal to admitted begin.
+(defun fn-irr-request-retain-source (nonce fuel fn-index-backing)
+ (declare (xargs :stobjs fn-index-backing :guard (natp fuel)))
+ (let* ((receipt (fn-ibp-request-pending fn-index-backing))
+        (request (fn-irr-receipt-request receipt))
+        (pin (fn-irr-request-pin request))
+        (token (fn-omk-at 1 pin))
+        (phase (fn-omk-at 7 receipt))
+        (depth (fn-ibp-slot-depth fn-index-backing)))
+  (cond ((not (and (posp nonce) (equal (fn-omk-at 2 receipt) nonce)
+                   (equal (fn-omk-at 0 receipt) :index-request-receipt)))
+         (mv :stale fuel fn-index-backing))
+        ((member-eq phase '(:query-owned :source-owned :read-ready :committed))
+         (mv :owned fuel fn-index-backing))
+        ((not (and (eq phase :alias-held)
+                   (equal (fn-omk-at 0 pin) :publication-pin)
+                   (fn-ibp-generation-tokenp token)))
+         (mv :recovery-required fuel fn-index-backing))
+        ((< fuel (* 2 (+ 1 depth))) (mv :yield fuel fn-index-backing))
+        (t
+         (mv-let (word row left)
+          (stobj-let ((fn-ibp-node (fn-ibp-registry fn-index-backing)))
+            (word row left)
+            (fn-ibp-node-generation-read token fuel (1- (nth 2 token)) depth fn-ibp-node)
+            (mv word row left))
+          (if (not (and (eq word :present) (natp left)))
+              (mv (if (eq word :present) :recovery-required word) left fn-index-backing)
+            (if (not (and (eq (fn-omk-at 7 row) :live) (posp (fn-omk-at 4 row))
+                          (fn-irr-publication-coordinatesp (fn-omk-at 2 row)
+                            (fn-irr-request-publication request))
+                          (fn-irr-publication-coordinatesp (fn-omk-at 2 row)
+                            (fn-omk-at 2 pin))))
+                (mv :recovery-required left fn-index-backing)
+              (mv-let (retained unused-publication remaining fn-index-backing)
+                (fn-ibp-generation-reference token :retain :query nil left fn-index-backing)
+                (declare (ignore unused-publication))
+                (if (not (eq retained :retained))
+                    (let ((fn-index-backing
+                           (update-fn-ibp-request-pending
+                             (fn-irr-receipt-phase receipt :recovery-required)
+                             fn-index-backing)))
+                      (mv :recovery-required remaining fn-index-backing))
+                  (let ((fn-index-backing
+                         (update-fn-ibp-request-pending
+                          (list (fn-omk-at 0 receipt) (fn-omk-at 1 receipt)
+                                (fn-omk-at 2 receipt) (fn-omk-at 3 receipt)
+                                (fn-omk-at 4 receipt) (fn-omk-at 5 receipt)
+                                request :query-owned (fn-omk-at 8 receipt))
+                          fn-index-backing)))
+                    (mv :owned remaining fn-index-backing)))))))))))
+
+; The serialized producer calls this immediately after its actual pure RC.
+; No source lookup/capture yield occurs between this transition and STATE
+; owner/credits/exposure installation plus commit-current. Earlier yielding
+; preflight must revalidate maintained authority before entering that span.
+(defun fn-irr-request-complete-read (nonce current-oc rc fn-index-backing)
+ (declare (xargs :stobjs fn-index-backing :guard t))
+ (let* ((receipt (fn-ibp-request-pending fn-index-backing))
+        (request (fn-irr-receipt-request receipt))
+        (phase (fn-omk-at 7 receipt)))
+  (cond ((not (and (posp nonce) (equal nonce (fn-omk-at 2 receipt))
+                   (eq (fn-omk-at 0 receipt) :index-request-receipt)))
+         (mv :stale fn-index-backing))
+        ((member-eq phase '(:read-ready :committed))
+         (mv :observed fn-index-backing))
+        ((not (and (eq phase :source-owned) (null (fn-irr-request-rc request))
+                   (consp rc) (eq (fn-omk-at 0 (car rc)) :fn-own-tls-result)))
+         (mv :recovery-required fn-index-backing))
+        (t (let* ((next-request
+                   (list (fn-omk-at 0 request) (fn-omk-at 1 request)
+                         (fn-omk-at 2 request) (fn-omk-at 3 request)
+                         current-oc rc
+                         (fn-own-tls-result-effects (car rc))
+                         (fn-omk-at 7 request) (fn-irr-request-holder request)))
+                  (fn-index-backing
+                   (update-fn-ibp-request-pending
+                     (list (fn-omk-at 0 receipt) (fn-omk-at 1 receipt)
+                           (fn-omk-at 2 receipt) (fn-omk-at 3 receipt)
+                           (fn-omk-at 4 receipt) (fn-omk-at 5 receipt)
+                           next-request :read-ready (fn-omk-at 8 receipt))
+                     fn-index-backing)))
+             (mv :read-ready fn-index-backing))))))
 
 ; Checks bounded scalar correspondence of the retained committed request.
 ; The registered publisher still owns the immutable root/object association;

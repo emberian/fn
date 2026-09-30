@@ -48,7 +48,7 @@
 ; this is a derived tagged representation, not an independent identity issuer.
 ; Full runtime adequacy/source authority is the composed host boundary, not
 ; an inference from this resource-vector algebra.
-(defun fn-irq-reserve-request (id pin publication pre-oc rc effects demand fn-index-backing fn-page-read-pool)
+(defun fn-irq-reserve-request (id holder-token pin publication pre-oc rc effects demand fn-index-backing fn-page-read-pool)
  (declare (xargs :stobjs (fn-index-backing fn-page-read-pool) :guard t))
  (if (fn-ibp-request-pending fn-index-backing)
      (mv :busy nil fn-index-backing fn-page-read-pool)
@@ -67,7 +67,7 @@
           (if (not (eq word :admitted))
               (mv word nil fn-index-backing fn-page-read-pool)
             (let* ((origin (list :index-read issued))
-                   (request (list :reader-request id pin publication pre-oc rc effects origin))
+                   (request (list :reader-request id pin publication pre-oc rc effects origin holder-token))
                    (receipt (list :index-request-receipt next issued ordinal candidate-kind demand request :reserved nil))
                    (fn-index-backing (update-fn-ibp-request-pending receipt fn-index-backing))
                    (fn-page-read-pool
@@ -78,7 +78,7 @@
 
 ; Internal final substep of the serialized owner producer transition, after
 ; its RC owner/credits/exposure installation. It touches ONLY the current
-; reserved receipt. No precommit receipt licenses a consumed-read response.
+; read-ready receipt. No precommit receipt licenses a consumed-read response.
 ; Repeated commit observes the marker and never repeats owner installation.
 (defun fn-irq-commit-current (nonce step fn-index-backing)
  (declare (xargs :stobjs fn-index-backing :guard t))
@@ -89,7 +89,7 @@
          (mv :stale fn-index-backing))
         ((equal (fn-omk-at 7 receipt) :committed)
          (mv :committed fn-index-backing))
-        ((not (equal (fn-omk-at 7 receipt) :reserved))
+        ((not (equal (fn-omk-at 7 receipt) :read-ready))
          (mv :recovery-required fn-index-backing))
         (t (let ((fn-index-backing
                   (update-fn-ibp-request-pending
