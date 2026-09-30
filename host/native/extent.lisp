@@ -535,12 +535,6 @@ extent lock held; caller keeps that lock until its final vector borrow ends."
     (unless (eq (first (fnn-core-page-read-pool 'fn-owner-page-read-discovery-release token)) :released)
       (fnn-fault "discovery buffer lost its exact resource lease"))))
 
-(defun fnn-extent-discovery-release (token)
-  "Extent lock held. Caller relinquished the exact unverified buffer lease."
-  (when token
-    (unless (eq (first (fnn-core-page-read-pool 'fn-owner-page-read-discovery-release token)) :released)
-      (fnn-fault "discovery buffer lost its exact resource lease"))))
-
 (defun fnn-extent-entry-fresh (file eoff elen)
   "Return the self-consistent vector AND its discovery lease. The caller
 keeps that lease until its last buffer borrow ends. Extent lock held."
