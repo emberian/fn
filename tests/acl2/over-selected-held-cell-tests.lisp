@@ -139,3 +139,46 @@
                 (fn-hnov-p (fn-hf-nov (fn-held-facts row)))))
        (not (osht-begin-conclusion range row fn-arena))))
  :rule-classes nil)
+
+(defthm osht-positive-actual-row-install-original-msgid
+ (let* ((fn-arena '((120 13 10))) (range '("g" 1 3 7 nil t))
+        (row (osht-row "<e@x>" 0 (fn-hf-make 3 nil 0 nil)))
+        (cell (osht-tick 4 (fn-osh-begin range '(:query-source 17) row) fn-arena)))
+  (and (fn-osh-ready-p cell fn-arena) (equal (nth 4 cell) :msgid)
+       (equal (nth 4 (mv-nth 1 (fn-osh-one cell fn-arena))) :row)
+       (fn-scat-msgid-idp (fn-record-msgid (nth 3 cell)))))
+ :rule-classes nil
+ :hints (("Goal" :expand ((:free (cell arena) (osht-tick 4 cell arena))
+                           (:free (cell arena) (osht-tick 3 cell arena))
+                           (:free (cell arena) (osht-tick 2 cell arena))
+                           (:free (cell arena) (osht-tick 1 cell arena))
+                           (:free (cell arena) (osht-tick 0 cell arena))))))
+
+; Literal corrupted-state removals of the row-install predicate boundary.
+(defthm osht-install-removal-semantic-carry
+ (let* ((fn-arena '((120 13 10)))
+        (row (osht-row "bad" 0 (fn-hf-make 3 nil 0 nil)))
+        (cell (fn-osh-make '("g" 1 3 7 nil t) '(:query-source 17) row :msgid
+                           '(:held-msgid "bad" 3 3 t))))
+  (and (not (fn-osh-ready-p cell fn-arena))
+       (equal (nth 4 cell) :msgid)
+       (equal (nth 4 (mv-nth 1 (fn-osh-one cell fn-arena))) :row)
+       (not (fn-scat-msgid-idp (fn-record-msgid (nth 3 cell))))))
+ :rule-classes nil)
+(defthm osht-install-removal-msgid-phase
+ (let* ((fn-arena '((120 13 10))) (range '("g" 1 3 7 nil t))
+        (row (osht-row "bad" 0 (fn-hf-make 3 nil 0 nil)))
+        (cell (fn-osh-make range '(:query-source 17) row :row
+                  (fn-ohr-selected-row-begin range '(:query-source 17) row fn-arena))))
+  (and (fn-osh-ready-p cell fn-arena) (not (equal (nth 4 cell) :msgid))
+       (equal (nth 4 (mv-nth 1 (fn-osh-one cell fn-arena))) :row)
+       (not (fn-scat-msgid-idp (fn-record-msgid (nth 3 cell))))))
+ :rule-classes nil)
+(defthm osht-install-removal-actual-row-install
+ (let* ((fn-arena '((120 13 10)))
+        (row (osht-row "bad" 0 (fn-hf-make 3 nil 0 nil)))
+        (cell (fn-osh-begin '("g" 1 3 7 nil t) '(:query-source 17) row)))
+  (and (fn-osh-ready-p cell fn-arena) (equal (nth 4 cell) :msgid)
+       (not (equal (nth 4 (mv-nth 1 (fn-osh-one cell fn-arena))) :row))
+       (not (fn-scat-msgid-idp (fn-record-msgid (nth 3 cell))))))
+ :rule-classes nil)

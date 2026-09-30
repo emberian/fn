@@ -157,3 +157,23 @@
                 (fn-hmid-cursorp fn-hmid-char-ok fn-hmid-suffix-ok fn-hmid-status
                  fn-scat-msgid-idp fn-ohr-active-one fn-ohr-carried-p
                  fn-ohr-selected-row-begin fn-obc-begin fn-obc-next-range nth)))))
+
+; The actual bounded validator installs a row only under the original
+; Message-ID predicate on the SAME retained held-row string.
+(defthm fn-osh-msgid-one-row-install-has-original-msgid
+  (implies (and (fn-osh-ready-p cell fn-arena)
+                (equal (nth 4 cell) :msgid)
+                (equal (nth 4 (mv-nth 1 (fn-osh-one cell fn-arena))) :row))
+           (fn-scat-msgid-idp (fn-record-msgid (nth 3 cell))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hmid-one-preserves-original-predicate-carry
+                            (cursor (nth 5 cell)))
+                 (:instance fn-hmid-completed-status-is-original-predicate
+                            (cursor (fn-hmid-one (nth 5 cell)))))
+           :in-theory
+           (e/d (fn-osh-ready-p fn-osh-one fn-osh-make fn-hmid-one
+                  fn-hmid-status fn-hmid-at fn-ag-car fn-ag-cdr)
+                (fn-hmid-ready-p fn-hmid-cursorp fn-hmid-char-ok
+                 fn-ohr-selected-row-begin fn-obc-begin fn-obc-next-range
+                 fn-scat-msgid-idp fn-ohr-active-one)))))
