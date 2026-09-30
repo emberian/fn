@@ -76,6 +76,96 @@ configuration is the tool's and not a box's accumulated state. It starts
 started, leaves the install and its spool in place, and removes the fn deploy
 tree unless `--keep`.
 
+## Optional protected reader fixture
+
+`--inn-security` adds a second, loopback-only `nnrpd` reader on port 11421
+(or `--inn-security-port`). It requires an explicit, separate TLS-capable
+`--inn-prefix`; the standing `/tank/fn/inn/2.7.4` plaintext installation is
+refused. The pinned release and checksum remain the same. A coordinated
+build must enable OpenSSL in that separate prefix; USER/PASS uses `ckpasswd`
+and does not require SASL. This source fixture has not yet run against real
+INN. The runner owns the isolated build and the matching-image run.
+
+    python3 tools/inn_lab.py HEAD --host hbox --native-image IMG \
+        --native-openssl-prefix /tank/fn/toolchains/openssl-3.5.8 \
+        --inn-prefix /tank/fn/inn/2.7.4-tls-lab --inn-security
+
+The lab creates a short-lived self-signed certificate with IP subjectAltName
+`127.0.0.1`, a hashed `ckpasswd` fixture entry, and a mode-0600 scratch
+password file. The client trusts that certificate and verifies the IP name;
+it never disables verification. The password is read from the scratch file,
+not passed in argv or printed in the result. An alternate `readers.conf`
+requires encryption and has no default identity or anonymous read access.
+Cleanup stops only the new reader's recorded pid, alongside the existing
+owned processes.
+
+After fn's ordinary feed has delivered its article to `innd`, this row
+requires STARTTLS `382`, a certificate-verified handshake, bad USER/PASS
+`481`, unauthenticated `GROUP` `480`, good USER/PASS `281`, and authenticated
+`ARTICLE` `220`. The read article must preserve the body and every header
+except the already permitted Path/Xref relay changes. A changed body or
+failed authentication makes the row fail. The source scenario is SCN-1029.
+
+This exercises INN's protected reader access to an article originating at
+fn. The native protected injection row below, actual `Control:` traffic and
+its outcome, Distribution, cancel and expiry are separate work. `nnrpd`'s
+IHAVE facility is an injecting endpoint, not the `innd` transit listener;
+an eventual protected injection row must name that scope. The existing row
+called `inn-control` is manual IHAVE/duplicate/loop traffic and does not
+exercise a Usenet control message.
+
+`--inn-security-feed` additionally selects native fn's protected outbound
+feed (requires `--inn-security`). After the baseline clear scenarios, the
+lab applies `peer feed inn pause`, then adds an outbound-only peer with
+STARTTLS, IP-name verification against the scratch certificate, an FNAUTH1
+account profile and `allow-clear false`. The alternate INN access block
+adds posting/IHAVE permission and explicitly hands injection to the lab's
+innd port. A fresh article is posted only after the clear pause and the
+protected peer are accepted.
+
+The row requires fn's actual `accepted feed peer=inn-security ... code=235`
+observation for that fresh Message-ID, a protected INN read of the same
+Message-ID/Subject/body, and absence of that article from the clear relay.
+Encrypted NNTP replies are not visible on the clear tap: the record names
+the native reply observation rather than inventing a decrypted transcript.
+INN nnrpd may change injection headers, so this row makes no transit
+Path/Xref-only preservation claim. Its scenario is SCN-1030. This source
+fixture awaits real pinned-INN and matching native-image execution.
+
+The INN behavior and configuration above follow its pinned 2.7.4 PODs and
+[the nnrpd manual](https://www.eyrie.org/~eagle/software/inn/docs-2.7/nnrpd.html)
+and [readers.conf manual](https://www.eyrie.org/~eagle/software/inn/docs/readers.conf.html).
+Those are external implementation facts, not fn proof claims. STARTTLS is
+RFC 4642 section 2; USER/PASS is RFC 4643 section 2.3; authorization is local
+policy.
+
+## Actual unsigned control-message fixture
+
+`--inn-controls` adds an actual `Control: checkgroups` article, rather than
+the legacy row named `inn-control` (manual IHAVE/duplicate/loop traffic).
+It works with the standing plaintext INN prefix independently of the TLS
+flags. The lab configures INN's `control.checkgroups` group and feed pattern,
+and creates fn's filing group through the native operator. A refused group
+creation stops this row before any control article is offered.
+
+The article's Newsgroups is `fn.letters`; its body proposes
+`fn.checkgroups.proposed`. INN must accept it by IHAVE335/235, and its real
+innfeed must deliver it to fn with accepted238/239 or335/235 replies quoted
+from the relay. A reader bound to `127.0.0.2`, distinct from INN's admitted
+`127.0.0.1` peer address, then requires the Message-ID in the numbered
+`control.checkgroups` listing and absent from the numbered `fn.letters`
+listing. The actual Control header and body must survive, with only the
+permitted transit Path/Xref changes. `LIST ACTIVE fn.checkgroups.proposed`
+must answer215 with no group. SCN-1033 names this source fixture.
+
+This checks unsigned legacy control traffic and fn's existing filing
+policy (RFC 5537 sections 5.2.3 and 3.7), including no automatic
+reconfiguration. It does not enable INN controlchan, claim authenticated
+control discharge, or execute newgroup/rmgroup; group control remains D29
+deferred. Distribution, cancel/expiry, streaming and broader failure/RFC
+criteria belong to the Q12 continuation. Real INN/matching-image execution
+of this row remains open.
+
 ## How INN was built
 
 No root is needed: the prefix is user-owned and the news user is the ordinary
@@ -339,3 +429,37 @@ content outcomes. They do not exercise real INN or the native image.
 Distribution, cancel/expiry, authenticated control discharge, window/soak
 and the remaining Q12 criteria stay open. The runner owns matching-image
 and real-INN execution.
+
+
+## Distribution, carried cancellation and local expiry
+
+`--inn-distribution` selects SCN-1059: the actual fn feed must deliver the
+matching and absent Distribution cases to INN; the world case must remain
+unchanged on fn, absent from INN and absent from the feed transcript after
+both positive controls. No direct injector stands in for fn's feed.
+
+`--inn-cancel` selects SCN-1060. The target has a deterministic external
+client Cancel-Lock; two actual Control articles cross INN's innfeed with a
+wrong and a matching Cancel-Key. The wrong key must preserve fn's exact
+target bytes; the matching key must withdraw its fresh view, including
+after cold restart. INN runs `docancels: none`, retains its own target and
+only transports the cancellation. This explicitly scoped configuration
+follows [INN's docancels manual](https://www.eyrie.org/~eagle/software/inn/docs-2.7/inn.conf.html).
+INN Cancel-Lock authentication and signed D29 authority remain separate.
+
+`--inn-expiry` selects SCN-1061. A fresh isolated group receives a source
+through native fn's actual feed. A temporary zero-age rule applies only to
+that group; `expireover -f -` consumes its group name on stdin and restores
+the prior expire.ctl on success or failure. INN must stop serving the copy
+while refusing a duplicate IHAVE, and fn must retain exact bytes through
+cold restart under its default D03 policy. No history pruning occurs.
+The syntax and local retention behavior follow the primary
+[expireover](https://www.eyrie.org/~eagle/software/inn/docs-2.7/expireover.html)
+and [expire.ctl](https://www.eyrie.org/~eagle/software/inn/docs-2.7/expire.ctl.html)
+manuals. Neither peer expiry nor an ACK releases an fn obligation.
+
+Run streaming, Distribution, control, cancel and expiry before the optional
+protected-injection phase pauses the clear feed. The driver orders them
+that way when combined. The new shell-policy and mutation tests exercise
+the harness only. Real pinned INN and a source-matched native executable
+are still required; all original eight Q12 criteria remain open.

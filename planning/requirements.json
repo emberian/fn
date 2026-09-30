@@ -207,7 +207,7 @@
         "tests/evidence/2026-09-18-assurance.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Primitive/record full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 §4.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema1-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
+      "implementation_note": "Primitive/record full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 \u00a74.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema1-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
       "keystones": [
         "fn-cbor-value-round-trip",
         "fn-cbor-accepted-input-is-canonical",
@@ -976,8 +976,12 @@
         "proof",
         "scenario"
       ],
-      "evidence": [],
-      "note": "PRF-009 is planned with no events. D13's history rule is unresolved."
+      "evidence": [
+        "tools/inn_lab.py",
+        "tests/test_inn_lab.py",
+        "planning/evidence/peering-inn-lifecycle-source-2026-09-30.json"
+      ],
+      "note": "PRF-009 is planned with no events. D13's history rule is unresolved. SCN-1061 prepares isolated INN expiry with retained duplicate refusal and unchanged fn default archive through cold restart. No fn policy/reclaim or history pruning is inferred. Matching execution remains open."
     },
     {
       "id": "RET-007",
@@ -1388,7 +1392,7 @@
       "evidence": [
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "note": "`books/nntp-post` and `books/owner` certify at their last green digests; what is missing is the theorem from the served `240` to the consumed completion (`fn-own-240-follows-consumed-completion`) and the native cut campaign on an image; both are T5. 2026-09-22 (T13-conform): an operator's retry of the same octets after a lost outcome resubmits the stored injection, so the store answers duplicate rather than a conflict (fn-own-operator-retry-resubmits-the-stored-injection, PRF-056); the Store comparison now runs in books/store-node.lisp fn-sn-existing-action, with exact outcome theorems and reachable teeth; the owner-to-Store retry composition is not yet a theorem. 2026-09-24 (p2-wire): the wire half of P2 -- an uncertain outcome reaches the poster as `441 ... do not repost' before the recovery stop (W1), a consumed completion is never answered as a refusal (fn-own-consumed-completion-is-240-or-uncertain, W2), and each Store refusal kind has its own 441 line (fn-post-outcome-store-refusal-kinds-are-distinct, W3) -- is PRF-070; the article completion word is fn-own-finish's (host/owner-host.lisp fn-owner-finish-submission)."
+      "note": "`books/nntp-post` and `books/owner` certify at their last green digests; what is missing is the theorem from the served `240` to the consumed completion (`fn-own-240-follows-consumed-completion`) and the native cut campaign on an image; both are T5. 2026-09-22 (T13-conform): an operator's retry of the same octets after a lost outcome resubmits the stored injection, so the store answers duplicate rather than a conflict (fn-own-operator-retry-resubmits-the-stored-injection, PRF-056); the Store comparison now runs in books/store-node.lisp fn-sn-existing-action, with exact outcome theorems and reachable teeth; the owner-to-Store retry composition is not yet a theorem. 2026-09-24 (p2-wire): the wire half of P2 -- an uncertain outcome reaches the poster as `441 ... do not repost' before the recovery stop (W1), a consumed completion is never answered as a refusal (fn-own-consumed-completion-is-240-or-uncertain, W2), and each Store refusal kind has its own 441 line (fn-post-outcome-store-refusal-kinds-are-distinct, W3) -- is PRF-070; the article completion word is fn-own-finish's (host/owner-host.lisp fn-owner-finish-submission). SCN-1029/1030 source fixtures add certificate-verified INN reader and actual native protected injection with the clear feed paused; matching real-INN/native execution remains open."
     },
     {
       "id": "NNT-006",
@@ -1459,7 +1463,7 @@
     },
     {
       "id": "NNT-008",
-      "title": "NEWNEWS answers from this node’s durable acceptance stamp",
+      "title": "NEWNEWS answers from this node\u2019s durable acceptance stamp",
       "specification": "specs/nntp.md#polling-newnews",
       "milestone": "M3",
       "status": "implemented",
@@ -1477,7 +1481,7 @@
         "specs/nntp.md",
         "specs/nntp-audit.md"
       ],
-      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner’s durable whole-second acceptance stamp; an article without a natural stamp uses the nearest later stamped acceptance, else the pinned reader wall second, else remains visible; no record carries such a stamp since schema 0 was deleted (no migrations: fresh deploys at 6.6.0), and deleting this horizon is open. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
+      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner\u2019s durable whole-second acceptance stamp; an article without a natural stamp uses the nearest later stamped acceptance, else the pinned reader wall second, else remains visible; no record carries such a stamp since schema 0 was deleted (no migrations: fresh deploys at 6.6.0), and deleting this horizon is open. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
       "note": "The DATE-to-NEWNEWS no-miss guarantee across a reader pin and in-flight prepare remains T6 under A-CLOCK."
     },
     {
@@ -2062,7 +2066,7 @@
         "tests/native_peer_authored_accept_raw.lisp",
         "planning/evidence/control-c1-2026-09-25.md"
       ],
-      "implementation_note": "RFC requirement (RFC 5537 section 5): any article with a Control header field is a control message, and a Subject starting \"cmsg \", a \".ctl\" group name or an Also-Control field MUST NOT make one; fn does not take the MAY to reject the cmsg form. RFC 5537 section 3.7's SHOULD (control messages are not stored in the groups their Newsgroups field lists, but in the \"control\" hierarchy) is kept as a requirement: fn-pa-filing-plan, the first step of host/native/owner.lisp fnn-owner-attempt-transit for served POST, bound submission, NNTP transit and BP transit, and host/native/hybrid-control.lisp fnn-hybrid-control-author calls fn-owner-control-filing itself for the local signed-author path, files a control article only in control.<verb> (cancel, newgroup, rmgroup, checkgroups, ihave, sendme) or control (obsolete and unknown verbs; verb compared in ASCII lower case, a local policy), and only if the operator created that group; otherwise it is refused :control-not-filed, and two Control fields, Control beside Supersedes (RFC 5536 section 3.2.3's MUST NOT) or a command outside the grammar are refused :control-malformed. Each refusal is its own 441 line on POST and a named service-log reason on transit. Stored bytes are unchanged. Nothing is executed (packets C2 to C4 are proposals). A control article carrying an FN-Authorship carrier is filed the same way: its signed Store record lists the filing group (books/hybrid-store.lisp fn-hsig-source-filed-groups, lane control-c3)."
+      "implementation_note": "RFC requirement (RFC 5537 section 5): any article with a Control header field is a control message, and a Subject starting \"cmsg \", a \".ctl\" group name or an Also-Control field MUST NOT make one; fn does not take the MAY to reject the cmsg form. RFC 5537 section 3.7's SHOULD (control messages are not stored in the groups their Newsgroups field lists, but in the \"control\" hierarchy) is kept as a requirement: fn-pa-filing-plan, the first step of host/native/owner.lisp fnn-owner-attempt-transit for served POST, bound submission, NNTP transit and BP transit, and host/native/hybrid-control.lisp fnn-hybrid-control-author calls fn-owner-control-filing itself for the local signed-author path, files a control article only in control.<verb> (cancel, newgroup, rmgroup, checkgroups, ihave, sendme) or control (obsolete and unknown verbs; verb compared in ASCII lower case, a local policy), and only if the operator created that group; otherwise it is refused :control-not-filed, and two Control fields, Control beside Supersedes (RFC 5536 section 3.2.3's MUST NOT) or a command outside the grammar are refused :control-malformed. Each refusal is its own 441 line on POST and a named service-log reason on transit. Stored bytes are unchanged. Nothing is executed (packets C2 to C4 are proposals). A control article carrying an FN-Authorship carrier is filed the same way: its signed Store record lists the filing group (books/hybrid-store.lisp fn-hsig-source-filed-groups, lane control-c3). SCN-1033 source harness carries actual unsigned checkgroups over INN innfeed and checks native numbered filing/no proposed-group creation; exact article subject and source-to-feed bytes are required. Real INN/native evidence remains open."
     },
     {
       "id": "NNT-011",
@@ -4033,9 +4037,12 @@
       ],
       "evidence": [
         "planning/evidence/group-policy-2026-09-26.md",
-        "planning/evidence/newsreader-cancel-2026-09-26.md"
+        "planning/evidence/newsreader-cancel-2026-09-26.md",
+        "tools/inn_lab.py",
+        "tests/test_inn_lab.py",
+        "planning/evidence/peering-inn-lifecycle-source-2026-09-30.json"
       ],
-      "implementation_note": "Built by lanes newsreader-cancel, -2 and -3 (2026-09-26/27, PRF-210). The decision: an unsigned cancel or Supersedes whose RFC 8315 Cancel-Key opens a sha256 Cancel-Lock of its target withdraws it (fn-ctl-withdrawal-authority-is-exactly-signer-or-poster). The node writes the lock for the posting ACCOUNT (the authenticated principal id recorded on the submission, fn-own-sub-account; not the login spelling) as K = HMAC-SHA256(sec, uid+mid) (RFC 8315 section 4), sec an HKDF-SHA256 purpose key (info fn/cancel-lock/v1, salt the recorded node identity) of one protected root per key epoch; the lines stand in front of the injected block, outside the D25 source, so a same-source retry by any account or after a rotation is already stored (fn-cld-a-retry-by-any-account-or-epoch-is-already-stored) and a changed source, a changed user Cancel-Lock included, is a conflict. A cancel carries one key per retained epoch (fn-cl-ring-keys-open-every-retained-lock). Signed articles get no lock. The root is STORE/keys/node-secret.key, created only by `node-secret create` (or init), never regenerated at start; `store export` excludes keys/."
+      "implementation_note": "Built by lanes newsreader-cancel, -2 and -3 (2026-09-26/27, PRF-210). The decision: an unsigned cancel or Supersedes whose RFC 8315 Cancel-Key opens a sha256 Cancel-Lock of its target withdraws it (fn-ctl-withdrawal-authority-is-exactly-signer-or-poster). The node writes the lock for the posting ACCOUNT (the authenticated principal id recorded on the submission, fn-own-sub-account; not the login spelling) as K = HMAC-SHA256(sec, uid+mid) (RFC 8315 section 4), sec an HKDF-SHA256 purpose key (info fn/cancel-lock/v1, salt the recorded node identity) of one protected root per key epoch; the lines stand in front of the injected block, outside the D25 source, so a same-source retry by any account or after a rotation is already stored (fn-cld-a-retry-by-any-account-or-epoch-is-already-stored) and a changed source, a changed user Cancel-Lock included, is a conflict. A cancel carries one key per retained epoch (fn-cl-ring-keys-open-every-retained-lock). Signed articles get no lock. The root is STORE/keys/node-secret.key, created only by `node-secret create` (or init), never regenerated at start; `store export` excludes keys/. SCN-1060 prepares actual wrong/right-key Control traffic through INN innfeed; INN docancels none transports without withdrawal, while fn decides and must preserve its result through cold restart. Matching native/INN execution and signed authority remain open."
     },
     {
       "id": "NNT-043",
@@ -4537,9 +4544,12 @@
         "books/native-admin-peer.lisp",
         "tests/acl2/owner-tests.lisp",
         "tests/test_native_peering.py",
-        "planning/evidence/transit-hygiene-2026-09-27.md"
+        "planning/evidence/transit-hygiene-2026-09-27.md",
+        "tools/inn_lab.py",
+        "tests/test_inn_lab.py",
+        "planning/evidence/peering-inn-lifecycle-source-2026-09-30.json"
       ],
-      "implementation_note": "RFC 5537 section 3.6 paragraph 2 is RFC guidance (SHOULD NOT relay) fn follows per peer; the three cases the RFC leaves open (no filter configured, no Distribution field, a malformed Distribution) are local policy, stated in the specification."
+      "implementation_note": "RFC 5537 section 3.6 paragraph 2 is RFC guidance (SHOULD NOT relay) fn follows per peer; the three cases the RFC leaves open (no filter configured, no Distribution field, a malformed Distribution) are local policy, stated in the specification. SCN-1059 prepares actual native-feed Distribution controls through pinned INN, including retained source and exact content. Matching execution remains open."
     },
     {
       "id": "NNT-052",

@@ -87,6 +87,7 @@ DEFAULT_LAB_ROOT = "$HOME/fn-inn-lab"
 # below INN's, so a stray connection to the wrong one is obvious in a log.
 INN_PORT = 11419          # innd: transit (IHAVE/CHECK/TAKETHIS)
 NNRPD_PORT = 11420        # nnrpd: the reader daemon, read-back only
+INN_SECURITY_PORT = 11421 # optional certificate-verified STARTTLS reader
 FN_PORT = 11490           # the native fn owner's listener
 TAP_OUT_PORT = 11418      # fn's peer record names this; the relay forwards to innd
 TAP_IN_PORT = 11417       # innfeed.conf names this; the relay forwards to fn
@@ -100,6 +101,13 @@ FN_PEER_NAME = "inn"
 GROUP = GROUPS[0]
 # RFC 5537 section 3.6: a relaying agent MUST NOT alter anything but these.
 RELAY_MAY_CHANGE = ("path", "xref")
+
+
+def shell_fixture_path(path: str) -> str:
+    """Quote a fixture path, retaining only the lab's known HOME prefix expansion."""
+    if path.startswith("$HOME/"):
+        return '"$HOME"/' + shlex.quote(path[len("$HOME/"):])
+    return shlex.quote(path)
 
 
 def reported_pid(output: str) -> str:
@@ -131,13 +139,25 @@ LOOP2_ID = "<inn-lab-loop2-{tag}@example.invalid>"
 FN_POST_ID = "<inn-lab-fn-post-{tag}@example.invalid>"
 FN_OPERATOR_ID = "<inn-lab-fn-operator-{tag}@example.invalid>"
 FN_LOOP_ID = "<inn-lab-fn-loop-{tag}@example.invalid>"
+INN_CHECKGROUPS_ID = "<inn-lab-checkgroups-{tag}@example.invalid>"
+FN_PROTECTED_ID = "<inn-lab-fn-protected-{tag}@example.invalid>"
 FN_FROM_ID = "<inn-lab-fn-from-{tag}@example.invalid>"
 FN_PATH_ID = "<inn-lab-fn-path-{tag}@example.invalid>"
 FN_STREAM_ID = "<inn-lab-fn-stream-{tag}@example.invalid>"
 INN_STREAM_ID = "<inn-lab-inn-stream-{tag}@example.invalid>"
+INN_CANCEL_TARGET_ID = "<inn-lab-cancel-target-{tag}@example.invalid>"
+INN_CANCEL_BAD_ID = "<inn-lab-cancel-wrong-{tag}@example.invalid>"
+INN_CANCEL_GOOD_ID = "<inn-lab-cancel-good-{tag}@example.invalid>"
+FN_EXPIRE_ID = "<inn-lab-expire-{tag}@example.invalid>"
+FN_DIST_WORLD_ID = "<inn-lab-dist-world-{tag}@example.invalid>"
+FN_DIST_MATCH_ID = "<inn-lab-dist-match-{tag}@example.invalid>"
+FN_DIST_NONE_ID = "<inn-lab-dist-none-{tag}@example.invalid>"
 ABSENT_ID = "<inn-lab-absent-{tag}@example.invalid>"
 ID_TEMPLATES = ("FED_ID", "LOOP_ID", "LOOP2_ID", "FN_POST_ID", "FN_OPERATOR_ID",
-                "FN_LOOP_ID", "FN_FROM_ID", "FN_PATH_ID", "FN_STREAM_ID", "INN_STREAM_ID", "ABSENT_ID")
+                "FN_LOOP_ID", "FN_FROM_ID", "FN_PATH_ID", "FN_STREAM_ID", "INN_STREAM_ID",
+                "FN_DIST_WORLD_ID", "FN_DIST_MATCH_ID", "FN_DIST_NONE_ID",
+                "FN_PROTECTED_ID", "INN_CHECKGROUPS_ID", "INN_CANCEL_TARGET_ID",
+                "INN_CANCEL_BAD_ID", "INN_CANCEL_GOOD_ID", "FN_EXPIRE_ID", "ABSENT_ID")
 
 
 def message_ids(tag: str) -> dict:
@@ -147,7 +167,7 @@ def message_ids(tag: str) -> dict:
 
 def article(msgid: str, subject: str, date: str, path: str | None = None,
             group: str = GROUP, body: str = "From the fn INN interop lab.",
-            sender: str = "lab@example.invalid") -> bytes:
+            sender: str = "lab@example.invalid", distribution: str | None = None) -> bytes:
     """One article's octets, CRLF lines, RFC 5536 order.
 
     `path` None is an article as a posting agent writes it without Path: RFC
@@ -160,9 +180,10 @@ def article(msgid: str, subject: str, date: str, path: str | None = None,
         "Newsgroups: " + group,
         "Subject: " + subject,
         "Date: " + date,
-        "Message-ID: " + msgid,
-        "",
-        body]
+        "Message-ID: " + msgid]
+    if distribution is not None:
+        lines.append("Distribution: " + distribution)
+    lines += ["", body]
     return ("\r\n".join(lines) + "\r\n").encode("ascii")
 
 
@@ -478,6 +499,23 @@ access "localhost" {{
 }}
 """
 
+READERS_SECURITY_CONF = """\
+# Separate STARTTLS reader; no default identity or anonymous read access.
+auth "protected-fixture" {{
+    hosts: "127.0.0.1"
+    require_encryption: true
+    auth: "ckpasswd -f {prefix}/db/security-newsusers"
+}}
+access "protected-fixture" {{
+    users: "fn-lab"
+    newsgroups: "fn.*"
+    access: {access}
+    nnrpdposthost: 127.0.0.1
+    nnrpdpostport: {inn_port}
+}}
+"""
+
+
 CONFIG_FILES = ("inn.conf", "incoming.conf", "newsfeeds", "innfeed.conf",
                 "readers.conf")
 
@@ -495,12 +533,13 @@ socket, and every article is sent and read as octets: a transit client
 written against the wire is the only kind that can hand a server a Path it
 must refuse, and the only kind whose read-back can be compared byte for byte.
 """
-import argparse, base64, json, socket, sys
+import argparse, base64, json, socket, ssl, sys
 
 
 class Wire:
-    def __init__(self, port, timeout=30):
-        self.sock = socket.create_connection(("127.0.0.1", port), timeout=timeout)
+    def __init__(self, port, timeout=30, source_address=None):
+        self.sock = socket.create_connection(("127.0.0.1", port), timeout=timeout,
+            source_address=(source_address, 0) if source_address else None)
         self.file = self.sock.makefile("rb")
         self.greeting = self.line()
 
@@ -513,6 +552,17 @@ class Wire:
     def cmd(self, text):
         self.sock.sendall(text.encode() + b"\r\n")
         return self.line()
+
+    def starttls(self, cafile):
+        """The real peer's 382, then certificate/name-verified TLS on it."""
+        reply = self.cmd("STARTTLS")
+        if not reply.startswith("382"):
+            raise RuntimeError("STARTTLS refused: " + reply)
+        self.file.close()
+        context = ssl.create_default_context(cafile=cafile)
+        self.sock = context.wrap_socket(self.sock, server_hostname="127.0.0.1")
+        self.file = self.sock.makefile("rb")
+        return reply
 
     def block(self):
         """A dot-terminated block, unstuffed, as the octets it carries."""
@@ -662,10 +712,89 @@ def caps(args):
     return out
 
 
+def protected_read(args):
+    """Real nnrpd STARTTLS, failed/successful USER/PASS and authenticated read.
+
+    The password is a scratch fixture file, never argv or JSON evidence.
+    This is the reader/authentication arm; no relay/discharge claim follows.
+    """
+    wire = Wire(args.port)
+    out = {"greeting": wire.greeting}
+    try:
+        out["starttls"] = wire.starttls(args.cafile)
+        out["tls"] = wire.sock.version()
+        out["bad_user"] = wire.cmd("AUTHINFO USER " + args.username)
+        if out["bad_user"].startswith("381"):
+            out["bad_pass"] = wire.cmd("AUTHINFO PASS not-the-fixture-password")
+        else:
+            out["bad_pass"] = ""
+        out["before_login"] = wire.cmd("GROUP " + args.group)
+        out["user"] = wire.cmd("AUTHINFO USER " + args.username)
+        if not out["user"].startswith("381"):
+            out["ok"] = False
+            return out
+        password = octets(args.password_file).decode("ascii").rstrip("\n")
+        if not password or "\r" in password or "\n" in password:
+            raise ValueError("password fixture must be one nonempty ASCII line")
+        out["pass"] = wire.cmd("AUTHINFO PASS " + password)
+        if not out["pass"].startswith("281"):
+            out["ok"] = False
+            return out
+        out["group"] = wire.cmd("GROUP " + args.group)
+        out["article"], out["octets"] = fetch_one(wire, args.msgid)
+        out["ok"] = (out["bad_user"].startswith("381")
+                     and out["bad_pass"].startswith("481")
+                     and out["before_login"].startswith("480")
+                     and out["group"].startswith("211")
+                     and out["article"].startswith("220"))
+        return out
+    finally:
+        wire.close()
+
+
+def group_ids(wire, group):
+    status = wire.cmd("LISTGROUP " + group)
+    out = {"reply": status, "stats": [], "ids": []}
+    if status.startswith("211"):
+        numbers = wire.block().decode("ascii").splitlines()
+        for number in numbers:
+            if not number.isdecimal():
+                raise ValueError("LISTGROUP returned a nonnumeric fixture article number")
+            stat = wire.cmd("STAT " + number)
+            out["stats"].append(stat)
+            fields = stat.split()
+            if len(fields) >= 3 and fields[0] == "223":
+                out["ids"].append(fields[2])
+    return out
+
+
+def control_view(args):
+    # Different loopback source from the address-authorized INN peer: this
+    # connection is a reader, without removing or changing the peer record.
+    wire = Wire(args.port, source_address=args.reader_source)
+    try:
+        out = {"greeting": wire.greeting,
+               "filing": group_ids(wire, args.group),
+               "ordinary": group_ids(wire, args.other_group)}
+        out["active"] = wire.cmd("LIST ACTIVE " + args.probe_group)
+        out["active_rows"] = (wire.block().decode("ascii").splitlines()
+                              if out["active"].startswith("215") else [])
+        out["article"], out["octets"] = fetch_one(wire, args.msgid)
+        out["ok"] = (out["filing"]["reply"].startswith("211")
+                     and out["ordinary"]["reply"].startswith("211")
+                     and args.msgid in out["filing"]["ids"]
+                     and args.msgid not in out["ordinary"]["ids"]
+                     and out["active"].startswith("215") and not out["active_rows"]
+                     and out["article"].startswith("220"))
+        return out
+    finally:
+        wire.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="phase", required=True)
-    for name in ("read", "ihave", "offer", "stream", "post", "fetch", "caps"):
+    for name in ("read", "ihave", "offer", "stream", "post", "fetch", "caps", "protected-read", "control-view"):
         one = sub.add_parser(name)
         one.add_argument("--port", type=int, required=True)
         one.add_argument("--group", default="fn.letters")
@@ -676,9 +805,16 @@ def main():
         one.add_argument("--loop-file", default="")
         one.add_argument("--read", action="store_true",
                          help="offer: read the Message-ID back on the same connection")
+        one.add_argument("--reader-source", default="127.0.0.2")
+        one.add_argument("--other-group", default="fn.letters")
+        one.add_argument("--probe-group", default="fn.checkgroups.proposed")
+        one.add_argument("--cafile", default="")
+        one.add_argument("--username", default="fn-lab")
+        one.add_argument("--password-file", default="")
     args = parser.parse_args()
     handler = {"read": read, "ihave": ihave, "offer": offer, "post": post,
-               "fetch": fetch, "caps": caps, "stream": stream}[args.phase]
+               "fetch": fetch, "caps": caps, "stream": stream, "protected-read": protected_read,
+               "control-view": control_view}[args.phase]
     try:
         result = handler(args)
     except Exception as error:
@@ -785,7 +921,8 @@ class InnLab(deploy_gate.DeployGate):
                  "inn read of fn's article", "fn post vs fn served",
                  "fn served vs inn served", "operator post feed", "inn control",
                  "innfeed to fn", "inn served vs fn served", "duplicates", "fn loop",
-                 "fn term", "innd cut")
+                 "fn term", "innd cut", "inn protected reader", "fn protected injection",
+                 "actual checkgroups control", "Distribution", "INN carried cancel", "INN expiry")
     # What this lab decides.  Nothing of deploy_gate's own inventory is
     # inherited: those assertions are about the development store CLI and
     # its certificates, and this lab runs neither.
@@ -833,6 +970,13 @@ class InnLab(deploy_gate.DeployGate):
         "innfeed-feeds-fn": (
             "INN's innfeed offered an article to fn and fn took it (238/239 or "
             "335/235)", ("",)),
+        "inn-cancel-key": ("actual innfeed preserves target/key traffic; wrong key retains bytes and correct key withdraws only on fn", ("",)),
+        "inn-cancel-restart": ("the transported cancellation remains withdrawn after fn SIGTERM/recover/restart", ("",)),
+        "inn-expiry-restart": ("fn retains the same bytes after INN expiry and fn SIGTERM/recover/restart", ("",)),
+        "inn-expiry-local": ("isolated INN expiry removes its copy, keeps duplicate refusal and leaves default fn retention unchanged", ("",)),
+        "distribution-source-retained": ("POST240 retains the exact subject and Distribution on fn", ("world", "match", "none")),
+        "distribution-feed-accepted": ("the configured matching or absent Distribution completes the actual feed and exact reader content", ("match", "none")),
+        "distribution-feed-excluded": ("after both positive controls, world has no feed command, is absent from INN and remains unchanged on fn", ("",)),
         "bidirectional-streaming": ("both actual feeds complete subject-matched CHECK/TAKETHIS and content readback", ("fn-to-inn", "inn-to-fn")),
         "streaming-duplicate-retry": ("a new connection refuses the same accepted subject by CHECK438 and leaves receiver bytes unchanged", ("fn-to-inn", "inn-to-fn")),
         "fn-serves-inn-article": (
@@ -859,6 +1003,21 @@ class InnLab(deploy_gate.DeployGate):
         "fn-articles-survived-term": (
             "after SIGTERM, recover and restart, fn serves the articles it held "
             "byte-identical", ("fn-article", "inn-article")),
+        "inn-checkgroups-control": (
+            "a real Control: checkgroups article accepted by INN reached fn through "
+            "innfeed, was served unchanged except permitted Path/Xref changes, "
+            "filed in control.checkgroups rather than its ordinary Newsgroups, "
+            "and did not automatically create its proposed group", ("",)),
+        "fn-protected-injection": (
+            "with its clear feed paused, native fn's separate STARTTLS/USER-PASS "
+            "peer received accepted feed code235 for a fresh article; the real "
+            "authenticated nnrpd reader served that Message-ID, subject and body, "
+            "and the article was absent from the clear transit relay", ("",)),
+        "inn-protected-reader": (
+            "the separate nnrpd reader completed certificate/name-verified STARTTLS "
+            "(382), refused a bad password (481) and unauthenticated read (480), "
+            "then accepted USER/PASS (281) and served fn's article (220) with "
+            "only the already permitted relay header changes", ("",)),
         "innd-died": ("innd died on SIGKILL, so the control really cut", ("",)),
         "innd-restarted": ("innd came back after the SIGKILL", ("",)),
         "inn-history-survived-kill": (
@@ -884,7 +1043,9 @@ class InnLab(deploy_gate.DeployGate):
     def __init__(self, *args, native_image, inn_prefix, inn_version, inn_port,
                  nnrpd_port, fn_port, tap_out_port, tap_in_port,
                  lab_root=DEFAULT_LAB_ROOT, native_openssl_prefix=None,
-                 extra_overlays=(), feed_wait=90, inn_streaming=False, **kwargs):
+                 extra_overlays=(), feed_wait=90, inn_streaming=False, inn_distribution=False,
+                 inn_security=False, inn_security_port=INN_SECURITY_PORT,
+                 inn_security_feed=False, inn_controls=False, inn_cancel=False, inn_expiry=False, **kwargs):
         super().__init__(*args, **kwargs)
         if not native_image:
             raise GateError("the fn side is the native image or the lab does not run "
@@ -893,6 +1054,49 @@ class InnLab(deploy_gate.DeployGate):
         self.native_openssl_prefix = native_openssl_prefix
         self.inn_prefix = inn_prefix
         self.inn_version = inn_version
+        self.inn_security = inn_security
+        self.inn_security_port = inn_security_port
+        self.inn_controls = inn_controls
+        self.inn_cancel = inn_cancel
+        self.inn_expiry = inn_expiry
+        for selected, key in ((inn_cancel, "inn-cancel-key"), (inn_expiry, "inn-expiry-local")):
+            if not selected:
+                self.ASSERTIONS = {name: value for name, value in self.ASSERTIONS.items() if name not in (key, "inn-cancel-restart" if key == "inn-cancel-key" else "inn-expiry-restart")}
+        if not inn_controls:
+            self.ASSERTIONS = {name: value for name, value in self.ASSERTIONS.items()
+                               if name != "inn-checkgroups-control"}
+        self.inn_security_feed = inn_security_feed
+        if inn_security_feed and not inn_security:
+            raise GateError("--inn-security-feed requires --inn-security")
+        if not inn_security_feed:
+            self.ASSERTIONS = {name: value for name, value in self.ASSERTIONS.items()
+                               if name != "fn-protected-injection"}
+        if inn_security and inn_prefix.rstrip("/") == "{}/{}".format(
+                DEFAULT_INN_ROOT, inn_version):
+            raise GateError("--inn-security requires a separate TLS-capable "
+                            "--inn-prefix, not the standing plaintext install")
+        selected_scopes = []
+        for enabled, label in ((inn_security, "verified STARTTLS/USER-PASS reader"),
+                (inn_security_feed, "native protected nnrpd injection"),
+                (inn_controls, "unsigned checkgroups filing"),
+                (inn_streaming, "both actual streaming feeds and duplicate retry"),
+                (inn_distribution, "per-peer Distribution positive/excluded controls"),
+                (inn_cancel, "transported Cancel-Key with INN docancels none"),
+                (inn_expiry, "isolated INN expiry with default fn retention")):
+            if enabled:
+                selected_scopes.append(label)
+        if selected_scopes:
+            self.STANDING_GAPS = tuple(
+                "Selected observations: " + "; ".join(selected_scopes) + ". The "
+                "transit relays remain clear and address-authorized. Unselected "
+                "arms, INN Cancel-Lock-library authentication, signed control "
+                "authority and broader failure/RFC scope remain open. Selection "
+                "is not evidence of execution; each selected row records its outcome."
+                if gap.startswith("No TLS,") else gap for gap in self.STANDING_GAPS)
+        if not inn_security:
+            # An unselected optional row is not an observed failure or a pass.
+            self.ASSERTIONS = {name: assertion for name, assertion in self.ASSERTIONS.items()
+                               if name != "inn-protected-reader"}
         self.inn_port = inn_port
         self.nnrpd_port = nnrpd_port
         self.fn_port = fn_port
@@ -900,6 +1104,10 @@ class InnLab(deploy_gate.DeployGate):
         self.tap_in_port = tap_in_port
         self.feed_wait = feed_wait
         self.inn_streaming = inn_streaming
+        self.inn_distribution = inn_distribution
+        if not inn_distribution:
+            self.ASSERTIONS = {key: value for key, value in self.ASSERTIONS.items()
+                               if not key.startswith("distribution-")}
         if not inn_streaming:
             self.ASSERTIONS = {key: value for key, value in self.ASSERTIONS.items()
                                if key not in ("bidirectional-streaming", "streaming-duplicate-retry")}
@@ -917,6 +1125,7 @@ class InnLab(deploy_gate.DeployGate):
         self.fn_pid = ""
         self.inn_running = False
         self.started_pids: dict = {}      # only what this run started is ever killed
+        self.lifecycle_states: dict = {}
         self.held_octets: dict = {}       # what fn served before the SIGTERM
         self.inn_holds: list = []         # Message-IDs innd acknowledged
         self.tap_text = ""                # the relay's log, read before cleanup
@@ -924,6 +1133,7 @@ class InnLab(deploy_gate.DeployGate):
             dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ"))
         self.ids = message_ids(self.tag)
         self.date = email.utils.formatdate(localtime=False)
+        self.expiry_group = "fn.inn-expiry." + self.tag.lower()
 
     # -- plumbing ---------------------------------------------------------
     def bin(self, name: str) -> str:
@@ -1176,7 +1386,7 @@ if kill -0 {pid} 2>/dev/null; then kill -9 {pid}; echo "OWNER-KILLED-AFTER-60S";
     # -- INN --------------------------------------------------------------
     def inn_preflight(self):
         ports = (self.inn_port, self.nnrpd_port, self.fn_port, self.tap_out_port,
-                 self.tap_in_port)
+                 self.tap_in_port) + ((self.inn_security_port,) if self.inn_security else ())
         step = self.sh("INN install", """
 P={prefix}
 if [ ! -x $P/bin/innd ]; then echo "NO-INN $P"; exit 1; fi
@@ -1214,7 +1424,7 @@ done
                     "; ".join(busy)),
                 "a port the lab needs was already in use", observed="; ".join(busy))
             raise GateError("a port the lab needs is in use: {}".format("; ".join(busy)))
-        self.check("ports-free", True, "", observed="all five ports free")
+        self.check("ports-free", True, "", observed="all {} ports free".format(len(ports)))
 
     def inn_configure(self):
         """Write the five configuration files and cold-start history if absent."""
@@ -1233,8 +1443,23 @@ done
                                ("newsfeeds", NEWSFEEDS),
                                ("innfeed.conf", INNFEED_CONF),
                                ("readers.conf", READERS_CONF)):
-            self.push_file(template.format(**fields),
-                           "{}/etc/{}".format(self.inn_prefix, name), mode="640")
+            contents = template.format(**fields)
+            if name == "newsfeeds" and self.inn_controls:
+                contents = contents.replace(":fn.*:Tm:", ":fn.*,control.checkgroups:Tm:")
+            if name == "newsfeeds" and self.inn_cancel:
+                contents = contents.replace(":Tm:", ",control.cancel:Tm:")
+            if name == "inn.conf" and self.inn_cancel:
+                # INN carries the Cancel-Key unchanged; fn owns its own withdrawal.
+                # No dependency on a separately built INN Cancel-Lock library.
+                contents += "docancels: none\n"
+            if name == "inn.conf" and self.inn_expiry:
+                contents += "groupbaseexpiry: true\n"
+            if name == "inn.conf" and self.inn_security:
+                contents += ("tlscertfile: {p}/etc/security-cert.pem\n"
+                             "tlskeyfile: {p}/etc/security-key.pem\n").format(p=self.inn_prefix)
+            self.push_file(contents, "{}/etc/{}".format(self.inn_prefix, name), mode="640")
+        if self.inn_security:
+            self.inn_security_configure(fields)
         # innfeed appends for ever; a tail of it must be THIS run's.
         self.sh("truncate innfeed's log", ": > {p}/log/innfeed.log".format(
             p=self.inn_prefix))
@@ -1259,6 +1484,48 @@ ls $P/db
         for name in CONFIG_FILES:
             self.sh("INN {} as written".format(name),
                     "cat {}/etc/{}".format(self.inn_prefix, name))
+
+    def inn_security_configure(self, fields):
+        """Only the explicitly isolated test prefix; credentials are scratch files."""
+        fields = dict(fields, access="RPIA" if self.inn_security_feed else "RA")
+        self.push_file(READERS_SECURITY_CONF.format(**fields),
+                       "{}/etc/readers-security.conf".format(self.inn_prefix), mode="640")
+        openssl = (self.native_openssl_prefix.rstrip("/") + "/bin/openssl"
+                   if self.native_openssl_prefix else "openssl")
+        step = self.sh("INN protected-reader fixture", """
+set -e
+P={p}
+umask 077
+{ssl} rand -hex 24 > {run}/inn-security.password
+{{ printf 'FNAUTH1\\nfn-lab\\n'; cat {run}/inn-security.password; }} > {run}/inn-security.fnauth
+hash=$({ssl} passwd -6 -stdin < {run}/inn-security.password)
+printf 'fn-lab:%s\\n' "$hash" > $P/db/security-newsusers
+{ssl} req -x509 -newkey rsa:2048 -nodes -days 2 -sha256 \\
+  -subj /CN=127.0.0.1 -addext subjectAltName=IP:127.0.0.1 \\
+  -keyout $P/etc/security-key.pem -out $P/etc/security-cert.pem 2>/dev/null
+{ssl} x509 -in $P/etc/security-cert.pem -noout -fingerprint -sha256
+""".format(p=self.inn_prefix, run=self.run, ssl=shlex.quote(openssl)), expect=None)
+        if step.rc != 0:
+            raise GateError("cannot prepare INN protected-reader scratch fixture")
+
+    def inn_security_start(self):
+        step = self.sh("start protected nnrpd", """
+P={p}
+nohup $P/bin/nnrpd -D -4 127.0.0.1 -p {port} -c readers-security.conf \\
+  > $P/log/nnrpd-security-stdout.log 2>&1 < /dev/null &
+for i in $(seq 1 30); do
+  if python3 -c "import socket,sys; s=socket.socket(); s.settimeout(2); sys.exit(0 if s.connect_ex(('127.0.0.1',{port}))==0 else 1)"; then
+    echo "NNRPD-UP pid=$(cat $P/run/nnrpd-{port}.pid 2>/dev/null)"; exit 0; fi
+  sleep 1
+done
+echo NNRPD-TIMEOUT; tail -10 $P/log/nnrpd-security-stdout.log; exit 1
+""".format(p=self.inn_prefix, port=self.inn_security_port), timeout=90, expect=None)
+        pid = reported_pid(step.output)
+        if pid:
+            self.started_pids["nnrpd-security"] = pid
+        if step.rc != 0 or not pid:
+            raise GateError("protected nnrpd did not start with an owned, recorded pid")
+        self.facts["ports"] += "; protected nnrpd {} (STARTTLS reader)".format(self.inn_security_port)
 
     def innd_start(self, name: str, append=False) -> Step:
         return self.sh(name, """
@@ -1292,7 +1559,7 @@ echo INND-TIMEOUT; tail -20 $P/log/innd-stdout.log; exit 1
                             "{}/run/innd.pid, so this run will not kill it".format(
                                 self.inn_prefix))
         self.inn_running = True
-        for group in GROUPS:
+        for group in GROUPS + (("control.checkgroups",) if self.inn_controls else ()) + (("control.cancel",) if self.inn_cancel else ()):
             self.sh("ctlinnd newgroup {}".format(group),
                     "{} newgroup {} y $(id -un)".format(self.bin("ctlinnd"), group),
                     expect=None)
@@ -1358,9 +1625,10 @@ echo TAP-TIMEOUT; cat {run}/tap.stdout; exit 1
 
     def inn_stop(self):
         """Only what this run started, and only by the pid it recorded."""
-        if "nnrpd" in self.started_pids:
-            self.sh("stop nnrpd", "kill {} 2>/dev/null || true; echo stopped".format(
-                self.started_pids.pop("nnrpd")))
+        for name in ("nnrpd-security", "nnrpd"):
+            if name in self.started_pids:
+                self.sh("stop " + name, "kill {} 2>/dev/null || true; echo stopped".format(
+                    self.started_pids.pop(name)))
         if self.inn_running:
             self.sh("ctlinnd shutdown", "{} -t 5 shutdown 'inn lab done' 2>&1 || true"
                     .format(self.bin("ctlinnd")), expect=None)
@@ -1384,6 +1652,146 @@ kill -0 $pid 2>/dev/null && echo INNFEED-ALIVE || echo INNFEED-GONE
             return "(no exchange on the relay)"
         return "{}: {}".format("+".join(found["verbs"]), " / ".join(
             one for one in (found["offer"], found["result"]) if one) or "(no reply)")
+
+    def scenario_checkgroups_control(self):
+        """Actual unsigned control traffic and C1 filing, not authorized discharge."""
+        made = self.sh("fn control.checkgroups filing group", self.cd(self.operator(
+            "group", "create", "control.checkgroups")), timeout=600, expect=None)
+        if made.rc != 0:
+            self.check("inn-checkgroups-control", False, "control filing group was refused",
+                       observed=made.first_line)
+            return
+        msgid = self.ids["INN_CHECKGROUPS_ID"]
+        payload = article(msgid, "actual unsigned checkgroups control", self.date,
+            path=LAB_PATH_IDENTITY + "!not-for-mail",
+            body="fn.checkgroups.proposed\tA group this unsigned control must not create.")
+        payload = payload.replace(b"\r\n\r\n", b"\r\nControl: checkgroups\r\n\r\n", 1)
+        path = self.put_article("checkgroups", payload)
+        probe = self.drive_inn("offer", "--port {} --msgid {} --file {}".format(
+            self.inn_port, shlex.quote(msgid), shell_fixture_path(path)), "actual checkgroups into INN")
+        offered = self.payload(probe)
+        self.sh("flush actual control feed", "{} -t 10 flush fn 2>&1 || true".format(
+            self.bin("ctlinnd")), expect=None)
+        found = self.wait_tap((self.tap_in_port, self.fn_port), msgid, "actual checkgroups control")
+        transferred = bool(found and (streaming_transfer_completed(found, msgid)
+            or (found["verbs"] == ["IHAVE"] and found["offer"].startswith("335")
+                and found["result"].startswith("235"))))
+        observed = self.drive_inn("control-view", "--port {} --group control.checkgroups "
+            "--other-group {} --msgid {}".format(self.fn_port, GROUP, shlex.quote(msgid)),
+            "read actual control filing and unchanged group authority")
+        view = self.payload(observed)
+        served = self.octets_of(view)
+        arrived = (found or {}).get("article") or b""
+        preserved = bool(arrived and served and header_value(served, "Control") == "checkgroups"
+                         and header_value(arrived, "Message-ID") == msgid
+                         and header_value(served, "Message-ID") == msgid
+                         and relay_changes_permitted(header_differences(payload, arrived))
+                         and relay_changes_permitted(header_differences(arrived, served)))
+        ok = bool(probe.rc == 0 and str(offered.get("offer", "")).startswith("335")
+                  and str(offered.get("transfer", "")).startswith("235")
+                  and transferred and observed.rc == 0 and view.get("ok") and preserved)
+        self.facts["actual checkgroups control"] = "INN={}/{}; fn={}; filing={}; ordinary={}; proposed={}; Control={}".format(
+            offered.get("offer"), offered.get("transfer"), self.reply_summary(found),
+            view.get("filing", {}).get("ids"), view.get("ordinary", {}).get("ids"),
+            view.get("active_rows"), header_value(served, "Control"))
+        self.check("inn-checkgroups-control", ok, "actual checkgroups control failed its filing/no-execution assertion",
+                   observed=self.facts["actual checkgroups control"])
+
+    @staticmethod
+    def protected_feed_acceptance(text, peer, msgid):
+        wanted = {"accepted", "feed", "peer=" + peer,
+                  "message-id=" + msgid, "code=235"}
+        return next((line for line in text.splitlines()
+                     if line.startswith("accepted feed ") and wanted.issubset(set(line.split()))), "")
+
+    def wait_protected_feed(self, peer, msgid):
+        started = time.monotonic()
+        polls = 0
+        line = ""
+        path = self.node_dir + "/owner-main.log"
+        while True:
+            polls += 1
+            done = self.host.sh("cat {} 2>/dev/null || true".format(path), 60)
+            line = self.protected_feed_acceptance(done.stdout.decode("utf-8", "replace"),
+                                                  peer, msgid)
+            if line or time.monotonic() - started > self.feed_wait:
+                break
+            time.sleep(2)
+        self.steps.append(Step("native protected-feed outcome", "cat {} ({} polls)".format(
+            path, polls), 0, line or "no matching accepted code235", time.monotonic() - started))
+        return line
+
+    def scenario_protected_feed(self):
+        """Native feed to nnrpd injection: TLS/auth scope, not relay preservation."""
+        peer = "inn-security"
+        pause = self.sh("pause clear INN feed", self.cd(self.operator(
+            "peer", "feed", FN_PEER_NAME, "pause")), timeout=600, expect=None)
+        if pause.rc != 0:
+            self.check("fn-protected-injection", False, "clear feed could not be paused",
+                       observed=pause.first_line)
+            return
+        added = self.sh("native protected INN injection peer", self.cd(self.operator(
+            "peer", "add", peer, INN_PATH_IDENTITY, "127.0.0.1",
+            str(self.inn_security_port), "-", "'fn.*'", "source-address", "127.0.0.1",
+            self.run + "/inn-security.fnauth", "false", "false", "starttls", "127.0.0.1",
+            self.inn_prefix + "/etc/security-cert.pem")), timeout=600, expect=None)
+        if added.rc != 0:
+            self.check("fn-protected-injection", False, "protected peer was refused",
+                       observed=added.first_line)
+            return
+        self.sh("native protected peer as applied", self.cd(self.operator("peer", "list")),
+                timeout=600, expect=None)
+        msgid = self.ids["FN_PROTECTED_ID"]
+        payload = article(msgid, "native protected INN injection", self.date)
+        path = self.put_article("fn-protected", payload)
+        posted = self.drive_inn("post", "--port {} --msgid {} --file {}".format(
+            self.fn_port, shlex.quote(msgid), shell_fixture_path(path)), "POST for protected native feed")
+        accepted = (self.wait_protected_feed(peer, msgid)
+                    if posted.rc == 0 and self.payload(posted).get("ok") else "")
+        probe = self.drive_inn("protected-read",
+            "--port {} --cafile {} --password-file {} --group {} --msgid {}".format(
+                self.inn_security_port,
+                shell_fixture_path(self.inn_prefix + "/etc/security-cert.pem"),
+                shell_fixture_path(self.run + "/inn-security.password"), GROUP,
+                shlex.quote(msgid)), "read native protected injection from INN")
+        read = self.payload(probe)
+        served = self.octets_of(read)
+        same_payload = bool(served and header_value(served, "Message-ID") == msgid
+                            and header_value(served, "Subject") == header_value(payload, "Subject")
+                            and header_differences(payload, served)["body_identical"])
+        self.read_tap()
+        clear = find_exchange(self.tap_text, "{}>{}".format(self.tap_out_port, self.inn_port), msgid)
+        ok = bool(posted.rc == 0 and self.payload(posted).get("ok") and accepted and probe.rc == 0
+                  and read.get("ok") and same_payload and clear is None)
+        self.facts["fn protected injection"] = "{}; ARTICLE={}; payload={}; clear relay={}".format(
+            accepted or "no accepted protected feed code235", read.get("article"),
+            "same Message-ID/Subject/body" if same_payload else "missing or changed",
+            "absent" if clear is None else self.reply_summary(clear))
+        self.check("fn-protected-injection", ok,
+                   "native protected injection did not establish every selected assertion",
+                   observed=self.facts["fn protected injection"])
+
+    def scenario_protected_read(self):
+        probe = self.drive_inn("protected-read",
+            "--port {} --cafile {} --password-file {} --group {} --msgid {}".format(
+                self.inn_security_port,
+                shell_fixture_path(self.inn_prefix + "/etc/security-cert.pem"),
+                shell_fixture_path(self.run + "/inn-security.password"), GROUP,
+                shlex.quote(self.ids["FN_POST_ID"])), "INN protected reader")
+        result = self.payload(probe)
+        original = self.held_octets.get("fn-article", b"")
+        served = self.octets_of(result)
+        diff = header_differences(original, served)
+        ok = bool(probe.rc == 0 and result.get("ok") and original and served
+                  and relay_changes_permitted(diff))
+        self.facts["inn protected reader"] = (
+            "STARTTLS={}; TLS={}; bad PASS={}; before login={}; PASS={}; "
+            "ARTICLE={}; {}".format(result.get("starttls"), result.get("tls"),
+                result.get("bad_pass"), result.get("before_login"), result.get("pass"),
+                result.get("article"), describe_differences(diff)))
+        self.check("inn-protected-reader", ok,
+                   "the selected protected reader did not establish all TLS/auth/read assertions",
+                   observed=self.facts["inn protected reader"])
 
     def scenario_fn_posts(self):
         """POST to the owner; its feed offers the article to innd; nnrpd serves it."""
@@ -1755,6 +2163,7 @@ kill -0 $pid 2>/dev/null && echo INNFEED-ALIVE || echo INNFEED-GONE
                            "" if not after else " with different octets: {}".format(
                                describe_differences(header_differences(before, after)))),
                        instance=instance, observed=str(got.get("article")))
+        self.scenario_lifecycle_restart(rec.rc == 0 and restarted and "OWNER-GONE" in stop.output)
         self.facts["fn term"] = "{}; recover rc={}; {}; {}".format(
             stop.first_line, rec.rc,
             status.output.strip().splitlines()[0] if status.output.strip() else "",
@@ -1945,6 +2354,251 @@ rm -f {p}/run/innd.pid {p}/run/control.ctl
                        "duplicate retry was not subject-matched CHECK438 or changed receiver content",
                        instance=direction, observed=str(retry.get("offer", "")))
 
+    def scenario_distribution(self):
+        """SCN-1059: the actual feed, not a direct injection, owns inclusion."""
+        configured = self.sh("filter INN peer Distribution", self.cd(self.operator(
+            "peer", "distributions", FN_PEER_NAME, "fn")), timeout=600, expect=None)
+        if configured.rc != 0:
+            for key, instances in (("distribution-source-retained", ("world", "match", "none")),
+                                   ("distribution-feed-accepted", ("match", "none")),
+                                   ("distribution-feed-excluded", ("",))):
+                for instance in instances:
+                    self.record(key, deploy_gate.NOT_EXERCISED,
+                                "native operator refused the Distribution filter",
+                                instance=instance, blocker=configured.first_line)
+            return
+        retained, source_valid, accepted = {}, {}, []
+        for instance, ident, distribution in (("world", "FN_DIST_WORLD_ID", "world"),
+                                               ("match", "FN_DIST_MATCH_ID", "FN"),
+                                               ("none", "FN_DIST_NONE_ID", None)):
+            msgid = self.ids[ident]
+            source = article(msgid, "Distribution " + instance, self.date,
+                             distribution=distribution)
+            path = self.put_article("distribution-" + instance, source)
+            result = self.payload(self.drive_inn("post",
+                "--port {} --msgid '{}' --file {}".format(self.fn_port, msgid, path),
+                name="POST Distribution " + instance))
+            served = self.octets_of(result)
+            retained[instance] = served
+            source_diff = header_differences(source, served)
+            # Injection may add its metadata; the existing POST rows check that
+            # recipe. Here the authored fields, body and Distribution must remain.
+            source_ok = (str(result.get("post", "")).startswith("340")
+                         and str(result.get("result", "")).startswith("240")
+                         and str(result.get("article", "")).startswith("220")
+                         and header_value(served, "Message-ID") == msgid
+                         and header_value(served, "Distribution") == (distribution or "")
+                         and source_diff["body_identical"]
+                         and not source_diff["only_first"]
+                         and not source_diff["changed"])
+            source_valid[instance] = source_ok
+            self.check("distribution-source-retained", source_ok,
+                       "POST did not retain the subject, Distribution and authored content",
+                       instance=instance, observed="{} / {}; {}".format(
+                           result.get("result"), result.get("article"),
+                           describe_differences(source_diff)))
+            if instance == "world":
+                continue
+            found = self.wait_tap((self.tap_out_port, self.inn_port), msgid,
+                                  "Distribution " + instance)
+            back = self.payload(self.drive_inn("fetch",
+                "--port {} --msgid '{}'".format(self.nnrpd_port, msgid),
+                name="INN read Distribution " + instance))
+            fed, received = (found or {}).get("article") or b"", self.octets_of(back)
+            transfer_ok = (bool(found) and (
+                (found["verbs"] == ["IHAVE"] and found["offer"].startswith("335")
+                 and found["result"].startswith("235"))
+                or streaming_transfer_completed(found, msgid)))
+            ok = (source_ok and transfer_ok and bool(fed) and bool(received)
+                  and str(back.get("article", "")).startswith("220")
+                  and header_value(fed, "Message-ID") == msgid
+                  and header_value(received, "Message-ID") == msgid
+                  and relay_changes_permitted(header_differences(served, fed))
+                  and relay_changes_permitted(header_differences(fed, received)))
+            accepted.append(ok)
+            self.check("distribution-feed-accepted", ok,
+                       "Distribution control did not complete the actual feed with unchanged content",
+                       instance=instance, observed=self.reply_summary(found))
+        if not all(accepted):
+            self.record("distribution-feed-excluded", deploy_gate.NOT_EXERCISED,
+                        "both actual positive feed controls must complete before exclusion is judged",
+                        blocker="Distribution positive control failed")
+            return
+        msgid = self.ids["FN_DIST_WORLD_ID"]
+        self.read_tap()
+        offered = find_exchange(self.tap_text,
+                                "{}>{}".format(self.tap_out_port, self.inn_port), msgid)
+        absent = self.payload(self.drive_inn("fetch",
+            "--port {} --msgid '{}'".format(self.nnrpd_port, msgid),
+            name="INN absence of Distribution world"))
+        kept = self.payload(self.drive_inn("fetch",
+            "--port {} --msgid '{}'".format(self.fn_port, msgid),
+            name="fn retains Distribution world"))
+        ok = (source_valid["world"] and offered is None
+              and str(absent.get("article", "")).startswith("430")
+              and str(kept.get("article", "")).startswith("220")
+              and self.octets_of(kept) == retained["world"])
+        self.check("distribution-feed-excluded", ok,
+                   "world was offered, is present in INN, or changed on fn after the two controls",
+                   observed="{}; INN {}; fn {}".format(
+                       self.reply_summary(offered), absent.get("article"), kept.get("article")))
+        self.facts["Distribution"] = "fn filter=fn; matching/absent controls={}; world excluded={}".format(accepted, ok)
+
+    def carry_inn_article(self, name, msgid, payload):
+        """Inject at INN, require its actual innfeed and exact fn readback."""
+        path = self.put_article(name, payload)
+        entry = self.payload(self.drive_inn("offer",
+            "--port {} --msgid '{}' --file {}".format(self.inn_port, msgid, path),
+            name="INN inject " + name))
+        self.sh("flush INN " + name, "{} -t 10 flush fn".format(self.bin("ctlinnd")), expect=None)
+        found = self.wait_tap((self.tap_in_port, self.fn_port), msgid, name)
+        reader = self.payload(self.drive_inn("fetch",
+            "--port {} --msgid '{}'".format(self.fn_port, msgid), name="fn reads " + name))
+        arrived, served = (found or {}).get("article") or b"", self.octets_of(reader)
+        transfer_ok = bool(found and (
+            (found["verbs"] == ["IHAVE"] and found["offer"].startswith("335") and found["result"].startswith("235"))
+            or streaming_transfer_completed(found, msgid)))
+        ok = (str(entry.get("offer", "")).startswith("335")
+              and str(entry.get("transfer", "")).startswith("235") and transfer_ok
+              and str(reader.get("article", "")).startswith("220")
+              and bool(arrived) and bool(served)
+              and all(header_value(one, "Message-ID") == msgid for one in (payload, arrived, served))
+              and relay_changes_permitted(header_differences(payload, arrived))
+              and relay_changes_permitted(header_differences(arrived, served)))
+        return ok, served, "INN {}/{}; fn {}; ARTICLE {}".format(
+            entry.get("offer"), entry.get("transfer"), self.reply_summary(found), reader.get("article"))
+
+    def scenario_cancel(self):
+        """SCN-1060: INN transport carries RFC8315; fn independently decides."""
+        made = self.sh("fn control.cancel filing group", self.cd(self.operator(
+            "group", "create", "control.cancel")), timeout=600, expect=None)
+        if made.rc != 0:
+            self.record("inn-cancel-key", deploy_gate.NOT_EXERCISED,
+                        "control.cancel group was refused", blocker=made.first_line)
+            return
+        target = self.ids["INN_CANCEL_TARGET_ID"]
+        # External client's deterministic fixtures: c-lock = Base64(SHA256(c-key)).
+        key = "nF1mJIoIqWgx8RfTYFrPn7ItCMtoa03eE+hRGaIxwEE="
+        lock = "+ThAhCCLKEJ4hnn5jd6cFYqnquI6hUkWLUn8bzzVouY="
+        wrong = "AvnyKpnDJiu4WjGTLzJSDjT3kIuFMa9AcnQ85vtCRzc="
+        payload = article(target, "target for INN-carried cancel", self.date,
+                          path=LAB_PATH_IDENTITY + "!not-for-mail")
+        payload = payload.replace(b"\r\n\r\n", ("\r\nCancel-Lock: sha256:" + lock + "\r\n\r\n").encode(), 1)
+        took, stored, details = self.carry_inn_article("cancel-target", target, payload)
+        stages = [took]
+        for label, ident, candidate in (("wrong", "INN_CANCEL_BAD_ID", wrong),
+                                        ("good", "INN_CANCEL_GOOD_ID", key)):
+            if not all(stages):
+                break
+            mid = self.ids[ident]
+            cancel = article(mid, "cmsg cancel " + target, self.date,
+                             path=LAB_PATH_IDENTITY + "!not-for-mail", body="cancel")
+            cancel = cancel.replace(b"\r\n\r\n", ("\r\nControl: cancel " + target +
+                "\r\nCancel-Key: sha256:" + candidate + "\r\n\r\n").encode(), 1)
+            carried, _, detail = self.carry_inn_article("cancel-" + label, mid, cancel)
+            back = self.payload(self.drive_inn("fetch", "--port {} --msgid '{}'".format(
+                self.fn_port, target), name="fn target after " + label + " cancel"))
+            unchanged = (str(back.get("article", "")).startswith("220") and self.octets_of(back) == stored)
+            withdrawn = str(back.get("article", "")).startswith("430")
+            stages.append(carried and (unchanged if label == "wrong" else withdrawn))
+            details += "; " + label + " " + detail + "; target " + str(back.get("article", ""))
+        local = self.payload(self.drive_inn("fetch", "--port {} --msgid '{}'".format(
+            self.nnrpd_port, target), name="INN target under docancels none"))
+        stages.append(str(local.get("article", "")).startswith("220")
+                      and relay_changes_permitted(header_differences(payload, self.octets_of(local))))
+        ok = len(stages) == 4 and all(stages)
+        if ok:
+            self.lifecycle_states["inn-cancel-restart"] = (target, None)
+        self.facts["INN carried cancel"] = details + "; INN target " + str(local.get("article", ""))
+        self.check("inn-cancel-key", ok,
+                   "Cancel-Key transfer or wrong/right-key decision failed; INN docancels=none is separate local policy",
+                   observed=self.facts["INN carried cancel"])
+
+    def scenario_expiry(self):
+        """SCN-1061: isolated INN group expiry never implies an fn release."""
+        group = self.expiry_group
+        made = self.sh("create isolated expiry groups", self.cd(self.operator(
+            "group", "create", group)) + " && {} -t 10 newgroup {} y".format(self.bin("ctlinnd"), group),
+            timeout=600, expect=None)
+        if made.rc != 0:
+            self.record("inn-expiry-local", deploy_gate.NOT_EXERCISED,
+                        "isolated expiry group creation failed", blocker=made.first_line)
+            return
+        msgid = self.ids["FN_EXPIRE_ID"]
+        payload = article(msgid, "INN local expiry preserves fn", self.date, group=group)
+        path = self.put_article("expiry", payload)
+        entry = self.payload(self.drive_inn("post", "--port {} --msgid '{}' --file {}".format(
+            self.fn_port, msgid, path), name="POST isolated expiry source"))
+        stored = self.octets_of(entry)
+        found = self.wait_tap((self.tap_out_port, self.inn_port), msgid, "isolated expiry source")
+        before = self.payload(self.drive_inn("fetch", "--port {} --msgid '{}'".format(
+            self.nnrpd_port, msgid), name="INN expiry source before removal"))
+        transferred = (found or {}).get("article") or b""
+        ok = (str(entry.get("result", "")).startswith("240") and bool(stored)
+              and header_value(stored, "Message-ID") == msgid
+              and bool(found) and ((found["verbs"] == ["IHAVE"] and found["offer"].startswith("335")
+                  and found["result"].startswith("235")) or streaming_transfer_completed(found, msgid))
+              and bool(transferred) and str(before.get("article", "")).startswith("220")
+              and header_value(transferred, "Message-ID") == msgid
+              and header_value(self.octets_of(before), "Message-ID") == msgid
+              and relay_changes_permitted(header_differences(stored, transferred))
+              and relay_changes_permitted(header_differences(transferred, self.octets_of(before))))
+        if not ok:
+            self.check("inn-expiry-local", False, "source did not reach both stores before expiry",
+                       observed=self.reply_summary(found))
+            return
+        # INN expireover -f reads a GROUP LIST, not an alternate expire.ctl.
+        # Restrict it to the fresh group and restore the lab's old policy even
+        # on failure. No expire/history pruning or clock warp occurs here.
+        expired = self.sh("expire isolated INN group", """
+set -eu
+P={prefix}
+policy=$P/etc/expire.ctl
+saved={run}/expire.ctl.saved
+had=false
+if [ -f "$policy" ]; then cp "$policy" "$saved"; had=true; fi
+restore() {{ if [ "$had" = true ]; then cp "$saved" "$policy"; else rm -f "$policy"; fi; }}
+trap restore EXIT
+printf '/remember/:11\\n*:A:never:never:never\\n{group}:A:0:0:0\\n' > "$policy"
+cat "$policy"
+printf '{group}\\n' | "$P/bin/expireover" -f - -Z {run}/expiry.lowmark
+"$P/bin/ctlinnd" -t 10 lowmark {run}/expiry.lowmark
+""".format(prefix=self.inn_prefix, run=self.run, group=group), timeout=600, expect=None)
+        after = self.payload(self.drive_inn("fetch", "--port {} --msgid '{}'".format(
+            self.nnrpd_port, msgid), name="INN expiry source after removal"))
+        kept = self.payload(self.drive_inn("fetch", "--port {} --msgid '{}'".format(
+            self.fn_port, msgid), name="fn default expiry retains source"))
+        duplicate = self.payload(self.drive_inn("offer", "--port {} --msgid '{}' --file {}".format(
+            self.inn_port, msgid, path), name="INN expiry duplicate history"))
+        ok = (expired.rc == 0 and str(after.get("article", "")).startswith("430")
+              and str(kept.get("article", "")).startswith("220") and self.octets_of(kept) == stored
+              and str(duplicate.get("offer", "")).startswith("435") and not duplicate.get("transfer"))
+        if ok:
+            self.lifecycle_states["inn-expiry-restart"] = (msgid, stored)
+        self.facts["INN expiry"] = "group={}; expire rc={}; INN {}; fn {}; duplicate {}".format(
+            group, expired.rc, after.get("article"), kept.get("article"), duplicate.get("offer"))
+        self.check("inn-expiry-local", ok, "INN local expiry/history or fn default retention failed",
+                   observed=self.facts["INN expiry"])
+
+    def scenario_lifecycle_restart(self, reopened):
+        for selected, key in ((self.inn_cancel, "inn-cancel-restart"),
+                              (self.inn_expiry, "inn-expiry-restart")):
+            if not selected:
+                continue
+            expected = self.lifecycle_states.get(key)
+            if expected is None or not reopened:
+                self.record(key, deploy_gate.NOT_EXERCISED,
+                            "completed lifecycle operation and successful cold reopen are required",
+                            blocker="initial lifecycle operation or fn reopen did not complete")
+                continue
+            msgid, before = expected
+            back = self.payload(self.drive_inn("fetch", "--port {} --msgid '{}'".format(
+                self.fn_port, msgid), name="fn cold restart " + key))
+            ok = (str(back.get("article", "")).startswith("430") if before is None else
+                  str(back.get("article", "")).startswith("220") and self.octets_of(back) == before)
+            self.check(key, ok, "fn lifecycle result changed after cold reopen",
+                       observed=str(back.get("article", "")))
+
     # -- the whole lab ----------------------------------------------------
     def execute(self):
         self.preflight()
@@ -1955,6 +2609,8 @@ rm -f {p}/run/innd.pid {p}/run/control.ctl
         self.inn_configure()
         if not self.inn_start():
             raise GateError("innd did not start; see the evidence for its log")
+        if self.inn_security:
+            self.inn_security_start()
         if not self.tap_start():
             raise GateError("the relay did not start")
         if not self.start_fn("main"):
@@ -1962,6 +2618,8 @@ rm -f {p}/run/innd.pid {p}/run/control.ctl
         self.sh("fn CAPABILITIES", self.cd("python3 {}/inn.py caps --port {}".format(
             self.run, self.fn_port)), expect=None)
         self.scenario_fn_posts()
+        if self.inn_security:
+            self.scenario_protected_read()
         self.scenario_operator_post()
         self.scenario_from_invalid()
         self.scenario_supplied_path()
@@ -1970,6 +2628,16 @@ rm -f {p}/run/innd.pid {p}/run/control.ctl
         self.scenario_duplicates_and_loop()
         if self.inn_streaming:
             self.scenario_bidirectional_streaming()
+        if self.inn_distribution:
+            self.scenario_distribution()
+        if self.inn_controls:
+            self.scenario_checkgroups_control()
+        if self.inn_cancel:
+            self.scenario_cancel()
+        if self.inn_expiry:
+            self.scenario_expiry()
+        if self.inn_security_feed:
+            self.scenario_protected_feed()
         self.scenario_fn_term()
         self.scenario_innd_cut()
 
@@ -2030,6 +2698,22 @@ def main(argv=None) -> int:
     parser.add_argument("--nnrpd-port", type=int, default=NNRPD_PORT)
     parser.add_argument("--inn-streaming", action="store_true",
                         help="complete both actual streaming feeds and duplicate retry")
+    parser.add_argument("--inn-distribution", action="store_true",
+                        help="exercise actual fn-to-INN Distribution filter and positive controls")
+    parser.add_argument("--inn-security", action="store_true",
+                        help="add certificate-verified STARTTLS and USER/PASS reader "
+                             "checks; requires a separate TLS-capable --inn-prefix")
+    parser.add_argument("--inn-cancel", action="store_true",
+                        help="carry actual wrong/right Cancel-Key control traffic through INN innfeed")
+    parser.add_argument("--inn-expiry", action="store_true",
+                        help="expire only a fresh isolated INN group; verify fn retention and duplicate history")
+    parser.add_argument("--inn-controls", action="store_true",
+                        help="actual unsigned Control: checkgroups via INN innfeed, "
+                             "control-group filing and no automatic group creation")
+    parser.add_argument("--inn-security-feed", action="store_true",
+                        help="also run native fn STARTTLS/USER-PASS IHAVE into nnrpd's "
+                             "injection endpoint; requires --inn-security")
+    parser.add_argument("--inn-security-port", type=int, default=INN_SECURITY_PORT)
     parser.add_argument("--fn-port", type=int, default=FN_PORT)
     parser.add_argument("--tap-out-port", type=int, default=TAP_OUT_PORT)
     parser.add_argument("--tap-in-port", type=int, default=TAP_IN_PORT)
@@ -2043,8 +2727,15 @@ def main(argv=None) -> int:
                      "or the lab does not run (D07)")
     ports = (args.inn_port, args.nnrpd_port, args.fn_port, args.tap_out_port,
              args.tap_in_port)
+    if args.inn_security_feed and not args.inn_security:
+        parser.error("--inn-security-feed requires --inn-security")
+    if args.inn_security:
+        if not args.inn_prefix or args.inn_prefix.rstrip("/") == "{}/{}".format(
+                DEFAULT_INN_ROOT, args.inn_version):
+            parser.error("--inn-security needs a separate TLS-capable --inn-prefix")
+        ports += (args.inn_security_port,)
     if len(set(ports)) != len(ports):
-        parser.error("the five ports must differ: {}".format(ports))
+        parser.error("all selected ports must differ: {}".format(ports))
 
     repo = Path(args.repo).resolve() if args.repo else repo_root()
     commit, rev = resolve(repo, args.commit)
@@ -2068,7 +2759,10 @@ def main(argv=None) -> int:
                  nnrpd_port=args.nnrpd_port, fn_port=args.fn_port,
                  tap_out_port=args.tap_out_port, tap_in_port=args.tap_in_port,
                  feed_wait=args.feed_wait, extra_overlays=overlays[1:],
-                 inn_streaming=args.inn_streaming)
+                 inn_streaming=args.inn_streaming, inn_distribution=args.inn_distribution,
+                 inn_security=args.inn_security, inn_security_port=args.inn_security_port,
+                 inn_security_feed=args.inn_security_feed, inn_controls=args.inn_controls,
+                 inn_cancel=args.inn_cancel, inn_expiry=args.inn_expiry)
     started = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     clock = time.monotonic()
     failure = None

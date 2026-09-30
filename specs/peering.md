@@ -1574,6 +1574,99 @@ listing; the exact `kill` timing for S10/S11 as the record index at which the
 signal was sent; what was *not* shown (no TLS, no AUTHINFO, no
 Distribution, no control messages, single host, loopback only).
 
+### 5.1 Optional protected INN reader fixture (W3 source continuation)
+
+`tools/inn_lab.py --inn-security` extends the real-INN lab with a separate,
+loopback-only STARTTLS reader configured from `readers-security.conf`.
+SCN-1029 requires certificate/IP-name verification (RFC 4642 section 2),
+refused and accepted AUTHINFO USER/PASS (RFC 4643 section 2.3), refusal of
+unauthenticated read under INN's local access policy, and a read of the
+article already delivered from fn to innd. Its article comparison permits
+only the Path and Xref changes of RFC 5537 section 3.6. The source harness
+is present; real pinned-INN and matching fn-image execution remains open.
+
+This row measures the external INN reader and its access policy, not fn's
+own protected feed preamble or authorization theorem. The innd transit
+connections remain the original clear loopback connections. The standing
+plaintext INN prefix cannot be used for the optional row. Native protected
+feeding, actual Control-header outcome, Distribution, cancel/expiry,
+bidirectional streaming, failure cases beyond process death and the wider
+RFC audit remain separate original finite work. The legacy `inn-control`
+row is an IHAVE exchange, not a Control-header scenario.
+
+### 5.2 Native protected injection into INN (W3 source continuation)
+
+SCN-1030 selects `--inn-security --inn-security-feed`. The native owner
+pauses its clear feed, then applies an outbound-only nnrpd peer with
+STARTTLS, verified IP name/anchor and USER/PASS FNAUTH1 profile; clear
+credential carriage is disabled. A fresh POST follows the accepted pause
+and configuration. The row requires the actual native feed's accepted235
+observation for that Message-ID, a protected read of the same
+Message-ID/Subject/body and no clear-relay offer for that article.
+
+This exercises native fn's protected preamble into an external injecting
+endpoint. nnrpd can alter injection fields; the row is distinct from the
+innd transit preservation assertion. It records the native parsed reply,
+not a claimed decrypted TLS wire trace. The source fixture and scoped
+harness assertions are present; real INN/matching-image evidence and the
+remaining original W3/Q12 arms are still open.
+
+### 5.3 Actual legacy checkgroups traffic and filing (W3 source continuation)
+
+SCN-1033 selects `--inn-controls`, independently of TLS. A real unsigned
+`Control: checkgroups` article enters innd by IHAVE and crosses INN's own
+innfeed to fn. The exact accepted relay replies are recorded. The operator
+has created `control.checkgroups`; a non-peer loopback reader checks the
+article's numbered membership there, its absence from the declared
+ordinary Newsgroups, its preserved Control header/body and the absence of
+the body-proposed group from LIST ACTIVE. This exercises NNT-010 filing,
+not the old `inn-control` manual transfer row.
+
+No INN controlchan or authenticated discharge is claimed. Unsigned
+articles do not reconfigure fn, and newgroup/rmgroup execution remains D29
+deferred. The source fixture is present; real pinned-INN/matching-image
+execution and the other original W3/Q12 criteria remain open.
+
+### 5.4 Actual feed Distribution and local lifecycle observations (Q12)
+
+SCN-1059 selects `--inn-distribution`. The native operator configures the
+INN peer's filter as `fn`; local POSTs carry `Distribution: world`, `FN`
+and no Distribution. All three must remain readable on fn with their
+original subject, Distribution and body. The matching and absent cases
+must complete the actual outbound feed and INN reader readback with only
+Path/Xref changes. Only after both positive controls does the observer
+judge the world case: no IHAVE/CHECK/TAKETHIS in the relay log, ARTICLE 430
+on INN, and unchanged ARTICLE 220 bytes on fn. This observes NNT-051's RFC
+5537 section 3.6 guidance and its specified absent-field local policy.
+
+SCN-1060 selects `--inn-cancel`. INN is configured `docancels: none` and
+forwards actual target and wrong/right Cancel-Key articles by innfeed.
+Every accepted message must preserve its exact Message-ID, Control/key
+headers and body except Path/Xref. A wrong key leaves the target unchanged
+on fn; the matching RFC 8315 section 2.1 key withdraws it from fn's new view.
+INN still serves its original target under its explicitly different local
+policy. fn cold restart must preserve the withdrawal. This is SEC-006
+transport/composition evidence, when actually run; it does not qualify
+INN's optional Cancel-Lock authentication library or signed D29 authority.
+
+SCN-1061 selects `--inn-expiry`. A fresh isolated group is created on each
+server; native fn's POST crosses its actual feed before any expiry runs.
+INN `expireover -f -` receives only that group, under a temporary zero-age
+rule; the prior expire.ctl is restored on both success and failure. No
+history pruning or clock warp is performed. The INN copy must become
+ARTICLE 430 while an IHAVE retry remains 435, and fn's default D03 archive
+must serve exactly the same bytes before and after its cold restart.
+Peer-local expiry is not an fn release or a resurrection permission.
+INN's command/policy semantics are implementation facts from its manuals,
+not ACL2 conclusions or RFC-mandated retention durations.
+
+These source-present observers use the saved native entry only. Scripted
+fixtures and local shell execution verify their accounting, not real
+INN/fn behavior. A matching executable coordinate does not currently
+exist; the original eight Q12 anchors remain open, including invitation,
+withdrawal-provider, Path projection, wide streaming/soak and broader
+failure/audit scope. The coordinator alone schedules matching execution.
+
 ## 6. The inter-agent angle
 
 Agents are principals ([identity](identity.md), `fn-prin-`): a 32-octet id
