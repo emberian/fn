@@ -137,3 +137,20 @@ retained aliases, exact generation reference settlement, repeated release,
 stale slot reuse, wrong connection IDs, and corrupted free-slot metadata.
 Funded issuance, all accepted open/repin/close hooks, and native token transport
 remain integration work; these components do not yet activate a served path.
+
+The internal issuer now debits the same shared pool before constructing a
+holder token, distinguishes physical slot reuse from identity issuance, and
+retains an explicit intent across uncertain registration/reference/settlement
+cuts. Final settlement requires a closing holder with no reader aliases and
+actual generation-reference release; it refunds reusable resources once and
+never refunds the identity. Definite pre-open refusal can settle a charged,
+registered or source-owned reservation. An uncertain intent requires recovery.
+The permanent slot/free-list metadata still needs installed baseline funding.
+
+Actual selection differs by entry point: the ordinary `fn-owner-open` applies
+its D reader-view selector, whereas current peer/exposure opens use the working
+owner. Their source adapters preserve this distinction. The issuer and adapter
+are internal source components, not yet the accepted-open/native caller.
+[Lifecycle evidence](../planning/evidence/connection-issuer-2026-09-30/README.md)
+names the synthetic fixture setup, actual operations, exact source replay and
+remaining runtime/caller/proof obligations.
