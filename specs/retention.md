@@ -402,3 +402,13 @@ before any custody transfer. Completion requires the actual core-produced
 result/retained-job receipt and final alias settlement; CID, step equality,
 lexical STATE return, STOPPING or a supplied joined flag are insufficient.
 No return/reset API exists while that association and receipt are absent.
+
+The begin gate now requires the bounded installation receipt shape/tag/token/
+instance and keeps it unchanged; it does not allocate a comparison tuple.
+The paired installation subject `fn-owner-rx-capacity-install-turn` writes
+`(:receiver-install actual-provider-token actual-instance)` only after the
+real reserved-to-installed transition. A duplicate installed row cannot bind
+a second fresh controller. Raw constructor/object association, startup
+precharge and failure/recovery cuts still require matching evidence. Every
+fill needs the actual admitted turn ticket; the capacity-only child range
+helper is not authority to overwrite a transferred receiver source.

@@ -26,19 +26,27 @@
       (equal (fn-prl-nth 2 demand) 0)
       (equal (fn-prl-nth 3 demand) 0)
       (equal (fn-prl-nth 4 demand) 1)))
+(defun fn-rxt-installed-anchor-p (receiver-token fn-rx-provider fn-receiver-turn)
+ (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn)))
+ (let ((receipt (fn-rxt-receipt fn-receiver-turn)))
+  (and (consp receipt) (eq (car receipt) :receiver-install)
+       (consp (cdr receipt)) (equal (cadr receipt) receiver-token)
+       (consp (cddr receipt))
+       (equal (caddr receipt) (fn-rxp-instance fn-rx-provider))
+       (null (cdddr receipt)))))
 (defun fn-owner-rx-turn-begin
  (receiver-token demand fn-rx-provider fn-receiver-turn fn-page-read-pool)
  (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
  (cond
   ((not (and (eq (fn-prp-mode fn-page-read-pool) :served)
-             (fn-rxp-currentp receiver-token fn-rx-provider)))
+             (fn-rxp-currentp receiver-token fn-rx-provider)
+             (fn-rxt-installed-anchor-p receiver-token fn-rx-provider fn-receiver-turn)))
    (mv :receiver-unavailable fn-receiver-turn fn-page-read-pool))
   ((not (and (eq (fn-rxt-phase fn-receiver-turn) :idle)
              (null (fn-rxt-ticket fn-receiver-turn))
              (null (fn-rxt-source fn-receiver-turn))
              (null (fn-rxt-demand fn-receiver-turn))
-             (null (fn-rxt-job fn-receiver-turn))
-             (null (fn-rxt-receipt fn-receiver-turn))))
+             (null (fn-rxt-job fn-receiver-turn))))
    (mv :receiver-turn-busy fn-receiver-turn fn-page-read-pool))
   ((not (fn-rxt-issued-demandp demand))
    (mv :invalid-receiver-turn-demand fn-receiver-turn fn-page-read-pool))
@@ -111,3 +119,9 @@
                   fn-owner-page-read-ledger fn-owner-page-read-keep-ledger
                   fn-prl-build fn-prl-nth)))
  :rule-classes nil)
+(defthm fn-owner-rx-turn-begin-preserves-installation-receipt
+ (equal (fn-rxt-receipt
+         (mv-nth 1 (fn-owner-rx-turn-begin receiver-token demand fn-rx-provider
+                                         fn-receiver-turn fn-page-read-pool)))
+        (fn-rxt-receipt fn-receiver-turn))
+ :hints (("Goal" :in-theory (enable fn-owner-rx-turn-begin fn-prs-issue))))
