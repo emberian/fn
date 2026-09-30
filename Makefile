@@ -492,6 +492,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/selected-runtime-shift-tests \
 	tests/acl2/payload-budget-shift-workspace-tests \
 	books/payload-action-runtime-workspace \
+	books/payload-action-header16-workspace \
+	tests/acl2/payload-action-header16-workspace-tests \
 	tests/acl2/payload-action-runtime-workspace-tests \
 	books/payload-lz-dict-1 \
 	books/payload-lz-dicts \

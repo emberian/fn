@@ -258,3 +258,10 @@ getter refinement is closed so proof preprocessing cannot execute unsupported
 huge shifts. Width monotonicity helpers remain local. Borrowed getters/setters,
 bit/ring/index helpers, compiled calls, cache/fault/collector lifetimes and
 whole initialization/activation authority remain separate open obligations.
+
+The separately proved `payload-action-header16-workspace.lisp` match join uses
+the actual generic pending-register bound N<65536. It preserves the same
+arithmetic-only sums, including6368 at K64, and does not require an unproved
+mode12-origin N<259 invariant or impose that smaller bound on stored data.
+Five literal positive/removal/corrupted-origin teeth distinguish header width
+from valid length-code provenance; complete decoder/native funding remains open.
