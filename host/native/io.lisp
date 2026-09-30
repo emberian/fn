@@ -1471,7 +1471,7 @@ and any previous selected checkpoint before initializing the epoch."
   "Lifecycle mutex held; ACL2 alone decides the phase transition."
   (fnn-core 'fn-pvl-runtime-step *fnn-payload-lifecycle-phase* event owned joined))
 
-(defun fnn-payload-startup-reset ()
+(defun fnn-payload-startup-reset (&optional recovery-purpose)
   "Only startup/recovery may clear. Refuse serving/draining before STATE use."
   (sb-thread:with-mutex (*fnn-payload-lifecycle-lock*)
     (let ((permission (fnn-payload-lifecycle-answer :reset)))
@@ -1483,7 +1483,12 @@ and any previous selected checkpoint before initializing the epoch."
                        (declare (ignore ignored))
                        (when erp (fnn-fault "payload reset core error")) val)))
         (when (eq (first answer) :reset)
-          (setf *fnn-payload-lifecycle-arena* arena))
+          (setf *fnn-payload-lifecycle-arena* arena)
+          (when recovery-purpose
+            ; Canonical epoch reset shares the actual quiescent exclusion.
+            ; It precedes loader generation selection and lexical issuance.
+            (unless (eq (first (fnn-core-state 'fn-owner-recovery-source-reset)) :reset)
+              (fnn-fault "canonical recovery reset refused"))))
         answer))))
 
 (defun fnn-bridge-recover-begin ()
@@ -3454,6 +3459,8 @@ books/store-profile-open.lisp fn-spo-open-of-a-format-8-profile-refuses-by-name)
 fnn-recover-log.  Answers the history's record COUNT; the records themselves
 are not kept (PKT-823): a caller that needs their octets reads them after the
 open, a record at a time (`fnn-log-history-each')."
+  (unless (eq (first (fnn-payload-startup-reset :recovery)) :reset)
+    (fnn-fault "recovery requires joined quiescent payload arena"))
   (setf (fnn-store-fenced store) t (fnn-store-completion-pending store) nil
         (fnn-store-open-mode store) '(:full-replay :absent)
         (fnn-store-recovery-identity store) nil

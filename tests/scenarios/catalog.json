@@ -7007,7 +7007,8 @@
         "Compare complete image pages, spool digests, root and frozen node/salt/count/trail with the current canonical format and original outer fn-his-binding.",
         "Interrupt each stream phase, resume the same continuation and retain exact row/source/maintenance/stage/buffer identities.",
         "Mutate stage ID, effect serial, buffer generation, source pass, exact retained grant receipt, response position/length and outcome; require stale/refused/recovery distinctions with no unauthorized reuse, source advance or credit release.",
-        "Join actual native staging cleanup/publication separately with the complete outer Store summary and framed A/F/P/E/R acceptance path."
+        "Join actual native staging cleanup/publication separately with the complete outer Store summary and framed A/F/P/E/R acceptance path.",
+        "Actual native-profile growth and retained receipt gate; complete ten-output refusal frame, funded pending page positive, out-of-extent corrupted pending request refusal and short-write retained authority."
       ],
       "expected": [
         "No whole image/history materialization in the served writer, no alternate hash or F constructor.",
@@ -7020,7 +7021,8 @@
       },
       "evidence": [
         "specs/history-image-producer.md",
-        "planning/evidence/history-image-producer-source-2026-09-30.json"
+        "planning/evidence/history-image-producer-source-2026-09-30.json",
+        "planning/evidence/history-image-native-profile-source-2026-09-30.json"
       ],
       "execution_scope": "Complete small decoded-cold-row ACL2 source trajectory and explicit stale-stage/uncertain/malformed-byte mutations pass in fresh exact-source hpi4, with full image/spools/concrete-root comparison. General full trajectory/effect proof, multi-table/multi-page directory witnesses, all interruption cuts and actual native joined execution remain pending."
     },
@@ -7035,7 +7037,8 @@
         "Consume actual funded same-pass SSR completions including empty/multiple-row chunks; derive count from produced ORIGINAL context and reject duplicate/stale tokens.",
         "Replace/reset source, alter region/epoch/generation or interrupt a producing step; require canonical state to remain unavailable with retained obligations.",
         "Complete configured recovery, read actual Store count/frontier/CP and atomically install context/carries/canonical sizes with sealed source4.",
-        "Run real accepted-history checkpoint/restart/two-page cold read with retained old reader and joined cleanup under actual admission."
+        "Run real accepted-history checkpoint/restart/two-page cold read with retained old reader and joined cleanup under actual admission.",
+        "Actual recovery entry resets canonical epoch inside joined-quiescent arena lifecycle exclusion before physical load; reset-first and start/capture-first schedules preserve ordering/refusal without STATE or Store mutation."
       ],
       "expected": [
         "No old live-owner source fallback or host-supplied final count.",
@@ -7048,7 +7051,8 @@
       "evidence": [
         "specs/recovery-source-authority.md",
         "planning/evidence/recovery-source-authority-source-2026-09-30.json",
-        "planning/evidence/recovery-state-boundary-2026-09-30/native-review.md"
+        "planning/evidence/recovery-state-boundary-2026-09-30/native-review.md",
+        "planning/evidence/recovery-reset-source-2026-09-30/coordinate.json"
       ],
       "execution_scope": "Source-only scalar/token fixtures pass in fresh protected rsag3; actual loader/SSR/install and native accepted-history scenario remain specified and open."
     },

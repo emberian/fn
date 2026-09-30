@@ -83,3 +83,13 @@ puts the writer in recovery while retaining the pending effect, buffer
 generation, complete buffer and live credit. This is a concrete host seam
 fixture; it does not establish initial whole-operation allocation adequacy
 or replace native syscall/lifetime and general writer proofs.
+
+The actual writer growth call now uses `fn-osj-native-grow` before backing
+writes. Retained receipts require native-profile live authority. The exact
+effect projection requires offset plus count within its captured target or
+spool extent and the selected signed offset domain; its named interval theorem
+and positive/corrupted-state/antecedent-removal witnesses pass in the same
+composed source world as the changed writer guards and full cold image fixture.
+Profile refusal preserves all ten controller outputs. Whole INIT adequacy,
+writer invariant/progress and actual native execution remain open; evidence is
+`planning/evidence/history-image-native-profile-source-2026-09-30.json`.

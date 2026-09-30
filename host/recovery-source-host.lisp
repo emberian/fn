@@ -9,6 +9,12 @@
 (defun fn-owner-recovery-global (key state)
   (declare (xargs :stobjs state :mode :program))
   (and (boundp-global key state) (f-get-global key state)))
+; Called only inside the actual quiescent payload-reset lifecycle exclusion,
+; before any physical load. Source callbacks retain their issued epoch.
+(defun fn-owner-recovery-source-reset (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (fn-owner-canonical-reset state)))
+    (value (list :reset (fn-owner-canonical-epoch state)))))
 (defun fn-owner-recovery-source-start (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((meta (fn-store-sco-recovery-source-value state))

@@ -23,6 +23,8 @@
 (defvar *fixture-owned* nil)
 (defvar *fixture-state-calls* 0)
 (defvar *fixture-generation* 0)
+(defvar *fixture-canonical-epoch* 0)
+(defvar *fixture-reset-order* nil)
 (defvar *fixture-reset-entered* nil)
 (defvar *fixture-reset-proceed* nil)
 (defun fnn-fault (control &rest args) (error (apply #'format nil control args)))
@@ -33,6 +35,11 @@
 (defun fnn-core-state (name &rest args)
   (incf *fixture-state-calls*)
   (case name
+    (fn-owner-recovery-source-reset
+     (assert (eq (first *fixture-reset-order*) :payload-reset))
+     (push :canonical-reset *fixture-reset-order*)
+     (incf *fixture-canonical-epoch*)
+     (list :reset *fixture-canonical-epoch*))
     (fn-owner-payload-view-owned-p *fixture-owned*)
     (fn-owner-payload-view-live-p (equal (first args) *fixture-owned*))
     (fn-owner-payload-view-release
@@ -49,7 +56,8 @@
        (sb-thread:signal-semaphore *fixture-reset-entered*)
        (sb-thread:wait-on-semaphore *fixture-reset-proceed*))
      (if *fixture-owned* (list nil '(:refused :payload-view-live))
-       (progn (incf *fixture-generation*)
+       (progn (push :payload-reset *fixture-reset-order*)
+              (incf *fixture-generation*)
               (list nil '(:reset)))))
     (fn-owner-payload-view-acquire
      (assert (eq (second args) *fixture-arena*))
@@ -67,6 +75,7 @@
 (defvar *fixture-owner-lock* (sb-thread:make-mutex :name "fixture owner"))
 (defun fixture-clean ()
   (setq *fixture-owned* nil *fixture-state-calls* 0 *fixture-generation* 0
+        *fixture-canonical-epoch* 0 *fixture-reset-order* nil
         *fixture-reset-entered* nil *fixture-reset-proceed* nil
         *fnn-payload-lifecycle-phase* :quiescent
         *fnn-payload-lifecycle-arena* nil *fnn-payload-lifecycle-owner* nil))
@@ -79,7 +88,7 @@
                 (setq *fixture-reset-entered* (sb-thread:make-semaphore)
                       *fixture-reset-proceed* (sb-thread:make-semaphore))
                 (sb-thread:make-thread
-                 (lambda () (setq reset-answer (fnn-payload-startup-reset)))))))
+                 (lambda () (setq reset-answer (fnn-payload-startup-reset :recovery)))))))
   (sb-thread:wait-on-semaphore *fixture-reset-entered*)
   (let ((start (sb-thread:make-thread
                 (lambda ()
@@ -93,6 +102,8 @@
     (sb-thread:signal-semaphore *fixture-reset-proceed*)
     (sb-thread:join-thread reset) (sb-thread:join-thread start))
   (assert (eq (first reset-answer) :reset))
+  (assert (= *fixture-canonical-epoch* 1))
+  (assert (equal *fixture-reset-order* '(:canonical-reset :payload-reset)))
   (assert (= (second (fnn-snapshot-payload-view-token holder)) 1))
   (assert (eq (fnn-snapshot-payload-view-arena holder) *fixture-arena*)))
 
@@ -104,11 +115,13 @@
     (setq holder (nth-value 1 (fnn-snapshot-payload-view-acquire service :funded))))
   (let ((calls *fixture-state-calls*) (old *fixture-owned*) (answer nil))
     (sb-thread:join-thread (sb-thread:make-thread
-                           (lambda () (setq answer (fnn-payload-startup-reset)))))
+                           (lambda () (setq answer (fnn-payload-startup-reset :recovery)))))
     (assert (equal answer '(:refused :arena-not-quiescent)))
     (assert (= calls *fixture-state-calls*))
     (assert (equal old *fixture-owned*))
-    (assert (= *fixture-generation* 0)))
+    (assert (= *fixture-generation* 0))
+    (assert (= *fixture-canonical-epoch* 0))
+    (assert (null *fixture-reset-order*)))
   ;; Stop is only draining. Cancellation and joined-with-live-holder retain it.
   (sb-thread:with-mutex (*fixture-owner-lock*)
     (fnn-payload-lifecycle-drain service)
@@ -117,13 +130,40 @@
     (fnn-payload-lifecycle-joined service)
     (assert (eq *fnn-payload-lifecycle-phase* :draining)))
   (let ((calls *fixture-state-calls*))
-    (assert (equal (fnn-payload-startup-reset) '(:refused :arena-not-quiescent)))
+    (assert (equal (fnn-payload-startup-reset :recovery) '(:refused :arena-not-quiescent)))
     (assert (= calls *fixture-state-calls*)))
   (sb-thread:with-mutex (*fixture-owner-lock*)
     (assert (eq (first (fnn-snapshot-payload-view-release holder :joined)) :released))
     (fnn-payload-lifecycle-joined service))
   (assert (eq *fnn-payload-lifecycle-phase* :quiescent))
-  (assert (eq (first (fnn-payload-startup-reset)) :reset)))
+  (assert (eq (first (fnn-payload-startup-reset :recovery)) :reset))
+  (assert (= *fixture-canonical-epoch* 1)))
+; Actual recovery resets before nursery or physical load; refusal leaves Store untouched.
+(defstruct fnn-store fenced completion-pending open-mode recovery-identity recovery-source logp)
+(defvar *fixture-recovery-order* nil)
+(defun fnn-open-nursery (store)
+  (declare (ignore store))
+  (assert (= *fixture-canonical-epoch* 1))
+  (push :nursery *fixture-recovery-order*))
+(defun fnn-recover-log (store)
+  (declare (ignore store))
+  (assert (= *fixture-canonical-epoch* 1))
+  (assert (equal *fixture-reset-order* '(:canonical-reset :payload-reset)))
+  (push :load *fixture-recovery-order*) 7)
+(fixture-load-definitions "host/native/io.lisp" '(fnn-recover))
+(fixture-clean)
+(let ((store (make-fnn-store :logp t :recovery-source :old)))
+  (assert (= (fnn-recover store) 7))
+  (assert (equal *fixture-recovery-order* '(:load :nursery)))
+  (assert (null (fnn-store-recovery-source store))))
+(fixture-clean)
+(let ((store (make-fnn-store :logp t :recovery-source :old)))
+  (setq *fnn-payload-lifecycle-phase* :serving *fixture-recovery-order* nil)
+  (assert (handler-case (progn (fnn-recover store) nil) (error () t)))
+  (assert (eq (fnn-store-recovery-source store) :old))
+  (assert (null *fixture-recovery-order*))
+  (assert (= *fixture-canonical-epoch* 0))
+  (assert (= *fixture-state-calls* 0)))
 ; An abandoned committer still leaves its actual syncer in the join roster.
 (defstruct fnn-owner-service
   (roster (sb-thread:make-mutex)) workers synced
@@ -150,4 +190,4 @@
     (assert (not (sb-thread:thread-alive-p worker)))
     (assert (null (fnn-with-roster (service) (fnn-owner-service-workers service))))
     (assert (equal (car result) '(7 :committed)))))
-(format t "PAYLOAD-LIFECYCLE: reset-first, start-first, draining, joined cleanup, syncer roster passed~%")
+(format t "PAYLOAD-LIFECYCLE: reset-first, start-first, draining, joined cleanup, recovery ordering, syncer roster passed~%")

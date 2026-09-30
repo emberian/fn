@@ -4945,3 +4945,5 @@
 (definterface fn-owner-recovery-source-observe :class ::program)
 
 (definterface fn-ssr-at :class :common-lisp-compliant)
+
+(definterface fn-owner-recovery-source-reset :class ::program)

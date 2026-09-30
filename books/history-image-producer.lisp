@@ -5,7 +5,7 @@
 (include-book "history-image-header")
 (include-book "history-page-layout")
 (include-book "history-page-metadata")
-(include-book "snapshot-maintenance-demand")
+(include-book "snapshot-maintenance-profile")
 (include-book "pagestore-digest-byte-cursor")
 (include-book "history-image-record-root")
 
@@ -311,7 +311,7 @@
   (let ((request (fn-hpi-growth-request c)) (grant (fn-omk-at 22 c)))
     (and (consp request)
          (equal grant (cons :checkpoint-funded (cdr request)))
-         (fn-osj-grant-livep grant ledger))))
+         (fn-osj-native-grant-livep grant ledger))))
 
 (defun fn-hpi-supply (c position byte fn-hpb)
   (declare (xargs :stobjs fn-hpb))
@@ -572,7 +572,7 @@
       (mv '(:refused :image-cursor) nil c ledger fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb pgs-digest-state))
      ((eq phase :need-growth)
       (mv-let (grant ledger)
-        (fn-osj-grow ledger (fn-omk-at 2 c) (fn-omk-at 1 c) (fn-omk-at 3 c)
+        (fn-osj-native-grow ledger (fn-omk-at 2 c) (fn-omk-at 1 c) (fn-omk-at 3 c)
                      (fn-hpi-growth-request c))
         (if (not (eq (fn-omk-at 0 grant) :checkpoint-funded))
             (mv grant nil c ledger fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb pgs-digest-state)

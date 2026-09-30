@@ -39,3 +39,13 @@ The actual start/observe entry points are in `host/recovery-source-host.lisp`,
 which includes the loader metadata implementation directly. The final Store
 installer is in `host/recovery-source-install-host.lisp`; that dependency split
 preserves its body and does not narrow the whole recovery/install obligation.
+
+The actual `fnn-recover` entry performs `fnn-payload-startup-reset :recovery`
+before nursery/load/SSR. In the allowed quiescent interval, the actual arena
+reset and canonical epoch reset share one lifecycle exclusion. Serving or
+draining refuses before mutable STATE or Store mutation. The final installer
+preserves that issued epoch and must not reset it after parsing. Literal
+recording barrier tests cover both reset-first and start/capture-first schedules,
+plus actual entry ordering; their STATE/nursery/loader adapters are explicit
+doubles. Exact source admission is in
+`planning/evidence/recovery-reset-source-2026-09-30/coordinate.json`.
