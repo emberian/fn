@@ -59,6 +59,7 @@
 
 (in-package "ACL2")
 (include-book "catalog-record")
+(include-book "catalog-number-assignment")
 (include-book "msgid-pages-exec")
 
 ; The tau system is off in this book: it is time no prover step counts, and
@@ -71,18 +72,9 @@
 ; Held record helpers: a row's number in a group, and the three row updates
 ; that keep its keys (Message-ID, numbers, facts).
 
-(defun fn-cat-assoc (k alist)
-  (declare (xargs :guard t))
-  (if (consp alist)
-      (if (and (consp (car alist)) (equal k (car (car alist))))
-          (car alist)
-        (fn-cat-assoc k (cdr alist)))
-    nil))
 
-(defun fn-held-number-in (group h)
-  (declare (xargs :guard t))
-  (let ((pair (fn-cat-assoc group (fn-held-numbers h))))
-    (if (consp pair) (cdr pair) nil)))
+
+
 
 ; fn-held-with-numbers, fn-held-with-withdrawn and fn-held-with-context are
 ; books/held-record.lisp (moved down for the store machine, records-flip).
@@ -234,12 +226,7 @@
     nil))
 
 ; The highest number bound in GROUP (0 when none).
-(defun fn-cat-group-high (group c)
-  (declare (xargs :guard t))
-  (if (consp c)
-      (max (nfix (fn-held-number-in group (car c)))
-           (fn-cat-group-high group (cdr c)))
-    0))
+
 
 ; The rows bound in GROUP.
 (defun fn-cat-group-rows (group c)
@@ -258,16 +245,9 @@
     0))
 
 ; The numbers a commit assigns: one past each group's high.
-(defun fn-cat-assign-numbers (groups c)
-  (declare (xargs :guard t))
-  (if (consp groups)
-      (cons (cons (car groups) (+ 1 (fn-cat-group-high (car groups) c)))
-            (fn-cat-assign-numbers (cdr groups) c))
-    nil))
 
-(defun fn-cat-assign (h c)
-  (declare (xargs :guard t))
-  (fn-held-with-numbers h (fn-cat-assign-numbers (fn-record-groups h) c)))
+
+
 
 ; A row below version V, not withdrawn or withdrawn at a version V does
 ; not exceed.

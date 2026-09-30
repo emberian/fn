@@ -2,7 +2,8 @@
 ; ROOT/ROOT-ID are supplied only by the core registered publication builder.
 (in-package "ACL2")
 (include-book "group-number-source-assignment")
-(include-book "catalog-commit")
+(include-book "catalog-number-assignment")
+(include-book "catalog-prepared-record")
 
 (defun fn-gns-pending-begin (pending root root-id)
   (declare (xargs :guard t))

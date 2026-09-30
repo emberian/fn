@@ -19036,9 +19036,13 @@
         "tests/acl2/group-number-source-assignment-tests.lisp",
         "planning/evidence/number-source-assignment-2026-09-30/README.md",
         "books/group-number-source-high.lisp",
-        "tests/acl2/group-number-source-high-tests.lisp"
+        "tests/acl2/group-number-source-high-tests.lisp",
+        "books/catalog-number-assignment.lisp",
+        "books/catalog-prepared-record.lisp",
+        "tests/acl2/group-number-source-pending-tests.lisp",
+        "planning/evidence/number-source-catalog-factoring-2026-09-30/README.md"
       ],
-      "progress_note": "Guarded resumable assignment against one immutable high root and high-aware persistent insertion are source-replayed with literal duplicate/old-root/zero/wide-number witnesses; assignment step domain hypotheses have literal removals. Pending adapter fn-cat-assign equation is authored but UNADMITTED: exact catalog cache world unavailable before startup. Registered root/high catalog lineage, atomic publisher, owner durable hooks, full funding and actual OVER/native composition remain open. No certification/native/deployment claim."
+      "progress_note": "Guarded resumable assignment/high-aware persistent insertion and pointwise high-fold maintenance source-replayed. Exact actual catalog numbering/PC schema factored without changing names/bodies; pending adapter and conditional fn-cat-assign equation now admitted in narrow lightweight leaf world with literal removals of every retained hypothesis. Actual registered root/catalog lineage, atomic publisher, mandatory-binding16 composed owner world, durable hooks, full funding and OVER/native remain open. No certification/native/deployment claim."
     }
   ]
 }

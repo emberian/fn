@@ -158,3 +158,12 @@ adapter and catalog-high lineage remain unadmitted/open, as do atomic
 registered publication, durable hooks, full constructor/retention funding and
 served OVER composition. An arbitrary terminal's shape check inspects only
 its fixed prefix, rather than walking a malformed terminal list.
+
+The actual numbering functions and PreparedCommit schema are now factored
+intact into lightweight shared books. The pending adapter derives the actual
+pending heldref/token/expected count, and its completed row equals
+`fn-cat-assign` under carried membership denotation and initial high/catalog
+correspondence. This conditional bridge is source-admitted with literal
+hypothesis removals; it does not establish that the current registered root
+has that correspondence. Whole catalog roots and the mandatory-binding16
+owner assembly, genuine publisher and durable/native hooks remain open.
