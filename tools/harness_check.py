@@ -774,12 +774,15 @@ def acl2_findings(root: Path) -> tuple[list[dict], dict]:
 # name quoted and its arguments spread: `(fnn-core 'fn-x a b)' applies
 # fn-x to (a b), and a state-returning dispatcher appends `state'.  The
 # number is how many arguments the dispatcher adds.  Each must keep the
-# lambda list (name &rest args), or the lint reports the table as stale.
+# lambda list (name &rest args), as a defun or registered dispatcher macro,
+# or the lint reports the table as stale.
 RAW_DISPATCHERS = {"fnn-call": 0, "fnn-core": 0, "fnn-core-state": 1,
                    "fnn-owner-core": 1, "fnn-owner-action": 1,
                    "fnn-bpapp-core-record": 1,
                    "fnn-core-arena-state": 2, "fnn-owner-feed-arena-step": 2,
-                   "fnn-core-buffer-state": 2, "fnn-core-page-read-pool": 1}
+                   "fnn-core-buffer-state": 2, "fnn-core-page-read-pool": 1,
+                   "fnn-core-cold-values": 0, "fnn-core-cold-single": 0,
+                   "fnn-core-cold-pool": 1}
 
 # The state dispatchers pass the live payload arena before state to an entry
 # whose ACL2 formals end in (fn-arena state) (host/native/io.lisp
@@ -957,7 +960,9 @@ def raw_definitions(sources: dict[str, list]) -> tuple[dict, set]:
                 for item in form[1:]:
                     visit(item, line)
                 return
-            if name == "defun" and len(form) >= 3 and isinstance(form[1], str):
+            if (name == "defun" or
+                    (name == "defmacro" and len(form) >= 2 and
+                     form[1] in RAW_DISPATCHERS)) and len(form) >= 3 and isinstance(form[1], str):
                 bounds = raw_lambda_range(form[2])
                 if bounds is not None:
                     seen.setdefault(str(form[1]), []).append(
@@ -1000,7 +1005,7 @@ def raw_arity_scan(sources: dict[str, list], exclude: set[str] = frozenset(),
                     "lint": "raw-arity", "where": row[2] if row else "tools/harness_check.py",
                     "callee": name,
                     "problem": "RAW_DISPATCHERS names it, but it is not a raw "
-                               "(name &rest args) defun"})
+                               "(name &rest args) defun or dispatcher macro"})
     for relative, forms in sorted(sources.items()):
         for form, line in forms:
             applications: list = []

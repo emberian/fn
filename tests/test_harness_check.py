@@ -532,14 +532,48 @@ class RawArityTests(unittest.TestCase):
               (list (fnn-core 'fn-pure o) (fnn-core-state 'fn-pure o)
                     (fnn-core-state 'fn-stateful o)))
             """
-        stale = {"fnn-call", "fnn-owner-core", "fnn-owner-action",
-                 "fnn-bpapp-core-record", "fnn-core-arena-state",
-                 "fnn-owner-feed-arena-step", "fnn-core-buffer-state",
-                 "fnn-core-page-read-pool"}
+        stale = set(harness_check.RAW_DISPATCHERS) - {"fnn-core", "fnn-core-state"}
         found = [row for row in self.scan(source, {"fn-pure": 1, "fn-stateful": 2})
                  if row["callee"] not in stale]
         self.assertEqual([(row["callee"], row["problem"]) for row in found], [
             ("fn-pure", "dispatched with 2 arguments (state included) and takes 1")])
+
+    def test_cold_dispatch_macros_count_literal_subject_arguments(self):
+        source = """
+            (defmacro fnn-core-cold-values (name &rest arguments)
+              `(fnn-cold-call ,name ,@arguments))
+            (defmacro fnn-core-cold-single (name &rest arguments)
+              `(first (fnn-cold-call ,name ,@arguments)))
+            (defmacro fnn-core-cold-pool (name &rest arguments)
+              `(fnn-cold-call ,name ,@arguments (fnn-live-page-read-pool)))
+            (defun fnn-u ()
+              (list (fnn-core-cold-values 'fn-cold 7 8)
+                    (fnn-core-cold-single 'fn-cold 7 8)
+                    (fnn-core-cold-pool 'fn-cold 7)
+                    (fnn-core-cold-values 'fn-cold 7)
+                    (fnn-core-cold-single 'fn-cold 7 8 9)
+                    (fnn-core-cold-pool 'fn-cold 7 8)
+                    '(fnn-core-cold-values 'fn-cold)
+                    `(fnn-core-cold-pool 'fn-cold)))
+            """
+        found = self.scan(source, {"fn-cold": 2})
+        macro_names = {"fnn-core-cold-values", "fnn-core-cold-single",
+                       "fnn-core-cold-pool"}
+        self.assertFalse([row for row in found if row["callee"] in macro_names])
+        self.assertEqual([row["problem"] for row in found
+                          if row["callee"] == "fn-cold"], [
+            "dispatched with 1 argument (state included) and takes 2",
+            "dispatched with 3 arguments (state included) and takes 2",
+            "dispatched with 3 arguments (state included) and takes 2"])
+
+    def test_cold_dispatch_macro_wrong_signature_is_stale(self):
+        found = self.scan("""
+            (defmacro fnn-core-cold-pool (name argument)
+              `(fnn-cold-call ,name ,argument (fnn-live-page-read-pool)))
+            """, {"fn-cold": 2})
+        rows = [row for row in found if row["callee"] == "fnn-core-cold-pool"]
+        self.assertEqual(len(rows), 1)
+        self.assertIn("RAW_DISPATCHERS names it", rows[0]["problem"])
 
     def test_pool_dispatch_counts_the_dedicated_stobj(self):
         source = """
