@@ -13,7 +13,9 @@
     "host/native/bp-checkpoint-writer.lisp": "636a20f534ea5f8aa40eb227b95487d76e3b38958f4ab24b3b9625388fdff028",
     "tests/bp_checkpoint_writer_host_refuter.lisp": "9cd9fd818db02aeb8dffb2d57e6879a34e27c7c48ed7b747752c675ba8f6c4d2",
     "tests/acl2/bp-node-checkpoint-job-tests.lisp": "bc4fccd59ed6e53eb642ecc6fa17bfd6859332cb5e7aabb0e004813770be0eaa",
-    "tests/acl2/bp-node-checkpoint-digest-tests.lisp": "b73b3430b979d099f17907f8a769772cf6947396adacee803accf285214208f1"
+    "tests/acl2/bp-node-checkpoint-digest-tests.lisp": "b73b3430b979d099f17907f8a769772cf6947396adacee803accf285214208f1",
+    "books/bp-node-checkpoint-stack.lisp": "a004d178b66467438833c23e5df215e1dd4353cbddda8325b57fdfba97a8b2ac",
+    "tests/acl2/bp-node-checkpoint-stack-tests.lisp": "cec08f95a19f193449edebe1784d995a5b19cea5ec1a9c7429760f83372ece7f"
   },
   "source_roots": [
     {
@@ -39,6 +41,19 @@
       "fixture_forms": 4,
       "fixture_assertions": 1,
       "status": "passed; session stopped"
+    },
+    {
+      "session": "bpck-stack3",
+      "root": "books/bp-node-checkpoint-stack",
+      "root_forms": 18,
+      "acl2_seconds": 7.5,
+      "prover_steps": 5816028,
+      "source_dependencies_properly_encapsulated": true,
+      "fixtures": "tests/acl2/bp-node-checkpoint-stack-tests.lisp",
+      "fixture_forms": 4,
+      "fixture_assertions": 4,
+      "status": "passed; session stopped",
+      "scope": "Actual encoder step and private native emit subject preserve queue <=2(depth+2), each task <=5cons. Constructor envelope/frames/cache/TLS/fault/GC and actual funding remain separate."
     }
   ],
   "recording_refuter": {
