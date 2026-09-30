@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1799 |
-| Certification roots in the Makefile | 1732 |
-| Books inside the root closure | 1796 |
-| `defthm` and `defthmd` events | 28739 |
-| `defun` events | 18734 |
+| Books read | 1803 |
+| Certification roots in the Makefile | 1736 |
+| Books inside the root closure | 1800 |
+| `defthm` and `defthmd` events | 28811 |
+| `defun` events | 18756 |
 | Functions with verified guards | 3507 |
-| Functions declared `:verify-guards nil` and never verified | 2191 |
-| Functions left at the default with an explicit guard | 10240 |
-| Functions left at the default with no guard | 2796 |
-| `assert-event` checks | 23750 |
+| Functions declared `:verify-guards nil` and never verified | 2195 |
+| Functions left at the default with an explicit guard | 10251 |
+| Functions left at the default with no guard | 2803 |
+| `assert-event` checks | 23798 |
 | `must-fail` checks | 2515 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 335 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2496 |
+| Include-hygiene warnings | 2499 |
 | Host-names warnings | 2156 |
 | Hand-written-record warnings | 18 |
 
@@ -510,6 +510,7 @@ that `make certify` requests.
 | `books/history-records.lisp` | root | 141 | 46 | 0/0/28/18 | 0 | 0 | 0 |
 | `books/history-resource-refinement.lisp` | root | 12 | 8 | 0/0/8/0 | 0 | 0 | 1 |
 | `books/history-scalar-cursor.lisp` | root | 17 | 12 | 0/4/8/0 | 0 | 0 | 0 |
+| `books/history-symbol-normalize.lisp` | root | 33 | 13 | 0/0/8/5 | 0 | 0 | 0 |
 | `books/history-wire.lisp` | closure | 3 | 1 | 0/0/1/0 | 0 | 0 | 2 |
 | `books/hmac-sha256.lisp` | root | 28 | 16 | 0/0/16/0 | 0 | 0 | 1 |
 | `books/hybrid-carrier.lisp` | root | 21 | 35 | 4/0/31/0 | 0 | 0 | 1 |
@@ -541,6 +542,7 @@ that `make certify` requests.
 | `books/key-statements.lisp` | root | 53 | 36 | 4/0/32/0 | 0 | 0 | 0 |
 | `books/lace-invariants.lisp` | root | 65 | 1 | 0/0/0/1 | 0 | 0 | 2 |
 | `books/lace.lisp` | root | 5 | 20 | 0/0/20/0 | 0 | 0 | 0 |
+| `books/legacy-parser-composition.lisp` | root | 30 | 4 | 0/1/1/2 | 0 | 0 | 0 |
 | `books/legacy-parser-cursor.lisp` | root | 9 | 23 | 1/0/22/0 | 0 | 0 | 0 |
 | `books/legacy-parser-header.lisp` | root | 19 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/legacy-parser-reference.lisp` | root | 28 | 12 | 0/6/6/0 | 0 | 0 | 0 |
@@ -1439,6 +1441,7 @@ that `make certify` requests.
 | `tests/acl2/history-records-tests.lisp` | root | 7 | 12 | 0/7/0/5 | 5 | 0 | 0 |
 | `tests/acl2/history-resource-refinement-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 0 | 0 |
 | `tests/acl2/history-scalar-cursor-tests.lisp` | root | 0 | 3 | 0/2/1/0 | 23 | 0 | 0 |
+| `tests/acl2/history-symbol-normalize-tests.lisp` | root | 4 | 3 | 0/3/0/0 | 19 | 0 | 0 |
 | `tests/acl2/hmac-sha256-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 8 | 0 | 0 |
 | `tests/acl2/hostile-reader-archive.lisp` | root | 4 | 11 | 0/2/0/9 | 11 | 0 | 0 |
 | `tests/acl2/hybrid-carrier-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 4 | 0 |
@@ -1456,6 +1459,7 @@ that `make certify` requests.
 | `tests/acl2/journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/key-statements-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 104 | 23 | 0 |
 | `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |
+| `tests/acl2/legacy-parser-composition-tests.lisp` | root | 5 | 2 | 0/0/2/0 | 29 | 0 | 0 |
 | `tests/acl2/legacy-parser-cursor-tests.lisp` | root | 5 | 3 | 0/3/0/0 | 34 | 0 | 0 |
 | `tests/acl2/legacy-parser-header-tests.lisp` | root | 2 | 0 | 0/0/0/0 | 1 | 0 | 0 |
 | `tests/acl2/legacy-parser-validity-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 53 | 0 | 0 |
