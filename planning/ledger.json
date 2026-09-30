@@ -1045,6 +1045,10 @@
     "tests/acl2/response-plan-token-tests",
     "books/over-byte-cursor",
     "books/over-byte-invariants",
+    "books/legacy-parser-continuation",
+    "tests/acl2/legacy-parser-continuation-tests",
+    "books/over-byte-parser-relation",
+    "tests/acl2/over-byte-parser-relation-tests",
     "books/served-plan-byte-cursor",
     "tests/acl2/served-plan-byte-cursor-tests",
     "tests/acl2/over-byte-cursor-tests",
@@ -1736,18 +1740,18 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1799,
-    "books_in_root_closure": 1796,
-    "roots": 1732,
-    "theorems": 28749,
-    "functions": 18664,
-    "assert_events": 23603,
+    "books": 1803,
+    "books_in_root_closure": 1800,
+    "roots": 1736,
+    "theorems": 28774,
+    "functions": 18673,
+    "assert_events": 23607,
     "must_fails": 2506,
     "prover_refusals": 0,
     "encapsulates": 157,
     "guards": {
       "verified": 3496,
-      "declared-off": 2186,
+      "declared-off": 2195,
       "default-guarded": 10201,
       "default-unguarded": 2781
     },
@@ -1755,7 +1759,7 @@
     "export_hygiene_warnings": 333,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2506,
+    "include_hygiene_warnings": 2512,
     "host_names_warnings": 2137,
     "hand_written_record_warnings": 18
   },
@@ -15608,6 +15612,32 @@
       "read_error": null
     },
     {
+      "book": "books/legacy-parser-continuation.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 9,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "legacy-parser-catalog"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/legacy-parser-cursor.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -18886,6 +18916,33 @@
       "includes": [
         "catalog-handles",
         "nov-row-facts-model",
+        "over-byte-cursor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/over-byte-parser-relation.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 6,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "legacy-parser-continuation",
         "over-byte-cursor"
       ],
       "system_includes": [],
@@ -42218,6 +42275,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/legacy-parser-continuation-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 10,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/legacy-parser-continuation"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/legacy-parser-cursor-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -44680,6 +44763,33 @@
       "encapsulates": 0,
       "includes": [
         "../../books/over-byte-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/over-byte-parser-relation-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 3,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/over-byte-parser-relation",
+        "over-byte-cursor-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -73165,6 +73275,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/legacy-parser-continuation.lisp",
+        "line": 3,
+        "include": "legacy-parser-catalog",
+        "included": "books/legacy-parser-catalog.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/legacy-parser-cursor.lisp",
         "line": 4,
         "include": "nov-fields",
@@ -73855,6 +73972,20 @@
         "line": 7,
         "include": "catalog-handles",
         "included": "books/catalog-handles.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-byte-parser-relation.lisp",
+        "line": 4,
+        "include": "over-byte-cursor",
+        "included": "books/over-byte-cursor.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-byte-parser-relation.lisp",
+        "line": 5,
+        "include": "legacy-parser-continuation",
+        "included": "books/legacy-parser-continuation.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -80508,6 +80639,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/legacy-parser-continuation-tests.lisp",
+        "line": 2,
+        "include": "../../books/legacy-parser-continuation",
+        "included": "books/legacy-parser-continuation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/legacy-parser-cursor-tests.lisp",
         "line": 4,
         "include": "../../books/legacy-parser-reference",
@@ -81576,6 +81714,20 @@
         "line": 2,
         "include": "../../books/over-byte-invariants",
         "included": "books/over-byte-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/over-byte-parser-relation-tests.lisp",
+        "line": 2,
+        "include": "../../books/over-byte-parser-relation",
+        "included": "books/over-byte-parser-relation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/over-byte-parser-relation-tests.lisp",
+        "line": 3,
+        "include": "over-byte-cursor-tests",
+        "included": "tests/acl2/over-byte-cursor-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

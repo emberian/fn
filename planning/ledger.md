@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1799 |
-| Certification roots in the Makefile | 1732 |
-| Books inside the root closure | 1796 |
-| `defthm` and `defthmd` events | 28749 |
-| `defun` events | 18664 |
+| Books read | 1803 |
+| Certification roots in the Makefile | 1736 |
+| Books inside the root closure | 1800 |
+| `defthm` and `defthmd` events | 28774 |
+| `defun` events | 18673 |
 | Functions with verified guards | 3496 |
-| Functions declared `:verify-guards nil` and never verified | 2186 |
+| Functions declared `:verify-guards nil` and never verified | 2195 |
 | Functions left at the default with an explicit guard | 10201 |
 | Functions left at the default with no guard | 2781 |
-| `assert-event` checks | 23603 |
+| `assert-event` checks | 23607 |
 | `must-fail` checks | 2506 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 157 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 333 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2506 |
+| Include-hygiene warnings | 2512 |
 | Host-names warnings | 2137 |
 | Hand-written-record warnings | 18 |
 
@@ -543,6 +543,7 @@ that `make certify` requests.
 | `books/legacy-parser-catalog.lisp` | root | 28 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/legacy-parser-columns.lisp` | root | 46 | 6 | 0/6/0/0 | 0 | 0 | 2 |
 | `books/legacy-parser-composition.lisp` | root | 30 | 4 | 0/1/1/2 | 0 | 0 | 0 |
+| `books/legacy-parser-continuation.lisp` | root | 9 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/legacy-parser-cursor.lisp` | root | 9 | 23 | 1/0/22/0 | 0 | 0 | 0 |
 | `books/legacy-parser-header.lisp` | root | 19 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/legacy-parser-reference.lisp` | root | 28 | 12 | 0/6/6/0 | 0 | 0 | 0 |
@@ -654,6 +655,7 @@ that `make certify` requests.
 | `books/outcome-class.lisp` | root | 8 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/over-byte-cursor.lisp` | root | 23 | 14 | 4/0/10/0 | 0 | 0 | 1 |
 | `books/over-byte-invariants.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/over-byte-parser-relation.lisp` | root | 6 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/over-cursor-shape.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 1 |
 | `books/over-window.lisp` | root | 30 | 6 | 1/3/2/0 | 0 | 0 | 0 |
 | `books/owner-ack-after-barrier.lisp` | root | 34 | 27 | 0/1/26/0 | 0 | 0 | 3 |
@@ -1458,6 +1460,7 @@ that `make certify` requests.
 | `tests/acl2/legacy-parser-catalog-tests.lisp` | root | 16 | 3 | 0/3/0/0 | 3 | 0 | 0 |
 | `tests/acl2/legacy-parser-columns-tests.lisp` | root | 20 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `tests/acl2/legacy-parser-composition-tests.lisp` | root | 5 | 2 | 0/0/2/0 | 29 | 0 | 0 |
+| `tests/acl2/legacy-parser-continuation-tests.lisp` | root | 10 | 3 | 0/3/0/0 | 1 | 0 | 0 |
 | `tests/acl2/legacy-parser-cursor-tests.lisp` | root | 5 | 3 | 0/3/0/0 | 34 | 0 | 0 |
 | `tests/acl2/legacy-parser-header-tests.lisp` | root | 2 | 0 | 0/0/0/0 | 1 | 0 | 0 |
 | `tests/acl2/legacy-parser-validity-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 53 | 0 | 0 |
@@ -1547,6 +1550,7 @@ that `make certify` requests.
 | `tests/acl2/open-one-pass-tests.lisp` | root | 0 | 8 | 0/6/0/2 | 56 | 1 | 0 |
 | `tests/acl2/outcome-class-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 37 | 7 | 0 |
 | `tests/acl2/over-byte-cursor-tests.lisp` | root | 1 | 6 | 0/5/0/1 | 11 | 0 | 0 |
+| `tests/acl2/over-byte-parser-relation-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 3 | 0 | 0 |
 | `tests/acl2/over-window-tests.lisp` | root | 6 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/owner-ack-after-barrier-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 40 | 0 | 0 |
 | `tests/acl2/owner-advance-carried-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 64 | 16 | 0 |
