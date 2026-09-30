@@ -73,6 +73,12 @@ session and `status` marks it "from source (not certified)"; the books of the
 closure that include it are loaded from source too, since their
 certificates name its other bytes.
 
+Source loading never implicitly launches certification. If a dependency
+fails from source, fix the source/world or explicitly choose
+`start --certify-missing`. Sent includes may acquire matching cached
+certificates, but a cache miss is refused; certification is a separate
+explicit operation.
+
 Round 2 (2026-09-27): a keyword command (`:ubt! foo`) is one command with
 the rest of its line, and when a keyword command or a raw-Lisp abort
 swallows the sentinel it is sent again after 3 s of quiet, so neither hangs
@@ -481,8 +487,14 @@ def dependents_of(graph: dict[str, list[str]], seeds) -> set[str]:
     return {name for name in graph if reaches(name)}
 
 
-def dependency_order(graph: dict[str, list[str]], subset) -> list[str]:
-    """SUBSET, each book after every book of SUBSET it includes."""
+def dependency_order(graph: dict[str, list[str]], subset,
+                     root: str | None = None) -> list[str]:
+    """SUBSET in ROOT's declared include order, dependencies before parents.
+
+    Siblings cannot be alphabetized: a later exported theorem may reuse an
+    earlier book's local name. Shared dependencies are visited only once.
+    Without one named root, only independent roots have a stable name order.
+    """
     subset = set(subset)
     order: list[str] = []
     seen: set[str] = set()
@@ -491,12 +503,18 @@ def dependency_order(graph: dict[str, list[str]], subset) -> list[str]:
         if name in seen:
             return
         seen.add(name)
-        for child in sorted(graph.get(name, ())):
+        for child in graph.get(name, ()):
             visit(child)
         if name in subset:
             order.append(name)
 
-    for name in sorted(subset):
+    if root is not None:
+        visit(root)
+    else:
+        children = {child for includes in graph.values() for child in includes}
+        for name in sorted(set(graph) - children):
+            visit(name)
+    for name in sorted(subset - seen):
         visit(name)
     return order
 
@@ -1025,6 +1043,8 @@ def encapsulated(text: str, directory: Path, skip: set[str],
     belongs in the session anyway; a local one stays inside, local.  With
     LIMIT, each event inside is wrapped in `with-prover-time-limit`, as a
     `send` is, so one runaway lemma costs LIMIT seconds, not the session.
+    The encapsulate is empty text when no embedded events remain; an
+    include-only umbrella still exports its successfully loaded dependencies.
     """
     hoisted: list[str] = []
     kept: list[str] = []
@@ -1036,7 +1056,9 @@ def encapsulated(text: str, directory: Path, skip: set[str],
             hoisted.append(form)
         else:
             kept.append(wrap_limit(form, limit))
-    return hoisted, "(encapsulate ()\n" + "\n".join(kept) + "\n)"
+    # Include-only umbrellas have no embedded events after hoisting/skips.
+    # ACL2 rejects an empty encapsulate; the includes already export the world.
+    return hoisted, ("(encapsulate ()\n" + "\n".join(kept) + "\n)" if kept else "")
 
 
 TIME_LIMIT_MARK = "[Time-limit]"
@@ -1109,6 +1131,9 @@ def load_book(acl2: Acl2, book: str, state: dict, load_timeout: float,
                     note_refusal(state, output, limit)
                 state["load_timed_out"] = timed_out
                 return False
+        if not body:
+            state["ld_loaded"][book] = "encapsulated"
+            return True
         output, timed_out = acl2.send(body, hard * 4)
         if timed_out or errored(output):
             state["stopped_at"] = (where + "(encapsulate of the book; start with --ld-leak "
@@ -1591,7 +1616,7 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
                 and report.action != "install-partial" and auto == "ld"):
             from_source |= dependents_of(graph, report.uncached) - {book}
             printed.append("proof-repl: loading from source (proofs run in the session): "
-                           + ", ".join(dependency_order(graph, from_source)))
+                           + ", ".join(dependency_order(graph, from_source, book)))
             report, required = attempt(from_source, purge=False)
         if (report is not None and report.artifact_set is None
                 and report.action != "install-partial"):
@@ -1608,7 +1633,7 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
         return False, f"proof-repl: certificate acquisition failed: {error}", []
     except (OSError, subprocess.TimeoutExpired) as error:
         return False, f"proof-repl: certificate acquisition failed: {error}", []
-    order = dependency_order(graph, from_source)
+    order = dependency_order(graph, from_source, book)
     if report is None:
         printed.append("no dependencies to install")
     else:
@@ -1618,20 +1643,22 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
     return True, "\n".join(printed), order
 
 
-# `_start`'s answer when a dependency loaded from source failed: `start`
-# stops what is left and starts again over certificates.
+# `_start`'s answer when a dependency loaded from source failed. `start`
+# stops the failed session; only an explicit certification request may retry.
 SOURCE_DEPS_FAILED = 75
 
 
 def start(args) -> int:
-    """Start a session; a from-source dependency that fails to load falls back
-    to --certify-missing, saying so (limits-live-3: after the chunked-body-2
-    merge a dependency's ENCAPSULATE failed from source, a false red)."""
+    """Start a session without turning a source refusal into an implicit build."""
     code = _start(args)
     if code != SOURCE_DEPS_FAILED:
         return code
     with contextlib.suppress(SystemExit):
         stop(args)
+    if not getattr(args, "certify_missing", False):
+        print("proof-repl: dependency failed from source; no certification launched. "
+              "Fix the source/world or explicitly restart with --certify-missing.")
+        return code
     args.certify_missing = True
     args.source_deps = None
     args.ld_missing = False
@@ -2290,16 +2317,15 @@ def prepare_includes(name: str, several: list[str], acquire=None) -> tuple[list[
     session's directory, and whether every included book is certified.
 
     A sent include of a book with no certificate here (a tests/acl2 book is
-    rarely in a books/ session's closure) is acquired first -- installed
-    from the cache, or certified -- as `start --certify-missing` acquires a
-    dependency; an include of an uncertified book would process its events
-    in the session, which is not what the certified book provides.
+    rarely in a books/ session's closure) is acquired from matching cached
+    evidence first. A miss is refused, never implicitly certified; choose
+    certification explicitly or send the intended source forms instead.
     """
     directory = session_directory(name)
     if directory is None:
         return several, True
     acquire = acquire or (lambda book: install_closure(
-        book, (), "certify", 4, SESSIONS / f"{name}.include.log", include_self=True))
+        book, (), None, 4, SESSIONS / f"{name}.include.log", include_self=True))
     prepared = []
     for one in several:
         rewritten, target = rooted_include(one, directory)
@@ -2470,7 +2496,7 @@ def send_range(args) -> int:
         hoisted, body = encapsulated("\n".join(form for _, form in items), path.parent,
                                      set(), None)
         items = ([(form_label(0, form).split(" ", 1)[1], form) for form in hoisted]
-                 + [(f"#{chosen.start + 1}-#{chosen.stop} (encapsulate)", body)])
+                 + ([(f"#{chosen.start + 1}-#{chosen.stop} (encapsulate)", body)] if body else []))
     return send_many(args.name, items, args.limit, args.full, args.keep_going)
 
 
