@@ -935,7 +935,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/legacy-parser-columns \
 	tests/acl2/legacy-parser-columns-tests \
 	books/legacy-parser-catalog \
+	books/legacy-parser-allocation \
 	tests/acl2/legacy-parser-catalog-tests \
+	tests/acl2/legacy-parser-allocation-tests \
 	books/nntp-article-pass \
 	books/nntp-responses \
 	books/nntp-article-block \
