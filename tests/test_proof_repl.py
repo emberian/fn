@@ -1105,6 +1105,98 @@ class CacheStartupTests(unittest.TestCase):
             self.assertFalse((target / "books/mid.cert").exists())
 
 
+class OutputPumpTests(unittest.TestCase):
+    def fake(self, base):
+        fake = base / "byte-acl2"
+        fake.write_text("#!" + sys.executable + "\nimport sys\n"
+                        "for line in sys.stdin:\n"
+                        " if 'FN-REPL-DONE ' in line:\n"
+                        "  print('FN-REPL-DONE ' + line.split('FN-REPL-DONE ')[1].split('~%')[0], flush=True)\n"
+                        " else:\n"
+                        "  sys.stdout.buffer.write(" + repr(bytes([255]) + " valid UTF8: ÿ\n".encode()) + ")\n"
+                        "  sys.stdout.buffer.flush()\n")
+        fake.chmod(0o755)
+        return fake
+
+    def test_invalid_utf8_is_escaped_and_real_completion_marker_survives(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary)
+            fake = self.fake(base)
+            with mock.patch.dict(os.environ, {"FN_ACL2": str(fake),
+                    "FN_ACL2_SLOT_DIR": str(base / "slots"), "FN_ACL2_SLOTS": "1"}):
+                session = proof_repl.Acl2("invalid-byte-test", base / "log")
+                try:
+                    output, timed_out = session.send('(defthm f t)', 5)
+                    self.assertFalse(timed_out)
+                    self.assertFalse(proof_repl.errored(output), output)
+                    self.assertIn(r"\xff", output)
+                    self.assertIn("ÿ", output)
+                    self.assertTrue(session.alive())
+                    self.assertIsNone(session.protocol_error)
+                    self.assertIn(r"\xff", (base / "log").read_text())
+                finally:
+                    session.kill()
+
+    def test_unexpected_pump_failure_refuses_load_and_kills_child(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary)
+            fake = self.fake(base)
+            book = base / "queued.lisp"
+            book.write_text('(defthm first t)\n(defthm later t)\n')
+            state = {"name": None, "loaded": [], "ld_loaded": {}}
+            with mock.patch.dict(os.environ, {"FN_ACL2": str(fake),
+                    "FN_ACL2_SLOT_DIR": str(base / "slots"), "FN_ACL2_SLOTS": "1"}):
+                session = proof_repl.Acl2("failed-pump-test", base / "log")
+                try:
+                    with mock.patch.object(session.log, "flush", side_effect=OSError("injected sink failure")):
+                        self.assertFalse(proof_repl.load_book(
+                            session, str(book.with_suffix("")), state, 5, set()))
+                    self.assertEqual(state["loaded"], [])
+                    self.assertIn("output pump failed: OSError", state["error"])
+                    self.assertFalse(session.alive())
+                    self.assertIsNotNone(session.process.returncode)
+                    output, timed_out = session.send('(defthm later t)', 5)
+                    self.assertFalse(timed_out)
+                    self.assertTrue(proof_repl.errored(output))
+                finally:
+                    session.kill()
+
+    def test_pump_failure_persists_not_ready_and_closes_endpoint(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary)
+            fake = self.fake(base)
+            (base / "queued.lisp").write_text('(defthm first t)\n(defthm later t)\n')
+            real_acl2 = proof_repl.Acl2
+            children = []
+
+            def broken_sink(label, log_path):
+                child = real_acl2(label, log_path)
+                children.append(child)
+                child.log.flush = mock.Mock(side_effect=OSError("injected sink failure"))
+                return child
+
+            handler = signal.getsignal(signal.SIGTERM)
+            lock_fd = os.open(base / "lock", os.O_CREAT | os.O_RDWR, 0o600)
+            try:
+                with mock.patch.dict(os.environ, {"FN_ACL2": str(fake),
+                        "FN_ACL2_SLOT_DIR": str(base / "slots"), "FN_ACL2_SLOTS": "1"}), \
+                     mock.patch.object(proof_repl, "SESSIONS", base / "sessions"), \
+                     mock.patch.object(proof_repl, "Acl2", broken_sink):
+                    proof_repl.serve("pump-failure", str(base / "queued"), None, None, 5, 5, lock_fd)
+            finally:
+                signal.signal(signal.SIGTERM, handler)
+                for child in children:
+                    child.kill()
+            directory = base / "sessions/pump-failure"
+            state = json.loads((directory / "state.json").read_text())
+            self.assertFalse(state["ready"])
+            self.assertEqual(state["loaded"], [])
+            self.assertIn("output pump failed: OSError", state["error"])
+            self.assertEqual(state["ended"], "invalidated ACL2 protocol")
+            self.assertFalse((directory / "sock").exists())
+            self.assertIsNotNone(children[0].process.returncode)
+
+
 class ProcessLifetimeTests(unittest.TestCase):
     def test_debugger_invalidation_is_persisted_and_endpoint_closes(self):
         with tempfile.TemporaryDirectory() as temporary:

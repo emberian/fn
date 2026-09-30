@@ -459,7 +459,13 @@
                 (equal (car (fn-scc-join segs index count sequence prev racc)) :ok))
            (fn-scc-octet-listp (nth 1 (fn-scc-join segs index count sequence prev racc))))
   :hints (("Goal" :induct (fn-scc-join segs index count sequence prev racc)
-           :in-theory (e/d (fn-scc-join) (fn-scc-open-segment)))))
+           :in-theory
+           (union-theories
+            '(fn-scc-join fn-scc-segment-listp fn-scc-octet-listp
+              fn-scc-octetp fn-scc-octet-listp-facts
+              fn-scc-open-segment-chunk-octets fn-scc-revappend-octets
+              car-cons nth-0-cons nth-add1)
+            (theory 'minimal-theory)))))
 
 (verify-guards fn-scc-u64-at)
 (verify-guards fn-scc-parse-header)

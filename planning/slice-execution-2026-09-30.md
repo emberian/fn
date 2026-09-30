@@ -1,0 +1,31 @@
+# Completing whole slices
+
+Ember's 2026-09-30 correction changes the execution practice: identify the obstruction to a complete capability, remove it confidently, and close its associated original work together. This does not change the finite scope, completion criteria, evidence standards or model policy (Sol execution, Astra only architectural synthesis).
+
+| Slice | Integration owner | Acceptance path and helper roles |
+| --- | --- | --- |
+| Durable admission, identity and authority | `sol_owner_union` | Actual POST and received/BP acceptance with canonical charge, purpose grant, first-accepted binding and account/config authority; lost response, restart and reconciliation preserve the outcome. Binding, size, consumer/account and BP owners supply the actual compatible APIs. The first executable refuter is the real owner prepare path, not a private proposed wrapper. |
+| Checkpoint, restart and cold read | `architecture_reorientation`; reader lead `sol_reader_join` | Checkpoint real accepted history, retain an old reader, publish, restart/open, read through the cold path and OVER, cancel/join and account for every retained resource. Snapshot, encoder/decoder, streaming, physical and reply owners join this path. |
+| Disconnected delivery and retirement | `sol_bp_dispatch` | Accept, queue, send, interrupt persistence/job execution, restart, resume and establish exact durable acceptance/receipt and release. Peering and operator owners integrate actual retry, reconfiguration, drain/deadline and bounded reporting. |
+
+Each owner keeps one coherent assembly and drives its first actual failure. Available source components are imported under exact leases and tested together early; unavailable definitions, incompatible APIs, failed proofs and resource-lifetime gaps remain distinct. Helpers work on the specific failure the assembly exposes. Private assembly can be NOTREADY; source publication remains the runner's responsibility and final claims still require matching evidence.
+
+The shared P2 obstruction is assigned to `sol_index_integration` and `sol_physical`: preserve the rows-only catalog abstraction, add an operational source abstraction that carries the actual keyed layout and generation, and capture a separate iterator whose logical schedule can correspond exactly to concrete yields/candidates. Concrete backing uses funded fixed-size chunks and a bounded persistent directory/root, copy-on-write for leased generations, incremental unpublished growth/reinsertion and atomic publication. Old backing remains charged until its final query release. An eager flat resize or generation ID around mutable backing does not satisfy this contract. Query confirmation and minimum selection are shared with peering; binding projects article and binding from the same selected row.
+
+Healthy owners checkpoint in place. The earlier automatic roughly-150-tool handoff is superseded; a real ownership/context handoff still preserves full NEXT, stops or explicitly transfers jobs, and maintains one worktree owner. This avoids synchronized restart/reorientation cycles while retaining cold-resume safety.
+
+No new broad audit or isolated generalization is required. Existing source and evidence are inputs to completing these paths. Intermediate image construction is not the pacing step. Original requirements and terminal units remain intact; a complete slice may discharge many of them only when its evidence actually covers them.
+
+## All pillars continue
+
+Ember explicitly requested resuming all pillars alongside these integration slices. The slices assign shared assembly responsibility; they do not replace the rest of the mission or reopen deliberately dropped work. Reclamation and recovery, resilience, the adopted extracted-product work, runtime funding and productive READ/TRANSFER, and restart/open continue with implementation owners. Existing decisions excluding store adopt and dropping oracle optimization remain in force.
+
+The checkpoint writer is assigned to `coordination_lessons`, coordinated by the producer owner, in the released history-cursor tree. Its concrete subject is the complete canonical header/body/metadata/digest-spool writer and positional output, not another pool library. `page_digest_cursor` owns the missing initial operation-derived maintenance demand and admission, using the producer's actual phase roster and physical lifetime implementation. The demand includes all retained buffers, source and target resources, spools, disk and cleanup obligations. A reader-only allowance or zero disk term cannot stand in for the complete job.
+
+`sol_snapshot_open` owns the usable restart context and bounded bootstrap/install join. An authenticated borrowed full-context result and the collapsed Store identity context are different representations; the actual replay/admission consumers need an established representation bridge and its lifetime/funding, including account authority and maintained pool/row counts.
+
+## Account creation implementation direction
+
+The coordinator selected a durable account creation identity derived from the committed creation-stage transaction coordinate and durable history/authority-incarnation namespace, rather than an independent creation counter. One new-account stage per coordinate gives direct uniqueness; batching requires a proved unique row ordinal. Pending rows never authorize before the final durable fence. Unchanged adopted accounts preserve identity; deletion and recreation obtain different identities. Recovery and restore must preserve or explicitly fence the namespace, never silently reuse it.
+
+The authority envelope may represent a u64 coordinate, but admissibility follows the actual Store allocator. In the inspected consumer tree, `fn-bs-frontier-next` and the profile transaction ceiling still use `*fn-cbor-max-uint*` (u32), despite the frontier frame's u64 representation. No u64 allocator or lifetime-extension claim follows from the frame codec. The actual codec, staged producer, replay and adoption fence must land together, with structural credential bounds derived from the grammar rather than an arbitrary expanded byte allowance. This is an implementation direction under the existing identity/nonreuse contract, not a new user-ratified feature or a completed proof.

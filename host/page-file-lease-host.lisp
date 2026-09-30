@@ -42,7 +42,14 @@
     (if (not (equal word :placed)) (mv word nil 0 0 nil fn-page-read-pool)
       (mv-let (admit buffer-token fn-page-read-pool)
         (fn-owner-page-read-discovery-admit file offset count fn-page-read-pool)
-        (mv admit file offset count buffer-token fn-page-read-pool)))))
+        (if (not (eq admit :admitted))
+            (mv admit file offset count buffer-token fn-page-read-pool)
+          (mv-let (recorded ledger)
+            (fn-prf-note-admitted-read (fn-owner-page-read-ledger fn-page-read-pool)
+                                       token request buffer-token)
+            (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
+              (mv (if (eq recorded :recorded) :admitted :read-admission-uncertain)
+                  file offset count buffer-token fn-page-read-pool))))))))
 
 (defthm fn-owner-page-file-pin-refines-prf-by-definition
   (equal (mv-list 3 (fn-owner-page-file-pin file fn-page-read-pool))
@@ -65,3 +72,7 @@
 (defun fn-owner-page-file-pin-ticket (token fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
   (fn-prf-ticket (fn-owner-page-read-ledger fn-page-read-pool) token))
+
+(defun fn-owner-page-file-issued-count (root fn-page-read-pool)
+  (declare (xargs :stobjs fn-page-read-pool))
+  (fn-prf-issued-count (fn-owner-page-read-ledger fn-page-read-pool) root))

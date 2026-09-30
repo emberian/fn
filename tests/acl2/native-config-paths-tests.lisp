@@ -25,6 +25,12 @@
 (assert-event (equal (fn-ncpath-resolve "/srv/fn-public" "/var/lib/fn") "/srv/fn-public"))
 (assert-event (equal (fn-ncpath-resolve "store" nil) "store"))
 (assert-event (equal (fn-ncpath-resolve nil "/var/lib/fn") nil))
+; Complete positive for fn-ncpath-resolve-is-absolute.
+(assert-event
+ (and (fn-ncpath-basep "/var/lib/fn")
+      (stringp "store") (< 0 (length "store"))
+      (fn-ncfg-absolutep (fn-ncpath-resolve "store" "/var/lib/fn"))))
+
 ; Teeth for fn-ncpath-resolve-is-absolute: without a base the result is not
 ; absolute; without the path's being a non-empty string neither.
 (assert-event (not (fn-ncfg-absolutep (fn-ncpath-resolve "store" "relative"))))
@@ -81,3 +87,35 @@
 (defconst *ncpt-deep*
   (concatenate 'string "/" (coerce (make-list 500 :initial-element #\d) 'string)))
 (assert-event (equal (fn-ncpath-config-octets *ncpt-octets* *ncpt-deep*) :bad))
+
+; Regression: path resolution retains every non-path field, including the
+; explicit cold-resource policy at slot 29 and nondefault TLS port at 28.
+; Cold resources remain unsupported by run at this staged source frontier;
+; resolving paths must not erase the policy and bypass that refusal.
+(defconst *ncpt-cold* '(65536 2 16 1000 100))
+(defconst *ncpt-extended*
+  (update-nth 29 *ncpt-cold* (update-nth 28 1563 *ncpt-written*)))
+(defconst *ncpt-extended-resolved*
+  (fn-ncpath-resolve-config *ncpt-extended* *ncpt-node*))
+
+; Literal positive of fn-ncpath-resolve-config-without-a-base: both
+; hypotheses and full configuration equality, with a nonnil policy.
+(assert-event
+ (and (not (fn-ncpath-basep nil))
+      (fn-ncfg-show-shapep *ncpt-extended*)
+      (equal (fn-ncpath-resolve-config *ncpt-extended* nil) *ncpt-extended*)))
+(assert-event
+ (and (fn-native-config-show-wfp *ncpt-extended*)
+      (equal (fn-native-config-listener-tls-port *ncpt-extended-resolved*) 1563)
+      (equal (fn-native-config-cold-resources *ncpt-extended-resolved*) *ncpt-cold*)
+      ; Complete result: only the six path slots change.
+      (equal *ncpt-extended-resolved*
+             (update-nth 29 *ncpt-cold* (update-nth 28 1563 *ncpt-resolved*)))
+      (equal (fn-native-config-unsupported-key *ncpt-extended-resolved*) "cold_resources")))
+(assert-event
+ (let ((text (fn-native-config-show-octets *ncpt-extended*)))
+   (and (equal (fn-native-config-load text) (list :accepted *ncpt-extended*))
+        (fn-ncpath-basep *ncpt-node*)
+        (not (equal (fn-ncpath-config-octets text *ncpt-node*) :bad))
+        (equal (fn-native-config-load (fn-ncpath-config-octets text *ncpt-node*))
+               (list :accepted *ncpt-extended-resolved*)))))

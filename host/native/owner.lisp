@@ -4375,6 +4375,17 @@ admission closes, so it takes the owner mutex directly rather than the gate."
   ((word :initarg :word :reader fnn-snapshot-read-not-issued-word)
    (request :initarg :request :reader fnn-snapshot-read-not-issued-request)))
 
+(define-condition fnn-snapshot-read-admission-uncertain (fnn-store-indeterminate)
+  ((word :initarg :word :reader fnn-snapshot-read-admission-uncertain-word)
+   (request :initarg :request :reader fnn-snapshot-read-admission-uncertain-request)
+   (token :initarg :token :reader fnn-snapshot-read-admission-uncertain-token)))
+
+(defun fnn-snapshot-source-issued-count (service root-token)
+  "Caller holds owner; exact live root census, including legitimate zero."
+  (declare (ignore service))
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (fnn-core-page-read-pool 'fn-owner-page-file-issued-count root-token)))
+
 (defun fnn-snapshot-source-read-page (service root-token request buffer-lease)
   "Read one exact page. Return vector, token, request, fresh ID, count, status.
 Short/error observations remain owned for authcomplete's uncertain result;
@@ -4390,7 +4401,11 @@ BUFFER-LEASE is controller funding, never an independent refund right."
               (fnn-core-page-read-pool 'fn-owner-page-file-pin-read root-token request base)
             (declare (ignore ignored))
             (unless (eq word :admitted)
-              (error 'fnn-snapshot-read-not-issued :word word :request request))
+              (if (eq word :read-admission-uncertain)
+                  (error 'fnn-snapshot-read-admission-uncertain :word word :request request
+                         :token read-token :message "snapshot admitted read state is uncertain")
+                (error 'fnn-snapshot-read-not-issued :word word :request request
+                       :message "snapshot physical read not issued")))
             (setq token read-token offset read-offset count read-count
                   fd (gethash read-file *fnn-extent-fds*))))))
     (unwind-protect

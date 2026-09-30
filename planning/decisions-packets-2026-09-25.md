@@ -23,20 +23,26 @@ The form follows [the mandate §12](handoff-2026-09-25-fable-mandate.md). These 
 - AGENTS.md: never merge local numbers globally. Uncertain, refused and accepted stay distinct.
 - Peers are unaffected. Peering is keyed by Message-ID (IHAVE, and NEWNEWS with a time cursor in books/peer-pull.lisp). Only NNTP readers hold numbers.
 
-**Proposed default: an explicit rebase, driven by a witness, run on the copy, never on the live store.**
-- The verb is `fn operator CONFIG store rebase WITNESS`. The witness is a numbering snapshot captured outside the store: the per-group highs from `LIST ACTIVE` or `operator status`, plus the last txid. One taken after the writer stopped is final. A periodic poll from monitoring is only as fresh as its last poll.
-- An ACL2 verdict, `fn-restore-rebase-verdict store witness`, decides:
-  - Witness txid equals the recovered txid, and its highs equal the recovered highs: `:accepted :same-history`, with no gap. This is the demonstrably safe same-history case.
-  - Every witnessed high ≥ the recovered high: `:accepted :rebased`. The floor is witness high + 1 per group.
-  - Witness txid below the recovered txid, or a floor below the recovered next: `:refused :witness-older-than-copy`.
-  - No witness, or a configured group missing from it: `:uncertain :no-high-water`, naming the groups. Exit 3, and the store stays unserved.
-- An accepted verdict persists a durable numbering-floor record. It holds the floors (including groups not configured now, so a later `group create` starts above them), a fresh restore incarnation and the witness's provenance. Replay sets next := max(next, floor).
-- Operator docs must say that the rebase is exactly as fresh as its witness. ACL2 checks that the witness is consistent with the copy, not that it is the newest.
+**Correction 2026-09-30 (PKT-336): proposal only; PKT-228 remains open and unimplemented.** A sampled high-water is not an upper bound on every prior issuance. For example, a backup through 100 and a sample at 110 do not cover the old writer subsequently issuing 111–120. Equal transaction IDs and high-waters also do not establish equal history. The earlier acceptance conditions below are replaced by three independent obligations; no restore lane may implement a success branch from the earlier conditions.
+
+**Proposed default: an explicit rebase with complete evidence, run on the copy, never on the live store.**
+- The proposed verb remains `fn operator CONFIG store rebase WITNESS`. A witness must identify the referenced store/history and its integrity evidence, its provenance and trust assumptions, and its coverage of every prior allocation or advertised high-water whose reuse would violate the numbering contract. A periodic `LIST ACTIVE` or status sample alone supplies no such coverage. A final observation requires a quiesced old writer that cannot resume; alternatively, an independently durable allocation bound must have been established before the covered numbers could be issued.
+- An ACL2 verdict must establish three separate properties before acceptance:
+  1. **History identity and integrity.** Validate the relationship between the recovered history and the history named by the evidence. Equal scalar txids, record counts or high-waters are insufficient; an abstract digest equality alone does not prove real integrity or the witness's honesty.
+  2. **Complete prior issuance coverage.** Establish an upper bound covering every relevant earlier issuance, including groups absent from the current configuration. An older or incomplete sample cannot establish this property even when every sampled high exceeds the recovered high.
+  3. **Mapping-preserving transformation.** Preserve the article-number mappings of all recovered articles. Raise future allocation floors strictly above the covered earlier highs, never lower a recovered next number, never renumber existing articles, and refuse an unrepresentable floor rather than wrapping.
+- The proposed outcome classes are:
+  - `:accepted :same-history` only when the history identity/integrity and complete coverage evidence establishes that the recovered history preserves the applicable issued mappings and needs no raised floor. Matching txid/high-water scalars alone never select this branch.
+  - `:accepted :rebased` only when all three properties hold and the required raised floors are durably published before serving.
+  - `:refused` for demonstrated contradictory evidence, an invalid transformation, or an unrepresentable floor, naming the reason.
+  - `:uncertain` when history identity, integrity, coverage or witness authority is not established, including a missing group or a merely sampled high-water. The store stays unserved; an ambiguous persistence result also remains a recovery event, never an accepted in-memory update.
+- An accepted transformation would persist a numbering-floor record with the floors for every covered group, a fresh restore incarnation and the witness's provenance. Its replay rule must preserve existing mappings and apply `next := max(next, floor)` only to future allocation. Durable layout, evidence validation, exit-code mapping and the actual proof/caller contract remain proposed work, not implemented guarantees.
+- Operator documentation must distinguish consistent evidence from complete evidence. A witness consistent with the copy can still be too old to prevent reuse. No claim of safety may depend on an unproved assertion that the latest sample covered all later activity.
 
 **Rejected alternatives and their real cost.**
 - (b) A new numbering epoch that restarts or lowers numbers under the same group name. This violates RFC 3977 §6 arrival order, and no client understands an epoch. Choosing it means every existing newsrc for the group goes silently wrong.
 - (a) A gap guessed from wall time or the profile. The mandate calls it safe only when the high-water is known. A guessed gap turns a known-unknown into a silent reuse.
-- (c) Same-identity restore, left implicit. This is today's copy-back, and nothing demonstrates the backup is the latest. It is kept only as the witness-checked `:same-history` branch above.
+- (c) Same-identity restore, left implicit. This is today's copy-back, and nothing demonstrates the backup is the latest. A same-history success would require the separate identity, integrity and complete-coverage obligations above.
 - The cost of the default:
   - one new Store record kind, which touches store-events, replay, records-concrete, checkpoint and the identity and carried invariants (about 25 books, the count peer-pull made for its FNPL alternative);
   - a store format bump, if kinds need one;
@@ -44,7 +50,7 @@ The form follows [the mandate §12](handoff-2026-09-25-fable-mandate.md). These 
 
 **What changes.**
 - Format: the numbering-floor record.
-- Proof: owner-numbering's two keystones extend across a rebase step (every next ≥ floor > witnessed high). acceptance-alloc gains the raise, with teeth: reuse is refused without the floor.
+- Proof: owner-numbering's two keystones must extend across the mapping-preserving rebase step, with an explicit complete-coverage premise (every future next ≥ floor > every covered prior high). Literal witnesses must separate missing history identity, incomplete coverage and a mapping-changing transformation; scalar equality or a sampled floor is not sufficient.
 - Callers: books/native-operator.lisp `fn-nop-parse-store` and the host/native/io.lisp dispatcher (beside `fnn-command-upgrade-profile`).
 - docs/operator.md "Back up" and "Recover".
 
@@ -54,7 +60,7 @@ The form follows [the mandate §12](handoff-2026-09-25-fable-mandate.md). These 
 - Witness capture: `LIST ACTIVE` is served today.
 - D31 marker work, and the anchor's native restore.
 
-**Recommendation:** adopt the witness-driven `store rebase`: a durable per-group numbering floor, `:same-history` only when the witness matches, `:uncertain` without one, and no epoch reset. **yes?**
+**Decision still open (PKT-228):** whether to adopt a witness-driven `store rebase` with durable per-group floors. PKT-336 corrects the prerequisite safety contract; it does not select an evidence mechanism, approve the product proposal, or establish an implementation. Any accepted design must satisfy all three obligations above and keep missing coverage uncertain.
 
 ## Packet 3: profile field 13 and the policy-member count
 

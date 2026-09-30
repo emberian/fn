@@ -522,18 +522,18 @@ of M pages hashes256*M blocks. The current directory count is format u32, so
 this stream's complete size is representable without an extra store-size policy.
 A prepared digest is never durable publication or acceptance.
 
-The library `pgs-dc-begin(sel, base, nb, capture, lease, pgs-digest)` records this
-block count and exact captured source/lease names. `pgs-dc-step(block, pgs-digest)`
+The library `pgs-dc-begin(sel, base, nb, capture, lease, pgs-digest-state)` records this
+block count and exact captured source/lease names. `pgs-dc-step(block, pgs-digest-state)`
 receives one fixed sixteen-u32 block when `pgs-dc-needs-block` is true; the next
 word offset is `pgs-dc-next-word-offset`. Each step returns `:continue`, `:done`
 or `:invalid` with its continuation. Split search advances one doubling per
 tick, chunk processing does at most one compression, and parent/root processing
 also yields separately. `pgs-dc-result` is the terminal big-endian natural.
-The optional `pgs-dc-tick(pgs-mem, pgs-digest)` reads at most eight captured u64
+The optional `pgs-dc-tick(pgs-mem, pgs-digest-state)` reads at most eight captured u64
 words and calls the same core. The disk-backed builder may instead supply its
 one bounded emission buffer. Neither client builds a whole `fn-octets-pg`.
 
-The `pgs-digest` stobj has64 fixed frame slots plus scalar fields and fixed
+The `pgs-digest-state` stobj has64 fixed frame slots plus scalar fields and fixed
 current CV/output values. Constructor allocation belongs to admission; begin
 resets scalars without zeroing its frame array. Source pinning, buffer ownership
 and lease release remain the controller's responsibility. Supported profile,
@@ -546,15 +546,14 @@ entry. The proof-only refinement now preserves complete active-frame denotation
 in every phase and conditionally connects a root step to the actual previous
 word digest through `pgs-x-words-digest-is-blake3`. Its captured-source semantic
 carry is still a hypothesis. PRF-1087 remains planned: maintained trajectory
-and representation invariants, strict progress, supported-domain stack
-sufficiency, concrete allocation demand and actual controller composition
+and semantic invariants, strict progress, concrete allocation demand and actual controller composition
 remain open. Ground BLAKE3 agreement establishes neither standard conformance
 nor real cryptographic assumptions. Full S7/P12/D33 completion is unchanged.
 
 The reusable byte extension `pgs-dcb-begin(sel, base, byte-total, capture, lease,
-pgs-digest)` handles exact byte lengths including empty and partial blocks.
+pgs-digest-state)` handles exact byte lengths including empty and partial blocks.
 Its caller retains the captured byte-total unchanged. `pgs-dcb-step(byte-total,
-block, pgs-digest)` delegates to the page core except the final rightmost chunk,
+block, pgs-digest-state)` delegates to the page core except the final rightmost chunk,
 which records the exact byte count. The caller feeds sixteen u32 words with
 zero padding beyond `pgs-dcb-read-demand`, bounded by64 bytes, and consumes
 source only when that demand is nonzero. `pgs-dcb-next-byte-offset` is the
@@ -596,3 +595,71 @@ cleanup and no active logical payload holder. Syncers remain in the service's
 join roster even if the committer fails. A module cleanup error retains draining.
 This is source sequencing evidence; the full admitted resource/source relation
 and canonical snapshot publication remain open under PRF-1133/HST-040.
+
+The page-core representation domain is now source-admitted: scalar ordering,
+CV shape, split power budget and active-frame child-span bounds establish at
+begin, survive every actual step and exclude invalid status. At most2^64 u64
+words uses depth budget57; the current directory u32 page-count domain uses
+budget36, within the64-slot array. The proof-only predicate is carried logically,
+never revalidated on the served path. Exact-byte guard and semantic/progress
+composition remain open (PRF-1087).
+
+The exact-byte guard domain is also source-admitted. It carries natural B,
+total=ceil(B/8),8pos<=B and every active frame right-start<total, establishes
+at byte begin, and survives each actual byte step. The restored right-child
+position therefore remains within B even for partial final bytes. Complete
+actual guards and never-invalid status follow without executing this proof-only
+predicate on a served tick. Semantic trajectory/progress and funding remain open.
+
+
+After capacity computation, `fn-hcl-admit` also checks that the entire canonical
+image, `16384*(1+4*column-cap+pool-cap)`, fits the current u64 image-byte domain.
+Valid individual region lengths do not imply this after power-of-two rounding.
+This final check precedes emission and is separate from physical layout and
+runtime/profile file-extent admission. The same component emits one of the four
+scalar-column words via `fn-hcl-put`; its effect is exactly the corresponding
+`fn-hp-cells-of` entry, with per-row pad8 and overflow refusal preserved.
+
+
+`books/history-pool-columns.lisp` extends PRF-1096 with an actual twelve-cell
+pool-to-column dispatcher. `fn-hpcx-begin(count, pool, token, capture, lease)`
+retains the admitted census scalars and independent capture/resource references.
+The source token keeps the existing natural epoch, two-cell capture ticket/count,
+pass and ordinal API, extracted verbatim to `snapshot-source-token.lisp`.
+`fn-hpcx-offer(cursor, ordinal, source, token, key)` accepts only the expected
+ordinal in need-row phase with matching scalar source identity and u64 producer
+MKEY. It does not authenticate a source, rescan a row or hash a Message-ID.
+
+`fn-hpcx-tick` returns a verdict, bounded summary, next cursor and five buffers.
+A pool tick calls actual `fn-hpe-tick`. Its prepared exact length is captured
+once; a scalar `fn-hcc-row` check rejects unrepresentable padded offsets/counts,
+census excess or a final pool total different from census before any column
+writes. Columns 0..3 call existing `fn-hcl-cell` and `fn-hpq-put`, storing key,
+length, previous pool offset and padded length separately. One tick stores at
+most one cell. Full pages yield unchanged and keep the pending column across
+an outer reset. The row ordinal and cumulative offset advance only after
+column3 stores. Pending and terminal offers are stale, preventing double count.
+The outer producer remains responsible for canonical `fn-hcl-admit` after
+capacity rounding, authenticated source/MKEY attribution and funded ownership.
+
+Named conditional boundaries connect actual prepared length to the current
+codec count and each stored column prefix to `fn-hp-cells-of`. The dispatcher
+preserves shape, all five concrete buffer invariants and their identities,
+and capture/resource references. SCN-1007 has reachable partial/aligned rows,
+column1 full/reset/resume, stale offers, complete prefix/attribution literal
+premise removals, and separately labelled logical width-edge mutations. The
+page-full phase premise was removed only after proving the general unchanged
+boundary. The child count invariant is carried proof state, never a runtime
+whole-row validator. This source library has no host caller. Whole-producer
+stream/terminal refinement, full cold encoder, progress, funding, physical I/O
+and publication remain open under the original preparation contract.
+
+The private canonical image executor is an open PRF-1147 boundary:
+`fnn-hpi-execute-effect` consumes the actual controller's pending effect via
+core projections under the retained maintenance receipt, then performs one
+positional syscall off the extent lock. Five fixed page buffers and one
+admitted conversion vector remain borrowed until the exact observation is
+consumed; short or erroneous writes are uncertain and never retried using
+the same page generation. Source guards, effect/serialization refinement,
+staging lifetime, runtime funding and the native joined scenario remain
+open. This does not activate the old eager checkpoint writer.

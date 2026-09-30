@@ -5,8 +5,9 @@
 (in-package "ACL2")
 
 (defstruct (fnn-snapshot-job (:constructor %make-fnn-snapshot-job))
-  service capture root maintenance payload-view source reader provider
+  service capture root maintenance canonical payload-view source reader provider
   observation completion (phase :source) outcome
+  census pending-row cold-mapping (pipeline-phase :census) writer key-cursor remapper
   (action-lock (sb-thread:make-mutex :name "snapshot action"))
   (returned :returned) (stage :none))
 
@@ -18,7 +19,7 @@ that immutable source; no records accessor or history materializer is used."
    :service service :capture captured :root root :maintenance maintenance
    :payload-view payload-view :source (fnn-snapshot-source-begin captured)))
 
-(defun %fnn-snapshot-job-source-step (job)
+(defun %fnn-snapshot-job-row-step (job)
   "One source/provider/auth-reader action. A row is offered once, with its
 current source identity and parser-size completion; an opaque Store is never
 compared or traversed to decide whether a completion belongs to this job."
@@ -84,6 +85,249 @@ compared or traversed to decide whether a completion belongs to this job."
       (:source-done '(:done))
       (otherwise '(:refused :source-phase)))))
 
+(defun %fnn-snapshot-job-census-begin (job)
+  (unless (fnn-snapshot-job-census job)
+    (let ((source (fnn-snapshot-job-source job)))
+      (setf (fnn-snapshot-job-census job)
+            (fnn-core 'fn-hct-begin (fnn-core 'fn-osrc-at 3 source)
+                      (fnn-core 'fn-osrc-at 10 source)
+                      (fnn-snapshot-job-maintenance job)))
+      (unless (fnn-snapshot-job-remapper job)
+        (setf (fnn-snapshot-job-remapper job)
+              (fnn-core 'fn-osm-begin (fnn-core 'fn-osrc-token source)))))))
+
+(defun %fnn-snapshot-job-remap-row (job row)
+  (destructuring-bind (word mapped next)
+      (fnn-call 'fn-osm-prepare-row (fnn-snapshot-job-remapper job) row)
+    (setf (fnn-snapshot-job-remapper job) next)
+    (values word mapped)))
+
+(defun %fnn-snapshot-job-census-cold-step (job current-child)
+  "The actual census emitted CURRENT-CHILD; completion cannot invent one."
+  (let* ((source (fnn-snapshot-job-source job))
+         (token (fourth (fnn-snapshot-job-pending-row job))))
+    (unless (fnn-snapshot-job-cold-mapping job)
+      (setf (fnn-snapshot-job-cold-mapping job)
+            (fnn-hsr-cold-begin (fnn-core 'fn-osrc-at 5 source) token
+                                (fnn-snapshot-job-maintenance job))))
+    (multiple-value-bind (word mapping)
+        (fnn-hsr-cold-step (fnn-snapshot-job-service job)
+                          (fnn-snapshot-job-root job)
+                          (fnn-snapshot-job-maintenance job)
+                          (fnn-snapshot-job-reader job)
+                          (fnn-snapshot-job-cold-mapping job)
+                          token current-child)
+      (setf (fnn-snapshot-job-cold-mapping job) mapping)
+      (if (and (consp word) (eq (first word) :supply))
+          (destructuring-bind (verdict census)
+              (fnn-call 'fn-hct-supply (fnn-snapshot-job-census job)
+                        (second word) (third word))
+            (setf (fnn-snapshot-job-census job) census)
+            verdict)
+        word))))
+
+(defun %fnn-snapshot-job-key-begin (job)
+  (let* ((row (fnn-snapshot-job-pending-row job))
+         (answer (fnn-core 'fn-omk-begin (third row)
+                           (fnn-core 'fn-osj-capture-image-salt
+                                     (fnn-snapshot-job-capture job))
+                           (fourth row) (fnn-snapshot-job-maintenance job))))
+    (when (eq (first answer) :begun)
+      (setf (fnn-snapshot-job-key-cursor job) (second answer)
+            (fnn-snapshot-job-cold-mapping job) nil))
+    answer))
+
+(defun %fnn-snapshot-job-key-step (job)
+  "Walk the offered row's Message-ID under the captured target genesis salt."
+  (let* ((key (fnn-snapshot-job-key-cursor job))
+         (answer (fnn-core 'fn-omk-tick key nil)))
+    (case (first answer)
+      (:continue
+       (setf (fnn-snapshot-job-key-cursor job) (second answer))
+       :yield)
+      (:need-byte
+       (let ((child (fnn-core 'fn-ocb-key-child key))
+             (token (fourth (fnn-snapshot-job-pending-row job))))
+         (unless (fnn-snapshot-job-cold-mapping job)
+           (setf (fnn-snapshot-job-cold-mapping job)
+                 (fnn-hsr-cold-begin
+                  (fnn-core 'fn-osrc-at 5 (fnn-snapshot-job-source job))
+                  token (fnn-snapshot-job-maintenance job))))
+         (multiple-value-bind (word mapping)
+             (fnn-hsr-cold-step (fnn-snapshot-job-service job)
+                               (fnn-snapshot-job-root job)
+                               (fnn-snapshot-job-maintenance job)
+                               (fnn-snapshot-job-reader job)
+                               (fnn-snapshot-job-cold-mapping job) token child)
+           (setf (fnn-snapshot-job-cold-mapping job) mapping)
+           (if (and (consp word) (eq (first word) :supply))
+               (let ((next (fnn-core 'fn-omk-tick key
+                                      (fnn-core 'fn-ocb-key-observation key word))))
+                 (when (eq (first next) :continue)
+                   (setf (fnn-snapshot-job-key-cursor job) (second next)))
+                 next)
+             word))))
+      (otherwise answer))))
+
+(defun %fnn-snapshot-job-emission-cold-step (job child)
+  (let ((token (fourth (fnn-snapshot-job-pending-row job))))
+    (unless (fnn-snapshot-job-cold-mapping job)
+      (setf (fnn-snapshot-job-cold-mapping job)
+            (fnn-hsr-cold-begin
+             (fnn-core 'fn-osrc-at 5 (fnn-snapshot-job-source job))
+             token (fnn-snapshot-job-maintenance job))))
+    (multiple-value-bind (word mapping)
+        (fnn-hsr-cold-step (fnn-snapshot-job-service job)
+                          (fnn-snapshot-job-root job)
+                          (fnn-snapshot-job-maintenance job)
+                          (fnn-snapshot-job-reader job)
+                          (fnn-snapshot-job-cold-mapping job) token child)
+      (setf (fnn-snapshot-job-cold-mapping job) mapping)
+      (when (and (consp word) (eq (first word) :supply))
+        ; The writer consumes this scalar on the NEXT scheduling action.
+        (setf (fnn-snapshot-job-observation job) word))
+      word)))
+
+(defun %fnn-snapshot-job-emission-step (job)
+  "Fetch only on the actual funded writer's row demand; retain through ACK."
+  (unless (fnn-snapshot-job-writer job)
+    (fnn-fault "snapshot emission writer has not been installed"))
+  (if (eq (fnn-snapshot-job-pipeline-phase job) :emission-key)
+      (if (null (fnn-snapshot-job-key-cursor job))
+          (%fnn-snapshot-job-key-begin job)
+        (let ((key (%fnn-snapshot-job-key-step job)))
+          (if (and (consp key) (eq (first key) :done))
+              (let* ((row (fnn-snapshot-job-pending-row job))
+                     (word (sb-thread:with-mutex (*fnn-extent-lock*)
+                             (fnn-hpi-offer (fnn-snapshot-job-writer job)
+                                            (second row) (third row)
+                                            (fourth row) (second key)))))
+                (when (eq word :started)
+                  (setf (fnn-snapshot-job-pipeline-phase job) :emission-body
+                        (fnn-snapshot-job-key-cursor job) nil
+                        (fnn-snapshot-job-cold-mapping job) nil))
+                word)
+            key)))
+    (let ((observation (fnn-snapshot-job-observation job)))
+      (setf (fnn-snapshot-job-observation job) nil)
+      (multiple-value-bind (word effect)
+          (sb-thread:with-mutex (*fnn-extent-lock*)
+            (fnn-hpi-step (fnn-snapshot-job-writer job) observation))
+        (case word
+          (:need-row
+           (when (fnn-snapshot-job-pending-row job)
+             (fnn-fault "snapshot writer requests next row before emitted-row ACK"))
+           (let ((row (%fnn-snapshot-job-row-step job)))
+             (when (and (consp row) (eq (first row) :row))
+               (unless (and (eq (first effect) :source-row)
+                            (fnn-core 'fn-omk-token-matchp (second effect) (fourth row)))
+                 (fnn-fault "snapshot source row does not match writer demand"))
+               (multiple-value-bind (word mapped)
+                   (%fnn-snapshot-job-remap-row job row)
+                 (unless (eq word :mapped)
+                   (return-from %fnn-snapshot-job-emission-step word))
+                 (setf (fnn-snapshot-job-pending-row job) mapped
+                       (fnn-snapshot-job-key-cursor job) nil
+                       (fnn-snapshot-job-cold-mapping job) nil
+                       (fnn-snapshot-job-pipeline-phase job) :emission-key)))
+             :yield))
+          (:need-byte (%fnn-snapshot-job-emission-cold-step job effect))
+          (:row-done
+           (let ((row (fnn-snapshot-job-pending-row job)))
+             (unless (and (eq (first effect) :row-emitted)
+                          (fnn-core 'fn-omk-token-matchp
+                                    (second effect) (fourth row)))
+               (fnn-fault "snapshot emitted-row ACK does not bind pending row"))
+             (destructuring-bind (ack remapper)
+                 (fnn-call 'fn-osm-emission-ack (fnn-snapshot-job-remapper job) effect)
+               (setf (fnn-snapshot-job-remapper job) remapper)
+               (unless (eq ack :acknowledged)
+                 (return-from %fnn-snapshot-job-emission-step ack)))
+             (setf (fnn-snapshot-job-pending-row job) nil
+                   (fnn-snapshot-job-key-cursor job) nil
+                   (fnn-snapshot-job-cold-mapping job) nil
+                   (fnn-snapshot-job-pipeline-phase job) :emission)
+             row))
+          (:continue :yield)
+          (otherwise (list word effect)))))))
+
+(defun %fnn-snapshot-job-source-step (job)
+  "Hold each first-pass row until its actual canonical census completes."
+  (if (member (fnn-snapshot-job-pipeline-phase job)
+              '(:emission :emission-key :emission-body))
+      (%fnn-snapshot-job-emission-step job)
+    (progn
+      (%fnn-snapshot-job-census-begin job)
+      (if (fnn-snapshot-job-pending-row job)
+          (destructuring-bind (word summary next)
+              (fnn-call 'fn-hct-tick (fnn-snapshot-job-census job))
+            (declare (ignore summary))
+            (setf (fnn-snapshot-job-census job) next)
+            (case word
+              (:row-done
+               (destructuring-bind (ack remapper)
+                   (fnn-call 'fn-osm-census-ack (fnn-snapshot-job-remapper job) next)
+                 (setf (fnn-snapshot-job-remapper job) remapper)
+                 (if (eq ack :acknowledged)
+                     (prog1 (fnn-snapshot-job-pending-row job)
+                       (setf (fnn-snapshot-job-pending-row job) nil
+                             (fnn-snapshot-job-cold-mapping job) nil))
+                   ack)))
+              (:continue :yield)
+              (otherwise
+               (if (and (consp word) (eq (first word) :need-byte))
+                   (%fnn-snapshot-job-census-cold-step job word)
+                 word))))
+        (let ((answer (%fnn-snapshot-job-row-step job)))
+          (cond
+            ((and (consp answer) (eq (first answer) :row))
+             (multiple-value-bind (remapped mapped)
+                 (%fnn-snapshot-job-remap-row job answer)
+               (unless (eq remapped :mapped)
+                 (return-from %fnn-snapshot-job-source-step remapped))
+               (setf (fnn-snapshot-job-pending-row job) mapped)
+               (destructuring-bind (word census)
+                   (fnn-call 'fn-hct-offer (fnn-snapshot-job-census job)
+                             (second mapped) (third mapped))
+                 (setf (fnn-snapshot-job-census job) census)
+                 (if (eq word :started) :yield word))))
+            ((and (consp answer) (eq (first answer) :done))
+             (destructuring-bind (word summary census)
+                 (fnn-call 'fn-hct-tick (fnn-snapshot-job-census job))
+               (setf (fnn-snapshot-job-census job) census)
+               (if (eq word :prepared) (list :census-complete summary) word)))
+            (t answer)))))))
+
+(defun %fnn-snapshot-job-restart-source (job)
+  "Restart the actual drained source after the completed canonical census.
+The caller holds the job action mutex; the retained reader/root are reused."
+  (when (fnn-snapshot-job-pending-row job)
+    (return-from %fnn-snapshot-job-restart-source '(:retained :census-row)))
+  (destructuring-bind (word summary census)
+      (fnn-call 'fn-hct-tick (fnn-snapshot-job-census job))
+    (declare (ignore summary))
+    (setf (fnn-snapshot-job-census job) census)
+    (unless (eq word :prepared)
+      (return-from %fnn-snapshot-job-restart-source word)))
+  (let ((answer (fnn-core 'fn-osrc-restart (fnn-snapshot-job-source job))))
+    (when (eq (first answer) :restarted)
+      (setf (fnn-snapshot-job-source job) (second answer)
+            (fnn-snapshot-job-remapper job)
+            (fnn-core 'fn-osm-begin (fnn-core 'fn-osrc-token (second answer)))
+            (fnn-snapshot-job-phase job) :source
+            (fnn-snapshot-job-provider job) nil
+            (fnn-snapshot-job-observation job) nil
+            (fnn-snapshot-job-completion job) nil
+            (fnn-snapshot-job-cold-mapping job) nil
+            (fnn-snapshot-job-pipeline-phase job) :emission))
+    answer))
+
+(defun fnn-snapshot-job-restart-source (job)
+  (sb-thread:with-mutex ((fnn-snapshot-job-action-lock job))
+    (setf (fnn-snapshot-job-returned job) :running)
+    (unwind-protect (%fnn-snapshot-job-restart-source job)
+      (setf (fnn-snapshot-job-returned job) :returned))))
+
 (defun fnn-snapshot-job-source-step (job)
   "The action mutex covers the actual synchronous I/O return. Cleanup
 cannot observe a timeout as a join or race a still-executing source step."
@@ -112,6 +356,22 @@ An exception leaves the job's remaining leases for recovery/definite cleanup."
         (unless (member settled '(:released :closed))
           (fnn-fault "snapshot reader cleanup retains ownership: ~a" settled)))
       (setf (fnn-snapshot-job-reader job) nil)))
+  ; The executing action has returned under ACTION-LOCK. Remove every
+  ; census/codec/pending span authority before releasing its root file.
+  ; A later cleanup failure cannot resume the cancelled pipeline.
+  (setf (fnn-snapshot-job-phase job) :cancelling
+        (fnn-snapshot-job-pipeline-phase job) :cancelling
+        (fnn-snapshot-job-canonical job) nil
+        (fnn-snapshot-job-remapper job) nil
+          (fnn-snapshot-job-key-cursor job) nil
+          (fnn-snapshot-job-census job) nil
+        (fnn-snapshot-job-pending-row job) nil
+        (fnn-snapshot-job-cold-mapping job) nil
+        (fnn-snapshot-job-writer job) nil
+        (fnn-snapshot-job-provider job) nil
+        (fnn-snapshot-job-source job) nil
+        (fnn-snapshot-job-observation job) nil
+        (fnn-snapshot-job-completion job) nil)
   (when (fnn-snapshot-job-root job)
     (fnn-snapshot-source-root-release (fnn-snapshot-job-service job)
                                       (fnn-snapshot-job-root job))
@@ -162,16 +422,19 @@ retain the rest of the job for retry or recovery."
   "MAINTENANCE is an already admitted, operation-derived demand. Recheck
 its exact live ledger binding before acquiring a root or capture. This
 operational fence does not claim the complete rescue reserve is installed."
-  (let ((captured nil) (root nil) (view nil) (job nil))
+  (let ((captured nil) (canonical nil) (root nil) (view nil) (job nil))
     (unwind-protect
          (fnn-owner-gated (service :control)
-           (let ((plan (fnn-core 'fn-osj-resource-word
-                                (fnn-snapshot-source-context) maintenance)))
+           (let* ((context (fnn-snapshot-source-context))
+                  (plan (fnn-core 'fn-osj-resource-word context maintenance)))
              (unless (eq (first plan) :capture)
                (fnn-refuse-io "snapshot capture refused: ~a" (second plan)))
              (unless (eq (first (fnn-core-page-read-pool
                                 'fn-owner-maintenance-grow maintenance '(0 0 0 0 0))) :grown)
                (fnn-refuse-io "snapshot maintenance lease is not live"))
+             (setq canonical (fnn-core-state 'fn-owner-osn-canonical-capture context))
+             (unless (eq (first canonical) :ready)
+               (fnn-refuse-io "snapshot canonical context is unavailable"))
              (when (second plan)
                (setq root (fnn-snapshot-source-root-acquire service (second plan) maintenance)))
              (setq captured (fnn-core-state 'fn-owner-osn-capture))
@@ -183,6 +446,7 @@ operational fence does not claim the complete rescue reserve is installed."
                  (fnn-refuse-io "snapshot payload view refused: ~a" word))
                (setq view holder))
              (setq job (fnn-snapshot-job-open service captured root maintenance view))
+             (setf (fnn-snapshot-job-canonical job) canonical)
              job))
       ; No worker exists yet on this refusal path. The owner gate has
       ; returned before these cleanup calls acquire it again.

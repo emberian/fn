@@ -231,7 +231,9 @@ def render_roots(decls: list[dict]) -> str:
 def host_reading(root: Path = ROOT) -> dict:
     """What the raw host does, read from its source (harness_check's reading)."""
     from tools import harness_check
-    tree = ledger.load_tree()
+    # Bindings use host forms and function names, never theorem suspects.
+    # Ledger callers requesting suspects still trigger the full analysis.
+    tree = ledger.load_tree(lazy=True)
     raw = ledger.raw_host_paths(tree)
     rawdefs, _ambiguous = harness_check.raw_definitions({r: tree.hosts[r].forms for r in raw})
     dispatched: dict[str, set[str]] = {}

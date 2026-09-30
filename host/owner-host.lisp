@@ -46,11 +46,15 @@
 (include-book "../books/owner-snapshot-recovery")
 (include-book "../books/snapshot-prepare")
 (include-book "../books/snapshot-row-remap")
+(include-book "../books/snapshot-row-source-remap")
 (include-book "../books/snapshot-source-cursor")
 (include-book "../books/snapshot-based-provider")
+(include-book "../books/snapshot-cold-provider")
 (include-book "../books/history-auth-reader-source")
+(include-book "../books/history-census-controller")
 (include-book "../books/history-decode-completion")
 (include-book "../books/snapshot-job-capture")
+(include-book "../books/owner-canonical-state")
 ; Row S10 (lane operability-2): a refused control post completion names the
 ; Store's word on the reply and the line.
 (include-book "../books/owner-control-post-reason")
@@ -949,6 +953,21 @@
 
 ; The caller admitted actual maintenance and the root lease before capture.
 ; This adapter borrows the records-field, never the eager records accessor.
+; Same owner gate as source context/capture. The full immutable context
+; sidecar must be installed for this exact Store event count.
+; The actual captured genesis verdict, not the live owner/source header.
+; fn-gen-verdict-salt is the existing guarded core salt projection.
+(defun fn-osj-capture-image-salt (capture)
+  (declare (xargs :mode :program))
+  (fn-gen-verdict-salt (fn-omk-at 4 capture)))
+
+(defun fn-owner-osn-canonical-capture (context state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (and (fn-omk-widthp context 6) (equal (fn-omk-at 0 context) :ready)
+           (fn-owner-canonical-availablep (fn-omk-at 2 context) state))
+      (value (fn-owner-canonical-ready-capture state))
+    (value '(:unavailable :canonical-size))))
+
 (defun fn-owner-osn-source-begin (capture)
   (declare (xargs :mode :program))
   (let* ((lease (fn-osrc-at 1 capture)) (count (fn-osrc-at 1 lease))

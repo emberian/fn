@@ -306,6 +306,8 @@
 (include-book "books/store-init-publication")
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/page-read-host.lisp" :ld-error-action :error)
+(ld "host/snapshot-maintenance-host.lisp" :ld-error-action :error)
+(ld "host/history-image-producer-host.lisp" :ld-error-action :error)
 (ld "host/page-executor-host.lisp" :ld-error-action :error)
 (ld "host/page-file-lease-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
@@ -344,6 +346,8 @@
 (ld "host/reader-host.lisp" :ld-error-action :error)
 (ld "host/owner-host.lisp" :ld-error-action :error)
 (ld "host/page-read-host.lisp" :ld-error-action :error)
+(ld "host/snapshot-maintenance-host.lisp" :ld-error-action :error)
+(ld "host/history-image-producer-host.lisp" :ld-error-action :error)
 (ld "host/native-config-host.lisp" :ld-error-action :error)
 (ld "host/native-auth-host.lisp" :ld-error-action :error)
 (ld "host/native-auth-admin-host.lisp" :ld-error-action :error)
@@ -478,7 +482,9 @@
         ; The writable NNTP owner.  It registers the `owner' verb and calls
         ; only host/owner-host.lisp wrappers for protocol and state decisions.
         (load "host/native/owner.lisp")
-        (load "host/native/history-auth-reader.lisp")
+(load "host/native/history-image-writer.lisp")
+(load "host/native/history-auth-reader.lisp")
+(load "host/native/history-cold-reader.lisp")
         (load "host/native/snapshot-producer.lisp")
         ; Its connections on a fixed set of I/O loops (PKT-605).
         (load "host/native/mux.lisp")

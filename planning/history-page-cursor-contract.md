@@ -237,3 +237,83 @@ the F-row binding. PageA starts at16384+16384*A; framed segments start after
 NPphysicalpages. Headerword/tableword emitters do not publish a root or marker.
 ACL2 offset-domain plans must validate the admitted platform/profile bound
 before positional I/O; native code may not derive those decisions itself.
+
+
+## Five-region emission scratch
+
+The selected producer representation has five separately funded page buffers:
+four columns and one byte-pool stream. Four `fn-hpq0` through `fn-hpq3` stobjs
+are ACL2-congruent to the existing `fn-hpb` pool buffer. All five use the same
+proved prefix abstraction and scalar-reset operation. `fn-hpq-put` writes one
+word into exactly the selected region; the other four concrete states are
+unchanged. `fn-hpq-begin` resets five used counters and capture/lease metadata,
+without copying or clearing their backing arrays. Creation is startup backing
+allocation, distinct from admitting its exclusive use for a served snapshot.
+
+Retained backing totals five arrays of 2048 u64 words, five used counters, and
+five capture/lease reference pairs. Native serialization/I/O buffers and any
+pending write overlap are additional charged resources. A full buffer remains
+owned until its exact positional write completion is acknowledged; only then
+may its prefix be reset. The snapshot controller supplies that lifetime rule;
+the standalone scratch dispatcher does not claim I/O completion fencing.
+
+During the second source pass, record bytes fill the pool buffer. When a row
+finishes, its exact length/padded length/offset and streamed Message-ID key
+supply the four column cells. Full column buffers flush independently at the
+ACL2-derived region positions. After all regions are complete, the private
+staged file is scanned for data-page digests and metadata spools. This keeps
+two source passes, avoids a per-record length spool, and never constructs a
+whole image or by-address hash. Final composed stream/root proof remains open.
+
+
+## Record bytes into the pool buffer
+
+`fn-hpe-begin(source,capture,lease)` creates seven cells: phase, byte-codec
+continuation, partial-word byte count, partial u64 accumulator, emitted byte
+count, capture reference and resource lease reference. `fn-hpe-tick(c,fn-hpb)`
+returns verdict, summary, next cursor and scratch. It invokes at most one
+actual codec tick and writes at most one u64. A full scratch page returns
+`:page-full` with both states unchanged before consuming a source byte. The
+owner completes its positional write before resetting that scratch and
+resuming the same cursor. A terminal aligned row emits no extra word; a
+nonempty partial word emits exact current-format zero padding. `:prepared`
+returns the exact unpadded encoded byte count for column construction.
+
+Named component boundaries establish byte-total conservation, carried codec
+invariant, concrete scratch/identity preservation, and exact eighth-byte and
+final padded-word effects against `fn-hp-pack8`. They do not yet constitute
+a whole-record stream induction to `fn-hp-pe`, nor authenticate source span
+responses or establish disk publication. Literal tests exercise an actual
+16400-octet row across a full-page yield/reset/resume and compare both pages
+with the old logical packing. The full per-literal helper premise audit and
+complete page/record induction remain open. Encoded counts and final padded
+region capacities must already have passed census/profile admission before
+this emitter owns a served reservation.
+
+
+## Actual pool-to-column dispatcher seam (2026-09-30)
+
+`fn-hpcx-begin(count,pool,token,capture,lease)` retains twelve fixed cells:
+phase/count/ordinal/offset/pool-limit/child/token/key/encoded/column/capture/lease.
+`fn-hpcx-offer(c,ordinal,source,token,key)` binds one actual fn-hpe child only
+in need-row phase. Scalar token checks reuse exact fn-omk-tokenp/matchp;
+epoch, ticket, pass and ordinal remain distinct from resource lease and pins.
+Token count agrees with census count; pool/column token ordinal agrees with
+pending ordinal. Ticket/pass stay natural scalars without a new u64 ceiling.
+Begin/offer/tick do not compare Store/root/file names or traverse source data.
+
+One pool tick, or one fn-hcl-cell→fn-hpq-put write, executes per tick. Capture
+prepared length once, check fn-hcc-row representability/census bounds before
+columns, retain full-page column, and advance count/offset only after column3.
+All five page buffers have independent flush ownership. Reset is external and
+requires completed physical page consumption; this cursor grants no reset or
+I/O lease. The pool emitter still consumes resident bytes only until the cold
+owner supplies the full current-codec residual/controller.
+
+Conditional attribution/prefix boundaries and literal teeth are component
+source evidence. Actual provider/remap/MKEY/pins/reservation are producer
+obligations. This lane still owes canonical census/layout/body/metadata/digest
+effect-stream and whole terminal refinement, joining their owners rather than
+duplicating encoders or hashes. Current finite pool-residual bridge, partial
+column effects and scalar funding references imply neither whole producer
+completion, general progress, physical allocation nor durable publication.

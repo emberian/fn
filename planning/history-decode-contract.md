@@ -170,3 +170,12 @@ PRF-1102 remains planned because authenticated page-byte mapping, outer token
 matching, row columns/padding/MKEY, canonical cold reencoding, concrete node
 funding and the actual host composition remain open. Source admissions carry
 no certificate, qualified image or deployment coordinate.
+
+The companion `history-decode-shape` carries built node shape, span bounds and
+exact literal HSTXA recognition through actual feed and complete runs. For
+a successful result, abstract HSTXA equals literal `(:atom :hstxa)`; a held
+cons with a non-octet head must be a concrete pair, excluding opcode-6 spans.
+The public car/cdr projections refine its abstraction. These are proof-only
+carried predicates, not runtime whole-tree validation. Captured Store row
+correspondence must supply the non-octet grammar premises; authentication and
+outer column/padding/MKEY checks remain producer composition obligations.

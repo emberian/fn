@@ -197,19 +197,22 @@ payload text field; because an inbound bundle can reach four mebibytes and
 cannot cross the decimal-octet bridge, ACL2 builds and validates the frame head
 and the host concatenates bundle bytes it never interprets.
 
-**A-CRYPTO.** The 32-octet trailer is BLAKE3 in deployment (SHA-256 up to store
-format 9), computed by ACL2's attached `fn-blake3-stobj` (books/blake3.lisp;
-the C BLAKE3 in the saved images, A-CRYPTO-NATIVE). `fn-frame-digest` is an `encapsulate` whose only constraints are
-output shape (an octet list of length 32), with a local witness proving the
-constraints satisfiable. No theorem in this tree claims collision or preimage
-resistance for it. `fn-frame-seal` and `fn-frame-open` are the specification
-functions stated against the constrained digest; `fn-frame-encode` and
-`fn-frame-decode` take the digest as an argument and are what the host calls,
-and `fn-frame-encode-is-seal` and `fn-frame-decode-is-open` state exactly what
-the host must have computed for the two to coincide, naming `fn-frame-digest`
-in their hypotheses. See the measurement in `HANDOFF.md` for why the installed
-`books/kestrel/crypto/sha-2/` formal specification is not used to compute the
-trailer.
+**A-CRYPTO.** The current 32-octet frame trailer is BLAKE3.
+`fn-frame-digest` is a closed, guard-verified ACL2 definition calling the
+proved `fn-blake3-stobj` implementation; its logical bridge names
+`fn-blake3`. The saved images retain the accelerated C implementation under
+A-CRYPTO-NATIVE. This source change preserves the current algorithm and
+stored bytes. It does not add a reader for any previous format.
+
+The public output-shape theorems remain unchanged. Computing the digest
+proves neither collision resistance nor preimage resistance; those remain
+separate assumptions. `fn-frame-seal` and `fn-frame-open` name the concrete
+frame digest. `fn-frame-encode` and `fn-frame-decode` take a supplied digest;
+`fn-frame-encode-is-seal` and `fn-frame-decode-is-open` still state exactly
+which ACL2-computed digest makes the two coincide. Buffer and range
+realizers retain checked representation attachments; streamed readers must
+prove correspondence to the same actual function, including exact bytes
+and effects.
 
 The commit/checkpoint grammar must still be designed alongside the
 [storage failure model](failures.md).

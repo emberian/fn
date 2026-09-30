@@ -2310,6 +2310,7 @@
 
 (definterface fn-bpfs-fragment-outcome
   :class ::common-lisp-compliant
+  :keystones (fn-bpfs-fragment-outcome-refines-ordered-send)
   :kinds ((index natp)))
 
 (definterface fn-bpfs-plan
@@ -4858,3 +4859,66 @@
 (definterface fn-owner-page-file-read-result :class :common-lisp-compliant)
 
 (definterface fn-owner-page-file-pin-ticket :class :common-lisp-compliant)
+
+; Private S7 source assembly entries. Whole producer, funding and source
+; lineage remain open; no keystone is asserted by these declarations.
+(definterface create-pgs-digest-state :class :common-lisp-compliant)
+(definterface fn-hsr-source-begin :class :common-lisp-compliant)
+(definterface fn-hsr-source-bind :class :common-lisp-compliant)
+(definterface fn-hsr-source-action :class :common-lisp-compliant)
+(definterface fn-hsr-auth-select-page :class :common-lisp-compliant)
+(definterface fn-hsr-auth-request :class :common-lisp-compliant)
+(definterface fn-hsr-auth-complete :class :common-lisp-compliant)
+(definterface fn-hsr-auth-feed-byte :class :common-lisp-compliant)
+(definterface fn-hsr-auth-digest-tick :class :common-lisp-compliant)
+(definterface fn-hsr-source-byte-complete :class :common-lisp-compliant)
+(definterface fn-hsr-field :class :common-lisp-compliant)
+(definterface fn-hsr-auth-release :class :common-lisp-compliant)
+(definterface fn-hsr-source-cancel-returned :class :common-lisp-compliant)
+(definterface fn-hsr-source-settle-demand :class :common-lisp-compliant)
+(definterface fn-osrc-tick :class :common-lisp-compliant)
+(definterface fn-obp-begin :class :common-lisp-compliant)
+(definterface fn-hrs-h-rec :class :common-lisp-compliant)
+(definterface fn-osrc-token :class :common-lisp-compliant)
+(definterface fn-obp-tick :class :common-lisp-compliant)
+(definterface fn-obp-demand :class :common-lisp-compliant)
+(definterface fn-osj-resource-word :class :common-lisp-compliant)
+(definterface fn-owner-maintenance-grow :class :common-lisp-compliant)
+(definterface fn-owner-maintenance-release :class :common-lisp-compliant)
+(definterface fn-osj-capture-ticket :class :common-lisp-compliant)
+(definterface fn-osj-cleanup-word :class :common-lisp-compliant)
+(definterface fn-ocb-begin :class :common-lisp-compliant)
+(definterface fn-ocb-request :class :common-lisp-compliant)
+(definterface fn-ocb-demand :class :common-lisp-compliant)
+(definterface fn-ocb-complete :class :common-lisp-compliant)
+(definterface fn-owner-osn-capture :class ::program)
+(definterface fn-owner-osn-release :class ::program)
+(definterface fn-hct-begin :class :common-lisp-compliant)
+(definterface fn-hct-offer :class :common-lisp-compliant)
+(definterface fn-hct-tick :class :common-lisp-compliant)
+(definterface fn-omk-at :class :common-lisp-compliant)
+(definterface fn-osrc-at :class :common-lisp-compliant)
+(definterface fn-osrc-restart :class :common-lisp-compliant)
+
+(definterface fn-hct-supply :class :common-lisp-compliant)
+
+
+
+(definterface fn-owner-osn-canonical-capture :class ::program)
+
+(definterface fn-osj-capture-image-salt :class ::program)
+(definterface fn-ocb-key-child :class :common-lisp-compliant)
+(definterface fn-ocb-key-observation :class :common-lisp-compliant)
+
+(definterface fn-owner-history-image-offer :class :common-lisp-compliant)
+(definterface fn-owner-history-image-tick :class :common-lisp-compliant)
+
+(definterface fn-osm-begin :class :common-lisp-compliant)
+
+(definterface fn-osm-prepare-row :class :common-lisp-compliant)
+
+(definterface fn-osm-census-ack :class :common-lisp-compliant)
+
+(definterface fn-osm-emission-ack :class :common-lisp-compliant)
+
+(definterface fn-owner-page-file-issued-count :class :common-lisp-compliant)
