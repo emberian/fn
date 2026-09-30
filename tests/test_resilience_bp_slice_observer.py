@@ -52,9 +52,9 @@ class SliceSemanticTests(unittest.TestCase):
             ("decision-cut-readback", dict(octets=b"stored")),
             ("application-replay", dict(exit_code=0)),
             ("outbox-process-death", dict(exit_code=-9)),
-            ("receipt-contact-uncertain", dict(exit_code=0)),
+            ("receipt-contact-uncertain", dict(exit_code=0, stdout=b"BP transport work=job1 status=attempted\n")),
             ("checkpoint-stage-cut", dict(exit_code=-9)),
-            ("receipt-contact-resumed", dict(exit_code=0, attempted_work=[b"job1"], forwarded_work=[b"job1"])),
+            ("receipt-contact-resumed", dict(exit_code=0, stdout=b"BP transport work=job1 status=forwarded\n", attempted_work=[b"job1"], forwarded_work=[b"job1"])),
             ("receipt-obligation-settlement", dict(matching=b"pinned=no\n", unrelated=b"pinned=yes\n")),
             ("checkpoint-complete-readback", dict(exit_code=0, octets=b"stored")),
             ("retirement-frozen-report", dict(exit_code=0, report=b"obligation id=forward-unrelated kind=forward\n", stdout=b"obligation id=forward-unrelated kind=forward\n")),
@@ -81,7 +81,6 @@ class SliceSemanticTests(unittest.TestCase):
         from tools.resilience.adapters.bp_slice_observer import encode
         cases = [("decision-cut-readback", "octets", b"changed", "accepted-bytes-preserved"),
                  ("receipt-obligation-settlement", "unrelated", b"pinned=no\n", "matching-obligation-only"),
-                 ("receipt-contact-resumed", "forwarded_work", [], "receipt-reoffered"),
                  ("retirement-frozen-report", "report", b"empty\n", "retirement-debt-preserved"),
                  ("post-observed", "reply", b"441 refused\r\n", "post-accepted")]
         for event, field, value, cause in cases:
@@ -90,6 +89,14 @@ class SliceSemanticTests(unittest.TestCase):
                 next(r for r in journal.records if r.get("event") == event)[field] = encode(value)
                 verdict = self.check(journal)
                 self.assertEqual((verdict.kind, verdict.cause), ("violation", cause))
+
+    def test_receipt_derived_fields_cannot_fabricate_healing(self):
+        journal = self.journal()
+        resumed = next(r for r in journal.records if r.get("event") == "receipt-contact-resumed")
+        resumed["stdout"] = {"octets_hex": b"BP transport work=other status=forwarded\n".hex()}
+        self.assertEqual(self.check(journal).kind, "harness-failure")
+        resumed["forwarded_work"] = [{"octets_hex": b"other".hex()}]
+        self.assertEqual(self.check(journal).cause, "receipt-reoffered")
 
     def test_missing_binding_and_ambiguous_status_fail_closed(self):
         journal = self.journal()

@@ -29,6 +29,18 @@ def status(record, field):
     return values[0] == b"yes"
 
 
+def work_ids(record, disposition):
+    pattern = (rb"^BP transport work=([^\s]+)[^\r\n]*\bstatus=" +
+               disposition + rb"(?=\s|$)")
+    return set(re.findall(pattern, octets(record, "stdout"), re.M))
+
+
+def observed_ids(values):
+    if not isinstance(values, list):
+        raise MissingObservation("receipt work identities missing")
+    return {octets({"work": value}, "work") for value in values}
+
+
 def obligations(events):
     """Return the first violated named observation rule; missing data refuses.
 
@@ -69,9 +81,12 @@ def obligations(events):
     resumed = events["receipt-contact-resumed"]
     attempted = resumed.get("attempted_work")
     forwarded = resumed.get("forwarded_work")
-    if not isinstance(attempted, list) or not isinstance(forwarded, list):
-        raise MissingObservation("receipt work identities missing")
-    if not attempted or any(work not in forwarded for work in attempted):
+    attempted_ids, forwarded_ids = observed_ids(attempted), observed_ids(forwarded)
+    actual_attempted = work_ids(events["receipt-contact-uncertain"], b"attempted")
+    actual_forwarded = work_ids(resumed, b"forwarded")
+    if attempted_ids != actual_attempted or forwarded_ids != actual_forwarded:
+        raise MissingObservation("receipt work fields differ from raw process output")
+    if not attempted_ids or not attempted_ids <= forwarded_ids:
         return "receipt-reoffered", "an uncertain receipt job was not forwarded on healing"
     settlement = events["receipt-obligation-settlement"]
     if status(settlement, "matching") or not status(settlement, "unrelated"):
