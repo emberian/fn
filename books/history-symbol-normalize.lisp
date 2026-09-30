@@ -328,6 +328,21 @@
                          (:instance code-char-char-code-is-identity (c y)))
             :in-theory (disable code-char-char-code-is-identity)))))
 
+(local
+ (defthm fn-hdsn-car-of-tail-unfolds
+  (equal (car (nthcdr n xs)) (nth n xs))
+  :hints (("Goal" :induct (nthcdr n xs) :in-theory (enable nth nthcdr)))))
+
+(local
+ (defthm fn-hdsn-equal-tails-have-equal-heads
+  (implies (equal (nthcdr n xs) (nthcdr n ys))
+           (equal (nth n xs) (nth n ys)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hdsn-car-of-tail-unfolds)
+                 (:instance fn-hdsn-car-of-tail-unfolds (xs ys)))
+           :in-theory (disable fn-hdsn-car-of-tail-unfolds nth nthcdr)))))
+
 (defthm fn-hdsn-supply-preserves-denotation
   (implies (and (fn-hdsn-statep c) (stringp name)
                 (equal (length name) (nth 2 c))
@@ -339,6 +354,9 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-hdsn-state-fields
+                 (:instance fn-hdsn-equal-tails-have-equal-heads
+                            (n (nth 4 c)) (xs (coerce name 'list))
+                            (ys (coerce (symbol-name (car (nth 3 c))) 'list)))
                  (:instance fn-hdsn-find-unfolds
                             (candidates (nth 3 c)) (index (nth 4 c)))
                  (:instance fn-hdsn-find-unfolds
