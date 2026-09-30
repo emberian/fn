@@ -1,0 +1,26 @@
+(in-package "ACL2")
+(include-book "../../books/connection-abort-source-cost")
+; Actual source issuer supplies the token; cancellation keeps both spent IDs.
+(defthm icact-literal-charged-abort-complete
+ (let* ((budget '(1000 1000 1000 1000 1000)) (baseline '(100 0 0 0 0))
+        (grant '(40 0 0 0 1))
+        (backing (update-fn-ibp-pool-capacity 1 (create-fn-index-backing)))
+        (pool (fn-owner-page-read-keep-ledger
+               (fn-prl-build budget '(0 0 0 0 1) 1 nil baseline) (create-fn-page-read-pool)))
+        (reserved (fn-icr-reserve 42 grant backing pool))
+        (token (mv-nth 1 reserved))
+        (result (fn-icr-abort token 8 (mv-nth 2 reserved) (mv-nth 3 reserved)))
+        (seen (fn-icac-abort token 8 (mv-nth 2 reserved) (mv-nth 3 reserved)))
+        (expected-backing (update-fn-ibp-connection-free '(0)
+                            (update-fn-ibp-connection-highwater 1 backing)))
+        (expected-pool (fn-owner-page-read-keep-ledger
+                       (fn-prl-build budget '(0 0 0 0 2) 2 nil baseline) pool)))
+  (and (fn-index-backingp backing) (fn-page-read-poolp pool) (natp 8)
+       (equal (mv-nth 0 reserved) :reserved) (equal token '(:connection-holder 2 1 0))
+       (equal (fn-omk-at 6 (fn-ibp-connection-pending (mv-nth 2 reserved))) :charged)
+       (equal result (list :released 8 expected-backing expected-pool))
+       (equal (list (mv-nth 0 seen) (mv-nth 1 seen) (mv-nth 2 seen) (mv-nth 3 seen)) result)
+       (equal (fn-atsc-cells (mv-nth 4 seen)) 24)
+       (equal (fn-atsc-ops (mv-nth 4 seen))
+              '((:subtract (40 40)) (:subtract (0 0)) (:subtract (0 0)) (:subtract (0 0))))))
+ :rule-classes nil)

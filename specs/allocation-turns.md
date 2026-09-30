@@ -134,3 +134,17 @@ alone does not establish a non-NIL installed child or exclude fallback construct
 Complete segment literals cover positive reserve, stale current row and refused
 invalid token. These source correspondences do not price hash/shape/comparison
 helpers, implicit stobj constructors, frames, collector or first use.
+
+The complete abort observer preserves the actual four-value result and effects.
+Its charged cancellation branch retains spent identities, constructs24 explicit
+source CONS cells with a baseline ledger (23 with a legacy ledger), and records
+four actual reusable-coordinate subtractions. Registered close and settlement
+remain named unpriced calls. A source-issued token literal checks the whole
+provider and pool outputs, charge release, retained NEXT and ordered operands.
+Normal215522Z-3462588 certifies the two new roots against the historical
+three-field holder coordinate, with114 cached inputs and73 citation gaps.
+Fresh normal proof attempts exposed a missing local positive-LEN lemma used by
+four-value reconstruction; the explicit local lemma repaired the proof without
+changing its statement. Those failures remain archived. Current RX four-field
+closure is still a coordinator convergence obligation; neither constructor nor
+native qualification is transferred from the historical coordinate.

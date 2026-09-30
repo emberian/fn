@@ -10,14 +10,14 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1755 |
-| Certification roots in the Makefile | 1648 |
-| Books inside the root closure | 1749 |
-| `defthm` and `defthmd` events | 28111 |
-| `defun` events | 18532 |
-| Functions with verified guards | 3560 |
+| Books read | 1757 |
+| Certification roots in the Makefile | 1650 |
+| Books inside the root closure | 1751 |
+| `defthm` and `defthmd` events | 28119 |
+| `defun` events | 18534 |
+| Functions with verified guards | 3561 |
 | Functions declared `:verify-guards nil` and never verified | 2109 |
-| Functions left at the default with an explicit guard | 10128 |
+| Functions left at the default with an explicit guard | 10129 |
 | Functions left at the default with no guard | 2735 |
 | `assert-event` checks | 23115 |
 | `must-fail` checks | 2496 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 322 |
 | Enabled-projection warnings | 55 |
 | Teeth-form warnings | 272 |
-| Include-hygiene warnings | 2474 |
+| Include-hygiene warnings | 2476 |
 | Host-names warnings | 2129 |
 | Hand-written-record warnings | 18 |
 
@@ -385,6 +385,7 @@ that `make certify` requests.
 | `books/config-store-traces.lisp` | root | 2 | 7 | 5/0/2/0 | 0 | 0 | 0 |
 | `books/config-stream.lisp` | root | 21 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/config.lisp` | root | 115 | 285 | 33/0/252/0 | 0 | 0 | 1 |
+| `books/connection-abort-source-cost.lisp` | root | 7 | 2 | 1/0/1/0 | 0 | 0 | 0 |
 | `books/connection-budget.lisp` | root | 36 | 26 | 0/0/26/0 | 0 | 0 | 2 |
 | `books/connection-operation-cost.lisp` | closure | 3 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/connection-operation-operand-domain.lisp` | root | 37 | 3 | 0/0/3/0 | 0 | 0 | 0 |
@@ -1324,6 +1325,7 @@ that `make certify` requests.
 | `tests/acl2/config-store-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/config-stream-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 42 | 0 | 0 |
 | `tests/acl2/config-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 104 | 0 | 0 |
+| `tests/acl2/connection-abort-source-cost-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/connection-budget-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 57 | 11 | 0 |
 | `tests/acl2/connection-operation-source-cost-tests.lisp` | root | 0 | 2 | 0/1/1/0 | 26 | 0 | 0 |
 | `tests/acl2/connection-operation-start-tests.lisp` | closure | 0 | 5 | 0/5/0/0 | 3 | 0 | 0 |
