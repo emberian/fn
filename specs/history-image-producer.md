@@ -241,3 +241,26 @@ Exact clean source evidence is
 General 341-entry tables/two-zero packing, full image/progress/effect-to-
 payload/FD joins, installed source authority and complete INITIAL/runtime
 funding remain open. Runtime is unchanged and PRF-1144 remains planned.
+
+
+The separate table phase proof now connects actual `fn-hpi-tick` to each
+canonical table word, full continuing invariant and complete page handoff.
+Each page slices at most 341 six-word entries at its global data ordinal;
+the final two words are zero. The cache invariant constrains only the
+current active entry, excluding padding. Returned `:write` supplies the
+entire 2048-word model page, exact captured positional effect, retained
+`:table-digest-start` continuation and full ledger/buffer/digest frame.
+These are full call-output statements, not new runtime validation.
+
+Ten new literal assertions check three complete positives and every retained
+premise removal for word, tail and page laws. They construct a supported
+N517/T2 table phase with actual maintenance admission and live growth
+receipt, fill the concrete scratch using `fn-hpb-put`, and call the actual
+writer. They are explicitly phase constructions, not a complete large-image
+trajectory or native evidence. All seventeen directory assertions remain.
+Exact clean source evidence is
+`planning/evidence/history-image-table-phase-source-2026-09-30.json`.
+The next-table/digest transition relation, full pool/data/digest/root
+trajectory and progress, actual effect-to-payload/FD coupling, installed
+source authority and complete INITIAL runtime/funding envelope remain open.
+Runtime is unchanged; PRF-1144 remains planned with no completion events.
