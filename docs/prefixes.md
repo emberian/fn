@@ -367,3 +367,4 @@ anything a book does not already decide.
 
 | `fn-novlp-` | `nov-line-projection` | Logical first-five normalized NOV projection of the actual article parser; component proof vocabulary, never a served scan |
 | `fn-nlv-` | `legacy-parser-validity` | Logical control projection and physical-line/body grammar proofs of the actual bounded legacy byte cursor; full malformed-header simulation remains open |
+| `fn-nlpc-` | `legacy-parser-composition` | Arbitrary-source acceptance composition of the actual legacy byte machine and article parser; logical proof vocabulary |
