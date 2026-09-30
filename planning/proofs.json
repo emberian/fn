@@ -16731,12 +16731,13 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "title": "The live arena's off-mutex readers pin a generation; a retirement is released only when every live reader pinned after it (row A6, the generation pin)",
       "statement": "Subject (books/arena-reader-pins.lisp): fn-arpn-step, which the host calls for every event of the arena readers' generation state (host/native/io.lisp fnn-arena-pins-step under its own lock; fnn-arena-pin/-unpin around a checkpoint publication's thread, host/native/owner.lisp fnn-owner-maybe-publish and fnn-owner-publish-captured; fnn-arena-retire and fnn-arena-release-due in the COMPLETE's reseat, fnn-log-reseat-fenced; fnn-arena-stamp/-clear-p for the installing reclaim pass). The state is (CUR PINS PEND): the current generation, the live pins as a strictly ascending table of (G . N) with every G <= CUR (fn-arpn-okp, established by fn-arpn-initial and preserved by every event: fn-arpn-step-preserves-okp), and the pending retirements (S . ITEMS). A :pin answers CUR (fn-arpn-pin-answers-the-generation); a :retire stamps CUR, which is at or above every live pin, and advances the generation (fn-arpn-retire-stamp-covers-every-live-pin; fn-arpn-step-generation-never-decreases). KEYSTONE fn-arpn-release-postdates-every-live-pin: every retirement :release answers was pending and its stamp is below every live pin, so no reader live at the retirement is live at its release; fn-arpn-release-keeps-every-covered-retirement: a retirement some live reader is pinned at or below stays pending. Generalizes the single off-mutex reader count (*fnn-arena-off-mutex-readers*, removed): an old retirement is released as soon as the readers older than it end, whatever newer readers run.",
       "evidence": [
         "books/arena-reader-pins.lisp",
-        "tests/acl2/arena-reader-pins-tests.lisp"
+        "tests/acl2/arena-reader-pins-tests.lisp",
+        "planning/evidence/over-pin-hint-source-2026-09-30.md"
       ],
       "events": [
         "fn-arpn-release-postdates-every-live-pin",
@@ -16744,7 +16745,7 @@
         "fn-arpn-retire-stamp-covers-every-live-pin",
         "fn-arpn-step-preserves-okp"
       ],
-      "progress_note": "Lane composed-owner-5 (Opus 5.5, 2026-09-29). REPL-admitted on persvati (book and teeth). Teeth tests/acl2/arena-reader-pins-tests.lisp: the reached run (reader A pins 0, a retirement at 0, reader B pins 1, a retirement at 1, A ends: the release answers the stamp-0 retirement while B runs and keeps the stamp-1 one), a reachable positive witness (arpnt-release-positive), a witness and a must-fail per hypothesis (the okp one a CORRUPTED-STATE witness: an out-of-order pin table), and a mutation (a release of every pending retirement). Host callers on this branch: the checkpoint publication's pin and the COMPLETE's staged-page release; the installing reclaim pass (online-reclaim-4) is the next caller."
+      "progress_note": "Lane composed-owner-5 (Opus 5.5, 2026-09-29). REPL-admitted on persvati (book and teeth). Teeth tests/acl2/arena-reader-pins-tests.lisp: the reached run (reader A pins 0, a retirement at 0, reader B pins 1, a retirement at 1, A ends: the release answers the stamp-0 retirement while B runs and keeps the stamp-1 one), a reachable positive witness (arpnt-release-positive), a witness and a must-fail per hypothesis (the okp one a CORRUPTED-STATE witness: an out-of-order pin table), and a mutation (a release of every pending retirement). Host callers on this branch: the checkpoint publication's pin and the COMPLETE's staged-page release; the installing reclaim pass (online-reclaim-4) is the next caller. Proof-only inherited-world repair of local fn-arpn-split-acc-kept-member: unchanged statement/runtime, explicit split-acc induction and hint-local disabling revappend-removal. Actual catalog prefix original failure31107steps; repaired13050steps; fresh soloverpinfinal whole56formbook plus4precedingsourcebooks10.09ACL2s/3,322,351steps, no refusals. No new runtime/certification/image claim."
     },
     {
       "id": "PRF-987",
@@ -17735,7 +17736,7 @@
         "PRF-1020"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/response-plan-pins.lisp",
         "tests/acl2/response-plan-pins-tests.lisp",
