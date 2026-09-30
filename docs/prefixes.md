@@ -377,3 +377,4 @@ anything a book does not already decide.
 | `fn-ssr-`, `ssrt-` | `statement-recover-stream`, `tests/acl2/statement-recover-stream-tests` | Sequential frozen statement-context replay, with resident chunk composition and extent/compressed refinement including arena effects. |
 | `fn-skp-`, `skpt-` | `statement-keyring-publication`, `tests/acl2/statement-keyring-publication-tests` | Carried active keyring/generation resolution at durable identity publication. |
 | `fn-nsm-` | `native-statement-material` | ACL2-owned legacy statement material, rendering and supplied-key verification for the statement-sign native command. |
+| `fn-bprpf-`, `bprpft-` | `bp-recovery-profile`, `tests/acl2/bp-recovery-profile-tests` | Current profile admission of checkpoint seeds, saved rows, and actual recovered held data before installation. |

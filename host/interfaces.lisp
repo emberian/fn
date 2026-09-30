@@ -2332,6 +2332,18 @@
   :class ::ideal
   :keystones (fn-bphp-recover-auto-event-is-bpnr))
 
+(definterface fn-bprpf-row-admit
+  :class ::common-lisp-compliant
+  :keystones (fn-bprpf-admitted-row-has-bounded-adu))
+
+(definterface fn-bprpf-selection-admit
+  :class ::common-lisp-compliant
+  :keystones (fn-bprpf-admitted-checkpoint-bounds-every-held-adu))
+
+(definterface fn-bprpf-admit-recovery
+  :class ::common-lisp-compliant
+  :keystones (fn-bprpf-ready-recovery-bounds-every-held-adu))
+
 (definterface fn-bpn-host-authored-retry
   :class ::ideal)
 

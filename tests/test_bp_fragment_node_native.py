@@ -481,6 +481,52 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         profile.write_bytes(saved)
         self.assertEqual(self.recovered_held(), 70)
 
+    def check_replay_adu_profile(self, checkpoint):
+        # SCN-1008: a small fragment declares an ADU above the default.
+        # Recovery must check its total before replay/reassembly, from either
+        # a saved kind-5 row or the selected checkpoint's held list.
+        raised = self.invoke("bp-node", "profile", self.journal,
+                             "dtn://receiver/", 64, 16777216,
+                             131072, 1048576, 100)
+        self.assertEqual(raised.returncode, EXIT.OK, raised.stderr)
+        paths, total = self.author_large_fragments(69000, 4000)
+        self.assertGreater(total, 65538)
+        receiver, port = self.start_receiver()
+        sent = self.send_fragment(port, paths[-1], 0)
+        out, err = receiver.communicate(timeout=120)
+        self.assertEqual(sent.returncode, EXIT.OK, (sent.stdout, sent.stderr))
+        self.assertEqual(receiver.returncode, EXIT.OK, (out, err))
+        self.assertEqual(self.recovered_held(), 1)
+        if checkpoint:
+            rotated = self.invoke("bp-node", "checkpoint", self.journal,
+                                  "dtn://receiver/", 1000, 0)
+            self.assertEqual(rotated.returncode, EXIT.OK,
+                             (rotated.stdout, rotated.stderr))
+        profile = self.journal / "bp-node-profile"
+        saved = profile.read_bytes()
+        profile.unlink()  # Corrupted/restored profile fixture, not an admin downgrade.
+        reopened = self.invoke(
+            "bp-node", "dispatch", self.journal, self.store,
+            self.receipts, self.workflow, "dtn://receiver/", "dtn://sender/",
+            "dtn://receiver/", "native-policy", "dtn://receiver/",
+            "127.0.0.1", 9, 1, 3600000, 2, 32, 1048576, 1000, 0,
+        )
+        self.assertEqual(reopened.returncode, EXIT.UNCERTAIN,
+                         (reopened.stdout, reopened.stderr))
+        self.assertIn(b"ADU-BEYOND-PROFILE",
+                      (reopened.stdout + reopened.stderr).upper())
+        self.assertIn(b"checkpoint profile refusal" if checkpoint else b"replay profile refusal",
+                      reopened.stdout + reopened.stderr)
+        profile.write_bytes(saved)
+        self.assertEqual(self.recovered_held(), 1)
+        self.assertEqual(self.article_count(), 0)
+
+    def test_replay_fragment_total_past_profile_is_refused(self):
+        self.check_replay_adu_profile(False)
+
+    def test_checkpoint_fragment_total_past_profile_is_refused(self):
+        self.check_replay_adu_profile(True)
+
     def kill_at_rotation(self):
         """Start `bp-node serve'; as soon as its open announces a rotation,
         kill it with SIGKILL.  No developer cut: the kill lands wherever
