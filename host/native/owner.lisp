@@ -240,6 +240,9 @@
           (fnn-connection-custody-next node) nil
           (fnn-connection-custody-phase node) :released)))
 
+;; These helpers also run inside a prepaid operation's continuous owner/extent
+;; span. Recursive acquisition preserves that outer exclusion through native
+;; custody updates and allocating epilogues; it does not admit a new turn.
 (defun fnn-owner-connection-open-locked (service kind family address peer)
   "Return CID and its directly retained native node. No retained-path fallback."
   (unless (fnn-owner-connection-selected-p service)
@@ -249,7 +252,7 @@
                 (:exposure (fnn-owner-core 'fn-owner-exposure-open family address peer))
                 (:peer (fnn-owner-core 'fn-owner-open-peer peer))
                 (otherwise (fnn-fixed-callback-fail 'fnn-owner-connection-open-locked :unknown-open-kind kind))) nil)))
-  (sb-thread:with-mutex (*fnn-extent-lock*)
+  (sb-thread:with-recursive-lock (*fnn-extent-lock*)
     (when (fnn-owner-service-connection-raw-token service)
       (fnn-fixed-callback-fail 'fn-owner-index-connection-start :raw-token-already-held nil))
     (multiple-value-bind (erp word token fuel mio pool state)
@@ -304,7 +307,7 @@
     (return-from fnn-owner-connection-close-locked
       (fnn-owner-connection-settle-locked
        service node (fnn-owner-service-connection-fuel service) nil)))
-  (sb-thread:with-mutex (*fnn-extent-lock*)
+  (sb-thread:with-recursive-lock (*fnn-extent-lock*)
     (multiple-value-bind (erp result mio pool state)
         (fnn-core-mv 'fn-owner-index-close
           (funcall (fnn-owner-service-connection-close service)
@@ -328,7 +331,7 @@
 
 (defun fnn-owner-connection-settle-locked (service node fuel abortp)
   "A real alias return or definite pre-open refusal requests core settlement."
-  (sb-thread:with-mutex (*fnn-extent-lock*)
+  (sb-thread:with-recursive-lock (*fnn-extent-lock*)
     (multiple-value-bind (erp word left mio pool state)
         (fnn-core-mv (if abortp 'fn-owner-index-connection-abort 'fn-owner-index-connection-settle)
           (funcall (if abortp (fnn-owner-service-connection-abort service)
