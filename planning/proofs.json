@@ -19065,8 +19065,32 @@
         "tests/acl2/served-catalog-source-scan-tests.lisp",
         "planning/evidence/reader-source-prefix-2026-09-30/manifest.json"
       ],
-      "progress_note": "Source-only component: unchanged consumed-prefix equation, unconditional staged prepare/dispatch correspondence, actual configured-reader proper-effects/NATP-consumed/span bound admitted in retained scannerpub1. Complete literal mixed GROUP/LISTGROUP and actual configured-state witnesses pass; all40 additive source/guard forms pass. Public normal pending. Full target remains planned: actual offered-source/query/input custody, fn-orr caller switch, bounded refresh replies, complete serialized RC/STATE/actor return, installed runtime envelope/native and S7 remain open.",
-      "events": []
+      "progress_note": "Source-only component: unchanged consumed-prefix equation, unconditional staged prepare/dispatch correspondence, actual configured-reader proper-effects/NATP-consumed/span bound admitted in retained scannerpub1. Complete literal mixed GROUP/LISTGROUP and actual configured-state witnesses pass; all40 additive source/guard forms pass. Public normal pending. Full target remains planned: actual offered-source/query/input custody, fn-orr caller switch, bounded refresh replies, complete serialized RC/STATE/actor return, installed runtime envelope/native and S7 remain open."
+    },
+    {
+      "id": "PRF-1177",
+      "title": "Actual bounded9P codec and retained fid source lifecycle",
+      "statement": "The host-called concrete-buffer codec matches literal base9P2000 wire framing, never allocates from an unchecked peer size, and retains a genuinely issued immutable source through fid and outstanding read lifetimes. Flush revokes reply publication while physical ownership persists until actual completion.",
+      "milestone": "M6",
+      "requirements": [
+        "HST-043"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/ninep-header.lisp",
+        "tests/acl2/ninep-header-tests.lisp",
+        "specs/views-9p.md",
+        "host/ninep-protocol-host.lisp",
+        "tests/acl2/ninep-protocol-host-tests.lisp",
+        "planning/evidence/ninep-header-2026-09-30/README.md",
+        "books/ninep-fields.lisp",
+        "tests/acl2/ninep-fields-tests.lisp",
+        "planning/evidence/manifests/certify-20260930T213247Z-2592943.json",
+        "planning/evidence/manifests/certify-20260930T213317Z-2600819.json"
+      ],
+      "progress_note": "Normal 213247 certifies the actual guarded bounded field step, carried-ready preservation and six literal wire fixtures; normal 213317 certifies the actual host dispatch and unchanged STATE bridge. Matching dependencies install from cache; their uncited status is explicit in the manifests. Full literal parser refinement, fids, genuine committed mount issuer, native/runtime funding and source lifetime remain open. No activation, image or deployment claim."
     }
   ]
 }

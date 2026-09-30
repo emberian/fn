@@ -1821,27 +1821,27 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1902,
+    "books": 1907,
     "books_in_root_closure": 1885,
     "roots": 1817,
-    "theorems": 29856,
-    "functions": 19120,
+    "theorems": 29880,
+    "functions": 19146,
     "assert_events": 24066,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
-      "verified": 3539,
-      "declared-off": 2287,
-      "default-guarded": 10434,
-      "default-unguarded": 2860
+      "verified": 3540,
+      "declared-off": 2288,
+      "default-guarded": 10446,
+      "default-unguarded": 2872
     },
     "suspect_theorems": 1258,
     "export_hygiene_warnings": 350,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2572,
-    "host_names_warnings": 2193,
+    "include_hygiene_warnings": 2575,
+    "host_names_warnings": 2197,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -17811,6 +17811,63 @@
       "suspects": [
         "fn-nsc-at-reader-view-without-capture"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/ninep-fields.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 11,
+      "functions": 8,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 7,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "ninep-header",
+        "utf8"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/ninep-header.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 1,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "octets-stobj"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -45652,6 +45709,84 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/ninep-fields-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 6,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 6
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/ninep-fields"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/ninep-header-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 4,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/ninep-header"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/ninep-protocol-host-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 2,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../host/ninep-protocol-host"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/nntp-article-block-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -70017,9 +70152,10 @@
         "book": "books/utf8.lisp",
         "line": 48,
         "stated_in": [
+          "books/ninep-fields.lisp",
           "books/wildmat-utf8-invariants.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-wildmat-pattern-items",
@@ -76762,6 +76898,13 @@
         "line": 36,
         "include": "owner-reader-view",
         "included": "books/owner-reader-view.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/ninep-fields.lisp",
+        "line": 4,
+        "include": "ninep-header",
+        "included": "books/ninep-header.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -84462,6 +84605,20 @@
         "line": 210,
         "include": "native-live-status-tests",
         "included": "tests/acl2/native-live-status-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/ninep-fields-tests.lisp",
+        "line": 2,
+        "include": "../../books/ninep-fields",
+        "included": "books/ninep-fields.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/ninep-header-tests.lisp",
+        "line": 3,
+        "include": "../../books/ninep-header",
+        "included": "books/ninep-header.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -102210,6 +102367,34 @@
         "name": "fnn-register-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/ninep-protocol-host.lisp",
+        "line": 5,
+        "name": "mv",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/ninep-protocol-host.lisp",
+        "line": 12,
+        "name": "defthm",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/ninep-protocol-host.lisp",
+        "line": 12,
+        "name": "mv-nth",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/ninep-protocol-host.lisp",
+        "line": 12,
+        "name": "e/d",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",

@@ -5808,6 +5808,22 @@
         "tests/acl2/history-image-columns-tests.lisp"
       ],
       "implementation_note": "The full S7 producer remains planned. Landed components are the live snapshot inverse and bounded descriptor/scalar page-layout libraries; these have no new producer host caller. Capture/controller, bounded history preparation, physical admission, full retained-projection recovery, I/O effects and marker-last publication are still required. Unmerged producer prototypes and their separate proof targets are not cited as landed evidence."
+    },
+    {
+      "id": "HST-043",
+      "title": "Bounded native read-only9P2000 committed view",
+      "specification": "specs/views-9p.md",
+      "milestone": "M6",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1177"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [],
+      "note": "ACL2 owns wire decisions, names, local numbering and exactsource selection. Mount retains one genuinely issued immutable committed publication until all fids and issued reads settle. No whole-store materialization; real provider/issuer/source correspondence remains open."
     }
   ]
 }

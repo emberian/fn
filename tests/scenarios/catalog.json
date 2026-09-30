@@ -7329,6 +7329,29 @@
         "planning/evidence/peering-inn-advisory-source-2026-09-30.json"
       ],
       "execution_scope": "Source-present original S4 CHECK advisory observation. Scripted observer fixtures only; actual INN/native NOT RUN, no new proof or matching executable claim. All eight original Q12 anchors remain OPEN."
+    },
+    {
+      "id": "SCN-1064",
+      "title": "Read-only9P committed capture with bounded messages and retained sources",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "HST-043"
+      ],
+      "steps": [
+        "Negotiate base9P2000 on scratchloopback with tinymsize; attach a genuinely issued committed capture, walk groups/localnumber and by-id paths, page directory stat entries and read exact source ranges.",
+        "Commit a new article while old fids hold the original capture; old mount stays fixed until remount. Refuse unsupported writes/auth/extensions appropriately and degrade only unservable article framing.",
+        "Flush an outstanding cold read and disconnect/clunk; suppress cancelled reply but retain issued worker/query/source aliases until actual completion and final join."
+      ],
+      "expected": [
+        "Names/numbers/qids/lengths/wirebytes originate in actual core and registered provider; ordinal0 is valid. Exact stored binary/dotted source is neither NNTPstuffed nor whole-store materialized.",
+        "Directory reads honor stable offsets and integral stat entries; message/body size is checked against the supported representable profile before allocation.",
+        "No newercommit appears in retained old capture; no grant/root release from shape, copied payload or Flush alone. Missing genuine issuer remains unavailable."
+      ],
+      "evidence": [
+        "tests/acl2/ninep-header-tests.lisp"
+      ],
+      "scope_note": "Specified native acceptance scenario, not executed. Current source header witnesses are separate from native mounted source/lifetime qualification."
     }
   ]
 }
