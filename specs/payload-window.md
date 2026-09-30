@@ -426,3 +426,13 @@ has17 scalar/reference setter calls, including temporary total/end
 12-reference tuple and lease is the original token. Mode/IV/output are
 exact and no frame-array write occurs. These source operand facts do not
 price setter macros/callers/memoization/frames/GC/lifetime or grant INITIAL.
+
+The actual selected byte/fill source trace now checks each emitted write
+against its current concrete capacity: byte indices are natural and strictly
+within capacity, values are UB8, and fills are natural within capacity. All
+are bounded by the fixed65536 initializer scratch extent. The complete
+six-output host refinement retains the three typed concrete arrays; malformed
+unused tails refute that full relation rather than demonstrating that every
+standalone write needs a global type premise. This source argument boundary
+does not price setter macros, compiled callers, memoization, frames, GC or
+retained old/new lifetimes and supplies no INITIAL admission.

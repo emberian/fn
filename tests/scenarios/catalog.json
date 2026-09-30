@@ -6358,7 +6358,8 @@
         "Assert complete actual initializer six-output refinement and source array roster for fresh, shipped and larger preallocated buffers. Check exact resize indicators,69030 array writes and preset-dependent fill updates, all three retained-array hypothesis removals and separate resize/write/fill source-count mutants. Confirm source generator rejects unknown operations and preserves recursion/source effects.",
         "Assert complete actual initializer resize-payload/refinement and retained-capacity conclusion for fresh, preallocated and mixed buffers. Affirm all retained hypotheses in each typed-array removal; distinguish payload request69094 from physical header-bearing objects69152 and refute discarded larger capacities.",
         "Assert actual resize request/old-capacity source roster in output/history/table order, full initializer refinement and conditional primary-object bound for fresh/preallocated/mixed states. Check all three full typed-array removals, explicit unqualified component refusal, and separate source-order/domain/primary-charge mutations.",
-        "Assert the full actual initializer tuple/effect and exact register/digest setter argument domains for empty/shipped presets. Remove selected native offset profile and affirm full conclusion failure at logical ELEN2^80. Check literal index/value/mode/capture mutants and actual B2049 digest temporary264 versus final257 override."
+        "Assert the full actual initializer tuple/effect and exact register/digest setter argument domains for empty/shipped presets. Remove selected native offset profile and affirm full conclusion failure at logical ELEN2^80. Check literal index/value/mode/capture mutants and actual B2049 digest temporary264 versus final257 override.",
+        "Assert the complete actual fresh/preallocated/mixed six-output initializer write-domain boundary, each typed-array removal via malformed retained tail, and labelled out-of-capacity byte/fill and non-UB8 value mutations."
       ],
       "expected": [
         "Bit buffer remains at most39bits and exact length-relative Huffman carry is preserved only on non-error exits; every walker exit remains within the stated fixed scalar bounds.",
@@ -6379,7 +6380,8 @@
         "Only explicit reserves grow buffers during actual initialization: fresh arrays have three resize events, already larger arrays have none. Source writes/fill events retain full output/effects correspondence; observer lists, borrowed native operations and compiled allocator/header/frame/GC/lifetime costs stay unpriced, with INITIAL admission open.",
         "Source resize payload is precisely conditional65536/3494/64; source final capacity is bounded by retained old plus actual requested payload. Physical old/new coexistence, headers, GC and full admission remain separate.",
         "Actual resize argument roster satisfies literal64/65536/3494 growing-capacity domains. Qualified success primary-object component is conditional80/65552/3520, fresh69152bytes, excluding all caller/error/memoization/GC/first-use/lifetime and whole admission obligations.",
-        "All21 decoder register inputs and17 frozen16-field digest scalar/reference setter inputs are source-produced; numeric values have stated selected-profile bounds and exact captured aliases. This does not price setter macros, raw callers, frames, memoization, GC or whole INITIAL admission."
+        "All21 decoder register inputs and17 frozen16-field digest scalar/reference setter inputs are source-produced; numeric values have stated selected-profile bounds and exact captured aliases. This does not price setter macros, raw callers, frames, memoization, GC or whole INITIAL admission.",
+        "Actual byte/fill source arguments fit current capacity and the fixed65536 scratch extent. The complete representation boundary retains three typed-array hypotheses; no setter tariff, compiled lifecycle demand or INITIAL grant follows."
       ],
       "evidence": [
         "tests/acl2/payload-window-width-tests.lisp",
@@ -6447,7 +6449,9 @@
         "tests/acl2/decoded-window-initial-buffer-counts-tests.lisp",
         "tools/decoded_window_buffer_trace.py",
         "tests/test_decoded_window_buffer_trace.py",
-        "planning/evidence/decoded-window-initial-array-roster-2026-09-30/README.md"
+        "planning/evidence/decoded-window-initial-array-roster-2026-09-30/README.md",
+        "tests/acl2/decoded-window-initial-array-write-domains-tests.lisp",
+        "planning/evidence/decoded-window-initial-array-write-domains-2026-09-30/README.md"
       ],
       "execution_scope": "Protected source replay only; the codec/runtime/controller/host composition remains open."
     },
