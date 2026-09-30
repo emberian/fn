@@ -155,3 +155,28 @@ publishes return via unwind-protect only after that callback returns. A real
 SBCL held-callback recording refuter fails the exact354 preimage (it advertised
 returned while the borrow remained active) and passes the repair. Descriptor
 and stage debt remain owned. This is recording custody, not a grant or release.
+
+## Publication intent and installed revision fence
+
+Intent6 reserves `:promoting` and `:promoted` without new fields. The fixed
+pending action is `(:bp-digest-publication originalVerifiedPlan7 :promoting
+retainedVector intendedFinalBindingRevision)`. The original verified plan is
+retained across each intent revision. Physical persists promoting BEFORE pool
+C→U; unknown promotion keeps debt and globally fences allocation, never retries.
+Known commit reduces the remaining claim, then publishes promoted intent.
+
+Internal `fn-bpd-registered-publish-carry` derives the final successor revision
+from actual promoted CURRENT and checks the stored intended revision. Its
+genuine physical wrapper must establish the installed operation allowance and
+qualified successor domain BEFORE invoking this unhooked storage mutator. No
+installed scalar-domain getter exists yet; no u64 revision ceiling is invented.
+Publication does not become public merely because this helper is present.
+
+Example: constructing2 → promoting3 → promoted4 → carry installed5 → final
+revision-checked intent installed5. The strong registered installed readout
+requires BOTH the actual installed intent and carry5, with exact controller,
+job, workspace nonce, source and revision. Carry5 while intent promoted4 stays
+unexposed; final-write ambiguity remains fenced and cannot repeat pool transfer.
+The old controller/job-only storage reader is forbidden for the actual consumer.
+These source/fixture forms are unadmitted after proof-world expiry. The fixture
+explicitly seeds promotion metadata without accounting or allocator permission.
