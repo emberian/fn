@@ -5798,6 +5798,27 @@
       ],
       "implementation_note": "Original PKT-333 phase2/PKT-466(c) composition. Existing PRF-177 covers carried authored source/signatures at accepted events and PRF-075 covers listed-relay request authority; neither alone proves the external application's SQLite transaction or the complete BP mission. The source driver uses the real consumer and its own verifier/keyring, records the immutable artifacts and hop-local projections, forces repeated R through a second undertaking, and refuses a signed campaign that fell back unsigned. Matching native run and any remaining actual-path proof gaps remain explicit.",
       "note": "Source driver implemented; no new fn semantic function or new proof theorem is introduced. This does not claim deployment, qualification, cryptographic truth or power-loss durability."
+    },
+    {
+      "id": "CNS-011",
+      "title": "Authenticated remote consumers own durable immutable multi-group queries, current account authority, explicit view rebase and incarnation-safe progress",
+      "specification": "specs/consumer-progress.md#authenticated-remote-consumers",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1125"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/consumer-remote-codec.lisp",
+        "tests/acl2/consumer-remote-codec-tests.lisp",
+        "planning/consumer-remote-implementation.md"
+      ],
+      "implementation_note": "The separate FNCR request codec is implemented and guard-verified in source, with a protected-channel/consumer-only admission theorem and all eight operation witnesses. No remote host caller or listener exists yet. Durable immutable query schema, account-incarnation authority, current view generation, owner publication, concrete buffer refinement, restore/compaction mapping and matching native TLS evidence remain required. PKT-255 is not complete."
     }
   ]
 }

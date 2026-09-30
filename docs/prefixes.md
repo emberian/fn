@@ -395,3 +395,5 @@ anything a book does not already decide.
 | `fn-hpm-` | `history-page-metadata` | Fixed-scratch current-format metadata spool emission component. |
 | `fn-hpi-` | `history-page-io` | Current image positional page ranges and nonoverlap; physical I/O remains separate. |
 | `fn-hdc-` | `history-decode-nodes`, `history-decode-cursor`, `history-decode-stream` | Borrowed current-format history decode nodes, byte feed, and component proof vocabulary. |
+
+| `fn-cr-` | `consumer-remote-codec` | Distinct FNCR request grammar for authenticated remote consumers; profile-funded group definitions and protected-channel preflight. Component only; account authentication and served dispatch are separate obligations. |

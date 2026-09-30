@@ -1316,6 +1316,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-owner-local-progress-tests \
 	books/consumer-bound \
 	tests/acl2/consumer-bound-tests \
+	books/consumer-remote-codec \
+	tests/acl2/consumer-remote-codec-tests \
 	books/consumer-wait-codec \
 	tests/acl2/consumer-wait-codec-tests \
 	books/consumer-wait \

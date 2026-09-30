@@ -61,8 +61,9 @@ encoding, with a selected primitive and key lifecycle stated as separate
 assumptions. No such cryptographic primitive is selected or required for v1.
 The kernel fixes this v1 encoding. The local-owner `FNCT` kind-4/5 request and
 reply and kind-6 poll-reply framing are implemented over a mode-0600 Unix
-control socket with observed same-UID peer credentials. Remote authenticated
-framing and policy binding remain to be specified.
+control socket with observed same-UID peer credentials. The separate FNCR request grammar is implemented as a logical component
+(see authenticated remote consumers below); authenticated policy binding and
+the remote served endpoint remain unimplemented.
 
 ## Operations and their meanings
 
@@ -781,3 +782,41 @@ matching native/relay observations and the complete original PKT-466(c)
 acceptance remain pending. No proof about the application's SQLite commit
 or an external effect follows from fn's existing carried-source or relay
 policy theorems.
+
+## Authenticated remote consumers
+
+CNS-011 (PKT-255, ratified PKT-673) requires the complete account-scoped
+remote profile, including immutable multi-group registration, authoritative
+query/view versions, explicit rebase, and restore/compaction cursor mapping.
+Operator commands remain private. SCN-1031 preserves the full scope while its
+components land; PRF-1125 remains planned until the actual host boundary exists.
+
+The first implemented component is `books/consumer-remote-codec.lisp`.
+A remote request has distinct magic `FNCR`, envelope version 1 and kind 1;
+it cannot enter the `FNCT` owner-control dispatcher. Its fields are operation
+(one-based enumeration register, rebase, poll, wait, position, status, ack,
+unregister), UTF-8 login, credential bytes, consumer ID, encoded group list,
+cursor bytes and wait seconds. Fields use the existing frame grammar:
+login is `:text`, credential/consumer/groups/cursor are length-prefixed blobs,
+and seconds is `:nat`. Unused group and cursor fields encode the single byte
+zero; unused seconds is zero. An ACK's explicit consumer must match its
+cursor. Group definitions occupy a separate blob and never the cursor's
+64-octet query-ID field. The group count and frame preflight are funded by G,
+the supported operator profile's group allowance. Encoding refuses a frame
+specification or payload beyond the selected codec widths; profile admission
+must establish representability before this component is exposed.
+
+The decoder requires the host's protected-channel observation before reading
+or hashing the request. It validates the frame and operation-specific fields;
+it does not authenticate an account, establish TLS security, authorize a
+consumer, or execute a Store operation. `fn-cr-decoded-request-is-protected-and-consumer-only`
+proves that an admitted request had that observation and satisfies this
+consumer-only grammar. All eight operation witnesses, cross-consumer ACK,
+private operation/local-frame refusals, group names beyond cursor-ID width,
+and damaged/versioned/over-budget frames are in the component tests. No host
+caller, network listener or concrete buffer refinement is claimed yet.
+
+The complete authority and durability implementation remains the work in
+[the remote implementation plan](../planning/consumer-remote-implementation.md).
+Existing FNCT response and reason codecs are the response contract to reuse.
+No downgrade to a local request frame is permitted on the remote endpoint.

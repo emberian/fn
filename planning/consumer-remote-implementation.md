@@ -111,3 +111,37 @@ drivers in this lane, with matching native results pending the runner.
 PKT-466(c) remains a separate composition: actual signed R/Q over BP and relay
 outage, application deduplication and per-hop identities. The BP lane supplies
 transport/recovery; this consumer lane owns that mission integration.
+
+## Implemented request component and durable schema integration
+
+The FNCR logical request codec now exists in `books/consumer-remote-codec.lisp`
+with all eight operations. It accepts no authoritative principal, query
+version or view version from the client. The account credential is explicit;
+the current account must still authenticate it at every request and WAIT
+resumption. CNS-011/SCN-1031 retain the full endpoint scope; PRF-1125 remains
+planned. There is no remote listener or served host caller yet.
+
+The snapshot producer/recovery owners confirmed that complete consumer state
+and entry fields are captured as generic trees. They impose no fixed CP entry
+shape. Candidate remote entries can therefore append the immutable group
+set and account-incarnation binding to the local eight fields; this is a
+current-format schema extension, not a migration fallback. Before doing so:
+
+- `fn-cp-entryp` currently requires exactly eight fields. `fn-cp-apply`'s ACK
+  reconstructs those fields and would discard any appended query definition;
+  registration, rebase, ACK, recognizer and invariants must change together.
+- `fn-cpe-max-octets` is 512 and is the `:consumer` publication reservation
+  ceiling. Atomic query definitions require a real codec/reservation change
+  matched to the supported profile, not just a larger list in the logical
+  event. The current `fn-cpe-encode` grammar only has fixed IDs and integers.
+- A durable view identity must account for applicable visibility/control
+  publications as well as configuration changes. A current configuration
+  generation alone is not evidence of that property. The CP state is exactly
+  six fields today; any added carried view scalar requires establishment and
+  preservation through its projection and owner transitions.
+- Snapshot recovery must retain exact extended fields, while article binding
+  remains the other owner's mandatory record12/held16 schema. Consumers must
+  use the common article/group/report accessors and preserve that binding.
+
+These are implementation dependencies, not new approval gates or a reduced
+single-group remote profile.

@@ -6702,6 +6702,35 @@
         "planning/history-decode-contract.md"
       ],
       "execution_scope": "Source component tests only. General stream inverse, page-source authentication, integrated native caller and full producer remain open."
+    },
+    {
+      "id": "SCN-1031",
+      "title": "Authenticated remote multi-group consumers remain scoped and rebase explicitly across authority and store changes",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "CNS-011"
+      ],
+      "steps": [
+        "Round-trip all eight FNCR operations with explicit login and credential; refuse plaintext observation, local FNCT owner frames, private verbs, damaged/unknown-version frames, over-profile groups and mismatched ACK names.",
+        "Run two accounts over the dedicated TLS listener, including matching passwords across accounts, revocation/deletion/recreation and resumed WAIT after revocation.",
+        "Register overlapping immutable multi-group queries atomically; observe a crosspost once, filtered/empty windows and unavailable gaps without false progress.",
+        "Change effective read view, explicitly rebase to zero, reject old query/view/incarnation/registration ACKs, and exercise restore, compaction, reply loss and process death."
+      ],
+      "expected": [
+        "Only consumer operations in FNCR enter the remote dispatcher; FNCT operator dispatch remains private.",
+        "Every operation derives authoritative scope from current committed state, and all accepted metadata writes survive exact replay.",
+        "Accepted, refused and uncertain outcomes remain distinct; no processing or retention claim follows from an ACK."
+      ],
+      "implementation": {
+        "test": "tests/acl2/consumer-remote-codec-tests.lisp",
+        "native": false,
+        "note": "Only the logical request codec component is implemented; full endpoint and all integration steps remain pending."
+      },
+      "evidence": [
+        "tests/acl2/consumer-remote-codec-tests.lisp",
+        "planning/consumer-remote-implementation.md"
+      ]
     }
   ]
 }
