@@ -286,7 +286,12 @@ signatures of the carrier it received (PRF-177,
 `fn-osp-authorized-event-keeps-the-carried-source-and-signatures`); a
 repeated transfer, a lost reply, a consumer death at every ownership cut and
 a node restart mid-poll produce no second application transition.
-`tests/test_native_consumer_exchange_two_nodes.py` is the native scenario
+`tests/test_native_consumer_exchange_two_nodes.py` is the native scenario.
+Its repeated-transfer witness records the actual complete NEWNEWS 230 answer
+(including R's Message-ID), then asserts that B sends no ARTICLE command for
+R after the feed has stored it. The pull is enabled only after B's STAT
+confirms that first delivery; an issued NEWNEWS command alone is not evidence
+that the response listed R (PKT-392).
 (SCN-106) ([evidence](../planning/evidence/consumer-exchange-2026-09-26.md)).
 Carriage over BP through the relay network is not part of CNS-004 yet
 (PKT-333 phase 2, after the multi-peer relay).

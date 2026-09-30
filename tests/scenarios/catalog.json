@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -2979,14 +2979,14 @@
         "CNS-004"
       ],
       "steps": [
-        "A authors R into node A; A's feed carries R to B and B's NEWNEWS pull lists it again; an IHAVE of R is offered to B.",
+        "A authors R into node A; A's feed carries R to B. After B serves R to STAT, enable B's NEWNEWS pull through a recording proxy; record A's complete 230 answer through its terminating dot. Offer an IHAVE of R to B.",
         "A probe consumer on B polls, B restarts, the probe polls again and acks twice.",
         "B's consumer is cut in-transaction, after-commit, at the owner after its ack commits, before Q's POST, and at the owner after Q commits; it wakes after each.",
         "Q crosses to A; A's consumer is cut after its ack and wakes; both consumers wake to their frontiers.",
         "Separately: A's owner accepts R and A's consumer dies before recording the answer; A revokes its author; B consumes R; A wakes."
       ],
       "expected": [
-        "B's Store holds one article for R (the pull does not fetch it; the IHAVE is answered 435 duplicate).",
+        "The recorded NEWNEWS answer explicitly lists R's Message-ID; no ARTICLE command for R crosses the proxy; B's Store holds one article for R and IHAVE is answered 435 duplicate.",
         "The same report and cursor bytes are re-served after the restart; the second ack leaves the position unchanged.",
         "B's database holds nothing after the first cut; one transition and one pending reply after the second; the uncertain ack settles by position; the uncertain POST settles by the resend's duplicate answer or store-observation; exactly one transition.",
         "A correlates Q with R in one transition (inbox: repeat for its own R, applied for Q); at each hop the authored source and both signatures equal the submission artifact's, checked with the receiving consumer's keyring; each node holds two articles.",
@@ -2997,7 +2997,9 @@
         "tools/fn_consumer.py",
         "planning/evidence/consumer-exchange-2026-09-26.md",
         "planning/evidence/consumer-exchange/test_native_consumer_exchange_two_nodes.r2-2727a53a.log",
-        "planning/evidence/consumer-exchange/test_native_consumer_exchange_two_nodes.r1-e6bab332.log"
+        "planning/evidence/consumer-exchange/test_native_consumer_exchange_two_nodes.r1-e6bab332.log",
+        "tests/test_peer_pull_recording.py",
+        "planning/evidence/consumer-remainder-2026-09-30.md"
       ],
       "implementation": {
         "test": "tests.test_native_consumer_exchange_two_nodes",

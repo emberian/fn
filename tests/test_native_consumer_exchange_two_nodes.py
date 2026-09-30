@@ -334,14 +334,15 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
             Path(out).mkdir(parents=True, exist_ok=True)
             (Path(out) / (case + ".json")).write_text(text, encoding="utf-8")
 
-    def two_nodes(self):
+    def two_nodes(self, *, pull=True):
         """A and B peered both ways; B also pulls from A through a proxy."""
         a, b = self.initialize("A"), self.initialize("B")
-        proxy = RecordingProxy(a.port)
+        proxy = RecordingProxy(a.port, record_newnews=True)
         self.addCleanup(proxy.close)
         self.peer(a, b)
         self.peer(b, a, port=proxy.port)
-        self.native("operator", b.config, "peer", "pull", "A", PULL_INTERVAL)
+        if pull:
+            self.native("operator", b.config, "peer", "pull", "A", PULL_INTERVAL)
         for node in (a, b):
             self.start(node)
             self.native("consumer", "bootstrap", node.control)
@@ -349,7 +350,7 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
 
     # -- the cases ------------------------------------------------------------
     def test_exchange_across_two_nodes_and_every_cut(self):
-        a, b, proxy = self.two_nodes()
+        a, b, proxy = self.two_nodes(pull=False)
         agent_a = self.agent("agent-a", 0xA1, 1, a)
         agent_b = self.agent("agent-b", 0xB2, 2, b)
         # A probe consumer on B, registered before R exists: the test's own
@@ -371,17 +372,26 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
         # by B's NEWNEWS pull; B's Store holds one event for it, and a third
         # offer (IHAVE from the peer's address) is answered 435.
         self.await_article(b, r_id)
+        # Enable the pull only after the feed's stored R is observable.
+        # This makes "listed again, not fetched" causal rather than a race
+        # between two initial delivery paths (PKT-392).
+        self.native("operator", b.config, "peer", "pull", "A", PULL_INTERVAL)
         rounds = self.pull_rounds(b)
         self.await_pull_round(b, rounds)
         self.await_pull_round(b, rounds + 1)
         newnews = proxy.newnews()
-        pulled_r = [c for c in proxy.commands if c.upper().startswith("ARTICLE")
+        listed_r = [answer for answer in proxy.newnews_answers()
+                    if r_id in answer["message_ids"]]
+        pulled_r = [c for c in proxy.since(0) if c.upper().startswith("ARTICLE")
                     and r_id in c]
         ihave = self.session(b, [b"IHAVE " + r_id.encode("ascii") + b"\r\n"])[0]
         self.assertTrue(ihave.startswith(b"435"), ihave)
         self.assertEqual(self.articles(b), 1)
         self.assertTrue(newnews, "B's pull asked no NEWNEWS")
-        transfer = {"newnews": newnews[:4], "pull_article_commands_for_r": pulled_r,
+        self.assertTrue(listed_r, "A's recorded NEWNEWS answers never listed R")
+        self.assertEqual(pulled_r, [], "B fetched R despite holding the fed article")
+        transfer = {"newnews": newnews[:4], "newnews_answers_listing_r": listed_r,
+                    "pull_article_commands_for_r": pulled_r,
                     "ihave_r_at_b": ihave.decode("ascii", "replace").strip(),
                     "articles_at_b": 1}
 

@@ -98,6 +98,68 @@ def article(message_id, subject, path=None):
     return ("\r\n".join(lines) + "\r\n\r\nbody of " + subject + "\r\n").encode("ascii")
 
 
+class NewnewsRecorder:
+    """Observe complete cleartext NEWNEWS answers without affecting the relay.
+
+    RFC 3977 section 7.4's 230 response ends at the dot line. A partial
+    response is not evidence of a listing. Keep each connection separate;
+    stop observing at STARTTLS because subsequent bytes are encrypted.
+    This is test evidence, not fn's parser or an authorization decision.
+    """
+
+    def __init__(self):
+        self.upstream_buffer = b""
+        self.downstream_buffer = b""
+        self.pending = []
+        self.answers = []
+        self.multiline = False
+        self.answer = None
+        self.encrypted = False
+
+    def sent(self, data):
+        if self.encrypted:
+            return
+        self.upstream_buffer += data
+        while b"\n" in self.upstream_buffer:
+            line, self.upstream_buffer = self.upstream_buffer.split(b"\n", 1)
+            line = line.rstrip(b"\r")
+            verb = line.split(b" ", 1)[0].upper()
+            if verb == b"STARTTLS":
+                self.encrypted = True
+                self.upstream_buffer = self.downstream_buffer = b""
+                return
+            if verb == b"NEWNEWS":
+                self.pending.append(line.decode("ascii", "replace"))
+
+    def received(self, data):
+        if self.encrypted:
+            return
+        self.downstream_buffer += data
+        while b"\n" in self.downstream_buffer:
+            line, self.downstream_buffer = self.downstream_buffer.split(b"\n", 1)
+            line = line.rstrip(b"\r")
+            if self.multiline:
+                if line == b".":
+                    if self.answer is not None:
+                        self.answers.append(self.answer)
+                    self.answer = None
+                    self.multiline = False
+                elif self.answer is not None:
+                    self.answer["message_ids"].append(line.decode("ascii", "replace"))
+                continue
+            code = line[:3]
+            # Do not mistake a 230-looking line inside ARTICLE, HEAD,
+            # capabilities or another multiline answer for a status line.
+            self.multiline = code in (b"100", b"101", b"215", b"220", b"221",
+                                      b"222", b"224", b"225", b"230", b"231")
+            if code == b"230" and self.pending:
+                self.answer = {"command": self.pending.pop(0),
+                               "status": line.decode("ascii", "replace"),
+                               "message_ids": []}
+            elif code[:1] in (b"4", b"5") and self.pending:
+                self.pending.pop(0)
+
+
 class RecordingProxy:
     """TCP relay to TARGET that records each command line its clients send.
 
@@ -105,7 +167,9 @@ class RecordingProxy:
     and `held` is set: the round is frozen after NEWNEWS and a local 335.
     """
 
-    def __init__(self, target_port):
+    def __init__(self, target_port, *, record_newnews=False):
+        self.record_newnews = record_newnews
+        self.recorders = []
         self.target_port = target_port
         self.listener = socket.socket()
         self.listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -138,12 +202,20 @@ class RecordingProxy:
             client.close()
             return
 
+        recorder = NewnewsRecorder() if self.record_newnews else None
+        if recorder is not None:
+            with self.lock:
+                self.recorders.append(recorder)
+
         def downstream():
             try:
                 while True:
                     data = server.recv(65536)
                     if not data:
                         break
+                    if recorder is not None:
+                        with self.lock:
+                            recorder.received(data)
                     client.sendall(data)
             except OSError:
                 pass
@@ -161,6 +233,9 @@ class RecordingProxy:
                 data = client.recv(65536)
                 if not data:
                     break
+                if recorder is not None:
+                    with self.lock:
+                        recorder.sent(data)
                 buffered += data
                 while b"\n" in buffered:
                     line, buffered = buffered.split(b"\n", 1)
@@ -194,6 +269,11 @@ class RecordingProxy:
     def newnews(self):
         with self.lock:
             return [c for c in self.commands if c.upper().startswith("NEWNEWS")]
+
+    def newnews_answers(self):
+        with self.lock:
+            return [{**answer, "message_ids": list(answer["message_ids"])}
+                    for recorder in self.recorders for answer in recorder.answers]
 
     def mark(self):
         with self.lock:
