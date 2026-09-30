@@ -17753,6 +17753,20 @@
         }
       ],
       "pending_subject": "Stobj adapters have named complete answer/effect equations. Native window invocation remains unreachable-in-composition until authenticated stream, fixed allocator demand and executor dispatch are joined."
+    },
+    {
+      "id": "PRF-1128",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pwx-release-requires-exact-returned-window-and-slot"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwx-other-request-cannot-return-or-release"
+        }
+      ],
+      "pending_subject": "Native window dispatch is staged: no served descriptor/admission join. Adapter equations name the actual executor subjects. Demand adequacy, authentic native trajectory and served reachability remain open."
     }
   ]
 }
