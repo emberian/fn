@@ -395,3 +395,13 @@ digest at that ordinal. The emitter retains only one256-bit digest and scalar
 state. It preserves concrete scratch representation and epoch/lease identity.
 Complete spool admission, authenticated reads, final root binding and served
 composition remain open; no host caller or certification claim is added.
+
+The scalar layout component also exposes `fn-hpi-region/page` in
+`books/history-page-io.lisp`: positional whole-file requests use the unchanged
+FNSI base plus the physical page offset. Accepted ranges fit the image region
+and admitted runtime/profile extent, and different pages do not overlap. The
+extent is an admission input, not a hard-coded storage ceiling. This is the
+ACL2 addressing seam for eliminating the native by-address hash. Registered
+reader extents already include the FNSI base; their relative requests must not
+add it again. The physical/controller layer still owns matching request tokens,
+short/ambiguous I/O verdicts and cancellation/pin lifetime.

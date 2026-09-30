@@ -17914,7 +17914,7 @@
     {
       "id": "PRF-1092",
       "title": "Private history scalar layout refines fresh page allocation",
-      "statement": "Library fn-hpl-layout computes current-format data/table/directory page counts and physical bases without materializing allocation runs. An accepted layout has exactly the directory start, contiguous singles and high water of pgs-alloc on fresh state (nil 1). fn-hpl-single-address returns exactly the indexed allocated single under natural in-range index/count and positive directory span. Uses pgs-x-ntables rather than the logical pgs-ntables execution loop. Current u64 image count/address and u32 directory-span representation checks refuse by name. This is the physical-address component of the census-driven disk-backed private writer; page I/O effects, file-offset platform representation, resource admission, history census and root/binding composition remain open. No host caller or producer completion claim.",
+      "statement": "Library fn-hpl-layout computes current-format data/table/directory page counts and physical bases without materializing allocation runs. An accepted layout has exactly the directory start, contiguous singles and high water of pgs-alloc on fresh state (nil 1). fn-hpl-single-address returns exactly the indexed allocated single under natural in-range index/count and positive directory span. Uses pgs-x-ntables rather than the logical pgs-ntables execution loop. Current u64 image count/address and u32 directory-span representation checks refuse by name. This is the physical-address component of the census-driven disk-backed private writer; page I/O effects, file-offset platform representation, resource admission, history census and root/binding composition remain open. No host caller or producer completion claim. The positional fn-hpi-region/page component computes the unchanged FNSI whole-file page ranges against an admitted runtime/profile extent. Accepted requests stay inside the current image region, distinct pages do not overlap, and adjacent pages match the sequential format. Reader registered-region offsets differ: their stored base already skips the wrapper. Actual pwrite completion/uncertainty and token authority remain the controller/physical boundary.",
       "milestone": "M5",
       "requirements": [
         "HST-040"
@@ -17926,9 +17926,11 @@
       "evidence": [
         "books/history-page-layout.lisp",
         "tests/acl2/history-page-layout-tests.lisp",
-        "planning/history-page-cursor-contract.md"
+        "planning/history-page-cursor-contract.md",
+        "books/history-page-io.lisp",
+        "tests/acl2/history-page-io-tests.lisp"
       ],
-      "progress_note": "Clean protected auto-persvati hplt62 admitted source in proper encapsulate and12testbodyforms,0.06ACL2seconds/6152steps,zero refusal. Three literal hypothesis-removal assertions then passed in same clean session. Source guardverified; no certificate/native claim. Named library theorems are component evidence only; served event citations await an actual composed host caller."
+      "progress_note": "Clean protected auto-persvati hplt62 admitted source in proper encapsulate and12testbodyforms,0.06ACL2seconds/6152steps,zero refusal. Three literal hypothesis-removal assertions then passed in same clean session. Source guardverified; no certificate/native claim. Named library theorems are component evidence only; served event citations await an actual composed host caller. Additional clean auto-persvati hpit62 source encapsulate+8testforms passed0.03s/10647steps; positional plan guardverified, no native call yet."
     },
     {
       "id": "PRF-1093",
