@@ -32,3 +32,13 @@
 (defun fn-cat-assign (h c)
   (declare (xargs :guard t))
   (fn-held-with-numbers h (fn-cat-assign-numbers (fn-record-groups h) c)))
+
+; Exact original logical group/local-number -> catalog ordinal reference.
+(defun fn-cat-number-seq (group n c i)
+  (declare (xargs :guard (natp i)))
+  (if (consp c)
+      (let ((b (fn-held-number-in group (car c))))
+        (if (and b (equal b n))
+            i
+          (fn-cat-number-seq group n (cdr c) (+ 1 i))))
+    nil))

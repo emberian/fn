@@ -216,14 +216,7 @@
 
 ; The first row binding (GROUP . N), or nil; a row outside the group binds
 ; nothing, so no N matches it.
-(defun fn-cat-number-seq (group n c i)
-  (declare (xargs :guard (natp i)))
-  (if (consp c)
-      (let ((b (fn-held-number-in group (car c))))
-        (if (and b (equal b n))
-            i
-          (fn-cat-number-seq group n (cdr c) (+ 1 i))))
-    nil))
+
 
 ; The highest number bound in GROUP (0 when none).
 
