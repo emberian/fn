@@ -6626,6 +6626,42 @@
         "books/legacy-parser-reference.lisp",
         "tests/acl2/legacy-parser-cursor-tests.lisp"
       ]
+    },
+    {
+      "id": "SCN-1027",
+      "title": "Real signed consumer applications exchange R/Q over the four-node BP mission with independent verification, application deaths and a deliberately repeated R",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "CNS-010",
+        "CNS-003"
+      ],
+      "steps": [
+        "Run run_mission_four_node.py --report signed using source-matched owner/DTN images and dtn7-rs relays. A's real fn_consumer authors its immutable R; both applications have their own keyrings from the authors' public keys.",
+        "Carry R through the mission's fragmentation, relay outage, X SIGKILL/reopen and receipt outage. After the first undertaking releases, enqueue a distinct undertaking for exactly the same stored R and observe a new accepted/duplicate request at B after the request log offset.",
+        "B's real consumer dies in its application transaction (rollback), then after commit before ACK; reopen, settle ACK, publish immutable Q and wake again. Carry Q back through BP.",
+        "A's real consumer dies after ACK and reopens, verifies/correlates Q, and wakes again. Compare R and Q's immutable source and both signatures against each receiving inbox's independently verified stored projection."
+      ],
+      "expected": [
+        "A signed author/consumer refusal retains its original logged cause and fails the signed campaign; no unsigned fallback is attempted. Explicit unsigned mode remains separate.",
+        "B records exactly one transition for r1 and one immutable stored reply; A records exactly one transition for reply-r1 and replies=1. Both receivers preserve the exact source/signatures; their local projections and scope/sequence remain distinct.",
+        "The second R request is actually delivered accepted/duplicate, and its separate pin is released; repeated wakes and recovered application cuts produce no second transition. Native matching run pending."
+      ],
+      "evidence": [
+        "tests/bp-dtn7/run_mission_four_node.py",
+        "tests/bp-dtn7/consumer_exchange.py",
+        "tests/test_bp_consumer_mission.py",
+        "planning/evidence/consumer-remainder-2026-09-30.md"
+      ],
+      "implementation": {
+        "test": "tests/bp-dtn7/run_mission_four_node.py",
+        "cases": [
+          "--report signed"
+        ],
+        "native": true,
+        "record": "planning/evidence/consumer-remainder-2026-09-30.md",
+        "note": "Source driver only. Matching immutable native/relay run is pending; historical manual poll/ACK mission logs do not satisfy this scenario."
+      }
     }
   ]
 }

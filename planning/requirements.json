@@ -5768,6 +5768,31 @@
         "tests/acl2/history-image-header-tests.lisp"
       ],
       "implementation_note": "The full S7 producer remains planned. Landed components are the live snapshot inverse and bounded descriptor/scalar page-layout libraries; these have no new producer host caller. Capture/controller, bounded history preparation, physical admission, full retained-projection recovery, I/O effects and marker-last publication are still required. Unmerged producer prototypes and their separate proof targets are not cited as landed evidence."
+    },
+    {
+      "id": "CNS-010",
+      "title": "Two sleeping consumers exchange immutable signed R/Q over BP through relay outages; independent verification, durable inbox/outbox transactions and repeated R produce one application transition each",
+      "specification": "specs/consumer-progress.md#bp-application-exchange",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-177",
+        "PRF-075"
+      ],
+      "verification": [
+        "proof",
+        "scenario",
+        "test"
+      ],
+      "evidence": [
+        "tests/bp-dtn7/run_mission_four_node.py",
+        "tests/bp-dtn7/consumer_exchange.py",
+        "tests/test_bp_consumer_mission.py",
+        "tools/fn_consumer.py",
+        "planning/evidence/consumer-remainder-2026-09-30.md"
+      ],
+      "implementation_note": "Original PKT-333 phase2/PKT-466(c) composition. Existing PRF-177 covers carried authored source/signatures at accepted events and PRF-075 covers listed-relay request authority; neither alone proves the external application's SQLite transaction or the complete BP mission. The source driver uses the real consumer and its own verifier/keyring, records the immutable artifacts and hop-local projections, forces repeated R through a second undertaking, and refuses a signed campaign that fell back unsigned. Matching native run and any remaining actual-path proof gaps remain explicit.",
+      "note": "Source driver implemented; no new fn semantic function or new proof theorem is introduced. This does not claim deployment, qualification, cryptographic truth or power-loss durability."
     }
   ]
 }

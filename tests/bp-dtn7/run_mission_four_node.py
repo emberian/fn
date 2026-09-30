@@ -32,17 +32,21 @@ whether its assertions held; no step is inferred from a later one):
      carry the receipt; A's node is SIGKILLed and restarted meanwhile; X
      restarts; A answers `receipt-accepted' and `bp-obligation status'
      shows `pinned=no', all before B's consumer wakes.
-  5. B's consumer wakes: B's node stops (K6: node and owner each take the
-     Store writer lock), `store inspect' + `hybrid-verify-source' check the
-     delivered copy, B's owner serves `consumer poll' / `consumer ack', B's
-     author signs a reply, and B requests it toward dtn://fn-a/ with its own
-     obligation.
-  6. The reply crosses back; A delivers it; A's receipt returns and releases
-     B's pin; A's consumer wakes, polls and acks.
+  5. Signed mode repeats R through BP under a second undertaking; B's node
+     stops for its owner (K6). B's real fn_consumer independently verifies R
+     with its own keyring and commits one application transition and immutable
+     reply Q across in-transaction/after-commit deaths. B requests Q over BP.
+  6. Q crosses back; A's receipt releases B's pin; A's real consumer verifies
+     and correlates Q across an after-ACK death, with one transition. Exact
+     source and both signatures are compared at both stored projections.
   7. The identity table and every log's SHA-256.
 
-Python here is only an external driver: every verdict is a native
-process's own line, exit code or verb output.  No power-loss claim follows.
+The signed mission requires the external consumer's own durable records and
+independent verifier, in addition to native transport/store outcomes. It never
+substitutes unsigned content after an authoring failure. Explicit unsigned
+mode is the historical manual-poll transport control. No power-loss claim follows.
+SCN-1027/CNS-010 track the application composition; its matching native run is
+separate from older SCN-105 transport evidence.
 
 The relays serve both directions at once, with no driver turns (PKT-261,
 PKT-291 (1); planning/evidence/multi-peer-relay-2026-09-26.md).  X and Y run
@@ -79,6 +83,7 @@ import time
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1]))
 sys.path.insert(0, str(HERE))
+from consumer_exchange import ConsumerExchangeFailure, MissionConsumerExchange  # noqa: E402
 from run_fn_bp_interop import free_port  # noqa: E402
 from run_fn_dtn7_interrupted_contact import Dtnd  # noqa: E402
 from run_fn_dtn7_app_receipt import ROOT, Lab, lines_of, outcome_of  # noqa: E402
@@ -308,6 +313,27 @@ def article(msgid, subject, author, lines, what, path=False):
             b"Message-ID: " + msgid.encode() + b"\r\n\r\n" + body)
 
 
+def mission_complete(case, requested_report, report, steps):
+    """A signed request cannot pass on unsigned fallback or manual polling.
+
+    The ambiguous-peer case tests only setup/admission, not a full exchange.
+    The explicitly unsigned case remains a separate transport control.
+    """
+    if not steps or len(steps) != (7 if case == "mission" else 2):
+        return False
+    if not all(step["held"] for step in steps):
+        return False
+    if requested_report == "signed":
+        if report.get("report_signed") is not True:
+            return False
+        if case == "mission" and (report.get("reply_signed") is not True or
+                                  report.get("application_exchange_complete") is not True):
+            return False
+        if report.get("application_failure"):
+            return False
+    return True
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--image", required=True, help="fn-host-dtn-developer (BP nodes)")
@@ -319,8 +345,8 @@ def main(argv=None):
     ap.add_argument("--x-mru", type=int, default=4096,
                     help="X's announced TCPCL Transfer MRU while it carries the request")
     ap.add_argument("--report", choices=("signed", "unsigned"), default="signed",
-                    help="signed (the default): A's author signs the report and "
-                         "`hybrid-author' stores its portable carrier; unsigned: the "
+                    help="signed (the default): real fn_consumer applications verify "
+                         "and transact R/Q with independent keyrings; unsigned: the "
                          "control, `store post' of a Path-bearing source")
     ap.add_argument("--report-lines", type=int, default=110,
                     help="body lines of the report (the request must exceed --x-mru)")
@@ -343,6 +369,8 @@ def main(argv=None):
                              x_far=nodes["x"]["port_far"], y_far=nodes["y"]["port_far"],
                              r1=m.r_ports["r1"], r2=m.r_ports["r2"]))
     identity = {}
+    report_id, reply_id = REPORT_ID, REPLY_ID
+    exchange = None
     try:
         # === 0. setup ======================================================
         setup = {}
@@ -395,27 +423,16 @@ def main(argv=None):
         authors = {k: make_author(lab, k, b, args.openssl)
                    for k, b in (("author-a", 0x41), ("author-b", 0x42))}
         report["authors"] = {k: (d / "principal").read_bytes().hex() for k, d in authors.items()}
+        if args.report == "signed":
+            exchange = MissionConsumerExchange(m, ROOT, authors)
         src_a = lab.path("report.source")
-        src_a.write_bytes(article(REPORT_ID, "mission report from fn-a", "author-a",
+        src_a.write_bytes(article(report_id, "mission report from fn-a", "author-a",
                                   args.report_lines, "mission report carried by bp",
                                   path=args.report == "unsigned" and "a.mission.invalid"))
         src_b = lab.path("reply.source")
-        src_b.write_bytes(article(REPLY_ID, "Re: mission report from fn-a", "author-b", 12,
+        src_b.write_bytes(article(reply_id, "Re: mission report from fn-a", "author-b", 12,
                                   "mission reply",
                                   path=args.report == "unsigned" and "b.mission.invalid"))
-
-        def sign(tag, author, source):
-            d = authors[author]
-            out = m.ofn(tag, "hybrid-sign", d / "principal", d / "ed25519.public",
-                        d / "ed25519.secret", d / "ml-dsa-65.public.pem",
-                        d / "ml-dsa-65.private.pem", source)
-            setup[tag] = out.returncode
-            parts = dict(l.split() for l in out.stdout.decode().splitlines()
-                         if len(l.split()) == 2)
-            ed, ml = source.with_suffix(".ed.sig"), source.with_suffix(".ml.sig")
-            ed.write_bytes(bytes.fromhex(parts.get("ed25519", "")))
-            ml.write_bytes(bytes.fromhex(parts.get("ml-dsa-65", "")))
-            return ed, ml
 
         consumer_out = {}
 
@@ -463,23 +480,24 @@ def main(argv=None):
         if args.report == "unsigned":
             # The control: the report is posted before A's consumer registers.
             ok("setup-a-post-unsigned", m.dfn("setup-a-post-unsigned", "store",
-                                              nodes["a"]["store"], "post", REPORT_ID, src_a,
+                                              nodes["a"]["store"], "post", report_id, src_a,
                                               "-", "-", "fn.test"))
         owner_a, ready = m.owner("a", "setup-a-owner")
         setup["setup-a-owner-ready"] = 0 if ready else 1
         enroll("a", "author-a")
-        if args.report == "signed":
-            ed, ml = sign("setup-a-sign", "author-a", src_a)
-            signed_a = m.ofn("setup-a-author", "hybrid-author", nodes["a"]["control"],
-                             GENERATION["author-a"], src_a, ed, ml,
-                             authors["author-a"] / "ml-dsa-65.public.pem")
-            report["report_signed"] = signed_a.returncode == 0
-        else:
-            report["report_signed"] = None
         enroll("a", "author-b")
         setup["setup-a-bootstrap"] = consumer("setup-a-bootstrap", "a", "bootstrap").returncode
         setup["setup-a-register"] = consumer("setup-a-register", "a", "register", "a-reader",
                                              "fn.test", lab.path("a-registered.fncu")).returncode
+        if exchange:
+            # A's real application creates the immutable signed submission;
+            # no native author failure may silently become an unsigned run.
+            artifact, source = exchange.originate("mission report " + "x" * (args.report_lines * 32))
+            report_id = artifact["message_id"]
+            src_a.write_bytes(source)
+            report["report_signed"] = True
+        else:
+            report["report_signed"] = None
         lab.stop(owner_a)
         # B's owner: enrol both authors, register B's consumer (asleep).
         owner_b, ready = m.owner("b", "setup-b-owner")
@@ -490,17 +508,9 @@ def main(argv=None):
         setup["setup-b-register"] = consumer("setup-b-register", "b", "register", "b-reader",
                                              "fn.test", lab.path("b-registered.fncu")).returncode
         lab.stop(owner_b)
-        if report["report_signed"] is False:
-            # Keep the transport scenario going with the unsigned source.
-            m.finding("hybrid-author refused the report on A; posted unsigned instead",
-                      "see-evidence", (lines_of(lab.logs["setup-a-author"]) or
-                                       [lab.logs["setup-a-author"].read_text()[-200:]])[-1], "A")
-            ok("setup-a-post-unsigned", m.dfn("setup-a-post-unsigned", "store",
-                                              nodes["a"]["store"], "post", REPORT_ID, src_a,
-                                              "-", "-", "fn.test"))
         # The stored report as A's Store holds it (what the request carries).
         inspect_a = subprocess.run([str(lab.image), "--fn", "store", str(nodes["a"]["store"]),
-                                    "inspect", REPORT_ID], capture_output=True,
+                                    "inspect", report_id], capture_output=True,
                                    env=lab.env, cwd=str(ROOT), timeout=120)
         lab.path("a-stored.report").write_bytes(inspect_a.stdout)
         setup["setup-a-inspect"] = inspect_a.returncode
@@ -510,7 +520,7 @@ def main(argv=None):
                                      nodes["a"]["wf"], A, B, "native-policy", B, 3600000,
                                      "origin-native", "wire-auth")),
                 ("setup-a-wf-enqueue", ("app-journal", "workflow-enqueue", nodes["a"]["store"],
-                                        nodes["a"]["wf"], 1, 0, WORK_A, REPORT_ID,
+                                        nodes["a"]["wf"], 1, 0, WORK_A, report_id,
                                         "forward-report", B, "native-policy", "terms-native")),
                 ("setup-a-undertake", ("bp-obligation", "undertake", nodes["a"]["store"],
                                        nodes["a"]["wf"], WORK_A, 3)),
@@ -665,10 +675,42 @@ def main(argv=None):
         identity["a_receipt_outcome"] = receipt.group(1) if receipt else None
         identity["a_obligation_after_receipt"] = a_status
 
+        if exchange:
+            # Repeat R through the actual BP/relay path under a distinct
+            # forwarding undertaking after the first one was released.
+            # Reusing a held article is not a second application operation.
+            repeat_work = WORK_A + "-repeat"
+            repeat_start = m.size(b_log)
+            repeat_commands = (
+                ("a-repeat-enqueue", ("app-journal", "workflow-enqueue", nodes["a"]["store"],
+                                      nodes["a"]["wf"], 2, 0, repeat_work, report_id,
+                                      "forward-report-repeat", B, "native-policy", "terms-native")),
+                ("a-repeat-undertake", ("bp-obligation", "undertake", nodes["a"]["store"],
+                                        nodes["a"]["wf"], repeat_work, 3)),
+                ("a-repeat-request", ("bp-obligation", "request", nodes["a"]["store"],
+                                      nodes["a"]["wf"], repeat_work, repeat_work + "-a1",
+                                      nodes["a"]["fnbs"], A, "127.0.0.1", xp,
+                                      3600000, 2, 32, 1048576, lab.wall, 60000)))
+            for tag, words in repeat_commands:
+                repeated = m.dfn(tag, *words)
+                if repeated.returncode != 0:
+                    raise ConsumerExchangeFailure(tag + ": " + outcome_of(repeated.returncode)
+                                                  + " " + repeated.stderr[-400:])
+            repeated_delivery = m.wait(b_log, r"BP node delivery (request-\S+)",
+                                       after=repeat_start)
+            if not repeated_delivery or repeated_delivery.group(1) not in (
+                    "request-accepted", "request-duplicate"):
+                raise ConsumerExchangeFailure("repeated R lacked an accepted/duplicate BP delivery")
+            identity["repeated_report"] = {
+                "work": repeat_work, "attempt": repeat_work + "-a1",
+                "message_id": report_id, "outcome": repeated_delivery.group(1),
+                "log_offset_before_request": repeat_start,
+                "request": lines_of(lab.logs["a-repeat-request"])}
+
         # === 5. B's consumer wakes; B's node stops for B's owner (K6) =======
         m.stop_node("b", "SIGTERM")
         inspect_b = subprocess.run([str(lab.image), "--fn", "store", str(nodes["b"]["store"]),
-                                    "inspect", REPORT_ID], capture_output=True,
+                                    "inspect", report_id], capture_output=True,
                                    env=lab.env, cwd=str(ROOT), timeout=120)
         b_copy = lab.path("b-delivered.report")
         b_copy.write_bytes(inspect_b.stdout)
@@ -684,32 +726,25 @@ def main(argv=None):
             m.finding("B's delivered copy does not verify with hybrid-verify-source",
                       "unexercised-capability-or-implementation", vline[:200], "B")
         owner_b, ready_b = m.owner("b", "b-5-owner")
-        polls_b, hit_b, event_octets = drain("b", "b-reader", REPORT_ID, "b-5")
+        if exchange:
+            (received, event_octets), (artifact, reply_source) = exchange.consume_report()
+            polls_b, hit_b = [received], received
+            reply_id = artifact["message_id"]
+            src_b.write_bytes(reply_source)
+            report["reply_signed"] = True
+        else:
+            polls_b, hit_b, event_octets = drain("b", "b-reader", report_id, "b-5")
+            report["reply_signed"] = None
         if hit_b is None and held3:
             m.finding("B's consumer never polled an event carrying the BP-delivered report",
                       "unexercised-capability", json.dumps(polls_b), "B")
-        if (args.report == "signed" and hit_b and event_octets
-                and src_a.read_bytes() not in event_octets):
-            m.finding("B's poll event does not contain the exact authored source octets",
-                      "see-evidence", None, "B")
-        if args.report == "signed":
-            ed, ml = sign("b-5-sign-reply", "author-b", src_b)
-            authored_b = m.ofn("b-5-author-reply", "hybrid-author", nodes["b"]["control"],
-                               GENERATION["author-b"], src_b, ed, ml,
-                               authors["author-b"] / "ml-dsa-65.public.pem")
-            report["reply_signed"] = authored_b.returncode == 0
-        else:
-            authored_b, report["reply_signed"] = None, None
         lab.stop(owner_b)
-        if authored_b is None or authored_b.returncode != 0:
-            if authored_b is not None:
-                m.finding("hybrid-author refused the reply on B; posted unsigned instead",
-                          "see-evidence", lab.logs["b-5-author-reply"].read_text()[-200:], "B")
-            m.dfn("b-5-post-unsigned", "store", nodes["b"]["store"], "post", REPLY_ID, src_b,
+        if args.report == "unsigned":
+            m.dfn("b-5-post-unsigned", "store", nodes["b"]["store"], "post", reply_id, src_b,
                   "-", "-", "fn.test")
         for tag, argv in (
                 ("b-5-enqueue", ("app-journal", "workflow-enqueue", nodes["b"]["store"],
-                                 nodes["b"]["wf"], 1, 0, WORK_B, REPLY_ID, "forward-reply", A,
+                                 nodes["b"]["wf"], 1, 0, WORK_B, reply_id, "forward-reply", A,
                                  "native-policy", "terms-native")),
                 ("b-5-undertake", ("bp-obligation", "undertake", nodes["b"]["store"],
                                    nodes["b"]["wf"], WORK_B, 3))):
@@ -736,7 +771,7 @@ def main(argv=None):
                b_inspect=dict(rc=inspect_b.returncode, octets=len(inspect_b.stdout)),
                polls=polls_b, report_event=hit_b,
                event_contains_authored_source=src_a.read_bytes() in event_octets,
-               reply_author_rc=(authored_b.returncode if authored_b else None),
+               application=exchange.observations if exchange else None,
                reply_signed=report["reply_signed"],
                reply_request=[l for l in lines_of(lab.logs["b-5-request"])])
         identity["authored_source_reply_sha256"] = sha256(src_b)
@@ -760,9 +795,22 @@ def main(argv=None):
         m.stop_node("a", "SIGTERM")
         b_status = m.dfn("b-6-status", "bp-obligation", "status", nodes["b"]["store"],
                          nodes["b"]["wf"], WORK_B).stdout.strip()
+        repeat_released = True
+        if exchange:
+            repeat_status = m.dfn("a-repeat-status", "bp-obligation", "status",
+                                  nodes["a"]["store"], nodes["a"]["wf"],
+                                  WORK_A + "-repeat")
+            repeat_released = repeat_status.returncode == 0 and "pinned=no" in repeat_status.stdout
+            identity["repeated_report"]["final_status"] = repeat_status.stdout.strip()
         # A's consumer wakes.
         owner_a, ready_a = m.owner("a", "a-6-owner")
-        polls_a, hit_a, event_a_octets = drain("a", "a-reader", REPLY_ID, "a-6")
+        if exchange:
+            hit_a, event_a_octets = exchange.consume_reply()
+            polls_a = [hit_a]
+            report["application_exchange"] = exchange.observations
+            report["application_exchange_complete"] = True
+        else:
+            polls_a, hit_a, event_a_octets = drain("a", "a-reader", reply_id, "a-6")
         status_a_consumer = consumer("a-6-consumer-status", "a", "status", "a-reader")
         lab.stop(owner_a)
         if a_verdict and a_verdict.group(1) != "request-accepted":
@@ -776,13 +824,13 @@ def main(argv=None):
                       "unexercised-capability", json.dumps(polls_a), "A")
         held6 = bool(a_verdict and a_verdict.group(1) == "request-accepted" and b_receipt
                      and b_receipt.group(1) == "receipt-accepted" and "pinned=no" in b_status
-                     and hit_a is not None)
+                     and hit_a is not None and repeat_released)
         m.step("6 the reply crosses back; A delivers; A's receipt releases B's pin; A's "
                "consumer wakes, polls and acks",
                a_verdict.group(1) if a_verdict else "no-verdict", held6,
                ["a-serve-3", "x-serve-3", "y-serve-1", "b-serve-2", "b-6-status",
                 "a-6-owner", "a-6-consumer-status"] + [t for t in lab.logs if t.startswith(
-                    ("a-6-poll", "a-6-ack"))],
+                    ("a-6-poll", "a-6-ack", "a-application", "a-repeat"))],
                a_application=m.grep("a-serve-3", "BP node"),
                a_receipt_queued=bool(a_queued), a_receipt_contact=bool(a_contact),
                x_forward=m.grep("x-serve-3", "BP forwarding"),
@@ -796,6 +844,10 @@ def main(argv=None):
         if not x_sent and a_verdict and a_verdict.group(1) == "request-accepted":
             m.finding("X did not forward A's receipt toward fn-b", "see-logs",
                       (m.grep("x-serve-3", "BP forwarding") or [None])[-1], "X")
+    except ConsumerExchangeFailure as error:
+        report["application_exchange_complete"] = False
+        report["application_failure"] = str(error)
+        m.finding(str(error), "consumer-application-failure")
     except Stop:
         pass
     finally:
@@ -821,9 +873,9 @@ def main(argv=None):
             for t in lab.logs if re.match(r"[abxy]-serve-\d", t)}
         identity["fnbs_lifecycle_frames"] = {k: len(m.frames(k)) for k in nodes}
         identity["work"] = dict(a=dict(work=WORK_A, attempt=WORK_A + "-a1",
-                                       message_id=REPORT_ID),
+                                       message_id=report_id),
                                 b=dict(work=WORK_B, attempt=WORK_B + "-a1",
-                                       message_id=REPLY_ID))
+                                       message_id=reply_id))
         report["identity"] = identity
         report["incarnations"] = {k: v["incarnations"] for k, v in nodes.items()}
         report["processes"] = [dict(tag=p["tag"], pid=p["pid"], stopped=p["stopped"])
@@ -838,9 +890,7 @@ def main(argv=None):
         report["steps"] = m.steps
         report["findings"] = m.findings
         report["wall_seconds"] = round(time.monotonic() - m.t0, 1)
-        report["all_steps_held"] = bool(m.steps) and \
-            len(m.steps) == (7 if args.case == "mission" else 2) and \
-            all(s["held"] for s in m.steps)
+        report["all_steps_held"] = mission_complete(args.case, args.report, report, m.steps)
         out = lab.path("report.json")
         out.write_text(json.dumps(report, indent=2, sort_keys=True))
         print("REPORT {} all_steps_held={}".format(out, report["all_steps_held"]), flush=True)

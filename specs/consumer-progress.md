@@ -302,8 +302,8 @@ receipt of a response octet is only a cut trigger. The production owner runs
 without a developer stop selector. Matching image observations remain separate
 from this driver (PKT-466(b)).
 
-Carriage over BP through the relay network is not part of CNS-004 yet
-(PKT-333 phase 2, after the multi-peer relay).
+Carriage over BP through the relay network is the separate CNS-010 contract
+below (PKT-333 phase 2 / PKT-466(c)); CNS-004 remains the NNTP exchange.
 
 ## Bound consumers
 
@@ -752,3 +752,32 @@ passed in their stated scopes, followed by native signed poll, advancing
 ACK/reopen and fenced-clone cursor checks on `1d26e01f`. General authenticated
 multi-group selection and the two-store trace remain open; the one-node
 two-consumer transaction/ACK join is CNS-002.
+
+## BP application exchange
+
+CNS-010 applies the same external application transaction to the carried
+path: A's real consumer durably authors immutable signed R, the BP mission
+carries it through the relay outage, and B's real consumer verifies it with
+its own keyring before committing one local transition plus immutable Q.
+B's node forwards Q by a separate undertaking; A independently verifies and
+correlates it. Application operations, exact authored sources, signature
+carriers, hop-local stored projections, bundles and forwarding attempts
+remain distinct identities. Transport or retention receipts alone prove no
+application transition.
+
+SCN-1027 runs `tests/bp-dtn7/run_mission_four_node.py --report signed` using
+`tools/fn_consumer.py`, rather than synthesizing the application outcome in
+the transport driver. It cuts B in-transaction and after commit, cuts A
+after ACK, and repeats R through a distinct BP undertaking after the first
+one releases. The final witness requires one transition each, independently
+verified received sources and both signatures equal to the immutable
+artifacts, and settled forwarding pins. The driver fails on a signed author
+or application failure with its logged cause; it never substitutes unsigned
+content. Explicit `--report unsigned` remains a separate transport control.
+
+The older signed mission's manually issued poll/ACK and manually authored Q
+are transport evidence only. The new application driver is source-ready;
+matching native/relay observations and the complete original PKT-466(c)
+acceptance remain pending. No proof about the application's SQLite commit
+or an external effect follows from fn's existing carried-source or relay
+policy theorems.
