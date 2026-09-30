@@ -1725,12 +1725,10 @@
 ; own (the fn-own-sub-*-of-pack lemmas below).
 (defun fn-own-enqueue (o sub)
   (declare (xargs :guard t))
-  (if (fn-ab-profilep (fn-own-sub-source-context sub))
-      (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
+  (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
                (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
-               (fn-ag-append (fn-own-queue o) (list (fn-psub-pack-sub sub))) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))
-    o))
+               (fn-ag-append (fn-own-queue o) (list (fn-psub-pack-sub sub))) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))
 
 ; The local control channel is a submission port, not a second store writer.
 ; Its identifier is outside the natural-number connection namespace, so it
