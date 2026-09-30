@@ -11,7 +11,11 @@
     fn-owner-page-window-executor-return
     fn-owner-page-window-executor-release fn-owner-page-window-byte
     fn-owner-page-window-byte-at fn-pwr-cold-descriptor
-    fn-owner-page-window-outcome))
+    fn-owner-page-window-outcome
+    fn-owner-page-window-executor-cancel
+    fn-owner-page-window-executor-settle-cancelled
+    fn-owner-page-window-work-permittedp
+    fn-owner-page-window-current-octet fn-owner-page-window-decoded-refusal))
 
 (defun fn-cgb-roster ()
   (declare (xargs :guard t)) *fn-cgb-roster*)
@@ -24,18 +28,20 @@
   (declare (xargs :guard t))
   (fn-crl-table-capacity (len *fn-cgb-roster*)))
 
-; The source roster has7 unary guards on begin and1 on effect/tick/read/byte,
-; byte-at and outcome.
+; The21-entry roster has7 unary guards on begin, six other single checks,
+; and two NAT checks on current-octet; its two bound comparisons are omitted
+; by the cheap-guard extractor but still occupy prewarm conjunct cells.
 ; Each cache spec is one cons; every check is four fields plus its list cell.
 ; Names/formals/recognizer kinds are image-world pointers, not copied strings.
 (defun fn-cgb-retained-conses ()
-  (declare (xargs :guard t)) (+ 16 (* 5 (+ 7 6))))
+  (declare (xargs :guard t)) (+ 21 (* 5 (+ 7 6 2))))
 
 ; Guard-conjunct extraction: begin's7 leaves and at most1+...+6 copied
-; append cells; the other15 entries each have one leaf. The roster16 cells
+; append cells; current-octet has4 leaves and1+2+3 append cells;
+; the other19 entries each have one leaf. The roster21 cells
 ; are separately funded even though the immutable compiled literal can share.
 (defun fn-cgb-prewarm-conses ()
-  (declare (xargs :guard t)) (+ 16 4 7 1 2 3 4 5 6 15))
+  (declare (xargs :guard t)) (+ 21 4 7 1 2 3 4 5 6 4 1 2 3 19))
 
 (defun fn-cgb-baseline-octets ()
   (declare (xargs :guard t))
@@ -52,19 +58,23 @@
       fn-owner-page-window-executor-acquire-funded
       fn-owner-page-window-executor-return fn-owner-page-window-executor-release) 3)
     (fn-owner-page-window-byte 6) (fn-owner-page-window-byte-at 12)
-    (fn-pwr-cold-descriptor 7) (fn-owner-page-window-outcome 4) (otherwise 0)))
+    (fn-pwr-cold-descriptor 7) (fn-owner-page-window-outcome 4)
+    ((fn-owner-page-window-executor-cancel
+      fn-owner-page-window-executor-settle-cancelled
+      fn-owner-page-window-work-permittedp fn-owner-page-window-current-octet) 3)
+    (fn-owner-page-window-decoded-refusal 0) (otherwise 0)))
 
 (defun fn-cgb-check-count (name)
   (declare (xargs :guard t))
   (case name
-    (fn-ews-begin 7)
+    (fn-ews-begin 7) (fn-owner-page-window-current-octet 2)
     ((fn-ews-effect fn-ews-tick fn-ews-read fn-owner-page-window-byte
       fn-owner-page-window-byte-at fn-owner-page-window-outcome) 1)
     (otherwise 0)))
 
 ; Inspect exactly four fields per row and at most7 rows. These are actual
 ; cached guard records, not a permission to populate an unknown image cache.
-(defun fn-cgb-checksp (n position beginp checks)
+(defun fn-cgb-checksp (n position beginp kind checks)
   (declare (xargs :guard (and (natp n) (natp position))))
   (if (zp n) (null checks)
     (let ((row (if (consp checks) (car checks) nil)))
@@ -72,8 +82,8 @@
            (consp (cddr row)) (consp (cdddr row)) (null (cddddr row))
            (equal (car row) (if (and beginp (equal n 1)) 9 position))
            (symbolp (cadr row))
-           (equal (caddr row) (if beginp 'natp 'true-listp))
-           (fn-cgb-checksp (1- n) (+ 1 position) beginp (cdr checks))))))
+           (equal (caddr row) kind)
+           (fn-cgb-checksp (1- n) (+ 1 position) beginp kind (cdr checks))))))
 
 (defun fn-cgb-specp (name spec)
   (declare (xargs :guard t))
@@ -83,7 +93,9 @@
         (fn-cgb-check-count name)
         (if (member-eq name '(fn-ews-read fn-owner-page-window-byte
                              fn-owner-page-window-byte-at fn-owner-page-window-outcome)) 2 0)
-        (equal name 'fn-ews-begin) (cdr spec))))
+        (equal name 'fn-ews-begin)
+        (if (or (eq name 'fn-ews-begin) (eq name 'fn-owner-page-window-current-octet))
+            'natp 'true-listp) (cdr spec))))
 
 ; Exact constructor coordinate carried by the admitted bootstrap plan.
 (defun fn-cgb-planp (plan)

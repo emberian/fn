@@ -8,7 +8,7 @@
 (assert! (equal (fn-crb-executor-octets *crb-policy* *crb-runtime*) 134880))
 (assert! (equal (fn-crb-binding-capacity *crb-policy*) 75))
 (assert! (equal (fn-crb-remove-scratch-octets *crb-policy*) 2400))
-(assert! (equal (nthcdr 3 (fn-crb-start-plan *crb-policy* nil *crb-runtime*)) '(64 8 9 2 16)))
+(assert! (equal (nthcdr 3 (fn-crb-start-plan *crb-policy* nil *crb-runtime*)) '(64 8 9 2 21)))
 (assert! (and (equal (fn-crv-nth 0 (fn-crb-start-plan *crb-policy* nil *crb-runtime*)) :admitted)
               (fn-prs-fundedp (fn-crv-pool-budget *crb-policy* nil)
                               (fn-crb-permanent-baseline *crb-policy* nil *crb-runtime*)

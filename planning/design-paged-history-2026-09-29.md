@@ -669,3 +669,10 @@ The narrow guard-source tests pass; the complete bootstrap source closure
 currently stops in the unchanged inherited `fn-profile-seal-octet-listp`
 proof, before any bootstrap target form. Full startup/profile, producer
 canonical demand/disk/rescue and native qualification remain open.
+
+
+The cancellation/current-placement source successor expands the fixed roster
+to21 entries and the permanent guard-cache inventory to7392 bytes. Its14
+metadata tests pass in a fresh source session. Current-octet's two NAT guards
+are cached; its two bounds remain ACL2 guard/carry obligations. Native job
+wrapper lifetime review and complete bootstrap/startup remain pending.
