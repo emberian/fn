@@ -59,3 +59,27 @@ proofs. Source declaration admission is not native execution or image qualificat
 Still open: genuine profile/constructor baseline installation; actual source allowance
 composition; all concurrent executor/native outer-return joins; full-GC barrier and
 qualified return suffix; immutable-image/native allocation measurements and deployment.
+
+## Native scheduler control receipt
+
+The internal `fnn-with-owner-control-turn` wrapper retains a distinct installed
+`:owner-control` slot before the actual `fnn-owner-gated` scheduler pre-observation
+and entry, and finishes only after that macro's cleanup returns. A nested
+connection operation has its own slot and receipt. Definite connection refusal
+or drain-time yield can settle that operation without releasing the surrounding
+control receipt before scheduler cleanup. A raw escape fences the pool and
+retains unresolved receipts; it never executes an unconditional finish.
+
+Entry, finish and fault use extent exclusion, but the wrapper does not retain
+that mutex across scheduler waiting or the body. The active receipt prevents
+collection from passing quiescence while other admitted workers can finish.
+Finishing an already admitted receipt remains permitted during draining.
+
+This wrapper is not selected by a served caller yet. Installation must cover the
+complete scheduler control allocation and execution envelope, including wait
+machinery, wakeups, queue operations, cleanup and wrapper/runtime costs. It must
+establish finite drain progress without requiring fresh admission to finish
+already admitted work. The component test's synthetic Qgate is not evidence for
+that envelope; retaining a receipt alone does not justify unbounded waiting or
+I/O. See `planning/evidence/owner-control-turn-2026-09-30/README.md` for actual-core
+composition evidence and its recording scheduler boundary.
