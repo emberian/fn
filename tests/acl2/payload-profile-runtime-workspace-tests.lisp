@@ -20,7 +20,7 @@
     (compressed 9223372036854775807)))
    :in-theory (e/d (fn-pzt-zin-stored-allowance fn-ppr-arithmetic-domain
       fn-srp-operand-domain-p fn-srp-integer-inputs-fit
-      fn-spp-operand-domain-p fn-spp-factorp fn-ppr-scale-factor fn-ppr-scale-value)
+      fn-srp-positive-operand-domain-p fn-srp-positive-factorp fn-ppr-scale-factor fn-ppr-scale-value)
      (fn-ppr-arithmetic-octets))))
  :rule-classes nil)
 
@@ -45,7 +45,7 @@
    :in-theory (e/d (fn-pzt-pzd-budget fn-zin-stored-allowance
       fn-pzw-stored-admissiblep fn-pzw-stored-allowance fn-ppr-arithmetic-domain
       fn-srp-operand-domain-p fn-srp-integer-inputs-fit
-      fn-spp-operand-domain-p fn-spp-factorp fn-ppr-scale-factor fn-ppr-scale-value)
+      fn-srp-positive-operand-domain-p fn-srp-positive-factorp fn-ppr-scale-factor fn-ppr-scale-value)
      (fn-ppr-arithmetic-octets))))
  :rule-classes nil)
 
@@ -56,7 +56,7 @@
              (cdr (fn-pzt-zin-stored-allowance c)) 18889465931478580854784))))
  :hints (("Goal" :in-theory (enable fn-pzt-zin-stored-allowance
    fn-ppr-arithmetic-domain fn-srp-operand-domain-p fn-srp-integer-inputs-fit
-   fn-spp-operand-domain-p fn-spp-factorp fn-ppr-scale-factor fn-ppr-scale-value)))
+   fn-srp-positive-operand-domain-p fn-srp-positive-factorp fn-ppr-scale-factor fn-ppr-scale-value)))
  :rule-classes nil)
 
 (defthm pprt-budget-domain-remove-source-bound
@@ -67,7 +67,7 @@
              (cdr (fn-pzt-pzd-budget c n)) 18889465931478580854784))))
  :hints (("Goal" :in-theory (enable fn-pzt-pzd-budget fn-ppr-arithmetic-domain
    fn-srp-operand-domain-p fn-srp-integer-inputs-fit
-   fn-spp-operand-domain-p fn-spp-factorp fn-ppr-scale-factor fn-ppr-scale-value)))
+   fn-srp-positive-operand-domain-p fn-srp-positive-factorp fn-ppr-scale-factor fn-ppr-scale-value)))
  :rule-classes nil)
 
 (defthm pprt-budget-domain-remove-decoded-bound
@@ -78,7 +78,7 @@
              (cdr (fn-pzt-pzd-budget c n)) 18889465931478580854784))))
  :hints (("Goal" :in-theory (enable fn-pzt-pzd-budget fn-ppr-arithmetic-domain
    fn-srp-operand-domain-p fn-srp-integer-inputs-fit
-   fn-spp-operand-domain-p fn-spp-factorp fn-ppr-scale-factor fn-ppr-scale-value)))
+   fn-srp-positive-operand-domain-p fn-srp-positive-factorp fn-ppr-scale-factor fn-ppr-scale-value)))
  :rule-classes nil)
 
 ; The decoded72bit bound alone allows N above actual stored admissibility.
@@ -95,5 +95,5 @@
  :hints (("Goal" :in-theory (enable fn-pzt-pzd-budget fn-zin-stored-allowance
    fn-pzw-stored-admissiblep fn-pzw-stored-allowance fn-ppr-arithmetic-domain
    fn-srp-operand-domain-p fn-srp-integer-inputs-fit
-   fn-spp-operand-domain-p fn-spp-factorp fn-ppr-scale-factor fn-ppr-scale-value)))
+   fn-srp-positive-operand-domain-p fn-srp-positive-factorp fn-ppr-scale-factor fn-ppr-scale-value)))
  :rule-classes nil)

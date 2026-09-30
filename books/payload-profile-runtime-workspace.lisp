@@ -5,9 +5,9 @@
 (include-book "assumptions-selected-runtime-positive")
 
 (defun fn-ppr-scale-factor (inputs)
-  (if (fn-spp-factorp (car inputs)) (car inputs) (cadr inputs)))
+  (if (fn-srp-positive-factorp (car inputs)) (car inputs) (cadr inputs)))
 (defun fn-ppr-scale-value (inputs)
-  (if (fn-spp-factorp (car inputs)) (cadr inputs) (car inputs)))
+  (if (fn-srp-positive-factorp (car inputs)) (cadr inputs) (car inputs)))
 
 (defun fn-ppr-arithmetic-domain (trace limit)
   (if (consp trace)
@@ -16,7 +16,7 @@
              (:add (fn-srp-operand-domain-p :add (cadar trace) limit))
              (:multiply (and (true-listp (cadar trace))
                              (equal (len (cadar trace)) 2)
-                             (fn-spp-operand-domain-p
+                             (fn-srp-positive-operand-domain-p
                               (fn-ppr-scale-factor (cadar trace))
                               (fn-ppr-scale-value (cadar trace)) limit)))
              ((:borrow :multiple-value) t)
@@ -29,7 +29,7 @@
       (+ (case (caar trace)
            (:negate (fn-assume-srp-primitive-octets :neg (cadar trace) coordinate))
            (:add (fn-assume-srp-primitive-octets :add (cadar trace) coordinate))
-           (:multiply (fn-assume-spp-multiply-octets
+           (:multiply (fn-assume-srp-positive-multiply-octets
                        (fn-ppr-scale-factor (cadar trace))
                        (fn-ppr-scale-value (cadar trace)) coordinate))
            (otherwise 0))
@@ -55,13 +55,13 @@
                     (op :neg) (inputs (cadar trace)))
                  (:instance fn-assume-srp-primitive-bound
                     (op :add) (inputs (cadar trace)))
-                 (:instance fn-assume-spp-multiply-primitive-bound
+                 (:instance fn-assume-srp-positive-multiply-primitive-bound
                     (factor (fn-ppr-scale-factor (cadar trace)))
                     (value (fn-ppr-scale-value (cadar trace)))))
            :in-theory (e/d (fn-ppr-arithmetic-octets fn-ppr-arithmetic-domain
                             fn-pzt-count)
                        (fn-srp-coordinate-p fn-crw-primitive-buffer-octets
-                        fn-srp-operand-domain-p fn-spp-operand-domain-p
+                        fn-srp-operand-domain-p fn-srp-positive-operand-domain-p
                         fn-ppr-scale-factor fn-ppr-scale-value)))))
 
 (encapsulate
@@ -76,7 +76,7 @@
    :hints (("Goal" :in-theory
             (enable fn-pzt-zin-stored-allowance fn-ppr-arithmetic-domain
                     fn-ppr-scale-factor fn-ppr-scale-value
-                    fn-spp-factorp fn-spp-operand-domain-p
+                    fn-srp-positive-factorp fn-srp-positive-operand-domain-p
                     fn-srp-operand-domain-p fn-srp-integer-inputs-fit))))
  (defthm fn-ppr-actual-budget-arithmetic-domain
    (implies (and (< (nfix compressed) 9223372036854775808)
@@ -88,7 +88,7 @@
    :hints (("Goal" :in-theory
             (enable fn-pzt-pzd-budget fn-ppr-arithmetic-domain
                     fn-ppr-scale-factor fn-ppr-scale-value
-                    fn-spp-factorp fn-spp-operand-domain-p
+                    fn-srp-positive-factorp fn-srp-positive-operand-domain-p
                     fn-srp-operand-domain-p fn-srp-integer-inputs-fit)))))
 
 (defthm fn-ppr-actual-stored-allowance-primitive-workspace

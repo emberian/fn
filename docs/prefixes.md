@@ -367,3 +367,5 @@ anything a book does not already decide.
 
 | `fn-pct-` | `productive-transfer`, `tests/acl2/productive-transfer-tests` | Productive outbound NNTP offer and requested article effect; local journal and attempt, explicit quiet/refused outcomes; no remote acceptance claim (W6b) |
 | `fn-gat-`, `gat-` | `tests/acl2/group-authority-tests` | Explicit authority publication and replay teeth; distinct posting policy and principal bindings. |
+
+| `fn-srp-positive-`, `fn-assume-srp-positive-`, `srpos-t-` | `assumptions-selected-runtime-positive`, its tests | Conditional fixed positive factor 2/16/256 primitive family; shares selected coordinate and excludes served plan-position APIs and complete runtime/job adequacy |
