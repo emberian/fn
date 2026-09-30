@@ -49,7 +49,11 @@
 
 (defun fn-ncpath-resolve-config (c base)
   (declare (xargs :guard t))
-  (fn-native-config-make
+  ; The constructor leaves the optional cold-resource policy absent. Path
+  ; resolution must retain the explicit policy, including its refusal at
+  ; the operator boundary, rather than silently resetting it to the default.
+  (update-nth 29 (fn-native-config-cold-resources c)
+   (fn-native-config-make
    (fn-ncpath-resolve (fn-native-config-store c) base)
    (fn-native-config-listener-host c) (fn-native-config-listener-port c)
    (fn-ncpath-resolve (fn-native-config-tls-cert c) base)
@@ -68,7 +72,7 @@
    (fn-native-config-ops-mission c) (fn-native-config-ops-unit c)
    (fn-native-config-ops-scope c) (fn-native-config-ops-keep-releases c)
    (fn-native-config-ops-log-max-bytes c) (fn-native-config-ops-log-keep c)
-   (fn-native-config-ops-memory-max c) (fn-native-config-listener-tls-port c)))
+   (fn-native-config-ops-memory-max c) (fn-native-config-listener-tls-port c))))
 
 ; The octets up to (not including) the last `/' of reversed octets REV, or
 ; nil when there is none.
@@ -197,6 +201,12 @@
   (equal (fn-native-config-store (fn-ncpath-resolve-config c base))
          (fn-ncpath-resolve (fn-native-config-store c) base))
   :hints (("Goal" :in-theory (enable fn-native-config-make))))
+
+(defthm fn-ncpath-resolve-config-cold-resources-by-definition
+  (equal (fn-native-config-cold-resources (fn-ncpath-resolve-config c base))
+         (fn-native-config-cold-resources c))
+  :hints (("Goal" :in-theory (enable fn-native-config-cold-resources
+                                     fn-ncfg-nth))))
 
 (in-theory (disable fn-ncpath-resolve fn-ncpath-resolve-config fn-ncpath-base
                     fn-ncpath-config-octets))

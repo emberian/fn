@@ -113,6 +113,29 @@ class FaceCases:
             "pre": b.form_value(page, "pre"), "code": self.invite(), "user": user,
             "password": PASSWORD, "again": PASSWORD})
 
+    def test_health_is_bounded_readiness_in_the_running_owner_without_login(self):
+        # Q10d: the same saved owner answers each request; no account/session
+        # or operator image is launched for this network endpoint.
+        process = self.node.process
+        pid = process.pid
+        b = self.browser()
+        for _ in range(3):
+            status, where, body, headers, cookies = b.request("GET", "/health")
+            self.assertEqual((status, where, body), (200, None, "ready\n"))
+            self.assertEqual(headers["Content-Type"], "text/plain; charset=utf-8")
+            self.assertEqual(headers["Cache-Control"], "no-store")
+            self.assertLessEqual(len(body.encode("utf-8")), 23)
+            self.assertEqual(cookies, [])
+            self.assertEqual(b.cookies, {})
+            self.assertIsNone(process.poll())
+            self.assertEqual(self.node.process.pid, pid)
+        status, where, body, headers, cookies = b.request("HEAD", "/health")
+        self.assertEqual((status, where, body, cookies), (200, None, "", []))
+        self.assertEqual(headers["Content-Length"], "6")
+        status, _, _, headers, _ = b.request("POST", "/health", {})
+        self.assertEqual(status, 405)
+        self.assertEqual(headers["Allow"], "GET, HEAD")
+
     def test_1_a_friend_makes_an_account_reads_posts_and_removes(self):
         b = self.browser()
         status, where, page, headers, _ = b.request("GET", "/")

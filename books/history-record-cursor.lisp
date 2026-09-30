@@ -4,6 +4,7 @@
 (include-book "store-tree-codec")
 (include-book "history-pages-words")
 (include-book "history-scalar-cursor")
+(include-book "history-decode-nodes")
 (local (include-book "arithmetic/top" :dir :system))
 (local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
 
@@ -160,7 +161,7 @@
                          (fn-scc-octetp (mv-nth 1 (fn-hrcur-leaf-tick c))))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-hrcur-leaf-invariantp fn-hrcur-shapep
-                             fn-hrcur-leaf-tick fn-scc-octetp
+                             fn-hrcur-leaf-tick fn-scc-octetp fn-scc-octet-listp
                              fn-scc-nat-octets)
                             (fn-scc-le-digits)))))
 
@@ -435,7 +436,8 @@
 (local
  (defthm fn-hrcur-octet-listp-append
    (implies (and (fn-scc-octet-listp a) (fn-scc-octet-listp b))
-            (fn-scc-octet-listp (append a b)))))
+            (fn-scc-octet-listp (append a b)))
+   :hints (("Goal" :in-theory (enable fn-scc-octet-listp)))))
 
 (local
  (defun fn-hrcur-prefix-ind (n x)
@@ -470,18 +472,35 @@
    (equal (append (append a b) c) (append a (append b c)))))
 
 (local
+ (defthm fn-hrcur-bad-head-not-octets
+   (implies (or (and (consp left) (not (fn-scc-octetp (car left))))
+                (and (not (consp left)) left))
+            (not (fn-scc-octet-listp left)))
+   :hints (("Goal" :in-theory (enable fn-scc-octet-listp fn-scc-octetp)))))
+
+(local
  (defthm fn-hrcur-scan-rejection-not-octets
    (implies (and (equal left (nthcdr n x))
                  (or (and (consp left) (not (fn-scc-octetp (car left))))
                      (and (not (consp left)) left)))
             (not (fn-scc-octet-listp x)))
-   :hints (("Goal" :use ((:instance fn-scc-octet-listp-facts))
-            :in-theory (disable nthcdr fn-scc-octet-listp-facts)))))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-scc-octet-listp-facts)
+                  (:instance fn-hrcur-bad-head-not-octets))
+            :in-theory (disable nthcdr fn-scc-octet-listp fn-scc-octetp
+                                fn-scc-octet-listp-facts
+                                fn-hrcur-bad-head-not-octets)))))
 
 (local
  (defthm fn-hrcur-nthcdr-consp-length
    (implies (and (natp n) (consp (nthcdr n x))) (< n (len x)))
    :rule-classes :linear
+   :hints (("Goal" :induct (nthcdr n x) :in-theory (enable nthcdr)))))
+
+(local
+ (defthm fn-hrcur-nthcdr-at-end-not-consp
+   (implies (and (natp n) (<= (len x) n))
+            (not (consp (nthcdr n x))))
    :hints (("Goal" :induct (nthcdr n x) :in-theory (enable nthcdr)))))
 
 (defthm fn-hrcur-tree-tick-refines-residual
@@ -505,8 +524,13 @@
 
 (local
  (defthm fn-hrcur-nthcdr-successor
-   (implies (natp n) (equal (nthcdr (+ 1 n) x) (cdr (nthcdr n x))))
+   (implies (natp n) (equal (cdr (nthcdr n x)) (nthcdr (+ 1 n) x)))
    :hints (("Goal" :induct (nthcdr n x) :in-theory (enable nthcdr)))))
+
+(local
+ (defthm fn-hrcur-singleton-octets
+   (implies (fn-scc-octetp byte) (fn-scc-octet-listp (list byte)))
+   :hints (("Goal" :in-theory (enable fn-scc-octet-listp fn-scc-octetp)))))
 
 (local
  (defthm fn-hrcur-count-prefix-extends
@@ -520,7 +544,8 @@
             :expand ((:free (xs) (take 0 xs)) (take 1 (nthcdr n x))
                      (fn-scc-octet-listp (list (car (nthcdr n x)))))
             :in-theory (disable take nthcdr fn-scc-octet-listp
-                                fn-hrcur-octet-listp-append)))))
+                                fn-hrcur-octet-listp-append
+                                fn-hrcur-nthcdr-successor)))))
 
 (defun fn-hrcur-descriptorp (d)
   (declare (xargs :guard t :verify-guards nil))
@@ -941,3 +966,430 @@
 (in-theory (disable fn-hrcur-byte-begin fn-hrcur-byte-tick fn-hrcur-byte-invariantp
                     fn-hrcur-byte-rest fn-hrcur-census-begin fn-hrcur-census-tick
                     fn-hrcur-census-invariantp fn-hrcur-census-total))
+
+; Borrowed span component. Source/pin/pass authority is carried by the outer
+; authenticated reader. This boundary requests one absolute payload position;
+; supply accepts only the currently requested position and never materializes
+; a source string/symbol. OP/PKG are canonical target descriptors, supplied by
+; the name normalizer where needed. The wire model below is proof-only.
+(DEFUN FN-HRCUR-SPAN-SHAPEP (C)
+          (DECLARE (XARGS :GUARD T))
+          (AND (FN-HRCUR-WIDTHP C 7)
+               (MEMBER-EQ (FN-HRCUR-FIELD 0 C)
+                          '(:PREFIX :BODY :DONE :REFUSED))
+               (NATP (FN-HRCUR-FIELD 2 C))
+               (< (FN-HRCUR-FIELD 2 C)
+                  *FN-HRCUR-U64-BOUND*)
+               (NATP (FN-HRCUR-FIELD 3 C))
+               (< (FN-HRCUR-FIELD 3 C)
+                  *FN-HRCUR-U64-BOUND*)
+               (NATP (FN-HRCUR-FIELD 6 C))
+               (< (FN-HRCUR-FIELD 6 C)
+                  *FN-HRCUR-U64-BOUND*)))
+
+(DEFUN FN-HRCUR-SPAN-BEGIN (OP PKG OFFSET COUNT CAPTURE LEASE)
+          (DECLARE (XARGS :GUARD T))
+          (IF (AND (MEMBER-EQUAL OP '(0 3 4 6))
+                   (NATP PKG)
+                   (< PKG 3)
+                   (OR (EQUAL OP 4) (EQUAL PKG 0))
+                   (NATP OFFSET)
+                   (< OFFSET *FN-HRCUR-U64-BOUND*)
+                   (NATP COUNT)
+                   (< COUNT *FN-HRCUR-U64-BOUND*)
+                   (< (+ OFFSET COUNT)
+                      *FN-HRCUR-U64-BOUND*)
+                   (IMPLIES (EQUAL OP 0) (EQUAL COUNT 0)))
+              (LIST :PREFIX
+                    (IF (OR (EQUAL OP 0)
+                            (AND (EQUAL OP 6) (EQUAL COUNT 0)))
+                        '(0)
+                      (CONS OP
+                            (IF (EQUAL OP 4)
+                                (CONS PKG (FN-SCC-NAT-OCTETS COUNT))
+                              (FN-SCC-NAT-OCTETS COUNT))))
+                    OFFSET
+                    COUNT CAPTURE LEASE (+ OFFSET COUNT))
+            (LIST :REFUSED NIL 0 0 CAPTURE LEASE 0)))
+
+(DEFUN FN-HRCUR-SPAN-TICK (C)
+          (DECLARE (XARGS :GUARD T))
+          (LET ((PHASE (FN-HRCUR-FIELD 0 C))
+                (P (FN-HRCUR-FIELD 1 C))
+                (OFFSET (FN-HRCUR-FIELD 2 C))
+                (LEFT (FN-HRCUR-FIELD 3 C))
+                (CAPTURE (FN-HRCUR-FIELD 4 C))
+                (LEASE (FN-HRCUR-FIELD 5 C))
+                (END (FN-HRCUR-FIELD 6 C)))
+            (COND ((NOT (FN-HRCUR-SPAN-SHAPEP C))
+                   (MV '(:REFUSED :SPAN-CURSOR)
+                       NIL
+                       (LIST :REFUSED NIL 0 0 CAPTURE LEASE 0)))
+                  ((EQ PHASE :PREFIX)
+                   (COND ((AND (CONSP P) (FN-SCC-OCTETP (CAR P)))
+                          (MV :EMIT (CAR P)
+                              (LIST :PREFIX (CDR P)
+                                    OFFSET LEFT CAPTURE LEASE END)))
+                         ((NULL P)
+                          (MV :CONTINUE NIL
+                              (LIST :BODY
+                                    NIL OFFSET LEFT CAPTURE LEASE END)))
+                         (T (MV '(:REFUSED :SPAN-CURSOR) NIL C))))
+                  ((EQ PHASE :BODY)
+                   (IF (< 0 LEFT)
+                       (MV (LIST :NEED-BYTE OFFSET) NIL C)
+                     (MV :PREPARED NIL
+                         (LIST :DONE NIL OFFSET 0 CAPTURE LEASE END))))
+                  ((EQ PHASE :DONE) (MV :PREPARED NIL C))
+                  (T (MV '(:REFUSED :SPAN-CURSOR) NIL C)))))
+
+(DEFUN FN-HRCUR-SPAN-SUPPLY (C POSITION BYTE)
+          (DECLARE (XARGS :GUARD T))
+          (IF (AND (FN-HRCUR-SPAN-SHAPEP C)
+                   (EQ (FN-HRCUR-FIELD 0 C) :BODY)
+                   (< 0 (FN-HRCUR-FIELD 3 C))
+                   (EQUAL POSITION (FN-HRCUR-FIELD 2 C))
+                   (FN-SCC-OCTETP BYTE)
+                   (< (+ 1 (FN-HRCUR-FIELD 2 C))
+                      *FN-HRCUR-U64-BOUND*))
+              (MV :EMIT BYTE
+                  (LIST :BODY NIL (+ 1 (FN-HRCUR-FIELD 2 C))
+                        (1- (FN-HRCUR-FIELD 3 C))
+                        (FN-HRCUR-FIELD 4 C)
+                        (FN-HRCUR-FIELD 5 C)
+                        (FN-HRCUR-FIELD 6 C)))
+            (MV '(:REFUSED :SPAN-RESPONSE) NIL C)))
+
+(DEFUN FN-HRCUR-SPAN-INVARIANTP (C POOL)
+          (DECLARE (XARGS :GUARD T :VERIFY-GUARDS NIL))
+          (AND (FN-HRCUR-SPAN-SHAPEP C)
+               (FN-SCC-OCTET-LISTP POOL)
+               (EQUAL (+ (FN-HRCUR-FIELD 2 C)
+                         (FN-HRCUR-FIELD 3 C))
+                      (FN-HRCUR-FIELD 6 C))
+               (<= (FN-HRCUR-FIELD 6 C) (LEN POOL))
+               (LET ((PHASE (FN-HRCUR-FIELD 0 C)))
+                 (COND ((EQ PHASE :PREFIX)
+                        (FN-SCC-OCTET-LISTP (FN-HRCUR-FIELD 1 C)))
+                       ((EQ PHASE :BODY)
+                        (NULL (FN-HRCUR-FIELD 1 C)))
+                       ((EQ PHASE :DONE)
+                        (AND (NULL (FN-HRCUR-FIELD 1 C))
+                             (EQUAL (FN-HRCUR-FIELD 3 C) 0)))
+                       (T NIL)))))
+
+(DEFUN FN-HRCUR-SPAN-REST (C POOL)
+          (DECLARE (XARGS :GUARD T :VERIFY-GUARDS NIL))
+          (APPEND (IF (EQ (FN-HRCUR-FIELD 0 C) :PREFIX)
+                      (FN-HRCUR-FIELD 1 C)
+                    NIL)
+                  (FN-HRCUR-PREFIX (NFIX (FN-HRCUR-FIELD 3 C))
+                                   (FN-HRCUR-TAIL (NFIX (FN-HRCUR-FIELD 2 C))
+                                                  POOL))))
+
+(DEFUN FN-HRCUR-SPAN-WIRE (OP PKG OFFSET COUNT POOL)
+         (DECLARE (XARGS :GUARD T :VERIFY-GUARDS NIL))
+         (IF (OR (EQUAL OP 0)
+                 (AND (EQUAL OP 6) (EQUAL COUNT 0)))
+             '(0)
+          (CONS
+              OP
+              (APPEND (IF (EQUAL OP 4)
+                          (CONS PKG (FN-SCC-NAT-OCTETS COUNT))
+                        (FN-SCC-NAT-OCTETS COUNT))
+                      (FN-HRCUR-PREFIX COUNT (FN-HRCUR-TAIL OFFSET POOL))))))
+
+(DEFTHM FN-HRCUR-SPAN-BEGIN-REFINES-WIRE
+         (IMPLIES
+          (AND (MEMBER-EQUAL OP '(0 3 4 6))
+               (NATP PKG)
+               (< PKG 3)
+               (OR (EQUAL OP 4) (EQUAL PKG 0))
+               (NATP OFFSET)
+               (NATP COUNT)
+               (< (+ OFFSET COUNT)
+                  *FN-HRCUR-U64-BOUND*)
+               (IMPLIES (EQUAL OP 0) (EQUAL COUNT 0))
+               (FN-SCC-OCTET-LISTP POOL)
+               (<= (+ OFFSET COUNT) (LEN POOL)))
+          (AND
+            (FN-HRCUR-SPAN-INVARIANTP
+                 (FN-HRCUR-SPAN-BEGIN OP PKG OFFSET COUNT CAPTURE LEASE)
+                 POOL)
+            (EQUAL
+                 (FN-HRCUR-SPAN-REST
+                      (FN-HRCUR-SPAN-BEGIN OP PKG OFFSET COUNT CAPTURE LEASE)
+                      POOL)
+                 (FN-HRCUR-SPAN-WIRE OP PKG OFFSET COUNT POOL))))
+         :HINTS
+         (("Goal"
+            :DO-NOT-INDUCT T
+            :IN-THEORY
+            (E/D (FN-HRCUR-SPAN-BEGIN FN-HRCUR-SPAN-INVARIANTP
+                                      FN-HRCUR-SPAN-SHAPEP FN-HRCUR-SPAN-REST
+                                      FN-HRCUR-SPAN-WIRE FN-SCC-NAT-OCTETS
+                                      FN-SCC-OCTETP FN-SCC-OCTET-LISTP)
+                 (FN-HRCUR-PREFIX FN-HRCUR-TAIL FN-SCC-LE-DIGITS)))))
+
+(DEFTHM FN-HRCUR-SPAN-TICK-REFINES-WIRE
+         (IMPLIES
+          (FN-HRCUR-SPAN-INVARIANTP C POOL)
+          (AND
+           (FN-HRCUR-SPAN-INVARIANTP (MV-NTH 2 (FN-HRCUR-SPAN-TICK C))
+                                     POOL)
+           (EQUAL
+              (FN-HRCUR-SPAN-REST C POOL)
+              (IF (EQ (MV-NTH 0 (FN-HRCUR-SPAN-TICK C))
+                      :EMIT)
+                  (CONS (MV-NTH 1 (FN-HRCUR-SPAN-TICK C))
+                        (FN-HRCUR-SPAN-REST (MV-NTH 2 (FN-HRCUR-SPAN-TICK C))
+                                            POOL))
+                (FN-HRCUR-SPAN-REST (MV-NTH 2 (FN-HRCUR-SPAN-TICK C))
+                                    POOL)))
+           (IMPLIES (EQ (MV-NTH 0 (FN-HRCUR-SPAN-TICK C))
+                        :EMIT)
+                    (FN-SCC-OCTETP (MV-NTH 1 (FN-HRCUR-SPAN-TICK C))))
+           (IMPLIES (EQ (MV-NTH 0 (FN-HRCUR-SPAN-TICK C))
+                        :PREPARED)
+                    (EQUAL (FN-HRCUR-SPAN-REST C POOL)
+                           NIL))))
+         :HINTS
+         (("Goal"
+            :DO-NOT-INDUCT T
+            :IN-THEORY
+            (E/D (FN-HRCUR-SPAN-TICK FN-HRCUR-SPAN-INVARIANTP
+                                     FN-HRCUR-SPAN-SHAPEP FN-HRCUR-SPAN-REST)
+                 (FN-HRCUR-PREFIX FN-HRCUR-TAIL)))))
+
+(LOCAL (DEFTHM FN-HRCUR-CAR-TAIL-IS-NTH
+                 (IMPLIES (NATP POSITION)
+                          (EQUAL (CAR (FN-HRCUR-TAIL POSITION POOL))
+                                 (NTH POSITION POOL)))
+                 :HINTS (("Goal" :INDUCT (FN-HRCUR-TAIL POSITION POOL)
+                                 :IN-THEORY (ENABLE FN-HRCUR-TAIL NTH)))))
+
+(LOCAL
+         (DEFTHM FN-HRCUR-SPAN-PAYLOAD-STEP
+          (IMPLIES
+           (AND (NATP POSITION)
+                (NATP COUNT)
+                (< 0 COUNT))
+           (EQUAL
+               (FN-HRCUR-PREFIX COUNT (FN-HRCUR-TAIL POSITION POOL))
+               (CONS (NTH POSITION POOL)
+                     (FN-HRCUR-PREFIX (1- COUNT)
+                                      (FN-HRCUR-TAIL (+ 1 POSITION) POOL)))))
+          :HINTS
+          (("Goal" :DO-NOT-INDUCT T
+                   :USE ((:INSTANCE FN-HRCUR-NTHCDR-SUCCESSOR (N POSITION)
+                                    (X POOL))
+                         (:INSTANCE FN-HRCUR-CAR-TAIL-IS-NTH))
+                   :EXPAND ((TAKE COUNT (NTHCDR POSITION POOL)))
+                   :IN-THEORY (DISABLE TAKE NTHCDR
+                                       FN-HRCUR-PREFIX FN-HRCUR-TAIL)))))
+
+(LOCAL (DEFTHM FN-HRCUR-TAIL-CONSP-WITHIN
+                 (IMPLIES (AND (NATP POSITION)
+                               (< POSITION (LEN POOL)))
+                          (CONSP (NTHCDR POSITION POOL)))
+                 :HINTS (("Goal" :INDUCT (NTHCDR POSITION POOL)
+                                 :IN-THEORY (ENABLE NTHCDR)))))
+
+(LOCAL
+          (DEFTHM FN-HRCUR-POOL-BYTE
+            (IMPLIES (AND (FN-SCC-OCTET-LISTP POOL)
+                          (NATP POSITION)
+                          (< POSITION (LEN POOL)))
+                     (FN-SCC-OCTETP (NTH POSITION POOL)))
+            :HINTS (("Goal" :INDUCT (NTH POSITION POOL)
+                            :IN-THEORY (ENABLE NTH FN-SCC-OCTET-LISTP
+                                               FN-SCC-OCTETP)))))
+
+(DEFTHM FN-HRCUR-SPAN-SUPPLY-REFINES-WIRE
+         (IMPLIES
+          (AND (FN-HRCUR-SPAN-INVARIANTP C POOL)
+               (EQ (FN-HRCUR-FIELD 0 C) :BODY)
+               (< 0 (FN-HRCUR-FIELD 3 C))
+               (EQUAL POSITION (FN-HRCUR-FIELD 2 C))
+               (EQUAL BYTE (NTH POSITION POOL)))
+          (AND
+            (EQUAL (MV-NTH 0
+                           (FN-HRCUR-SPAN-SUPPLY C POSITION BYTE))
+                   :EMIT)
+            (EQUAL (MV-NTH 1
+                           (FN-HRCUR-SPAN-SUPPLY C POSITION BYTE))
+                   BYTE)
+            (FN-HRCUR-SPAN-INVARIANTP
+                 (MV-NTH 2
+                         (FN-HRCUR-SPAN-SUPPLY C POSITION BYTE))
+                 POOL)
+            (EQUAL (FN-HRCUR-SPAN-REST C POOL)
+                   (CONS BYTE
+                         (FN-HRCUR-SPAN-REST
+                              (MV-NTH 2
+                                      (FN-HRCUR-SPAN-SUPPLY C POSITION BYTE))
+                              POOL)))))
+         :HINTS
+         (("Goal"
+           :DO-NOT-INDUCT T
+           :USE ((:INSTANCE FN-HRCUR-SPAN-PAYLOAD-STEP
+                            (POSITION (FN-HRCUR-FIELD 2 C))
+                            (COUNT (FN-HRCUR-FIELD 3 C))))
+           :IN-THEORY
+           (E/D
+               (FN-HRCUR-SPAN-SUPPLY FN-HRCUR-SPAN-INVARIANTP
+                                     FN-HRCUR-SPAN-SHAPEP FN-HRCUR-SPAN-REST)
+               (FN-HRCUR-SPAN-TICK-REFINES-WIRE FN-HRCUR-SPAN-PAYLOAD-STEP
+                                                TAKE FN-HRCUR-PREFIX
+                                                FN-HRCUR-TAIL NTH NTHCDR)))))
+
+(DEFTHM FN-HRCUR-SPAN-SUPPLY-REFUSES-WRONG-POSITION
+         (IMPLIES (NOT (EQUAL POSITION (FN-HRCUR-FIELD 2 C)))
+                  (AND (EQUAL (MV-NTH 0
+                                      (FN-HRCUR-SPAN-SUPPLY C POSITION BYTE))
+                              '(:REFUSED :SPAN-RESPONSE))
+                       (EQUAL (MV-NTH 2
+                                      (FN-HRCUR-SPAN-SUPPLY C POSITION BYTE))
+                              C)))
+         :HINTS (("Goal" :IN-THEORY (ENABLE FN-HRCUR-SPAN-SUPPLY))))
+
+(DEFTHM FN-HRCUR-SPAN-KEEPS-CAPTURE-LEASE
+         (AND
+          (EQUAL (FN-HRCUR-FIELD 4 (MV-NTH 2 (FN-HRCUR-SPAN-TICK C)))
+                 (FN-HRCUR-FIELD 4 C))
+          (EQUAL (FN-HRCUR-FIELD 5 (MV-NTH 2 (FN-HRCUR-SPAN-TICK C)))
+                 (FN-HRCUR-FIELD 5 C))
+          (EQUAL
+             (FN-HRCUR-FIELD 4
+                             (MV-NTH 2
+                                     (FN-HRCUR-SPAN-SUPPLY C POSITION BYTE)))
+             (FN-HRCUR-FIELD 4 C))
+          (EQUAL
+             (FN-HRCUR-FIELD 5
+                             (MV-NTH 2
+                                     (FN-HRCUR-SPAN-SUPPLY C POSITION BYTE)))
+             (FN-HRCUR-FIELD 5 C)))
+         :HINTS (("Goal" :IN-THEORY (ENABLE FN-HRCUR-SPAN-TICK
+                                            FN-HRCUR-SPAN-SUPPLY))))
+
+(LOCAL (DEFTHM FN-HRCUR-SPAN-TAIL-LENGTH
+                 (IMPLIES (AND (NATP POSITION)
+                               (<= POSITION (LEN POOL)))
+                          (EQUAL (LEN (NTHCDR POSITION POOL))
+                                 (- (LEN POOL) POSITION)))
+                 :HINTS (("Goal" :INDUCT (NTHCDR POSITION POOL)
+                                 :IN-THEORY (ENABLE NTHCDR)))))
+
+(LOCAL
+           (DEFTHM FN-HRCUR-SPAN-SLICE-OCTETS
+             (IMPLIES (AND (FN-SCC-OCTET-LISTP POOL)
+                           (NATP OFFSET)
+                           (NATP COUNT)
+                           (<= (+ OFFSET COUNT) (LEN POOL)))
+                      (FN-SCC-OCTET-LISTP (TAKE COUNT (NTHCDR OFFSET POOL))))
+             :HINTS
+             (("Goal" :DO-NOT-INDUCT T
+               :USE ((:instance fn-scc-octet-listp-facts (x pool) (n offset))
+                     (:instance fn-scc-octet-listp-take
+                                (x (nthcdr offset pool)) (n count))
+                     (:instance fn-hrcur-span-tail-length (position offset)))
+               :IN-THEORY (DISABLE TAKE NTHCDR FN-SCC-OCTET-LISTP
+                                  fn-scc-octet-listp-facts
+                                  fn-scc-octet-listp-take
+                                  fn-hrcur-span-tail-length)))))
+
+(LOCAL
+          (DEFTHM FN-HRCUR-SPAN-CHARS-ROUNDTRIP
+            (IMPLIES (FN-SCC-OCTET-LISTP BYTES)
+                     (EQUAL (FN-SCC-CHARS-OCTETS (FN-SCC-OCTETS-CHARS BYTES))
+                            BYTES))
+            :HINTS
+            (("Goal" :INDUCT (FN-SCC-OCTET-LISTP BYTES)
+                     :IN-THEORY (ENABLE FN-SCC-OCTET-LISTP
+                                        FN-SCC-OCTETP FN-SCC-CHARS-OCTETS
+                                        FN-SCC-OCTETS-CHARS)))))
+
+(local
+ (defthm fn-hrcur-take-positive-consp
+   (implies (and (natp count) (< 0 count)) (consp (take count x)))
+   :hints (("Goal" :expand ((take count x)) :in-theory (disable take)))))
+
+(DEFTHM FN-HRCUR-SPAN-OCTETS-REFINES-ABSTRACT-CODEC
+         (IMPLIES
+          (AND (FN-SCC-OCTET-LISTP POOL)
+               (NATP OFFSET)
+               (NATP COUNT)
+               (<= (+ OFFSET COUNT) (LEN POOL)))
+          (EQUAL
+               (FN-HRCUR-SPAN-WIRE 6 0 OFFSET COUNT POOL)
+               (FN-SCC-ENCODE (FN-HDC-ABSTRACT (FN-HDC-SPAN 6 0 OFFSET COUNT)
+                                               POOL))))
+         :HINTS
+         (("Goal"
+               :DO-NOT-INDUCT T
+               :IN-THEORY
+               (E/D (FN-HRCUR-SPAN-WIRE FN-HDC-SPAN FN-HDC-ABSTRACT
+                                        FN-SCC-PROGRAM FN-SCC-OCTETS-VALUEP)
+                    (FN-SCC-ATOM-OCTETS FN-SCC-NAT-OCTETS TAKE NTHCDR)))))
+
+(defthm fn-hrcur-span-string-refines-abstract-codec
+  (implies (and (fn-scc-octet-listp pool) (natp offset) (natp count)
+                (<= (+ offset count) (len pool)))
+           (equal (fn-hrcur-span-wire 3 0 offset count pool)
+                  (fn-scc-encode
+                    (fn-hdc-abstract (fn-hdc-span 3 0 offset count) pool))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory
+           (e/d (fn-hrcur-span-wire fn-hdc-span fn-hdc-abstract
+                 fn-scc-program fn-scc-octets-valuep fn-scc-atom-octets
+                 fn-scc-string-octets)
+                (fn-scc-nat-octets fn-scc-chars-octets
+                 fn-scc-octets-chars take nthcdr)))))
+
+; Logical productive-work measure. A pending byte request waits for the reader;
+; all other nonterminal ticks and every authenticated supply make progress.
+(defun fn-hrcur-span-work (c)
+  (declare (xargs :guard t :verify-guards nil))
+  (case (fn-hrcur-field 0 c)
+    (:prefix (+ 2 (len (fn-hrcur-field 1 c)) (nfix (fn-hrcur-field 3 c))))
+    (:body (+ 1 (nfix (fn-hrcur-field 3 c))))
+    (otherwise 0)))
+
+(defthm fn-hrcur-span-tick-progress-or-request
+  (implies (and (fn-hrcur-span-invariantp c pool)
+                (not (eq (fn-hrcur-field 0 c) :done)))
+           (or (< (fn-hrcur-span-work (mv-nth 2 (fn-hrcur-span-tick c)))
+                  (fn-hrcur-span-work c))
+               (and (equal (mv-nth 0 (fn-hrcur-span-tick c))
+                           (list :need-byte (fn-hrcur-field 2 c)))
+                    (equal (mv-nth 2 (fn-hrcur-span-tick c)) c))))
+  :hints (("Goal" :do-not-induct t
+           :cases ((eq (fn-hrcur-field 0 c) :prefix)
+                   (eq (fn-hrcur-field 0 c) :body))
+           :expand ((len (fn-hrcur-field 1 c))
+                    (fn-scc-octet-listp (fn-hrcur-field 1 c)))
+           :in-theory
+           (e/d (fn-hrcur-span-work fn-hrcur-span-tick
+                 fn-hrcur-span-invariantp fn-hrcur-span-shapep)
+                (fn-hrcur-span-tick-refines-wire fn-hrcur-span-rest
+                 fn-scc-octet-listp len)))))
+
+(defthm fn-hrcur-span-supply-progress
+  (implies (and (fn-hrcur-span-invariantp c pool)
+                (eq (fn-hrcur-field 0 c) :body)
+                (< 0 (fn-hrcur-field 3 c))
+                (equal position (fn-hrcur-field 2 c))
+                (equal byte (nth position pool)))
+           (< (fn-hrcur-span-work
+                 (mv-nth 2 (fn-hrcur-span-supply c position byte)))
+              (fn-hrcur-span-work c)))
+  :hints (("Goal" :use ((:instance fn-hrcur-pool-byte))
+           :in-theory
+           (e/d (fn-hrcur-span-work fn-hrcur-span-supply
+                 fn-hrcur-span-invariantp fn-hrcur-span-shapep)
+                (fn-hrcur-span-supply-refines-wire fn-hrcur-span-rest nth)))))
+
+(in-theory (disable fn-hrcur-span-shapep fn-hrcur-span-begin
+                    fn-hrcur-span-tick fn-hrcur-span-supply
+                    fn-hrcur-span-invariantp fn-hrcur-span-rest
+                    fn-hrcur-span-wire fn-hrcur-span-work))

@@ -3211,7 +3211,11 @@ fragment's total ADU length) is past `max-adu-octets` is refused
 answer unchanged (`fn-bpnpf-admission-within-profile-is-the-channel-answer`).
 A family therefore never grows an ADU its profile does not admit. The held
 image's bound is `max-held-octets`: the step and the family plan check the
-machine state's max-octets. The lifecycle-record count between rotations is
+machine state's max-octets. The job host reads `fn-bpnpf-held-octets` for
+its `:family` and matching `:persist-result` image limit; the received-wire
+`max-bundle-octets` bound is not reused for the reassembled image. This
+allows a family whose fragments fit the wire budget and whose whole image
+fits held capacity even when the whole image exceeds one received wire. The lifecycle-record count between rotations is
 a work bound.
 
 | Limit | Value today | Must satisfy |
@@ -4976,3 +4980,14 @@ limits or make the full open resumable. Profile repair after a mismatched
 restore and codec/runtime profile widening remain PKT-311b/c. SCN-1008 names
 the actual row and checkpoint restart cases; matching native execution is
 pending, so this source increment is not a qualified recovery claim.
+
+
+The actual recovered-held event builder `fn-bphp-recover-auto-event` and its
+checkpoint-seeded replay fold are guard-verified by `bp-recovery-guards`
+(PRF-214). The caller `fnn-bps-open` supplies the base-state predicate through
+its existing initial machine invariant gate. Decoded row facts establish the
+natural epoch/operation frontier and the kind-5 bundle shape; the fold carries
+its octet and arrival scalars. This execution contract adds no runtime
+whole-held-state recognizer and leaves replay's logical result unchanged.
+SCN-1008's native recovery cases and the original scale cases still require
+matching image evidence; a guard proof is not a timing or deployment claim.

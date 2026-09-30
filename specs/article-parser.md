@@ -187,7 +187,3 @@ SCN-1015 includes both final retained-hypothesis removals: the codec-ceiling
 counterexample is a proved finite symbolic body, without allocating billions
 of cons cells. These are logical source proofs, with no new served algorithm.
 
-The arena cursor's complete tick/EOF and actual NOV join is now a proved
-source component (`legacy-parser-catalog`); the assembler, formatter,
-pins/funding, actual host route and matching image evidence remain open
-before claiming complete productive OVER.

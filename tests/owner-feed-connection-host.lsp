@@ -16,13 +16,13 @@
 (defconst *foch-mode*
   (fn-fc-step *foch-stream* '(50 48 48 32 111 107 13 10)))
 (assert-event (equal (fn-owner-feed-connection-result-kind *foch-mode*) :mode))
-; A MODE STREAM refusal other than 500/501 (here 400) is a phase refusal.
+; A temporary MODE STREAM 400 closes this connection without a peer stop.
 (defconst *foch-mode-400*
   (fn-fc-step (fn-fc-next-state *foch-mode*) '(52 48 48 32 110 111 13 10)))
-(assert-event (equal (fn-fc-kind *foch-mode-400*) :refused))
+(assert-event (equal (fn-fc-kind *foch-mode-400*) :closed))
 (assert-event
  (equal (fn-owner-feed-connection-result-kind *foch-mode-400*)
-        :connection-refused))
+        :closed))
 ; PRF-207: 500 (the peer does not know MODE STREAM) is the IHAVE fallback:
 ; :ready on the same connection, form :ihave, and ACL2's one log line.
 (defconst *foch-mode-500*

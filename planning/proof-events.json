@@ -2585,6 +2585,10 @@
         {
           "kind": "theorem",
           "name": "fn-olog-connection-line-is-one-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-olog-socket-connection-line-is-one-line"
         }
       ]
     },
@@ -6896,7 +6900,8 @@
     },
     {
       "id": "PRF-203",
-      "events": []
+      "events": [],
+      "pending_subject": "Proved source library components fn-osr-ready-establishes-catalog-recovery-context and fn-osr-ready-crash-recovery-keeps-catalog-context remain named in the specification and source evidence. No host line reaches the coherence-establishment predicate; actual physical canonical writer/load and owner cold recovery composition remain open. No host adoption or qualification claim."
     },
     {
       "id": "PRF-204",
@@ -8086,7 +8091,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cbud-deltas-refusal-keeps-the-capacity-held"
+          "name": "fn-cbud-deltas-refusal-keeps-the-machine-held"
         },
         {
           "kind": "theorem",
@@ -15277,7 +15282,35 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-hsb-scratch-within-the-reservation"
+          "name": "fn-hsb-scratch-within-the-machine-term"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsb-buckets-are-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsb-mapped-address-is-one-source"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsb-overrides-of-word-is-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pxy-direct-unless-trusted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pxy-step-reads-within-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pxy-handover-keeps-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pxy-observe-keeps-the-read-bound"
         }
       ]
     },
@@ -17611,6 +17644,10 @@
       "events": [
         {
           "kind": "theorem",
+          "name": "fn-osr-finish-preserves-full-retained-carry"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-osr-open-establishes-full-retained-carry"
         },
         {
@@ -17658,6 +17695,48 @@
         {
           "kind": "theorem",
           "name": "fn-cvcg-accepted-publication-count-fits-profile"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1100",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-whl-success-requires-observed-clear-owner",
+          "note": "Q10d reachable live-owner readiness; literal positive and hypothesis-removal teeth in web-health-tests/web-session-tests. Physical observations and no-second-process are native scope, not a theorem."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-whl-answer-body-is-bounded",
+          "note": "Q10d reachable live-owner readiness; literal positive and hypothesis-removal teeth in web-health-tests/web-session-tests. Physical observations and no-second-process are native scope, not a theorem."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-web-health-step-preserves-sessions-and-bounds-body",
+          "note": "Q10d reachable live-owner readiness; literal positive and hypothesis-removal teeth in web-health-tests/web-session-tests. Physical observations and no-second-process are native scope, not a theorem."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1106",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-prf-acquire-preserves-pool-funding"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prf-acquired-file-is-held"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1122",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-fc-temporary-mode-refusal-closes-without-stopping"
         }
       ]
     }
