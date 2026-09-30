@@ -314,7 +314,7 @@
         "PRF-016"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-wire-unstuff-stuff-line",
         "fn-wire-feed-proper-append",
@@ -868,7 +868,7 @@
         "PRF-007"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-nntp-unknown-group-preserves-session",
         "fn-nntp-msgid-preserves-session",
@@ -1517,7 +1517,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "note": "Decision D10-a, lane w11/clock-seam. Keystones fn-own-observe-refusal-names-a-contradiction (books/owner-invariants.lisp) and fn-post-without-a-clock-refuses-with-the-clock-line (books/nntp-post.lisp), with fn-own-observe-outcome-is-one-of-three and fn-own-observe-outcome-decides-the-clock-by-definition named for what they are and cited by :use. Teeth are evaluated in tests/acl2/owner-tests.lisp (the served-path second post on one connection, the same-reading collision, the clock 441 with an empty queue, DATE 503, and one-event recovery) and tests/acl2/nntp-post-tests.lisp (one must-fail per hypothesis). OPEN under this target: two submissions inside one millisecond still share a generated Message-ID, because fn-clock-later-observationp is non-strict; separating them needs the owner to remember the reading it last minted under and is not done here.",
       "events": [
         "fn-own-observe-refusal-names-a-contradiction",
@@ -1735,7 +1735,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "note": "Lane w11/owner-survival. CLAIMED as PRF-035 and renumbered to PRF-040 on merging dev: 035 had already gone to w11/one-owner's frame trailer, 036 to w11/bytestore-k2, 037 to w11/checkpoint-validator, 038 to w11/bp-node and 039 to w11/auth-live, all inside one evening. Keystones fn-own-fault-keeps-every-other-connection, fn-own-fault-clears-the-faulted-submission and fn-own-fault-reply-is-not-a-post-outcome (books/owner-fault.lisp), with fn-own-fault-closes-the-faulted-connection, fn-own-fault-keeps-another-connections-submission, fn-own-fault-releases-the-faulted-transaction and fn-own-fault-is-not-a-store-event beside them. Teeth are evaluated in tests/acl2/owner-tests.lisp on the same witness the served POST scenario builds (*own-taken*: connection 4's submission in flight, reader 3 open), including one violating value per hypothesis and the relation holding after a fault. The host side is tests/test_owner.py OwnerSurvivesAFaultTests, which injects an unexpected exception on one connection and asserts the other is still served. TEETH (tests/acl2/owner-fault-tests.lisp, 2026-09-24): every owner-fault event above has a reachable witness on *own-taken*, and one must-fail per violable hypothesis: fn-own-fault-keeps-every-other-connection 1 (other = id), fn-own-fault-clears-the-faulted-submission 1 (the in-flight submission is another connection's), fn-own-fault-keeps-another-connections-submission 1 (it is the faulted connection's), fn-own-fault-releases-the-faulted-transaction 1 (a reader faults while connection 4 holds the transaction; the review had found no violating value). REDUNDANT HYPOTHESES: the (fn-own-inflight o) hypothesis of fn-own-fault-clears-the-faulted-submission and of fn-own-fault-keeps-another-connections-submission can never be violated usefully -- with nothing in flight the slot stays empty -- and the test book proves both conclusions without it (oft-clears-the-faulted-submission-needs-only-the-id, oft-keeps-another-connections-submission-needs-only-the-id). The statements keep the hypothesis; removing it is a later decision. fn-own-fault-closes-the-faulted-connection, -is-not-a-store-event and -reply-is-not-a-post-outcome have no hypothesis and carry a witness only. EVIDENCE: persvati run-20260924T152544Z-e3c9, manifest planning/evidence/manifests/certify-20260924T152627Z-1775721.json: tests/acl2/owner-fault-tests passed, 4.0 s (books/owner-fault unchanged). OPEN under this target: nothing states that the HOST calls fn-own-fault at every point where it can fault -- the boundary's coverage is a code property, not a theorem -- and tools/run_reader.py has no such boundary at all. Native host calls fn-owner-fault through fnn-owner-serialized/fault-service, but at checkpoint 76901c1 also stops the service for unexpected serious conditions. The logical single-connection theorem does not establish native service survival; that actual-host obligation remains open. Shared-core failure and uncertain persistence require a global fence and are not justified as connection-local faults by this theorem.",
       "events": [
         "fn-own-fault-closes-the-faulted-connection",
@@ -1912,7 +1912,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "planning/evidence/manifests/certify-20260924T144913Z-1419146.json",
         "planning/evidence/manifests/certify-20260924T145118Z-1441609.json",
@@ -2489,7 +2489,7 @@
         "PRF-033"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner.lisp",
         "books/owner-invariants.lisp",
@@ -2553,7 +2553,7 @@
         "PRF-042"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "planning/evidence/manifests/certify-20260924T144913Z-1419146.json",
         "planning/evidence/manifests/certify-20260924T145118Z-1441609.json",
@@ -2595,7 +2595,7 @@
         "PRF-006"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-agent.lisp",
         "books/injection-invariants.lisp",
@@ -2624,7 +2624,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-log.lisp",
         "tests/acl2/owner-log-tests.lisp",
@@ -2710,7 +2710,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-clock-domain.lisp",
         "tests/acl2/bp-clock-domain-tests.lisp",
@@ -3091,7 +3091,7 @@
         "PRF-015"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner.lisp",
         "books/owner-invariants.lisp",
@@ -3305,7 +3305,7 @@
         "PRF-046"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-session-admission.lisp",
         "books/bp-app-handoff.lisp",
@@ -3530,7 +3530,7 @@
         "A-DURABILITY",
         "A-WRITE-ISOLATION"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-rotation-codec.lisp",
         "books/bp-fnbs-replay-append.lisp",
@@ -3765,7 +3765,7 @@
         "A-DURABILITY",
         "A-WRITE-ISOLATION"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-receipt-send.lisp",
         "tests/acl2/bp-node-receipt-send-tests.lisp",
@@ -3808,7 +3808,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-live-status.lisp",
         "tests/acl2/native-live-status-tests.lisp",
@@ -3854,7 +3854,7 @@
         "PRF-014"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-events-carried.lisp",
         "books/owner-commit-carried.lisp",
@@ -4108,7 +4108,7 @@
       "id": "PRF-095",
       "title": "The operator surface's verdicts are ACL2's: the served bound, refused-POST log lines, the credential change's effect, the developer init words, needs-upgrade and the rollback check",
       "milestone": "M5",
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "requirements": [
         "HST-001",
         "HST-002"
@@ -4882,7 +4882,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/consumer-owner-local-progress.lisp",
         "tests/acl2/consumer-owner-local-progress-tests.lisp",
@@ -5060,7 +5060,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-reclaim-pack.lisp",
         "tests/acl2/store-reclaim-pack-tests.lisp",
@@ -5111,7 +5111,7 @@
         "PRF-089"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-health.lisp",
         "tests/acl2/native-health-tests.lisp",
@@ -5201,7 +5201,7 @@
         "PRF-112"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-operator.lisp",
         "books/feed-connection.lisp",
@@ -5239,7 +5239,7 @@
         "PRF-119"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-maintenance-reserve.lisp",
         "tests/acl2/store-maintenance-reserve-tests.lisp",
@@ -5279,7 +5279,7 @@
         "PRF-120"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-channel-ingress.lisp",
         "tests/acl2/bp-channel-ingress-tests.lisp",
@@ -5483,7 +5483,7 @@
         "PRF-087"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-sct-renc-is-program",
         "fn-ockp-encode-batch-is-rows-program",
@@ -5580,7 +5580,7 @@
         "PRF-133"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-sct-load-is-decode-file",
         "fn-sctr-run-decode-is-run-decode",
@@ -5743,7 +5743,7 @@
         "PRF-120"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-bpnj-contact-next-is-the-two-scan-selection",
         "fn-bpnj-scan-finds-the-selected-job",
@@ -5775,7 +5775,7 @@
         "PRF-102"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-capacity-vector.lisp",
         "books/store-capacity-config.lisp",
@@ -5854,7 +5854,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/public-exposure.lisp",
         "books/public-exposure-rows.lisp",
@@ -6078,7 +6078,7 @@
         "PRF-130"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/outcome-class.lisp",
         "books/bp-run-class.lisp",
@@ -6125,7 +6125,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/hybrid-store-injected.lisp",
         "books/native-hybrid-control.lisp",
@@ -6322,7 +6322,7 @@
         "PRF-143"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-health.lisp",
         "books/native-control.lisp",
@@ -6448,7 +6448,7 @@
         "PRF-166"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/login-binding-live.lisp",
         "tests/acl2/login-binding-live-tests.lisp",
@@ -6492,7 +6492,7 @@
         "PRF-128"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-listener-set.lisp",
         "books/bp-node-forward-plan.lisp",
@@ -6697,7 +6697,7 @@
         "PRF-172"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "statement": "books/control-evidence.lisp fn-cev-evidence-decision-is-in-the-log: for every RAW, VERDICTS, RECORDS, CONFIGS and MSGID, with WS equal to (fn-ctl-articles-withdrawals RAW VERDICTS RECORDS CONFIGS) (the owner's maintained relation: the carried records are the journal of the carried archive, established by fn-own-start's refresh and preserved by fn-own-refresh through fn-ctl-refresh-withdrawals-is-the-journal and fn-ctl-articles-withdrawals-is-the-journal; the offline report establishes it by construction), the decision fn-cev-plan of the article fn-cev-find-article names is a member of WS iff it is a withdrawal record (fn-ctl-withdrawalp). fn-cev-decision-line-is-a-log-line: then the decision's words (fn-cev-decision-line) are \"decision=\" followed by the log's line for that record (fn-cev-log-line), a member of fn-cev-log-lines WS. Host: fn-cev-report is rendered by fn-cev-live-report from host/native-live-status-host.lisp fn-native-live-status-host-answer (host/native/control.lisp fnn-control-live-status-answer, under the owner mutex) and by fn-cev-offline-report from fn-native-live-status-host-offline (host/native/io.lisp fnn-command-live-report); the operator's words come from books/control-evidence-grammar.lisp fn-cevg-parse through books/native-operator.lisp's parse (fn-cevg-parse-kind-is-a-kind), dispatched as a status report. PKT-220: books/native-health.lisp fn-nls-obligations-figures-are-the-retention-figures: for every PROFILE, OC, CACHE and OBS, the report the running owner renders for :obligations (fn-nls-live-report, from fn-native-live-status-host-answer through fn-nh-answer-report) is \"obligations=\" (fn-rtf-pin-count S) \" reserved=\" (fn-rtf-reserved S) and the obligation lines, with S the owner's Store node; books/retention-figures.lisp fn-rtf-pin-count and fn-rtf-reserved are what the offline `store ROOT retention` prints (host/store-node-host.lisp fn-store-sn-pin-count, fn-store-sn-reserved, from host/native/io.lisp fnn-command-retention). EXTENSION (lane friend-blockers, 2026-09-27, the stranger rehearsal's stops): PKT-707: status prints `capacity articles-left=N` (fn-nls-capacity-words in the live report, fn-nls-capacity-line from host/native/io.lisp fnn-out-headroom); KEYSTONE fn-nls-articles-left-is-zero-when-full: at the transaction budget, or with the history bound spent, the line says 0. The decision `control evidence` prints is the refresh's own, fn-ctl-article-plan over the article's row (flip-L8-2).",
       "evidence": [
         "books/control-evidence.lisp",
@@ -6853,7 +6853,7 @@
         "PRF-087"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-ockp-estimate-is-len-file-octets",
         "fn-ockp-len-acc-is-len-program",
@@ -6972,7 +6972,7 @@
         "PRF-014"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-commit-carried.lisp",
         "books/owner-prepare-carried.lisp",
@@ -7035,7 +7035,7 @@
         "PRF-067"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/group-number-index.lisp",
         "books/group-bucket-index.lisp",
@@ -7095,7 +7095,7 @@
         "PRF-161"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/served-reply-buffer.lisp",
         "tests/acl2/served-reply-buffer-tests.lisp",
@@ -7119,7 +7119,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-scar-feed-span-is-feed-counted",
         "fn-scar-ocfg-read-span-is-read-tls-prefix",
@@ -7188,7 +7188,7 @@
         "PRF-118"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "create-fn-cat{correspondence}",
         "fn-cat-commit{correspondence}",
@@ -7263,7 +7263,7 @@
         "PRF-201"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "planning/evidence/catalog-slice-2026-09-26.md",
         "books/served.lisp",
@@ -7524,7 +7524,7 @@
         "PRF-183"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-heap-decide-admits-every-store-the-profile-admits",
         "fn-heap-decide-refuses-exactly-past-the-machine",
@@ -7598,7 +7598,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/config.lisp",
         "books/config-invariants.lisp",
@@ -7631,7 +7631,7 @@
         "PRF-161"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/public-exposure.lisp",
         "books/public-exposure-rows.lisp",
@@ -7708,7 +7708,7 @@
         "PRF-104"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-sct-decode-file-of-file-is-the-capture",
         "fn-sct-capture-of-tables-of-capture",
@@ -7750,7 +7750,7 @@
         "PRF-183"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-ockp-decide-defers-by-the-estimate"
       ],
@@ -7914,7 +7914,7 @@
         "PRF-175"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/login-binding-live.lisp",
         "tests/acl2/login-binding-live-tests.lisp",
@@ -7977,7 +7977,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-held-payload.lisp",
         "tests/acl2/bp-held-payload-tests.lisp",
@@ -8002,7 +8002,7 @@
         "PRF-186"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/config-carried-candidate.lisp",
         "tests/acl2/config-carried-candidate-tests.lisp",
@@ -8042,7 +8042,7 @@
         "PRF-081"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-bpnrb-checkpoint-decode-is-decode",
         "fn-bpnrb-selection-plan-is-selection-plan",
@@ -8070,7 +8070,7 @@
         "PRF-207"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/served-tls-prefix.lisp",
         "books/served-carried.lisp",
@@ -8108,7 +8108,7 @@
         "PRF-144"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-apr-replay-establishes-refs",
         "fn-apr-apply-record-keeps-refs",
@@ -8137,7 +8137,7 @@
         "PRF-201"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/catalog-number-index.lisp",
         "tests/acl2/catalog-number-index-tests.lisp",
@@ -8169,7 +8169,7 @@
         "PRF-120"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-job-cursor.lisp",
         "tests/acl2/bp-node-job-cursor-tests.lisp",
@@ -8208,7 +8208,7 @@
         "PRF-188"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/reader-open-carried.lisp",
         "tests/acl2/reader-open-carried-tests.lisp",
@@ -8236,7 +8236,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/nntp-session.lisp",
         "books/nntp-post.lisp",
@@ -8445,7 +8445,7 @@
         "PRF-198"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/connection-budget.lisp",
         "tests/acl2/connection-budget-tests.lisp",
@@ -8484,7 +8484,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/group-access.lisp",
         "books/nntp-auth.lisp",
@@ -8589,7 +8589,7 @@
         "PRF-222"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/consumer-bound.lisp",
         "books/config.lisp",
@@ -8968,7 +8968,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-results.lisp",
         "host/native/admin.lisp",
@@ -9131,7 +9131,7 @@
         "PRF-234"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/consumer-wait.lisp",
         "books/consumer-wait-codec.lisp",
@@ -9174,7 +9174,7 @@
         "PRF-199"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/replay-identity-index.lisp",
         "tests/acl2/replay-identity-index-tests.lisp",
@@ -9434,7 +9434,7 @@
         "PRF-161"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-scheduler.lisp",
         "books/served-plan.lisp",
@@ -9477,7 +9477,7 @@
         "PRF-210"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/config.lisp",
         "books/config-invariants.lisp",
@@ -9616,7 +9616,7 @@
         "PRF-242"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-recover-stream.lisp",
         "tests/acl2/store-recover-stream-tests.lisp",
@@ -9680,7 +9680,7 @@
         "PRF-263"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/consumer-withdrawal.lisp",
         "tests/acl2/consumer-withdrawal-tests.lisp",
@@ -9794,7 +9794,7 @@
         "PRF-270"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-log-reclaim.lisp",
         "tests/acl2/store-log-reclaim-tests.lisp",
@@ -9986,7 +9986,7 @@
         "PRF-259"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/config-owner-carried.lisp",
         "tests/acl2/config-owner-carried-tests.lisp",
@@ -10057,7 +10057,7 @@
         "PRF-191"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-parse-carried.lisp",
         "tests/acl2/owner-parse-carried-tests.lisp"
@@ -10088,7 +10088,7 @@
         "PRF-191"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/post-retain-carried.lisp",
         "tests/acl2/post-retain-carried-tests.lisp"
@@ -10113,7 +10113,7 @@
         "PRF-210"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/control-visible-indexed.lisp",
         "books/owner-refresh-indexed.lisp",
@@ -10229,7 +10229,7 @@
         "PRF-004"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/config-store-steps.lisp",
         "planning/evidence/control-quanta-2-2026-09-27.md",
@@ -10262,7 +10262,7 @@
         "PRF-191"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-log-ocl.lisp",
         "planning/evidence/control-quanta-2-2026-09-27.md",
@@ -10294,7 +10294,7 @@
         "PRF-209"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/config-owner-carried.lisp",
         "host/owner-host.lisp",
@@ -10321,7 +10321,7 @@
         "PRF-272"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-reader-view.lisp",
         "tests/acl2/owner-reader-view-tests.lisp",
@@ -10353,7 +10353,7 @@
         "PRF-278"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/snoc-list.lisp",
         "books/owner.lisp",
@@ -10377,7 +10377,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-profile-carried.lisp",
         "tests/acl2/store-profile-carried-tests.lisp"
@@ -10403,7 +10403,7 @@
         "PRF-191"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/post-retain-carried.lisp",
         "tests/acl2/post-retain-carried-tests.lisp"
@@ -10432,7 +10432,7 @@
         "PRF-261"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-recover-stream.lisp",
         "tests/acl2/store-recover-stream-tests.lisp",
@@ -10467,7 +10467,7 @@
         "PRF-144"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-prepare-served.lisp",
         "books/owner-prepare-served-ocl.lisp",
@@ -10510,7 +10510,7 @@
         "PRF-287"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-prepare-served.lisp",
         "books/owner-prepare-served-ocl.lisp",
@@ -10566,7 +10566,7 @@
         "PRF-144"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-identity-intern.lisp",
         "host/owner-host.lisp",
@@ -10722,7 +10722,7 @@
         "PRF-164"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-reader-read.lisp",
         "tests/acl2/owner-reader-read-tests.lisp",
@@ -10779,7 +10779,7 @@
         "PRF-209"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/config-owner-live-authorize.lisp",
         "tests/acl2/config-owner-live-authorize-tests.lisp",
@@ -11051,7 +11051,7 @@
         "PRF-165"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-feed-article.lisp",
         "tests/acl2/owner-feed-article-tests.lisp",
@@ -11109,7 +11109,7 @@
         "A-HOST",
         "A-DURABLE-EXTENT"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-arena-seal-extent-payload",
         "fn-arena-extent-get{correspondence}",
@@ -11148,7 +11148,7 @@
         "A-HOST",
         "A-DURABLE-EXTENT"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/frame-digest-buffer.lisp",
         "books/payload-extent-read.lisp",
@@ -11178,7 +11178,7 @@
         "A-HOST",
         "A-DURABLE-EXTENT"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/payload-arena-extent.lisp",
         "books/payload-arena-extent-logic.lisp",
@@ -11292,7 +11292,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/served.lisp",
         "books/served-tls-prefix.lisp",
@@ -11530,7 +11530,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/heap-reservation.lisp",
         "tests/acl2/heap-reservation-tests.lisp",
@@ -11675,7 +11675,7 @@
         "PRF-242"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/replay-identity-index.lisp",
         "tests/acl2/replay-identity-index-tests.lisp",
@@ -11701,7 +11701,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/payload-kinds.lisp",
         "tests/acl2/payload-kinds-tests.lisp",
@@ -11768,7 +11768,7 @@
         "PRF-288"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-time-admission.lisp",
         "books/peer-inbound-invariants.lisp",
@@ -11815,7 +11815,7 @@
         "A-CRYPTO",
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-log-buffer.lisp",
         "tests/acl2/store-log-buffer-tests.lisp",
@@ -11839,7 +11839,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-open-replay-refusal.lisp",
         "tests/acl2/store-open-replay-refusal-tests.lisp",
@@ -11892,7 +11892,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-log-walk-once.lisp",
         "books/store-log-txid.lisp",
@@ -11965,7 +11965,7 @@
         "A-DURABLE-EXTENT",
         "A-DURABLE-LZ"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/payload-lz-record.lisp",
         "books/payload-lz-replay.lisp",
@@ -12002,7 +12002,7 @@
         "PRF-271"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/reclaim-instant.lisp",
         "tests/acl2/reclaim-instant-tests.lisp",
@@ -12039,7 +12039,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-feed.lisp",
         "books/peer-feed-invariants.lisp",
@@ -12084,7 +12084,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-live-status.lisp",
         "tests/acl2/native-live-status-tests.lisp",
@@ -12145,7 +12145,7 @@
         "A-DURABLE-EXTENT",
         "A-DURABLE-LZ"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/payload-lz-append.lisp",
         "tests/acl2/payload-lz-append-tests.lisp",
@@ -12220,7 +12220,7 @@
         "PRF-343"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/protocol-table.lisp",
         "books/protocol-dispatch.lisp",
@@ -12248,7 +12248,7 @@
         "PRF-302"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-rcompat-reply-cat-is-rcompat-reply",
         "fn-rcompat-retrieval-cat-is-retrieval",
@@ -12354,7 +12354,7 @@
         "PRF-292"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/nov-fields.lisp",
         "books/held-record.lisp",
@@ -12794,7 +12794,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/state-digest.lisp",
         "tests/acl2/state-digest-tests.lisp",
@@ -12822,7 +12822,7 @@
         "PRF-089"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-reclaim-holders.lisp",
         "books/native-health.lisp",
@@ -12914,7 +12914,7 @@
         "PRF-198"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/heap-open-nursery.lisp",
         "tests/acl2/heap-open-nursery-tests.lisp",
@@ -12983,7 +12983,7 @@
         "PRF-311"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-time-model.lisp",
         "tests/acl2/owner-time-space-tests.lisp",
@@ -13130,7 +13130,7 @@
         "PRF-332"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-nntp-verdict-hdr-response-cat-is-archive",
         "fn-nntp-verdict-hdr-range-cat-is-archive",
@@ -13160,7 +13160,7 @@
         "PRF-332"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-status-columns.lisp",
         "tests/acl2/native-status-columns-tests.lisp",
@@ -13309,7 +13309,7 @@
         "PRF-368"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-live-pages.lisp",
         "tests/acl2/native-live-pages-tests.lisp",
@@ -13461,7 +13461,7 @@
         "PRF-378"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/clock-unit.lisp",
         "books/config.lisp",
@@ -13636,7 +13636,7 @@
         "PRF-377"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/memory-credits.lisp",
         "books/owner-credits.lisp",
@@ -13917,7 +13917,7 @@
         "PRF-119"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/expiry-policy.lisp",
         "books/expiry-verdict.lisp",
@@ -13961,7 +13961,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/nntp-responses.lisp",
         "books/nntp.lisp",
@@ -14027,7 +14027,7 @@
         "PRF-222"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/group-access-cache.lisp",
         "books/group-access.lisp",
@@ -14106,7 +14106,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-compact-request.lisp",
         "tests/acl2/owner-compact-request-tests.lisp"
@@ -14280,7 +14280,7 @@
         "PRF-341"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/payload-lz-append.lisp",
         "tests/acl2/payload-lz-append-tests.lisp"
@@ -14365,7 +14365,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-progress.lisp",
         "tests/acl2/bp-node-forward-retry-tests.lisp"
@@ -14532,7 +14532,7 @@
         "PRF-380"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/packed-submission.lisp",
         "books/owner.lisp",
@@ -14603,7 +14603,7 @@
         "PRF-918"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-reclaim.lisp",
         "tests/acl2/owner-reclaim-tests.lisp",
@@ -14635,7 +14635,7 @@
         "PRF-941"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/extent-retire.lisp",
         "tests/acl2/extent-retire-tests.lisp",
@@ -14663,7 +14663,7 @@
         "PRF-119"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-reclaim-pack.lisp",
         "books/store-reclaim-stream.lisp",
@@ -14878,7 +14878,7 @@
         "PRF-380"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-reclaim-pass.lisp",
         "tests/acl2/owner-reclaim-conns-tests.lisp",
@@ -14920,7 +14920,7 @@
         "PRF-939"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-reclaim-ready.lisp",
         "tests/acl2/owner-reclaim-ready-tests.lisp",
@@ -14999,7 +14999,7 @@
         "PRF-937"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/limits-live.lisp",
         "tests/acl2/limits-live-tests.lisp"
@@ -15111,7 +15111,7 @@
         "PRF-242"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-finalize-incremental.lisp",
         "tests/acl2/store-finalize-incremental-tests.lisp"
@@ -15253,7 +15253,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-machine-codec.lisp",
         "host/bp-node-machine-host.lisp",
@@ -15276,7 +15276,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-fnbs-delivery-publication.lisp",
         "tests/acl2/bp-fnbs-delivery-publication-tests.lisp"
@@ -15298,7 +15298,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-fnbs-deletion-publication.lisp",
         "tests/acl2/bp-fnbs-deletion-publication-tests.lisp"
@@ -15321,7 +15321,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-fnbs-family-publication.lisp",
         "tests/acl2/bp-fnbs-family-publication-tests.lisp"
@@ -15346,7 +15346,7 @@
         "PRF-356"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": "tests/acl2/store-checkpoint-digest-tests.lisp (two writers of one prefix with different revision and log: tables differ, digests equal; not constant in frontier, prefix, pool); tests/test_native_replay_determinism.py test_b (the two copies' checkpoint-digest lines agree, a full replay prints none).",
       "progress_note": "correctness-remainder-4, 2026-09-29: PKT-854 landed; REPL-admitted on persvati; certification at READY.",
       "events": [
@@ -15367,7 +15367,7 @@
         "PRF-143"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-operator-stage.lisp",
         "tests/acl2/native-operator-stage-tests.lisp",
@@ -15396,7 +15396,7 @@
         "PRF-358"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-health.lisp",
         "books/native-status-columns.lisp",
@@ -15477,7 +15477,7 @@
         "PRF-016"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-ars-parse-under-is-article-parse-under",
         "fn-ars-body-is-located",
@@ -15507,7 +15507,7 @@
         "PRF-106"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-frb-open-as-is-ref-open-as",
         "fn-frb-open-payload-as-is-ref-open-as",
@@ -15543,7 +15543,7 @@
         "PRF-368"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/native-status-columns.lisp",
         "books/native-live-status.lisp",
@@ -15571,7 +15571,7 @@
         "PRF-946"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-finalize-incremental.lisp",
         "tests/acl2/store-finalize-incremental-tests.lisp"
@@ -15661,7 +15661,7 @@
         "PRF-326"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/payload-lz-dicts.lisp",
         "books/payload-lz-dict-1.lisp",
@@ -15739,7 +15739,7 @@
         "PRF-910"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/nntp-compress.lisp",
         "books/nntp-auth.lisp",
@@ -15788,7 +15788,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-maintenance-request.lisp",
         "tests/acl2/owner-maintenance-request-tests.lisp"
@@ -15809,7 +15809,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-maintenance-request.lisp",
         "tests/acl2/owner-maintenance-request-tests.lisp"
@@ -15846,7 +15846,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-control-post-reason.lisp",
         "tests/acl2/owner-control-post-reason-tests.lisp"
@@ -15890,7 +15890,7 @@
         "PRF-230"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-bpaj-transit-plan-under-refuses-past-the-limits-before-any-intent",
         "fn-bpaj-transit-plan-under-is-the-plan-within-the-limits"
@@ -15914,7 +15914,7 @@
         "PRF-250"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-bpfj-start-is-wf",
         "fn-bpfj-step-preserves-wf",
@@ -15985,7 +15985,7 @@
         "PRF-211"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/tls-handshake-budget.lisp",
         "tests/acl2/tls-handshake-budget-tests.lisp"
@@ -16129,7 +16129,7 @@
         "A-HOST",
         "A-DURABLE-EXTENT"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/payload-extent.lisp",
         "books/payload-extent-read.lisp",
@@ -16232,7 +16232,7 @@
         "PRF-023"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/stx-node-lace.lisp",
         "books/stx-lace-rows.lisp",
@@ -16258,7 +16258,7 @@
         "PRF-958"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-advance-carried.lisp",
         "books/owner-open-carried.lisp",
@@ -16827,7 +16827,7 @@
         "PRF-384"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "title": "A served read's cold line past the dependency deadline is answered 403 with the session unchanged; pipelined lines are answered in order (row A4, option (c))",
       "statement": "Subject (books/owner-cold-line.lisp): fn-ocln-unavailable-span, which host/owner-host.lisp fn-owner-unavailable-line-at calls from host/native/owner.lisp fnn-owner-unavailable-line once fn-otb-dependency-step answers :unavailable for the cold first line of a span aborted in the realizer's no-I/O mode (fnn-owner-chunk-span-no-io, fnn-owner-cold-line). KEYSTONE fn-ocln-a-cold-line-is-answered-unavailable: for a connection in command mode and I within the buffer, the result consumes exactly the octets up to and including the line's LF (fn-oct-line-end; at least one when any remain), carries one reply, fn-otb-unavailable-line (code 403), and its owner is OC with only that connection's wire reset to the start of a line in command mode with its limits kept. fn-ocln-unavailable-span-outside-command-mode-by-definition: otherwise nil (the host faults).",
       "evidence": [
@@ -17024,7 +17024,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-parse-carried.lisp",
         "tests/acl2/owner-parse-carried-tests.lisp"
@@ -17048,7 +17048,7 @@
         "HST-001"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/identity-retain-carried.lisp",
         "tests/acl2/identity-retain-carried-tests.lisp"
@@ -17077,7 +17077,7 @@
         "HST-001"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/identity-retain-carried.lisp",
         "tests/acl2/identity-retain-carried-tests.lisp"
@@ -17160,7 +17160,7 @@
         "PRF-022"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-transit-authority.lisp",
         "tests/acl2/stx-transit-tests.lisp",
@@ -17186,7 +17186,7 @@
         "PRF-042"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/peer-transit-authority.lisp",
         "host/owner-host.lisp",
@@ -17239,7 +17239,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-fnbs-dispatch-publication.lisp",
         "tests/acl2/bp-fnbs-dispatch-publication-tests.lisp"
@@ -17261,7 +17261,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-fnbs-forward-publication.lisp",
         "tests/acl2/bp-fnbs-forward-publication-tests.lisp"
@@ -17283,7 +17283,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-host-machine.lisp",
         "tests/acl2/bp-node-host-machine-tests.lisp"
@@ -17325,7 +17325,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-forward-attempt.lisp",
         "tests/acl2/bp-forward-attempt-tests.lisp"
@@ -17367,7 +17367,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-rotation-codec.lisp",
         "tests/acl2/bp-node-rotation-codec-tests.lisp"
@@ -17451,7 +17451,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-host-machine.lisp",
         "books/bp-node-machine-codec.lisp",
@@ -17476,7 +17476,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-report-observe.lisp",
         "tests/acl2/bp-report-observe-tests.lisp"
@@ -17498,7 +17498,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-report-outbox.lisp",
         "tests/acl2/bp-report-outbox-tests.lisp"
@@ -17520,7 +17520,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-node-fragment-step.lisp",
         "tests/acl2/bp-node-fragment-step-tests.lisp"
@@ -17543,7 +17543,7 @@
         "HST-001"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-reclaim-carry.lisp",
         "tests/acl2/owner-reclaim-carry-tests.lisp"
@@ -17566,7 +17566,7 @@
         "PRF-284"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/post-admission-keyed.lisp",
         "books/served-catalog-owner-keyed.lisp",
@@ -17589,7 +17589,7 @@
     {
       "id": "PRF-1067",
       "title": "The owner retention carry state boundary writes exactly and frames unrelated globals",
-      "statement": "Subject: books/owner-retain-state.lisp fn-owner-retain-carry and fn-owner-retain-carry-put, called by host/owner-host.lisp fn-owner-prepare-buffer and the other carry writers. fn-owner-retain-carry-of-put: unconditionally, reading the state returned by the carry setter returns the supplied value. fn-owner-retain-carry-of-other-global-put: under key unequal to fn-owner-retain-carry, putting another global leaves the carry read unchanged. This is an exact state effects boundary, not a proof that a supplied carry satisfies fn-prc-carryp, that initialization supplies the proved value, or that a complete owner transition preserves its guard; raw owner entries stay disabled. Local policy; no RFC requirement.",
+      "statement": "Subject: books/owner-retain-state.lisp fn-owner-retain-carry and fn-owner-retain-carry-put, called by host/owner-host.lisp fn-owner-prepare-buffer and the other carry writers. fn-owner-retain-carry-of-put: unconditionally, reading the state returned by the carry setter returns the supplied value. fn-owner-retain-carry-of-other-global-put: under key unequal to fn-owner-retain-carry, putting another global leaves the carry read unchanged. This is an exact state effects boundary, not a proof that a supplied carry satisfies fn-prc-carryp, that initialization supplies the proved value, or that a complete owner transition preserves its guard; raw owner entries stay disabled. Local policy; no RFC requirement. fn-owner-retain-carry-put-frames-global-association: under key unequal to the carry global, the complete association in the returned global table is unchanged, preserving both binding and value after guard translation has opened boundp/get-global.",
       "depends_on": [],
       "milestone": "M5",
       "requirements": [
@@ -17601,10 +17601,11 @@
         "books/owner-retain-state.lisp",
         "tests/acl2/owner-retain-state-tests.lisp"
       ],
-      "progress_note": "Clean fresh REPL admits the exact getter/setter and frame theorems (583 prover steps for seven source forms). Live ACL2 state witness asserts both literal conclusions and the full frame antecedent; equal-key changed-value witness refutes removal of its only hypothesis. Matching union host load, certificate manifest and native remain pending.",
+      "progress_note": "Clean fresh REPL admits the exact getter/setter and frame theorems (583 prover steps for seven source forms). Live ACL2 state witness asserts both literal conclusions and the full frame antecedent; equal-key changed-value witness refutes removal of its only hypothesis. Matching union host load, certificate manifest and native remain pending. Dedicated D104 guard-repair replay uses the original ocfg/core/store/installer/finish definitions and unchanged guards/hints; fresh REPL finish guard verifies in 3641 steps with exact association frame. Matching full host load remains pending.",
       "events": [
         "fn-owner-retain-carry-of-put",
-        "fn-owner-retain-carry-of-other-global-put"
+        "fn-owner-retain-carry-of-other-global-put",
+        "fn-owner-retain-carry-put-frames-global-association"
       ]
     },
     {
@@ -17655,7 +17656,7 @@
         "PRF-989"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-bpfj-record-anchor-of-family-record-at",
         "fn-bpfj-propose-step-is-the-propose-step",
@@ -17679,7 +17680,7 @@
         "PRF-1008"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-bpfj-persist-step-is-the-persist-step"
       ],
@@ -17713,9 +17714,10 @@
         "tests/acl2/served-plan-tests.lisp",
         "tests/acl2/served-plan-cursor-tests.lisp",
         "tests/test_native_served_differential.py",
-        "tests/test_native_over_window.py"
+        "tests/test_native_over_window.py",
+        "tests/test_native_over_pins.py"
       ],
-      "progress_note": "Lane join-f2-10 (Claude Opus 5.5, 2026-09-29; J1 item 3, resumable OVER, first increment). REPL-green on hbox (clean session, both books). Teeth tests/acl2/over-window-tests.lisp: positive witnesses evaluate both sides of the keystone on served-catalog-tests' three-article catalog at W = 1, 2, 7 (224, three lines, the dot), the first quantum at W = 1 leaving a live cursor with one line sent, the refusals 423 / 420 / 412; hypothesis removal for fn-ovw-run-is-reply (K = :x, TOP natural, conclusion fails); mutation: the first quantum alone is not the reply; frame: a fourth article committed after the pin leaves the quantum of a cursor pinned at 3 unchanged, and the same cursor pinned at 4 (v <= count omitted, the rest retained) sees it, so the conclusion fails. Lane join-f2-12 (Claude Fable 5.1, 2026-09-29; L1 of the two-lane sizing): the definitions of the start, cursor and reply moved down into served-catalog, the served arm switched to the cursor effect, fn-ovw-expand and the chain equations restated modulo it (REPL persvati: served-catalog 295/295, served-catalog-chain 153/153, over-window 43/43). Teeth tests/acl2/served-catalog-chain-tests.lisp scct-over-range-answers-a-cursor: the dispatcher's hypotheses conjunct by conjunct, the conclusion (session equal, expanded effects equal), and its teeth (the step's one effect is a cursor, the results differ literally, the expansion is the pinned reply itself, a 224 block). Host-called since L1 (fn-nntp-over-range-ovw); fn-ovw-step is host-called once L2 lands the continuation. Lane join-f2-13 (Claude Fable 5.1, 2026-09-29; L2, the union with L1): REPL persvati clean sessions served-plan 57/57, served-plan-cursor 40/40, served-plan-cursor-tests 11/11 (the keystone witness at (W, WL) = (5, 1), (3, 2), (1000, 100) over the three-article catalog; too few rounds leave the plan not done with a strict prefix; the first quantum; a malformed cursor; three must-fails), served-plan-tests' cursor witnesses. Natives: test_native_served_differential (OVER/XOVER ranges under a one-number quantum agree with the pinned model byte for byte), test_native_over_window (the fixture group's whole range under W=97 and under one quantum, byte-identical, one row per article in order), test_native_reader_index, test_native_reader_clients, test_native_conformance.",
+      "progress_note": "Lane join-f2-10 (Claude Opus 5.5, 2026-09-29; J1 item 3, resumable OVER, first increment). REPL-green on hbox (clean session, both books). Teeth tests/acl2/over-window-tests.lisp: positive witnesses evaluate both sides of the keystone on served-catalog-tests' three-article catalog at W = 1, 2, 7 (224, three lines, the dot), the first quantum at W = 1 leaving a live cursor with one line sent, the refusals 423 / 420 / 412; hypothesis removal for fn-ovw-run-is-reply (K = :x, TOP natural, conclusion fails); mutation: the first quantum alone is not the reply; frame: a fourth article committed after the pin leaves the quantum of a cursor pinned at 3 unchanged, and the same cursor pinned at 4 (v <= count omitted, the rest retained) sees it, so the conclusion fails. Lane join-f2-12 (Claude Fable 5.1, 2026-09-29; L1 of the two-lane sizing): the definitions of the start, cursor and reply moved down into served-catalog, the served arm switched to the cursor effect, fn-ovw-expand and the chain equations restated modulo it (REPL persvati: served-catalog 295/295, served-catalog-chain 153/153, over-window 43/43). Teeth tests/acl2/served-catalog-chain-tests.lisp scct-over-range-answers-a-cursor: the dispatcher's hypotheses conjunct by conjunct, the conclusion (session equal, expanded effects equal), and its teeth (the step's one effect is a cursor, the results differ literally, the expansion is the pinned reply itself, a 224 block). Host-called since L1 (fn-nntp-over-range-ovw); fn-ovw-step is host-called once L2 lands the continuation. Lane join-f2-13 (Claude Fable 5.1, 2026-09-29; L2, the union with L1): REPL persvati clean sessions served-plan 57/57, served-plan-cursor 40/40, served-plan-cursor-tests 11/11 (the keystone witness at (W, WL) = (5, 1), (3, 2), (1000, 100) over the three-article catalog; too few rounds leave the plan not done with a strict prefix; the first quantum; a malformed cursor; three must-fails), served-plan-tests' cursor witnesses. Natives: test_native_served_differential (OVER/XOVER ranges under a one-number quantum agree with the pinned model byte for byte), test_native_over_window (the fixture group's whole range under W=97 and under one quantum, byte-identical, one row per article in order), test_native_reader_index, test_native_reader_clients, test_native_conformance. Codex gpt61-over scheduling increment: every next mux cursor yields after the preceding output window, and empty progress retains plan/after/pin for ACL2-positive timer resumption. New input, idle-close and pending TLS reads exclude a held plan. Web/pull yield after empty quanta. Existing fn-splan-cursor-step-keeps-cw-remaining covers exact residual under arbitrary quantum pacing; tests/test_native_over_pins.py adds real 32-row-hole small-vs-whole/pipeline/release witness (NOT RUN pending matching image). fn-splan-cursor-resume-ms is guardverified in REPL; full served-plan-cursor source startup was refused by 21 missing cached dependencies at current nntp-post digest, not proof failure. Long-row byte work remains open.",
       "events": [
         "fn-ovw-run-is-over-range-cat",
         "fn-ovw-run-is-reply",
@@ -17748,7 +17750,7 @@
         "PRF-1020"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/response-plan-pins.lisp",
         "tests/acl2/response-plan-pins-tests.lisp",
@@ -17763,7 +17765,7 @@
     {
       "id": "PRF-1057",
       "title": "Issued cold page reads retain identity and worker ownership through cancellation and late completion",
-      "statement": "Host/native/extent.lisp fnn-extent-complete-read calls fn-pio-complete. Publication requires its exact immutable token (process-local read ID, original CID, file incarnation ID, offset, length, expected trailer), phase issued and successful full commitment check, and settles once. fn-pio-cancel retains token and unsettled ownership even after deadline/client loss. fnn-extent-close calls fn-pio-file-clear-p over carried valid ownership rows: every issued/cancelled worker naming a retired file prevents close independently of the arena-reader generation gate. Duplicate/stale completions cannot publish or settle twice. Host OS/thread/mutex/table fidelity is A-HOST; observed I/O completion is required before settlement. No funded read-pool admission or memory bound is claimed; repeated detached workers remain P12 open.",
+      "statement": "Host/native/extent.lisp fnn-extent-complete-read calls fn-pio-complete. Publication requires its exact immutable token (process-local read ID, original CID, file incarnation ID, offset, length, expected trailer), phase issued and successful full commitment check, and settles once. fn-pio-cancel retains token and unsettled ownership even after deadline/client loss. fnn-extent-close calls fn-pio-file-clear-p over carried valid ownership rows: every issued/cancelled worker naming a retired file prevents close independently of the arena-reader generation gate. Duplicate/stale completions cannot publish or settle twice. Host OS/thread/mutex/table fidelity is A-HOST; observed worker death and join (or definite failed launch) is required before settlement. Incarnation allocator fn-pio-file-issue derives process-local identities and successive admitted allocations are distinct; a failed open spends its name and invalid carried counter refuses rather than resetting. No funded read-pool admission or memory bound is claimed; repeated detached workers remain P12 open.",
       "milestone": "M5",
       "requirements": [
         "STO-017"
@@ -17775,20 +17777,22 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/page-read-ownership.lisp",
         "tests/acl2/page-read-ownership-tests.lisp",
         "host/native/extent.lisp",
         "host/native/owner.lisp",
-        "tests/test_native_page_io.py"
+        "tests/test_native_page_io.py",
+        "planning/evidence/page-read-ownership-certify-20260929T220145Z.json"
       ],
       "events": [
         "fn-pio-completion-publishes-only-the-issued-identity",
         "fn-pio-cancellation-retains-worker-ownership",
-        "fn-pio-close-waits-for-every-worker"
+        "fn-pio-close-waits-for-every-worker",
+        "fn-pio-successive-file-issues-have-distinct-identities"
       ],
-      "progress_note": "Folded definitions guard-verified and all 16 forms admitted in clean REPL pio-clean on hbox; teeth evaluated there. Certification and matching native image pending runner union; no pass claimed."
+      "progress_note": "Ownership first-slice one-book certificate is committed with exact source hash; subsequent joined-result and core-incarnation source increments have clean REPL/teeth and raw-load checks, with current book digest certification and matching native pending runner union. No funded pool admission or native pass transferred."
     },
     {
       "id": "PRF-1052",
@@ -17822,6 +17826,214 @@
         "tests/test_native_obligation_subject.py"
       ],
       "progress_note": "Clean narrow hbox REPL source evidence for core, node completion/recover and report/codec/operator boundaries, with full antecedent and mutation/corrupted-state teeth. No committed certification manifest or matching native execution. The lifetime-T arithmetic reservation is included in both store and offline-operation figures, with explicit support-hypothesis teeth. Every actual owner writer, carried funding invariant and measured real-caller fast path remain open; no W9 completion claim."
+    },
+    {
+      "id": "PRF-1055",
+      "title": "Productive outbound NNTP offer for a queued article",
+      "statement": "A selectable feed (valid feed and observation, active contact, natural connection, elapsed backoff, no inflight article, queued head) and representable FNFD offer record cause the host-called fn-own-feed-port-tick-peer to return :accepted, the exact CHECK/IHAVE :command for that Message-ID, its :feed-offer record, the offered attempt in the queue and next-attempt+1. This is an offer, not article handoff.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-1000"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/productive-transfer.lisp",
+        "tests/acl2/productive-transfer-tests.lisp",
+        "specs/productive-contract.md",
+        "tests/test_native_peering.py"
+      ],
+      "progress_note": "2026-09-29 productive-read-transfer Codex continuation: clean persvati pct61 REPL admission; complete literal positive/removal/mutant teeth admitted. Runner owns union certification and source-matched native execution; neither supplied by admission. tests.test_native_peering.NativePeeringTests.test_productive_local_transfer_precedes_remote_acceptance observes the full article while the scripted peer withholds 239. Full READ/auth/wire composition and inbound durable transit remain open.",
+      "events": [
+        "fn-pct-tick-offers-the-queued-article"
+      ]
+    },
+    {
+      "id": "PRF-1056",
+      "title": "Outbound NNTP tick quiet/refusal preserves queued work",
+      "statement": "The host-called fn-own-feed-port-tick-peer returns accepted-quiet with unchanged feed and no records/effects for a valid feed with no selection; a bound malformed or unrepresentable feed transition returns :refused with table unchanged and no records/effects. A missing entry is :ignored, not :refused.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-1000"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/productive-transfer.lisp",
+        "tests/acl2/productive-transfer-tests.lisp",
+        "specs/productive-contract.md",
+        "tests/test_native_peering.py"
+      ],
+      "progress_note": "2026-09-29 productive-read-transfer Codex continuation: clean persvati pct61 REPL admission; complete literal positive/removal/mutant teeth admitted. Runner owns union certification and source-matched native execution; neither supplied by admission. tests.test_native_peering.NativePeeringTests.test_productive_local_transfer_precedes_remote_acceptance observes the full article while the scripted peer withholds 239. Full READ/auth/wire composition and inbound durable transit remain open.",
+      "events": [
+        "fn-pct-tick-hands-nothing-otherwise"
+      ]
+    },
+    {
+      "id": "PRF-1062",
+      "title": "Productive requested article handoff to the local NNTP transport",
+      "statement": "For a valid feed, reply 335/238 naming an offered Message-ID, natural connection and representable FNFD sent record, host-called fn-own-feed-port-observe-peer returns :accepted and exactly its :command carrying article octets (prefixed TAKETHIS for streaming), its :feed-sent record naming the same attempt, a sent queue entry and unchanged next-attempt. fn-owner-feed-octets supplies fn-ofa-feed-article bytes; native publication journals before socket write. This local effect is distinct from successful write, peer acceptance, durable retention and application processing.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-1000"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/productive-transfer.lisp",
+        "tests/acl2/productive-transfer-tests.lisp",
+        "specs/productive-contract.md",
+        "tests/test_native_peering.py"
+      ],
+      "progress_note": "2026-09-29 productive-read-transfer Codex continuation: clean persvati pct61 REPL admission; complete literal positive/removal/mutant teeth admitted. Runner owns union certification and source-matched native execution; neither supplied by admission. tests.test_native_peering.NativePeeringTests.test_productive_local_transfer_precedes_remote_acceptance observes the full article while the scripted peer withholds 239. Full READ/auth/wire composition and inbound durable transit remain open.",
+      "events": [
+        "fn-pct-requested-article-is-handed-to-the-local-transport"
+      ]
+    },
+    {
+      "id": "PRF-1058",
+      "title": "relay-v1 projection invariant and protected-byte preservation",
+      "statement": "The subject computed by host/owner-host.lisp fn-owner-transit-decide calls fn-asj-project (the existing fn-pu-strip). Complete Path/Xref removal followed by any finite list of trace-block insertions at valid header boundaries preserves its exact byte string. Its body equals the original body; for true-listp input its bytes are a subsequence of the original. Native signed-source subjects and fn-id-subject-of-payload retain their existing meanings. fn-asj-subject-of-equal-projections-by-definition connects the host-called subject to projection equality; no converse digest-injectivity claim.",
+      "milestone": "M4",
+      "requirements": [
+        "OBJ-008"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/article-subject.lisp",
+        "tests/acl2/article-subject-tests.lisp",
+        "tests/test_native_article_subject.py",
+        "specs/substrate-transport.md"
+      ],
+      "progress_note": "Clean projection REPL55forms and teeth28forms pass; runner owns certification and new image-native coordinate. Durable binding retention remains separate.",
+      "events": [
+        "fn-asj-permitted-relay-transform-preserves-projection",
+        "fn-asj-body-of-strip",
+        "fn-asj-strip-preserves-byte-order"
+      ]
+    },
+    {
+      "id": "PRF-1061",
+      "title": "Explicit group authority publication preserves prior group fields",
+      "statement": "Host-called fn-native-admin-plan-deltas produces set-group-authority code29. fn-cfg-apply-delta, reached by live publication and durable fn-config-replay, installs authority and generation in an existing group while preserving the prior six fields. Existing group is the sole hypothesis; a missing group affirmatively fails the installation conclusion. Authority is never inferred from posting policy-id. Connection pins consumed by fn-owner-transit-decide determine the boundary for replacements. This is the configuration publication property, not verified statement/key enrollment or portable group authority.",
+      "milestone": "M4",
+      "requirements": [
+        "SUB-007"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/config-invariants.lisp",
+        "tests/acl2/group-authority-tests.lisp",
+        "tests/test_native_group_authority.py",
+        "specs/reconfiguration.md"
+      ],
+      "progress_note": "Clean config-invariants75forms, native-admin120forms, ADTgroup28forms, config teeth27forms and peer-transit-authority25forms; operator code29 and new authority slot. Statement/hybrid snapshot bridge remains active. New immutable image/native coordinate pending runner; no productive admitted claim from unsigned gate fixture.",
+      "events": [
+        "fn-cfg-set-group-authority-installs-binding"
+      ]
+    },
+    {
+      "id": "PRF-1063",
+      "title": "Serialized BP control startup binds actual CONFIG.store and grants only same-owner parsed route mutations",
+      "statement": "Host-called subjects books/bp-node-control.lisp fn-bpnc-startup and fn-bpnc-turn-plan, called by host/native/bp-control.lisp fnn-bpnc-start and fnn-bpnc-handle. A ready startup implies the actual native-config load was accepted and its parsed Store octets equal the supplied Store argument. An execute grant implies same-owner evidence, an admin projection, and exactly the accepted native-admin plan whose kind is set-bp-route or remove-bp-route. This boundary restricts the existing durable owner admin path; it does not itself prove disk honesty or listener rebinding. Complete positive and hypothesis-removal teeth use parsed valid config and route vectors; mutation teeth refuse nonowner and unrelated group admin.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-002",
+        "HST-010"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/bp-node-control.lisp",
+        "tests/acl2/bp-node-control-tests.lisp",
+        "host/native/bp-control.lisp"
+      ],
+      "progress_note": "Clean persvati proof REPL bpnc-clean admitted 17/17 forms, 17150 prover steps; exact teeth18/18. Matching combined image/native evidence pending; no qualification claim.",
+      "events": [
+        "fn-bpnc-ready-startup-binds-the-parsed-store",
+        "fn-bpnc-grant-is-the-authorized-route-plan"
+      ]
+    },
+    {
+      "id": "PRF-1064",
+      "title": "BP control listener complete bind install retire protocol",
+      "statement": "Host-called subjects fn-bpnc-socket-initial, fn-bpnc-socket-action and fn-bpnc-socket-step, called by fnn-bpnc-start/step/retire. The composed open run reaches live exactly when the startup is ready and both bind and install completions succeed. From prepared, bound or live, stop produces an actual retire effect; its completion reaches closed on success or fenced otherwise, with no next effect. Raw listener, lease and installed inode ownership are retained until retirement. Teeth assert the entire equivalence for successful open and both failed completions; positive retirement success/failure and corrupt-phase hypothesis removal. Scope is the explicit control listener; BP transport listener rebinding remains open.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-002",
+        "HST-010"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/bp-node-control.lisp",
+        "tests/acl2/bp-node-control-tests.lisp",
+        "host/native/bp-control.lisp"
+      ],
+      "progress_note": "Clean persvati proof REPL bpnc-clean admitted 17/17 forms, 17150 prover steps; exact teeth18/18. Matching combined image/native evidence pending; no qualification claim.",
+      "events": [
+        "fn-bpnc-open-run-live-iff-both-completions-succeed",
+        "fn-bpnc-retirement-stops-the-control-listener"
+      ]
+    },
+    {
+      "id": "PRF-1068",
+      "title": "Carried independent live Store projections establish configured snapshot recovery",
+      "statement": "books/owner-snapshot-recovery.lisp: fn-osr-capture returns the existing Store pointer in O(1). fn-osr-livep carries a nonempty configuration history, the phase-aware fn-cst-relation, independent consumer/topic fn-sti-livep, and an identity replay-prefix relation including snapshots, cursor, generation and fault status. Successful actual fn-cpo-open-observed startup establishes this relation. Independent projection lemmas establish preservation of the component Store transitions; fn-snrt-run trace preservation is library-only and is not a production boundary citation. The production claim cites actual fn-sn-finish and fn-cpo-configure-durable for complete live-carry preservation. fn-osr-live-capture-opens derives successful observed open even during an in-flight transaction without assuming that open succeeds. fn-osr-ready-capture-keeps-established-projections equates target and source node, groups/capacity, configuration/history/frontier, identity cursor/snapshots, consumer obligations and topic conflicts/provenance. The relation is proof vocabulary; capture never recomputes it on the served path. Full HST-040 producer readiness additionally requires maintained statement keytable/generation, ordinary held verdicts and frozen row index recovery equality, plus physical producer publication/cost evidence; this row does not claim those pending fields or canonical-handle tuple identity. No new trust assumption. Existing A-CHECKPOINT-PUBLICATION remains a separate bytes-to-tables boundary under PRF-992.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [
+        "PRF-083",
+        "PRF-144",
+        "PRF-992"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-snapshot-recovery.lisp",
+        "tests/acl2/owner-snapshot-recovery-tests.lisp",
+        "specs/checkpoint.md"
+      ],
+      "progress_note": "gpt61 snapshot proof: clean protected hbox REPL loads all source dependencies inside proper encapsulates; 99 book forms plus 32 test forms pass (29 body forms after include hoisting), 5,891,150 steps / 23.11 ACL2 seconds. Opening strengthened to fn-osr-live-capture-opens after proving the ready premise redundant; actual in-flight configured ACK opens. Readiness remains material to source/target node equality: genuine reservation frontier advances at recovery while the live source node waits. Reachable historical capacity decrease plus live capacity/domain updates and configured ACK completion; literal hypothesis removals and labeled corrupted-state teeth. Full retained keyed/verdict/index target awaits transit repair and mandatory matching clean rerun. Actual host capture caller and union manifest/native producer evidence remain runner/operability gates. Reach gate correction: the fn-snrt-run library trace theorem remains in the book and tests, but is omitted from production events; no baseline suppression.",
+      "events": [
+        "fn-osr-open-establishes-live-carry",
+        "fn-osr-live-capture-opens",
+        "fn-osr-ready-capture-keeps-established-projections",
+        "fn-osr-finish-preserves-identity-prefix",
+        "fn-osr-finish-preserves-live-carry",
+        "fn-osr-configure-durable-preserves-live-carry"
+      ]
+    },
+    {
+      "id": "PRF-1066",
+      "title": "Byte-bounded NOV continuation over immutable cached column references (served integration open)",
+      "statement": "Q5c/J1 implementation component, not yet host-called or a served scheduling completion claim. books/nov-byte-window.lisp fn-nbw-step retains string references plus position and bounded owned octet pieces; each byte and empty-piece transition spends one fuel unit, preserves the shape/position invariant, emits at most fuel bytes and work, and preserves exact produced prefix plus logical residual. Library theorem fn-nbw-step-makes-bounded-progress: under pieces shape, natural offset, positive fuel and live pieces, complete residual equality, invariant preservation, positive work bounded by fuel, output bounded by fuel and strictly reduced complete remaining demand all hold. fn-nbw-step-pays-exact-demand accounts for every transition. books/nov-column-window.lisp fn-nbw-column-pieces copies a fixed number of cached NOV field references, numeric pieces and separators. Library theorem fn-nbw-column-pieces-refine-article-row: under maintained column relation F, facts equal to the actual lookup and decided ok verdict, the abstraction of its pieces equals the complete fn-nov-line over the article bytes, including CRLF. Removed redundant nonnil facts and explicit column-shape premises after proving the weakened statement; literal retained hypotheses have positive/removal witnesses. OPEN: install byte cursor in actual fn-splan continuation with the full composed remaining theorem, bounded legacy parse/cache hydration when old checkpoints lack NOV, actual codec/profile bridge for numerical setup, lookup cost, allocator/runtime cost and matching native measurements. No whole payload parser or complete field/row allocation may remain in the final served quantum.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-1020",
+        "PRF-332"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/nov-byte-window.lisp",
+        "books/nov-column-window.lisp",
+        "tests/acl2/nov-byte-window-tests.lisp",
+        "tests/acl2/nov-column-window-tests.lisp"
+      ],
+      "progress_note": "Clean persvati REPL: gpt61-nbw4 25/25 forms (21 same +2 macro named forms), gpt61-nbwt4 12/12 (11 named exact), gpt61-nbwc2 10/10 (6 named exact), gpt61-nbwct3 16/16 including actual intern/commit/lookup positive and literal hypothesis removal for F, exact facts and ok. All stopped. Source-dependency loads are not certificates. No host call, qualified image, allocator measurement or completed Q5c/J1 claim. Work/fuel models loop iterations and output length, not measured physical resources. Numeric setup still requires maintained codec/profile premise. Legacy parse/cache hydration remains owned open. The two named library theorems are retained as component evidence, not cited registry events: no served keystone is claimed until the actual host-called byte cursor composes them."
     }
   ]
 }

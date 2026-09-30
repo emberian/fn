@@ -2975,3 +2975,11 @@ It does not prove that the peer is honest, bind the connection to an article's
 native author signature, or establish mutual TLS.  Password enrollment and
 verifier storage, TLS confidentiality when protected-only is selected, and the
 host/runtime carrying the ACL2 replies remain in the stated trust boundary.
+
+### Route-independent legacy article subject
+
+Transit additionally computes the versioned `relay-v1` legacy article subject
+([substrate transport §2.4](substrate-transport.md#24-versioned-legacy-article-subjects-relay-v1-obj-008--prf-1058)).
+Path/Xref routing variants share that subject while their stored-byte
+commitments remain distinct. This does not change duplicate/conflict
+binding semantics until the durable article-subject column lands.

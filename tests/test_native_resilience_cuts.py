@@ -189,6 +189,60 @@ if IMAGE_AVAILABLE:
                 with self.subTest(scenario=s.id, point=rows[s.id]["point"]):
                     self.run_expected(s, "fn-resilience-schedule-")
 
+        def test_true_issued_page_io_settles_cancelled_token_and_reads_retained_article(self):
+            if SELECTED and SELECTED != "page-read-outstanding":
+                return
+            from tools.resilience.adapters import page_io
+            s = page_io.example()
+            with tempfile.TemporaryDirectory(prefix="fn-resilience-issued-page-") as tmp:
+                journal, verdict = page_io.run_scenario(s, IMAGE, Path(tmp))
+                self.assertTrue(verdict.green, verdict.to_json())
+                self.assertIn("page-io-native-composition", verdict.pending_rules)
+                self.assertIn("cancelled-read-settled", verdict.witnesses_observed)
+                self.assertIn("read-completed", verdict.witnesses_observed)
+                self.assertEqual(Journal.read(Path(tmp) / "journal.jsonl").digest(),
+                                 journal.digest())
+
+        def test_disabling_the_real_issued_page_io_hold_cannot_pass(self):
+            if SELECTED and SELECTED != "page-read-outstanding":
+                return
+            from tools.resilience.adapters import page_io
+            with tempfile.TemporaryDirectory(prefix="fn-resilience-no-issued-hold-") as tmp:
+                _, verdict = page_io.run_scenario(page_io.example(), IMAGE, Path(tmp), False)
+                self.assertFalse(verdict.green, verdict.to_json())
+                self.assertEqual(verdict.kind, "harness-failure", verdict.to_json())
+                self.assertTrue((verdict.cause or "").startswith("fault-never-occurred:"),
+                                 verdict.to_json())
+
+        def test_running_bp_route_control_reorders_receipt_then_heals(self):
+            if SELECTED and SELECTED != "receipt-observed":
+                return
+            scenario = next(s for s in schedule_points.scenarios()
+                            if s.id == "schedule-receipt-observed-reorder")
+            self.run_expected(scenario, "fn-resilience-live-route-")
+
+        def test_capture_first_reclaim_waits_for_independent_response_then_makes_progress(self):
+            if SELECTED and SELECTED != "reclaim-candidate-selected":
+                return
+            from tools.resilience.adapters import reclaim_hold
+            with tempfile.TemporaryDirectory(prefix="fn-resilience-new-response-hold-") as tmp:
+                _, verdict = reclaim_hold.run_scenario(reclaim_hold.example(), IMAGE, Path(tmp))
+                self.assertTrue(verdict.green, verdict.to_json())
+                self.assertIn("independent-response-held", verdict.witnesses_observed)
+                self.assertIn("response-hold-settled", verdict.witnesses_observed)
+                self.assertIn("reclaim-freed", verdict.witnesses_observed)
+
+        def test_disabling_the_capture_first_reclaim_hold_cannot_pass(self):
+            if SELECTED and SELECTED != "reclaim-candidate-selected":
+                return
+            from tools.resilience.adapters import reclaim_hold
+            with tempfile.TemporaryDirectory(prefix="fn-resilience-no-capture-hold-") as tmp:
+                _, verdict = reclaim_hold.run_scenario(reclaim_hold.example(), IMAGE, Path(tmp), False)
+                self.assertFalse(verdict.green, verdict.to_json())
+                self.assertEqual(verdict.kind, "harness-failure", verdict.to_json())
+                self.assertTrue((verdict.cause or "").startswith("fault-never-occurred:"),
+                                verdict.to_json())
+
         def test_a_retry_across_routes_is_refused_by_name_and_the_store_is_unchanged(self):
             """The route finding as a scenario (adapter.cross_route_retry_
             scenario): the store-posted article POSTed again on the served
