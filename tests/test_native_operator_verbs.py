@@ -260,12 +260,12 @@ class NativeOperatorInitTests(NativeOperatorVerbFixture):
         helped = self.operator("help", "init")
         self.assertEqual(helped.returncode, EXIT_OK, helped.stderr.decode())
         text = helped.stdout.decode()
-        grammar = ("usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]")
+        grammar = ("usage: fn operator CONFIG init [--budget MB] [--largest] [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]")
         self.assertTrue(text.endswith("\n") and text.count("\n") == 1, text)
         self.assertTrue(text.startswith(grammar), text)
         clause = text[len(grammar):-1]
         self.assertTrue(clause == "" or clause.startswith(
-            "; under [ops] mission: init [GROUP...] only "), clause)
+            "; under [ops] mission: init [--budget MB] [GROUP...] only "), clause)
 
 
 class NativeOperatorReservedGroupSourceTests(unittest.TestCase):
@@ -703,21 +703,23 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.fail(status.stdout.decode())
 
     def test_init_writes_the_operators_fields_and_status_prints_them(self):
-        # D27: no flag is the default profile; flags set fields; a relation
-        # the fields break is refused by its name and writes nothing.
+        # D27: `--profile default' names D27's profile; flags set fields; a
+        # relation the fields break is refused by its name and writes nothing.
         # The default H is 1 TiB, whose full store no machine holds (the
         # arena and the memberships H / 320 bounds): since lane
         # membership-budget `init' refuses it by name unless a target budget
-        # is named (FN_INIT_BUDGET_MB, a store for another machine).
-        refused = self.operator("init", "--max-transactions", "1000",
+        # is named (`init --budget MB', a store for another machine).  (With
+        # no --profile, a capacity field takes development's other fields,
+        # row Q10b: test_init_capacity_fields_take_the_development_preset.)
+        refused = self.operator("init", "--profile", "default", "--max-transactions", "1000",
                                 "--max-article-octets", "20000", "fn.test")
         self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
         self.assertIn(b"refused init-budget-cannot-hold-profile profile=custom "
                       b"sizing=requested reservation=", refused.stderr)
         self.assertFalse(self.store.exists() and any(self.store.iterdir()))
-        created = self.operator("init", "--max-transactions", "1000",
-                                "--max-article-octets", "20000", "fn.test",
-                                env={"FN_INIT_BUDGET_MB": "99999999"})
+        created = self.operator("init", "--budget", "99999999", "--profile", "default",
+                                "--max-transactions", "1000",
+                                "--max-article-octets", "20000", "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         self.assertIn(b"within-budget=no target-budget=99999999 MB", created.stdout)
         fields = self.profile_line()
@@ -729,6 +731,27 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         room = self.headroom()
         self.assertEqual((room["transactions-used"], room["transactions-budget"]), (0, 1000))
         self.assertEqual((room["bytes-used"], room["history-bound"]), (0, 1 << 40))
+
+    def test_init_capacity_fields_take_the_development_preset(self):
+        """Row Q10b: with no --profile a capacity field takes development's
+        other fields, never D27's 1 TiB history; a refused profile names its
+        numbers and the value to pass; `--budget' is init's grammar word (the
+        FN_INIT_* variables are gone) and a malformed one is a usage error."""
+        refused = self.operator("init", "--max-history-octets", "1000", "fn.test")
+        self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
+        self.assertIn(b"init: max-history-octets 1000 is below max-record-octets 17138486; "
+                      b"pass --max-history-octets 17138486 or more", refused.stderr)
+        self.assertFalse(self.store.exists() and any(self.store.iterdir()))
+        for words in (("--budget", "lots"), ("--budget", "0"), ("--largest", "--largest")):
+            usage = self.operator("init", *words, "fn.test")
+            self.assertEqual(usage.returncode, EXIT_USAGE, usage.stderr.decode())
+            self.assertIn(b"--budget takes the memory budget in MiB", usage.stderr)
+        created = self.operator("init", "--budget", "4096", "--max-transactions", "1000",
+                                "fn.test")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        fields = self.profile_line()
+        self.assertEqual(fields["max-transactions"], 1000)
+        self.assertEqual(fields["max-history-octets"], 25165824)
 
     def test_bare_init_takes_the_budgeted_preset(self):
         # PKT-582 (image-floor, batch AR): a capacity-free init sizes within

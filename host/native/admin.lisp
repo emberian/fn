@@ -562,6 +562,11 @@ or answer the one owner request an admin vector carries (PKT-868: the
 compaction request; row S3: the inspect request; Q16: the reclaim request;
 ACL2's fn-native-admin-result-owner-requestp, -inspect-msgid and
 -reclaim-mode; row S1: a store limit, fnn-owner-limit-serialized)."
+  ;; Row S9: the retire request, before any administrative plan.
+  (let ((retire (fnn-core 'fn-nret-request argv)))
+    (when retire
+      (return-from fnn-owner-live-admin-serialized
+        (fnn-owner-retire-begin service (second retire)))))
   (let ((plan (fnn-core 'fn-native-admin-host-plan argv)))
     (when (fnn-core 'fn-native-admin-host-owner-requestp plan)
       (let ((mode (fnn-core 'fn-native-admin-host-reclaim-mode plan))

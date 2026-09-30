@@ -204,3 +204,63 @@
  (not (fn-article-fields-correspondp '((((65 58 32 120)) (65) (32 120))))))
 (assert-event
  (not (fn-article-fields-correspondp '((((65 58 32 120)) (98) (32 120))))))
+
+; I5: WSP-only first-line value remains open until a visible continuation.
+; Preserve the exact raw spelling and unfolded WSP, including the first TAB.
+(defconst *fn-article-visible-source*
+  '(82 101 102 101 114 101 110 99 101 115 58 32 9 13 10
+    32 60 120 64 121 62 13 10 13 10 98 13 10))
+(defthm fn-article-visible-continuation-positive-witness
+  (let* ((r (fn-article-parse *fn-article-visible-source*))
+         (a (fn-article-result-article r))
+         (f (car (fn-article-fields a))))
+    (and (fn-article-result-okp r)
+         (equal (fn-article-source a) *fn-article-visible-source*)
+         (equal (fn-article-field-raw-lines f)
+                '((82 101 102 101 114 101 110 99 101 115 58 32 9)
+                  (32 60 120 64 121 62)))
+         (equal (fn-article-field-unfolded-value f) '(32 9 32 60 120 64 121 62))))
+  :rule-classes nil)
+
+(defthm fn-article-visible-close-refusal-witness
+  (and (equal (fn-article-parse '(88 58 32 9 13 10 13 10))
+              '(:error :invalid-header))
+       (equal (fn-article-parse '(88 58 32 9 13 10 89 58 32 120 13 10 13 10))
+              '(:error :invalid-header))
+       (equal (fn-article-parse '(88 58 32 9 13 10 32 9 13 10 13 10))
+              '(:error :invalid-header)))
+  :rule-classes nil)
+
+(defthm fn-article-visible-flag-positive-witness
+  (let* ((field (fn-article-line-value (fn-article-new-field '(88 58 32 9))))
+         (cur (fn-article-open-field field))
+         (next (fn-article-add-fold-open cur '(32 120))))
+    (and (fn-article-open-fieldp cur)
+         (not (fn-article-open-field-closedp cur))
+         (equal (fn-article-field-closedp (and cur (fn-article-close-field cur)))
+                (fn-article-open-field-closedp cur))
+         (fn-article-open-fieldp next)
+         (fn-article-open-field-closedp next)
+         (equal (fn-article-field-closedp (and next (fn-article-close-field next)))
+                (fn-article-open-field-closedp next))))
+  :rule-classes nil)
+
+; Corrupted-state removal of the literal carry relation hypothesis: the
+; supplied flag says visible, while its stored value consists only of WSP.
+(defthm fn-article-visible-flag-hypothesis-removal-witness
+  (let ((cur '(((88 58 32 9)) (120) (9 32) t)))
+    (and (not (or (null cur) (fn-article-open-fieldp cur)))
+         (true-listp cur) (equal (len cur) 4)
+         (true-listp (car cur)) (true-listp (caddr cur))
+         (not (equal (fn-article-field-closedp (and cur (fn-article-close-field cur)))
+                     (fn-article-open-field-closedp cur)))))
+  :rule-classes nil)
+
+; Mutation: accepting a nonempty carry as a closed field admits WSP alone.
+(defthm fn-article-visible-nonempty-close-mutation-witness
+  (let ((cur (fn-article-open-field
+              (fn-article-line-value (fn-article-new-field '(88 58 32 9))))))
+    (and (fn-article-open-fieldp cur)
+         (consp (caddr cur))
+         (not (fn-article-open-field-closedp cur))))
+  :rule-classes nil)

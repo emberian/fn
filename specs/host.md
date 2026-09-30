@@ -535,12 +535,12 @@ stack=KB KB threads=N`.
 the least of the physical memory less the OS's share (a quarter, at least 512
 MiB: detected memory is not all the service's), each limit the process runs
 under (RLIMIT_DATA, RLIMIT_AS, every cgroup memory.max: systemd's MemoryMax,
-OpenBSD's login class) and the operator's `FN_INIT_BUDGET_MB`. A request that
+OpenBSD's login class) and the operator's `init --budget MB`. A request that
 names no capacity field (a bare `init`, and every mission: they set only the
 article bound and groups per article) takes a conservative preset: development
 when the budget holds its whole reservation at the configuration's default
 max-connections, else the small preset (R raised to the article record the
-request needs); never scale. `FN_INIT_SIZING=largest` takes the first of
+request needs); never scale. `init --largest` takes the first of
 scale, development and small the budget holds. The request's own fields are
 laid over the preset and never lowered; when no preset holds them, init
 refuses by name and creates nothing: `refused init-budget-cannot-hold-profile

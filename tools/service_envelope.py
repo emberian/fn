@@ -97,7 +97,7 @@ def image_env():
     # Lane membership-budget: the envelope's stores are made for hbox (the
     # H = 4 GiB profile's full store reserves about 74 GB, past the 40 GB
     # unit): name that target, or `init' refuses the profile by name.
-    env = native_env.harness_store_env(dict(os.environ, ACL2_CUSTOMIZATION="NONE"))
+    env = dict(os.environ, ACL2_CUSTOMIZATION="NONE")
     env.pop("ACL2_SYSTEM_BOOKS", None)
     env["LD_LIBRARY_PATH"] = OPENSSL + "/lib" + (":" + env["LD_LIBRARY_PATH"] if env.get("LD_LIBRARY_PATH") else "")
     return env
@@ -198,7 +198,7 @@ class Owner:
 def init_dir(image, d, env, octets, signed_every):
     d.mkdir(parents=True, exist_ok=False)
     config = write_config(d, 1)
-    init = subprocess.run([str(image), "--fn", "operator", str(config), "init"] + PROFILE + [GROUP],
+    init = subprocess.run([str(image), "--fn", "operator", str(config), "init", *native_env.HARNESS_INIT_WORDS] + PROFILE + [GROUP],
                           env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if init.returncode:
         raise SystemExit("init rc=%d: %r" % (init.returncode, init.stdout[-600:]))

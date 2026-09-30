@@ -1138,7 +1138,7 @@
                               (fn-cpo-install
                                (fn-sn-update-replayed
                                 seed files advanced
-                                (fn-stx-index-empty)
+                                (fn-sn-index-of-rows events)
                                 identity)
                                (fn-cnode-make advanced config) configs)
                               (fn-cp-nth 1 consumer))
@@ -1304,12 +1304,9 @@
                               (fn-cpo-install
                                (fn-sn-update-replayed
                                 seed files advanced
-                                ; the open has no keyring, so its index is
-                                ; the empty one (fn-stx-index-of-store-
-                                ; without-a-keyring); building it from the
-                                ; store parsed every retained payload for
-                                ; nothing (lane incremental-finalize)
-                                (fn-stx-index-empty)
+                                ; Frozen row deltas, never payload reintern
+                                ; under the currently active key table.
+                                (fn-sn-index-of-rows events)
                                 identity)
                                (fn-cnode-make advanced config) configs)
                               (fn-cp-nth 1 consumer))
@@ -1346,15 +1343,14 @@
                                   (fn-cnode-statep fn-node-statep fn-cpr-replay fn-cpr-loop
                                    fn-sco-cpr-finish fn-sco-cpr-prefix)))))
 
-; The opened Store's index on this path IS the empty index: no retained
-; payload is parsed at open (the keyring arrives later, fn-sn-recover
-; recomputes the index, D21).
-(defthm fn-rii-opened-index-is-empty
+; The opened Store's index is rebuilt only from frozen row deltas.
+; No retained payload is reparsed under the current key table.
+(defthm fn-rii-opened-index-is-frozen-row-projection
   (implies (equal (fn-sn-open-kind (fn-rii-sco-finalize-configured replayed c configs frontier))
                   :ok)
            (equal (fn-sn-index
                    (fn-sn-open-state (fn-rii-sco-finalize-configured replayed c configs frontier)))
-                  (fn-stx-index-empty)))
+                  (fn-sn-index-of-rows (fn-sco-records c))))
   :hints (("Goal" :in-theory (e/d (fn-rii-sco-finalize-configured fn-sn-open-kind fn-sn-open-state
                                    fn-sn-open-ok fn-sn-open-error
                                    fn-sn-with-event-index fn-sn-with-topic fn-sn-with-consumer
