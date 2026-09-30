@@ -4614,3 +4614,5 @@
 
 (definterface fn-osp-assemble :class :common-lisp-compliant)
 (definterface fn-owner-osn-prepared-run :class :program)
+
+(definterface fn-hpi-effect-observation-disposition :class :common-lisp-compliant)

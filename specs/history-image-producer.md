@@ -532,3 +532,13 @@ Whole source/pool/image/spool/digest/root trajectory and finite progress,
 installed source authority, INITIAL, durability/publication and native
 qualification remain open. Runtime is unchanged; PRF-1144 stays planned
 with no cited completion events.
+
+## Actual action scheduling continuation
+
+The native FnNHPiAction takes one existing funded writer step under the extent lock and releases that lock before at most one existing positional executor call. It returns the full effect and observation unchanged for the next quantum. The caller holds its action lock through the returned I/O and retains the observation; no retry, stage creation or publication occurs here.
+
+FnHPIEffectObservationDisposition is the guarded ACL2 scheduling projection. Only complete successful ACK envelopes permit the next action; an exact pre-I/O refusal stays refused, while uncertainty, lost post-I/O authority and malformed envelopes require recovery. This is not ACK authentication: actual FnHPITick still checks pending effect/source/stage/serial/generation/live grant. Its direct unfold is uncited.
+
+The protected hpia1 test root freshly loaded two proper-local source dependencies and twelve target forms in 0.03 ACL2 seconds /748 steps. Its source token and new observation-book hashes are frozen in the manifest. The isolated SBCL test runs the real native wrapper with core/executor test doubles: all writer aliases are replaced, I/O runs outside the extent lock, uncertainty/refusal/retained results pass unchanged, and a throwing executor is called only once. This is scheduling evidence, not physical I/O or qualification.
+
+Snapshot owner joins the actual emission callsite and retains a distinct stage holder. Actual measured→installed-current source authority, writer initialization, INITIAL runtime/allocator, stage FD/receipt lifecycle and outer publication remain open. The original hpie2 proofs stay at their archived earlier PMN/SMD coordinate; this tiny gate does not recreate that world.

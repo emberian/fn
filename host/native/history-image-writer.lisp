@@ -36,3 +36,16 @@ no owner mutex is acquired here. Returned buffers replace all prior aliases."
     (declare (ignore read-pool))
     (setf (fnn-hpi-writer-cursor writer) cursor)
     word))
+
+(defun fnn-hpi-action (writer stage observation)
+  "One returned action of the retained private writer. Caller holds the job
+ACTION-LOCK through this call and retains the returned observation for the
+NEXT core step. The extent lock covers the core transition, then is released
+before the single issued positional syscall. This function issues no source,
+INITIAL, stage or publication authority and never retries an issued effect."
+  (multiple-value-bind (word effect)
+      (sb-thread:with-mutex (*fnn-extent-lock*)
+        (fnn-hpi-step writer observation))
+    (values word effect
+            (when (member word '(:write :io))
+              (fnn-hpi-execute-effect writer stage effect)))))

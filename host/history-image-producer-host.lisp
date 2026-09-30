@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "snapshot-maintenance-host")
 (include-book "../books/history-image-producer")
+(include-book "../books/history-image-action-observation")
 
 (defun fn-owner-history-image-offer (c ordinal source token key fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool :guard t))
