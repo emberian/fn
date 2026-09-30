@@ -411,7 +411,8 @@ Repeated in every evidence file, and here once:
 
 ## Optional complete streaming and duplicate retry
 
-`--inn-streaming` preserves the baseline IHAVE rows and adds SCN-1041.
+`--inn-streaming` preserves the baseline IHAVE rows and adds SCN-1041
+and SCN-1063.
 A fresh native POST must cross fn's actual outbound feed by CHECK/TAKETHIS,
 and a second fresh INN article must cross actual innfeed into fn. Both
 238/239 replies must name the exact subject on the same connection, and
@@ -423,6 +424,16 @@ subject, without TAKETHIS, and a subsequent reader fetch must return the
 same bytes. Refused configuration prevents either new submission; refused
 MODE STREAM or CHECK never sends article bytes. These are RFC 4644
 sections 2.3–2.5 exchanges with the stronger complete-content lab check.
+
+SCN-1063 also opens a separate connection to each successful receiver,
+requires exact-subject CHECK438, and deliberately sends TAKETHIS anyway.
+Only exact-subject439 and unchanged receiver bytes satisfy this original
+S4 advisory-CHECK case (RFC 4644 section 2.5). It replays exactly the bytes
+captured on the successful feed: a receiver-rendered Path could add a loop,
+and a local POST source could lack the Path required for transit. A failed
+positive actual transfer prevents this dependent submission. CHECK238 or
+wrong-subject438 never submits bytes in this deliberately forced driver.
+The ordinary retry still submits no TAKETHIS.
 
 Scripted harness tests cover positive, refused, wrong-subject and changed
 content outcomes. They do not exercise real INN or the native image.

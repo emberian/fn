@@ -659,7 +659,7 @@ def offer(args):
     return out
 
 
-def stream(args):
+def stream(args, forced_duplicate=False):
     """Complete a fresh MODE/CHECK/TAKETHIS transfer; never substitute IHAVE."""
     wire = Wire(args.port)
     try:
@@ -667,15 +667,21 @@ def stream(args):
         out["offer"], out["result"] = "", ""
         if out["mode_stream"].startswith("203"):
             out["offer"] = wire.cmd("CHECK " + args.msgid)
-            if out["offer"].split()[:2] == ["238", args.msgid]:
+            wanted = "438" if forced_duplicate else "238"
+            if out["offer"].split()[:2] == [wanted, args.msgid]:
                 wire.sock.sendall(("TAKETHIS " + args.msgid + "\r\n").encode())
                 wire.send_block(octets(args.file))
                 out["result"] = wire.line()
-        out["ok"] = (out["offer"].split()[:2] == ["238", args.msgid]
-                     and out["result"].split()[:2] == ["239", args.msgid])
+        out["ok"] = (out["offer"].split()[:2] == ["438" if forced_duplicate else "238", args.msgid]
+                     and out["result"].split()[:2] == ["439" if forced_duplicate else "239", args.msgid])
         return out
     finally:
         wire.close()
+
+
+def stream_forced(args):
+    """SCN-1063: deliberately ignore this subject's CHECK438, require439."""
+    return stream(args, forced_duplicate=True)
 
 
 def post(args):
@@ -795,7 +801,7 @@ def control_view(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="phase", required=True)
-    for name in ("read", "ihave", "offer", "stream", "post", "fetch", "caps", "protected-read", "control-view"):
+    for name in ("read", "ihave", "offer", "stream", "stream-forced", "post", "fetch", "caps", "protected-read", "control-view"):
         one = sub.add_parser(name)
         one.add_argument("--port", type=int, required=True)
         one.add_argument("--group", default="fn.letters")
@@ -814,7 +820,7 @@ def main():
         one.add_argument("--password-file", default="")
     args = parser.parse_args()
     handler = {"read": read, "ihave": ihave, "offer": offer, "post": post,
-               "fetch": fetch, "caps": caps, "stream": stream, "protected-read": protected_read,
+               "fetch": fetch, "caps": caps, "stream": stream, "stream-forced": stream_forced, "protected-read": protected_read,
                "control-view": control_view}[args.phase]
     try:
         result = handler(args)
@@ -982,6 +988,7 @@ class InnLab(deploy_gate.DeployGate):
         "distribution-feed-excluded": ("after both positive controls, world has no feed command, is absent from INN and remains unchanged on fn", ("",)),
         "bidirectional-streaming": ("both actual feeds complete subject-matched CHECK/TAKETHIS and content readback", ("fn-to-inn", "inn-to-fn")),
         "streaming-duplicate-retry": ("a new connection refuses the same accepted subject by CHECK438 and leaves receiver bytes unchanged", ("fn-to-inn", "inn-to-fn")),
+        "streaming-forced-duplicate": ("ignoring exact CHECK438 sends the actual feed bytes, receives exact TAKETHIS439 and preserves receiver bytes", ("fn-to-inn", "inn-to-fn")),
         "fn-serves-inn-article": (
             "fn serves the article innfeed transferred with every octet but Path and "
             "Xref as it arrived (RFC 5537 3.7: a serving agent alters nothing else)",
@@ -1119,7 +1126,7 @@ class InnLab(deploy_gate.DeployGate):
                                if not key.startswith("distribution-")}
         if not inn_streaming:
             self.ASSERTIONS = {key: value for key, value in self.ASSERTIONS.items()
-                               if key not in ("bidirectional-streaming", "streaming-duplicate-retry")}
+                               if key not in ("bidirectional-streaming", "streaming-duplicate-retry", "streaming-forced-duplicate")}
         self.extra_overlays = list(extra_overlays)
         self.lab_root = lab_root
         # Everything this run writes lives under the lab root, never under the
@@ -2346,6 +2353,9 @@ rm -f {p}/run/innd.pid {p}/run/control.ctl
                 self.record("streaming-duplicate-retry", deploy_gate.NOT_EXERCISED,
                             "no completed transfer to retry", instance=direction,
                             blocker="bidirectional streaming did not complete")
+                self.record("streaming-forced-duplicate", deploy_gate.NOT_EXERCISED,
+                            "no completed transfer to retry", instance=direction,
+                            blocker="bidirectional streaming did not complete")
                 continue
             retry_port = self.inn_port if direction == "fn-to-inn" else self.fn_port
             retry = self.payload(self.drive_inn("stream",
@@ -2362,6 +2372,27 @@ rm -f {p}/run/innd.pid {p}/run/control.ctl
                        and self.octets_of(reread) == served,
                        "duplicate retry was not subject-matched CHECK438 or changed receiver content",
                        instance=direction, observed=str(retry.get("offer", "")))
+
+            # Use exactly the captured feed bytes. The receiver's served Path
+            # already contains its own identity and could turn this duplicate
+            # test into a Path-loop test; the authored POST may lack a Path.
+            replay_path = self.put_article("forced-stream-" + direction, transferred)
+            forced = self.payload(self.drive_inn("stream-forced",
+                "--port {} --msgid '{}' --file {}".format(retry_port, msgid, replay_path),
+                name="force duplicate streaming " + direction))
+            after_forced = self.payload(self.drive_inn("fetch",
+                "--port {} --msgid '{}'".format(port, msgid),
+                name="read after forced duplicate streaming " + direction))
+            self.check("streaming-forced-duplicate",
+                       bool(forced.get("ok"))
+                       and str(forced.get("mode_stream", "")).startswith("203")
+                       and str(forced.get("offer", "")).split()[:2] == ["438", msgid]
+                       and str(forced.get("result", "")).split()[:2] == ["439", msgid]
+                       and str(after_forced.get("article", "")).startswith("220")
+                       and self.octets_of(after_forced) == served,
+                       "ignored CHECK did not receive exact TAKETHIS439 or changed receiver content",
+                       instance=direction, observed="{}; {}".format(
+                           forced.get("offer", ""), forced.get("result", "")))
 
     def scenario_distribution(self):
         """SCN-1059: the actual feed, not a direct injection, owns inclusion."""
