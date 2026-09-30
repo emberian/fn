@@ -1098,3 +1098,11 @@ watermark and exact new-binding conditions. These conditions remain obligations
 of the actual row/tombstone planner and old-cursor lifecycle. This construction
 proof complements prepare/fence and current lookup; it supplies neither canonical
 metadata nor funding or atomic owner/recovery establishment by itself.
+
+The actual row planner supplies the complete valid new binding for new, retained
+and recreated accounts under its explicit codec, old-row and namespace premises.
+The actual tombstone planner preserves the old typed token and exact name. These
+planner boundaries discharge the selected-stage binding obligation; complete
+composition must also establish ordered keys, cursor coverage and watermarks.
+Canonical metadata/funding and atomic live/recovery publication remain separate
+mandatory obligations before any remote account becomes usable.
