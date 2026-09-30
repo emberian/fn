@@ -1,0 +1,76 @@
+; Internal registered core continuation, never native CURRENT/job authority.
+; Payload borrows job/control roots and a registered digest binding token.
+; A digest stobj is not stored in this ordinary field.
+(in-package "ACL2")
+(include-book "bp-controller-checkpoint-directory")
+(defun fn-bpcc-continuationp (continuation)
+  (declare (xargs :guard t))
+  (or (null continuation)
+      (and (consp continuation) (eq (car continuation) :bp-continuation)
+           (consp (cdr continuation)) (natp (cadr continuation))
+           (consp (cddr continuation)) (null (cdddr continuation)))))
+(defun fn-bpcc-segment-payload-read (token slot fn-bpc-segment)
+  (declare (xargs :stobjs fn-bpc-segment
+                  :guard (and (natp slot) (< slot 64))))
+  (let* ((row (fn-bpcs-rowsi slot fn-bpc-segment))
+         (job (fn-bpn-nth 4 row)))
+    (if (not (and (fn-bpcc-job-tokenp token)
+                  (equal (mod (caddr (caddr token)) 64) slot)
+                  (fn-bpc-row-livep (cadr (caddr token)) row)
+                  (equal token (fn-bpn-nth 0 job))
+                  (fn-bpcc-continuationp (fn-bpn-nth 4 job))))
+        (mv :stale-checkpoint nil nil nil nil nil)
+      (mv :checkpoint-current (fn-bpn-nth 3 job) (fn-bpn-nth 1 job)
+          (fn-bpn-nth 2 (fn-bpn-nth 4 job)) (fn-bpn-nth 2 job)
+          (if (null (fn-bpn-nth 4 job)) 0
+            (fn-bpn-nth 1 (fn-bpn-nth 4 job)))))))
+(defun fn-bpcc-segment-payload-replace (token slot expected-revision expected-phase next-phase payload fn-bpc-segment)
+  (declare (xargs :stobjs fn-bpc-segment
+                  :guard (and (natp slot) (< slot 64))))
+  (let ((row (fn-bpcs-rowsi slot fn-bpc-segment)))
+    (mv-let (word current claim old-payload phase revision)
+      (fn-bpcc-segment-payload-read token slot fn-bpc-segment)
+      (declare (ignore old-payload))
+      (cond ((not (eq word :checkpoint-current))
+             (mv word fn-bpc-segment))
+            ((not (and (natp revision) (natp expected-revision)
+                       (equal revision expected-revision)
+                       (symbolp expected-phase) (eq phase expected-phase)
+                       (member-eq phase '(:reserved :running :cancelled :uncertain))
+                       (member-eq next-phase '(:running :cancelled :uncertain))))
+             (mv :stale-checkpoint fn-bpc-segment))
+            (t
+             (let ((fn-bpc-segment
+                    (update-fn-bpcs-rowsi slot
+                      (list (fn-bpn-nth 0 row) (fn-bpn-nth 1 row)
+                            (fn-bpn-nth 2 row) (fn-bpn-nth 3 row)
+                            (list token claim next-phase current
+                                  (list :bp-continuation (+ 1 revision) payload)))
+                      fn-bpc-segment)))
+               (mv :checkpoint-updated fn-bpc-segment)))))))
+(defun fn-bpcc-segment-payload-cancel-current (controller slot fn-bpc-segment)
+  (declare (xargs :stobjs fn-bpc-segment
+                  :guard (and (natp slot) (< slot 64))))
+  (let* ((row (fn-bpcs-rowsi slot fn-bpc-segment))
+         (job (fn-bpn-nth 4 row))
+         (token (fn-bpn-nth 0 job)))
+    (if (not (and (fn-bpc-tokenp controller)
+                  (equal (mod (caddr controller) 64) slot)
+                  (fn-bpc-row-livep (cadr controller) row)
+                  (fn-bpcc-job-tokenp token)
+                  (equal (caddr token) controller)))
+        (mv :stale-checkpoint fn-bpc-segment)
+      (if (eq (fn-bpn-nth 2 job) :cancelled)
+          (mv :checkpoint-retained fn-bpc-segment)
+        (let ((fn-bpc-segment
+               (update-fn-bpcs-rowsi slot
+                 (list (fn-bpn-nth 0 row) (fn-bpn-nth 1 row)
+                       (fn-bpn-nth 2 row) (fn-bpn-nth 3 row)
+                       (list token (fn-bpn-nth 1 job) :cancelled
+                             (fn-bpn-nth 3 job) (fn-bpn-nth 4 job)))
+                 fn-bpc-segment)))
+          (mv :checkpoint-retained fn-bpc-segment))))))
+(verify-guards fn-bpcc-continuationp)
+(verify-guards fn-bpcc-segment-payload-read)
+(verify-guards fn-bpcc-segment-payload-replace)
+(verify-guards fn-bpcc-segment-payload-cancel-current)
