@@ -1575,6 +1575,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-scalar-cursor-tests \
 	books/history-record-cursor \
 	tests/acl2/history-record-cursor-tests \
+	books/history-decoded-record-cursor \
+	tests/acl2/history-decoded-record-cursor-tests \
 	books/history-decode-nodes \
 	books/history-symbol-normalize \
 	tests/acl2/history-symbol-normalize-tests \
