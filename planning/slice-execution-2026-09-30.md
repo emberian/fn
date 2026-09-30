@@ -243,3 +243,37 @@ and actual array-dimension domains need matching runtime evidence; no arbitrary
 stored-data ceiling or blanket garbage-collector adequacy claim is introduced.
 The paged owner implements the representation, admission owns the actual
 scheduler/callback join, and the runtime owner supplies the matching evidence.
+
+## Recovery authority precedes the final event count
+
+The verified checkpoint decoder establishes checkpoint, frame/root/region and
+log-position coordinates before suffix recovery knows the complete event
+count. The live captured-source issuer therefore cannot authorize recovery:
+its exact total-count promise is not established at that point. Recovery uses
+a separate core-issued token bound to those verified loaded coordinates, the
+current reset epoch and a monotone issuer ticket. A host suffix-vector length
+or an old live-owner capture cannot supply the missing authority or count.
+
+The actual decode/intern/replay pass carries count and source provenance as it
+consumes rows. Its completion seals the exact final source, full identity
+context, account/view state, counts and index roots in the same installation
+transition. Serving and live-query capture start only after that transition.
+Stale tokens, changed regions, reset and partial failure leave recovery
+unavailable, without falling back to an old live state. Each bounded step
+still reserves its decode, intern and update allocation before doing the work;
+an unknown final count does not authorize unbounded allocation. The producer
+owns the issuer, snapshot owns the same-pass context result, and admission
+owns reset and final installation.
+
+## Publication keeps Store and catalog coordinates distinct
+
+The owner's view version names a prefix of committed Store events. Catalog
+row count counts its article rows; frontier is another coordinate. They are
+not interchangeable. A publication retains all three together with the exact
+immutable row, table and number roots and the corresponding visibility state.
+In particular, the older catalog predicate's numeric test `ordinal < version`
+does not justify admitting later rows between captured catalog count and the
+Store view version. The new reader boundary relates its immutable captured
+catalog to the owner view at capture, with an explicit captured row-count
+fence and withdrawal correspondence. It does not transfer a theorem over a
+later mutable catalog by substituting the Store version for catalog count.
