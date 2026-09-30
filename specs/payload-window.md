@@ -179,3 +179,14 @@ never becomes a stored-data policy. Each widened keystone has literal full
 positive and hypothesis-removal teeth, including the permitted large N that
 refutes a new signed63-bit decoded ceiling. These magnitudes do not supply
 primitive workspaces or authorize native admission.
+
+
+`books/payload-copy-source-trace.lisp` connects the counter-cost correction
+to actual fn-zin-copy effects: its observer returns the same ring position,
+ring bytes and output bytes and records K unary negations plus2K additions
+for the large output-counter family. Under nfix(TOUT)+nfix(K)<=2^72 every
+recorded operand fits that magnitude domain. Small ring/index arithmetic,
+compiled frames and other decoder/controller calls are separate obligations.
+The primitive source review permits a conservative32-byte pre-normalization
+buffer for each selected72/73-bit signed neg/add; source-to-compiled lowering
+still needs its explicit narrow runtime contract.

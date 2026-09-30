@@ -1,0 +1,72 @@
+; SCN-1039. Actual copy value/effects and large-counter arithmetic teeth.
+(in-package "ACL2")
+(include-book "../../books/payload-copy-source-trace")
+
+(defun-nx pzcst-copy-probe (k tout)
+  (let* ((window (make-list 65536 :initial-element 23))
+         (observed (fn-pzc-copy k 0 1 tout 0 window nil))
+         (trace (cdr observed)))
+    (list (equal (car observed) (fn-zin-copy k 0 1 tout 0 window nil))
+          (equal (fn-pzt-count :negate trace) (nfix k))
+          (equal (fn-pzt-count :add trace) (* 2 (nfix k)))
+          (equal (fn-pzt-count :multiply trace) 0)
+          (<= (+ (nfix tout) (nfix k)) 4722366482869645213696)
+          (fn-pzc-trace-operands-below 4722366482869645213696 trace)
+          (< (fn-pzt-count :add trace)
+             (+ (fn-pzt-count :add trace) (fn-pzt-count :negate trace))))))
+
+(defthm pzcst-counter-copy-full-positive
+  (equal (pzcst-copy-probe 2 2361183241434822674433)
+         '(t t t t t t t))
+  :rule-classes nil
+  :hints (("Goal" :do-not '(preprocess)
+           :expand ((:free (w d tout h fn-zin-win fn-zin-out)
+                           (fn-pzc-copy 2 w d tout h fn-zin-win fn-zin-out))
+                    (:free (w d tout h fn-zin-win fn-zin-out)
+                           (fn-pzc-copy 1 w d tout h fn-zin-win fn-zin-out))
+                    (:free (w d tout h fn-zin-win fn-zin-out)
+                           (fn-pzc-copy 0 w d tout h fn-zin-win fn-zin-out)))
+           :in-theory (enable fn-pzc-copy fn-pzc-source))))
+(defthm pzcst-counter-copy-zero-positive
+  (equal (pzcst-copy-probe 0 4722366482869645213696)
+         '(t t t t t t nil))
+  :rule-classes nil
+  :hints (("Goal" :do-not '(preprocess)
+           :expand ((:free (w d tout h fn-zin-win fn-zin-out)
+                           (fn-pzc-copy 2 w d tout h fn-zin-win fn-zin-out))
+                    (:free (w d tout h fn-zin-win fn-zin-out)
+                           (fn-pzc-copy 1 w d tout h fn-zin-win fn-zin-out))
+                    (:free (w d tout h fn-zin-win fn-zin-out)
+                           (fn-pzc-copy 0 w d tout h fn-zin-win fn-zin-out)))
+           :in-theory (enable fn-pzc-copy fn-pzc-source))))
+(defthm pzcst-remove-counter-width-premise
+  (equal (pzcst-copy-probe 1 4722366482869645213696)
+         '(t t t t nil nil t))
+  :rule-classes nil
+  :hints (("Goal" :do-not '(preprocess)
+           :expand ((:free (w d tout h fn-zin-win fn-zin-out)
+                           (fn-pzc-copy 2 w d tout h fn-zin-win fn-zin-out))
+                    (:free (w d tout h fn-zin-win fn-zin-out)
+                           (fn-pzc-copy 1 w d tout h fn-zin-win fn-zin-out))
+                    (:free (w d tout h fn-zin-win fn-zin-out)
+                           (fn-pzc-copy 0 w d tout h fn-zin-win fn-zin-out)))
+           :in-theory (enable fn-pzc-copy fn-pzc-source))))
+; Mutation: treating the two large-counter arithmetic source expressions
+; as two allocation candidates omits one unary negation per copied byte.
+(defthm pzcst-two-operations-copy-mutant
+  (let* ((window (make-list 65536 :initial-element 23))
+         (r (fn-pzc-copy 2 0 1 2361183241434822674433 0 window nil)))
+    (and (equal (car r) (fn-zin-copy 2 0 1 2361183241434822674433 0 window nil))
+         (equal (fn-pzt-count :negate (cdr r)) 2)
+         (equal (fn-pzt-count :add (cdr r)) 4)
+         (not (equal (+ (fn-pzt-count :negate (cdr r))
+                        (fn-pzt-count :add (cdr r))) (* 2 2)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not '(preprocess)
+           :expand ((:free (w d tout h fn-zin-win fn-zin-out)
+                           (fn-pzc-copy 2 w d tout h fn-zin-win fn-zin-out))
+                    (:free (w d tout h fn-zin-win fn-zin-out)
+                           (fn-pzc-copy 1 w d tout h fn-zin-win fn-zin-out))
+                    (:free (w d tout h fn-zin-win fn-zin-out)
+                           (fn-pzc-copy 0 w d tout h fn-zin-win fn-zin-out)))
+           :in-theory (enable fn-pzc-copy fn-pzc-source))))
