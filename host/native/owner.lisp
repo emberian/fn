@@ -4142,17 +4142,24 @@ or pending (closed by a later release) and serving continues."
               ;; and its trailer, self-consistency checked; ACL2 makes the
               ;; descriptors from the frame's own trailer, held in the buffer
               ;; after the prefix (fn-xrt-reseat-one; lane extent-identity).
-              (let ((octets (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-                              (fnn-extent-entry-fresh new-id eoff elen))))
-                (fnn-owner-gated (service :control)
-                  (let ((st (fnn-live-octets-pub)))
-                    (setf (svref st 0) octets (svref st 1) (length octets))
-                    (unwind-protect
-                         (let ((answer (fnn-call 'fn-xrt-reseat-checkpoint-frame
-                                                 handles new-id eoff elen st arena)))
-                           (if (eq (first answer) t) (incf reseated) (incf incomplete)))
-                      (setf (svref st 1) 0
-                            (svref st 0) (make-array 0 :element-type '(unsigned-byte 8)))))))))
+              (multiple-value-bind (octets lease)
+                  (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+                    (fnn-extent-entry-fresh new-id eoff elen))
+                (unwind-protect
+                     (fnn-owner-gated (service :control)
+                       (let ((st (fnn-live-octets-pub)))
+                         (setf (svref st 0) octets (svref st 1) (length octets))
+                         (unwind-protect
+                              (let ((answer (fnn-call 'fn-xrt-reseat-checkpoint-frame
+                                                      handles new-id eoff elen st arena)))
+                                (if (eq (first answer) t) (incf reseated) (incf incomplete)))
+                           (setf (svref st 1) 0
+                                 (svref st 0) (make-array 0 :element-type '(unsigned-byte 8))))))
+                  ;; The publication buffer no longer aliases OCTETS. A
+                  ;; scheduling refusal or reseat fault reaches this too.
+                  (setq octets nil)
+                  (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+                    (fnn-extent-discovery-release lease))))))
           (fnn-owner-gated (service :control)
             ;; fnn-call answers the values as a list: the quiet set is its
             ;; first (the whole list was taken for the set once, so no

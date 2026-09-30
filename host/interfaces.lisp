@@ -4529,3 +4529,9 @@
 
 (definterface fn-pxe-cache-mode :class :common-lisp-compliant
   :kinds ((enabledp booleanp)))
+
+;; Typed, unverified checkpoint discovery buffer; never a verified read token.
+(definterface fn-owner-page-read-direct-mode :class :common-lisp-compliant)
+(definterface fn-owner-page-read-discovery-admit :class :common-lisp-compliant
+  :keystones ((fn-prd-admit-preserves-pool-funding :via fn-prd-admit)))
+(definterface fn-owner-page-read-discovery-release :class :common-lisp-compliant)

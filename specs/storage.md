@@ -1610,8 +1610,12 @@ an absent pool grants neither a descriptor identity nor permission to read.
 The owner marks the served context before recovery in a funded run. A
 separate typed discovery lease covers a not-yet-verified extent: no trailer
 is guessed. Its descriptor stays held until the caller has relinquished
-the charged buffer. This lease cannot enter the verified cache through the
-ordinary read settlement entry. Derived list/decoder allocation, native
+the charged buffer. `fnn-extent-entry-fresh` reserves before vector
+allocation and returns both vector and lease; `fnn-owner-release-extents`
+keeps the lease through checkpoint reseating and clears the publication
+buffer alias before release, including scheduling refusal and fault unwind.
+This lease cannot enter the verified cache through the ordinary read
+settlement entry. Derived list/decoder allocation, native
 startup wiring and the missing-policy startup surface remain integration
 obligations; the supplied protected-vector demand does not fund them.
 

@@ -484,22 +484,41 @@ Called with the realizer's lock held."
           (fnn-extent-cache-release evicted))
         octets))))
 
+(defun fnn-extent-discovery-release (token)
+  "Extent lock held. Caller relinquished the exact unverified buffer lease."
+  (when token
+    (unless (eq (first (fnn-core-page-read-pool 'fn-owner-page-read-discovery-release token)) :released)
+      (fnn-fault "discovery buffer lost its exact resource lease"))))
+
 (defun fnn-extent-entry-fresh (file eoff elen)
-  "The entry at [EOFF, EOFF+ELEN+32) of FILE read once for a descriptor not
-yet made (the publication's reseat, host/native/owner.lisp
-fnn-owner-release-extents: ACL2 then compares the frame's payloads with the
-arena's and makes the descriptors from the frame's own trailer,
-books/extent-retire.lisp fn-xrt-reseat-one), self-consistency checked by
-ACL2 (fnn-extent-entry-ok) and refused by name otherwise; never cached (a
-cache entry needs the identity a descriptor gives it).  Called with the
-realizer's lock held."
-  (let ((octets (fnn-extent-read-entry file eoff elen)))
-    (unless (eq (fnn-extent-entry-ok octets elen) t)
-      (incf (third *fnn-extent-stats*))
-      (error 'fnn-extent-fault
-             :message (format nil "arena-extent-digest: the entry at ~a does not match its trailer"
-                              (fnn-extent-where file eoff))))
-    octets))
+  "Return the self-consistent vector AND its discovery lease. The caller
+keeps that lease until its last buffer borrow ends. Extent lock held."
+  (let ((mode (first (fnn-core-page-read-pool 'fn-owner-page-read-direct-mode)))
+        (token nil) (octets nil) (handed-off nil))
+    (case mode
+      (:offline nil)
+      (:funded-pool
+       (destructuring-bind (word lease &rest ignored)
+           (fnn-core-page-read-pool 'fn-owner-page-read-discovery-admit file eoff elen)
+         (declare (ignore ignored))
+         (unless (eq word :admitted) (fnn-refuse "extent discovery refused: ~a" word))
+         (setq token lease)))
+      (otherwise (fnn-refuse "extent discovery refused: ~a" mode)))
+    (unwind-protect
+         (progn
+           (setq octets (fnn-extent-read-entry file eoff elen))
+           (unless (eq (fnn-extent-entry-ok octets elen) t)
+             (incf (third *fnn-extent-stats*))
+             (error 'fnn-extent-fault
+                    :message (format nil "arena-extent-digest: the entry at ~a does not match its trailer"
+                                     (fnn-extent-where file eoff))))
+           (setq handed-off t)
+           (values octets token))
+      (unless handed-off
+        ;; The synchronous pread and verifier have returned/unwound; their
+        ;; private vector is no longer borrowed, even on allocation failure.
+        (setq octets nil)
+        (fnn-extent-discovery-release token)))))
 
 ;;; The entry a cold span needs, read into the cache (a store fault is
 ;;; signalled as always: the caller re-signals it in the owner's thread).
