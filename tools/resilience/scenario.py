@@ -35,7 +35,8 @@ OPERATIONS = ("post", "read", "list-group", "retry", "recover", "restart", "chec
               "cancel-reader", "retire-generation", "deliver-delayed-page",
               "receipt", "replay-media", "probe",
               "model-prepare", "model-complete", "model-recover",
-              "window-admit", "window-acquire", "window-cancel", "window-return", "window-release", "window-settle")
+              "window-admit", "window-acquire", "window-cancel", "window-return", "window-release", "window-settle",
+              "page-register", "page-admit", "page-cancel", "page-complete", "page-evict", "page-close")
 FAULT_ACTIONS = ("kill", "lose-response", "withhold-completion", "report-error",
                  "drop-writes", "substitute-record", "rollback", "interleave",
                  "deliver-stale-completion")
@@ -53,9 +54,9 @@ WITNESSES = ("post-accepted", "payload-bound-refused", "retry-reconciled", "read
              "model-prepared", "model-published", "model-settled",
              "issued-read-held", "cancelled-read-settled", "retired-file-closed",
              "independent-response-held", "response-hold-settled", "two-model-holds",
-             "one-model-hold-blocks", "model-retirement-released", "typed-window-settled")
+             "one-model-hold-blocks", "model-retirement-released", "typed-window-settled", "admitted-page-logical-clear")
 REPLAY = ("exact", "timed", "image")
-CONTRACTS = ("local-commit-log", "acceptance-model", "response-holds-model", "page-io-ownership", "reclaim-response-hold", "typed-window-model")
+CONTRACTS = ("local-commit-log", "acceptance-model", "response-holds-model", "page-io-ownership", "reclaim-response-hold", "typed-window-model", "admitted-page-source")
 CANDIDATE_RULES = ("absent", "present", "either")
 # The routes a post's cut is reached by; the registry carries each route's
 # column where they differ (design §5: `operator post' and `store post' are
@@ -428,6 +429,14 @@ def validate(scenario: Scenario, registry: dict | None = None) -> list:
             problems.append(str(error))
     elif any(o.op.startswith("window-") for o in scenario.operations):
         problems.append("window operations require typed-window-model profile")
+    if scenario.contract == "admitted-page-source":
+        from .admitted_page import from_scenario
+        try:
+            from_scenario(scenario)
+        except ValueError as error:
+            problems.append(str(error))
+    elif any(o.op.startswith("page-") for o in scenario.operations):
+        problems.append("page admission operations require admitted-page-source profile")
     for step in scenario.healing:
         if step not in ids:
             problems.append("healing step {} is not an operation".format(step))

@@ -36,7 +36,7 @@ Explicit `requires` edges augment native identity and hold dependencies.
         for key in ("of", "article"):
             if args.get(key) in ids:
                 required.add(args[key])
-        if scenario.contract in ("acceptance-model", "response-holds-model", "typed-window-model") and previous:
+        if scenario.contract in ("acceptance-model", "response-holds-model", "typed-window-model", "admitted-page-source") and previous:
             required.add(previous)
         if operation.op == "acquire-hold":
             holds[args.get("owner")] = operation.id
