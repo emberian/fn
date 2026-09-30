@@ -1932,6 +1932,17 @@ results add no admission ceiling and do not select a machine fixnum width or
 establish compiler, primitive workspace, stack or allocation correspondence.
 
 
+The proof-only `fn-lpr-prefix-p` ties the resumed cursor to the exact consumed
+prefix of its immutable full source, from the same handle/length/origin pin.
+Begin establishes it, and actual arena ticks with fuel one preserve it under
+exact selected-source binding. Under this carried correspondence, a nonyield
+verdict implies equality with the complete source feed. Rejected header grammar
+still yields until EOF because independent body facts require the remaining
+source bytes. This theorem enables repeated scheduling steps to use the full
+catalog equation; the predicate itself is never evaluated on the served path.
+Actual consumer reply refinement and runtime funding remain separate obligations.
+
+
 ## Public exposure (NNT-031)
 
 NNT-031: A reader port facing strangers admits, paces and closes connections within operator limits ACL2 decides, and an unauthenticated session under the none policy reaches no reader or posting command
