@@ -43,7 +43,7 @@
    :rule-classes :forward-chaining
    :hints (("Goal" :in-theory (enable fn-store-event-p
                                       fn-store-retention-event-p
-                                      fn-cpe-eventp fn-th-topic-eventp
+                                      fn-cne-eventp fn-th-topic-eventp
                                       fn-record-shape-vocabulary
                                       fn-record-record-vocabulary))))
 (local
@@ -86,11 +86,11 @@
    :hints (("Goal" :in-theory (enable fn-record-uint32p fn-hstxa-p fn-hstxa-stxa)))))
 (local
  (defthm fn-replay-cpe-counters-are-natural
-   (implies (fn-cpe-eventp record)
+   (implies (fn-cne-eventp record)
             (and (natp (fn-cpe-sequence record))
                  (natp (fn-cpe-txid record))
                  (natp (fn-cpe-generation record))))
-   :hints (("Goal" :in-theory (enable fn-cpe-eventp fn-cp-uintp)))))
+   :hints (("Goal" :in-theory (enable fn-cne-eventp fn-cp-uintp)))))
 (defthm fn-replay-record-counters-are-natural
    (implies (fn-store-event-p record)
             (and (natp (fn-store-event-sequence record))
@@ -120,7 +120,7 @@
             (e/d (fn-store-event-p fn-store-event-sequence
                                    fn-store-event-txid fn-store-event-generation)
                  (fn-record-p fn-held-p fn-hstxa-p fn-store-retention-event-p fn-stxe-p fn-stxk-p
-                              fn-stxa-p fn-cpe-eventp fn-cae-eventp
+                              fn-stxa-p fn-cne-eventp fn-cae-eventp
                               fn-replay-article-counters-are-natural
                               fn-replay-retention-counters-are-natural
                               fn-replay-stxe-counters-are-natural
@@ -633,9 +633,9 @@
                   :verify-guards nil))
   (if (fn-store-retention-event-p record)
       (fn-replay-apply-retention-event node record)
-    (if (or (fn-stxe-p record) (fn-stxk-p record) (fn-cpe-eventp record)
+    (if (or (fn-stxe-p record) (fn-stxk-p record) (fn-cne-eventp record)
             (fn-cae-eventp record) (fn-th-topic-eventp record))
-        (if (and (or (fn-cpe-eventp record) (fn-cae-eventp record) (fn-th-topic-eventp record))
+        (if (and (or (fn-cne-eventp record) (fn-cae-eventp record) (fn-th-topic-eventp record))
                  (not (null (fn-node-stage node))))
             nil
           (fn-replay-apply-identity-neutral node record))
@@ -687,7 +687,7 @@
 ; for the same reason.
 (local (in-theory (disable fn-store-event-p fn-store-event-sequence
                            fn-record-p fn-stxe-p fn-stxk-p fn-stxa-p
-                           fn-store-retention-event-p fn-cpe-eventp
+                           fn-store-retention-event-p fn-cne-eventp
                            fn-replay-composite-record)))
 
 ; A non-NIL one-record result is the existing node transaction machine's

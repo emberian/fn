@@ -68,7 +68,7 @@
 (defun fn-rcon-wire-event-p (x)
   (declare (xargs :guard t))
   (or (fn-rcon-record-p x) (fn-store-retention-event-p x)
-      (fn-stxe-p x) (fn-stxk-p x) (fn-stxa-p x) (fn-cae-eventp x) (fn-cpe-eventp x)
+      (fn-stxe-p x) (fn-stxk-p x) (fn-stxa-p x) (fn-cae-eventp x) (fn-cne-eventp x)
       (fn-th-topic-eventp x)))
 
 (defthm fn-rcon-wire-event-p-is-wire-event-p
@@ -86,7 +86,7 @@
         ((fn-stxk-p x) (fn-stxk-sequence x))
         ((fn-stxa-p x) (fn-stxa-sequence x))
         ((fn-cae-eventp x) (fn-cp-nth 1 x))
-        ((fn-cpe-eventp x) (fn-cpe-sequence x))
+        ((fn-cne-eventp x) (fn-cpe-sequence x))
         ((fn-th-topic-eventp x) (fn-th-at 1 x))
         (t nil)))
 
@@ -105,7 +105,7 @@
         ((fn-stxk-p x) (fn-stxk-txid x))
         ((fn-stxa-p x) (fn-stxa-txid x))
         ((fn-cae-eventp x) (fn-cp-nth 2 x))
-        ((fn-cpe-eventp x) (fn-cpe-txid x))
+        ((fn-cne-eventp x) (fn-cpe-txid x))
         ((fn-th-topic-eventp x) (fn-th-at 2 x))
         (t nil)))
 
@@ -124,7 +124,7 @@
         ((fn-stxk-p x) (fn-stxk-generation x))
         ((fn-stxa-p x) (fn-stxa-generation x))
         ((fn-cae-eventp x) (fn-cp-nth 3 x))
-        ((fn-cpe-eventp x) (fn-cpe-generation x))
+        ((fn-cne-eventp x) (fn-cpe-generation x))
         ((fn-th-topic-eventp x) (fn-th-at 3 x))
         (t nil)))
 
@@ -202,8 +202,9 @@
 
 (defun fn-rcon-cpe-projection-step (s event expected)
   (declare (xargs :guard t :verify-guards nil))
-  (if (fn-cae-eventp event)
-      (list :refused :authority-interpreter-required)
+  (if (or (fn-cae-eventp event) (fn-crev-eventp event))
+      (list :refused (if (fn-cae-eventp event) :authority-interpreter-required
+                      :remote-consumer-interpreter-required))
     (if (or (not (fn-rcon-store-event-p event))
           (not (fn-cp-uintp expected))
           (equal expected *fn-cbor-max-uint*)
@@ -338,7 +339,7 @@
         ((fn-stxk-p event) (fn-stxk-encode event))
         ((fn-stxa-p event) (fn-stxa-encode event))
         ((fn-cae-eventp event) (fn-cae-encode event))
-        ((fn-cpe-eventp event) (fn-cpe-encode event))
+        ((fn-cne-eventp event) (fn-cne-encode event))
         ((fn-th-topic-eventp event) (fn-th-topic-event-encode event))
         (t nil)))
 (defthm fn-rcon-store-event-encode-is-store-event-encode

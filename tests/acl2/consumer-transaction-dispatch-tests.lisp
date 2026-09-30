@@ -37,10 +37,34 @@
       (equal (fn-cne-decode-exact (fn-cae-encode *cnet-binding*))
              (list :ok *cnet-binding*))
       (not (fn-cac-eventp *cnet-binding*)) (not (fn-cab-eventp *cnet-authority*))))
-;@mutation-witness reserved-version-and-malformed-binding-refuse
+;@mutation-witness malformed-remote-version-and-binding-refuse
 (assert-event
- (and (equal (fn-cne-decode-exact '(102 110 99 101 4 6))
-             '(:error :remote-consumer-decoder-unavailable))
+ (and (not (eq (fn-cp-nth 0 (fn-cne-decode-exact '(102 110 99 101 4 6))) :ok))
       (equal (fn-cne-decode-exact '(102 110 99 101 9 6))
              '(:error :consumer-envelope-version))
       (not (eq (fn-cp-nth 0 (fn-cne-decode-exact '(102 110 99 101 3 7))) :ok))))
+
+(defconst *cnet-remote*
+ '(:consumer 8 9 10 (:remote-register (99) (112) (99) 1 2 1 ((97) (98)) (65))))
+;@positive-witness fn-cne-event-shape
+(assert-event
+ (and (fn-cne-eventp *cnet-remote*) (true-listp *cnet-remote*)
+      (equal (len *cnet-remote*) 5) (consp *cnet-remote*)
+      (equal (car *cnet-remote*) :consumer)
+      (natp (fn-cp-nth 1 *cnet-remote*)) (natp (fn-cp-nth 2 *cnet-remote*))
+      (natp (fn-cp-nth 3 *cnet-remote*))))
+;@hyp-removal-witness fn-cne-event-shape omitted=consumer-event
+(assert-event
+ (let ((bad '(:consumer bad-sequence 9 10 nil)))
+  (and (not (fn-cne-eventp bad))
+       (not (and (true-listp bad) (equal (len bad) 5) (consp bad)
+                 (equal (car bad) :consumer)
+                 (natp (fn-cp-nth 1 bad)) (natp (fn-cp-nth 2 bad))
+                 (natp (fn-cp-nth 3 bad)))))))
+;@mutation-witness logical-remote-version-four-category-roundtrip
+(assert-event
+ (and (fn-crev-eventp *cnet-remote*) (not (fn-cpe-eventp *cnet-remote*))
+      (equal (fn-cne-decode-exact (fn-cne-encode *cnet-remote*))
+             (list :ok *cnet-remote*))
+      (not (fn-cae-eventp *cnet-remote*))
+      (not (eq (fn-cp-nth 0 (fn-cpe-decode-exact (fn-cne-encode *cnet-remote*))) :ok))))

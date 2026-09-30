@@ -168,10 +168,10 @@
                                 zp (:executable-counterpart zp))))))
 (local
  (defthm fn-evc-consumer-shape
-   (implies (fn-cpe-eventp x)
+   (implies (fn-cne-eventp x)
             (and (consp x) (equal (car x) :consumer)))
    :rule-classes :forward-chaining
-   :hints (("Goal" :in-theory '(fn-cpe-eventp fn-cp-nth
+   :hints (("Goal" :in-theory '(fn-cne-eventp fn-cp-nth
                                 zp (:executable-counterpart zp))))))
 (local
  (defthm fn-evc-authority-shape
@@ -325,9 +325,9 @@
                                 fn-evc-retention-shape fn-evc-consumer-shape fn-evc-authority-shape
                                 fn-evc-topic-shape)
                               (theory 'ground-zero)))))
-(defthm fn-evc-class-by-shape-is-fn-cpe-eventp
+(defthm fn-evc-class-by-shape-is-fn-cne-eventp
   (implies (fn-store-event-p x)
-           (iff (fn-cpe-eventp x) (equal (fn-evc-class-by-shape x) :consumer)))
+           (iff (fn-cne-eventp x) (equal (fn-evc-class-by-shape x) :consumer)))
   :rule-classes nil
   :hints (("Goal" :in-theory (union-theories
                               '(fn-store-event-p fn-evc-class-by-shape
@@ -416,10 +416,10 @@
   (mbe :logic (fn-hstxa-p x) :exec (eq (fn-evc-class-by-shape x) :hstxa)))
 (defun fn-evc-consumerp (x)
   (declare (xargs :guard (fn-store-event-p x)
-                  :guard-hints (("Goal" :use fn-evc-class-by-shape-is-fn-cpe-eventp
-                                 :in-theory (union-theories '((:type-prescription fn-cpe-eventp))
+                  :guard-hints (("Goal" :use fn-evc-class-by-shape-is-fn-cne-eventp
+                                 :in-theory (union-theories '((:type-prescription fn-cne-eventp))
                                                             (theory 'ground-zero))))))
-  (mbe :logic (fn-cpe-eventp x) :exec (eq (fn-evc-class-by-shape x) :consumer)))
+  (mbe :logic (fn-cne-eventp x) :exec (eq (fn-evc-class-by-shape x) :consumer)))
 (defun fn-evc-authorityp (x)
   (declare (xargs :guard (fn-store-event-p x)
                   :guard-hints (("Goal" :use fn-evc-class-by-shape-is-fn-cae-eventp

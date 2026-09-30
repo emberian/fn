@@ -211,6 +211,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-config-authority-tests \
 	tests/acl2/consumer-config-publication-tests \
 	tests/acl2/consumer-authority-store-tests \
+	tests/acl2/consumer-remote-store-category-tests \
 	tests/acl2/control-visible-effect-tests \
 	books/consumer-authority-revision \
 	tests/acl2/consumer-authority-revision-tests \
