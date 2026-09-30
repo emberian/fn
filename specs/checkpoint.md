@@ -348,3 +348,14 @@ water `1+M+N+T`; a single-address operation computes one member. Both refine
 constant-work table-count function and current-format u64/u32 checks. This
 removes whole-run allocation planning from the proposed private writer; it
 neither allocates backing pages nor proves platform file-offset representation.
+
+`books/history-page-buffer.lisp` (PRF-1093) supplies the concrete scratch page:
+a fixed 2048-u64 array, a bounded written-prefix counter, and capture/lease
+references. Begin resets only the counter and identities. Put writes one word;
+the accessor refuses unwritten offsets even when an old physical word remains
+there. The prefix refinement equates each successful put with one logical word
+append; full-page refusal leaves the state unchanged. This is one format page,
+not a data-capacity limit. Buffer allocation needs its actual runtime charge,
+and reuse must wait for completion/join of every I/O owner. The proof-only
+prefix collector is excluded from the host path; serialization and complete
+image effect composition remain open.

@@ -5655,7 +5655,8 @@
         "PRF-1074",
         "PRF-1077",
         "PRF-1086",
-        "PRF-1092"
+        "PRF-1092",
+        "PRF-1093"
       ],
       "verification": [
         "proof",
@@ -5674,7 +5675,9 @@
         "books/history-page-cursor.lisp",
         "tests/acl2/history-page-cursor-tests.lisp",
         "books/history-page-layout.lisp",
-        "tests/acl2/history-page-layout-tests.lisp"
+        "tests/acl2/history-page-layout-tests.lisp",
+        "books/history-page-buffer.lisp",
+        "tests/acl2/history-page-buffer-tests.lisp"
       ],
       "implementation_note": "S7 producer in development on codex/operability-producer; grammar and bounded copy cursor only. Full maintained-projection recovery and resource lifetime funding remain required, no producer completion claim."
     }
