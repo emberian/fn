@@ -267,3 +267,20 @@ open a two-record image with a consumed frontier gap, run refusal, known
 abort, publication with acknowledgement, an uncertain link, crash and recovery,
 then acknowledge a record, die at the `final-link` cut, and reopen on both
 admissible images; each keystone has one refuting witness per hypothesis.
+
+
+### Checkpoint program source factoring
+
+The schema-3 reference-aware tree program and decoder now live in
+`store-checkpoint-table-program`, with fixed consumer fields, event-index
+reads and checkpoint accessors in narrow prerequisite books. The existing
+checkpoint table, open, consumer and codec books include those definitions.
+All 43 extracted event forms, including guard verifications and local proof
+support, match their original public forms exactly; format, decisions and
+executable bodies remain unchanged. `store-tree-codec-program-guards` carries
+the original guard verification needed by the reference-aware encoder.
+
+The private factoring manifests preserve their exact source and provenance
+limits. They establish no public composed verdict; matching certification of
+the assembled public affected roots is recorded separately. This factoring
+adds no completed recovery, native or funding criterion.

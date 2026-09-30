@@ -35,6 +35,18 @@
         (consp handoff)
         (fn-bphs-handoffp handoff))))
 
+; Direct positive anchor retains the actual producer's returned value, so
+; a constantly false grammar cannot satisfy this fixture.
+(defconst *fn-bphsp-produced-handoff*
+  (mv-let (ok updated handoff)
+      (fn-bpah-apply-delivery *fn-bphsp-record* (list *fn-bphsp-held*))
+    (declare (ignore ok updated))
+    handoff))
+(assert-event
+ (and (consp *fn-bphsp-produced-handoff*)
+      (fn-bphs-handoffp *fn-bphsp-produced-handoff*)
+      (fn-bphs-handoffs-p (list *fn-bphsp-produced-handoff*))))
+
 ; Malformed data is distinct from a healthy producer trajectory.
 (assert-event
  (and (not (fn-bphs-handoffp :bpck-unknown-symbol-witness))

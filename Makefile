@@ -666,6 +666,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-machine-authorization \
 	tests/acl2/bp-node-machine-tests \
 	books/bp-node-foundation \
+	books/bp-handoff-recovery-shape \
+	books/bp-handoff-producer-shape \
+	books/bp-handoff-recovery-refinement \
+	tests/acl2/bp-checkpoint-recovery-symbol-tests \
+	tests/acl2/bp-handoff-producer-shape-tests \
 	tests/acl2/bp-node-foundation-tests \
 	books/bp-node-fragment-family \
 	tests/acl2/bp-node-fragment-family-tests \
@@ -1119,6 +1124,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
+	books/consumer-position-fields \
+	books/consumer-event-index-read \
+	books/store-checkpoint-accessors \
+	books/store-checkpoint-table-program \
+	books/store-tree-codec-program-guards \
 	books/store-checkpoint-tables \
 	books/store-checkpoint-tables-reader \
 	books/store-checkpoint-size-reader \

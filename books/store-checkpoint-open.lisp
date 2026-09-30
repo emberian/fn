@@ -23,6 +23,7 @@
 ; at open only.
 (in-package "ACL2")
 (include-book "config-observed")
+(include-book "store-checkpoint-accessors")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md
@@ -33,14 +34,6 @@
 
 ; A total nth: the checkpoint is decoded from bytes, so its accessors take
 ; any value.
-(local
- (defthm fn-sco-cp-nth-is-nth
-   (equal (fn-cp-nth n x) (nth n x))
-   :hints (("Goal" :in-theory (enable fn-cp-nth)))))
-
-(defun fn-sco-at (n x)
-  (declare (xargs :guard (natp n)))
-  (mbe :logic (nth n x) :exec (fn-cp-nth n x)))
 
 (defun fn-sco-drop (n x)
   (declare (xargs :guard (natp n)))
