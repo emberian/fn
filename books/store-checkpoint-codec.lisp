@@ -29,7 +29,6 @@
 ; splice (sequence and the trailer chain) and a corrupt octet (trailer).
 (in-package "ACL2")
 (include-book "store-tree-codec")
-(include-book "store-tree-codec-program-guards")
 (include-book "frame-trailer")
 (local (include-book "arithmetic/top" :dir :system))
 (local
@@ -483,7 +482,7 @@
 (verify-guards fn-scc-decode-tree)
 (verify-guards fn-scc-decode-segments
   :hints (("Goal" :in-theory (disable fn-scc-parse-header fn-scc-join fn-scc-decode-tree))))
-
+(verify-guards fn-scc-program)
 (verify-guards fn-scc-renc)
 (verify-guards fn-scc-encode)
 (defthm fn-scc-chunks-true-list-listp

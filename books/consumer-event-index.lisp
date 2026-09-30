@@ -30,7 +30,16 @@
 (include-book "consumer-position")
 (include-book "replay")
 (include-book "msgid-index-concrete")
-(include-book "consumer-event-index-read")
+
+(defconst *fn-cei-value-key* :fn-cei-value)
+
+(defun fn-cei-branch-get (key branches)
+  (declare (xargs :guard t))
+  (if (consp branches)
+      (if (equal key (fn-cbor-ag-car (fn-cbor-ag-car branches)))
+          (fn-cbor-ag-cdr (fn-cbor-ag-car branches))
+        (fn-cei-branch-get key (fn-cbor-ag-cdr branches)))
+    nil))
 
 (defun fn-cei-branch-put (key value branches)
   (declare (xargs :guard t))
@@ -50,6 +59,13 @@
         (cdr digits) event (fn-cei-branch-get (car digits) trie))
        trie)
     (fn-cei-branch-put *fn-cei-value-key* event trie)))
+
+(defun fn-cei-get-digits (digits trie)
+  (declare (xargs :guard t))
+  (if (consp digits)
+      (fn-cei-get-digits
+       (cdr digits) (fn-cei-branch-get (car digits) trie))
+    (fn-cei-branch-get *fn-cei-value-key* trie)))
 
 ; The article a retained Store event commits: an article row is its own
 ; (a held record, books/held-record.lisp); a composite row (fn-hstxa-p)
@@ -109,6 +125,11 @@
            :use
            ((:instance fn-cei-snoc-loop-is-revappend (acc nil))))))
 
+
+(defun fn-cei-sequence-trie (index)
+  (declare (xargs :guard t))
+  (if (consp index) (car index) nil))
+
 (defun fn-cei-msgid-trie (index)
   (declare (xargs :guard t))
   (if (and (consp index) (consp (cdr index))) (cadr index) nil))
@@ -122,7 +143,10 @@
 
 ; A Message-ID's list in the trie: the walk by string index, no allocation.
 ; The index only ever stores true lists; the test makes that a type.
-
+(defun fn-cei-trie-records (msgid trie)
+  (declare (xargs :guard t))
+  (let ((value (fn-mxc-lookup msgid trie)))
+    (if (true-listp value) value nil)))
 
 (defun fn-cei-msgid-records (msgid index)
   (declare (xargs :guard t))
@@ -149,6 +173,13 @@
            (fn-cei-sequence-trie index))
          (fn-cei-msgid-add event (fn-cei-msgid-trie index))
          (1+ (fn-cei-count index))))
+
+(defun fn-cei-get (sequence index)
+  (declare (xargs :guard t))
+  (if (fn-cp-uintp sequence)
+      (fn-cei-get-digits (fn-cbor-u32-bytes sequence)
+                         (fn-cei-sequence-trie index))
+    nil))
 
 ; Executed only during observed open/recovery, not during a served poll.
 (defun fn-cei-build-aux (events sequence index)

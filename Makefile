@@ -1124,11 +1124,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
-	books/consumer-position-fields \
-	books/consumer-event-index-read \
-	books/store-checkpoint-accessors \
-	books/store-checkpoint-table-program \
-	books/store-tree-codec-program-guards \
 	books/store-checkpoint-tables \
 	books/store-checkpoint-tables-reader \
 	books/store-checkpoint-size-reader \
