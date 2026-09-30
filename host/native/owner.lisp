@@ -58,12 +58,60 @@
 (defstruct (fnn-owner-cold-read (:constructor %make-fnn-owner-cold-read))
   token worker prev next queuedp settledp outcome)
 
+;;; Retained admission envelope. Every phase/verdict is an opaque ACL2
+;;; result; these fields retain I/O references across unlocked yields.
+;;; The holder token is installed here before the first input fill. Credits,
+;;; the durable intent and aliases remain owned until core-authorized join.
+;;; Source integration only: scheduling/issuance is not activated yet.
+(defstruct (fnn-owner-admission-job (:constructor %make-fnn-owner-admission-job))
+  kind cid inflight msgid source-vector groups evidence binding
+  input-token input-backing core-job query-token selected-token payload-token
+  capture-coordinate authority-coordinate intent intent-generation
+  reserved-txid outcome)
+
+;; Retained after reservation and before provider/turn construction.
+;; The paired core install establishes the token/provider/turn association.
+(defstruct (fnn-owner-receiver-runtime
+             (:constructor %make-fnn-owner-receiver-runtime))
+  provider token range-callback fence-callback limits turn)
+
+;; Internal constructor subject for startup funding. This does not issue a
+;; receiver or establish installation; the paired core install follows it.
+(defun fnn-owner-receiver-runtime-make
+    (provider token range-callback fence-callback limits)
+  (%make-fnn-owner-receiver-runtime
+   :provider provider :token token :range-callback range-callback
+   :fence-callback fence-callback :limits limits))
+
+;; Successor startup subject for the bounded SAME-pool capacity controller.
+;; It remains internal/unhooked until the baseline controller and complete
+;; constructor/operation census are issued. The old runtime6 stays historical.
+(defstruct (fnn-owner-receiver-turn-runtime
+             (:constructor %make-fnn-owner-receiver-turn-runtime))
+  provider capacity-token current turn turn-start copy-next copy-ack fence limits)
+
+(defun fnn-owner-receiver-turn-runtime-make
+    (token current turn-start copy-next copy-ack fence limits)
+  (%make-fnn-owner-receiver-turn-runtime
+   :capacity-token token :current current :turn-start turn-start
+   :copy-next copy-next :copy-ack copy-ack :fence fence :limits limits))
+
 (defstruct (fnn-owner-service (:constructor %make-fnn-owner-service))
   store lock listener stopping (exit-code +fnn-exit-ok+) (feeds nil)
   (workers nil) (clients nil) tls-context
   ;; Intrusive cold-read queue, guarded by owner mutex. Metadata remains
   ;; owned until worker relinquishment and atomic result settlement.
   (cold-head nil) (cold-tail nil)
+  ;; Funded permanent roots plus installed callback wiring. No startup setter
+  ;; exists yet: genuine runtime/constructor admission is an activation debt.
+  (connection-raw-token nil) (connection-head nil)
+  (connection-start nil) (connection-open nil) (connection-close nil)
+  (connection-abort nil) (connection-settle nil)
+  (connection-mio nil) (connection-pool nil) (connection-fuel nil)
+  ;; One exclusive incoming holder; no second request overwrites its refs.
+  (admission-job nil)
+  ;; Retains the actual installed provider and selected startup callbacks.
+  (receiver-runtime nil)
   ;; The scheduler gate in front of LOCK (fnn-owner-gated), and the roster
   ;; mutex that protects WORKERS, CLIENTS, PUBLISHER and the stop flag's
   ;; publication to the accept threads: host lists, not owner state, so
@@ -135,6 +183,191 @@
   ;; stall.  Read and written under COMMIT-LOCK.
   (drain-release nil))
 
+;;; Opaque connection custody. These are INTERNAL composition subjects until
+;;; startup installs the genuine indexed runtime and its constructor allowance.
+;;; Every caller holds the owner lock. Pool callbacks additionally run under
+;;; the extent lock, against the SAME installed page-read pool. No constructor
+;;; is reachable before START has debited that pool. The permanent service root
+;;; slots themselves belong to the installed baseline, not this child grant.
+(defstruct (fnn-connection-custody (:constructor %make-fnn-connection-custody))
+  token cid prev next phase)
+
+(defun fnn-connection-custody-make (token)
+  (%make-fnn-connection-custody :token token :phase :pending))
+
+(defun fnn-owner-connection-selected-p (service)
+  ;; Selection is wiring, not a claim of runtime adequacy. A retained token
+  ;; also forbids falling back if a damaged installation loses its callback.
+  (or (fnn-owner-service-connection-start service)
+      (fnn-owner-service-connection-open service)
+      (fnn-owner-service-connection-close service)
+      (fnn-owner-service-connection-abort service)
+      (fnn-owner-service-connection-settle service)
+      (fnn-owner-service-connection-raw-token service)
+      (fnn-owner-service-connection-head service)))
+
+(defun fnn-connection-custody-publish-raw (service)
+  ;; RAW-TOKEN remains rooted across constructor escape. Splice the already
+  ;; funded node before clearing the root; no cleanup or retirement consing.
+  (let ((node (fnn-connection-custody-make
+               (fnn-owner-service-connection-raw-token service)))
+        (head (fnn-owner-service-connection-head service)))
+    (setf (fnn-connection-custody-next node) head)
+    (when head (setf (fnn-connection-custody-prev head) node))
+    (setf (fnn-owner-service-connection-head service) node
+          (fnn-owner-service-connection-raw-token service) nil)
+    node))
+
+(defun fnn-connection-custody-retain (service token)
+  ;; INTERNAL: called only for an actual core-acquired, funded replacement.
+  (when (fnn-owner-service-connection-raw-token service)
+    (fnn-fixed-callback-fail 'fnn-connection-custody-retain :raw-token-already-held nil))
+  (setf (fnn-owner-service-connection-raw-token service) token)
+  (fnn-connection-custody-publish-raw service))
+
+(defun fnn-connection-custody-released (service node)
+  ;; INTERNAL: only a core-returned release reaches this splice. Logical
+  ;; close, socket close, a host exception or alias-count guesses never do.
+  (when (eq (fnn-connection-custody-phase node) :released)
+    (fnn-fixed-callback-fail 'fnn-connection-custody-released :already-released nil))
+  (let ((prev (fnn-connection-custody-prev node))
+        (next (fnn-connection-custody-next node)))
+    (if prev (setf (fnn-connection-custody-next prev) next)
+      (setf (fnn-owner-service-connection-head service) next))
+    (when next (setf (fnn-connection-custody-prev next) prev))
+    (setf (fnn-connection-custody-token node) nil
+          (fnn-connection-custody-prev node) nil
+          (fnn-connection-custody-next node) nil
+          (fnn-connection-custody-phase node) :released)))
+
+(defun fnn-owner-connection-open-locked (service kind family address peer)
+  "Return CID and its directly retained native node. No retained-path fallback."
+  (unless (fnn-owner-connection-selected-p service)
+    (return-from fnn-owner-connection-open-locked
+      (values (case kind
+                (:reader (fnn-owner-core 'fn-owner-open))
+                (:exposure (fnn-owner-core 'fn-owner-exposure-open family address peer))
+                (:peer (fnn-owner-core 'fn-owner-open-peer peer))
+                (otherwise (fnn-fixed-callback-fail 'fnn-owner-connection-open-locked :unknown-open-kind kind))) nil)))
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (when (fnn-owner-service-connection-raw-token service)
+      (fnn-fixed-callback-fail 'fn-owner-index-connection-start :raw-token-already-held nil))
+    (multiple-value-bind (erp word token fuel mio pool state)
+        (fnn-core-mv 'fn-owner-index-connection-start
+          (funcall (fnn-owner-service-connection-start service)
+                   kind family address peer
+                   (fnn-owner-service-connection-mio service)
+                   (fnn-owner-service-connection-pool service) *the-live-state*))
+      (declare (ignore state))
+      ;; ANY acquired result survives even a simultaneous error/refusal. This
+      ;; assignment precedes inspecting ERP/WORD and all subsequent allocation.
+      (setf (fnn-owner-service-connection-raw-token service) token
+            (fnn-owner-service-connection-mio service) mio
+            (fnn-owner-service-connection-pool service) pool
+            (fnn-owner-service-connection-fuel service) fuel)
+      (when erp (fnn-fixed-callback-fail 'fn-owner-index-connection-start :issuer-error erp))
+      (unless (eq word :reserved)
+        (when token (fnn-fixed-callback-fail 'fn-owner-index-connection-start :issuer-retained word))
+        (fnn-refuse "connection issuer refused: ~a" word))
+      (unless token (fnn-fixed-callback-fail 'fn-owner-index-connection-start :issuer-token-missing nil))
+      (let ((node (fnn-connection-custody-publish-raw service)))
+        (multiple-value-bind (open-erp result mio1 pool1 state1)
+            (fnn-core-mv 'fn-owner-index-open
+              (funcall (fnn-owner-service-connection-open service)
+                       kind family address peer token fuel mio pool *the-live-state*))
+          (declare (ignore state1))
+          (setf (fnn-owner-service-connection-mio service) mio1
+                (fnn-owner-service-connection-pool service) pool1)
+          (when open-erp (fnn-fixed-callback-fail 'fn-owner-index-open :open-error open-erp))
+          (case (first result)
+            (:opened
+             (setf (fnn-connection-custody-cid node) (second result)
+                   (fnn-connection-custody-phase node) :live)
+             (values (second result) node))
+            ((:refused :unavailable :stale)
+             (when (third result) (fnn-fixed-callback-fail 'fn-owner-index-open :refused-retained result))
+             ;; This result means the composed open actually aborted/released.
+             (fnn-connection-custody-released service node)
+             (values nil nil))
+            (otherwise (fnn-fixed-callback-fail 'fn-owner-index-open :open-unresolved result))))))))
+
+(defun fnn-owner-connection-close-locked (service cid node faultp)
+  "Logical close/fault followed by core settlement; held aliases stay rooted."
+  (unless node
+    (when (fnn-owner-connection-selected-p service)
+      (fnn-fixed-callback-fail 'fn-owner-index-close :custody-missing nil))
+    (return-from fnn-owner-connection-close-locked
+      (fnn-owner-action (if faultp 'fn-owner-fault 'fn-owner-close) cid)))
+  (when (eq (fnn-connection-custody-phase node) :released)
+    (return-from fnn-owner-connection-close-locked :closed))
+  (when (eq (fnn-connection-custody-phase node) :retiring)
+    (return-from fnn-owner-connection-close-locked
+      (fnn-owner-connection-settle-locked
+       service node (fnn-owner-service-connection-fuel service) nil)))
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (multiple-value-bind (erp result mio pool state)
+        (fnn-core-mv 'fn-owner-index-close
+          (funcall (fnn-owner-service-connection-close service)
+                   cid (fnn-connection-custody-token node) faultp
+                   (fnn-owner-service-connection-fuel service)
+                   (fnn-owner-service-connection-mio service)
+                   (fnn-owner-service-connection-pool service)
+                   (fnn-live-arena) *the-live-state*))
+      (declare (ignore state))
+      (setf (fnn-owner-service-connection-mio service) mio
+            (fnn-owner-service-connection-pool service) pool)
+      (when erp (fnn-fixed-callback-fail 'fn-owner-index-close :close-error erp))
+      (case (first result)
+        (:closed
+         (when (third result) (fnn-fixed-callback-fail 'fn-owner-index-close :released-retained result))
+         (fnn-connection-custody-released service node))
+        (:closed-held (setf (fnn-connection-custody-phase node) :retiring))
+        (:yield (setf (fnn-connection-custody-phase node) :close-pending))
+        (otherwise (fnn-fixed-callback-fail 'fn-owner-index-close :close-unresolved result)))
+      (first result))))
+
+(defun fnn-owner-connection-settle-locked (service node fuel abortp)
+  "A real alias return or definite pre-open refusal requests core settlement."
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (multiple-value-bind (erp word left mio pool state)
+        (fnn-core-mv (if abortp 'fn-owner-index-connection-abort 'fn-owner-index-connection-settle)
+          (funcall (if abortp (fnn-owner-service-connection-abort service)
+                     (fnn-owner-service-connection-settle service))
+                   (fnn-connection-custody-token node) fuel
+                   (fnn-owner-service-connection-mio service)
+                   (fnn-owner-service-connection-pool service) *the-live-state*))
+      (declare (ignore state))
+      (setf (fnn-owner-service-connection-mio service) mio
+            (fnn-owner-service-connection-pool service) pool)
+      (when erp (fnn-fixed-callback-fail 'fnn-owner-connection-settle-locked :settle-error erp))
+      (case word
+        (:released (fnn-connection-custody-released service node))
+        ((:held :busy :yield) nil)
+        (otherwise (fnn-fixed-callback-fail 'fnn-owner-connection-settle-locked :settle-unresolved word)))
+      (values word left))))
+
+(defun fnn-owner-connection-repin-joined-locked (service old new word)
+  "Transport the actual completion word; never infer acceptance from scalars."
+  (case word
+    (:committed-repin-released
+     (fnn-connection-custody-released service old)
+     (setf (fnn-connection-custody-phase new) :live
+           (fnn-connection-custody-cid new) (fnn-connection-custody-cid old))
+     new)
+    (:committed-repin-held
+     (setf (fnn-connection-custody-phase old) :retiring
+           (fnn-connection-custody-phase new) :live
+           (fnn-connection-custody-cid new) (fnn-connection-custody-cid old))
+     new)
+    (:committed-repin-aborted
+     ;; Only the receipt's persisted actual abort/release disposition permits
+     ;; forgetting this prepared NEW node. OLD remains the active endpoint.
+     (fnn-connection-custody-released service new)
+     old)
+    ;; Ordinary commit carries no authority over a separately pending NEW.
+    (:committed old)
+    (otherwise (fnn-fixed-callback-fail 'fnn-owner-connection-repin-joined-locked :repin-unresolved word))))
+
 ;;; Inside a commit quantum (fnn-owner-commit-queued-locked) the effects that
 ;;; would let a member's outcome leave the owner before the log's barrier are
 ;;; held here and released after it, in order: the service log lines and the
@@ -150,6 +383,341 @@ The waiters poll again (ACL2 decides what each answers); this only signals."
   (sb-thread:with-mutex ((fnn-owner-service-wait-lock service))
     (incf (fnn-owner-service-commits service))
     (sb-thread:condition-broadcast (fnn-owner-service-wait-queue service))))
+
+;;; Fixed-arity physical copy quantum. Caller holds owner then extent locks,
+;;; and supplies startup-installed selected callbacks/live paired stobjs.
+;;; The guarded core emits all endpoints; native never derives a copy range.
+;;; This adapter is inactive until the paired controller/startup carry lands.
+(defun fnn-owner-incoming-copy-step
+    (job next-callback ack-callback controller pool)
+  (multiple-value-bind (word start count end controller1 pool1)
+      (fnn-core-mv 'fn-owner-incoming-copy-next
+        (funcall next-callback (fnn-owner-admission-job-input-token job)
+                 controller pool))
+    (case word
+      (:copy
+       (handler-case
+           ;; Capacity was installed under retained charge before START.
+           ;; This quantum replaces bytes only; it never reserves/resizes.
+           (replace (the fnn-octets (svref (fnn-live-octets) 0))
+                    (fnn-owner-admission-job-source-vector job)
+                    :start1 start :end1 end :start2 start :end2 end)
+         (serious-condition (cause)
+           ;; A partial replacement is ambiguous. The core cancels mechanics,
+           ;; retaining holder/charge; no catch/unwind releases aliases.
+           (fnn-core-mv 'fn-owner-incoming-copy-ack
+             (funcall ack-callback
+                      (fnn-owner-admission-job-input-token job)
+                      start count end :uncertain controller1 pool1))
+           (error cause)))
+       ;; The core acknowledgement has its own execution fault boundary.
+       ;; Never retry it after a callback mutated state and then escaped.
+       (fnn-core-mv 'fn-owner-incoming-copy-ack
+         (funcall ack-callback (fnn-owner-admission-job-input-token job)
+                  start count end :copied controller1 pool1)))
+      ((:complete :setup-unavailable) (values word controller1 pool1))
+      (t (fnn-fixed-callback-fail 'fn-owner-incoming-copy-next
+                                  :invalid-copy-word word)))))
+
+;; Startup assembly subject, not yet called by owner-run. DEMAND must be
+;; the admitted constructor census before this can become a served factory.
+;; Caller holds owner exclusion; the extent lock serializes the SAME pool.
+(defun fnn-owner-receiver-startup
+    (service instance demand limits creator turn-creator reserve-callback install-callback
+             range-callback fence-callback pool)
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (when (fnn-owner-service-receiver-runtime service)
+      (fnn-fixed-callback-fail 'fn-owner-rx-capacity-reserve
+                               :receiver-startup-already-retained nil))
+    (multiple-value-bind (word token pool1)
+        (fnn-core-mv 'fn-owner-rx-capacity-reserve
+          (funcall reserve-callback instance demand pool))
+      (unless (eq word :admitted)
+        (return-from fnn-owner-receiver-startup (values word nil pool1)))
+      ;; Retain the acquired token before any subsequent constructor can
+      ;; escape. A partial/unknown setup remains held; no automatic refund.
+      (setf (fnn-owner-service-receiver-runtime service) token)
+      (let ((runtime (fnn-owner-receiver-runtime-make
+                      nil token range-callback fence-callback limits)))
+        (setf (fnn-owner-service-receiver-runtime service) runtime)
+        (let ((provider (fnn-core-mv 'create-fn-rx-provider (funcall creator))))
+          (setf (fnn-owner-receiver-runtime-provider runtime) provider)
+          ;; The independent custody controller is retained before install
+          ;; promotes the complete startup allocation to permanent U.
+          (setf (fnn-owner-receiver-runtime-turn runtime)
+                (fnn-core-mv 'create-fn-receiver-turn (funcall turn-creator)))
+          (multiple-value-bind (installed provider1 turn1 pool2)
+              (fnn-core-mv 'fn-owner-rx-capacity-install-turn
+                (funcall install-callback token provider
+                         (fnn-owner-receiver-runtime-turn runtime) pool1))
+            (setf (fnn-owner-receiver-runtime-provider runtime) provider1
+                  (fnn-owner-receiver-runtime-turn runtime) turn1)
+            (unless (eq installed :installed)
+              (fnn-fixed-callback-fail 'fn-owner-rx-capacity-install-turn
+                                       :receiver-install-incomplete installed))
+            (values installed runtime pool2)))))))
+
+;; CURRENT is an already baseline-funded core object. Retain it before
+;; RESERVE can mutate the pool or escape; its issued token remains inside it.
+;; No native ledger projection or fabricated installed Boolean is accepted.
+(defun fnn-owner-receiver-current-startup
+    (service demand limits current creator turn-creator
+             reserve-callback allocation-callback install-callback
+             turn-start-callback next-callback ack-callback fence-callback current-fence-callback pool)
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (when (fnn-owner-service-receiver-runtime service)
+      (fnn-fixed-callback-fail 'fn-owner-rx-current-reserve
+                               :receiver-startup-already-retained nil))
+    (handler-case
+        (progn
+    (setf (fnn-owner-service-receiver-runtime service) current)
+    (multiple-value-bind (word token current1 pool1)
+        (fnn-core-mv 'fn-owner-rx-current-reserve
+          (funcall reserve-callback demand current pool))
+      (setf (fnn-owner-service-receiver-runtime service) current1)
+      (unless (eq word :admitted)
+        (return-from fnn-owner-receiver-current-startup (values word nil pool1)))
+      (multiple-value-bind (allocation current2 pool2)
+          (fnn-core-mv 'fn-owner-rx-current-allocation-begin
+            (funcall allocation-callback token current1 pool1))
+        (setf (fnn-owner-service-receiver-runtime service) current2)
+        (unless (eq allocation :allocate)
+          (fnn-fixed-callback-fail 'fn-owner-rx-current-allocation-begin
+                                   :receiver-allocation-incomplete allocation))
+        (let ((runtime (fnn-owner-receiver-turn-runtime-make
+                        token current2 turn-start-callback next-callback
+                        ack-callback fence-callback limits)))
+          (setf (fnn-owner-service-receiver-runtime service) runtime)
+          (let ((provider (fnn-core-mv 'create-fn-rx-provider (funcall creator))))
+            (setf (fnn-owner-receiver-turn-runtime-provider runtime) provider)
+            (setf (fnn-owner-receiver-turn-runtime-turn runtime)
+                  (fnn-core-mv 'create-fn-receiver-turn (funcall turn-creator)))
+            (multiple-value-bind (installed provider1 turn1 current3 pool3)
+                (fnn-core-mv 'fn-owner-rx-current-install
+                  (funcall install-callback token provider
+                           (fnn-owner-receiver-turn-runtime-turn runtime)
+                           current2 pool2))
+              (setf (fnn-owner-receiver-turn-runtime-provider runtime) provider1
+                    (fnn-owner-receiver-turn-runtime-turn runtime) turn1
+                    (fnn-owner-receiver-turn-runtime-current runtime) current3)
+              (unless (eq installed :installed)
+                (fnn-fixed-callback-fail 'fn-owner-rx-current-install
+                                         :receiver-install-incomplete installed))
+              (values installed runtime pool3)))))))
+      (serious-condition (cause)
+        ;; The control owns any token even if reserve escaped before returning
+        ;; it. Fence that actual control, then any constructed provider. A
+        ;; fence escape must reach the enclosing shared fail-stop boundary.
+        (let* ((retained (fnn-owner-service-receiver-runtime service))
+               (runtimep (fnn-owner-receiver-turn-runtime-p retained))
+               (controller (if runtimep
+                               (fnn-owner-receiver-turn-runtime-current retained)
+                             retained)))
+          (multiple-value-bind (ignored fenced pool1)
+              (fnn-core-mv 'fn-owner-rx-current-fence-current
+                (funcall current-fence-callback controller pool))
+            (declare (ignore ignored pool1))
+            (if runtimep
+                (setf (fnn-owner-receiver-turn-runtime-current retained) fenced)
+              (setf (fnn-owner-service-receiver-runtime service) fenced)))
+          (when (and runtimep (fnn-owner-receiver-turn-runtime-provider retained))
+            (fnn-core-mv 'fn-rxp-fence
+              (funcall fence-callback
+                       (fnn-owner-receiver-turn-runtime-capacity-token retained)
+                       (fnn-owner-receiver-turn-runtime-provider retained)))))
+        (error cause)))))
+
+;; Private primitive observation for an already issued exact range. This
+;; projection is permitted while readiness is revoked; public consumers must
+;; still pass the core current/filled gate. No allocation, reserve or resize.
+;; :COPIED is returned only after BOTH actual primitive operations complete.
+(defun fnn-receiver-range-copy (incoming provider start end)
+  (declare (type fnn-octets incoming))
+  (replace (the fnn-octets (fnn-receiver-backing provider))
+           incoming :start1 start :end1 end :start2 start :end2 end)
+  (fnn-receiver-publish-fill provider end)
+  :copied)
+
+;; Selected turn copy adapter. Caller holds shared owner exclusion; this
+;; function holds extent exclusion through authorization, physical publication
+;; and ACK. It does not return/settle custody or authorize a STATE consumer.
+(defun fnn-owner-receiver-turn-copy
+    (incoming ticket provider turn pool next-callback ack-callback limits fuel)
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (multiple-value-bind (word start end left provider1 turn1 pool1)
+        (fnn-core-mv 'fn-owner-rx-turn-copy-next
+          (funcall next-callback ticket (length incoming) limits fuel
+                   provider turn pool))
+      (case word
+        (:receive-copy
+         ;; Only the primitive is inside this handler. ACK is invoked once:
+         ;; a mutate-and-throw acknowledgement must never be retried.
+         (handler-case
+             (fnn-receiver-range-copy incoming provider1 start end)
+           (serious-condition (cause)
+             (fnn-core-mv 'fn-owner-rx-turn-copy-ack
+               (funcall ack-callback ticket start end :uncertain
+                        provider1 turn1 pool1))
+             (error cause)))
+         (multiple-value-bind (ack provider2 turn2 pool2)
+             (fnn-core-mv 'fn-owner-rx-turn-copy-ack
+               (funcall ack-callback ticket start end :copied
+                        provider1 turn1 pool1))
+           (values ack left provider2 turn2 pool2)))
+        ((:receiver-unavailable :bad-receive-range
+          :receive-quantum-full :receive-yield)
+         (values word left provider1 turn1 pool1))
+        (t (fnn-fixed-callback-fail 'fn-owner-rx-turn-copy-next
+                                  :invalid-receive-word word))))))
+
+;; Internal callable turn step. This returns only the newly issued core
+;; ticket; a busy/refused start cannot borrow a previous request's ticket.
+(defun fnn-owner-receiver-turn-start (service demand pool)
+  (let ((runtime (fnn-owner-service-receiver-runtime service)))
+    (unless (fnn-owner-receiver-turn-runtime-p runtime)
+      (fnn-fixed-callback-fail 'fn-owner-rx-turn-start
+                               :receiver-startup-incomplete nil))
+    (sb-thread:with-mutex (*fnn-extent-lock*)
+      (multiple-value-bind (word ticket turn pool1)
+          (fnn-core-mv 'fn-owner-rx-turn-start
+            (funcall (fnn-owner-receiver-turn-runtime-turn-start runtime)
+                     (fnn-owner-receiver-turn-runtime-capacity-token runtime)
+                     demand (fnn-owner-receiver-turn-runtime-provider runtime)
+                     (fnn-owner-receiver-turn-runtime-turn runtime) pool))
+        (setf (fnn-owner-receiver-turn-runtime-turn runtime) turn)
+        (values word ticket pool1)))))
+
+(defun fnn-owner-receiver-turn-copy-runtime (service incoming ticket fuel pool)
+  (let ((runtime (fnn-owner-service-receiver-runtime service)))
+    (unless (fnn-owner-receiver-turn-runtime-p runtime)
+      (fnn-fixed-callback-fail 'fn-owner-rx-turn-copy-next
+                               :receiver-startup-incomplete nil))
+    (multiple-value-bind (word left provider turn pool1)
+        (fnn-owner-receiver-turn-copy
+         incoming ticket (fnn-owner-receiver-turn-runtime-provider runtime)
+         (fnn-owner-receiver-turn-runtime-turn runtime) pool
+         (fnn-owner-receiver-turn-runtime-copy-next runtime)
+         (fnn-owner-receiver-turn-runtime-copy-ack runtime)
+         (fnn-owner-receiver-turn-runtime-limits runtime) fuel)
+      (setf (fnn-owner-receiver-turn-runtime-provider runtime) provider
+            (fnn-owner-receiver-turn-runtime-turn runtime) turn)
+      (values word left runtime pool1))))
+
+;;; SOURCE-NOTREADY: separate receiver physical effect. Selected callbacks
+;;; and the sanctioned SAME-provider backing bridge are installed at startup.
+;;; Reservation, constructor correspondence, and bulk effect funding remain
+;;; prerequisites; this function is not called by the served scheduler yet.
+;;; Caller must be inside fnn-owner-shared-action-locked: if the fence itself
+;;; faults, that boundary stops all consumers before releasing the owner lock.
+(defun fnn-owner-receiver-fill
+    (incoming token provider range-callback fence-callback limits fuel)
+  ;; Exclusion covers authorization, replacement, fill publication and fence.
+  ;; The held POST input is never a receiver destination.
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (handler-case
+        (multiple-value-bind (word start end left provider1)
+            (fnn-core-mv 'fn-rxp-fill-range
+              (funcall range-callback token (length incoming) limits fuel provider))
+          (case word
+            (:receive-copy
+             ;; Core endpoints and installed room authorize this exact effect.
+             ;; Publish the fill only after REPLACE completed; no reserve/resize.
+             (fnn-receiver-range-copy incoming provider1 start end)
+             (values word left provider1))
+            ((:receiver-unavailable :bad-receive-range
+              :receive-quantum-full :receive-yield)
+             (values word left provider1))
+            (t (fnn-fixed-callback-fail 'fn-rxp-fill-range
+                                      :invalid-receive-word word))))
+      (serious-condition (cause)
+        ;; Partial bytes are not a valid previous receive. Successful fencing
+        ;; revokes readiness before extent unlock. Fence failure propagates to
+        ;; the outer shared owner fence; keep object and permanent U charged.
+        ;; There is no retry, refund, or consumer continuation on this path.
+        (fnn-core-mv 'fn-rxp-fence
+          (funcall fence-callback token provider))
+        (error cause)))))
+
+;;; Physical adapter for core-issued retained admission actions. Caller owns
+;;; the service mutex. It never creates another durable intent or reservation
+;;; after a yield; the outer scheduler must retain this envelope until joins.
+;;; The whole fill action remains an unqualified setup obstruction until the
+;;; bounded incoming range producer replaces it. No caller activates it yet.
+(defun fnn-owner-receiver-fill-runtime (service incoming fuel)
+  "Use the exact startup-retained provider and selected scalar callbacks."
+  (let ((runtime (fnn-owner-service-receiver-runtime service)))
+    (unless (fnn-owner-receiver-runtime-p runtime)
+      (fnn-fixed-callback-fail 'fn-rxp-fill-range
+                               :receiver-startup-incomplete nil))
+    (multiple-value-bind (word left provider)
+        (fnn-owner-receiver-fill
+         incoming (fnn-owner-receiver-runtime-token runtime)
+         (fnn-owner-receiver-runtime-provider runtime)
+         (fnn-owner-receiver-runtime-range-callback runtime)
+         (fnn-owner-receiver-runtime-fence-callback runtime)
+         (fnn-owner-receiver-runtime-limits runtime) fuel)
+      (setf (fnn-owner-receiver-runtime-provider runtime) provider)
+      (values word left runtime))))
+
+;; Compatibility assembly: a run with no receiver factory still uses the
+;; guarded legacy mutator. Such a run cannot enable retained admission.
+(defun fnn-owner-read-buffer-fill (service incoming)
+  (if (fnn-owner-service-receiver-runtime service)
+      (multiple-value-bind (word left runtime)
+          (fnn-owner-receiver-fill-runtime
+           service incoming (fnn-owner-service-read-octets service))
+        (declare (ignore left))
+        (unless (eq word :receive-copy)
+          (error 'fnn-owner-admission-pending :verdict word))
+        (fnn-owner-receiver-runtime-provider runtime))
+    (progn (fnn-octets-fill incoming) nil)))
+
+(defun fnn-owner-admission-input-action (service job action)
+  (flet ((pool (name &rest args)
+           (sb-thread:with-mutex (*fnn-extent-lock*)
+             (apply #'fnn-core-page-read-pool name args))))
+    (case (if (consp action) (car action) action)
+      ((:yield :continue :demand) action)
+      (:reserve-input
+       (let ((result (pool 'fn-owner-incoming-reserve (second action))))
+         (when (eq (first result) :admitted)
+           ;; Retain the acquired token before any fill can allocate/throw.
+           (setf (fnn-owner-admission-job-input-token job) (second result)
+                 (fnn-owner-service-admission-job service) job))
+         (first result)))
+      (:fill-input
+       (handler-case
+           (progn
+             (setf (fnn-owner-admission-job-input-backing job)
+                   (svref (fnn-live-octets) 0))
+             (fnn-octets-fill (fnn-owner-admission-job-source-vector job)
+                              (fnn-owner-admission-job-input-token job))
+             :filled)
+         (error (cause)
+           ;; Cancellation keeps the row/charge and BOTH backing references:
+           ;; JOB owns the sampled old array; the live stobj owns the current.
+           (let ((word (first (pool 'fn-owner-incoming-cancel
+                                  (fnn-owner-admission-job-input-token job)))))
+             (setf (fnn-owner-admission-job-outcome job) word)
+             (values word cause)))))
+      (:seal-input
+       (first (pool 'fn-owner-incoming-seal
+                    (fnn-owner-admission-job-input-token job))))
+      (:cancel-input
+       (first (pool 'fn-owner-incoming-cancel
+                    (fnn-owner-admission-job-input-token job))))
+      (:terminal
+       ;; A semantic terminal result is retained evidence, not permission to
+       ;; refund input or resolve the durable intent before lease settlement.
+       (setf (fnn-owner-admission-job-outcome job) (second action)))
+      (:release-input
+       (let ((word (first (pool 'fn-owner-incoming-release
+                              (fnn-owner-admission-job-input-token job)
+                              (second action) (third action)))))
+         (when (eq word :released)
+           (setf (fnn-owner-service-admission-job service) nil))
+         word))
+      (otherwise (fnn-fault "malformed retained admission action")))))
 
 (defstruct (fnn-owner-feed-journal (:constructor %make-fnn-owner-feed-journal))
   peer path fd phase (replayed 0))
@@ -451,6 +1019,9 @@ the owner's keyword check, not the Store's."
 (defun fnn-owner-observe (operation result)
   (fnn-owner-action 'fn-owner-io operation result))
 
+(defun fnn-owner-identity-reservation (operation)
+  (fnn-owner-core 'fn-owner-identity-reservation operation))
+
 ;;; The clock the owner decides under (books/clock.lisp; decision D10-a).
 ;;;
 ;;; Reading the two clocks is I/O and is this file's job.  What a reading is
@@ -475,6 +1046,76 @@ the owner's keyword check, not the Store's."
 (defvar *fnn-owner-time-service* nil
   "The running service whose gate records the served reads' clock events
 (lane time-model-2); nil outside `fnn-owner-run'.")
+
+(defvar *fnn-owner-retained-service* nil
+  "Actual service/Store authority retained through unresolved writer aliases.
+T reserves startup before the service exists; NIL only after definite teardown.
+It is not a declaration that the complete producer lifecycle is proved.")
+
+(defvar *fnn-owner-retained-settlement* :held
+  "ACL2's actual writer/journal settlement carried to final caller teardown.")
+
+(defvar *fnn-owner-reserving-thread* nil)
+(defvar *fnn-owner-caller-reservation* nil
+  "Thread-local caller token, bound only after an atomic initial reservation.")
+
+(defun fnn-owner-run-admission ()
+  (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+    (fnn-core 'fn-ort-service-start-action
+              (and *fnn-log-writer* t) (and *fnn-owner-retained-service* t))))
+
+(defun fnn-owner-claim-run-authority (&optional caller-reservation)
+  (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+    (let ((action (fnn-core 'fn-ort-service-claim-action
+                            (and *fnn-log-writer* t)
+                            (and *fnn-owner-retained-service* t)
+                            (and caller-reservation
+                                 (eq *fnn-owner-retained-service* t)
+                                 (eq *fnn-owner-reserving-thread* sb-thread:*current-thread*)
+                                 t))))
+      (unless (eq action :start)
+        (fnn-indeterminate "~a" (fnn-core 'fn-ort-service-start-reason action)))
+      (setq *fnn-owner-retained-service* t
+            *fnn-owner-reserving-thread* sb-thread:*current-thread*
+            *fnn-owner-retained-settlement* :held))))
+
+(defun fnn-owner-retain-run-authority (service)
+  (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+    (when service (setq *fnn-owner-retained-service* service
+                        *fnn-owner-reserving-thread* nil))))
+
+(defun fnn-owner-store-settlement (service settlement)
+  "Retain the actual service and Store lock until writer/journal settlement.
+Store close errors are physical uncertainty, never silent authority release."
+  (let ((action
+          (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+            (fnn-core 'fn-ort-store-close-action settlement
+                      (and *fnn-owner-retained-service* t)
+                      (and *fnn-owner-log-fd* t)))))
+    (case action
+      (:held (setq *fnn-owner-retained-settlement* action) action)
+      ;; The operator caller still owes its final direct log line/close.
+      ;; Keep the Store lock and actual service, without relabeling joined
+      ;; producer settlement as uncertainty while that caller finishes.
+      (:defer (setq *fnn-owner-retained-settlement* settlement) settlement)
+      (:settled (fnn-core 'fn-ort-service-settlement-action settlement :absent))
+      (:close
+       (let* ((observation
+                (if service
+                    (handler-case
+                        (progn (fnn-store-close (fnn-owner-service-store service)) :closed)
+                      (error ()
+                        (setf (fnn-store-fenced (fnn-owner-service-store service)) t)
+                        :uncertain))
+                  :absent))
+              (result (fnn-core 'fn-ort-service-settlement-action settlement observation)))
+         (setq *fnn-owner-retained-settlement* result)
+         (when (eq result :joined)
+           (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+             (setq *fnn-owner-retained-service* nil
+                   *fnn-owner-reserving-thread* nil)))
+         result))
+      (otherwise (fnn-fault "malformed Store settlement action ~a" action)))))
 
 (defun fnn-owner-advance-clock ()
   "Hand the owner one fresh reading of this host's clocks.
@@ -1039,7 +1680,35 @@ one ring, so the table's key and the served boundary's are one source."
   (busy nil)
   (holder nil)
   (turn nil)
+  ;; First native scheduler failure. Retain its provenance and wake all
+  ;; waiters; an aborted gate never invokes the scheduler again.
+  (aborted nil)
   (sched nil))
+
+(defun fnn-owner-gate-abort-locked (gate condition)
+  "Caller holds the gate mutex; retain accounting and the first failure."
+  (unless (fnn-owner-gate-aborted gate)
+    (setf (fnn-owner-gate-aborted gate) condition))
+  (sb-thread:condition-broadcast (fnn-owner-gate-ready gate)))
+
+(defun fnn-owner-gate-abort (gate condition)
+  (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+    (fnn-owner-gate-abort-locked gate condition)))
+
+(defun fnn-owner-gate-check (gate)
+  (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+    (when (fnn-owner-gate-aborted gate)
+      (error (fnn-owner-gate-aborted gate)))))
+
+(defun fnn-owner-gate-fail-locked (service gate condition)
+  "Caller holds the owner mutex, never the gate mutex on entry.
+Scheduler failure cannot be attributed to one client. Retain its condition
+without rendering it, fence before owner unlock, and preserve uncertainty."
+  (fnn-owner-gate-abort gate condition)
+  (fnn-owner-stop-service-locked
+   service (if (typep condition 'fnn-store-indeterminate)
+               +fnn-exit-uncertain+ +fnn-exit-fault+))
+  (error condition))
 
 (defun fnn-make-owner-gate ()
   (%make-fnn-owner-gate :sched (fnn-core 'fn-otm-init)))
@@ -1060,6 +1729,8 @@ recognise is a host fault."
 (defun fnn-owner-gate-pick (gate)
   "The owner is free and nobody was admitted: ask ACL2 which class runs
 (nil when no class waits).  The caller holds the gate mutex."
+  (when (fnn-owner-gate-aborted gate)
+    (error (fnn-owner-gate-aborted gate)))
   (destructuring-bind (class sched)
       ;; books/owner-commit-steps.lisp: the phase of the commit in flight is
       ;; part of ACL2's value; the six counts are the host's observation.
@@ -1075,40 +1746,58 @@ recognise is a host fault."
   "Wait at the gate as CLASS until admitted; return the wait in milliseconds.
 A thread already inside cannot enter again: a nested quantum would wait on
 itself for ever, so it is a fault here (as SBCL's recursive-lock error was)."
-  (let* ((i (fnn-owner-class-index class))
-         (started (get-internal-real-time))
+  (let* ((started (get-internal-real-time))
          (ticket nil))
     (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
-      (when (eq (fnn-owner-gate-holder gate) sb-thread:*current-thread*)
-        (fnn-fault "owner re-entered by the thread holding it"))
-      (setq ticket (svref (fnn-owner-gate-next-ticket gate) i))
-      (incf (svref (fnn-owner-gate-next-ticket gate) i))
-      (incf (svref (fnn-owner-gate-waiting gate) i))
-      (loop
-        (when (and (not (fnn-owner-gate-busy gate)) (null (fnn-owner-gate-turn gate)))
-          (fnn-owner-gate-pick gate))
-        (when (and (not (fnn-owner-gate-busy gate))
-                   (eql (fnn-owner-gate-turn gate) i)
-                   (= ticket (svref (fnn-owner-gate-serving gate) i)))
-          (setf (fnn-owner-gate-busy gate) t
-                (fnn-owner-gate-holder gate) sb-thread:*current-thread*
-                (fnn-owner-gate-turn gate) nil)
-          (incf (svref (fnn-owner-gate-serving gate) i))
-          (decf (svref (fnn-owner-gate-waiting gate) i))
-          (return))
-        (sb-thread:condition-wait (fnn-owner-gate-ready gate)
-                                  (fnn-owner-gate-mutex gate))))
+      (handler-case
+          (progn
+            (when (fnn-owner-gate-aborted gate)
+              (error (fnn-owner-gate-aborted gate)))
+            (let ((i (fnn-owner-class-index class)))
+              (when (eq (fnn-owner-gate-holder gate) sb-thread:*current-thread*)
+                (fnn-fault "owner re-entered by the thread holding it"))
+              (setq ticket (svref (fnn-owner-gate-next-ticket gate) i))
+              (incf (svref (fnn-owner-gate-next-ticket gate) i))
+              (incf (svref (fnn-owner-gate-waiting gate) i))
+              (loop
+                (when (fnn-owner-gate-aborted gate)
+                  (error (fnn-owner-gate-aborted gate)))
+                (when (and (not (fnn-owner-gate-busy gate))
+                           (null (fnn-owner-gate-turn gate)))
+                  (fnn-owner-gate-pick gate))
+                (when (and (not (fnn-owner-gate-busy gate))
+                           (eql (fnn-owner-gate-turn gate) i)
+                           (= ticket (svref (fnn-owner-gate-serving gate) i)))
+                  (setf (fnn-owner-gate-busy gate) t
+                        (fnn-owner-gate-holder gate) sb-thread:*current-thread*
+                        (fnn-owner-gate-turn gate) nil)
+                  (incf (svref (fnn-owner-gate-serving gate) i))
+                  (decf (svref (fnn-owner-gate-waiting gate) i))
+                  (return))
+                (sb-thread:condition-wait (fnn-owner-gate-ready gate)
+                                          (fnn-owner-gate-mutex gate)))))
+        (serious-condition (condition)
+          (fnn-owner-gate-abort-locked gate condition)
+          (error condition))))
     (fnn-ms-since started)))
 
 (defun fnn-owner-gate-leave (gate class hold-ms wait-ms)
   "Leave the owner: fold this quantum's hold and wait, and let ACL2 admit
 the next class (none when nothing waits: fn-osch-next answers nil)."
   (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
-    (setf (fnn-owner-gate-busy gate) nil
-          (fnn-owner-gate-holder gate) nil
-          (fnn-owner-gate-sched gate)
-          (fnn-core 'fn-otm-observe (fnn-owner-gate-sched gate) class hold-ms wait-ms))
-    (fnn-owner-gate-pick gate)))
+    (handler-case
+        (progn
+          (when (fnn-owner-gate-aborted gate)
+            (error (fnn-owner-gate-aborted gate)))
+          (setf (fnn-owner-gate-busy gate) nil
+                (fnn-owner-gate-holder gate) nil
+                (fnn-owner-gate-sched gate)
+                (fnn-core 'fn-otm-observe (fnn-owner-gate-sched gate)
+                          class hold-ms wait-ms))
+          (fnn-owner-gate-pick gate))
+      (serious-condition (condition)
+        (fnn-owner-gate-abort-locked gate condition)
+        (error condition)))))
 
 (defun fnn-owner-monotonic-ms ()
   "One reading of the monotonic clock, in milliseconds: the only clock the
@@ -1297,22 +1986,106 @@ nothing.  The caller holds the owner mutex.  Returns the number shed."
     n))
 
 (defmacro fnn-owner-gated ((service class) &body body)
-  "Run BODY under the owner mutex, admitted by the gate as CLASS."
-  (let ((g (gensym "GATE")) (c (gensym "CLASS")) (w (gensym "WAITED"))
-        (h (gensym "HELD")))
-    `(let* ((,g (progn
-                  ;; PRF-359's observation, off the mutex, before the
-                  ;; quantum is admitted (fnn-owner-space-preobserve).
-                  (fnn-owner-space-preobserve ,service)
-                  (fnn-owner-service-gate ,service)))
+  "Run BODY and gate cleanup under owner exclusion; contain gate failures."
+  (let ((s (gensym "SERVICE")) (g (gensym "GATE"))
+        (c (gensym "CLASS")) (w (gensym "WAITED"))
+        (h (gensym "HELD")) (failure (gensym "FAILURE")))
+    `(let* ((,s ,service)
+            (,g (fnn-owner-service-gate ,s))
             (,c ,class)
-            (,w (fnn-owner-gate-enter ,g ,c))
+            (,w (handler-case
+                    (progn
+                      (fnn-owner-gate-check ,g)
+                      ;; Keep filesystem observation outside owner exclusion.
+                      (fnn-owner-space-preobserve ,s)
+                      (fnn-owner-gate-enter ,g ,c))
+                  (serious-condition (,failure)
+                    ;; The gate's mutex has unwound before taking the owner.
+                    (fnn-owner-gate-abort ,g ,failure)
+                    (sb-thread:with-mutex ((fnn-owner-service-lock ,s))
+                      (fnn-owner-gate-fail-locked ,s ,g ,failure)))))
             (,h (get-internal-real-time)))
-       (unwind-protect
-            (sb-thread:with-mutex ((fnn-owner-service-lock ,service))
-              ;; adapter-retirement-2's opt-in hold measurement (FN_OWNER_MEASURE)
-              (fnn-owner-measured (*fnn-owner-measure-label*) ,@body))
-         (fnn-owner-gate-leave ,g ,c (fnn-ms-since ,h) ,w)))))
+       (sb-thread:with-mutex ((fnn-owner-service-lock ,s))
+         (unwind-protect
+              (progn
+                ;; A competing entry may have aborted after our admission.
+                (handler-case (fnn-owner-gate-check ,g)
+                  (serious-condition (,failure)
+                    (fnn-owner-gate-fail-locked ,s ,g ,failure)))
+                (fnn-owner-measured (*fnn-owner-measure-label*) ,@body))
+           ;; Cleanup calls the core too. Fence its failure before releasing
+           ;; owner exclusion; gate abort wakes waiters without another pick.
+           (handler-case (fnn-owner-gate-leave ,g ,c (fnn-ms-since ,h) ,w)
+             (serious-condition (,failure)
+               (fnn-owner-gate-fail-locked ,s ,g ,failure))))))))
+
+(defstruct (fnn-snapshot-payload-view (:constructor fnn-make-snapshot-payload-view (token arena)))
+  token arena)
+
+(defun fnn-payload-lifecycle-start (service)
+  "Owner mutex held; register before any core worker/thread is exposed."
+  (sb-thread:with-mutex (*fnn-payload-lifecycle-lock*)
+    (unless (eq (first (fnn-payload-lifecycle-answer :start)) :allowed)
+      (fnn-fault "payload arena lifecycle refused owner startup"))
+    (let ((answer (fnn-payload-lifecycle-answer
+                   :start (fnn-core-state 'fn-owner-payload-view-owned-p))))
+      (unless (eq (first answer) :allowed)
+        (fnn-fault "payload arena lifecycle refused owner startup"))
+      (setf *fnn-payload-lifecycle-arena* (fnn-live-arena)
+            *fnn-payload-lifecycle-owner* service
+            *fnn-payload-lifecycle-phase* (second answer)))))
+
+(defun fnn-payload-lifecycle-drain (service)
+  "Owner mutex held. Signal only; joining is always outside this exclusion."
+  (sb-thread:with-mutex (*fnn-payload-lifecycle-lock*)
+    (when (eq service *fnn-payload-lifecycle-owner*)
+      (let ((answer (fnn-payload-lifecycle-answer :drain)))
+        (when (eq (first answer) :allowed)
+          (setf *fnn-payload-lifecycle-phase* (second answer)))))))
+
+(defun fnn-payload-lifecycle-joined (service)
+  "Owner mutex held AFTER definite worker, module, and buffer cleanup."
+  (sb-thread:with-mutex (*fnn-payload-lifecycle-lock*)
+    (when (eq service *fnn-payload-lifecycle-owner*)
+      (let ((answer (fnn-payload-lifecycle-answer
+                     :joined (fnn-core-state 'fn-owner-payload-view-owned-p) t)))
+        (when (eq (first answer) :allowed)
+          (setf *fnn-payload-lifecycle-phase* (second answer)
+                *fnn-payload-lifecycle-owner* nil))))))
+
+(defun fnn-snapshot-payload-view-acquire (service maintenance)
+  "Owner capture mutex held; lifecycle exclusion covers instance and STATE."
+  (sb-thread:with-mutex (*fnn-payload-lifecycle-lock*)
+    (let ((permission (fnn-payload-lifecycle-answer :capture)))
+      (unless (and (eq (first permission) :allowed)
+                   (eq service *fnn-payload-lifecycle-owner*))
+        (return-from fnn-snapshot-payload-view-acquire
+          (values :refused '(:refused :arena-not-serving)))))
+    (let* ((arena *fnn-payload-lifecycle-arena*)
+           (answer (destructuring-bind (erp val &rest ignored)
+                       (fnn-call 'fn-owner-payload-view-acquire maintenance arena *the-live-state*)
+                     (declare (ignore ignored))
+                     (when erp (fnn-fault "payload view acquire core error")) val)))
+      (if (eq (first answer) :acquired)
+          (values :acquired (fnn-make-snapshot-payload-view (second answer) arena))
+        (values :refused answer)))))
+
+(defun fnn-snapshot-payload-view-live-p (holder)
+  "Owner mutex held; authorization to a captured source row is separate."
+  (sb-thread:with-mutex (*fnn-payload-lifecycle-lock*)
+    (and (eq (first (fnn-payload-lifecycle-answer :borrow)) :allowed)
+         (eq (fnn-snapshot-payload-view-arena holder) *fnn-payload-lifecycle-arena*)
+         (fnn-core-state 'fn-owner-payload-view-live-p
+                         (fnn-snapshot-payload-view-token holder)))))
+
+(defun fnn-snapshot-payload-view-release (holder settlement)
+  "Owner mutex held after definite cleanup; uncertainty retains ownership."
+  (sb-thread:with-mutex (*fnn-payload-lifecycle-lock*)
+    (if (and (eq (first (fnn-payload-lifecycle-answer :borrow)) :allowed)
+             (eq (fnn-snapshot-payload-view-arena holder) *fnn-payload-lifecycle-arena*))
+        (fnn-core-state 'fn-owner-payload-view-release
+                        (fnn-snapshot-payload-view-token holder) settlement)
+      '(:refused :payload-view-instance))))
 
 (defun fnn-owner-stop-service-locked (service exit-code &optional answering)
   "Fence while the owner mutex is held; the first terminal outcome wins.
@@ -1327,10 +2100,17 @@ fence; no semantic action of any worker, that one included, can run after it
 ANSWERING is also remembered in SPARING (PKT-562): a later stop -- the run's
 cleanup stop, which passes no ANSWERING -- spares it too, so it cannot shut
 the socket while that worker is still writing its reply."
-  (fnn-with-roster (service)
-    (unless (fnn-owner-service-stopping service)
-      (setf (fnn-owner-service-stopping service) t
-            (fnn-owner-service-exit-code service) exit-code)))
+  (let ((first-stop nil))
+    ;; Install the irreversible service fence before any fallible core drain.
+    ;; Lifecycle failure retains debt; it cannot reopen semantic admission.
+    (fnn-with-roster (service)
+      (unless (fnn-owner-service-stopping service)
+        (setf (fnn-owner-service-stopping service) t
+              (fnn-owner-service-exit-code service) exit-code
+              first-stop t)))
+    (unwind-protect
+        (when first-stop (fnn-payload-lifecycle-drain service))
+      ;; Signal cleanup even when lifecycle drain raises or escapes.
   (let ((sparing (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
                    (when answering
                      (pushnew answering (fnn-owner-service-sparing service)))
@@ -1360,10 +2140,13 @@ the socket while that worker is still writing its reply."
   ;; Hooks only signal external listeners/clients.  They run inside the same
   ;; first-terminal boundary and must be idempotent and nonblocking.
   (dolist (hook (fnn-owner-service-stop-hooks service))
-    (ignore-errors (funcall hook service))))
+    (ignore-errors (funcall hook service))))))
 
 (defun fnn-owner-stop-service (service exit-code)
-  (fnn-owner-gated (service :control)
+  ;; Shutdown cannot ask an aborted scheduler for permission. This is the
+  ;; irreversible fence/wakeup boundary, not another semantic quantum.
+  ;; The caller is outside owner exclusion, as with the previous gate entry.
+  (sb-thread:with-mutex ((fnn-owner-service-lock service))
     (fnn-owner-stop-service-locked service exit-code)))
 
 (defun fnn-owner-fence-service (service)
@@ -1383,7 +2166,7 @@ into the service log's stop line and its own result line, so `health',
            (format nil "owner core/store fault; process stopped: ~a" condition))))
   (fnn-owner-gated (service :control)
     (unless (fnn-owner-service-stopping service)
-      (when cid
+      (when (and cid (not (fnn-owner-connection-selected-p service)))
         (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
       (fnn-owner-stop-service-locked service +fnn-exit-fault+)))
   (fnn-err "owner core/store fault; process stopped: ~a" condition))
@@ -1412,7 +2195,8 @@ before the mutex can be released, so no queued client can mutate afterward."
       (fnn-owner-stop-service-locked service +fnn-exit-uncertain+)
       (error condition))
     (fnn-store-fault (condition)
-      (when cid (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
+      (when (and cid (not (fnn-owner-connection-selected-p service)))
+        (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
       (fnn-owner-stop-service-locked service +fnn-exit-fault+)
       (error condition))
     ;; FNN-STORE-ERROR is the existing known semantic-refusal class.  It has
@@ -1421,7 +2205,8 @@ before the mutex can be released, so no queued client can mutate afterward."
     ;; An OS or arbitrary failure inside a semantic/persistence action has no
     ;; safe connection-only attribution.  Preserve the shared state by stopping.
     ((or fnn-os-error serious-condition) (condition)
-      (when cid (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
+      (when (and cid (not (fnn-owner-connection-selected-p service)))
+        (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
       (fnn-owner-stop-service-locked service +fnn-exit-fault+)
       (error condition))))
 
@@ -1476,7 +2261,7 @@ the current connection."
       (error 'fnn-owner-connection-fault
              :operation operation :cause condition))))
 
-(defun fnn-owner-abandon-connection (service cid condition)
+(defun fnn-owner-abandon-connection (service cid condition &optional custody)
   "Apply the ACL2 connection-fault transition unless a global stop won first."
   (let ((reply (fnn-make-octets 0)))
     (fnn-owner-gated (service :control)
@@ -1487,10 +2272,10 @@ the current connection."
            ;; A refusal from this exact transition is a core fault, never a
            ;; connection refusal.  Convert it inside the shared boundary.
            (handler-case
-               (let ((result (fnn-owner-action 'fn-owner-fault cid)))
-                 (unless (member result '(:faulted :unknown))
+               (let ((result (fnn-owner-connection-close-locked service cid custody t)))
+                 (unless (member result '(:faulted :unknown :closed :closed-held))
                    (fnn-fault "owner fault transition returned ~a" result))
-                 (when (eq result :faulted)
+                 (when (member result '(:faulted :closed :closed-held))
                    (setq reply (fnn-owner-octets-global 'fn-owner-output))))
              (fnn-store-error (nested)
                (fnn-fault "owner fault transition refused: ~a" nested)))))))
@@ -1590,7 +2375,7 @@ here: its budget is part of its prepare (fn-owner-prepare)."
 (defun fnn-owner-prepare-refusal-word (prepared)
   (case prepared
     ((:duplicate :conflict :clock-unusable :refused :unaffordable :memberships
-      :article-numbers-exhausted)
+      :article-numbers-exhausted :canonical-size-unavailable :invalid-binding)
      prepared)
     (:invalid :malformed)
     (t (fnn-fault "owner prepare returned ~a" prepared))))
@@ -1620,6 +2405,24 @@ follows is justified only by this line."
        (fnn-err "unclassified OS error in a Store attempt; outcome uncertain: ~a" e)
        :uncertain)))
 
+(define-condition fnn-owner-admission-pending (serious-condition)
+  ((verdict :initarg :verdict :reader fnn-owner-admission-pending-verdict)))
+
+;; A pending query is not a negative lookup or a completed attempt. The
+;; retained scheduler must catch this before resolving its intent; that
+;; scheduling join is not activated by this dispatch boundary alone.
+(defun fnn-owner-existing-verdict (verdict)
+  (case verdict
+    ((:absent :duplicate :conflict :invalid-binding) verdict)
+    ((:yield :continue :demand :unavailable)
+     (error 'fnn-owner-admission-pending :verdict verdict))
+    (:recovery-required (fnn-indeterminate "admission-recovery-required"))
+    (otherwise
+     (if (and (consp verdict) (eq (car verdict) :yield))
+         (error 'fnn-owner-admission-pending :verdict verdict)
+       (fnn-fixed-callback-fail 'fn-owner-existing-action-buffer
+                                :invalid-admission-verdict nil)))))
+
 (defun fnn-owner-attempt (service msgid payload groups evidence)
   "One Store attempt under the owner callbacks; return its observed word."
   (let ((store (fnn-owner-service-store service)))
@@ -1636,7 +2439,7 @@ follows is justified only by this line."
             ;; Preserve ACL2's named placement refusal before buffer fill,
             ;; identity allocation or prepare.  The generic condition
             ;; handler would otherwise erase it into :refused.
-            (when (eq boundary :mpx-saturated)
+            (when (member boundary '(:mpx-saturated :invalid-binding :canonical-size-unavailable))
               (return-from fnn-owner-attempt boundary))
             (fnn-validate-post-boundary boundary))
           ;; The payload goes to the core in the octet buffer
@@ -1648,11 +2451,14 @@ follows is justified only by this line."
           ;; books/subject-id-buffer.lisp).  Nothing between the fill and the
           ;; prepare writes the buffer; all of it runs under the service mutex.
           (fnn-octets-fill payload)
-          (case (fnn-owner-buffer-arena-action 'fn-owner-existing-action-buffer
-                                         (fnn-octet-list msgid) codes)
+          (case (fnn-owner-existing-verdict
+                 (fnn-owner-buffer-arena-action 'fn-owner-existing-action-buffer
+                                               (fnn-octet-list msgid) codes))
             (:duplicate (return-from fnn-owner-attempt :duplicate))
-            (:conflict (return-from fnn-owner-attempt :conflict)))
+            (:conflict (return-from fnn-owner-attempt :conflict))
+            (:invalid-binding (return-from fnn-owner-attempt :invalid-binding)))
           (let ((*fnn-observe-callback* #'fnn-owner-observe)
+                (*fnn-identity-reservation-callback* #'fnn-owner-identity-reservation)
                 (*fnn-finish-callback* #'fnn-owner-finish-submission))
             (fnn-advance-frontier store
                                   (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
@@ -1790,15 +2596,17 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                  (fnn-owner-transit-refused :groups)))
              (let ((boundary (fnn-owner-core 'fn-owner-post-boundary (fnn-octet-list msgid)
                                              (length payload) (length codes) charge)))
-               (when (eq boundary :mpx-saturated)
+               (when (member boundary '(:mpx-saturated :invalid-binding :canonical-size-unavailable))
                  (return-from fnn-owner-attempt-transit boundary))
                (fnn-validate-post-boundary boundary))
-             (case (fnn-owner-arena-action 'fn-owner-existing-action
-                                     (fnn-octet-list msgid)
-                                     (fnn-owner-payload-octets payload) codes)
+             (case (fnn-owner-existing-verdict
+                    (fnn-owner-arena-action 'fn-owner-existing-action
+                                           (fnn-octet-list msgid)
+                                           (fnn-owner-payload-octets payload) codes))
                (:duplicate (return-from fnn-owner-attempt-transit :duplicate))
                (:conflict (return-from fnn-owner-attempt-transit
-                            (fnn-owner-transit-refused :conflict))))
+                            (fnn-owner-transit-refused :conflict)))
+               (:invalid-binding (return-from fnn-owner-attempt-transit :invalid-binding)))
              (let ((plan (fnn-owner-core 'fn-owner-peer-carrier-plan
                                          (fnn-owner-payload-octets payload)
                                          (and nntp-transit-p t))))
@@ -2076,9 +2884,10 @@ reason before any Store call.  An ordinary article's groups are unchanged."
   (let ((store (fnn-owner-service-store service)))
     (fnn-owner-preflight-publication service (first event))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
+                (*fnn-identity-reservation-callback* #'fnn-owner-identity-reservation)
           (*fnn-finish-callback* #'fnn-owner-finish))
       (fnn-advance-frontier store
-                            (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
+                            (fnn-nat (fnn-owner-core 'fn-owner-next-txid)) event)
       (let ((prepared
              (fnn-owner-action
               'fn-owner-prepare-retention (first event)
@@ -2103,6 +2912,7 @@ reason before any Store call.  An ordinary article's groups are unchanged."
       (fnn-refuse "Store transaction budget refuses ~(~a~) transaction"
                   (fnn-core 'fn-wire-event-kind event)))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
+                (*fnn-identity-reservation-callback* #'fnn-owner-identity-reservation)
           (*fnn-finish-callback* #'fnn-owner-finish))
       (fnn-advance-frontier store
                             (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
@@ -2137,8 +2947,13 @@ reason before any Store call.  An ordinary article's groups are unchanged."
 (defun fnn-owner-consumer-commit (service event)
   "Publish one ACL2-constructed consumer event through the durable Store gate."
   (let ((store (fnn-owner-service-store service)))
-    (fnn-owner-preflight-publication service :consumer)
+    ;; ACL2 admits the actual constructed event charge against the current
+    ;; carried profile before allocating a transaction/frontier reservation.
+    (unless (eq (fnn-owner-core 'fn-owner-consumer-publication-verdict event)
+                :admissible)
+      (fnn-refuse "Store transaction budget refuses consumer transaction"))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
+          (*fnn-identity-reservation-callback* #'fnn-owner-identity-reservation)
           (*fnn-finish-callback* #'fnn-owner-finish))
       (fnn-advance-frontier store
                             (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
@@ -2155,6 +2970,7 @@ reason before any Store call.  An ordinary article's groups are unchanged."
     (fnn-owner-preflight-publication service
                                      (fnn-core 'fn-store-event-kind event))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
+                (*fnn-identity-reservation-callback* #'fnn-owner-identity-reservation)
           (*fnn-finish-callback* #'fnn-owner-finish))
       (fnn-advance-frontier store
                             (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
@@ -3282,6 +4098,12 @@ answers a refusal whose completion word was D25's :conflict as the control
 status :conflict (books/native-control.lisp
 fn-native-control-completion-status, PKT-246); the BP application keeps its
 own result vocabulary."
+  ;; The caller holds the owner mutex. A callback queued before retirement
+  ;; cannot introduce a new submission after the intake fence is published.
+  (when (eq (fnn-core 'fn-ort-intake-action
+                      (and (fnn-owner-service-retire service) t)) :refused)
+    (return-from fnn-owner-complete-bound-submission
+      (fnn-owner-action 'fn-owner-retire-intake-refused)))
   (fnn-owner-commit-queued-locked service)
   (let ((submitted (funcall submit-callback)))
     (unless (member submitted '(:submitted :busy :refused))
@@ -3347,6 +4169,12 @@ own result vocabulary."
     (service submit-callback msgid raw stored groups evidence
              generation txid planned-id planned-subject)
   "Complete a BP-origin peer transit through the one owner writer and Store."
+  ;; The caller holds the owner mutex. A callback queued before retirement
+  ;; cannot introduce a new submission after the intake fence is published.
+  (when (eq (fnn-core 'fn-ort-intake-action
+                      (and (fnn-owner-service-retire service) t)) :refused)
+    (return-from fnn-owner-complete-bp-transit-submission
+      (fnn-owner-action 'fn-owner-retire-intake-refused)))
   (fnn-owner-commit-queued-locked service)
   (let ((submitted (funcall submit-callback)))
     (unless (member submitted '(:submitted :busy :refused))
@@ -3675,17 +4503,27 @@ CLOSING STARTTLS CONSUMED)."
 ;;; (:fnn-extent-cold FILE EOFF ELEN TRAILER).  The per-line re-run happens
 ;;; only after a cold abort: a warm span runs once, as before. Cache-off
 ;;; still enters admission; it cannot select unfunded synchronous I/O.
-(defun fnn-owner-chunk-span-no-io (cid incoming sched)
-  (flet ((try (end)
+(defun fnn-owner-chunk-span-no-io (cid incoming sched &optional provider)
+  (flet ((read-span (end)
+           (if provider
+               (fnn-core-receiver-state 'fn-owner-rx-chunk-span provider cid 0 end sched)
+             (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 end sched)))
+         (try (end)
            (catch 'fnn-extent-cold
              (let ((*fnn-extent-no-io* t))
-               (list :warm (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 end sched))))))
+               (list :warm (if provider
+                               (fnn-core-receiver-state 'fn-owner-rx-chunk-span
+                                                        provider cid 0 end sched)
+                             (fnn-core-buffer-state 'fn-owner-chunk-span
+                                                    cid 0 end sched)))))))
     (if (not (fnn-extent-no-io-usable-p))
-        (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 (length incoming) sched)
+        (read-span (length incoming))
       (let ((whole (try (length incoming))))
         (if (eq (car whole) :warm)
             (second whole)
-          (let* ((line-end (first (fnn-call 'fn-oct-line-end 0 (fnn-live-octets))))
+          (let* ((line-end (if provider
+                               (fnn-core-receiver-state 'fn-owner-rx-line-end provider 0)
+                             (first (fnn-call 'fn-oct-line-end 0 (fnn-live-octets)))))
                  (first-line (try line-end)))
             (unless (and (integerp line-end) (< 0 line-end) (<= line-end (length incoming)))
               (fnn-fault "owner returned a malformed line end"))
@@ -3885,8 +4723,11 @@ Owner->extent locking makes publication/settlement and queue removal atomic."
   (fnn-owner-serialized
    service cid
    (lambda ()
-     (fnn-octets-fill incoming)
-     (let ((step (fnn-core-buffer-state 'fn-owner-unavailable-line-at cid 0 since now limit)))
+     (let* ((provider (fnn-owner-read-buffer-fill service incoming))
+            (step (if provider
+                      (fnn-core-receiver-state 'fn-owner-rx-unavailable-line-at
+                                               provider cid 0 since now limit)
+                    (fnn-core-buffer-state 'fn-owner-unavailable-line-at cid 0 since now limit))))
        (when (eq step :unknown)
          (fnn-refuse "owner no longer knows connection ~d" cid))
        (unless (fnn-core 'fn-splan-step-p step)
@@ -3908,8 +4749,11 @@ Owner->extent locking makes publication/settlement and queue removal atomic."
   (fnn-owner-serialized
    service cid
    (lambda ()
-     (fnn-octets-fill incoming)
-     (let ((step (fnn-core-buffer-state 'fn-owner-resource-unavailable-line-at cid 0 word)))
+     (let* ((provider (fnn-owner-read-buffer-fill service incoming))
+            (step (if provider
+                      (fnn-core-receiver-state 'fn-owner-rx-resource-unavailable-line-at
+                                               provider cid 0 word)
+                    (fnn-core-buffer-state 'fn-owner-resource-unavailable-line-at cid 0 word))))
        (when (eq step :unknown) (fnn-refuse "owner no longer knows connection ~d" cid))
        (unless (fnn-core 'fn-splan-step-p step)
          (fnn-fault "owner returned a malformed resource refusal step ~a" step))
@@ -3949,6 +4793,14 @@ EPIPE and the client saw a bare close)."
   (fnn-owner-serialized
    service cid
    (lambda ()
+     ;; Check inside the same semantic mutex as the read. A mux quantum
+     ;; already waiting at the scheduler cannot inject after retirement.
+     (when (eq (fnn-core 'fn-ort-intake-action
+                         (and (fnn-owner-service-retire service) t)) :refused)
+       (return-from fnn-owner-handle-chunk-read
+         (values (fnn-core 'fn-splan-of-effects nil) t nil
+                 (fnn-core 'fn-ort-fenced-input-consumed (length incoming))
+                 nil nil)))
      (let ((admit :admit) (sched nil))
      (block step
        ;; One reading per read, before the transition that decides under it.
@@ -3995,8 +4847,8 @@ EPIPE and the client saw a bare close)."
        ;; mutex (fnn-owner-attempt).  The reply is NOT rendered into it: the
        ;; step's typed result carries the effects, the plan the caller
        ;; renders off the mutex.
-       (fnn-octets-fill incoming)
-       (let ((step (fnn-owner-chunk-span-no-io cid incoming sched)))
+       (let* ((provider (fnn-owner-read-buffer-fill service incoming))
+              (step (fnn-owner-chunk-span-no-io cid incoming sched provider)))
          ;; Row A4 (c): the first line needs a page not in memory; its read
          ;; happens off the mutex (fnn-owner-handle-chunk, fnn-owner-cold-line).
          (when (and (consp step) (eq (car step) :fnn-extent-cold))
@@ -4172,13 +5024,12 @@ the node retires (row S9), refuse it by name instead."
 ;;; (books/native-retire.lisp fn-nret-request) starts the retire: from then
 ;;; on new connections are refused by name (host/native/owner.lisp
 ;;; fnn-owner-launch-client), the pull service stops, and at each accept-loop
-;;; tick ACL2 decides from a scheduler snapshot and the owner's feed table
-;;; whether the drain goes on (books/owner-retire.lisp fn-oret-drain-step,
-;;; which never waits past the window).  When it ends the owner takes its
-;;; final checkpoint, writes ACL2's report to STORE/retire-report.txt (fenced
-;;; before the stop, so the operator reads it from the stopped node) and
-;;; stops as a SIGTERM stops it: the POSTs in flight answered first
-;;; (fnn-owner-drain-service), then the fence.
+;;; tick ACL2 checks the independent drain window, then carried pending
+;;; under the owner mutex (fn-ort-window-step and fn-ort-drain-step-counted).
+;;; Producer settlement remains unestablished, so zero alone cannot end the
+;;; drain. The deadline stops intake and starts SIGTERM cleanup. Report
+;;; observation follows worker and committer joins; definite log/journal
+;;; settlement, funded bounded rendering and final checkpoint remain OPEN.
 (defun fnn-owner-retire-report-path (service)
   (fnn-join (fnn-store-root (fnn-owner-service-store service))
             (fnn-octets-string (fnn-octets (fnn-core 'fn-nret-report-file-name)))))
@@ -4230,26 +5081,42 @@ renamed into place, the directory fenced."
     (when (and retire (not *fnn-sigterm-requested*)
                (not (fnn-owner-service-stopping service)))
       (destructuring-bind (s0 seconds) retire
-        (let* ((s (progn (fnn-owner-space-preobserve service t)
-                         (fnn-owner-sched-snapshot service)))
-               (step (fnn-owner-serialized
-                      service nil
-                      (lambda () (fnn-owner-core 'fn-owner-retire-step s0 s seconds))
-                      :inspect)))
+        ;; The drain-window observation needs only recorded time. Do not put
+        ;; a filesystem free-space I/O observation ahead of that deadline.
+        (let* ((s (fnn-owner-sched-snapshot service))
+               (window-step (fnn-core 'fn-ort-window-step s0 s seconds))
+               (step (if (eq window-step :deadline)
+                         window-step
+                       (fnn-owner-serialized
+                        service nil
+                        (lambda () (fnn-owner-core 'fn-owner-retire-step s0 s seconds))
+                        :inspect))))
           (unless (member step '(:wait :drained :deadline))
             (fnn-fault "owner returned a malformed retire step ~a" step))
           (unless (eq step :wait)
-            ;; The final checkpoint, as `store checkpoint' asks it.
-            (fnn-owner-compaction-request service)
-            (let ((report (fnn-owner-serialized
-                           service nil
-                           (lambda () (fnn-owner-core 'fn-owner-retire-report step))
-                           :inspect)))
-              (fnn-owner-retire-write-report service report)
-              (fnn-log-line (fnn-core 'fn-nret-end-log-line step)))
-            ;; The stop a SIGTERM takes (host/native/owner.lisp): the accept
-            ;; loop returns, the POSTs in flight are answered, the fence.
+            ;; Record the ACL2 decision, then begin stop immediately. Rendering
+            ;; is deferred until the accepted producers and workers are joined.
+            (setf (fnn-owner-service-retire service) (list s0 seconds step))
             (setf *fnn-sigterm-requested* t)))))))
+
+(defun fnn-owner-retire-final-report (service)
+  "Observe after worker/committer cleanup; complete settlement remains OPEN."
+  (let ((step (third (fnn-owner-service-retire service))))
+    (when step
+      ;; Worker/committer joins precede this call; log settlement is still OPEN.
+      ;; This direct core call avoids
+      ;; reentering the stopped service's scheduling gate.
+      (let ((report (fnn-owner-core 'fn-owner-retire-report step)))
+        (fnn-owner-retire-write-report service report)))))
+
+(defun fnn-owner-log-settlement ()
+  "Observe the physical join and let ACL2 decide descriptor settlement."
+  (let ((observation (fnn-log-writer-stop)))
+    (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+      (fnn-core 'fn-ort-log-close-action observation
+                (fnn-core 'fn-log-sink-pending-lines *fnn-log-sink*)
+                (fnn-core 'fn-log-sink-pending-octets *fnn-log-sink*)
+                (and *fnn-log-queue-head* t)))))
 
 (defun fnn-owner-wait-workers (service)
   "Join client workers before closing any shared journal or Store object."
@@ -5269,10 +6136,15 @@ torn last entry follows.  Answers the offset the writer resumes at."
       (fnn-close rfd))))
 
 (defun fnn-owner-journal-close ()
-  "After the writer stopped: close the journal's descriptor."
+  "After the writer stopped: observe descriptor close without silent release."
   (let ((fd *fnn-journal-fd*))
-    (setq *fnn-journal-fd* nil *fnn-journal-w* nil)
-    (when fd (ignore-errors (fnn-close fd)))))
+    (if fd
+        (handler-case
+            (progn (fnn-close fd)
+                   (setq *fnn-journal-fd* nil *fnn-journal-w* nil)
+                   :closed)
+          (error () :uncertain))
+      :absent)))
 
 (defun fnn-owner-open-log (path)
   (fnn-open path
@@ -5446,6 +6318,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
   (setq *fnn-owner-measure*
         (equal (sb-ext:posix-getenv "FN_OWNER_MEASURE") "1"))
   (let ((service nil) (listener nil) (tls-listener nil) (more-listeners nil)
+        (log-close-action nil) (run-authority-claimed nil)
         (old-active *fnn-sigterm-owner-active*)
         (old-requested *fnn-sigterm-requested*)
         (old-wakeup-fd *fnn-sigterm-wakeup-fd*))
@@ -5454,6 +6327,8 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
            (setq *fnn-sigterm-owner-active* t
                  *fnn-sigterm-requested* nil
                  *fnn-sigterm-wakeup-fd* nil)
+           (fnn-owner-claim-run-authority *fnn-owner-caller-reservation*)
+           (setq run-authority-claimed t)
            ;; PKT-508 (PRF-187): from here until the service is closed, a
            ;; log line or diagnostic is offered to the writer's queue and
            ;; never waited on (host/native/io.lisp fnn-log-offer).
@@ -5461,6 +6336,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
            (unwind-protect
                 (progn
                   (setq service (fnn-owner-install root max-connections fault))
+                  (fnn-owner-retain-run-authority service)
                   ;; Before any client/module starts, retire startup-only
                   ;; cache borrows; absent policy never gets a warm bypass.
                   (fnn-extent-end-recovery-cache)
@@ -5491,6 +6367,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                   ;; machine (books/connection-budget.lisp), refused by name
                   ;; before anything listens; then the I/O loops.
                   (fnn-mux-budget-install service tls-context)
+                  (fnn-payload-lifecycle-start service)
                   (fnn-owner-start-committer service)
                   (fnn-mux-start service)
                   ;; PKT-283's native witness: the Store is recovered and
@@ -5593,15 +6470,39 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                     (dolist (hook (fnn-owner-service-close-hooks service))
                       (ignore-errors (funcall hook service)))
                     (fnn-owner-feed-close-all service)
-                    (fnn-store-close (fnn-owner-service-store service)))
+                    (let ((step (third (fnn-owner-service-retire service))))
+                      (when step
+                        (fnn-log-line (fnn-core 'fn-nret-end-log-line step))))
+                    (setq log-close-action (fnn-owner-log-settlement))
+                    (when (eq log-close-action :joined)
+                      (setq log-close-action
+                            (fnn-core 'fn-ort-report-close-action log-close-action
+                                      (fnn-owner-journal-close)))
+                      (when (eq log-close-action :joined)
+                        (fnn-owner-retire-final-report service)))
+                    (setq log-close-action
+                          (fnn-owner-store-settlement service log-close-action))
+                    (unless (eq log-close-action :joined)
+                      (return-from fnn-owner-run
+                        (fnn-core 'fn-ort-log-close-exit
+                                  (fnn-owner-service-exit-code service)
+                                  +fnn-exit-uncertain+ log-close-action))))
                (setq *fnn-sigterm-wakeup-fd* nil)
                (dolist (extra more-listeners) (fnn-socket-shut extra))
                (when tls-listener (fnn-socket-shut tls-listener))
                (when listener (fnn-socket-shut listener)))))
-      ;; Drain and stop the writer before the caller closes `[log] path'.
-      (setq *fnn-owner-time-service* nil)
-      (fnn-log-writer-stop)
-      (fnn-owner-journal-close)
+      ;; This unwind owns cleanup only after claiming the run. A refused
+      ;; reentry must not stop or relinquish the prior retained service.
+      (when run-authority-claimed
+        (unless log-close-action
+          (setq log-close-action (fnn-owner-log-settlement)))
+        (when (eq log-close-action :joined)
+          (setq log-close-action
+                (fnn-core 'fn-ort-report-close-action log-close-action
+                          (fnn-owner-journal-close))))
+        (setq log-close-action (fnn-owner-store-settlement service log-close-action))
+        (when (eq log-close-action :joined)
+          (setq *fnn-owner-time-service* nil)))
       (setq *fnn-sigterm-wakeup-fd* old-wakeup-fd
             *fnn-sigterm-requested* old-requested
             *fnn-sigterm-owner-active* old-active))))

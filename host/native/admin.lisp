@@ -222,13 +222,16 @@ Answers :accepted once the record is durable and the owner installed it, or
   ;; `fnn-owner-action' every live request faulted here and stopped the
   ;; owner (the dabebb84 matrix run, V0-CFG-LIVE).
   (let ((record nil))
-  (let* ((cid (let ((opened (fnn-owner-core 'fn-owner-open)))
+  (let* ((custody nil)
+         (cid (multiple-value-bind (opened node)
+                  (fnn-owner-connection-open-locked service :reader nil nil nil)
+                (setq custody node)
                 (unless (or (null opened) (and (integerp opened) (>= opened 0)))
                   (fnn-fault "owner returned a malformed connection id"))
                 opened))
          (result (and (integerp cid) (funcall stage cid)))
          (staged (and result (fnn-core 'fn-ores-config-word result))))
-    (when (integerp cid) (fnn-owner-action 'fn-owner-close cid))
+    (when (integerp cid) (fnn-owner-connection-close-locked service cid custody nil))
     (unless (eq staged :staged)
       ;; The second value is the staging step's reason, a field of its
       ;; ConfigResult (fn-cfg-delta-reason's word, :no-such-grant and the

@@ -75,6 +75,16 @@
   ((message :initarg :message :reader fnn-message))
   (:report (lambda (c s) (write-string (fnn-message c) s))))
 (define-condition fnn-store-fault (fnn-store-error) ())
+;; Selected scalar callbacks carry fixed fault tags. Retain provenance without
+;; rendering the original condition inside the resource-owned operation.
+(define-condition fnn-fixed-callback-fault (fnn-store-fault)
+  ((subject :initarg :subject :reader fnn-fixed-fault-subject)
+   (tag :initarg :tag :reader fnn-fixed-fault-tag)
+   (cause :initarg :cause :reader fnn-fixed-fault-cause)))
+(defun fnn-fixed-callback-fail (subject tag cause)
+  (error 'fnn-fixed-callback-fault :message "core-callback-fault"
+         :subject subject :tag tag :cause cause))
+
 ;; host-entry-guard: the host handed an ACL2 entry an argument its guard
 ;; refuses, or the wrong number of arguments (fnn-entry-guard).  A fault
 ;; (exit 4) named by the entry, the argument position and the expected kind,
@@ -213,23 +223,55 @@ whose own failure would raise a new condition here."
 
 (defvar *fnn-octets* nil)
 
+;; EXTENT owns and initializes this mutex later in the native load order.
+;; Declaring it here keeps the early I/O entry points dynamically bound.
+(declaim (special *fnn-extent-lock*))
+
+(define-condition fnn-incoming-buffer-busy (serious-condition)
+  ((operation :initarg :operation :reader fnn-incoming-buffer-busy-operation))
+  (:report (lambda (condition stream)
+             (format stream "incoming buffer busy during ~(~a~)"
+                     (fnn-incoming-buffer-busy-operation condition)))))
+
+(defmacro fnn-with-incoming-mutation ((operation &optional token) &body body)
+  "Check the actual pool and mutate under one extent-lock acquisition.
+The owner scheduler handles FNN-INCOMING-BUFFER-BUSY as a resource
+continuation. It is neither a Store fault nor permission to keep using old
+bytes. Ordinary callers carry no token; a setup caller may pass its retained
+token, which only the core may authorize. Selected copy/backing
+actions have their own core-issued authorization. Never acquire owner here."
+  `(sb-thread:with-recursive-lock (*fnn-extent-lock*)
+     (unless (fnn-incoming-generic-mutation-allowedp ,token)
+       (error 'fnn-incoming-buffer-busy :operation ,operation))
+     ,@body))
+
+;;; Exact generated defstobj indices, exported from the selected ACL2 world.
+;;; The nested provider association/factory and bulk primitive remain gated.
+(defun fnn-receiver-backing (provider)
+  (svref (svref provider *fn-rxp-octets*) *fn-octets$c-bufi*))
+(defun fnn-receiver-publish-fill (provider end)
+  (setf (svref (svref provider *fn-rxp-octets*) *fn-octets$c-fill*) end)
+  provider)
+
 (defun fnn-live-octets ()
   (or *fnn-octets*
       (setq *fnn-octets*
             (or (cdr (assoc 'fn-octets (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the octet buffer stobj is not in this image")))))
 
-(defun fnn-octets-fill (vector)
+(defun fnn-octets-fill (vector &optional token)
   "Make VECTOR's bytes the buffer's contents; return the live stobj."
-  (let* ((st (fnn-live-octets)) (n (length vector)))
-    (fn-octets$c-reserve n st)
-    (replace (the fnn-octets (svref st 0)) vector)
-    (setf (svref st 1) n)
-    st))
+  (fnn-with-incoming-mutation (:fill token)
+    (let* ((st (fnn-live-octets)) (n (length vector)))
+      (fn-octets$c-reserve n st)
+      (replace (the fnn-octets (svref st 0)) vector)
+      (setf (svref st 1) n)
+      st)))
 
-(defun fnn-octets-clear ()
+(defun fnn-octets-clear (&optional token)
   "Empty the buffer (the fill count to 0; the array is kept)."
-  (setf (svref (fnn-live-octets) 1) 0))
+  (fnn-with-incoming-mutation (:clear token)
+    (setf (svref (fnn-live-octets) 1) 0)))
 
 ;;; The PUBLICATION buffer: `fn-octets-pub' (books/owner-checkpoint-stream.lisp),
 ;;; a second abstract stobj congruent to `fn-octets' with its own live
@@ -246,16 +288,17 @@ whose own failure would raise a new condition here."
             (or (cdr (assoc 'fn-octets-pub (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the publication buffer stobj is not in this image")))))
 
-(defun fnn-octets-release ()
+(defun fnn-octets-release (&optional token)
   "Empty the buffer and give its array back: after the state checkpoint's
 load the array holds the whole file, which the served attempts (one request
 each) never need again; they regrow it to one request's size.  A bound on
 retained memory only (the logical value, the empty list, is unchanged by the
 array's size); it decides nothing ACL2 decides."
-  (let ((st (fnn-live-octets)))
-    (setf (svref st 1) 0)
-    (setf (svref st 0) (make-array 0 :element-type '(unsigned-byte 8)))
-    st))
+  (fnn-with-incoming-mutation (:release token)
+    (let ((st (fnn-live-octets)))
+      (setf (svref st 1) 0)
+      (setf (svref st 0) (make-array 0 :element-type '(unsigned-byte 8)))
+      st)))
 
 (defun fnn-octets-pub-release ()
   "Empty the publication buffer and give its array back after a checkpoint's
@@ -294,19 +337,21 @@ empty list, is unchanged, and it decides nothing ACL2 decides."
     (setf (svref st 1) n)
     st))
 
-(defun fnn-octets-reserve (n)
+(defun fnn-octets-reserve (n &optional token)
   "Grow the buffer's array so that N octets fit; contents and count unchanged."
-  (fn-octets$c-reserve n (fnn-live-octets)))
+  (fnn-with-incoming-mutation (:reserve token)
+    (fn-octets$c-reserve n (fnn-live-octets))))
 
-(defun fnn-octets-append-vector (vector)
+(defun fnn-octets-append-vector (vector &optional token)
   "Append VECTOR's bytes at the buffer's fill point (the same boundary as
 `fnn-octets-fill': the host asserts the cells it wrote hold these bytes);
 return the index the bytes begin at."
-  (let* ((st (fnn-live-octets)) (fill (svref st 1)) (n (length vector)))
-    (fn-octets$c-reserve (+ fill n) st)
-    (replace (the fnn-octets (svref st 0)) vector :start1 fill)
-    (setf (svref st 1) (+ fill n))
-    fill))
+  (fnn-with-incoming-mutation (:append token)
+    (let* ((st (fnn-live-octets)) (fill (svref st 1)) (n (length vector)))
+      (fn-octets$c-reserve (+ fill n) st)
+      (replace (the fnn-octets (svref st 0)) vector :start1 fill)
+      (setf (svref st 1) (+ fill n))
+      fill)))
 
 ;;; The PAYLOAD ARENA (books/payload-arena.lisp; the records flip,
 ;;; books/store-intern.lisp): `fn-arena' is the abstract stobj whose logical
@@ -409,6 +454,18 @@ live buffer passed before state: its value."
       (apply #'fnn-call name (append args (cons (fnn-live-octets) (fnn-arena-then-state name))))
     (declare (ignore ignored))
     (when erp (fnn-fault "ACL2 error in ~(~a~)" name))
+    val))
+
+;; Explicit PROGRAM reader bridge for the SAME nested receiver provider.
+;; This ordinary dispatcher still allocates its argument/result containers;
+;; it is not the paid scalar callback family and carries no such claim.
+(defun fnn-core-receiver-state (name provider &rest args)
+  (destructuring-bind (erp val &rest ignored)
+      (apply #'fnn-call name
+             (append args (cons provider (fnn-arena-then-state name))))
+    (declare (ignore ignored))
+    (when erp
+      (fnn-fixed-callback-fail name :receiver-state-error erp))
     val))
 
 ;;; ---------------------------------------------------------------------------
@@ -1076,21 +1133,27 @@ fn-log-sink-close-wait-seconds.  A writer still blocked on its sink then is
 left running (lines keep being offered and dropped, never waited on) and the
 process exits without it: what it had queued, a wedged sink would lose
 anyway."
+  ;; Return only the physical join observation. A caller must not turn the
+  ;; bounded wait into a claim that the journal producer relinquished its job.
   (let ((thread (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
                   (when *fnn-log-writer*
                     (fnn-log-queue-push (list :stop))
                     *fnn-log-writer*))))
-    (when thread
+    (if thread
       (multiple-value-bind (value outcome)
           (sb-thread:join-thread thread
                                  :timeout (fnn-core 'fn-log-sink-close-wait-seconds)
                                  :default :timeout)
         (declare (ignore value))
-        (unless (eq outcome :timeout)
-          (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
-            (setq *fnn-log-writer* nil
-                  *fnn-log-queue-head* nil
-                  *fnn-log-queue-tail* nil)))))))
+        (if (eq outcome :timeout)
+            :timeout
+          (progn
+            (sb-thread:with-recursive-lock (*fnn-log-queue-mutex*)
+              (setq *fnn-log-writer* nil
+                    *fnn-log-queue-head* nil
+                    *fnn-log-queue-tail* nil))
+            :joined)))
+      :absent)))
 
 (defun fnn-log-swap-fd (fd)
   "Install FD as the service log: through the writer's queue while it runs
@@ -1335,6 +1398,56 @@ execution-boundary fault, never a claim that the core refused an input."
                            (handler-case (princ-to-string values) (error () "guard violation"))))
       (t (fnn-fault "ACL2 error in ~(~a~): ~a" name outcome)))))
 
+; Fixed served callbacks are selected once at funded startup. Their ACL2
+; bodies check scalar inputs before work; :raw-with carries their stobj guards.
+; This bridge establishes no carry and never substitutes a logical callback.
+(defun fnn-fixed-raw-callback (name)
+  "Return the selected compiled raw entry; refuse an unprepared hot callback."
+  (when *fnn-dispatch-counterpart*
+    (fnn-fault "fixed callback ~(~a~) requires raw dispatch" name))
+  (let ((raw (gethash name *fnn-raw-dispatch*)))
+    (unless (and raw (fboundp raw))
+      (fnn-fault "fixed callback ~(~a~) is missing verified raw dispatch" name))
+    (let ((function (symbol-function raw)))
+      (unless (compiled-function-p function)
+        (fnn-fault "fixed callback ~(~a~) is not compiled" name))
+      function)))
+
+(defmacro fnn-core-mv (name call)
+  "Preserve fixed CALL's scalar MVs without an argument or result container.
+NAME names the actual ACL2 subject. CALL uses its startup-selected callback;
+its own scalar refusals remain results, while execution escapes are faults."
+  (let ((outcome (gensym "OUTCOME")) (condition (gensym "CONDITION")))
+    `(let ((,outcome :thrown))
+       (multiple-value-prog1
+           (catch 'raw-ev-fncall
+             (handler-case
+                 (multiple-value-prog1 ,call (setq ,outcome :ok))
+               (serious-condition (,condition)
+                 (setq ,outcome ,condition)
+                 nil)))
+         (case ,outcome
+           (:ok nil)
+           (:thrown (fnn-fixed-callback-fail ,name :raw-callback-escaped nil))
+           (otherwise (fnn-fixed-callback-fail ,name :raw-callback-failed ,outcome)))))))
+
+(defvar *fnn-incoming-mutation-callback* nil)
+
+(defun fnn-incoming-mutation-start ()
+  "Install the verified compiled predicate before any generic buffer use.
+Startup and the resource scheduler must join this gate as one source batch;
+there is no unguarded or interpreted fallback when the callback is absent."
+  (setf *fnn-incoming-mutation-callback* nil)
+  (setf *fnn-incoming-mutation-callback*
+        (fnn-fixed-raw-callback 'fn-owner-incoming-mutation-allowedp)))
+
+(defun fnn-incoming-generic-mutation-allowedp (token)
+  "Caller holds the extent mutex through the subsequent physical mutation."
+  (unless *fnn-incoming-mutation-callback*
+    (fnn-fault "incoming mutation callback is not installed"))
+  (fnn-core-mv 'fn-owner-incoming-mutation-allowedp
+    (funcall *fnn-incoming-mutation-callback* token (fnn-live-page-read-pool))))
+
 (defun fnn-core (name &rest args)
   "A state-free wrapper's single value."
   (first (apply #'fnn-call name args)))
@@ -1458,9 +1571,43 @@ and any previous selected checkpoint before initializing the epoch."
 ;; arena cleared, each decoded chunk interned by the guard-verified
 ;; fn-ssr-intern-step (rows and the statement epoch in one cell), then the open
 ;; over the rows.
+(defvar *fnn-payload-lifecycle-lock*
+  (sb-thread:make-mutex :name "fn payload arena lifecycle"))
+
+(defvar *fnn-payload-lifecycle-phase* :quiescent)
+
+(defvar *fnn-payload-lifecycle-arena* nil)
+
+(defvar *fnn-payload-lifecycle-owner* nil)
+
+(defun fnn-payload-lifecycle-answer (event &optional owned joined)
+  "Lifecycle mutex held; ACL2 alone decides the phase transition."
+  (fnn-core 'fn-pvl-runtime-step *fnn-payload-lifecycle-phase* event owned joined))
+
+(defun fnn-payload-startup-reset (&optional recovery-purpose)
+  "Only startup/recovery may clear. Refuse serving/draining before STATE use."
+  (sb-thread:with-mutex (*fnn-payload-lifecycle-lock*)
+    (let ((permission (fnn-payload-lifecycle-answer :reset)))
+      (unless (eq (first permission) :allowed)
+        (return-from fnn-payload-startup-reset '(:refused :arena-not-quiescent)))
+      (let* ((arena (fnn-live-arena))
+             (answer (destructuring-bind (erp val &rest ignored)
+                         (fnn-call 'fn-owner-payload-view-reset arena *the-live-state*)
+                       (declare (ignore ignored))
+                       (when erp (fnn-fault "payload reset core error")) val)))
+        (when (eq (first answer) :reset)
+          (setf *fnn-payload-lifecycle-arena* arena)
+          (when recovery-purpose
+            ; Canonical epoch reset shares the actual quiescent exclusion.
+            ; It precedes loader generation selection and lexical issuance.
+            (unless (eq (first (fnn-core-state 'fn-owner-recovery-source-reset)) :reset)
+              (fnn-fault "canonical recovery reset refused"))))
+        answer))))
+
 (defun fnn-bridge-recover-begin ()
+  (unless (eq (first (fnn-payload-startup-reset)) :reset)
+    (fnn-fault "arena reset refused: captured payload view still owned"))
   (fnn-core-state 'fn-store-sco-clear)
-  (fnn-call 'fn-arena-clear (fnn-live-arena))
   (list (fnn-core 'fn-ssr-seed (fnn-core 'fn-stxk-initial-context 0))))
 
 (defun fnn-bridge-recover-step (replay decoded)
@@ -1492,9 +1639,11 @@ with the store's dictionaries; NIL on :bad."
       t)))
 
 (defun fnn-bridge-recover-end (replay frontier config-records)
-  (fnn-action (fnn-core-state 'fn-store-sn-recover-rows
+  (let ((action (fnn-action (fnn-core-state 'fn-store-sn-recover-rows
                               (fnn-core 'fn-ssr-rows (car replay)) frontier
-                              (mapcar #'fnn-octet-list config-records))))
+                              (mapcar #'fnn-octet-list config-records)))))
+    (values action (and (eq action :recovering)
+                        (fnn-core 'fn-ssr-at 3 (car replay))))))
 
 (defun fnn-recover-record-chunks (records)
   "A chunk source over RECORDS (octet vectors, or octet lists: the log
@@ -1693,6 +1842,13 @@ the payload to seal as (:seal OCTETS); the host seals exactly those octets
 ;; it reuses the exact file/barrier program without calling the store-node
 ;; completion subject a second time.
 (defvar *fnn-observe-callback* #'fnn-bridge-io)
+
+(defun fnn-bridge-identity-reservation (operation)
+  (when operation
+    (fnn-fault "standalone writer has no retention identity grant"))
+  (fnn-core-state 'fn-store-sn-identity-reservation))
+
+(defvar *fnn-identity-reservation-callback* #'fnn-bridge-identity-reservation)
 (defvar *fnn-finish-callback* #'fnn-bridge-finish)
 ; Developer fault cut, dynamically scoped to one canonical Store publication.
 ; NIL in normal operation.  The cut runs after the final link and before its
@@ -2333,14 +2489,18 @@ store; anything else is left to the ordinary open."
   (setf (fnn-store-completion-pending store) nil)
   (let ((log (fnn-store-log store)))
     (when log
-      (setf (fnn-store-log store) nil)
-      (ignore-errors (fnn-log-discard-spare log))
-      (ignore-errors (fnn-close (fnn-log-fd log)))))
+      ;; Physical close failure retains the Store and its recovery aliases.
+      (fnn-log-discard-spare log)
+      (fnn-close (fnn-log-fd log))
+      (setf (fnn-store-log store) nil)))
   (let ((fd (fnn-store-lock-fd store)))
     (when fd
-      (setf (fnn-store-lock-fd store) nil)
+      ;; Retention after uncertainty is not evidence the lock remains held.
       (unwind-protect (fnn-flock fd +fnn-lock-un+)
-        (fnn-close fd)))))
+        (fnn-close fd))
+      (setf (fnn-store-lock-fd store) nil)))
+  (setf (fnn-store-recovery-identity store) nil
+        (fnn-store-recovery-source store) nil))
 
 (defun fnn-observe (store operation &optional (result :ok))
   "Submit one already-observed filesystem result and keep failure fenced."
@@ -2539,7 +2699,8 @@ arena (invariant-risk; host/store-node-host.lisp fn-store-sco-decode's note).
 A refusal leaves a partial arena that nothing reads: the full replay
 empties it first (fnn-bridge-recover)."
   (let ((arena (fnn-live-arena)) (octets (fnn-live-octets)) (i start) (left count))
-    (fnn-call 'fn-arena-clear arena)
+    (unless (eq (first (fnn-payload-startup-reset)) :reset)
+      (fnn-fault "checkpoint arena reset refused: payload view still owned"))
     (loop while (> left 0) do
       (let* ((k (min left +fnn-checkpoint-load-batch-payloads+))
              (answer (fnn-call 'fn-scka-seal-n i end k octets arena)))
@@ -2561,30 +2722,46 @@ empties it first (fnn-bridge-recover)."
           (values :ok (second answer))
           (values :refused 0)))))
 
-(defun fnn-recover-suffix-intern (suffix configs acc)
+(defun fnn-recover-suffix-intern (suffix configs acc &optional recovery-authority)
   "Intern decoded suffix chunks over the arena left by the selected checkpoint.
 fn-store-statement-replay-seed reads the selected fn-store-sco-current
 checkpoint's captured identity epoch; it never uses the current live keyring.
 fn-ssr-intern-step :resident carries that keyring, generation and cursor
 between every record and chunk. fn-ssr-resident-step-of-append proves the
 chunk composition, including arena effects, under true-listp of the first
-chunk. The result is (values ROWS ACC2), rows oldest first (fn-ssr-rows),
+chunk. The result is (values ROWS ACC2 ORIGINAL-IDENTITY), rows oldest first
+(fn-ssr-rows). ORIGINAL-IDENTITY is the complete accumulator that made those
+row decisions, selected by ACL2 before the row state is discarded; it is not
+owner/canonical readiness. The first two results retain their existing meaning,
 or :bad on invalid configuration, decode or identity replay. ACC2 is
 fn-ofw-wire-next over decoded events, starting at ACC. The suffix is decoded
-one work quantum at a time using fn-srs-chunk-fullp."
+one work quantum at a time using fn-srs-chunk-fullp. The optional cold
+authority is issued by ACL2 before this loop; each produced completion
+consumes that exact token and returns its successor as the fourth value."
   (if (eq (fnn-core 'fn-store-sn-recover-records nil configs) :bad)
-      (values :bad acc)
+      (values :bad acc nil recovery-authority)
       (let ((next (fnn-recover-record-chunks suffix)) (rows (fnn-core-state 'fn-store-statement-replay-seed)) (fold acc))
         (loop
           (let ((decoded (funcall next)))
             (when (eq decoded :end) (return))
-            (when (eq decoded :bad) (return-from fnn-recover-suffix-intern (values :bad acc)))
+            (when (eq decoded :bad) (return-from fnn-recover-suffix-intern (values :bad acc nil recovery-authority)))
             (setq fold (fnn-core 'fn-ofw-wire-next decoded fold)
                   rows (first (fnn-call 'fn-ssr-intern-step rows decoded nil nil :resident nil (fnn-live-arena))))
-            (when (eq rows :bad) (return-from fnn-recover-suffix-intern (values :bad acc)))))
-        (values (fnn-core 'fn-ssr-rows rows) fold))))
+            (when (eq rows :bad) (return-from fnn-recover-suffix-intern (values :bad acc nil recovery-authority)))
+            (when recovery-authority
+              ; Retain the issued lexical token across this actual producer
+              ; call. A current-token lookup would accept stale callbacks.
+              (let ((answer (fnn-core-state 'fn-owner-recovery-source-observe
+                                            recovery-authority
+                                            (fnn-core 'fn-ssr-at 3 rows) fold)))
+                (unless (eq (first answer) :counted)
+                  (fnn-fault "cold source rejected replay completion: ~a" answer))
+                (setq recovery-authority (second answer))))))
+        (values (fnn-core 'fn-ssr-rows rows) fold
+                (fnn-core 'fn-ssr-at 3 rows) recovery-authority))))
 
-(defun fnn-recover-suffix-rows (store suffix config-records &optional (interned nil internedp))
+(defun fnn-recover-suffix-rows (store suffix config-records &optional (interned nil internedp)
+                                      (original-identity nil))
   "The open from the loaded checkpoint: the suffix decoded and interned ON
 TOP of the arena the load left, a chunk at a time (fnn-recover-suffix-intern;
 INTERNED, its rows, when the caller interned SUFFIX with it already; the
@@ -2593,12 +2770,18 @@ open over the rows (fn-store-sn-recover-from-checkpoint).  The calls are
 fn-scka-recover-rows over the host's extension (books/store-checkpoint-
 arena.lisp, KEYSTONE fn-scka-recover-from-checkpoint-is-full-recover), its
 intern chunked (fnn-recover-suffix-intern's keystones)."
-  (let* ((configs (mapcar #'fnn-octet-list config-records))
-         (rows (if internedp interned (values (fnn-recover-suffix-intern suffix configs 0)))))
-    (if (eq rows :bad)
-        :fault
-        (fnn-action (fnn-core-state 'fn-store-sn-recover-from-checkpoint
-                                    rows (fnn-store-frontier store) configs)))))
+  (setf (fnn-store-recovery-identity store) nil)
+  (let ((configs (mapcar #'fnn-octet-list config-records)))
+    (multiple-value-bind (rows fold identity)
+        (if internedp (values interned nil original-identity)
+          (fnn-recover-suffix-intern suffix configs 0))
+      (declare (ignore fold))
+      (if (eq rows :bad) :fault
+        (let ((action (fnn-action (fnn-core-state 'fn-store-sn-recover-from-checkpoint
+                                                 rows (fnn-store-frontier store) configs))))
+          (when (eq action :recovering)
+            (setf (fnn-store-recovery-identity store) identity))
+          action)))))
 
 
 (defun fnn-open-report (store)
@@ -3393,8 +3576,12 @@ books/store-profile-open.lisp fn-spo-open-of-a-format-8-profile-refuses-by-name)
 fnn-recover-log.  Answers the history's record COUNT; the records themselves
 are not kept (PKT-823): a caller that needs their octets reads them after the
 open, a record at a time (`fnn-log-history-each')."
+  (unless (eq (first (fnn-payload-startup-reset :recovery)) :reset)
+    (fnn-fault "recovery requires joined quiescent payload arena"))
   (setf (fnn-store-fenced store) t (fnn-store-completion-pending store) nil
-        (fnn-store-open-mode store) '(:full-replay :absent))
+        (fnn-store-open-mode store) '(:full-replay :absent)
+        (fnn-store-recovery-identity store) nil
+        (fnn-store-recovery-source store) nil)
   ;; the collector's trigger for the open (no effect on the store; before the
   ;; record-log guard, whose arm is the one call native_program_check reads)
   (fnn-open-nursery store)
@@ -3435,12 +3622,12 @@ recovery sweep owns."
                            (fnn-fsync-file fd))
       (fnn-close fd))))
 
-(defun fnn-advance-frontier (store current-txid)
+(defun fnn-advance-frontier (store current-txid &optional operation)
   "The allocator's reservation: the record log's (fnn-log-reserve; the
 frontier is derived from the log, design 2026-09-27 section 3.3)."
   (unless (fnn-store-logp store)
     (fnn-fault "a store that is not on the record log opened"))
-  (fnn-log-reserve store current-txid))
+  (fnn-log-reserve store current-txid operation))
 
 (defun fnn-publish (store sequence record)
   "The record's publication: the record log's P-BATCH (fnn-log-publish)."
@@ -7012,15 +7199,17 @@ and interned first."
   "The last chunk, then the open over the rows at the derived frontier, as
 fnn-recover-log-replay ends."
   (fnn-recover-log-stream-flush replay)
-  (let ((action (fnn-bridge-recover-end (first replay) (fnn-store-frontier store)
-                                        config-records)))
+  (setf (fnn-store-recovery-identity store) nil)
+  (multiple-value-bind (action identity)
+      (fnn-bridge-recover-end (first replay) (fnn-store-frontier store) config-records)
     (when (eq action :refused)
       (let ((text (fnn-core-state 'fn-store-open-refusal-text)))
         (unless (stringp text)
           (fnn-fault "ACL2 refused the open without naming a reason"))
         (error 'fnn-store-open-refusal :message text)))
     (unless (eq action :recovering)
-      (fnn-replay-fault))))
+      (fnn-replay-fault))
+    (setf (fnn-store-recovery-identity store) identity)))
 
 (defun fnn-recover-log-replay (store records config-records)
   "The replay the per-file open runs (fnn-recover-full-replay), over the
@@ -7028,25 +7217,35 @@ log's records (the kernel's committed octet lists), in the chunks ACL2 closes
 (`fnn-recover-record-chunks', as the pack path: PRF-261's
 fn-srs-steps-are-one-step-of-the-concatenation, any chunking opens the same
 Store); the history's COUNT (the open keeps no records, PKT-823)."
-  (let ((action (fnn-bridge-recover (fnn-recover-record-chunks records)
-                                    (fnn-store-frontier store) config-records)))
+  (setf (fnn-store-recovery-identity store) nil)
+  (multiple-value-bind (action identity)
+      (fnn-bridge-recover (fnn-recover-record-chunks records)
+                          (fnn-store-frontier store) config-records)
     (when (eq action :refused)
       (let ((text (fnn-core-state 'fn-store-open-refusal-text)))
         (unless (stringp text)
           (fnn-fault "ACL2 refused the open without naming a reason"))
         (error 'fnn-store-open-refusal :message text)))
     (unless (eq action :recovering)
-      (fnn-replay-fault)))
+      (fnn-replay-fault))
+    (setf (fnn-store-recovery-identity store) identity))
   (length records))
 
-(defun fnn-recover-log-from-state-checkpoint (store config-records records)
+(defun fnn-recover-log-from-state-checkpoint
+    (store config-records records &optional
+           (checkpoint-status nil checkpoint-loaded-p) checkpoint-sequence recovery-authority)
   "fnn-recover-from-state-checkpoint over the log's records: the suffix is
 the records at or after the checkpoint's S (the log holds every record).
 Answers the history's COUNT, S plus the suffix's (PKT-823): the covered
 prefix is not re-encoded (fn-store-sco-prefix-octets), since the log holds
 it (`fnn-log-history-records'); NIL when the open falls back to the full
-replay."
-  (multiple-value-bind (status sequence) (fnn-state-checkpoint-load store)
+replay. The second value is the exact cold authority returned by suffix
+replay, or NIL on full replay. When CHECKPOINT-LOADED-P, use the caller's
+successful load and lexical authority: loading again would replace its
+generation. Legacy direct calls load once and return no cold authority."
+  (multiple-value-bind (status sequence)
+      (if checkpoint-loaded-p (values checkpoint-status checkpoint-sequence)
+        (fnn-state-checkpoint-load store))
     (let* ((count (if (eq status :ok)
                       (fnn-core 'fn-store-sco-observed-count
                                 (loop for i below (length records) collect i) 0)
@@ -7057,16 +7256,21 @@ replay."
         (fnn-fault "ACL2 returned a malformed checkpoint selection"))
       (when (eq (first choice) :full-replay)
         (setf (fnn-store-open-mode store) (list :full-replay (second choice)))
-        (return-from fnn-recover-log-from-state-checkpoint nil))
+        (return-from fnn-recover-log-from-state-checkpoint (values nil nil)))
       (let* ((s (second choice))
              (suffix (nthcdr s records)))
-        (unless (eq (fnn-recover-suffix-rows store suffix config-records) :recovering)
-          (fnn-core-state 'fn-store-sco-clear)
-          (fnn-bridge-reset)
-          (setf (fnn-store-open-mode store) (list :full-replay :checkpoint-open-refused))
-          (return-from fnn-recover-log-from-state-checkpoint nil))
-        (setf (fnn-store-open-mode store) (list :checkpoint s (length suffix)))
-        (+ s (length suffix))))))
+        (multiple-value-bind (rows fold original-identity successor)
+            (fnn-recover-suffix-intern suffix (mapcar #'fnn-octet-list config-records)
+                                      0 recovery-authority)
+          (declare (ignore fold))
+          (unless (eq (fnn-recover-suffix-rows store suffix config-records
+                                              rows original-identity) :recovering)
+            (fnn-core-state 'fn-store-sco-clear)
+            (fnn-bridge-reset)
+            (setf (fnn-store-open-mode store) (list :full-replay :checkpoint-open-refused))
+            (return-from fnn-recover-log-from-state-checkpoint (values nil nil)))
+          (setf (fnn-store-open-mode store) (list :checkpoint s (length suffix)))
+          (values (+ s (length suffix)) successor))))))
 
 (defun fnn-store-recovery-barriers (store)
   "The open's recovery barriers' thunks after P-LOG-RECOVER's segment fence,
@@ -7134,10 +7338,12 @@ store closing).  Removing a staged name is never uncertain for the history:
 the open ignores and sweeps it."
   (let ((spare (fnn-log-spare log)))
     (when spare
-      (setf (fnn-log-spare log) nil)
       (destructuring-bind (index path fd) spare
         (declare (ignore index))
-        (ignore-errors (fnn-close fd))
+        ;; An ambiguous close retains the spare identity/debt. The caller
+        ;; fences the Store and must not allocate or reuse this descriptor.
+        (fnn-close fd)
+        (setf (fnn-log-spare log) nil)
         (ignore-errors (when (fnn-lstat path) (fnn-unlink path)))))))
 
 (defun fnn-log-prepare-spare (store)
@@ -7418,7 +7624,8 @@ and last trailer must be the kernel's, or the read is a fault."
              (fnn-fault "the active log segment does not read back its committed records")))
       (fnn-close fd))))
 
-(defun fnn-recover-log-from-log-checkpoint (store config-records suffix s &optional (interned nil internedp))
+(defun fnn-recover-log-from-log-checkpoint (store config-records suffix s &optional (interned nil internedp)
+                                                  (original-identity nil))
   "The open from a checkpoint whose F row names the log's first suffix
 segment: SUFFIX is the scan from there (T8: with the checkpoint's records it
 is the whole history), replayed over the checkpoint
@@ -7428,7 +7635,7 @@ refused by name."
   (progn
     ;; S: the loaded checkpoint's (fnn-recover-log loaded it once, first).
     (let ((action (if internedp
-                      (fnn-recover-suffix-rows store suffix config-records interned)
+                      (fnn-recover-suffix-rows store suffix config-records interned original-identity)
                       (fnn-recover-suffix-rows store suffix config-records))))
       (unless (eq action :recovering)
         ;; A replay that stopped names itself (fn-store-open-refusal-text:
@@ -7464,9 +7671,18 @@ five recovery barriers the per-file open runs, and a writable open finishes
 an interrupted drop.  Answers the history's record COUNT, as `fnn-recover'
 does, and records how the log holds the history (fnn-store-log-history) for
 `fnn-log-history-records'."
-  (let ((count nil) (drop nil))
+  (setf (fnn-store-recovery-identity store) nil
+        (fnn-store-recovery-source store) nil)
+  (let ((count nil) (drop nil) (recovery-authority nil))
     (handler-case
         (multiple-value-bind (status sequence) (fnn-state-checkpoint-load store)
+          (when (eq status :ok)
+            ; Canonical reset precedes the physical loader in the actual
+            ; owner startup. Bind this exact successful loader generation.
+            (let ((answer (fnn-core-state 'fn-owner-recovery-source-start)))
+              (unless (eq (first answer) :issued)
+                (fnn-fault "cold source issuance unavailable: ~a" answer))
+              (setq recovery-authority (second answer))))
           (let* ((position (and (eq status :ok) (fnn-core-state 'fn-store-sco-log-position)))
                  (log-position (first position))
                  (floor (if log-position (fnn-nat (second position)) 0))
@@ -7516,7 +7732,7 @@ does, and records how the log holds the history (fnn-store-log-history) for
                                   (fnn-fault "ACL2 returned a malformed checkpoint selection"))
                                 (and (eq (first choice) :full-replay) choice))))
                    (config-records (fnn-config-records store))
-                   (acc 0) (kept nil) (decoded nil) (scanned 0) (newest nil)
+                   (acc 0) (kept nil) (decoded nil) (original-identity nil) (scanned 0) (newest nil)
                    (replay (and full (fnn-recover-log-stream-begin)))
                    (log (let ((*fnn-log-stream-finish*
                                 ;; The full replay decodes every record once:
@@ -7560,8 +7776,9 @@ does, and records how the log holds the history (fnn-store-log-history) for
               ;; refuses the open.
               (when (and log-position (not replay))
                 (setq kept (nreverse kept))
-                (multiple-value-setq (decoded acc)
-                  (fnn-recover-suffix-intern kept (mapcar #'fnn-octet-list config-records) acc)))
+                (multiple-value-setq (decoded acc original-identity recovery-authority)
+                  (fnn-recover-suffix-intern kept (mapcar #'fnn-octet-list config-records)
+                                            acc recovery-authority)))
               (fnn-log-batch-reset log)
               (setf (fnn-store-log-last store)
                     (and newest (list (fnn-core 'fn-lgc-count (fnn-log-kernel log)) newest)))
@@ -7593,17 +7810,23 @@ does, and records how the log holds the history (fnn-store-log-history) for
                              (setq kept nil)
                              (if log-position
                                  (fnn-recover-log-from-log-checkpoint store config-records records
-                                                                      sequence decoded)
-                               (or (fnn-recover-log-from-state-checkpoint store config-records records)
-                                   (fnn-recover-log-replay store records config-records)))))))))
+                                                                      sequence decoded original-identity)
+                               (multiple-value-bind (checkpoint-count checkpoint-authority)
+                                   (fnn-recover-log-from-state-checkpoint
+                                     store config-records records status sequence recovery-authority)
+                                 (setq recovery-authority checkpoint-authority)
+                                 (or checkpoint-count
+                                     (fnn-recover-log-replay store records config-records))))))))))
           (setf (fnn-store-config-generation store) (fnn-bridge-config-generation)
                 (fnn-store-config-served store) (fnn-bridge-config-names 'fn-store-cfg-served)
                 (fnn-store-config-domain store) (fnn-bridge-config-names 'fn-store-cfg-domain)))
       ((or fnn-store-fault fnn-store-indeterminate fnn-store-open-refusal) (e)
-        (setf (fnn-store-fenced store) t)
+        (setf (fnn-store-fenced store) t
+              (fnn-store-recovery-identity store) nil)
         (error e))
       (fnn-store-error (e)
-        (setf (fnn-store-fenced store) t)
+        (setf (fnn-store-fenced store) t
+              (fnn-store-recovery-identity store) nil)
         (fnn-fault "cannot reconstruct committed history: ~a" e)))
     (fnn-at store :recover-replayed)
     (handler-case
@@ -7621,25 +7844,31 @@ does, and records how the log holds the history (fnn-store-log-history) for
           (unless (eq phase :ready)
             (fnn-fault "ACL2 did not complete all recovery barriers")))
       (fnn-os-error ()
-        (setf (fnn-store-fenced store) t)
+        (setf (fnn-store-fenced store) t
+              (fnn-store-recovery-identity store) nil)
         (fnn-indeterminate "cannot establish recovered log frontier")))
     (handler-case
         (if (fnn-store-writable store)
             (fnn-sweep-staging store)
             (setf (fnn-store-orphans store) (fnn-staging-orphans store)))
       ((or fnn-store-fault fnn-store-indeterminate) (e)
-        (setf (fnn-store-fenced store) t)
+        (setf (fnn-store-fenced store) t
+              (fnn-store-recovery-identity store) nil)
         (error e)))
     ;; An interrupted drop: the covered segments the plan named go now.
     (when (and drop (fnn-store-writable store))
       (handler-case (fnn-log-drop store drop)
         (fnn-os-error (e)
-          (setf (fnn-store-fenced store) t)
+          (setf (fnn-store-fenced store) t
+              (fnn-store-recovery-identity store) nil)
           (fnn-indeterminate "the drop of covered log segments is uncertain: ~a" e))))
-    (setf (fnn-store-fenced store) nil)
+    ; Publish only the token returned by the same completed replay. Partial
+    ; or uncertain paths retain the STATE authority and never set this slot.
+    (setf (fnn-store-recovery-source store) recovery-authority
+          (fnn-store-fenced store) nil)
     count))
 
-(defun fnn-log-reserve (store current-txid)
+(defun fnn-log-reserve (store current-txid &optional operation)
   "The member's reservation on the log route (fn-olr-ocfg-reserve through
 the observe callback): the frontier is the log's derived one."
   (fnn-require-writer store)
@@ -7647,10 +7876,15 @@ the observe callback): the frontier is the log's derived one."
   (unless (eql current-txid (fnn-store-frontier store))
     (setf (fnn-store-fenced store) t)
     (fnn-fault "ACL2 allocator and the log's frontier disagree"))
-  (let ((next (fnn-metadata-frontier-next current-txid))
+  (let ((next (funcall *fnn-identity-reservation-callback* operation))
         (log (fnn-store-log store)))
-    (when (null next)
-      (fnn-refuse "finite transaction-ID domain exhausted"))
+    (case next
+      (:identity-exhausted (fnn-refuse "finite transaction-ID domain exhausted"))
+      (:identity-reserve (fnn-refuse "transaction identities reserved for promised releases"))
+      (:operation-refused (fnn-refuse "retention operation has no current identity grant"))
+      (:unaffordable (fnn-refuse "retention operation cannot fund its other resources")))
+    (unless (and (integerp next) (<= 0 next))
+      (fnn-fault "ACL2 returned malformed identity reservation"))
     (fnn-log-with-kernel (log)
       (setf (fnn-log-kernel log)
             (fnn-core 'fn-lgc-consume-to (fnn-log-kernel log) current-txid)
@@ -8465,6 +8699,9 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
                  (when *fnn-dispatch-counterpart*
                    (fnn-err "fn-dispatch: counterpart for ~d raw-dispatched entries (FN_NATIVE_DISPATCH_COUNTERPART)"
                             (hash-table-count *fnn-raw-dispatch*)))
+                 ;; All generic incoming mutations, including recovery, use
+                 ;; the startup-selected compiled core authority predicate.
+                 (fnn-incoming-mutation-start)
                  (fnn-dispatch argv))
              (fnn-usage-error (e)
                (fnn-err "fn-host: error: ~a" e)

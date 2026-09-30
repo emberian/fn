@@ -73,12 +73,15 @@
   "A logical reader connection for the browser at FAMILY/ADDRESS: the owner's
 exposure admission decides (the id, or NIL when it refused)."
   (let* ((seed (fnn-owner-sasl-seed))
+         (custody nil)
          (opened
           (fnn-owner-serialized
            service nil
            (lambda ()
              (fnn-owner-advance-clock)
-             (let ((id (fnn-owner-core 'fn-owner-exposure-open family address nil)))
+             (multiple-value-bind (id node)
+                 (fnn-owner-connection-open-locked service :exposure family address nil)
+               (setq custody node)
                (when id (fnn-owner-log))
                ;; The session's SASL context (books/nntp-auth.lisp): a fresh
                ;; seed and no channel binding (the browser's TLS layer is not
@@ -99,7 +102,7 @@ exposure admission decides (the id, or NIL when it refused)."
          (unless (eq (fnn-owner-action 'fn-owner-tls-established opened) :ok)
            (fnn-fault "owner rejected the web connection's protection")))
        :reader))
-    opened))
+    (values opened custody)))
 
 (defun fnn-web-feed (service cid octets)
   "Feed OCTETS to CID through the owner's served step; the whole reply, or
@@ -130,10 +133,10 @@ exposure admission decides (the id, or NIL when it refused)."
         reply)
     (fnn-store-error () :gone)))
 
-(defun fnn-web-close (service cid)
+(defun fnn-web-close (service cid &optional custody)
   (fnn-owner-response-unpin service cid)
   (ignore-errors
-    (fnn-owner-serialized service cid (lambda () (fnn-owner-action 'fn-owner-close cid)) :reader))
+    (fnn-owner-serialized service cid (lambda () (fnn-owner-connection-close-locked service cid custody nil)) :reader))
   (ignore-errors
     (fnn-owner-serialized service nil
                           (lambda () (fnn-owner-action 'fn-owner-exposure-release cid))
@@ -220,7 +223,8 @@ exposure admission decides (the id, or NIL when it refused)."
                               (fnn-octet-list (fnn-anchor-csprng-nonce 32))
                               (and (fnn-web-face-tls-context face) t)
                               family address))
-                 (flow nil))
+                 (flow nil) (custody nil) (opened-cid nil))
+             (unwind-protect
              (dotimes (i (fnn-core 'fn-web-host-max-events)
                          (fnn-fault "a web request took more events than ACL2 allows"))
                (declare (ignorable i))
@@ -236,8 +240,9 @@ exposure admission decides (the id, or NIL when it refused)."
                     (return))
                    (:open
                     (destructuring-bind (fam addr protected next) (rest action)
-                      (setq flow next
-                            event (list :opened (fnn-web-open service fam addr protected)))))
+                      (multiple-value-bind (id node) (fnn-web-open service fam addr protected)
+                        (setq custody node opened-cid id flow next
+                              event (list :opened id)))))
                    (:send
                     (destructuring-bind (cid start stop next) (rest action)
                       (let ((reply (fnn-web-feed service cid (fnn-web-slice out start stop))))
@@ -248,9 +253,11 @@ exposure admission decides (the id, or NIL when it refused)."
                                  (setq event (list :reply)))))))
                    (:close
                     (destructuring-bind (cid next) (rest action)
-                      (fnn-web-close service cid)
+                      (fnn-web-close service cid custody)
+                      (setq opened-cid nil custody nil)
                       (setq flow next event (list :closed))))
-                   (otherwise (fnn-fault "ACL2 returned a malformed web action"))))))))))))
+                   (otherwise (fnn-fault "ACL2 returned a malformed web action")))))
+               (when opened-cid (fnn-web-close service opened-cid custody))))))))))
 
 (defun fnn-web-serve (face socket)
   (let ((fd (fnn-socket-fd socket)) (channel nil))
