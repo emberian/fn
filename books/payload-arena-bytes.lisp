@@ -55,7 +55,11 @@
 ; The byte array's recognizer is the octet buffer's, so that book's array
 ; lemmas apply here.
 (defthm fn-arn-bufp-is-octets-bufp
-  (equal (fn-arena$c-bufp x) (fn-octets$c-bufp x)))
+  (equal (fn-arena$c-bufp x) (fn-octets$c-bufp x))
+  :hints (("Goal" :induct (fn-arena$c-bufp x)
+           :in-theory (union-theories
+                       '(fn-arena$c-bufp fn-octets$c-bufp)
+                       (theory 'minimal-theory)))))
 
 (local (in-theory (disable fn-arena$c-bufp)))
 
@@ -344,7 +348,8 @@
   ; XS at the fill point, one write per octet.
   (declare (xargs :stobjs fn-arena$c
                   :guard (and (fn-cbor-octet-listp xs)
-                              (<= (fn-arena$c-fill fn-arena$c) (fn-arena$c-buf-length fn-arena$c)))))
+                              (<= (fn-arena$c-fill fn-arena$c) (fn-arena$c-buf-length fn-arena$c)))
+                  :guard-hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
   (if (atom xs)
       fn-arena$c
     (let ((fn-arena$c (fn-arn-write-octet (car xs) fn-arena$c)))
@@ -475,6 +480,12 @@
 
 ; `nth' and `update-nth' stay closed from here on (octets-stobj, rep-sha256).
 (local (in-theory (disable nth update-nth)))
+; Keep the field facts below in the same NTH form as their consumers.
+; These optional prototype rules may be present in a composed world.
+(local
+ (in-theory
+  (set-difference-equal (current-theory :here)
+                       '((:rewrite adt-nth-0) (:rewrite adt-nth-1+)))))
 (local (in-theory (enable update-nth-array)))
 
 (defthm fn-arn-cp-fields
@@ -527,7 +538,11 @@
                   (equal (nth 3 next) (nth 3 fn-arena$c))
                   (equal (nth 4 next) (1+ (nth 4 fn-arena$c)))
                   (<= (nth 4 next) (len (nth 0 next)))
-                  (equal (nth (nth 4 fn-arena$c) (nth 0 next)) o)))))
+                  (equal (nth (nth 4 fn-arena$c) (nth 0 next)) o))))
+  :hints (("Goal" :in-theory (enable fn-arena$cp
+                                      fn-oct-bufp-of-update-nth
+                                      fn-oct-bufp-of-resize-list
+                                      unsigned-byte-p))))
 
 ; The same room fact in the form the rewriter meets it once the fill has
 ; been rewritten to its successor: a linear rule.
@@ -567,7 +582,8 @@
                   (equal (nth 3 next) (nth 3 fn-arena$c))
                   (equal (nth 4 next) (+ (nth 4 fn-arena$c) (len xs)))
                   (<= (+ (nth 4 fn-arena$c) (len xs)) (len (nth 0 next))))))
-  :hints (("Goal" :induct (fn-arn-write xs fn-arena$c))))
+  :hints (("Goal" :induct (fn-arn-write xs fn-arena$c)
+           :in-theory (enable fn-cbor-octet-listp))))
 
 (defthm fn-arn-write-room
   (implies (and (fn-arena$cp fn-arena$c)
@@ -585,7 +601,8 @@
                 (natp k) (< k (nth 4 fn-arena$c)))
            (equal (nth k (nth 0 (fn-arn-write xs fn-arena$c)))
                   (nth k (nth 0 fn-arena$c))))
-  :hints (("Goal" :induct (fn-arn-write xs fn-arena$c))))
+  :hints (("Goal" :induct (fn-arn-write xs fn-arena$c)
+           :in-theory (enable fn-cbor-octet-listp))))
 
 (defthm fn-arn-write-keeps-list-from-below-fill
   (implies (and (fn-arena$cp fn-arena$c)
@@ -594,7 +611,8 @@
                 (natp n) (<= n (nth 4 fn-arena$c)))
            (equal (fn-oct-list-from i n (nth 0 (fn-arn-write xs fn-arena$c)))
                   (fn-oct-list-from i n (nth 0 fn-arena$c))))
-  :hints (("Goal" :induct (fn-arn-write xs fn-arena$c))))
+  :hints (("Goal" :induct (fn-arn-write xs fn-arena$c)
+           :in-theory (enable fn-cbor-octet-listp))))
 
 (defthm fn-arn-write-appends
   (implies (and (fn-arena$cp fn-arena$c)
@@ -604,7 +622,7 @@
                                     (nth 0 (fn-arn-write xs fn-arena$c)))
                   xs))
   :hints (("Goal" :induct (fn-arn-write xs fn-arena$c)
-           :in-theory (enable fn-oct-list-from))))
+           :in-theory (enable fn-oct-list-from fn-cbor-octet-listp))))
 
 (defthm fn-arn-write-keeps-slices
   (implies (and (fn-arena$cp fn-arena$c)
@@ -656,7 +674,8 @@
                 (<= b (len fn-octets)))
            (fn-cbor-octet-listp (fn-oct-slice-list a b fn-octets)))
   :hints (("Goal" :induct (fn-oct-slice-list a b fn-octets)
-           :in-theory (e/d (fn-oct-slice-list fn-oct-get-is-nth)
+           :in-theory (e/d (fn-oct-slice-list fn-oct-get-is-nth
+                            fn-cbor-octet-listp)
                            (fn-oct-slice-list-is-take-nthcdr)))))
 
 ; The slice stays a slice (its take/nthcdr form would hide the octet fact).
