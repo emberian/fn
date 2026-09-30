@@ -7041,7 +7041,8 @@
         "Run real accepted-history checkpoint/restart/two-page cold read with retained old reader and joined cleanup under actual admission.",
         "Actual recovery entry resets canonical epoch inside joined-quiescent arena lifecycle exclusion before physical load; reset-first and start/capture-first schedules preserve ordering/refusal without STATE or Store mutation.",
         "Repeat decoder finish without an active load so metadata clears but generation is unchanged; require prior token readout, observe and install to refuse with retained STATE.",
-        "Decode each resident suffix chunk once through the paired actual dispatcher; forward aligned snapshot child carries unchanged to one actual SSR worker. Check empty suffix, mixed snapshot/non-snapshot chunks and failure after a valid prefix without a second parse or graph resummary."
+        "Decode each resident suffix chunk once through the paired actual dispatcher; forward aligned snapshot child carries unchanged to one actual SSR worker. Check empty suffix, mixed snapshot/non-snapshot chunks and failure after a valid prefix without a second parse or graph resummary.",
+        "After actual logical Store recovery, borrow the installed records-field and CP under the frozen cold token for the sole existing OSM/HCT canonical census. Refuse legacy raw-list count representation and invalidate the borrow on any Store mutation/reset before terminal consumption."
       ],
       "expected": [
         "No old live-owner source fallback or host-supplied final count.",

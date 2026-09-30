@@ -4951,3 +4951,4 @@
 (definterface fn-srss-decode :class :common-lisp-compliant)
 
 (definterface fn-owner-recovery-source-observe-seed-sized :class :program)
+(definterface fn-owner-recovery-census-source :class :program)

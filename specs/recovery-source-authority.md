@@ -72,3 +72,21 @@ resummary in the host. The source component and native forwarding recordings
 are in `planning/evidence/snapshot-suffix-native-join-2026-09-30/`; recording
 core/STATE doubles do not establish loader provenance, installed CP7/pool/row
 correspondence, INITIAL adequacy or native image qualification.
+
+The installed collector input is `fn-owner-recovery-census-source(token,STATE)`.
+It reads the actual completed Store, returns its literal root, records-field,
+count/frontier and CP pointer under the current cold issuer and sized pending
+metadata, and labels the result `:recovery-census`. The native recovery core
+preserves its existing first result and returns this input as an optional
+second result using its retained lexical token. It neither seals a source4 nor
+installs canonical readiness. Full replay without a cold token returns no such
+input. Legacy raw-list count representations refuse before the count accessor,
+whose fallback would otherwise traverse history.
+
+The collector must retain the immutable installed Store under an exclusive
+no-writer recovery interval; every Store mutation or reset invalidates that
+borrow. Matching counts or pointers are not a substitute for that lifecycle.
+Its sole canonical pass uses the existing source cursor, OSM row remapper and
+HCT row census. CP metadata comes from the actual configured authority producer;
+nonempty CP metadata cannot be reconstructed from shape or an empty seed.
+This input boundary is source WIP, not yet admitted or an installed collector.

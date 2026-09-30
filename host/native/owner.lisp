@@ -889,7 +889,14 @@ checkpoint's S, or NIL."
                                 (first (fnn-call 'fn-arena-count (fnn-live-arena))))
                 :noted)
       (fnn-fault "owner refused the base payload count"))
-    s))
+    ;; The optional second result is the actual installed Store's input to
+    ;; the bounded canonical collector. Preserve the lexical cold token;
+    ;; a full-replay fallback has no such authority. No source4 is sealed
+    ;; and no canonical readiness is installed by this read-only call.
+    (values s
+            (and (fnn-store-recovery-source store)
+                 (fnn-core-state 'fn-owner-recovery-census-source
+                                 (fnn-store-recovery-source store))))))
 
 ;;; SEC-006 (PRF-210): read the node's key ring and hand it to the owner,
 ;;; which carries it (books/owner.lisp fn-own-node-secret): the current
