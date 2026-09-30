@@ -29,7 +29,10 @@
                   (equal (fn-spp-at 3 control) :position)
                   (equal (fn-spp-status plan) :cursor)
                   (equal (fn-spp-at 0 pin) :publication-pin)
+                  (stringp (fn-spp-at 0 range))
                   (natp (fn-ipub-count publication))
+                  (equal (fn-spp-at 2 control)
+                         (fn-ipub-generation publication))
                   (equal (fn-spp-at 3 range) (fn-ipub-view publication))))
         (mv :source-mismatch control)
       (mv :group
