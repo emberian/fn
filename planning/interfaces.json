@@ -13967,7 +13967,7 @@
       "applied_directly_in": []
     },
     {
-      "name": "fn-bpnpf-bundle-octets",
+      "name": "fn-bpnpf-held-octets",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
