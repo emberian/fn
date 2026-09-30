@@ -107,3 +107,15 @@ u64 word spans need at most57 levels, current u32 directory M at most 36.
 The source increment admits guarded execution, preserved capture/lease and
 actual reader demand <=8, plus literal comparisons including external blocks and
 the old word-digest entry. The general decomposition above remains work to do.
+
+## Phase refinement checkpoint
+
+`books/pagestore-digest-cursor-refinement.lisp` now supplies all actual step
+phase denotation equations, split carry, initialization and the conditional
+terminal bridge `pgs-dcr-terminal-step-is-existing-digest`. The latter requires
+captured-source denotation equality in the root state; establishing that carry
+through the complete executable trajectory remains open, alongside progress,
+supported stack domain and allocation. Clean source evidence and literal teeth
+are in `planning/evidence/page-digest-cursor-refinement-2026-09-30.md`.
+Root requested a subsequent compatible arbitrary-byte extension for protected
+extents; these page-scoped equations and evidence remain tied to their bytes.
