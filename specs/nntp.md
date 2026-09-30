@@ -1888,6 +1888,19 @@ the selected row's payload identity. Visibility and group membership remain
 the selecting cursor's responsibility; cache existence alone grants neither.
 This accessor is not yet called by the served cursor.
 
+The mixed row-piece component `fn-npw-tick` composes cached strings,
+pinned spans, owned separators, numerical setup and character draining
+under one fuel budget. Every transition costs one unit, including an empty
+piece or a decimal setup step that emits no octet. It emits at most its fuel
+in octets, preserves its maintained representation and exact complete row
+residual, and strictly decreases a natural logical demand under positive
+fuel with live pieces. The demand is a termination measure, not a runtime
+cost estimate. A 30-digit fixture resumes and renders every digit; decimal
+setup introduces no ten-digit ceiling. This component is guard-verified but
+still dormant. Actual row capture, parser refinement, selected profile and
+arithmetic cost, host cursor composition and matched measurements remain
+required before a complete served scheduling claim.
+
 ### Bounded legacy hydration source component (PRF-1094, SCN-1009)
 
 `fn-lpc-begin(handle, length, origin-pin)` captures immutable source identity;
