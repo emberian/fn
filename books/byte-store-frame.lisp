@@ -728,7 +728,12 @@
                                                     (cons :uint n))))
                                              (fn-cbor-encode
                                               (cons :uint n))))))))
-           :in-theory (enable fn-frame-protected fn-frame-header))))
+           ; Reduce only the fixed typed prefix here.  The alternate octet
+           ; append rule splits this goal before the prefix can be discharged
+           ; in a composed source world.
+           :in-theory
+           (e/d (fn-frame-protected fn-frame-header fn-cbor-octet-listp)
+                (fn-oct-octet-listp-of-append)))))
 
 (defthm fn-bs-frontier-seal-octet-listp
   (implies (and (natp n) (<= n *fn-cbor-max-uint*))
