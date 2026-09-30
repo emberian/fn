@@ -39,15 +39,19 @@
 ;; = 642,844,578, rounded to 614 MiB; with the unchanged core and thread
 ;; terms the reservation is 1,015,124,992 octets.  These numeric pins are
 ;; independently summed; the expression oracle above stays unchanged.
+;; W9 adds546341504 octets atT16384: base1108830509, figure1243048237,
+;; rounded1186MiB; reservation1614910464. Actual resourcecarry/measurement
+;; is pendingPRF1052, so this is a numeric model pin, not physical evidence.
 (assert! (not (member-equal :run *fn-heap-list-actions*)))
 (assert! (hbt-conclusion :run *hbt-small* *hbt-core* *hbt-nursery* nil
                          (fn-heap-reserve-init-connections)))
 (assert! (equal (fn-heap-init-reservation-octets *hbt-small* *hbt-core* *hbt-nursery*)
-                1015124992))
+                1614910464))
 (assert! (equal (fn-heap-breakdown :run *hbt-small* *hbt-core* *hbt-nursery* nil
                                    (fn-heap-reserve-init-connections))
                 '((:image-dynamic . 147604131)
                   (:state-history . 17039424)
+                  (:obligation-view-carry-and-rebuild . 546341504)
                   (:state-handles . 786432)
                   (:state-records . 136314880)
                   (:state-record-headers . 67108864)
@@ -58,8 +62,8 @@
                   (:taken-submission-lists . 1580864)
                   (:octet-buffers . 50725002)
                   (:articles . 3441664)
-                  (:collector-room . 80355573)
-                  (:megabyte-rounding . 981086)
+                  (:collector-room . 134217728)
+                  (:megabyte-rounding . 562899)
                   (:image-outside-heap . 214012928)
                   (:thread-stacks . 31457280)
                   (:thread-runtime . 125829120))))
@@ -74,7 +78,7 @@
 ;; chunked-body-2), 472 MB with THE SWITCH's keyed index.
 (assert! (equal (fn-heap-mb-of (fn-heap-operation-figure-octets :init *hbt-small* *hbt-core*
                                                                  *hbt-nursery* nil))
-                472))
+                1062))
 (assert! (hbt-conclusion :init *hbt-small* *hbt-core* *hbt-nursery* nil 32))
 
 ;; The hypothesis is needed: `store compact' reserves the larger of its list

@@ -17818,12 +17818,14 @@
         "books/owner-reclaim-carry.lisp",
         "books/retention-obligation-view-status.lisp",
         "books/obligation-subject-report.lisp",
+        "books/obligation-view-budget.lisp",
+        "tests/acl2/obligation-view-budget-tests.lisp",
         "tests/acl2/retention-obligation-view-tests.lisp",
         "tests/acl2/retention-obligation-view-node-tests.lisp",
         "tests/acl2/obligation-subject-tests.lisp",
         "tests/test_native_obligation_subject.py"
       ],
-      "progress_note": "Clean narrow hbox REPL source evidence for core, node completion/recover and report/codec/operator boundaries, with full antecedent and mutation/corrupted-state teeth. No committed certification manifest or matching native execution. Every actual owner writer, carried funding invariant and measured real-caller fast path remain open; no W9 completion claim."
+      "progress_note": "Clean narrow hbox REPL source evidence for core, node completion/recover and report/codec/operator boundaries, with full antecedent and mutation/corrupted-state teeth. No committed certification manifest or matching native execution. The lifetime-T arithmetic reservation is included in both store and offline-operation figures, with explicit support-hypothesis teeth. Every actual owner writer, carried funding invariant and measured real-caller fast path remain open; no W9 completion claim."
     },
     {
       "id": "PRF-1072",

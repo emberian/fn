@@ -148,6 +148,7 @@
 
 (in-package "ACL2")
 (include-book "owner-checkpoint-pipeline")
+(include-book "obligation-view-budget")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md
@@ -448,8 +449,9 @@
 ; fixed term and header term (with the collector's copy) and the
 ; memberships.
 (defun fn-heap-store-state-octets (profile used n m)
-  (declare (xargs :guard t) (ignore profile))
+  (declare (xargs :guard t))
   (+ (fn-heap-arena-octets used)
+     (fn-heap-obligation-view-reserve (fn-bs-profile-max-transactions profile))
      (* *fn-heap-handle-octets* (nfix n))
      (* 2 (nfix n) *fn-heap-record-octets*)
      (* *fn-heap-charge-heap-octets* (nfix used))
@@ -539,6 +541,7 @@
 (defun fn-heap-store-state-bound (profile)
   (declare (xargs :guard t))
   (+ (fn-heap-store-history-octets profile)
+     (fn-heap-obligation-view-reserve (fn-bs-profile-max-transactions profile))
      (* *fn-heap-handle-octets* (nfix (fn-bs-profile-max-transactions profile)))
      (* 2 (nfix (fn-bs-profile-max-transactions profile)) *fn-heap-record-octets*)
      (* *fn-heap-charge-heap-octets* (nfix (fn-bs-profile-max-history-octets profile)))))
@@ -1014,6 +1017,8 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-heap-store-base-octets fn-heap-store-state-bound
                                    fn-heap-store-history-octets
+                                   fn-heap-obligation-view-reserve fn-ovb-retained-reserve
+                                   fn-ovb-object-octets fn-ovb-delta-reserve
                                    fn-heap-store-open-octets fn-heap-store-inflight-octets)
                                   (fn-ock-capture-budget fn-heap-open-bounds-of-nil
                                    fn-heap-arena-octets fn-heap-membership-bound
@@ -1024,7 +1029,10 @@
                                    fn-bs-profile-max-record-octets
                                    fn-bs-profile-max-article-octets
                                    fn-bs-profile-field))
-           :use ((:instance fn-heap-open-bounds-of-nil (profile p1))
+           :use ((:instance fn-heap-obligation-view-reserve-monotone
+                            (n (fn-bs-profile-max-transactions p1))
+                            (m (fn-bs-profile-max-transactions p2)))
+                 (:instance fn-heap-open-bounds-of-nil (profile p1))
                  (:instance fn-heap-open-bounds-of-nil (profile p2))
                  (:instance fn-heap-articles-octets-monotone)
                  (:instance fn-heap-open-chunk-bound-monotone

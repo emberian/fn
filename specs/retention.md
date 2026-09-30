@@ -230,3 +230,16 @@ subject. Unsupported continuation/oversize replies are named refusals; the
 request does not grow the owner cache. The underlying existing FNLS framing
 entries remain unguarded :ideal functions; no guard-verified composed framing
 claim is made by this source checkpoint.
+
+The W9 reservation model charges the persisted lifetime transaction budget T,
+not the current row or live-pin count: `fn-heap-obligation-view-reserve` is
+33,216*T + 2,130,560 octets on the stated 16-byte-cons representation.
+It reserves old/new trie coexistence and collector copies, metadata paths,
+count/charge integer margins and one path-copy delta transient. Both the
+store figure and offline list-operation figure include it; the breakdown
+names it `:obligation-view-carry-and-rebuild`. The small preset contributes
+546,341,504 octets. This is arithmetic-model source evidence, not a physical
+allocation theorem or measurement. Supported-profile acceptance uses the
+resulting figure and may refuse budgets that previously fitted; it never
+silently reduces an explicitly requested profile. The carried trie support,
+uint64 value bounds and actual collector/allocator lifetimes remain open.
