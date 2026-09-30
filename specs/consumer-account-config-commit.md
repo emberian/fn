@@ -50,7 +50,11 @@ It must never pass this marker to ordinary `fn-cfg-apply-record`.
 
 Bounded E stages prepare account authority and the corresponding signing-binding
 configuration privately. The successful typed C commit advances C sequence and
-configuration generation once, advances authority revision once, leaves the E
+configuration generation once. The persisted C sequence is the **prior**
+configuration generation, following `fn-ocfg-reconfig-record`; its resulting
+generation is prior plus one (genesis is sequence 0/generation 1). A record
+that equates the next generation with its sequence is refused. The commit
+advances authority revision once, leaves the E
 frontier unchanged, and records the current E count as the publication cut.
 Live completion and recovery must perform the same joint transition. Existing
 connections keep their pinned binding configuration; new connections observe

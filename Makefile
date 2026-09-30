@@ -186,6 +186,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-account-config-marker-tests \
 	tests/acl2/consumer-account-config-preparation-tests \
 	tests/acl2/consumer-account-config-commit-tests \
+	tests/acl2/consumer-account-config-owner-lineage-tests \
 	tests/acl2/consumer-account-transaction-driver-tests \
 	tests/acl2/consumer-transaction-dispatch-tests \
 	tests/acl2/consumer-configured-authority-replay-tests \

@@ -35,16 +35,16 @@
 ;@mutation-witness complete-configured-cursor-retains-once-produced-full8
 (assert-event
  (let* ((before (fn-capr-state :physical :original :fields nil nil :preparation
-                   '(:ok nil nil nil) 0 :withdrawals :visible :verdicts 8 13
+                   '(:ok nil nil nil) 0 :withdrawals :visible :verdicts 7 13
                    '(:config-tail) '(:event-tail) '(:config-history)))
         (one (fn-capr-install before :new-physical :same-original :same-fields
                *acjt-final* nil nil :same-withdrawals :same-visible :same-verdicts
-               9 13 nil '(:event-tail)))
+               8 13 nil '(:event-tail)))
         (s (fn-cp-nth 1 one)))
   (and (equal (fn-cp-nth 0 one) :advanced)
        (equal (fn-cp-nth 2 one) *acjt-final*)
        (equal s
         (list :configured-authority-replay :new-physical :same-original :same-fields
           (fn-cp-nth 1 *acjt-final*) (fn-cp-nth 4 *acjt-final*) nil *caprt-prior* nil
-          :same-withdrawals :same-visible :same-verdicts 9 13 nil '(:event-tail)
+          :same-withdrawals :same-visible :same-verdicts 8 13 nil '(:event-tail)
           '(:config-history))))))
