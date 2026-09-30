@@ -402,6 +402,54 @@ def include_target(form: str, directory: Path) -> str | None:
         return str(target.with_suffix(""))
 
 
+def source_includes(form: str, directory: Path, skip: set[str],
+                    skip_all: bool = False) -> tuple[str, list[str]]:
+    """Substitute already-loaded includes only at embedded-event positions.
+
+    Keep the enclosing encapsulate's signatures, local witnesses, constraints,
+    theory events and declaration order. Never descend into a definition,
+    theorem, hint, quoted data or an event-generating expression. Source text
+    outside the substituted event spans is preserved verbatim.
+    """
+    target = include_target(form, directory)
+    if target is not None and (target in skip or skip_all):
+        return "", [target]
+    text = form.strip()
+    if not text.startswith("(") or not text.endswith(")"):
+        return form, []
+    inner = text[1:-1]
+    children = spans(inner)
+    if not children:
+        return form, []
+    head = inner[slice(*children[0])].lower()
+    if head == "encapsulate" and len(children) >= 2:
+        start = 2  # the signatures are data, not events
+    elif head == "local" and len(children) == 2:
+        start = 1
+    elif head in ("progn", "progn!"):
+        start = 1
+    elif head == "with-prover-time-limit" and len(children) == 3:
+        start = 2
+    else:
+        return form, []
+    edits, skipped = [], []
+    remaining_events = 0
+    for begin, end in children[start:]:
+        replacement, removed = source_includes(inner[begin:end], directory, skip, skip_all)
+        remaining_events += bool(replacement)
+        if removed:
+            edits.append((begin, end, replacement))
+            skipped.extend(removed)
+    if not skipped:
+        return form, []
+    if not remaining_events:
+        if head != "encapsulate" or inner[slice(*children[1])].strip() == "()":
+            return "", skipped  # no empty local/progn/encapsulate event
+    for begin, end, replacement in reversed(edits):
+        inner = inner[:begin] + replacement + inner[end:]
+    return "(" + inner + ")", skipped
+
+
 def form_label(index: int, form: str) -> str:
     head, event = head_and_name(form)
     return f"#{index} {head}" + (f" {event}" if event else "")
@@ -1049,8 +1097,11 @@ def encapsulated(text: str, directory: Path, skip: set[str],
     hoisted: list[str] = []
     kept: list[str] = []
     for form in forms(text):
+        form, _ = source_includes(form, directory, skip)
+        if not form:
+            continue
         head, _ = head_and_name(form)
-        if head == "in-package" or include_target(form, directory) in skip:
+        if head == "in-package":
             continue
         if head in HOISTED_HEADS and not LOCAL_FORM.match(form):
             hoisted.append(form)
@@ -1154,7 +1205,8 @@ def load_book(acl2: Acl2, book: str, state: dict, load_timeout: float,
         head, event = head_and_name(form)
         if stop_before and (event == stop_before or stop_before == f"#{number}"):
             break
-        if include_target(form, source.parent) in skip:
+        form, _ = source_includes(form, source.parent, skip)
+        if not form:
             continue
         output, timed_out = acl2.send(wrap_limit(form, limit), hard)
         if timed_out or errored(output):
@@ -2365,6 +2417,12 @@ def range_items(path: Path, all_forms: list[str], chosen: range, from_source: se
             skipped.append(form_label(index + 1, form)
                            + (" (loaded from source already)" if target in from_source
                               else " (--skip-includes)"))
+            continue
+        form, nested = source_includes(form, path.parent, from_source, skip_includes)
+        if nested:
+            skipped.append(form_label(index + 1, all_forms[index])
+                           + " (nested includes: " + ", ".join(nested) + ")")
+        if not form:
             continue
         local += bool(LOCAL_FORM.match(form))
         items.append((form_label(index + 1, form), form))

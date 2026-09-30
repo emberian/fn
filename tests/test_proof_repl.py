@@ -301,6 +301,54 @@ class CommandTests(unittest.TestCase):
 
 
 class EncapsulateTests(unittest.TestCase):
+    def test_nested_source_include_removal_preserves_constraint_and_local_scope(self):
+        form = '''(encapsulate
+ (((subject *) => *))
+ (local (include-book "impl"))
+ (local (defun subject (x) (impl x)))
+ (local (defthm private (equal (impl x) x)))
+ (defthm exported (equal (subject x) x)))'''
+        expected = form.replace('(local (include-book "impl"))', '')
+        result, skipped = proof_repl.source_includes(
+            form, proof_repl.ROOT / "books", {"books/impl"})
+        self.assertEqual(result, expected)
+        self.assertEqual(skipped, ["books/impl"])
+        _, wrapped = proof_repl.encapsulated(form, proof_repl.ROOT / "books",
+                                            {"books/impl"}, 10)
+        self.assertIn(expected, wrapped)
+        self.assertNotIn('include-book', wrapped)
+
+    def test_nested_substitution_only_enters_event_containers_and_known_sources(self):
+        books = proof_repl.ROOT / "books"
+        # Text that looks like an include inside data/code/hints is unchanged.
+        for form in ("'(local (include-book \"impl\"))",
+                     '(defun f () \'(include-book "impl"))',
+                     '(make-event \'(local (include-book "impl")))',
+                     '(defthm t1 t :hints (("Goal" :use (include-book "impl"))))',
+                     '(encapsulate () (local (include-book "impl" :dir :system)))',
+                     '(encapsulate () (local (include-book "uncached")))'):
+            self.assertEqual(proof_repl.source_includes(form, books, {"books/impl"}),
+                             (form, []))
+        form = ('(progn (local (encapsulate () (local (include-book "impl")) '
+                '(defthm private t))) (defthm later t))')
+        rewritten, skipped = proof_repl.source_includes(form, books, {"books/impl"})
+        self.assertEqual(skipped, ["books/impl"])
+        self.assertIn('(local (encapsulate ()  (defthm private t)))', rewritten)
+        self.assertTrue(rewritten.endswith('(defthm later t))'))
+        self.assertEqual(proof_repl.source_includes(
+            '(local (encapsulate () (local (include-book "impl"))))',
+            books, {"books/impl"}), ("", ["books/impl"]))
+
+    def test_range_reports_nested_includes_in_place_without_hoisting(self):
+        form = '(encapsulate () (local (include-book "impl")) (defthm exported t))'
+        path = proof_repl.ROOT / "books" / "seam.lisp"
+        items, skipped, local = proof_repl.range_items(
+            path, [form], range(1), {"books/impl"})
+        self.assertEqual(items, [("#1 encapsulate", form.replace(
+            '(local (include-book "impl"))', ''))])
+        self.assertEqual(skipped, ['#1 encapsulate (nested includes: books/impl)'])
+        self.assertEqual(local, 0)
+
     def test_a_from_source_book_in_one_encapsulate_keeps_its_locals_local(self):
         text = ('(in-package "ACL2")\n(include-book "dep")\n(local (defthm l t))\n'
                 '(defun f (x) x)\n')
@@ -1368,6 +1416,76 @@ class SessionTests(unittest.TestCase):
 
 @unittest.skipUnless(shutil.which(os.environ.get("FN_ACL2", "acl2")), "no ACL2 on PATH")
 class RealAcl2Tests(unittest.TestCase):
+    def test_nested_source_witness_include_preserves_constraints_and_private_locals(self):
+        scratch = ROOT / "build" / ("proof-repl-real-nested-" + str(os.getpid()))
+        scratch.mkdir(parents=True, exist_ok=True)
+        prefix = scratch.relative_to(ROOT).as_posix() + "/"
+        (scratch / "impl.lisp").write_text(
+            '(in-package "ACL2")\n(defun nested-impl (x) x)\n'
+            '(local (defthm nested-impl-private (equal (car (cons x y)) x)))\n'
+            '(defthm nested-impl-id (equal (nested-impl x) x))\n')
+        (scratch / "seam.lisp").write_text(
+            '(in-package "ACL2")\n'
+            '(encapsulate (((nested-subject *) => * :formals (x) :guard t))\n'
+            ' (local (include-book "impl"))\n'
+            ' (local (defun nested-subject (x) (nested-impl x)))\n'
+            ' (local (defthm nested-witness-private (equal (nested-subject x) x)))\n'
+            ' (defthm nested-subject-id (equal (nested-subject x) x)\n'
+            '  :hints (("Goal" :use nested-impl-id))))\n')
+        (scratch / "top.lisp").write_text(
+            '(in-package "ACL2")\n(include-book "seam")\n'
+            '(defthm nested-downstream (equal (nested-subject x) x))\n')
+        name = "real-nested-" + str(os.getpid())
+
+        def cli(*words):
+            return subprocess.run([sys.executable, str(ROOT / "tools" / "proof_repl.py"),
+                                   *words], capture_output=True, text=True, cwd=ROOT,
+                                  timeout=120)
+
+        try:
+            graph = proof_repl.include_graph(ROOT, prefix + "top")
+            self.assertEqual(graph[prefix + "seam"], [prefix + "impl"])
+            started = cli("start", name, prefix + "top", "--source-deps", "--ld-local")
+            self.assertEqual(started.returncode, 0, started.stdout + started.stderr)
+            state = json.loads((proof_repl.SESSIONS / name / "state.json").read_text())
+            self.assertEqual(state["ld"], [prefix + "impl", prefix + "seam"])
+            self.assertEqual(state["ld_loaded"],
+                             {prefix + "impl": "encapsulated", prefix + "seam": "encapsulated"})
+            self.assertEqual(state["loaded"], ["in-package", "nested-downstream"])
+            self.assertFalse(list(scratch.glob("*.cert")))
+            for event in ("nested-impl-private", "nested-witness-private"):
+                hidden = cli("send", name, ":pe " + event)
+                self.assertEqual(hidden.returncode, 1, hidden.stdout + hidden.stderr)
+            exported = cli("send", name, ":pe nested-subject-id")
+            self.assertEqual(exported.returncode, 0, exported.stdout + exported.stderr)
+            log = (proof_repl.SESSIONS / name / "log").read_text()
+            self.assertNotIn('(local (include-book "impl"))', log)
+            self.assertIn('(local (defun nested-subject', log)
+        finally:
+            cli("stop", name)
+            shutil.rmtree(proof_repl.SESSIONS / name, ignore_errors=True)
+            shutil.rmtree(scratch, ignore_errors=True)
+
+    def test_hons_debugger_refuses_form_and_invalidates_owned_session(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            session = proof_repl.Acl2("real-hons-debugger-test",
+                                      pathlib.Path(temporary) / "log")
+            try:
+                configured, timed_out = session.send("(set-slow-alist-action :break)", 20)
+                self.assertFalse(timed_out)
+                self.assertFalse(proof_repl.errored(configured), configured)
+                answer, timed_out = session.send("(hons-get 'key '((key . value)))", 20)
+                self.assertFalse(timed_out)
+                self.assertTrue(proof_repl.errored(answer), answer)
+                self.assertIn("raw Lisp debugger", answer)
+                self.assertIn("session invalidated", answer)
+                self.assertNotIn(proof_repl.RECOVERED_NOTE, answer)
+                self.assertFalse(session.alive())
+                later, _ = session.send("(defthm marker-does-not-prove t)", 20)
+                self.assertTrue(proof_repl.errored(later))
+            finally:
+                session.kill()
+
     def test_source_siblings_preserve_local_name_scope_in_declared_order(self):
         scratch = ROOT / "build" / "proof-repl-real-siblings"
         scratch.mkdir(parents=True, exist_ok=True)
