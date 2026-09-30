@@ -1724,3 +1724,10 @@ ordinary and composite-held rows before the inverse becomes a full restore
 claim. SCN-215 names the genuine producer/restore/cut scenario; current
 orphan/remap teeth are component evidence only. History/page preparation,
 funded capture/controller and matching native execution remain pending.
+
+Snapshot capture admission calls `fn-osl-ready-acquire` (PRF-1074) on the
+carried `fn-sf-phase` field. A phase other than `:ready` refuses before changing
+the snapshot ticket, lease or shared checkpoint slot. This retains the actual
+committed source semantics required by the recovery inverse; it never scans
+`fn-osr-retainedp` or another whole-history predicate. Resource admission still
+precedes this capture and remains a separate producer obligation.

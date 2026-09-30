@@ -914,7 +914,7 @@
          (st (fn-own-store owner))
          (count (fn-sf-records-count (fn-sn-files st)))
          (next (nfix (fn-owner-sco-global 'fn-owner-osn-next-ticket state)))
-         (admit (fn-osl-acquire next count
+         (admit (fn-osl-ready-acquire (fn-sf-phase (fn-sn-files st)) next count
                                (fn-owner-sco-global 'fn-owner-osn-lease state)
                                (fn-owner-sco-global 'fn-owner-sco-inflight state)
                                (fn-owner-sco-global 'fn-owner-orc-pass state))))

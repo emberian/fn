@@ -34,3 +34,28 @@
                       '(:refused :capture-state nil -1)))
 (assert-event (equal (fn-osl-release '(8 broken) 8 'broken)
                       '(:refused (8 broken))))
+
+; Actual capture admission's complete positive antecedent and conclusion.
+(assert-event
+ (and (natp 8) (natp 4) (equal :ready :ready)
+      (not nil) (not nil) (not nil)
+      (equal (car (fn-osl-ready-acquire :ready 8 4 nil nil nil)) :accepted)
+      (equal (fn-osl-ready-acquire :ready 8 4 nil nil nil)
+             '(:accepted :captured (8 4) 9))))
+; Reserved phase value: retained count/ticket/exclusion, omitted ready
+; premise fails and capture cannot acquire a lease.
+(assert-event
+ (and (natp 8) (natp 4) (not nil) (not nil) (not nil)
+      (not (equal :reserved :ready))
+      (not (equal (car (fn-osl-ready-acquire :reserved 8 4 nil nil nil)) :accepted))
+      (equal (fn-osl-ready-acquire :reserved 8 4 nil nil nil)
+             '(:refused :capture-not-ready nil 8))))
+; Literal refusal-preservation theorem witness with a real prior lease.
+(assert-event
+ (let ((result (fn-osl-ready-acquire :ready 8 4 '(7 4) nil nil)))
+   (and (not (equal (car result) :accepted))
+        (equal (nth 2 result) '(7 4)) (equal (nth 3 result) 8))))
+(assert-event
+ (let ((result (fn-osl-ready-acquire :completing 8 4 '(7 4) nil nil)))
+   (and (not (equal (car result) :accepted))
+        (equal (nth 2 result) '(7 4)) (equal (nth 3 result) 8))))

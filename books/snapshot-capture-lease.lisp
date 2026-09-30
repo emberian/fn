@@ -29,3 +29,25 @@
                  (equal ticket (car active)) (equal shared-count (cadr active))))
        (implies (not (equal (car (fn-osl-release active ticket shared-count)) :released))
                 (equal (cadr (fn-osl-release active ticket shared-count)) active))))
+
+; Production capture checks only the carried phase before acquiring a ticket.
+; The complete recovery carry is proof vocabulary, never scanned here.
+(defun fn-osl-ready-acquire (phase next count active publication reclaim)
+  (declare (xargs :guard t))
+  (if (equal phase :ready)
+      (fn-osl-acquire next count active publication reclaim)
+    (list :refused :capture-not-ready active next)))
+(defthm fn-osl-ready-acquisition-requires-ready-and-exclusive-ownership
+  (implies (and (natp next) (natp count))
+           (iff (equal (car (fn-osl-ready-acquire phase next count active publication reclaim))
+                       :accepted)
+                (and (equal phase :ready)
+                     (not active) (not publication) (not reclaim)))))
+(defthm fn-osl-refused-ready-acquisition-retains-lease-and-ticket
+  (implies (not (equal (car (fn-osl-ready-acquire phase next count active publication reclaim))
+                      :accepted))
+           (and (equal (nth 2 (fn-osl-ready-acquire phase next count active publication reclaim))
+                       active)
+                (equal (nth 3 (fn-osl-ready-acquire phase next count active publication reclaim))
+                       next))))
+(in-theory (disable fn-osl-ready-acquire))

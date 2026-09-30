@@ -18048,7 +18048,7 @@
     {
       "id": "PRF-1074",
       "title": "Snapshot capture lease shares checkpoint/reclaim exclusion and stale completions cannot release another capture",
-      "statement": "Subjects fn-osl-acquire and fn-osl-release, used by owner adapters fn-owner-osn-capture/release. With natural next ticket and captured count, admission accepts exactly if active snapshot, publication and reclaim observations are all absent. Release requires a well-shaped lease, the exact natural ticket and the matching shared publication count; every refusal returns the prior lease unchanged. Monotone per-owner tickets separate stale callbacks at equal record counts. Host mutex/pin/thread composition, resource admission and snapshot producer dispatch remain pending; this is lease decision evidence, not full snapshot consistency or recovery.",
+      "statement": "Subjects fn-osl-ready-acquire and fn-osl-release, used by actual owner adapters fn-owner-osn-capture/release. With natural next ticket and captured count, capture accepts exactly when the carried Store phase is :ready and active snapshot, publication and reclaim observations are all absent. Ready is a fixed field check, not evaluation of the full proof-only recovery carry. Every acquisition refusal retains the prior lease and ticket unchanged; release requires a well-shaped lease, the exact natural ticket and matching shared publication count. Monotone per-owner tickets separate stale callbacks at equal record counts. Host mutex/pin/thread composition, resource admission and producer dispatch remain pending; this is capture admission decision evidence, not full snapshot consistency or recovery.",
       "milestone": "M5",
       "requirements": [
         "HST-040"
@@ -18057,7 +18057,8 @@
       "assumptions": [],
       "status": "planned",
       "events": [
-        "fn-osl-acquisition-is-exclusive",
+        "fn-osl-ready-acquisition-requires-ready-and-exclusive-ownership",
+        "fn-osl-refused-ready-acquisition-retains-lease-and-ticket",
         "fn-osl-release-requires-the-matching-ticket-and-slot"
       ],
       "evidence": [
@@ -18065,7 +18066,7 @@
         "tests/acl2/snapshot-capture-lease-tests.lisp",
         "host/owner-host.lisp"
       ],
-      "progress_note": "Clean persvati osll61 REPL: 10 forms zero refusal, 0.01s/2198 steps, source book encapsulated; owner adapter admission/full image matching native pending."
+      "progress_note": "Clean protected persvati oslr65 source-dependency encapsulate: 14 test forms, zero refusal, 3,844 steps / 0.04 ACL2 sec, including ready/exclusion and refusal identity witnesses. Session stopped. Original osll61 lease-only source evidence is superseded for actual capture by ready admission. Full funded controller/matching images/native producer remain open."
     },
     {
       "id": "PRF-1077",
