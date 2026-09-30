@@ -1024,6 +1024,8 @@ ACL2_BOOKS ?= books/group-number-source-reader-refinement \
 	books/owner-served-carried \
 	books/wire-span \
 	books/wire-scan \
+	books/wire-scan-full-state \
+	tests/acl2/wire-scan-full-state-tests \
 	books/served-scan \
 	books/served-span \
 	books/owner-offer-indexed \

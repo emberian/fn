@@ -19068,6 +19068,26 @@
         "planning/evidence/reader-source-prefix-2026-09-30/manifest.json"
       ],
       "progress_note": "Unchanged source-scan consumed-prefix theorem admitted in retained scannerpub1 with local count/wire/effects invariant; all additive scanner/prepare/dispatch guards and actual OVER\u2192GROUP/LISTGROUP\u2192OVER literal prefix/remainder/effect witnesses passed. Source-only manifest reader-source-prefix-2026-09-30. Full target remains planned: universal staged prepare/dispatch equation, actual offered-source custody, reached fn-orr switch, bounded refresh replies, runtime/RX/native and complete S7 remain open."
+    },
+    {
+      "id": "PRF-1183",
+      "title": "Actual scanner preserves carried full wire state before parser custody",
+      "statement": "The host-reached fn-wire-scan preserves fn-wire-statep from a full wire-statep input, via its unconditional actual span-fold equality and the byte-step invariant. Old command tails and packed article blocks remain carried valid values. This logical property does not assert native object freshness, buffer detachment, runtime allocation qualification or parser/output return permission.",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-042"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": [
+        "books/wire-scan-full-state.lisp",
+        "tests/acl2/wire-scan-full-state-tests.lisp",
+        "planning/evidence/wire-scan-full-state-2026-09-30/README.md",
+        "planning/evidence/manifests/certify-20260930T215336Z-3440894.json"
+      ],
+      "progress_note": "Two actual carry theorems and literal command/article positives plus corrupted-old-tail hypothesis-removal fixture passed source and normal two-root certification. Nine matching compiled prerequisites are explicitly uncited; full reached upper carry/native detach/return scope remains open. No aggregate green transfer."
     }
   ]
 }

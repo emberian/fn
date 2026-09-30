@@ -2248,3 +2248,10 @@ or unrestricted federation is implied by this profile. Those need explicit
 policy and authorization. First client acceptance tests should include an actual
 newsreader and an independent transcript client, rather than only fn talking to
 itself. Legacy convenience aliases are added only with documented semantics.
+
+The parser-custody prerequisite PRF-1183 carries the full logical wire-state
+invariant through the actual `fn-wire-scan`, including retained command tails
+and packed article blocks. Its command/article and corrupt-old-tail scenarios
+are in `tests/acl2/wire-scan-full-state-tests.lisp`. It provides no native
+detachment or output-return permission; those require the actual episode and
+registered custody terminal transitions.
