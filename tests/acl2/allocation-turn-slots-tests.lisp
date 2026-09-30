@@ -1,7 +1,7 @@
 (in-package "ACL2")
+(include-book "../../books/allocation-turn-slots")
 ; Fixture installation only; no selected-runtime installer or activation claim.
 ; Corruption/removal cases deliberately evaluate outside executable guards.
-(set-guard-checking nil)
 (defconst *ats-assoc* '(:allocation-epoch-association :runtime :profile :pool 10 1000))
 (defconst *ats-installation*
  (list :allocation-epoch-installation *ats-assoc* 1000 800 2 20 20 20 50 10 20 7))
@@ -54,7 +54,7 @@
                           (atst-count-check fn-allocation-turn-slots fn-page-read-pool))))
        (mv-let (first old-nonce fn-allocation-turn-slots fn-page-read-pool)
         (fn-ats-enter-internal 0 :connection-start fn-allocation-turn-slots fn-page-read-pool)
-        (let ((entry (and initial (eq first :gate-owned) (equal old-nonce 7)
+        (let ((entry (and initial (eq first :gate-owned) (natp old-nonce) (equal old-nonce 7)
                           (fn-ats-matchingp 0 old-nonce fn-allocation-turn-slots fn-page-read-pool)
                           (equal (fn-ats-phasesi 0 fn-allocation-turn-slots) 2)
                           (equal (fn-prp-alloc-active-turns fn-page-read-pool) 1)
@@ -196,6 +196,16 @@
                          (equal (fn-prl-nth 2 (fn-owner-page-read-ledger fn-page-read-pool)) old-next)
                          (equal (fn-prp-alloc-allocated fn-page-read-pool)
                                 (if (eq reason :identity) (+ old-a 10) old-a))
+                         (not (eq word :gate-owned))
+                         ; Sole hypothesis removal for actual nonce ownership:
+                         ; affirm the complete conclusion fails, not a label.
+                         (not (and (natp nonce) (equal nonce old-next)
+                              (equal (fn-prl-nth 2 (fn-owner-page-read-ledger fn-page-read-pool)) (+ 1 nonce))
+                              (equal (fn-prl-nth 3 (fn-owner-page-read-ledger fn-page-read-pool)) '(:lifetime-holder))
+                              (equal (fn-prp-alloc-active-turns fn-page-read-pool) 1)
+                              (equal (fn-prp-alloc-allocated fn-page-read-pool) (+ old-a 10))
+                              (fn-ats-matchingp 0 nonce fn-allocation-turn-slots fn-page-read-pool)
+                              (equal (fn-ats-phasesi 0 fn-allocation-turn-slots) 2)))
                          (equal word (if (eq reason :identity) :read-identities-exhausted
                                        (if (eq reason :role) :unsupported-slots :yield)))
                          (atst-count-check fn-allocation-turn-slots fn-page-read-pool))))
@@ -220,13 +230,30 @@
       (mv-let (entry nonce fn-allocation-turn-slots fn-page-read-pool)
        (fn-ats-enter-internal 0 :connection-start fn-allocation-turn-slots fn-page-read-pool)
        (declare (ignore entry))
-       (let* ((fn-allocation-turn-slots (update-fn-ats-phasesi 0 phase fn-allocation-turn-slots))
+       (let* ((cut phase)
+              (phase (if (member-eq cut '(:before-entry-prepay :after-entry-prepay)) 1
+                       (if (eq cut :after-leave-debit) 5 phase)))
+              (fn-page-read-pool
+               (if (member-eq cut '(:before-entry-prepay :after-leave-debit))
+                   (update-fn-prp-alloc-active-turns 0 fn-page-read-pool) fn-page-read-pool))
+              (fn-page-read-pool
+               (if (eq cut :before-entry-prepay)
+                   (update-fn-prp-alloc-allocated 20 fn-page-read-pool) fn-page-read-pool))
+              (fn-page-read-pool
+               (if (member-eq cut '(:before-entry-prepay :after-entry-prepay))
+                   (fn-owner-page-read-keep-ledger *ats-ledger* fn-page-read-pool) fn-page-read-pool))
+              (nonce (if (member-eq cut '(:before-entry-prepay :after-entry-prepay)) 0 nonce))
+              (fn-allocation-turn-slots (update-fn-ats-noncesi 0 nonce fn-allocation-turn-slots))
+              (fn-allocation-turn-slots (update-fn-ats-phasesi 0 phase fn-allocation-turn-slots))
               (old-ledger (fn-owner-page-read-ledger fn-page-read-pool))
               (old-a (fn-prp-alloc-allocated fn-page-read-pool))
-              (old-count (fn-prp-alloc-active-turns fn-page-read-pool)))
+              (old-count (fn-prp-alloc-active-turns fn-page-read-pool))
+              (old-view (atst-view fn-allocation-turn-slots fn-page-read-pool)))
         (mv-let (fault fn-allocation-turn-slots fn-page-read-pool)
          (fn-ats-uncertain-internal fn-allocation-turn-slots fn-page-read-pool)
          (let ((retained (and (eq fault :recovery-required)
+                              (equal (atst-view fn-allocation-turn-slots fn-page-read-pool)
+                                     (update-nth 12 :recovery old-view))
                               (equal (fn-ats-phasesi 0 fn-allocation-turn-slots) phase)
                               (equal (fn-ats-noncesi 0 fn-allocation-turn-slots) nonce)
                               (equal (fn-prp-alloc-mode fn-page-read-pool) :recovery)
@@ -243,9 +270,17 @@
 (assert-event (atst-intent-crash 1))
 (assert-event (atst-intent-crash 2))
 (assert-event (atst-intent-crash 3))
+; MUTATION fixture: phase 4 is reserved for finishing; this core does not
+; publish it in a normal returned transition.
 (assert-event (atst-intent-crash 4))
 (assert-event (atst-intent-crash 5))
+; MUTATION fixture: explicit faulted tag is not a normal returned state.
 (assert-event (atst-intent-crash 6))
+; Model raw cuts before entry debit, after entry debit before PRS, and after
+; leave decrement before idle. These do not pretend correspondence is restored.
+(assert-event (atst-intent-crash :before-entry-prepay))
+(assert-event (atst-intent-crash :after-entry-prepay))
+(assert-event (atst-intent-crash :after-leave-debit))
 
 (defun atst-body-refusal ()
  (declare (xargs :verify-guards nil))

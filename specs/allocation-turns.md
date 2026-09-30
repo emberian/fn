@@ -36,8 +36,8 @@ is new entry and cannot bypass draining. Unbounded I/O must not hold an active t
 `fn-ats-finish-owned(slot, nonce, slots, pool)` returns word, slots, pool. With
 matching association/slot/nonce and phase 2, 3 or 4, active/draining mode and positive
 active count, it retains phase 5 before one scalar decrement and returns idle,
-keeping last nonce and A. A stale, duplicate or reused-slot old nonce changes the
-complete state by definition. Intent/faulted phases cannot finish. Recovery never
+keeping last nonce and A. A stale, duplicate or reused-slot old nonce leaves the
+complete state unchanged. Intent/faulted phases cannot finish. Recovery never
 silently consumes a receipt. It must be called at actual outer return, after every
 allocating epilogue; an unconditional exception-unwind decrement is forbidden.
 
@@ -50,7 +50,9 @@ between physical updates fences instead of claiming the relation was restored.
 PRF-1156 names the actual matching finish subject and each necessary hypothesis.
 PRF-1157 names actual shared nonce ownership and local entry/body/finish preservation.
 The ordinary manifest `certify-20260930T154935Z-91174` certifies the concrete book and
-raw bridge at exact source bytes. Tests use real local concrete stobjs and cover
+raw bridge at exact source bytes. The ordinary test-root manifest
+`certify-20260930T160950Z-9393` certifies the standalone concrete fixtures. Tests use
+real local concrete stobjs and cover
 concurrent slots, duplicates, reuse, refusals, drain between gate/body, prepaid drain
 epilogue, and retained-intent raw fencing. `host/allocation-turn-host.lisp` declares
 only enter/finish/uncertain compiled callbacks, with actual carried-state and frame

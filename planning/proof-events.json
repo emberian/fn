@@ -17376,6 +17376,91 @@
           "name": "fn-bpnc-retirement-stops-the-control-listener"
         }
       ]
+    },
+    {
+      "id": "PRF-1154",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-aec-enter-preserves-allocation-state",
+          "pending_subject": "Certified internal component subject; actual selected-runtime/source installation and native operation ticket/outer-return composition are not activated in this packet."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-aec-body-preserves-allocation-state",
+          "pending_subject": "Certified internal component subject; actual selected-runtime/source installation and native operation ticket/outer-return composition are not activated in this packet."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-aec-consumed-turn-settlement-preserves-state",
+          "pending_subject": "Certified internal component subject; actual selected-runtime/source installation and native operation ticket/outer-return composition are not activated in this packet."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-aec-collector-reset-preserves-state",
+          "pending_subject": "Certified internal component subject; actual selected-runtime/source installation and native operation ticket/outer-return composition are not activated in this packet."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-aec-state-footprint-bound",
+          "pending_subject": "Certified internal component subject; actual selected-runtime/source installation and native operation ticket/outer-return composition are not activated in this packet."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1158",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-aec-observed-occupancy-binds-installed-geometry",
+          "pending_subject": "Certified internal component subject; actual selected-runtime/source installation and native operation ticket/outer-return composition are not activated in this packet."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1159",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-aec-collection-issue-binds-shared-nonce",
+          "pending_subject": "Certified internal component subject; actual selected-runtime/source installation and native operation ticket/outer-return composition are not activated in this packet."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1156",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ats-finish-matching-consumes-once",
+          "pending_subject": "Certified internal component subject; actual selected-runtime/source installation and native operation ticket/outer-return composition are not activated in this packet."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1157",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ats-enter-owns-actual-shared-nonce",
+          "pending_subject": "Certified internal component subject; actual selected-runtime/source installation and native operation ticket/outer-return composition are not activated in this packet."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ats-entry-preserves-slot-count-correspondence",
+          "pending_subject": "Certified internal component subject; actual selected-runtime/source installation and native operation ticket/outer-return composition are not activated in this packet."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ats-body-preserves-slot-count-correspondence",
+          "pending_subject": "Certified internal component subject; actual selected-runtime/source installation and native operation ticket/outer-return composition are not activated in this packet."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ats-finish-preserves-slot-count-correspondence",
+          "pending_subject": "Certified internal component subject; actual selected-runtime/source installation and native operation ticket/outer-return composition are not activated in this packet."
+        }
+      ]
     }
   ]
 }
