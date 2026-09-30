@@ -521,3 +521,11 @@ refinement and a conditional terminal correspondence to concrete `fn-blake3`
 are source-admitted. This does not equate the constrained `fn-frame-digest`
 with its realizer; streamed protected extents still need the existing joint
 attachment/refinement pattern at their actual consumer boundary.
+The planned bounded source-row decoder also normalizes symbol package aliases
+accepted by the current postfix codec. `books/history-symbol-normalize.lisp`
+scans the actual fixed ACL2 import table one candidate or borrowed source byte
+per scheduling step. It preserves arbitrary name spans, canonicalizes imported
+COMMON-LISP names and NIL, and requires the authenticated provider's matching
+source-byte and capture/pass lifetime premise. Its cursor and semantic proofs
+are component source evidence under PRF-1102; full row decoding, metadata checks,
+resource funding and host composition remain open.
