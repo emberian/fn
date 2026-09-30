@@ -131,6 +131,13 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-account-relation \
 	books/consumer-account-relation-stage \
 	books/consumer-account-row-relation \
+	books/consumer-account-planner-stage-relation \
+	books/consumer-account-metadata \
+	books/consumer-account-metadata-domain \
+	books/consumer-account-metadata-preserved \
+	books/consumer-account-metadata-transition \
+	books/consumer-account-metadata-planner \
+	books/consumer-account-metadata-step \
 	books/consumer-account-auth \
 	books/consumer-account-state \
 	books/consumer-config-authority \
@@ -147,6 +154,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-account-relation-tests \
 	tests/acl2/consumer-account-relation-stage-tests \
 	tests/acl2/consumer-account-row-relation-tests \
+	tests/acl2/consumer-account-planner-stage-relation-tests \
+	tests/acl2/consumer-account-metadata-domain-tests \
+	tests/acl2/consumer-account-metadata-tests \
+	tests/acl2/consumer-account-metadata-step-tests \
 	tests/acl2/consumer-account-auth-tests \
 	tests/acl2/consumer-config-authority-tests \
 	tests/acl2/consumer-config-publication-tests \

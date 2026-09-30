@@ -1117,3 +1117,24 @@ canonical heap. A successful wire resource verdict alone never authorizes an
 account path update, frontier allocation or adopted root: actual transient
 allocation, quantum, old/new/reversed/forward coexistence and retired graph
 funding, exact maintained metadata and atomic publication remain required.
+
+
+The whole same-pass authority size boundary is now source-admitted at
+`fn-caac-step`, rather than inferred from isolated constructors. Its maintained
+inputs are exact old metadata, the authority size domain, the actual complete
+stage/cursor relation with alphabet-unique trie, and the complete preparation
+relation on a preparation tick. A successful decision produces exact seven CP
+child carries and matching adopted/pending account annotations; an accepted
+final fence returns the exact completed root carry from that same decision.
+Actual bounded row/tombstone planners discharge row and credential carry inputs,
+and actual prepared lookup discharges the credential carry for reversal. The
+namespace width/octet premise follows from the maintained preparation domain;
+that structural implication establishes no namespace nonreuse lifecycle claim.
+Every retained whole-step/root hypothesis has an executable removal witness.
+The actual carried create/delete/tombstone/recreate sequence preserves metadata
+and the old tombstone token while assigning recreation its new persisted stage.
+These are protected source proofs/executions, with no matching normal certificate
+or runtime activation claim in this packet. Actual initial/cold establishment of
+the combined semantic/trie/size relation, the shared live/cfg-first carried caller,
+funded operation census and scheduling quantum, retirement lifetime, and atomic
+owner publication remain mandatory before the TLS FNCR account endpoint serves.
