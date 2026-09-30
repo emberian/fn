@@ -18,7 +18,8 @@
                      (list (fn-omk-at 1 word) (if carried fields nil)
                            (if carried :carried :unavailable)
                            (fn-owner-canonical-epoch state)
-                           (fn-store-sco-recovery-source-generation-value state))
+                           (fn-owner-recovery-source-generation-value
+                            (fn-owner-recovery-global 'fn-owner-recovery-source state) state))
                      state)))
         (mv nil word state)))))
 
@@ -40,12 +41,11 @@
 ; caller supplies its frozen token, never fields or a new current token.
 (defun fn-owner-recovery-source-sized-readout (token state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((pending (fn-owner-recovery-global 'fn-owner-recovery-sized-pending state))
+  (let* ((pending (fn-owner-recovery-global 'fn-owner-recovery-sized-pending state))
         (c (fn-owner-recovery-global 'fn-owner-recovery-source state))
         (epoch (fn-owner-canonical-epoch state))
-        (generation (fn-store-sco-recovery-source-generation-value state)))
-    (if (and (fn-rsa-metap (fn-store-sco-recovery-source-value state))
-             (fn-rsa-currentp c token epoch generation)
+        (generation (fn-owner-recovery-source-generation-value c state)))
+    (if (and (fn-owner-recovery-source-currentp-value c token state)
              (fn-omk-widthp pending 5)
              (equal (fn-omk-at 0 pending) token)
              (equal (fn-omk-at 3 pending) epoch)

@@ -10,14 +10,14 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1942 |
+| Books read | 1943 |
 | Certification roots in the Makefile | 1793 |
 | Books inside the root closure | 1905 |
 | `defthm` and `defthmd` events | 29942 |
-| `defun` events | 19316 |
+| `defun` events | 19318 |
 | Functions with verified guards | 3536 |
 | Functions declared `:verify-guards nil` and never verified | 2315 |
-| Functions left at the default with an explicit guard | 10592 |
+| Functions left at the default with an explicit guard | 10594 |
 | Functions left at the default with no guard | 2873 |
 | `assert-event` checks | 24166 |
 | `must-fail` checks | 2520 |
@@ -28,7 +28,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
 | Include-hygiene warnings | 2585 |
-| Host-names warnings | 2263 |
+| Host-names warnings | 2266 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -903,6 +903,7 @@ that `make certify` requests.
 | `books/records-shape.lisp` | root | 71 | 57 | 41/0/16/0 | 0 | 0 | 3 |
 | `books/records-stamp.lisp` | root | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/records.lisp` | root | 21 | 12 | 8/0/4/0 | 0 | 0 | 0 |
+| `books/recovery-open-origin.lisp` | - | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/recovery-source-authority.lisp` | closure | 0 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/refusal-effect.lisp` | root | 11 | 0 | 0/0/0/0 | 0 | 0 | 3 |
 | `books/refusal-headroom.lisp` | root | 15 | 3 | 0/2/1/0 | 0 | 0 | 0 |

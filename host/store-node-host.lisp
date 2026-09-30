@@ -537,10 +537,13 @@ reopen predicate, writer-lock observation and observed final namespace."
         :bad
       records)))
 
+(include-book "recovery-source-host")
+
 (defun fn-store-sn-recover-rows (rows frontier config-octet-records state)
   (declare (xargs :stobjs state :mode :program
                   :guard (fn-octet-list-listp config-octet-records)))
-  (let ((config-records (fn-store-cfg-decode-records config-octet-records)))
+  (let* ((state (f-put-global 'fn-store-recovery-open-origin nil state))
+         (config-records (fn-store-cfg-decode-records config-octet-records)))
     (if (or (equal config-records :bad) (null config-records))
         (value :fault)
       ; The full open is the empty capture extended over the whole
@@ -550,7 +553,12 @@ reopen predicate, writer-lock observation and observed final namespace."
       ; (books/owner-checkpoint-open.lisp) with PREFIX = NIL.
       (let ((pair (fn-rii-sco-extend-open (fn-sco-capture config-records nil)
                                           config-records rows frontier)))
-        (fn-store-sn-open-classified (car pair) (cadr pair) config-records state)))))
+        (mv-let (erp word state)
+                (fn-store-sn-open-classified (car pair) (cadr pair) config-records state)
+          (if (or erp (not (eq word :recovering))) (mv erp word state)
+            (mv-let (ignored mark state) (fn-store-recovery-open-mark state)
+              (declare (ignore ignored mark))
+              (mv nil word state))))))))
 
 ;; ---------------------------------------------------------------------------
 ;; P3: the state checkpoint (books/store-checkpoint-open.lisp,

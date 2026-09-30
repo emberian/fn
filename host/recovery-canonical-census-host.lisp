@@ -27,7 +27,7 @@
  (let ((descriptor (fn-omk-at 1 collector))
        (issued (fn-owner-recovery-global 'fn-owner-recovery-source state)))
   (if (not (fn-rcc-currentp collector issued (fn-owner-canonical-epoch state)
-                          (fn-store-sco-recovery-source-generation-value state)))
+                          (fn-owner-recovery-source-generation-value issued state)))
       (value '(:unavailable :recovery-collector))
    (mv-let (erp current state)
            (fn-owner-recovery-census-source (fn-omk-at 1 descriptor) state)

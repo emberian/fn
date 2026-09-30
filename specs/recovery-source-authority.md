@@ -79,8 +79,8 @@ count/frontier and CP pointer under the current cold issuer and sized pending
 metadata, and labels the result `:recovery-census`. The native recovery core
 preserves its existing first result and returns this input as an optional
 second result using its retained lexical token. It neither seals a source4 nor
-installs canonical readiness. Full replay without a cold token returns no such
-input. Legacy raw-list count representations refuse before the count accessor,
+installs canonical readiness. The prior full-replay caller without a cold token returns no such
+input until its same-pass completion forwarding is installed. Legacy raw-list count representations refuse before the count accessor,
 whose fallback would otherwise traverse history.
 
 The collector must retain the immutable installed Store under an exclusive
@@ -110,3 +110,19 @@ captured actual frontier. Final seal still uses the actual named same-context
 observation and its returned successor. The complete INITIAL factory, configured
 CP metadata, collector source relation and composed native startup remain open;
 the new private adapter is source WIP and has no activated startup caller.
+
+Accepted empty initialization and validated full-log replay now have a distinct
+source-origin implementation. The actual successful full-row Store open records
+`(:completed-store-open generation epoch kind Store)`, where kind is
+`:empty-initialized` or `:full-log-replay`; it never relabels NIL as a verified
+checkpoint. Same-pass completion issues the existing RSA token using actual Store
+count/frontier and ORIGINAL context. Empty count uses the genuine initial-context
+carry constructor; unknown nonempty carries remain unavailable. The fixed startup
+source descriptor supports INITIAL custody without asserting census/size readiness.
+The census getter still requires actual pending carries. Reset or loader replacement
+invalidates this origin, and every mutation must remain excluded or invalidate the
+frozen borrow. New production definitions are unadmitted; 35 checkpoint plus 14
+completed-open literal recording scenarios pass with explicit STATE doubles.
+Evidence is `planning/evidence/recovery-completed-open-source-2026-09-30/`.
+The complete native full-log completion forwarding, initial allocation authority,
+collector/install and physical acceptance remain implementation work.

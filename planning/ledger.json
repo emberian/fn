@@ -1797,11 +1797,11 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1942,
+    "books": 1943,
     "books_in_root_closure": 1905,
     "roots": 1793,
     "theorems": 29942,
-    "functions": 19316,
+    "functions": 19318,
     "assert_events": 24166,
     "must_fails": 2520,
     "prover_refusals": 0,
@@ -1809,7 +1809,7 @@
     "guards": {
       "verified": 3536,
       "declared-off": 2315,
-      "default-guarded": 10592,
+      "default-guarded": 10594,
       "default-unguarded": 2873
     },
     "suspect_theorems": 1252,
@@ -1817,7 +1817,7 @@
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
     "include_hygiene_warnings": 2585,
-    "host_names_warnings": 2263,
+    "host_names_warnings": 2266,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -26370,6 +26370,32 @@
       "includes": [
         "cbor-invariants",
         "records-shape"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/recovery-open-origin.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "recovery-source-authority"
       ],
       "system_includes": [],
       "suspects": [],
@@ -103851,9 +103877,9 @@
       {
         "host": "host/recovery-canonical-census-host.lisp",
         "line": 25,
-        "name": "fn-store-sco-recovery-source-generation-value",
-        "source": "host/store-checkpoint-context-host.lisp",
-        "reason": "defined in host/store-checkpoint-context-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+        "name": "fn-owner-recovery-source-generation-value",
+        "source": "host/recovery-source-host.lisp",
+        "reason": "defined in host/recovery-source-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/recovery-census-source-host.lisp",
@@ -103872,30 +103898,23 @@
       {
         "host": "host/recovery-census-source-host.lisp",
         "line": 7,
-        "name": "fn-store-sco-recovery-source-generation-value",
-        "source": "host/store-checkpoint-context-host.lisp",
-        "reason": "defined in host/store-checkpoint-context-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+        "name": "fn-owner-recovery-source-generation-value",
+        "source": "host/recovery-source-host.lisp",
+        "reason": "defined in host/recovery-source-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/recovery-census-source-host.lisp",
         "line": 7,
-        "name": "fn-rsa-metap",
-        "source": "books/recovery-source-authority.lisp",
-        "reason": "defined in books/recovery-source-authority.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+        "name": "fn-owner-recovery-source-currentp-value",
+        "source": "host/recovery-source-host.lisp",
+        "reason": "defined in host/recovery-source-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/recovery-census-source-host.lisp",
         "line": 7,
-        "name": "fn-store-sco-recovery-source-value",
-        "source": "host/store-checkpoint-context-host.lisp",
-        "reason": "defined in host/store-checkpoint-context-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/recovery-census-source-host.lisp",
-        "line": 7,
-        "name": "fn-rsa-currentp",
-        "source": "books/recovery-source-authority.lisp",
-        "reason": "defined in books/recovery-source-authority.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+        "name": "fn-owner-recovery-records-formp",
+        "source": "host/recovery-source-host.lisp",
+        "reason": "defined in host/recovery-source-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/recovery-census-source-host.lisp",
@@ -103906,31 +103925,45 @@
       },
       {
         "host": "host/recovery-census-source-host.lisp",
-        "line": 7,
-        "name": "fn-owner-recovery-source-sized-readout",
-        "source": "host/recovery-source-sized-host.lisp",
-        "reason": "defined in host/recovery-source-sized-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/recovery-census-source-host.lisp",
-        "line": 7,
+        "line": 36,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
+        "host": "host/recovery-census-source-host.lisp",
+        "line": 36,
+        "name": "fn-owner-recovery-source-sized-readout",
+        "source": "host/recovery-source-sized-host.lisp",
+        "reason": "defined in host/recovery-source-sized-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
         "host": "host/recovery-source-host.lisp",
-        "line": 19,
+        "line": 24,
+        "name": "fn-store-sco-recovery-source-generation-value",
+        "source": "host/store-checkpoint-context-host.lisp",
+        "reason": "defined in host/store-checkpoint-context-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/recovery-source-host.lisp",
+        "line": 30,
         "name": "fn-store-sco-recovery-source-value",
         "source": "host/store-checkpoint-context-host.lisp",
         "reason": "defined in host/store-checkpoint-context-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/recovery-source-host.lisp",
-        "line": 19,
-        "name": "fn-store-sco-recovery-source-generation-value",
-        "source": "host/store-checkpoint-context-host.lisp",
-        "reason": "defined in host/store-checkpoint-context-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+        "line": 66,
+        "name": "member-eq",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/recovery-source-host.lisp",
+        "line": 66,
+        "name": "mv",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/recovery-source-install-host.lisp",
@@ -103949,6 +103982,34 @@
       {
         "host": "host/recovery-source-install-host.lisp",
         "line": 9,
+        "name": "fn-rsoa-originp",
+        "source": "books/recovery-open-origin.lisp",
+        "reason": "defined in books/recovery-open-origin.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/recovery-source-install-host.lisp",
+        "line": 9,
+        "name": "fn-omk-at",
+        "source": "books/snapshot-source-token.lisp",
+        "reason": "defined in books/snapshot-source-token.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/recovery-source-install-host.lisp",
+        "line": 9,
+        "name": "fn-owner-recovery-source-currentp-value",
+        "source": "host/recovery-source-host.lisp",
+        "reason": "defined in host/recovery-source-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/recovery-source-install-host.lisp",
+        "line": 9,
+        "name": "fn-rsa-token",
+        "source": "books/recovery-source-authority.lisp",
+        "reason": "defined in books/recovery-source-authority.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/recovery-source-install-host.lisp",
+        "line": 9,
         "name": "fn-rsa-metap",
         "source": "books/recovery-source-authority.lisp",
         "reason": "defined in books/recovery-source-authority.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -103963,9 +104024,9 @@
       {
         "host": "host/recovery-source-install-host.lisp",
         "line": 9,
-        "name": "fn-omk-at",
-        "source": "books/snapshot-source-token.lisp",
-        "reason": "defined in books/snapshot-source-token.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+        "name": "fn-owner-recovery-records-formp",
+        "source": "host/recovery-source-host.lisp",
+        "reason": "defined in host/recovery-source-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/recovery-source-install-host.lisp",
@@ -103977,21 +104038,14 @@
       {
         "host": "host/recovery-source-install-host.lisp",
         "line": 9,
-        "name": "fn-store-sco-recovery-source-generation-value",
-        "source": "host/store-checkpoint-context-host.lisp",
-        "reason": "defined in host/store-checkpoint-context-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+        "name": "fn-owner-recovery-source-generation-value",
+        "source": "host/recovery-source-host.lisp",
+        "reason": "defined in host/recovery-source-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/recovery-source-install-host.lisp",
         "line": 9,
         "name": "fn-rsa-seal",
-        "source": "books/recovery-source-authority.lisp",
-        "reason": "defined in books/recovery-source-authority.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/recovery-source-install-host.lisp",
-        "line": 9,
-        "name": "fn-rsa-token",
         "source": "books/recovery-source-authority.lisp",
         "reason": "defined in books/recovery-source-authority.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
@@ -104047,44 +104101,30 @@
       {
         "host": "host/recovery-source-sized-host.lisp",
         "line": 6,
-        "name": "fn-store-sco-recovery-source-generation-value",
-        "source": "host/store-checkpoint-context-host.lisp",
-        "reason": "defined in host/store-checkpoint-context-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+        "name": "fn-owner-recovery-source-generation-value",
+        "source": "host/recovery-source-host.lisp",
+        "reason": "defined in host/recovery-source-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/recovery-source-sized-host.lisp",
-        "line": 28,
+        "line": 6,
         "name": "fn-owner-recovery-global",
         "source": "host/recovery-source-host.lisp",
         "reason": "defined in host/recovery-source-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/recovery-source-sized-host.lisp",
-        "line": 28,
+        "line": 29,
         "name": "fn-rsa-context-count",
         "source": "books/recovery-source-authority.lisp",
         "reason": "defined in books/recovery-source-authority.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/recovery-source-sized-host.lisp",
-        "line": 41,
-        "name": "fn-rsa-metap",
-        "source": "books/recovery-source-authority.lisp",
-        "reason": "defined in books/recovery-source-authority.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/recovery-source-sized-host.lisp",
-        "line": 41,
-        "name": "fn-store-sco-recovery-source-value",
-        "source": "host/store-checkpoint-context-host.lisp",
-        "reason": "defined in host/store-checkpoint-context-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/recovery-source-sized-host.lisp",
-        "line": 41,
-        "name": "fn-rsa-currentp",
-        "source": "books/recovery-source-authority.lisp",
-        "reason": "defined in books/recovery-source-authority.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+        "line": 42,
+        "name": "fn-owner-recovery-source-currentp-value",
+        "source": "host/recovery-source-host.lisp",
+        "reason": "defined in host/recovery-source-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/recovery-source-sized-install-host.lisp",
@@ -104291,63 +104331,70 @@
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 650,
+        "line": 542,
+        "name": "fn-store-recovery-open-mark",
+        "source": "host/recovery-source-host.lisp",
+        "reason": "defined in host/recovery-source-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 658,
         "name": "explode-atom",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 709,
+        "line": 717,
         "name": "last",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 738,
+        "line": 746,
         "name": "fn-store-sco-current",
         "source": "host/store-checkpoint-context-host.lisp",
         "reason": "defined in host/store-checkpoint-context-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 805,
+        "line": 813,
         "name": "atom",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 880,
+        "line": 888,
         "name": "reverse",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 923,
+        "line": 931,
         "name": "er-let*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 923,
+        "line": 931,
         "name": "prepared",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 1148,
+        "line": 1156,
         "name": "subsetp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 1299,
+        "line": 1307,
         "name": "fn-arena-count",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"

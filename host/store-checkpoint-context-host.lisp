@@ -25,7 +25,8 @@
  ; Fault never becomes a reusable natural generation.
 (defun fn-store-sco-source-invalidate (state)
  (declare (xargs :stobjs state :mode :program))
- (let* ((present (boundp-global 'fn-store-sco-recovery-source-generation state))
+ (let* ((state (f-put-global 'fn-store-recovery-open-origin nil state))
+         (present (boundp-global 'fn-store-sco-recovery-source-generation state))
         (old (if present (f-get-global 'fn-store-sco-recovery-source-generation state) 0))
         (next (if (natp old) (+ 1 old) :fault)))
   (f-put-global 'fn-store-sco-recovery-source-generation next state)))
