@@ -6202,6 +6202,29 @@
         "books/native-health.lisp",
         "tests/acl2/native-health-tests.lisp"
       ]
+    },
+    {
+      "id": "SCN-1032",
+      "title": "Configured inbound IHAVE and TAKETHIS become durable before the success observer",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-1001"
+      ],
+      "steps": [
+        "Open a configured peer connection and consume actual IHAVE or TAKETHIS command and body through fn-ocfg-read; take the queued submission.",
+        "Assert the complete PRF-1126 antecedent, including Store admission, accepting topic prefix, connection and submission identity, ledger mark and exact arena payload binding.",
+        "Deliver the four frontier observations, prepare, three record observations and consumed completion; invoke actual configured fn-oop-transit-outcome.",
+        "Repeat the host observer at the eight-observation prefix with :durable supplied but completion not consumed.",
+        "For each literal theorem and each protocol kind, affirm every retained hypothesis, deny one omitted hypothesis, and deny the complete conclusion. Label deliberately corrupted states separately from reachable traces."
+      ],
+      "expected": [
+        "Nine observations: exact durable finish owner, consumed completion, exact ledger/success append, record in durable history and 235 for IHAVE or 239 plus Message-ID for TAKETHIS (PRF-1126).",
+        "Consumed host completion: exact success octets with all four host hypotheses asserted directly (PRF-1127).",
+        "Eight observations: uncertain 436 despite the :durable argument; no success inferred from a write or ACK.",
+        "The main theorem has two positive and twenty removal witnesses; the host theorem has two positive and eight removal witnesses. Corrupted-state counterexamples do not assert native reachability."
+      ],
+      "execution_scope": "Source-only: tests/acl2/productive-inbound-tests.lisp admitted in fresh protected pci76 with complete literal teeth; committed certificate and matching native run pending. Existing runner qualification selectors: tests.test_native_peering.NativePeeringTests.test_receiver_killed_mid_ihave_keeps_what_it_acknowledged (IHAVE acknowledged durability across restart) and test_inn_shaped_streaming_driver_gets_the_ihave_verdicts (IHAVE/TAKETHIS reply behavior). These native cases do not by themselves measure the logical nine-observation bound or prove physical disk semantics."
     }
   ]
 }

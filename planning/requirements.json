@@ -5614,6 +5614,30 @@
         "tests/test_native_maintenance_live.py"
       ],
       "implementation_note": "Lane operability-2 (row S3, 2026-09-29): PKT-868's owner-request route (the administrative vector over the control socket, ACL2's liveness decision) carries `inspect request ID'; `recover' with a live owner is a status read; the stopped report is fn-omr-stopped-report over config.json, the checkpoint's 37-octet header and lstat sizes. `store export' on the running owner is the row's remaining item (S3b)."
+    },
+    {
+      "id": "NNT-1001",
+      "title": "An admissible configured inbound IHAVE/TAKETHIS submission reaches durable history and its 235/239 reply under the nine specified successful persistence and completion observations",
+      "specification": "specs/productive-contract.md",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1126",
+        "PRF-1127"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/productive-inbound.lisp",
+        "tests/acl2/productive-inbound-tests.lisp",
+        "specs/productive-contract.md",
+        "planning/evidence/productive-read-chain-2026-09-29.md",
+        "tests/test_native_peering.py"
+      ],
+      "implementation_note": "Actual subject fn-oop-transit-outcome, called by fn-owner-transit-outcome. Persisted completion, identity/payload binding and existing connection are explicit; a host word or socket write is not durable acceptance. Full literal positives/removals are source-admitted. SCN-1032 separates reachable traces from corrupted-state witnesses; committed certification and source-matched native qualification remain pending.",
+      "note": "RFC 3977 section 6.3.2 and RFC 4644 section 2.5 define reply meaning; the nine-observation productive bound is the stronger fn guarantee, conditional on the observations."
     }
   ]
 }

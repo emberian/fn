@@ -2,7 +2,7 @@
 ; Missing-completion witnesses are reachable eight-step traces.
 ; Names with corrupted-state are deliberately malformed states, not traces.
 ; Complete literal positive/removal teeth for both final inbound theorems.
-; Registry and qualification remain open.
+; SCN-1032 / PRF-1126/1127: source registered; qualification remains open.
 (in-package "ACL2")
 
 (include-book "../../books/productive-inbound")

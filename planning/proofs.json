@@ -17618,6 +17618,54 @@
         "fn-ovw-step-of-commit-pinned",
         "fn-ovw-step-of-withdraw-pinned"
       ]
+    },
+    {
+      "id": "PRF-1126",
+      "title": "Productive configured inbound IHAVE/TAKETHIS reaches durable history and exact 235/239 after nine successful observations",
+      "statement": "Host subject fn-oop-transit-outcome (fn-owner-transit-outcome in host/owner-host.lisp), joined to fn-own-run of fn-pcx-post-script. Given fn-sn-statep, fn-pcx-admissiblep and accepting topic prefix, the inflight transit submission names the existing connection, its natural ledger mark is within the ledger, and fn-row-wire-of R names its Message-ID and exact stored octets. The nine specified successful store/completion observations produce the durable fn-own-finish owner, consumed completion, the exact appended ledger/success pair, R in durable history, and the configured host outcome renders 235 for IHAVE or 239 plus Message-ID for TAKETHIS. This is conditional on those observations, not an unconditional eventual-completion or real-disk claim.",
+      "events": [
+        "fn-pct-inbound-nine-steps-produce-durable-success"
+      ],
+      "progress_note": "Source-only: clean protected pci76 source prefix and exact appended literal teeth admitted; two reachable configured-reader positives and twenty full retained-hypothesis removals cover both kinds. Corrupted-state removals are explicitly labelled. The redundant nonempty-submission premise was removed only after proving the weaker statement. No certification manifest or matching native verdict is supplied. SCN-1032 names existing native cases for runner-owned qualification.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-1001"
+      ],
+      "depends_on": [
+        "PRF-1001"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/productive-inbound.lisp",
+        "tests/acl2/productive-inbound-tests.lisp",
+        "specs/productive-contract.md",
+        "planning/evidence/productive-read-chain-2026-09-29.md",
+        "tests/test_native_peering.py"
+      ]
+    },
+    {
+      "id": "PRF-1127",
+      "title": "Consumed configured transit completion produces the exact inbound success reply",
+      "statement": "For host-called fn-oop-transit-outcome with an existing connection, matching inflight submission ID, transit submission shape and consumed completion, the reply octets are235 article transferred OK for IHAVE or 239 plus the submission Message-ID for TAKETHIS. fn-oop-transit-outcome-is-own-transit-outcome is the named configured-to-owner refinement. The supplied :durable word without consumed completion does not establish this theorem.",
+      "events": [
+        "fn-pct-consumed-transit-host-outcome-has-success-octets"
+      ],
+      "progress_note": "Source-only: two direct complete-antecedent positives and eight literal removal witnesses. Missing-consumed-completion witnesses use reachable eight-observation prefixes and assert uncertain 436 despite the :durable argument. Connection, ID and transit-shape removals are explicitly corrupted-state witnesses. Fresh protected pci76 admitted the source and all witnesses; certification and matching native execution remain pending.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-1001"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/productive-inbound.lisp",
+        "tests/acl2/productive-inbound-tests.lisp",
+        "specs/productive-contract.md",
+        "planning/evidence/productive-read-chain-2026-09-29.md",
+        "tests/test_native_peering.py"
+      ]
     }
   ]
 }

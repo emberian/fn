@@ -150,24 +150,64 @@ unconfirmed `:durable` claim without one.
 
 ## 5. Served reads and transfer progress
 
-The same shape is owed for ARTICLE by number and by Message-ID and for an
-accepted inbound IHAVE/TAKETHIS; both remain open. Outbound local transfer
-progress is a separate contract below.
+The ARTICLE source composition and inbound durable-transfer composition have
+separate evidence. ARTICLE remains outside the qualification roots pending
+its remaining literal hypothesis teeth. Inbound source proofs are registered
+as NNT-1001 / PRF-1126 / PRF-1127; certification and matching native execution
+remain pending.
 
-- **Read.** A pinned reader (`fn-own-conn-version`) whose view holds the
-  article (by number in a selected group, or by Message-ID) and whose
-  session may read it (`fn-auth-access-read`) is answered the 220 line and
-  the article's octets by one `fn-own-read-step` -- one step of the served
-  step function -- with the view unchanged; and a read of a number the
-  view does not hold is answered 423/430 by the same one step, never
-  uncertain. The subject is `fn-own-read-step` (host: `fn-owner-read`).
-- **Transfer.** A peer submission the transit decision wants
-  (`fn-peer-decision :want`), admissible at the Store as in section 2 and
-  naming the submission through the arena, reaches 235 (IHAVE) or 239
-  (TAKETHIS) by the same nine steps and `fn-own-transit-outcome`, with
-  the record in the durable history. The subject is
-  `fn-own-transit-outcome`; the store and owner parts of section 3 are
-  shared, only the finish word and the rendering differ.
+- **Read.** The actual subject is `fn-mca-read-span`, called by
+  `fn-owner-read-octets` through the configured reader. The numbered,
+  Message-ID and absent ARTICLE source theorems retain exact 220/423/430
+  effects, consumed span, reference owner and `:serve`, under their explicit
+  authentication, wire, pinned-view, catalog, admission and credit premises.
+  General reference effects compare through `fn-ovw-expand`; inversion
+  lemmas recover exact raw ARTICLE replies. Source admission is not the
+  outstanding full READ qualification.
+- **Transfer.** The actual host subject is `fn-oop-transit-outcome`, called
+  by `fn-owner-transit-outcome`. The named
+  `fn-oop-transit-outcome-is-own-transit-outcome` theorem relates it to the
+  owner transition; the record boundary is `fn-row-wire-of`.
+
+### Inbound durable transfer (NNT-1001)
+
+`fn-pct-inbound-nine-steps-produce-durable-success` (PRF-1126) joins the
+actual configured host outcome to the nine observations of section 3. Its
+premises are a valid Store, Store admission, an accepting topic prefix, a
+transit submission whose ID names the existing connection, a natural ledger
+mark within the ledger, and a record whose Message-ID and arena payload
+match that submission's stored octets. The script reaches the durable
+`fn-own-finish` owner, consumes completion, appends exactly the record's pair
+to the ledger and successes, retains the record in durable history, and
+renders 235 for IHAVE or 239 with the Message-ID for TAKETHIS.
+
+`fn-pct-consumed-transit-host-outcome-has-success-octets` (PRF-1127) names
+the observer directly: existing connection, matching submission ID, transit
+shape and consumed completion entail those exact reply octets. Passing
+`:durable` without consumed completion does not establish success; the
+reachable eight-observation witnesses answer uncertain 436. For TAKETHIS,
+436 is the existing local retry policy documented in `specs/peering.md`,
+not the temporary-error response required by RFC 4644 section 2.5.2.
+
+The reply meanings follow supplied RFC 3977 section 6.3.2 and RFC 4644
+section 2.5. The nine-observation bound is a stronger fn guarantee,
+conditional on those successful persistence/completion observations. It is
+not an unconditional scheduling or physical-disk guarantee. Socket writes
+and transport acknowledgements do not establish durable acceptance.
+
+SCN-1032 and `tests/acl2/productive-inbound-tests.lisp` contain direct full
+positives for both protocol kinds, twenty main-theorem removals and eight
+host-observer removals. Every removal affirms all retained hypotheses,
+denies the omitted hypothesis and denies the complete conclusion. Deliberate
+state corruption is labelled separately from reachable command/body and
+eight-observation traces. The redundant nonempty-submission premise was
+removed only after proving the weaker statements.
+
+These are clean source admissions with literal teeth. The runner still owes
+the committed certification manifest and matching native image evidence.
+Existing native selectors cover acknowledged IHAVE surviving restart and
+IHAVE/TAKETHIS reply behavior; those runs alone do not measure the logical
+nine-observation bound.
 
 ### Outbound local transfer
 
@@ -198,7 +238,7 @@ The matching image run is the runner's pending gate. The native witness
 complete article (including a literal leading-dot body line) while its
 scripted peer withholds 239. It does not stand in for an actual remote durable
 acceptance or application-processing claim. Those remote obligations, and the
-inbound durable transit paragraph above, remain independent and open.
+inbound durable transit qualification above, remain independent and open.
 
 Teeth in `tests/acl2/productive-transfer-tests.lisp` assert each literal
 antecedent and complete conclusion, remove each hypothesis while checking all

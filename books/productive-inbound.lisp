@@ -1,7 +1,8 @@
 ; Productive inbound transit: actual configured host outcome after the
 ; shared nine successful store/completion observations. Source-admitted;
 ; literal positive/removal teeth cover both final theorems in the test book.
-; Registry and qualification remain open, so no completion claim.
+; PRF-1126/1127 (NNT-1001): registered source; certification and native
+; qualification remain open, so no completion claim.
 (in-package "ACL2")
 (include-book "productive-contract")
 (include-book "owner-outcome-pinned")
