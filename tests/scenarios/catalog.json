@@ -6282,7 +6282,9 @@
         "Classify a 200-byte prefix ending in a non-byte symbol and complete within810 descriptor ticks using maintained non-octets suffix tasks.",
         "Compose descriptor traversal with scalar and opaque leaf byte cursors; assert every per-byte invariant/residual and exact current-codec output before and after a scheduling interruption.",
         "Feed the complete resident byte stream through bounded word push/finish and compare packed zero-padded output with the current pack8 oracle.",
-        "Census the identical captured row without retaining encoded bytes; interrupt/resume, compare the terminal exact count with codec length and explicitly refuse a corrupted census total at the u64 edge."
+        "Census the identical captured row without retaining encoded bytes; interrupt/resume, compare the terminal exact count with codec length and explicitly refuse a corrupted census total at the u64 edge.",
+        "Stream borrowed string/octet payloads using one absolute-byte request/supply per action; interrupt/resume and compare complete current codec bytes, including empty octet span canonical NIL.",
+        "Refuse a wrong or replayed payload position unchanged; affirm complete supply/tick hypotheses and residual/invariant conclusions, then literal removal witnesses for all five supply-refinement premises and nine initial-span premises."
       ],
       "expected": [
         "No source-list copy or whole-row encoding occurs at begin or tick.",
@@ -6297,7 +6299,7 @@
         "tests/acl2/history-record-cursor-tests.lisp",
         "specs/history-record-cursor.md"
       ],
-      "execution_scope": "Resident descriptor, scalar/leaf byte composition, exact byte census and scalar word-boundary source libraries only. Borrowed cold spans, general progress, total padded placement/producer/profile bridge and native qualification remain open."
+      "execution_scope": "Resident byte/census/word libraries and raw borrowed span string/octet boundaries only. Decoded-tree opaque-collapse, symbol normalizer/authority composition, general tree progress, remaining semantic/supply-progress teeth, initial u64-size witnesses, padded placement/producer/profile funding and native qualification remain open."
     },
     {
       "id": "SCN-1010",

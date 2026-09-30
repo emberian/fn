@@ -458,3 +458,355 @@
           (equal v '(:refused :codec-width))
           (not (member-eq v '(:continue :prepared)))
           (not (equal (fn-hrcur-census-total bad) (fn-hrcur-census-total next)))))))
+
+(defun fn-hrcur-test-span-supply-values (c position byte)
+  (declare (xargs :guard t :verify-guards nil))
+  (mv-let (v b next) (fn-hrcur-span-supply c position byte) (list v b next)))
+(defun fn-hrcur-test-span-tick-values (c)
+  (declare (xargs :guard t :verify-guards nil))
+  (mv-let (v b next) (fn-hrcur-span-tick c) (list v b next)))
+
+; Borrowed payload run: this TEST reader supplies the model nth byte. The real
+; reader owns authentication and source/pass/file-pin fencing separately.
+(defun fn-hrcur-test-span-run (fuel c pool)
+  (declare (xargs :guard t :verify-guards nil :measure (nfix fuel)))
+  (if (zp fuel) (list :yield nil c)
+    (mv-let (v byte next) (fn-hrcur-span-tick c)
+      (cond
+       ((eq v :prepared) (list :prepared nil next))
+       ((eq v :continue) (fn-hrcur-test-span-run (1- fuel) next pool))
+       ((eq v :emit)
+        (let ((r (fn-hrcur-test-span-run (1- fuel) next pool)))
+          (list (car r) (cons byte (cadr r)) (caddr r))))
+       ((and (consp v) (eq (car v) :need-byte))
+        (mv-let (sv supplied supplied-next)
+          (fn-hrcur-span-supply next (cadr v) (nth (cadr v) pool))
+          (if (eq sv :emit)
+              (let ((r (fn-hrcur-test-span-run (1- fuel) supplied-next pool)))
+                (list (car r) (cons supplied (cadr r)) (caddr r)))
+            (list sv nil supplied-next))))
+       (t (list v nil next))))))
+
+(defun fn-hrcur-test-span-supply-conclusion (c position byte pool)
+  (declare (xargs :guard t :verify-guards nil))
+  (mv-let (v b next) (fn-hrcur-span-supply c position byte)
+    (and (equal v :emit) (fn-scc-octetp b)
+         (fn-hrcur-span-invariantp next pool)
+         (equal (fn-hrcur-span-rest c pool)
+                (cons b (fn-hrcur-span-rest next pool))))))
+
+; Reachable initial, complete header, payload request and exact wire bytes.
+(assert-event
+ (let* ((pool '(99 65 66 67 100))
+        (c (fn-hrcur-span-begin 3 0 1 3 '(:epoch :pass :row) :lease))
+        (r (fn-hrcur-test-span-run 20 c pool)))
+   (and (member-equal 3 '(0 3 4 6)) (natp 0) (< 0 3)
+        (or (equal 3 4) (equal 0 0)) (natp 1) (natp 3)
+        (< (+ 1 3) *fn-hrcur-u64-bound*)
+        (implies (equal 3 0) (equal 3 0))
+        (fn-scc-octet-listp pool) (<= (+ 1 3) (len pool))
+        (fn-hrcur-span-invariantp c pool)
+        (equal (fn-hrcur-span-rest c pool) (fn-hrcur-span-wire 3 0 1 3 pool))
+        (eq (car r) :prepared)
+        (equal (cadr r) (fn-scc-encode "ABC"))
+        (equal (fn-hrcur-field 4 (caddr r)) '(:epoch :pass :row))
+        (equal (fn-hrcur-field 5 (caddr r)) :lease))))
+
+(assert-event
+ (let* ((pool '(9 0 255 1))
+        (c (fn-hrcur-span-begin 6 0 1 3 :capture :lease))
+        (first (fn-hrcur-test-span-run 4 c pool))
+        (second (fn-hrcur-test-span-run 20 (caddr first) pool)))
+   (and (eq (car first) :yield) (eq (car second) :prepared)
+        (equal (append (cadr first) (cadr second))
+               (fn-scc-encode '(0 255 1))))))
+
+(assert-event
+ (let* ((c (fn-hrcur-span-begin 6 0 0 0 :capture :lease))
+        (r (fn-hrcur-test-span-run 10 c nil)))
+   (and (fn-hrcur-span-invariantp c nil)
+        (eq (car r) :prepared) (equal (cadr r) (fn-scc-encode nil)))))
+
+; Complete antecedent and conclusion for the supply boundary/progress.
+(assert-event
+ (let ((c '(:body nil 0 2 :capture :lease 2)) (pool '(65 66)))
+   (and (fn-hrcur-span-invariantp c pool) (eq (fn-hrcur-field 0 c) :body)
+        (< 0 (fn-hrcur-field 3 c)) (equal 0 (fn-hrcur-field 2 c))
+        (equal 65 (nth 0 pool))
+        (fn-hrcur-test-span-supply-conclusion c 0 65 pool)
+        (< (fn-hrcur-span-work (nth 2 (fn-hrcur-test-span-supply-values c 0 65)))
+           (fn-hrcur-span-work c)))))
+
+; Hypothesis removal: invariant (corrupted end coordinate), all others retained.
+(assert-event
+ (let ((c '(:body nil 0 1 :capture :lease 0)) (pool '(65)))
+   (and (not (fn-hrcur-span-invariantp c pool))
+        (eq (fn-hrcur-field 0 c) :body) (< 0 (fn-hrcur-field 3 c))
+        (equal 0 (fn-hrcur-field 2 c)) (equal 65 (nth 0 pool))
+        (not (fn-hrcur-test-span-supply-conclusion c 0 65 pool)))))
+
+; Hypothesis removal: phase, no outstanding payload request yet.
+(assert-event
+ (let ((c '(:prefix (3 1 1) 0 1 :capture :lease 1)) (pool '(65)))
+   (and (fn-hrcur-span-invariantp c pool)
+        (not (eq (fn-hrcur-field 0 c) :body)) (< 0 (fn-hrcur-field 3 c))
+        (equal 0 (fn-hrcur-field 2 c)) (equal 65 (nth 0 pool))
+        (not (fn-hrcur-test-span-supply-conclusion c 0 65 pool)))))
+
+; Hypothesis removal: nonempty payload.
+(assert-event
+ (let ((c '(:body nil 0 0 :capture :lease 0)) (pool '(65)))
+   (and (fn-hrcur-span-invariantp c pool) (eq (fn-hrcur-field 0 c) :body)
+        (not (< 0 (fn-hrcur-field 3 c)))
+        (equal 0 (fn-hrcur-field 2 c)) (equal 65 (nth 0 pool))
+        (not (fn-hrcur-test-span-supply-conclusion c 0 65 pool)))))
+
+; Hypothesis removal: expected position; response data itself is correct there.
+(assert-event
+ (let ((c '(:body nil 0 2 :capture :lease 2)) (pool '(65 66)))
+   (and (fn-hrcur-span-invariantp c pool) (eq (fn-hrcur-field 0 c) :body)
+        (< 0 (fn-hrcur-field 3 c))
+        (not (equal 1 (fn-hrcur-field 2 c))) (equal 66 (nth 1 pool))
+        (not (fn-hrcur-test-span-supply-conclusion c 1 66 pool))
+        (equal (nth 0 (fn-hrcur-test-span-supply-values c 1 66)) '(:refused :span-response))
+        (equal (nth 2 (fn-hrcur-test-span-supply-values c 1 66)) c))))
+
+; Hypothesis removal: authenticated byte equals immutable model byte.
+(assert-event
+ (let ((c '(:body nil 0 2 :capture :lease 2)) (pool '(65 66)))
+   (and (fn-hrcur-span-invariantp c pool) (eq (fn-hrcur-field 0 c) :body)
+        (< 0 (fn-hrcur-field 3 c)) (equal 0 (fn-hrcur-field 2 c))
+        (not (equal 66 (nth 0 pool)))
+        (not (fn-hrcur-test-span-supply-conclusion c 0 66 pool)))))
+
+; A supplied byte advances expected position; replaying the old response refuses.
+(assert-event
+ (let* ((c '(:body nil 0 2 :capture :lease 2))
+        (next (nth 2 (fn-hrcur-test-span-supply-values c 0 65))))
+   (and (equal (fn-hrcur-field 2 next) 1)
+        (equal (nth 0 (fn-hrcur-test-span-supply-values next 0 65)) '(:refused :span-response))
+        (equal (nth 2 (fn-hrcur-test-span-supply-values next 0 65)) next))))
+
+(defun fn-hrcur-test-span-tick-conclusion (c pool)
+  (declare (xargs :guard t :verify-guards nil))
+  (mv-let (v b next) (fn-hrcur-span-tick c)
+    (and (fn-hrcur-span-invariantp next pool)
+         (equal (fn-hrcur-span-rest c pool)
+                (if (eq v :emit) (cons b (fn-hrcur-span-rest next pool))
+                  (fn-hrcur-span-rest next pool)))
+         (implies (eq v :emit) (fn-scc-octetp b))
+         (implies (eq v :prepared) (equal (fn-hrcur-span-rest c pool) nil)))))
+
+; Literal tick refinement antecedent and conclusion, all reachable phases.
+(assert-event
+ (let ((c '(:prefix (3 1 1) 0 1 :capture :lease 1)) (pool '(65)))
+   (and (fn-hrcur-span-invariantp c pool)
+        (fn-hrcur-test-span-tick-conclusion c pool))))
+(assert-event
+ (let ((c '(:prefix nil 0 1 :capture :lease 1)) (pool '(65)))
+   (and (fn-hrcur-span-invariantp c pool)
+        (fn-hrcur-test-span-tick-conclusion c pool))))
+(assert-event
+ (let ((c '(:body nil 0 1 :capture :lease 1)) (pool '(65)))
+   (and (fn-hrcur-span-invariantp c pool)
+        (fn-hrcur-test-span-tick-conclusion c pool)
+        (not (eq (fn-hrcur-field 0 c) :done))
+        (equal (nth 0 (fn-hrcur-test-span-tick-values c)) '(:need-byte 0))
+        (equal (nth 2 (fn-hrcur-test-span-tick-values c)) c))))
+(assert-event
+ (let ((c '(:body nil 1 0 :capture :lease 1)) (pool '(65)))
+   (and (fn-hrcur-span-invariantp c pool)
+        (fn-hrcur-test-span-tick-conclusion c pool))))
+
+; Tick refinement invariant removal: corrupted header byte.
+(assert-event
+ (let ((c '(:prefix (300) 0 1 :capture :lease 1)) (pool '(65)))
+   (and (not (fn-hrcur-span-invariantp c pool))
+        (not (fn-hrcur-test-span-tick-conclusion c pool)))))
+
+; Progress: a reachable header byte decreases work; a done cursor cannot.
+(assert-event
+ (let ((c '(:prefix (3 1 1) 0 1 :capture :lease 1)) (pool '(65)))
+   (and (fn-hrcur-span-invariantp c pool)
+        (not (eq (fn-hrcur-field 0 c) :done))
+        (< (fn-hrcur-span-work (nth 2 (fn-hrcur-test-span-tick-values c)))
+           (fn-hrcur-span-work c)))))
+(assert-event
+ (let ((c '(:done nil 1 0 :capture :lease 1)) (pool '(65)))
+   (and (fn-hrcur-span-invariantp c pool)
+        (eq (fn-hrcur-field 0 c) :done)
+        (not (< (fn-hrcur-span-work (nth 2 (fn-hrcur-test-span-tick-values c)))
+                (fn-hrcur-span-work c)))
+        (not (equal (nth 0 (fn-hrcur-test-span-tick-values c))
+                    (list :need-byte (fn-hrcur-field 2 c)))))))
+
+; Tick progress invariant removal: explicitly refused corrupted state.
+(assert-event
+ (let ((c '(:refused nil 0 0 :capture :lease 0)))
+   (and (not (fn-hrcur-span-invariantp c nil))
+        (not (eq (fn-hrcur-field 0 c) :done))
+        (not (< (fn-hrcur-span-work (nth 2 (fn-hrcur-test-span-tick-values c)))
+                (fn-hrcur-span-work c)))
+        (not (equal (nth 0 (fn-hrcur-test-span-tick-values c))
+                    (list :need-byte (fn-hrcur-field 2 c)))))))
+
+; Full antecedents and complete codec result for the two span abstractions.
+(defthm fn-hrcur-test-span-octets-semantic-positive
+  (and (fn-scc-octet-listp '(9 0 255 1)) (natp 1) (natp 3)
+       (<= (+ 1 3) (len '(9 0 255 1)))
+       (equal (fn-hrcur-span-wire 6 0 1 3 '(9 0 255 1))
+              (fn-scc-encode
+                (fn-hdc-abstract (fn-hdc-span 6 0 1 3) '(9 0 255 1)))))
+  :hints (("Goal" :in-theory (enable fn-hrcur-span-wire fn-hdc-span fn-hdc-abstract))))
+(defthm fn-hrcur-test-span-string-semantic-positive
+  (and (fn-scc-octet-listp '(9 65 66 67)) (natp 1) (natp 3)
+       (<= (+ 1 3) (len '(9 65 66 67)))
+       (equal (fn-hrcur-span-wire 3 0 1 3 '(9 65 66 67))
+              (fn-scc-encode
+                (fn-hdc-abstract (fn-hdc-span 3 0 1 3) '(9 65 66 67)))))
+  :hints (("Goal" :in-theory (enable fn-hrcur-span-wire fn-hdc-span fn-hdc-abstract))))
+
+(defun fn-hrcur-test-span-begin-conclusion (op pkg offset count pool)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((c (fn-hrcur-span-begin op pkg offset count :capture :lease)))
+    (and (fn-hrcur-span-invariantp c pool)
+         (equal (fn-hrcur-span-rest c pool)
+                (fn-hrcur-span-wire op pkg offset count pool)))))
+
+; Initial boundary hypothesis removal: opcode.
+(assert-event
+ (let ((op 7) (pkg 0) (offset 0) (count 1) (pool '(65)))
+   (and (not (member-equal op '(0 3 4 6)))
+        (natp pkg)
+        (< pkg 3)
+        (or (equal op 4) (equal pkg 0))
+        (natp offset)
+        (natp count)
+        (< (+ offset count) *fn-hrcur-u64-bound*)
+        (implies (equal op 0) (equal count 0))
+        (fn-scc-octet-listp pool)
+        (<= (+ offset count) (len pool))
+        (not (fn-hrcur-test-span-begin-conclusion op pkg offset count pool)))))
+
+; Initial boundary hypothesis removal: package natural.
+(assert-event
+ (let ((op 4) (pkg 1/2) (offset 0) (count 1) (pool '(65)))
+   (and (member-equal op '(0 3 4 6))
+        (not (natp pkg))
+        (< pkg 3)
+        (or (equal op 4) (equal pkg 0))
+        (natp offset)
+        (natp count)
+        (< (+ offset count) *fn-hrcur-u64-bound*)
+        (implies (equal op 0) (equal count 0))
+        (fn-scc-octet-listp pool)
+        (<= (+ offset count) (len pool))
+        (not (fn-hrcur-test-span-begin-conclusion op pkg offset count pool)))))
+
+; Initial boundary hypothesis removal: package width.
+(assert-event
+ (let ((op 4) (pkg 3) (offset 0) (count 1) (pool '(65)))
+   (and (member-equal op '(0 3 4 6))
+        (natp pkg)
+        (not (< pkg 3))
+        (or (equal op 4) (equal pkg 0))
+        (natp offset)
+        (natp count)
+        (< (+ offset count) *fn-hrcur-u64-bound*)
+        (implies (equal op 0) (equal count 0))
+        (fn-scc-octet-listp pool)
+        (<= (+ offset count) (len pool))
+        (not (fn-hrcur-test-span-begin-conclusion op pkg offset count pool)))))
+
+; Initial boundary hypothesis removal: package on nonsymbol.
+(assert-event
+ (let ((op 3) (pkg 1) (offset 0) (count 1) (pool '(65)))
+   (and (member-equal op '(0 3 4 6))
+        (natp pkg)
+        (< pkg 3)
+        (not (or (equal op 4) (equal pkg 0)))
+        (natp offset)
+        (natp count)
+        (< (+ offset count) *fn-hrcur-u64-bound*)
+        (implies (equal op 0) (equal count 0))
+        (fn-scc-octet-listp pool)
+        (<= (+ offset count) (len pool))
+        (not (fn-hrcur-test-span-begin-conclusion op pkg offset count pool)))))
+
+; Initial boundary hypothesis removal: natural offset.
+(assert-event
+ (let ((op 3) (pkg 0) (offset -1) (count 1) (pool '(65)))
+   (and (member-equal op '(0 3 4 6))
+        (natp pkg)
+        (< pkg 3)
+        (or (equal op 4) (equal pkg 0))
+        (not (natp offset))
+        (natp count)
+        (< (+ offset count) *fn-hrcur-u64-bound*)
+        (implies (equal op 0) (equal count 0))
+        (fn-scc-octet-listp pool)
+        (<= (+ offset count) (len pool))
+        (not (fn-hrcur-test-span-begin-conclusion op pkg offset count pool)))))
+
+; Initial boundary hypothesis removal: natural count.
+(assert-event
+ (let ((op 3) (pkg 0) (offset 1) (count -1) (pool '(65)))
+   (and (member-equal op '(0 3 4 6))
+        (natp pkg)
+        (< pkg 3)
+        (or (equal op 4) (equal pkg 0))
+        (natp offset)
+        (not (natp count))
+        (< (+ offset count) *fn-hrcur-u64-bound*)
+        (implies (equal op 0) (equal count 0))
+        (fn-scc-octet-listp pool)
+        (<= (+ offset count) (len pool))
+        (not (fn-hrcur-test-span-begin-conclusion op pkg offset count pool)))))
+
+; Initial boundary hypothesis removal: NIL payload count.
+(assert-event
+ (let ((op 0) (pkg 0) (offset 0) (count 1) (pool '(65)))
+   (and (member-equal op '(0 3 4 6))
+        (natp pkg)
+        (< pkg 3)
+        (or (equal op 4) (equal pkg 0))
+        (natp offset)
+        (natp count)
+        (< (+ offset count) *fn-hrcur-u64-bound*)
+        (not (implies (equal op 0) (equal count 0)))
+        (fn-scc-octet-listp pool)
+        (<= (+ offset count) (len pool))
+        (not (fn-hrcur-test-span-begin-conclusion op pkg offset count pool)))))
+
+; Initial boundary hypothesis removal: pool octets, corrupted source model.
+(assert-event
+ (let ((op 3) (pkg 0) (offset 0) (count 1) (pool '(300)))
+   (and (member-equal op '(0 3 4 6))
+        (natp pkg)
+        (< pkg 3)
+        (or (equal op 4) (equal pkg 0))
+        (natp offset)
+        (natp count)
+        (< (+ offset count) *fn-hrcur-u64-bound*)
+        (implies (equal op 0) (equal count 0))
+        (not (fn-scc-octet-listp pool))
+        (<= (+ offset count) (len pool))
+        (not (fn-hrcur-test-span-begin-conclusion op pkg offset count pool)))))
+
+; Initial boundary hypothesis removal: span fits pool.
+(assert-event
+ (let ((op 3) (pkg 0) (offset 0) (count 2) (pool '(65)))
+   (and (member-equal op '(0 3 4 6))
+        (natp pkg)
+        (< pkg 3)
+        (or (equal op 4) (equal pkg 0))
+        (natp offset)
+        (natp count)
+        (< (+ offset count) *fn-hrcur-u64-bound*)
+        (implies (equal op 0) (equal count 0))
+        (fn-scc-octet-listp pool)
+        (not (<= (+ offset count) (len pool)))
+        (not (fn-hrcur-test-span-begin-conclusion op pkg offset count pool)))))
+
+; The initial u64 sum premise retains an enormous pool-length hypothesis;
+; no practically executable removal witness is claimed for it here.
