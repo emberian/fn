@@ -129,3 +129,53 @@
     (let ((state (f-put-global 'fn-owner-canonical-pending
                    (list (fn-omk-at 0 p) (fn-omk-at 1 p) bootstrap) state)))
      (mv phase state))))))
+
+; ORIGINAL replay remains usable while the independent CP7/pool join is
+; unfinished. This readout never labels a partial tuple canonical-ready.
+(defun fn-owner-orcb-context (filecount state)
+ (declare (xargs :stobjs state :guard t))
+ (let ((c (fn-owner-canonical-state state)))
+  (if (and (fn-owner-canonical-availablep filecount state)
+           (fn-omk-widthp (fn-omk-at 3 c) 6)
+           (fn-ics-contextp (fn-omk-at 3 c))
+           (equal (fn-stxk-context-next (fn-omk-at 3 c)) filecount)
+           (fn-ics-carriesp (fn-omk-at 4 c)) (fn-omk-tokenp (fn-omk-at 9 c)))
+   (list :context (fn-omk-at 1 c) filecount (fn-omk-at 3 c)
+         (fn-omk-at 4 c) (fn-omk-at 9 c))
+   (let ((p (fn-owner-orcb-pending state)))
+    (if (not (and (fn-omk-widthp p 3) (natp (fn-omk-at 0 p))
+                  (equal (fn-omk-at 0 p) (fn-owner-canonical-epoch state))
+                  (fn-orcb-statep (fn-omk-at 2 p)) (natp filecount)
+                  (equal (fn-orcb-at 2 (fn-omk-at 2 p)) filecount)))
+     (list :unavailable :replay-context)
+     (let ((packet (fn-orcb-install (fn-omk-at 2 p) (fn-omk-at 1 p))))
+      (if (eq (car packet) :ready)
+       (list :context (fn-omk-at 0 p) filecount (fn-orcb-at 1 packet)
+             (fn-orcb-at 3 packet) (fn-orcb-at 4 packet))
+       (list :unavailable :replay-context))))))))
+
+; The caller supplies the actual authorized durable operation and its exact
+; predecessor event count. Captured Store frontier may change. The process
+; epoch is read from retained context, never substituted at completion.
+(defun fn-owner-orcb-append-current (source previous-count row child-carry state)
+ (declare (xargs :stobjs state :guard t))
+ (let ((c (fn-owner-orcb-context previous-count state)))
+  (if (not (and (fn-omk-widthp c 6) (eq (fn-omk-at 0 c) :context)
+                (natp (fn-omk-at 1 c)) (natp previous-count)
+                (equal (fn-omk-at 1 c) (fn-owner-canonical-epoch state))
+                (fn-omk-tokenp (fn-omk-at 5 c)) (fn-omk-tokenp source)
+                (fn-ics-contextp (fn-omk-at 3 c))
+                (fn-ics-carriesp (fn-omk-at 4 c)) (fn-scs-carryp child-carry)))
+   (mv :refused state)
+   (mv-let (phase bootstrap)
+           (fn-orcb-resident (fn-omk-at 5 c) previous-count
+                              (fn-omk-at 3 c) (fn-omk-at 4 c))
+    (if (not (eq phase :ready)) (mv :refused state)
+     ; Resident constructs the fixed state recognized below; the check is
+     ; bounded and makes this caller independently guard-verifiable.
+     (if (not (fn-orcb-statep bootstrap)) (mv :refused state)
+      (mv-let (next appended) (fn-orcb-append bootstrap source row child-carry)
+       (let* ((state (f-put-global 'fn-owner-canonical-state nil state))
+              (state (f-put-global 'fn-owner-canonical-pending
+                       (list (fn-omk-at 1 c) source appended) state)))
+        (mv next state)))))))))
