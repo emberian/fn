@@ -3,7 +3,7 @@
 ; The installation global has ONE genuine producer (the selected runtime
 ; installer); this leaf deliberately contains no installation setter.
 (in-package "ACL2")
-(include-book "owner-host")
+(include-book "../books/owner-state-accessors")
 (include-book "../books/index-connection-start")
 (include-book "../books/connection-operation-cost")
 (include-book "connection-operation-ticket-host")
@@ -70,6 +70,8 @@
                (symbolp kind) (symbolp family)
                (eq (fn-omk-at 0 ticket) :connection-operation-ticket)
                (eq (fn-omk-at 1 ticket) :prepaid)
+               (member-eq (fn-prp-alloc-mode fn-page-read-pool) '(:active :draining))
+               (posp (fn-prp-alloc-active-turns fn-page-read-pool))
                (eq kind (fn-omk-at 2 ticket)) (eq family (fn-omk-at 3 ticket))
                (fn-cop-octets-match address (fn-omk-at 4 ticket) quantum)
                (fn-cop-octets-match peer (fn-omk-at 5 ticket) quantum)

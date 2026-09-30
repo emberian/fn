@@ -38,6 +38,7 @@
 ; This book owns the prefix `fn-ocfg-' (docs/prefixes.md).
 
 (in-package "ACL2")
+(include-book "owner-admission-selectors")
 (include-book "owner-fault")
 (include-book "owner-invariants")
 (include-book "config-stream")
@@ -61,9 +62,6 @@
 ; of the record lemmas that translate through them, and none of the eight
 ; theorems above the definitions.  The `:logic' bodies are unchanged, so
 ; every statement in the book keeps its meaning.
-(defun fn-ocfg-owner (x)
-  (declare (xargs :guard t))
-  (mbe :logic (car x) :exec (fn-ag-car x)))
 (defun fn-ocfg-config (x)
   (declare (xargs :guard t))
   (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
