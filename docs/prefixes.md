@@ -383,3 +383,4 @@ anything a book does not already decide.
 | `fn-hrsc-` | `history-scalar-cursor` | Bounded scalar codec cursor and exact residual proof vocabulary; library component. |
 | `fn-hcc-`, `fn-hch-` | `history-image-census`, `history-image-header` | Resumable history census and current-format header emission; library components. |
 | `fn-hrf-` | `history-resource-refinement` | Retained obligation logical/resource projection and component refinement. |
+| `fn-novlp-` | `nov-line-projection` | Logical first-five normalized NOV projection of the actual article parser; component proof vocabulary, never a served scan |
