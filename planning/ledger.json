@@ -1804,26 +1804,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1867,
+    "books": 1869,
     "books_in_root_closure": 1864,
     "roots": 1800,
-    "theorems": 29596,
-    "functions": 18983,
-    "assert_events": 23946,
+    "theorems": 29607,
+    "functions": 18989,
+    "assert_events": 23952,
     "must_fails": 2516,
     "prover_refusals": 0,
     "encapsulates": 159,
     "guards": {
       "verified": 3557,
       "declared-off": 2250,
-      "default-guarded": 10347,
-      "default-unguarded": 2829
+      "default-guarded": 10352,
+      "default-unguarded": 2830
     },
     "suspect_theorems": 1255,
     "export_hygiene_warnings": 363,
     "enabled_projection_warnings": 62,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2581,
+    "include_hygiene_warnings": 2582,
     "host_names_warnings": 2155,
     "hand_written_record_warnings": 18
   },
@@ -19191,6 +19191,34 @@
       "includes": [
         "native-live-status-words",
         "operator-report-fields-text"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/operator-report-fields-space.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 11,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "operator-report-fields"
       ],
       "system_includes": [
         "arithmetic-5/top"
@@ -46132,6 +46160,32 @@
       "includes": [
         "../../books/operator-report-fields-native-reference",
         "operator-report-fields-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/operator-report-fields-space-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/operator-report-fields-space"
       ],
       "system_includes": [],
       "suspects": [],
@@ -84944,6 +84998,13 @@
         "line": 3,
         "include": "../../books/operator-report-fields-native-reference",
         "included": "books/operator-report-fields-native-reference.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/operator-report-fields-space-tests.lisp",
+        "line": 2,
+        "include": "../../books/operator-report-fields-space",
+        "included": "books/operator-report-fields-space.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

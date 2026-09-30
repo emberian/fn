@@ -156,3 +156,13 @@ These admissions have no host activation or native qualification claim. Final ch
 installed composite preservation, scalar-width/coexistence funding and the
 matching native whole-slice scenario remain required. This progress does not
 close S9, R16 work debt, physical funding or native qualification.
+
+The actual field emitter now carries borrowed-field provenance: during decimal
+preparation, its quotient remains bounded by the original natural descriptor,
+and retained digit cells plus at least one remaining binary-width unit fit in
+one plus the original binary width. Each actual step preserves that relation;
+zero reserves its final digit. The normal six-book source certificate is
+`certify-20260930T112806Z-1655367`. This source storage bound supplies no
+supported-profile operand ceiling or selected-runtime division/frame/GC tariff.
+It also supplies no report-stage or old/new cursor coexistence lifetime grant.
+The actual frozen report writer and CLI reader still require bounded consumers.

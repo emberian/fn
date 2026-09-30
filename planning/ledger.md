@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1867 |
+| Books read | 1869 |
 | Certification roots in the Makefile | 1800 |
 | Books inside the root closure | 1864 |
-| `defthm` and `defthmd` events | 29596 |
-| `defun` events | 18983 |
+| `defthm` and `defthmd` events | 29607 |
+| `defun` events | 18989 |
 | Functions with verified guards | 3557 |
 | Functions declared `:verify-guards nil` and never verified | 2250 |
-| Functions left at the default with an explicit guard | 10347 |
-| Functions left at the default with no guard | 2829 |
-| `assert-event` checks | 23946 |
+| Functions left at the default with an explicit guard | 10352 |
+| Functions left at the default with no guard | 2830 |
+| `assert-event` checks | 23952 |
 | `must-fail` checks | 2516 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 159 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 363 |
 | Enabled-projection warnings | 62 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2581 |
+| Include-hygiene warnings | 2582 |
 | Host-names warnings | 2155 |
 | Hand-written-record warnings | 18 |
 
@@ -661,6 +661,7 @@ that `make certify` requests.
 | `books/open-frontier.lisp` | closure | 34 | 5 | 0/2/3/0 | 0 | 0 | 1 |
 | `books/operator-report-descriptors.lisp` | root | 5 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/operator-report-fields-native-reference.lisp` | root | 7 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/operator-report-fields-space.lisp` | - | 11 | 4 | 0/0/3/1 | 0 | 0 | 0 |
 | `books/operator-report-fields-text.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/operator-report-fields.lisp` | root | 34 | 27 | 6/0/21/0 | 0 | 0 | 0 |
 | `books/outcome-class.lisp` | root | 8 | 6 | 0/0/6/0 | 0 | 0 | 0 |
@@ -1595,6 +1596,7 @@ that `make certify` requests.
 | `tests/acl2/open-one-pass-tests.lisp` | root | 0 | 8 | 0/6/0/2 | 56 | 1 | 0 |
 | `tests/acl2/operator-report-descriptors-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
 | `tests/acl2/operator-report-fields-native-reference-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 3 | 0 | 0 |
+| `tests/acl2/operator-report-fields-space-tests.lisp` | - | 0 | 2 | 0/0/2/0 | 6 | 0 | 0 |
 | `tests/acl2/operator-report-fields-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/outcome-class-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 37 | 7 | 0 |
 | `tests/acl2/over-window-tests.lisp` | root | 6 | 2 | 0/0/0/2 | 0 | 0 | 0 |
