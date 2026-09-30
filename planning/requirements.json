@@ -5705,7 +5705,9 @@
         "PRF-1154",
         "PRF-1158",
         "PRF-1159",
-        "PRF-1163"
+        "PRF-1163",
+        "PRF-1161",
+        "PRF-1162"
       ],
       "verification": [
         "proof",
@@ -5725,7 +5727,10 @@
         "tests/acl2/connection-operation-ticket-tests.lisp",
         "specs/connection-ticket.md",
         "tests/native/runtime-geometry-lock-component.lisp",
-        "planning/evidence/runtime-geometry-lock-2026-09-30"
+        "planning/evidence/runtime-geometry-lock-2026-09-30",
+        "specs/connection-operation.md",
+        "tests/native/connection-start-core-component.lisp",
+        "planning/evidence/connection-native-start-2026-09-30"
       ],
       "implementation_note": "Internal guarded scalar, same-pool, installed-geometry observation and actual sharedPRS nonce source. Genuine runtime/source tariff installation, process-wide barrier, identity rescue and once-only allocating-turn producer joins remain open; no activation/funding claim. Guarded STATE-ticket completion and idempotent fault are exercised through actual native transport; fixture installation and operation setup do not establish complete allowance or activation."
     },

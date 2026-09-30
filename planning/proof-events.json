@@ -17476,6 +17476,36 @@
           "pending_subject": "Actual guarded internal completion callback, named by fixed native companion; selected factory/installation and complete caller join remain open."
         }
       ]
+    },
+    {
+      "id": "PRF-1161",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ics-reserved-has-registered-receipt",
+          "pending_subject": "Actual guarded public PREPARE/START and selected native component pass; genuine installer, complete operation allowance and complete served caller remain unactivated."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-index-connection-reserved-has-registered-receipt",
+          "pending_subject": "Actual guarded public PREPARE/START and selected native component pass; genuine installer, complete operation allowance and complete served caller remain unactivated."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1162",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cop-octets-match-is-exact",
+          "pending_subject": "Actual guarded public PREPARE/START and selected native component pass; genuine installer, complete operation allowance and complete served caller remain unactivated."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cop-derived-body-fits",
+          "pending_subject": "Actual guarded public PREPARE/START and selected native component pass; genuine installer, complete operation allowance and complete served caller remain unactivated."
+        }
+      ]
     }
   ]
 }
