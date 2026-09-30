@@ -26,6 +26,7 @@
          (key (fn-bpck-installed-key token))
          (disk (list 0 (+ 46 (nfix (fn-bpn-nth 8 job))) 0 0 0)))
     (cond
+     ((fn-prl-nth 3 row) (mv :foreign-initial-custody ledger))
      ((not (and (equal (fn-bpn-nth 11 job) :published)
                 (equal control '(:done :written))
                 (equal source :returned) (equal aliases :relinquished)
@@ -71,6 +72,7 @@
          (word (fn-bpck-cleanup-word job source aliases fd
                                      (if transferred :transferred :pending))))
     (cond
+     ((fn-prl-nth 3 row) (mv :foreign-initial-custody ledger))
      ((not (equal (fn-prl-nth 0 control) :done)) (mv :pending ledger))
      ((not (equal word :release)) (mv word ledger))
      ((not transferred) (fn-pmn-release ledger token))
@@ -103,10 +105,16 @@
 (verify-guards fn-bpck-release-action
   :hints (("Goal" :in-theory (enable fn-prs-vectorp))))
 
+(local (defthm fn-bpck-built-ledger-next-by-definition
+ (equal (fn-prl-nth 2 (fn-prl-build budget charged next bindings baseline)) next)
+ :hints (("Goal" :in-theory (enable fn-prl-build fn-prl-nth)))))
+
 (defthm fn-bpck-publish-transfer-never-reuses-identity
   (equal (fn-prl-nth 2 (mv-nth 1 (fn-bpck-publish-transfer ledger job control source aliases fd)))
          (fn-prl-nth 2 ledger))
-  :hints (("Goal" :in-theory (enable fn-bpck-publish-transfer fn-prl-build fn-prl-nth))))
+  :hints (("Goal" :in-theory (union-theories
+    '(fn-bpck-publish-transfer fn-bpck-built-ledger-next-by-definition)
+    (theory 'minimal-theory)))))
 
 (in-theory (disable fn-bpck-installed-key fn-bpck-publish-transfer
                     fn-bpck-release-action))

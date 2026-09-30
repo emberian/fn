@@ -5221,3 +5221,14 @@ remaining constructor-intent/source-observation joins are recorded in
 `planning/bp-digest-workspace-contract-20260930.md`; guard/source evidence is
 `planning/evidence/bp-digest-workspace-storage-20260930/manifest.json`.
 No new keystone or whole reopen completion is claimed.
+
+### Historical checkpoint maintenance custody isolation
+
+The historical BP maintenance publication and release adapters refuse
+`:foreign-initial-custody` and retain the exact ledger when a maintenance row
+contains a non-NIL fourth custody field. They cannot reconstruct a Store INITIAL
+row as an ordinary BP row and erase that custody. Ordinary three-field BP rows
+retain their previous behavior. The paired source-algebra fixtures and incremental
+proper source admission are recorded in
+`planning/evidence/bp-checkpoint-initial-custody-20260930/manifest.json`; this
+is not authority for the new indexed controller job or native installation.
