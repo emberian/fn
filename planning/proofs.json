@@ -17730,6 +17730,35 @@
         "fn-prw-admit-preserves-pool-funding",
         "fn-prw-admitted-window-holds-file"
       ]
+    },
+    {
+      "id": "PRF-1128",
+      "title": "An exact typed window stays on its physical worker until the final scalar borrow ends",
+      "statement": "Subjects fn-pwx-acquire, fn-pwx-return and fn-pwx-release retain the immutable nine-field window token in the existing persistent four-field worker row. The core binds the exact slot and full descriptor; acquisition and physical return preserve every supplied charge; final release requires both exact returned bindings and refunds once. Native extent worker dispatch calls the stobj adapters with complete answer/effect equations. Actual raw fn-ews execution retains only a private fixed window and fn-pwr-byte permits scalar access only through matching returned ownership and a published core plan. Scalar authorization is a definition equation; native trajectory correspondence, adequate native demand, served activation and full P12 remain open.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020"
+      ],
+      "depends_on": [
+        "PRF-1119"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/page-window-executor.lisp",
+        "books/page-window-read.lisp",
+        "host/page-window-executor-host.lisp",
+        "host/native/extent.lisp",
+        "tests/acl2/page-window-executor-tests.lisp",
+        "tests/acl2/page-window-read-tests.lisp",
+        "tests/acl2/page-window-admission-tests.lisp",
+        "planning/evidence/physical-window-source-2026-09-30.md"
+      ],
+      "progress_note": "Source component with clean source REPL evidence; no certificate/image/native qualification or served activation claim. Supplied demand is not allocator adequacy.",
+      "events": [
+        "fn-pwx-release-requires-exact-returned-window-and-slot",
+        "fn-pwx-other-request-cannot-return-or-release"
+      ]
     }
   ]
 }

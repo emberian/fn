@@ -4546,3 +4546,21 @@
 (definterface fn-owner-page-file-pin-file :class :common-lisp-compliant)
 (definterface fn-owner-page-file-pin-read :class :common-lisp-compliant
   :keystones ((fn-prd-admit-preserves-pool-funding :via fn-prd-admit)))
+
+;; Staged exact raw extent window. Demand/allocator and served reachability
+;; are separate obligations; these declarations do not activate a consumer.
+(definterface fn-crw-supportedp :class :common-lisp-compliant)
+(definterface fn-ews-begin :class :common-lisp-compliant)
+(definterface fn-ews-effect :class :common-lisp-compliant)
+(definterface fn-ews-tick :class :common-lisp-compliant)
+(definterface fn-ews-read :class :common-lisp-compliant
+  :keystones ((fn-ews-read-publication-requires-core-integrity :via fn-ews-read)))
+(definterface fn-owner-page-read-ledger :class :common-lisp-compliant)
+(definterface fn-pwx-tokenp :class :common-lisp-compliant)
+(definterface fn-pwx-boundp :class :common-lisp-compliant)
+(definterface fn-owner-page-window-executor-acquire :class :common-lisp-compliant)
+(definterface fn-owner-page-window-executor-acquire-funded :class :common-lisp-compliant)
+(definterface fn-owner-page-window-executor-return :class :common-lisp-compliant)
+(definterface fn-owner-page-window-executor-release :class :common-lisp-compliant
+  :keystones ((fn-pwx-release-requires-exact-returned-window-and-slot :via fn-pwx-release)))
+(definterface fn-owner-page-window-byte :class :common-lisp-compliant)

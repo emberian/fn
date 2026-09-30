@@ -6354,6 +6354,34 @@
         "tests/acl2/page-window-lease-tests.lisp"
       ],
       "execution_scope": "Source model and adapter only; runtime demand adequacy, actual worker/window wiring, integrity and native behavior remain pending."
+    },
+    {
+      "id": "SCN-1035",
+      "title": "Persistent window slots retain complete range identity and credits through scalar borrowing",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Admit a typed window at ticket zero and bind physical slot zero.",
+        "Attempt return/release with a changed offset or another slot, and attempt to steal the live token.",
+        "Run the actual core raw digest trajectory on three bytes and its real trailer, then observe physical return and borrow one scalar.",
+        "Drop all native result aliases before final release, then attempt repeated release."
+      ],
+      "expected": [
+        "Exact binding preserves every supplied charge. Altered range and worker slot cannot return or release the job.",
+        "Actual return retains worker credit and file lease. The actual authenticated stream authorizes scalar 2 at relative offset 1; a running slot remains unavailable.",
+        "Final release refunds once and restores an ordinary idle slot. No result vector is exposed through the scalar borrow API."
+      ],
+      "evidence": [
+        "tests/acl2/page-window-executor-tests.lisp",
+        "tests/acl2/page-window-read-tests.lisp",
+        "host/native/extent.lisp",
+        "tests/acl2/page-window-admission-tests.lisp",
+        "planning/evidence/physical-window-source-2026-09-30.md"
+      ],
+      "execution_scope": "Source model/adapter and staged raw wrapper only. Actual native observation, adequate native demand and served activation remain pending."
     }
   ]
 }

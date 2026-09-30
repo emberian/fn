@@ -1885,3 +1885,16 @@ The source stobj adapters have complete answer/effect equations. They remain
 unreachable in composition pending actual authenticated window execution,
 its allocator demand and persistent worker dispatch. Return is a physical
 observation, never proof that the bytes passed digest or decoder checks.
+
+
+PRF-1128 / SCN-1035 stage the persistent physical window worker with the
+complete immutable typed token, including payload position and length. Its
+existing four-field core slot binds the exact token and slot; actual worker
+return retains all job credits and the physical file. Scalar borrowing checks
+that returned binding and the actual stream's published plan. The native worker
+runs `fn-ews-begin/effect/tick/read` over fixed 64-byte input and a private
+16 KiB output window; all read coordinates/counts and digest decisions come
+from ACL2. The final release clears its retained result before refund. The
+native trajectory correspondence, complete selected-runtime demand, served
+seven-field descriptor/admission join, productive reclamation/rescue and default
+activation remain open. These are source components, not qualified execution.
