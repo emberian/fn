@@ -149,11 +149,9 @@
                   (:instance pgs-dbd-word-before-end-is-byte-backed
                     (word-offset (fn-b3-nthx 1 (pgs-dc-framesi
                                       (- (pgs-dc-depth pgs-digest-state) 1) pgs-digest-state)))))
-            :in-theory (e/d (pgs-dbd-domainp pgs-dcd-domainp)
-                             (pgs-dc-step nth update-nth pgs-dcd-framesp pgs-dbd-framesp pgs-dcd-powerp
-                                  pgs-dbd-top-frame-unfolds pgs-dcd-top-frame-unfolds
-                                  pgs-dbd-word-before-end-is-byte-backed fn-b3-output
-                                  fn-b3-output-cv fn-b3-output-root pgs-octets-be-nat pgs-dcb-word-count expt fn-b3-nthx floor mod))
+            :in-theory (union-theories (theory 'minimal-theory)
+                          '(pgs-dbd-domainp pgs-dcd-domainp natp posp zp nfix
+                            member-equal member-eq eql))
             :do-not-induct t)))
 
 (defthm pgs-dbd-tail-update-keeps-page-domain
