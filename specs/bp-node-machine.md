@@ -5292,3 +5292,15 @@ The protected source/fixture evidence is
 Normal source assembly must import the exact shared pool10 book and factor the
 old host inline pool declaration/get/keeper coherently; no pool2 image evidence
 transfers.
+
+### Workspace installation identity readout
+
+The actual registered install readout derives its plan from the current stored
+intent and selects the controller slot internally. It reads only existing
+children. Storage-ready requires matching controller, job, workspace PRS nonce,
+source incarnation metadata, revision and constructing phase; an installed carry
+has a separate already-installed disposition. A new nonce for the same job
+cannot adopt a prior carry. This readout is a dependency of the actual SAME-pool
+publication consumer, not a constructor or promotion permission. The scoped
+source/fixture evidence is
+`planning/evidence/bp-digest-workspace-install-readout-20260930/manifest.json`.
