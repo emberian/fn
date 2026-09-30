@@ -3030,7 +3030,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/consumer-owner-local.lisp",
         "tests/acl2/consumer-owner-local-tests.lisp",
@@ -3977,7 +3977,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/frame-fields.lisp",
         "books/frame-invariants.lisp",
@@ -4538,7 +4538,7 @@
         "PRF-084"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-invite.lisp",
         "books/config.lisp",
@@ -4705,7 +4705,7 @@
         "PRF-099"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-invite.lisp",
         "books/key-statements.lisp",
@@ -5841,7 +5841,7 @@
         "PRF-124"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-invite.lisp",
         "tests/acl2/peer-invite-tests.lisp",
@@ -7488,7 +7488,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-config.lisp",
         "tests/acl2/native-config-tests.lisp",
@@ -7871,7 +7871,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/tls-reload.lisp",
         "tests/acl2/tls-reload-tests.lisp",
@@ -7901,7 +7901,7 @@
         "PRF-212"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/tls-reload.lisp",
         "tests/acl2/tls-reload-tests.lisp",
@@ -8378,7 +8378,7 @@
         "PRF-097"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "planning/evidence/manifests/certify-20260928T163441Z-33654.json",
         "books/peer-host.lisp",
@@ -9672,7 +9672,7 @@
         "PRF-252"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/consumer-reason.lisp",
         "books/consumer-owner-local.lisp",
@@ -10998,7 +10998,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-control-launch.lisp",
         "tests/acl2/native-control-launch-tests.lisp",
@@ -12539,7 +12539,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/web-config.lisp",
         "host/web-host.lisp",
@@ -14084,7 +14084,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-control.lisp",
         "books/native-control-reason.lisp",
@@ -14970,7 +14970,7 @@
         "PRF-172"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/control-request-word.lisp",
         "tests/acl2/control-request-word-tests.lisp",
@@ -16226,7 +16226,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-set.lisp",
         "books/native-admin-peer.lisp",
@@ -17784,7 +17784,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/page-read-ownership.lisp",
         "tests/acl2/page-read-ownership-tests.lisp",
@@ -18379,6 +18379,84 @@
         "fn-bprpf-admitted-checkpoint-bounds-every-held-adu",
         "fn-bprpf-ready-recovery-bounds-every-held-adu"
       ]
+    },
+    {
+      "id": "PRF-1065",
+      "title": "Token-bound cold read resource admission, joined completion, cache and incarnation lifetime",
+      "statement": "Subject fn-prl-admit in books/page-read-ledger.lisp, called by the guard-verified fn-owner-page-read-admit adapter in host/page-read-host.lisp: fn-prl-admit-preserves-pool-funding establishes the installed cold-pool vector, including its permanent baseline, is funded after every admitted issue. Persistent install rejects an unfunded baseline before changing the pool; lifecycle transitions retain that baseline while job settlement releases only its execution lease. fn-prl-completion-refunds-at-most-once is unconditional: repeating settlement of the complete immutable token is stale and changes nothing. fn-prl-settle-never-reuses-identity retains the process-local counter. Cache settlement releases only the supplied native worker demand; buffer/bookkeeping credits persist until eviction. These are pool transition claims, not an allocator refinement or full P12 rescue theorem. Native issuance/publication, physically dead joined workers, physical incarnation close, measured persistent hash-capacity baseline, supported profile/launcher and checkpoint/recovery/suffix rescue remain open. fn-prd-admit in books/page-discovery-ledger.lisp is called by fn-owner-page-read-discovery-admit: the distinct unverified discovery lease has no fabricated trailer and also establishes funded pool admission. It holds its file incarnation until explicit release after all borrowed charged buffers are relinquished; it cannot settle into the verified cache. Explicit offline/served lifecycle prevents an absent pool from authorizing offline reads. Natural token fields wider than fixnums are charged by the selected runtime layout model, independently of extent length.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/page-read-resources.lisp",
+        "books/page-read-ledger.lisp",
+        "host/page-read-host.lisp",
+        "tests/acl2/page-read-ledger-tests.lisp",
+        "tests/acl2/page-read-host-tests.lisp",
+        "books/page-discovery-ledger.lisp",
+        "books/cold-read-layout.lisp",
+        "tests/acl2/page-discovery-ledger-tests.lisp",
+        "tests/acl2/cold-read-layout-tests.lisp"
+      ],
+      "progress_note": "Clean source sessions: baseline27/pureteeth48/adapter18; selected layout p12layout16forms; discovery p12discovery6forms and p12discoveryteeth16forms; final lifecycle/discovery adapter p12modehostclean26forms, all zero refused. Native configuration/startup and lifetime call sites are separate physical-owner integration; no matching image/native verdict or full Store rescue claim.",
+      "events": [
+        "fn-prl-admit-preserves-pool-funding",
+        "fn-prl-completion-refunds-at-most-once",
+        "fn-prl-settle-never-reuses-identity",
+        "fn-prd-admit-preserves-pool-funding"
+      ]
+    },
+    {
+      "id": "PRF-1073",
+      "title": "A refused cold dependency is answered by a named resource 403 without a fictitious deadline",
+      "statement": "Subject fn-orln-unavailable-span in books/owner-resource-line.lisp, called by fn-owner-resource-unavailable-line-at in host/owner-host.lisp. fn-orln-a-refused-cold-line-is-answered-unavailable: for natural in-range I, a named resource/identity refusal and command-mode connection, consume exactly through the current line LF (positive if input remains), emit exactly one ACL2 resource403 reply and preserve owner except resetting that connection wire to line start. It does not claim a dependency waited or timed out. Native admission/refusal routing remains pending.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020"
+      ],
+      "depends_on": [
+        "PRF-1065"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-orln-a-refused-cold-line-is-answered-unavailable"
+      ],
+      "evidence": [
+        "books/owner-resource-line.lisp",
+        "host/owner-host.lisp",
+        "tests/acl2/owner-resource-line-tests.lisp"
+      ],
+      "progress_note": "Clean-source resource teeth g61phresource403teeth hbox11forms0refused; includes actual reached owner fixtures and full positive/hypothesis-removal/mutation witnesses. No certification manifest or native verdict yet."
+    },
+    {
+      "id": "PRF-1082",
+      "title": "Explicit cold-resource launcher extension covers dynamic allowance and observed machine",
+      "statement": "Subject fn-crv-extend-reservation in books/cold-read-reservation.lisp, called by host/native/heap.lisp fnn-heap-reservation. If the extension is accepted, the rounded heap covers the previous accepted heap plus the explicit cold_heap_octets. If the supplied policy is valid and the extension is accepted, heap+core+stacks+thread runtime fit the observed machine. The added cold_workers remain reserved for service lifetime; per-job settlement is separate. The positive explicit-policy operator branch is unreachable-in-composition until the measured native pool factory/consumer is supported; current run rejects explicit resources by name. This is a numerical launcher component, not an allocator, bounded preparation, full productive profile or checkpoint/recovery rescue claim.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020"
+      ],
+      "depends_on": [
+        "PRF-1065"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-crv-accepted-launch-fits-observed-machine",
+        "fn-crv-accepted-launch-funds-pool-dynamic-allowance"
+      ],
+      "evidence": [
+        "books/cold-read-reservation.lisp",
+        "host/native/heap.lisp",
+        "tests/acl2/cold-read-reservation-tests.lisp",
+        "tests/acl2/native-operator-tests.lisp"
+      ],
+      "progress_note": "Clean-source hbox g61phlaunchwhole16 forms0refused with complete positives, literal hypothesis-removal and separately labeled corrupted-base witness. Resource projection source guard verified; named current grammar usage outcome confirmed. No certification manifest or matching native verdict."
     }
   ]
 }

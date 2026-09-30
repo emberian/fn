@@ -247,6 +247,7 @@
 ; octet-list helpers store-host defines above it, as run_store.py's bridge does.
 (ld "host/config-host.lisp" :ld-error-action :error)
 (ld "host/native-admin-host.lisp" :ld-error-action :error)
+(ld "host/page-read-host.lisp" :ld-error-action :error)
 (ld "host/native-control-host.lisp" :ld-error-action :error)
 (ld "host/native-config-host.lisp" :ld-error-action :error)
 ; host/native/operator.lisp (loaded below) asks fn-native-auth-host-max-octets
@@ -284,6 +285,7 @@
 ;; as in build.lisp.
 (include-book "books/heap-open-nursery")
 (include-book "books/heap-reservation")
+(include-book "books/cold-read-reservation")
 
 ; D40: explicit raw declaration scope. Every selected entry is checked in
 ; this loaded world; an unavailable target refuses the build.

@@ -17522,6 +17522,52 @@
           "name": "fn-bprpf-ready-recovery-bounds-every-held-adu"
         }
       ]
+    },
+    {
+      "id": "PRF-1065",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-prl-admit-preserves-pool-funding"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-completion-refunds-at-most-once"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prl-settle-never-reuses-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prd-admit-preserves-pool-funding"
+        }
+      ],
+      "pending_subject": "Guard-verified stobj adapter calls these subjects; native caller integration, matching proof manifest/image and allocator/profile refinement pending."
+    },
+    {
+      "id": "PRF-1073",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-orln-a-refused-cold-line-is-answered-unavailable"
+        }
+      ],
+      "pending_subject": "Owner program adapter calls core subject; native served admission/refusal routing pending."
+    },
+    {
+      "id": "PRF-1082",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-crv-accepted-launch-fits-observed-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-crv-accepted-launch-funds-pool-dynamic-allowance"
+        }
+      ],
+      "pending_subject": "Host launcher calls component. Explicit supported policy factory/init consumer and actual image/native evidence pending; positive explicit-policy operator branch currently unreachable-in-composition."
     }
   ]
 }

@@ -1597,6 +1597,46 @@ torn. `status` prints `maintenance-reserve octets=R transactions=N debt=D
 held|short`.
 
 
+The P12 cold-pool increment (PRF-1065, SCN-1002) separates resident octets,
+disk octets, registered descriptor credits, executing worker slots and
+spent process-local read identities. A named refused cold issue emits one
+403 resource-unavailable line (PRF-1073), consumes that command only and
+preserves its session. Identity exhaustion names the required restart.
+These are admission refusals, with no invented deadline observation.
+Its ACL2 adapter admits only a funded
+charge and binds the whole read token to it. Refusal is unchanged; timeout
+or cancellation cannot refund. Native settlement must follow observed
+worker death and join. Cached vectors retain their charge until eviction,
+and incarnations retain FD credit until physical close. The persistent installation entry reserves a supplied permanent baseline
+before native allocation, and every ledger transition preserves it. Job
+settlement refunds only the execution lease; idle worker storage remains
+charged until process shutdown. Hash arrays that retain capacity after
+removal belong to that baseline. Its measured sizing and actual native
+installation are still required. This implementation
+is partial: supplied charges are not an allocator refinement, and the
+performed checkpoint/recovery demand, old/new coexistence, productive
+supported profile and suffix rescue admission still need implementation.
+
+Direct reads distinguish explicit offline operation from served operation;
+an absent pool grants neither a descriptor identity nor permission to read.
+The owner marks the served context before recovery in a funded run. A
+separate typed discovery lease covers a not-yet-verified extent: no trailer
+is guessed. Its descriptor stays held until the caller has relinquished
+the charged buffer. This lease cannot enter the verified cache through the
+ordinary read settlement entry. Derived list/decoder allocation, native
+startup wiring and the missing-policy startup surface remain integration
+obligations; the supplied protected-vector demand does not fund them.
+
+The launcher component PRF-1082 extends its existing ACL2 reservation by
+explicit cold-pool heap octets and persistent executor stacks/runtime. Its
+accepted decision covers the rounded dynamic allowance and, for a valid
+policy, fits the observed machine. It does not establish an allocator
+bound or a maintenance reserve. The current operator rejects explicit
+resources as an unsupported profile until native pool initialization and
+the concrete funding consumer are integrated; this positive policy arm is
+currently unreachable in composition.
+
+
 ### Compaction of any length (P5; STO-012)
 
 STO-012: Compaction covers a history of any length: `store compact` checkpoints the whole history with the log rotated and drops the covered segments; no unit of work bounds the history

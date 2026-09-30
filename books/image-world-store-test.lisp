@@ -211,6 +211,7 @@
 (include-book "owner-time-journal-writer")
 (include-book "owner-time-bars")
 (include-book "owner-cold-line")
+(include-book "owner-resource-line")
 (include-book "arena-reader-pins")
 (include-book "response-plan-pins")
 (include-book "owner-reader-read")

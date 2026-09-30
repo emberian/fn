@@ -297,6 +297,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/heap-open-nursery-tests \
 	books/heap-reservation \
 	tests/acl2/heap-reservation-tests \
+	books/cold-read-reservation \
+	tests/acl2/cold-read-reservation-tests \
 	books/heap-breakdown \
 	tests/acl2/heap-breakdown-tests \
 	books/memory-credits \
@@ -596,6 +598,16 @@ ACL2_BOOKS ?= books/defrecord \
 	books/post-admission-keyed \
 	tests/acl2/post-admission-keyed-tests \
 	tests/acl2/page-read-resources-tests \
+	books/page-read-ledger \
+	books/page-discovery-ledger \
+	books/cold-read-layout \
+	tests/acl2/page-discovery-ledger-tests \
+	tests/acl2/cold-read-layout-tests \
+	books/page-read-ownership \
+	tests/acl2/page-read-ownership-tests \
+	host/page-read-host \
+	tests/acl2/page-read-ledger-tests \
+	tests/acl2/page-read-host-tests \
 	tests/acl2/store-profile-carried-tests \
 	books/replay-identity-index \
 	tests/acl2/replay-identity-index-tests \
@@ -1459,12 +1471,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-time-bars-tests \
 	tests/acl2/tls-handshake-budget-tests \
 	tests/acl2/owner-cold-line-tests \
+	books/owner-resource-line \
+	tests/acl2/owner-resource-line-tests \
 	books/arena-reader-pins \
 	tests/acl2/arena-reader-pins-tests \
 	books/response-plan-pins \
 	tests/acl2/response-plan-pins-tests \
-	books/page-read-ownership \
-	tests/acl2/page-read-ownership-tests \
 	books/feed-restart-domain \
 	tests/acl2/feed-restart-domain-tests \
 	books/web-request \

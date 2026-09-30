@@ -188,6 +188,7 @@
 ;; fn-heap-open-nursery-trigger (the open's trigger sized to its history).
 (include-book "books/heap-open-nursery")
 (include-book "books/heap-reservation")
+(include-book "books/cold-read-reservation")
 (include-book "books/native-control")
 (include-book "books/native-control-reason")
 ; PKT-209: `control log' and `control evidence'.
@@ -338,6 +339,7 @@
 (ld "host/anchor-server-host.lisp" :ld-error-action :error)
 (ld "host/reader-host.lisp" :ld-error-action :error)
 (ld "host/owner-host.lisp" :ld-error-action :error)
+(ld "host/page-read-host.lisp" :ld-error-action :error)
 (ld "host/native-config-host.lisp" :ld-error-action :error)
 (ld "host/native-auth-host.lisp" :ld-error-action :error)
 (ld "host/native-auth-admin-host.lisp" :ld-error-action :error)
