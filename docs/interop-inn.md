@@ -139,6 +139,33 @@ Those are external implementation facts, not fn proof claims. STARTTLS is
 RFC 4642 section 2; USER/PASS is RFC 4643 section 2.3; authorization is local
 policy.
 
+## Actual unsigned control-message fixture
+
+`--inn-controls` adds an actual `Control: checkgroups` article, rather than
+the legacy row named `inn-control` (manual IHAVE/duplicate/loop traffic).
+It works with the standing plaintext INN prefix independently of the TLS
+flags. The lab configures INN's `control.checkgroups` group and feed pattern,
+and creates fn's filing group through the native operator. A refused group
+creation stops this row before any control article is offered.
+
+The article's Newsgroups is `fn.letters`; its body proposes
+`fn.checkgroups.proposed`. INN must accept it by IHAVE335/235, and its real
+innfeed must deliver it to fn with accepted238/239 or335/235 replies quoted
+from the relay. A reader bound to `127.0.0.2`, distinct from INN's admitted
+`127.0.0.1` peer address, then requires the Message-ID in the numbered
+`control.checkgroups` listing and absent from the numbered `fn.letters`
+listing. The actual Control header and body must survive, with only the
+permitted transit Path/Xref changes. `LIST ACTIVE fn.checkgroups.proposed`
+must answer215 with no group. SCN-1033 names this source fixture.
+
+This checks unsigned legacy control traffic and fn's existing filing
+policy (RFC 5537 sections 5.2.3 and 3.7), including no automatic
+reconfiguration. It does not enable INN controlchan, claim authenticated
+control discharge, or execute newgroup/rmgroup; group control remains D29
+deferred. Distribution, cancel/expiry, streaming and broader failure/RFC
+criteria belong to the Q12 continuation. Real INN/matching-image execution
+of this row remains open.
+
 ## How INN was built
 
 No root is needed: the prefix is user-owned and the news user is the ordinary
@@ -375,7 +402,8 @@ Repeated in every evidence file, and here once:
   no latency, no clock disagreement.
 - The default lab has no TLS or `AUTHINFO`. The optional protected reader
   row above does not exercise either transit relay over TLS. No `Distribution`,
-  actual control messages, cancels or expiry. `incoming.conf` authorises by source address, which on loopback
+  authenticated control discharge, cancels or expiry. The optional
+  `--inn-controls` row covers unsigned checkgroups traffic/filing only. `incoming.conf` authorises by source address, which on loopback
   authorises everything that can connect.
 - No RFC 3977/4644/5537 conformance audit. The assertions are the lab
   driver's. A green run says these two programs agreed on these exchanges.

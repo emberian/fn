@@ -1611,6 +1611,22 @@ not a claimed decrypted TLS wire trace. The source fixture and scoped
 harness assertions are present; real INN/matching-image evidence and the
 remaining original W3/Q12 arms are still open.
 
+### 5.3 Actual legacy checkgroups traffic and filing (W3 source continuation)
+
+SCN-1033 selects `--inn-controls`, independently of TLS. A real unsigned
+`Control: checkgroups` article enters innd by IHAVE and crosses INN's own
+innfeed to fn. The exact accepted relay replies are recorded. The operator
+has created `control.checkgroups`; a non-peer loopback reader checks the
+article's numbered membership there, its absence from the declared
+ordinary Newsgroups, its preserved Control header/body and the absence of
+the body-proposed group from LIST ACTIVE. This exercises NNT-010 filing,
+not the old `inn-control` manual transfer row.
+
+No INN controlchan or authenticated discharge is claimed. Unsigned
+articles do not reconfigure fn, and newgroup/rmgroup execution remains D29
+deferred. The source fixture is present; real pinned-INN/matching-image
+execution and the other original W3/Q12 criteria remain open.
+
 ## 6. The inter-agent angle
 
 Agents are principals ([identity](identity.md), `fn-prin-`): a 32-octet id

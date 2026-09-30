@@ -588,3 +588,84 @@ class ProtectedInjectionFixtureTests(unittest.TestCase):
         self.assertNotIn("fn-protected-injection", ProtectedReaderFixtureTests().lab().ASSERTIONS)
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             inn_lab.main(["HEAD", "--native-image", "/opt/fn/fn-host", "--inn-security-feed"])
+
+
+class CheckgroupsDriverTests(unittest.TestCase):
+    """Actual-control observation accounting with scripted sockets only."""
+
+    def test_filing_and_absence_are_all_required_from_a_non_peer_reader(self):
+        for in_filing, in_ordinary, proposed, expected in (
+                (True, False, False, True), (False, False, False, False),
+                (True, True, False, False), (True, False, True, False)):
+            ns = {"__name__": "inn_driver_test"}
+            exec(compile(inn_lab.INN_DRIVER, "inn-driver", "exec"), ns)
+            events = []
+            class Peer:
+                greeting = "200 reader"
+                def __init__(self, port, source_address):
+                    events.append(source_address)
+                    self.blocks = iter([
+                        b"1\r\n" if in_filing else b"",
+                        b"2\r\n" if in_ordinary else b"",
+                        b"fn.checkgroups.proposed 0 1 y\r\n" if proposed else b"",
+                        b"Control: checkgroups\r\n\r\nbody\r\n"])
+                def cmd(self, text):
+                    if text.startswith("LISTGROUP"): return "211 1 1 1 group"
+                    if text.startswith("STAT"): return "223 1 <control@x> article"
+                    if text.startswith("LIST ACTIVE"): return "215 active"
+                    if text.startswith("ARTICLE"): return "220 article"
+                    raise AssertionError(text)
+                def block(self): return next(self.blocks)
+                def close(self): events.append("closed")
+            ns["Wire"] = Peer
+            got = ns["control_view"](SimpleNamespace(port=1, reader_source="127.0.0.2",
+                group="control.checkgroups", other_group="fn.letters",
+                probe_group="fn.checkgroups.proposed", msgid="<control@x>"))
+            self.assertEqual(got["ok"], expected)
+            self.assertEqual(events, ["127.0.0.2", "closed"])
+
+    def test_invalid_local_number_is_not_sent_as_a_command(self):
+        ns = {"__name__": "inn_driver_test"}
+        exec(compile(inn_lab.INN_DRIVER, "inn-driver", "exec"), ns)
+        commands = []
+        peer = SimpleNamespace(cmd=lambda text: commands.append(text) or "211 group",
+                               block=lambda: b"1; bad-command\r\n")
+        with self.assertRaises(ValueError): ns["group_ids"](peer, "control.checkgroups")
+        self.assertEqual(commands, ["LISTGROUP control.checkgroups"])
+
+
+class CheckgroupsFixtureTests(unittest.TestCase):
+    def test_refused_filing_group_prevents_control_injection(self):
+        lab = ProtectedReaderFixtureTests().lab()
+        commands = []
+        lab.sh = lambda name, command, **kwargs: commands.append(command) or inn_lab.Step(name, command, 1, "refused", 0)
+        checks = []
+        lab.check = lambda name, ok, *args, **kwargs: checks.append((name, ok))
+        lab.scenario_checkgroups_control()
+        self.assertEqual(len(commands), 1)
+        self.assertEqual(checks, [("inn-checkgroups-control", False)])
+
+    def test_real_control_header_and_body_preservation_are_required(self):
+        for mutation, expected in ((None, True), ("body", False), ("control", False)):
+            lab = ProtectedReaderFixtureTests().lab()
+            msgid = lab.ids["INN_CHECKGROUPS_ID"]
+            captured = []
+            lab.sh = lambda name, command, **kwargs: inn_lab.Step(name, command, 0, "accepted", 0)
+            lab.put_article = lambda name, octets: captured.append(octets) or "/scratch/checkgroups.article"
+            lab.wait_tap = lambda *args: dict(offer="238 " + msgid, result="239 " + msgid,
+                verbs=["CHECK", "TAKETHIS"], article=captured[0])
+            def drive(phase, extra, name):
+                if phase == "offer": result = dict(offer="335 send", transfer="235 accepted")
+                else:
+                    served = captured[0]
+                    if mutation == "body": served = served.replace(b"must not create", b"will be created")
+                    if mutation == "control": served = served.replace(b"Control: checkgroups", b"Subject: control-like")
+                    result = dict(ok=True, octets=base64.b64encode(served).decode(),
+                        filing={"ids": [msgid]}, ordinary={"ids": []}, active_rows=[])
+                return inn_lab.Step(name, extra, 0, json.dumps(result), 0)
+            lab.drive_inn = drive
+            checks = []
+            lab.check = lambda name, ok, *args, **kwargs: checks.append((name, ok))
+            lab.scenario_checkgroups_control()
+            self.assertIn(b"\r\nControl: checkgroups\r\n", captured[0])
+            self.assertEqual(checks, [("inn-checkgroups-control", expected)])

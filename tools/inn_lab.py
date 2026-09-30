@@ -139,12 +139,13 @@ LOOP2_ID = "<inn-lab-loop2-{tag}@example.invalid>"
 FN_POST_ID = "<inn-lab-fn-post-{tag}@example.invalid>"
 FN_OPERATOR_ID = "<inn-lab-fn-operator-{tag}@example.invalid>"
 FN_LOOP_ID = "<inn-lab-fn-loop-{tag}@example.invalid>"
+INN_CHECKGROUPS_ID = "<inn-lab-checkgroups-{tag}@example.invalid>"
 FN_PROTECTED_ID = "<inn-lab-fn-protected-{tag}@example.invalid>"
 FN_FROM_ID = "<inn-lab-fn-from-{tag}@example.invalid>"
 FN_PATH_ID = "<inn-lab-fn-path-{tag}@example.invalid>"
 ABSENT_ID = "<inn-lab-absent-{tag}@example.invalid>"
 ID_TEMPLATES = ("FED_ID", "LOOP_ID", "LOOP2_ID", "FN_POST_ID", "FN_OPERATOR_ID",
-                "FN_LOOP_ID", "FN_FROM_ID", "FN_PATH_ID", "FN_PROTECTED_ID", "ABSENT_ID")
+                "FN_LOOP_ID", "FN_FROM_ID", "FN_PATH_ID", "FN_PROTECTED_ID", "INN_CHECKGROUPS_ID", "ABSENT_ID")
 
 
 def message_ids(tag: str) -> dict:
@@ -510,8 +511,9 @@ import argparse, base64, json, socket, ssl, sys
 
 
 class Wire:
-    def __init__(self, port, timeout=30):
-        self.sock = socket.create_connection(("127.0.0.1", port), timeout=timeout)
+    def __init__(self, port, timeout=30, source_address=None):
+        self.sock = socket.create_connection(("127.0.0.1", port), timeout=timeout,
+            source_address=(source_address, 0) if source_address else None)
         self.file = self.sock.makefile("rb")
         self.greeting = self.line()
 
@@ -705,10 +707,49 @@ def protected_read(args):
         wire.close()
 
 
+def group_ids(wire, group):
+    status = wire.cmd("LISTGROUP " + group)
+    out = {"reply": status, "stats": [], "ids": []}
+    if status.startswith("211"):
+        numbers = wire.block().decode("ascii").splitlines()
+        for number in numbers:
+            if not number.isdecimal():
+                raise ValueError("LISTGROUP returned a nonnumeric fixture article number")
+            stat = wire.cmd("STAT " + number)
+            out["stats"].append(stat)
+            fields = stat.split()
+            if len(fields) >= 3 and fields[0] == "223":
+                out["ids"].append(fields[2])
+    return out
+
+
+def control_view(args):
+    # Different loopback source from the address-authorized INN peer: this
+    # connection is a reader, without removing or changing the peer record.
+    wire = Wire(args.port, source_address=args.reader_source)
+    try:
+        out = {"greeting": wire.greeting,
+               "filing": group_ids(wire, args.group),
+               "ordinary": group_ids(wire, args.other_group)}
+        out["active"] = wire.cmd("LIST ACTIVE " + args.probe_group)
+        out["active_rows"] = (wire.block().decode("ascii").splitlines()
+                              if out["active"].startswith("215") else [])
+        out["article"], out["octets"] = fetch_one(wire, args.msgid)
+        out["ok"] = (out["filing"]["reply"].startswith("211")
+                     and out["ordinary"]["reply"].startswith("211")
+                     and args.msgid in out["filing"]["ids"]
+                     and args.msgid not in out["ordinary"]["ids"]
+                     and out["active"].startswith("215") and not out["active_rows"]
+                     and out["article"].startswith("220"))
+        return out
+    finally:
+        wire.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="phase", required=True)
-    for name in ("read", "ihave", "offer", "post", "fetch", "caps", "protected-read"):
+    for name in ("read", "ihave", "offer", "post", "fetch", "caps", "protected-read", "control-view"):
         one = sub.add_parser(name)
         one.add_argument("--port", type=int, required=True)
         one.add_argument("--group", default="fn.letters")
@@ -719,12 +760,16 @@ def main():
         one.add_argument("--loop-file", default="")
         one.add_argument("--read", action="store_true",
                          help="offer: read the Message-ID back on the same connection")
+        one.add_argument("--reader-source", default="127.0.0.2")
+        one.add_argument("--other-group", default="fn.letters")
+        one.add_argument("--probe-group", default="fn.checkgroups.proposed")
         one.add_argument("--cafile", default="")
         one.add_argument("--username", default="fn-lab")
         one.add_argument("--password-file", default="")
     args = parser.parse_args()
     handler = {"read": read, "ihave": ihave, "offer": offer, "post": post,
-               "fetch": fetch, "caps": caps, "protected-read": protected_read}[args.phase]
+               "fetch": fetch, "caps": caps, "protected-read": protected_read,
+               "control-view": control_view}[args.phase]
     try:
         result = handler(args)
     except Exception as error:
@@ -831,7 +876,7 @@ class InnLab(deploy_gate.DeployGate):
                  "inn read of fn's article", "fn post vs fn served",
                  "fn served vs inn served", "operator post feed", "inn control",
                  "innfeed to fn", "inn served vs fn served", "duplicates", "fn loop",
-                 "fn term", "innd cut", "inn protected reader", "fn protected injection")
+                 "fn term", "innd cut", "inn protected reader", "fn protected injection", "actual checkgroups control")
     # What this lab decides.  Nothing of deploy_gate's own inventory is
     # inherited: those assertions are about the development store CLI and
     # its certificates, and this lab runs neither.
@@ -903,6 +948,11 @@ class InnLab(deploy_gate.DeployGate):
         "fn-articles-survived-term": (
             "after SIGTERM, recover and restart, fn serves the articles it held "
             "byte-identical", ("fn-article", "inn-article")),
+        "inn-checkgroups-control": (
+            "a real Control: checkgroups article accepted by INN reached fn through "
+            "innfeed, was served unchanged except permitted Path/Xref changes, "
+            "filed in control.checkgroups rather than its ordinary Newsgroups, "
+            "and did not automatically create its proposed group", ("",)),
         "fn-protected-injection": (
             "with its clear feed paused, native fn's separate STARTTLS/USER-PASS "
             "peer received accepted feed code235 for a fresh article; the real "
@@ -939,7 +989,7 @@ class InnLab(deploy_gate.DeployGate):
                  nnrpd_port, fn_port, tap_out_port, tap_in_port,
                  lab_root=DEFAULT_LAB_ROOT, native_openssl_prefix=None,
                  extra_overlays=(), feed_wait=90, inn_security=False,
-                 inn_security_port=INN_SECURITY_PORT, inn_security_feed=False, **kwargs):
+                 inn_security_port=INN_SECURITY_PORT, inn_security_feed=False, inn_controls=False, **kwargs):
         super().__init__(*args, **kwargs)
         if not native_image:
             raise GateError("the fn side is the native image or the lab does not run "
@@ -950,6 +1000,10 @@ class InnLab(deploy_gate.DeployGate):
         self.inn_version = inn_version
         self.inn_security = inn_security
         self.inn_security_port = inn_security_port
+        self.inn_controls = inn_controls
+        if not inn_controls:
+            self.ASSERTIONS = {name: value for name, value in self.ASSERTIONS.items()
+                               if name != "inn-checkgroups-control"}
         self.inn_security_feed = inn_security_feed
         if inn_security_feed and not inn_security:
             raise GateError("--inn-security-feed requires --inn-security")
@@ -967,7 +1021,15 @@ class InnLab(deploy_gate.DeployGate):
                 "native protected injection is recorded separately. No "
                 "Distribution, control messages, cancel or expiry is exercised."
                 if gap.startswith("No TLS,") else gap for gap in self.STANDING_GAPS)
-        else:
+        if inn_controls:
+            self.STANDING_GAPS = tuple(
+                gap.replace("No TLS, no AUTHINFO, no Distribution header, no control messages, no",
+                    "No TLS, no AUTHINFO, no Distribution header; unsigned checkgroups filing only, no")
+                   .replace("Distribution, control messages, cancel or expiry is exercised.",
+                    "Distribution, authenticated control discharge, cancel or expiry is exercised. "
+                    "Unsigned checkgroups filing is selected separately.")
+                for gap in self.STANDING_GAPS)
+        if not inn_security:
             # An unselected optional row is not an observed failure or a pass.
             self.ASSERTIONS = {name: assertion for name, assertion in self.ASSERTIONS.items()
                                if name != "inn-protected-reader"}
@@ -1308,6 +1370,8 @@ done
                                ("innfeed.conf", INNFEED_CONF),
                                ("readers.conf", READERS_CONF)):
             contents = template.format(**fields)
+            if name == "newsfeeds" and self.inn_controls:
+                contents = contents.replace(":fn.*:Tm:", ":fn.*,control.checkgroups:Tm:")
             if name == "inn.conf" and self.inn_security:
                 contents += ("tlscertfile: {p}/etc/security-cert.pem\n"
                              "tlskeyfile: {p}/etc/security-key.pem\n").format(p=self.inn_prefix)
@@ -1413,7 +1477,7 @@ echo INND-TIMEOUT; tail -20 $P/log/innd-stdout.log; exit 1
                             "{}/run/innd.pid, so this run will not kill it".format(
                                 self.inn_prefix))
         self.inn_running = True
-        for group in GROUPS:
+        for group in GROUPS + (("control.checkgroups",) if self.inn_controls else ()):
             self.sh("ctlinnd newgroup {}".format(group),
                     "{} newgroup {} y $(id -un)".format(self.bin("ctlinnd"), group),
                     expect=None)
@@ -1506,6 +1570,47 @@ kill -0 $pid 2>/dev/null && echo INNFEED-ALIVE || echo INNFEED-GONE
             return "(no exchange on the relay)"
         return "{}: {}".format("+".join(found["verbs"]), " / ".join(
             one for one in (found["offer"], found["result"]) if one) or "(no reply)")
+
+    def scenario_checkgroups_control(self):
+        """Actual unsigned control traffic and C1 filing, not authorized discharge."""
+        made = self.sh("fn control.checkgroups filing group", self.cd(self.operator(
+            "group", "create", "control.checkgroups")), timeout=600, expect=None)
+        if made.rc != 0:
+            self.check("inn-checkgroups-control", False, "control filing group was refused",
+                       observed=made.first_line)
+            return
+        msgid = self.ids["INN_CHECKGROUPS_ID"]
+        payload = article(msgid, "actual unsigned checkgroups control", self.date,
+            path=LAB_PATH_IDENTITY + "!not-for-mail",
+            body="fn.checkgroups.proposed\tA group this unsigned control must not create.")
+        payload = payload.replace(b"\r\n\r\n", b"\r\nControl: checkgroups\r\n\r\n", 1)
+        path = self.put_article("checkgroups", payload)
+        probe = self.drive_inn("offer", "--port {} --msgid {} --file {}".format(
+            self.inn_port, shlex.quote(msgid), shell_fixture_path(path)), "actual checkgroups into INN")
+        offered = self.payload(probe)
+        self.sh("flush actual control feed", "{} -t 10 flush fn 2>&1 || true".format(
+            self.bin("ctlinnd")), expect=None)
+        found = self.wait_tap((self.tap_in_port, self.fn_port), msgid, "actual checkgroups control")
+        transferred = bool(found and (
+            (found["offer"].startswith("238") and found["result"].startswith("239"))
+            or (found["offer"].startswith("335") and found["result"].startswith("235"))))
+        observed = self.drive_inn("control-view", "--port {} --group control.checkgroups "
+            "--other-group {} --msgid {}".format(self.fn_port, GROUP, shlex.quote(msgid)),
+            "read actual control filing and unchanged group authority")
+        view = self.payload(observed)
+        served = self.octets_of(view)
+        arrived = (found or {}).get("article") or b""
+        preserved = bool(arrived and served and header_value(served, "Control") == "checkgroups"
+                         and relay_changes_permitted(header_differences(arrived, served)))
+        ok = bool(probe.rc == 0 and str(offered.get("offer", "")).startswith("335")
+                  and str(offered.get("transfer", "")).startswith("235")
+                  and transferred and observed.rc == 0 and view.get("ok") and preserved)
+        self.facts["actual checkgroups control"] = "INN={}/{}; fn={}; filing={}; ordinary={}; proposed={}; Control={}".format(
+            offered.get("offer"), offered.get("transfer"), self.reply_summary(found),
+            view.get("filing", {}).get("ids"), view.get("ordinary", {}).get("ids"),
+            view.get("active_rows"), header_value(served, "Control"))
+        self.check("inn-checkgroups-control", ok, "actual checkgroups control failed its filing/no-execution assertion",
+                   observed=self.facts["actual checkgroups control"])
 
     @staticmethod
     def protected_feed_acceptance(text, peer, msgid):
@@ -2113,6 +2218,8 @@ rm -f {p}/run/innd.pid {p}/run/control.ctl
         self.scenario_inn_control()
         self.scenario_innfeed_to_fn()
         self.scenario_duplicates_and_loop()
+        if self.inn_controls:
+            self.scenario_checkgroups_control()
         if self.inn_security_feed:
             self.scenario_protected_feed()
         self.scenario_fn_term()
@@ -2176,6 +2283,9 @@ def main(argv=None) -> int:
     parser.add_argument("--inn-security", action="store_true",
                         help="add certificate-verified STARTTLS and USER/PASS reader "
                              "checks; requires a separate TLS-capable --inn-prefix")
+    parser.add_argument("--inn-controls", action="store_true",
+                        help="actual unsigned Control: checkgroups via INN innfeed, "
+                             "control-group filing and no automatic group creation")
     parser.add_argument("--inn-security-feed", action="store_true",
                         help="also run native fn STARTTLS/USER-PASS IHAVE into nnrpd's "
                              "injection endpoint; requires --inn-security")
@@ -2226,7 +2336,7 @@ def main(argv=None) -> int:
                  tap_out_port=args.tap_out_port, tap_in_port=args.tap_in_port,
                  feed_wait=args.feed_wait, extra_overlays=overlays[1:],
                  inn_security=args.inn_security, inn_security_port=args.inn_security_port,
-                 inn_security_feed=args.inn_security_feed)
+                 inn_security_feed=args.inn_security_feed, inn_controls=args.inn_controls)
     started = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     clock = time.monotonic()
     failure = None
