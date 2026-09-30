@@ -1360,6 +1360,39 @@ execution-boundary fault, never a claim that the core refused an input."
                            (handler-case (princ-to-string values) (error () "guard violation"))))
       (t (fnn-fault "ACL2 error in ~(~a~): ~a" name outcome)))))
 
+; Fixed served callbacks are selected once at funded startup. Their ACL2
+; bodies check scalar inputs before work; :raw-with carries their stobj guards.
+; This bridge establishes no carry and never substitutes a logical callback.
+(defun fnn-fixed-raw-callback (name)
+  "Return the selected compiled raw entry; refuse an unprepared hot callback."
+  (when *fnn-dispatch-counterpart*
+    (fnn-fault "fixed callback ~(~a~) requires raw dispatch" name))
+  (let ((raw (gethash name *fnn-raw-dispatch*)))
+    (unless (and raw (fboundp raw))
+      (fnn-fault "fixed callback ~(~a~) is missing verified raw dispatch" name))
+    (let ((function (symbol-function raw)))
+      (unless (compiled-function-p function)
+        (fnn-fault "fixed callback ~(~a~) is not compiled" name))
+      function)))
+
+(defmacro fnn-core-mv (name call)
+  "Preserve fixed CALL's scalar MVs without an argument or result container.
+NAME names the actual ACL2 subject. CALL uses its startup-selected callback;
+its own scalar refusals remain results, while execution escapes are faults."
+  (let ((outcome (gensym "OUTCOME")) (condition (gensym "CONDITION")))
+    `(let ((,outcome :thrown))
+       (multiple-value-prog1
+           (catch 'raw-ev-fncall
+             (handler-case
+                 (multiple-value-prog1 ,call (setq ,outcome :ok))
+               (serious-condition (,condition)
+                 (setq ,outcome ,condition)
+                 nil)))
+         (case ,outcome
+           (:ok nil)
+           (:thrown (fnn-fault "ACL2 raw evaluation escaped in ~(~a~)" ,name))
+           (otherwise (fnn-fault "ACL2 error in ~(~a~): ~a" ,name ,outcome)))))))
+
 (defun fnn-core (name &rest args)
   "A state-free wrapper's single value."
   (first (apply #'fnn-call name args)))
