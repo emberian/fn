@@ -6520,7 +6520,8 @@
         "Assert the literal general parser projection and five-column composition conclusions and independently expected output.",
         "Exercise bare empty field, orphan fold, NUL header, bare LF, missing separator, body framing error and empty first line followed by a fold.",
         "Mutate expected first-match selection and initial TAB normalization; assert inequality.",
-        "Exercise literal byte-control commutation, exact body acceptance and new-field/fold physical-line conclusions; remove each retained hypothesis with all other hypotheses checked."
+        "Exercise literal byte-control commutation, exact body acceptance and new-field/fold physical-line conclusions; remove each retained hypothesis with all other hypotheses checked.",
+        "Assert exact actual-byte start/bad result for arbitrary physical lines: missing/invalid colon or name, non-WSP first value, NUL/non-ASCII bytes, orphan and whitespace-only folds, exact 998 and 999 lengths; remove each retained start/length/nonempty/CRLF-free hypothesis while checking all others."
       ],
       "expected": [
         "Exactly the first matching fields, one initial SP removed, folding CRLF removed and TAB scrubbed to SP.",

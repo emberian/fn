@@ -129,3 +129,271 @@
  (not (equal (fn-nlv-control-run (append *nlvt-long-fold* '(13 10)) (list :start 0 t t :plain))
                   (if (fn-article-has-vcharp *nlvt-long-fold*) (list :start 0 t t :fold-visible)
                     (list :bad (len *nlvt-long-fold*) t t :fold-empty))))))
+
+; Full actual physical-line grammar theorem: every antecedent and conclusion.
+
+; ordinary field
+(assert-event
+ (let ((line '(83 58 32 120)) (s (fn-lpc-header-begin)))
+  (and (equal (fn-lpc-at 0 s) :start)
+       (equal (nfix (fn-lpc-at 1 s)) 0)
+       (consp line)
+       (fn-nlv-physicalp line)
+       (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13 10)) s 0 7 11)) (if (and (<= (len line) *fn-article-max-line-octets*)
+                    (if (fn-article-wspp (car line))
+                        (and (fn-lpc-at 2 s) (fn-article-fold-linep line))
+                      (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
+                           (fn-article-line-okp (fn-article-new-field line)))))
+               :start :bad)))))
+
+; full ftext endpoints
+(assert-event
+ (let ((line '(33 126 58 9 120)) (s (fn-lpc-header-begin)))
+  (and (equal (fn-lpc-at 0 s) :start)
+       (equal (nfix (fn-lpc-at 1 s)) 0)
+       (consp line)
+       (fn-nlv-physicalp line)
+       (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13 10)) s 0 7 11)) (if (and (<= (len line) *fn-article-max-line-octets*)
+                    (if (fn-article-wspp (car line))
+                        (and (fn-lpc-at 2 s) (fn-article-fold-linep line))
+                      (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
+                           (fn-article-line-okp (fn-article-new-field line)))))
+               :start :bad)))))
+
+; open empty value
+(assert-event
+ (let ((line '(83 58)) (s (fn-lpc-header-begin)))
+  (and (equal (fn-lpc-at 0 s) :start)
+       (equal (nfix (fn-lpc-at 1 s)) 0)
+       (consp line)
+       (fn-nlv-physicalp line)
+       (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13 10)) s 0 7 11)) (if (and (<= (len line) *fn-article-max-line-octets*)
+                    (if (fn-article-wspp (car line))
+                        (and (fn-lpc-at 2 s) (fn-article-fold-linep line))
+                      (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
+                           (fn-article-line-okp (fn-article-new-field line)))))
+               :start :bad)))))
+
+; missing colon
+(assert-event
+ (let ((line '(83)) (s (fn-lpc-header-begin)))
+  (and (equal (fn-lpc-at 0 s) :start)
+       (equal (nfix (fn-lpc-at 1 s)) 0)
+       (consp line)
+       (fn-nlv-physicalp line)
+       (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13 10)) s 0 7 11)) (if (and (<= (len line) *fn-article-max-line-octets*)
+                    (if (fn-article-wspp (car line))
+                        (and (fn-lpc-at 2 s) (fn-article-fold-linep line))
+                      (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
+                           (fn-article-line-okp (fn-article-new-field line)))))
+               :start :bad)))))
+
+; empty name
+(assert-event
+ (let ((line '(58 32 120)) (s (fn-lpc-header-begin)))
+  (and (equal (fn-lpc-at 0 s) :start)
+       (equal (nfix (fn-lpc-at 1 s)) 0)
+       (consp line)
+       (fn-nlv-physicalp line)
+       (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13 10)) s 0 7 11)) (if (and (<= (len line) *fn-article-max-line-octets*)
+                    (if (fn-article-wspp (car line))
+                        (and (fn-lpc-at 2 s) (fn-article-fold-linep line))
+                      (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
+                           (fn-article-line-okp (fn-article-new-field line)))))
+               :start :bad)))))
+
+; invalid name
+(assert-event
+ (let ((line '(83 32 58 32 120)) (s (fn-lpc-header-begin)))
+  (and (equal (fn-lpc-at 0 s) :start)
+       (equal (nfix (fn-lpc-at 1 s)) 0)
+       (consp line)
+       (fn-nlv-physicalp line)
+       (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13 10)) s 0 7 11)) (if (and (<= (len line) *fn-article-max-line-octets*)
+                    (if (fn-article-wspp (car line))
+                        (and (fn-lpc-at 2 s) (fn-article-fold-linep line))
+                      (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
+                           (fn-article-line-okp (fn-article-new-field line)))))
+               :start :bad)))))
+
+; non-WSP first value
+(assert-event
+ (let ((line '(83 58 120)) (s (fn-lpc-header-begin)))
+  (and (equal (fn-lpc-at 0 s) :start)
+       (equal (nfix (fn-lpc-at 1 s)) 0)
+       (consp line)
+       (fn-nlv-physicalp line)
+       (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13 10)) s 0 7 11)) (if (and (<= (len line) *fn-article-max-line-octets*)
+                    (if (fn-article-wspp (car line))
+                        (and (fn-lpc-at 2 s) (fn-article-fold-linep line))
+                      (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
+                           (fn-article-line-okp (fn-article-new-field line)))))
+               :start :bad)))))
+
+; NUL header byte
+(assert-event
+ (let ((line '(83 58 32 0)) (s (fn-lpc-header-begin)))
+  (and (equal (fn-lpc-at 0 s) :start)
+       (equal (nfix (fn-lpc-at 1 s)) 0)
+       (consp line)
+       (fn-nlv-physicalp line)
+       (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13 10)) s 0 7 11)) (if (and (<= (len line) *fn-article-max-line-octets*)
+                    (if (fn-article-wspp (car line))
+                        (and (fn-lpc-at 2 s) (fn-article-fold-linep line))
+                      (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
+                           (fn-article-line-okp (fn-article-new-field line)))))
+               :start :bad)))))
+
+; non-ASCII header byte
+(assert-event
+ (let ((line '(83 58 32 255)) (s (fn-lpc-header-begin)))
+  (and (equal (fn-lpc-at 0 s) :start)
+       (equal (nfix (fn-lpc-at 1 s)) 0)
+       (consp line)
+       (fn-nlv-physicalp line)
+       (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13 10)) s 0 7 11)) (if (and (<= (len line) *fn-article-max-line-octets*)
+                    (if (fn-article-wspp (car line))
+                        (and (fn-lpc-at 2 s) (fn-article-fold-linep line))
+                      (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
+                           (fn-article-line-okp (fn-article-new-field line)))))
+               :start :bad)))))
+
+; orphan continuation
+(assert-event
+ (let ((line '(32 120)) (s (fn-lpc-header-begin)))
+  (and (equal (fn-lpc-at 0 s) :start)
+       (equal (nfix (fn-lpc-at 1 s)) 0)
+       (consp line)
+       (fn-nlv-physicalp line)
+       (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13 10)) s 0 7 11)) (if (and (<= (len line) *fn-article-max-line-octets*)
+                    (if (fn-article-wspp (car line))
+                        (and (fn-lpc-at 2 s) (fn-article-fold-linep line))
+                      (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
+                           (fn-article-line-okp (fn-article-new-field line)))))
+               :start :bad)))))
+
+; exactly 998
+(assert-event
+ (let ((line (append '(83 58 32) (nlvt-repeat 995))) (s (fn-lpc-header-begin)))
+  (and (equal (fn-lpc-at 0 s) :start)
+       (equal (nfix (fn-lpc-at 1 s)) 0)
+       (consp line)
+       (fn-nlv-physicalp line)
+       (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13 10)) s 0 7 11)) (if (and (<= (len line) *fn-article-max-line-octets*)
+                    (if (fn-article-wspp (car line))
+                        (and (fn-lpc-at 2 s) (fn-article-fold-linep line))
+                      (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
+                           (fn-article-line-okp (fn-article-new-field line)))))
+               :start :bad)))))
+
+; 999 octets
+(assert-event
+ (let ((line (append '(83 58 32) (nlvt-repeat 996))) (s (fn-lpc-header-begin)))
+  (and (equal (fn-lpc-at 0 s) :start)
+       (equal (nfix (fn-lpc-at 1 s)) 0)
+       (consp line)
+       (fn-nlv-physicalp line)
+       (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13 10)) s 0 7 11)) (if (and (<= (len line) *fn-article-max-line-octets*)
+                    (if (fn-article-wspp (car line))
+                        (and (fn-lpc-at 2 s) (fn-article-fold-linep line))
+                      (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
+                           (fn-article-line-okp (fn-article-new-field line)))))
+               :start :bad)))))
+
+; reachable continuation
+(assert-event
+ (let ((line '(32 120)) (s *nlvt-open*))
+  (and (equal (fn-lpc-at 0 s) :start)
+       (equal (nfix (fn-lpc-at 1 s)) 0)
+       (consp line)
+       (fn-nlv-physicalp line)
+       (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13 10)) s 0 7 11)) (if (and (<= (len line) *fn-article-max-line-octets*)
+                    (if (fn-article-wspp (car line))
+                        (and (fn-lpc-at 2 s) (fn-article-fold-linep line))
+                      (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
+                           (fn-article-line-okp (fn-article-new-field line)))))
+               :start :bad)))))
+
+; whitespace-only fold after visible field
+(assert-event
+ (let ((line '(32 9)) (s *nlvt-open*))
+  (and (equal (fn-lpc-at 0 s) :start)
+       (equal (nfix (fn-lpc-at 1 s)) 0)
+       (consp line)
+       (fn-nlv-physicalp line)
+       (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13 10)) s 0 7 11)) (if (and (<= (len line) *fn-article-max-line-octets*)
+                    (if (fn-article-wspp (car line))
+                        (and (fn-lpc-at 2 s) (fn-article-fold-linep line))
+                      (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
+                           (fn-article-line-okp (fn-article-new-field line)))))
+               :start :bad)))))
+
+; invalid fold byte
+(assert-event
+ (let ((line '(32 255)) (s *nlvt-open*))
+  (and (equal (fn-lpc-at 0 s) :start)
+       (equal (nfix (fn-lpc-at 1 s)) 0)
+       (consp line)
+       (fn-nlv-physicalp line)
+       (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13 10)) s 0 7 11)) (if (and (<= (len line) *fn-article-max-line-octets*)
+                    (if (fn-article-wspp (car line))
+                        (and (fn-lpc-at 2 s) (fn-article-fold-linep line))
+                      (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
+                           (fn-article-line-okp (fn-article-new-field line)))))
+               :start :bad)))))
+
+; phase removal, source-reachable body state
+(assert-event
+ (let ((line '(83 58 32 120)) (s *nlvt-body-state*))
+  (and (not (equal (fn-lpc-at 0 s) :start))
+       (equal (nfix (fn-lpc-at 1 s)) 0)
+       (consp line)
+       (fn-nlv-physicalp line)
+       (not (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13 10)) s 0 7 11)) (if (and (<= (len line) *fn-article-max-line-octets*)
+                    (if (fn-article-wspp (car line))
+                        (and (fn-lpc-at 2 s) (fn-article-fold-linep line))
+                      (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
+                           (fn-article-line-okp (fn-article-new-field line)))))
+               :start :bad))))))
+
+; corrupted-state length removal; other hypotheses hold
+(assert-event
+ (let ((line '(83 58 32 120)) (s (fn-lpc-put 1 998 (fn-lpc-header-begin))))
+  (and (equal (fn-lpc-at 0 s) :start)
+       (not (equal (nfix (fn-lpc-at 1 s)) 0))
+       (consp line)
+       (fn-nlv-physicalp line)
+       (not (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13 10)) s 0 7 11)) (if (and (<= (len line) *fn-article-max-line-octets*)
+                    (if (fn-article-wspp (car line))
+                        (and (fn-lpc-at 2 s) (fn-article-fold-linep line))
+                      (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
+                           (fn-article-line-okp (fn-article-new-field line)))))
+               :start :bad))))))
+
+; nonempty removal: separator enters body
+(assert-event
+ (let ((line nil) (s (fn-lpc-header-begin)))
+  (and (equal (fn-lpc-at 0 s) :start)
+       (equal (nfix (fn-lpc-at 1 s)) 0)
+       (not (consp line))
+       (fn-nlv-physicalp line)
+       (not (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13 10)) s 0 7 11)) (if (and (<= (len line) *fn-article-max-line-octets*)
+                    (if (fn-article-wspp (car line))
+                        (and (fn-lpc-at 2 s) (fn-article-fold-linep line))
+                      (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
+                           (fn-article-line-okp (fn-article-new-field line)))))
+               :start :bad))))))
+
+; physical-line removal: two valid physical lines
+(assert-event
+ (let ((line '(83 58 32 120 13 10 84 58 32 121)) (s (fn-lpc-header-begin)))
+  (and (equal (fn-lpc-at 0 s) :start)
+       (equal (nfix (fn-lpc-at 1 s)) 0)
+       (consp line)
+       (not (fn-nlv-physicalp line))
+       (not (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13 10)) s 0 7 11)) (if (and (<= (len line) *fn-article-max-line-octets*)
+                    (if (fn-article-wspp (car line))
+                        (and (fn-lpc-at 2 s) (fn-article-fold-linep line))
+                      (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
+                           (fn-article-line-okp (fn-article-new-field line)))))
+               :start :bad))))))
