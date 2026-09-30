@@ -15,6 +15,13 @@ EVENTS = (
 )
 
 
+# Callbacks report actual client results or observed process death; durable
+# stdout strings remain diagnostics inside those records, never POST promises.
+OBSERVATION_KINDS = {event: "client" for event in EVENTS}
+OBSERVATION_KINDS.update({"outbox-process-death": "environment",
+                          "checkpoint-stage-cut": "environment"})
+
+
 def encode(value):
     """Preserve bytes without decoding, normalization or opaque-ID hashing."""
     if isinstance(value, bytes):
@@ -44,7 +51,7 @@ class SliceObserver:
             if (not isinstance(source, str) or len(source) != 40 or
                     any(c not in "0123456789abcdef" for c in source)):
                 raise ValueError("missing validated image source coordinate")
-        self.journal.internal(event, **encode(values))
+        self.journal.append(OBSERVATION_KINDS[event], event=event, **encode(values))
         self.seen.append(event)
 
     def finish(self, path):
@@ -62,7 +69,7 @@ class SliceObserver:
         return result
 
 
-def run_fixture(output):
+def run_fixture(output, expected_source):
     """Run the actual composed native test once; skips never seal a journal.
 
     Image selection remains the native harness's explicit environment. This
@@ -70,7 +77,22 @@ def run_fixture(output):
     """
     import unittest
     from pathlib import Path
-    from tests.test_bp_node_native import NativeBpNodeTests
+    import hashlib
+    import re
+    from tests.test_bp_node_native import NativeBpNodeTests, PRODUCER, IMAGE
+    from tests.native_image_provenance import _published_source
+
+    if not isinstance(expected_source, str) or not re.fullmatch(r"[0-9a-f]{40}", expected_source):
+        raise ValueError("expected immutable image source required")
+    coordinates = []
+    for image in (PRODUCER, IMAGE):
+        if _published_source(image) != expected_source:
+            raise ValueError("selected published image differs from expected source")
+        launcher = Path(image).resolve(strict=True)
+        manifest = launcher.parent / "MANIFEST.json"
+        coordinates.append(dict(launcher=str(launcher), manifest=str(manifest),
+                                manifest_sha256=hashlib.sha256(manifest.read_bytes()).hexdigest(),
+                                source=expected_source))
 
     observer = SliceObserver()
     fixture = NativeBpNodeTests(
@@ -91,6 +113,13 @@ def run_fixture(output):
                            str(prefix) + "\n" + failures[0][1])
     target = Path(output)
     target.parent.mkdir(parents=True, exist_ok=True)
+    for image, coordinate in zip((PRODUCER, IMAGE), coordinates):
+        if (_published_source(image) != expected_source or
+                hashlib.sha256(Path(coordinate["manifest"]).read_bytes()).hexdigest() !=
+                coordinate["manifest_sha256"]):
+            raise RuntimeError("published image coordinate changed during fixture")
+    observer.journal.environment("image-artifact-coordinate", images=coordinates,
+                                 core_integrity_gate="runner-required")
     return observer.finish(target)
 
 
@@ -113,7 +142,7 @@ if __name__ == "__main__":
     parser.add_argument("--source", required=True, help="expected immutable image source commit")
     parser.add_argument("--verdict", required=True)
     args = parser.parse_args()
-    journal = args.journal or run_fixture(args.out)
+    journal = args.journal or run_fixture(args.out, args.source)
     result = judge_file(journal, args.source, args.verdict)
     print(result.kind + ": " + str(result.cause))
     raise SystemExit(0 if result.kind == "consistent" else 1)

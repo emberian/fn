@@ -494,7 +494,7 @@ def check_bp_slice_observations(journal, *, expected_source, budget=None):
     """
     import re
     from . import bp_slice_contract
-    from .adapters.bp_slice_observer import EVENTS
+    from .adapters.bp_slice_observer import EVENTS, OBSERVATION_KINDS
     budget = budget or Budget()
     base = dict(scenario_id=journal.scenario_id, journal_digest=journal.digest(),
                 budget=asdict(budget),
@@ -505,8 +505,20 @@ def check_bp_slice_observations(journal, *, expected_source, budget=None):
             not isinstance(expected_source, str) or
             not re.fullmatch(r"[0-9a-f]{40}", expected_source)):
         return Verdict("harness-failure", cause="fixture-source-coordinate", **base).sign()
-    observations = journal.of_kind("internal")
-    if tuple(r.get("event") for r in observations) != EVENTS:
+    artifacts = [r for r in journal.of_kind("environment")
+                 if r.get("event") == "image-artifact-coordinate"]
+    if len(artifacts) != 1:
+        return Verdict("harness-failure", cause="image-artifact-coordinate-missing", **base).sign()
+    images = artifacts[0].get("images")
+    if (not isinstance(images, list) or len(images) != 2 or
+            any(not isinstance(row, dict) or row.get("source") != expected_source or
+                not isinstance(row.get("manifest_sha256"), str) or
+                not re.fullmatch(r"[0-9a-f]{64}", row["manifest_sha256"]) or
+                not row.get("launcher") or not row.get("manifest") for row in images)):
+        return Verdict("harness-failure", cause="image-artifact-coordinate-invalid", **base).sign()
+    observations = [r for r in journal.records if r.get("event") in OBSERVATION_KINDS]
+    if (tuple(r.get("event") for r in observations) != EVENTS or
+            any(r["kind"] != OBSERVATION_KINDS[r["event"]] for r in observations)):
         return Verdict("harness-failure", cause="missing-or-reordered-slice-observation", **base).sign()
     complete = [r for r in journal.of_kind("environment")
                 if r.get("event") == "fixture-observations-complete"]

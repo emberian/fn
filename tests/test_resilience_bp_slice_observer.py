@@ -16,7 +16,7 @@ class SliceObserverTests(unittest.TestCase):
         self.assertEqual(journal.records[0]["octets"],
                          {"octets_hex": "00ff0d0a"})
         self.assertEqual(journal.records[-1]["semantic_verdict"], "pending")
-        self.assertEqual(journal.of_kind("client"), [])
+        self.assertEqual(len(journal.of_kind("client")), len(EVENTS) - 2)
 
     def test_missing_or_reordered_event_refuses(self):
         observer = SliceObserver()
@@ -61,6 +61,9 @@ class SliceSemanticTests(unittest.TestCase):
         ]
         for event, fields in records:
             observer(event, **fields)
+        observer.journal.environment("image-artifact-coordinate", images=[
+            dict(source="a" * 40, manifest_sha256="b" * 64, launcher="synthetic-nntp", manifest="synthetic-set/MANIFEST.json"),
+            dict(source="a" * 40, manifest_sha256="b" * 64, launcher="synthetic-bp", manifest="synthetic-set/MANIFEST.json")])
         observer.journal.environment("fixture-observations-complete", semantic_verdict="pending")
         return observer.journal
 
@@ -96,6 +99,18 @@ class SliceSemanticTests(unittest.TestCase):
         journal.records[2]["status"] = {"octets_hex": b"pinned=yes pinned=no".hex()}
         self.assertEqual(self.check(journal).kind, "harness-failure")
 
+    def test_internal_diagnostic_cannot_substitute_for_client_promise(self):
+        journal = self.journal()
+        journal.records[0]["kind"] = "internal"
+        self.assertEqual(self.check(journal).cause,
+                         "missing-or-reordered-slice-observation")
+
+    def test_artifact_coordinate_cannot_be_omitted(self):
+        journal = self.journal()
+        journal.records = [r for r in journal.records
+                           if r.get("event") != "image-artifact-coordinate"]
+        self.assertEqual(self.check(journal).cause, "image-artifact-coordinate-missing")
+
     def test_source_mismatch_and_missing_completion_refuse(self):
         journal = self.journal()
         journal.records[2]["source"] = "b" * 40
@@ -103,3 +118,14 @@ class SliceSemanticTests(unittest.TestCase):
         journal = self.journal()
         journal.records.pop()
         self.assertEqual(self.check(journal).cause, "fixture-not-complete")
+
+
+class SliceImagePreflightTests(unittest.TestCase):
+    def test_source_mismatch_refuses_before_fixture_setup(self):
+        from unittest import mock
+        from tools.resilience.adapters.bp_slice_observer import run_fixture
+        with mock.patch("tests.native_image_provenance._published_source", return_value="b" * 40), \
+                mock.patch("tests.test_bp_node_native.NativeBpNodeTests") as fixture:
+            with self.assertRaisesRegex(ValueError, "differs from expected source"):
+                run_fixture("unused.jsonl", "a" * 40)
+            fixture.assert_not_called()
