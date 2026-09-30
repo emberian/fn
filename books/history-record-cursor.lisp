@@ -471,18 +471,35 @@
    (equal (append (append a b) c) (append a (append b c)))))
 
 (local
+ (defthm fn-hrcur-bad-head-not-octets
+   (implies (or (and (consp left) (not (fn-scc-octetp (car left))))
+                (and (not (consp left)) left))
+            (not (fn-scc-octet-listp left)))
+   :hints (("Goal" :in-theory (enable fn-scc-octet-listp fn-scc-octetp)))))
+
+(local
  (defthm fn-hrcur-scan-rejection-not-octets
    (implies (and (equal left (nthcdr n x))
                  (or (and (consp left) (not (fn-scc-octetp (car left))))
                      (and (not (consp left)) left)))
             (not (fn-scc-octet-listp x)))
-   :hints (("Goal" :use ((:instance fn-scc-octet-listp-facts))
-            :in-theory (e/d (fn-scc-octetp) (nthcdr fn-scc-octet-listp-facts))))))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-scc-octet-listp-facts)
+                  (:instance fn-hrcur-bad-head-not-octets))
+            :in-theory (disable nthcdr fn-scc-octet-listp fn-scc-octetp
+                                fn-scc-octet-listp-facts
+                                fn-hrcur-bad-head-not-octets)))))
 
 (local
  (defthm fn-hrcur-nthcdr-consp-length
    (implies (and (natp n) (consp (nthcdr n x))) (< n (len x)))
    :rule-classes :linear
+   :hints (("Goal" :induct (nthcdr n x) :in-theory (enable nthcdr)))))
+
+(local
+ (defthm fn-hrcur-nthcdr-at-end-not-consp
+   (implies (and (natp n) (<= (len x) n))
+            (not (consp (nthcdr n x))))
    :hints (("Goal" :induct (nthcdr n x) :in-theory (enable nthcdr)))))
 
 (defthm fn-hrcur-tree-tick-refines-residual
@@ -506,8 +523,13 @@
 
 (local
  (defthm fn-hrcur-nthcdr-successor
-   (implies (natp n) (equal (nthcdr (+ 1 n) x) (cdr (nthcdr n x))))
+   (implies (natp n) (equal (cdr (nthcdr n x)) (nthcdr (+ 1 n) x)))
    :hints (("Goal" :induct (nthcdr n x) :in-theory (enable nthcdr)))))
+
+(local
+ (defthm fn-hrcur-singleton-octets
+   (implies (fn-scc-octetp byte) (fn-scc-octet-listp (list byte)))
+   :hints (("Goal" :in-theory (enable fn-scc-octet-listp fn-scc-octetp)))))
 
 (local
  (defthm fn-hrcur-count-prefix-extends
@@ -521,7 +543,8 @@
             :expand ((:free (xs) (take 0 xs)) (take 1 (nthcdr n x))
                      (fn-scc-octet-listp (list (car (nthcdr n x)))))
             :in-theory (disable take nthcdr fn-scc-octet-listp
-                                fn-hrcur-octet-listp-append)))))
+                                fn-hrcur-octet-listp-append
+                                fn-hrcur-nthcdr-successor)))))
 
 (defun fn-hrcur-descriptorp (d)
   (declare (xargs :guard t :verify-guards nil))
