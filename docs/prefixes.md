@@ -365,3 +365,4 @@ anything a book does not already decide.
 
 | `fn-pct-` | `productive-transfer`, `tests/acl2/productive-transfer-tests` | Productive outbound NNTP offer and requested article effect; local journal and attempt, explicit quiet/refused outcomes; no remote acceptance claim (W6b) |
 | `fn-gat-`, `gat-` | `tests/acl2/group-authority-tests` | Explicit authority publication and replay teeth; distinct posting policy and principal bindings. |
+| `fn-cvcg-` | `store-config-generation` | Actual configuration replay generation/cardinality and profile-aware publication count bridge |

@@ -18045,6 +18045,33 @@
         "planning/evidence/store-invariants-replay-2026-09-29.md"
       ],
       "progress_note": "PKT-413 source bridges: actual caller host/bp-receipt-journal-host.lisp fn-bprj-install; fn-bpaj-receiver-result projects flag and receiver. Full replay requires receiver-only-recordsp, excluding both transit kinds. Suffix replay additionally requires the exact context-first joined shape, with no redundant receiver-state recognizer hypothesis. All three new definitions are guard verified. Fresh protected REPL si5 loaded the complete book and six witness assertions plus three expected must-fail removals without refusal (27 root forms; 110.18 ACL2 seconds including source dependencies). Both events pass strict host reach. No matching certification manifest or new native/image qualification is claimed. Checker result-projection support now justifies removing the three full successful-replay exceptions (PRF-001/007/012). Both originally targeted finite-rest exceptions remain pending input-state projection support; combined strict reach with bridge plus model books passes with no new orphan."
+    },
+    {
+      "id": "PRF-1097",
+      "title": "Actual configuration replay counts and publication namespace bound",
+      "statement": "A successful fn-cnode-config-replay has configuration generation equal to the exact input record count. An accepted fn-cvec-native-admin-authorize publishes generation one plus the existing configuration count, and that count fits the profile max-config-generations.",
+      "milestone": "M2",
+      "requirements": [
+        "STO-020",
+        "STO-023"
+      ],
+      "depends_on": [
+        "PRF-138",
+        "PRF-171"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-cvcg-config-replay-generation-counts-records",
+        "fn-cvcg-accepted-publication-count-fits-profile"
+      ],
+      "evidence": [
+        "books/store-config-generation.lisp",
+        "tests/acl2/store-config-generation-tests.lisp",
+        "specs/reconfiguration.md",
+        "planning/evidence/store-config-generation-2026-09-29.md"
+      ],
+      "progress_note": "PKT-183 configuration contiguity component. Actual native caller host/store-node-host.lisp fn-store-cfg-native-admin-authorize invokes fn-cvec-native-admin-authorize, whose fn-native-admin-publication-authorize obtains generation from fn-cnode-config-replay. No behavior changes or added full-state scans. Fresh protected cg3 loaded the complete 16-form test root with source dependencies, no refusal, 54.68 ACL2 seconds including dependencies. Four witness assertions and two expected must-fail removals cover both keystones. Strict reach hosts both events; no matching certification manifest or qualified image is claimed. Serialized credential-size component of original PKT-183 remains separate/open."
     }
   ]
 }

@@ -17460,6 +17460,19 @@
           "name": "fn-bpaj-replay-rest-receiver-is-receiver-replay-rest"
         }
       ]
+    },
+    {
+      "id": "PRF-1097",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cvcg-config-replay-generation-counts-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvcg-accepted-publication-count-fits-profile"
+        }
+      ]
     }
   ]
 }

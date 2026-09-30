@@ -521,6 +521,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-capacity-vector \
 	tests/acl2/store-capacity-vector-tests \
 	books/store-capacity-config \
+	books/store-config-generation \
+	tests/acl2/store-config-generation-tests \
 	tests/acl2/store-capacity-config-tests \
 	books/config-carried-candidate \
 	tests/acl2/config-carried-candidate-tests \
