@@ -6872,7 +6872,17 @@
     },
     {
       "id": "PRF-203",
-      "events": []
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-osr-ready-establishes-catalog-recovery-context"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-ready-crash-recovery-keeps-catalog-context"
+        }
+      ],
+      "pending_subject": "Ready full-retained Store coherence and actual model crash/recover composition. fn-sn-crash is a model image constructor, not a host-called recovery entry. Physical canonical writer/load and actual owner cold recovery composition remain open; these source dependency keystones do not establish host adoption or qualification."
     },
     {
       "id": "PRF-204",
