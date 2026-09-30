@@ -15,6 +15,7 @@ decision, fn-cev-offline-report).
 Run: FN_NATIVE_HOST=<launcher> FN_TEST_OPENSSL=<openssl 3.5> python3 -m unittest -v tests.test_native_control_evidence
 """
 
+import json
 import os
 from pathlib import Path
 import re
@@ -77,9 +78,53 @@ class NativeControlEvidenceTests(filing.NativeControlFilingTests):
 
         self.command([IMAGE, "--fn", "hybrid-enroll", control, "1", principal,
                       ed_public, ml_public])
+        # PKT-710: one consumer reads the article before its cancel, the
+        # other sleeps through it. Both consume only their own fn.test.
+        for name in ("early", "late"):
+            self.command([IMAGE, "--fn", "consumer", "register", control,
+                          name, "fn.test", root / (name + "-registered.fncu")])
+
+        def poll(name):
+            cursor, report = root / (name + ".fncu"), root / (name + ".report")
+            result = self.command([IMAGE, "--fn", "consumer", "--json", "poll",
+                                   control, name, cursor, report])
+            line = json.loads(result.stdout.decode("ascii").strip().splitlines()[-1])
+            self.assertEqual(line["outcome"], "accepted", line)
+            return line, cursor, report.read_bytes()
+
+        def ack(cursor):
+            self.command([IMAGE, "--fn", "consumer", "ack", control, cursor])
+
         author("target", TARGET, None)
+        line, cursor, report = poll("early")
+        self.assertEqual((line["report"], line["message_id"]), ("article", TARGET))
+        self.assertIn(b"signed target", report)
+        ack(cursor)
         author("cancel", CANCEL, "cancel " + TARGET)
         self.assertTrue(self.article_reply(node, TARGET).startswith(b"430"))
+        withdrawal_witness = {}
+        for name, expected_count in (("late", 2), ("early", 1)):
+            reports = []
+            for _ in range(expected_count):
+                line, cursor, report = poll(name)
+                self.assertEqual((line["report"], line["message_id"]),
+                                 ("withdrawn", TARGET), line)
+                self.assertEqual(report, b"FNWD\x01" + TARGET.encode("ascii"))
+                # Poll is a read: until ACK it repeats the same withdrawal
+                # and complete cursor bytes; no withdrawn content appears.
+                before_cursor = cursor.read_bytes()
+                repeated, same_cursor, same_report = poll(name)
+                self.assertEqual((repeated, same_cursor.read_bytes(), same_report),
+                                 (line, before_cursor, report))
+                reports.append({"summary": line, "cursor": before_cursor.hex(),
+                                "report": report.hex()})
+                ack(cursor)
+            line, cursor, report = poll(name)
+            self.assertEqual((line["report"], report), ("empty", b""))
+            ack(cursor)
+            withdrawal_witness[name] = reports
+        print("NATIVE-CONSUMER-WITHDRAWAL " + json.dumps(withdrawal_witness,
+                                                        sort_keys=True))
 
         live_log = self.operator(node, "control", "log")
         live_cancel = self.operator(node, "control", "evidence", CANCEL)

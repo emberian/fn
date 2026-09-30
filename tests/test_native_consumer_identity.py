@@ -51,8 +51,8 @@ def text(result):
 class ConsumerIdentitySourceTests(unittest.TestCase):
     def test_the_delta_code_is_24(self):
         config = (ROOT / "books" / "config.lisp").read_text(encoding="ascii")
-        self.assertIn("((equal kind :consumer-bind) 24)", config)
-        self.assertIn("((equal code 24) :consumer-bind)", config)
+        # defevent now generates both codec directions from this one row.
+        self.assertIn("(:consumer-bind 24)", config)
 
     def test_the_host_calls_the_bound_decisions(self):
         host = (ROOT / "host" / "owner-host.lisp").read_text(encoding="ascii")
@@ -132,7 +132,7 @@ class NativeConsumerIdentityTests(unittest.TestCase):
             self.assertTrue(first.startswith(b"340"), first)
             self.assertTrue(final.startswith(b"240"), (tag, final))
 
-    def poll(self, node, name, secret=None):
+    def poll(self, node, name, secret=None, *, reason=None):
         """(exit code, message tag or None, cursor path)."""
         cursor = node.root / ("cursor-" + name + "-" + os.urandom(4).hex())
         report = node.root / ("report-" + name + "-" + os.urandom(4).hex())
@@ -141,17 +141,25 @@ class NativeConsumerIdentityTests(unittest.TestCase):
         else:
             result = self.consumer(node, "bound-poll", name, node.secrets[secret],
                                    cursor, report)
+        if reason is not None:
+            self.assertEqual(result.returncode, 1, text(result))
+            self.assertIn(("consumer refused " + reason).encode(), result.stdout)
         if result.returncode != 0:
             self.assertFalse(cursor.exists())
+            self.assertFalse(report.exists())
             return result.returncode, None, None
         found = re.findall(rb"<([a-z0-9]+)@example\.invalid>", report.read_bytes())
         return 0, (found[0].decode("ascii") if found else None), cursor
 
-    def ack(self, node, cursor, secret=None):
+    def ack(self, node, cursor, secret=None, *, reason=None):
         if secret is None:
-            return self.consumer(node, "ack", cursor).returncode
-        return self.consumer(node, "bound-ack", cursor,
-                             node.secrets[secret]).returncode
+            result = self.consumer(node, "ack", cursor)
+        else:
+            result = self.consumer(node, "bound-ack", cursor, node.secrets[secret])
+        if reason is not None:
+            self.assertEqual(result.returncode, 1, text(result))
+            self.assertIn(("consumer refused " + reason).encode(), result.stdout)
+        return result.returncode
 
     def drain(self, node, name, secret, limit=16):
         """Poll and ack until an empty page; the tags served, in order."""
@@ -200,17 +208,17 @@ class NativeConsumerIdentityTests(unittest.TestCase):
 
         # The refusals: wrong password, the plain poll of a bound consumer,
         # the bound poll of the unbound one, bob's private consumer.
-        self.assertEqual(self.poll(node, "bob-pub", "wrong")[0], 1)
-        self.assertEqual(self.poll(node, "bob-pub")[0], 1)
-        self.assertEqual(self.poll(node, "operator", "bob")[0], 1)
-        self.assertEqual(self.poll(node, "bob-priv", "bob")[0], 1)
-        self.assertEqual(self.poll(node, "alice-priv", "bob")[0], 1)
+        self.assertEqual(self.poll(node, "bob-pub", "wrong", reason="credential")[0], 1)
+        self.assertEqual(self.poll(node, "bob-pub", reason="bound")[0], 1)
+        self.assertEqual(self.poll(node, "operator", "bob", reason="unbound")[0], 1)
+        self.assertEqual(self.poll(node, "bob-priv", "bob", reason="access")[0], 1)
+        self.assertEqual(self.poll(node, "alice-priv", "bob", reason="credential")[0], 1)
 
         # bob-pub: one event, acked; then an owner restart; the rest.
         code, tag, cursor = self.poll(node, "bob-pub", "bob")
         self.assertEqual((code, tag), (0, "pub1"))
-        self.assertEqual(self.ack(node, cursor, "wrong"), 1)
-        self.assertEqual(self.ack(node, cursor), 1)
+        self.assertEqual(self.ack(node, cursor, "wrong", reason="credential"), 1)
+        self.assertEqual(self.ack(node, cursor, reason="bound"), 1)
         self.assertEqual(self.ack(node, cursor, "bob"), 0)
         code, tag, _ = self.poll(node, "alice-priv", "alice")
         self.assertEqual((code, tag), (0, "secret1"))  # served, not acked
@@ -225,16 +233,47 @@ class NativeConsumerIdentityTests(unittest.TestCase):
                          ["secret1", "secret2", "cross"])
         # bob-priv was refused throughout; widening bob's rule serves it
         # from where it stopped: nothing was skipped.
-        self.assertEqual(self.poll(node, "bob-priv", "bob")[0], 1)
+        self.assertEqual(self.poll(node, "bob-priv", "bob", reason="access")[0], 1)
         self.ok(node, "account", "access", "bob", "--read", "*", "--post", "*")
         self.assertEqual(self.drain(node, "bob-priv", "bob"),
                          ["secret1", "secret2", "cross"])
         # Unbind returns a consumer to the operator's plain form.
         self.ok(node, "consumer", "unbind", "bob-pub")
-        self.assertEqual(self.poll(node, "bob-pub", "bob")[0], 1)
+        self.assertEqual(self.poll(node, "bob-pub", "bob", reason="unbound")[0], 1)
         code, tag, _ = self.poll(node, "bob-pub")
         self.assertEqual((code, tag), (0, None))
         node.stop()
+
+    def test_registration_bound_names_max_consumers_on_both_images(self):
+        """PKT-369: the actual profile refusal crosses the reasoned wire."""
+        for image_name, image in IMAGES:
+            with self.subTest(image=image_name):
+                node = Node(self, image)
+                node.operator("init", "--max-consumers", "2", "fn.test", expect=0)
+                node.start()
+                for name in ("first", "second"):
+                    result = self.consumer(node, "register", name, "fn.test",
+                                           node.root / (name + ".fncu"))
+                    self.assertEqual(result.returncode, 0, text(result))
+                refused = self.consumer(node, "register", "third", "fn.test",
+                                        node.root / "third.fncu")
+                self.assertEqual(refused.returncode, 1, text(refused))
+                self.assertIn(b"consumer refused max-consumers", refused.stdout)
+                self.assertFalse((node.root / "third.fncu").exists())
+                node.stop()
+                node.start()
+                refused = self.consumer(node, "register", "third", "fn.test",
+                                        node.root / "third.fncu")
+                self.assertEqual(refused.returncode, 1, text(refused))
+                self.assertIn(b"consumer refused max-consumers", refused.stdout)
+                # The table survives replay and an idempotent registration
+                # at capacity remains accepted (it needs no new entry).
+                repeated = self.consumer(node, "register", "first", "fn.test",
+                                         node.root / "repeat.fncu")
+                self.assertEqual(repeated.returncode, 0, text(repeated))
+                self.assertEqual((node.root / "first.fncu").read_bytes(),
+                                 (node.root / "repeat.fncu").read_bytes())
+                node.stop()
 
     def test_two_accounts_two_bound_consumers(self):
         for name, image in IMAGES:

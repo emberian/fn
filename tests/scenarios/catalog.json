@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -2752,7 +2752,8 @@
         "The reopen replays 300 registrations; c301 is refused; position c300 is accepted; the shrink is refused (exit 1) naming max-consumers."
       ],
       "evidence": [
-        "planning/evidence/community-bounds-2026-09-26.md"
+        "planning/evidence/community-bounds-2026-09-26.md",
+        "tests/test_native_consumer_identity.py"
       ],
       "implementation": {
         "test": "tests.test_native_consumer_profile",
@@ -2763,7 +2764,8 @@
         "log": "planning/evidence/community-bounds/native-consumer-profile.log",
         "record": "planning/evidence/community-bounds-2026-09-26.md"
       },
-      "retirement_note": "D34 removed store upgrade-profile; raising a field is now store export then store import --FIELD N (SCN-133)."
+      "retirement_note": "D34 removed store upgrade-profile; raising a field is now store export then store import --FIELD N (SCN-133).",
+      "refusal_wire_remainder": "PKT-369: NativeConsumerIdentityTests.test_registration_bound_names_max_consumers_on_both_images uses the supported init profile, registers two consumers, asserts a third is refused max-consumers before and after restart, and checks duplicate registration at capacity is unchanged. Matching native run pending; the retired profile-upgrade scenario is not revived."
     },
     {
       "id": "SCN-100",
@@ -4607,7 +4609,7 @@
       ],
       "expected": [
         "The malformed binding exits non-zero; `consumer show` prints `consumer bob-pub account bob` and `consumer alice-priv account alice`. It contains no pending invitation or redeemed-account line.",
-        "Every refusal in step 4 exits 1 and writes no cursor.",
+        "Every refusal in step 4 exits 1, writes no cursor or report, and prints its exact ACL2 reason: credential, bound, unbound or access. Wrong-password and plain ACK refusals name credential and bound.",
         "bob-pub is served pub1; the wrong-password and plain acks exit 1, the bound ack 0.",
         "After the restart: bob-pub pub2, cross; alice-priv secret1 (re-served), secret2, cross; operator secret1, secret2, cross; bob-priv refused, then after the widened rule secret1, secret2, cross (nothing skipped); unbound bob-pub: bound-poll exits 1, plain poll an empty page."
       ],
@@ -4623,7 +4625,8 @@
       "evidence": [
         "tests/test_native_consumer_identity.py",
         "planning/evidence/consumer-identity-2026-09-27.md",
-        "planning/evidence/consumer-identity-2026-09-27/native-a3-test_native_consumer_identity.log"
+        "planning/evidence/consumer-identity-2026-09-27/native-a3-test_native_consumer_identity.log",
+        "planning/evidence/consumer-remainder-2026-09-30.md"
       ]
     },
     {
@@ -5155,11 +5158,13 @@
       "steps": [
         "A committed history (bootstrap, consumer 7 on fn.test, the article <poll@fn.test> at 2); the owner's view withdraws it by the record of <cancel@fn.test>.",
         "Poll consumer 7 with an answer carrying a report; the same with nothing withdrawn.",
-        "A history with groups fn.test and control.cancel whose only event past the consumer's position is the cancel (in control.cancel); poll with the view's withdrawal."
+        "A history with groups fn.test and control.cancel whose only event past the consumer's position is the cancel (in control.cancel); poll with the view's withdrawal.",
+        "Native running owner: register early and late consumers in fn.test; sign/store target, poll and ACK early, sign/store author's cancel, observe ARTICLE target=430, then poll both consumers."
       ],
       "expected": [
         "The page is (:poll CURSOR REPORT) with REPORT = FNWD 0x01 then <poll@fn.test>, the answer's cursor; with nothing withdrawn the page is the answer.",
-        "The poll without withdrawals is an empty page; with them the page is the withdrawal of <poll@fn.test> at the cancel's next position (3)."
+        "The poll without withdrawals is an empty page; with them the page is the withdrawal of <poll@fn.test> at the cancel's next position (3).",
+        "Late receives two FNWD1 reports naming only the target (target position and cancel position); early receives one (cancel position). Each unacked report/cursor repeats exactly; each ACK advances to a final empty page; withdrawn content never appears."
       ],
       "implementation": {
         "test": "tests/acl2/consumer-withdrawal-tests.lisp",
@@ -5168,13 +5173,15 @@
         ],
         "native": false,
         "record": "planning/evidence/friend-blockers-2-2026-09-27.md",
-        "note": "No native case yet: on dev at 2026-09-27 a cancel withdraws nothing on the served view until lane flip-L8-2's live refresh lands; the native withdrawal case belongs with that refresh (the lane's LANEDUMP names it).",
+        "note": "Logical witnesses retain their named certificate. NativeControlEvidenceTests.test_log_and_evidence_live_and_offline now includes both early/late consumers against actual author withdrawal; matching native run pending.",
         "log": "planning/evidence/manifests/certify-20260927T085904Z-2813563.json"
       },
       "evidence": [
         "tests/acl2/consumer-withdrawal-tests.lisp",
         "planning/evidence/friend-blockers-2-2026-09-27.md",
-        "planning/evidence/manifests/certify-20260927T085904Z-2813563.json"
+        "planning/evidence/manifests/certify-20260927T085904Z-2813563.json",
+        "tests/test_native_control_evidence.py",
+        "planning/evidence/consumer-remainder-2026-09-30.md"
       ]
     },
     {
