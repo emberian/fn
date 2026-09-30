@@ -13,7 +13,16 @@
       (consp (cddddr job)) (natp (car (cddddr job)))
       (<= (cadddr job) (car (cddddr job)))
       (equal (car (cddddr job)) (caddr (caddr job)))
-      (null (cdr (cddddr job)))))
+      (consp (cdr (cddddr job)))
+      (let ((roots (cadr (cddddr job))))
+       (and (fn-rxt-fixed-widthp roots 3)
+            (eq (fn-prl-nth 0 roots) :reader-response-roots)
+            (fn-rxt-parser-jobp (fn-prl-nth 1 roots))
+            (fn-rxt-fixed-widthp (fn-prl-nth 2 roots) 6)
+            (eq (fn-prl-nth 0 (fn-prl-nth 2 roots)) :reader-actor)
+            (equal (fn-prl-nth 1 (fn-prl-nth 2 roots)) (cadr job))
+            (eq (fn-prl-nth 3 (fn-prl-nth 2 roots)) :response-owned)))
+      (null (cddr (cddddr job)))))
 
 (defun fn-owner-rx-turn-custody-row
  (ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)
@@ -29,7 +38,7 @@
    (mv :retained-custody
        (list :receiver-custody (fn-rxt-source fn-receiver-turn)
              (cadr job) (caddr job) (cadddr job) (car (cddddr job))
-             :retained (cadr job) nil nil nil nil)))))
+             :retained (cadr job) nil (cadr (cddddr job)) nil nil)))))
 
 (defthm fn-owner-rx-turn-custody-row-preserves-stored-suffix
  (let ((answer (fn-owner-rx-turn-custody-row ticket fn-rx-provider

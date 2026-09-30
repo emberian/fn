@@ -508,3 +508,32 @@
         fn-rxt-parser-jobp fn-rxt-pending-rangep fn-rxt-fixed-widthp fn-prl-nth)
        (fn-rxt-owned-claim-p fn-rxp-currentp fn-rrd-step-disposition))))
  :rule-classes nil)
+
+; INTERNAL decision from the exact recorded response. No returned/joined
+; flag and no update: this cannot authorize refill or release on its own.
+(defun fn-rxt-recorded-response-continuation (job)
+ (declare (xargs :guard t))
+ (let* ((start (fn-prl-nth 4 job)) (end (fn-prl-nth 5 job))
+        (step (fn-prl-nth 9 job)) (consumed (fn-prl-nth 5 step)))
+  (cond
+   ((not (and (fn-rxt-parser-jobp job)
+              (eq (fn-rrd-step-disposition step) :response)
+              (natp consumed) (<= consumed (- end start))))
+    (mv :invalid-response start end))
+   ((or (eq (fn-prl-nth 2 step) t) (fn-prl-nth 7 step))
+    (mv :terminal-response (+ start consumed) end))
+   ((not (posp consumed)) (mv :invalid-response start end))
+   ((equal (+ start consumed) end) (mv :input-exhausted end end))
+   (t (mv :same-input-remainder (+ start consumed) end)))))
+(defthm fn-rxt-recorded-response-continuation-keeps-carried-range
+ (let ((a (fn-rxt-recorded-response-continuation job)))
+  (implies (fn-rxt-parser-jobp job)
+   (and (natp (mv-nth 1 a)) (natp (mv-nth 2 a))
+        (<= (mv-nth 1 a) (mv-nth 2 a))
+        (equal (mv-nth 2 a) (fn-prl-nth 5 job))
+        (<= (mv-nth 2 a) 4096))))
+ :hints (("Goal" :in-theory
+  (e/d (fn-rxt-recorded-response-continuation fn-rxt-parser-jobp
+        fn-rxt-pending-rangep fn-rxt-fixed-widthp fn-prl-nth)
+       (fn-rrd-step-disposition))))
+ :rule-classes nil)

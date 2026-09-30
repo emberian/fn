@@ -491,3 +491,13 @@ must be fenced and retained in parser recovery before exposure. Real IRQ
 transfer retains both the parser root and SAME committed receipt actor root.
 Connection/RX factory association, ordinary parser detachment, actual response
 return and all-alias terminal producers remain activation prerequisites.
+
+The recorded response chooses the next range from its own consumed scalar and
+close/exposure-close fields. That decision is separate from permission to use
+the range: :same-input-remainder cannot rearm until the actual response episode
+and every retained actor have returned. A source terminal receipt must be
+emitted by the real registered protocols before destructive query input clear.
+The planned :source-returnable custody phase has no current emitter; NIL actor
+fields, :done, STOPPING and caller joined words cannot create it. Ordinary
+receiver roots and completed incoming POST roots have distinct source/range
+kinds; receiver-only shape checks never impose 4096 on the stored input.

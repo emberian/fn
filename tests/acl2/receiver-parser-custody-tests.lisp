@@ -185,3 +185,32 @@
         (not (posp (fn-prl-nth 2 (mv-nth 1 a))))
         (not (equal (fn-prl-nth 7 (fn-rxt-job (mv-nth 2 a))) :actualRC)))))
  :rule-classes nil)
+
+(defthm fn-rxt-recorded-response-remainder-positive-source-model-literal
+ (let ((job '(:receiver-parser (:receiver-turn 1)
+              (:receiver-source (:receiver-turn 1) (:rx-capacity 0 0 4096) 0)
+              (:receiver-copy 0 6 10) 0 6 :preOC :RC :wire
+              (:served-step (:response) nil nil nil 3 nil nil) 1)))
+  (and (fn-rxt-parser-jobp job)
+       (equal (fn-rxt-recorded-response-continuation job)
+              (mv :same-input-remainder 3 6))))
+ :rule-classes nil)
+(defthm fn-rxt-recorded-response-exposure-terminal-positive-source-model-literal
+ (let ((job '(:receiver-parser (:receiver-turn 1)
+              (:receiver-source (:receiver-turn 1) (:rx-capacity 0 0 4096) 0)
+              (:receiver-copy 0 6 10) 0 6 :preOC :RC :wire
+              (:served-step nil nil nil nil 0 nil (52 48 48)) 1)))
+  (and (fn-rxt-parser-jobp job)
+       (equal (fn-rxt-recorded-response-continuation job)
+              (mv :terminal-response 0 6))))
+ :rule-classes nil)
+(defthm fn-rxt-recorded-response-job-domain-hypothesis-removal-source-model-literal
+ (let* ((job '(:receiver-parser (:receiver-turn 1)
+              (:receiver-source (:receiver-turn 1) (:rx-capacity 0 0 4096) 0)
+              (:receiver-copy 0 -1 10) 0 -1 :preOC :RC :wire
+              (:served-step (:response) nil nil nil 7 nil nil) 1))
+        (a (fn-rxt-recorded-response-continuation job)))
+  (and (not (fn-rxt-parser-jobp job))
+       (equal (mv-nth 0 a) :invalid-response)
+       (not (natp (mv-nth 2 a)))))
+ :rule-classes nil)
