@@ -101,7 +101,6 @@
         (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
-        conn
         t
         (equal
           (fn-oct-slice-list
@@ -145,9 +144,7 @@
           (list *fn-pcr-article-keyword* (fn-nntp-string-octets "2")))
         (or
           (fn-nntp-number-tokenp (fn-nntp-string-octets "2"))
-          (and
-            (fn-nntp-message-id-tokenp (fn-nntp-string-octets "2"))
-            (fn-octet-listp (fn-nntp-string-octets "2"))))
+          (fn-nntp-message-id-tokenp (fn-nntp-string-octets "2")))
         (or (not (fn-nntp-number-tokenp (fn-nntp-string-octets "2"))) group)
         (not (consp article))
         server
@@ -281,7 +278,6 @@
         (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
-        conn
         (equal
           (fn-oct-slice-list
             0
@@ -324,9 +320,7 @@
           (list *fn-pcr-article-keyword* (fn-nntp-string-octets "2")))
         (or
           (fn-nntp-number-tokenp (fn-nntp-string-octets "2"))
-          (and
-            (fn-nntp-message-id-tokenp (fn-nntp-string-octets "2"))
-            (fn-octet-listp (fn-nntp-string-octets "2"))))
+          (fn-nntp-message-id-tokenp (fn-nntp-string-octets "2")))
         (or (not (fn-nntp-number-tokenp (fn-nntp-string-octets "2"))) group)
         (not (consp article))
         server
@@ -441,7 +435,6 @@
           (list *pcrt-payload*)
           *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
-        conn
         t
         (equal
           (fn-oct-slice-list
@@ -486,9 +479,7 @@
           (list *fn-pcr-article-keyword* (fn-nntp-string-octets "2")))
         (or
           (fn-nntp-number-tokenp (fn-nntp-string-octets "2"))
-          (and
-            (fn-nntp-message-id-tokenp (fn-nntp-string-octets "2"))
-            (fn-octet-listp (fn-nntp-string-octets "2"))))
+          (fn-nntp-message-id-tokenp (fn-nntp-string-octets "2")))
         (or (not (fn-nntp-number-tokenp (fn-nntp-string-octets "2"))) group)
         (not (consp article))
         server
@@ -643,7 +634,6 @@
         (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
-        conn
         t
         (equal
           (fn-oct-slice-list
@@ -687,9 +677,7 @@
           (list *fn-pcr-article-keyword* (fn-nntp-string-octets "1")))
         (or
           (fn-nntp-number-tokenp (fn-nntp-string-octets "1"))
-          (and
-            (fn-nntp-message-id-tokenp (fn-nntp-string-octets "1"))
-            (fn-octet-listp (fn-nntp-string-octets "1"))))
+          (fn-nntp-message-id-tokenp (fn-nntp-string-octets "1")))
         (or (not (fn-nntp-number-tokenp (fn-nntp-string-octets "1"))) group)
         server
         (fn-gidx-pinp viewindex)
@@ -821,7 +809,6 @@
         (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
-        conn
         t
         (equal
           (fn-oct-slice-list
@@ -865,9 +852,7 @@
           (list *fn-pcr-article-keyword* (fn-nntp-string-octets "<absent@x>")))
         (or
           (fn-nntp-number-tokenp (fn-nntp-string-octets "<absent@x>"))
-          (and
-            (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<absent@x>"))
-            (fn-octet-listp (fn-nntp-string-octets "<absent@x>"))))
+          (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<absent@x>")))
         (or (not (fn-nntp-number-tokenp (fn-nntp-string-octets "<absent@x>"))) group)
         (not (consp article))
         server
@@ -1007,7 +992,6 @@
         (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
-        conn
         (equal
           (fn-oct-slice-list
             0
@@ -1050,9 +1034,7 @@
           (list *fn-pcr-article-keyword* (fn-nntp-string-octets "<absent@x>")))
         (or
           (fn-nntp-number-tokenp (fn-nntp-string-octets "<absent@x>"))
-          (and
-            (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<absent@x>"))
-            (fn-octet-listp (fn-nntp-string-octets "<absent@x>"))))
+          (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<absent@x>")))
         (or (not (fn-nntp-number-tokenp (fn-nntp-string-octets "<absent@x>"))) group)
         (not (consp article))
         server
@@ -1173,7 +1155,6 @@
           (list *pcrt-payload*)
           *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
-        conn
         t
         (equal
           (fn-oct-slice-list
@@ -1218,9 +1199,7 @@
           (list *fn-pcr-article-keyword* (fn-nntp-string-octets "<absent@x>")))
         (or
           (fn-nntp-number-tokenp (fn-nntp-string-octets "<absent@x>"))
-          (and
-            (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<absent@x>"))
-            (fn-octet-listp (fn-nntp-string-octets "<absent@x>"))))
+          (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<absent@x>")))
         (or (not (fn-nntp-number-tokenp (fn-nntp-string-octets "<absent@x>"))) group)
         (not (consp article))
         server
@@ -1381,7 +1360,6 @@
         (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
-        conn
         t
         (equal
           (fn-oct-slice-list
@@ -1425,9 +1403,7 @@
           (list *fn-pcr-article-keyword* (fn-nntp-string-octets "<pcrt@x>")))
         (or
           (fn-nntp-number-tokenp (fn-nntp-string-octets "<pcrt@x>"))
-          (and
-            (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<pcrt@x>"))
-            (fn-octet-listp (fn-nntp-string-octets "<pcrt@x>"))))
+          (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<pcrt@x>")))
         (or (not (fn-nntp-number-tokenp (fn-nntp-string-octets "<pcrt@x>"))) group)
         server
         (fn-gidx-pinp viewindex)
@@ -1565,7 +1541,6 @@
         (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
-        conn
         t
         (equal
           (fn-served-conn-wire sc)
@@ -1603,9 +1578,7 @@
           (list *fn-pcr-article-keyword* (fn-nntp-string-octets "2")))
         (or
           (fn-nntp-number-tokenp (fn-nntp-string-octets "2"))
-          (and
-            (fn-nntp-message-id-tokenp (fn-nntp-string-octets "2"))
-            (fn-octet-listp (fn-nntp-string-octets "2"))))
+          (fn-nntp-message-id-tokenp (fn-nntp-string-octets "2")))
         (or (not (fn-nntp-number-tokenp (fn-nntp-string-octets "2"))) group)
         (not (consp article))
         server
@@ -1741,7 +1714,6 @@
         (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
-        conn
         t
         (equal
           (fn-served-conn-wire sc)
@@ -1779,9 +1751,7 @@
           (list *fn-pcr-article-keyword* (fn-nntp-string-octets "<absent@x>")))
         (or
           (fn-nntp-number-tokenp (fn-nntp-string-octets "<absent@x>"))
-          (and
-            (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<absent@x>"))
-            (fn-octet-listp (fn-nntp-string-octets "<absent@x>"))))
+          (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<absent@x>")))
         (or (not (fn-nntp-number-tokenp (fn-nntp-string-octets "<absent@x>"))) group)
         (not (consp article))
         server

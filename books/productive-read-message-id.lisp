@@ -1024,7 +1024,6 @@
         (fn-scar-view-indexedp (fn-ocfg-owner oc))
         (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
         (fn-scol-okp fn-arena fn-cat)
-        conn
         completed
         (equal (fn-oct-slice-list i end fn-octets) (append line (quote (13 10))))
         (equal
@@ -1044,7 +1043,7 @@
         (fn-nntp-session-projected session)
         (fn-nntp-command-inputp line)
         (equal (fn-nntp-tokenize line) (list *fn-pcr-article-keyword* token))
-        (and (fn-nntp-message-id-tokenp token) (fn-octet-listp token))
+        (fn-nntp-message-id-tokenp token)
         (consp article)
         server
         (fn-gidx-pinp viewindex)
@@ -1095,7 +1094,12 @@
        fn-pcr-command-input-is-plain-line
        fn-scol-okp-arena-p
        fn-pcr-command-slice-has-natural-bounds
-       fn-pcr-article-token-fits-command-argument)
+       fn-pcr-article-token-fits-command-argument
+       (:instance
+         fn-pcr-authenticated-reader-has-an-owner-connection
+         (o (fn-ocfg-owner oc))
+         (conn (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
+       fn-pcr-message-id-token-is-octets)
      :in-theory
      (theory (quote minimal-theory)))))
 

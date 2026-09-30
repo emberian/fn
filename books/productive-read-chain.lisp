@@ -1055,6 +1055,37 @@
          fn-nntp-printable-tokenp
          fn-nntp-message-id-tailp)))))
 
+; Derived premises, proved before weakening the final READ statements.
+(defthm
+  fn-pcr-authenticated-reader-has-an-owner-connection
+  (implies (fn-auth-sessionp (fn-served-conn-session (fn-own-tls-served-conn o conn))) conn)
+  :rule-classes
+  nil
+  :hints
+  (("Goal"
+     :cases
+     (conn)
+     :in-theory
+     (enable
+       fn-own-tls-served-conn
+       fn-own-served-conn
+       fn-own-conn-live-session
+       fn-served-conn-session
+       fn-served-make-conn-live))))
+
+(defthm
+  fn-pcr-message-id-token-is-octets
+  (implies (fn-nntp-message-id-tokenp token) (fn-octet-listp token))
+  :rule-classes
+  nil
+  :hints
+  (("Goal"
+     :use
+     ((:instance fn-nntp-message-id-token-is-response-text (octets token))
+       (:instance fn-nntp-response-text-is-octets (bytes token)))
+     :in-theory
+     (theory (quote minimal-theory)))))
+
 (defthm
   fn-pcr-host-called-read-produces-the-numbered-article
   (let*
@@ -1121,7 +1152,6 @@
         (fn-scar-view-indexedp (fn-ocfg-owner oc))
         (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
         (fn-scol-okp fn-arena fn-cat)
-        conn
         completed
         (equal (fn-oct-slice-list i end fn-octets) (append line (quote (13 10))))
         (equal
@@ -1191,6 +1221,10 @@
        fn-pcr-command-input-is-plain-line
        fn-scol-okp-arena-p
        fn-pcr-command-slice-has-natural-bounds
-       fn-pcr-article-token-fits-command-argument)
+       fn-pcr-article-token-fits-command-argument
+       (:instance
+         fn-pcr-authenticated-reader-has-an-owner-connection
+         (o (fn-ocfg-owner oc))
+         (conn (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))
      :in-theory
      (theory (quote minimal-theory)))))

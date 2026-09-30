@@ -236,7 +236,6 @@
         (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
-        conn
         t
         (equal
           (fn-oct-slice-list 0 (len *pcrt-line-bytes*) *pcrt-line-bytes*)
@@ -382,7 +381,6 @@
           (list *pcrt-payload*)
           *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
-        conn
         t
         (equal
           (fn-oct-slice-list 0 (len *pcrt-line-bytes*) *pcrt-line-bytes*)
@@ -571,7 +569,6 @@
         (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
-        conn
         (equal
           (fn-oct-slice-list 0 (len *pcrt-line-bytes*) *pcrt-line-bytes*)
           (append *pcrt-line* (quote (13 10))))
@@ -736,7 +733,6 @@
         (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
-        conn
         t
         (equal
           (fn-served-conn-wire sc)

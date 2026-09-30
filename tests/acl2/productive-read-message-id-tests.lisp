@@ -99,7 +99,6 @@
         (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
-        conn
         t
         (equal
           (fn-oct-slice-list 0 (len *pcrm-line-bytes*) *pcrm-line-bytes*)
@@ -136,7 +135,7 @@
         (fn-nntp-session-projected session)
         (fn-nntp-command-inputp *pcrm-line*)
         (equal (fn-nntp-tokenize *pcrm-line*) (list *fn-pcr-article-keyword* *pcrm-token*))
-        (and (fn-nntp-message-id-tokenp *pcrm-token*) (fn-octet-listp *pcrm-token*))
+        (fn-nntp-message-id-tokenp *pcrm-token*)
         (consp article)
         server
         (fn-gidx-pinp viewindex)
@@ -262,7 +261,6 @@
         (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
-        conn
         (equal
           (fn-oct-slice-list 0 (len *pcrm-line-bytes*) *pcrm-line-bytes*)
           (append *pcrm-line* (quote (13 10))))
@@ -298,7 +296,7 @@
         (fn-nntp-session-projected session)
         (fn-nntp-command-inputp *pcrm-line*)
         (equal (fn-nntp-tokenize *pcrm-line*) (list *fn-pcr-article-keyword* *pcrm-token*))
-        (and (fn-nntp-message-id-tokenp *pcrm-token*) (fn-octet-listp *pcrm-token*))
+        (fn-nntp-message-id-tokenp *pcrm-token*)
         (consp article)
         server
         (fn-gidx-pinp viewindex)
@@ -408,7 +406,6 @@
           (list *pcrt-payload*)
           *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
-        conn
         t
         (equal
           (fn-oct-slice-list 0 (len *pcrm-line-bytes*) *pcrm-line-bytes*)
@@ -446,7 +443,7 @@
         (fn-nntp-session-projected session)
         (fn-nntp-command-inputp *pcrm-line*)
         (equal (fn-nntp-tokenize *pcrm-line*) (list *fn-pcr-article-keyword* *pcrm-token*))
-        (and (fn-nntp-message-id-tokenp *pcrm-token*) (fn-octet-listp *pcrm-token*))
+        (fn-nntp-message-id-tokenp *pcrm-token*)
         (consp article)
         server
         (fn-gidx-pinp viewindex)
@@ -599,7 +596,6 @@
         (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
-        conn
         t
         (equal
           (fn-served-conn-wire sc)
@@ -635,9 +631,7 @@
         (equal
           (fn-nntp-tokenize (fn-nntp-string-octets "ARTICLE <pcrt@x>"))
           (list *fn-pcr-article-keyword* (fn-nntp-string-octets "<pcrt@x>")))
-        (and
-          (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<pcrt@x>"))
-          (fn-octet-listp (fn-nntp-string-octets "<pcrt@x>")))
+        (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<pcrt@x>"))
         (consp article)
         server
         (fn-gidx-pinp viewindex)
