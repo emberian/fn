@@ -208,3 +208,32 @@ bytes. Span opcode/package/offset/length must be consumed directly by encoder.
 Canonical octet-list classification must still resume over pair nodes; copying
 a noncanonical incoming CONS encoding would change existing canonical output.
 Source adapter tokens bind epoch/lease/ordinal; no duplicate completion advances.
+
+## Metadata emitter (PRF-1104)
+
+`fn-hpm-request(ordinal,component,entries,base)` identifies one entry component
+and physical address, padding, or refusal. A charged spool reader supplies the
+u256 digest for that ordinal and holds it across six components. Each digest
+uses existing high-to-low fouru64 order. Every emitted u64 hashes as low32 then
+high32 input words, matching the unchanged current digest byte convention.
+
+`fn-hpm-tick(ordinal,component,remaining,entries,base,digest,fn-hpb)` returns
+verdict/newordinal/newcomponent/newremaining/scratch. Stored writes one word;
+page-full yields unchanged until I/O completion releases the scratch; done
+requires remainingzero. Initialize table remaining2048 with at most341entries;
+directory remaining2048*M with T contiguous entries. Directory continuation
+must survive page resets, because its entries can cross page boundaries. Hash
+the whole directory with one digest begin(NB=256*M), including finalpadding.
+
+Physical representations: one cached u256 result plus fixed scalar fields,
+fixed scratch, and separately charged metadata spool32octets per data digest
+and32octets per table digest. Stream inputs/reference wrappers and actual
+runtime bignum/header costs remain part of admission. Existing source files,
+new stage, spools and native buffers coexist until their workers complete/join;
+no rescue reserve or page cache slot implicitly funds them.
+
+FNSI wrapper distinction: its physicalpage0 is zeros, and root record lives in
+the F-row binding. PageA starts at16384+16384*A; framed segments start after
+NPphysicalpages. Headerword/tableword emitters do not publish a root or marker.
+ACL2 offset-domain plans must validate the admitted platform/profile bound
+before positional I/O; native code may not derive those decisions itself.
