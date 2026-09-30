@@ -225,6 +225,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-files-teeth-tests \
 	books/store-node \
 	books/store-node-existing-invariants \
+	books/poster-bytes-source \
+	books/poster-bytes-source-buffer \
 	books/poster-bytes \
 	books/store-node-invariants-base \
 	books/store-node-invariants \
@@ -608,6 +610,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/page-read-ledger \
 	books/page-discovery-ledger \
 	books/cold-read-layout \
+	books/cold-guard-bootstrap \
+	tests/acl2/cold-guard-bootstrap-tests \
 	tests/acl2/page-discovery-ledger-tests \
 	tests/acl2/cold-read-layout-tests \
 	books/page-read-ownership \
@@ -615,11 +619,20 @@ ACL2_BOOKS ?= books/defrecord \
 	host/page-read-host \
 	books/page-read-resources \
 	books/page-file-lease \
+	books/page-window-lease \
+	books/page-window-executor \
+	books/page-window-read \
+	tests/acl2/page-window-executor-tests \
+	tests/acl2/page-window-read-tests \
+	tests/acl2/page-window-admission-tests \
+	tests/acl2/page-window-lease-tests \
 	tests/acl2/page-file-lease-tests \
 	books/page-read-executor \
 	tests/acl2/page-read-executor-tests \
 	host/page-executor-host \
 	host/page-file-lease-host \
+	host/page-window-lease-host \
+	host/page-window-executor-host \
 	tests/acl2/page-read-ledger-tests \
 	tests/acl2/page-read-host-tests \
 	tests/acl2/store-profile-carried-tests \
@@ -1536,6 +1549,13 @@ ACL2_BOOKS ?= books/defrecord \
 	books/page-read-ownership \
 	tests/acl2/page-read-ownership-tests \
 	books/page-file-lease \
+	books/page-window-lease \
+	books/page-window-executor \
+	books/page-window-read \
+	tests/acl2/page-window-executor-tests \
+	tests/acl2/page-window-read-tests \
+	tests/acl2/page-window-admission-tests \
+	tests/acl2/page-window-lease-tests \
 	tests/acl2/page-file-lease-tests \
 	books/page-read-executor \
 	tests/acl2/page-read-executor-tests \
@@ -1623,6 +1643,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-pool-emitter-tests \
 	tests/acl2/history-image-columns-tests \
 	tests/acl2/history-pool-columns-tests \
+	tests/acl2/store-tree-size-tests \
+	tests/acl2/history-decode-size-tests \
+	tests/acl2/history-decode-completion-tests \
 	tests/acl2/history-image-census-tests \
 	tests/acl2/history-image-header-tests \
 	tests/acl2/history-page-metadata-tests \

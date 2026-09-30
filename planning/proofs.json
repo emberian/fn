@@ -3924,7 +3924,7 @@
         "PRF-014"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/octets-stobj.lisp",
         "books/poster-bytes-buffer.lisp",
@@ -18955,6 +18955,63 @@
         "fn-orri-recover-installs-historical-reader-relation"
       ],
       "progress_note": "Clean protected source root:13 forms,zero refusals,0.14 ACL2 seconds,20451 prover steps over291 matching cached dependencies. Shared certification pending; no image/native qualification."
+    },
+    {
+      "id": "PRF-1119",
+      "title": "An exact private window lease holds its file and charges through worker return and output borrowing",
+      "statement": "Subjects fn-prw-admit, fn-prw-return and fn-prw-release in books/page-window-lease.lisp, reached by host/page-window-lease-host stobj wrappers with named complete answer/effect equations. Admission binds a fresh typed ticket to the complete physical descriptor and requested payload offset and preserves supplied pool funding. Its exact file stays nonclosable. Physical return retains all charges; release refuses until that return and the host must relinquish every output alias before invoking release. Worker credit is conservatively retained through the borrow. This source component is unreachable-in-composition until the authenticated window reader/native executor invokes it; supplied demand is not an allocator refinement or an integrity result.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020"
+      ],
+      "depends_on": [
+        "PRF-1065"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/page-window-lease.lisp",
+        "host/page-window-lease-host.lisp",
+        "tests/acl2/page-window-lease-tests.lisp",
+        "planning/evidence/persistent-cold-executor-2026-09-29.md"
+      ],
+      "progress_note": "Library/adapter source only. Fixed runtime demand, actual hash/decoder composition, persistent executor window dispatch and native activation remain open; no image or certificate claim.",
+      "events": [
+        "fn-prw-admit-preserves-pool-funding",
+        "fn-prw-admitted-window-holds-file"
+      ]
+    },
+    {
+      "id": "PRF-1128",
+      "title": "An exact typed window stays on its physical worker until the final scalar borrow ends",
+      "statement": "Subjects fn-pwx-acquire, fn-pwx-return and fn-pwx-release retain the immutable nine-field window token in the existing persistent four-field worker row. The core binds the exact slot and full descriptor; acquisition and physical return preserve every supplied charge; final release requires both exact returned bindings and refunds once. Native extent worker dispatch calls the stobj adapters with complete answer/effect equations. Actual raw fn-ews execution retains only a private fixed window and fn-pwr-byte permits scalar access only through matching returned ownership and a published core plan. Scalar authorization is a definition equation; native trajectory correspondence, adequate native demand, served activation and full P12 remain open. The staged payload-coordinate accessor checks the original six physical/payload coordinates and computes the relative window index in ACL2. Core terminal outcome distinguishes authenticated readiness, stale ownership and integrity/I/O failure; a failed authenticated scan never asks for a rescan. Exact cancellation revokes further scheduled work and scalar publication while retaining the ledger through actual return; only the matching cancelled-returned worker can settle. The dormant native current getter binds the actual logical-view arena under owner exclusion and issues the current seven-field descriptor before unlocking.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020"
+      ],
+      "depends_on": [
+        "PRF-1119"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/page-window-executor.lisp",
+        "books/page-window-read.lisp",
+        "host/page-window-executor-host.lisp",
+        "host/native/extent.lisp",
+        "tests/acl2/page-window-executor-tests.lisp",
+        "tests/acl2/page-window-read-tests.lisp",
+        "tests/acl2/page-window-admission-tests.lisp",
+        "planning/evidence/physical-window-source-2026-09-30.md",
+        "planning/evidence/physical-window-coordinate-source-2026-09-30.md",
+        "planning/evidence/physical-window-lifetime-source-2026-09-30.md",
+        "tests/native/page-window-lifecycle.lisp"
+      ],
+      "progress_note": "Source-only staged cancellation/current-placement integration. Exact producer lifecycle305fb5aee and dedicated guard roster21 imported; no certificate, image execution, funded startup, captured-source authorization refinement, full native correspondence or default activation claim. Cooperative cancellation permits the already-authorized bounded step to finish. Normal and cancelled settlement clear the sole retained result before refund.",
+      "events": [
+        "fn-pwx-release-requires-exact-returned-window-and-slot",
+        "fn-pwx-other-request-cannot-return-or-release"
+      ]
     }
   ]
 }

@@ -6,10 +6,37 @@ close must wait. Client cancellation does not publish into a new request.
 Late short/error results remain named store faults, not swallowed threads.
 """
 import re
+import time
 import unittest
 
 from tests.native_harness import Client, EXIT, requires, scratch
 from tests.test_native_expiry import DEVELOPER, DeveloperExpiryTests, ExpiryMixin, msgid
+
+
+def page_io_logical_lines(data):
+    """Collapse pretty-print whitespace only within the exact issued token6."""
+    token = re.compile(rb"(PAGE-IO [^\r\n]*token=)\((\d+(?:\s+\d+){5})\)")
+    return token.sub(lambda m: m.group(1) + b"(" + b" ".join(m.group(2).split()) + b")",
+                     data).splitlines()
+
+
+class PageIOObservationTests(unittest.TestCase):
+    def test_wrapped_exact_token_keeps_held_and_settlement_events_distinct(self):
+        text = (b"PAGE-IO held token=(1 2 3\n  4 5 99999999999999999999) file=3\n"
+                b"PAGE-IO settled token=(1 2\n 3 4 5 99999999999999999999) answer=:CANCELLED\n")
+        lines = page_io_logical_lines(text)
+        self.assertEqual(len(lines), 2)
+        self.assertRegex(lines[0], rb"PAGE-IO held token=.* file=3$")
+        self.assertRegex(lines[1], rb"PAGE-IO settled token=.* answer=:CANCELLED$")
+        self.assertNotRegex(lines[0], rb"answer=:PUBLISH")
+
+    def test_incomplete_token_cannot_join_a_later_event(self):
+        text = b"PAGE-IO held token=(1 2 3\nPAGE-IO settled token=(4 5 6) answer=:PUBLISH\n"
+        self.assertEqual(page_io_logical_lines(text), text.splitlines())
+
+    def test_wrong_shape_is_preserved_as_an_unmatched_observation(self):
+        text = b"PAGE-IO held token=(1 2 3\n 4 5) file=3\n"
+        self.assertEqual(page_io_logical_lines(text), text.splitlines())
 
 
 @requires(DEVELOPER)
@@ -45,7 +72,13 @@ class PageIOTests(unittest.TestCase):
         self.root = scratch(self, "fn-page-io-")
 
     def wait_line(self, owner, pattern, count=1):
-        lines = self.owner_lines(owner, re.compile(pattern), count, deadline=120)
+        end = time.monotonic() + 120
+        while True:
+            lines = [line for line in page_io_logical_lines(owner.stderr.since(0))
+                     if re.search(pattern, line)]
+            if len(lines) >= count or time.monotonic() > end:
+                break
+            time.sleep(0.2)
         self.assertGreaterEqual(len(lines), count, owner.stderr.since(0)[-6000:])
         return lines[-1]
 
@@ -104,7 +137,7 @@ class PageIOTests(unittest.TestCase):
 
     def test_a_late_short_or_error_is_settled_and_fences_the_store(self):
         base = self.filled()
-        for mode in ("short", "error"):
+        for mode in ("short", "error", "runtime-error"):
             with self.subTest(observation=mode):
                 node = self.copy_of(base, "fault-" + mode)
                 owner, old, release, _file = self.held(node, mode)
@@ -115,6 +148,8 @@ class PageIOTests(unittest.TestCase):
                 node.exited(EXIT.FAULT, timeout=120, process=owner)
                 text = owner.stderr.since(0)
                 self.assertIn(b"arena-extent-read", text)
+                if mode == "runtime-error":
+                    self.assertIn(b"cold executor runtime failure", text)
                 self.assertNotIn(b"answer=:PUBLISH", text)
                 self.assertNotIn(b"outcome uncertain", text)
 

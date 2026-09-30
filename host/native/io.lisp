@@ -1276,6 +1276,31 @@ kind); :unknown when the world has no formals for NAME (a raw primitive)."
                                 checks)))))
                   (cons (length formals) (sort checks #'< :key #'first)))))))))
 
+; Staged raw-cold cache: the caller first installs the exact admitted core
+; bootstrap plan in a fresh service, before any worker/listener allocation.
+; These helpers are unactivated until that startup/caller coordinate lands.
+; This cache is permanently funded and never refunded by a settled job.
+(defvar *fnn-cold-entry-guard-specs* nil)
+
+(defun fnn-cold-guard-cache-prepare (plan)
+  (unless (fn-cgb-planp plan)
+    (error 'fnn-store-fault :message "cold guard cache: missing funded bootstrap plan"))
+  (let* ((cache (make-hash-table :test 'eq :size (nth 7 plan)
+                               :rehash-size 1 :rehash-threshold 1.0 :synchronized t))
+         (*fnn-entry-guard-specs* cache))
+    ; Only the fixed core roster can populate this preallocated cache.
+    (dolist (name (fn-cgb-roster))
+      (unless (fn-cgb-specp name (fnn-entry-guard-spec name))
+        (error 'fnn-store-fault :message "cold guard cache: unsupported image guard metadata")))
+    (setf *fnn-cold-entry-guard-specs* cache)
+    cache))
+
+(defun fnn-cold-call (name &rest args)
+  (unless (and *fnn-cold-entry-guard-specs* (fn-cgb-namep name))
+    (error 'fnn-store-fault :message "cold guard cache: unprepared or unsupported entry"))
+  (let ((*fnn-entry-guard-specs* *fnn-cold-entry-guard-specs*))
+    (apply #'fnn-call name args)))
+
 (defun fnn-entry-guard-describe (value)
   "A bounded description of VALUE's kind (never its contents)."
   (cond ((and (integerp value) (>= value 0)) (format nil "the natural ~d" value))
@@ -1458,9 +1483,38 @@ and any previous selected checkpoint before initializing the epoch."
 ;; arena cleared, each decoded chunk interned by the guard-verified
 ;; fn-ssr-intern-step (rows and the statement epoch in one cell), then the open
 ;; over the rows.
+ ;; This exclusion protects the actual arena association and destructive reset,
+;; not every steady-state ACL2 call. Owner callers take owner -> lifecycle;
+;; no lifecycle holder waits for an owner gate, worker, or borrower to join.
+(defvar *fnn-payload-lifecycle-lock*
+  (sb-thread:make-mutex :name "fn payload arena lifecycle"))
+(defvar *fnn-payload-lifecycle-phase* :quiescent)
+(defvar *fnn-payload-lifecycle-arena* nil)
+(defvar *fnn-payload-lifecycle-owner* nil)
+
+(defun fnn-payload-lifecycle-answer (event &optional owned joined)
+  "Lifecycle mutex held; ACL2 alone decides the phase transition."
+  (fnn-core 'fn-pvl-runtime-step *fnn-payload-lifecycle-phase* event owned joined))
+
+(defun fnn-payload-startup-reset ()
+  "Only startup/recovery may clear. Refuse serving/draining before STATE use."
+  (sb-thread:with-mutex (*fnn-payload-lifecycle-lock*)
+    (let ((permission (fnn-payload-lifecycle-answer :reset)))
+      (unless (eq (first permission) :allowed)
+        (return-from fnn-payload-startup-reset '(:refused :arena-not-quiescent)))
+      (let* ((arena (fnn-live-arena))
+             (answer (destructuring-bind (erp val &rest ignored)
+                         (fnn-call 'fn-owner-payload-view-reset arena *the-live-state*)
+                       (declare (ignore ignored))
+                       (when erp (fnn-fault "payload reset core error")) val)))
+        (when (eq (first answer) :reset)
+          (setf *fnn-payload-lifecycle-arena* arena))
+        answer))))
+
 (defun fnn-bridge-recover-begin ()
+  (unless (eq (first (fnn-payload-startup-reset)) :reset)
+    (fnn-fault "arena reset refused: captured payload view still owned"))
   (fnn-core-state 'fn-store-sco-clear)
-  (fnn-call 'fn-arena-clear (fnn-live-arena))
   (list (fnn-core 'fn-ssr-seed (fnn-core 'fn-stxk-initial-context 0))))
 
 (defun fnn-bridge-recover-step (replay decoded)
@@ -2538,8 +2592,9 @@ KEYSTONE fn-scka-load-of-written-file).  No :program entry updates the
 arena (invariant-risk; host/store-node-host.lisp fn-store-sco-decode's note).
 A refusal leaves a partial arena that nothing reads: the full replay
 empties it first (fnn-bridge-recover)."
+  (unless (eq (first (fnn-payload-startup-reset)) :reset)
+    (fnn-fault "checkpoint arena reset refused: runtime or payload view still owned"))
   (let ((arena (fnn-live-arena)) (octets (fnn-live-octets)) (i start) (left count))
-    (fnn-call 'fn-arena-clear arena)
     (loop while (> left 0) do
       (let* ((k (min left +fnn-checkpoint-load-batch-payloads+))
              (answer (fnn-call 'fn-scka-seal-n i end k octets arena)))
