@@ -2320,7 +2320,7 @@
               fn-bpfs-plan-fragments-fit-mru))
 
 (definterface fn-bphp-recover-auto-event
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bphp-recover-auto-event-is-bpnr))
 
 (definterface fn-bprpf-row-admit
