@@ -34,3 +34,12 @@
                         (sequence 0) (lower 0)
                         (frontier (fn-sf-frontier (fn-sn-files store)))))
           :in-theory (enable fn-sn-statep fn-sf-statep fn-sf-records))))
+
+; Full literal constructor equality is a helper, not a completion keystone.
+(defthm fn-rsc-descriptor-is-the-original-getter-result-by-definition
+ (equal (fn-rsc-descriptor token epoch generation store)
+        (list :recovery-census token epoch generation store
+              (fn-sf-records-field (fn-sn-files store))
+              (fn-sf-records-count (fn-sn-files store))
+              (fn-sf-frontier (fn-sn-files store)) (fn-sn-consumer store)))
+ :hints (("Goal" :in-theory (enable fn-rsc-descriptor))))
