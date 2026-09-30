@@ -333,3 +333,17 @@ confluence still excludes remaining fuel because batching changes its charge.
 This component does not close controller input cuts, quantum yields, canonical
 initialization/selected dictionary/digest or native holder/runtime funding.
 See `planning/evidence/decoded-window-stored-trajectory-source-2026-09-30.md`.
+
+The actual initializer/feed and stored-wrapper trajectory now reaches the
+existing canonical `fn-pzd-decode` complete answer after two cleared windows.
+The second call uses actual `fn-pzw-budget-left` global carry, rather than the
+first quantum's local remainder. First status is `:yield` or `:full`, second
+status is neither, and appended output stays below the actual canonical stored
+sentinel. Canonical source budget completion follows the actual charged-loop
+bound; dictionary/input type and a redundant prefix bound were removed after
+weakened proofs. All four conditions have complete removal witnesses. This
+logical source component does not establish general controller iteration,
+input cuts/digest, dictionary authority or native holder/runtime funding. Its
+requested5 yield witness is for the general actual stored wrapper; no reachable
+fixed1024 codec yield or native64-byte input-window fixture is inferred.
+See `planning/evidence/decoded-window-canonical-trajectory-source-2026-09-30.md`.
