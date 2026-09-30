@@ -407,7 +407,7 @@ environment always carries; a blind environment answers as before.
   none: a deferral).
 
 The HEAD composition is also stated over the host-called `fn-served-step`
-(PRF-1114, `fn-hdc-command-wire-head-is-served-retrieval`). A concrete
+(PRF-1114, `fn-shd-command-wire-head-is-served-retrieval`). A concrete
 command-wire connection receiving a complete HEAD line produces exactly
 `fn-rcompat-retrieval`'s `:head` effects and reader session, preserving its
 pinned view, archive and Message-ID index. The literal hypotheses require

@@ -25405,7 +25405,7 @@
       ],
       "system_includes": [],
       "suspects": [
-        "fn-hdc-with-wire-overwrite-by-definition"
+        "fn-shd-with-wire-overwrite-by-definition"
       ],
       "read_error": null
     },
@@ -53782,14 +53782,6 @@
       ]
     },
     {
-      "theorem": "fn-hdc-with-wire-overwrite-by-definition",
-      "book": "books/served-head-bridge.lisp",
-      "line": 52,
-      "reasons": [
-        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
-      ]
-    },
-    {
       "theorem": "fn-heap-reserve-decide-keeps-heap-figures-refusals",
       "book": "books/heap-reservation.lisp",
       "line": 219,
@@ -59115,6 +59107,14 @@
       "theorem": "fn-sfp-records-of-capture",
       "book": "books/store-finalize-published.lisp",
       "line": 81,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-shd-with-wire-overwrite-by-definition",
+      "book": "books/served-head-bridge.lisp",
+      "line": 52,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]

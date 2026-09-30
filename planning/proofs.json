@@ -18088,7 +18088,7 @@
       "assumptions": [],
       "status": "uncertified-at-current-digest",
       "events": [
-        "fn-hdc-command-wire-head-is-served-retrieval"
+        "fn-shd-command-wire-head-is-served-retrieval"
       ],
       "evidence": [
         "books/served-head-bridge.lisp",

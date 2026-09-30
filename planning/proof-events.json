@@ -17479,7 +17479,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-hdc-command-wire-head-is-served-retrieval"
+          "name": "fn-shd-command-wire-head-is-served-retrieval"
         }
       ]
     }

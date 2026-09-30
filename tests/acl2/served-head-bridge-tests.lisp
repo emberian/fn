@@ -27,7 +27,7 @@
   (in-arena-fn-served-step *sr-arena* *hdt-open*
    (append (fn-nntp-string-octets "GROUP fn.test") '(13 10)))))
 (defconst *hdt-token* (fn-nntp-string-octets "<head@fn.test>"))
-(defconst *hdt-line* (append *fn-hdc-head-keyword* '(32) *hdt-token*))
+(defconst *hdt-line* (append *fn-shd-head-keyword* '(32) *hdt-token*))
 (assert-event (and (fn-statep *hdt-archive*) (fn-served-conn-shapep *hdt-selected*)))
 
 
@@ -92,7 +92,7 @@
         (equal (fn-nntp-session-openp session) t)
         (fn-nntp-session-projected session)
         (fn-nntp-command-inputp *hdt-line*)
-        (equal (fn-nntp-tokenize *hdt-line*) (list *fn-hdc-head-keyword* *hdt-token*))
+        (equal (fn-nntp-tokenize *hdt-line*) (list *fn-shd-head-keyword* *hdt-token*))
         server
         (fn-gidx-pinp viewindex)
         (not (fn-nntp-number-withdrawn-p session viewarchive viewindex *hdt-token*))
@@ -168,7 +168,7 @@
       (equal (fn-nntp-session-openp session) t)
       (fn-nntp-session-projected session)
       (fn-nntp-command-inputp *hdt-line*)
-      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-hdc-head-keyword* *hdt-token*))
+      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-shd-head-keyword* *hdt-token*))
       server
       (fn-gidx-pinp viewindex)
       (not (fn-nntp-number-withdrawn-p session viewarchive viewindex *hdt-token*))
@@ -248,7 +248,7 @@
       (equal (fn-nntp-session-openp session) t)
       (fn-nntp-session-projected session)
       (fn-nntp-command-inputp *hdt-line*)
-      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-hdc-head-keyword* *hdt-token*))
+      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-shd-head-keyword* *hdt-token*))
       server
       (fn-gidx-pinp viewindex)
       (not (fn-nntp-number-withdrawn-p session viewarchive viewindex *hdt-token*))
@@ -328,7 +328,7 @@
       (equal (fn-nntp-session-openp session) t)
       (fn-nntp-session-projected session)
       (fn-nntp-command-inputp *hdt-line*)
-      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-hdc-head-keyword* *hdt-token*))
+      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-shd-head-keyword* *hdt-token*))
       server
       (fn-gidx-pinp viewindex)
       (not (fn-nntp-number-withdrawn-p session viewarchive viewindex *hdt-token*))
@@ -408,7 +408,7 @@
       (equal (fn-nntp-session-openp session) t)
       (fn-nntp-session-projected session)
       (fn-nntp-command-inputp *hdt-line*)
-      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-hdc-head-keyword* *hdt-token*))
+      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-shd-head-keyword* *hdt-token*))
       server
       (fn-gidx-pinp viewindex)
       (not (fn-nntp-number-withdrawn-p session viewarchive viewindex *hdt-token*))
@@ -499,7 +499,7 @@
       (equal (fn-nntp-session-openp session) t)
       (fn-nntp-session-projected session)
       (fn-nntp-command-inputp *hdt-line*)
-      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-hdc-head-keyword* *hdt-token*))
+      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-shd-head-keyword* *hdt-token*))
       server
       (fn-gidx-pinp viewindex)
       (not (fn-nntp-number-withdrawn-p session viewarchive viewindex *hdt-token*))
@@ -621,7 +621,7 @@
       (equal (fn-nntp-session-openp session) t)
       (fn-nntp-session-projected session)
       (fn-nntp-command-inputp *hdt-line*)
-      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-hdc-head-keyword* *hdt-token*))
+      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-shd-head-keyword* *hdt-token*))
       server
       (fn-gidx-pinp viewindex)
       (not (fn-nntp-number-withdrawn-p session viewarchive viewindex *hdt-token*))
@@ -847,7 +847,7 @@
       (equal (fn-nntp-session-openp session) t)
       (fn-nntp-session-projected session)
       (fn-nntp-command-inputp *hdt-line*)
-      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-hdc-head-keyword* *hdt-token*))
+      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-shd-head-keyword* *hdt-token*))
       server
       (fn-gidx-pinp viewindex)
       (not (fn-nntp-number-withdrawn-p session viewarchive viewindex *hdt-token*))
@@ -993,7 +993,7 @@
       (equal (fn-nntp-session-openp session) t)
       (fn-nntp-session-projected session)
       (fn-nntp-command-inputp *hdt-line*)
-      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-hdc-head-keyword* *hdt-token*))
+      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-shd-head-keyword* *hdt-token*))
       server
       (fn-gidx-pinp viewindex)
       (not (fn-nntp-number-withdrawn-p session viewarchive viewindex *hdt-token*))
@@ -1161,7 +1161,7 @@
       (not (fn-post-session-awaiting ps))
       (fn-nntp-session-projected session)
       (fn-nntp-command-inputp *hdt-line*)
-      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-hdc-head-keyword* *hdt-token*))
+      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-shd-head-keyword* *hdt-token*))
       server
       (fn-gidx-pinp viewindex)
       (not (fn-nntp-number-withdrawn-p session viewarchive viewindex *hdt-token*))
@@ -1329,7 +1329,7 @@
       (not (fn-post-session-awaiting ps))
       (equal (fn-nntp-session-openp session) t)
       (fn-nntp-command-inputp *hdt-line*)
-      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-hdc-head-keyword* *hdt-token*))
+      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-shd-head-keyword* *hdt-token*))
       server
       (fn-gidx-pinp viewindex)
       (not (fn-nntp-number-withdrawn-p session viewarchive viewindex *hdt-token*))
@@ -1399,13 +1399,13 @@
        (fn-served-step
          conn
          (append
-           (append *fn-hdc-head-keyword* (make-list 520 :initial-element 32) *hdt-token*)
+           (append *fn-shd-head-keyword* (make-list 520 :initial-element 32) *hdt-token*)
            (quote (13 10)))
          (list *hdt-payload*))))
     (and
       (fn-wire-statep (fn-served-conn-wire conn))
       (<=
-        (len (append *fn-hdc-head-keyword* (make-list 520 :initial-element 32) *hdt-token*))
+        (len (append *fn-shd-head-keyword* (make-list 520 :initial-element 32) *hdt-token*))
         600)
       (fn-auth-sessionp as)
       (not (fn-auth-session-handshakingp as))
@@ -1419,8 +1419,8 @@
       (fn-nntp-session-projected session)
       (equal
         (fn-nntp-tokenize
-          (append *fn-hdc-head-keyword* (make-list 520 :initial-element 32) *hdt-token*))
-        (list *fn-hdc-head-keyword* *hdt-token*))
+          (append *fn-shd-head-keyword* (make-list 520 :initial-element 32) *hdt-token*))
+        (list *fn-shd-head-keyword* *hdt-token*))
       server
       (fn-gidx-pinp viewindex)
       (not (fn-nntp-number-withdrawn-p session viewarchive viewindex *hdt-token*))
@@ -1430,7 +1430,7 @@
           (fn-nntp-msgid-withdrawn-p viewindex *hdt-token*)))
       (not
         (fn-nntp-command-inputp
-          (append *fn-hdc-head-keyword* (make-list 520 :initial-element 32) *hdt-token*)))
+          (append *fn-shd-head-keyword* (make-list 520 :initial-element 32) *hdt-token*)))
       (not
         (and
           (equal (fn-served-result-effects p) (fn-nntp-result-effects r))
@@ -1518,7 +1518,7 @@
       (not
         (equal
           (fn-nntp-tokenize *hdt-line*)
-          (list *fn-hdc-head-keyword* (fn-nntp-string-octets "<other@fn.test>"))))
+          (list *fn-shd-head-keyword* (fn-nntp-string-octets "<other@fn.test>"))))
       (not
         (and
           (equal (fn-served-result-effects p) (fn-nntp-result-effects r))
@@ -1593,7 +1593,7 @@
       (equal (fn-nntp-session-openp session) t)
       (fn-nntp-session-projected session)
       (fn-nntp-command-inputp *hdt-line*)
-      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-hdc-head-keyword* *hdt-token*))
+      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-shd-head-keyword* *hdt-token*))
       (fn-gidx-pinp viewindex)
       (not (fn-nntp-number-withdrawn-p session viewarchive viewindex *hdt-token*))
       (not
@@ -1673,7 +1673,7 @@
       (equal (fn-nntp-session-openp session) t)
       (fn-nntp-session-projected session)
       (fn-nntp-command-inputp *hdt-line*)
-      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-hdc-head-keyword* *hdt-token*))
+      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-shd-head-keyword* *hdt-token*))
       server
       (not (fn-nntp-number-withdrawn-p session viewarchive viewindex *hdt-token*))
       (not
@@ -1836,7 +1836,7 @@
       (fn-nntp-command-inputp (fn-nntp-string-octets "HEAD 1"))
       (equal
         (fn-nntp-tokenize (fn-nntp-string-octets "HEAD 1"))
-        (list *fn-hdc-head-keyword* (quote (49))))
+        (list *fn-shd-head-keyword* (quote (49))))
       server
       (fn-gidx-pinp viewindex)
       (not
@@ -1993,7 +1993,7 @@
       (equal (fn-nntp-session-openp session) t)
       (fn-nntp-session-projected session)
       (fn-nntp-command-inputp *hdt-line*)
-      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-hdc-head-keyword* *hdt-token*))
+      (equal (fn-nntp-tokenize *hdt-line*) (list *fn-shd-head-keyword* *hdt-token*))
       server
       (fn-gidx-pinp viewindex)
       (not (fn-nntp-number-withdrawn-p session viewarchive viewindex *hdt-token*))
@@ -2080,7 +2080,7 @@
         (fn-nntp-command-inputp (fn-nntp-string-octets "HEAD 1"))
         (equal
           (fn-nntp-tokenize (fn-nntp-string-octets "HEAD 1"))
-          (list *fn-hdc-head-keyword* (quote (49))))
+          (list *fn-shd-head-keyword* (quote (49))))
         server
         (fn-gidx-pinp viewindex)
         (not (fn-nntp-number-withdrawn-p session viewarchive viewindex (quote (49))))
