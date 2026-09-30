@@ -183,6 +183,9 @@
   (fn-ibp-request-capture :type t :initially nil)
   (fn-ibp-generation-highwater :type (integer 0 *) :initially 0)
   (fn-ibp-generation-free :type t :initially nil)
+  (fn-ibp-page-highwater :type (integer 0 *) :initially 0)
+  (fn-ibp-page-free :type t :initially nil)
+  (fn-ibp-page-pending :type t :initially nil)
   :inline t)
 (defstobj fn-mio$c
   (fn-mio$c-provider :type fn-index-backing)

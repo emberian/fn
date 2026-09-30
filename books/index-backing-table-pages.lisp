@@ -1,0 +1,117 @@
+; Attach only an actual CURRENT :built unpublished table chunk. Establishing
+; that phase requires the funded constructor/zeroing result, not receipt shape.
+(in-package "ACL2")
+(logic)
+(include-book "index-backing-table-layout")
+(local (include-book "arithmetic-5/top" :dir :system))
+
+(defun fn-ipa-table-root-begin (fuel fn-index-backing)
+ (declare (xargs :stobjs fn-index-backing :guard (natp fuel) :verify-guards nil))
+ (let* ((pending (fn-ibp-page-pending fn-index-backing))
+        (builder (fn-ibp-builder fn-index-backing))
+        (request (fn-omk-at 18 builder))
+        (index (fn-omk-at 8 pending)) (physical (fn-omk-at 3 pending))
+        (nonce (fn-omk-at 2 pending)) (depth (fn-ibp-slot-depth fn-index-backing))
+        (table-depth (fn-omk-at 10 builder)) (pages (fn-omk-at 5 builder)))
+  (cond
+   ((not (and (fn-omk-widthp pending 13) (fn-omk-widthp builder 20)
+              (eq (fn-omk-at 10 pending) :built) (eq (fn-omk-at 6 pending) :table)
+              (eq (fn-omk-at 1 builder) :layout)
+              (eq (fn-omk-at 0 request) :page-request)
+              (eq (fn-omk-at 1 request) :table)
+              (equal (fn-omk-at 2 request) index) (null (fn-omk-at 3 request))
+              (equal (fn-omk-at 7 pending) (fn-omk-at 2 builder))
+              (natp index) (posp pages) (< index pages) (natp table-depth)
+              (posp nonce) (natp physical) (true-listp builder)))
+    (mv :recovery-required fuel fn-index-backing))
+   ((<= fuel depth) (mv :yield fuel fn-index-backing))
+   (t
+    (let ((token (list :index-page nonce (+ 1 (floor physical 64)) (mod physical 64))))
+     (stobj-let ((fn-ibp-node (fn-ibp-registry fn-index-backing)))
+      (word row delta left fn-ibp-node)
+      (fn-ibp-node-page-owner-action token :read nil nil nil nil fuel
+                                    (floor physical 64) depth fn-ibp-node)
+      (if (not (and (eq word :present) (equal delta 0)
+                    (eq (fn-omk-at 2 row) :table) (eq (fn-omk-at 9 row) :building)
+                    (equal (fn-omk-at 4 row) nonce) (equal (fn-omk-at 5 row) nonce)
+                    (equal (fn-omk-at 6 row) 1) (equal (fn-omk-at 10 row) 0)
+                    (equal (fn-omk-at 12 row) (fn-omk-at 2 builder))
+                    (fn-ipa-page-debt-matchp pending (fn-omk-at 11 row))))
+          (mv :recovery-required left fn-index-backing)
+        (let* ((cursor (fn-ibp-dir-put-begin (fn-omk-at 9 builder) index table-depth
+                                          (list :chunk physical nonce nonce)))
+               (next (update-nth 1 :table-root
+                      (update-nth 18 (list :table-root index cursor) builder)))
+               (fn-index-backing (update-fn-ibp-builder next fn-index-backing)))
+         (mv :table-root left fn-index-backing)))))))))
+(verify-guards fn-ipa-table-root-begin
+ :hints (("Goal" :in-theory (disable fn-ibp-node-page-owner-action))))
+
+(defun fn-ipa-table-root-one (fuel fn-index-backing)
+ (declare (xargs :stobjs fn-index-backing :guard (natp fuel)))
+ (let* ((builder (fn-ibp-builder fn-index-backing))
+        (continuation (fn-omk-at 18 builder)) (index (fn-omk-at 1 continuation)))
+  (cond
+   ((zp fuel) (mv :yield fuel fn-index-backing))
+   ((not (and (fn-omk-widthp builder 20) (true-listp builder)
+              (eq (fn-omk-at 1 builder) :table-root)
+              (eq (fn-omk-at 0 continuation) :table-root) (natp index)))
+    (mv :recovery-required fuel fn-index-backing))
+   (t
+    (let* ((cursor (fn-ibp-dir-put-step (fn-omk-at 2 continuation)))
+           (phase (fn-omk-at 0 cursor))
+           (next (cond
+                  ((eq phase :done)
+                   (update-nth 1 :table-page-attached
+                    (update-nth 9 (fn-omk-at 1 cursor)
+                     (update-nth 18 (list :table-page-attached index) builder))))
+                  ((eq phase :recovery-required) (update-nth 1 :recovery-required builder))
+                  (t (update-nth 18 (list :table-root index cursor) builder))))
+           (fn-index-backing (update-fn-ibp-builder next fn-index-backing)))
+     (mv (cond ((eq phase :done) :table-page-attached)
+               ((eq phase :recovery-required) :recovery-required) (t :table-root))
+         (- fuel 1) fn-index-backing))))))
+
+; The owner row retains the entire refundable page debt while subsequent
+; table pages are constructed. No C refund/promotion occurs at attachment.
+(defun fn-ipa-table-page-advance (fuel fn-index-backing)
+ (declare (xargs :stobjs fn-index-backing :guard (natp fuel) :verify-guards nil))
+ (let* ((pending (fn-ibp-page-pending fn-index-backing))
+        (builder (fn-ibp-builder fn-index-backing))
+        (continuation (fn-omk-at 18 builder))
+        (index (fn-omk-at 8 pending)) (pages (fn-omk-at 5 builder))
+        (physical (fn-omk-at 3 pending)) (nonce (fn-omk-at 2 pending))
+        (depth (fn-ibp-slot-depth fn-index-backing)))
+  (cond
+   ((not (and (fn-omk-widthp pending 13) (fn-omk-widthp builder 20) (true-listp builder)
+              (eq (fn-omk-at 10 pending) :built) (eq (fn-omk-at 6 pending) :table)
+              (eq (fn-omk-at 1 builder) :table-page-attached)
+              (eq (fn-omk-at 0 continuation) :table-page-attached)
+              (equal (fn-omk-at 1 continuation) index)
+              (equal (fn-omk-at 7 pending) (fn-omk-at 2 builder))
+              (natp index) (posp pages) (< index pages) (natp physical) (posp nonce)))
+    (mv :stale fuel fn-index-backing))
+   ((<= fuel depth) (mv :yield fuel fn-index-backing))
+   (t
+    (let ((token (list :index-page nonce (+ 1 (floor physical 64)) (mod physical 64))))
+     (stobj-let ((fn-ibp-node (fn-ibp-registry fn-index-backing)))
+      (word row delta left fn-ibp-node)
+      (fn-ibp-node-page-owner-action token :read nil nil nil nil fuel
+                                    (floor physical 64) depth fn-ibp-node)
+      (if (not (and (eq word :present) (equal delta 0)
+                    (eq (fn-omk-at 2 row) :table) (eq (fn-omk-at 9 row) :building)
+                    (equal (fn-omk-at 4 row) nonce) (equal (fn-omk-at 5 row) nonce)
+                    (equal (fn-omk-at 6 row) 1)
+                    (equal (fn-omk-at 12 row) (fn-omk-at 2 builder))
+                    (fn-ipa-page-debt-matchp pending (fn-omk-at 11 row))))
+          (mv :recovery-required left fn-index-backing)
+        (let* ((done (>= (+ 1 index) pages))
+               (next (update-nth 1 (if done :table-reinsert :layout)
+                      (update-nth 18
+                       (if done '(:table-reinsert 0 nil)
+                         (list :page-request :table (+ 1 index) nil)) builder)))
+               (fn-index-backing (update-fn-ibp-builder next fn-index-backing))
+               (fn-index-backing (update-fn-ibp-page-pending nil fn-index-backing)))
+         (mv (if done :table-reinsert :page-request) left fn-index-backing)))))))))
+(verify-guards fn-ipa-table-page-advance
+ :hints (("Goal" :in-theory (disable fn-ibp-node-page-owner-action))))

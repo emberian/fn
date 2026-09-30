@@ -23,6 +23,7 @@
 ; effect list, `fn-owner-submittedp' (fn-served-submission).  The host never
 ; writes a reply octet.
 (in-package "ACL2")
+(include-book "../books/index-writer-ticket")
 (include-book "payload-view-host")
 ; books/owner-fault includes books/owner and adds the host-fault transition
 ; `fn-own-fault'.  The host needs it: `fn-owner-fault' below is the only way
@@ -1830,7 +1831,7 @@
 ; fn-cat-prepare-sealed, KEYSTONE fn-cat-prepare-sealed-names-the-sealed-handle):
 ; one seal per POST.  A row that does not name the newest handle is refused
 ; by name (:not-sealed), never prepared.
-(defun fn-owner-cat-prepare-sealed (fn-arena fn-cat state)
+(defun fn-owner-cat-prepare-sealed-produced (fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-arena fn-cat state) :guard t))
   (let ((cand (and (boundp-global 'fn-owner-cat-candidate state)
                    (f-get-global 'fn-owner-cat-candidate state))))
@@ -1842,6 +1843,14 @@
             (let ((state (f-put-global 'fn-owner-cat-pending pending state)))
               (value :prepared))
           (value (if (consp pending) (car pending) :fault)))))))
+
+(defun fn-owner-cat-prepare-sealed (fn-arena fn-cat state)
+  (declare (xargs :stobjs (fn-arena fn-cat state) :guard t))
+  (if (or (not (fn-iwt-idlep (fn-owner-index-writer-ticket state)))
+          (and (f-boundp-global 'fn-owner-cat-pending state)
+               (f-get-global 'fn-owner-cat-pending state)))
+      (value :recovery-required)
+    (fn-owner-cat-prepare-sealed-produced fn-arena fn-cat state)))
 
 ; fn-pout-refuse-reservation (books/owner-prepare-outcome.lisp): :refused
 ; exactly when the Store's gate fn-sn-refuse-reservation-enabledp holds, else

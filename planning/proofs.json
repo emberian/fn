@@ -19622,6 +19622,34 @@
         "planning/evidence/consumer-remote-event-buffer-source-2026-09-30.json"
       ],
       "progress_note": "Clean protected source REPL consumer-remote-clean: guards and all 18 book forms admitted; 29 test forms / 22 assertions passed. Four dependency books loaded from matching source inside encapsulates. No certification, native endpoint, image or deployment claim. The CP kernel now admits remote10 entries and remote register/rebase proposals, preserves metadata across ACK, and generalizes its state/capacity preservation to those operations. Exact definition installation and ACK preservation were source-admitted with literal positive/removal witnesses. The durable CPE codec still refuses remote operation tags; no remote host path is reachable. CP7 authority representation now source-admits adopted account rows, deletion tombstones and pending candidate separation; exact progress/frontier authority preservation and inherited local/remote kernel tests pass. No staged producer, authority writer/replay correspondence, owner carry installation or endpoint completion is claimed. The current-profile actual-charge adapter and fixed-field active authority revision/discard step are source-admitted with literal witnesses. Actual constructor/canonical carry, atomic config/account publisher, joint replay and authenticated endpoint remain open; no host activation or qualification is claimed. The fixed existing CPE scalar charge now has an exact fn-cpe-encode length correspondence and all-six-kind/maximum-ACK source witnesses; variable remote/adoption constructors and actual host integration remain open. Actual legacy CPE publication now routes the event-specific carried-profile verdict before native frontier allocation. Proper source composition proves exact persisted row charge and retained release headroom; eight assertions and actual deployed-form routing/order harness pass. Full owner translation/canonical allocation and remote/account/authority endpoint remain open; no original Q13 completion or native qualification."
+    },
+    {
+      "id": "PRF-1168",
+      "title": "Actual held16 producers and physical row prefixes preserve the reader row domain",
+      "statement": "Actual held16 intern/prepare, shared-pool generation reserve/register, assignment, recursive copy, seal, shared-page retain, persistent directory construction and actual writer completion establish/preserve typed row-prefix carry. Actual borrowed-directory NodeRowRead returns the typed held16 pointer under that carry, bound and result status. Genuine served prepared source/SAMEarena lifetime, captured query and complete durable event publication remain open.",
+      "milestone": "M5",
+      "requirements": [
+        "REP-013",
+        "STO-027"
+      ],
+      "depends_on": [
+        "PRF-201"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/index-backing-row-carry.lisp",
+        "books/catalog-prepare.lisp",
+        "books/index-backing-publication-row-carry.lisp",
+        "tests/acl2/index-backing-publication-row-carry-tests.lisp",
+        "books/store-intern-row.lisp",
+        "books/catalog-prepare-sealed.lisp",
+        "books/index-backing-served-producer-carry.lisp",
+        "tests/acl2/index-backing-served-producer-tests.lisp",
+        "planning/evidence/served-writer-current-source-2026-09-30",
+        "planning/evidence/source-convergence-2026-09-30/served-writer-source.json"
+      ],
+      "progress_note": "Current compatible row/served/writer source assembled with modern provider3 appended fields. Actor source proofs and predecessor132 normal are distinct scopes; combined current PROGRAM arena/catalog declarations, SAMEarena lifetime, delta publication, guarded concrete closure, genuine constructor census and runtime issuance remain open. No predecessor proof verdict transfers to this combined source."
     }
   ]
 }

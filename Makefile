@@ -2020,7 +2020,42 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/consumer-account-candidate-tests \
     books/consumer-account-initial \
     books/consumer-progress-carried \
-    tests/acl2/consumer-account-config-owner-lineage-tests
+    tests/acl2/consumer-account-config-owner-lineage-tests \
+    books/index-writer-ticket \
+    books/index-writer-source-fence \
+    tests/acl2/index-writer-source-fence-tests \
+    books/catalog-prepare-sealed \
+    books/index-backing-served-producer-carry \
+    tests/acl2/index-backing-served-producer-tests \
+    books/index-backing-writer \
+    books/owner-node-secret-accessor \
+    books/owner-report-owner-accessors \
+    books/allocation-turn-body-authority \
+    books/allocation-turn-slots \
+    books/index-backing-writer-step \
+    books/index-backing-table-seal \
+    books/index-backing-reinsert \
+    books/index-backing-table-place \
+    books/index-backing-row-retain \
+    books/index-backing-table-pages \
+    books/index-backing-table-layout \
+    books/index-page-debt-transfer \
+    books/index-backing-row-copy \
+    books/index-backing-layout \
+    books/index-page-issuer \
+    books/index-generation-issuer \
+    books/index-backing-page-owners \
+    books/index-backing-assignment \
+    books/group-number-source-stage \
+    books/group-number-source-update \
+    books/group-number-source-pending \
+    books/allocation-turn-raw-bridge \
+    books/store-octet-entry \
+    tests/acl2/index-backing-publication-row-carry-tests \
+    books/index-backing-publication-row-carry \
+    books/catalog-prepare \
+    books/index-backing-row-carry \
+    books/store-intern-row
 
 .PHONY: host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none

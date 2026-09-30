@@ -1,0 +1,32 @@
+; Readonly lineage MODEL tests. Seeded builder/ticket metadata is not a funded
+; publication or ATS authority. PROGRAM caller effect-refinement stays open.
+(in-package "ACL2")
+(include-book "../../books/index-writer-source-fence")
+(defun fn-iwf-test-current (fn-mio$c)
+ (declare (xargs :stobjs fn-mio$c :guard t))
+ (let* ((pc (fn-pc-make '(1 . 0) 0 nil nil nil))
+        (token '(:index-generation 1 1 0))
+        (ticket (list :index-writer-ticket :started 0 1 0 pc 0 0 8 nil nil token)))
+  (stobj-let ((fn-index-backing (fn-mio$c-provider fn-mio$c)))
+   (fn-index-backing)
+   (update-fn-ibp-builder
+    (list :index-builder :arena-held token nil nil nil 0 '(1 . 0)
+          nil nil nil nil nil nil nil nil nil nil nil nil)
+    fn-index-backing)
+   (let ((same (fn-owner-index-writer-currentp ticket fn-mio$c)))
+    (stobj-let ((fn-index-backing (fn-mio$c-provider fn-mio$c)))
+     (fn-index-backing)
+     (update-fn-ibp-builder
+      (update-nth 2 '(:index-generation 2 1 0) (fn-ibp-builder fn-index-backing))
+      fn-index-backing)
+     (let ((foreign (fn-owner-index-writer-currentp ticket fn-mio$c)))
+      (stobj-let ((fn-index-backing (fn-mio$c-provider fn-mio$c)))
+       (unchanged)
+       (equal (fn-omk-at 2 (fn-ibp-builder fn-index-backing))
+              '(:index-generation 2 1 0))
+       (mv (and same (not foreign) unchanged) fn-mio$c))))))))
+(defun fn-iwf-test-local ()
+ (declare (xargs :guard t))
+ (with-local-stobj fn-mio$c
+  (mv-let (okay fn-mio$c) (fn-iwf-test-current fn-mio$c) okay)))
+(assert-event (fn-iwf-test-local))
