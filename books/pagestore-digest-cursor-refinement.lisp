@@ -16,11 +16,11 @@
 (defun-nx pgs-dcr-parent (leftcv rightcv)
   (fn-b3-output *fn-b3-iv* (append leftcv rightcv) 0 64 *fn-b3-parent*))
 
-(defun-nx pgs-dcr-fold (depth out msg pgs-digest)
-  (declare (xargs :stobjs pgs-digest :measure (nfix depth) :verify-guards nil))
+(defun-nx pgs-dcr-fold (depth out msg pgs-digest-state)
+  (declare (xargs :stobjs pgs-digest-state :measure (nfix depth) :verify-guards nil))
   (if (zp depth) out
     (let* ((index (- depth 1))
-           (frame (pgs-dc-framesi index pgs-digest))
+           (frame (pgs-dc-framesi index pgs-digest-state))
            (parent
              (if (eq (fn-b3-nthx 0 frame) :left)
                  (pgs-dcr-parent (fn-b3-output-cv out)
@@ -29,26 +29,26 @@
                        (pgs-dcr-span (fn-b3-nthx 1 frame) (fn-b3-nthx 2 frame) msg)
                        (fn-b3-nthx 3 frame) 0)))
                (pgs-dcr-parent (fn-b3-nthx 4 frame) (fn-b3-output-cv out)))))
-      (pgs-dcr-fold index parent msg pgs-digest))))
+      (pgs-dcr-fold index parent msg pgs-digest-state))))
 
-(defun-nx pgs-dcr-current (msg pgs-digest)
-  (declare (xargs :stobjs pgs-digest :verify-guards nil))
-  (case (pgs-dc-mode pgs-digest)
+(defun-nx pgs-dcr-current (msg pgs-digest-state)
+  (declare (xargs :stobjs pgs-digest-state :verify-guards nil))
+  (case (pgs-dc-mode pgs-digest-state)
     ((:node :split)
      (fn-b3-node *fn-b3-iv*
-       (pgs-dcr-span (pgs-dc-start pgs-digest) (pgs-dc-end pgs-digest) msg)
-       (pgs-dc-counter pgs-digest) 0))
+       (pgs-dcr-span (pgs-dc-start pgs-digest-state) (pgs-dc-end pgs-digest-state) msg)
+       (pgs-dc-counter pgs-digest-state) 0))
     (:chunk
-     (fn-b3-chunk (pgs-dc-cv pgs-digest)
-       (pgs-dcr-span (pgs-dc-pos pgs-digest) (pgs-dc-end pgs-digest) msg)
-       (pgs-dc-counter pgs-digest) 0
-       (equal (pgs-dc-pos pgs-digest) (pgs-dc-start pgs-digest))))
-    (otherwise (pgs-dc-output pgs-digest))))
+     (fn-b3-chunk (pgs-dc-cv pgs-digest-state)
+       (pgs-dcr-span (pgs-dc-pos pgs-digest-state) (pgs-dc-end pgs-digest-state) msg)
+       (pgs-dc-counter pgs-digest-state) 0
+       (equal (pgs-dc-pos pgs-digest-state) (pgs-dc-start pgs-digest-state))))
+    (otherwise (pgs-dc-output pgs-digest-state))))
 
-(defun-nx pgs-dcr-denote (msg pgs-digest)
-  (declare (xargs :stobjs pgs-digest :verify-guards nil))
-  (pgs-dcr-fold (pgs-dc-depth pgs-digest)
-                (pgs-dcr-current msg pgs-digest) msg pgs-digest))
+(defun-nx pgs-dcr-denote (msg pgs-digest-state)
+  (declare (xargs :stobjs pgs-digest-state :verify-guards nil))
+  (pgs-dcr-fold (pgs-dc-depth pgs-digest-state)
+                (pgs-dcr-current msg pgs-digest-state) msg pgs-digest-state))
 
 (defthm pgs-dcr-node-model-base
   (implies (and (natp start) (natp end) (<= start end)
@@ -59,63 +59,63 @@
                   :in-theory (disable pgs-dcr-span fn-b3-chunk))))
 
 (defthm pgs-dcr-node-entry-keeps-current-denotation
-  (implies (and (equal (pgs-dc-mode pgs-digest) :node)
-                (natp (pgs-dc-start pgs-digest))
-                (natp (pgs-dc-end pgs-digest))
-                (<= (pgs-dc-start pgs-digest) (pgs-dc-end pgs-digest))
-                (<= (* 8 (pgs-dc-end pgs-digest)) (len msg))
-                (<= (- (pgs-dc-end pgs-digest) (pgs-dc-start pgs-digest)) 128))
-           (equal (pgs-dcr-current msg (mv-nth 1 (pgs-dc-step nil pgs-digest)))
-                  (pgs-dcr-current msg pgs-digest)))
+  (implies (and (equal (pgs-dc-mode pgs-digest-state) :node)
+                (natp (pgs-dc-start pgs-digest-state))
+                (natp (pgs-dc-end pgs-digest-state))
+                (<= (pgs-dc-start pgs-digest-state) (pgs-dc-end pgs-digest-state))
+                (<= (* 8 (pgs-dc-end pgs-digest-state)) (len msg))
+                (<= (- (pgs-dc-end pgs-digest-state) (pgs-dc-start pgs-digest-state)) 128))
+           (equal (pgs-dcr-current msg (mv-nth 1 (pgs-dc-step nil pgs-digest-state)))
+                  (pgs-dcr-current msg pgs-digest-state)))
   :hints (("Goal" :in-theory (e/d (pgs-dcr-current pgs-dc-step)
                                    (nth update-nth pgs-dcr-span fn-b3-chunk fn-b3-node))
                   :do-not-induct t)))
 
 
 (defthm pgs-dcr-node-step-keeps-current-denotation
-  (implies (and (equal (pgs-dc-mode pgs-digest) :node)
-                (natp (pgs-dc-start pgs-digest))
-                (natp (pgs-dc-end pgs-digest))
-                (<= (pgs-dc-start pgs-digest) (pgs-dc-end pgs-digest))
-                (<= (* 8 (pgs-dc-end pgs-digest)) (len msg)))
-           (equal (pgs-dcr-current msg (mv-nth 1 (pgs-dc-step nil pgs-digest)))
-                  (pgs-dcr-current msg pgs-digest)))
+  (implies (and (equal (pgs-dc-mode pgs-digest-state) :node)
+                (natp (pgs-dc-start pgs-digest-state))
+                (natp (pgs-dc-end pgs-digest-state))
+                (<= (pgs-dc-start pgs-digest-state) (pgs-dc-end pgs-digest-state))
+                (<= (* 8 (pgs-dc-end pgs-digest-state)) (len msg)))
+           (equal (pgs-dcr-current msg (mv-nth 1 (pgs-dc-step nil pgs-digest-state)))
+                  (pgs-dcr-current msg pgs-digest-state)))
   :hints (("Goal" :in-theory (e/d (pgs-dcr-current pgs-dc-step)
                                    (nth update-nth pgs-dcr-span fn-b3-chunk fn-b3-node))
                   :do-not-induct t)))
 
 (defthm pgs-dcr-fold-of-scalar-update
   (implies (and (natp k) (not (equal k *pgs-dc-framesi*)))
-           (equal (pgs-dcr-fold depth out msg (update-nth k value pgs-digest))
-                  (pgs-dcr-fold depth out msg pgs-digest)))
-  :hints (("Goal" :induct (pgs-dcr-fold depth out msg pgs-digest)
-                  :expand ((pgs-dcr-fold depth out msg (update-nth k value pgs-digest)))
+           (equal (pgs-dcr-fold depth out msg (update-nth k value pgs-digest-state))
+                  (pgs-dcr-fold depth out msg pgs-digest-state)))
+  :hints (("Goal" :induct (pgs-dcr-fold depth out msg pgs-digest-state)
+                  :expand ((pgs-dcr-fold depth out msg (update-nth k value pgs-digest-state)))
                   :in-theory (e/d (pgs-dcr-fold pgs-dc-framesi)
                                    (nth update-nth pgs-dcr-parent pgs-dcr-span
                                         fn-b3-node fn-b3-chunk fn-b3-nthx fn-b3-output-cv)))))
 
 (defthm pgs-dcr-node-step-depth-unfolds
-  (implies (equal (pgs-dc-mode pgs-digest) :node)
-           (equal (pgs-dc-depth (mv-nth 1 (pgs-dc-step nil pgs-digest)))
-                  (pgs-dc-depth pgs-digest)))
+  (implies (equal (pgs-dc-mode pgs-digest-state) :node)
+           (equal (pgs-dc-depth (mv-nth 1 (pgs-dc-step nil pgs-digest-state)))
+                  (pgs-dc-depth pgs-digest-state)))
   :hints (("Goal" :in-theory (e/d (pgs-dc-step)
                                    (nth update-nth)))))
 
 (defthm pgs-dcr-node-step-fold-unfolds
-  (implies (equal (pgs-dc-mode pgs-digest) :node)
-           (equal (pgs-dcr-fold depth out msg (mv-nth 1 (pgs-dc-step nil pgs-digest)))
-                  (pgs-dcr-fold depth out msg pgs-digest)))
+  (implies (equal (pgs-dc-mode pgs-digest-state) :node)
+           (equal (pgs-dcr-fold depth out msg (mv-nth 1 (pgs-dc-step nil pgs-digest-state)))
+                  (pgs-dcr-fold depth out msg pgs-digest-state)))
   :hints (("Goal" :in-theory (e/d (pgs-dc-step)
                                    (nth update-nth pgs-dcr-fold)))))
 
 (defthm pgs-dcr-node-step-preserves-denotation
-  (implies (and (equal (pgs-dc-mode pgs-digest) :node)
-                (natp (pgs-dc-start pgs-digest))
-                (natp (pgs-dc-end pgs-digest))
-                (<= (pgs-dc-start pgs-digest) (pgs-dc-end pgs-digest))
-                (<= (* 8 (pgs-dc-end pgs-digest)) (len msg)))
-           (equal (pgs-dcr-denote msg (mv-nth 1 (pgs-dc-step nil pgs-digest)))
-                  (pgs-dcr-denote msg pgs-digest)))
+  (implies (and (equal (pgs-dc-mode pgs-digest-state) :node)
+                (natp (pgs-dc-start pgs-digest-state))
+                (natp (pgs-dc-end pgs-digest-state))
+                (<= (pgs-dc-start pgs-digest-state) (pgs-dc-end pgs-digest-state))
+                (<= (* 8 (pgs-dc-end pgs-digest-state)) (len msg)))
+           (equal (pgs-dcr-denote msg (mv-nth 1 (pgs-dc-step nil pgs-digest-state)))
+                  (pgs-dcr-denote msg pgs-digest-state)))
   :hints (("Goal" :in-theory (e/d (pgs-dcr-denote)
                                    (pgs-dcr-current pgs-dc-step pgs-dcr-fold)))))
 
@@ -201,120 +201,120 @@
             (not (equal (+ 8 pos) start)))))
 
 (defthm pgs-dcr-chunk-step-keeps-current-denotation
-  (implies (and (equal (pgs-dc-mode pgs-digest) :chunk)
-                (natp (pgs-dc-start pgs-digest))
-                (natp (pgs-dc-pos pgs-digest))
-                (natp (pgs-dc-end pgs-digest))
-                (<= (pgs-dc-start pgs-digest) (pgs-dc-pos pgs-digest))
-                (<= (pgs-dc-pos pgs-digest) (pgs-dc-end pgs-digest))
-                (<= (* 8 (pgs-dc-end pgs-digest)) (len msg))
-                (true-listp (pgs-dc-cv pgs-digest))
-                (equal (len (pgs-dc-cv pgs-digest)) 8)
+  (implies (and (equal (pgs-dc-mode pgs-digest-state) :chunk)
+                (natp (pgs-dc-start pgs-digest-state))
+                (natp (pgs-dc-pos pgs-digest-state))
+                (natp (pgs-dc-end pgs-digest-state))
+                (<= (pgs-dc-start pgs-digest-state) (pgs-dc-pos pgs-digest-state))
+                (<= (pgs-dc-pos pgs-digest-state) (pgs-dc-end pgs-digest-state))
+                (<= (* 8 (pgs-dc-end pgs-digest-state)) (len msg))
+                (true-listp (pgs-dc-cv pgs-digest-state))
+                (equal (len (pgs-dc-cv pgs-digest-state)) 8)
                 (equal block (fn-b3-words 16
-                              (pgs-dcr-span (pgs-dc-pos pgs-digest)
-                                             (pgs-dc-end pgs-digest) msg))))
-           (equal (pgs-dcr-current msg (mv-nth 1 (pgs-dc-step block pgs-digest)))
-                  (pgs-dcr-current msg pgs-digest)))
+                              (pgs-dcr-span (pgs-dc-pos pgs-digest-state)
+                                             (pgs-dc-end pgs-digest-state) msg))))
+           (equal (pgs-dcr-current msg (mv-nth 1 (pgs-dc-step block pgs-digest-state)))
+                  (pgs-dcr-current msg pgs-digest-state)))
   :hints (("Goal" :in-theory (e/d (pgs-dcr-current pgs-dc-step fn-b3-output-cv fn-b3-output)
                                    (nth update-nth pgs-dcr-span fn-b3-node fn-b3-chunk
                                         fn-b3-compress pgs-dc-pad-block fn-b3-cv8))
-                  :expand ((fn-b3-chunk (pgs-dc-cv pgs-digest)
-                            (pgs-dcr-span (pgs-dc-pos pgs-digest) (pgs-dc-end pgs-digest) msg)
-                            (pgs-dc-counter pgs-digest) 0
-                            (equal (pgs-dc-pos pgs-digest) (pgs-dc-start pgs-digest))))
+                  :expand ((fn-b3-chunk (pgs-dc-cv pgs-digest-state)
+                            (pgs-dcr-span (pgs-dc-pos pgs-digest-state) (pgs-dc-end pgs-digest-state) msg)
+                            (pgs-dc-counter pgs-digest-state) 0
+                            (equal (pgs-dc-pos pgs-digest-state) (pgs-dc-start pgs-digest-state))))
                   :do-not-induct t)))
 
 (defthm pgs-dcr-chunk-step-depth-unfolds
-  (implies (equal (pgs-dc-mode pgs-digest) :chunk)
-           (equal (pgs-dc-depth (mv-nth 1 (pgs-dc-step block pgs-digest)))
-                  (pgs-dc-depth pgs-digest)))
+  (implies (equal (pgs-dc-mode pgs-digest-state) :chunk)
+           (equal (pgs-dc-depth (mv-nth 1 (pgs-dc-step block pgs-digest-state)))
+                  (pgs-dc-depth pgs-digest-state)))
   :hints (("Goal" :in-theory (e/d (pgs-dc-step)
                                    (nth update-nth)))))
 
 (defthm pgs-dcr-chunk-step-fold-unfolds
-  (implies (equal (pgs-dc-mode pgs-digest) :chunk)
-           (equal (pgs-dcr-fold depth out msg (mv-nth 1 (pgs-dc-step block pgs-digest)))
-                  (pgs-dcr-fold depth out msg pgs-digest)))
+  (implies (equal (pgs-dc-mode pgs-digest-state) :chunk)
+           (equal (pgs-dcr-fold depth out msg (mv-nth 1 (pgs-dc-step block pgs-digest-state)))
+                  (pgs-dcr-fold depth out msg pgs-digest-state)))
   :hints (("Goal" :in-theory (e/d (pgs-dc-step)
                                    (nth update-nth pgs-dcr-fold)))))
 
 
 (defthm pgs-dcr-chunk-step-preserves-denotation
-  (implies (and (equal (pgs-dc-mode pgs-digest) :chunk)
-                (natp (pgs-dc-start pgs-digest))
-                (natp (pgs-dc-pos pgs-digest))
-                (natp (pgs-dc-end pgs-digest))
-                (<= (pgs-dc-start pgs-digest) (pgs-dc-pos pgs-digest))
-                (<= (pgs-dc-pos pgs-digest) (pgs-dc-end pgs-digest))
-                (<= (* 8 (pgs-dc-end pgs-digest)) (len msg))
-                (true-listp (pgs-dc-cv pgs-digest))
-                (equal (len (pgs-dc-cv pgs-digest)) 8)
+  (implies (and (equal (pgs-dc-mode pgs-digest-state) :chunk)
+                (natp (pgs-dc-start pgs-digest-state))
+                (natp (pgs-dc-pos pgs-digest-state))
+                (natp (pgs-dc-end pgs-digest-state))
+                (<= (pgs-dc-start pgs-digest-state) (pgs-dc-pos pgs-digest-state))
+                (<= (pgs-dc-pos pgs-digest-state) (pgs-dc-end pgs-digest-state))
+                (<= (* 8 (pgs-dc-end pgs-digest-state)) (len msg))
+                (true-listp (pgs-dc-cv pgs-digest-state))
+                (equal (len (pgs-dc-cv pgs-digest-state)) 8)
                 (equal block (fn-b3-words 16
-                              (pgs-dcr-span (pgs-dc-pos pgs-digest)
-                                             (pgs-dc-end pgs-digest) msg))))
-           (equal (pgs-dcr-denote msg (mv-nth 1 (pgs-dc-step block pgs-digest)))
-                  (pgs-dcr-denote msg pgs-digest)))
+                              (pgs-dcr-span (pgs-dc-pos pgs-digest-state)
+                                             (pgs-dc-end pgs-digest-state) msg))))
+           (equal (pgs-dcr-denote msg (mv-nth 1 (pgs-dc-step block pgs-digest-state)))
+                  (pgs-dcr-denote msg pgs-digest-state)))
   :hints (("Goal" :in-theory (e/d (pgs-dcr-denote)
                                    (pgs-dcr-current pgs-dc-step pgs-dcr-fold)))))
 
 (defthm pgs-dcr-fold-of-frame-update-prefix
   (implies (and (natp index) (<= (nfix depth) index))
            (equal (pgs-dcr-fold depth out msg
-                               (update-pgs-dc-framesi index frame pgs-digest))
-                  (pgs-dcr-fold depth out msg pgs-digest)))
-  :hints (("Goal" :induct (pgs-dcr-fold depth out msg pgs-digest)
+                               (update-pgs-dc-framesi index frame pgs-digest-state))
+                  (pgs-dcr-fold depth out msg pgs-digest-state)))
+  :hints (("Goal" :induct (pgs-dcr-fold depth out msg pgs-digest-state)
                   :expand ((pgs-dcr-fold depth out msg
-                               (update-pgs-dc-framesi index frame pgs-digest))
+                               (update-pgs-dc-framesi index frame pgs-digest-state))
                            (pgs-dcr-fold depth out msg
                              (update-nth *pgs-dc-framesi*
-                               (update-nth index frame (nth *pgs-dc-framesi* pgs-digest))
-                               pgs-digest)))
+                               (update-nth index frame (nth *pgs-dc-framesi* pgs-digest-state))
+                               pgs-digest-state)))
                   :in-theory (e/d (pgs-dcr-fold pgs-dc-framesi update-pgs-dc-framesi)
                                    (nth update-nth pgs-dcr-parent pgs-dcr-span
                                         fn-b3-node fn-b3-nthx fn-b3-output-cv)))))
 
 (defthm pgs-dcr-return-empty-preserves-denotation
-  (implies (and (equal (pgs-dc-mode pgs-digest) :return)
-                (equal (pgs-dc-depth pgs-digest) 0))
-           (equal (pgs-dcr-denote msg (mv-nth 1 (pgs-dc-step nil pgs-digest)))
-                  (pgs-dcr-denote msg pgs-digest)))
+  (implies (and (equal (pgs-dc-mode pgs-digest-state) :return)
+                (equal (pgs-dc-depth pgs-digest-state) 0))
+           (equal (pgs-dcr-denote msg (mv-nth 1 (pgs-dc-step nil pgs-digest-state)))
+                  (pgs-dcr-denote msg pgs-digest-state)))
   :hints (("Goal" :in-theory (e/d (pgs-dcr-denote pgs-dcr-current pgs-dc-step)
                                    (nth update-nth pgs-dcr-fold)))))
 
 (defthm pgs-dcr-root-preserves-denotation
-  (implies (equal (pgs-dc-mode pgs-digest) :root)
-           (equal (pgs-dcr-denote msg (mv-nth 1 (pgs-dc-step nil pgs-digest)))
-                  (pgs-dcr-denote msg pgs-digest)))
+  (implies (equal (pgs-dc-mode pgs-digest-state) :root)
+           (equal (pgs-dcr-denote msg (mv-nth 1 (pgs-dc-step nil pgs-digest-state)))
+                  (pgs-dcr-denote msg pgs-digest-state)))
   :hints (("Goal" :in-theory (e/d (pgs-dcr-denote pgs-dcr-current pgs-dc-step)
                                    (nth update-nth pgs-dcr-fold)))))
 
 (defthm pgs-dcr-root-result-is-denotation-root
-  (implies (and (equal (pgs-dc-mode pgs-digest) :root)
-                (equal (pgs-dc-depth pgs-digest) 0))
-           (equal (pgs-dc-result (mv-nth 1 (pgs-dc-step nil pgs-digest)))
+  (implies (and (equal (pgs-dc-mode pgs-digest-state) :root)
+                (equal (pgs-dc-depth pgs-digest-state) 0))
+           (equal (pgs-dc-result (mv-nth 1 (pgs-dc-step nil pgs-digest-state)))
                   (pgs-octets-be-nat
-                    (fn-b3-output-root (pgs-dcr-denote msg pgs-digest)))))
+                    (fn-b3-output-root (pgs-dcr-denote msg pgs-digest-state)))))
   :hints (("Goal" :in-theory (e/d (pgs-dcr-denote pgs-dcr-current pgs-dc-step
                                                   pgs-dc-result pgs-dcr-fold)
                                    (nth update-nth fn-b3-output-root pgs-octets-be-nat)))))
 
 (defthm pgs-dcr-return-right-preserves-denotation
-  (implies (and (equal (pgs-dc-mode pgs-digest) :return)
-                (posp (pgs-dc-depth pgs-digest))
-                (<= (pgs-dc-depth pgs-digest) 64)
+  (implies (and (equal (pgs-dc-mode pgs-digest-state) :return)
+                (posp (pgs-dc-depth pgs-digest-state))
+                (<= (pgs-dc-depth pgs-digest-state) 64)
                 (not (equal (fn-b3-nthx 0
-                             (pgs-dc-framesi (- (pgs-dc-depth pgs-digest) 1) pgs-digest))
+                             (pgs-dc-framesi (- (pgs-dc-depth pgs-digest-state) 1) pgs-digest-state))
                             :left))
                 (true-listp (fn-b3-nthx 4
-                             (pgs-dc-framesi (- (pgs-dc-depth pgs-digest) 1) pgs-digest)))
+                             (pgs-dc-framesi (- (pgs-dc-depth pgs-digest-state) 1) pgs-digest-state)))
                 (equal (len (fn-b3-nthx 4
-                             (pgs-dc-framesi (- (pgs-dc-depth pgs-digest) 1) pgs-digest))) 8))
-           (equal (pgs-dcr-denote msg (mv-nth 1 (pgs-dc-step nil pgs-digest)))
-                  (pgs-dcr-denote msg pgs-digest)))
-  :hints (("Goal" :expand ((pgs-dcr-fold (pgs-dc-depth pgs-digest)
-                             (pgs-dc-output pgs-digest) msg pgs-digest)
-                          (pgs-dcr-fold (nth *pgs-dc-depth* pgs-digest)
-                             (nth *pgs-dc-output* pgs-digest) msg pgs-digest))
+                             (pgs-dc-framesi (- (pgs-dc-depth pgs-digest-state) 1) pgs-digest-state))) 8))
+           (equal (pgs-dcr-denote msg (mv-nth 1 (pgs-dc-step nil pgs-digest-state)))
+                  (pgs-dcr-denote msg pgs-digest-state)))
+  :hints (("Goal" :expand ((pgs-dcr-fold (pgs-dc-depth pgs-digest-state)
+                             (pgs-dc-output pgs-digest-state) msg pgs-digest-state)
+                          (pgs-dcr-fold (nth *pgs-dc-depth* pgs-digest-state)
+                             (nth *pgs-dc-output* pgs-digest-state) msg pgs-digest-state))
                   :in-theory (e/d (pgs-dcr-denote pgs-dcr-current pgs-dc-step pgs-dcr-parent)
                                    (nth update-nth pgs-dcr-fold fn-b3-cv8 fn-b3-output
                                         fn-b3-output-cv fn-b3-node pgs-dcr-span))
@@ -324,9 +324,9 @@
   (implies (and (natp index) (<= (nfix depth) index))
            (equal (pgs-dcr-fold depth out msg
                      (update-nth *pgs-dc-framesi*
-                       (update-nth index frame (nth *pgs-dc-framesi* pgs-digest))
-                       pgs-digest))
-                  (pgs-dcr-fold depth out msg pgs-digest)))
+                       (update-nth index frame (nth *pgs-dc-framesi* pgs-digest-state))
+                       pgs-digest-state))
+                  (pgs-dcr-fold depth out msg pgs-digest-state)))
   :hints (("Goal" :use pgs-dcr-fold-of-frame-update-prefix
                   :in-theory (e/d (update-pgs-dc-framesi)
                                    (pgs-dcr-fold pgs-dcr-fold-of-frame-update-prefix)))))
@@ -337,32 +337,32 @@
   :hints (("Goal" :in-theory (enable pgs-dcr-span))))
 
 (defthm pgs-dcr-return-left-preserves-denotation
-  (implies (and (equal (pgs-dc-mode pgs-digest) :return)
-                (posp (pgs-dc-depth pgs-digest))
-                (<= (pgs-dc-depth pgs-digest) 64)
+  (implies (and (equal (pgs-dc-mode pgs-digest-state) :return)
+                (posp (pgs-dc-depth pgs-digest-state))
+                (<= (pgs-dc-depth pgs-digest-state) 64)
                 (equal (fn-b3-nthx 0
-                             (pgs-dc-framesi (- (pgs-dc-depth pgs-digest) 1) pgs-digest)) :left)
+                             (pgs-dc-framesi (- (pgs-dc-depth pgs-digest-state) 1) pgs-digest-state)) :left)
                 (natp (fn-b3-nthx 3
-                             (pgs-dc-framesi (- (pgs-dc-depth pgs-digest) 1) pgs-digest))))
-           (equal (pgs-dcr-denote msg (mv-nth 1 (pgs-dc-step nil pgs-digest)))
-                  (pgs-dcr-denote msg pgs-digest)))
+                             (pgs-dc-framesi (- (pgs-dc-depth pgs-digest-state) 1) pgs-digest-state))))
+           (equal (pgs-dcr-denote msg (mv-nth 1 (pgs-dc-step nil pgs-digest-state)))
+                  (pgs-dcr-denote msg pgs-digest-state)))
   :hints (("Goal" :expand ((:free (x) (fn-b3-firstn 0 x))
-                          (pgs-dcr-fold (pgs-dc-depth pgs-digest)
-                             (pgs-dc-output pgs-digest) msg pgs-digest)
+                          (pgs-dcr-fold (pgs-dc-depth pgs-digest-state)
+                             (pgs-dc-output pgs-digest-state) msg pgs-digest-state)
                           (:free (out cursor)
-                            (pgs-dcr-fold (nth *pgs-dc-depth* pgs-digest) out msg cursor)))
+                            (pgs-dcr-fold (nth *pgs-dc-depth* pgs-digest-state) out msg cursor)))
                   :in-theory (e/d (pgs-dcr-denote pgs-dcr-current pgs-dc-step pgs-dcr-parent pgs-dcr-span)
                                    (nth update-nth pgs-dcr-fold fn-b3-cv8 fn-b3-output
                                         fn-b3-output-cv fn-b3-node fn-b3-firstn fn-b3-nthcdrx))
                   :do-not-induct t)))
 
 (defthm pgs-dcr-split-search-preserves-denotation
-  (implies (and (equal (pgs-dc-mode pgs-digest) :split)
-                (posp (pgs-dc-power pgs-digest))
-                (< (* 256 (pgs-dc-power pgs-digest))
-                   (- (pgs-dc-end pgs-digest) (pgs-dc-start pgs-digest))))
-           (equal (pgs-dcr-denote msg (mv-nth 1 (pgs-dc-step nil pgs-digest)))
-                  (pgs-dcr-denote msg pgs-digest)))
+  (implies (and (equal (pgs-dc-mode pgs-digest-state) :split)
+                (posp (pgs-dc-power pgs-digest-state))
+                (< (* 256 (pgs-dc-power pgs-digest-state))
+                   (- (pgs-dc-end pgs-digest-state) (pgs-dc-start pgs-digest-state))))
+           (equal (pgs-dcr-denote msg (mv-nth 1 (pgs-dc-step nil pgs-digest-state)))
+                  (pgs-dcr-denote msg pgs-digest-state)))
   :hints (("Goal" :in-theory (e/d (pgs-dcr-denote pgs-dcr-current pgs-dc-step)
                                    (nth update-nth pgs-dcr-fold fn-b3-node pgs-dcr-span)))))
 
@@ -409,30 +409,30 @@
                   :do-not-induct t)))
 
 (defthm pgs-dcr-split-push-preserves-denotation
-  (implies (and (equal (pgs-dc-mode pgs-digest) :split)
-                (natp (pgs-dc-start pgs-digest))
-                (natp (pgs-dc-end pgs-digest))
-                (natp (pgs-dc-counter pgs-digest))
-                (natp (pgs-dc-depth pgs-digest))
-                (< (pgs-dc-depth pgs-digest) 64)
-                (posp (pgs-dc-power pgs-digest))
-                (< (* 128 (pgs-dc-power pgs-digest))
-                   (- (pgs-dc-end pgs-digest) (pgs-dc-start pgs-digest)))
-                (<= (- (pgs-dc-end pgs-digest) (pgs-dc-start pgs-digest))
-                    (* 256 (pgs-dc-power pgs-digest)))
-                (<= (* 8 (pgs-dc-end pgs-digest)) (len msg))
+  (implies (and (equal (pgs-dc-mode pgs-digest-state) :split)
+                (natp (pgs-dc-start pgs-digest-state))
+                (natp (pgs-dc-end pgs-digest-state))
+                (natp (pgs-dc-counter pgs-digest-state))
+                (natp (pgs-dc-depth pgs-digest-state))
+                (< (pgs-dc-depth pgs-digest-state) 64)
+                (posp (pgs-dc-power pgs-digest-state))
+                (< (* 128 (pgs-dc-power pgs-digest-state))
+                   (- (pgs-dc-end pgs-digest-state) (pgs-dc-start pgs-digest-state)))
+                (<= (- (pgs-dc-end pgs-digest-state) (pgs-dc-start pgs-digest-state))
+                    (* 256 (pgs-dc-power pgs-digest-state)))
+                (<= (* 8 (pgs-dc-end pgs-digest-state)) (len msg))
                 (equal (fn-b3-left-chunks 1
-                           (* 8 (- (pgs-dc-end pgs-digest) (pgs-dc-start pgs-digest))))
-                       (pgs-dc-power pgs-digest)))
-           (equal (pgs-dcr-denote msg (mv-nth 1 (pgs-dc-step nil pgs-digest)))
-                  (pgs-dcr-denote msg pgs-digest)))
+                           (* 8 (- (pgs-dc-end pgs-digest-state) (pgs-dc-start pgs-digest-state))))
+                       (pgs-dc-power pgs-digest-state)))
+           (equal (pgs-dcr-denote msg (mv-nth 1 (pgs-dc-step nil pgs-digest-state)))
+                  (pgs-dcr-denote msg pgs-digest-state)))
   :hints (("Goal" :expand ((:free (out cursor)
-                            (pgs-dcr-fold (+ 1 (nth *pgs-dc-depth* pgs-digest)) out msg cursor)))
+                            (pgs-dcr-fold (+ 1 (nth *pgs-dc-depth* pgs-digest-state)) out msg cursor)))
                   :use ((:instance pgs-dcr-node-model-split
-                          (start (pgs-dc-start pgs-digest))
-                          (end (pgs-dc-end pgs-digest))
-                          (counter (pgs-dc-counter pgs-digest))
-                          (power (pgs-dc-power pgs-digest))))
+                          (start (pgs-dc-start pgs-digest-state))
+                          (end (pgs-dc-end pgs-digest-state))
+                          (counter (pgs-dc-counter pgs-digest-state))
+                          (power (pgs-dc-power pgs-digest-state))))
                   :in-theory (e/d (pgs-dcr-denote pgs-dcr-current pgs-dc-step pgs-dcr-parent)
                                    (nth update-nth pgs-dcr-fold fn-b3-cv8 fn-b3-output
                                         fn-b3-output-cv fn-b3-node pgs-dcr-span
@@ -448,21 +448,21 @@
                    :in-theory (disable fn-b3-left-chunks)))))
 
 (defthm pgs-dcr-split-search-preserves-carry
-  (implies (and (equal (pgs-dc-mode pgs-digest) :split)
-                (posp (pgs-dc-power pgs-digest))
-                (natp (pgs-dc-start pgs-digest))
-                (natp (pgs-dc-end pgs-digest))
-                (< (* 256 (pgs-dc-power pgs-digest))
-                   (- (pgs-dc-end pgs-digest) (pgs-dc-start pgs-digest))))
+  (implies (and (equal (pgs-dc-mode pgs-digest-state) :split)
+                (posp (pgs-dc-power pgs-digest-state))
+                (natp (pgs-dc-start pgs-digest-state))
+                (natp (pgs-dc-end pgs-digest-state))
+                (< (* 256 (pgs-dc-power pgs-digest-state))
+                   (- (pgs-dc-end pgs-digest-state) (pgs-dc-start pgs-digest-state))))
            (equal
              (fn-b3-left-chunks
-               (pgs-dc-power (mv-nth 1 (pgs-dc-step nil pgs-digest)))
-               (* 8 (- (pgs-dc-end pgs-digest) (pgs-dc-start pgs-digest))))
-             (fn-b3-left-chunks (pgs-dc-power pgs-digest)
-               (* 8 (- (pgs-dc-end pgs-digest) (pgs-dc-start pgs-digest))))))
+               (pgs-dc-power (mv-nth 1 (pgs-dc-step nil pgs-digest-state)))
+               (* 8 (- (pgs-dc-end pgs-digest-state) (pgs-dc-start pgs-digest-state))))
+             (fn-b3-left-chunks (pgs-dc-power pgs-digest-state)
+               (* 8 (- (pgs-dc-end pgs-digest-state) (pgs-dc-start pgs-digest-state))))))
   :hints (("Goal" :use ((:instance pgs-dcr-left-chunks-search-step
-                           (power (pgs-dc-power pgs-digest))
-                           (nwords (- (pgs-dc-end pgs-digest) (pgs-dc-start pgs-digest)))))
+                           (power (pgs-dc-power pgs-digest-state))
+                           (nwords (- (pgs-dc-end pgs-digest-state) (pgs-dc-start pgs-digest-state)))))
                   :in-theory (e/d (pgs-dc-step)
                                    (nth update-nth fn-b3-left-chunks
                                         pgs-dcr-left-chunks-search-step)))))
@@ -483,7 +483,7 @@
 
 (defthm pgs-dcr-begin-denotation-is-node
   (implies (and (natp nb) (true-listp msg) (equal (len msg) (* 64 nb)))
-           (equal (pgs-dcr-denote msg (pgs-dc-begin sel base nb capture lease pgs-digest))
+           (equal (pgs-dcr-denote msg (pgs-dc-begin sel base nb capture lease pgs-digest-state))
                   (fn-b3-node *fn-b3-iv* msg 0 0)))
   :hints (("Goal" :expand ((fn-b3-nthcdrx 0 msg))
                   :in-theory (e/d (pgs-dcr-denote pgs-dcr-current pgs-dc-begin
@@ -500,7 +500,7 @@
   (implies (and (natp nb) (fn-b3-octet-listp msg) (equal (len msg) (* 64 nb)))
            (equal (pgs-octets-be-nat
                     (fn-b3-output-root
-                      (pgs-dcr-denote msg (pgs-dc-begin sel base nb capture lease pgs-digest))))
+                      (pgs-dcr-denote msg (pgs-dc-begin sel base nb capture lease pgs-digest-state))))
                   (pgs-octets-be-nat (fn-blake3 msg))))
   :hints (("Goal" :in-theory (e/d (fn-blake3 fn-b3-hash)
                                    (pgs-dcr-denote pgs-dc-begin pgs-octets-be-nat
@@ -541,7 +541,7 @@
         (fn-b3-output-root
           (pgs-dcr-denote
             (pgs-words-le-octets (take (* 8 nb) (nthcdr base (pgs-x-arr sel pgs-mem))))
-            (pgs-dc-begin sel base nb capture lease pgs-digest))))
+            (pgs-dc-begin sel base nb capture lease pgs-digest-state))))
       (mv-nth 0 (pgs-x-words-digest sel base nb pgs-mem fn-octets-pg))))
   :hints (("Goal" :in-theory (e/d (fn-blake3 fn-b3-hash) ( pgs-dcr-denote pgs-dc-begin pgs-octets-be-nat
                               fn-b3-output-root pgs-x-words-digest fn-b3-fix-octets
@@ -552,16 +552,16 @@
 (defthm pgs-dcr-terminal-step-is-existing-digest
   (implies
     (and (natp base) (natp nb)
-         (equal (pgs-dc-mode pgs-digest) :root)
-         (equal (pgs-dc-depth pgs-digest) 0)
+         (equal (pgs-dc-mode pgs-digest-state) :root)
+         (equal (pgs-dc-depth pgs-digest-state) 0)
          (equal
            (pgs-dcr-denote
              (pgs-words-le-octets (take (* 8 nb) (nthcdr base (pgs-x-arr sel pgs-mem))))
-             pgs-digest)
+             pgs-digest-state)
            (pgs-dcr-denote
              (pgs-words-le-octets (take (* 8 nb) (nthcdr base (pgs-x-arr sel pgs-mem))))
-             (pgs-dc-begin sel base nb capture lease pgs-digest))))
-    (equal (pgs-dc-result (mv-nth 1 (pgs-dc-step nil pgs-digest)))
+             (pgs-dc-begin sel base nb capture lease pgs-digest-state))))
+    (equal (pgs-dc-result (mv-nth 1 (pgs-dc-step nil pgs-digest-state)))
            (mv-nth 0 (pgs-x-words-digest sel base nb pgs-mem fn-octets-pg))))
   :hints (("Goal"
             :use ((:instance pgs-dcr-root-result-is-denotation-root

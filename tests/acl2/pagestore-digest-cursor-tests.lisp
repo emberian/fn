@@ -2,18 +2,18 @@
 (include-book "../../books/pagestore-digest-cursor")
 
 ;; Test driver only; the served client yields after one tick, never calls RUN.
-(defun pgs-dct-run (fuel pgs-mem pgs-digest)
-  (declare (xargs :stobjs (pgs-mem pgs-digest) :measure (nfix fuel)
+(defun pgs-dct-run (fuel pgs-mem pgs-digest-state)
+  (declare (xargs :stobjs (pgs-mem pgs-digest-state) :measure (nfix fuel)
                   :guard (natp fuel) :verify-guards nil))
-  (if (zp fuel) pgs-digest
-    (mv-let (status pgs-digest) (pgs-dc-tick pgs-mem pgs-digest)
-      (if (eq status :done) pgs-digest
-        (pgs-dct-run (1- fuel) pgs-mem pgs-digest)))))
+  (if (zp fuel) pgs-digest-state
+    (mv-let (status pgs-digest-state) (pgs-dc-tick pgs-mem pgs-digest-state)
+      (if (eq status :done) pgs-digest-state
+        (pgs-dct-run (1- fuel) pgs-mem pgs-digest-state)))))
 
 (defun-nx pgs-dct-example (nb words fuel)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((mem (update-nth *pgs-wi* words (create-pgs-mem)))
-         (cursor (pgs-dc-begin 0 0 nb :capture-17 :lease-23 (create-pgs-digest)))
+         (cursor (pgs-dc-begin 0 0 nb :capture-17 :lease-23 (create-pgs-digest-state)))
          (next (pgs-dct-run fuel mem cursor)))
     (list (pgs-dc-mode next) (pgs-dc-result next)
           (pgs-dc-capture next) (pgs-dc-lease next))))
@@ -83,7 +83,7 @@
 
 ;; A labeled corrupted continuation, distinct from source mutation.
 (defthm pgs-dct-corrupted-depth-is-invalid
-  (let* ((cursor (pgs-dc-begin 0 0 17 :capture-17 :lease-23 (create-pgs-digest)))
+  (let* ((cursor (pgs-dc-begin 0 0 17 :capture-17 :lease-23 (create-pgs-digest-state)))
          (cursor (update-pgs-dc-mode :return cursor))
          (cursor (update-pgs-dc-depth 65 cursor)))
     (and (equal (mv-nth 0 (pgs-dc-step nil cursor)) :invalid)
@@ -92,24 +92,24 @@
 
 ;; Independent streaming driver: input is supplied only on demand. This is
 ;; proof/test vocabulary over lists, never the disk builder's representation.
-(defun pgs-dct-stream-run (fuel words pgs-digest)
-  (declare (xargs :stobjs pgs-digest :measure (nfix fuel)
+(defun pgs-dct-stream-run (fuel words pgs-digest-state)
+  (declare (xargs :stobjs pgs-digest-state :measure (nfix fuel)
                   :guard (natp fuel) :verify-guards nil))
-  (if (zp fuel) pgs-digest
-    (let ((block (if (pgs-dc-needs-block pgs-digest)
+  (if (zp fuel) pgs-digest-state
+    (let ((block (if (pgs-dc-needs-block pgs-digest-state)
                      (fn-b3-words 16
                        (pgs-words-le-octets
-                         (take 8 (nthcdr (pgs-dc-next-word-offset pgs-digest) words))))
+                         (take 8 (nthcdr (pgs-dc-next-word-offset pgs-digest-state) words))))
                    nil)))
-      (mv-let (status pgs-digest) (pgs-dc-step block pgs-digest)
-        (if (eq status :done) pgs-digest
-          (pgs-dct-stream-run (1- fuel) words pgs-digest))))))
+      (mv-let (status pgs-digest-state) (pgs-dc-step block pgs-digest-state)
+        (if (eq status :done) pgs-digest-state
+          (pgs-dct-stream-run (1- fuel) words pgs-digest-state))))))
 
 (defthm pgs-dct-external-stream-positive
   (let* ((words (append (make-list 128 :initial-element 1)
                         (make-list 128 :initial-element 2)
                         (make-list 8 :initial-element 3)))
-         (cursor (pgs-dc-begin 0 0 33 :capture-17 :lease-23 (create-pgs-digest)))
+         (cursor (pgs-dc-begin 0 0 33 :capture-17 :lease-23 (create-pgs-digest-state)))
          (next (pgs-dct-stream-run 100 words cursor)))
     (and (equal (pgs-dc-mode next) :done)
          (equal (pgs-dc-result next)
@@ -119,7 +119,7 @@
   :rule-classes nil)
 
 (defthm pgs-dct-corrupted-split-power-is-invalid
-  (let* ((cursor (pgs-dc-begin 0 0 17 :capture-17 :lease-23 (create-pgs-digest)))
+  (let* ((cursor (pgs-dc-begin 0 0 17 :capture-17 :lease-23 (create-pgs-digest-state)))
          (cursor (update-pgs-dc-mode :split cursor))
          (cursor (update-pgs-dc-power 0 cursor)))
     (and (equal (mv-nth 0 (pgs-dc-step nil cursor)) :invalid)
@@ -127,7 +127,7 @@
   :rule-classes nil)
 
 (defthm pgs-dct-read-demand-positive
-  (let* ((cursor (pgs-dc-begin 0 0 1 :capture-17 :lease-23 (create-pgs-digest)))
+  (let* ((cursor (pgs-dc-begin 0 0 1 :capture-17 :lease-23 (create-pgs-digest-state)))
          (cursor (mv-nth 1 (pgs-dc-step nil cursor))))
     (and (pgs-dc-needs-block cursor)
          (natp (pgs-dc-read-demand cursor))
