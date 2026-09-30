@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1843 |
-| Certification roots in the Makefile | 1770 |
-| Books inside the root closure | 1839 |
-| `defthm` and `defthmd` events | 29432 |
-| `defun` events | 18888 |
+| Books read | 1849 |
+| Certification roots in the Makefile | 1773 |
+| Books inside the root closure | 1845 |
+| `defthm` and `defthmd` events | 29462 |
+| `defun` events | 18920 |
 | Functions with verified guards | 3508 |
-| Functions declared `:verify-guards nil` and never verified | 2263 |
-| Functions left at the default with an explicit guard | 10286 |
-| Functions left at the default with no guard | 2831 |
-| `assert-event` checks | 23909 |
+| Functions declared `:verify-guards nil` and never verified | 2267 |
+| Functions left at the default with an explicit guard | 10308 |
+| Functions left at the default with no guard | 2837 |
+| `assert-event` checks | 23966 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
 | Theorems flagged SUSPECT by shape | 1246 |
-| Export-hygiene warnings | 339 |
+| Export-hygiene warnings | 342 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2526 |
+| Include-hygiene warnings | 2527 |
 | Host-names warnings | 2156 |
 | Hand-written-record warnings | 18 |
 
@@ -467,10 +467,12 @@ that `make certify` requests.
 | `books/history-columns-relation.lisp` | root | 12 | 5 | 0/0/1/4 | 0 | 0 | 0 |
 | `books/history-columns-store.lisp` | root | 18 | 6 | 6/0/0/0 | 0 | 0 | 1 |
 | `books/history-columns.lisp` | root | 78 | 26 | 2/1/17/6 | 0 | 0 | 2 |
+| `books/history-decode-completion.lisp` | closure | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/history-decode-cursor.lisp` | root | 7 | 5 | 1/0/4/0 | 0 | 0 | 0 |
 | `books/history-decode-nodes.lisp` | root | 4 | 6 | 0/0/5/1 | 0 | 0 | 0 |
 | `books/history-decode-refinement.lisp` | root | 63 | 15 | 0/0/0/15 | 0 | 0 | 1 |
 | `books/history-decode-shape.lisp` | root | 28 | 5 | 0/0/0/5 | 0 | 0 | 1 |
+| `books/history-decode-size.lisp` | closure | 15 | 14 | 0/0/12/2 | 0 | 0 | 0 |
 | `books/history-decode-stream.lisp` | root | 12 | 10 | 1/0/9/0 | 0 | 0 | 0 |
 | `books/history-decoded-record-cursor.lisp` | root | 17 | 7 | 0/3/4/0 | 0 | 0 | 1 |
 | `books/history-fold-refinement.lisp` | closure | 29 | 4 | 1/0/3/0 | 0 | 0 | 3 |
@@ -1063,6 +1065,7 @@ that `make certify` requests.
 | `books/store-retention-codec-invariants.lisp` | root | 21 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/store-sweep.lisp` | root | 37 | 17 | 2/0/14/1 | 0 | 0 | 1 |
 | `books/store-tree-codec.lisp` | closure | 41 | 30 | 4/6/20/0 | 0 | 0 | 0 |
+| `books/store-tree-size.lisp` | closure | 12 | 11 | 0/2/9/0 | 0 | 0 | 0 |
 | `books/stx-accept-records.lisp` | root | 16 | 22 | 10/0/12/0 | 0 | 0 | 0 |
 | `books/stx-authority.lisp` | root | 3 | 3 | 0/0/3/0 | 0 | 0 | 2 |
 | `books/stx-carrier.lisp` | root | 56 | 31 | 8/0/23/0 | 0 | 0 | 0 |
@@ -1433,9 +1436,11 @@ that `make certify` requests.
 | `tests/acl2/history-columns-relation-tests.lisp` | root | 5 | 0 | 0/0/0/0 | 2 | 1 | 0 |
 | `tests/acl2/history-columns-store-tests.lisp` | root | 2 | 3 | 0/2/1/0 | 16 | 2 | 0 |
 | `tests/acl2/history-columns-tests.lisp` | root | 10 | 9 | 0/0/7/2 | 14 | 4 | 0 |
+| `tests/acl2/history-decode-completion-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 4 | 0 | 0 |
 | `tests/acl2/history-decode-cursor-tests.lisp` | root | 1 | 2 | 0/2/0/0 | 15 | 0 | 0 |
 | `tests/acl2/history-decode-refinement-tests.lisp` | root | 20 | 1 | 0/1/0/0 | 4 | 0 | 0 |
 | `tests/acl2/history-decode-shape-tests.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `tests/acl2/history-decode-size-tests.lisp` | root | 1 | 5 | 0/1/0/4 | 39 | 0 | 0 |
 | `tests/acl2/history-decoded-record-cursor-tests.lisp` | root | 1 | 6 | 0/6/0/0 | 25 | 0 | 0 |
 | `tests/acl2/history-fold-refinement-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 30 | 1 | 0 |
 | `tests/acl2/history-image-binding-tests.lisp` | root | 1 | 31 | 0/24/1/6 | 37 | 0 | 0 |
@@ -1882,6 +1887,7 @@ that `make certify` requests.
 | `tests/acl2/store-replay-bound-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/store-retention-codec-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 1 | 0 |
 | `tests/acl2/store-sweep-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 33 | 0 | 0 |
+| `tests/acl2/store-tree-size-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
 | `tests/acl2/stx-accept-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 30 | 0 | 0 |
 | `tests/acl2/stx-evidence-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 2 | 0 |
 | `tests/acl2/stx-keyring-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 30 | 0 | 0 |
