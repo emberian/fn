@@ -216,7 +216,7 @@ def included_books(root, rel):
     return names
 
 
-def digest(root, acl2=None, variant="default"):
+def digest(root, acl2=None, variant="default", toolchain_identity=None):
     """The world's cache key (world_image.sh): SHA-256 over the two world
     files selected by VARIANT, every host file they load (lds followed), and the certificate and
     compiled file of every book in their include closure, with the ACL2 the
@@ -243,6 +243,8 @@ def digest(root, acl2=None, variant="default"):
             add("artifact " + name + suffix, root / (name + suffix))
     if acl2:
         h.update(b"acl2 " + str(acl2).encode())
+    if toolchain_identity:
+        h.update(b"\0toolchain " + toolchain_identity.encode())
     return h.hexdigest()
 
 
@@ -257,12 +259,17 @@ if __name__ == "__main__":
             i = rest.index("--variant")
             variant = rest[i + 1]
             del rest[i:i + 2]
+        toolchain_identity = None
+        if "--toolchain-identity" in rest:
+            i = rest.index("--toolchain-identity")
+            toolchain_identity = rest[i + 1]
+            del rest[i:i + 2]
         acl2 = None
         if "--acl2" in rest:
             i = rest.index("--acl2")
             acl2 = rest[i + 1]
             del rest[i:i + 2]
-        print(digest(Path(rest[0]) if rest else ROOT, acl2, variant))
+        print(digest(Path(rest[0]) if rest else ROOT, acl2, variant, toolchain_identity))
         sys.exit(0)
     check = "--check" in sys.argv
     bad = 0

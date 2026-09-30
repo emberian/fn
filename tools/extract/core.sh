@@ -50,6 +50,9 @@ rm -f "$OUT/core.json" "$OUT/core-world.lisp" "$OUT/packages.json" "$OUT/defs.li
 python3 "$X/host_tokens.py" "$TREE" "$OUT/tokens.lsp" "$BUILD"
 # the world, loaded once per world digest and saved (world_image.sh)
 FN_EXTRACT_WORLD_IMAGE=${FN_EXTRACT_WORLD_IMAGE:-$(sh "$X/world_image.sh" "$TREE")}
+TOOLCHAIN=$(python3 "$TREE/tools/acl2_toolchain.py" identity "$ACL2")
+WORLD_KEY=$(python3 "$X/world.py" --digest "$TREE" --acl2 "$ACL2" --variant "$VARIANT" --toolchain-identity "$TOOLCHAIN")
+python3 "$X/world_binding.py" check "$FN_EXTRACT_WORLD_IMAGE" "$WORLD_KEY" "$VARIANT"
 {
   printf '(ld "tools/extract/frontend.lisp")\n(ld "tools/extract/core-export.lisp")\n(xt-core-export (quote\n'
   cat "$OUT/tokens.lsp"
