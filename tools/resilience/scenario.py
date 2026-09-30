@@ -34,7 +34,8 @@ OPERATIONS = ("post", "read", "list-group", "retry", "recover", "restart", "chec
               "acquire-hold", "release-hold", "begin-compaction", "reclaim",
               "cancel-reader", "retire-generation", "deliver-delayed-page",
               "receipt", "replay-media", "probe",
-              "model-prepare", "model-complete", "model-recover")
+              "model-prepare", "model-complete", "model-recover",
+              "window-admit", "window-acquire", "window-cancel", "window-return", "window-release", "window-settle")
 FAULT_ACTIONS = ("kill", "lose-response", "withhold-completion", "report-error",
                  "drop-writes", "substitute-record", "rollback", "interleave",
                  "deliver-stale-completion")
@@ -52,9 +53,9 @@ WITNESSES = ("post-accepted", "retry-reconciled", "read-completed",
              "model-prepared", "model-published", "model-settled",
              "issued-read-held", "cancelled-read-settled", "retired-file-closed",
              "independent-response-held", "response-hold-settled", "two-model-holds",
-             "one-model-hold-blocks", "model-retirement-released")
+             "one-model-hold-blocks", "model-retirement-released", "typed-window-settled")
 REPLAY = ("exact", "timed", "image")
-CONTRACTS = ("local-commit-log", "acceptance-model", "response-holds-model", "page-io-ownership", "reclaim-response-hold")
+CONTRACTS = ("local-commit-log", "acceptance-model", "response-holds-model", "page-io-ownership", "reclaim-response-hold", "typed-window-model")
 CANDIDATE_RULES = ("absent", "present", "either")
 # The routes a post's cut is reached by; the registry carries each route's
 # column where they differ (design §5: `operator post' and `store post' are
@@ -419,6 +420,14 @@ def validate(scenario: Scenario, registry: dict | None = None) -> list:
                 problems.append("{}: retry of nothing ({})".format(o.id, of))
         if o.op == "read" and o.args.get("article") not in set(ids) | prior_ids:
             problems.append("{}: read of an unknown article".format(o.id))
+    if scenario.contract == "typed-window-model":
+        from .typed_window_model import from_scenario
+        try:
+            from_scenario(scenario)
+        except ValueError as error:
+            problems.append(str(error))
+    elif any(o.op.startswith("window-") for o in scenario.operations):
+        problems.append("window operations require typed-window-model profile")
     for step in scenario.healing:
         if step not in ids:
             problems.append("healing step {} is not an operation".format(step))

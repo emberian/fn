@@ -30,3 +30,22 @@ class TypedWindowModelTests(unittest.TestCase):
         text = (evidence / "model-trials.log").read_text()
         for i, case in enumerate(json.loads((evidence / "model-trials.json").read_text())):
             self.assertEqual(judge([Step(**s) for s in case], observe(text, i), i).kind, "consistent")
+
+    def test_shared_scenario_and_reducer_keep_state_producers(self):
+        from tools.resilience.scenario import Scenario, Operation, check, ScenarioError
+        from tools.resilience.typed_window_model import from_scenario
+        from tools.resilience.shrink import dependencies, delete
+        scenario = Scenario("typed", "Typed lifecycle", "typed-window-model",
+                            {"recipe": "typed-window-assigned-vector"},
+                            [{"name": "client", "kind": "client"}],
+                            [Operation("return", "client", "window-return"),
+                             Operation("release", "client", "window-release"),
+                             Operation("admit", "client", "window-admit", {"request": "next"}),
+                             Operation("acquire", "client", "window-acquire", {"request": "next"})],
+                            [], ["release"], ["typed-window-settled"])
+        check(scenario)
+        self.assertEqual(from_scenario(scenario)[-1].request, "next")
+        self.assertEqual(dependencies(scenario)["acquire"], {"admit"})
+        self.assertEqual(len(delete(scenario, "admit").operations), 2)
+        scenario.operations[0] = Operation("bad", "client", "window-return", {"request": "future"})
+        with self.assertRaises(ScenarioError): check(scenario)

@@ -36,7 +36,7 @@ Explicit `requires` edges augment native identity and hold dependencies.
         for key in ("of", "article"):
             if args.get(key) in ids:
                 required.add(args[key])
-        if scenario.contract in ("acceptance-model", "response-holds-model") and previous:
+        if scenario.contract in ("acceptance-model", "response-holds-model", "typed-window-model") and previous:
             required.add(previous)
         if operation.op == "acquire-hold":
             holds[args.get("owner")] = operation.id
@@ -46,6 +46,10 @@ Explicit `requires` edges augment native identity and hold dependencies.
             raise ScenarioError(operation.id + ": prerequisite must precede operation")
         edges[operation.id] = required
         previous = operation.id
+    if scenario.contract == "typed-window-model":
+        from .typed_window_model import from_scenario, dependencies as window_dependencies
+        for identity, required in window_dependencies(from_scenario(scenario)).items():
+            edges[identity].update(required)
     return edges
 
 

@@ -167,3 +167,43 @@ def judge(steps, journal, trial):
             return Verdict("violation", cause="typed-window-transition-contract", surviving=0,
                            explanation={"operation": step.id, "observed": actual, "expected": view}, **base).sign()
     return Verdict("consistent", surviving=1, diagnostics=["Logical API trial; physical native return and join remain unobserved."], **base).sign()
+
+
+def from_scenario(scenario):
+    """Use shared Scenario IR without fabricating native fault coordinates."""
+    if scenario.contract != "typed-window-model":
+        raise ValueError("typed-window backend requires its contract profile")
+    if scenario.initial.get("recipe") != "typed-window-assigned-vector":
+        raise ValueError("typed-window model requires its exact supplied-vector fixture")
+    if scenario.faults:
+        raise ValueError("logical typed-window model has no native fault boundary")
+    steps = []
+    for operation in scenario.operations:
+        if not operation.op.startswith("window-") or set(operation.args) - {"request", "selector", "requires"}:
+            raise ValueError("typed-window operation or arguments outside contract")
+        steps.append(Step(operation.id, operation.op.removeprefix("window-"),
+                          operation.args.get("request", "initial"), operation.args.get("selector", "exact")))
+    return validate(steps)
+
+
+def judge_scenario(scenario, journal, trial):
+    """Check shared IR against a retained execution, including positive witness."""
+    steps = from_scenario(scenario)
+    verdict = judge(steps, journal, trial)
+    if verdict.kind != "consistent":
+        return verdict
+    from .checker import Verdict
+    rows = journal.of_kind("client")
+    identities = {step.id: i for i, step in enumerate(steps)}
+    settled = [step.id for step, row in zip(steps, rows)
+               if step.action in ("release", "settle") and row.get("answer") == ":RELEASED"
+               and row.get("close") == ":CLOSABLE" and row.get("workers") == 0]
+    if "typed-window-settled" in scenario.witnesses and not settled:
+        return Verdict("no-witness", scenario_id=scenario.id, journal_digest=journal.digest(),
+                       cause="typed-window-settlement-not-observed",
+                       pending_rules=verdict.pending_rules).sign()
+    if any(identity not in identities for identity in scenario.healing):
+        raise ValueError("unknown typed-window healing operation")
+    return Verdict("consistent", scenario_id=scenario.id, journal_digest=journal.digest(),
+                   surviving=1, witnesses_observed=["typed-window-settled"] if settled else [],
+                   pending_rules=verdict.pending_rules, diagnostics=verdict.diagnostics).sign()
