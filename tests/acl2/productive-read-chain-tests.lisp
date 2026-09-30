@@ -813,3 +813,1480 @@
        fn-scr-live-catalogp
        fn-scr-catalogp
        fn-scol-okp))))
+
+; Corrupted-wire state: complete literal retained antecedent/conclusion.
+(defconst
+  *pcr-wire-closed-mutant*
+  (fn-ocfg-with-owner
+    *pcrt-selected*
+    (fn-own-set-conns
+      (fn-ocfg-owner *pcrt-selected*)
+      (fn-own-replace-conn
+        (update-nth
+          3
+          (fn-wire-make-state
+            :closed
+            nil
+            0
+            nil
+            nil
+            0
+            (fn-wire-state-line-limit
+              (fn-own-conn-wire
+                (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcrt-selected*)))))
+            (fn-wire-state-body-limit
+              (fn-own-conn-wire
+                (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcrt-selected*))))))
+          (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcrt-selected*))))
+        (fn-own-conns (fn-ocfg-owner *pcrt-selected*))))))
+
+(defthm
+  pcr-numbered-without-command-wire-corrupted-state
+  (let*
+    ((o (fn-ocfg-owner *pcr-wire-closed-mutant*))
+      (conn (fn-own-find-conn 0 (fn-own-conns o)))
+      (sc (fn-own-tls-served-conn o conn))
+      (as (fn-served-conn-session sc))
+      (config (fn-served-conn-config sc))
+      (archive (fn-served-conn-archive sc))
+      (index (fn-served-conn-pinned-index sc))
+      (observation (fn-served-conn-observation sc))
+      (peer (fn-auth-view-session as config))
+      (viewarchive (fn-auth-view-archive as config archive))
+      (viewindex (fn-auth-view-index as config archive index))
+      (viewconfig (fn-auth-view-config as (fn-auth-moderation-config as config) archive))
+      (ps (fn-peer-session-base peer))
+      (session (fn-post-session-base ps))
+      (env (fn-post-reader-env viewconfig observation))
+      (group (fn-nntp-session-group session))
+      (number (fn-nntp-decimal-value (fn-nntp-string-octets "1")))
+      (article (fn-nntp-find-group-number group number (fn-state-articles viewarchive)))
+      (server (fn-nntp-xref-server env))
+      (r (fn-pcr-220-reply session article number group server (list *pcrt-payload*)))
+      (p
+        (car
+          (fn-mca-read-span
+            *pcrt-credits*
+            *pcr-wire-closed-mutant*
+            nil
+            0
+            0
+            (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+            nil
+            (fn-otm-init)
+            32
+            107552
+            (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+            (list *pcrt-payload*)
+            *pcrt-cat*))))
+    (and
+      (and
+        (equal
+          (car
+            (fn-mcr-resize
+              *pcrt-credits*
+              (fn-mca-conn-key 0)
+              (fn-mca-need
+                (fn-own-tls-result-owner
+                  (fn-oas-read-span
+                    *pcr-wire-closed-mutant*
+                    nil
+                    0
+                    0
+                    (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+                    nil
+                    (fn-otm-init)
+                    32
+                    (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+                    (list *pcrt-payload*)
+                    *pcrt-cat*))
+                0
+                107552)))
+          :ok)
+        (not
+          (fn-oas-over-p
+            *pcr-wire-closed-mutant*
+            (fn-own-tls-result-owner
+              (fn-otm-read-span
+                *pcr-wire-closed-mutant*
+                nil
+                0
+                0
+                (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+                nil
+                (fn-otm-init)
+                (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+                (list *pcrt-payload*)
+                *pcrt-cat*))
+            0
+            32))
+        (not (eq (fn-otm-admit-post (fn-otm-init)) :shed))
+        (not (consp nil))
+        (fn-gacc-okp nil)
+        (fn-ocl-relation *pcr-wire-closed-mutant*)
+        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-wire-closed-mutant*))
+        (fn-scr-owner-catalogp
+          (fn-ocfg-owner *pcr-wire-closed-mutant*)
+          0
+          (list *pcrt-payload*)
+          *pcrt-cat*)
+        (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
+        t
+        (equal
+          (fn-oct-slice-list
+            0
+            (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+            (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+          (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+        (fn-wire-statep (fn-served-conn-wire sc))
+        (<=
+          (len (fn-nntp-string-octets "ARTICLE 1"))
+          (fn-wire-state-line-limit
+            (fn-own-conn-wire
+              (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcr-wire-closed-mutant*))))))
+        (fn-auth-sessionp as)
+        (not (fn-auth-session-handshakingp as))
+        (not (fn-auth-sasl-waitingp as))
+        (or
+          (not (fn-auth-config-requiredp (fn-auth-session-config as)))
+          (fn-auth-session-subject as))
+        (null (fn-peer-session-peer peer))
+        (not (fn-post-session-awaiting ps))
+        (equal (fn-nntp-session-openp session) t)
+        (fn-nntp-session-projected session)
+        (fn-nntp-command-inputp (fn-nntp-string-octets "ARTICLE 1"))
+        (equal
+          (fn-nntp-tokenize (fn-nntp-string-octets "ARTICLE 1"))
+          (list *fn-pcr-article-keyword* (fn-nntp-string-octets "1")))
+        (fn-nntp-number-tokenp (fn-nntp-string-octets "1"))
+        group
+        (consp article)
+        server
+        (fn-gidx-pinp viewindex)
+        (not
+          (fn-nntp-number-withdrawn-p session viewarchive viewindex (fn-nntp-string-octets "1")))
+        (fn-nntp-response-okp-of-bytes
+          article
+          (fn-nntp-article-bytes article (list *pcrt-payload*))
+          :article)
+        (fn-nntp-response-okp-of-bytes
+          article
+          (fn-pcr-served-octets server article (list *pcrt-payload*))
+          :article))
+      (not
+        (equal
+          (fn-served-conn-wire sc)
+          (fn-wire-make-state
+            :command
+            nil
+            0
+            nil
+            nil
+            0
+            (fn-wire-state-line-limit
+              (fn-own-conn-wire
+                (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcr-wire-closed-mutant*)))))
+            (fn-wire-state-body-limit
+              (fn-own-conn-wire
+                (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcr-wire-closed-mutant*))))))))
+      (not
+        (and
+          (equal (fn-otb-dependency-step 0 0 2000 t) :serve)
+          (equal (fn-own-tls-result-consumed p) (+ 2 (len (fn-nntp-string-octets "ARTICLE 1"))))
+          (equal (fn-own-tls-result-effects p) (fn-nntp-result-effects r))
+          (equal
+            (fn-own-tls-result-owner p)
+            (cdr
+              (fn-ocfg-read
+                *pcr-wire-closed-mutant*
+                0
+                (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+                (list *pcrt-payload*))))))))
+  :rule-classes
+  nil
+  :hints
+  (("Goal"
+     :in-theory
+     (enable
+       fn-scr-owner-catalogp
+       fn-scr-conn-okp
+       fn-scr-conn-catalogp
+       fn-scr-fields-catalogp
+       fn-scr-live-catalogp
+       fn-scr-catalogp
+       fn-scol-okp))))
+
+; Corrupted-session state: complete literal retained antecedent/conclusion.
+(defconst
+  *pcr-handshaking-mutant*
+  (fn-ocfg-with-owner
+    *pcrt-selected*
+    (fn-own-set-conns
+      (fn-ocfg-owner *pcrt-selected*)
+      (fn-own-replace-conn
+        (update-nth
+          4
+          (update-nth
+            5
+            t
+            (fn-own-conn-session
+              (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcrt-selected*)))))
+          (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcrt-selected*))))
+        (fn-own-conns (fn-ocfg-owner *pcrt-selected*))))))
+
+(defthm
+  pcr-numbered-without-handshaking-exclusion-corrupted-state
+  (let*
+    ((o (fn-ocfg-owner *pcr-handshaking-mutant*))
+      (conn (fn-own-find-conn 0 (fn-own-conns o)))
+      (sc (fn-own-tls-served-conn o conn))
+      (as (fn-served-conn-session sc))
+      (config (fn-served-conn-config sc))
+      (archive (fn-served-conn-archive sc))
+      (index (fn-served-conn-pinned-index sc))
+      (observation (fn-served-conn-observation sc))
+      (peer (fn-auth-view-session as config))
+      (viewarchive (fn-auth-view-archive as config archive))
+      (viewindex (fn-auth-view-index as config archive index))
+      (viewconfig (fn-auth-view-config as (fn-auth-moderation-config as config) archive))
+      (ps (fn-peer-session-base peer))
+      (session (fn-post-session-base ps))
+      (env (fn-post-reader-env viewconfig observation))
+      (group (fn-nntp-session-group session))
+      (number (fn-nntp-decimal-value (fn-nntp-string-octets "1")))
+      (article (fn-nntp-find-group-number group number (fn-state-articles viewarchive)))
+      (server (fn-nntp-xref-server env))
+      (r (fn-pcr-220-reply session article number group server (list *pcrt-payload*)))
+      (p
+        (car
+          (fn-mca-read-span
+            *pcrt-credits*
+            *pcr-handshaking-mutant*
+            nil
+            0
+            0
+            (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+            nil
+            (fn-otm-init)
+            32
+            107552
+            (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+            (list *pcrt-payload*)
+            *pcrt-cat*))))
+    (and
+      (and
+        (equal
+          (car
+            (fn-mcr-resize
+              *pcrt-credits*
+              (fn-mca-conn-key 0)
+              (fn-mca-need
+                (fn-own-tls-result-owner
+                  (fn-oas-read-span
+                    *pcr-handshaking-mutant*
+                    nil
+                    0
+                    0
+                    (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+                    nil
+                    (fn-otm-init)
+                    32
+                    (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+                    (list *pcrt-payload*)
+                    *pcrt-cat*))
+                0
+                107552)))
+          :ok)
+        (not
+          (fn-oas-over-p
+            *pcr-handshaking-mutant*
+            (fn-own-tls-result-owner
+              (fn-otm-read-span
+                *pcr-handshaking-mutant*
+                nil
+                0
+                0
+                (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+                nil
+                (fn-otm-init)
+                (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+                (list *pcrt-payload*)
+                *pcrt-cat*))
+            0
+            32))
+        (not (eq (fn-otm-admit-post (fn-otm-init)) :shed))
+        (not (consp nil))
+        (fn-gacc-okp nil)
+        (fn-ocl-relation *pcr-handshaking-mutant*)
+        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-handshaking-mutant*))
+        (fn-scr-owner-catalogp
+          (fn-ocfg-owner *pcr-handshaking-mutant*)
+          0
+          (list *pcrt-payload*)
+          *pcrt-cat*)
+        (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
+        t
+        (equal
+          (fn-oct-slice-list
+            0
+            (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+            (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+          (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+        (equal
+          (fn-served-conn-wire sc)
+          (fn-wire-make-state
+            :command
+            nil
+            0
+            nil
+            nil
+            0
+            (fn-wire-state-line-limit
+              (fn-own-conn-wire
+                (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcr-handshaking-mutant*)))))
+            (fn-wire-state-body-limit
+              (fn-own-conn-wire
+                (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcr-handshaking-mutant*)))))))
+        (fn-wire-statep (fn-served-conn-wire sc))
+        (<=
+          (len (fn-nntp-string-octets "ARTICLE 1"))
+          (fn-wire-state-line-limit
+            (fn-own-conn-wire
+              (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcr-handshaking-mutant*))))))
+        (fn-auth-sessionp as)
+        (not (fn-auth-sasl-waitingp as))
+        (or
+          (not (fn-auth-config-requiredp (fn-auth-session-config as)))
+          (fn-auth-session-subject as))
+        (null (fn-peer-session-peer peer))
+        (not (fn-post-session-awaiting ps))
+        (equal (fn-nntp-session-openp session) t)
+        (fn-nntp-session-projected session)
+        (fn-nntp-command-inputp (fn-nntp-string-octets "ARTICLE 1"))
+        (equal
+          (fn-nntp-tokenize (fn-nntp-string-octets "ARTICLE 1"))
+          (list *fn-pcr-article-keyword* (fn-nntp-string-octets "1")))
+        (fn-nntp-number-tokenp (fn-nntp-string-octets "1"))
+        group
+        (consp article)
+        server
+        (fn-gidx-pinp viewindex)
+        (not
+          (fn-nntp-number-withdrawn-p session viewarchive viewindex (fn-nntp-string-octets "1")))
+        (fn-nntp-response-okp-of-bytes
+          article
+          (fn-nntp-article-bytes article (list *pcrt-payload*))
+          :article)
+        (fn-nntp-response-okp-of-bytes
+          article
+          (fn-pcr-served-octets server article (list *pcrt-payload*))
+          :article))
+      (not (not (fn-auth-session-handshakingp as)))
+      (not
+        (and
+          (equal (fn-otb-dependency-step 0 0 2000 t) :serve)
+          (equal (fn-own-tls-result-consumed p) (+ 2 (len (fn-nntp-string-octets "ARTICLE 1"))))
+          (equal (fn-own-tls-result-effects p) (fn-nntp-result-effects r))
+          (equal
+            (fn-own-tls-result-owner p)
+            (cdr
+              (fn-ocfg-read
+                *pcr-handshaking-mutant*
+                0
+                (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+                (list *pcrt-payload*))))))))
+  :rule-classes
+  nil
+  :hints
+  (("Goal"
+     :in-theory
+     (enable
+       fn-scr-owner-catalogp
+       fn-scr-conn-okp
+       fn-scr-conn-catalogp
+       fn-scr-fields-catalogp
+       fn-scr-live-catalogp
+       fn-scr-catalogp
+       fn-scol-okp))))
+
+; Corrupted-session state: complete literal retained antecedent/conclusion.
+(defconst
+  *pcr-sasl-waiting-mutant*
+  (fn-ocfg-with-owner
+    *pcrt-selected*
+    (fn-own-set-conns
+      (fn-ocfg-owner *pcrt-selected*)
+      (fn-own-replace-conn
+        (update-nth
+          4
+          (update-nth
+            2
+            (fn-sasl-initial-state :plain)
+            (fn-own-conn-session
+              (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcrt-selected*)))))
+          (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcrt-selected*))))
+        (fn-own-conns (fn-ocfg-owner *pcrt-selected*))))))
+
+(defthm
+  pcr-numbered-without-sasl-waiting-exclusion-corrupted-state
+  (let*
+    ((o (fn-ocfg-owner *pcr-sasl-waiting-mutant*))
+      (conn (fn-own-find-conn 0 (fn-own-conns o)))
+      (sc (fn-own-tls-served-conn o conn))
+      (as (fn-served-conn-session sc))
+      (config (fn-served-conn-config sc))
+      (archive (fn-served-conn-archive sc))
+      (index (fn-served-conn-pinned-index sc))
+      (observation (fn-served-conn-observation sc))
+      (peer (fn-auth-view-session as config))
+      (viewarchive (fn-auth-view-archive as config archive))
+      (viewindex (fn-auth-view-index as config archive index))
+      (viewconfig (fn-auth-view-config as (fn-auth-moderation-config as config) archive))
+      (ps (fn-peer-session-base peer))
+      (session (fn-post-session-base ps))
+      (env (fn-post-reader-env viewconfig observation))
+      (group (fn-nntp-session-group session))
+      (number (fn-nntp-decimal-value (fn-nntp-string-octets "1")))
+      (article (fn-nntp-find-group-number group number (fn-state-articles viewarchive)))
+      (server (fn-nntp-xref-server env))
+      (r (fn-pcr-220-reply session article number group server (list *pcrt-payload*)))
+      (p
+        (car
+          (fn-mca-read-span
+            *pcrt-credits*
+            *pcr-sasl-waiting-mutant*
+            nil
+            0
+            0
+            (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+            nil
+            (fn-otm-init)
+            32
+            107552
+            (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+            (list *pcrt-payload*)
+            *pcrt-cat*))))
+    (and
+      (and
+        (equal
+          (car
+            (fn-mcr-resize
+              *pcrt-credits*
+              (fn-mca-conn-key 0)
+              (fn-mca-need
+                (fn-own-tls-result-owner
+                  (fn-oas-read-span
+                    *pcr-sasl-waiting-mutant*
+                    nil
+                    0
+                    0
+                    (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+                    nil
+                    (fn-otm-init)
+                    32
+                    (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+                    (list *pcrt-payload*)
+                    *pcrt-cat*))
+                0
+                107552)))
+          :ok)
+        (not
+          (fn-oas-over-p
+            *pcr-sasl-waiting-mutant*
+            (fn-own-tls-result-owner
+              (fn-otm-read-span
+                *pcr-sasl-waiting-mutant*
+                nil
+                0
+                0
+                (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+                nil
+                (fn-otm-init)
+                (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+                (list *pcrt-payload*)
+                *pcrt-cat*))
+            0
+            32))
+        (not (eq (fn-otm-admit-post (fn-otm-init)) :shed))
+        (not (consp nil))
+        (fn-gacc-okp nil)
+        (fn-ocl-relation *pcr-sasl-waiting-mutant*)
+        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-sasl-waiting-mutant*))
+        (fn-scr-owner-catalogp
+          (fn-ocfg-owner *pcr-sasl-waiting-mutant*)
+          0
+          (list *pcrt-payload*)
+          *pcrt-cat*)
+        (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
+        t
+        (equal
+          (fn-oct-slice-list
+            0
+            (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+            (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+          (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+        (equal
+          (fn-served-conn-wire sc)
+          (fn-wire-make-state
+            :command
+            nil
+            0
+            nil
+            nil
+            0
+            (fn-wire-state-line-limit
+              (fn-own-conn-wire
+                (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcr-sasl-waiting-mutant*)))))
+            (fn-wire-state-body-limit
+              (fn-own-conn-wire
+                (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcr-sasl-waiting-mutant*)))))))
+        (fn-wire-statep (fn-served-conn-wire sc))
+        (<=
+          (len (fn-nntp-string-octets "ARTICLE 1"))
+          (fn-wire-state-line-limit
+            (fn-own-conn-wire
+              (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcr-sasl-waiting-mutant*))))))
+        (fn-auth-sessionp as)
+        (not (fn-auth-session-handshakingp as))
+        (or
+          (not (fn-auth-config-requiredp (fn-auth-session-config as)))
+          (fn-auth-session-subject as))
+        (null (fn-peer-session-peer peer))
+        (not (fn-post-session-awaiting ps))
+        (equal (fn-nntp-session-openp session) t)
+        (fn-nntp-session-projected session)
+        (fn-nntp-command-inputp (fn-nntp-string-octets "ARTICLE 1"))
+        (equal
+          (fn-nntp-tokenize (fn-nntp-string-octets "ARTICLE 1"))
+          (list *fn-pcr-article-keyword* (fn-nntp-string-octets "1")))
+        (fn-nntp-number-tokenp (fn-nntp-string-octets "1"))
+        group
+        (consp article)
+        server
+        (fn-gidx-pinp viewindex)
+        (not
+          (fn-nntp-number-withdrawn-p session viewarchive viewindex (fn-nntp-string-octets "1")))
+        (fn-nntp-response-okp-of-bytes
+          article
+          (fn-nntp-article-bytes article (list *pcrt-payload*))
+          :article)
+        (fn-nntp-response-okp-of-bytes
+          article
+          (fn-pcr-served-octets server article (list *pcrt-payload*))
+          :article))
+      (not (not (fn-auth-sasl-waitingp as)))
+      (not
+        (and
+          (equal (fn-otb-dependency-step 0 0 2000 t) :serve)
+          (equal (fn-own-tls-result-consumed p) (+ 2 (len (fn-nntp-string-octets "ARTICLE 1"))))
+          (equal (fn-own-tls-result-effects p) (fn-nntp-result-effects r))
+          (equal
+            (fn-own-tls-result-owner p)
+            (cdr
+              (fn-ocfg-read
+                *pcr-sasl-waiting-mutant*
+                0
+                (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+                (list *pcrt-payload*))))))))
+  :rule-classes
+  nil
+  :hints
+  (("Goal"
+     :in-theory
+     (enable
+       fn-scr-owner-catalogp
+       fn-scr-conn-okp
+       fn-scr-conn-catalogp
+       fn-scr-fields-catalogp
+       fn-scr-live-catalogp
+       fn-scr-catalogp
+       fn-scol-okp))))
+
+; Corrupted-session state: complete literal retained antecedent/conclusion.
+(defconst
+  *pcr-post-awaiting-mutant*
+  (fn-ocfg-with-owner
+    *pcrt-selected*
+    (fn-own-set-conns
+      (fn-ocfg-owner *pcrt-selected*)
+      (fn-own-replace-conn
+        (update-nth
+          4
+          (update-nth
+            0
+            (update-nth
+              0
+              (update-nth
+                1
+                t
+                (fn-peer-session-base
+                  (fn-auth-session-base
+                    (fn-own-conn-session
+                      (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcrt-selected*)))))))
+              (fn-auth-session-base
+                (fn-own-conn-session
+                  (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcrt-selected*))))))
+            (fn-own-conn-session
+              (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcrt-selected*)))))
+          (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcrt-selected*))))
+        (fn-own-conns (fn-ocfg-owner *pcrt-selected*))))))
+
+(defthm
+  pcr-numbered-without-post-awaiting-exclusion-corrupted-state
+  (let*
+    ((o (fn-ocfg-owner *pcr-post-awaiting-mutant*))
+      (conn (fn-own-find-conn 0 (fn-own-conns o)))
+      (sc (fn-own-tls-served-conn o conn))
+      (as (fn-served-conn-session sc))
+      (config (fn-served-conn-config sc))
+      (archive (fn-served-conn-archive sc))
+      (index (fn-served-conn-pinned-index sc))
+      (observation (fn-served-conn-observation sc))
+      (peer (fn-auth-view-session as config))
+      (viewarchive (fn-auth-view-archive as config archive))
+      (viewindex (fn-auth-view-index as config archive index))
+      (viewconfig (fn-auth-view-config as (fn-auth-moderation-config as config) archive))
+      (ps (fn-peer-session-base peer))
+      (session (fn-post-session-base ps))
+      (env (fn-post-reader-env viewconfig observation))
+      (group (fn-nntp-session-group session))
+      (number (fn-nntp-decimal-value (fn-nntp-string-octets "1")))
+      (article (fn-nntp-find-group-number group number (fn-state-articles viewarchive)))
+      (server (fn-nntp-xref-server env))
+      (r (fn-pcr-220-reply session article number group server (list *pcrt-payload*)))
+      (p
+        (car
+          (fn-mca-read-span
+            *pcrt-credits*
+            *pcr-post-awaiting-mutant*
+            nil
+            0
+            0
+            (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+            nil
+            (fn-otm-init)
+            32
+            107552
+            (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+            (list *pcrt-payload*)
+            *pcrt-cat*))))
+    (and
+      (and
+        (equal
+          (car
+            (fn-mcr-resize
+              *pcrt-credits*
+              (fn-mca-conn-key 0)
+              (fn-mca-need
+                (fn-own-tls-result-owner
+                  (fn-oas-read-span
+                    *pcr-post-awaiting-mutant*
+                    nil
+                    0
+                    0
+                    (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+                    nil
+                    (fn-otm-init)
+                    32
+                    (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+                    (list *pcrt-payload*)
+                    *pcrt-cat*))
+                0
+                107552)))
+          :ok)
+        (not
+          (fn-oas-over-p
+            *pcr-post-awaiting-mutant*
+            (fn-own-tls-result-owner
+              (fn-otm-read-span
+                *pcr-post-awaiting-mutant*
+                nil
+                0
+                0
+                (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+                nil
+                (fn-otm-init)
+                (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+                (list *pcrt-payload*)
+                *pcrt-cat*))
+            0
+            32))
+        (not (eq (fn-otm-admit-post (fn-otm-init)) :shed))
+        (not (consp nil))
+        (fn-gacc-okp nil)
+        (fn-ocl-relation *pcr-post-awaiting-mutant*)
+        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-post-awaiting-mutant*))
+        (fn-scr-owner-catalogp
+          (fn-ocfg-owner *pcr-post-awaiting-mutant*)
+          0
+          (list *pcrt-payload*)
+          *pcrt-cat*)
+        (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
+        t
+        (equal
+          (fn-oct-slice-list
+            0
+            (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+            (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+          (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+        (equal
+          (fn-served-conn-wire sc)
+          (fn-wire-make-state
+            :command
+            nil
+            0
+            nil
+            nil
+            0
+            (fn-wire-state-line-limit
+              (fn-own-conn-wire
+                (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcr-post-awaiting-mutant*)))))
+            (fn-wire-state-body-limit
+              (fn-own-conn-wire
+                (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcr-post-awaiting-mutant*)))))))
+        (fn-wire-statep (fn-served-conn-wire sc))
+        (<=
+          (len (fn-nntp-string-octets "ARTICLE 1"))
+          (fn-wire-state-line-limit
+            (fn-own-conn-wire
+              (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcr-post-awaiting-mutant*))))))
+        (fn-auth-sessionp as)
+        (not (fn-auth-session-handshakingp as))
+        (not (fn-auth-sasl-waitingp as))
+        (or
+          (not (fn-auth-config-requiredp (fn-auth-session-config as)))
+          (fn-auth-session-subject as))
+        (null (fn-peer-session-peer peer))
+        (equal (fn-nntp-session-openp session) t)
+        (fn-nntp-session-projected session)
+        (fn-nntp-command-inputp (fn-nntp-string-octets "ARTICLE 1"))
+        (equal
+          (fn-nntp-tokenize (fn-nntp-string-octets "ARTICLE 1"))
+          (list *fn-pcr-article-keyword* (fn-nntp-string-octets "1")))
+        (fn-nntp-number-tokenp (fn-nntp-string-octets "1"))
+        group
+        (consp article)
+        server
+        (fn-gidx-pinp viewindex)
+        (not
+          (fn-nntp-number-withdrawn-p session viewarchive viewindex (fn-nntp-string-octets "1")))
+        (fn-nntp-response-okp-of-bytes
+          article
+          (fn-nntp-article-bytes article (list *pcrt-payload*))
+          :article)
+        (fn-nntp-response-okp-of-bytes
+          article
+          (fn-pcr-served-octets server article (list *pcrt-payload*))
+          :article))
+      (not (not (fn-post-session-awaiting ps)))
+      (not
+        (and
+          (equal (fn-otb-dependency-step 0 0 2000 t) :serve)
+          (equal (fn-own-tls-result-consumed p) (+ 2 (len (fn-nntp-string-octets "ARTICLE 1"))))
+          (equal (fn-own-tls-result-effects p) (fn-nntp-result-effects r))
+          (equal
+            (fn-own-tls-result-owner p)
+            (cdr
+              (fn-ocfg-read
+                *pcr-post-awaiting-mutant*
+                0
+                (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+                (list *pcrt-payload*))))))))
+  :rule-classes
+  nil
+  :hints
+  (("Goal"
+     :in-theory
+     (enable
+       fn-scr-owner-catalogp
+       fn-scr-conn-okp
+       fn-scr-conn-catalogp
+       fn-scr-fields-catalogp
+       fn-scr-live-catalogp
+       fn-scr-catalogp
+       fn-scol-okp))))
+
+; Corrupted-state witness: every retained literal hypothesis and failed conclusion.
+(defconst
+  *pcr-reader-closed-mutant*
+  (fn-ocfg-with-owner
+    *pcrt-selected*
+    (fn-own-set-conns
+      (fn-ocfg-owner *pcrt-selected*)
+      (fn-own-replace-conn
+        (update-nth
+          4
+          (update-nth
+            0
+            (update-nth
+              0
+              (update-nth
+                0
+                (update-nth
+                  0
+                  nil
+                  (fn-post-session-base
+                    (fn-peer-session-base
+                      (fn-auth-session-base
+                        (fn-own-conn-session
+                          (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcrt-selected*))))))))
+                (fn-peer-session-base
+                  (fn-auth-session-base
+                    (fn-own-conn-session
+                      (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcrt-selected*)))))))
+              (fn-auth-session-base
+                (fn-own-conn-session
+                  (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcrt-selected*))))))
+            (fn-own-conn-session
+              (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcrt-selected*)))))
+          (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcrt-selected*))))
+        (fn-own-conns (fn-ocfg-owner *pcrt-selected*))))))
+
+(defthm
+  pcr-numbered-without-open-reader-corrupted-state
+  (let*
+    ((o (fn-ocfg-owner *pcr-reader-closed-mutant*))
+      (conn (fn-own-find-conn 0 (fn-own-conns o)))
+      (sc (fn-own-tls-served-conn o conn))
+      (as (fn-served-conn-session sc))
+      (config (fn-served-conn-config sc))
+      (archive (fn-served-conn-archive sc))
+      (index (fn-served-conn-pinned-index sc))
+      (observation (fn-served-conn-observation sc))
+      (peer (fn-auth-view-session as config))
+      (viewarchive (fn-auth-view-archive as config archive))
+      (viewindex (fn-auth-view-index as config archive index))
+      (viewconfig (fn-auth-view-config as (fn-auth-moderation-config as config) archive))
+      (ps (fn-peer-session-base peer))
+      (session (fn-post-session-base ps))
+      (env (fn-post-reader-env viewconfig observation))
+      (group (fn-nntp-session-group session))
+      (number (fn-nntp-decimal-value (fn-nntp-string-octets "1")))
+      (article (fn-nntp-find-group-number group number (fn-state-articles viewarchive)))
+      (server (fn-nntp-xref-server env))
+      (r (fn-pcr-220-reply session article number group server (list *pcrt-payload*)))
+      (p
+        (car
+          (fn-mca-read-span
+            *pcrt-credits*
+            *pcr-reader-closed-mutant*
+            nil
+            0
+            0
+            (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+            nil
+            (fn-otm-init)
+            32
+            107552
+            (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+            (list *pcrt-payload*)
+            *pcrt-cat*))))
+    (and
+      (and
+        (equal
+          (car
+            (fn-mcr-resize
+              *pcrt-credits*
+              (fn-mca-conn-key 0)
+              (fn-mca-need
+                (fn-own-tls-result-owner
+                  (fn-oas-read-span
+                    *pcr-reader-closed-mutant*
+                    nil
+                    0
+                    0
+                    (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+                    nil
+                    (fn-otm-init)
+                    32
+                    (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+                    (list *pcrt-payload*)
+                    *pcrt-cat*))
+                0
+                107552)))
+          :ok)
+        (not
+          (fn-oas-over-p
+            *pcr-reader-closed-mutant*
+            (fn-own-tls-result-owner
+              (fn-otm-read-span
+                *pcr-reader-closed-mutant*
+                nil
+                0
+                0
+                (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+                nil
+                (fn-otm-init)
+                (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+                (list *pcrt-payload*)
+                *pcrt-cat*))
+            0
+            32))
+        (not (eq (fn-otm-admit-post (fn-otm-init)) :shed))
+        (not (consp nil))
+        (fn-gacc-okp nil)
+        (fn-ocl-relation *pcr-reader-closed-mutant*)
+        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-reader-closed-mutant*))
+        (fn-scr-owner-catalogp
+          (fn-ocfg-owner *pcr-reader-closed-mutant*)
+          0
+          (list *pcrt-payload*)
+          *pcrt-cat*)
+        (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
+        t
+        (equal
+          (fn-oct-slice-list
+            0
+            (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+            (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+          (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+        (equal
+          (fn-served-conn-wire sc)
+          (fn-wire-make-state
+            :command
+            nil
+            0
+            nil
+            nil
+            0
+            (fn-wire-state-line-limit
+              (fn-own-conn-wire
+                (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcr-reader-closed-mutant*)))))
+            (fn-wire-state-body-limit
+              (fn-own-conn-wire
+                (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcr-reader-closed-mutant*)))))))
+        (fn-wire-statep (fn-served-conn-wire sc))
+        (<=
+          (len (fn-nntp-string-octets "ARTICLE 1"))
+          (fn-wire-state-line-limit
+            (fn-own-conn-wire
+              (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcr-reader-closed-mutant*))))))
+        (fn-auth-sessionp as)
+        (not (fn-auth-session-handshakingp as))
+        (not (fn-auth-sasl-waitingp as))
+        (or
+          (not (fn-auth-config-requiredp (fn-auth-session-config as)))
+          (fn-auth-session-subject as))
+        (null (fn-peer-session-peer peer))
+        (not (fn-post-session-awaiting ps))
+        (fn-nntp-session-projected session)
+        (fn-nntp-command-inputp (fn-nntp-string-octets "ARTICLE 1"))
+        (equal
+          (fn-nntp-tokenize (fn-nntp-string-octets "ARTICLE 1"))
+          (list *fn-pcr-article-keyword* (fn-nntp-string-octets "1")))
+        (fn-nntp-number-tokenp (fn-nntp-string-octets "1"))
+        group
+        (consp article)
+        server
+        (fn-gidx-pinp viewindex)
+        (not
+          (fn-nntp-number-withdrawn-p session viewarchive viewindex (fn-nntp-string-octets "1")))
+        (fn-nntp-response-okp-of-bytes
+          article
+          (fn-nntp-article-bytes article (list *pcrt-payload*))
+          :article)
+        (fn-nntp-response-okp-of-bytes
+          article
+          (fn-pcr-served-octets server article (list *pcrt-payload*))
+          :article))
+      (not (equal (fn-nntp-session-openp session) t))
+      (not
+        (and
+          (equal (fn-otb-dependency-step 0 0 2000 t) :serve)
+          (equal (fn-own-tls-result-consumed p) (+ 2 (len (fn-nntp-string-octets "ARTICLE 1"))))
+          (equal (fn-own-tls-result-effects p) (fn-nntp-result-effects r))
+          (equal
+            (fn-own-tls-result-owner p)
+            (cdr
+              (fn-ocfg-read
+                *pcr-reader-closed-mutant*
+                0
+                (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+                (list *pcrt-payload*))))))))
+  :rule-classes
+  nil
+  :hints
+  (("Goal"
+     :in-theory
+     (enable
+       fn-scr-owner-catalogp
+       fn-scr-conn-okp
+       fn-scr-conn-catalogp
+       fn-scr-fields-catalogp
+       fn-scr-live-catalogp
+       fn-scr-catalogp
+       fn-scol-okp))))
+
+; Corrupted-state witness: every retained literal hypothesis and failed conclusion.
+(defconst
+  *pcr-short-line-mutant*
+  (fn-ocfg-with-owner
+    *pcrt-selected*
+    (fn-own-set-conns
+      (fn-ocfg-owner *pcrt-selected*)
+      (fn-own-replace-conn
+        (update-nth
+          3
+          (fn-wire-make-state
+            :command
+            nil
+            0
+            nil
+            nil
+            0
+            2
+            (fn-wire-state-body-limit
+              (fn-own-conn-wire
+                (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcrt-selected*))))))
+          (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcrt-selected*))))
+        (fn-own-conns (fn-ocfg-owner *pcrt-selected*))))))
+
+(defthm
+  pcr-numbered-without-line-limit-fit-corrupted-state
+  (let*
+    ((o (fn-ocfg-owner *pcr-short-line-mutant*))
+      (conn (fn-own-find-conn 0 (fn-own-conns o)))
+      (sc (fn-own-tls-served-conn o conn))
+      (as (fn-served-conn-session sc))
+      (config (fn-served-conn-config sc))
+      (archive (fn-served-conn-archive sc))
+      (index (fn-served-conn-pinned-index sc))
+      (observation (fn-served-conn-observation sc))
+      (peer (fn-auth-view-session as config))
+      (viewarchive (fn-auth-view-archive as config archive))
+      (viewindex (fn-auth-view-index as config archive index))
+      (viewconfig (fn-auth-view-config as (fn-auth-moderation-config as config) archive))
+      (ps (fn-peer-session-base peer))
+      (session (fn-post-session-base ps))
+      (env (fn-post-reader-env viewconfig observation))
+      (group (fn-nntp-session-group session))
+      (number (fn-nntp-decimal-value (fn-nntp-string-octets "1")))
+      (article (fn-nntp-find-group-number group number (fn-state-articles viewarchive)))
+      (server (fn-nntp-xref-server env))
+      (r (fn-pcr-220-reply session article number group server (list *pcrt-payload*)))
+      (p
+        (car
+          (fn-mca-read-span
+            *pcrt-credits*
+            *pcr-short-line-mutant*
+            nil
+            0
+            0
+            (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+            nil
+            (fn-otm-init)
+            32
+            107552
+            (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+            (list *pcrt-payload*)
+            *pcrt-cat*))))
+    (and
+      (and
+        (equal
+          (car
+            (fn-mcr-resize
+              *pcrt-credits*
+              (fn-mca-conn-key 0)
+              (fn-mca-need
+                (fn-own-tls-result-owner
+                  (fn-oas-read-span
+                    *pcr-short-line-mutant*
+                    nil
+                    0
+                    0
+                    (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+                    nil
+                    (fn-otm-init)
+                    32
+                    (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+                    (list *pcrt-payload*)
+                    *pcrt-cat*))
+                0
+                107552)))
+          :ok)
+        (not
+          (fn-oas-over-p
+            *pcr-short-line-mutant*
+            (fn-own-tls-result-owner
+              (fn-otm-read-span
+                *pcr-short-line-mutant*
+                nil
+                0
+                0
+                (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+                nil
+                (fn-otm-init)
+                (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+                (list *pcrt-payload*)
+                *pcrt-cat*))
+            0
+            32))
+        (not (eq (fn-otm-admit-post (fn-otm-init)) :shed))
+        (not (consp nil))
+        (fn-gacc-okp nil)
+        (fn-ocl-relation *pcr-short-line-mutant*)
+        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-short-line-mutant*))
+        (fn-scr-owner-catalogp
+          (fn-ocfg-owner *pcr-short-line-mutant*)
+          0
+          (list *pcrt-payload*)
+          *pcrt-cat*)
+        (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
+        t
+        (equal
+          (fn-oct-slice-list
+            0
+            (len (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+            (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+          (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10))))
+        (equal
+          (fn-served-conn-wire sc)
+          (fn-wire-make-state
+            :command
+            nil
+            0
+            nil
+            nil
+            0
+            (fn-wire-state-line-limit
+              (fn-own-conn-wire
+                (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcr-short-line-mutant*)))))
+            (fn-wire-state-body-limit
+              (fn-own-conn-wire
+                (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcr-short-line-mutant*)))))))
+        (fn-wire-statep (fn-served-conn-wire sc))
+        (fn-auth-sessionp as)
+        (not (fn-auth-session-handshakingp as))
+        (not (fn-auth-sasl-waitingp as))
+        (or
+          (not (fn-auth-config-requiredp (fn-auth-session-config as)))
+          (fn-auth-session-subject as))
+        (null (fn-peer-session-peer peer))
+        (not (fn-post-session-awaiting ps))
+        (equal (fn-nntp-session-openp session) t)
+        (fn-nntp-session-projected session)
+        (fn-nntp-command-inputp (fn-nntp-string-octets "ARTICLE 1"))
+        (equal
+          (fn-nntp-tokenize (fn-nntp-string-octets "ARTICLE 1"))
+          (list *fn-pcr-article-keyword* (fn-nntp-string-octets "1")))
+        (fn-nntp-number-tokenp (fn-nntp-string-octets "1"))
+        group
+        (consp article)
+        server
+        (fn-gidx-pinp viewindex)
+        (not
+          (fn-nntp-number-withdrawn-p session viewarchive viewindex (fn-nntp-string-octets "1")))
+        (fn-nntp-response-okp-of-bytes
+          article
+          (fn-nntp-article-bytes article (list *pcrt-payload*))
+          :article)
+        (fn-nntp-response-okp-of-bytes
+          article
+          (fn-pcr-served-octets server article (list *pcrt-payload*))
+          :article))
+      (not
+        (<=
+          (len (fn-nntp-string-octets "ARTICLE 1"))
+          (fn-wire-state-line-limit
+            (fn-own-conn-wire
+              (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcr-short-line-mutant*)))))))
+      (not
+        (and
+          (equal (fn-otb-dependency-step 0 0 2000 t) :serve)
+          (equal (fn-own-tls-result-consumed p) (+ 2 (len (fn-nntp-string-octets "ARTICLE 1"))))
+          (equal (fn-own-tls-result-effects p) (fn-nntp-result-effects r))
+          (equal
+            (fn-own-tls-result-owner p)
+            (cdr
+              (fn-ocfg-read
+                *pcr-short-line-mutant*
+                0
+                (append (fn-nntp-string-octets "ARTICLE 1") (quote (13 10)))
+                (list *pcrt-payload*))))))))
+  :rule-classes
+  nil
+  :hints
+  (("Goal"
+     :in-theory
+     (enable
+       fn-scr-owner-catalogp
+       fn-scr-conn-okp
+       fn-scr-conn-catalogp
+       fn-scr-fields-catalogp
+       fn-scr-live-catalogp
+       fn-scr-catalogp
+       fn-scol-okp))))
+
+; Corrupted-state witness: every retained literal hypothesis and failed conclusion.
+(defconst
+  *pcr-wide-line-mutant*
+  (fn-ocfg-with-owner
+    *pcrt-selected*
+    (fn-own-set-conns
+      (fn-ocfg-owner *pcrt-selected*)
+      (fn-own-replace-conn
+        (update-nth
+          3
+          (fn-wire-make-state
+            :command
+            nil
+            0
+            nil
+            nil
+            0
+            1024
+            (fn-wire-state-body-limit
+              (fn-own-conn-wire
+                (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcrt-selected*))))))
+          (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcrt-selected*))))
+        (fn-own-conns (fn-ocfg-owner *pcrt-selected*))))))
+
+(defthm
+  pcr-numbered-without-command-input-bound-corrupted-state
+  (let*
+    ((o (fn-ocfg-owner *pcr-wide-line-mutant*))
+      (conn (fn-own-find-conn 0 (fn-own-conns o)))
+      (sc (fn-own-tls-served-conn o conn))
+      (as (fn-served-conn-session sc))
+      (config (fn-served-conn-config sc))
+      (archive (fn-served-conn-archive sc))
+      (index (fn-served-conn-pinned-index sc))
+      (observation (fn-served-conn-observation sc))
+      (peer (fn-auth-view-session as config))
+      (viewarchive (fn-auth-view-archive as config archive))
+      (viewindex (fn-auth-view-index as config archive index))
+      (viewconfig (fn-auth-view-config as (fn-auth-moderation-config as config) archive))
+      (ps (fn-peer-session-base peer))
+      (session (fn-post-session-base ps))
+      (env (fn-post-reader-env viewconfig observation))
+      (group (fn-nntp-session-group session))
+      (number (fn-nntp-decimal-value (fn-nntp-string-octets "1")))
+      (article (fn-nntp-find-group-number group number (fn-state-articles viewarchive)))
+      (server (fn-nntp-xref-server env))
+      (r (fn-pcr-220-reply session article number group server (list *pcrt-payload*)))
+      (p
+        (car
+          (fn-mca-read-span
+            *pcrt-credits*
+            *pcr-wide-line-mutant*
+            nil
+            0
+            0
+            (len
+              (append
+                (append
+                  (fn-nntp-string-octets "ARTICLE")
+                  (make-list 512 :initial-element 32)
+                  (fn-nntp-string-octets "1"))
+                (quote (13 10))))
+            nil
+            (fn-otm-init)
+            32
+            107552
+            (append
+              (append
+                (fn-nntp-string-octets "ARTICLE")
+                (make-list 512 :initial-element 32)
+                (fn-nntp-string-octets "1"))
+              (quote (13 10)))
+            (list *pcrt-payload*)
+            *pcrt-cat*))))
+    (and
+      (and
+        (equal
+          (car
+            (fn-mcr-resize
+              *pcrt-credits*
+              (fn-mca-conn-key 0)
+              (fn-mca-need
+                (fn-own-tls-result-owner
+                  (fn-oas-read-span
+                    *pcr-wide-line-mutant*
+                    nil
+                    0
+                    0
+                    (len
+                      (append
+                        (append
+                          (fn-nntp-string-octets "ARTICLE")
+                          (make-list 512 :initial-element 32)
+                          (fn-nntp-string-octets "1"))
+                        (quote (13 10))))
+                    nil
+                    (fn-otm-init)
+                    32
+                    (append
+                      (append
+                        (fn-nntp-string-octets "ARTICLE")
+                        (make-list 512 :initial-element 32)
+                        (fn-nntp-string-octets "1"))
+                      (quote (13 10)))
+                    (list *pcrt-payload*)
+                    *pcrt-cat*))
+                0
+                107552)))
+          :ok)
+        (not
+          (fn-oas-over-p
+            *pcr-wide-line-mutant*
+            (fn-own-tls-result-owner
+              (fn-otm-read-span
+                *pcr-wide-line-mutant*
+                nil
+                0
+                0
+                (len
+                  (append
+                    (append
+                      (fn-nntp-string-octets "ARTICLE")
+                      (make-list 512 :initial-element 32)
+                      (fn-nntp-string-octets "1"))
+                    (quote (13 10))))
+                nil
+                (fn-otm-init)
+                (append
+                  (append
+                    (fn-nntp-string-octets "ARTICLE")
+                    (make-list 512 :initial-element 32)
+                    (fn-nntp-string-octets "1"))
+                  (quote (13 10)))
+                (list *pcrt-payload*)
+                *pcrt-cat*))
+            0
+            32))
+        (not (eq (fn-otm-admit-post (fn-otm-init)) :shed))
+        (not (consp nil))
+        (fn-gacc-okp nil)
+        (fn-ocl-relation *pcr-wide-line-mutant*)
+        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-wide-line-mutant*))
+        (fn-scr-owner-catalogp
+          (fn-ocfg-owner *pcr-wide-line-mutant*)
+          0
+          (list *pcrt-payload*)
+          *pcrt-cat*)
+        (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
+        t
+        (equal
+          (fn-oct-slice-list
+            0
+            (len
+              (append
+                (append
+                  (fn-nntp-string-octets "ARTICLE")
+                  (make-list 512 :initial-element 32)
+                  (fn-nntp-string-octets "1"))
+                (quote (13 10))))
+            (append
+              (append
+                (fn-nntp-string-octets "ARTICLE")
+                (make-list 512 :initial-element 32)
+                (fn-nntp-string-octets "1"))
+              (quote (13 10))))
+          (append
+            (append
+              (fn-nntp-string-octets "ARTICLE")
+              (make-list 512 :initial-element 32)
+              (fn-nntp-string-octets "1"))
+            (quote (13 10))))
+        (equal
+          (fn-served-conn-wire sc)
+          (fn-wire-make-state
+            :command
+            nil
+            0
+            nil
+            nil
+            0
+            (fn-wire-state-line-limit
+              (fn-own-conn-wire
+                (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcr-wide-line-mutant*)))))
+            (fn-wire-state-body-limit
+              (fn-own-conn-wire
+                (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcr-wide-line-mutant*)))))))
+        (fn-wire-statep (fn-served-conn-wire sc))
+        (<=
+          (len
+            (append
+              (fn-nntp-string-octets "ARTICLE")
+              (make-list 512 :initial-element 32)
+              (fn-nntp-string-octets "1")))
+          (fn-wire-state-line-limit
+            (fn-own-conn-wire
+              (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *pcr-wide-line-mutant*))))))
+        (fn-auth-sessionp as)
+        (not (fn-auth-session-handshakingp as))
+        (not (fn-auth-sasl-waitingp as))
+        (or
+          (not (fn-auth-config-requiredp (fn-auth-session-config as)))
+          (fn-auth-session-subject as))
+        (null (fn-peer-session-peer peer))
+        (not (fn-post-session-awaiting ps))
+        (equal (fn-nntp-session-openp session) t)
+        (fn-nntp-session-projected session)
+        (equal
+          (fn-nntp-tokenize
+            (append
+              (fn-nntp-string-octets "ARTICLE")
+              (make-list 512 :initial-element 32)
+              (fn-nntp-string-octets "1")))
+          (list *fn-pcr-article-keyword* (fn-nntp-string-octets "1")))
+        (fn-nntp-number-tokenp (fn-nntp-string-octets "1"))
+        group
+        (consp article)
+        server
+        (fn-gidx-pinp viewindex)
+        (not
+          (fn-nntp-number-withdrawn-p session viewarchive viewindex (fn-nntp-string-octets "1")))
+        (fn-nntp-response-okp-of-bytes
+          article
+          (fn-nntp-article-bytes article (list *pcrt-payload*))
+          :article)
+        (fn-nntp-response-okp-of-bytes
+          article
+          (fn-pcr-served-octets server article (list *pcrt-payload*))
+          :article))
+      (not
+        (fn-nntp-command-inputp
+          (append
+            (fn-nntp-string-octets "ARTICLE")
+            (make-list 512 :initial-element 32)
+            (fn-nntp-string-octets "1"))))
+      (not
+        (and
+          (equal (fn-otb-dependency-step 0 0 2000 t) :serve)
+          (equal
+            (fn-own-tls-result-consumed p)
+            (+
+              2
+              (len
+                (append
+                  (fn-nntp-string-octets "ARTICLE")
+                  (make-list 512 :initial-element 32)
+                  (fn-nntp-string-octets "1")))))
+          (equal (fn-own-tls-result-effects p) (fn-nntp-result-effects r))
+          (equal
+            (fn-own-tls-result-owner p)
+            (cdr
+              (fn-ocfg-read
+                *pcr-wide-line-mutant*
+                0
+                (append
+                  (append
+                    (fn-nntp-string-octets "ARTICLE")
+                    (make-list 512 :initial-element 32)
+                    (fn-nntp-string-octets "1"))
+                  (quote (13 10)))
+                (list *pcrt-payload*))))))))
+  :rule-classes
+  nil
+  :hints
+  (("Goal"
+     :in-theory
+     (enable
+       fn-scr-owner-catalogp
+       fn-scr-conn-okp
+       fn-scr-conn-catalogp
+       fn-scr-fields-catalogp
+       fn-scr-live-catalogp
+       fn-scr-catalogp
+       fn-scol-okp))))
