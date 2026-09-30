@@ -1,0 +1,36 @@
+; Same selected-checkpoint seed for actual suffix recovery. Parallel metadata
+; is retained from the one summary load; this grants no owner readiness.
+(in-package "ACL2")
+(include-book "store-checkpoint-context-host")
+(include-book "../books/statement-recover-sized")
+(include-book "../books/store-checkpoint-size-reader")
+
+; Existing production seed, moved without changing its body or native ABI.
+(defun fn-store-statement-replay-seed (state)
+ (declare (xargs :stobjs state :mode :program))
+ (let ((checkpoint (fn-store-sco-current state)))
+  (value (fn-ssr-seed (if checkpoint (fn-sco-identity checkpoint)
+                           (fn-stxk-initial-context 0))))))
+
+(defun fn-store-srs-seed (checkpoint info)
+ (declare (xargs :guard t))
+ (mv-let (metadata root fields) (fn-sctsr-original-context-carries info)
+  (declare (ignore root))
+  (fn-ssrs-seed (if checkpoint (fn-sco-identity checkpoint)
+                   (fn-stxk-initial-context 0))
+                (if (and checkpoint (eq metadata :ready)) fields nil))))
+
+(defthm fn-store-srs-seed-original-result-unfolds
+ (equal (mv-nth 0 (fn-store-srs-seed checkpoint info))
+        (fn-ssr-seed (if checkpoint (fn-sco-identity checkpoint)
+                         (fn-stxk-initial-context 0))))
+ :hints (("Goal" :in-theory (e/d (fn-store-srs-seed fn-ssrs-seed)
+                     (fn-sctsr-original-context-carries fn-ssr-seed)))))
+
+(defun fn-store-statement-replay-seed-sized (state)
+ (declare (xargs :stobjs state :mode :program))
+ (let* ((checkpoint (fn-store-sco-current state))
+        (selected (fn-store-sco-original-context-info state))
+        (info (if (eq (car selected) :summary) (caddr selected) nil)))
+  (mv-let (acc fields metadata) (fn-store-srs-seed checkpoint info)
+   (value (list acc fields metadata)))))
