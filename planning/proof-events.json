@@ -17579,6 +17579,31 @@
           "kind": "theorem",
           "name": "fn-icrc-reserved-source-census",
           "pending_subject": "Actual internal reserve/register source observer; nested registry event and abort/settle source internals, full literal-state teeth and selected installed tariff remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ichc-reserve-observes-complete-actual-result",
+          "pending_subject": "Actual internal row reserve, bounded recursive registry :reserve and contained register source observer. Dynamic child resolution/hash/fallback constructors, abort/settle and selected installed physical allowance remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ibpc-node-reserve-observes-complete-actual-result",
+          "pending_subject": "Actual internal row reserve, bounded recursive registry :reserve and contained register source observer. Dynamic child resolution/hash/fallback constructors, abort/settle and selected installed physical allowance remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ibpc-reserve-observes-complete-actual-result",
+          "pending_subject": "Actual internal row reserve, bounded recursive registry :reserve and contained register source observer. Dynamic child resolution/hash/fallback constructors, abort/settle and selected installed physical allowance remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-icrc-register-contained-observes-complete-actual-result",
+          "pending_subject": "Actual internal row reserve, bounded recursive registry :reserve and contained register source observer. Dynamic child resolution/hash/fallback constructors, abort/settle and selected installed physical allowance remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ichc-reserve-row-source-census",
+          "pending_subject": "Actual internal row reserve, bounded recursive registry :reserve and contained register source observer. Dynamic child resolution/hash/fallback constructors, abort/settle and selected installed physical allowance remain open."
         }
       ]
     },

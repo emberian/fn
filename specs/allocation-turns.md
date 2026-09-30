@@ -123,3 +123,14 @@ universal MIO/STATE/other-global frames account for complete effects. Fault keep
 phase3 and A/count while fencing mode, not a fabricated phase6 transition.
 START's provider effect witness and nested registry event/abort source census
 remain open, as does whole source/native allowance installation.
+
+The exact source registry successor observes all four actual recursive
+`fn-ibp-node-connection-event` :reserve results and its provider wrapper, then
+composes them into the actual register result. Successful segment reserve
+constructs7 explicit row CONS cells and executes one ADD(1,active). Traversal
+retains actual fuel/depth subtraction and slot FLOOR operands in execution order.
+Each reached dynamic child resolution is explicitly unpriced; a BOUNDP check
+alone does not establish a non-NIL installed child or exclude fallback construction.
+Complete segment literals cover positive reserve, stale current row and refused
+invalid token. These source correspondences do not price hash/shape/comparison
+helpers, implicit stobj constructors, frames, collector or first use.

@@ -18167,7 +18167,12 @@
         "fn-icrc-reserve-observes-complete-actual-result",
         "fn-icrc-register-observes-complete-actual-result",
         "fn-icsc-reserve-register-observes-complete-actual-result",
-        "fn-icrc-reserved-source-census"
+        "fn-icrc-reserved-source-census",
+        "fn-ichc-reserve-observes-complete-actual-result",
+        "fn-ibpc-node-reserve-observes-complete-actual-result",
+        "fn-ibpc-reserve-observes-complete-actual-result",
+        "fn-icrc-register-contained-observes-complete-actual-result",
+        "fn-ichc-reserve-row-source-census"
       ],
       "evidence": [
         "planning/evidence/manifests/certify-20260930T183523Z-3265040.json",
@@ -18179,9 +18184,12 @@
         "books/connection-reserve-source-cost.lisp",
         "planning/evidence/manifests/certify-20260930T192841Z-3902429.json",
         "tests/acl2/connection-source-compose-tests.lisp",
-        "planning/evidence/manifests/certify-20260930T203103Z-1338622.json"
+        "planning/evidence/manifests/certify-20260930T203103Z-1338622.json",
+        "planning/evidence/manifests/certify-20260930T205259Z-1622427.json",
+        "books/connection-registry-source-cost.lisp",
+        "tests/acl2/connection-registry-source-cost-tests.lisp"
       ],
-      "progress_note": "Normal exact source leaves passed. Source-only component; no genuine physical allowance installation, whole request/frame tariff, or served activation claim. Literal primitive/domain teeth shipped; complete composed-state witness and nested callee accounting are still open. Normal192841 adds actual reserve/register complete-results and ICS join with existing PRS observer, including52 source cells and36/35 material operations on fresh/recycled reserved branches. Nested registry event and abort/settle source internals and complete literal-state teeth remain open. Normal203103 adds exact PREPARE/ticket complete changed-state view decoder, universal MIO/STATE/other-global frames and eight paired complete output/effect literals. START provider-state literal and nested event/abort census still open."
+      "progress_note": "Normal exact source leaves passed. Source-only component; no genuine physical allowance installation, whole request/frame tariff, or served activation claim. Literal primitive/domain teeth shipped; complete composed-state witness and nested callee accounting are still open. Normal192841 adds actual reserve/register complete-results and ICS join with existing PRS observer, including52 source cells and36/35 material operations on fresh/recycled reserved branches. Nested registry event and abort/settle source internals and complete literal-state teeth remain open. Normal203103 adds exact PREPARE/ticket complete changed-state view decoder, universal MIO/STATE/other-global frames and eight paired complete output/effect literals. START provider-state literal and nested event/abort census still open. Normal205259 adds guard-verified actual row reserve, recursive registry reserve and contained register complete-result refinements with ordered traversal operands. Successful row reserve is7 explicit source CONS and1 material ADD. Complete literal valid/stale/refused segment states pass; dynamic child resolution/hash/fallback constructors and abort/settle remain unpriced/open."
     },
     {
       "id": "PRF-1175",
