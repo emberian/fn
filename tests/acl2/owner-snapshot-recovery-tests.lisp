@@ -291,3 +291,26 @@
       (not (fn-osr-retainedp
             (fn-cpo-configure-durable *osr-retained-wrong-generation*
                                       *osr-retained-config-change*)))))
+
+; Actual ordinary ARTICLE completion advances the verdict/index prefix and
+; retains the complete configured recovery carry under the rotated key epoch.
+(make-event `(defconst *osr-retained-finished*
+  ',(fn-sn-finish *osr-retained-completing*)))
+(assert-event
+ (and (fn-osr-retainedp *osr-retained-completing*)
+      (fn-sn-completion-enabledp *osr-retained-completing*)
+      (fn-held-p (fn-sn-completion-record *osr-retained-completing*))
+      (fn-osr-retainedp *osr-retained-finished*)
+      (equal (fn-sf-phase (fn-sn-files *osr-retained-finished*)) :ready)
+      (equal (fn-sn-keyring-generation *osr-retained-finished*) 2)
+      (equal (len (fn-sn-verdicts *osr-retained-finished*)) 3)
+      (equal (fn-sn-identity-next *osr-retained-finished*) 5)))
+; Corrupted-state omission of the sole full-carry premise. The actual enabled
+; ordinary finish publishes only its new verdict, without repairing missing history.
+(defconst *osr-retained-completing-missing-verdicts*
+  (update-nth 7 nil *osr-retained-completing*))
+(assert-event
+ (and (fn-sn-completion-enabledp *osr-retained-completing-missing-verdicts*)
+      (not (fn-osr-retainedp *osr-retained-completing-missing-verdicts*))
+      (not (fn-osr-retainedp
+            (fn-sn-finish *osr-retained-completing-missing-verdicts*)))))

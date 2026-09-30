@@ -17413,6 +17413,10 @@
       "events": [
         {
           "kind": "theorem",
+          "name": "fn-osr-finish-preserves-full-retained-carry"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-osr-open-establishes-full-retained-carry"
         },
         {
