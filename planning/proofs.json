@@ -19049,7 +19049,7 @@
     {
       "id": "PRF-1128",
       "title": "An exact typed window stays on its physical worker until the final scalar borrow ends",
-      "statement": "Subjects fn-pwx-acquire, fn-pwx-return and fn-pwx-release retain the immutable nine-field window token in the existing persistent four-field worker row. The core binds the exact slot and full descriptor; acquisition and physical return preserve every supplied charge; final release requires both exact returned bindings and refunds once. Native extent worker dispatch calls the stobj adapters with complete answer/effect equations. Actual raw fn-ews execution retains only a private fixed window and fn-pwr-byte permits scalar access only through matching returned ownership and a published core plan. Scalar authorization is a definition equation; native trajectory correspondence, adequate native demand, served activation and full P12 remain open.",
+      "statement": "Subjects fn-pwx-acquire, fn-pwx-return and fn-pwx-release retain the immutable nine-field window token in the existing persistent four-field worker row. The core binds the exact slot and full descriptor; acquisition and physical return preserve every supplied charge; final release requires both exact returned bindings and refunds once. Native extent worker dispatch calls the stobj adapters with complete answer/effect equations. Actual raw fn-ews execution retains only a private fixed window and fn-pwr-byte permits scalar access only through matching returned ownership and a published core plan. Scalar authorization is a definition equation; native trajectory correspondence, adequate native demand, served activation and full P12 remain open. The staged payload-coordinate accessor checks the original six physical/payload coordinates and computes the relative window index in ACL2. Core terminal outcome distinguishes authenticated readiness, stale ownership and integrity/I/O failure; a failed authenticated scan never asks for a rescan.",
       "milestone": "M5",
       "requirements": [
         "STO-020"
@@ -19067,9 +19067,10 @@
         "tests/acl2/page-window-executor-tests.lisp",
         "tests/acl2/page-window-read-tests.lisp",
         "tests/acl2/page-window-admission-tests.lisp",
-        "planning/evidence/physical-window-source-2026-09-30.md"
+        "planning/evidence/physical-window-source-2026-09-30.md",
+        "planning/evidence/physical-window-coordinate-source-2026-09-30.md"
       ],
-      "progress_note": "Source component with clean source REPL evidence; no certificate/image/native qualification or served activation claim. Supplied demand is not allocator adequacy.",
+      "progress_note": "Source component with clean source REPL evidence; no certificate/image/native qualification or served activation claim. Supplied demand is not allocator adequacy. Payload-coordinate/outcome source equations and actual nonzero-offset, wrong-coordinate, damaged-prefix, wrong-commitment and short-read witnesses pass. Arena-incarnation/logical-source lease, current-placement capture, cancellation rights, dedicated guard baseline and native composition remain open.",
       "events": [
         "fn-pwx-release-requires-exact-returned-window-and-slot",
         "fn-pwx-other-request-cannot-return-or-release"
