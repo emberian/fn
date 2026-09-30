@@ -18019,6 +18019,24 @@
         "planning/evidence/history-scalar-cursor-source-2026-09-30.json"
       ],
       "progress_note": "Clean persvati hrsct8 source-dependency admission with proper local scope: 6.00 ACL2 seconds / 4,810,489 prover steps; 27 test forms include 23 passing literal witnesses. Runtime begin/tick helpers are guard verified. Static teeth: 23 witnesses, 0 findings; narrow theory check green. No certification, host, image or physical-resource claim; library events remain component evidence, with full target planned."
+    },
+    {
+      "id": "PRF-1107",
+      "title": "Bounded authenticated current-format checkpoint page source",
+      "statement": "Planned full reader replaces eager source directory/table materialization. First component fn-hsr-scan-word consumes one u64, preserves fixed capture/lease identities and a carried invariant, advances exactly one word, and retains only the selected six-word entry while latching txid/padding failures. The selected stream is proved equal to the current pgs-decode-table entry, including cross-page entries. Authentication, root-to-table-to-data request composition, whole canonical verdict refinement, physical ownership integration and host activation remain open.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": [
+        "books/history-page-reader.lisp",
+        "tests/acl2/history-page-reader-tests.lisp",
+        "specs/history-auth-reader.md",
+        "planning/evidence/history-page-reader-source-2026-09-30.json"
+      ],
+      "progress_note": "First scanner component: clean protected persvati hsread2 source-dependency replay, proper local scope; 41 test forms loaded, 28 literal assertions passed; static teeth and narrow theory checks green. Runtime scanner functions guard verified. No full authentication, certificate, host or native claim."
     }
   ]
 }
