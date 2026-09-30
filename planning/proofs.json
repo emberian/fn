@@ -18119,6 +18119,26 @@
         "planning/evidence/selected-rx-copy-cost-2026-09-30/README.md"
       ],
       "progress_note": "Fresh protected srxc3 proper source0.03s/0steps; complete scalar three-MV positive and11 model-only retained-clause removals. No central inclusion/certification/whole-runtime authority claim."
+    },
+    {
+      "id": "PRF-1165",
+      "title": "Conditional generated UB8 resize primary success object unit",
+      "statement": "A-SELECTED-RUNTIME-OCTETS-RESIZE bounds exact successful generated primary array requests at capacities64/3494/65536 under qualified backing/compiler/HONS metadata; frames/GC/first-use/lifetime and whole operation remain separate.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-013"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-SELECTED-RUNTIME-OCTETS-RESIZE"
+      ],
+      "status": "planned",
+      "evidence": [
+        "books/assumptions-selected-runtime-octets-resize.lisp",
+        "tests/acl2/selected-runtime-octets-resize-tests.lisp",
+        "planning/evidence/selected-octets-resize-runtime-2026-09-30/README.md"
+      ],
+      "progress_note": "Fresh proper source sror2 passed0.02s/139steps with scalar guards/refusal tests; no central inclusion or runtime adequacy."
     }
   ]
 }
