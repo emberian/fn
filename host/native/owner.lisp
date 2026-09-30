@@ -4145,6 +4145,12 @@ already owns MAINTENANCE-LEASE; this token covers only physical retention."
         (unless (eq word :admitted) (fnn-refuse "snapshot root lease refused: ~a" word))
         token))))
 
+(defun fnn-snapshot-source-root-ticket (service token)
+  "Project the live root ticket through ACL2 while caller holds owner."
+  (declare (ignore service))
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (fnn-core-page-read-pool 'fn-owner-page-file-pin-ticket token)))
+
 (defun fnn-snapshot-source-root-release (service token)
   "Controller has finished/joined all scans and relinquished their buffers.
 Cancellation alone never invokes this release. Cleanup remains possible after
@@ -4156,16 +4162,16 @@ admission closes, so it takes the owner mutex directly rather than the gate."
     (fnn-owner-release-pending-extents-locked)))
 
 (defun fnn-snapshot-source-read-page (service root-token request buffer-lease)
-  "Read one core-authorized physical page. Return vector, exact buffer token,
-and unchanged request; the auth/decoder cursor decides its contents. BUFFER-
-LEASE denotes the controller's maintenance admission, not a refund right."
+  "Read one exact page. Return vector, token, request, fresh ID, count, status.
+Short/error observations remain owned for authcomplete's uncertain result;
+BUFFER-LEASE is controller funding, never an independent refund right."
   (declare (ignore buffer-lease))
-  (let ((fd nil) (offset nil) (count nil) (token nil)
+  (let ((fd nil) (offset nil) (count nil) (token nil) (base nil)
         (octets nil) (handed-off nil))
     (fnn-owner-gated (service :control)
       (sb-thread:with-mutex (*fnn-extent-lock*)
-        (let* ((file (first (fnn-core-page-read-pool 'fn-owner-page-file-pin-file root-token)))
-               (base (gethash file *fnn-extent-bases*)))
+        (let ((file (first (fnn-core-page-read-pool 'fn-owner-page-file-pin-file root-token))))
+          (setq base (gethash file *fnn-extent-bases*))
           (destructuring-bind (word read-file read-offset read-count read-token &rest ignored)
               (fnn-core-page-read-pool 'fn-owner-page-file-pin-read root-token request base)
             (declare (ignore ignored))
@@ -4175,12 +4181,21 @@ LEASE denotes the controller's maintenance admission, not a refund right."
     (unwind-protect
          (progn
            (unless fd (fnn-fault "snapshot page lease lost its file"))
-           (setq octets (make-array count :element-type '(unsigned-byte 8)))
-           (unless (= (fnn-extent-pread fd octets offset) count)
-             (fnn-fault "snapshot page read was short"))
-           (setq handed-off t)
-           (values octets token request))
+           (setq octets (make-array count :element-type '(unsigned-byte 8) :initial-element 0))
+           (multiple-value-bind (got observed)
+               (handler-case (values (fnn-extent-page-pread fd octets offset count) :ok)
+                 (serious-condition () (values 0 :error)))
+             (sb-thread:with-mutex (*fnn-extent-lock*)
+               (destructuring-bind (word buffer-id result-count status)
+                   (fnn-core-page-read-pool 'fn-owner-page-file-read-result
+                                           root-token request base token got observed)
+                 (unless (eq word :read-result)
+                   (fnn-fault "snapshot page completion lost its exact lease"))
+                 (setq handed-off t)
+                 (values octets token request buffer-id result-count status)))))
       (unless handed-off
+        ;; The syscall activation has returned; nothing has escaped to the
+        ;; reader. Drop this alias before exact charged-buffer settlement.
         (setq octets nil)
         (sb-thread:with-mutex (*fnn-extent-lock*)
           (fnn-extent-discovery-release token))))))

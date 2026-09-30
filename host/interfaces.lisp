@@ -4592,3 +4592,7 @@
 
 (definterface fn-pvl-runtime-step :class ::common-lisp-compliant)
 (definterface fn-owner-payload-view-owned-p :class :program)
+
+(definterface fn-owner-page-file-read-result :class :common-lisp-compliant)
+
+(definterface fn-owner-page-file-pin-ticket :class :common-lisp-compliant)

@@ -224,6 +224,15 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
 (defun fnn-extent-window-p (token)
   (fn-pwx-tokenp token))
 
+(defun fnn-extent-page-pread (fd octets offset count)
+  "One syscall with core-provided page coordinates/count; return its observation."
+  (sb-sys:with-pinned-objects (octets)
+    (sb-alien:alien-funcall
+      (sb-alien:extern-alien "pread"
+        (function sb-alien:long sb-alien:int sb-alien:system-area-pointer
+                  sb-alien:unsigned-long sb-alien:long))
+      fd (sb-sys:vector-sap octets) count offset)))
+
 (defun fnn-extent-window-pread (fd input offset count)
   "One physical syscall, using ACL2's exact offset/count and fixed input."
   (let* ((octets (svref input 0))

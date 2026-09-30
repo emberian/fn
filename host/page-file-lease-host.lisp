@@ -56,3 +56,12 @@
                    (mv-nth 1 (fn-prf-acquire ledger file demand))
                    (fn-owner-page-read-keep-ledger
                     (mv-nth 2 (fn-prf-acquire ledger file demand)) fn-page-read-pool))))))
+
+(defun fn-owner-page-file-read-result (root request base buffer-token got io-status fn-page-read-pool)
+  (declare (xargs :stobjs fn-page-read-pool))
+  (fn-prf-read-result (fn-owner-page-read-ledger fn-page-read-pool)
+                      root request base buffer-token got io-status))
+
+(defun fn-owner-page-file-pin-ticket (token fn-page-read-pool)
+  (declare (xargs :stobjs fn-page-read-pool))
+  (fn-prf-ticket (fn-owner-page-read-ledger fn-page-read-pool) token))

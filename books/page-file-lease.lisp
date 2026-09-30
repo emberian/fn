@@ -113,3 +113,43 @@
   :hints (("Goal" :in-theory (enable fn-prf-page-placement))))
 
 (in-theory (disable fn-prf-acquire fn-prf-file fn-prf-release fn-prf-page-placement))
+
+; The syscall has actually returned. This projects only an exact live raw
+; buffer lease for the unchanged request. Authentication remains the reader's
+; responsibility; short/error results retain the same borrow and charge.
+(defun fn-prf-read-result (ledger root request base buffer-token got io-status)
+  (declare (xargs :guard t))
+  (mv-let (word file offset count)
+    (fn-prf-page-placement ledger root request base)
+    (let ((binding (fn-prl-binding buffer-token (fn-prl-nth 3 ledger))))
+      (if (not (and (equal word :placed) (equal count 16384)
+                    (true-listp buffer-token) (equal (len buffer-token) 5)
+                    (equal (fn-prl-nth 0 buffer-token) :discovery)
+                    (natp (fn-prl-nth 1 buffer-token))
+                    (equal (fn-prl-nth 2 buffer-token) file)
+                    (equal (fn-prl-nth 3 buffer-token) offset)
+                    (equal (fn-prl-nth 4 buffer-token) count)
+                    (equal (fn-prl-nth 1 (cdr binding)) :discovery)))
+          (mv :stale-read nil 0 :stale)
+        (mv :read-result (fn-prl-nth 1 buffer-token)
+            (if (and (natp got) (<= got count)) got 0)
+            (cond ((not (and (equal io-status :ok) (natp got) (<= got count))) :io-error)
+                  ((equal got count) :read-ok)
+                  (t :short-read)))))))
+
+(defthm fn-prf-read-result-authority-by-definition
+  (implies (equal (mv-nth 3 (fn-prf-read-result ledger root request base buffer-token got io-status)) :read-ok)
+    (and (equal (mv-nth 0 (fn-prf-read-result ledger root request base buffer-token got io-status)) :read-result)
+         (equal (mv-nth 1 (fn-prf-read-result ledger root request base buffer-token got io-status))
+                (fn-prl-nth 1 buffer-token))
+         (equal (mv-nth 2 (fn-prf-read-result ledger root request base buffer-token got io-status)) 16384)
+         (equal got 16384) (equal io-status :ok)
+         (equal (fn-prl-nth 1 (cdr (fn-prl-binding buffer-token (fn-prl-nth 3 ledger)))) :discovery)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-prf-read-result fn-prf-page-placement))))
+
+(defun fn-prf-ticket (ledger token)
+  (declare (xargs :guard t))
+  (and (true-listp token) (equal (len token) 3)
+       (natp (fn-prl-nth 1 token)) (posp (fn-prl-nth 2 token))
+       (fn-prf-file ledger token) (fn-prl-nth 1 token)))
