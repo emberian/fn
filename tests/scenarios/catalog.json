@@ -6551,6 +6551,33 @@
         "tests/acl2/history-resource-refinement-tests.lisp"
       ],
       "execution_scope": "ACL2 retained-ledger component witnesses only; complete owner lifecycle and external-history checker integration remain open."
+    },
+    {
+      "id": "SCN-1005",
+      "title": "Resumable history record codec preserves exact current-format bytes",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [],
+      "steps": [
+        "Capture a nonempty opaque octet leaf with explicit capture and lease identities.",
+        "Advance classification, prefix and body phases one cell or byte per tick; interrupt before the body is complete and resume the returned cursor.",
+        "Check each reached state against complete invariant, permitted verdict and exact pre/post residual equation; compare final bytes with fn-scc-encode.",
+        "Separately corrupt the prefix byte or count relation and affirm failure of the omitted invariant hypothesis and theorem conclusion."
+      ],
+      "expected": [
+        "No source-list copy or whole-row encoding occurs at begin or tick.",
+        "Quantum exhaustion yields a resumable cursor, never truncation or false prepared.",
+        "Every emitted byte and identity agrees with the current codec and original capture.",
+        "Corrupted-state witnesses are separately labeled; no native or composed reachability is inferred."
+      ],
+      "implementation": {
+        "test": "tests/acl2/history-record-cursor-tests.lisp"
+      },
+      "evidence": [
+        "tests/acl2/history-record-cursor-tests.lisp",
+        "specs/history-record-cursor.md"
+      ],
+      "execution_scope": "First opaque-leaf source library only. Full tree/word/census/producer composition and native qualification remain open."
     }
   ]
 }

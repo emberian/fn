@@ -18594,6 +18594,23 @@
         "planning/evidence/store-config-generation-2026-09-29.md"
       ],
       "progress_note": "PKT-183 configuration contiguity component. Actual native caller host/store-node-host.lisp fn-store-cfg-native-admin-authorize invokes fn-cvec-native-admin-authorize, whose fn-native-admin-publication-authorize obtains generation from fn-cnode-config-replay. No behavior changes or added full-state scans. Fresh protected cg3 loaded the complete 16-form test root with source dependencies, no refusal, 54.68 ACL2 seconds including dependencies. Four witness assertions and two expected must-fail removals cover both keystones. Strict reach hosts both events; no matching certification manifest or qualified image is claimed. Serialized credential-size component of original PKT-183 remains separate/open."
+    },
+    {
+      "id": "PRF-1088",
+      "title": "Bounded history record cursor refines current image codec",
+      "statement": "S7/P12/D33 planned union: an explicit source-reference task cursor incrementally validates/counts and emits tree codec bytes, packs padded u64 words, and supplies exact census/placement inputs to the private snapshot producer. No whole-record encoder, source-list scan or image resize occurs in a bounded tick. The first library component handles nonempty opaque octet leaves: begin refines existing fn-scc-encode, each tick preserves the carried invariant and exact emitted-byte/residual equation, and capture/lease identities persist. This library has no host caller and does not complete producer funding, publication, general tree/string/key hashing, word packing or fn-hp-x-blocks composition.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": [
+        "books/history-record-cursor.lisp",
+        "tests/acl2/history-record-cursor-tests.lisp",
+        "specs/history-record-cursor.md"
+      ],
+      "progress_note": "First opaque-leaf component clean-source admitted (21 forms, 0.35 ACL2 s /114986 steps), guarded executable begin/tick; twelve test forms admitted through protected persvati REPL. Existing store-tree-codec included from matching cache. No certification/native/image claim. Full target remains planned; initial size-hypothesis removal witness and general tree/word/census/controller composition remain open. Source library events are named in the specification rather than cited as a completed production keystone."
     }
   ]
 }
