@@ -322,3 +322,18 @@ accompany these literal theorems. These facts supply actual initializer inputs
 to future full job demand composition. Compiled callbacks, frames, constructors,
 cache/GC/lifetime and definitive cleanup remain separate open obligations;
 no supplied-demand or native activation authority follows.
+
+The separate A-SELECTED-RUNTIME-TABLE-OBJECTS encapsulate qualifies only the
+reviewed standalone TGET arithmetic and two direct UB8 getter object paths.
+At a natural entry below1747 and current fixed3494-byte table, pointwise octet
+reads give fitting fixnum operands/results for the two measured multiply-by2
+sites, index addition, ASH8 and final sum. The conditional component charge is
+zero result/workspace objects, excluding control/XEP frames, cache, faults, GC
+and full call lifetime. Historical diagnostic d44 matches the f441 source
+form; it does not qualify actual inline callers or a final attached image.
+The entry upper bound is proved from natural entry, fixed table length and
+one typed read, so the actual domain bridge drops that redundant premise.
+Four complete premise-removal tests and an actual reset/pull/header-produced
+table positive accompany the weakened theorem. The central assumptions
+umbrella inclusion is a mandatory separate convergence patch before a
+compliance/completion claim; full INIT/job demand remains open.

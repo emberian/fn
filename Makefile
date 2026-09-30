@@ -496,6 +496,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/assumptions-selected-runtime-pull \
 	books/payload-pull-runtime-workspace \
 	books/payload-table-runtime-domain \
+	books/assumptions-selected-runtime-table \
+	books/payload-table-runtime-workspace \
+	tests/acl2/payload-table-runtime-workspace-tests \
 	books/decoded-window-profile \
 	books/decoded-window-initial-funding-domain \
 	tests/acl2/decoded-window-initial-funding-domain-tests \
