@@ -1,7 +1,7 @@
 ; The producer's row-at-a-time census. Source offers come from the captured
 ; source adapter; no history-list conversion or whole-record codec executes.
 (in-package "ACL2")
-(include-book "history-record-cursor")
+(include-book "history-source-byte-cursor")
 (include-book "history-image-census")
 
 ; Seven fixed cells: phase, expected rows, completed count, padded pool bytes,
@@ -32,7 +32,7 @@
     (let ((capture (fn-hrcur-field 5 c)) (lease (fn-hrcur-field 6 c)))
       (mv :started
           (list :codec (fn-hrcur-field 1 c) ordinal (fn-hrcur-field 3 c)
-                (fn-hrcur-census-begin source (list capture ordinal) lease) capture lease)))))
+                (fn-hsrcc-begin source (list capture ordinal) lease) capture lease)))))
 
 (defun fn-hct-tick (c)
   (declare (xargs :guard t))
@@ -46,8 +46,9 @@
        ((eq phase :need-row) (mv :need-row count c))
        ((eq phase :refused) (mv '(:refused :census) nil c))
        (t
-        (mv-let (v encoded next) (fn-hrcur-census-tick codec)
+        (mv-let (v encoded next) (fn-hsrcc-tick codec)
           (cond
+           ((fn-hsrcb-demandp v) (mv v nil c))
            ((eq v :continue)
             (mv :continue nil (list :codec expected count pool next capture lease)))
            ((and (eq v :prepared) (unsigned-byte-p 64 encoded))
@@ -60,6 +61,35 @@
                     (list :refused expected count pool nil capture lease)))))
            (t (mv '(:refused :codec) nil
                   (list :refused expected count pool nil capture lease))))))))))
+
+(defun fn-hct-supply (c position byte)
+  (declare (xargs :guard t))
+  (if (not (and (fn-hct-shapep c) (eq (fn-hrcur-field 0 c) :codec)))
+      (mv '(:refused :census-not-awaiting-byte) c)
+    (mv-let (v next) (fn-hsrcc-supply (fn-hrcur-field 4 c) position byte)
+      (if (eq v :continue)
+          (mv v (list :codec (fn-hrcur-field 1 c) (fn-hrcur-field 2 c)
+                      (fn-hrcur-field 3 c) next
+                      (fn-hrcur-field 5 c) (fn-hrcur-field 6 c)))
+        (mv v c)))))
+
+(defthm fn-hct-supply-keeps-shape
+  (implies (fn-hct-shapep c)
+           (fn-hct-shapep (mv-nth 1 (fn-hct-supply c position byte))))
+  :hints (("Goal" :in-theory (e/d (fn-hct-shapep fn-hct-supply) (fn-hsrcc-supply)))))
+
+(defthm fn-hct-supply-keeps-source-and-census
+  (and (equal (fn-hrcur-field 1 (mv-nth 1 (fn-hct-supply c position byte)))
+              (fn-hrcur-field 1 c))
+       (equal (fn-hrcur-field 2 (mv-nth 1 (fn-hct-supply c position byte)))
+              (fn-hrcur-field 2 c))
+       (equal (fn-hrcur-field 3 (mv-nth 1 (fn-hct-supply c position byte)))
+              (fn-hrcur-field 3 c))
+       (equal (fn-hrcur-field 5 (mv-nth 1 (fn-hct-supply c position byte)))
+              (fn-hrcur-field 5 c))
+       (equal (fn-hrcur-field 6 (mv-nth 1 (fn-hct-supply c position byte)))
+              (fn-hrcur-field 6 c)))
+  :hints (("Goal" :in-theory (e/d (fn-hct-shapep fn-hct-supply) (fn-hsrcc-supply)))))
 
 (defthm fn-hct-begin-keeps-shape
   (fn-hct-shapep (fn-hct-begin expected capture lease)))
@@ -84,7 +114,7 @@
                           (lease (fn-hrcur-field 6 c))))
            :in-theory
            (union-theories
-            '(fn-hct-offer fn-hrcur-field mv-nth car-cons cdr-cons
+            '(fn-hct-offer fn-hsrcc-resident-begin-by-definition fn-hrcur-field mv-nth car-cons cdr-cons
               (:e equal) (:e zp) (:e binary-+) (:e consp))
             (theory 'minimal-theory)))))
 
@@ -92,14 +122,14 @@
   (implies (fn-hct-shapep c)
            (fn-hct-shapep (mv-nth 2 (fn-hct-tick c))))
   :hints (("Goal" :in-theory (e/d (fn-hcc-row)
-                                      (fn-hrcur-census-tick fn-hp-pad8-count)))))
+                                      (fn-hsrcc-tick fn-hrcur-census-tick fn-hp-pad8-count)))))
 
 (defthm fn-hct-tick-keeps-capture-and-lease
   (and (equal (fn-hrcur-field 5 (mv-nth 2 (fn-hct-tick c)))
               (fn-hrcur-field 5 c))
        (equal (fn-hrcur-field 6 (mv-nth 2 (fn-hct-tick c)))
               (fn-hrcur-field 6 c)))
-  :hints (("Goal" :in-theory (disable fn-hrcur-census-tick fn-hcc-row))))
+  :hints (("Goal" :in-theory (disable fn-hsrcc-tick fn-hrcur-census-tick fn-hcc-row))))
 
 ; The child codec invariant and exact total are carried proof state. Neither
 ; is evaluated by the controller's guard or scheduling step.
@@ -109,7 +139,7 @@
                        (fn-hrcur-field 2 c))
                 (equal (fn-hrcur-field 3 (mv-nth 2 (fn-hct-tick c)))
                        (fn-hrcur-field 3 c))))
-  :hints (("Goal" :in-theory (disable fn-hrcur-census-tick fn-hcc-row))))
+  :hints (("Goal" :in-theory (disable fn-hsrcc-tick fn-hrcur-census-tick fn-hcc-row))))
 
 (defthm fn-hct-continuation-keeps-codec-total
   (implies (and (fn-hct-shapep c)
@@ -123,7 +153,7 @@
                        (fn-hrcur-census-total (fn-hrcur-field 4 c)))))
   :hints (("Goal" :use ((:instance fn-hrcur-census-tick-refines-length
                                   (c (fn-hrcur-field 4 c))))
-           :in-theory (disable fn-hrcur-census-tick fn-hcc-row
+           :in-theory (disable fn-hsrcc-tick fn-hrcur-census-tick fn-hcc-row
                          fn-hrcur-census-invariantp fn-hrcur-census-total
                          fn-hrcur-census-tick-refines-length))))
 
@@ -151,7 +181,7 @@
                             (ordinal (fn-hrcur-field 2 c))
                             (encoded (mv-nth 1 (fn-hrcur-census-tick
                                                (fn-hrcur-field 4 c))))))
-           :in-theory (disable fn-hrcur-census-tick
+           :in-theory (disable fn-hsrcc-tick fn-hrcur-census-tick
                         fn-hrcur-census-invariantp fn-hrcur-census-total
                         fn-hrcur-census-tick-refines-length
                         fn-hcc-counted-row-preserves-history-census
