@@ -1273,3 +1273,13 @@ This policy is not allocation authority: selected host representation and
 retained current-source custody require their genuine installed issuer, which
 is currently unavailable. The existing typed C delta codec carries the row;
 atomic current-C publication remains the actual collector's responsibility.
+
+The remote definition producer now preserves the complete same-pass list
+annotation through every accepted bounded tick, including reversal, and its
+finish returns that exact annotation and canonical-size carry. The proof-only
+observer never runs on a request. The FNCE4 scalar charge is the exact reference
+encoding length from the carried group wire count; the group-count field has
+fixed width, so charge correspondence does not require count equality, while
+the stream producer still requires exact count/name correspondence. These are
+source-only boundaries; genuine runtime funding/source custody, publication
+and the remote scan/reply still remain open.
