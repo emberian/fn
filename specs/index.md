@@ -154,3 +154,14 @@ are internal source components, not yet the accepted-open/native caller.
 [Lifecycle evidence](../planning/evidence/connection-issuer-2026-09-30/README.md)
 names the synthetic fixture setup, actual operations, exact source replay and
 remaining runtime/caller/proof obligations.
+
+The internal owner composition entry preflights the issued reservation against
+the actual next connection ID, captures the matching D/current publication,
+and invokes the existing owner open in the same serialized action. It finishes
+only an actual matching accepted ID; definite refusal aborts, uncertainty keeps
+ownership. Close first revokes new holder aliases, then performs logical
+close/fault and settlement. `:closed-held` explicitly returns the token whose
+resource custody remains outstanding. These PROGRAM entries still need coherent
+world admission, the composed invariant and installed runtime/native wiring;
+[boundary evidence](../planning/evidence/connection-owner-2026-09-30/README.md)
+distinguishes the guarded MIO helpers from the recording owner-body tests.
