@@ -59,13 +59,15 @@
 
 ; Charge each potential list payload and every digest vector slot as a
 ; separately boxed maximum natural, even when they actually share/fixnum.
-; ROOT's32 multiply +32 add arithmetic temporaries are additional u256s.
+; Source digest owner bounds another128 scalar results (span/power/counter,
+; checks/ceiling) per step, at most67 bits for signed64 extents. ROOT's32
+; multiply +32 add arithmetic temporaries are additional u256s.
 (defun fn-crw-source-octets (descriptor ticket)
   (declare (xargs :guard t))
   (let* ((conses (+ (fn-crw-digest-conses) (fn-crw-controller-conses)))
          (integer-octets (fn-crl-natural-octets (fn-crw-natural-ceiling descriptor ticket))))
     (+ (fn-crw-backing-octets) (* 16 conses)
-       (* (+ conses 16 64) integer-octets)
+       (* (+ conses 16 64 128) integer-octets)
        (* 64 (fn-crl-natural-octets (- (expt 2 256) 1))))))
 
 ; Per-job resident model has collector coexistence; shared descriptors,
