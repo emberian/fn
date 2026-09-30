@@ -5489,7 +5489,9 @@
         "PRF-341",
         "PRF-912",
         "PRF-948",
-        "PRF-949"
+        "PRF-949",
+        "PRF-1112",
+        "PRF-1131"
       ],
       "verification": [
         "proof",
@@ -5500,7 +5502,10 @@
         "books/payload-lz-dicts.lisp",
         "tests/acl2/payload-lz-record-tests.lisp",
         "tests/test_native_compression.py",
-        "docs/extensions/nntp-compress-dict.md"
+        "docs/extensions/nntp-compress-dict.md",
+        "books/payload-window.lisp",
+        "books/extent-window-compressed.lisp",
+        "tests/acl2/extent-window-compressed-tests.lisp"
       ]
     },
     {

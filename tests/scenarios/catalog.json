@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6564,6 +6564,34 @@
         "planning/evidence/payload-window-2026-09-30.md"
       ],
       "execution_scope": "Protected source REPL component evidence only; composed served path and matching natives pending."
+    },
+    {
+      "id": "SCN-1037",
+      "title": "Actual compressed extent window composition and publication",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-037"
+      ],
+      "steps": [
+        "Run actual core dispatcher against a literal archive with local concrete input/hash/window/inflater pools.",
+        "Exercise overlapping requested windows, empty C/N after a protected prefix, split compressed input, final-block trailing bytes, sync flush,16KiB windows and93100-byte expansion over more than1000 quanta.",
+        "Refuse truncated/malformed streams, wrongN, short read, protected-prefix corruption and wrong trailer commitment.",
+        "Assert every literal scratch-copy/decoded/new-integrity antecedent and conclusion; remove only natural output index, decoded result or no-prior-publication as labelled."
+      ],
+      "expected": [
+        "The exact requested bytes remain private until accepted codec terminal/exactN and full raw extent integrity.",
+        "Total archive reads equal full protected prefix plus32 trailer bytes; codec resumes retain input without repeated hashing.",
+        "Raw verified alone does not grant compressed publication; refusals return no output.",
+        "General trajectory/progress, native funding/lifetime/consumer and matching image evidence remain open."
+      ],
+      "evidence": [
+        "tests/acl2/extent-window-compressed-tests.lisp",
+        "tests/acl2/extent-window-compressed-refinement-tests.lisp",
+        "specs/extent-window-read.md",
+        "planning/evidence/extent-window-compressed-source-2026-09-30.md"
+      ],
+      "execution_scope": "Protected source composition and literal local-buffer witnesses only; no native served enablement or qualification."
     }
   ]
 }

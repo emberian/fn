@@ -73,3 +73,41 @@ Remaining integration: full digest trajectory and supported-domain proof,
 compressed composition, native window-specific admission/cache/borrow wiring, literal
 full-path witnesses, matched certification and native behavior evidence.
 No new frame ceiling or fallback to whole-extent allocation is authorized.
+
+## Stored composition (PRF-1131 / SCN-1037)
+
+`fn-ewz-begin` retains `(mode raw-plan N decoded-offset wanted budget ip end
+codec-status)`. It calls the unchanged actual raw controller with requested
+raw offset C, so WN=0; original POFF/PLEN=C, protected extent and typed
+ownership remain captured. The decoder uses the same private16KiB window,
+fixed64-byte scratch and existing fixed history/table slots. Its returned
+scratch is copied by the actual `fn-ewb-copy` through the congruent output
+buffer. No second decoder, wholeC/N list or extra16KiB output is introduced.
+
+`fn-ewz-read` first accepts and hashes the exact core-issued read, then
+selects its compressed overlap. `:codec` suppresses read effects while
+`fn-ewz-codec-tick` retains that input across at most1024 actions and64 output
+bytes per tick. The total budget is `fn-pzd-budget(C,N)` and is carried using
+`fn-pzw-budget-left`; quantum exhaustion resumes. Only `:input` with IP=END
+releases that input for scanning. A valid final block enters `:drain`, which
+hashes all remaining compressed/protected bytes without calling the decoder
+again. At positional completion the stored decision must accept exactN and
+a final/sync-flush terminal before the wrapper becomes `:decoded`. C=0
+starts in `:drain`, so an empty payload after a protected prefix cannot be
+prematurely treated as a truncated nonempty decoder request.
+
+The host must dispatch `fn-ewz-next-action`: `:codec`, `:read`, `:tick`,
+`:refused`, or `:ready`. `:ready` alone returns the publication tuple
+`(ticket incarnation lease :decoded decoded-offset wanted)` and requires
+both `:decoded` and raw publication. A raw subplan's `:verified` status
+cannot expose a compressed window. Source proofs describe every copy cell,
+accepted actual decoder completion, carried codec evidence under all three
+transitions and newly published actual trailer integrity. The logical
+invariant is carried proof evidence; the served entry does not revalidate
+whole state. Literal local-stobj witnesses affirm the complete boundary
+checks and distinguish removal from malformed/short/corruption regressions.
+
+This is source component evidence. Full captured-source digest/decoded
+trajectory, actual TIN<=C sequence invariant, total scheduling/action-budget
+completeness, allocator/profile funding, native lifetime/dispatch/borrow
+integration and matching images/natives remain open.

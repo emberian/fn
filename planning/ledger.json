@@ -1071,6 +1071,8 @@
     "tests/acl2/extent-window-stream-tests",
     "tests/acl2/extent-window-stream-refinement-tests",
     "tests/acl2/extent-window-stream-union-tests",
+    "tests/acl2/extent-window-compressed-tests",
+    "tests/acl2/extent-window-compressed-refinement-tests",
     "tests/acl2/records-freeze-tests",
     "tests/acl2/catalog-record-tests",
     "tests/acl2/catalog-tests",
@@ -1687,26 +1689,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1762,
-    "books_in_root_closure": 1750,
-    "roots": 1683,
-    "theorems": 28232,
-    "functions": 18489,
-    "assert_events": 23336,
+    "books": 1765,
+    "books_in_root_closure": 1754,
+    "roots": 1685,
+    "theorems": 28254,
+    "functions": 18497,
+    "assert_events": 23346,
     "must_fails": 2504,
     "prover_refusals": 0,
     "encapsulates": 157,
     "guards": {
       "verified": 3488,
-      "declared-off": 2115,
-      "default-guarded": 10107,
+      "declared-off": 2122,
+      "default-guarded": 10108,
       "default-unguarded": 2779
     },
     "suspect_theorems": 1228,
     "export_hygiene_warnings": 329,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2457,
+    "include_hygiene_warnings": 2461,
     "host_names_warnings": 2137,
     "hand_written_record_warnings": 18
   },
@@ -11382,10 +11384,37 @@
       "read_error": null
     },
     {
-      "book": "books/extent-window-compressed.lisp",
-      "in_root_closure": false,
+      "book": "books/extent-window-compressed-refinement.lisp",
+      "in_root_closure": true,
       "is_root": false,
-      "theorems": 0,
+      "theorems": 12,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "extent-window-compressed",
+        "extent-window-stream-refinement"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/extent-window-compressed.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 1,
       "functions": 10,
       "guards": {
         "verified": 3,
@@ -11465,7 +11494,7 @@
       "book": "books/extent-window-stream-refinement.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 5,
+      "theorems": 9,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -39289,6 +39318,61 @@
         "../../books/extent-window-capture",
         "extent-window-buffer-tests",
         "extent-window-plan-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/extent-window-compressed-refinement-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 5,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/extent-window-compressed-refinement",
+        "extent-window-compressed-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/extent-window-compressed-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 10,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/extent-window-compressed",
+        "deflate-inflate-vectors",
+        "extent-window-stream-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -68951,6 +69035,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/extent-window-compressed-refinement.lisp",
+        "line": 3,
+        "include": "extent-window-stream-refinement",
+        "included": "books/extent-window-stream-refinement.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/extent-window-compressed.lisp",
         "line": 4,
         "include": "payload-window",
@@ -78209,6 +78300,27 @@
         "line": 4,
         "include": "extent-window-buffer-tests",
         "included": "tests/acl2/extent-window-buffer-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/extent-window-compressed-refinement-tests.lisp",
+        "line": 3,
+        "include": "extent-window-compressed-tests",
+        "included": "tests/acl2/extent-window-compressed-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/extent-window-compressed-tests.lisp",
+        "line": 3,
+        "include": "extent-window-stream-tests",
+        "included": "tests/acl2/extent-window-stream-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/extent-window-compressed-tests.lisp",
+        "line": 4,
+        "include": "deflate-inflate-vectors",
+        "included": "tests/acl2/deflate-inflate-vectors.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

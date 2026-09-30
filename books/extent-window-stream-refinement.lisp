@@ -48,3 +48,42 @@
   :hints (("Goal" :use fn-ewb-capture-extends-faithful-window
                    :in-theory (enable fn-ews-read)))
   :rule-classes nil)
+
+; The compressed controller shares the private decoded window with a raw
+; hash subplan whose WN is zero. Even its scan reads cannot overwrite it.
+(defthm fn-ews-zero-window-preserves-private-buffer
+  (implies (equal (nth 5 s) 0)
+           (equal (mv-nth 3 (fn-ews-read effect io-status s fn-octets pgs-digest-state fn-ew-buffer))
+                  fn-ew-buffer))
+  :hints (("Goal" :in-theory (enable fn-ews-read fn-ewb-capture fn-ewp-window-span fn-ewb-copy)))
+  :rule-classes nil)
+
+(defthm fn-ews-read-preserves-captured-request
+  (equal (fn-ews-capture
+          (mv-nth 1 (fn-ews-read effect io-status s fn-octets pgs-digest-state fn-ew-buffer)))
+         (fn-ews-capture s))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (enable fn-ews-read fn-ews-capture fn-ewp-complete-read
+                              fn-ewp-finish fn-ewp-with-phase-pos fn-ewp-state))))
+
+(defthm fn-ews-read-never-decreases-scan-position
+  (implies (natp (nth 7 s))
+           (<= (nth 7 s)
+               (nth 7 (mv-nth 1 (fn-ews-read effect io-status s fn-octets pgs-digest-state fn-ew-buffer)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (enable fn-ews-read fn-ewp-complete-read
+                              fn-ewp-finish fn-ewp-with-phase-pos fn-ewp-state))))
+
+(defthm fn-ews-read-preserves-natural-scan-position
+  (implies (natp (nth 7 s))
+           (natp (nth 7 (mv-nth 1 (fn-ews-read effect io-status s fn-octets pgs-digest-state fn-ew-buffer)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (enable fn-ews-read fn-ewp-complete-read
+                              fn-ewp-finish fn-ewp-with-phase-pos fn-ewp-state))))
+
+(defthm fn-ews-tick-preserves-captured-request-and-position
+  (let ((next (mv-nth 1 (fn-ews-tick s pgs-digest-state))))
+    (and (equal (fn-ews-capture next) (fn-ews-capture s))
+         (equal (nth 7 next) (nth 7 s))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (enable fn-ews-tick fn-ews-capture fn-ewp-with-phase-pos fn-ewp-state))))
