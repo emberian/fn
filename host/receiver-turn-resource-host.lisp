@@ -12,7 +12,10 @@
        (null (fn-rxt-source fn-receiver-turn))
        (null (fn-rxt-demand fn-receiver-turn))
        (null (fn-rxt-job fn-receiver-turn))
-       (null (fn-rxt-receipt fn-receiver-turn))))
+       (null (fn-rxt-receipt fn-receiver-turn))
+       ; Modern controller7 retains an ordinary output job independently.
+       ; Idle input fields cannot authorize binding over that live root.
+       (null (fn-rxt-output-bundle fn-receiver-turn))))
 (defun fn-owner-rx-capacity-install-turn
   (token fn-rx-provider fn-receiver-turn fn-page-read-pool)
   (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool) :guard t))
