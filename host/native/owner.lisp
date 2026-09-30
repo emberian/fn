@@ -4161,6 +4161,10 @@ admission closes, so it takes the owner mutex directly rather than the gate."
         (fnn-fault "snapshot root lease release is stale")))
     (fnn-owner-release-pending-extents-locked)))
 
+(define-condition fnn-snapshot-read-not-issued (fnn-store-io-refusal)
+  ((word :initarg :word :reader fnn-snapshot-read-not-issued-word)
+   (request :initarg :request :reader fnn-snapshot-read-not-issued-request)))
+
 (defun fnn-snapshot-source-read-page (service root-token request buffer-lease)
   "Read one exact page. Return vector, token, request, fresh ID, count, status.
 Short/error observations remain owned for authcomplete's uncertain result;
@@ -4175,7 +4179,8 @@ BUFFER-LEASE is controller funding, never an independent refund right."
           (destructuring-bind (word read-file read-offset read-count read-token &rest ignored)
               (fnn-core-page-read-pool 'fn-owner-page-file-pin-read root-token request base)
             (declare (ignore ignored))
-            (unless (eq word :admitted) (fnn-refuse "snapshot page lease refused: ~a" word))
+            (unless (eq word :admitted)
+              (error 'fnn-snapshot-read-not-issued :word word :request request))
             (setq token read-token offset read-offset count read-count
                   fd (gethash read-file *fnn-extent-fds*))))))
     (unwind-protect
