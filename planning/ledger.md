@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2233 |
-| Certification roots in the Makefile | 2049 |
-| Books inside the root closure | 2183 |
-| `defthm` and `defthmd` events | 32501 |
-| `defun` events | 20867 |
+| Books read | 2241 |
+| Certification roots in the Makefile | 2053 |
+| Books inside the root closure | 2191 |
+| `defthm` and `defthmd` events | 32560 |
+| `defun` events | 20874 |
 | Functions with verified guards | 3738 |
 | Functions declared `:verify-guards nil` and never verified | 2536 |
-| Functions left at the default with an explicit guard | 11583 |
+| Functions left at the default with an explicit guard | 11590 |
 | Functions left at the default with no guard | 3010 |
-| `assert-event` checks | 24478 |
+| `assert-event` checks | 24505 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 166 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 382 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2871 |
+| Include-hygiene warnings | 2885 |
 | Host-names warnings | 2419 |
 | Hand-written-record warnings | 19 |
 
@@ -315,12 +315,16 @@ that `make certify` requests.
 | `books/bp-workflow-replay-status.lisp` | root | 30 | 2 | 0/1/1/0 | 0 | 0 | 0 |
 | `books/bp-workflow-transport-invariants.lisp` | root | 32 | 2 | 0/0/2/0 | 0 | 0 | 3 |
 | `books/bp-workflow.lisp` | root | 2 | 113 | 4/0/109/0 | 0 | 0 | 0 |
+| `books/bpsec-asb-control.lisp` | closure | 22 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/bpsec-asb-quanta.lisp` | closure | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/bpsec-asb-spine.lisp` | closure | 18 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/bpsec-asb.lisp` | closure | 3 | 21 | 0/0/21/0 | 0 | 0 | 0 |
 | `books/bpsec-head.lisp` | closure | 3 | 6 | 0/0/6/0 | 3 | 0 | 0 |
 | `books/bpsec-model.lisp` | closure | 0 | 26 | 0/0/26/0 | 0 | 0 | 0 |
 | `books/bpsec-operation.lisp` | root | 5 | 14 | 0/0/14/0 | 0 | 0 | 1 |
 | `books/bpsec-provider-model.lisp` | root | 0 | 2 | 0/0/2/0 | 2 | 0 | 0 |
 | `books/bpsec-target-cursor.lisp` | root | 5 | 11 | 0/0/11/0 | 0 | 0 | 0 |
+| `books/bpsec-target-spine.lisp` | closure | 11 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bpsec-target.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
 | `books/bpsec.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/byte-store-arena.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -1584,9 +1588,13 @@ that `make certify` requests.
 | `tests/acl2/bp-workflow-records-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 101 | 6 | 0 |
 | `tests/acl2/bp-workflow-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/bp-workflow-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 50 | 7 | 0 |
+| `tests/acl2/bpsec-asb-control-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 7 | 0 | 0 |
+| `tests/acl2/bpsec-asb-quanta-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 8 | 0 | 0 |
+| `tests/acl2/bpsec-asb-spine-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 6 | 0 | 0 |
 | `tests/acl2/bpsec-asb-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 14 | 0 | 0 |
 | `tests/acl2/bpsec-operation-tests.lisp` | root | 0 | 7 | 0/0/7/0 | 21 | 0 | 0 |
 | `tests/acl2/bpsec-target-cursor-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 12 | 0 | 0 |
+| `tests/acl2/bpsec-target-spine-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 6 | 0 | 0 |
 | `tests/acl2/bpsec-target-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 15 | 0 | 0 |
 | `tests/acl2/byte-store-fault-keystones-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 8 | 19 | 0 |
 | `tests/acl2/byte-store-frame-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 100 | 3 | 0 |

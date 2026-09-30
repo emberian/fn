@@ -1940,6 +1940,10 @@
     "books/query-payload-scalar",
     "books/query-payload-state",
     "tests/acl2/bpsec-operation-tests",
+    "tests/acl2/bpsec-asb-quanta-tests",
+    "tests/acl2/bpsec-asb-spine-tests",
+    "tests/acl2/bpsec-target-spine-tests",
+    "tests/acl2/bpsec-asb-control-tests",
     "tests/acl2/bpsec-target-cursor-tests",
     "tests/acl2/bpsec-target-tests",
     "tests/acl2/post-identity-source-cursor-source-complete-tests",
@@ -2053,26 +2057,26 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2233,
-    "books_in_root_closure": 2183,
-    "roots": 2049,
-    "theorems": 32501,
-    "functions": 20867,
-    "assert_events": 24478,
+    "books": 2241,
+    "books_in_root_closure": 2191,
+    "roots": 2053,
+    "theorems": 32560,
+    "functions": 20874,
+    "assert_events": 24505,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 166,
     "guards": {
       "verified": 3738,
       "declared-off": 2536,
-      "default-guarded": 11583,
+      "default-guarded": 11590,
       "default-unguarded": 3010
     },
     "suspect_theorems": 1295,
     "export_hygiene_warnings": 382,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2871,
+    "include_hygiene_warnings": 2885,
     "host_names_warnings": 2419,
     "hand_written_record_warnings": 19
   },
@@ -8513,6 +8517,84 @@
       "read_error": null
     },
     {
+      "book": "books/bpsec-asb-control.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 22,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bpsec-asb"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bpsec-asb-quanta.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 8,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bpsec-asb"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bpsec-asb-spine.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 18,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bpsec-asb"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/bpsec-asb.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -8671,6 +8753,33 @@
       "read_error": null
     },
     {
+      "book": "books/bpsec-target-spine.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 11,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bpsec-asb-spine",
+        "bpsec-target-cursor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/bpsec-target.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -8718,10 +8827,14 @@
       "encapsulates": 0,
       "includes": [
         "bpsec-asb",
+        "bpsec-asb-control",
+        "bpsec-asb-quanta",
+        "bpsec-asb-spine",
         "bpsec-operation",
         "bpsec-provider-model",
         "bpsec-target",
-        "bpsec-target-cursor"
+        "bpsec-target-cursor",
+        "bpsec-target-spine"
       ],
       "system_includes": [],
       "suspects": [],
@@ -45965,6 +46078,84 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/bpsec-asb-control-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 7,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bpsec-asb-control"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bpsec-asb-quanta-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 8,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bpsec-asb-quanta"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bpsec-asb-spine-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bpsec-asb-spine"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/bpsec-asb-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -46037,6 +46228,33 @@
       "encapsulates": 0,
       "includes": [
         "../../books/bpsec-target-cursor",
+        "bpsec-target-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bpsec-target-spine-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bpsec-target-spine",
         "bpsec-target-tests"
       ],
       "system_includes": [],
@@ -83613,6 +83831,27 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/bpsec-asb-control.lisp",
+        "line": 4,
+        "include": "bpsec-asb",
+        "included": "books/bpsec-asb.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec-asb-quanta.lisp",
+        "line": 4,
+        "include": "bpsec-asb",
+        "included": "books/bpsec-asb.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec-asb-spine.lisp",
+        "line": 5,
+        "include": "bpsec-asb",
+        "included": "books/bpsec-asb.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/bpsec-asb.lisp",
         "line": 4,
         "include": "bpsec-head",
@@ -83645,6 +83884,20 @@
         "line": 7,
         "include": "bpsec-target",
         "included": "books/bpsec-target.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec-target-spine.lisp",
+        "line": 4,
+        "include": "bpsec-asb-spine",
+        "included": "books/bpsec-asb-spine.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec-target-spine.lisp",
+        "line": 5,
+        "include": "bpsec-target-cursor",
+        "included": "books/bpsec-target-cursor.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -83687,6 +83940,34 @@
         "line": 8,
         "include": "bpsec-operation",
         "included": "books/bpsec-operation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec.lisp",
+        "line": 9,
+        "include": "bpsec-asb-quanta",
+        "included": "books/bpsec-asb-quanta.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec.lisp",
+        "line": 10,
+        "include": "bpsec-asb-spine",
+        "included": "books/bpsec-asb-spine.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec.lisp",
+        "line": 11,
+        "include": "bpsec-target-spine",
+        "included": "books/bpsec-target-spine.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec.lisp",
+        "line": 12,
+        "include": "bpsec-asb-control",
+        "included": "books/bpsec-asb-control.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -93791,6 +94072,27 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/bpsec-asb-control-tests.lisp",
+        "line": 2,
+        "include": "../../books/bpsec-asb-control",
+        "included": "books/bpsec-asb-control.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bpsec-asb-quanta-tests.lisp",
+        "line": 3,
+        "include": "../../books/bpsec-asb-quanta",
+        "included": "books/bpsec-asb-quanta.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bpsec-asb-spine-tests.lisp",
+        "line": 3,
+        "include": "../../books/bpsec-asb-spine",
+        "included": "books/bpsec-asb-spine.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/bpsec-asb-tests.lisp",
         "line": 2,
         "include": "../../books/bpsec-asb",
@@ -93813,6 +94115,20 @@
       },
       {
         "book": "tests/acl2/bpsec-target-cursor-tests.lisp",
+        "line": 3,
+        "include": "bpsec-target-tests",
+        "included": "tests/acl2/bpsec-target-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bpsec-target-spine-tests.lisp",
+        "line": 2,
+        "include": "../../books/bpsec-target-spine",
+        "included": "books/bpsec-target-spine.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bpsec-target-spine-tests.lisp",
         "line": 3,
         "include": "bpsec-target-tests",
         "included": "tests/acl2/bpsec-target-tests.lisp",
