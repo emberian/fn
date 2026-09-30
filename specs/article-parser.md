@@ -141,11 +141,11 @@ None of these properties establishes full RFC article validity.
 ### Logical NOV line projection (PRF-1103)
 
 `books/nov-line-projection.lisp` supplies the proof boundary used by the
-productive legacy OVER cursor: `fn-nlp-parse-lines` preserves every result
+productive legacy OVER cursor: `fn-novlp-parse-lines` preserves every result
 of the actual `fn-article-parse-lines` while retaining only the first selected
 completed values and the current field. The generalized theorem has no
 hypotheses; a former accumulator typing premise was proved redundant and removed.
-`fn-nlp-five-columns-are-overview-content` connects its normalized five values
+`fn-novlp-five-columns-are-overview-content` connects its normalized five values
 to the actual `fn-nov-header-content` functions used by `fn-hnov-of-parsed`.
 Repeated fields retain the first match; normalization removes exactly one
 initial SP, removes folding CRLF and scrubs TAB. Errors and closed-field
