@@ -64,6 +64,12 @@
   ;; Intrusive cold-read queue, guarded by owner mutex. Metadata remains
   ;; owned until actual thread death/join and atomic result settlement.
   (cold-head nil) (cold-tail nil)
+  ;; Funded permanent roots plus installed callback wiring. No startup setter
+  ;; exists yet: genuine runtime/constructor admission is an activation debt.
+  (connection-raw-token nil) (connection-head nil)
+  (connection-start nil) (connection-open nil) (connection-close nil)
+  (connection-abort nil) (connection-settle nil)
+  (connection-mio nil) (connection-pool nil) (connection-fuel nil)
   ;; The scheduler gate in front of LOCK (fnn-owner-gated), and the roster
   ;; mutex that protects WORKERS, CLIENTS, PUBLISHER and the stop flag's
   ;; publication to the accept threads: host lists, not owner state, so
@@ -130,6 +136,192 @@
   ;; then tells every member in flight uncertain and sheds the queue, as at a
   ;; stall.  Read and written under COMMIT-LOCK.
   (drain-release nil))
+
+;;; Opaque connection custody. These are INTERNAL composition subjects until
+;;; startup installs the genuine indexed runtime and its constructor allowance.
+;;; Every caller holds the owner lock. Pool callbacks additionally run under
+;;; the extent lock, against the SAME installed page-read pool. No constructor
+;;; is reachable before START has debited that pool. The permanent service root
+;;; slots themselves belong to the installed baseline, not this child grant.
+(defstruct (fnn-connection-custody (:constructor %make-fnn-connection-custody))
+  token cid prev next phase)
+
+(defun fnn-connection-custody-make (token)
+  (%make-fnn-connection-custody :token token :phase :pending))
+
+(defun fnn-owner-connection-selected-p (service)
+  ;; Selection is wiring, not a claim of runtime adequacy. A retained token
+  ;; also forbids falling back if a damaged installation loses its callback.
+  (or (fnn-owner-service-connection-start service)
+      (fnn-owner-service-connection-open service)
+      (fnn-owner-service-connection-close service)
+      (fnn-owner-service-connection-abort service)
+      (fnn-owner-service-connection-settle service)
+      (fnn-owner-service-connection-raw-token service)
+      (fnn-owner-service-connection-head service)))
+
+(defun fnn-connection-custody-publish-raw (service)
+  ;; RAW-TOKEN remains rooted across constructor escape. Splice the already
+  ;; funded node before clearing the root; no cleanup or retirement consing.
+  (let ((node (fnn-connection-custody-make
+               (fnn-owner-service-connection-raw-token service)))
+        (head (fnn-owner-service-connection-head service)))
+    (setf (fnn-connection-custody-next node) head)
+    (when head (setf (fnn-connection-custody-prev head) node))
+    (setf (fnn-owner-service-connection-head service) node
+          (fnn-owner-service-connection-raw-token service) nil)
+    node))
+
+(defun fnn-connection-custody-retain (service token)
+  ;; INTERNAL: called only for an actual core-acquired, funded replacement.
+  (when (fnn-owner-service-connection-raw-token service)
+    (fnn-fault "connection custody already has an unsettled raw token"))
+  (setf (fnn-owner-service-connection-raw-token service) token)
+  (fnn-connection-custody-publish-raw service))
+
+(defun fnn-connection-custody-released (service node)
+  ;; INTERNAL: only a core-returned release reaches this splice. Logical
+  ;; close, socket close, a host exception or alias-count guesses never do.
+  (when (eq (fnn-connection-custody-phase node) :released)
+    (fnn-fault "connection custody was already released"))
+  (let ((prev (fnn-connection-custody-prev node))
+        (next (fnn-connection-custody-next node)))
+    (if prev (setf (fnn-connection-custody-next prev) next)
+      (setf (fnn-owner-service-connection-head service) next))
+    (when next (setf (fnn-connection-custody-prev next) prev))
+    (setf (fnn-connection-custody-token node) nil
+          (fnn-connection-custody-prev node) nil
+          (fnn-connection-custody-next node) nil
+          (fnn-connection-custody-phase node) :released)))
+
+(defun fnn-owner-connection-open-locked (service kind family address peer)
+  "Return CID and its directly retained native node. No retained-path fallback."
+  (unless (fnn-owner-connection-selected-p service)
+    (return-from fnn-owner-connection-open-locked
+      (values (case kind
+                (:reader (fnn-owner-core 'fn-owner-open))
+                (:exposure (fnn-owner-core 'fn-owner-exposure-open family address peer))
+                (:peer (fnn-owner-core 'fn-owner-open-peer peer))
+                (otherwise (fnn-fault "unknown connection opening operation"))) nil)))
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (when (fnn-owner-service-connection-raw-token service)
+      (fnn-fault "connection startup has unsettled raw custody"))
+    (multiple-value-bind (erp word token fuel mio pool state)
+        (fnn-core-mv 'fn-owner-index-connection-start
+          (funcall (fnn-owner-service-connection-start service)
+                   kind family address peer
+                   (fnn-owner-service-connection-mio service)
+                   (fnn-owner-service-connection-pool service) *the-live-state*))
+      (declare (ignore state))
+      ;; ANY acquired result survives even a simultaneous error/refusal. This
+      ;; assignment precedes inspecting ERP/WORD and all subsequent allocation.
+      (setf (fnn-owner-service-connection-raw-token service) token
+            (fnn-owner-service-connection-mio service) mio
+            (fnn-owner-service-connection-pool service) pool
+            (fnn-owner-service-connection-fuel service) fuel)
+      (when erp (fnn-fault "connection issuer requires recovery"))
+      (unless (eq word :reserved)
+        (when token (fnn-fault "connection issuer retained an unresolved token"))
+        (fnn-refuse "connection issuer refused: ~a" word))
+      (unless token (fnn-fault "connection issuer omitted its acquired token"))
+      (let ((node (fnn-connection-custody-publish-raw service)))
+        (multiple-value-bind (open-erp result mio1 pool1 state1)
+            (fnn-core-mv 'fn-owner-index-open
+              (funcall (fnn-owner-service-connection-open service)
+                       kind family address peer token fuel mio pool *the-live-state*))
+          (declare (ignore state1))
+          (setf (fnn-owner-service-connection-mio service) mio1
+                (fnn-owner-service-connection-pool service) pool1)
+          (when open-erp (fnn-fault "connection open requires recovery"))
+          (case (first result)
+            (:opened
+             (setf (fnn-connection-custody-cid node) (second result)
+                   (fnn-connection-custody-phase node) :live)
+             (values (second result) node))
+            ((:refused :unavailable :stale)
+             (when (third result) (fnn-fault "refused connection retains custody"))
+             ;; This result means the composed open actually aborted/released.
+             (fnn-connection-custody-released service node)
+             (values nil nil))
+            (otherwise (fnn-fault "connection open has unresolved custody: ~a"
+                                  (first result)))))))))
+
+(defun fnn-owner-connection-close-locked (service cid node faultp)
+  "Logical close/fault followed by core settlement; held aliases stay rooted."
+  (unless node
+    (when (fnn-owner-connection-selected-p service)
+      (fnn-fault "selected connection close has no custody node"))
+    (return-from fnn-owner-connection-close-locked
+      (fnn-owner-action (if faultp 'fn-owner-fault 'fn-owner-close) cid)))
+  (when (eq (fnn-connection-custody-phase node) :released)
+    (return-from fnn-owner-connection-close-locked :closed))
+  (when (eq (fnn-connection-custody-phase node) :retiring)
+    (return-from fnn-owner-connection-close-locked
+      (fnn-owner-connection-settle-locked
+       service node (fnn-owner-service-connection-fuel service) nil)))
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (multiple-value-bind (erp result mio pool state)
+        (fnn-core-mv 'fn-owner-index-close
+          (funcall (fnn-owner-service-connection-close service)
+                   cid (fnn-connection-custody-token node) faultp
+                   (fnn-owner-service-connection-fuel service)
+                   (fnn-owner-service-connection-mio service)
+                   (fnn-owner-service-connection-pool service)
+                   (fnn-live-arena) *the-live-state*))
+      (declare (ignore state))
+      (setf (fnn-owner-service-connection-mio service) mio
+            (fnn-owner-service-connection-pool service) pool)
+      (when erp (fnn-fault "connection close requires recovery"))
+      (case (first result)
+        (:closed
+         (when (third result) (fnn-fault "released connection returned retained custody"))
+         (fnn-connection-custody-released service node))
+        (:closed-held (setf (fnn-connection-custody-phase node) :retiring))
+        (:yield (setf (fnn-connection-custody-phase node) :close-pending))
+        (otherwise (fnn-fault "connection close has unresolved custody: ~a" (first result))))
+      (first result))))
+
+(defun fnn-owner-connection-settle-locked (service node fuel abortp)
+  "A real alias return or definite pre-open refusal requests core settlement."
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (multiple-value-bind (erp word left mio pool state)
+        (fnn-core-mv (if abortp 'fn-owner-index-connection-abort 'fn-owner-index-connection-settle)
+          (funcall (if abortp (fnn-owner-service-connection-abort service)
+                     (fnn-owner-service-connection-settle service))
+                   (fnn-connection-custody-token node) fuel
+                   (fnn-owner-service-connection-mio service)
+                   (fnn-owner-service-connection-pool service) *the-live-state*))
+      (declare (ignore state))
+      (setf (fnn-owner-service-connection-mio service) mio
+            (fnn-owner-service-connection-pool service) pool)
+      (when erp (fnn-fault "connection settlement requires recovery"))
+      (case word
+        (:released (fnn-connection-custody-released service node))
+        ((:held :busy :yield) nil)
+        (otherwise (fnn-fault "connection settlement unresolved: ~a" word)))
+      (values word left))))
+
+(defun fnn-owner-connection-repin-joined-locked (service old new word)
+  "Transport the actual completion word; never infer acceptance from scalars."
+  (case word
+    (:committed-repin-released
+     (fnn-connection-custody-released service old)
+     (setf (fnn-connection-custody-phase new) :live
+           (fnn-connection-custody-cid new) (fnn-connection-custody-cid old))
+     new)
+    (:committed-repin-held
+     (setf (fnn-connection-custody-phase old) :retiring
+           (fnn-connection-custody-phase new) :live
+           (fnn-connection-custody-cid new) (fnn-connection-custody-cid old))
+     new)
+    (:committed-repin-aborted
+     ;; Only the receipt's persisted actual abort/release disposition permits
+     ;; forgetting this prepared NEW node. OLD remains the active endpoint.
+     (fnn-connection-custody-released service new)
+     old)
+    ;; Ordinary commit carries no authority over a separately pending NEW.
+    (:committed old)
+    (otherwise (fnn-fault "connection repin requires recovery with both holders retained"))))
 
 ;;; Inside a commit quantum (fnn-owner-commit-queued-locked) the effects that
 ;;; would let a member's outcome leave the owner before the log's barrier are
@@ -1445,7 +1637,7 @@ into the service log's stop line and its own result line, so `health',
            (format nil "owner core/store fault; process stopped: ~a" condition))))
   (fnn-owner-gated (service :control)
     (unless (fnn-owner-service-stopping service)
-      (when cid
+      (when (and cid (not (fnn-owner-connection-selected-p service)))
         (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
       (fnn-owner-stop-service-locked service +fnn-exit-fault+)))
   (fnn-err "owner core/store fault; process stopped: ~a" condition))
@@ -1474,7 +1666,8 @@ before the mutex can be released, so no queued client can mutate afterward."
       (fnn-owner-stop-service-locked service +fnn-exit-uncertain+)
       (error condition))
     (fnn-store-fault (condition)
-      (when cid (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
+      (when (and cid (not (fnn-owner-connection-selected-p service)))
+        (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
       (fnn-owner-stop-service-locked service +fnn-exit-fault+)
       (error condition))
     ;; FNN-STORE-ERROR is the existing known semantic-refusal class.  It has
@@ -1483,7 +1676,8 @@ before the mutex can be released, so no queued client can mutate afterward."
     ;; An OS or arbitrary failure inside a semantic/persistence action has no
     ;; safe connection-only attribution.  Preserve the shared state by stopping.
     ((or fnn-os-error serious-condition) (condition)
-      (when cid (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
+      (when (and cid (not (fnn-owner-connection-selected-p service)))
+        (ignore-errors (fnn-owner-action 'fn-owner-fault cid)))
       (fnn-owner-stop-service-locked service +fnn-exit-fault+)
       (error condition))))
 
@@ -1538,7 +1732,7 @@ the current connection."
       (error 'fnn-owner-connection-fault
              :operation operation :cause condition))))
 
-(defun fnn-owner-abandon-connection (service cid condition)
+(defun fnn-owner-abandon-connection (service cid condition &optional custody)
   "Apply the ACL2 connection-fault transition unless a global stop won first."
   (let ((reply (fnn-make-octets 0)))
     (fnn-owner-gated (service :control)
@@ -1549,10 +1743,10 @@ the current connection."
            ;; A refusal from this exact transition is a core fault, never a
            ;; connection refusal.  Convert it inside the shared boundary.
            (handler-case
-               (let ((result (fnn-owner-action 'fn-owner-fault cid)))
-                 (unless (member result '(:faulted :unknown))
+               (let ((result (fnn-owner-connection-close-locked service cid custody t)))
+                 (unless (member result '(:faulted :unknown :closed :closed-held))
                    (fnn-fault "owner fault transition returned ~a" result))
-                 (when (eq result :faulted)
+                 (when (member result '(:faulted :closed :closed-held))
                    (setq reply (fnn-owner-octets-global 'fn-owner-output))))
              (fnn-store-error (nested)
                (fnn-fault "owner fault transition refused: ~a" nested)))))))

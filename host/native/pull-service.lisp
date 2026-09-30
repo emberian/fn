@@ -260,11 +260,12 @@
    service nil
    (lambda ()
      (fnn-owner-advance-clock)
-     (let ((cid (fnn-owner-core 'fn-owner-open-peer peer-octets)))
+     (multiple-value-bind (cid custody)
+         (fnn-owner-connection-open-locked service :peer nil nil peer-octets)
        (unless (and (integerp cid) (>= cid 0))
          (fnn-refuse "owner refused the pull transit connection"))
        (fnn-owner-log)
-       (values cid (fnn-owner-octets-global 'fn-owner-output))))))
+       (values cid (fnn-owner-octets-global 'fn-owner-output) custody)))))
 
 (defun fnn-pull-local-send (service cid octets)
   "Feed OCTETS to the logical connection; return (values reply closing).
@@ -326,7 +327,7 @@ waits its milliseconds and is fed the same octets."
                             (fnn-owner-wall-milliseconds)
                             (fnn-pull-profile plan))))
          (session (first begun))
-         (socket nil) (fd nil) (context nil) (channel nil) (cid nil) (events nil)
+         (socket nil) (fd nil) (context nil) (channel nil) (cid nil) (custody nil) (events nil)
          ;; friend-path-2: ACL2's name for why the round failed (the first
          ;; failing step's fn-pull-session-failure), for the log line.
          (why nil))
@@ -382,9 +383,9 @@ waits its milliseconds and is fed the same octets."
                    (:remote (handler-case (send-remote (fnn-octets (cdr effect)))
                               (error () (enqueue (list :lost :send)))))
                    (:open-local
-                    (multiple-value-bind (opened greeting)
+                    (multiple-value-bind (opened greeting node)
                         (fnn-pull-local-open service peer)
-                      (setq cid opened)
+                      (setq cid opened custody node)
                       (enqueue (cons :local (fnn-octet-list greeting)))))
                    ;; PRF-165: the peer answered ARTICLE 430; the transit
                    ;; connection is inside an IHAVE it cannot finish.  Close
@@ -396,10 +397,10 @@ waits its milliseconds and is fed the same octets."
                         (setq cid nil)
                         (fnn-owner-response-unpin service old)
                         (fnn-owner-transit-serialized service nil
-                                              (lambda () (fnn-owner-action 'fn-owner-close old)))))
-                    (multiple-value-bind (opened greeting)
+                                              (lambda () (fnn-owner-connection-close-locked service old custody nil)))))
+                    (multiple-value-bind (opened greeting node)
                         (fnn-pull-local-open service peer)
-                      (setq cid opened)
+                      (setq cid opened custody node)
                       (enqueue (cons :local (fnn-octet-list greeting)))))
                    (:local
                     (multiple-value-bind (reply closing)
@@ -407,7 +408,11 @@ waits its milliseconds and is fed the same octets."
                       (when (> (length reply) 0)
                         (enqueue (cons :local (fnn-octet-list reply))))
                       (when closing
-                        (setq cid nil)
+                        (when custody
+                          (fnn-owner-transit-serialized
+                           service nil
+                           (lambda () (fnn-owner-connection-close-locked service cid custody nil))))
+                        (setq cid nil custody nil)
                         (enqueue (list :lost :local)))))
                    (:close nil)
                    (t (fnn-fault "unknown pull effect ~s" (car effect))))))
@@ -450,7 +455,7 @@ waits its milliseconds and is fed the same octets."
           (fnn-owner-response-unpin service cid)
           (ignore-errors
            (fnn-owner-transit-serialized service nil
-                                 (lambda () (fnn-owner-action 'fn-owner-close cid)))))
+                                 (lambda () (fnn-owner-connection-close-locked service cid custody nil)))))
         (when channel (ignore-errors (fnn-tls-close-channel channel)))
         (when context (ignore-errors (fnn-tls-close-context context)))
         (when socket (ignore-errors (fnn-socket-shut socket))))

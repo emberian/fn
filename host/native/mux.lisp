@@ -90,7 +90,7 @@
   (buffer nil))
 
 (defstruct (fnn-mux-conn (:constructor %make-fnn-mux-conn))
-  socket fd implicit-tls channel ssl cid opened-cid
+  socket fd implicit-tls channel ssl cid opened-cid custody
   ;; :new :tls-queued :handshake :hs-wait :serving :draining :done
   (phase :new)
   ;; The handshake ACL2 admitted (fn-owner-handshake-admit's id) until its
@@ -270,10 +270,14 @@ the TLS session, then the socket.  Idempotent."
             (delete conn (fnn-mux-loop-waiting loop) :test #'eq)
             (fnn-mux-loop-queued loop)
             (delete conn (fnn-mux-loop-queued loop) :test #'eq))
-      (when cid
+      ;; Logical close may already have cleared CID. Physical retirement still
+      ;; returns the exact holder; OPENED-CID is routing, never token authority.
+      (when (or cid (fnn-mux-conn-custody conn))
         (ignore-errors
           (fnn-owner-serialized
-           service cid (lambda () (fnn-owner-action 'fn-owner-close cid))
+           service (or cid opened-cid)
+           (lambda () (fnn-owner-connection-close-locked
+                       service (or cid opened-cid) (fnn-mux-conn-custody conn) nil))
            (fnn-mux-conn-class conn))))
       (when opened-cid
         (ignore-errors
@@ -322,7 +326,8 @@ ending the connection with fnn-mux-finish."
              (setf (fnn-mux-conn-cid ,c) nil)
              (handler-case
                  (let ((reply (and faulted-cid
-                                   (fnn-owner-abandon-connection ,service faulted-cid e))))
+                                   (fnn-owner-abandon-connection ,service faulted-cid e
+                                                                 (fnn-mux-conn-custody ,c)))))
                    (when (and reply (> (length reply) 0))
                      (ignore-errors
                        (fnn-owner-send (fnn-mux-conn-fd ,c) (fnn-mux-conn-channel ,c)
@@ -901,15 +906,15 @@ is the deadline of the handshake ACL2 already admitted (implicit TLS)."
                                          family address)))
                (unless (or (null peer) (fnn-octet-list-p peer))
                  (fnn-fault "owner returned a malformed peer identity"))
-               (let* ((opened (fnn-owner-core 'fn-owner-exposure-open
-                                              family address peer))
-                      ;; The greeting before the context's step replaces
-                      ;; fn-owner-output (it emits no reply).
-                      (greeting (fnn-owner-octets-global 'fn-owner-output)))
+               (multiple-value-bind (opened custody)
+                   (fnn-owner-connection-open-locked service :exposure family address peer)
+                 ;; Publish direct endpoint custody under owner exclusion.
+                 (setf (fnn-mux-conn-custody conn) custody)
+                 (let ((greeting (fnn-owner-octets-global 'fn-owner-output)))
                  (when opened (fnn-owner-log))
                  (when (and seed (integerp opened))
                    (fnn-owner-sasl-context opened seed nil))
-                 (values opened greeting (and peer t)))))
+                 (values opened greeting (and peer t))))))
            ;; The open arrived on the served socket: a reader quantum.  The
            ;; connection's later quanta carry its class (ACL2 named a peer:
            ;; :transit).

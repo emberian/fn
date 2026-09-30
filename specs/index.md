@@ -199,3 +199,44 @@ unlink. Its resource contract must cover the released-but-still-reachable
 node/token and callback frames, or retain a distinct cleanup charge; it cannot
 assume immediate garbage collection. The operation-derived start callback and
 native constructor allowance are still required before activation.
+
+
+## Native custody transport (internal, not activated)
+
+The native adapter stores a core-issued holder token in a permanently funded
+service root before inspecting the issuer error/word or constructing the
+five-field `fnn-connection-custody` node. Its fields are token, routing CID,
+previous, next and phase. Tokens are opaque: neither allocation address nor
+publication identity is derived from a CID. A single intrusive owner chain
+roots pending, active and retiring nodes; endpoint references are direct.
+There is no per-CID holder lookup, cleanup list or host-defined capacity cap.
+
+The actual mux, web, admin and pull open/close callers now transport those
+references through the internal fixed-arity adapters. The service's ten new
+slots carry raw token/head roots, five selected callbacks, MIO, the existing
+same pool, and core-returned fuel. No startup installer is supplied here.
+`fn-owner-index-connection-start` must derive its allowance from the genuine
+installed constructor/runtime relationship, debit the same pool, and establish
+registration before returning `:reserved`; the low-level reserve word alone
+is insufficient. Selected callback presence is wiring, not admission evidence.
+Once selected or retaining custody, this path never falls back to legacy opens.
+
+Logical/socket close does not release the node. Core `:closed-held`, `:held`,
+`:busy` and `:yield` keep custody. The actual completion words
+`:committed-repin-released` and `:committed-repin-held` select a new active node,
+respectively releasing or retaining the old one. `:committed-repin-aborted`
+releases only the prepared replacement and leaves the old active. Ordinary
+`:committed` has no cleanup authority. The caller must supply the actual
+request's old/new nodes; absent or stale tokens are not release evidence.
+
+The owner and extent mutexes cover core settlement, returned result inspection
+and native unlink as one interval. An escape fences before another admission.
+The released node, token, callback results and frames remain physically
+reachable until return/GC; the selected runtime's cleanup baseline must fund
+that overlap even after core reusable credit is refunded. A host Boolean,
+socket close or an assumption of immediate GC cannot justify that funding.
+
+SCN-1057 records adapter source execution against recording callbacks. Full
+constructor/cleanup census, genuine installed start admission, guarded owner
+callback composition and actual reader completion transport remain activation
+prerequisites. The adapter fixture is neither their proof nor an image verdict.

@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6301,6 +6301,37 @@
         "tests/acl2/page-read-ownership-tests.lisp"
       ],
       "execution_scope": "Pending matching union image; ownership only, no funded worker/buffer admission claim."
+    },
+    {
+      "id": "SCN-1057",
+      "title": "Native connection custody roots acquired tokens before construction and preserves separate holders through physical retirement and repin",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "HST-024"
+      ],
+      "steps": [
+        "Evaluate exact native constructor, intrusive splice, open/close/settle/repin and endpoint caller bodies in SBCL with real owner/extent mutexes and recording core callbacks.",
+        "Inject constructor escape, error plus acquired token, raw open escape, post-refund unlink escape, held aliases, yielding close, accepted held/released repin and definite aborted replacement.",
+        "Invoke mux, web, admin and pull opening bodies; physically finish a mux connection whose logical CID was already cleared."
+      ],
+      "expected": [
+        "Every returned acquired token is reachable from the funded root before constructor/error inspection; uncertainty fences under owner exclusion without a refund or legacy fallback.",
+        "Only the core release disposition unlinks the corresponding node; ordinary commit preserves pending replacement, aborted repin releases only new, held repin roots both.",
+        "Actual endpoint callers carry direct custody pointers and preserve physical retirement after logical close; no per-CID holder table or cleanup list is allocated."
+      ],
+      "implementation": {
+        "test": "tests.test_native_connection_custody",
+        "cases": [
+          "NativeConnectionCustodyTests.test_actual_native_custody_and_endpoint_callers",
+          "NativeConnectionCustodyTests.test_all_endpoint_sources_transport_direct_nodes"
+        ],
+        "native": false
+      },
+      "evidence": [
+        "planning/evidence/native-connection-custody-2026-09-30/coordinate.json"
+      ],
+      "execution_scope": "Actual raw native source bodies, recording core/runtime callbacks. No genuine runtime issuer, constructor funding, ACL2 composition, full read-completion wiring, image qualification or served activation claim."
     }
   ]
 }
