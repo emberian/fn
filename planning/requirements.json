@@ -207,7 +207,7 @@
         "tests/evidence/2026-09-18-assurance.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Primitive/record full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 §4.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema1-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
+      "implementation_note": "Primitive/record full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 \u00a74.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema1-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
       "keystones": [
         "fn-cbor-value-round-trip",
         "fn-cbor-accepted-input-is-canonical",
@@ -1456,7 +1456,7 @@
     },
     {
       "id": "NNT-008",
-      "title": "NEWNEWS answers from this node’s durable acceptance stamp",
+      "title": "NEWNEWS answers from this node\u2019s durable acceptance stamp",
       "specification": "specs/nntp.md#polling-newnews",
       "milestone": "M3",
       "status": "implemented",
@@ -1474,7 +1474,7 @@
         "specs/nntp.md",
         "specs/nntp-audit.md"
       ],
-      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner’s durable whole-second acceptance stamp; an article without a natural stamp uses the nearest later stamped acceptance, else the pinned reader wall second, else remains visible; no record carries such a stamp since schema 0 was deleted (no migrations: fresh deploys at 6.6.0), and deleting this horizon is open. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
+      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner\u2019s durable whole-second acceptance stamp; an article without a natural stamp uses the nearest later stamped acceptance, else the pinned reader wall second, else remains visible; no record carries such a stamp since schema 0 was deleted (no migrations: fresh deploys at 6.6.0), and deleting this horizon is open. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
       "note": "The DATE-to-NEWNEWS no-miss guarantee across a reader pin and in-flight prepare remains T6 under A-CLOCK."
     },
     {
@@ -2263,7 +2263,8 @@
         "PRF-088",
         "PRF-361",
         "PRF-997",
-        "PRF-998"
+        "PRF-998",
+        "PRF-1089"
       ],
       "verification": [
         "proof",
@@ -2281,9 +2282,10 @@
         "books/store-reclaim-holders.lisp",
         "books/nntp-reclaimed.lisp",
         "books/native-live-status.lisp",
-        "planning/evidence/reclaim-host-2026-09-25.md"
+        "planning/evidence/reclaim-host-2026-09-25.md",
+        "tests/acl2/reclaim-article-subject-tests.lisp"
       ],
-      "implementation_note": "The rule is two :set-limit configuration rows (retention, retention-days) set by `admin retention set keep-forever | released-by-all-holders | release-after DAYS` through the ordinary reconfiguration record; no row is keep-forever (D03's default). fn-rcl-verdict decides one article: tombstone, rule, age, authorship verdict, reader pin, consumer cursor, undelivered feed to a live peer, BP obligation. The tombstone replaces only the payload octets of the article record (NUL \"FN-RCL1\", the payload's SHA-256, its D25 source SHA-256 under its own agent, its length, that agent). The host calls fn-store-existing-action for D25 at every list site and fn-pidx-existing-action at the buffer sites (their pre-flip twins fn-rcl-existing-action and fn-rclb-existing-action were retired, PKT-860) and serves 423/430 \"article reclaimed\" from fn-nntp-article-response. OVER, XOVER and NEWNEWS drop a reclaimed article; `status` prints the rule and the reclaimable, held and reclaimed counts (books/native-live-status.lisp). Not yet implemented: the host `store reclaim` verb and `--dry-run`, its byte program and cuts, the native N=5,000 scenario; the consumer projection is read conservatively and feed state and FNBS rows are not read; the retention ledger keeps the reclaimed article's charge."
+      "implementation_note": "The rule is two :set-limit configuration rows (retention, retention-days) set by `admin retention set keep-forever | released-by-all-holders | release-after DAYS` through the ordinary reconfiguration record; no row is keep-forever (D03's default). fn-rcl-verdict decides one article: tombstone, rule, age, authorship verdict, reader pin, consumer cursor, undelivered feed to a live peer, BP obligation. The tombstone replaces only the payload octets of the article record (NUL \"FN-RCL2\", the payload's BLAKE3, its D25 source BLAKE3 under its own agent, its length, the typed relay-v1 article subject and that agent). The host calls fn-store-existing-action for D25 at every list site and fn-pidx-existing-action at the buffer sites (their pre-flip twins fn-rcl-existing-action and fn-rclb-existing-action were retired, PKT-860) and serves 423/430 \"article reclaimed\" from fn-nntp-article-response. OVER, XOVER and NEWNEWS drop a reclaimed article; `status` prints the rule and the reclaimable, held and reclaimed counts (books/native-live-status.lisp). Not yet implemented: the host `store reclaim` verb and `--dry-run`, its byte program and cuts, the native N=5,000 scenario; the consumer projection is read conservatively and feed state and FNBS rows are not read; the retention ledger keeps the reclaimed article's charge."
     },
     {
       "id": "NNT-012",
@@ -5638,7 +5640,8 @@
       "milestone": "M4",
       "status": "specified",
       "proof_targets": [
-        "PRF-1058"
+        "PRF-1058",
+        "PRF-1089"
       ],
       "verification": [
         "proof",
@@ -5647,9 +5650,10 @@
       "evidence": [
         "books/article-subject.lisp",
         "tests/acl2/article-subject-tests.lisp",
-        "tests/test_native_article_subject.py"
+        "tests/test_native_article_subject.py",
+        "tests/acl2/reclaim-article-subject-tests.lisp"
       ],
-      "note": "Projection and byte-preservation forms admitted in clean REPL; native coordinate pending runner image. Original bytes commitments and signatures unchanged. Durable Message-ID binding/retained tombstone article subject remains open."
+      "note": "Projection and byte-preservation forms admitted in clean REPL; native coordinate pending runner image. Original bytes commitments and signatures unchanged. FN-RCL2 retains the selected relay-v1 commitment through the host reclaim rewrite (PRF-1089); durable duplicate/conflict selection and retained conflict provenance remain open. No equality of protected bytes is inferred from commitment equality."
     },
     {
       "id": "SUB-007",

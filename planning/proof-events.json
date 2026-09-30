@@ -17407,6 +17407,15 @@
           "name": "fn-bpnc-retirement-stops-the-control-listener"
         }
       ]
+    },
+    {
+      "id": "PRF-1089",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-event-retains-article-subject"
+        }
+      ]
     }
   ]
 }

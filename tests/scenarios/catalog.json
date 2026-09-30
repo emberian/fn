@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -1521,23 +1521,27 @@
       "milestone": "M5",
       "status": "specified",
       "requirements": [
-        "STO-014"
+        "STO-014",
+        "OBJ-008"
       ],
       "steps": [
         "On a store of N=5,000 articles in one group, run `admin retention set released-by-all-holders`; hold article 100 by a reader pin, articles above 2,000 by a consumer cursor at 2,000, and articles 3,000 to 3,100 by an undelivered feed to a live peer.",
         "Run `store reclaim --dry-run`, then `store reclaim`; record the disk use of the store before and after.",
         "Re-post the Message-ID of a reclaimed article with its original bytes, and with changed bytes; ARTICLE it by Message-ID and by number; STAT and ARTICLE a held one.",
-        "Kill `store reclaim` at each cut of its program (SIGKILL and EIO) and reopen after each."
+        "Kill `store reclaim` at each cut of its program (SIGKILL and EIO) and reopen after each.",
+        "Inspect the rewritten event through the current FN-RCL2 codec: preserve the typed relay-v1 commitment and original byte-content commitment; change the magic to the retired RCL1 value and truncate below 145 bytes to confirm neither is recognized."
       ],
       "expected": [
         "The dry run names every article with its verdict; exactly articles 1 to 2,000 except 100 are reclaimable, and 100 is held-reader-pin, 2,001 to 5,000 held-consumer-cursor.",
         "After the run the same numbers are tombstones (verified by number), the others are byte-identical, and disk use falls by the reclaimed payload octets less the tombstones.",
         "The original bytes are refused as a duplicate, the changed bytes as a conflict; ARTICLE answers 430 and 423 article reclaimed; the held article is served unchanged.",
-        "Every reopen replays to a state whose Message-IDs, numbers and group bindings equal the state before; each article is either its original payload or its tombstone."
+        "Every reopen replays to a state whose Message-IDs, numbers and group bindings equal the state before; each article is either its original payload or its tombstone.",
+        "The host per-event rewriter retains fn-asj-subject of the original payload exactly; permitted Path/Xref variants share that commitment. This is commitment preservation, not digest injectivity or a claim that the duplicate decision already uses it."
       ],
       "evidence": [
         "tests/acl2/store-reclaim-tests.lisp",
-        "planning/evidence/reclaim-d13-2026-09-25.md"
+        "planning/evidence/reclaim-d13-2026-09-25.md",
+        "tests/acl2/reclaim-article-subject-tests.lisp"
       ]
     },
     {

@@ -1634,26 +1634,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1697,
+    "books": 1698,
     "books_in_root_closure": 1694,
     "roots": 1630,
-    "theorems": 27714,
-    "functions": 18127,
-    "assert_events": 22962,
+    "theorems": 27716,
+    "functions": 18129,
+    "assert_events": 22966,
     "must_fails": 2496,
     "prover_refusals": 0,
     "encapsulates": 156,
     "guards": {
       "verified": 3462,
       "declared-off": 2081,
-      "default-guarded": 9852,
+      "default-guarded": 9854,
       "default-unguarded": 2732
     },
     "suspect_theorems": 1217,
-    "export_hygiene_warnings": 318,
+    "export_hygiene_warnings": 319,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 272,
-    "include_hygiene_warnings": 2416,
+    "include_hygiene_warnings": 2418,
     "host_names_warnings": 2086,
     "hand_written_record_warnings": 18
   },
@@ -23034,18 +23034,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 13,
+      "functions": 14,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 13,
+        "default-guarded": 14,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 2,
+      "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [],
@@ -28719,7 +28719,7 @@
       "book": "books/store-reclaim-pack.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 28,
+      "theorems": 29,
       "functions": 16,
       "guards": {
         "verified": 0,
@@ -28781,12 +28781,12 @@
       "book": "books/store-reclaim.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 39,
-      "functions": 39,
+      "theorems": 40,
+      "functions": 40,
       "guards": {
         "verified": 1,
         "declared-off": 5,
-        "default-guarded": 33,
+        "default-guarded": 34,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -28797,6 +28797,7 @@
       "defmacros": 0,
       "encapsulates": 2,
       "includes": [
+        "article-subject",
         "blake3",
         "poster-bytes",
         "reclaim-rule",
@@ -45807,6 +45808,35 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/reclaim-article-subject-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 5,
+      "defmacros": 4,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/crypto-attach",
+        "../../books/records-attach",
+        "../../books/store-reclaim-pack",
+        "article-subject-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/reclaim-instant-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -56844,7 +56874,7 @@
     {
       "theorem": "fn-rclp-event-of-an-unrewritten-event-by-definition",
       "book": "books/store-reclaim-pack.lisp",
-      "line": 191,
+      "line": 194,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-rclp-event and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-rclp-event and the conclusion is that branch's value"
@@ -56853,7 +56883,7 @@
     {
       "theorem": "fn-rclp-index-built-is-the-index-by-definition",
       "book": "books/store-reclaim-pack.lisp",
-      "line": 115,
+      "line": 116,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "reflexive-conclusion: a conjunct is (equal X X)"
@@ -61135,7 +61165,7 @@
     {
       "theorem": "store-event-decode-of-a-record-octets",
       "book": "books/store-reclaim-pack.lisp",
-      "line": 239,
+      "line": 264,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-store-event-decode-exact and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-store-event-decode-exact and the conclusion is that branch's value"
@@ -62737,7 +62767,13 @@
       {
         "theorem": "fn-rclp-index-built-is-the-index-by-definition",
         "book": "books/store-reclaim-pack.lisp",
-        "line": 115,
+        "line": 116,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-rclp-event-retains-article-subject",
+        "book": "books/store-reclaim-pack.lisp",
+        "line": 242,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -79650,6 +79686,20 @@
         "line": 9,
         "include": "stx-transit-tests",
         "included": "tests/acl2/stx-transit-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/reclaim-article-subject-tests.lisp",
+        "line": 6,
+        "include": "../../books/records-attach",
+        "included": "books/records-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/reclaim-article-subject-tests.lisp",
+        "line": 7,
+        "include": "article-subject-tests",
+        "included": "tests/acl2/article-subject-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

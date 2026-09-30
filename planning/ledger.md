@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1697 |
+| Books read | 1698 |
 | Certification roots in the Makefile | 1630 |
 | Books inside the root closure | 1694 |
-| `defthm` and `defthmd` events | 27714 |
-| `defun` events | 18127 |
+| `defthm` and `defthmd` events | 27716 |
+| `defun` events | 18129 |
 | Functions with verified guards | 3462 |
 | Functions declared `:verify-guards nil` and never verified | 2081 |
-| Functions left at the default with an explicit guard | 9852 |
+| Functions left at the default with an explicit guard | 9854 |
 | Functions left at the default with no guard | 2732 |
-| `assert-event` checks | 22962 |
+| `assert-event` checks | 22966 |
 | `must-fail` checks | 2496 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 156 |
 | Theorems flagged SUSPECT by shape | 1217 |
-| Export-hygiene warnings | 318 |
+| Export-hygiene warnings | 319 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 272 |
-| Include-hygiene warnings | 2416 |
+| Include-hygiene warnings | 2418 |
 | Host-names warnings | 2086 |
 | Hand-written-record warnings | 18 |
 
@@ -794,7 +794,7 @@ that `make certify` requests.
 | `books/reclaim-admission.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/reclaim-instant.lisp` | root | 10 | 9 | 0/3/6/0 | 0 | 0 | 1 |
 | `books/reclaim-rule.lisp` | root | 7 | 7 | 0/0/7/0 | 0 | 0 | 1 |
-| `books/reclaim-tombstone.lisp` | root | 0 | 13 | 0/0/13/0 | 0 | 0 | 0 |
+| `books/reclaim-tombstone.lisp` | root | 0 | 14 | 0/0/14/0 | 0 | 0 | 0 |
 | `books/record-width-producers.lisp` | root | 17 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/records-attach-concrete.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/records-attach.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -983,9 +983,9 @@ that `make certify` requests.
 | `books/store-profile-open.lisp` | root | 7 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/store-reclaim-buffer.lisp` | root | 6 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/store-reclaim-holders.lisp` | root | 48 | 25 | 7/3/15/0 | 0 | 0 | 3 |
-| `books/store-reclaim-pack.lisp` | root | 28 | 16 | 0/12/4/0 | 0 | 0 | 3 |
+| `books/store-reclaim-pack.lisp` | root | 29 | 16 | 0/12/4/0 | 0 | 0 | 3 |
 | `books/store-reclaim-stream.lisp` | root | 13 | 4 | 0/3/1/0 | 0 | 0 | 3 |
-| `books/store-reclaim.lisp` | root | 39 | 39 | 1/5/33/0 | 0 | 0 | 0 |
+| `books/store-reclaim.lisp` | root | 40 | 40 | 1/5/34/0 | 0 | 0 | 0 |
 | `books/store-records-field.lisp` | root | 15 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/store-recover-stream.lisp` | root | 25 | 16 | 1/6/9/0 | 0 | 0 | 1 |
 | `books/store-replay-bound.lisp` | root | 8 | 5 | 0/0/5/0 | 0 | 0 | 0 |
@@ -1590,6 +1590,7 @@ that `make certify` requests.
 | `tests/acl2/public-exposure-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 121 | 15 | 0 |
 | `tests/acl2/reader-open-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 0 | 0 |
 | `tests/acl2/reclaim-admission-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 4 | 0 |
+| `tests/acl2/reclaim-article-subject-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/reclaim-instant-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 3 | 0 |
 | `tests/acl2/record-width-producers-tests.lisp` | root | 0 | 6 | 0/2/0/4 | 25 | 4 | 0 |
 | `tests/acl2/records-ceiling-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 16 | 5 | 0 |
@@ -2483,8 +2484,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-rcl-class-count-in-of-cons` | `books/store-reclaim-holders.lisp` | 743 | arm-of-definition: the hypotheses select one IF/COND arm of fn-rcl-class-count-in and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-rcl-class-count-in and the conclusion is that branch's value |
 | `fn-rcl-config-rule-without-a-row-keeps-forever` | `books/reclaim-rule.lisp` | 155 | arm-of-definition: the hypotheses select one IF/COND arm of fn-rcl-config-rule and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-rcl-config-rule and the conclusion is that branch's value |
 | `fn-rcl-held-count-in-of-cons` | `books/store-reclaim-holders.lisp` | 794 | arm-of-definition: the hypotheses select one IF/COND arm of fn-rcl-held-count-in and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-rcl-held-count-in and the conclusion is that branch's value |
-| `fn-rclp-event-of-an-unrewritten-event-by-definition` | `books/store-reclaim-pack.lisp` | 191 | arm-of-definition: the hypotheses select one IF/COND arm of fn-rclp-event and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-rclp-event and the conclusion is that branch's value |
-| `fn-rclp-index-built-is-the-index-by-definition` | `books/store-reclaim-pack.lisp` | 115 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-rclp-event-of-an-unrewritten-event-by-definition` | `books/store-reclaim-pack.lisp` | 194 | arm-of-definition: the hypotheses select one IF/COND arm of fn-rclp-event and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-rclp-event and the conclusion is that branch's value |
+| `fn-rclp-index-built-is-the-index-by-definition` | `books/store-reclaim-pack.lisp` | 116 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-rcls-atom-msgids-of-atom` | `books/store-reclaim-stream.lisp` | 94 | arm-of-definition: the hypotheses select one IF/COND arm of fn-rclp-rewritten-msgids and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-rclp-rewritten-msgids and the conclusion is that branch's value |
 | `fn-rcls-fold-of-atom` | `books/store-reclaim-stream.lisp` | 103 | arm-of-definition: the hypotheses select one IF/COND arm of fn-rcls-fold and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-rcls-fold and the conclusion is that branch's value |
 | `fn-rcls-freed-of-atom` | `books/store-reclaim-stream.lisp` | 99 | arm-of-definition: the hypotheses select one IF/COND arm of fn-rclp-freed and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-rclp-freed and the conclusion is that branch's value |
@@ -3009,4 +3010,4 @@ Every theorem below is proved; none may be cited as a registry event in
 | `scjt-sca-join-is-sca-join` | `tests/acl2/served-catalog-join-tests.lisp` | 92 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `srst-unframe-refuses-a-wrong-trailer` | `tests/acl2/store-recover-stream-tests.lisp` | 234 | branch-of-definition: the hypothesis is a branch test of fn-srs-unframe and the conclusion is that branch's value |
 | `status-of-result` | `books/native-admin-peer.lisp` | 692 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `store-event-decode-of-a-record-octets` | `books/store-reclaim-pack.lisp` | 239 | arm-of-definition: the hypotheses select one IF/COND arm of fn-store-event-decode-exact and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-store-event-decode-exact and the conclusion is that branch's value |
+| `store-event-decode-of-a-record-octets` | `books/store-reclaim-pack.lisp` | 264 | arm-of-definition: the hypotheses select one IF/COND arm of fn-store-event-decode-exact and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-store-event-decode-exact and the conclusion is that branch's value |

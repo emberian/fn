@@ -1259,12 +1259,23 @@ exactly "no obligation in the flattened list names the article" together
 with the rule.
 
 **The tombstone** replaces the payload octets of the article record and
-nothing else: NUL `FN-RCL1`, a source flag, the payload's BLAKE3 digest, the
-BLAKE3 digest of its D25 source under its own agent, the payload length and that
-agent (`books/reclaim-tombstone`). The record keeps its Message-ID,
+nothing else: NUL `FN-RCL2`, a source flag, the payload's BLAKE3 digest, the
+BLAKE3 digest of its D25 source under its own agent, the payload length, the
+56-octet typed `relay-v1` article commitment and the injecting agent (`books/reclaim-tombstone`). The record keeps its Message-ID,
 sequence, txid, generation, groups, memberships, obligation identity,
 content subject, release evidence, charge and stamp, so the history entry,
 the numbers, the group bindings and the content identity stay.
+`fn-rclp-event-retains-article-subject` (PRF-1089) names the host-called
+per-event rewrite and proves that its decoded tombstone retains exactly
+`fn-asj-subject` of the original payload. The constructor uses the subject's
+existing u32 projection-length representation; the rewrite checks that
+profile before calling it and never truncates a protected projection.
+The fixed part is 145 octets, followed by the injecting agent. There is one
+current tombstone format; no RCL1 reader or migration exists (D34/D38).
+The genesis schema commitment includes this layout. This increment preserves
+the commitment; the existing D25 decision does not yet consult the new field.
+It proves no converse from digest equality to equality of removed bytes.
+
 Acceptance never reads a stored payload, so replaying the record with the
 tombstone reaches the reclaimed state, and every other record's step
 commutes with reclamation (`fn-rcl-prepare-commutes-with-reclaim`).
