@@ -564,6 +564,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bpsec \
 	tests/acl2/bpsec-asb-tests \
 	tests/acl2/bpsec-target-tests \
+	tests/acl2/bpsec-target-cursor-tests \
 	books/bp-status-report \
 	books/bp-status-report-invariants \
 	tests/acl2/bp-status-report-tests \

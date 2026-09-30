@@ -19114,9 +19114,13 @@
         "books/bpsec-target.lisp",
         "tests/acl2/bpsec-target-tests.lisp",
         "planning/evidence/bpsec-target-source-2026-09-30.json",
-        "specs/bp-design.md"
+        "specs/bp-design.md",
+        "books/bpsec-target-cursor.lisp",
+        "books/bpsec-provider-model.lisp",
+        "tests/acl2/bpsec-target-cursor-tests.lisp",
+        "planning/evidence/bpsec-target-cursor-source-2026-09-30.json"
       ],
-      "progress_note": "Logical graph source and29 literal fixture forms admitted on exact w28fced/7matchingcached dependency coordinate. Exact-byte match premise, stale same-number/type mismatch, complete security coverage and derived opaque BIB pending behavior exercised. No graph keystone, served bounded traversal/refinement, carried provider invariant, normal certificate or native security-gate claim."
+      "progress_note": "Logical graph/reference data-match premise plus bounded metadata cursor source. Final fresh16fixtureforms15.82s7199127steps with6proper-local source/test dependencies and7matchingcached dependencies. Guards, unconditional quantum work bound and complete-cursor/work quantum-composition event admitted; literal quantum1/17/reference cases and provider-byte substitution refusal pass. Full state preservation/every-schedule reference equivalence, actual pinned provider/caller, complete post-decrypt graph, normal certification/native security gate remain open."
     }
   ]
 }

@@ -1046,8 +1046,21 @@ for a statement about the actual bundle: each binding equals decoding its
 actual block data. Number/type equality alone does not establish that fact.
 The stale-ASB witness retains those coordinates while changing actual target
 bytes and demonstrates the missing relation. The logical checker is not
-installed as a served list scan or whole-data re-decoder; bounded operational
-traversal and its carried byte-binding invariant remain PRF-1179 work.
+installed as a served list scan or whole-data re-decoder. Its operational
+candidate in `books/bpsec-target-cursor.lisp` uses `fn-bps-target-start` and
+`fn-bps-target-step`: one scheduling unit performs one metadata transition,
+one block-number lookup comparison or one set probe. Aggregate metadata is
+preflighted before constructing bound-number and service-target lists; the
+first excess refuses the operator limit. The initial structural input
+relation is a carried guard, not repeated validation inside the unit step.
+Component theorems bound work by the quantum and show that split quanta
+preserve the complete cursor and exact work. Whole graph equivalence and
+state preservation remain PRF-1179 work, with no actual host installation.
+
+`books/bpsec-provider-model.lisp` names the logical unique-backing relation
+and `fn-bps-window-backing-matchp`. A same-ID/same-offset byte substitution
+fails this relation. The predicate specifies the required provider premise;
+it does not establish a physical provider or authorize a supplied window.
 
 Full cursor invariant preservation, equality for every chunk/quantum
 schedule, operational span refinement, served target graph (PRF-1179), canonical
