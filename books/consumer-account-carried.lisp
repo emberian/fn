@@ -275,3 +275,112 @@
            :in-theory
            (e/d (fn-caac-list-cons fn-caac-list-carry fn-cp-nth fn-cait-size)
                 (fn-scs-summary fn-scs-cons)))))
+
+; Newly constructed row boundary. Names/descriptors are bounded by the
+; validated stage grammar at the caller; old table children arrive carried.
+(defthm fn-caac-row-constructor-carry-is-exact
+  (implies (and (fn-scc-octet-listp name)
+                (fn-scc-octet-listp token) (equal (len token) 48)
+                (booleanp live)
+                (fn-scc-octet-listp descriptor)
+                (equal (len descriptor) (if live 145 0)))
+           (equal (fn-caac-row-carry (list :account name token live descriptor))
+                  (fn-scs-summary (list :account name token live descriptor))))
+  :hints (("Goal"
+           :use ((:instance fn-caac-spine-keeps-canonical-size
+                            (cs (list (fn-caac-atom :account)
+                                      (fn-scs-octets (len name))
+                                      (fn-scs-octets 48)
+                                      (fn-caac-atom live)
+                                      (if live (fn-scs-octets 145) (fn-caac-atom nil))))
+                            (xs (list :account name token live descriptor)))
+                 (:instance fn-scs-octets-establishes-canonical-size (n (len name)) (xs name))
+                 (:instance fn-scs-octets-establishes-canonical-size (n 48) (xs token))
+                 (:instance fn-scs-octets-establishes-canonical-size (n (if live 145 0))
+                            (xs descriptor)))
+           :in-theory
+           (e/d (fn-caac-row-carry fn-caac-atom fn-cp-nth fn-scs-correspondsp booleanp)
+                (fn-caac-spine fn-scs-octets fn-scs-summary fn-scs-atom)))))
+
+(local
+ (defthm fn-caac-nth-is-credential-nth
+   (equal (fn-cp-nth n x) (fn-inj-nth n x))
+   :hints (("Goal" :induct (fn-cp-nth n x)
+            :in-theory (enable fn-cp-nth fn-inj-nth fn-inj-car fn-inj-cdr)))))
+(local
+ (defthm fn-caac-cbor-is-size-octets
+   (equal (fn-scc-octet-listp x) (fn-cbor-octet-listp x))
+   :hints (("Goal" :induct (fn-cbor-octet-listp x)
+            :in-theory (enable fn-scc-octet-listp fn-cbor-octet-listp
+                               fn-scc-octetp fn-cbor-octetp)))))
+(local
+ (defthm fn-caac-printable-name-is-size-octets
+   (implies (and (fn-nntp-printable-tokenp x) (true-listp x))
+            (fn-scc-octet-listp x))
+   :hints (("Goal" :induct (fn-nntp-printable-tokenp x)
+            :in-theory (enable fn-nntp-printable-tokenp fn-cbor-octet-listp
+                               fn-cbor-octetp)))))
+
+(local
+ (defthm fn-caac-proper-empty-by-length
+   (implies (and (true-listp x) (equal (len x) 0)) (equal x nil))
+   :hints (("Goal" :induct (len x)))
+   :rule-classes nil))
+(local
+ (defthm fn-caac-proper-five-reconstruction
+   (implies (and (true-listp x) (equal (len x) 5))
+            (equal (list (car x) (cadr x) (caddr x) (cadddr x) (car (cddddr x))) x))
+   :hints (("Goal" :use ((:instance fn-caac-proper-empty-by-length (x (cdr (cddddr x)))))
+            :in-theory (enable len true-listp)))
+   :rule-classes nil))
+(local
+ (defthm fn-caac-verifier-carry-is-exact
+   (implies (fn-authsec-verifierp secret)
+            (equal (fn-caac-spine
+                    (list (fn-caac-atom :fn-authsec-v2) (fn-scs-octets 16)
+                          (fn-scs-octets 32) (fn-scs-octets 32) (fn-scs-octets 32)))
+                   (fn-scs-summary secret)))
+   :hints (("Goal"
+            :use ((:instance fn-caac-proper-five-reconstruction (x secret))
+                  (:instance fn-caac-spine-keeps-canonical-size
+                             (cs (list (fn-caac-atom :fn-authsec-v2) (fn-scs-octets 16)
+                                       (fn-scs-octets 32) (fn-scs-octets 32) (fn-scs-octets 32)))
+                             (xs secret))
+                  (:instance fn-scs-octets-establishes-canonical-size (n 16) (xs (cadr secret)))
+                  (:instance fn-scs-octets-establishes-canonical-size (n 32) (xs (caddr secret)))
+                  (:instance fn-scs-octets-establishes-canonical-size (n 32) (xs (cadddr secret)))
+                  (:instance fn-scs-octets-establishes-canonical-size (n 32) (xs (car (cddddr secret)))))
+            :in-theory (e/d (fn-authsec-verifierp fn-authsec-saltp fn-authsec-32p
+                              fn-caac-atom fn-scs-correspondsp)
+                             (fn-caac-spine fn-scs-octets fn-scs-summary fn-scs-atom))))))
+
+(defthm fn-caac-credential-carry-is-exact
+  (implies (fn-auth-credp credential)
+           (equal (fn-caac-credential-value-carry credential)
+                  (fn-scs-summary credential)))
+  :hints (("Goal"
+           :use ((:instance fn-caac-proper-five-reconstruction (x credential))
+                 (:instance fn-caac-verifier-carry-is-exact (secret (fn-cp-nth 3 credential)))
+                 (:instance fn-caac-printable-name-is-size-octets (x (fn-inj-nth 1 credential)))
+                 (:instance fn-caac-spine-keeps-canonical-size
+                            (cs (list (fn-caac-atom :fn-auth-cred)
+                                      (fn-scs-octets (len (fn-cp-nth 1 credential)))
+                                      (fn-scs-octets 32)
+                                      (fn-caac-spine
+                                       (list (fn-caac-atom :fn-authsec-v2)
+                                             (fn-scs-octets 16) (fn-scs-octets 32)
+                                             (fn-scs-octets 32) (fn-scs-octets 32)))
+                                      (fn-caac-atom (fn-cp-nth 4 credential))))
+                            (xs credential))
+                 (:instance fn-scs-octets-establishes-canonical-size
+                            (n (len (fn-cp-nth 1 credential))) (xs (fn-cp-nth 1 credential)))
+                 (:instance fn-scs-octets-establishes-canonical-size
+                            (n 32) (xs (fn-cp-nth 2 credential))))
+           :in-theory
+           (e/d (fn-caac-credential-value-carry fn-auth-credp fn-auth-cred-shapep
+                  fn-auth-cred-name fn-auth-cred-principal fn-auth-cred-secret
+                  fn-auth-cred-postingp fn-inj-nth fn-inj-car fn-inj-cdr fn-cp-nth
+                  fn-prin-idp fn-digest-octetsp fn-caac-atom
+                  fn-scs-correspondsp fn-scc-octet-listp fn-cbor-octet-listp
+                  fn-scc-octetp fn-cbor-octetp)
+                (fn-caac-spine fn-scs-octets fn-scs-summary fn-scs-atom)))))

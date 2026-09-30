@@ -1045,3 +1045,8 @@ payloads can share coordinates, so those checks alone prove no payload identity.
 The proposed host hunk currently supplies no carry metadata and establishes no
 canonical readiness; complete metadata/funding and actual owner/recovery hooks
 remain mandatory before activation.
+
+The newly allocated account row and credential carries have exact constructor
+boundaries and literal witnesses, including each retained row hypothesis. These
+are constructor prerequisites; they do not establish the complete maintained
+account/preparation metadata relation, cold establishment or admission funding.

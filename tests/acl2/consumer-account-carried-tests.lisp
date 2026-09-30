@@ -199,3 +199,83 @@
       (not (equal (fn-caac-list-carry nil) (fn-scs-summary '((3 4)))))
       (not (equal (fn-caac-list-carry (fn-caac-list-cons (fn-scs-summary '(1 2)) nil))
                   (fn-scs-summary '((1 2) (3 4)))))))
+
+; Exact newly allocated constructor fields; these fixtures do not establish
+; the full maintained account/preparation metadata invariant.
+(defun fn-caact-row-hypotheses (name token live descriptor)
+  (declare (xargs :guard t))
+  (list (fn-scc-octet-listp name) (fn-scc-octet-listp token)
+        (equal (len token) 48) (booleanp live)
+        (fn-scc-octet-listp descriptor)
+        (equal (len descriptor) (if live 145 0))))
+(defun fn-caact-row-conclusion (name token live descriptor)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((row (list :account name token live descriptor)))
+    (equal (fn-caac-row-carry row) (fn-scs-summary row))))
+;@positive fn-caac-row-constructor-carry-is-exact
+(assert-event
+ (let ((token (make-list 48 :initial-element 7))
+       (descriptor (make-list 145 :initial-element 11)))
+   (and (equal (fn-caact-row-hypotheses '(97) token t descriptor)
+               '(t t t t t t))
+        (fn-caact-row-conclusion '(97) token t descriptor)
+        (equal (fn-caact-row-hypotheses '(97) token nil nil)
+               '(t t t t t t))
+        (fn-caact-row-conclusion '(97) token nil nil))))
+
+;@hypothesis-removal fn-caac-row-constructor-carry-is-exact name-octets
+(assert-event
+ (let ((name '(300)) (token (make-list 48 :initial-element 7)) (live t) (descriptor (make-list 145 :initial-element 11)))
+   (and (equal (fn-caact-row-hypotheses name token live descriptor)
+               '(nil t t t t t))
+        (not (fn-caact-row-conclusion name token live descriptor)))))
+
+;@hypothesis-removal fn-caac-row-constructor-carry-is-exact token-octets
+(assert-event
+ (let ((name '(97)) (token (make-list 48 :initial-element 300)) (live t) (descriptor (make-list 145 :initial-element 11)))
+   (and (equal (fn-caact-row-hypotheses name token live descriptor)
+               '(t nil t t t t))
+        (not (fn-caact-row-conclusion name token live descriptor)))))
+
+;@hypothesis-removal fn-caac-row-constructor-carry-is-exact token-length
+(assert-event
+ (let ((name '(97)) (token (make-list 47 :initial-element 7)) (live t) (descriptor (make-list 145 :initial-element 11)))
+   (and (equal (fn-caact-row-hypotheses name token live descriptor)
+               '(t t nil t t t))
+        (not (fn-caact-row-conclusion name token live descriptor)))))
+
+;@hypothesis-removal fn-caac-row-constructor-carry-is-exact live-boolean
+(assert-event
+ (let ((name '(97)) (token (make-list 48 :initial-element 7)) (live '(4)) (descriptor (make-list 145 :initial-element 11)))
+   (and (equal (fn-caact-row-hypotheses name token live descriptor)
+               '(t t t nil t t))
+        (not (fn-caact-row-conclusion name token live descriptor)))))
+
+;@hypothesis-removal fn-caac-row-constructor-carry-is-exact descriptor-octets
+(assert-event
+ (let ((name '(97)) (token (make-list 48 :initial-element 7)) (live t) (descriptor (make-list 145 :initial-element 300)))
+   (and (equal (fn-caact-row-hypotheses name token live descriptor)
+               '(t t t t nil t))
+        (not (fn-caact-row-conclusion name token live descriptor)))))
+
+;@hypothesis-removal fn-caac-row-constructor-carry-is-exact descriptor-length
+(assert-event
+ (let ((name '(97)) (token (make-list 48 :initial-element 7)) (live t) (descriptor (make-list 144 :initial-element 11)))
+   (and (equal (fn-caact-row-hypotheses name token live descriptor)
+               '(t t t t t nil))
+        (not (fn-caact-row-conclusion name token live descriptor)))))
+
+;@positive fn-caac-credential-carry-is-exact
+(assert-event
+ (let* ((root (fn-cp-nth 2 (fn-cp-nth 0 *caact-e*)))
+        (credential (fn-cp-nth 0 (fn-cp-nth 3 root))))
+   (and (fn-auth-credp credential)
+        (equal (fn-caac-credential-value-carry credential)
+               (fn-scs-summary credential)))))
+;@hypothesis-removal fn-caac-credential-carry-is-exact credential
+(assert-event
+ (let ((credential (list :fn-auth-cred '(97) (make-list 32 :initial-element 7)
+                         nil t)))
+   (and (not (fn-auth-credp credential))
+        (not (equal (fn-caac-credential-value-carry credential)
+                    (fn-scs-summary credential))))))
