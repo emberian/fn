@@ -194,6 +194,19 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
             (or (cdr (assoc 'fn-page-read-pool (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the cold pool stobj is not in this image")))))
 
+;; The registered worker object is the image's actual user stobj. This getter
+;; does not create storage, install a profile, assign a worker, or authorize a
+;; borrow. New acquisition callbacks stay uninstalled until their core source
+;; and SAME-pool constructor/operation receipts are qualified together.
+(defvar *fnn-page-window-workers* nil)
+
+(defun fnn-live-page-window-workers ()
+  (or *fnn-page-window-workers*
+      (setq *fnn-page-window-workers*
+            (or (cdr (assoc 'fn-page-window-workers
+                            (user-stobj-alist *the-live-state*)))
+                (fnn-fault "registered window workers are not in this image")))))
+
 (defun fnn-core-page-read-pool (name &rest arguments)
   "The extent mutex serializes the pool; never acquire owner from here."
   (apply #'fnn-call name (append arguments (list (fnn-live-page-read-pool)))))

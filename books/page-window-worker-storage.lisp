@@ -49,6 +49,10 @@
    ((not (and (fn-pwx-tokenp token)
               (equal token (fn-pww-token fn-pww-carry))))
     (mv :stale-worker nil nil nil))
+   ((eq (fn-prl-nth 0 token) :decoded-window)
+    ; Input/digest/requested-window alone are not the decoder's private
+    ; ring/table/output/source custody. Keep that distinct family closed.
+    (mv :decoded-worker-storage-unavailable nil nil nil))
    ((eq (fn-pww-phase fn-pww-carry) :fenced)
     (mv :worker-fenced nil nil nil))
    ((not (member-eq (fn-pww-phase fn-pww-carry)

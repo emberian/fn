@@ -45,3 +45,5 @@ result cannot discharge them. Exception and cancellation paths retain debt.
 The current metadata functions export only status, worker ID, phase and the
 borrowed immutable root. They do not install storage, return a buffer pointer,
 choose a free worker, authenticate a source, or emit a settled receipt.
+Decoded tokens explicitly refuse: the three retained raw-worker children do
+not establish the decoder's private ring, table, output and source custody.
