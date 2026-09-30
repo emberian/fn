@@ -518,3 +518,4 @@
 (include-book "assumptions-selected-runtime-allocation-geometry") ; PRF-1155 conditional ordinary allocator unit
 
 (include-book "assumptions-selected-runtime-rx-copy-cost") ; PRF-1160 conditional successful component cost
+(include-book "assumptions-selected-runtime-octets-resize")
