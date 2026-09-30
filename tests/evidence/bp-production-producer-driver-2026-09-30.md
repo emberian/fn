@@ -10,8 +10,9 @@ Refused and uncertain posting failures retain their exit code and abort setup.
 The bridge request branch also receives served bytes instead of pre-injection
 input. Production DTN developer cut selectors remain a separate open concern.
 
-`python3 tests/bp-dtn7/test_producer_lifecycle.py`: two tests pass, covering the
-positive served-byte path, rc1 refusal, rc3 uncertainty and an unready owner.
+`python3 tests/bp-dtn7/test_producer_lifecycle.py`: three tests pass, covering the
+positive served-byte path (including an actual fake executable, loopback NNTP
+and subprocess owner teardown), rc1 refusal, rc3 uncertainty and an unready owner.
 `python3 -m py_compile tests/bp-dtn7/run_fn_dtn7_app_receipt.py` and driver `--help`
 pass. These are mocked driver lifecycle checks, not a native image or transport
 claim. Matching DEFAULT/DTN images, signed native receipt and full Q4 execution

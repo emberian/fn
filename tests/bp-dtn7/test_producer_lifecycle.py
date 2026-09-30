@@ -74,6 +74,41 @@ class ProducerLifecycle(unittest.TestCase):
         self.assertEqual(post[1][:3], ('operator', lab.path('producer.toml'), 'post'))
         self.assertEqual(post[2]['image'], '/explicit/default')
 
+    def test_fake_executable_owner_lifecycle(self):
+        lab, payload = self.run_case()
+        executable = lab.path('fake-fn')
+        executable.write_text("""#!/usr/bin/env python3
+import socket, sys, tomllib
+from pathlib import Path
+args = sys.argv[2:]
+if args[-1] != 'run':
+    sys.exit(0)
+config = tomllib.loads(Path(args[1]).read_text())
+server = socket.socket()
+server.bind(('127.0.0.1', config['listener']['port']))
+server.listen()
+print('LISTENING fake', flush=True)
+while True:
+    conn, _ = server.accept()
+    with conn:
+        conn.sendall(b'200 fake NNTP\\r\\n')
+        stream = conn.makefile('rb')
+        for line in stream:
+            if line.startswith(b'ARTICLE '):
+                conn.sendall(b'220 stored\\r\\nPath: core-injected!not-for-mail\\r\\n\\r\\nstored body\\r\\n.\\r\\n')
+            elif line.startswith(b'QUIT'):
+                break
+""")
+        executable.chmod(0o755)
+        args = types.SimpleNamespace(image=executable, work=lab.path('real-lab'))
+        real_lab = module.Lab(args)
+        result = module.post_producer_articles(real_lab, executable, '/store',
+                                               [('post', '<id>', payload)])
+        self.assertIn(b'core-injected', result['<id>'])
+        self.assertEqual(len(real_lab.procs), 1)
+        self.assertIsNotNone(real_lab.procs[0]['proc'].poll())
+        self.assertIn('SIGTERM', real_lab.procs[0]['stopped'])
+
     def test_refused_uncertain_and_unready_stop_owner(self):
         for rc, ready in ((1, True), (3, True), (0, False)):
             with self.subTest(rc=rc, ready=ready):
