@@ -74,3 +74,12 @@ funding and actual native joined execution remain open. No certificate,
 qualified image, deployment, publication or complete checkpoint claim follows.
 Physical page0 remains zero as the original snapshot format specifies: its
 sole root record is protected by the outer F binding consumed by `fn-his-open`.
+
+The actual funded host wrappers also pass scoped source admission in the same
+writer/effect world. A reachable fixture installs the actual pool, obtains
+its maintenance and image-growth receipts, drives full zero-page issuance,
+and calls the exact native-facing effect projections. Its short-write result
+puts the writer in recovery while retaining the pending effect, buffer
+generation, complete buffer and live credit. This is a concrete host seam
+fixture; it does not establish initial whole-operation allocation adequacy
+or replace native syscall/lifetime and general writer proofs.
