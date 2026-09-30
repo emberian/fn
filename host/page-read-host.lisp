@@ -9,6 +9,7 @@
 (include-book "../books/incoming-octet-holder")
 (include-book "../books/incoming-buffer-carrier")
 (include-book "../books/page-read-pool-state")
+(include-book "../books/incoming-copy-association")
 
 
 
@@ -183,12 +184,8 @@
 
 
 ; Actual carrier ABI: operational descriptor persists after row settlement.
-(defun fn-owner-incoming-row (fn-page-read-pool)
-  (declare (xargs :stobjs fn-page-read-pool))
-  (fn-ibc-carrier-row (fn-prp-incoming-slot fn-page-read-pool)))
-(defun fn-owner-incoming-backing (fn-page-read-pool)
-  (declare (xargs :stobjs fn-page-read-pool))
-  (fn-ibc-carrier-descriptor (fn-prp-incoming-slot fn-page-read-pool)))
+
+
 (defun fn-owner-incoming-keep-row (row fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
   (if (equal row (fn-owner-incoming-row fn-page-read-pool)) fn-page-read-pool
@@ -370,14 +367,7 @@
 ; Selected PRF-1143 fixed controller seam. The row binds the controller once;
 ; successful copy ticks update only fixed controller fields, not row/plan lists.
 (include-book "../books/incoming-copy-stobj")
-(defun fn-owner-incoming-copy-associatedp (token fn-input-copy fn-page-read-pool)
-  (declare (xargs :stobjs (fn-input-copy fn-page-read-pool)))
-  (let* ((row (fn-owner-incoming-row fn-page-read-pool))
-         (job (fn-prl-nth 3 row)))
-    (and (fn-ioh-matches row token)
-         (equal (fn-input-copy-token fn-input-copy) token)
-         (consp job) (equal (car job) :incoming-controller)
-         (consp (cdr job)) (equal (cadr job) token) (null (cddr job)))))
+
 (defun fn-owner-incoming-copy-start (token total limits fn-input-copy fn-page-read-pool)
   (declare (xargs :stobjs (fn-input-copy fn-page-read-pool)))
   (let ((row (fn-owner-incoming-row fn-page-read-pool))
