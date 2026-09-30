@@ -23,10 +23,12 @@ import json
 import os
 from pathlib import Path
 import shutil
+import ssl
 import subprocess
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
@@ -497,6 +499,513 @@ class StreamingContinuationTests(unittest.TestCase):
         self.assertFalse(commands)
         self.assertEqual(checks, [("bidirectional-streaming", "fn-to-inn", False),
                                   ("bidirectional-streaming", "inn-to-fn", False)])
+
+
+class DistributionContinuationTests(unittest.TestCase):
+    """The observer must reject leakage, lost source and failed controls."""
+
+    def fixture(self, mutation=None):
+        import shlex
+        lab = object.__new__(inn_lab.InnLab)
+        lab.ids = inn_lab.message_ids("distribution-scripted")
+        lab.date = "Tue, 29 Sep 2026 12:00:00 +0000"
+        lab.fn_port, lab.inn_port, lab.nnrpd_port = 1, 2, 3
+        lab.tap_out_port, lab.tap_in_port = 4, 5
+        lab.cd = lambda x: x
+        lab.operator = lambda *args: " ".join(args)
+        lab.sh = lambda name, command, **kwargs: inn_lab.Step(name, command, 0, "accepted", 0)
+        lab.facts = {}
+        data, checks, commands = {}, [], []
+        lab.put_article = lambda name, octets: data.setdefault(name, octets) and name
+        def drive(phase, extra, name):
+            commands.append((phase, name))
+            args = shlex.split(extra)
+            msgid = args[args.index("--msgid") + 1]
+            instance = next(key for key in ("world", "match", "none")
+                            if msgid == lab.ids["FN_DIST_" + {"world": "WORLD", "match": "MATCH", "none": "NONE"}[key] + "_ID"])
+            octets = data["distribution-" + instance]
+            if phase == "post":
+                result = dict(post="340 send", result="240 posted", article="220 article")
+                if mutation == "source-refused" and instance == "world": result["result"] = "441 refused"
+            else:
+                result = dict(article="220 article")
+                if "absence" in name and mutation != "receiver-leak":
+                    result["article"], octets = "430 absent", b""
+                if mutation == "source-lost" and "retains" in name: result["article"] = "430 absent"
+                if mutation == "source-changed" and "retains" in name: octets += b"changed\r\n"
+                if mutation == "reader-content" and instance == "match": octets += b"changed\r\n"
+                if mutation == "reader-subject" and instance == "match": octets = octets.replace(msgid.encode(), b"<wrong@x>")
+            result["octets"] = base64.b64encode(octets).decode()
+            return inn_lab.Step(name, extra, 0, json.dumps(result), 0)
+        lab.drive_inn = drive
+        def wait(pair, msgid, name):
+            instance = name.split()[-1]
+            return dict(verbs=["IHAVE"], offer="335 send", result="235 accepted" if mutation != "control-refused" else "437 refused",
+                        article=data["distribution-" + instance])
+        lab.wait_tap = wait
+        def read_tap():
+            subject = lab.ids["FN_DIST_WORLD_ID"]
+            lab.tap_text = "\n".join((tap_line("4>2", 1, "server", b"200 ready\r\n"),
+                                     tap_line("4>2", 1, "client", ("CHECK " + subject + "\r\n").encode()))) if mutation == "offer-leak" else ""
+        lab.read_tap = read_tap
+        lab.check = lambda key, ok, *args, **kwargs: checks.append((key, kwargs.get("instance", ""), ok))
+        lab.record = lambda key, verdict, *args, **kwargs: checks.append((key, kwargs.get("instance", ""), verdict))
+        return lab, checks, commands
+
+    def test_matching_absent_and_excluded_controls(self):
+        lab, checks, commands = self.fixture()
+        lab.scenario_distribution()
+        self.assertEqual(len(checks), 6)
+        self.assertTrue(all(ok is True for _, _, ok in checks), checks)
+        self.assertEqual([name for phase, name in commands if phase == "post"],
+                         ["POST Distribution world", "POST Distribution match", "POST Distribution none"])
+
+    def test_exclusion_rejects_offer_leak_receiver_leak_and_lost_or_changed_source(self):
+        for mutation in ("offer-leak", "receiver-leak", "source-lost", "source-changed", "source-refused"):
+            lab, checks, _ = self.fixture(mutation)
+            lab.scenario_distribution()
+            self.assertIn(("distribution-feed-excluded", "", False), checks, mutation)
+
+    def test_failed_content_subject_or_transfer_control_never_establishes_exclusion(self):
+        for mutation in ("control-refused", "reader-content", "reader-subject"):
+            lab, checks, commands = self.fixture(mutation)
+            lab.scenario_distribution()
+            self.assertIn(("distribution-feed-accepted", "match", False), checks, mutation)
+            self.assertIn(("distribution-feed-excluded", "", inn_lab.deploy_gate.NOT_EXERCISED), checks)
+            self.assertFalse(any("absence" in name for _, name in commands))
+
+    def test_refused_configuration_prevents_all_submissions(self):
+        lab, checks, commands = self.fixture()
+        lab.sh = lambda name, command, **kwargs: inn_lab.Step(name, command, 2, "refused", 0)
+        lab.scenario_distribution()
+        self.assertFalse(commands)
+        self.assertEqual(len(checks), 6)
+        self.assertTrue(all(verdict == inn_lab.deploy_gate.NOT_EXERCISED for _, _, verdict in checks))
+
+
+
+class ProtectedReaderDriverTests(unittest.TestCase):
+    """Driver outcomes from a scripted peer; this cannot certify real INN."""
+
+    def driver(self):
+        namespace = {"__name__": "inn_driver_test"}
+        exec(compile(inn_lab.INN_DRIVER, "<inn_driver>", "exec"), namespace)
+        return namespace
+
+    def test_failed_login_does_not_authorize_then_correct_login_reads(self):
+        driver = self.driver()
+        commands = []
+        replies = iter(["381 password", "481 denied", "480 authenticate",
+                        "381 password", "281 authenticated", "211 group", "220 article"])
+        class ScriptedPeer:
+            greeting = "200 ready"
+            sock = SimpleNamespace(version=lambda: "TLSv1.3")
+            def __init__(self, port):
+                self.port = port
+            def starttls(self, cafile):
+                commands.append(("TLS", cafile))
+                return "382 negotiate"
+            def cmd(self, command):
+                commands.append(command)
+                return next(replies)
+            def block(self):
+                return b"Subject: test\r\n\r\nbody\r\n"
+            def close(self):
+                commands.append("closed")
+        driver["Wire"] = ScriptedPeer
+        with tempfile.TemporaryDirectory() as tmp:
+            password = Path(tmp) / "password"
+            password.write_bytes(b"fixture-secret\n")
+            result = driver["protected_read"](SimpleNamespace(
+                port=11421, cafile="scratch-ca", username="fn-lab", group="fn.letters",
+                password_file=str(password), msgid="<secure@example.invalid>"))
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(commands[0], ("TLS", "scratch-ca"))
+        self.assertEqual(commands[-1], "closed")
+        self.assertEqual(commands.count("AUTHINFO PASS fixture-secret"), 1)
+        self.assertNotIn("fixture-secret", json.dumps(result))
+        self.assertNotIn("not-the-fixture-password", json.dumps(result))
+
+    def test_refused_login_stops_without_article_or_claim_of_success(self):
+        driver = self.driver()
+        commands = []
+        replies = iter(["381 password", "481 denied", "480 authenticate",
+                        "381 password", "481 still denied"])
+        class ScriptedPeer:
+            greeting = "200 ready"
+            sock = SimpleNamespace(version=lambda: "TLSv1.3")
+            def __init__(self, port):
+                pass
+            def starttls(self, cafile):
+                return "382 negotiate"
+            def cmd(self, command):
+                commands.append(command)
+                return next(replies)
+            def close(self):
+                commands.append("closed")
+        driver["Wire"] = ScriptedPeer
+        with tempfile.TemporaryDirectory() as tmp:
+            password = Path(tmp) / "password"
+            password.write_bytes(b"fixture-secret\n")
+            result = driver["protected_read"](SimpleNamespace(
+                port=11421, cafile="scratch-ca", username="fn-lab", group="fn.letters",
+                password_file=str(password), msgid="<secure@example.invalid>"))
+        self.assertFalse(result["ok"], result)
+        self.assertNotIn("article", result)
+        self.assertFalse(any(c.startswith("ARTICLE ") for c in commands))
+        self.assertEqual(commands[-1], "closed")
+
+    def test_rejected_tls_cannot_send_credentials_and_still_closes(self):
+        driver = self.driver()
+        commands = []
+        class ScriptedPeer:
+            greeting = "200 ready"
+            def __init__(self, port):
+                pass
+            def starttls(self, cafile):
+                raise ssl.SSLCertVerificationError("untrusted certificate")
+            def cmd(self, command):
+                commands.append(command)
+                raise AssertionError("no credentials after TLS refusal")
+            def close(self):
+                commands.append("closed")
+        driver["Wire"] = ScriptedPeer
+        with self.assertRaises(ssl.SSLCertVerificationError):
+            driver["protected_read"](SimpleNamespace(port=11421, cafile="wrong-ca"))
+        self.assertEqual(commands, ["closed"])
+
+
+class ProtectedReaderFixtureTests(unittest.TestCase):
+    """The optional row is isolated and fails on authentication or article changes."""
+
+    def lab(self, security=True):
+        return inn_lab.InnLab(inn_lab.LocalHost(Path("/tmp/unused-inn-fixture")),
+            ROOT, "a" * 40, "abc1234", "dev", native_image="/opt/fn/fn-host",
+            inn_prefix="/isolated/test-inn", inn_version="2.7.4", inn_port=1,
+            nnrpd_port=2, fn_port=3, tap_out_port=4, tap_in_port=5,
+            inn_security=security, inn_security_port=6)
+
+    def test_requires_an_explicit_prefix_and_distinct_security_port(self):
+        for extra in (["--inn-security"],
+                      ["--inn-security", "--inn-prefix", "/tank/fn/inn/2.7.4"],
+                      ["--inn-security", "--inn-prefix", "/isolated/test-inn",
+                       "--inn-security-port", str(inn_lab.FN_PORT)]):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as out:
+                inn_lab.main(["HEAD", "--native-image", "/opt/fn/fn-host"] + extra)
+            self.assertEqual(out.exception.code, 2)
+
+    def test_cleanup_kills_only_the_owned_recorded_reader_pids(self):
+        lab = self.lab()
+        lab.started_pids = {"nnrpd-security": "123", "nnrpd": "456", "unrelated": "789"}
+        commands = []
+        lab.sh = lambda name, command, **kwargs: commands.append(command)
+        lab.inn_stop()
+        self.assertEqual(len(commands), 2)
+        self.assertIn("kill 123 ", commands[0])
+        self.assertIn("kill 456 ", commands[1])
+        self.assertEqual(lab.started_pids, {"unrelated": "789"})
+
+    def test_row_is_absent_when_not_selected_and_keeps_transit_gap_when_selected(self):
+        self.assertNotIn("inn-protected-reader", self.lab(False).ASSERTIONS)
+        lab = self.lab()
+        self.assertIn("inn-protected-reader", lab.ASSERTIONS)
+        self.assertTrue(any("transit relays remain clear" in x for x in lab.STANDING_GAPS))
+        config = inn_lab.READERS_SECURITY_CONF.format(prefix="/isolated/test-inn", inn_port=1, access="RA")
+        self.assertNotIn("default:", config)
+        self.assertIn("require_encryption: true", config)
+        self.assertIn("access: RA", config)
+
+    def test_success_requires_authorized_read_and_unchanged_body(self):
+        original = b"Path: fn!not-for-mail\r\nSubject: example\r\n\r\nbody\r\n"
+        for authenticated, served, expected in ((True, original, True),
+                (False, original, False), (True, original.replace(b"body", b"edit"), False),
+                (True, b"", False)):
+            lab = self.lab()
+            lab.held_octets["fn-article"] = original
+            result = dict(ok=authenticated, starttls="382 ready", tls="TLSv1.3",
+                bad_pass="481 refused", before_login="480 auth required", **{"pass": "281 accepted"},
+                article="220 article", octets=base64.b64encode(served).decode())
+            commands = []
+            lab.drive_inn = lambda phase, extra, name: (
+                commands.append(extra) or inn_lab.Step(name, extra, 0, json.dumps(result), 0))
+            checks = []
+            lab.check = lambda name, ok, *args, **kwargs: checks.append((name, ok))
+            lab.scenario_protected_read()
+            self.assertEqual(checks, [("inn-protected-reader", expected)])
+            self.assertIn('"$HOME"/fn-inn-lab/', commands[0])
+
+
+class ProtectedInjectionFixtureTests(unittest.TestCase):
+    """Native-feed assertion accounting, without claiming an INN/native run."""
+
+    def test_feed_outcome_requires_exact_peer_subject_and_accepted_code(self):
+        wanted = "accepted feed peer=inn-security message-id=<fresh@x> code=235 time=none"
+        self.assertEqual(inn_lab.InnLab.protected_feed_acceptance(wanted, "inn-security", "<fresh@x>"), wanted)
+        for text in (wanted.replace("235", "435"), wanted.replace("fresh", "older"),
+                     wanted.replace("inn-security", "inn"), wanted.replace("accepted", "refused"),
+                     "other words " + wanted):
+            self.assertEqual(inn_lab.InnLab.protected_feed_acceptance(text, "inn-security", "<fresh@x>"), "")
+
+    def test_refused_pause_prevents_new_peer_or_post(self):
+        lab = ProtectedReaderFixtureTests().lab()
+        commands = []
+        lab.sh = lambda name, command, **kwargs: (
+            commands.append(command) or inn_lab.Step(name, command, 1, "refused pause", 0))
+        checks = []
+        lab.check = lambda name, ok, *args, **kwargs: checks.append((name, ok))
+        lab.scenario_protected_feed()
+        self.assertEqual(len(commands), 1)
+        self.assertEqual(checks, [("fn-protected-injection", False)])
+
+    def test_completed_tls_feed_still_fails_when_clear_relay_carried_article(self):
+        for clear in (False, True):
+            lab = ProtectedReaderFixtureTests().lab()
+            msgid = lab.ids["FN_PROTECTED_ID"]
+            served = inn_lab.article(msgid, "native protected INN injection", lab.date)
+            commands = []
+            lab.sh = lambda name, command, **kwargs: (
+                commands.append((name, command)) or inn_lab.Step(name, command, 0, "accepted", 0))
+            lab.put_article = lambda name, octets: "/scratch/fn-protected.article"
+            lab.wait_protected_feed = lambda peer, ident: "accepted feed peer=" + peer + " message-id=" + ident + " code=235"
+            lab.drive_inn = lambda phase, extra, name: inn_lab.Step(name, extra, 0,
+                json.dumps(dict(ok=True, article="220 article", octets=base64.b64encode(served).decode())), 0)
+            lab.read_tap = lambda: None
+            if clear:
+                lab.tap_text = "\n".join([
+                    tap_line("4>1", 1, "client", ("IHAVE " + msgid + "\r\n").encode() + served + b".\r\n"),
+                    tap_line("4>1", 1, "server", b"200 ready\r\n335 send\r\n235 accepted\r\n")])
+            checks = []
+            lab.check = lambda name, ok, *args, **kwargs: checks.append((name, ok))
+            lab.scenario_protected_feed()
+            self.assertEqual(checks, [("fn-protected-injection", not clear)])
+            self.assertIn("peer feed inn pause", commands[0][1])
+            self.assertIn("source-address 127.0.0.1", commands[1][1])
+            self.assertIn("false false starttls 127.0.0.1", commands[1][1])
+
+    def test_injection_flag_requires_the_protected_reader_and_is_absent_by_default(self):
+        self.assertNotIn("fn-protected-injection", ProtectedReaderFixtureTests().lab().ASSERTIONS)
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            inn_lab.main(["HEAD", "--native-image", "/opt/fn/fn-host", "--inn-security-feed"])
+
+
+class CheckgroupsDriverTests(unittest.TestCase):
+    """Actual-control observation accounting with scripted sockets only."""
+
+    def test_filing_and_absence_are_all_required_from_a_non_peer_reader(self):
+        for in_filing, in_ordinary, proposed, expected in (
+                (True, False, False, True), (False, False, False, False),
+                (True, True, False, False), (True, False, True, False)):
+            ns = {"__name__": "inn_driver_test"}
+            exec(compile(inn_lab.INN_DRIVER, "inn-driver", "exec"), ns)
+            events = []
+            class Peer:
+                greeting = "200 reader"
+                def __init__(self, port, source_address):
+                    events.append(source_address)
+                    self.blocks = iter([
+                        b"1\r\n" if in_filing else b"",
+                        b"2\r\n" if in_ordinary else b"",
+                        b"fn.checkgroups.proposed 0 1 y\r\n" if proposed else b"",
+                        b"Control: checkgroups\r\n\r\nbody\r\n"])
+                def cmd(self, text):
+                    if text.startswith("LISTGROUP"): return "211 1 1 1 group"
+                    if text.startswith("STAT"): return "223 1 <control@x> article"
+                    if text.startswith("LIST ACTIVE"): return "215 active"
+                    if text.startswith("ARTICLE"): return "220 article"
+                    raise AssertionError(text)
+                def block(self): return next(self.blocks)
+                def close(self): events.append("closed")
+            ns["Wire"] = Peer
+            got = ns["control_view"](SimpleNamespace(port=1, reader_source="127.0.0.2",
+                group="control.checkgroups", other_group="fn.letters",
+                probe_group="fn.checkgroups.proposed", msgid="<control@x>"))
+            self.assertEqual(got["ok"], expected)
+            self.assertEqual(events, ["127.0.0.2", "closed"])
+
+    def test_invalid_local_number_is_not_sent_as_a_command(self):
+        ns = {"__name__": "inn_driver_test"}
+        exec(compile(inn_lab.INN_DRIVER, "inn-driver", "exec"), ns)
+        commands = []
+        peer = SimpleNamespace(cmd=lambda text: commands.append(text) or "211 group",
+                               block=lambda: b"1; bad-command\r\n")
+        with self.assertRaises(ValueError): ns["group_ids"](peer, "control.checkgroups")
+        self.assertEqual(commands, ["LISTGROUP control.checkgroups"])
+
+
+class CheckgroupsFixtureTests(unittest.TestCase):
+    def test_refused_filing_group_prevents_control_injection(self):
+        lab = ProtectedReaderFixtureTests().lab()
+        commands = []
+        lab.sh = lambda name, command, **kwargs: commands.append(command) or inn_lab.Step(name, command, 1, "refused", 0)
+        checks = []
+        lab.check = lambda name, ok, *args, **kwargs: checks.append((name, ok))
+        lab.scenario_checkgroups_control()
+        self.assertEqual(len(commands), 1)
+        self.assertEqual(checks, [("inn-checkgroups-control", False)])
+
+    def test_real_control_header_and_body_preservation_are_required(self):
+        for mutation, expected in ((None, True), ("body", False), ("control", False), ("subject", False), ("arrival-body", False)):
+            lab = ProtectedReaderFixtureTests().lab()
+            msgid = lab.ids["INN_CHECKGROUPS_ID"]
+            captured = []
+            lab.sh = lambda name, command, **kwargs: inn_lab.Step(name, command, 0, "accepted", 0)
+            lab.put_article = lambda name, octets: captured.append(octets) or "/scratch/checkgroups.article"
+            def arrived():
+                data = captured[0]
+                if mutation == "subject": data = data.replace(msgid.encode(), b"<wrong-subject@example.invalid>")
+                if mutation == "arrival-body": data = data.replace(b"must not create", b"will be created")
+                return data
+            lab.wait_tap = lambda *args: dict(offer="238 " + msgid, result="239 " + msgid,
+                verbs=["CHECK", "TAKETHIS"], article=arrived())
+            def drive(phase, extra, name):
+                if phase == "offer": result = dict(offer="335 send", transfer="235 accepted")
+                else:
+                    served = arrived()
+                    if mutation == "body": served = served.replace(b"must not create", b"will be created")
+                    if mutation == "control": served = served.replace(b"Control: checkgroups", b"Subject: control-like")
+                    result = dict(ok=True, octets=base64.b64encode(served).decode(),
+                        filing={"ids": [msgid]}, ordinary={"ids": []}, active_rows=[])
+                return inn_lab.Step(name, extra, 0, json.dumps(result), 0)
+            lab.drive_inn = drive
+            checks = []
+            lab.check = lambda name, ok, *args, **kwargs: checks.append((name, ok))
+            lab.scenario_checkgroups_control()
+            self.assertIn(b"\r\nControl: checkgroups\r\n", captured[0])
+            self.assertEqual(checks, [("inn-checkgroups-control", expected)])
+
+class InnLifecycleFixtureTests(unittest.TestCase):
+    """External observer fixtures; these never supply a native verdict."""
+
+    def lab(self, mutation=None):
+        import shlex
+        lab = ProtectedReaderFixtureTests().lab()
+        lab.inn_cancel = lab.inn_expiry = True
+        lab.lifecycle_states = {}
+        lab.expiry_group = "fn.inn-expiry.scripted"
+        payloads, checks, commands, scripts = {}, [], [], []
+        lab.put_article = lambda name, data: payloads.setdefault(name, data) and name
+        def shell(name, command, **kwargs):
+            scripts.append((name, command))
+            failed = mutation == "config-refused" and name.startswith(("fn control", "create isolated"))
+            failed = failed or mutation == "expiry-refused" and name == "expire isolated INN group"
+            return inn_lab.Step(name, command, 2 if failed else 0, "refused" if failed else "accepted", 0)
+        lab.sh = shell
+        def drive(phase, extra, name):
+            commands.append((phase, name))
+            args = shlex.split(extra)
+            msgid = args[args.index("--msgid") + 1]
+            field = next((k for k, v in lab.ids.items() if v == msgid), None)
+            if phase == "offer":
+                result = dict(offer="335 send", transfer="235 accepted")
+                if "duplicate history" in name:
+                    result = dict(offer="435 held" if mutation != "duplicate-reopened" else "335 send", transfer="")
+            else:
+                key = {"INN_CANCEL_TARGET_ID": "cancel-target", "INN_CANCEL_BAD_ID": "cancel-wrong",
+                       "INN_CANCEL_GOOD_ID": "cancel-good", "FN_EXPIRE_ID": "expiry"}[field]
+                data = payloads[key]
+                result = dict(article="220 article", octets=base64.b64encode(data).decode())
+                if phase == "post": result.update(post="340 send", result="240 accepted")
+                if "after good cancel" in name:
+                    result["article"] = "220 article" if mutation == "cancel-not-withdrawn" else "430 withdrawn"
+                if "after wrong cancel" in name and mutation == "wrong-key-withdraws": result["article"] = "430 withdrawn"
+                if "after removal" in name: result["article"] = "220 article" if mutation == "expiry-retained" else "430 absent"
+                if "fn default expiry" in name and mutation == "fn-expired": result["article"] = "430 absent"
+                if "fn default expiry" in name and mutation == "fn-changed": result["octets"] = base64.b64encode(data+b"changed\r\n").decode()
+                if name.startswith("fn reads") and mutation == "transfer-content": result["octets"] = base64.b64encode(data+b"changed\r\n").decode()
+            return inn_lab.Step(name, extra, 0, json.dumps(result), 0)
+        lab.drive_inn = drive
+        def wait(pair, msgid, name):
+            data = payloads["expiry" if name == "isolated expiry source" else name]
+            return dict(verbs=["CHECK", "TAKETHIS"], offer="238 " + msgid,
+                        result="239 " + ("<wrong@x>" if mutation == "transfer-subject" else msgid), article=data)
+        lab.wait_tap = wait
+        lab.check = lambda key, ok, *args, **kwargs: checks.append((key, ok))
+        lab.record = lambda key, verdict, *args, **kwargs: checks.append((key, verdict))
+        return lab, checks, commands, scripts
+
+    def test_actual_carriage_requires_exact_subject_and_content(self):
+        for mutation, expected in ((None, True), ("transfer-subject", False), ("transfer-content", False)):
+            lab, _, _, _ = self.lab(mutation)
+            subject = lab.ids["INN_CANCEL_TARGET_ID"]
+            source = inn_lab.article(subject, "target", lab.date)
+            ok, _, _ = lab.carry_inn_article("cancel-target", subject, source)
+            self.assertEqual(ok, expected)
+
+    def test_wrong_key_retains_then_good_key_withdraws_and_registers_restart_check(self):
+        for mutation, expected in ((None, True), ("wrong-key-withdraws", False),
+                                   ("cancel-not-withdrawn", False), ("transfer-subject", False),
+                                   ("transfer-content", False)):
+            lab, checks, _, _ = self.lab(mutation)
+            lab.scenario_cancel()
+            self.assertEqual(checks, [("inn-cancel-key", expected)], mutation)
+            self.assertEqual("inn-cancel-restart" in lab.lifecycle_states, expected)
+
+    def test_refused_group_prevents_cancel_or_expiry_submission(self):
+        for method, key in (("scenario_cancel", "inn-cancel-key"), ("scenario_expiry", "inn-expiry-local")):
+            lab, checks, commands, _ = self.lab("config-refused")
+            getattr(lab, method)()
+            self.assertFalse(commands)
+            self.assertEqual(checks, [(key, inn_lab.deploy_gate.NOT_EXERCISED)])
+
+    def test_expiry_requires_removal_duplicate_history_and_same_fn_bytes(self):
+        for mutation, expected in ((None, True), ("expiry-refused", False),
+                ("expiry-retained", False), ("fn-expired", False), ("fn-changed", False),
+                ("duplicate-reopened", False), ("transfer-subject", False)):
+            lab, checks, _, _ = self.lab(mutation)
+            lab.scenario_expiry()
+            self.assertEqual(checks, [("inn-expiry-local", expected)], mutation)
+            self.assertEqual("inn-expiry-restart" in lab.lifecycle_states, expected)
+
+    def test_expireover_group_list_and_temporary_policy_restore_on_success_or_failure(self):
+        for rc in (0, 1):
+            with tempfile.TemporaryDirectory() as directory:
+                lab, _, _, scripts = self.lab()
+                prefix = Path(directory) / "inn"
+                run = Path(directory) / "run"
+                (prefix / "etc").mkdir(parents=True)
+                (prefix / "bin").mkdir()
+                run.mkdir()
+                policy = prefix / "etc/expire.ctl"
+                policy.write_text("original policy\n")
+                expireover = prefix / "bin/expireover"
+                expireover.write_text("#!/bin/sh\ncat > '" + str(run / "groups") + "'\ncat '" +
+                    str(policy) + "' > '" + str(run / "policy-used") + "'\nexit " + str(rc) + "\n")
+                expireover.chmod(0o755)
+                ctlinnd = prefix / "bin/ctlinnd"
+                ctlinnd.write_text("#!/bin/sh\nexit 0\n")
+                ctlinnd.chmod(0o755)
+                lab.inn_prefix, lab.run = str(prefix), str(run)
+                lab.scenario_expiry()
+                script = next(script for name, script in scripts if name == "expire isolated INN group")
+                result = subprocess.run(["bash"], input=script.encode(), capture_output=True)
+                self.assertEqual(result.returncode, rc, result.stderr)
+                self.assertEqual((run / "groups").read_text(), lab.expiry_group + "\n")
+                self.assertEqual((run / "policy-used").read_text(),
+                    "/remember/:11\n*:A:never:never:never\n" + lab.expiry_group + ":A:0:0:0\n")
+                self.assertEqual(policy.read_text(), "original policy\n")
+
+    def test_restart_requires_completed_operation_then_exact_cold_answer(self):
+        lab, checks, _, _ = self.lab()
+        lab.scenario_lifecycle_restart(True)
+        self.assertEqual(checks, [("inn-cancel-restart", inn_lab.deploy_gate.NOT_EXERCISED),
+                                 ("inn-expiry-restart", inn_lab.deploy_gate.NOT_EXERCISED)])
+        for mutation, expected in ((None, True), ("wrong-answer", False), ("changed-bytes", False)):
+            lab, checks, _, _ = self.lab()
+            subject = lab.ids["FN_EXPIRE_ID"]
+            before = b"retained bytes"
+            lab.lifecycle_states = {"inn-cancel-restart": (lab.ids["INN_CANCEL_TARGET_ID"], None),
+                                    "inn-expiry-restart": (subject, before)}
+            def drive(phase, extra, name):
+                cancel = name.endswith("inn-cancel-restart")
+                result = dict(article="430 withdrawn" if cancel else "220 article",
+                              octets=base64.b64encode(before).decode())
+                if mutation == "wrong-answer": result["article"] = "220 resurrected" if cancel else "430 expired"
+                if mutation == "changed-bytes" and not cancel: result["octets"] = base64.b64encode(b"changed").decode()
+                return inn_lab.Step(name, extra, 0, json.dumps(result), 0)
+            lab.drive_inn = drive
+            lab.scenario_lifecycle_restart(True)
+            self.assertEqual(checks[0], ("inn-cancel-restart", mutation != "wrong-answer"))
+            self.assertEqual(checks[1], ("inn-expiry-restart", expected))
 
 
 if __name__ == "__main__":

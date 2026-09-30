@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -7084,6 +7084,163 @@
         "planning/evidence/peering-inn-streaming-retry-source-2026-09-30.json"
       ],
       "execution_scope": "Source-present Q12 streaming observation harness. Scripted socket/accounting and fake baseline lab tests do not establish real INN/native image behavior. Matching runner-owned actual INN execution remains open, as do Distribution/cancel/expiry, authentication/control authority, window/soak and broader Q12/W3 obligations."
+    },
+    {
+      "id": "SCN-1029",
+      "title": "Pinned INN protected reader serves an article delivered by native fn, with verified STARTTLS and refused/accepted USER/PASS",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-005"
+      ],
+      "steps": [
+        "Run the existing native fn and real pinned-INN lab with an explicit separate TLS-capable INN prefix and --inn-security.",
+        "POST to native fn, observe its IHAVE delivery to innd, then connect to the separate loopback nnrpd reader.",
+        "Verify STARTTLS certificate and IP name; try the wrong password and GROUP before login; authenticate with the scratch account and fetch the fn article."
+      ],
+      "expected": [
+        "STARTTLS 382 and a certificate/name-verified handshake; bad password 481; unauthenticated GROUP 480; accepted USER/PASS 281; GROUP 211 and ARTICLE 220.",
+        "The authenticated read preserves the body and every header except Path/Xref relay changes. Authentication failure or changed article fails the selected row.",
+        "Cleanup stops only recorded owned pids. The optional row refuses the standing plaintext prefix and requires all six selected ports to differ."
+      ],
+      "evidence": [
+        "tools/inn_lab.py",
+        "tests/test_inn_lab.py",
+        "docs/interop-inn.md"
+      ],
+      "execution_scope": "Source-present partial W3 fixture. Narrow scripted-peer and harness tests do not establish real INN or fn-image behavior. No real protected-reader run yet; native protected feed, actual Control-header behavior, Distribution/cancel/expiry and broader Q12/W3 criteria remain open. INN authentication is an external implementation observation, not an fn theorem."
+    },
+    {
+      "id": "SCN-1030",
+      "title": "Native fn protected feed injects a fresh article into pinned INN nnrpd over verified STARTTLS and USER/PASS, without a clear delivery race",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-005",
+        "NNT-048"
+      ],
+      "steps": [
+        "Select the isolated real INN fixture with --inn-security --inn-security-feed; keep the native owner running after the baseline clear scenarios.",
+        "Apply peer feed inn pause; only after it succeeds, add outbound-only inn-security with verified STARTTLS, scratch FNAUTH1 profile, allow-clear false and streaming false.",
+        "POST a fresh article, wait for the matching native accepted feed code235, read its Message-ID over authenticated protected nnrpd and inspect the clear transit relay."
+      ],
+      "expected": [
+        "Refused clear pause or refused protected peer stops this row before its fresh POST.",
+        "The accepted native feed observation names exactly inn-security, the fresh Message-ID and code235. Duplicate/refused/uncertain outcomes or another peer/subject cannot pass.",
+        "INN serves the same Message-ID, Subject and body over verified STARTTLS and authenticated read, and the clear relay never offered this fresh article. Injection-header changes are outside the transit Path/Xref-only claim."
+      ],
+      "evidence": [
+        "tools/inn_lab.py",
+        "tests/test_inn_lab.py",
+        "docs/interop-inn.md"
+      ],
+      "execution_scope": "Source-present partial W3 fixture. Scripted harness assertions check verdict accounting and race detection only; no real INN or matching native-image run yet. The native parsed reply is recorded, not an invented decrypted wire transcript. Actual Control-header behavior and the wider W3/Q12 remainder remain open."
+    },
+    {
+      "id": "SCN-1033",
+      "title": "Actual unsigned checkgroups control from pinned INN innfeed is filed only in native fn control hierarchy and cannot automatically create the proposed group",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-010"
+      ],
+      "steps": [
+        "Select --inn-controls on the existing native fn/pinned real-INN lab, independently of TLS flags. Configure the INN control.checkgroups group/feed and create fn control.checkgroups through the native operator.",
+        "IHAVE a fresh article to innd with actual Control: checkgroups, ordinary Newsgroups fn.letters and a body proposing fn.checkgroups.proposed; observe INN innfeed acceptance on the relay.",
+        "From the separate 127.0.0.2 reader address, enumerate local article numbers in both filing and ordinary groups, STAT those numbers, retrieve the control article and LIST ACTIVE for the proposed group."
+      ],
+      "expected": [
+        "Refused filing-group creation prevents control injection. innd replies335/235, and its real innfeed receives238/239 or335/235 from fn.",
+        "The fresh Message-ID appears in control.checkgroups numbered membership and not in fn.letters. Control header/body are retained; only transit Path/Xref changes are permitted.",
+        "LIST ACTIVE for the proposed group replies215 with no group. Actual Control-header traffic is distinguished from the old inn-control manual IHAVE row."
+      ],
+      "evidence": [
+        "tools/inn_lab.py",
+        "tests/test_inn_lab.py",
+        "docs/interop-inn.md"
+      ],
+      "execution_scope": "Source-present W3 unsigned checkgroups traffic/filing fixture. Fifteen scoped scripted-peer/harness assertions do not establish a real INN/native run. INN controlchan and authenticated discharge are not claimed; newgroup/rmgroup execution remains D29 deferred. Distribution/cancel/expiry/streaming and broader Q12/W3 criteria remain open."
+    },
+    {
+      "id": "SCN-1059",
+      "title": "Actual native fn feed applies per-peer Distribution through pinned INN with positive controls and unchanged retained source",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-051"
+      ],
+      "steps": [
+        "Configure peer distributions inn fn through the native operator, then POST world, FN and absent Distribution cases.",
+        "Read all exact subjects/bodies back from fn; require matching and absent cases through the actual outbound feed and INN reader.",
+        "After both positive controls, inspect the whole relay log and read the world case from both nodes."
+      ],
+      "expected": [
+        "All local POSTs return240 and retain the exact subject, Distribution and body.",
+        "Matching and absent controls complete335/235 or subject-matched238/239, with only Path/Xref differences.",
+        "World is never offered, INN answers430 and fn serves unchanged220 bytes. Failed positive controls cannot establish exclusion."
+      ],
+      "evidence": [
+        "tools/inn_lab.py",
+        "tests/test_inn_lab.py",
+        "docs/interop-inn.md",
+        "planning/evidence/peering-inn-lifecycle-source-2026-09-30.json"
+      ],
+      "execution_scope": "Source-present observer only. Scripted peers/local shell tests do not establish actual INN/native behavior. No matching current executable exists; original Q12 criteria remain open."
+    },
+    {
+      "id": "SCN-1060",
+      "title": "Actual INN innfeed carries wrong/right RFC8315 cancellation keys; fn decides independently and preserves withdrawal at cold restart",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "SEC-006",
+        "NNT-010"
+      ],
+      "steps": [
+        "Configure INN docancels none and carry its control.cancel filing group to fn.",
+        "Inject a protected target into INN, require its actual innfeed and exact fn readback.",
+        "Carry wrong then matching Cancel-Key Control articles through INN; inspect fn after each and INN target under its local policy.",
+        "SIGTERM/recover/restart fn; query the target from a new view."
+      ],
+      "expected": [
+        "Every transfer names the exact article and preserves Control/key fields and body except Path/Xref.",
+        "Wrong key retains exact target bytes; matching key gives fn430 while INN retains220 under explicit docancels none.",
+        "Cold fn reopen preserves430. No INN Cancel-Lock-library or signed-authority claim."
+      ],
+      "evidence": [
+        "tools/inn_lab.py",
+        "tests/test_inn_lab.py",
+        "docs/interop-inn.md",
+        "planning/evidence/peering-inn-lifecycle-source-2026-09-30.json"
+      ],
+      "execution_scope": "Source-present observer only. Scripted peers/local shell tests do not establish actual INN/native behavior. No matching current executable exists; original Q12 criteria remain open."
+    },
+    {
+      "id": "SCN-1061",
+      "title": "Isolated INN expiry preserves its duplicate refusal and default fn archive bytes through cold restart",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "RET-006"
+      ],
+      "steps": [
+        "Create a fresh isolated group on INN and native fn.",
+        "POST through native fn and require its actual feed plus exact INN reader before expiry.",
+        "Run INN expireover with only that group on stdin and temporary zero-age policy, restoring the previous policy even on failure.",
+        "Read both stores, re-offer the subject to INN, then SIGTERM/recover/restart fn and read again."
+      ],
+      "expected": [
+        "INN initially serves220 then430 after expiry; IHAVE remains435 with no article transfer.",
+        "fn default retention serves the same bytes before and after cold restart.",
+        "No history pruning, clock warp or implicit fn release occurs; failed setup prevents source submission."
+      ],
+      "evidence": [
+        "tools/inn_lab.py",
+        "tests/test_inn_lab.py",
+        "docs/interop-inn.md",
+        "planning/evidence/peering-inn-lifecycle-source-2026-09-30.json"
+      ],
+      "execution_scope": "Source-present observer only. Scripted peers/local shell tests do not establish actual INN/native behavior. No matching current executable exists; original Q12 criteria remain open."
     }
   ]
 }
