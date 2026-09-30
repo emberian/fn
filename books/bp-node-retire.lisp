@@ -181,6 +181,7 @@
 (defun fn-bpnr-retire-ops (names listings selected)
   (declare (xargs :guard t :verify-guards nil))
   (fn-bpnr-retire-ops-aux (fn-bpnr-retired-names names selected) listings))
+(verify-guards fn-bpnr-retire-ops)
 
 ; ---------------------------------------------------------------------------
 ; The model.  The root is an alist from name to entry: (:file . octets) or

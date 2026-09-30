@@ -41,10 +41,12 @@
   (if (equal (fn-cbor-ag-car plan) :selected)
       (fn-bpnr-checkpoint-generation (fn-bpn-nth 1 plan))
     0))
+(verify-guards fn-bpnr-plan-generation)
 
 (defun fn-bpnr-plan-directory (plan)
   (declare (xargs :guard t :verify-guards nil))
   (fn-bpnr-generation-directory (fn-bpnr-plan-generation plan)))
+(verify-guards fn-bpnr-plan-directory)
 
 ; The replay of one generation's rows from its checkpoint.  Without a
 ; checkpoint it is exactly fn-bpnf-family-replay-rows.
@@ -77,11 +79,13 @@
   (declare (xargs :guard t))
   (fn-bpnr-checkpoint generation (fn-bpn-nth 1 replay) (fn-bpn-nth 2 replay)
                       (fn-bpn-nth 3 replay) (fn-bpn-nth 4 replay) covered))
+(verify-guards fn-bpnr-checkpoint-of-replay)
 
 (defun fn-bpnr-checkpoint-of-event (event generation)
   (declare (xargs :guard t))
   (fn-bpnr-checkpoint-of-replay generation (fn-bpn-nth 4 event)
                                 (fn-bpn-nth 5 event)))
+(verify-guards fn-bpnr-checkpoint-of-event)
 
 ; The clock-domain gate's retained evidence (N07): a selected or damaged
 ; checkpoint is retained evidence, so a missing domain record next to it
@@ -90,6 +94,7 @@
   (declare (xargs :guard t))
   (or (fn-bpnf-clock-domain-legacy-evidence namespace-plan sequence-present)
       (not (equal (fn-cbor-ag-car plan) :none))))
+(verify-guards fn-bpnr-clock-domain-evidence)
 
 ; ---------------------------------------------------------------------------
 ; KEYSTONE (recovery from a checkpoint).  Take any recovery authority the

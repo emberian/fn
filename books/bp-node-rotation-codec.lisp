@@ -393,6 +393,7 @@
 (defun fn-bpnr-checkpoint (generation held handoffs prior next-arrival covered)
   (declare (xargs :guard t))
   (list :bpnr-checkpoint generation held handoffs prior next-arrival covered))
+(verify-guards fn-bpnr-checkpoint)
 
 (defun fn-bpnr-checkpointp (x)
   (declare (xargs :guard t))

@@ -21,6 +21,7 @@
 (in-package "ACL2")
 (include-book "bp-node-rotation")
 (include-book "bp-node-profile")
+(include-book "bp-node-progress-guards")
 (set-verify-guards-eagerness 0)
 
 (defun fn-bpnrd-duep (st profile)
@@ -30,6 +31,7 @@
          (natp (fn-bpnp-used st))
          (<= threshold (fn-bpnp-used st))
          (fn-bpnp-rotation-quiescentp st))))
+(verify-guards fn-bpnrd-duep)
 
 ; The event the host drives at a node verb's open, or NIL (no rotation).
 ; SELECTED is the selected generation (fn-bpnr-plan-generation of the open's
@@ -41,6 +43,7 @@
       (let ((g (fn-bpnr-next-generation selected names)))
         (list :rotate g (fn-bpnr-checkpoint-of-event event g)))
     nil))
+(verify-guards fn-bpnrd-due-rotation-event)
 
 ; The rotation is due exactly when the threshold is reached from a quiescent
 ; state; the event names a generation above the selected one and the
@@ -239,6 +242,7 @@
        (null (fn-bpnf-issued st))
        (null (fn-bpnp-pending-image st))
        (null (fn-bpnp-sessions st))))
+(verify-guards fn-bpnrd-serve-rotation-due-p)
 
 ; The serve asks only at a safe point: nothing issued, no pending image, no
 ; outbound session.

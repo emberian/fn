@@ -2866,10 +2866,10 @@
   :keystones (fn-bpnp-rotate-step-proposes-only-own-projection))
 
 (definterface fn-bpnr-checkpoint-of-event
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnr-clock-domain-evidence
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnr-depth-budget
   :class ::common-lisp-compliant
@@ -2882,10 +2882,10 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnr-plan-directory
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnr-plan-generation
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnr-publish-action
   :class ::common-lisp-compliant)
@@ -2902,7 +2902,7 @@
   :class ::common-lisp-compliant)
 
 (definterface fn-bpnr-retire-ops
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bpnr-retired-names
   :class ::common-lisp-compliant
@@ -2916,11 +2916,11 @@
   :keystones (fn-bpnrb-selection-plan-is-selection-plan))
 
 (definterface fn-bpnrd-due-rotation-event
-  :class ::ideal
+  :class ::common-lisp-compliant
   :keystones (fn-bpnrd-due-rotation-event-by-definition))
 
 (definterface fn-bpnrd-serve-rotation-due-p
-  :class ::ideal)
+  :class ::common-lisp-compliant)
 
 (definterface fn-bprc-class
   :class ::common-lisp-compliant
