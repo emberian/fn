@@ -676,3 +676,74 @@ to21 entries and the permanent guard-cache inventory to7392 bytes. Its14
 metadata tests pass in a fresh source session. Current-octet's two NAT guards
 are cached; its two bounds remain ACL2 guard/carry obligations. Native job
 wrapper lifetime review and complete bootstrap/startup remain pending.
+
+## P2 iterator and generation capture selection — 2026-09-30
+
+The coordinator selected the following realization of the existing full P2
+mandate after the architecture review. This is an implementation contract;
+`books/msgid-probe-cursor.lisp` is currently an unactivated foundation, and
+neither it nor a green bootstrap establishes the served migration.
+
+The two-page bound is a **scheduling quantum**, not a stored-data or candidate
+ceiling. The older amendment's refusal after 2,048 candidates is superseded as
+an admission policy by this selected D27 repair. Its theorem still describes
+the existing synchronous implementation; it must not be quoted as the full
+supported-profile guarantee. The normal case can finish within two pages.
+Long probes yield and resume through the full ordered circular probe, using
+exactly the same order for lookup and placement. A maintained no-hole and
+probe-coverage invariant permits stopping at the first empty slot; wrap/full
+and quantum exhaustion are separate outcomes. A full-table refusal requires
+actual supported-profile resource exhaustion, not the two-page work quantum.
+
+The catalog's logical value remains its committed rows. A **separate abstract
+query iterator** denotes captured committed rows, query, remaining search and
+selection. Its concrete representation contains the leased table backing
+generation, operational key, committed sequence frontier, page, slot,
+remaining pages and pending exact candidate. Yield timing is a scheduler
+observation, not a deterministic promise derived from the logical rows alone.
+A physical probe status is not equated to an arbitrary-key rebuilt index of a
+rows-only catalog. There is no per-query reconstruction of that logical model.
+
+Actual capture atomically binds the catalog/history root, committed frontier,
+operational key and table backing under the serialized owner transaction. A
+named capture relation must be established there, preserved by every actual
+step, refusal and yield, and imply the final semantic answer. The table lease
+retains the **actual backing**, independently of the payload-arena prefix
+lease. Growth or key change publishes a fresh generation; it never replaces
+leased backing in place. Appends after capture lie outside the frontier and
+cannot change the answer. Resource admission precedes capture and funds new
+backing, old backing retained by queries, reinsertion scratch and retirement
+debt through actual release.
+
+Candidates are streamed through exact Message-ID comparison without a
+materialized candidate list or a hidden whole-row/payload scan. First accepted
+selection preserves the minimum committed sequence independent of visibility;
+latest visible selection preserves its maximum; an ordered/all-matches caller
+receives its own genuine continuation and refinement. No caller consumes a
+partial best sequence as absence, duplicate or conflict: those decisions are
+published only after completion. Yield, unavailable, recovery required and
+completed absence remain distinct. Growth reinserts resumably into a fresh
+funded table and switches generations atomically; no whole-table tick or eager
+wrapper drains the continuation.
+
+The initial engine ABI is `fn-mpr-next(tag,cursor,fuel,fn-mpxt)` returning
+`(status,cursor,candidate-seq,fuel-left)`, with one candidate per return and
+fuel carried across rejected tag collisions. Its cursor is currently
+`(page,remaining-pages,slot)`; it is not itself a generation lease. Placement
+uses the same cursor through `fn-mpr-place`. These definitions are not yet
+host-called exports. The final adapter must bind the captured generation and
+frontier and expose the abstract iterator through the sanctioned D40 path:
+`host/interfaces.lisp` declares the actual subject, and
+`host/native/io.lisp`'s `fnn-install-raw-dispatch` checks its loaded-world
+`fn-di-raw-with-problem` result. Establishment/preservation/guard theorems are
+required by D40 (`planning/decisions.md`, the 2026-09-30 D40 entry); an
+unregistered attachment or naked raw helper with an uninstalled ghost relation
+is not a replacement.
+
+Open integration obligations are the final abstract-iterator/export ABI,
+actual capture and no-hole/coverage proofs, retained backing provider and
+release lifecycle, exact old/new/scratch demand and allocation envelope,
+profile representation validation, every synchronous caller's yield migration,
+and literal reachable witnesses with more than 2,048 same-tag entries. The
+selected runtime/primitive allocation assumptions must name the actual source
+family and call lifetime; startup funding alone supplies none of these joins.
