@@ -1293,6 +1293,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/pagestore-tests \
 	books/pagestore-refine \
 	tests/acl2/pagestore-refine-tests \
+	books/pagestore-digest-cursor-counter \
+	books/pagestore-digest-cursor-semantics \
+	books/pagestore-digest-cursor-progress \
+	tests/acl2/pagestore-digest-cursor-semantics-tests \
 	books/history-columns-store \
 	tests/acl2/history-columns-store-tests \
 	books/snapshot-segments \
