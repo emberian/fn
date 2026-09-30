@@ -162,6 +162,15 @@ projection retains phase, physical-line length, current-field presence,
 field-wide visibility and a separate physical-fold visibility mode. General
 new-field and continuation-line equations and an exact article-body grammar
 bridge are proved. The separation of visibility was necessary: a previous
-visible value cannot make a whitespace-only continuation valid. These pieces
-still require the general malformed-header rejection and complete source-span
-simulation before claiming the cursor refines the actual parser.
+visible value cannot make a whitespace-only continuation valid. The actual-byte physical-line theorem now covers every nonempty proper
+CRLF-free line, including invalid/missing colon, malformed ftext name, missing
+post-colon WSP, invalid header octets and lines over 998 octets. Its exact
+start/bad result uses the actual new-field and fold predicates; it does not
+assume the line is grammatical. The actual-byte framing components also prove exact separator/body acceptance,
+unfinished header nonacceptance, bare-LF rejection and CR/non-LF rejection
+from every state and arbitrary prefix. The widest parser counters are now proved redundant under its existing codec
+preflight: `fn-nlv-actual-parser-never-counter-error` unconditionally excludes
+header line/field/octet counter errors from `fn-article-parse`. This does not
+remove operator admission limits. Complete scanner/parser acceptance composition
+and complete source-span simulation remain open
+before claiming the cursor refines the actual parser.

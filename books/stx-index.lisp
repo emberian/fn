@@ -914,7 +914,10 @@
                 (equal (fn-stmt-creator a) (fn-stmt-creator b)))
            (iff (fn-lace-same-slotp a b)
                 (and (not (fn-pol-slot-lessp a b)) (not (fn-pol-slot-lessp b a)))))
-  :hints (("Goal" :in-theory (e/d (fn-pol-slot-lessp (:d fn-lace-same-slotp)) (fn-stmt-p))))))
+  :hints (("Goal" :use ((:instance fn-stx-pol-stmt-slots-are-natural (s a))
+                           (:instance fn-stx-pol-stmt-slots-are-natural (s b)))
+                  :in-theory (e/d (fn-pol-slot-lessp (:d fn-lace-same-slotp))
+                                   (fn-stmt-p fn-stx-pol-stmt-slots-are-natural))))))
 (local (defthm fn-stx-pol-candidatep-is-key
   (implies (fn-prin-verifiedp s keyring)
            (iff (fn-pol-candidatep s keyring group authority)

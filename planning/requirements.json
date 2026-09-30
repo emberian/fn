@@ -5088,7 +5088,8 @@
         "PRF-373",
         "PRF-920",
         "PRF-923",
-        "PRF-979"
+        "PRF-979",
+        "PRF-1087"
       ],
       "verification": [
         "proof",
@@ -5121,7 +5122,7 @@
         "tests/acl2/history-image-binding-tests.lisp",
         "books/history-image-fold.lisp"
       ],
-      "implementation_note": "Lane arena-store (2026-09-27): the model, keystones, reclamation and the executable layer are proved; the prototype host driver host/native/proto-pagestore.lisp (retired 2026-09-29, Q7k: planning/retired-paths.json) ran them on hbox (process death and power loss, 0 violations); page 0 (the owner's root slots) is the model's reserved page, kept by pgs-disk-keeps and marked by pgs-g-start; the scenario is SCN-186. Limitation L-PGS-LAZY-SHAPE (record section 5): the host's lazy open shape-checks only the table pages its own commit wrote, the model's lazy open every table page. The owner does not use it yet (fn-hist on pages is the next step, lane arena-store-2)."
+      "implementation_note": "Lane arena-store (2026-09-27): the model, keystones, reclamation and the executable layer are proved; the prototype host driver host/native/proto-pagestore.lisp (retired 2026-09-29, Q7k: planning/retired-paths.json) ran them on hbox (process death and power loss, 0 violations); page 0 (the owner's root slots) is the model's reserved page, kept by pgs-disk-keeps and marked by pgs-g-start; the scenario is SCN-186. Limitation L-PGS-LAZY-SHAPE (record section 5): the host's lazy open shape-checks only the table pages its own commit wrote, the model's lazy open every table page. The owner does not use it yet (fn-hist on pages is the next step, lane arena-store-2). S7 page-digest preparation component: PRF-1087 remains planned. The new guarded streaming core removes whole-directory octet staging. Phase denotation equations and a conditional terminal bridge to the actual old digest are source-admitted; maintained trajectory/invariant/progress/domain/allocation proof and actual controller integration are open; this adds no completion evidence to the existing Store requirement."
     },
     {
       "id": "WEB-005",
