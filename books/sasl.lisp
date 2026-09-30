@@ -393,7 +393,9 @@
   (implies (fn-sasl-no-nulp a)
            (equal (fn-sasl-split-nul (append a (cons 0 b)) f)
                   (cons (revappend (revappend a f) nil)
-                        (fn-sasl-split-nul b nil))))))
+                        (fn-sasl-split-nul b nil))))
+  :hints (("Goal" :induct (fn-sasl-split-nul a f)
+           :in-theory (e/d (revappend) (revappend-removal))))))
 
 (local (defthm fn-sasl-split-nul-of-a-last-field
   (implies (fn-sasl-no-nulp a)
