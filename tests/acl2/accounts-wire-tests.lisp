@@ -45,6 +45,7 @@
 (defmacro awt-483-hyps (as text)
   `(and (fn-auth-sessionp ,as)
         (not (fn-auth-session-handshakingp ,as))
+        (not (fn-auth-sasl-waitingp ,as))
         (not (fn-zc-activep (fn-auth-session-compress ,as)))
         (not (fn-auth-session-subject ,as))
         (fn-auth-config-protected-onlyp (fn-auth-session-config ,as))
@@ -61,8 +62,20 @@
 ;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
 (defconst *sr-arena* nil)
 (bpr-lift awt-step 2)
-(assert-event (and (awt-483-hyps *awt-prot* *awt-redeem*)
-                   (awt-483-concl *awt-prot* *awt-redeem*)))
+; Literal positive also exposes recognizer anchors to the static teeth checker.
+(assert-event
+  (and
+    (fn-auth-sessionp *awt-prot*)
+    (not (fn-auth-session-handshakingp *awt-prot*))
+    (not (fn-auth-sasl-waitingp *awt-prot*))
+    (not (fn-zc-activep (fn-auth-session-compress *awt-prot*)))
+    (not (fn-auth-session-subject *awt-prot*))
+    (fn-auth-config-protected-onlyp (fn-auth-session-config *awt-prot*))
+    (not (fn-auth-session-tlsp *awt-prot*))
+    (fn-nntp-command-inputp (awt-line *awt-redeem*))
+    (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize (awt-line *awt-redeem*)))
+    (fn-nntp-keywordp (car (fn-nntp-tokenize (awt-line *awt-redeem*))) "XREDEEM")
+    (awt-483-concl *awt-prot* *awt-redeem*)))
 ; H5 removed: over TLS the same line answers 381.
 (assert-event (and (fn-auth-session-tlsp *awt-prot-tls*)
                    (not (awt-483-concl *awt-prot-tls* *awt-redeem*))
@@ -117,11 +130,646 @@
                            (in-arena-awt-step *sr-arena* *awt-compressed* (awt-cmd *awt-redeem*)))
                           (awt-single "502 not permitted once a compression layer is active"))
                    (not (awt-483-concl *awt-compressed* *awt-redeem*))))
-; H7's removal: a line with more arguments than RFC 3977 allows is framed
-; out before the arm; the bound is the tokenizer's (checked, not refuted
-; here: every XREDEEM line the arm sees satisfies it).
-(assert-event (fn-nntp-command-arguments-at-mostp
-               (fn-nntp-tokenize (awt-line *awt-redeem*))))
+; Complete literal teeth for fn-auth-step-pinned-xredeem-before-tls-is-483.
+; The old H7 bound check is replaced by an actual counterexample below.
+(defthm
+  awt-complete-before-tls-positive
+  (and
+    (and
+      (fn-auth-sessionp *awt-prot*)
+      (not (fn-auth-session-handshakingp *awt-prot*))
+      (not (fn-auth-sasl-waitingp *awt-prot*))
+      (not (fn-zc-activep (fn-auth-session-compress *awt-prot*)))
+      (not (fn-auth-session-subject *awt-prot*))
+      (fn-auth-config-protected-onlyp (fn-auth-session-config *awt-prot*))
+      (not (fn-auth-session-tlsp *awt-prot*))
+      (fn-nntp-command-inputp (awt-line *awt-redeem*))
+      (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize (awt-line *awt-redeem*)))
+      (fn-nntp-keywordp (car (fn-nntp-tokenize (awt-line *awt-redeem*))) "XREDEEM"))
+    (and
+      (equal
+        (fn-post-result-effects
+          (fn-auth-step-pinned
+            *awt-prot*
+            *awt-archive*
+            nil
+            nil
+            *awt-config*
+            *awt-obs*
+            *awt-obs*
+            (list :command (awt-line *awt-redeem*))
+            nil))
+        (fn-auth-single *awt-prot* "483 a protected channel is required; use STARTTLS"))
+      (equal
+        (fn-post-result-session
+          (fn-auth-step-pinned
+            *awt-prot*
+            *awt-archive*
+            nil
+            nil
+            *awt-config*
+            *awt-obs*
+            *awt-obs*
+            (list :command (awt-line *awt-redeem*))
+            nil))
+        *awt-prot*)
+      (null
+        (fn-post-result-submission
+          (fn-auth-step-pinned
+            *awt-prot*
+            *awt-archive*
+            nil
+            nil
+            *awt-config*
+            *awt-obs*
+            *awt-obs*
+            (list :command (awt-line *awt-redeem*))
+            nil)))))
+  :rule-classes
+  nil)
+
+; Corrupted-state removal: session-shape. Every other hypothesis holds.
+(defthm
+  awt-complete-without-session-shape
+  (and
+    (not (fn-auth-session-handshakingp (append *awt-prot* (quote (nil)))))
+    (not (fn-auth-sasl-waitingp (append *awt-prot* (quote (nil)))))
+    (not (fn-zc-activep (fn-auth-session-compress (append *awt-prot* (quote (nil))))))
+    (not (fn-auth-session-subject (append *awt-prot* (quote (nil)))))
+    (fn-auth-config-protected-onlyp (fn-auth-session-config (append *awt-prot* (quote (nil)))))
+    (not (fn-auth-session-tlsp (append *awt-prot* (quote (nil)))))
+    (fn-nntp-command-inputp (awt-line *awt-redeem*))
+    (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize (awt-line *awt-redeem*)))
+    (fn-nntp-keywordp (car (fn-nntp-tokenize (awt-line *awt-redeem*))) "XREDEEM")
+    (not (fn-auth-sessionp (append *awt-prot* (quote (nil)))))
+    (not
+      (and
+        (equal
+          (fn-post-result-effects
+            (fn-auth-step-pinned
+              (append *awt-prot* (quote (nil)))
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line *awt-redeem*))
+              nil))
+          (fn-auth-single
+            (append *awt-prot* (quote (nil)))
+            "483 a protected channel is required; use STARTTLS"))
+        (equal
+          (fn-post-result-session
+            (fn-auth-step-pinned
+              (append *awt-prot* (quote (nil)))
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line *awt-redeem*))
+              nil))
+          (append *awt-prot* (quote (nil))))
+        (null
+          (fn-post-result-submission
+            (fn-auth-step-pinned
+              (append *awt-prot* (quote (nil)))
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line *awt-redeem*))
+              nil))))))
+  :rule-classes
+  nil)
+
+; Session/input removal: handshake. Every other hypothesis holds.
+(defthm
+  awt-complete-without-handshake
+  (and
+    (fn-auth-sessionp *awt-held*)
+    (not (fn-auth-sasl-waitingp *awt-held*))
+    (not (fn-zc-activep (fn-auth-session-compress *awt-held*)))
+    (not (fn-auth-session-subject *awt-held*))
+    (fn-auth-config-protected-onlyp (fn-auth-session-config *awt-held*))
+    (not (fn-auth-session-tlsp *awt-held*))
+    (fn-nntp-command-inputp (awt-line *awt-redeem*))
+    (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize (awt-line *awt-redeem*)))
+    (fn-nntp-keywordp (car (fn-nntp-tokenize (awt-line *awt-redeem*))) "XREDEEM")
+    (not (not (fn-auth-session-handshakingp *awt-held*)))
+    (not
+      (and
+        (equal
+          (fn-post-result-effects
+            (fn-auth-step-pinned
+              *awt-held*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line *awt-redeem*))
+              nil))
+          (fn-auth-single *awt-held* "483 a protected channel is required; use STARTTLS"))
+        (equal
+          (fn-post-result-session
+            (fn-auth-step-pinned
+              *awt-held*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line *awt-redeem*))
+              nil))
+          *awt-held*)
+        (null
+          (fn-post-result-submission
+            (fn-auth-step-pinned
+              *awt-held*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line *awt-redeem*))
+              nil))))))
+  :rule-classes
+  nil)
+
+; Session/input removal: sasl. Every other hypothesis holds.
+(defthm
+  awt-complete-without-sasl
+  (and
+    (fn-auth-sessionp (update-nth 2 (quote (:sasl-plain)) *awt-prot*))
+    (not (fn-auth-session-handshakingp (update-nth 2 (quote (:sasl-plain)) *awt-prot*)))
+    (not
+      (fn-zc-activep (fn-auth-session-compress (update-nth 2 (quote (:sasl-plain)) *awt-prot*))))
+    (not (fn-auth-session-subject (update-nth 2 (quote (:sasl-plain)) *awt-prot*)))
+    (fn-auth-config-protected-onlyp
+      (fn-auth-session-config (update-nth 2 (quote (:sasl-plain)) *awt-prot*)))
+    (not (fn-auth-session-tlsp (update-nth 2 (quote (:sasl-plain)) *awt-prot*)))
+    (fn-nntp-command-inputp (awt-line *awt-redeem*))
+    (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize (awt-line *awt-redeem*)))
+    (fn-nntp-keywordp (car (fn-nntp-tokenize (awt-line *awt-redeem*))) "XREDEEM")
+    (not (not (fn-auth-sasl-waitingp (update-nth 2 (quote (:sasl-plain)) *awt-prot*))))
+    (not
+      (and
+        (equal
+          (fn-post-result-effects
+            (fn-auth-step-pinned
+              (update-nth 2 (quote (:sasl-plain)) *awt-prot*)
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line *awt-redeem*))
+              nil))
+          (fn-auth-single
+            (update-nth 2 (quote (:sasl-plain)) *awt-prot*)
+            "483 a protected channel is required; use STARTTLS"))
+        (equal
+          (fn-post-result-session
+            (fn-auth-step-pinned
+              (update-nth 2 (quote (:sasl-plain)) *awt-prot*)
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line *awt-redeem*))
+              nil))
+          (update-nth 2 (quote (:sasl-plain)) *awt-prot*))
+        (null
+          (fn-post-result-submission
+            (fn-auth-step-pinned
+              (update-nth 2 (quote (:sasl-plain)) *awt-prot*)
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line *awt-redeem*))
+              nil))))))
+  :rule-classes
+  nil)
+
+; Session/input removal: compression. Every other hypothesis holds.
+(defthm
+  awt-complete-without-compression
+  (and
+    (fn-auth-sessionp *awt-compressed*)
+    (not (fn-auth-session-handshakingp *awt-compressed*))
+    (not (fn-auth-sasl-waitingp *awt-compressed*))
+    (not (fn-auth-session-subject *awt-compressed*))
+    (fn-auth-config-protected-onlyp (fn-auth-session-config *awt-compressed*))
+    (not (fn-auth-session-tlsp *awt-compressed*))
+    (fn-nntp-command-inputp (awt-line *awt-redeem*))
+    (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize (awt-line *awt-redeem*)))
+    (fn-nntp-keywordp (car (fn-nntp-tokenize (awt-line *awt-redeem*))) "XREDEEM")
+    (not (not (fn-zc-activep (fn-auth-session-compress *awt-compressed*))))
+    (not
+      (and
+        (equal
+          (fn-post-result-effects
+            (fn-auth-step-pinned
+              *awt-compressed*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line *awt-redeem*))
+              nil))
+          (fn-auth-single *awt-compressed* "483 a protected channel is required; use STARTTLS"))
+        (equal
+          (fn-post-result-session
+            (fn-auth-step-pinned
+              *awt-compressed*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line *awt-redeem*))
+              nil))
+          *awt-compressed*)
+        (null
+          (fn-post-result-submission
+            (fn-auth-step-pinned
+              *awt-compressed*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line *awt-redeem*))
+              nil))))))
+  :rule-classes
+  nil)
+
+; Session/input removal: subject. Every other hypothesis holds.
+(defthm
+  awt-complete-without-subject
+  (and
+    (fn-auth-sessionp *awt-authed*)
+    (not (fn-auth-session-handshakingp *awt-authed*))
+    (not (fn-auth-sasl-waitingp *awt-authed*))
+    (not (fn-zc-activep (fn-auth-session-compress *awt-authed*)))
+    (fn-auth-config-protected-onlyp (fn-auth-session-config *awt-authed*))
+    (not (fn-auth-session-tlsp *awt-authed*))
+    (fn-nntp-command-inputp (awt-line *awt-redeem*))
+    (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize (awt-line *awt-redeem*)))
+    (fn-nntp-keywordp (car (fn-nntp-tokenize (awt-line *awt-redeem*))) "XREDEEM")
+    (not (not (fn-auth-session-subject *awt-authed*)))
+    (not
+      (and
+        (equal
+          (fn-post-result-effects
+            (fn-auth-step-pinned
+              *awt-authed*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line *awt-redeem*))
+              nil))
+          (fn-auth-single *awt-authed* "483 a protected channel is required; use STARTTLS"))
+        (equal
+          (fn-post-result-session
+            (fn-auth-step-pinned
+              *awt-authed*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line *awt-redeem*))
+              nil))
+          *awt-authed*)
+        (null
+          (fn-post-result-submission
+            (fn-auth-step-pinned
+              *awt-authed*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line *awt-redeem*))
+              nil))))))
+  :rule-classes
+  nil)
+
+; Session/input removal: protected-only. Every other hypothesis holds.
+(defthm
+  awt-complete-without-protected-only
+  (and
+    (fn-auth-sessionp *awt-open-s*)
+    (not (fn-auth-session-handshakingp *awt-open-s*))
+    (not (fn-auth-sasl-waitingp *awt-open-s*))
+    (not (fn-zc-activep (fn-auth-session-compress *awt-open-s*)))
+    (not (fn-auth-session-subject *awt-open-s*))
+    (not (fn-auth-session-tlsp *awt-open-s*))
+    (fn-nntp-command-inputp (awt-line *awt-redeem*))
+    (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize (awt-line *awt-redeem*)))
+    (fn-nntp-keywordp (car (fn-nntp-tokenize (awt-line *awt-redeem*))) "XREDEEM")
+    (not (fn-auth-config-protected-onlyp (fn-auth-session-config *awt-open-s*)))
+    (not
+      (and
+        (equal
+          (fn-post-result-effects
+            (fn-auth-step-pinned
+              *awt-open-s*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line *awt-redeem*))
+              nil))
+          (fn-auth-single *awt-open-s* "483 a protected channel is required; use STARTTLS"))
+        (equal
+          (fn-post-result-session
+            (fn-auth-step-pinned
+              *awt-open-s*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line *awt-redeem*))
+              nil))
+          *awt-open-s*)
+        (null
+          (fn-post-result-submission
+            (fn-auth-step-pinned
+              *awt-open-s*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line *awt-redeem*))
+              nil))))))
+  :rule-classes
+  nil)
+
+; Session/input removal: tls. Every other hypothesis holds.
+(defthm
+  awt-complete-without-tls
+  (and
+    (fn-auth-sessionp *awt-prot-tls*)
+    (not (fn-auth-session-handshakingp *awt-prot-tls*))
+    (not (fn-auth-sasl-waitingp *awt-prot-tls*))
+    (not (fn-zc-activep (fn-auth-session-compress *awt-prot-tls*)))
+    (not (fn-auth-session-subject *awt-prot-tls*))
+    (fn-auth-config-protected-onlyp (fn-auth-session-config *awt-prot-tls*))
+    (fn-nntp-command-inputp (awt-line *awt-redeem*))
+    (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize (awt-line *awt-redeem*)))
+    (fn-nntp-keywordp (car (fn-nntp-tokenize (awt-line *awt-redeem*))) "XREDEEM")
+    (not (not (fn-auth-session-tlsp *awt-prot-tls*)))
+    (not
+      (and
+        (equal
+          (fn-post-result-effects
+            (fn-auth-step-pinned
+              *awt-prot-tls*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line *awt-redeem*))
+              nil))
+          (fn-auth-single *awt-prot-tls* "483 a protected channel is required; use STARTTLS"))
+        (equal
+          (fn-post-result-session
+            (fn-auth-step-pinned
+              *awt-prot-tls*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line *awt-redeem*))
+              nil))
+          *awt-prot-tls*)
+        (null
+          (fn-post-result-submission
+            (fn-auth-step-pinned
+              *awt-prot-tls*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line *awt-redeem*))
+              nil))))))
+  :rule-classes
+  nil)
+
+; Session/input removal: command-input. Every other hypothesis holds.
+(defthm
+  awt-complete-without-command-input
+  (and
+    (fn-auth-sessionp *awt-prot*)
+    (not (fn-auth-session-handshakingp *awt-prot*))
+    (not (fn-auth-sasl-waitingp *awt-prot*))
+    (not (fn-zc-activep (fn-auth-session-compress *awt-prot*)))
+    (not (fn-auth-session-subject *awt-prot*))
+    (fn-auth-config-protected-onlyp (fn-auth-session-config *awt-prot*))
+    (not (fn-auth-session-tlsp *awt-prot*))
+    (fn-nntp-command-arguments-at-mostp
+      (fn-nntp-tokenize (append (awt-line "XREDEEM ") (make-list 520 :initial-element 32) (awt-line "a b"))))
+    (fn-nntp-keywordp
+      (car (fn-nntp-tokenize (append (awt-line "XREDEEM ") (make-list 520 :initial-element 32) (awt-line "a b"))))
+      "XREDEEM")
+    (not (fn-nntp-command-inputp (append (awt-line "XREDEEM ") (make-list 520 :initial-element 32) (awt-line "a b"))))
+    (not
+      (and
+        (equal
+          (fn-post-result-effects
+            (fn-auth-step-pinned
+              *awt-prot*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (append (awt-line "XREDEEM ") (make-list 520 :initial-element 32) (awt-line "a b")))
+              nil))
+          (fn-auth-single *awt-prot* "483 a protected channel is required; use STARTTLS"))
+        (equal
+          (fn-post-result-session
+            (fn-auth-step-pinned
+              *awt-prot*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (append (awt-line "XREDEEM ") (make-list 520 :initial-element 32) (awt-line "a b")))
+              nil))
+          *awt-prot*)
+        (null
+          (fn-post-result-submission
+            (fn-auth-step-pinned
+              *awt-prot*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (append (awt-line "XREDEEM ") (make-list 520 :initial-element 32) (awt-line "a b")))
+              nil))))))
+  :rule-classes
+  nil)
+
+; Session/input removal: argument-bound. Every other hypothesis holds.
+(defthm
+  awt-complete-without-argument-bound
+  (and
+    (fn-auth-sessionp *awt-prot*)
+    (not (fn-auth-session-handshakingp *awt-prot*))
+    (not (fn-auth-sasl-waitingp *awt-prot*))
+    (not (fn-zc-activep (fn-auth-session-compress *awt-prot*)))
+    (not (fn-auth-session-subject *awt-prot*))
+    (fn-auth-config-protected-onlyp (fn-auth-session-config *awt-prot*))
+    (not (fn-auth-session-tlsp *awt-prot*))
+    (fn-nntp-command-inputp (append (awt-line "XREDEEM ") (make-list 498 :initial-element 97)))
+    (fn-nntp-keywordp
+      (car (fn-nntp-tokenize (append (awt-line "XREDEEM ") (make-list 498 :initial-element 97))))
+      "XREDEEM")
+    (not
+      (fn-nntp-command-arguments-at-mostp
+        (fn-nntp-tokenize (append (awt-line "XREDEEM ") (make-list 498 :initial-element 97)))))
+    (not
+      (and
+        (equal
+          (fn-post-result-effects
+            (fn-auth-step-pinned
+              *awt-prot*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (append (awt-line "XREDEEM ") (make-list 498 :initial-element 97)))
+              nil))
+          (fn-auth-single *awt-prot* "483 a protected channel is required; use STARTTLS"))
+        (equal
+          (fn-post-result-session
+            (fn-auth-step-pinned
+              *awt-prot*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (append (awt-line "XREDEEM ") (make-list 498 :initial-element 97)))
+              nil))
+          *awt-prot*)
+        (null
+          (fn-post-result-submission
+            (fn-auth-step-pinned
+              *awt-prot*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (append (awt-line "XREDEEM ") (make-list 498 :initial-element 97)))
+              nil))))))
+  :rule-classes
+  nil)
+
+; Session/input removal: keyword. Every other hypothesis holds.
+(defthm
+  awt-complete-without-keyword
+  (and
+    (fn-auth-sessionp *awt-prot*)
+    (not (fn-auth-session-handshakingp *awt-prot*))
+    (not (fn-auth-sasl-waitingp *awt-prot*))
+    (not (fn-zc-activep (fn-auth-session-compress *awt-prot*)))
+    (not (fn-auth-session-subject *awt-prot*))
+    (fn-auth-config-protected-onlyp (fn-auth-session-config *awt-prot*))
+    (not (fn-auth-session-tlsp *awt-prot*))
+    (fn-nntp-command-inputp (awt-line "DATE"))
+    (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize (awt-line "DATE")))
+    (not (fn-nntp-keywordp (car (fn-nntp-tokenize (awt-line "DATE"))) "XREDEEM"))
+    (not
+      (and
+        (equal
+          (fn-post-result-effects
+            (fn-auth-step-pinned
+              *awt-prot*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line "DATE"))
+              nil))
+          (fn-auth-single *awt-prot* "483 a protected channel is required; use STARTTLS"))
+        (equal
+          (fn-post-result-session
+            (fn-auth-step-pinned
+              *awt-prot*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line "DATE"))
+              nil))
+          *awt-prot*)
+        (null
+          (fn-post-result-submission
+            (fn-auth-step-pinned
+              *awt-prot*
+              *awt-archive*
+              nil
+              nil
+              *awt-config*
+              *awt-obs*
+              *awt-obs*
+              (list :command (awt-line "DATE"))
+              nil))))))
+  :rule-classes
+  nil)
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE fn-auth-step-pinned-xredeem-pass-holds-for-the-owner
@@ -241,3 +889,7 @@
                    (not (fn-auth-redeem-waitp
                          (fn-post-result-session
                           (in-arena-awt-step *sr-arena* *awt-381-compressed* (awt-cmd *awt-pass*)))))))
+
+; Positive SASL-phase anchor for the retained phase premise above.
+(assert-event (and (fn-auth-sessionp (update-nth 2 '(:sasl-plain) *awt-prot*))
+                   (fn-auth-sasl-waitingp (update-nth 2 '(:sasl-plain) *awt-prot*))))

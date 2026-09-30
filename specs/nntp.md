@@ -1637,6 +1637,20 @@ gives them.
       XREDEEM CODE NAME        -> 381 send the password with XREDEEM PASS
       XREDEEM PASS PASSWORD    -> (held) then 281 or 482
 
+  The command framing and hold compose at the actual `fn-served-step`
+  boundary (PRF-1123). `fn-saw-command-wire-is-auth-dispatch` equates the
+  complete served result to the authentication dispatch core for a valid
+  command wire, a plain line fitting its wire limit, a nonhalted connection,
+  and a command that does not advance the pinned view.
+  `fn-saw-held-read-prefix-stops-the-pipeline` proves that whenever the
+  actual prefix result is held, every appended suffix leaves the complete
+  result unchanged. Both have reachable positives and a counterexample
+  for every retained hypothesis. The existing pre-TLS XREDEEM keystone has
+  complete literal teeth, including a 498-octet argument that refutes its
+  argument-bound removal while satisfying every other premise. These are
+  source-level fn guarantees; they do not prove account persistence or the
+  native adapter's accounting for unconsumed bytes.
+
   `XREDEEM CODE NAME` caches the code and the login in the connection's memory
   and answers `381`. `XREDEEM PASS PASSWORD` (one token, like AUTHINFO PASS;
   the password is never a bare line, so a client that loses its place cannot

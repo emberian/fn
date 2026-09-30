@@ -510,6 +510,8 @@
     "books/store-capacity-vector",
     "tests/acl2/store-capacity-vector-tests",
     "books/store-capacity-config",
+    "books/served-auth-wire-bridge",
+    "tests/acl2/served-auth-wire-bridge-tests",
     "books/served-head-bridge",
     "tests/acl2/served-head-bridge-tests",
     "books/store-config-generation",
@@ -1640,26 +1642,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1710,
-    "books_in_root_closure": 1700,
-    "roots": 1636,
-    "theorems": 27977,
-    "functions": 18135,
-    "assert_events": 22988,
+    "books": 1712,
+    "books_in_root_closure": 1702,
+    "roots": 1638,
+    "theorems": 28011,
+    "functions": 18136,
+    "assert_events": 22989,
     "must_fails": 2501,
     "prover_refusals": 0,
     "encapsulates": 156,
     "guards": {
-      "verified": 3465,
+      "verified": 3466,
       "declared-off": 2090,
       "default-guarded": 9846,
       "default-unguarded": 2734
     },
-    "suspect_theorems": 1232,
+    "suspect_theorems": 1233,
     "export_hygiene_warnings": 318,
     "enabled_projection_warnings": 52,
     "teeth_form_warnings": 272,
-    "include_hygiene_warnings": 2432,
+    "include_hygiene_warnings": 2434,
     "host_names_warnings": 2087,
     "hand_written_record_warnings": 18
   },
@@ -24270,6 +24272,34 @@
       "read_error": null
     },
     {
+      "book": "books/served-auth-wire-bridge.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 15,
+      "functions": 1,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "served"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-saw-with-wire-overwrite-by-definition"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/served-carried.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -31354,7 +31384,7 @@
       "book": "tests/acl2/accounts-wire-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
+      "theorems": 11,
       "functions": 5,
       "guards": {
         "verified": 0,
@@ -46736,6 +46766,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/served-auth-wire-bridge-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 8,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/served-auth-wire-bridge",
+        "accounts-wire-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/served-catalog-chain-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -57755,6 +57812,14 @@
       "line": 441,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-rows-contexts-okp and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-saw-with-wire-overwrite-by-definition",
+      "book": "books/served-auth-wire-bridge.lisp",
+      "line": 16,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
     },
     {
@@ -72549,7 +72614,7 @@
       },
       {
         "book": "tests/acl2/accounts-wire-tests.lisp",
-        "line": 60,
+        "line": 61,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -80469,6 +80534,20 @@
         "line": 9,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/served-auth-wire-bridge-tests.lisp",
+        "line": 3,
+        "include": "../../books/served-auth-wire-bridge",
+        "included": "books/served-auth-wire-bridge.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/served-auth-wire-bridge-tests.lisp",
+        "line": 4,
+        "include": "accounts-wire-tests",
+        "included": "tests/acl2/accounts-wire-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
