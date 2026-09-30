@@ -1651,8 +1651,8 @@
     "books": 1700,
     "books_in_root_closure": 1694,
     "roots": 1644,
-    "theorems": 27495,
-    "functions": 18097,
+    "theorems": 27496,
+    "functions": 18098,
     "assert_events": 22880,
     "must_fails": 2463,
     "prover_refusals": 0,
@@ -1661,7 +1661,7 @@
       "verified": 3359,
       "declared-off": 2065,
       "default-guarded": 9970,
-      "default-unguarded": 2703
+      "default-unguarded": 2704
     },
     "suspect_theorems": 1209,
     "export_hygiene_warnings": 318,
@@ -44636,13 +44636,13 @@
       "book": "tests/acl2/page-window-read-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 5,
-      "functions": 8,
+      "theorems": 6,
+      "functions": 9,
       "guards": {
         "verified": 0,
         "declared-off": 1,
         "default-guarded": 0,
-        "default-unguarded": 7
+        "default-unguarded": 8
       },
       "verify_guards_events": 0,
       "assert_events": 0,

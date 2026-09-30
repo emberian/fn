@@ -13,12 +13,12 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1700 |
 | Certification roots in the Makefile | 1644 |
 | Books inside the root closure | 1694 |
-| `defthm` and `defthmd` events | 27495 |
-| `defun` events | 18097 |
+| `defthm` and `defthmd` events | 27496 |
+| `defun` events | 18098 |
 | Functions with verified guards | 3359 |
 | Functions declared `:verify-guards nil` and never verified | 2065 |
 | Functions left at the default with an explicit guard | 9970 |
-| Functions left at the default with no guard | 2703 |
+| Functions left at the default with no guard | 2704 |
 | `assert-event` checks | 22880 |
 | `must-fail` checks | 2463 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
@@ -1549,7 +1549,7 @@ that `make certify` requests.
 | `tests/acl2/page-window-admission-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 2 | 0 | 0 |
 | `tests/acl2/page-window-executor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
 | `tests/acl2/page-window-lease-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 0 | 0 |
-| `tests/acl2/page-window-read-tests.lisp` | root | 5 | 8 | 0/1/0/7 | 0 | 0 | 0 |
+| `tests/acl2/page-window-read-tests.lisp` | root | 6 | 9 | 0/1/0/8 | 0 | 0 | 0 |
 | `tests/acl2/pagestore-refine-tests.lisp` | root | 0 | 10 | 0/5/5/0 | 6 | 0 | 0 |
 | `tests/acl2/pagestore-tests.lisp` | root | 0 | 39 | 0/0/2/37 | 41 | 0 | 0 |
 | `tests/acl2/payload-arena-extent-tests.lisp` | root | 13 | 7 | 0/2/1/4 | 6 | 10 | 0 |

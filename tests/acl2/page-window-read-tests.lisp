@@ -131,3 +131,36 @@
 (defthm pwrtest-cancelled-publication-witness
   (pwrtest-cancelled-positive)
   :rule-classes nil)
+
+; REUSE / REACHABLE POSITIVE: stale private bytes from an earlier longer
+; window are overwritten within the new publication span and cannot be
+; scalar-borrowed outside that span. No logical zeroing premise is used.
+(defun-nx pwrtest-reused-buffer ()
+  (let* ((old (pwrtest-ready))
+         (oldrun (nth 3 old))
+         (oldbuffer (nth 3 oldrun))
+         (msg '(7 8 9)) (digest (fn-blake3 msg))
+         (descriptor (list 11 100 3 100 3 1 (fn-bch-pack digest)))
+         (admit (fn-prw-admit *prw-registered* descriptor '(256 0 0 1 1)))
+         (token (nth 1 admit))
+         (acquire (fn-pwx-acquire (nth 2 admit) (fn-pxe-new 0) token))
+         (begin (fn-ews-begin 11 100 3 100 3 1 (nth 1 token) 47 token
+                              (fn-bch-pack digest) (nth 2 oldrun)))
+         (run (pwrtest-run 40 (append msg digest) (car begin) (cadr begin)
+                          oldbuffer nil 0))
+         (returned (fn-pwx-return (nth 2 acquire) (nth 1 acquire) token))
+         (ledger (nth 2 returned)) (worker (nth 1 returned))
+         (plan (nth 1 run)) (buffer (nth 3 run)))
+    (and (equal (nth 0 oldrun) :verified)
+         (equal (nth 1 (nth 0 oldbuffer)) 2)
+         (equal (nth 0 run) :verified)
+         (equal (fn-pwr-outcome ledger worker token plan) :ready)
+         (equal (fn-pwr-byte-at ledger worker token plan 11 100 3 100 3
+                               (fn-bch-pack digest) 1 buffer) '(:byte 8))
+         (equal (fn-pwr-byte-at ledger worker token plan 11 100 3 100 3
+                               (fn-bch-pack digest) 2 buffer) '(:byte 9))
+         (equal (fn-pwr-byte ledger worker token plan 2 buffer)
+                '(:unavailable nil)))))
+(defthm pwrtest-reused-buffer-witness (pwrtest-reused-buffer)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-pwr-byte fn-pwr-byte-at))))
