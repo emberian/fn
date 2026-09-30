@@ -247,6 +247,20 @@ source-only constructor counts establish this runtime contract.
 
 ## Fixed storage for input-copy control
 
+The retained input must also survive unrelated reader quanta. The new native
+copy adapter writes the array returned by `fnn-live-octets`; the existing
+served reader fills that same global input stobj. Holding owner and extent
+locks during one copy step does not exclude a later reader fill between
+steps. The assembly must establish exclusion for every writer of the leased
+backing, or supply separate issued incoming backing to both the copy and its
+actual parser/confirmation consumers. A service job pointer alone establishes
+neither condition. Backing identity and capacity remain carried across yields,
+and the continuation may not silently switch to a newly installed global
+array. The composition fixture interleaves an ordinary reader fill between
+admission quanta and checks the retained bytes, token, capacity and charge
+through terminal confirmation and joined release. This constrains activation
+of the new adapter; it is not a demonstrated defect in the old served path.
+
 The list-based input-copy controller allocates fresh control cells on every
 quantum. Clearing aliases is not an observation that the collector reclaimed
 them; charging the entire copy's cumulative allocation would also make
