@@ -134,6 +134,9 @@ def check(scenario: Scenario, journal: Journal, budget: Budget | None = None,
         return check_acceptance_model(scenario, journal, budget, healing, overran)
     if scenario.contract == "response-holds-model":
         return check_response_holds_model(scenario, journal, budget, healing, overran)
+    if scenario.contract == "admitted-page-source":
+        from .admitted_page import judge
+        return judge(scenario, journal)
     if scenario.contract == "page-io-ownership":
         return check_page_io(scenario, journal, budget, healing, overran)
     if scenario.contract == "reclaim-response-hold":
