@@ -1378,6 +1378,24 @@ framed by the complete host-called owner/reclamation bridge. That bridge,
 revocation, refused-request identity headroom and the bounded continuation
 checker remain open. The component is not a served whole-state traversal.
 
+The post-reservation refusal iteration is now an explicit reference component
+in `books/refusal-headroom.lisp` (PRF-1110, SCN-1019). It composes the actual
+reserve and semantic-refusal subjects. From a typed idle Store whose node may
+advance to the allocator successor, `n` such attempts leave the frontier at
+`min(UINT32_MAX, frontier + n)`, keep all records, groups and capacity, and
+make the actual host-used `fn-bs-frontier-next` return no successor exactly
+when the available identity headroom has been consumed. The native reserve
+path converts that no-successor result into its existing named finite
+transaction-ID domain refusal before mutating the log kernel. This does not
+make post-reservation refusal free: the headroom is consumed. A preflight
+refusal before reserve is a separate zero-identity-use case. The iteration
+is proof machinery over the existing boundary drivers; matching native owner
+traces and transient physical rescue funding remain separate open obligations.
+The bound also exposes that post-reservation refusals can consume all remaining
+identities; it does not reserve identities for maintenance/recovery. The funded
+rescue argument must include that finite identity-space demand, or justify the
+named terminal state for each remaining path.
+
 The two operations (the Fable mandate, section 8):
 
 - **History compaction** (replacing history by a summary sufficient for
@@ -1670,12 +1688,46 @@ or be discarded before the slot can be reused. The model binds each issued
 token to one executor slot, and stale completion from a prior job cannot
 return a reused worker. The native adapter now uses an intrusive idle-slot
 list and a fixed worker set; a job activation returns before the worker
-announces relinquishment, and shutdown joins before shared-file close.
+announces relinquishment. The owner's private result-transfer activation
+also returns before refund: readiness exposes only a predicate, never a
+borrowed result, and the transfer clears the worker's result slot before
+returning vector-free settlement metadata. Shutdown joins before shared-file close.
 The host stobj adapters have named answer-and-effect refinement equations.
+`fnn-owner-cold-await` waits and settles an already captured read outside
+the owner mutex without parsing or retrying a request. Its caller retains
+the logical response/cursor pin and must return to the charged scheduler
+for another attempt; rollback does not erase work already performed.
 Supported startup demand and matching native evidence are pending.
 Legacy large protected entries and compressed decode/cache storage still
 need productive bounded operations and accounting; a fixture's finite
 read pool establishes no general profile productivity.
+Direct reads distinguish explicit offline operation from served operation;
+an absent pool grants neither a descriptor identity nor permission to read.
+The owner marks the served context before recovery in a funded run. A
+separate typed discovery lease covers a not-yet-verified extent: no trailer
+is guessed. Its descriptor stays held until the caller has relinquished
+the charged buffer. `fnn-extent-entry-fresh` reserves before vector
+allocation and returns both vector and lease; `fnn-owner-release-extents`
+keeps the lease through checkpoint reseating and clears the publication
+buffer alias before release, including scheduling refusal and fault unwind.
+This lease cannot enter the verified cache through the ordinary read
+settlement entry. Ordinary synchronous misses use `fnn-extent-entry-direct`: an
+explicit offline context may read directly; a funded context admits an exact
+verified-read token before allocation, waits for the private read/verifier
+activation to return, then transfers its vector to the charged cache and
+settles the local I/O row. Failed cache transfer retains the lease when an
+alias may remain. Cache-off refuses before allocation. Derived list/decoder allocation, native
+startup wiring and the missing-policy startup surface remain integration
+obligations; the supplied protected-vector demand does not fund them.
+
+The launcher component PRF-1082 extends its existing ACL2 reservation by
+explicit cold-pool heap octets and persistent executor stacks/runtime. Its
+accepted decision covers the rounded dynamic allowance and, for a valid
+policy, fits the observed machine. It does not establish an allocator
+bound or a maintenance reserve. The current operator rejects explicit
+resources as an unsupported profile until native pool initialization and
+the concrete funding consumer are integrated; this positive policy arm is
+currently unreachable in composition.
 
 
 ### Compaction of any length (P5; STO-012)
@@ -1874,3 +1926,29 @@ and init hold an exclusive flock on `ROOT.lock` for the whole program and
 re-check ROOT's absence under it immediately before rename(2); the residual
 (a process ignoring the lock creates an empty directory at ROOT in that
 window) is an operator constraint (docs/operator.md).
+
+The new snapshot source bridge (PRF-1106, SCN-1016) separates one immutable
+checkpoint's physical file retention from a logical view pin. While holding
+the owner capture mutex, `fnn-snapshot-source-root-acquire` acquires a typed
+file pin before releasing that mutex; the controller keeps it across all
+census and column scans. This pin reserves one descriptor/retention credit
+in addition to the registered file's actual descriptor credit, conservatively
+bounding their combined ledger rows without occupying a read worker. It
+cannot settle as a cached verified read.
+
+Each `fnn-snapshot-source-read-page` call resolves the active file pin and
+admits a separate buffer lease under owner then extent locks, then preads one
+fixed 16 KiB page off those locks. Registered history bases already skip the
+FNSI wrapper; ACL2 checks and adds the region-relative page offset, including
+the selected signed 64-bit positional-I/O representation. The caller retains
+the fresh exact buffer token until its authentication/decoder cursor has
+finished and cleared every alias. Root cleanup follows the final scan and
+worker completion. Releasing a root never refunds an outstanding page.
+
+This physical bridge does not authenticate directory/table/data bytes or
+establish the captured history's logical contents. Those are the bounded
+source cursor's obligations. It remains unreachable in composition until
+the producer adopts these entries. Existing global oldest-pin retirement
+stays in place for unmigrated readers, whose live arena placement lookup
+still precedes physical lease acquisition; the new API alone cannot justify
+weakening that protection.

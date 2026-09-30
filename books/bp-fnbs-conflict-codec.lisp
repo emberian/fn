@@ -118,3 +118,8 @@
 (verify-guards fn-bpnf-conflict-recordp)
 (verify-guards fn-bpnf-conflict-values)
 (verify-guards fn-bpnf-conflict-frame)
+
+; Executable prerequisites of the host-called family recovery fold.
+(verify-guards fn-bpnf-conflict-record)
+(verify-guards fn-bpnf-conflict-from-values)
+(verify-guards fn-bpnf-conflict-unframe)

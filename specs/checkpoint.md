@@ -470,3 +470,54 @@ composition and matching native evidence. Neither a source parser nor a
 fixed page buffer alone establishes that boundary. See
 [the concrete contract](../planning/history-decode-contract.md).
 
+
+## S7 private image digest continuation (PRF-1087; planned boundary)
+
+The preparation census knows the final data/table page counts and directory run
+before emission. Each data or table page hashes256 64-octet blocks; a directory
+of M pages hashes256*M blocks. The current directory count is format u32, so
+this stream's complete size is representable without an extra store-size policy.
+A prepared digest is never durable publication or acceptance.
+
+The library `pgs-dc-begin(sel, base, nb, capture, lease, pgs-digest)` records this
+block count and exact captured source/lease names. `pgs-dc-step(block, pgs-digest)`
+receives one fixed sixteen-u32 block when `pgs-dc-needs-block` is true; the next
+word offset is `pgs-dc-next-word-offset`. Each step returns `:continue`, `:done`
+or `:invalid` with its continuation. Split search advances one doubling per
+tick, chunk processing does at most one compression, and parent/root processing
+also yields separately. `pgs-dc-result` is the terminal big-endian natural.
+The optional `pgs-dc-tick(pgs-mem, pgs-digest)` reads at most eight captured u64
+words and calls the same core. The disk-backed builder may instead supply its
+one bounded emission buffer. Neither client builds a whole `fn-octets-pg`.
+
+The `pgs-digest` stobj has64 fixed frame slots plus scalar fields and fixed
+current CV/output values. Constructor allocation belongs to admission; begin
+resets scalars without zeroing its frame array. Source pinning, buffer ownership
+and lease release remain the controller's responsibility. Supported profile,
+codec/runtime address representability and stack-depth sufficiency must agree;
+the64slots are a representation choice, never an operator data limit.
+
+Current evidence is clean guard admission and literal evaluation across empty,
+block, chunk and uneven tree boundaries including the actual previous word-digest
+entry. The proof-only refinement now preserves complete active-frame denotation
+in every phase and conditionally connects a root step to the actual previous
+word digest through `pgs-x-words-digest-is-blake3`. Its captured-source semantic
+carry is still a hypothesis. PRF-1087 remains planned: maintained trajectory
+and representation invariants, strict progress, supported-domain stack
+sufficiency, concrete allocation demand and actual controller composition
+remain open. Ground BLAKE3 agreement establishes neither standard conformance
+nor real cryptographic assumptions. Full S7/P12/D33 completion is unchanged.
+
+The reusable byte extension `pgs-dcb-begin(sel, base, byte-total, capture, lease,
+pgs-digest)` handles exact byte lengths including empty and partial blocks.
+Its caller retains the captured byte-total unchanged. `pgs-dcb-step(byte-total,
+block, pgs-digest)` delegates to the page core except the final rightmost chunk,
+which records the exact byte count. The caller feeds sixteen u32 words with
+zero padding beyond `pgs-dcb-read-demand`, bounded by64 bytes, and consumes
+source only when that demand is nonzero. `pgs-dcb-next-byte-offset` is the
+requested byte coordinate. `pgs-dcb-result-octets` exposes the32 digest octets
+with one separately funded bounded ROOT compression. Exact partial-tail
+refinement and a conditional terminal correspondence to concrete `fn-blake3`
+are source-admitted. This does not equate the constrained `fn-frame-digest`
+with its realizer; streamed protected extents still need the existing joint
+attachment/refinement pattern at their actual consumer boundary.

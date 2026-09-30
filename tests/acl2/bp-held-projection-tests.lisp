@@ -3,7 +3,7 @@
 ; (a two-fragment family, the offset-2 fragment before the offset-0 one)
 ; and the kind-18 family row that reassembles them.
 (in-package "ACL2")
-(include-book "../../books/bp-held-projection")
+(include-book "../../books/bp-recovery-guards")
 (include-book "bp-fnbs-family-replay-tests")
 (include-book "must-fail-checked")
 
@@ -90,3 +90,13 @@
         (equal (fn-bpnf-recovery-heldp (bphpt-held) 8 (1- o)) nil)
         (equal (fn-bpnf-recovery-heldp-fast (bphpt-held) 0 o) nil)
         (equal (fn-bpnf-recovery-heldp (bphpt-held) 0 o) nil))))
+
+; The host's actual recovery subject is guard-verified in this world, and
+; the named refinement theorem mentions that subject directly.
+(assert-event
+ (and (eq (symbol-class 'fn-bphp-recover-auto-event (w state))
+          :common-lisp-compliant)
+      (member-eq 'fn-bphp-recover-auto-event
+                 (all-fnnames
+                  (getpropc 'fn-bphp-recover-auto-event-is-bpnr
+                            'theorem nil (w state))))))
