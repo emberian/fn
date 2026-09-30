@@ -18177,7 +18177,8 @@
         "fn-icrc-register-contained-observes-complete-actual-result",
         "fn-ichc-reserve-row-source-census",
         "fn-icac-release-observes-complete-actual-result",
-        "fn-icac-abort-observes-complete-actual-result"
+        "fn-icac-abort-observes-complete-actual-result",
+        "fn-icsc-settle-observes-complete-actual-result"
       ],
       "evidence": [
         "planning/evidence/manifests/certify-20260930T183523Z-3265040.json",
@@ -18196,9 +18197,12 @@
         "planning/evidence/connection-source-census-2026-09-30/cop-rx-holder-replay.log",
         "books/connection-abort-source-cost.lisp",
         "tests/acl2/connection-abort-source-cost-tests.lisp",
-        "planning/evidence/manifests/certify-20260930T215522Z-3462588.json"
+        "planning/evidence/manifests/certify-20260930T215522Z-3462588.json",
+        "books/connection-settle-source-cost.lisp",
+        "tests/acl2/connection-settle-source-cost-tests.lisp",
+        "planning/evidence/connection-settlement-source-2026-09-30/README.md"
       ],
-      "progress_note": "Exact historical source observer leaves and complete literal effects passed; current four-field RX holder changes closure and requires coordinator convergence. Charged abort source census now counted; registered close/settle, whole request/frame allowance and genuine installation remain open."
+      "progress_note": "Complete guarded abort/settlement source observers and whole-output source-issued positive/refusal teeth pass in the historical clean proof world. Current RX four-field/kernel13 includes require convergence; the interrupted normal attempt is not certification. Nested registry read/release/generation, full request/frame allowance and genuine installation remain open."
     },
     {
       "id": "PRF-1175",

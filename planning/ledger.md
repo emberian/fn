@@ -10,12 +10,12 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1757 |
-| Certification roots in the Makefile | 1650 |
-| Books inside the root closure | 1751 |
-| `defthm` and `defthmd` events | 28120 |
-| `defun` events | 18535 |
-| Functions with verified guards | 3561 |
+| Books read | 1759 |
+| Certification roots in the Makefile | 1652 |
+| Books inside the root closure | 1753 |
+| `defthm` and `defthmd` events | 28125 |
+| `defun` events | 18536 |
+| Functions with verified guards | 3562 |
 | Functions declared `:verify-guards nil` and never verified | 2109 |
 | Functions left at the default with an explicit guard | 10130 |
 | Functions left at the default with no guard | 2735 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 322 |
 | Enabled-projection warnings | 55 |
 | Teeth-form warnings | 272 |
-| Include-hygiene warnings | 2476 |
+| Include-hygiene warnings | 2478 |
 | Host-names warnings | 2129 |
 | Hand-written-record warnings | 18 |
 
@@ -395,6 +395,7 @@ that `make certify` requests.
 | `books/connection-prepare-source-cost.lisp` | root | 15 | 5 | 2/0/3/0 | 0 | 0 | 0 |
 | `books/connection-registry-source-cost.lisp` | root | 7 | 4 | 1/0/3/0 | 0 | 0 | 0 |
 | `books/connection-reserve-source-cost.lisp` | root | 20 | 4 | 2/0/2/0 | 0 | 0 | 0 |
+| `books/connection-settle-source-cost.lisp` | root | 2 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/connection-start-source-cost.lisp` | root | 5 | 2 | 1/0/1/0 | 0 | 0 | 0 |
 | `books/connection-ticket-source-cost.lisp` | root | 12 | 3 | 1/0/2/0 | 0 | 0 | 0 |
 | `books/consumer-artifact-retry.lisp` | root | 21 | 3 | 0/0/2/1 | 0 | 0 | 0 |
@@ -1331,6 +1332,7 @@ that `make certify` requests.
 | `tests/acl2/connection-operation-start-tests.lisp` | closure | 0 | 5 | 0/5/0/0 | 3 | 0 | 0 |
 | `tests/acl2/connection-operation-ticket-tests.lisp` | closure | 0 | 3 | 0/3/0/0 | 4 | 0 | 0 |
 | `tests/acl2/connection-registry-source-cost-tests.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `tests/acl2/connection-settle-source-cost-tests.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/connection-source-compose-tests.lisp` | root | 17 | 5 | 0/4/1/0 | 0 | 0 | 0 |
 | `tests/acl2/consumer-artifact-retry-tests.lisp` | root | 0 | 8 | 0/2/0/6 | 8 | 2 | 0 |
 | `tests/acl2/consumer-bound-tests.lisp` | root | 0 | 23 | 0/11/0/12 | 62 | 5 | 0 |

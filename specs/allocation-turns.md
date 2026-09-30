@@ -158,3 +158,12 @@ normal221219 passing rows cover kernel and unchanged slot/body fixtures, while
 that overall run remains incomplete. Connection composed expectations are adapted
 to73/52/71 operations but await coordinator replay. Fixtures append zero reserve
 only as synthetic logical tests; they are not qualified installations.
+
+The guarded settlement successor observes all four actual `fn-icr-settle`
+results. Source-issued registered-abort, charged refusal and completed-abort
+refusal witnesses check the entire provider/pool outputs and retained identities.
+Its successful suffix constructs23/24 explicit source CONS cells and records
+nine material operations, excluding the named actual registry read/release and
+generation/child units. No runtime price or allowance is inferred. The exact
+component proof world is historical; modern RX/kernel include certification is
+pending, and an interrupted broader cache-miss replay supplies no normal claim.
