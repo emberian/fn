@@ -38,3 +38,13 @@
  ; Preparation is not acceptance or install authority. SAME row and packet
  ; are consumed by the actual account/control completion, without re-intern.
  (fn-hep-builder-readout fn-history-backing))
+
+(defun fn-crpc-publish-completed (completed-operation fn-history-backing)
+ (declare (xargs :stobjs fn-history-backing :verify-guards nil :guard t))
+ ; Only the actual owner completion kernel may register this receipt. The
+ ; backing checks that registration and its retained prepared candidate.
+ ; NIL/default authority refuses before mutation. This entry never derives
+ ; completion from a callback tag, supplied Boolean, row count or source root.
+ ; The owner invokes it inside the SAME Store/CP/config publication action.
+ ; Repeated callback uses the consumed backing phase, never another append.
+ (fn-hep-publish-current completed-operation fn-history-backing))
