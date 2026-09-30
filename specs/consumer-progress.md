@@ -1161,8 +1161,13 @@ Consumer entry preparation now inspects one table cell or rebuilds one prefix
 cell per tick, retaining the unchanged suffix and its annotation. Its exact
 selection/removal matches the existing first-match semantics; duplicate states
 are corruption tests, not valid admitted tables. A ready cursor does not grant
-a publication or freshness right. The actual final classifier, new/ACK entry
-carry, parsed remote-definition validation, captured source revalidation and
+a publication or freshness right. The selected local final proposal/application
+now matches the original decision/applier under that exact prepared selection.
+The local8 carry rebuilds only its fixed fields, preserving canonical numeric
+tail collapse; the remote10 ACK delta requires its proved noncollapsing tail.
+All retained boundary hypotheses have literal removals, and register/rebase/ACK/
+unregister complete fixed5 outcomes execute. Whole fixed5 completion preservation,
+parsed remote-definition validation, captured source revalidation and
 allocation/retirement/quantum funding still precede atomic final mutation.
 Process epoch alone cannot authorize a resumed mutation: all CP-changing
 writers must establish the agreed actual source rule and final validation must
