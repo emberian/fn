@@ -319,3 +319,38 @@ separate from the Store statement keytable. Canonical row handles and paused
 checkpoint summaries do not become identical to live fields by assertion.
 Existing publication assumptions connect verified bytes to checkpoint tables;
 this carry adds no new assumption and does not replace that boundary.
+
+
+## S7 private image digest continuation (PRF-1087; planned boundary)
+
+The preparation census knows the final data/table page counts and directory run
+before emission. Each data or table page hashes25664-octet blocks; a directory
+of M pages hashes256*M blocks. The current directory count is format u32, so
+this stream's complete size is representable without an extra store-size policy.
+A prepared digest is never durable publication or acceptance.
+
+The library `pgs-dc-begin(sel, base, nb, capture, lease, pgs-digest)` records this
+block count and exact captured source/lease names. `pgs-dc-step(block, pgs-digest)`
+receives one fixed sixteen-u32 block when `pgs-dc-needs-block` is true; the next
+word offset is `pgs-dc-next-word-offset`. Each step returns `:continue`, `:done`
+or `:invalid` with its continuation. Split search advances one doubling per
+tick, chunk processing does at most one compression, and parent/root processing
+also yields separately. `pgs-dc-result` is the terminal big-endian natural.
+The optional `pgs-dc-tick(pgs-mem, pgs-digest)` reads at most eight captured u64
+words and calls the same core. The disk-backed builder may instead supply its
+one bounded emission buffer. Neither client builds a whole `fn-octets-pg`.
+
+The `pgs-digest` stobj has64fixed frame slots plus scalar fields and fixed
+current CV/output values. Constructor allocation belongs to admission; begin
+resets scalars without zeroing its frame array. Source pinning, buffer ownership
+and lease release remain the controller's responsibility. Supported profile,
+codec/runtime address representability and stack-depth sufficiency must agree;
+the64slots are a representation choice, never an operator data limit.
+
+Current evidence is clean guard admission and literal evaluation across empty,
+block, chunk and uneven tree boundaries including the actual previous word-digest
+entry. PRF-1087 is planned: the general terminal bridge through
+`pgs-x-words-digest-is-blake3`, maintained stream/representation invariant,
+strict progress, concrete allocation demand and actual controller composition
+remain open. Ground BLAKE3 agreement establishes neither standard conformance
+nor real cryptographic assumptions. Full S7/P12/D33 completion is unchanged.
