@@ -34,3 +34,45 @@
         (fn-stxk-p event) (eq (fn-stxk-context-kind checked) :ok)
         (eq status :carried) (eq effect :snapshot) (equal child event)
         (not (equal out (fn-sn-finish-identity s (fn-sn-files s) event (fn-sn-node s))))))))
+(defun snpit-reserve (s)
+ (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io s :start-frontier nil)
+  :frontier-file :ok) :frontier-replace :ok) :frontier-directory :ok))
+(make-event `(defconst *snpit-event*
+ ',(fn-hsig-keyring-event 0 0 0 1 *ript-principal* *ript-keys*)))
+(defconst *snpit-reserved* (snpit-reserve (fn-sn-initial nil 10)))
+(defconst *snpit-checked* (fn-replay-identity-step (fn-sn-identity-context *snpit-reserved*) *snpit-event*))
+(defconst *snpit-prepared* (fn-snpi-prepare-from-checked *snpit-reserved* *snpit-event* *snpit-checked*))
+(defconst *snpit-completing*
+ (fn-sn-io (fn-sn-io (fn-sn-io *snpit-prepared* :record-file :ok)
+   :record-link :ok) :record-directory :ok))
+(assert-event
+ (and (fn-sn-statep *snpit-reserved*) (fn-sn-statep *snpit-prepared*)
+      (equal *snpit-checked* (fn-replay-identity-step (fn-sn-identity-context *snpit-reserved*) *snpit-event*))
+      (equal (fn-sf-phase (fn-sn-files *snpit-prepared*)) :record-staged)
+      (equal *snpit-prepared* (fn-sn-prepare-identity *snpit-reserved* *snpit-event*))))
+; Prepare's sole decision correspondence is necessary.
+(assert-event
+ (let ((bad (fn-stxk-context :fault 0 nil nil nil nil)))
+  (and (not (equal bad *snpit-checked*))
+       (not (equal (fn-snpi-prepare-from-checked *snpit-reserved* *snpit-event* bad)
+                   (fn-sn-prepare-identity *snpit-reserved* *snpit-event*))))))
+(assert-event
+ (and (fn-sn-statep *snpit-completing*)
+      (equal *snpit-event* (fn-sn-completion-record *snpit-completing*))
+      (equal *snpit-checked* (fn-replay-identity-step (fn-sn-identity-context *snpit-completing*) *snpit-event*))
+      (fn-sn-completion-core-enabledp *snpit-completing*)
+      (equal (fn-snpi-completion-from-checked *snpit-completing* *snpit-event* *snpit-checked*)
+             (fn-sn-completion-core-enabledp *snpit-completing*))))
+; Each retained completion hypothesis is checked when the other is removed.
+(assert-event
+ (let ((bad (fn-stxk-context :fault 0 nil nil nil nil)))
+  (and (equal *snpit-event* (fn-sn-completion-record *snpit-completing*))
+       (not (equal bad (fn-replay-identity-step (fn-sn-identity-context *snpit-completing*) *snpit-event*)))
+       (not (equal (fn-snpi-completion-from-checked *snpit-completing* *snpit-event* bad)
+                   (fn-sn-completion-core-enabledp *snpit-completing*))))))
+(assert-event
+ (let ((checked (fn-replay-identity-step (fn-sn-identity-context *snpit-completing*) nil)))
+  (and (not (equal nil (fn-sn-completion-record *snpit-completing*)))
+       (equal checked (fn-replay-identity-step (fn-sn-identity-context *snpit-completing*) nil))
+       (not (equal (fn-snpi-completion-from-checked *snpit-completing* nil checked)
+                   (fn-sn-completion-core-enabledp *snpit-completing*))))))
