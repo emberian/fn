@@ -79,34 +79,35 @@ record's small-profile column (planning/evidence/f8-reservation-2026-09-28.md,
 - **The core's dynamic content, the threads' stacks and runtimes, the
   collector's room**: the base.
 
-### A.3 The suffix bound the checkpoint cadence gives
+### A.3 The suffix admission boundary
 
-The owner's checkpoint is due when the suffix since the durable image
-reaches K = `max-open-suffix` (`fn-owner-sco-due`, host/owner-host.lisp:665,
-deciding by `fn-ock-requested-next` over `fn-bs-profile-max-open-suffix`);
-never a second in flight; a space or budget deferral blocks it
-(`fn-ock-publication-blockedp`). While one is in flight the suffix keeps
-growing from the in-flight frontier, so **without a deferral the suffix
-is under 2 K records** (K before due, under K more while the publication
-runs and the next becomes due at its frontier). Under a deferral it is
-unbounded today. The design names the bound: at 2 K without an adopted
-image the store is `checkpoint-deferred` by name (the D2 disk-full shape:
-POST refused with the deferral's reason, IHAVE deferred, reads served);
-the operator frees space or raises K. That is a policy row for ember
-(B.8), not a data cap: the bound is on the resident suffix, the disk keeps
-every record.
+A checkpoint becomes due at half K, where K is the persisted profile's
+`max-open-suffix`. The due rule alone cannot bound commits made while a
+publication runs or is deferred. The ratified recovery policy therefore
+requires admission limiting as well as publication progress.
 
-At the small profile K = 128: the suffix is at most 256 records × 16,096
-octets × 2 = 8.0 MiB of decoded rows, plus its index (256 entries).
+`fn-csa-post-admission` now refuses the next POST by name when its new
+committed count would exceed the last durable checkpoint count plus 2 K.
+`fn-owner-post-boundary` reads the carried count and durable frontier under
+the owner mutex before allocating a transaction identity or preparing its
+record. Refusal is `checkpoint-deferred` (POST 441); a newly durable
+checkpoint can reopen admission. The source theorem and exact-boundary
+scenario are PRF-1098 / SCN-1011. Matching native execution remains pending.
+
+This rule bounds each admitted POST relative to the durable checkpoint; it
+does not prove a global suffix bound across every mutation kind or fund the
+physical decoded suffix. Packed frames and canonical retained context can
+exceed a per-record wire-size estimate. Actual representation funding and
+checkpoint rescue remain separate P12 obligations.
 
 ## B. The design
 
 ### P12 implementation contract amendment (GPT-6.1, 2026-09-29)
 
 The ratified [review](review-2026-09-30-gpt6-log2.md) section2 supersedes
-A.3's older policy-question wording. The suffix admission gate is still
-unimplemented: PRF-963 is the deferred-checkpoint health code, not a theorem
-bounding the suffix or preserving rescue capacity. The current maintenance
+A.3's older policy-question wording. PRF-1098 now supplies the POST suffix
+admission boundary; PRF-963 remains only the deferred-checkpoint health code.
+Neither establishes complete rescue capacity. The current maintenance
 reserve funds one release record; it is not a resource-vector rescue proof.
 
 The first implementation increment is `books/page-read-resources.lisp`,
@@ -566,6 +567,7 @@ these target object sizes. Source and hash-array measurements are recorded in
 | Cache allowance | The earlier design selected 64 MiB; the durable `page-cache-octets` field remains unimplemented. It must fund actual retained representations, independently of the eight-entry work policy. |
 | Worker count | A supported operational concurrency choice, funded with the exact launcher stack/runtime. The narrow native fixture uses two, not an inferred production default. |
 | Descriptor capacity F | Must be bounded open descriptor slots with pinned refusal/eviction, or a proved bound from the enforced suffix and retained active generations. Do not allocate four all-history maps from total T merely to obtain a numeric bound. |
+| Per-incarnation metadata | Charge the path, live map/ledger rows and observed device/inode integer representation, including bignums. F bounds concurrent open incarnations, not lifetime file IDs. Old pinned generations can prevent close, so their overlap must be bounded by the maintenance contract. |
 | Incarnation after descriptor eviction | Live extent handles still need the same immutable file identity; reopening a replaced pathname or an unlinked old checkpoint is invalid. Retained physical names and their retirement need a real contract before such eviction. |
 | Fresh protected read | Typed `(:discovery id file eoff elen)` lease, file held until the borrowed vector is relinquished; no fabricated integrity trailer, and no verified-cache settlement. |
 | Decoder and page scratch | Charge compressed input list, input/output arrays, subsequence, decoded list and retained decoder highwater. A page adapter may simultaneously hold 2048 u64 words, 16384 bytes, and a 2048-cons word list with boxed integers. A returned list can outlive the primitive. |

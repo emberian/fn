@@ -543,7 +543,7 @@
                        :article-numbers-exhausted
                        ;; The keyed Message-ID table refused placement
                        ;; before staging (fn-pak-post-admission, PRF-1044).
-                       :mpx-saturated
+                       :mpx-saturated :checkpoint-deferred
                        :storage-failed
                        ;; A signed POST refused at its FN-Authorship carrier
                        ;; (books/peer-authored-accept.lisp fn-pa-served-word):
@@ -588,6 +588,8 @@
     "a group this article is posted to has no article number left (RFC 3977 section 6 ends at 2147483647), nothing was stored (article-numbers-exhausted)")
    ((equal kind :mpx-saturated)
     "the keyed Message-ID index cannot place this article, nothing was stored (mpx-saturated); the node's operator must rebuild the index")
+   ((equal kind :checkpoint-deferred)
+    "checkpoint progress is required before another article can be stored (checkpoint-deferred); retry after the node completes its checkpoint")
    ((equal kind :storage-failed)
     "the store could not write the article, nothing was stored")
    ((equal kind :article)

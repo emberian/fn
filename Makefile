@@ -588,6 +588,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/identity-retain-carried-tests \
 	books/store-profile-carried \
 	books/post-admission-keyed \
+	books/checkpoint-suffix-admission \
+	tests/acl2/checkpoint-suffix-admission-tests \
 	tests/acl2/post-admission-keyed-tests \
 	tests/acl2/page-read-resources-tests \
 	books/page-read-ledger \

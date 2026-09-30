@@ -193,6 +193,7 @@
 (include-book "owner-retain-state")
 (include-book "deflate-inflate")
 (include-book "owner-checkpoint-open")
+(include-book "checkpoint-suffix-admission")
 (include-book "owner-export-request")
 (include-book "owner-control-post-reason")
 (include-book "peer-transit-authority")

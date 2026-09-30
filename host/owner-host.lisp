@@ -37,6 +37,7 @@
 (include-book "../books/deflate-inflate")
 ; P3 owner open and publication (fn-ock-).
 (include-book "../books/owner-checkpoint-open")
+(include-book "../books/checkpoint-suffix-admission")
 ; PKT-868: the operator's compaction request on a running owner.
 (include-book "../books/owner-compact-request")
 ; S3b: the native export request/status decisions belong to the full image.
@@ -2174,10 +2175,16 @@
   ; installed (fn-owner-install-extended), BEFORE the duplicate test, the
   ; prepare and any durable acceptance.  The sixth word `:mpx-saturated' is a
   ; refusal by name (books/store-budget-naming.lisp).
-  (value (fn-pak-post-admission (fn-owner-profile-carry state)
-                                (fn-owner-store-profile state)
-                                msgid-octets payload-length group-count charge
-                                (fn-owner-mpx-key state) fn-cat)))
+  (let ((suffix (fn-csa-post-admission
+                 (fn-owner-sco-global 'fn-owner-sco-durable state)
+                 (fn-owner-sco-count state)
+                 (fn-bs-profile-max-open-suffix (fn-owner-store-profile state)))))
+    (value
+     (if (not (equal suffix :ok)) suffix
+       (fn-pak-post-admission (fn-owner-profile-carry state)
+                              (fn-owner-store-profile state)
+                              msgid-octets payload-length group-count charge
+                              (fn-owner-mpx-key state) fn-cat)))))
 
 ; Completion is the owner's (:complete) event: fn-sn-finish consumed once,
 ; its pair appended to the ledger once (fn-own-completion-consumed-once).

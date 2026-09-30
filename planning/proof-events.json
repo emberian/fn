@@ -17469,6 +17469,19 @@
     {
       "id": "PRF-1066",
       "events": []
+    },
+    {
+      "id": "PRF-1098",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-csa-admitted-post-keeps-twice-k-suffix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-csa-post-beyond-twice-k-is-deferred"
+        }
+      ]
     }
   ]
 }

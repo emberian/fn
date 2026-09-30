@@ -6334,6 +6334,31 @@
         "tests/acl2/page-read-ownership-tests.lisp"
       ],
       "execution_scope": "Pending matching union image; ownership only, no funded worker/buffer admission claim."
+    },
+    {
+      "id": "SCN-1011",
+      "title": "Named checkpoint-deferred POST refusal at exact suffix boundary and recovery after publication",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Create a development profile with persisted max-open-suffix K=2; run the developer owner with checkpoint budget override1024 to force named publication deferral.",
+        "Accept four POSTs, observe checkpoint deferral, and capture headroom/count. Submit three additional distinct Message-IDs.",
+        "Check every additional POST returns441 checkpoint-deferred and headroom/count remain unchanged. Restart with the normal checkpoint budget, observe durable checkpoint at count4, then accept the fifth POST."
+      ],
+      "expected": [
+        "Each accepted POST fits next-count minus durable-count <=2K; the exhausted boundary refuses before identity allocation or record prepare.",
+        "Refused repeats consume no transaction/count capacity. A new durable checkpoint frees suffix admission.",
+        "No conclusion about every mutation kind or complete physical rescue follows from this POST scenario."
+      ],
+      "evidence": [
+        "tests/acl2/checkpoint-suffix-admission-tests.lisp",
+        "tests/acl2/nntp-post-tests.lisp",
+        "tests/test_native_checkpoint_auto.py"
+      ],
+      "execution_scope": "Pure source and wire reply witnesses passed clean REPL; matching image native execution pending."
     }
   ]
 }

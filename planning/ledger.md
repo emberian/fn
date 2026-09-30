@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1708 |
-| Certification roots in the Makefile | 1642 |
-| Books inside the root closure | 1705 |
-| `defthm` and `defthmd` events | 27830 |
-| `defun` events | 18181 |
+| Books read | 1710 |
+| Certification roots in the Makefile | 1644 |
+| Books inside the root closure | 1707 |
+| `defthm` and `defthmd` events | 27832 |
+| `defun` events | 18182 |
 | Functions with verified guards | 3460 |
 | Functions declared `:verify-guards nil` and never verified | 2084 |
-| Functions left at the default with an explicit guard | 9890 |
+| Functions left at the default with an explicit guard | 9891 |
 | Functions left at the default with no guard | 2747 |
-| `assert-event` checks | 23007 |
+| `assert-event` checks | 23011 |
 | `must-fail` checks | 2496 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 157 |
@@ -344,6 +344,7 @@ that `make certify` requests.
 | `books/checkpoint-codec.lisp` | root | 110 | 32 | 13/0/18/1 | 0 | 0 | 2 |
 | `books/checkpoint-compaction.lisp` | root | 12 | 19 | 0/15/4/0 | 0 | 0 | 1 |
 | `books/checkpoint-publish.lisp` | root | 67 | 65 | 13/1/51/0 | 0 | 0 | 0 |
+| `books/checkpoint-suffix-admission.lisp` | root | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/checkpoint.lisp` | root | 18 | 14 | 12/0/2/0 | 0 | 0 | 5 |
 | `books/clock-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/clock-reading.lisp` | root | 7 | 3 | 0/0/3/0 | 0 | 0 | 0 |
@@ -1256,6 +1257,7 @@ that `make certify` requests.
 | `tests/acl2/checkpoint-codec-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 82 | 0 | 0 |
 | `tests/acl2/checkpoint-compaction-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 15 | 4 | 0 |
 | `tests/acl2/checkpoint-publish-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 93 | 2 | 0 |
+| `tests/acl2/checkpoint-suffix-admission-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/checkpoint-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 28 | 0 | 0 |
 | `tests/acl2/clock-reading-tests.lisp` | root | 12 | 0 | 0/0/0/0 | 16 | 9 | 0 |
 | `tests/acl2/clock-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
@@ -1441,7 +1443,7 @@ that `make certify` requests.
 | `tests/acl2/nntp-newnews-tests.lisp` | root | 0 | 7 | 0/1/0/6 | 72 | 9 | 0 |
 | `tests/acl2/nntp-pinned-index-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 2 | 1 | 0 |
 | `tests/acl2/nntp-pinned-msgid-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 2 | 0 |
-| `tests/acl2/nntp-post-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 88 | 6 | 0 |
+| `tests/acl2/nntp-post-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 92 | 6 | 0 |
 | `tests/acl2/nntp-range-indexed-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 13 | 5 | 0 |
 | `tests/acl2/nntp-reader-compat-tests.lisp` | root | 0 | 4 | 0/1/0/3 | 26 | 2 | 0 |
 | `tests/acl2/nntp-reader-profile-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 95 | 0 | 0 |
@@ -2118,7 +2120,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-index-entry-number-of-entry` | `books/nntp-index.lisp` | 89 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-index-entry-number-of-fn-index-entry` | `books/index.lisp` | 35 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-inj-bound-octets-of-an-atom` | `books/injection.lisp` | 568 | arm-of-definition: the hypotheses select one IF/COND arm of fn-inj-bound-octets and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-inj-bound-octets and the conclusion is that branch's value |
-| `fn-inj-decide-without-a-clock-refuses-clock-unusable` | `books/nntp-post.lisp` | 779 | arm-of-definition: the hypotheses select one IF/COND arm of fn-inj-decide and the conclusion is that arm's value |
+| `fn-inj-decide-without-a-clock-refuses-clock-unusable` | `books/nntp-post.lisp` | 781 | arm-of-definition: the hypotheses select one IF/COND arm of fn-inj-decide and the conclusion is that arm's value |
 | `fn-inj-instantp-opens` | `books/injection-invariants.lisp` | 313 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-inj-instantp |
 | `fn-ipp-v3-strip-optional` | `books/injection-info-params-invariants.lisp` | 984 | arm-of-definition: the hypotheses select one IF/COND arm of fn-inj-strip-optional and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-inj-strip-optional and the conclusion is that branch's value |
 | `fn-ipp-with-no-params` | `books/injection-info-params-invariants.lisp` | 359 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ipp-with-params and the conclusion is that arm's value |

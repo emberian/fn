@@ -419,6 +419,30 @@ class AutoCheckpointTests(AutoCheckpointFixture):
         self.node.stop(process=owner)
         self.assertEqual(self.open_line(), "open=checkpoint:66 suffix=0")
 
+    def test_posts_stop_at_twice_k_until_a_checkpoint_is_durable(self):
+        """SCN-1011: refusal precedes mutation; checkpoint progress reopens admission."""
+        created = self.op("init", "--profile", "development", "--max-open-suffix", "2", "fn.test")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        owner = self.node.start(env={"FN_NATIVE_CHECKPOINT_BUDGET_TEST": "1024"})
+        self.ids = self.post_batch(0, 4)
+        self.assertIsNotNone(self.owner_line(owner, CHECKPOINT_DEFERRED))
+        before = self.headroom()
+        answers = self.post_many(["<suffix-refused-{}@example.invalid>".format(n) for n in range(3)])
+        self.assertEqual(len(answers), 3)
+        for answer in answers:
+            self.assertTrue(answer.startswith("441 "), answer)
+            self.assertIn("checkpoint-deferred", answer)
+        self.assertEqual(self.headroom(), before)
+        self.assertEqual(before["transactions-used"], 4)
+        self.node.stop(process=owner)
+        owner = self.node.start()
+        line = self.owner_line(owner, CHECKPOINT_AUTO)
+        self.assertIsNotNone(line)
+        self.assertEqual(int(line.group(1)), 4)
+        self.ids += self.post_batch(4, 1)
+        self.assertEqual(self.headroom()["transactions-used"], 5)
+        self.node.stop(process=owner)
+
     def test_a_kill_between_two_batches_reopens_with_the_old_checkpoint_and_sweeps_the_stage(self):
         # SCN-129 (design 2.4): the pipeline writes many segments between the
         # `created' and `written' cuts of fn-bs-scp-program; a death between

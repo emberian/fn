@@ -487,3 +487,18 @@
    (not (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :duplicate))
                (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :conflict))))
    :rule-classes nil))
+
+; Named suffix admission refusal remains a refusal, distinct from uncertainty.
+(assert-event (fn-post-store-refusalp :checkpoint-deferred))
+(assert-event
+ (equal (fn-tp-outcome-line :checkpoint-deferred)
+        (fn-tp-line "441 posting failed; checkpoint progress is required before another article can be stored (checkpoint-deferred); retry after the node completes its checkpoint")))
+(assert-event
+ (and (fn-post-sessionp (fn-post-result-session *fn-tp-r2*))
+      (fn-post-store-refusalp :checkpoint-deferred)
+      (not (equal (fn-tp-outcome-line :checkpoint-deferred) (fn-tp-outcome-line :uncertain)))))
+(assert-event
+ (and (fn-post-sessionp (fn-post-result-session *fn-tp-r2*))
+      (fn-post-store-refusalp :checkpoint-deferred)
+      (not (equal :refused :checkpoint-deferred))
+      (not (equal (fn-tp-outcome-line :refused) (fn-tp-outcome-line :checkpoint-deferred)))))

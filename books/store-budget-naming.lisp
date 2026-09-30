@@ -219,6 +219,8 @@ max_groups_per_article field G, or 0 when PROFILE is not admitted."
 (defconst *fn-sbud-refusal-mpx-saturated*
   (fn-record-string-octets
    "Message-ID index saturated: the keyed page table cannot place this Message-ID"))
+(defconst *fn-sbud-refusal-checkpoint-deferred*
+  (fn-record-string-octets "checkpoint-deferred: the POST would exceed twice the profile suffix threshold"))
 (defconst *fn-sbud-refusal-unnamed*
   (fn-record-string-octets "the POST boundary returned an unnamed verdict"))
 
@@ -232,12 +234,13 @@ max_groups_per_article field G, or 0 when PROFILE is not admitted."
     (:group-bound *fn-sbud-refusal-group-bound*)
     (:charge-bound *fn-sbud-refusal-charge-bound*)
     (:mpx-saturated *fn-sbud-refusal-mpx-saturated*)
+    (:checkpoint-deferred *fn-sbud-refusal-checkpoint-deferred*)
     (otherwise *fn-sbud-refusal-unnamed*)))
 
 (defun fn-sbud-post-boundary-verdictp (verdict)
   (declare (xargs :guard t))
   (if (member-equal verdict '(:ok :bad-message-id :payload-bound :group-bound
-                                  :charge-bound :mpx-saturated))
+                                  :charge-bound :mpx-saturated :checkpoint-deferred))
       t
     nil))
 

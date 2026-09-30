@@ -679,8 +679,7 @@ stays authoritative, and the file may be deleted at any time.
   Otherwise it replays in full. Status prints `open=checkpoint:S suffix=k`
   or `open=full-replay reason=R` (absent, corrupt, ahead-of-history,
   suffix-exceeds-k). **K is the fast path's threshold, not a guaranteed
-  maximum suffix** (decided 2026-09-26, gpt-6's review section 2; ember may
-  choose the guarantee later): a suffix within K is served from the
+  maximum suffix**: a suffix within K is served from the
   checkpoint, a longer one is the full replay, the honest fallback to the
   same state (`fn-ock-fast-path-within-k-by-definition`,
   books/owner-checkpoint-open.lisp). The suffix a publication leaves is
@@ -1604,7 +1603,17 @@ removal belong to that baseline. Its measured sizing and actual native
 installation are still required. This implementation
 is partial: supplied charges are not an allocator refinement, and the
 performed checkpoint/recovery demand, old/new coexistence, productive
-supported profile and suffix rescue admission still need implementation.
+supported profile and full suffix rescue admission still need implementation.
+
+The POST boundary now calls `fn-csa-post-admission` before transaction identity
+allocation or preparation (PRF-1098, SCN-1011). With carried committed count C,
+last durable checkpoint count D (zero when absent), and persisted positive K,
+it accepts only when C + 1 <= D + 2 K. Otherwise POST receives named 441
+`checkpoint-deferred`; no attempt is prepared, and checkpoint progress can
+restore admission. This is a local recovery policy, not an RFC requirement.
+The theorem covers this decision, not every mutation kind or physical rescue
+funding. Native refusal/preservation and resumed admission are specified for
+the matching image campaign.
 
 Direct reads distinguish explicit offline operation from served operation;
 an absent pool grants neither a descriptor identity nor permission to read.
