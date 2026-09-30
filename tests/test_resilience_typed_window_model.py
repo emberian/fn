@@ -49,3 +49,20 @@ class TypedWindowModelTests(unittest.TestCase):
         self.assertEqual(len(delete(scenario, "admit").operations), 2)
         scenario.operations[0] = Operation("bad", "client", "window-return", {"request": "future"})
         with self.assertRaises(ScenarioError): check(scenario)
+
+    def test_shared_settlement_witness_uses_actual_execution(self):
+        import json
+        from pathlib import Path
+        from tools.resilience.scenario import Scenario, Operation
+        from tools.resilience.typed_window_model import judge_scenario
+        evidence = Path(__file__).resolve().parents[1] / "planning/evidence/resilience-typed-window-2026-09-30"
+        cases = json.loads((evidence / "model-trials.json").read_text())
+        text = (evidence / "model-trials.log").read_text()
+        for trial, expected in [(0, "consistent"), (2, "no-witness")]:
+            operations = [Operation(s["id"], "client", "window-" + s["action"],
+                                    {"request": s["request"], "selector": s["selector"]}) for s in cases[trial]]
+            scenario = Scenario("actual", "Actual typed trial", "typed-window-model",
+                                {"recipe": "typed-window-assigned-vector"},
+                                [{"name": "client", "kind": "client"}], operations,
+                                [], [operations[-1].id], ["typed-window-settled"])
+            self.assertEqual(judge_scenario(scenario, observe(text, trial), trial).kind, expected)
