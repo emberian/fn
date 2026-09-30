@@ -1,0 +1,19 @@
+{
+  "source_root": "/Users/ember/dev/fn/build/lanes/operability-3",
+  "sources": {
+    "books/owner-time-model.lisp": "bb8471af7cd0834868440d0fd573d08d72249ae3d16abef24045b9c12bb565a9",
+    "books/owner-stop-drain.lisp": "a7308772273d725e440662ef9cf4e5d0392088ee4a7c7adb04cb30c6a546a26c",
+    "books/owner-retire-counted.lisp": "2b7045d204886fba6495ee7725b2e471b378dfb4a99197838909563c3fa21449",
+    "host/native/owner.lisp": "18e18fe7de6dcd8f1ff0ed1c886ba9e86f77be6ba9759496bc64ccc478333a88"
+  },
+  "fixture_sha256": "103fe2348cf6a2e14b50d64f000d6bc3eab6ce56489fde9a03fec7a9308e4703",
+  "scope": "Actual native function and roster macro; actual ACL2 decision bodies evaluated as Common Lisp with xargs declarations removed. Recording clock/dispatch, minimal service struct, actual SBCL synchronization. Not ACL2 proof, complete scheduler, image, native disk, funding or shutdown qualification.",
+  "status": "passed",
+  "cases": [
+    "held semantic mutex before and after deadline, no semantic calls",
+    "25 forced stale-wait publications after a concurrent deadline preserve identical completed record and stop request",
+    "completed observer skips clock callback",
+    "25 paired concurrent deadline observations preserve final record and stop request"
+  ],
+  "log": "result.log"
+}

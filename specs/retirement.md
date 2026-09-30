@@ -64,6 +64,27 @@ The outer operator caller and the direct run-line writer also consult
 stopped-line I/O and descriptor close. A timeout does not relinquish that
 slot; only definite join clears it.
 
+With the producer observation still unsettled, the actual tick uses the
+clock-only entry: `fn-ort-window-step-is-unsettled-counted-step` equates it
+to the complete counted decision for every pending value. It acquires no
+semantic owner mutex and performs no free-space filesystem query. The
+accept loop observes this decision before maintenance and admits no new
+maintenance after retirement begins. Existing maintenance can still block
+the accept loop; an independent, funded observer or nonblocking maintenance
+continuation remains required. This conservatively disabled early success
+does not replace the required complete producer fence and early drain.
+Fixed retirement metadata is observed and published under the short roster
+lock, without semantic locking. `fn-ort-retire-publish` is idempotent and
+preserves completed metadata after a stale wait, so concurrent observers
+cannot replace the completed record or encounter the transient two-to-three
+field publication without the stop request. An independent observer remains
+unactivated until its ticking and retained-job lifetime are established.
+
+`tests/recording/retirement` preserves actual-function regression snapshots,
+source hashes and logs for the held log writer and held semantic mutex.
+Recording I/O/core stubs and real SBCL synchronization are their exact scope;
+they are not an ACL2 proof, matching image or disk/native qualification.
+
 ## Unactivated cursor contract
 
 `books/owner-retire-cursor.lisp` is an independently admitted source

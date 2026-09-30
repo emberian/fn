@@ -4748,7 +4748,19 @@
 (definterface fn-ort-window-step
   :class :common-lisp-compliant
   :keystones (fn-ort-window-step-never-drained
-              fn-ort-window-step-deadline-is-counted-deadline))
+              fn-ort-window-step-deadline-is-counted-deadline
+              fn-ort-window-step-is-unsettled-counted-step))
+
+(definterface fn-ort-maintenance-action
+  :class :common-lisp-compliant)
+
+(definterface fn-ort-retire-observer-action
+  :class :common-lisp-compliant)
+
+(definterface fn-ort-retire-publish
+  :class :common-lisp-compliant
+  :keystones (fn-ort-retire-publication-is-idempotent
+              fn-ort-retire-publish-preserves-completed-record))
 
 (definterface fn-ort-log-close-action
   :class :common-lisp-compliant
@@ -4789,11 +4801,6 @@
 (definterface fn-owner-retire-report
   :class ::program
   :keystones ((fn-oret-report-carries-the-obligations-report :via fn-oret-report)))
-
-(definterface fn-owner-retire-step
-  :class ::program
-  :keystones ((fn-oret-drain-step-ends-by-the-window :via fn-oret-drain-step)
-              (fn-oret-drain-step-waits-while-feeds-drain :via fn-oret-drain-step)))
 
 (definterface fn-tls-self-signed-host-certificate-pem
   :class :program

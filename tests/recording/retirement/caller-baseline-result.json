@@ -1,0 +1,24 @@
+{
+  "status": "refuter-passed",
+  "observations": [
+    [
+      "write",
+      123,
+      false
+    ],
+    [
+      "write",
+      123,
+      true
+    ],
+    [
+      "close",
+      123,
+      true
+    ]
+  ],
+  "exit_code": 75,
+  "fixture_sha256": "01e9eb20a2c2d15ff8e0ba8de9b358b795f16062aeae98241ab844f443e57f16",
+  "scope": "Actual operator functions with recording I/O/core stubs and live SBCL thread. Demonstrates caller writes/closes while worker alive; not full native qualification.",
+  "repair_owner": "sol_operator_drain"
+}

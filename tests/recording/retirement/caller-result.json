@@ -1,0 +1,13 @@
+{
+  "status": "passed",
+  "cases": [
+    "timeout retains live-writer fd/path and skips stop-line write/close",
+    "joined path writes stop line and closes fd"
+  ],
+  "source_hashes": {
+    "host/native/operator.lisp": "3289ab9c42f32ff74958bd8d103792d177162fc04c9823f90dfdc6355942c938",
+    "host/native/operator-live.lisp": "293a7b0b4b4cdd96e8a0807611820e9d3678c3b88f764f5aad1dd2478af51da4"
+  },
+  "fixture_sha256": "0dc4f7185be0b1239dbd8d8b9863390149ef908edc5c5e88abf1d96bd99071e9",
+  "scope": "Actual source functions with recording I/O and live SBCL thread; actual pure ACL2 action body evaluated as CL, not ACL2 proof or whole native qualification."
+}

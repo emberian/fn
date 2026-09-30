@@ -1,0 +1,7 @@
+{
+  "source_hashes": {
+    "host/native/operator.lisp": "dea9042964f01ff261ebefa8ccb31a0a6b19f9706cab245a3610f482cb590591",
+    "host/native/operator-live.lisp": "c87009a5bd2a15a3325aeac506252fe12c8bb1d96a2662c086a52409b0b84288"
+  },
+  "scope": "Actual two operator functions with recording I/O/core stubs and actual live SBCL worker; checks caller ownership behavior only, not ACL2 decisions, disk or native qualification."
+}

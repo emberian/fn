@@ -4266,27 +4266,31 @@ renamed into place, the directory fenced."
 
 (defun fnn-owner-maybe-retire (service)
   "One drain decision of a retiring owner (row S9), at an accept-loop tick."
-  (let ((retire (fnn-owner-service-retire service)))
-    (when (and retire (not *fnn-sigterm-requested*)
+  (let ((retire (fnn-with-roster (service)
+                  (fnn-owner-service-retire service))))
+    (when (and (eq (fnn-core 'fn-ort-retire-observer-action retire) :observe)
+               (not *fnn-sigterm-requested*)
                (not (fnn-owner-service-stopping service)))
-      (destructuring-bind (s0 seconds) retire
+      (let ((s0 (first retire)) (seconds (second retire)))
         ;; The drain-window observation needs only recorded time. Do not put
         ;; a filesystem free-space I/O observation ahead of that deadline.
         (let* ((s (fnn-owner-sched-snapshot service))
-               (window-step (fnn-core 'fn-ort-window-step s0 s seconds))
-               (step (if (eq window-step :deadline)
-                         window-step
-                       (fnn-owner-serialized
-                        service nil
-                        (lambda () (fnn-owner-core 'fn-owner-retire-step s0 s seconds))
-                        :inspect))))
+               ;; Producers-settled is not established yet. The named
+               ;; equivalence makes this the exact unsettled counted step,
+               ;; without waiting for a semantic mutex held across a barrier.
+               ;; Early drained success awaits the complete producer fence.
+               (step (fnn-core 'fn-ort-window-step s0 s seconds)))
           (unless (member step '(:wait :drained :deadline))
             (fnn-fault "owner returned a malformed retire step ~a" step))
-          (unless (eq step :wait)
-            ;; Record the ACL2 decision, then begin stop immediately. Rendering
-            ;; is deferred until the accepted producers and workers are joined.
-            (setf (fnn-owner-service-retire service) (list s0 seconds step))
-            (setf *fnn-sigterm-requested* t)))))))
+          ;; Serialize only fixed lifecycle metadata, never the semantic
+          ;; owner mutex. A concurrent stale wait preserves completed state.
+          (fnn-with-roster (service)
+            (let ((publication
+                    (fnn-core 'fn-ort-retire-publish
+                              (fnn-owner-service-retire service) step)))
+              (setf (fnn-owner-service-retire service) (first publication))
+              (when (second publication)
+                (setf *fnn-sigterm-requested* t)))))))))
 
 (defun fnn-owner-retire-final-report (service)
   "Observe after worker/committer cleanup; complete settlement remains OPEN."
@@ -5473,13 +5477,16 @@ thread is a worker, so the stop joins it with the clients."
                   (fnn-mux-serve-once service socket)
                   (return))
               (fnn-owner-launch-client service socket)))
-          ;; Before the next accept: the owner's checkpoint publication,
-          ;; and a log reopen a SIGHUP asked for (PKT-101).
-          (fnn-owner-cold-reap service)
-          (fnn-owner-maybe-publish service)
-          (fnn-owner-maybe-reopen-log service)
-          ;; Row S9: a retiring node's drain step (host/native/admin.lisp).
-          (fnn-owner-maybe-retire service))
+          ;; Observe the retire window before any maintenance can acquire
+          ;; the semantic mutex or begin filesystem I/O. Existing jobs retain
+          ;; authority until cleanup joins them; no new maintenance is issued
+          ;; during retirement.
+          (fnn-owner-maybe-retire service)
+          (when (eq (fnn-core 'fn-ort-maintenance-action
+                             (fnn-owner-service-retire service)) :admit)
+            (fnn-owner-cold-reap service)
+            (fnn-owner-maybe-publish service)
+            (fnn-owner-maybe-reopen-log service)))
       (sb-bsd-sockets:socket-error (condition)
         (unless (or *fnn-sigterm-requested*
                     (fnn-owner-service-stopping service))

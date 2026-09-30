@@ -1301,6 +1301,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-outcome-counted \
 	tests/acl2/owner-outcome-counted-tests \
 	tests/acl2/owner-feed-live-carried-tests \
+	books/owner-maintenance-admission \
 	books/owner-retire-counted \
 	tests/acl2/owner-retire-counted-tests \
 	tests/acl2/owner-feed-counts-tests \

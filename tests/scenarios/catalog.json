@@ -7084,7 +7084,7 @@
         "tests/acl2/owner-feed-reconfigure-counted-tests.lisp",
         "tests/acl2/owner-retire-counted-tests.lisp"
       ],
-      "scope_note": "Count/live/replay/configuration fixtures execute in protected source REPLs. Constructed control completion checks exact one-fold aggregate and no duplicate enqueue; it is not a persisted acceptance claim. Actual intake/final-join source hooks include explicit log join/timeout disposition; held writers retain journal authority, suppress report and return uncertain; the outer operator caller also skips stopped-line direct I/O and log descriptor close while writer authority remains held. These are prototypes, not a matching native qualification. Complete SCN-1046/1047 slice, producer settlement and funded frozen streaming report remain open."
+      "scope_note": "Count/live/replay/configuration fixtures execute in protected source REPLs. Constructed control completion checks exact one-fold aggregate and no duplicate enqueue; it is not a persisted acceptance claim. Actual intake/final-join source hooks include explicit log join/timeout disposition; held writers retain journal authority, suppress report and return uncertain; the outer operator caller also skips stopped-line direct I/O and log descriptor close while writer authority remains held. These are prototypes, not a matching native qualification. Actual-function recording regression packets are retained under tests/recording/retirement with their limited recording I/O/core and SBCL synchronization scope. Complete SCN-1046/1047 slice, existing maintenance/independent deadline scheduling, producer settlement and funded frozen streaming report remain open."
     }
   ]
 }

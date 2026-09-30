@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1847 |
-| Certification roots in the Makefile | 1779 |
-| Books inside the root closure | 1843 |
-| `defthm` and `defthmd` events | 29510 |
-| `defun` events | 18928 |
+| Books read | 1848 |
+| Certification roots in the Makefile | 1780 |
+| Books inside the root closure | 1844 |
+| `defthm` and `defthmd` events | 29513 |
+| `defun` events | 18931 |
 | Functions with verified guards | 3544 |
 | Functions declared `:verify-guards nil` and never verified | 2249 |
-| Functions left at the default with an explicit guard | 10306 |
+| Functions left at the default with an explicit guard | 10309 |
 | Functions left at the default with no guard | 2829 |
-| `assert-event` checks | 23923 |
+| `assert-event` checks | 23926 |
 | `must-fail` checks | 2516 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 159 |
@@ -712,6 +712,7 @@ that `make certify` requests.
 | `books/owner-log-reopen.lisp` | root | 1 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/owner-log-route.lisp` | root | 4 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/owner-log.lisp` | root | 31 | 48 | 2/0/46/0 | 0 | 0 | 2 |
+| `books/owner-maintenance-admission.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/owner-maintenance-request.lisp` | closure | 6 | 19 | 0/4/15/0 | 0 | 0 | 1 |
 | `books/owner-number-bound-join.lisp` | root | 86 | 1 | 0/0/0/1 | 0 | 0 | 5 |
 | `books/owner-number-bound.lisp` | root | 36 | 5 | 0/0/1/4 | 0 | 0 | 0 |
@@ -741,7 +742,7 @@ that `make certify` requests.
 | `books/owner-results.lisp` | root | 23 | 69 | 8/5/55/1 | 0 | 0 | 1 |
 | `books/owner-retain-state.lisp` | closure | 5 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/owner-retention-preparation.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/owner-retire-counted.lisp` | root | 9 | 8 | 0/0/8/0 | 0 | 0 | 2 |
+| `books/owner-retire-counted.lisp` | root | 12 | 10 | 0/0/10/0 | 0 | 0 | 2 |
 | `books/owner-retire-cursor.lisp` | root | 5 | 7 | 7/0/0/0 | 0 | 0 | 1 |
 | `books/owner-retire-stream.lisp` | - | 2 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/owner-retire.lisp` | root | 4 | 9 | 0/0/9/0 | 0 | 0 | 0 |
@@ -1650,7 +1651,7 @@ that `make certify` requests.
 | `tests/acl2/owner-results-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 49 | 2 | 0 |
 | `tests/acl2/owner-retain-state-tests.lisp` | root | 3 | 4 | 0/0/1/3 | 0 | 0 | 0 |
 | `tests/acl2/owner-retention-preparation-tests.lisp` | root | 0 | 3 | 0/2/0/1 | 5 | 1 | 0 |
-| `tests/acl2/owner-retire-counted-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
+| `tests/acl2/owner-retire-counted-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 0 | 0 |
 | `tests/acl2/owner-retire-cursor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/owner-scheduler-tests.lisp` | root | 0 | 2 | 0/1/1/0 | 26 | 4 | 0 |
 | `tests/acl2/owner-served-bound-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 8 | 2 | 0 |
@@ -2462,8 +2463,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-orr-read-span-without-a-capture-is-the-span-read-by-definition` | `books/owner-reader-read.lisp` | 349 | arm-of-definition: the hypotheses select one IF/COND arm of fn-orr-read-span and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-orr-read-span and the conclusion is that branch's value |
 | `fn-orr-tls-result-of-make` | `books/owner-reader-read.lisp` | 280 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-orr-with-view-owner` | `books/owner-reader-read.lisp` | 254 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-ort-log-caller-held-preserves-descriptor-authority` | `books/owner-retire-counted.lisp` | 61 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ort-log-caller-action and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-ort-log-caller-action and the conclusion is that branch's value |
-| `fn-ort-log-close-held-is-uncertain` | `books/owner-retire-counted.lisp` | 36 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ort-log-close-exit and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-ort-log-close-exit and the conclusion is that branch's value |
+| `fn-ort-log-caller-held-preserves-descriptor-authority` | `books/owner-retire-counted.lisp` | 62 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ort-log-caller-action and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-ort-log-caller-action and the conclusion is that branch's value |
+| `fn-ort-log-close-held-is-uncertain` | `books/owner-retire-counted.lisp` | 37 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ort-log-close-exit and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-ort-log-close-exit and the conclusion is that branch's value |
 | `fn-orv-conn-config-of-with-view` | `books/owner-reader-view.lisp` | 331 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-osb-install-refuses-unadmitted-by-definition` | `books/owner-served-bound.lisp` | 96 | arm-of-definition: the hypotheses select one IF/COND arm of fn-osb-install and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-osb-install and the conclusion is that branch's value |
 | `fn-osb-own-config-of-configure` | `books/owner-served-bound.lisp` | 43 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

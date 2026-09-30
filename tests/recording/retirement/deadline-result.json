@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "source_sha256": "d0c44daac64f84e234ec16464df81b2714bff4b98adc9e5c75cab9ecc730edae",
+  "function_sha256": "fcdfaecedf945a734b847803a1dc64a917bb8d24897c666bb7853c8bb9e88bcd",
+  "fixture_sha256": "a9f8433f2763e699208e32782be6e1b77262039642d924185ba9d0c61b861a41",
+  "cases": [
+    "Before deadline returns while semantic mutex remains held; zero semantic calls",
+    "Next observation after deadline marks retirement deadline and requests stop"
+  ],
+  "scope": "Actual native function, recording clock/core and real SBCL mutex; not full accept-loop deadline, native image, or total shutdown bound."
+}

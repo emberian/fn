@@ -1,0 +1,61 @@
+(defpackage "ACL2" (:use "CL"))
+(in-package "ACL2")
+(defstruct fnn-owner-service retire stopping)
+(defvar *fnn-sigterm-requested* nil)
+(defvar *semantic-lock* (sb-thread:make-mutex))
+(defvar *clock* 0)
+(defvar *clock-observed* (sb-thread:make-semaphore))
+(defvar *semantic-calls* 0)
+(defun fnn-owner-sched-snapshot (service)
+ (declare (ignore service))
+ (prog1 *clock* (sb-thread:signal-semaphore *clock-observed*)))
+(defun fnn-core (name &rest args)
+ (case name
+  (fn-ort-window-step (if (>= (second args) (* 1000 (third args))) :deadline :wait))
+  (otherwise (error "unexpected core call ~s" name))))
+(defun fnn-owner-core (name &rest args)
+ (declare (ignore args))
+ (unless (eq name 'fn-owner-retire-step) (error "unexpected owner call"))
+ :wait)
+(defun fnn-owner-serialized (service ignored callback &optional kind)
+ (declare (ignore service ignored kind))
+ (incf *semantic-calls*)
+ (sb-thread:with-mutex (*semantic-lock*) (funcall callback)))
+(defun fnn-fault (&rest args) (error "unexpected fault ~s" args))
+(defun fnn-owner-maybe-retire (service)
+  "One drain decision of a retiring owner (row S9), at an accept-loop tick."
+  (let ((retire (fnn-owner-service-retire service)))
+    (when (and retire (not *fnn-sigterm-requested*)
+               (not (fnn-owner-service-stopping service)))
+      (destructuring-bind (s0 seconds) retire
+        ;; The drain-window observation needs only recorded time. Do not put
+        ;; a filesystem free-space I/O observation ahead of that deadline.
+        (let* ((s (fnn-owner-sched-snapshot service))
+               ;; Producers-settled is not established yet. The named
+               ;; equivalence makes this the exact unsettled counted step,
+               ;; without waiting for a semantic mutex held across a barrier.
+               ;; Early drained success awaits the complete producer fence.
+               (step (fnn-core 'fn-ort-window-step s0 s seconds)))
+          (unless (member step '(:wait :drained :deadline))
+            (fnn-fault "owner returned a malformed retire step ~a" step))
+          (unless (eq step :wait)
+            ;; Record the ACL2 decision, then begin stop immediately. Rendering
+            ;; is deferred until the accepted producers and workers are joined.
+            (setf (fnn-owner-service-retire service) (list s0 seconds step))
+            (setf *fnn-sigterm-requested* t)))))))
+(let ((service (make-fnn-owner-service :retire '(0 1))) (worker nil))
+ (sb-thread:with-mutex (*semantic-lock*)
+  (setq worker (sb-thread:make-thread (lambda () (fnn-owner-maybe-retire service)) :name "retirement deadline observation"))
+  (assert (sb-thread:wait-on-semaphore *clock-observed* :timeout 1))
+  (setq *clock* 2000)
+  (multiple-value-bind (value outcome) (sb-thread:join-thread worker :timeout 0.05 :default :waiting)
+   (declare (ignore value))
+   (assert (null outcome))
+   (assert (= *semantic-calls* 0))
+   (assert (null *fnn-sigterm-requested*))
+   (format t "DEADLINE-REPAIR-PASSED clock=~d join=~s semantic-calls=~d~%" *clock* outcome *semantic-calls*)))
+ (sb-thread:join-thread worker)
+ (fnn-owner-maybe-retire service)
+ (assert *fnn-sigterm-requested*)
+ (assert (eq (third (fnn-owner-service-retire service)) :deadline))
+)

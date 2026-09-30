@@ -1,6 +1,35 @@
 (in-package "ACL2")
 (include-book "../../books/owner-retire-counted")
 
+; Reachable publication and repeated/stale observer result: lifecycle record
+; is fixed metadata, not a whole-state comparison or owner mutex wait.
+(assert-event
+ (and (equal (fn-ort-retire-observer-action '(0 10)) :observe)
+      (equal (fn-ort-retire-publish '(0 10) :deadline)
+             '((0 10 :deadline) t))
+      (equal (fn-ort-retire-observer-action '(0 10 :deadline)) :done)
+      (equal (fn-ort-retire-publish '(0 10 :deadline) :wait)
+             '((0 10 :deadline) t))
+      (equal (fn-ort-retire-publish
+              (car (fn-ort-retire-publish '(0 10) :deadline)) :deadline)
+             (fn-ort-retire-publish '(0 10) :deadline))))
+; Remove completed-record hypothesis, preserve valid metadata/event: the
+; original-record conclusion affirmatively fails after first publication.
+(assert-event
+ (and (not (equal (fn-ort-retire-observer-action '(0 10)) :done))
+      (equal (fn-ort-retire-observer-action '(0 10)) :observe)
+      (not (equal (car (fn-ort-retire-publish '(0 10) :deadline)) '(0 10)))))
+
+; Current producer observation is explicitly unsettled, so the actual
+; clock-only entry has the complete counted decision for any pending scalar.
+(assert-event
+ (and (equal (fn-ort-window-step nil nil 10)
+             (fn-ort-drain-step-counted nil nil 10 137 t nil))
+      (equal (fn-ort-window-step nil nil 0)
+             (fn-ort-drain-step-counted nil nil 0 -9 nil nil))
+      (equal (fn-ort-maintenance-action t) :skip)
+      (equal (fn-ort-maintenance-action nil) :admit)))
+
 (assert-event
  (and (equal (fn-ort-log-caller-action nil) :write-close)
       (not (equal t nil))
