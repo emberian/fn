@@ -4880,3 +4880,6 @@
 
 (definterface fn-pvl-runtime-step :class ::common-lisp-compliant)
 (definterface fn-owner-payload-view-owned-p :class :program)
+
+(definterface fn-pwz-tokenp :class :common-lisp-compliant
+  :direct "Guard-t full decoded token discrimination precedes raw token destructuring; decoded execution remains refused")

@@ -229,3 +229,11 @@ action-budget output splitting is not assumed. Complete decoder/dictionary
 trajectory, total budget adequacy, compiler/runtime demand and native
 lifecycle/consumer activation remain open. This is source component
 evidence, not certification or a qualified served path.
+
+The shared source executor accepts the distinct decoded token and retains its
+full identity through actual acquire, cancellation, return and settlement.
+Raw plan publication requires the raw kind and descriptor. This source join
+does not install a decoded native worker/buffer holder: the native dispatcher
+explicitly refuses decoded execution until exact object/view binding and
+matched compressed runtime funding are supplied. See the source coordinate
+in planning/evidence/decoded-window-shared-join-source-2026-09-30.md.

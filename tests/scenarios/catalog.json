@@ -6641,7 +6641,9 @@
         "planning/evidence/decoded-window-read-source-2026-09-30.md",
         "books/decoded-window-copy-trajectory.lisp",
         "tests/acl2/decoded-window-copy-trajectory-tests.lisp",
-        "planning/evidence/decoded-window-copy-source-2026-09-30.md"
+        "planning/evidence/decoded-window-copy-source-2026-09-30.md",
+        "tests/acl2/decoded-window-executor-tests.lisp",
+        "planning/evidence/decoded-window-shared-join-source-2026-09-30.md"
       ],
       "execution_scope": "Protected source composition and literal local-buffer witnesses only; no native served enablement or qualification."
     },

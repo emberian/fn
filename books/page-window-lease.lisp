@@ -37,7 +37,7 @@
 (defun fn-prw-phase (ledger token)
   (declare (xargs :guard t))
   (let ((row (cdr (fn-prl-binding token (fn-prl-nth 3 ledger)))))
-    (and (equal (fn-prl-nth 0 token) :window)
+    (and (member-eq (fn-prl-nth 0 token) '(:window :decoded-window))
          (equal (fn-prl-nth 1 row) :window) (fn-prl-nth 2 row))))
 
 ; Physical observation: the private worker activation has actually returned

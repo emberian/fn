@@ -7,6 +7,7 @@
   (declare (xargs :guard (true-listp s)
                   :guard-hints (("Goal" :in-theory (enable fn-pwx-tokenp)))))
   (and (fn-pwx-tokenp token)
+       (equal (fn-prl-nth 0 token) :window) (fn-prw-descriptorp (cddr token))
        (equal (nth 8 s) (fn-prl-nth 1 token))
        (equal (nth 10 s) token)
        (equal (list (nth 1 s) (nth 2 s) (nth 3 s) (nth 11 s)

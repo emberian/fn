@@ -1144,6 +1144,7 @@
     "tests/acl2/durable-lz-octet-tests",
     "tests/acl2/decoded-window-descriptor-tests",
     "tests/acl2/decoded-window-lease-tests",
+    "tests/acl2/decoded-window-executor-tests",
     "tests/acl2/decoded-window-begin-tests",
     "tests/acl2/decoded-window-read-tests",
     "tests/acl2/decoded-window-copy-trajectory-tests",
@@ -1817,12 +1818,12 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1892,
-    "books_in_root_closure": 1884,
-    "roots": 1813,
+    "books": 1893,
+    "books_in_root_closure": 1885,
+    "roots": 1814,
     "theorems": 29780,
     "functions": 19041,
-    "assert_events": 23985,
+    "assert_events": 23989,
     "must_fails": 2516,
     "prover_refusals": 0,
     "encapsulates": 169,
@@ -1836,8 +1837,8 @@
     "export_hygiene_warnings": 340,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2563,
-    "host_names_warnings": 2198,
+    "include_hygiene_warnings": 2564,
+    "host_names_warnings": 2199,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -22866,6 +22867,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "decoded-window-descriptor",
         "page-read-executor",
         "page-window-lease"
       ],
@@ -41164,6 +41166,33 @@
       "encapsulates": 0,
       "includes": [
         "../../books/decoded-window-descriptor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/decoded-window-executor-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 7,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/page-window-executor",
+        "decoded-window-lease-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -82445,6 +82474,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/decoded-window-executor-tests.lisp",
+        "line": 2,
+        "include": "decoded-window-lease-tests",
+        "included": "tests/acl2/decoded-window-lease-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/decoded-window-read-tests.lisp",
         "line": 3,
         "include": "decoded-window-begin-tests",
@@ -95399,62 +95435,69 @@
       {
         "host": "host/native/extent.lisp",
         "line": 447,
+        "name": "fn-pwz-tokenp",
+        "source": "books/decoded-window-descriptor.lisp",
+        "reason": "defined in books/decoded-window-descriptor.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/extent.lisp",
+        "line": 447,
         "name": "make-condition",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 682,
+        "line": 685,
         "name": "remhash",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 693,
+        "line": 696,
         "name": "list*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 750,
+        "line": 753,
         "name": "fnn-refuse",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 789,
+        "line": 792,
         "name": "find-if",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 789,
+        "line": 792,
         "name": "delete",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 1008,
+        "line": 1011,
         "name": "fn-arena$x-ext-length",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 1008,
+        "line": 1011,
         "name": "fn-arena$x-exti",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/extent.lisp",
-        "line": 1008,
+        "line": 1011,
         "name": "fn-arn-lz-extentp",
         "source": "books/payload-arena-extent-logic.lisp",
         "reason": "defined in books/payload-arena-extent-logic.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
