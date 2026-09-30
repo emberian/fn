@@ -913,6 +913,13 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nov-fields \
 	books/nov-line-projection \
 	tests/acl2/nov-line-projection-tests \
+	books/legacy-parser-cursor \
+	books/legacy-parser-reference \
+	books/legacy-parser-header \
+	books/legacy-parser-validity \
+	tests/acl2/legacy-parser-cursor-tests \
+	tests/acl2/legacy-parser-header-tests \
+	tests/acl2/legacy-parser-validity-tests \
 	books/nntp-article-pass \
 	books/nntp-responses \
 	books/nntp-article-block \
@@ -1535,6 +1542,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-snapshot-request \
 	books/history-scalar-cursor \
 	tests/acl2/history-scalar-cursor-tests \
+	books/history-record-cursor \
+	tests/acl2/history-record-cursor-tests \
 	tests/acl2/history-page-cursor-tests \
 	tests/acl2/history-page-layout-tests \
 	tests/acl2/history-page-buffer-tests \

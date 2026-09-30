@@ -385,3 +385,5 @@ anything a book does not already decide.
 | `fn-hrf-` | `history-resource-refinement` | Retained obligation logical/resource projection and component refinement. |
 | `fn-novlp-` | `nov-line-projection` | Logical first-five normalized NOV projection of the actual article parser; component proof vocabulary, never a served scan |
 | `fn-nlv-` | `legacy-parser-validity` | Logical control projection and physical-line/body grammar proofs of the actual bounded legacy byte cursor; full malformed-header simulation remains open |
+| `fn-hrcur-` | `history-record-cursor` | Resumable resident history codec leaf, word, and descriptor components. |
+| `fn-lpc-` | `legacy-parser-cursor`, `legacy-parser-reference`, `legacy-parser-header` | Bounded legacy header/body cursor with source spans and logical refinement vocabulary. |
