@@ -150,6 +150,7 @@
 (include-book "../../books/bp-node-rotation")
 (include-book "../../books/bp-node-rotation-buffer")
 (include-book "../../books/bp-held-projection")
+(include-book "../../books/bp-recovery-guards")
 (include-book "../../books/bp-recovery-profile")
 (include-book "../../books/bp-node-retire")
 (include-book "../../books/bp-node-rotation-due")

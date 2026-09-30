@@ -4,7 +4,7 @@
   "coverage": {
     "declared": 1278,
     "declared_and_dispatched": 1260,
-    "guard_verified": 645,
+    "guard_verified": 646,
     "with_keystone": 175,
     "raw_dispatched": 0
   },
@@ -12226,7 +12226,7 @@
       "name": "fn-bphp-recover-auto-event",
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
-      "class": "ideal",
+      "class": "common-lisp-compliant",
       "kinds": [],
       "exempt": {},
       "keystones": [
