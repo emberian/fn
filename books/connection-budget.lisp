@@ -125,28 +125,7 @@
 ; (host/owner-host.lisp fn-owner-read-octets; host/native/owner.lisp
 ; fnn-owner-refresh-read-octets) and reads into one buffer per I/O loop, so
 ; a read allocates only the octets it returns.
-(defconst *fn-cbud-step-octets* 512)
-(defconst *fn-cbud-read-quantum* 4096)
-
-(defun fn-cbud-step-read-octets (lim)
-  (declare (xargs :guard t))
-  (if (posp (fn-exp-lim-steps lim))
-      *fn-cbud-step-octets*
-    *fn-cbud-read-quantum*))
-
-(defthm fn-cbud-step-read-octets-is-bounded
-  (and (posp (fn-cbud-step-read-octets lim))
-       (<= (fn-cbud-step-read-octets lim) *fn-cbud-read-quantum*))
-  :rule-classes ((:type-prescription :corollary (posp (fn-cbud-step-read-octets lim)))
-                 (:linear :corollary (<= (fn-cbud-step-read-octets lim)
-                                         *fn-cbud-read-quantum*))))
-
-; Under a step rate the step is the rate's unit: 512 octets, as before.
-(defthm fn-cbud-step-read-octets-under-a-rate-by-definition
-  (implies (posp (fn-exp-lim-steps lim))
-           (equal (fn-cbud-step-read-octets lim) *fn-cbud-step-octets*)))
-
-(in-theory (disable fn-cbud-step-read-octets))
+(include-book "connection-read-quantum")
 
 (defconst *fn-cbud-record-octets* 16384)
 ; The retained suffix (less than one read) and the read in hand: two reads

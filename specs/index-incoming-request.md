@@ -2,7 +2,7 @@
 
 PRF-1172 / SCN-1058: additive source candidate, not activated.
 
-`fn-owner-index-incoming-begin(fuel,mio,arena,pool,state)` returns
+`fn-owner-index-incoming-begin(fuel,fn-input-copy,mio,arena,pool,state)` returns
 `erp,status,indexToken,left,mio,pool,state`. The public ABI supplies no
 holder, context, Message-ID, publication, demand, control or native job token.
 It reads actual retained context and sole STATE freshness, rechecks authority,
@@ -30,7 +30,7 @@ the token and original roots for recovery rather than a standalone setter.
 Actual runtime constructor and scratch issuer are absent. Their source seam
 returns unavailable even for a runtime-shaped provider object. The positive
 internal suffix and constructed fixtures cannot be cited as public activation.
-All guard/refinement/teeth and matched bounded source evidence are still open.
+Core guards and scoped logical suffix teeth have protected source admissions; actual STATE host guards, full refinement and activation remain open.
 
 If lower child adoption returns recovery-required, it may already have
 registered the query. The incoming wrapper retains the returned ledger and
@@ -38,3 +38,5 @@ attempted query token, fences the marker as generation-retained-uncertain,
 and leaves pending receipt/address custody intact. The host propagates that
 uncertainty with the token and preserves saved authority roots; it does not
 attach a query or retry adoption from that marker.
+
+The unactivated internal ABI includes read-only `fn-input-copy` so completed source is derived in the same owner transition. `fn-iiq-completed-input-source` requires the actual holder/controller association, readonly IOH row, completed view, no pending copy, offset equal to total, and descriptor capacity equal to the view capacity. Descriptor incarnation and incoming issue nonce remain distinct. The original source is retained once in incoming request10 slot9; resume compares bounded scalar identity and never replaces the original borrowed source. The normal source boundary has an8193-octet three-step fixture; its copied outcomes are logical observations, not native-copy evidence. Common custody row and actual installed issuance remain open.

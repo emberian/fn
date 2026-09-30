@@ -66,11 +66,7 @@
 (defconst *fn-exp-default-connections* 31)
 (defconst *fn-exp-owner-connection-bound* (+ 1 *fn-cbor-max-uint*))
 
-(defun fn-exp-at (i x)
-  (declare (xargs :guard t :measure (acl2-count x)))
-  (if (consp x)
-      (if (or (not (integerp i)) (<= i 0)) (car x) (fn-exp-at (1- i) (cdr x)))
-    nil))
+(include-book "public-exposure-selectors")
 
 ; THE TRUSTED RANGE.  A list of (FAMILY OCTETS BITS): FAMILY :inet or
 ; :inet6, OCTETS the network address as the listener grammar reads it, BITS

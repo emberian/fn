@@ -110,9 +110,7 @@
 
 ; fn-exp-at is books/public-exposure-rows.lisp's (PRF-211 reads it there).
 
-(defun fn-exp-nat (i x)
-  (declare (xargs :guard t))
-  (nfix (fn-exp-at i x)))
+
 
 ; -----------------------------------------------------------------------------
 ; The limits in force
@@ -164,7 +162,7 @@
 
 (defun fn-exp-lim-total (l) (declare (xargs :guard t)) (fn-exp-nat 1 l))
 (defun fn-exp-lim-per-address (l) (declare (xargs :guard t)) (fn-exp-nat 2 l))
-(defun fn-exp-lim-steps (l) (declare (xargs :guard t)) (fn-exp-nat 3 l))
+
 (defun fn-exp-lim-idle (l) (declare (xargs :guard t)) (fn-exp-nat 4 l))
 (defun fn-exp-lim-first (l) (declare (xargs :guard t)) (fn-exp-nat 5 l))
 (defun fn-exp-lim-auth-failures (l) (declare (xargs :guard t)) (fn-exp-nat 6 l))

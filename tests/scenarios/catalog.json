@@ -7128,17 +7128,20 @@
       "steps": [
         "Create a retained incoming holder/context and capture actual STATE freshness. Read current installed publication through its registered live/current generation.",
         "Reserve one SAME PRS identity, yield while retaining pending scratch/generation debt, resume without issuing again, adopt actual query child/debt and attach the successful token.",
-        "Change holder/epoch/intent or publication before resumption; retain old roots/debt and require recapture. Omit installed runtime or supply only a runtime-shaped tuple."
+        "Change holder/epoch/intent or publication before resumption; retain old roots/debt and require recapture. Omit installed runtime or supply only a runtime-shaped tuple.",
+        "Run actual exported incoming copy controller for8193 octets in4096/4096/1 quanta, retain completed readonly holder source with descriptor incarnation distinct from issue nonce; incomplete two-step state refuses source."
       ],
       "expected": [
         "OLDNEXT stays spent; query nonce is OLDNEXT+1 including zero-first identity. Reader/incoming share pending exclusivity and free/highwater.",
         "Address advance and pending clear follow actual child/debt adoption only; attachment preserves fields2\u201310 and stores the exact returned captured token.",
-        "Changed authority never silently releases/replaces old custody. Missing genuine runtime/constructor/scratch receipt remains unavailable. Constructed source fixtures are not activation or persisted-state evidence."
+        "Changed authority never silently releases/replaces old custody. Missing genuine runtime/constructor/scratch receipt remains unavailable. Constructed source fixtures are not activation or persisted-state evidence.",
+        "Actual source helper retains original holder/descriptor/completed view without imposing4096 payload ceiling. Logical copied observations do not establish native copy or installed issuance."
       ],
       "evidence": [
-        "tests/acl2/index-incoming-request-tests.lisp"
+        "tests/acl2/index-incoming-request-tests.lisp",
+        "tests/acl2/index-incoming-input-source-tests.lisp"
       ],
-      "scope_note": "Authored additive source scenario; no guards/source certificate/native qualification yet. Exact generation-to-durable owner STATE/arena and actual runtime issuer remain separate prerequisites."
+      "scope_note": "Specified additive source scenario. Scoped core source admissions and completed-input helper/fixture normal certificates are separate from unadmitted full STATE host composition, real copy execution, installed runtime issuer and durable owner publication correspondence."
     }
   ]
 }
