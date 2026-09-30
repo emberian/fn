@@ -3,7 +3,7 @@
 ; the composed open producer; none follows from these internal segment calls.
 (in-package "ACL2")
 (include-book "index-backing-generations")
-(include-book "index-connection-holder")
+(include-book "connection-receiver-source")
 (defun fn-ibp-node-connection-read (token fuel slot depth fn-ibp-node)
  (declare (xargs :stobjs fn-ibp-node :guard (and (natp fuel) (natp slot) (natp depth))
                  :measure (nfix depth) :verify-guards nil))
@@ -59,6 +59,12 @@
 (defun fn-ich-event (token operation id value fn-ibp-connection-segment)
  (declare (xargs :stobjs fn-ibp-connection-segment :guard t))
  (case operation
+  (:rx-origin (mv-let (word origin)
+              (fn-ich-rx-origin id token fn-ibp-connection-segment)
+              (mv word origin fn-ibp-connection-segment)))
+  (:rx-bind (mv-let (word fn-ibp-connection-segment)
+            (fn-ich-rx-bind id token value fn-ibp-connection-segment)
+            (mv word nil fn-ibp-connection-segment)))
   (:reserve (mv-let (word fn-ibp-connection-segment)
              (fn-ich-reserve token id value fn-ibp-connection-segment)
              (mv word nil fn-ibp-connection-segment)))

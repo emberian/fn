@@ -17,6 +17,9 @@
   (fn-ich-rows :type (array t (64)) :initially nil)
   (fn-ich-segment-id :type (integer 0 *) :initially 0)
   (fn-ich-active :type (integer 0 64) :initially 0)
+  ; Parallel fixed storage: existing row7 and its first three fields stay put.
+  ; Constructor qualification must account for these additional 64 cells.
+  (fn-ich-rx-origins :type (array t (64)) :initially nil)
   :inline t)
 
 ; Fixed7: tag, token, actual logical connection id, retained publication pin,
