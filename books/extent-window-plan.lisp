@@ -103,7 +103,7 @@
                 (equal (nth 7 s) (nth 3 s)))) (mv :stale s)
     (let ((verdict
            (cond ((not (and (fn-ewp-octets-n-p 32 read)
-                            (equal (fn-bch-pack read) (nth 6 s)))) :trailer)
+                            (equal (fn-bch-pack read) (nth 6 s)))) :commitment)
                  ((not (equal digest read)) :digest)
                  (t :verified))))
       (mv verdict (fn-ewp-with-phase-pos verdict (nth 7 s) s)))))

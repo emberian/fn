@@ -17772,7 +17772,7 @@
     {
       "id": "PRF-1057",
       "title": "Issued cold page reads retain identity and worker ownership through cancellation and late completion",
-      "statement": "Host/native/extent.lisp fnn-extent-complete-read calls fn-pio-complete. Publication requires its exact immutable token (process-local read ID, original CID, file incarnation ID, offset, length, expected trailer), phase issued and successful full commitment check, and settles once. fn-pio-cancel retains token and unsettled ownership even after deadline/client loss. fnn-extent-close calls fn-pio-file-clear-p over carried valid ownership rows: every issued/cancelled worker naming a retired file prevents close independently of the arena-reader generation gate. Duplicate/stale completions cannot publish or settle twice. Host OS/thread/mutex/table fidelity is A-HOST; observed worker death and join (or definite failed launch) is required before settlement. Incarnation allocator fn-pio-file-issue derives process-local identities and successive admitted allocations are distinct; a failed open spends its name and invalid carried counter refuses rather than resetting. No funded read-pool admission or memory bound is claimed; repeated detached workers remain P12 open. The operator-funded local file namespace can exhaust before open without wrapping or refunding a spent name; admitted resource-pool tokens establish the identical owned read row and use the ledger’s single counter. These are partial algebra/lifetime subjects; supported profile installation, retained runtime storage and legacy large-frame streaming remain open.",
+      "statement": "Host/native/extent.lisp fnn-extent-complete-read calls fn-pio-complete. Publication requires its exact immutable token (process-local read ID, original CID, file incarnation ID, offset, length, expected trailer), phase issued and successful full commitment check, and settles once. fn-pio-cancel retains token and unsettled ownership even after deadline/client loss. fnn-extent-close calls fn-pio-file-clear-p over carried valid ownership rows: every issued/cancelled worker naming a retired file prevents close independently of the arena-reader generation gate. Duplicate/stale completions cannot publish or settle twice. Host OS/thread/mutex/table fidelity is A-HOST; observed worker death and join (or definite failed launch) is required before settlement. Incarnation allocator fn-pio-file-issue derives process-local identities and successive admitted allocations are distinct; a failed open spends its name and invalid carried counter refuses rather than resetting. No funded read-pool admission or memory bound is claimed; repeated detached workers remain P12 open. The operator-funded local file namespace can exhaust before open without wrapping or refunding a spent name; admitted resource-pool tokens establish the identical owned read row and use the ledger\u2019s single counter. These are partial algebra/lifetime subjects; supported profile installation, retained runtime storage and legacy large-frame streaming remain open.",
       "milestone": "M5",
       "requirements": [
         "STO-017"
@@ -18517,9 +18517,14 @@
         "tests/acl2/extent-window-buffer-tests.lisp",
         "tests/acl2/extent-window-capture-tests.lisp",
         "books/extent-window-refinement.lisp",
-        "tests/acl2/extent-window-refinement-tests.lisp"
+        "tests/acl2/extent-window-refinement-tests.lisp",
+        "books/extent-window-stream.lisp",
+        "tests/acl2/extent-window-stream-tests.lisp",
+        "books/extent-window-stream-refinement.lisp",
+        "tests/acl2/extent-window-stream-refinement-tests.lisp",
+        "tests/acl2/extent-window-stream-union-tests.lisp"
       ],
-      "progress_note": "Source component proofs and concrete copy witnesses only. No served host call, certificate, image, native or P12 completion claim."
+      "progress_note": "Actual core read/tick composition source-admitted with guarded fixed-buffer execution, exact output/effects and core-cursor publication theorem. Clean actual tests cover empty/partial/tree/window boundaries and corruption, commitment, short/stale reads. General digest trajectory/domain, compressed composition, native admission/lifetime and served caller remain open; no certificate/image/native/P12 completion claim."
     },
     {
       "id": "PRF-1087",

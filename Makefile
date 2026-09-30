@@ -1073,6 +1073,13 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/payload-commit-extent-tests \
 	tests/acl2/frame-digest-buffer-tests \
 	tests/acl2/frame-digest-concrete-tests \
+	tests/acl2/extent-window-plan-tests \
+	tests/acl2/extent-window-buffer-tests \
+	tests/acl2/extent-window-capture-tests \
+	tests/acl2/extent-window-refinement-tests \
+	tests/acl2/extent-window-stream-tests \
+	tests/acl2/extent-window-stream-refinement-tests \
+	tests/acl2/extent-window-stream-union-tests \
 	tests/acl2/records-freeze-tests \
 	tests/acl2/catalog-record-tests \
 	tests/acl2/catalog-tests \

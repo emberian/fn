@@ -31,26 +31,36 @@ cells outside the overlap. No logical list of the extent or requested data
 is constructed on this executable path. `fn-ewp-payload-span` similarly
 selects the bounded compressed-payload input for the existing inflater.
 
-All captured bytes remain private until the entire prefix was consumed,
-the trailer was read, its exact 32-byte commitment matches the descriptor,
-and the actual incremental digest equals it. `fn-ewp-finish` checks the
-terminal position and commitment. Its digest argument is an unfinished
-composition boundary, not an integrity assertion supplied by the host.
-The integrated entry must drive the concrete byte digest over precisely
-the consumed bytes before invoking finish; the current component is not
-an authenticated reader by itself. Digest tail handling, allocation/stack
-domain, source pinning and progress must be proved at that boundary. The
-frame function now has a concrete BLAKE3 definition; the streamed terminal
-result still requires the actual refinement to that function. A-CRYPTO's pessimistic collision work is
-2^128 for BLAKE3; digest equality does not prove source byte equality.
+`fn-ews-begin` captures the original request and initializes the actual byte
+BLAKE3 cursor. `fn-ews-effect` authorizes an input block only when the cursor
+requests precisely that position and count. `fn-ews-tick` performs one internal
+hash action when no input is needed. `fn-ews-read` accepts only the exact effect,
+uses the actual input buffer length, assembles at most sixteen padded words,
+steps the cursor and copies the selected private overlap. Stale completions
+preserve all three states; its output theorem describes every window cell.
+
+The trailer effect becomes available only when the full scan has completed
+and the actual cursor is done. The completion obtains its digest directly
+from `pgs-dcb-result-octets`; no host-supplied digest argument reaches the
+composed entry. New publication requires exact trailer commitment and equality
+to that cursor result. Rejected commitments use `:commitment`, distinct from
+the pending `:trailer` phase, so a rejection cannot restart trailer reads.
+The general captured-source digest trajectory, fixed-stack supported domain
+and progress remain separate proof obligations; actual-cursor integrity alone
+does not close them. The frame function has a concrete closed BLAKE3 definition
+with an explicit bridge. A-CRYPTO's pessimistic collision work is 2^128 for
+BLAKE3; digest equality does not prove source byte equality.
 
 Compressed reads reuse the existing DEFLATE inflater with bounded input,
-fixed history/table buffers, bounded scratch output, and a retained private
-requested decoded window. Publication additionally requires the same
-complete stream acceptance and exact decoded length as `fn-pzd-decode` /
-`fn-lzr-lz-value`. The existing lookahead/plain-loop distinction must be
-resolved by a real refinement before switching callers. A window filled
-early is never evidence that the rest of the compressed stream is valid.
+fixed history/table buffers, bounded scratch output, and a private requested
+decoded window. The coordinator authorized a stored total-compressed-length
+allowance policy and stricter real terminal detection after finding a
+lookahead/prefix bomb-admission mismatch and false truncated success in the
+legacy stored decoder. The codec owner proves and documents that changed
+acceptance domain separately; no equality to the old defective acceptance
+policy is asserted. Publication requires complete accepted decode, exact
+decoded length and the same full protected-prefix integrity. A window filled
+early cannot authorize publication.
 
 The native ownership adapter must fund fixed scratch, digest state, output
 window, decoder pools when used, and actual worker lifetime before issuing
@@ -59,7 +69,7 @@ an extent-only hit cannot authorize missing bytes. Cancellation does not
 refund a still-running worker or invalidate another borrow. The physical
 owner maintains descriptor/file pins through actual relinquishment.
 
-Remaining integration: byte-digest composition, compressed acceptance
-refinement, native window-specific admission/cache/borrow wiring, literal
+Remaining integration: full digest trajectory and supported-domain proof,
+compressed composition, native window-specific admission/cache/borrow wiring, literal
 full-path witnesses, matched certification and native behavior evidence.
 No new frame ceiling or fallback to whole-extent allocation is authorized.

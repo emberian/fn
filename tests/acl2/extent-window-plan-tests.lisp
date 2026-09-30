@@ -71,7 +71,7 @@
 
 ; Corruption and stale incarnation/lease are distinct from success.
 (assert-event
- (and (equal (nth 0 (ewpt-finish '(9) '(9) *ewpt-digest*)) :trailer)
+ (and (equal (nth 0 (ewpt-finish '(9) '(9) *ewpt-digest*)) :commitment)
       (equal (nth 0 (ewpt-finish *ewpt-trailer* '(9) *ewpt-digest*)) :digest)
       (equal (ewpt-completion
                         '(21 (generation 9) (lease 4) 5 100 64 :scan)
