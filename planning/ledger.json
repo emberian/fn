@@ -1773,7 +1773,7 @@
     "roots": 1764,
     "theorems": 29366,
     "functions": 18855,
-    "assert_events": 23877,
+    "assert_events": 23878,
     "must_fails": 2516,
     "prover_refusals": 0,
     "encapsulates": 159,
@@ -43705,7 +43705,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 37,
+      "assert_events": 38,
       "must_fails": 1,
       "prover_refusals": 0,
       "defconsts": 9,
@@ -68577,7 +68577,7 @@
       {
         "check": "ncpt-resolve-is-identity",
         "book": "tests/acl2/native-config-paths-tests.lisp",
-        "line": 32,
+        "line": 38,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
