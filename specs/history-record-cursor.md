@@ -539,3 +539,28 @@ is not a practical fixture. Source admission reuses unchanged public events;
 no certification, full parser inverse, controller funding, image or deployment
 claim follows. Exact source and donor digests live in
 `planning/evidence/snapshot-based-provider-decoder-lineage-source-2026-09-30.json`.
+
+## Actual observation trajectory to decoder result
+
+`books/snapshot-based-provider-observation-bridge.lisp` supplies proof-only
+folds over an explicit observation list. `fn-obpt-replay` calls the existing
+`fn-obp-tick` and its cursor projection at every step; `fn-obpt-decode-count`
+counts only matched productive decoder supplies. `fn-obpt-observation-tracep`
+names the exact trajectory condition: existing guards at reached cursors,
+decode or later phases, and supplied scalar equality to the immutable pool at
+the actual parser position on each productive decode step. It is no callback
+or source oracle, and the host never executes these folds.
+
+The generic replay theorem equates the actual final parser to the existing
+`fn-hdc-model-run` at that count. Demand, stale, padding, key and terminal steps
+preserve the parser. A named constructor projection shows that the actual
+successful CHECK tick initializes `fn-hdc-begin`; callers do not invent a twin
+decoder. Successful replay from initialized carried lineage retains the exact
+decoder result, cold domain and borrowed-node extents. It assumes no caller
+node-domain predicate. Four ground events cover the complete trajectory with
+stale/request pauses and all three completion hypothesis removals, affirming
+retained hypotheses and failure of the full conclusion. Wrong-pool arguments
+and corrupted numeric state are labeled separately. The predecessor carry
+guard/u64 removal remains partial. Reader page-to-pool attribution, source4/
+pass/root pin authority, authentication, funding and qualification remain
+outer obligations; no full inverse replay or new runtime process is needed.
