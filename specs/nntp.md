@@ -2197,3 +2197,15 @@ or unrestricted federation is implied by this profile. Those need explicit
 policy and authorization. First client acceptance tests should include an actual
 newsreader and an independent transcript client, rather than only fn talking to
 itself. Legacy convenience aliases are added only with documented semantics.
+
+
+`fn-lpt-tick` is a proof-only branch-sensitive execution observer of the
+actual parser source. Its four value/effect projections equal `fn-lpc-tick`
+unconditionally. Events record executed constructors and source sites, signed
+add/subtract operands, borrowed operations, helper entry/exit and arena reads.
+Executed constructor cells equal the structural observer and derive the same
+`4 + 39 * actual-work` bound, without a source-domain/fuel premise. The trace
+includes fixed-index arithmetic even when fuel is zero. Its own storage is
+excluded; it never enters the served path. Signed magnitude/count and call
+depth proofs, exact selected compiler/runtime lowering and physical funding
+remain open; no grammar or fixnum cap is added to historical source data.

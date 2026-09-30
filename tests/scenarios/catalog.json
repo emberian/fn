@@ -6321,14 +6321,16 @@
         "Assert the literal full actual arena-tick NOV equation on octet sources, including five first/repeated/folded fields, invalid folds, opaque body NUL and tombstones. Remove the sole octet-domain premise with non-octet opaque body input; affirm negative-handle equality after removing that redundant premise. Check complete tombstone prefix antecedents and remove natural position and sufficient bytes independently.",
         "Check full literal actual tick scalar/source-width and returned quantum-width conclusions; remove every retained carried-state, ready, source-bound and quantum premise individually. Separate corrupted carried state from malformed grammar and run the actual stobj tick at quanta 1, 3 and complete length.",
         "Assert literal exact-prefix init, actual fuel1 continuation/source binding and terminal complete-feed statements; remove every retained premise separately. Corrupt magic carry independently of source substitution, confirm a bad header still yields before EOF, and execute repeated actual stobj ticks through valid/invalid sources and one terminal no-op.",
-        "Assert full literal actual tick ABI scalar conclusion under exact supported descriptor, payload-length binding, carried invariant and ready guard. Remove each premise independently, using closed logical source-length constructors for width-bound removals so enormous lists are never allocated. Distinguish ABI representation from source admission/profile authorization."
+        "Assert full literal actual tick ABI scalar conclusion under exact supported descriptor, payload-length binding, carried invariant and ready guard. Remove each premise independently, using closed logical source-length constructors for width-bound removals so enormous lists are never allocated. Distinguish ABI representation from source admission/profile authorization.",
+        "Assert all four literal source-trace tick projection conclusions and exact executed constructor equality; test fuel1, EOF, corrupted state and an omitted-constructor mutation, plus all helper projections and real stobj traces. Keep fixed-index signed operations even in the stopped verdict path."
       ],
       "expected": [
         "Each tick consumes and reports at most its fuel, preserves handle and pin and makes bounded progress. No final tick walks or copies the full source or field.",
         "The body count equals the actual catalog function even for a rejected header parse.",
         "For every successful actual parser result, the complete byte traversal's five spans normalize to the exact first-header NOV content. The full actual arena-tick NOV record equals fn-hnov-of under the sole octet source premise, including invalid parses and tombstones.",
         "Source-dominated numeric scalars and returned consumed/work remain within their parameterized source/quantum widths. Selected runtime primitive, callstack and allocation correspondence remains open.",
-        "Repeated actual arena ticks maintain the exact source prefix; nonyield means full source feed even when headers were rejected early. The source predicate remains proof-only; consumer/physical/native composition is not inferred."
+        "Repeated actual arena ticks maintain the exact source prefix; nonyield means full source feed even when headers were rejected early. The source predicate remains proof-only; consumer/physical/native composition is not inferred.",
+        "Branch-selected source events project to actual tick values and exact structural constructor count bounded by4+39*actual-work. This source trace does not establish selected compiler/runtime allocation or total served funding."
       ],
       "evidence": [
         "books/legacy-parser-cursor.lisp",
@@ -6357,7 +6359,14 @@
         "planning/evidence/legacy-parser-continuation-source.md",
         "books/legacy-parser-physical-widths.lisp",
         "tests/acl2/legacy-parser-physical-widths-tests.lisp",
-        "planning/evidence/legacy-parser-physical-widths-source.md"
+        "planning/evidence/legacy-parser-physical-widths-source.md",
+        "books/legacy-parser-trace.lisp",
+        "books/legacy-parser-trace-tick.lisp",
+        "books/legacy-parser-trace-constructors.lisp",
+        "tests/acl2/legacy-parser-trace-tests.lisp",
+        "tools/legacy_parser_trace.py",
+        "tests/test_legacy_parser_trace.py",
+        "planning/evidence/legacy-parser-trace-source.md"
       ]
     },
     {
