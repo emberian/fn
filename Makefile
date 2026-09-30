@@ -23,6 +23,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/defrecord-tests \
 	tests/acl2/defkeystone-tests \
 	tests/acl2/definterface-tests \
+	tests/acl2/definterface-recognizer-tests \
 	tests/acl2/defevent-tests \
 	books/acceptance \
 	books/acceptance-invariants \
