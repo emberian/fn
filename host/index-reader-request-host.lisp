@@ -14,3 +14,13 @@
  (mv-let (word left fn-mio$c fn-render-holder)
    (fn-irr-render-install token fuel fn-mio$c fn-render-holder)
    (mv word left fn-mio$c fn-render-holder state)))
+
+; Core-generated response projection from the SAME admitted registered
+; request. The owner decides current account/configuration authority; this
+; consumer validates retained source/query lifetime, not mutable policy.
+(defun fn-owner-index-reader-request-response
+ (token fuel fn-mio$c state)
+ (declare (xargs :stobjs (fn-mio$c state) :guard (natp fuel)))
+ (mv-let (word step left)
+   (fn-irr-response-read token fuel fn-mio$c)
+   (mv word step left fn-mio$c state)))
