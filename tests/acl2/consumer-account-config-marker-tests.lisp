@@ -1,5 +1,5 @@
 (in-package "ACL2")
-(include-book "../../books/consumer-account-config-marker")
+(include-book "../../books/consumer-account-config-marker-invariants")
 
 (defconst *fn-cacm-test-record*
  (fn-cfg-record-make 3 17 4
@@ -48,3 +48,23 @@
 (assert-event (equal (car (fn-cacm-decode-exact (make-list 211 :initial-element 0))) :error))
 (assert-event (equal (car (fn-cacm-decode-exact (cons 300 nil))) :error))
 (assert-event (equal (car (fn-cacm-decode-exact '(70 . 1))) :error))
+
+; Complete literal keystone antecedent/conclusion witnesses. The maximum
+; vector asserts the recognizer too: an encoder result alone is insufficient.
+(assert-event
+ (and (fn-cacm-recordp *fn-cacm-test-wide*)
+      (equal (fn-cacm-decode-exact (fn-cacm-encode *fn-cacm-test-wide*))
+             (list :ok *fn-cacm-test-wide*))
+      (fn-cbor-octet-listp (fn-cacm-encode *fn-cacm-test-wide*))
+      (<= (len (fn-cacm-encode *fn-cacm-test-wide*)) (fn-cacm-octet-ceiling))))
+; Hypothesis-removal witness for the sole recordp premise of decode-encode.
+; There are no retained hypotheses. Ordinary C records are valid inputs to
+; their own codec, but are outside this explicitly typed adoption variant.
+(assert-event
+ (and (not (fn-cacm-recordp *fn-cfg-default-record*))
+      (not (equal (fn-cacm-decode-exact (fn-cacm-encode *fn-cfg-default-record*))
+                  (list :ok *fn-cfg-default-record*)))))
+; The octet and length theorems are unconditional, including refused input.
+(assert-event
+ (and (fn-cbor-octet-listp (fn-cacm-encode *fn-cfg-default-record*))
+      (<= (len (fn-cacm-encode *fn-cfg-default-record*)) (fn-cacm-octet-ceiling))))

@@ -55,3 +55,12 @@ frontier unchanged, and records the current E count as the publication cut.
 Live completion and recovery must perform the same joint transition. Existing
 connections keep their pinned binding configuration; new connections observe
 the newly committed pair. These are integration obligations, not codec claims.
+
+The source representation boundary is `fn-cacm-decode-encode` in
+`consumer-account-config-marker-invariants`: every valid typed record survives
+encoding and exact decoding unchanged. `fn-cacm-encode-octets` and
+`fn-cacm-encode-bound` establish the unconditional encoded shape and maximum.
+The literal tests assert the full round-trip premise and conclusion and a
+counterexample when its sole record-validity premise is removed. Normal
+certification status is recorded in the accompanying evidence, separately from
+source-session admission.
