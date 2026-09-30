@@ -17,6 +17,7 @@
 (include-book "peer-config")
 ; PRF-161: the exposure slots and the anonymous words `policy set' admits.
 (include-book "public-exposure-rows")
+(include-book "tls-handshake-source") ; PRF-986: the override list's parse
 ; PRF-235, PRF-236: the transit hygiene limit slots.
 (include-book "relay-checks")
 (include-book "identity")
@@ -547,8 +548,11 @@
                (t (fn-native-admin-result :accepted nil :consumer-bind
                                           (fn-native-admin-arg 1 argv) 0 nil
                                           (fn-native-admin-arg 3 argv)))))
+        ; Row Q10c: `consumer show' reports the consumer bindings alone
+        ; (books/account-list.lisp fn-acct-consumers-list-report), never the
+        ; whole account list.
         ((equal words '("show"))
-         (fn-native-admin-result :accepted nil :list-accounts nil 0 nil nil))
+         (fn-native-admin-result :accepted nil :list-consumers nil 0 nil nil))
         (t (fn-native-admin-result :refused :consumer nil nil 0 nil nil))))
 
 ;; PKT-597: `policy set complaints-to ADDR' with ADDR an addr-spec
@@ -632,6 +636,7 @@
                                                fn-cbor-octet-listp
                                                fn-exp-limit-slotp fn-rck-limit-slotp
                                                fn-exp-trusted-wordp
+                                               fn-hsb-overrides-of-word
                                                fn-exp-anonymous-wordp
                                                fn-xpy-targetp fn-xpy-words-policy
                                                default-car default-cdr
@@ -652,6 +657,19 @@
              (equal (cadr words) "create")
              (fn-record-group-namep (caddr words)))
         (fn-native-admin-result :accepted nil :create-group (caddr argv) 0 nil nil))
+       ((and (equal (len words) 4) (equal (car words) "group")
+             (equal (cadr words) "authority"))
+        (cond ((fn-native-admin-group-name-reservedp (caddr words))
+               (fn-native-admin-result :refused :reserved-group-name nil nil 0 nil nil))
+              ((not (fn-record-group-namep (caddr words)))
+               (fn-native-admin-result :refused :group-name nil nil 0 nil nil))
+              ((not (or (equal (cadddr words) "ungoverned")
+                        (fn-cfg-principal-hexp (cadddr words))))
+               (fn-native-admin-result :refused :principal nil nil 0 nil nil))
+              (t (fn-native-admin-result :accepted nil :set-group-authority
+                                        (caddr argv) 0 nil
+                                        (if (equal (cadddr words) "ungoverned") nil
+                                          (cadddr argv))))))
        ; O2 (books/group-status.lisp): `group policy NAME n|y' sets the
        ; group's LIST ACTIVE status (RFC 3977 section 7.6.3): "n" closes it
        ; to local posting, "y" opens it.  A durable :set-group-status
@@ -726,6 +744,35 @@
              (equal (car words) "policy")
              (equal (cadr words) "set")
              (equal (caddr words) *fn-exp-trusted-slot*)
+             (fn-exp-trusted-wordp (cadddr words)))
+        (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
+                                (cadddr argv)))
+       ; PRF-986 (row W2a): `policy set tls-handshake-source-overrides
+       ; WORD', the per-source handshake allowances for known shared
+       ; addresses (a carrier NAT), a durable `:set-policy' row applied live
+       ; (host fn-owner-handshake-limits reads it through
+       ; fn-hsb-config-overrides).  The word is admitted exactly when the
+       ; owner's parse lists it (`none' clears it); otherwise refused by
+       ; the parse's name, :override-address or :overrides-full (past the
+       ; profile's tls-handshake-source-overrides entries).
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (equal (caddr words) *fn-hsb-overrides-slot*))
+        (let ((r (fn-hsb-overrides-of-word
+                  (cadddr words) (fn-profile-limit :tls-handshake-source-overrides))))
+          (if (member-equal r '(:override-address :overrides-full))
+              (fn-native-admin-result :refused r nil nil 0 nil nil)
+            (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
+                                    (cadddr argv)))))
+       ; PRF-986 item 4 (books/tls-proxy.lisp): `policy set
+       ; tls-proxy-trusted-peers WORD', the transport peers whose PROXY
+       ; header the implicit-TLS listener reads (no other peer's octets are
+       ; ever read as one); the syntax of exposure-trusted, `none' clears.
+       ((and (equal (len words) 4)
+             (equal (car words) "policy")
+             (equal (cadr words) "set")
+             (equal (caddr words) *fn-pxy-peers-slot*)
              (fn-exp-trusted-wordp (cadddr words)))
         (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
                                 (cadddr argv)))
@@ -1117,6 +1164,9 @@
              (list (fn-cfg-create-group name *fn-cfg-default-policy-id*)))
             ((equal kind :remove-group)
              (list (fn-cfg-remove-group name)))
+            ((equal kind :set-group-authority)
+             (list (fn-cfg-set-group-authority name
+                    (fn-record-octets-string (fn-native-admin-result-value plan)))))
             ((equal kind :set-capacity)
              (list (fn-cfg-set-capacity (fn-native-admin-result-capacity plan))))
             ((equal kind :set-retention)
@@ -1459,7 +1509,7 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
   (declare (xargs :guard t))
   (and (equal (fn-native-admin-result-status result) :accepted)
        (member-equal (fn-native-admin-result-kind result)
-                     '(:list-peers :list-control :list-accounts))
+                     '(:list-peers :list-control :list-accounts :list-consumers))
        t))
 
 ;; `control list': one line per grant row of the replayed configuration,
@@ -1536,6 +1586,7 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
   (declare (xargs :guard t))
   (cond ((equal (fn-native-admin-result-kind plan) :list-control) :control)
         ((equal (fn-native-admin-result-kind plan) :list-accounts) :accounts)
+        ((equal (fn-native-admin-result-kind plan) :list-consumers) :consumers)
         (t :peers)))
 
 ;; The report a query plan asks for, over a replayed configuration value.

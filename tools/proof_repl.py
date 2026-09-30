@@ -73,6 +73,12 @@ session and `status` marks it "from source (not certified)"; the books of the
 closure that include it are loaded from source too, since their
 certificates name its other bytes.
 
+Source loading never implicitly launches certification. If a dependency
+fails from source, fix the source/world or explicitly choose
+`start --certify-missing`. Sent includes may acquire matching cached
+certificates, but a cache miss is refused; certification is a separate
+explicit operation.
+
 Round 2 (2026-09-27): a keyword command (`:ubt! foo`) is one command with
 the rest of its line, and when a keyword command or a raw-Lisp abort
 swallows the sentinel it is sent again after 3 s of quiet, so neither hangs
@@ -288,6 +294,9 @@ CRASH_MARKS = ("ABORTING from raw Lisp", "Unhandled memory fault", "Memory fault
                "debugger invoked on", "Heap exhausted", "Raw Lisp Break")
 RESEND_QUIET_SECONDS = 3.0
 STALE_SENTINEL = re.compile(re.escape(SENTINEL) + r" [0-9]+")
+RAW_DEBUGGER_PROMPT = re.compile(r"^\s*[0-9]+\](?:\s|$)", re.MULTILINE)
+ACL2_PROMPT = re.compile(r"^\s*ACL2\s+[!ps]*>", re.MULTILINE)
+PROTOCOL_ERROR = "ACL2 Error [Protocol]: "
 RECOVERED_NOTE = ("[raw-Lisp abort: ACL2 discarded the pending input and is back at "
                   "its prompt; the session is live (:pbt :max shows where the world is)]")
 
@@ -396,6 +405,54 @@ def include_target(form: str, directory: Path) -> str | None:
         return str(target.with_suffix(""))
 
 
+def source_includes(form: str, directory: Path, skip: set[str],
+                    skip_all: bool = False) -> tuple[str, list[str]]:
+    """Substitute already-loaded includes only at embedded-event positions.
+
+    Keep the enclosing encapsulate's signatures, local witnesses, constraints,
+    theory events and declaration order. Never descend into a definition,
+    theorem, hint, quoted data or an event-generating expression. Source text
+    outside the substituted event spans is preserved verbatim.
+    """
+    target = include_target(form, directory)
+    if target is not None and (target in skip or skip_all):
+        return "", [target]
+    text = form.strip()
+    if not text.startswith("(") or not text.endswith(")"):
+        return form, []
+    inner = text[1:-1]
+    children = spans(inner)
+    if not children:
+        return form, []
+    head = inner[slice(*children[0])].lower()
+    if head == "encapsulate" and len(children) >= 2:
+        start = 2  # the signatures are data, not events
+    elif head == "local" and len(children) == 2:
+        start = 1
+    elif head in ("progn", "progn!"):
+        start = 1
+    elif head == "with-prover-time-limit" and len(children) == 3:
+        start = 2
+    else:
+        return form, []
+    edits, skipped = [], []
+    remaining_events = 0
+    for begin, end in children[start:]:
+        replacement, removed = source_includes(inner[begin:end], directory, skip, skip_all)
+        remaining_events += bool(replacement)
+        if removed:
+            edits.append((begin, end, replacement))
+            skipped.extend(removed)
+    if not skipped:
+        return form, []
+    if not remaining_events:
+        if head != "encapsulate" or inner[slice(*children[1])].strip() == "()":
+            return "", skipped  # no empty local/progn/encapsulate event
+    for begin, end, replacement in reversed(edits):
+        inner = inner[:begin] + replacement + inner[end:]
+    return "(" + inner + ")", skipped
+
+
 def form_label(index: int, form: str) -> str:
     head, event = head_and_name(form)
     return f"#{index} {head}" + (f" {event}" if event else "")
@@ -481,8 +538,14 @@ def dependents_of(graph: dict[str, list[str]], seeds) -> set[str]:
     return {name for name in graph if reaches(name)}
 
 
-def dependency_order(graph: dict[str, list[str]], subset) -> list[str]:
-    """SUBSET, each book after every book of SUBSET it includes."""
+def dependency_order(graph: dict[str, list[str]], subset,
+                     root: str | None = None) -> list[str]:
+    """SUBSET in ROOT's declared include order, dependencies before parents.
+
+    Siblings cannot be alphabetized: a later exported theorem may reuse an
+    earlier book's local name. Shared dependencies are visited only once.
+    Without one named root, only independent roots have a stable name order.
+    """
     subset = set(subset)
     order: list[str] = []
     seen: set[str] = set()
@@ -491,12 +554,18 @@ def dependency_order(graph: dict[str, list[str]], subset) -> list[str]:
         if name in seen:
             return
         seen.add(name)
-        for child in sorted(graph.get(name, ())):
+        for child in graph.get(name, ()):
             visit(child)
         if name in subset:
             order.append(name)
 
-    for name in sorted(subset):
+    if root is not None:
+        visit(root)
+    else:
+        children = {child for includes in graph.values() for child in includes}
+        for name in sorted(set(graph) - children):
+            visit(name)
+    for name in sorted(subset - seen):
         visit(name)
     return order
 
@@ -516,6 +585,7 @@ class Acl2:
         # group. Its unreaped PID cannot be reused for an unrelated group.
         self.pgid = self.process.pid
         self._terminated = False
+        self.protocol_error: str | None = None
         self.lines: queue.Queue = queue.Queue()
         self.counter = 0
         self.reader = threading.Thread(target=self._pump, daemon=True)
@@ -532,6 +602,15 @@ class Acl2:
     def alive(self) -> bool:
         return self.process.returncode is None and self.reader.is_alive()
 
+    def invalidate(self, collected: list[str], reason: str) -> tuple[str, bool]:
+        """A raw debugger can evaluate the sentinel without admitting ACL2 events."""
+        self.protocol_error = PROTOCOL_ERROR + reason + "; session invalidated; start fresh"
+        self.log.write(self.protocol_error + "\n")
+        self.log.flush()
+        collected.append(self.protocol_error + "\n")
+        self.kill()
+        return "".join(collected), False
+
     def send(self, form: str, timeout: float, quiet: float = RESEND_QUIET_SECONDS
              ) -> tuple[str, bool]:
         """Deliver one form; answer (what ACL2 printed, timed out?).
@@ -544,6 +623,8 @@ class Acl2:
         seconds, the sentinel is sent once more; a sentinel that was not
         swallowed after all shows up later as a stale marker and is dropped.
         """
+        if self.protocol_error:
+            return self.protocol_error + "\n", False
         assert self.process.stdin is not None
         self.counter += 1
         marker = f"{SENTINEL} {self.counter}"
@@ -556,6 +637,7 @@ class Acl2:
         deadline = time.monotonic() + timeout
         suspect = is_keyword_command(form)
         resent = False
+        recovery_prompt = False
         last_line = time.monotonic()
         while True:
             remaining = deadline - time.monotonic()
@@ -565,7 +647,7 @@ class Acl2:
                 line = self.lines.get(timeout=min(remaining, 0.5))
             except queue.Empty:
                 if not self.alive():
-                    return "".join(collected) + "\n[ACL2 exited]\n", False
+                    return self.invalidate(collected, "ACL2 exited before the completion marker")
                 if (suspect and not resent and time.monotonic() - last_line >= quiet):
                     resent = True
                     self.log.write(">>> (sentinel again: the first was swallowed)\n")
@@ -574,17 +656,25 @@ class Acl2:
                         self.process.stdin.flush()
                 continue
             if line is None:
-                return "".join(collected) + "\n[ACL2 exited]\n", False
+                return self.invalidate(collected, "ACL2 exited before the completion marker")
             last_line = time.monotonic()
             text = line.strip()
+            if "debugger invoked on" in line or RAW_DEBUGGER_PROMPT.search(line):
+                collected.append(line)
+                return self.invalidate(collected, "raw Lisp debugger is not the ACL2 event loop")
             if text == marker:
-                if resent and crashed("".join(collected)):
+                if crashed("".join(collected)) and not recovery_prompt:
+                    return self.invalidate(collected, "raw Lisp abort did not return to an ACL2 prompt")
+                if resent and recovery_prompt and crashed("".join(collected)):
                     collected.append(RECOVERED_NOTE + "\n")
                 return "".join(collected), False
             if STALE_SENTINEL.fullmatch(text):
                 continue  # a resent sentinel ACL2 did not swallow after all
             if any(mark in line for mark in CRASH_MARKS):
                 suspect = True
+                recovery_prompt = False
+            elif suspect and ACL2_PROMPT.search(line):
+                recovery_prompt = True
             collected.append(line)
 
     def kill(self) -> None:
@@ -639,7 +729,8 @@ def errored(output: str) -> bool:
     caught error.  A crash, ACL2 Halted, a FAILED banner, or error text with
     no summary after it (a query, a translation error) is a refusal.
     """
-    if any(mark in output for mark in CRASH_MARKS) or "ACL2 Halted" in output:
+    if (any(mark in output for mark in CRASH_MARKS) or "ACL2 Halted" in output
+            or RAW_DEBUGGER_PROMPT.search(output) or PROTOCOL_ERROR in output):
         return True
     if FAILED_BANNER in output:
         return True
@@ -1025,18 +1116,25 @@ def encapsulated(text: str, directory: Path, skip: set[str],
     belongs in the session anyway; a local one stays inside, local.  With
     LIMIT, each event inside is wrapped in `with-prover-time-limit`, as a
     `send` is, so one runaway lemma costs LIMIT seconds, not the session.
+    The encapsulate is empty text when no embedded events remain; an
+    include-only umbrella still exports its successfully loaded dependencies.
     """
     hoisted: list[str] = []
     kept: list[str] = []
     for form in forms(text):
+        form, _ = source_includes(form, directory, skip)
+        if not form:
+            continue
         head, _ = head_and_name(form)
-        if head == "in-package" or include_target(form, directory) in skip:
+        if head == "in-package":
             continue
         if head in HOISTED_HEADS and not LOCAL_FORM.match(form):
             hoisted.append(form)
         else:
             kept.append(wrap_limit(form, limit))
-    return hoisted, "(encapsulate ()\n" + "\n".join(kept) + "\n)"
+    # Include-only umbrellas have no embedded events after hoisting/skips.
+    # ACL2 rejects an empty encapsulate; the includes already export the world.
+    return hoisted, ("(encapsulate ()\n" + "\n".join(kept) + "\n)" if kept else "")
 
 
 TIME_LIMIT_MARK = "[Time-limit]"
@@ -1109,6 +1207,9 @@ def load_book(acl2: Acl2, book: str, state: dict, load_timeout: float,
                     note_refusal(state, output, limit)
                 state["load_timed_out"] = timed_out
                 return False
+        if not body:
+            state["ld_loaded"][book] = "encapsulated"
+            return True
         output, timed_out = acl2.send(body, hard * 4)
         if timed_out or errored(output):
             state["stopped_at"] = (where + "(encapsulate of the book; start with --ld-leak "
@@ -1129,7 +1230,8 @@ def load_book(acl2: Acl2, book: str, state: dict, load_timeout: float,
         head, event = head_and_name(form)
         if stop_before and (event == stop_before or stop_before == f"#{number}"):
             break
-        if include_target(form, source.parent) in skip:
+        form, _ = source_includes(form, source.parent, skip)
+        if not form:
             continue
         output, timed_out = acl2.send(wrap_limit(form, limit), hard)
         if timed_out or errored(output):
@@ -1252,6 +1354,10 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
                 if active:
                     state["last_active"] = time.time()
                 answer = handle(request, acl2, state, limit)
+                if acl2.protocol_error:
+                    state["ready"] = False
+                    state["error"] = acl2.protocol_error
+                    state["ended"] = "invalidated ACL2 protocol"
                 if active:
                     state["last_active"] = time.time()
                 if request.get("op") == "stop" and request.get("reason"):
@@ -1277,6 +1383,9 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
             server.close()
         if acl2 is not None:
             acl2.kill()
+            if acl2.protocol_error:
+                state["error"] = acl2.protocol_error
+                state["ended"] = "invalidated ACL2 protocol"
         state["ready"] = False
         save()
         if bound:
@@ -1591,7 +1700,7 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
                 and report.action != "install-partial" and auto == "ld"):
             from_source |= dependents_of(graph, report.uncached) - {book}
             printed.append("proof-repl: loading from source (proofs run in the session): "
-                           + ", ".join(dependency_order(graph, from_source)))
+                           + ", ".join(dependency_order(graph, from_source, book)))
             report, required = attempt(from_source, purge=False)
         if (report is not None and report.artifact_set is None
                 and report.action != "install-partial"):
@@ -1608,7 +1717,7 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
         return False, f"proof-repl: certificate acquisition failed: {error}", []
     except (OSError, subprocess.TimeoutExpired) as error:
         return False, f"proof-repl: certificate acquisition failed: {error}", []
-    order = dependency_order(graph, from_source)
+    order = dependency_order(graph, from_source, book)
     if report is None:
         printed.append("no dependencies to install")
     else:
@@ -1618,20 +1727,22 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
     return True, "\n".join(printed), order
 
 
-# `_start`'s answer when a dependency loaded from source failed: `start`
-# stops what is left and starts again over certificates.
+# `_start`'s answer when a dependency loaded from source failed. `start`
+# stops the failed session; only an explicit certification request may retry.
 SOURCE_DEPS_FAILED = 75
 
 
 def start(args) -> int:
-    """Start a session; a from-source dependency that fails to load falls back
-    to --certify-missing, saying so (limits-live-3: after the chunked-body-2
-    merge a dependency's ENCAPSULATE failed from source, a false red)."""
+    """Start a session without turning a source refusal into an implicit build."""
     code = _start(args)
     if code != SOURCE_DEPS_FAILED:
         return code
     with contextlib.suppress(SystemExit):
         stop(args)
+    if not getattr(args, "certify_missing", False):
+        print("proof-repl: dependency failed from source; no certification launched. "
+              "Fix the source/world or explicitly restart with --certify-missing.")
+        return code
     args.certify_missing = True
     args.source_deps = None
     args.ld_missing = False
@@ -2290,16 +2401,15 @@ def prepare_includes(name: str, several: list[str], acquire=None) -> tuple[list[
     session's directory, and whether every included book is certified.
 
     A sent include of a book with no certificate here (a tests/acl2 book is
-    rarely in a books/ session's closure) is acquired first -- installed
-    from the cache, or certified -- as `start --certify-missing` acquires a
-    dependency; an include of an uncertified book would process its events
-    in the session, which is not what the certified book provides.
+    rarely in a books/ session's closure) is acquired from matching cached
+    evidence first. A miss is refused, never implicitly certified; choose
+    certification explicitly or send the intended source forms instead.
     """
     directory = session_directory(name)
     if directory is None:
         return several, True
     acquire = acquire or (lambda book: install_closure(
-        book, (), "certify", 4, SESSIONS / f"{name}.include.log", include_self=True))
+        book, (), None, 4, SESSIONS / f"{name}.include.log", include_self=True))
     prepared = []
     for one in several:
         rewritten, target = rooted_include(one, directory)
@@ -2339,6 +2449,12 @@ def range_items(path: Path, all_forms: list[str], chosen: range, from_source: se
             skipped.append(form_label(index + 1, form)
                            + (" (loaded from source already)" if target in from_source
                               else " (--skip-includes)"))
+            continue
+        form, nested = source_includes(form, path.parent, from_source, skip_includes)
+        if nested:
+            skipped.append(form_label(index + 1, all_forms[index])
+                           + " (nested includes: " + ", ".join(nested) + ")")
+        if not form:
             continue
         local += bool(LOCAL_FORM.match(form))
         items.append((form_label(index + 1, form), form))
@@ -2470,7 +2586,7 @@ def send_range(args) -> int:
         hoisted, body = encapsulated("\n".join(form for _, form in items), path.parent,
                                      set(), None)
         items = ([(form_label(0, form).split(" ", 1)[1], form) for form in hoisted]
-                 + [(f"#{chosen.start + 1}-#{chosen.stop} (encapsulate)", body)])
+                 + ([(f"#{chosen.start + 1}-#{chosen.stop} (encapsulate)", body)] if body else []))
     return send_many(args.name, items, args.limit, args.full, args.keep_going)
 
 

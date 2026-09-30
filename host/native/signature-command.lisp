@@ -246,3 +246,27 @@ cursor's, then the event's), so a caller asks them instead of copying them."
 (fnn-register-verb "consumer-inspect"
                    (lambda (first rest)
                      (fnn-command-consumer-inspect (cons first rest))))
+
+; Public legacy statement authoring. The selected native suite is pure
+; ML-DSA-65, with the existing fn-statement-sig-v1 preimage decided by ACL2.
+(defun fnn-command-statement-sign (args)
+ (unless (= (length args) 9)
+  (error 'fnn-usage-error :message
+   "usage: fn statement-sign PRINCIPAL INCARNATION SEQUENCE article|policy GROUP ML-PRIVATE-PEM ML-PUBLIC-PEM SOURCE OUTPUT"))
+ (destructuring-bind (principal-path incarnation sequence kind group private public source-path output) args
+  (let* ((principal (fnn-hsig-command-read-exact principal-path 32 "principal"))
+         (source (fnn-octet-list (fnn-read-regular-bounded source-path
+                                  (fnn-core 'fn-hsig-host-max-source-octets))))
+         (plan (fnn-core 'fn-nsm-plan principal incarnation sequence kind group source)))
+   (unless plan (fnn-refuse "source or statement coordinates are outside the selected FN-Statement profile"))
+   (let* ((signature (fnn-octet-list (fnn-hsig-ml-dsa-65-sign private (fourth plan))))
+          (key (fnn-octet-list (fnn-hsig-ml-dsa-65-public-key public)))
+          (rendered (fnn-core 'fn-nsm-render plan signature)))
+    (unless (fnn-core 'fn-nsm-check-rendered principal key plan signature)
+     (fnn-refuse "rendered FN-Statement failed supplied-key verification"))
+    (with-open-file (stream output :direction :output :element-type '(unsigned-byte 8)
+                            :if-exists :error :if-does-not-exist :create)
+     (write-sequence (fnn-octets rendered) stream))
+    0))))
+(fnn-register-verb "statement-sign"
+ (lambda (first rest) (fnn-command-statement-sign (cons first rest))))

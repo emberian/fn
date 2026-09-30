@@ -267,27 +267,24 @@
       (let ((name (fn-article-line-value split))
             (value (fn-article-line-rest split)))
         ;; RFC 5322 section 2.2.3: a field body may begin on a continuation
-        ;; line (`References:' CRLF ` <id>'), so an EMPTY first-line value is
-        ;; a field still open; `fn-article-field-closedp' refuses it if no
-        ;; fold line follows (RFC 5536 section 2.2: no empty header field).
+        ;; line (`References: ' CRLF ` <id>'), so an empty or WSP-only
+        ;; first-line value is a field still open. Closing it requires a
+        ;; visible value (RFC 5536 section 2.2: no empty header field).
         (if (and (fn-article-namep name)
                  (or (null value)
                      (and (consp value)
                           (fn-article-wspp (car value))
-                          (fn-article-header-bytes-p value)
-                          (fn-article-has-vcharp value))))
+                          (fn-article-header-bytes-p value))))
             (list :ok (fn-article-make-field
                        (list line) (fn-article-ascii-downcase name) value))
           (fn-article-error :invalid-header))))))
 
-; A field may be closed (by the next field or the header's end) once its
-; unfolded value is non-empty: a first line's value either has a visible
-; character or is empty, and every fold line has one (fn-article-fold-linep),
-; so a non-empty value has one.  One test, no walk.
+; Logical closing condition. Executed accumulator loops carry this visible
+; value bit: their close operation never scans an accumulated field.
 (defun fn-article-field-closedp (current)
   (declare (xargs :guard (or (null current) (fn-article-fieldp current))))
   (or (null current)
-      (consp (fn-article-field-unfolded-value current))))
+      (fn-article-has-vcharp (fn-article-field-unfolded-value current))))
 
 (defun fn-article-fold-linep (line)
   (declare (xargs :guard t))
@@ -395,14 +392,33 @@
                        (fn-article-header-rev-add-line header-rev line))))))))))))))
 
 ; The field under construction, carried reversed: (raw-lines-rev lower-name
-; unfolded-value-rev).  A continuation line then costs its own length, not the
-; field's accumulated length (PKT-552/770).
+; unfolded-value-rev visiblep). A continuation line costs its own length,
+; not the accumulated field's length. The invariant's visible test is proof
+; vocabulary; executing a close reads the already-maintained bit.
+(defthm fn-article-has-vcharp-of-append
+  (equal (fn-article-has-vcharp (append a b))
+         (or (fn-article-has-vcharp a) (fn-article-has-vcharp b))))
+
+(defthm fn-article-has-vcharp-of-revappend
+  (equal (fn-article-has-vcharp (revappend a b))
+         (or (fn-article-has-vcharp a) (fn-article-has-vcharp b))))
+
+(defthm fn-article-has-vcharp-of-rev
+  (equal (fn-article-has-vcharp (rev a)) (fn-article-has-vcharp a))
+  :hints (("Goal" :in-theory (enable rev))))
+
+(defthm fn-article-has-vcharp-of-reverse
+  (implies (true-listp a)
+           (equal (fn-article-has-vcharp (reverse a))
+                  (fn-article-has-vcharp a))))
+
 (defun fn-article-open-fieldp (cur)
   (declare (xargs :guard t))
   (and (true-listp cur)
-       (equal (len cur) 3)
+       (equal (len cur) 4)
        (true-listp (car cur))
-       (true-listp (car (cdr (cdr cur))))))
+       (true-listp (car (cdr (cdr cur))))
+       (equal (cadddr cur) (fn-article-has-vcharp (caddr cur)))))
 
 (defun fn-article-close-field (cur)
   (declare (xargs :guard (fn-article-open-fieldp cur)))
@@ -413,21 +429,23 @@
   (declare (xargs :guard (fn-article-fieldp field)))
   (list (reverse (fn-article-field-raw-lines field))
         (fn-article-field-name field)
-        (reverse (fn-article-field-unfolded-value field))))
+        (reverse (fn-article-field-unfolded-value field))
+        (fn-article-has-vcharp (fn-article-field-unfolded-value field))))
 
 (defun fn-article-add-fold-open (cur line)
   (declare (xargs :guard (and (fn-article-open-fieldp cur)
                               (true-listp line))))
   (list (cons line (car cur))
         (car (cdr cur))
-        (revappend line (car (cdr (cdr cur))))))
+        (revappend line (car (cdr (cdr cur))))
+        (or (cadddr cur) (fn-article-has-vcharp line))))
 
-; fn-article-field-closedp on the carried field: the reversed value is a cons
-; exactly when the value is.  One test, no walk.
+; Visible-value ownership is maintained while each bounded physical line is
+; incorporated. Closing an arbitrarily long unfolded field costs one test.
 (defun fn-article-open-field-closedp (cur)
   (declare (xargs :guard (or (null cur) (fn-article-open-fieldp cur))))
   (or (null cur)
-      (consp (car (cdr (cdr cur))))))
+      (cadddr cur)))
 
 (defun fn-article-parse-lines-acc (octets limits lines-left header-bytes nfields
                                           fields-rev cur header-rev)
@@ -791,7 +809,7 @@
 (defthm fn-article-open-field-open-fieldp
   (implies (fn-article-fieldp field)
            (fn-article-open-fieldp (fn-article-open-field field)))
-  :hints (("Goal" :in-theory (enable fn-article-fieldp))))
+  :hints (("Goal" :in-theory (e/d (fn-article-fieldp) (fn-article-has-vcharp)))))
 
 (defthm fn-article-close-field-nonnil
   (fn-article-close-field cur)
@@ -800,8 +818,17 @@
 (defthm fn-article-field-closedp-of-close-field
   (implies (fn-article-open-fieldp cur)
            (equal (fn-article-field-closedp (fn-article-close-field cur))
-                  (consp (car (cdr (cdr cur))))))
-  :hints (("Goal" :in-theory (enable fn-article-field-closedp))))
+                  (fn-article-open-field-closedp cur)))
+  :hints (("Goal" :in-theory (enable fn-article-field-closedp
+                                    fn-article-open-field-closedp))))
+
+(defthm fn-article-open-field-closedp-is-field-closedp
+  (implies (or (null cur) (fn-article-open-fieldp cur))
+           (equal (fn-article-field-closedp (and cur (fn-article-close-field cur)))
+                  (fn-article-open-field-closedp cur)))
+  :hints (("Goal" :cases ((null cur))
+                  :in-theory (disable fn-article-field-closedp
+                                    fn-article-close-field fn-article-open-fieldp))))
 
 ; PKT-552/770: the host-called parse (fn-article-parse-under, through mbe)
 ; runs this loop, in which a continuation line costs its own length; it
@@ -829,7 +856,7 @@
                                fn-article-make fn-article-ok fn-article-error
                                fn-article-wspp fn-article-limit-octets
                                fn-article-limit-fields
-                               fn-article-field-closedp))))
+                               fn-article-field-closedp fn-article-open-field-closedp))))
 
 (verify-guards fn-article-parse-lines-acc
   :hints (("Goal"

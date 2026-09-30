@@ -101,10 +101,10 @@ class NativePackChainTests(unittest.TestCase):
         config, port = self.owner_config(store, name)
         # Lane membership-budget: the T = 2^20 profile's full store reserves
         # about 37 GB, past this module's 24 GB unit; the store is made for
-        # hbox (FN_INIT_BUDGET_MB names that target, tools/native_env.py) and
+        # hbox (`init --budget MB' names that target, tools/native_env.py) and
         # run directly.
-        init = self.native("operator", config, "init", *PROFILE_FLAGS, "fn.letters", "fn.test",
-                           env=native_env.harness_store_env(self.env))
+        init = self.native("operator", config, "init", *native_env.HARNESS_INIT_WORDS,
+                           *PROFILE_FLAGS, "fn.letters", "fn.test", env=self.env)
         self.assertIn("accepted operator init", init.stderr)
         self.native("store", store, "probe", str(n), "article")
         return store, config, port

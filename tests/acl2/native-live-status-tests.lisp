@@ -521,6 +521,26 @@ open-cost replay-records=")
                              (fn-cfg-value *nlst-granted-config*))))
 
 
+; Q10c: the actual `consumer show' plan is a query whose plain FNLS code
+; stays beyond the evidence/query codes 8..12.  It prints only mark-6 rows.
+(defconst *nlst-consumer-show*
+  (fn-native-admin-plan (nlst-argv '("consumer" "show"))))
+(assert-event (fn-native-admin-result-queryp *nlst-consumer-show*))
+(assert-event
+ (equal (fn-native-admin-result-report-kind *nlst-consumer-show*) :consumers))
+(assert-event (equal (fn-nls-kind-code :consumers) 13))
+(assert-event (equal (fn-nls-code-kind (fn-nls-kind-code :consumers)) :consumers))
+(assert-event
+ (equal (fn-nls-query-report *nlst-consumer-show*
+                            (fn-cfg-value *nlst-granted-config*))
+        (fn-acct-consumers-list-report (fn-cfg-value *nlst-granted-config*))))
+(assert-event
+ (equal (in-arena-fn-nls-report *sr-arena* :consumers *nlst-profile* *nlst-s*
+                              0 (fn-nls-store-seen *nlst-s*)
+                              *nlst-granted-config* nil *nlst-obs*)
+        (fn-nls-query-report *nlst-consumer-show*
+                            (fn-cfg-value *nlst-granted-config*))))
+
 ; ---------------------------------------------------------------------------
 ; fn-nls-page-refuses-exactly-past-the-total-width (control-reply-fit,
 ; PRF-178).  The antecedent's past-the-width side needs a report of 2^32

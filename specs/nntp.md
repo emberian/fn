@@ -1830,10 +1830,135 @@ catalog swap while a cursor still refers to the captured catalog; retirement
 retains its pages until that generation is settled. Web and pull consumers
 settle after rendering because their resulting byte vectors own the bytes.
 
+Each cursor quantum yields back to the connection scheduler before the
+next one, including an empty sparse-range quantum. The mux retains the
+exact plan, pending after-response action and reader hold, then resumes the
+plan after ACL2's positive `fn-splan-cursor-resume-ms` delay. It neither
+steps new input nor applies idle-close while this plan is outstanding.
+Web and pull worker threads yield after empty progress too. This bounds
+cursor chaining per I/O event; it preserves the existing complete-residual
+contract and introduces no new bytes into a response.
+
 The current quantum bounds numbers probed and overview rows formatted.
 It still parses a complete article and formats a complete overview row;
 byte-budgeted long-row continuation remains an identified Q5c/J1 obligation.
 This ownership increment does not complete that resource claim.
+
+PRF-1066 supplies an implementation component for that remaining claim:
+`fn-nbw-step` retains immutable cached strings plus an offset and emits at
+most its fuel in octets. Piece-end transitions consume fuel as well, so an
+empty field makes strict progress under a positive budget. The exact
+produced prefix plus remaining pieces is the original row; the output remains
+an octet list whenever the pieces and accumulated prefix carry octets. The cached-row
+abstraction connects those pieces to the article's complete NOV row under
+the maintained column relation. These functions are not yet the served
+cursor implementation. Integration, legacy rows without a decided NOV,
+the maintained codec bound on numeric setup and matched runtime cost
+measurement remain open; no complete long-row scheduling claim is made.
+
+The decimal setup component `fn-nbw-decimal-tick` retains an unrendered
+natural and a reverse-produced character suffix. Each division spends fuel;
+exhaustion retains the exact decimal residual and resumes. Under the
+selected record codec's `max-octets` bound it finishes within ten divisions
+and ten characters. That premise is conditional: composite article length
+and the actual served byte/body-line fields still need their maintained
+profile/representation bridge. Wider supported values use the general
+continuation; this component never truncates them to ten digits. The work
+count measures divisions, not machine bit complexity of arbitrary bignums;
+actual runtime cost still requires the maintained representation bound.
+
+The immutable span component `fn-nsw-step` reads at most its fuel in source
+octets and emits at most its fuel in normalized octets. It retains the
+source handle, position, remaining length and a pending CR across quanta;
+a following LF is consumed without output, while an unpaired CR emits SP
+without swallowing the unread octet. Its produced bytes plus logical
+residual equal `fn-nov-scrub` of the original span, including across a fold.
+The slice abstraction, endpoint, octet representation and strict active
+progress are proved. These logical residuals never execute in a quantum.
+The owning response must retain the origin generation pin until all span
+bytes drain or it cancels. This component is not yet wired into the served
+cursor and does not establish legacy parser refinement or runtime costs.
+
+The direct-row component `fn-nrf-facts` reads the already-selected catalog
+row once and returns its decided facts only for an arena handle. It does
+not search the Message-ID history. Under the maintained column relation F,
+those facts equal the facts of that row's payload. Its cached pieces denote
+the exact article NOV row when the cache is valid and the article retains
+the selected row's payload identity. Visibility and group membership remain
+the selecting cursor's responsibility; cache existence alone grants neither.
+This accessor is not yet called by the served cursor.
+
+The mixed row-piece component `fn-npw-tick` composes cached strings,
+pinned spans, owned separators, numerical setup and character draining
+under one fuel budget. Every transition costs one unit, including an empty
+piece or a decimal setup step that emits no octet. It emits at most its fuel
+in octets, preserves its maintained representation and exact complete row
+residual, and strictly decreases a natural logical demand under positive
+fuel with live pieces. The demand is a termination measure, not a runtime
+cost estimate. A 30-digit fixture resumes and renders every digit; decimal
+setup introduces no ten-digit ceiling. This component is guard-verified but
+still dormant. Actual row capture, parser refinement, selected profile and
+arithmetic cost, host cursor composition and matched measurements remain
+required before a complete served scheduling claim.
+
+### Bounded legacy hydration source component (PRF-1094, SCN-1009)
+
+`fn-lpc-begin(handle, length, origin-pin)` captures immutable source identity;
+`fn-lpc-tick(cursor, fuel, fn-arena)` returns cursor, consumed, work and
+`:yield`, `:valid` or `:invalid`. One raw source byte costs one transition.
+The runtime guard checks only source handle, known length and position. It
+never rescans the article, the accumulated fields or the whole arena.
+
+The five `fn-lpc-field(cursor, k)` values, in Subject, From, Date,
+Message-ID and References order, are absent or `(handle start length pin)`.
+The first matching field wins. The span starts after exactly one initial
+unfolded SP; an initial TAB is retained for `fn-nov-scrub-byte`. Interior
+folding CRLF pairs remain in the raw span and `fn-nov-scrub` removes them.
+An empty first physical value followed by a fold uses that fold's first
+octet for the single-SP rule. No field or source is flattened at EOF.
+This preserves the RFC 3977 §8.3.2 projection; physical header syntax and
+folding follow the existing RFC 5322 §2.1.1/§2.2.3 and RFC 5536 §2.2 parser.
+
+The logical span invariant is established by begin and preserved by each
+actual tick. `fn-lpc-field-read-is-ready` supplies the concrete arena read
+guard from that carried invariant; the served candidate does not execute
+the span recognizer. A physical continuation line carries its own visibility
+flag: an earlier visible field line cannot admit a whitespace-only fold.
+
+The admitted source theorem `fn-lpc-tick-full-body-lines` equates the actual
+arena tick's complete body count to `fn-hf-body-lines-of`. The first
+CRLFCRLF search and body framing run independently of header rejection:
+body NUL or an unterminated final body line produces zero count even when
+the article parser accepts those opaque body octets.
+
+The logical value invariant relates a raw source slice to the actual parser's
+unfolded value after the one-SP rule and `fn-nov-scrub`. The actual value and
+fold-byte transitions preserve it; a complete physical CRLF pair preserves
+the value, and the completed line endpoint identifies the normalized span.
+Normalization also commutes with the projection's first-hit update, keeping
+a present empty value distinct from an absent column. The complete successful
+header traversal now maintains all five source spans across arbitrary actual
+new-field and folded lines, first-field closure, the separator and body.
+`fn-lpv-complete-values-are-actual-overview-content` equates those normalized
+spans with the actual five `fn-nov-header-content` values; its only premise
+is success of the actual article parser. Literal removal witnesses distinguish
+invalid grammar, a missing current field, an overlong physical line and a
+corrupted source/span invariant. The catalog join now also proves complete
+actual arena-tick NOV equality with `fn-hnov-of`, including invalid grammar
+and the actual tombstone magic/89-byte threshold, under only the octet source
+domain. The actual parser and begin decide oversized sources alike, so the
+final equation assumes no codec-ceiling premise. A natural-handle premise
+was removed after proving the stronger logical arena abstraction.
+
+This component is not served yet. `fn-lpc-agrees-with-actual-catalog` proves
+the full `fn-lpc-agreesp` comparison with actual `fn-hnov-of` and
+`fn-hf-body-lines-of` under the octet source domain. The formal allocation
+accounting, actual served cursor/formatter composition and matched runtime
+measurements remain open. The source stores fixed-size
+records and source references and reports raw-byte work; that statement
+alone is not a physical allocation or latency qualification.
+
+
 
 ## Public exposure (NNT-031)
 

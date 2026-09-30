@@ -90,3 +90,79 @@
  (let ((bad (append *piot-token* '(:settled))))
    (and (not (fn-pio-file-clear-p 11 (list *piot-cancelled*)))
         (fn-pio-file-clear-p 11 (list bad)))))
+
+; The reaper's constant work quantum is independent of stored-data size.
+(assert-event (equal (fn-pio-reap-work) 1))
+(assert-event (and (equal (fn-pio-worker-death-step t) :settle)
+                   (equal (fn-pio-worker-death-step nil) :rotate)))
+
+(defun piot-file-issue (next) (mv-list 3 (fn-pio-file-issue next)))
+(assert-event (and (equal (piot-file-issue nil) '(:issued 2 1))
+                   (equal (piot-file-issue 2) '(:issued 3 2))
+                   (equal (piot-file-issue 0) '(:invalid-file-identity 0 nil))
+                   (equal (piot-file-issue :bad) '(:invalid-file-identity :bad nil))))
+
+; KEYSTONE fn-pio-successive-file-issues-have-distinct-identities.
+; Literal positive: include initial namespace and another carried allocator.
+(assert-event
+ (and (let* ((first (piot-file-issue nil)) (second (piot-file-issue (cadr first))))
+        (and (eq (car first) :issued) (eq (car second) :issued)
+             (posp (caddr first)) (posp (caddr second)) (< (caddr first) (caddr second))))
+      (let* ((first (piot-file-issue 9)) (second (piot-file-issue (cadr first))))
+        (and (eq (car first) :issued) (eq (car second) :issued)
+             (posp (caddr first)) (posp (caddr second)) (< (caddr first) (caddr second))))))
+; Hypothesis-removal, corrupted carried counter: omitted :issued is false;
+; no other hypothesis remains, and the literal conclusion is false.
+(assert-event
+ (let* ((first (piot-file-issue 0)) (second (piot-file-issue (cadr first))))
+   (and (not (eq (car first) :issued))
+        (not (and (eq (car second) :issued)
+                  (posp (caddr first)) (posp (caddr second))
+                  (< (caddr first) (caddr second)))))))
+
+; Resource-admission composition, literal positive/removal teeth.
+(defun piot-prl-admit (ledger)
+  (declare (xargs :guard t))
+  (mv-list 3 (fn-prl-admit ledger 7 11 4096 64 123 '(400 0 0 1 1) '(100 0 0 1 0))))
+(defconst *piot-funded-ledger*
+  (mv-nth 1 (mv-list 2 (fn-prl-register (fn-prl-make '(10000 0 4 4 20)) 11 '(20 0 1 0 0)))))
+; KEYSTONE fn-pio-admitted-resource-token-establishes-owned-read.
+; REACHABLE POSITIVE: installed pool, reserved incarnation, whole conclusion.
+(assert-event
+ (let* ((ledger *piot-funded-ledger*) (answer (piot-prl-admit ledger))
+        (token (nth 1 answer)) (row (fn-pio-own-admitted-token token)))
+   (and (equal (nth 0 answer) :admitted)
+        (fn-pio-rowp row) (equal (fn-pio-token row) token)
+        (equal (nth 6 row) :issued) (equal (nth 0 row) (fn-prl-nth 2 ledger))
+        (< (nth 0 row) (fn-prl-nth 2 (nth 2 answer))))))
+; HYPOTHESIS-REMOVAL: no incarnation reservation -> refusal, no owned row.
+(assert-event
+ (let* ((ledger (fn-prl-make '(10000 0 4 4 20))) (answer (piot-prl-admit ledger))
+        (token (nth 1 answer)) (row (fn-pio-own-admitted-token token)))
+   (and (not (equal (nth 0 answer) :admitted))
+        (not (and (fn-pio-rowp row) (equal (fn-pio-token row) token)
+                  (equal (nth 6 row) :issued) (equal (nth 0 row) (fn-prl-nth 2 ledger))
+                  (< (nth 0 row) (fn-prl-nth 2 (nth 2 answer))))))))
+(defun piot-bounded-file-issue (next limit)
+  (declare (xargs :guard t))
+  (mv-list 3 (fn-pio-file-issue-with-limit next limit)))
+; KEYSTONE fn-pio-bounded-file-issue-spends-a-fresh-representable-name.
+; REACHABLE POSITIVE at initial and last admissible name.
+(assert-event
+ (and (let ((answer (piot-bounded-file-issue nil 2)))
+        (and (equal (nth 0 answer) :issued) (posp (nth 2 answer))
+             (<= (nth 2 answer) 2) (equal (nth 1 answer) (+ 1 (nth 2 answer)))))
+      (let ((answer (piot-bounded-file-issue 2 2)))
+        (and (equal (nth 0 answer) :issued) (posp (nth 2 answer))
+             (<= (nth 2 answer) 2) (equal (nth 1 answer) (+ 1 (nth 2 answer)))))))
+; HYPOTHESIS-REMOVAL: exhausted names cannot establish the whole conclusion.
+(assert-event
+ (let ((answer (piot-bounded-file-issue 3 2)))
+   (and (not (equal (nth 0 answer) :issued))
+        (equal answer '(:file-identities-exhausted 3 nil))
+        (not (and (posp (nth 2 answer)) (<= (nth 2 answer) 2)
+                  (equal (nth 1 answer) (+ 1 (nth 2 answer))))))))
+; Corrupted counters and invalid profiles do not reset/reuse a name.
+(assert-event
+ (and (equal (piot-bounded-file-issue 0 2) '(:invalid-file-identity 0 nil))
+      (equal (piot-bounded-file-issue nil 0) '(:invalid-file-identity nil nil))))

@@ -70,6 +70,7 @@
 
 (in-package "ACL2")
 (include-book "web-render")
+(include-book "web-health")
 
 ; -----------------------------------------------------------------------------
 ; Base64 (RFC 4648 4 and 5): tokens use the URL alphabet unpadded; the
@@ -1808,6 +1809,8 @@
 (defun fn-wss-start (name session sessions ctx config fn-web-in fn-web-out)
   (declare (xargs :stobjs (fn-web-in fn-web-out) :guard t))
   (case name
+    (:health
+     (mv (list :health (fn-wss-flow :health :observed ctx nil)) sessions fn-web-out))
     (:style
      (let ((fn-web-out (fn-wss-write *fn-web-css* fn-web-out)))
        (mv (list :respond 200 *fn-wss-css-fields* (fn-wss-bodyp ctx)) sessions fn-web-out)))
@@ -1914,6 +1917,33 @@
 
 ; :begin -- close one expired session's connection per step (the event is
 ; kept in the flow and begun again after), then route and gate.
+; The route table admits GET (and HEAD) and POST. RFC 9110 15.5.6:
+; a 405 response names the methods the target resource allows.
+(defun fn-wss-allow-value (methods)
+  (declare (xargs :guard t))
+  (cond ((and (member :get (fn-wrq-true methods)) (member :post (fn-wrq-true methods)))
+         (fn-wrq-oct "GET, HEAD, POST"))
+        ((member :get (fn-wrq-true methods)) (fn-wrq-oct "GET, HEAD"))
+        ((member :post (fn-wrq-true methods)) (fn-wrq-oct "POST"))
+        (t nil)))
+
+(defun fn-wss-route-refusal (route ctx config sessions fn-web-in fn-web-out)
+  (declare (xargs :stobjs (fn-web-in fn-web-out) :guard t))
+  (if (equal (fn-wrq-nth 1 route) 405)
+      (mv-let (action fn-web-out)
+        (fn-wss-page 405
+                     (list (cons (fn-wrq-oct "Allow")
+                                 (fn-wss-allow-value (fn-wrq-nth 2 route))))
+                     (fn-wrq-oct "Method not allowed")
+                     (fn-wr-outcome-main :no (fn-wrq-oct "Method not allowed")
+                                         (fn-wrq-oct "This resource does not support that method.")
+                                         nil nil)
+                     ctx config fn-web-in fn-web-out)
+        (mv action sessions fn-web-out))
+    (fn-wss-trouble 404 (fn-wrq-oct "Not found")
+                    (fn-wrq-oct "There's nothing here.")
+                    ctx config sessions fn-web-in fn-web-out)))
+
 (defun fn-wss-begin (config sessions event fn-web-in fn-web-out)
   (declare (xargs :stobjs (fn-web-in fn-web-out) :guard t))
   (let* ((request (fn-wrq-nth 1 event))
@@ -1935,9 +1965,7 @@
              (route (fn-web-route (fn-web-req-method request) (fn-web-req-path request))))
         (if (equal (car route) :route)
             (fn-wss-gate (cadr route) session sessions ctx config fn-web-in fn-web-out)
-          (fn-wss-trouble (if (equal (cadr route) 405) 405 404) (fn-wrq-oct "Not found")
-                          (fn-wrq-oct "There's nothing here.")
-                          ctx config sessions fn-web-in fn-web-out))))))
+          (fn-wss-route-refusal route ctx config sessions fn-web-in fn-web-out))))))
 
 ; THE HOST-CALLED STEP (host/web-host.lisp fn-web-host-step, called by
 ; host/native/web-host.lisp for every event of every request).
@@ -1948,6 +1976,16 @@
      ((equal (fn-wss-car event) :begin) (fn-wss-begin config sessions event fn-web-in fn-web-out))
      ((equal (fn-wss-f-route flow) :expire)
       (fn-wss-begin config sessions (fn-wss-f-data flow) fn-web-in fn-web-out))
+     ((equal (fn-wss-f-route flow) :health)
+      (let* ((observation (and (equal (fn-wss-car event) :health-observation)
+                               (fn-wrq-nth 1 event)))
+             (answer (fn-whl-answer observation))
+             (fn-web-out (fn-wss-write (cadr answer) fn-web-out)))
+        (mv (list :respond (car answer)
+                  (list (cons (fn-wrq-oct "Content-Type")
+                              (fn-wrq-oct "text/plain; charset=utf-8"))
+                        (cons (fn-wrq-oct "Cache-Control") (fn-wrq-oct "no-store")))
+                  (fn-wss-bodyp ctx)) sessions fn-web-out)))
      ((equal (fn-wss-f-route flow) :signin)
       (fn-wss-k-signin sessions flow event config fn-web-in fn-web-out))
      ((equal (fn-wss-f-route flow) :redeem)

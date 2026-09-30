@@ -181,6 +181,43 @@ def carried(evidence: Evidence, image: dict, files: list[str]) -> tuple[bool, st
     return True, "it carries this source"
 
 
+def tested_coordinate(root: Path, cap: dict, images: dict, evidence: Evidence,
+                      files: list[str]) -> tuple[str, str]:
+    """Render an explicit no-image, qualified-image or historical lab coordinate."""
+    ident = cap["id"]
+    if "tested" not in cap:
+        raise ViewError(f"{ident}: sidecar lacks tested")
+    tested = cap["tested"]
+    if tested is not None:
+        if not isinstance(tested, dict):
+            raise ViewError(f"{ident}: tested must be null or an image/lab coordinate")
+        expected = {"image", "profile"} if "image" in tested else {"record", "source", "profile"}
+        if not expected <= tested.keys() or ("image" in tested and "source" in tested):
+            raise ViewError(f"{ident}: invalid tested coordinate")
+        if any(not isinstance(tested[k], str) or not tested[k].strip() for k in expected):
+            raise ViewError(f"{ident}: tested coordinates must be nonempty strings")
+        if "image" in tested and tested["image"] not in images:
+            raise ViewError(f"{ident}: unknown tested image {tested['image']}")
+    if tested is None:
+        qualified = "no: no matching image evidence"
+        tested_line = "no matching image; source proof experiments are recorded separately below"
+    elif "image" in tested:
+        image = images[tested["image"]]
+        if not image.get("qualification"):
+            raise ViewError(f"{ident}: tested image {tested['image']} is unqualified")
+        ok, how = carried(evidence, image, files)
+        qual_link = record_link(root, image["qualification"])
+        qualified = f"yes: {tested['image']}" if ok else f"no: source changed since {tested['image']}"
+        tested_line = (f"image `{tested['image']}` ({qual_link}, closure "
+                       f"`{image['closure_manifest']}`), profile {tested['profile']}; {how}")
+    else:
+        lab_link = record_link(root, tested["record"], tested["source"])
+        qualified = f"lab only: `{tested['source']}`"
+        tested_line = (f"lane image of `{tested['source']}` ({lab_link}), profile "
+                       f"{tested['profile']}; not a shared qualification")
+    return qualified, tested_line
+
+
 def build(root: Path = ROOT) -> str:
     view = json.loads((root / SIDECAR).read_text(encoding="utf-8"))
     tree = ledger.load_tree()
@@ -231,21 +268,7 @@ def build(root: Path = ROOT) -> str:
         books = sorted({key.book} | ({bridge.book} if bridge else set()))
         files = books + [host["file"]]
 
-        tested = cap["tested"]
-        if "image" in tested:
-            image = images[tested["image"]]
-            if not image.get("qualification"):
-                raise ViewError(f"{ident}: tested image {tested['image']} is unqualified")
-            ok, how = carried(evidence, image, files)
-            qual_link = record_link(root, image["qualification"])
-            qualified = f"yes: {tested['image']}" if ok else f"no: source changed since {tested['image']}"
-            tested_line = (f"image `{tested['image']}` ({qual_link}, closure "
-                           f"`{image['closure_manifest']}`), profile {tested['profile']}; {how}")
-        else:
-            lab_link = record_link(root, tested["record"], tested["source"])
-            qualified = f"lab only: `{tested['source']}`"
-            tested_line = (f"lane image of `{tested['source']}` ({lab_link}), profile "
-                           f"{tested['profile']}; not a shared qualification")
+        qualified, tested_line = tested_coordinate(root, cap, images, evidence, files)
         if cap["profile"] not in node["profiles"]:
             deployed, deployed_line = "no: profile not deployed", (
                 f"no: the node runs {', '.join(node['profiles'])}, this needs {cap['profile']}")

@@ -49,11 +49,10 @@ from pathlib import Path
 from tests.native_harness import ROOT, Node, native_image, requires
 
 sys.path.insert(0, str(ROOT / "tools"))
-import native_env  # noqa: E402
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 POSTS = int(os.environ.get("FN_STATUS_POSTS", "60000"))
-FLAGS = ["--max-transactions", "131072", "--max-history-octets", "128000000"]
+FLAGS = ["--profile", "default", "--max-transactions", "131072", "--max-history-octets", "128000000"]
 SLACK = float(os.environ.get("FN_STATUS_SLACK", "2.0"))
 CONNECTIONS = 8
 
@@ -70,9 +69,7 @@ class NativeStatusLivePostsTests(unittest.TestCase):
 
     def setUp(self):
         self.temp = Path(tempfile.mkdtemp(prefix="fn-status-live-"))
-        budget = os.environ.get("FN_INIT_BUDGET_MB", native_env.HARNESS_INIT_BUDGET_MB)
-        self.node = Node(self, IMAGE, root=self.temp / "node",
-                         env={"FN_INIT_BUDGET_MB": budget})
+        self.node = Node(self, IMAGE, root=self.temp / "node")
 
     def tearDown(self):
         owner = self.node.process

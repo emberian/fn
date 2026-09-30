@@ -1,7 +1,7 @@
 ;;; BP's sole-writer local control: a synchronous turn, never a worker.
 (in-package "ACL2")
 
-(defstruct fnn-bpnc control model owner)
+(defstruct fnn-bpnc control model owner listeners)
 (defvar *fnn-bpnode-control-pump* nil)
 
 (defun fnn-bpnc-step (node event)
@@ -96,7 +96,14 @@
                 (lambda (cid)
                   (fnn-owner-result 'fn-ores-config-result-p
                                     'fn-native-admin-host-owner-reconfigure cid plan)))
-             (if (eq word :refused) (list :reason :refused reason) word))))))))
+             (cond ((eq word :refused) (list :reason :refused reason))
+                   ((eq word :accepted)
+                    ;; Durable configuration is already published.  Runtime
+                    ;; completion is distinct; a failed bind fences/stops.
+                    (when (fnn-bpnc-listeners node)
+                      (fnn-bplc-reconfigure (fnn-bpnc-listeners node)))
+                    :accepted)
+                   (t word)))))))))
 
 (defun fnn-bpnc-handle (node socket)
   (let ((reasoned nil) (fatal nil))
@@ -116,7 +123,9 @@
                                    (fnn-with-control-buffer ()
                                      (fnn-core 'fn-native-control-host-decode-frame
                                                (fnn-octets-ctl-fill frame)))))
-                            (grant (fnn-core 'fn-bpnc-turn-plan ownerp (third decoded))))
+                            (grant (fnn-owner-core 'fn-owner-bplc-turn-plan ownerp (third decoded)
+                                                   (and (fnn-bpnc-listeners node)
+                                                        (fnn-bplc-model (fnn-bpnc-listeners node))))))
                        (setq reasoned (first decoded))
                        (fnn-bpnc-execute node grant))
                    (fnn-store-indeterminate (condition)
@@ -153,14 +162,35 @@
                (fnn-poll-readable (list (fnn-socket-fd listener)) timeout-ms))
       (fnn-bpnc-handle node (sb-bsd-sockets:socket-accept listener)))))
 
+(defun fnn-bpnc-wait-input (node fd seconds)
+  "Poll BP and control under the caller's unchanged absolute read deadline."
+  (let ((deadline (+ (fnn-now) (* seconds internal-time-units-per-second)))
+        (zero-poll (zerop seconds)))
+    (loop
+      (let* ((remaining (fnn-seconds-to-deadline deadline))
+             (control (fnn-control-state-listener (fnn-bpnc-control node))))
+        (when (and (<= remaining 0) (not zero-poll)) (return nil))
+        (setq zero-poll nil)
+        ;; BP wins a tie: a stream of control requests cannot starve input.
+        (let ((index (fnn-poll-readable
+                      (list fd (fnn-socket-fd control))
+                      (ceiling (* 1000 remaining)))))
+          (cond ((eql index 0) (return t))
+                ((eql index 1) (fnn-bpnc-pump node))
+                (t (return nil))))))))
+
 (defun fnn-bpnc-accept-loop (node listeners handler once)
-  "One writer: alternate one control turn with one accepted BP session."
-  (if (null node)
-      (fnn-accept-any-loop listeners handler once)
-    (let ((fds (mapcar #'fnn-socket-fd listeners)))
-      (loop
-        (fnn-bpnc-pump node)
-        (let ((index (fnn-poll-readable fds 100)))
-          (when index
-            (funcall handler (sb-bsd-sockets:socket-accept (nth index listeners)))
-            (when once (return))))))))
+  "One writer: accept only the ACL2 installed listener generation."
+  (loop
+    (when node (fnn-bpnc-pump node))
+    (let* ((live (fnn-bplc-live listeners))
+           (index (fnn-poll-readable (mapcar #'fnn-socket-fd live) 100)))
+      (when index
+        (let ((plan (fnn-core 'fn-bplc-accept-plan (fnn-bplc-model listeners) index)))
+          (unless plan (fnn-fault "ACL2 refused BP acceptance in this listener phase"))
+          (let ((socket (sb-bsd-sockets:socket-accept (nth index live))))
+            (fnn-bplc-step listeners (list :accept-result index :ok))
+            (fnn-out "~a" (fnn-core 'fn-bplc-runtime-line (fnn-bplc-model listeners)))
+            (unwind-protect (funcall handler socket)
+              (fnn-bplc-step listeners '(:session-closed)))))
+        (when once (return))))))
