@@ -44,6 +44,7 @@
 ; host's fn-scka-seal-n calls, fn-scka-finish) and its writer
 ; (fn-scka-write-setup, fn-scka-write-step, fn-scka-canon-rows).
 (include-book "../books/store-checkpoint-arena-load")
+(include-book "store-checkpoint-context-host")
 ; PKT-854: `store ROOT digest' reads fn-sckd-tables-digest (the checkpoint's
 ; tables digest) at the open; no other host file brings it into the world.
 (include-book "../books/store-checkpoint-digest")
@@ -556,11 +557,7 @@ reopen predicate, writer-lock observation and observed final namespace."
 ;; ACL2 global `fn-store-sco-checkpoint' from its decode to the open and the
 ;; next publication; the host holds only its octets and the sequence S.
 
-(defun fn-store-sco-current (state)
-  (declare (xargs :stobjs state :mode :program))
-  (if (boundp-global 'fn-store-sco-checkpoint state)
-      (f-get-global 'fn-store-sco-checkpoint state)
-    nil))
+
 
  ; A checkpoint suffix starts at its captured identity epoch, not NIL/0.
 (defun fn-store-statement-replay-seed (state)

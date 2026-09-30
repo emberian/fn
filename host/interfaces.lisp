@@ -4940,3 +4940,7 @@
 (definterface fn-owner-history-image-effect-result :class :common-lisp-compliant)
 (definterface fn-owner-history-image-effect-read-count :class :common-lisp-compliant)
 (definterface fn-owner-history-image-effect-byte :class :common-lisp-compliant)
+
+; PRF-1149 cold recovery authority; final installer is owner-install scoped.
+(definterface fn-owner-recovery-source-start :class ::program)
+(definterface fn-owner-recovery-source-observe :class ::program)

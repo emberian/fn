@@ -19250,9 +19250,12 @@
         "host/recovery-source-host.lisp",
         "specs/recovery-source-authority.md",
         "tests/acl2/recovery-source-authority-tests.lisp",
-        "planning/evidence/recovery-source-authority-source-2026-09-30.json"
+        "planning/evidence/recovery-source-authority-source-2026-09-30.json",
+        "host/recovery-source-install-host.lisp",
+        "host/store-checkpoint-context-host.lisp",
+        "planning/evidence/recovery-source-host-source-2026-09-30.json"
       ],
-      "progress_note": "Fresh rsag3 exact test root loads both dependencies protected proper-local; all eight kernel definitions and guards plus four scalar/token fixtures pass (15 target forms, 0.04 ACL2 seconds/238 prover steps). STATE wrappers are authored but unadmitted until actual loader getters and same-pass SSR carries land. Region records successful decode provenance, not a retained byte buffer. General lineage, initial funding and actual native recovery/install remain open; no certification or full recovery claim."
+      "progress_note": "Fresh rsag3 exact test root loads both dependencies protected proper-local; all eight kernel definitions and guards plus four scalar/token fixtures pass (15 target forms, 0.04 ACL2 seconds/238 prover steps). STATE wrappers are authored but unadmitted until actual loader getters and same-pass SSR carries land. Region records successful decode provenance, not a retained byte buffer. General lineage, initial funding and actual native recovery/install remain open; no certification or full recovery claim. Actual start/token/observe program entry points now source-admitted with the real low checkpoint metadata getters in rsah1: five proper-local dependencies, five target forms, 1.77 ACL2 seconds/230,785 prover steps. Final Store installer remains a separate unadmitted host root; no loader provenance, STATE scenario, runtime funding, certification or native claim follows."
     }
   ]
 }

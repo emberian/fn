@@ -241,6 +241,8 @@
 ;; fn-otm-boottime-ms) and their keystones, books/clock-reading.
 (include-book "books/clock-reading")
 (ld "host/store-node-host.lisp" :ld-error-action :error)
+; Actual cold authority comes from the same successful loader STATE.
+(ld "host/recovery-source-host.lisp" :ld-error-action :error)
 ; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose
 ; name is ACL2's `fn-store-checkpoint-clone-fence-name'.  Without this file
 ; the DTN images could not `store init' (native-subsets-6c0626c5, failure 2).

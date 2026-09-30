@@ -34,3 +34,8 @@ same-pass provenance/refinement, actual loader/SSR caller wiring, namespace
 representability, admission before every allocation and native restart
 trajectory are still open. Recognition of a descriptor shape proves no disk
 or cryptographic integrity; authenticity must follow from the actual loader.
+
+The actual start/observe entry points are in `host/recovery-source-host.lisp`,
+which includes the loader metadata implementation directly. The final Store
+installer is in `host/recovery-source-install-host.lisp`; that dependency split
+preserves its body and does not narrow the whole recovery/install obligation.

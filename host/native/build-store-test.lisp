@@ -89,6 +89,8 @@
 (ld "host/page-read-host.lisp" :ld-error-action :error)
 (ld "host/native-admin-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
+; Actual cold authority comes from the same successful loader STATE.
+(ld "host/recovery-source-host.lisp" :ld-error-action :error)
 (ld "host/config-host.lisp" :ld-error-action :error)
 ;; No include-book since the umbrella added a book (tools/extract/world.py).
 (assert-event (equal (len (global-val 'include-book-alist (w state)))

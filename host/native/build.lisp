@@ -334,6 +334,8 @@
 ;; include that names fn-arena.
 ;; (included above, before host/store-host.lisp: see the note there)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
+; Actual cold authority comes from the same successful loader STATE.
+(ld "host/recovery-source-host.lisp" :ld-error-action :error)
 (ld "host/checkpoint-host.lisp" :ld-error-action :error)
 ; The configuration record the core builds for a fresh store; it uses the
 ; octet-list helpers store-host defines above it, as run_store.py's bridge does.
