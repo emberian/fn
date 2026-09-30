@@ -1,0 +1,16 @@
+; Immutable held-row formatting capture; no catalog lookup. PRF-1066.
+(in-package "ACL2")
+(include-book "held-record")
+(include-book "nntp-syntax")
+
+(defun fn-npw-column-pieces (number facts octets)
+  (declare (xargs :guard t))
+  (let ((nov (fn-hf-nov facts)))
+    (list (fn-nntp-decimal-field number) '(9)
+          (fn-hnov-subject nov) '(9)
+          (fn-hnov-from nov) '(9)
+          (fn-hnov-date nov) '(9)
+          (fn-hnov-msgid nov) '(9)
+          (fn-hnov-references nov) '(9)
+          (list :decimal (nfix octets) nil) '(9)
+          (list :decimal (nfix (fn-hf-body-lines facts)) nil) '(13 10))))

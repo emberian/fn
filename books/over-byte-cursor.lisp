@@ -4,35 +4,12 @@
 ; completed ONE before issuing a cold page dependency. The arena generation
 ; PIN is captured from response ownership, never from the catalog view V.
 (in-package "ACL2")
-(include-book "over-cursor-shape")
+(include-book "over-row-state")
 (include-book "catalog-number-read")
 (include-book "response-plan-token")
 (include-book "nov-row-capture")
 (include-book "legacy-parser-header")
 (include-book "over-row-pieces")
-
-; (range origin-pin phase parser pieces string-position). The six original
-; range fields keep their meanings; the pin is a separate coordinate.
-(defun fn-obc-make (range pin phase parser pieces pos)
-  (declare (xargs :guard t))
-  (list range pin phase parser pieces pos))
-
-(defun fn-obc-begin (range pin)
-  (declare (xargs :guard t))
-  (fn-obc-make range pin :seek nil nil 0))
-
-(defun fn-obc-next-range (range owed)
-  (declare (xargs :guard (true-listp range)))
-  (fn-ovw-cursor (nth 0 range) (+ 1 (nfix (nth 1 range)))
-                 (nth 2 range) (nth 3 range) (nth 4 range) owed))
-
-(defun fn-obc-row-ready (range pin pieces)
-  (declare (xargs :guard (true-listp range)))
-  (fn-obc-make (fn-obc-next-range range nil) pin :emit nil
-              (if (nth 5 range)
-                  (cons (fn-ovw-status (fn-proto-text * :overview)) pieces)
-                pieces)
-              0))
 
 ; Proof vocabulary; never executed by ONE or by a served admission guard.
 (defun fn-obc-statep (s fn-arena)
