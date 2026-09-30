@@ -27,12 +27,7 @@ Return the live job for the cold-span continuation; no authority is refunded."
       (unless returned
         ;; This synchronous action has returned. No fake cancellation ACK or
         ;; host Boolean can release a running source/worker.
-        (fnn-snapshot-job-release-source job)
-        (sb-thread:with-mutex ((fnn-owner-service-lock service))
-          (when (fnn-snapshot-job-payload-view job)
-            (fnn-snapshot-payload-view-release (fnn-snapshot-job-payload-view job) :joined))
-          (fnn-owner-core 'fn-owner-osn-release
-                          (fnn-core 'fn-osj-capture-ticket (fnn-snapshot-job-capture job))))))))
+        (fnn-snapshot-job-cleanup job)))))
 
 (defun fnn-hsr-fixture-provider-stale-observation (job old-observation)
   "An actually emitted prior scalar is replayed after provider advancement."
@@ -44,3 +39,51 @@ Return the live job for the cold-span continuation; no authority is refunded."
       ;; Invoke this at a current byte demand, not a no-byte scheduling phase.
       (assert (eq (first answer) :stale))
       (assert (equal (second answer) provider)))))
+
+
+(defun fnn-hsr-fixture-two-based-rows (service maintenance)
+  "Require actual row rebinding, page recycling and joined final cleanup."
+  (let ((job (fnn-owner-snapshot-capture service maintenance))
+        (reader nil) (root nil) (rows nil) (pages nil)
+        (released-to-idle nil) (idle-to-select nil) (cleaned nil))
+    (unwind-protect
+         (loop for watchdog below 2000000 do
+           (let* ((r (fnn-snapshot-job-reader job))
+                  (before (and r (fnn-core 'fn-hsr-field 0 (fnn-hsr-source-cursor r))))
+                  (answer (fnn-snapshot-job-source-step job))
+                  (next (fnn-snapshot-job-reader job))
+                  (after (and next (fnn-core 'fn-hsr-field 0 (fnn-hsr-source-cursor next)))))
+             (when next
+               (if reader (assert (eq reader next)) (setq reader next))
+               (if root (assert (eq root (fnn-snapshot-job-root job)))
+                 (setq root (fnn-snapshot-job-root job)))
+               (let ((verified (fnn-core 'fn-hsr-field 17 (fnn-hsr-source-cursor next))))
+                 (when (eq (first verified) :verified-page)
+                   (pushnew (fifth verified) pages))))
+             (when (and (eq before :verified) (eq after :idle))
+               (setq released-to-idle t))
+             (when (and (eq before :idle) (eq after :need-read))
+               (setq idle-to-select t))
+             (when (and (consp answer) (eq (first answer) :row))
+               (assert (eq (first (third answer)) :decoded))
+               (assert (fnn-core 'fn-omk-token-matchp (fourth answer)
+                                 (second (fnn-snapshot-job-completion job))))
+               (when rows (assert (= (second answer) (1+ (second (first rows))))))
+               (push answer rows)
+               (when (= (length rows) 2)
+                 (assert (>= (length pages) 2))
+                 (assert released-to-idle)
+                 (assert idle-to-select)
+                 (assert (equal (fnn-snapshot-job-cleanup job) '(:released)))
+                 (setq cleaned t)
+                 (assert (eq (fnn-snapshot-job-phase job) :released))
+                 (assert (not (or (fnn-snapshot-job-reader job)
+                                  (fnn-snapshot-job-root job)
+                                  (fnn-snapshot-job-payload-view job)
+                                  (fnn-snapshot-job-capture job)
+                                  (fnn-snapshot-job-maintenance job))))
+                 (return (reverse rows))))
+             (when (and (consp answer) (member (first answer) '(:refused :uncertain :done)))
+               (error "two-row actual source path stopped: ~s" answer)))
+           finally (error "two-row actual source fixture watchdog expired"))
+      (unless cleaned (fnn-snapshot-job-cleanup job)))))

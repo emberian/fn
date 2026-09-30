@@ -138,3 +138,20 @@
          (equal (fn-hsr-field 0 (mv-nth 1 invalid)) :waiting)
          (equal (fn-hsr-source-settle-demand nil (mv-nth 1 invalid)) '(:retained :pending-source))))
   :rule-classes nil)
+
+(defthm fn-hsr-source-cold-kind-positive
+  (let* ((fixture (fn-hsr-source-test-verified))
+         (c (car fixture)) (b (cadr fixture)))
+    (and
+      (equal (car (fn-hsr-source-verified-byte
+                    '(:need-byte (41 (7 3) 0 0) :octet-nil 9 0 0) b 0 c)) :ready)
+      (equal (car (fn-hsr-source-verified-byte
+                    '(:need-byte (41 (7 3) 0 0) :symbol-normalize 9 0 0) b 0 c)) :ready)
+      (equal (car (fn-hsr-source-verified-byte
+                    '(:need-byte (41 (7 3) 0 0) :span-body 9 0 0) b 0 c)) :ready)
+      (equal (car (fn-hsr-source-verified-byte
+                    '(:need-byte (41 (7 3) 0 0) :opaque-span 9 0 0) b 0 c)) :ready)
+      (equal (fn-hsr-source-verified-byte
+                    '(:need-byte (41 (7 3) 0 0) :unknown 9 0 0) b 0 c)
+             '(:refused :source-byte))))
+  :rule-classes nil)
