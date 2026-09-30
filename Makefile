@@ -1056,6 +1056,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/response-plan-token-tests \
 	books/over-byte-cursor \
 	books/over-byte-invariants \
+	books/legacy-parser-continuation \
+	tests/acl2/legacy-parser-continuation-tests \
+	books/over-byte-parser-relation \
+	tests/acl2/over-byte-parser-relation-tests \
 	books/served-plan-byte-cursor \
 	tests/acl2/served-plan-byte-cursor-tests \
 	tests/acl2/over-byte-cursor-tests \

@@ -2260,3 +2260,12 @@ fixtures drain through several quantum splits with a retained effect tail.
 These are source components only. Full original reply refinement, actual
 `fn-splan-cursor-step`/host activation, window cancellation and scalar/funding
 joins remain open together; no partial default activation is claimed.
+
+The dormant actual OVER machine now carries exact selected-source parser
+correspondence through `fn-obc-one`. Its terminal parser theorem concerns
+the result of the one-byte tick inside ONE: a nonyield verdict immediately
+changes phase, so no retained parse-at-EOF machine state is assumed. Under
+that correspondence the returned parser equals complete source feed and
+its actual NOV/body-line facts. These observers are proof/test vocabulary
+only; ONE and the host never call them. Full original reply and piece/catalog
+composition, full literal final-tick removals and served activation remain open.
