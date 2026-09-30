@@ -512,3 +512,16 @@ capacity last; the intervening cut refuses every public consumer. Response
 completion retains revoked capacity until real custody return. Staging adds
 root allocation and old/new overlap to the epoch allocation census; it does
 not create a release, refill, rollback or reclaim receipt.
+
+Ordinary nonquery output remains owned by the actual receiver response episode.
+The receiver controller appends one NIL-default output-bundle field after its
+original six fields; its parser job remains the original root11. The retained
+bundle contains that parser root, no IRQ actor, and the actual outgoing job.
+The episode-qualified output getter checks the current ticket/source/episode;
+field presence does not establish storage admission or terminal return. Begin,
+fill, copy ACK and parser reacquisition refuse while this bundle remains. The
+current query transfer also refuses a retained ordinary output bundle until a
+real typed custody transfer preserves it. No clear/reset/return setter exists.
+The former six-field constructor measurement is historical. New default/factory
+objects, bundle allocation, storage overlap and epoch-A charges need matching
+selected-runtime qualification before activation.

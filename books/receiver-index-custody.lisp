@@ -54,7 +54,8 @@
 (defun fn-owner-rx-turn-transfer-pending
  (ticket recipient fn-rx-provider fn-receiver-turn fn-index-backing fn-page-read-pool)
  (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-index-backing fn-page-read-pool)))
- (if (not (and (eq (fn-rxt-phase fn-receiver-turn) :response-owned)
+ (if (not (and (null (fn-rxt-output-bundle fn-receiver-turn))
+                (eq (fn-rxt-phase fn-receiver-turn) :response-owned)
                 (fn-rxt-parser-currentp ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)))
      (mv :receiver-unavailable fn-rx-provider fn-receiver-turn fn-page-read-pool)
   (mv-let (word source consumed actor)
