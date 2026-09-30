@@ -5721,6 +5721,29 @@
         "tests/acl2/allocation-epoch-collection-request-tests.lisp"
       ],
       "implementation_note": "Internal guarded scalar, same-pool, installed-geometry observation and actual sharedPRS nonce source. Genuine runtime/source tariff installation, process-wide barrier, identity rescue and once-only allocating-turn producer joins remain open; no activation/funding claim."
+    },
+    {
+      "id": "HST-042",
+      "title": "Once-only allocating scheduling turns use direct installed worker slots distinct from lifetime holders",
+      "specification": "specs/allocation-turns.md",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1156",
+        "PRF-1157"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/allocation-turn-slots.lisp",
+        "books/allocation-turn-raw-bridge.lisp",
+        "host/allocation-turn-host.lisp",
+        "tests/acl2/allocation-turn-slots-tests.lisp",
+        "planning/evidence/manifests/certify-20260930T154935Z-91174.json"
+      ],
+      "implementation_note": "Certified internal concrete registry and exact SAMEpool receipt joins; raw dispatch declarations admitted. Actual operation allowance composition, constructor baseline installation, process-wide executor join, immutable image qualification and activation remain separate."
     }
   ]
 }

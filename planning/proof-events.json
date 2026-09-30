@@ -17426,6 +17426,41 @@
           "pending_subject": "Internal allocation-epoch subject, reached by its same-pool guarded composition; native installed dispatch/producer integration remains separately open. No served activation claim."
         }
       ]
+    },
+    {
+      "id": "PRF-1156",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ats-finish-matching-consumes-once",
+          "pending_subject": "Certified internal component subject; actual selected-runtime/source installation and native operation ticket/outer-return composition are not activated in this packet."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1157",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ats-enter-owns-actual-shared-nonce",
+          "pending_subject": "Certified internal component subject; actual selected-runtime/source installation and native operation ticket/outer-return composition are not activated in this packet."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ats-entry-preserves-slot-count-correspondence",
+          "pending_subject": "Certified internal component subject; actual selected-runtime/source installation and native operation ticket/outer-return composition are not activated in this packet."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ats-body-preserves-slot-count-correspondence",
+          "pending_subject": "Certified internal component subject; actual selected-runtime/source installation and native operation ticket/outer-return composition are not activated in this packet."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ats-finish-preserves-slot-count-correspondence",
+          "pending_subject": "Certified internal component subject; actual selected-runtime/source installation and native operation ticket/outer-return composition are not activated in this packet."
+        }
+      ]
     }
   ]
 }

@@ -1618,6 +1618,13 @@ non-quiescent requests need their own prepaid control suffix; they precede
 Qcollect debit. The native files remain outside the served load sequence
 until those producer and runtime obligations are joined.
 
+The later [actual worker/collector component](../planning/evidence/runtime-collector-actual-turns-2026-09-30/README.md)
+uses compiled worker-slot entry and completion to drain two real owned slots,
+then performs native full collection. Duplicate completion and an old nonce
+after slot reuse cannot consume another turn. This replaces the earlier
+component's fixture drain count; its installation/profile remains a fixture,
+and operation-specific tickets and process participant coverage remain open.
+
 The internal `host/native/connection-turn.lisp` companion binds an installed
 worker slot and SAME pool to the operation-specific prepare, finish and fault
 callbacks. Its outer-turn macro preserves all body results and consumes the
