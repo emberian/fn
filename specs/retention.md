@@ -384,3 +384,21 @@ whole-service quarantine on every primitive/callback escape remain separate
 requirements. Controlled same-object reset is unavailable until the actual
 receiver turn and all escaped aliases have definitely joined; capacity NIL
 or a supplied joined flag cannot authorize it. Permanent U remains charged.
+
+The separate receiver-turn controller has six fixed fields: ticket, maintained
+source association, phase, remaining demand, retained-job reference, and
+receipt. Its internal begin transition uses the existing shared PRS issuer
+and PRL NEXT, storing `(:receiver-source (:receiver-turn oldNEXT)
+receiver-capacity-token actual-provider-instance)` from the actual provider.
+A live turn cannot be overwritten. The connection publication/view holder
+is a different authority and cannot stand in for this custody ticket.
+
+This source begin is internal and unactivated. Before a public begin, the
+actual installation receipt must bind this exact provider/token/instance to
+the SAME pool; provider currentp alone does not establish that relation.
+Constructor and operation demand must be canonical and qualified. The
+request receipt must store the actual registered receiver-source association
+before any custody transfer. Completion requires the actual core-produced
+result/retained-job receipt and final alias settlement; CID, step equality,
+lexical STATE return, STOPPING or a supplied joined flag are insufficient.
+No return/reset API exists while that association and receipt are absent.
