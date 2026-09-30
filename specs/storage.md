@@ -818,6 +818,18 @@ journal replays.
   witness at batch sizes 1, 3 and 1000 is in
   tests/acl2/store-checkpoint-tables-tests.lisp.
 
+The additive source API in `books/store-checkpoint-size-reader.lisp`
+returns the existing tables-load result together with size information and
+summary-region provenance from the same decode. `fn-sckas-finish` in
+`books/store-checkpoint-arena-size-load.lisp` calls that reader once and keeps
+its first result consistent with the existing arena finish. These are source
+components for the cold recovery join; they are not activated host entries.
+The retained region describes decode provenance, not a physical reread lease.
+The whole-run annotation allocation, outer-load provenance, borrowed-buffer
+lifetime, funded materialization and owner installation remain open. Exact
+proper-source evidence and its failed outer-provenance attempt are retained in
+`planning/evidence/snapshot-summary-proper-source-2026-09-30.md`.
+
 ### The snapshot page store (STO-035)
 
 STO-035: The snapshot page store. The owner's snapshot is to become a copy-on-write page store (lane

@@ -1121,10 +1121,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-checkpoint-reader \
 	books/store-checkpoint-tables \
 	books/store-checkpoint-tables-reader \
+	books/store-checkpoint-size-reader \
 	books/owner-checkpoint-writer \
 	books/owner-checkpoint-pipeline \
 	books/store-checkpoint-arena \
 	books/store-checkpoint-share \
+	books/store-checkpoint-arena-size-load \
 	books/store-checkpoint-arena-load \
 	books/store-checkpoint-arena-writer \
 	tests/acl2/octets-stobj-tests \
