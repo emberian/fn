@@ -6620,12 +6620,15 @@
         "Exercise five selected fields, mixed-case and repeated names, empty initial values completed by folds, TAB versus exactly one initial SP, missing fields and physical lines of 998 and 999 octets.",
         "Exercise invalid names, orphan folds, empty final fields, missing separator, bare CR/LF, header NUL, body NUL and unterminated body; compare terminal results with fn-hnov-of and fn-hf-body-lines-of.",
         "Mutate continuation position, source handle, first-header selection and whitespace normalization separately.",
-        "Check the literal actual value-transition invariant and remove its value correspondence, phase, line-budget and valid-byte hypotheses individually while affirming all retained hypotheses; verify folded completed source spans and absent-versus-empty first hits."
+        "Check the literal actual value-transition invariant and remove its value correspondence, phase, line-budget and valid-byte hypotheses individually while affirming all retained hypotheses; verify folded completed source spans and absent-versus-empty first hits.",
+        "Check literal arbitrary-line theorem instances for actual new-field/fold runs, completed source spans, selected name and preserved earlier columns; remove source-value correspondence and fold-local visibility independently.",
+        "Assert complete literal new-field/fold/header traversal premises and conclusions; remove every retained line-step premise and both traversal premises separately, including corrupted source-span state and malformed physical continuations.",
+        "Assert the literal full actual arena-tick NOV equation on octet sources, including five first/repeated/folded fields, invalid folds, opaque body NUL and tombstones. Remove the sole octet-domain premise with non-octet opaque body input; affirm negative-handle equality after removing that redundant premise. Check complete tombstone prefix antecedents and remove natural position and sufficient bytes independently."
       ],
       "expected": [
         "Each tick consumes and reports at most its fuel, preserves handle and pin and makes bounded progress. No final tick walks or copies the full source or field.",
         "The body count equals the actual catalog function even for a rejected header parse.",
-        "The five spans materialize to the existing first-header NOV semantics. This last general refinement is open; ground fixtures currently supply examples only."
+        "For every successful actual parser result, the complete byte traversal's five spans normalize to the exact first-header NOV content. The full actual arena-tick NOV record equals fn-hnov-of under the sole octet source premise, including invalid parses and tombstones."
       ],
       "evidence": [
         "books/legacy-parser-cursor.lisp",
@@ -6633,7 +6636,16 @@
         "tests/acl2/legacy-parser-cursor-tests.lisp",
         "books/legacy-parser-values.lisp",
         "tests/acl2/legacy-parser-values-tests.lisp",
-        "planning/evidence/legacy-parser-values-source.md"
+        "planning/evidence/legacy-parser-values-source.md",
+        "books/legacy-parser-value-run.lisp",
+        "tests/acl2/legacy-parser-value-run-tests.lisp",
+        "planning/evidence/legacy-parser-value-run-source.md",
+        "books/legacy-parser-columns.lisp",
+        "tests/acl2/legacy-parser-columns-tests.lisp",
+        "planning/evidence/legacy-parser-columns-source.md",
+        "books/legacy-parser-catalog.lisp",
+        "tests/acl2/legacy-parser-catalog-tests.lisp",
+        "planning/evidence/legacy-parser-catalog-source.md"
       ]
     },
     {
@@ -6661,9 +6673,11 @@
       "evidence": [
         "tests/acl2/history-decode-cursor-tests.lisp",
         "planning/history-decode-contract.md",
-        "tests/acl2/history-symbol-normalize-tests.lisp"
+        "tests/acl2/history-symbol-normalize-tests.lisp",
+        "tests/acl2/history-decode-refinement-tests.lisp",
+        "planning/evidence/history-decode-refinement-source-2026-09-30.json"
       ],
-      "execution_scope": "Source component tests only. General stream inverse, page-source authentication, integrated native caller and full producer remain open. Symbol normalization source tests and ground semantic witnesses cover aliases, NIL/T, case-sensitive arbitrary names, duplicate replies, corruption, yield/resume and measured table cost."
+      "execution_scope": "Clean source component replay only. General stream inverse, recursive node span bounds, lifetime and fuel partition source proofs pass with literal witnesses; page-source authentication, canonical reencoding, integrated native caller, funded storage and full producer remain open. No certificate or image claim."
     },
     {
       "id": "SCN-1006",
