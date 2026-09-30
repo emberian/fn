@@ -17840,9 +17840,24 @@
           "kind": "theorem",
           "name": "fn-pwz-actual-basic-loop-general-cleared-windows",
           "note": "Actual basic-loop cleared scratch output resumption agrees in status/IP/state/history/table and concatenated bytes under proper initial output, first :full and resumed/whole no-yield. Complete positive/removals include actual pulled malformed-header and separately corrupted improper-output witnesses. No native activation or full controller/dictionary/digest claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwzc-actual-stored-chunk-recredited-full-tuple",
+          "note": "Actual fn-pzw-stored-chunk complete seven-value tuple recredited equals its actual fn-zin-feed call unconditionally, including remaining charged fuel, IP and complete decoder/history/table/output effects. Real initialized 64-byte positive and actual buffer refusal; no native activation."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwzc-actual-two-stored-chunks-full-tuple",
+          "note": "Two actual stored chunks correspond to two actual feed calls after exact whole-state recredit, unconditionally; real initialized two64-byte complete-tuple positive, omitted-recredit mutation. No supplied-demand or native holder claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwzc-actual-stored-two-windows-without-buffer-premises",
+          "note": "Two actual cleared stored windows agree with completed whole actual feed in status/IP/full recredited state/history/table and appended output, under only first actual :full and second/whole non-yield. Buffer type/shape hypotheses removed after actual source length-preservation proofs. Complete positive and all three genuine status removals. Charged remaining fuel intentionally excluded only from whole-window semantic confluence."
         }
       ],
-      "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. Actual basic-loop output-window semantic normalization does not yet compose controller credit/input cuts, selected dictionary, accumulated digest, complete compiled workspace funding or retained native buffer/view/consumer joins; PRF-1131 remains incomplete."
+      "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. Actual stored two-window credit and accumulated-byte boundary does not complete arbitrary input cuts/quantum yields/canonical initialization and selected dictionary/digest, compiled workspace funding or retained native buffer/view/consumer joins; PRF-1131 remains incomplete."
     }
   ]
 }

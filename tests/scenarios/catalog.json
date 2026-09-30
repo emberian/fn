@@ -6671,7 +6671,10 @@
         "planning/evidence/decoded-window-budget-completion-source-2026-09-30.md",
         "books/decoded-window-output-trajectory.lisp",
         "tests/acl2/decoded-window-output-trajectory-tests.lisp",
-        "planning/evidence/decoded-window-output-trajectory-source-2026-09-30.md"
+        "planning/evidence/decoded-window-output-trajectory-source-2026-09-30.md",
+        "books/decoded-window-stored-trajectory.lisp",
+        "tests/acl2/decoded-window-stored-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-stored-trajectory-source-2026-09-30.md"
       ],
       "execution_scope": "Protected source composition and literal local-buffer witnesses only; no native served enablement or qualification."
     },

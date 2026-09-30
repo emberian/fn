@@ -319,3 +319,17 @@ change the charge. This source boundary does not yet compose cold-controller
 input credit/cuts, selected dictionary and accumulated digest, and does not
 authorize native decoded execution or provide total runtime funding.
 See `planning/evidence/decoded-window-output-trajectory-source-2026-09-30.md`.
+
+The actual stored wrapper credit seam now has an exact full seven-value
+boundary to its existing decoder feed call. Recrediting the returned real-TIN
+state recovers the entire credited state, so two actual stored calls equal two
+actual feed calls, including their remaining charged fuel. Two completed
+cleared stored windows also agree with the whole actual feed at the sum of
+first produced bytes and the actual second room: status, input cursor, full
+recredited decoder/history/table and concatenated bytes. Only first actual
+`:full` and second/whole non-yield are premises; buffer shape/type premises
+were removed after proving actual length preservation. Whole-window semantic
+confluence still excludes remaining fuel because batching changes its charge.
+This component does not close controller input cuts, quantum yields, canonical
+initialization/selected dictionary/digest or native holder/runtime funding.
+See `planning/evidence/decoded-window-stored-trajectory-source-2026-09-30.md`.

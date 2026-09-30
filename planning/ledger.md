@@ -10,15 +10,15 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1906 |
-| Certification roots in the Makefile | 1821 |
-| Books inside the root closure | 1898 |
-| `defthm` and `defthmd` events | 30035 |
-| `defun` events | 19089 |
+| Books read | 1908 |
+| Certification roots in the Makefile | 1822 |
+| Books inside the root closure | 1900 |
+| `defthm` and `defthmd` events | 30091 |
+| `defun` events | 19093 |
 | Functions with verified guards | 3513 |
-| Functions declared `:verify-guards nil` and never verified | 2280 |
+| Functions declared `:verify-guards nil` and never verified | 2281 |
 | Functions left at the default with an explicit guard | 10410 |
-| Functions left at the default with no guard | 2886 |
+| Functions left at the default with no guard | 2889 |
 | `assert-event` checks | 23990 |
 | `must-fail` checks | 2516 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 340 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2576 |
+| Include-hygiene warnings | 2578 |
 | Host-names warnings | 2199 |
 | Hand-written-record warnings | 18 |
 
@@ -425,6 +425,7 @@ that `make certify` requests.
 | `books/decoded-window-output-trajectory.lisp` | closure | 47 | 7 | 0/2/0/5 | 0 | 0 | 0 |
 | `books/decoded-window-read.lisp` | closure | 3 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/decoded-window-step-trajectory.lisp` | closure | 12 | 4 | 0/0/0/4 | 0 | 0 | 1 |
+| `books/decoded-window-stored-trajectory.lisp` | closure | 49 | 2 | 0/1/0/1 | 0 | 0 | 0 |
 | `books/defevent.lisp` | root | 0 | 14 | 0/0/0/14 | 0 | 0 | 0 |
 | `books/definterface.lisp` | root | 0 | 42 | 0/0/0/42 | 0 | 0 | 0 |
 | `books/defkeystone.lisp` | root | 0 | 28 | 0/0/0/28 | 0 | 0 | 0 |
@@ -1432,6 +1433,7 @@ that `make certify` requests.
 | `tests/acl2/decoded-window-publication-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 1 | 0 | 0 |
 | `tests/acl2/decoded-window-read-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 1 | 0 | 0 |
 | `tests/acl2/decoded-window-step-trajectory-tests.lisp` | root | 12 | 3 | 0/0/0/3 | 0 | 0 | 0 |
+| `tests/acl2/decoded-window-stored-trajectory-tests.lisp` | root | 7 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/defevent-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 19 | 1 | 0 |
 | `tests/acl2/definterface-tests.lisp` | root | 8 | 9 | 0/0/6/3 | 39 | 23 | 1 |
 | `tests/acl2/defkeystone-tests.lisp` | root | 2 | 1 | 0/0/1/0 | 17 | 6 | 0 |

@@ -1155,6 +1155,7 @@
     "tests/acl2/decoded-window-budget-trajectory-tests",
     "tests/acl2/decoded-window-budget-completion-tests",
     "tests/acl2/decoded-window-output-trajectory-tests",
+    "tests/acl2/decoded-window-stored-trajectory-tests",
     "tests/acl2/records-freeze-tests",
     "tests/acl2/catalog-record-tests",
     "tests/acl2/catalog-tests",
@@ -1825,26 +1826,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1906,
-    "books_in_root_closure": 1898,
-    "roots": 1821,
-    "theorems": 30035,
-    "functions": 19089,
+    "books": 1908,
+    "books_in_root_closure": 1900,
+    "roots": 1822,
+    "theorems": 30091,
+    "functions": 19093,
     "assert_events": 23990,
     "must_fails": 2516,
     "prover_refusals": 0,
     "encapsulates": 169,
     "guards": {
       "verified": 3513,
-      "declared-off": 2280,
+      "declared-off": 2281,
       "default-guarded": 10410,
-      "default-unguarded": 2886
+      "default-unguarded": 2889
     },
     "suspect_theorems": 1252,
     "export_hygiene_warnings": 340,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2576,
+    "include_hygiene_warnings": 2578,
     "host_names_warnings": 2199,
     "hand_written_record_warnings": 18
   },
@@ -11449,6 +11450,34 @@
       "suspects": [
         "fn-pwz-actual-step-is-action-trajectory-unfolds"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/decoded-window-stored-trajectory.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 49,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "decoded-window-output-trajectory"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -41608,6 +41637,32 @@
       "encapsulates": 0,
       "includes": [
         "../../books/decoded-window-step-trajectory"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/decoded-window-stored-trajectory-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/decoded-window-stored-trajectory"
       ],
       "system_includes": [],
       "suspects": [],
@@ -73327,6 +73382,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/decoded-window-stored-trajectory.lisp",
+        "line": 8,
+        "include": "decoded-window-output-trajectory",
+        "included": "books/decoded-window-output-trajectory.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/deflate-pool-check.lisp",
         "line": 18,
         "include": "deflate-pool",
@@ -82963,6 +83025,13 @@
         "line": 2,
         "include": "../../books/decoded-window-step-trajectory",
         "included": "books/decoded-window-step-trajectory.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/decoded-window-stored-trajectory-tests.lisp",
+        "line": 2,
+        "include": "../../books/decoded-window-stored-trajectory",
+        "included": "books/decoded-window-stored-trajectory.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
