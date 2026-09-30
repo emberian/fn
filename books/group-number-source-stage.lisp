@@ -2,6 +2,7 @@
 ; This pure cursor creates no publication authority or issued root identity.
 (in-package "ACL2")
 (include-book "group-number-source-update")
+(include-book "group-number-source-assignment")
 (local (include-book "arithmetic-5/top" :dir :system))
 
 (local
@@ -19,19 +20,19 @@
            :in-theory (disable fn-gns-update-cursorp fn-gns-update-step
                                fn-gns-update-step-cursorp)))))
 
-; Fixed10: phase, remaining assigned memberships, working group root,
+; Fixed11: phase, remaining assigned memberships, working group root,
 ; assigned catalog ordinal, current group, current number, active child,
-; cumulative copied trie nodes, trie conses and descent frames.
+; cumulative copied trie nodes, trie conses, descent frames and retained high.
 (defun fn-gns-stage-begin (memberships ordinal group-root)
   (declare (xargs :guard t))
   (list (if (natp ordinal) :next :refused) memberships group-root
-        (nfix ordinal) "" 1 nil 0 0 0))
+        (nfix ordinal) "" 1 nil 0 0 0 0))
 (defun fn-gns-stage-cursorp (c)
   (declare (xargs :guard t))
-  (and (true-listp c) (= (len c) 10)
+  (and (true-listp c) (= (len c) 11)
        (member-eq (fn-gns-at 0 c) '(:next :group :number :publish :done :refused))
        (natp (fn-gns-at 3 c)) (stringp (fn-gns-at 4 c)) (posp (fn-gns-at 5 c))
-       (natp (fn-gns-at 7 c)) (natp (fn-gns-at 8 c)) (natp (fn-gns-at 9 c))
+       (natp (fn-gns-at 7 c)) (natp (fn-gns-at 8 c)) (natp (fn-gns-at 9 c)) (natp (fn-gns-at 10 c))
        (implies (eq (fn-gns-at 0 c) :group) (fn-gns-group-cursorp (fn-gns-at 6 c)))
        (implies (member-eq (fn-gns-at 0 c) '(:number :publish))
                 (fn-gns-update-cursorp (fn-gns-at 6 c)))))
@@ -48,38 +49,41 @@
   (let ((phase (fn-gns-at 0 c)) (members (fn-gns-at 1 c)) (root (fn-gns-at 2 c))
         (ordinal (fn-gns-at 3 c)) (group (fn-gns-at 4 c)) (number (fn-gns-at 5 c))
         (child (fn-gns-at 6 c)) (copies (fn-gns-at 7 c))
-        (cells (fn-gns-at 8 c)) (frames (fn-gns-at 9 c)))
+        (cells (fn-gns-at 8 c)) (frames (fn-gns-at 9 c)) (high (fn-gns-at 10 c)))
     (cond
      ((eq phase :next)
-      (cond ((not members) (list :done nil root ordinal group number nil copies cells frames))
+      (cond ((not members) (list :done nil root ordinal group number nil copies cells frames high))
             ((and (consp members) (consp (car members))
                   (stringp (car (car members))) (posp (cdr (car members))))
              (let ((g (car (car members))) (n (cdr (car members))))
-               (list :group members root ordinal g n (fn-gns-group-begin g root) copies cells frames)))
-            (t (list :refused members root ordinal group number nil copies cells frames))))
+               (list :group members root ordinal g n (fn-gns-group-begin g root) copies cells frames high)))
+            (t (list :refused members root ordinal group number nil copies cells frames high))))
      ((eq phase :group)
       (let ((next (fn-gns-group-step child)))
         (if (eq (fn-gns-at 0 next) :done)
             (list :number members root ordinal group number
                   (fn-gns-update-begin :number number
-                                       (fn-gnix-val (fn-gns-at 4 next)) (list :ordinal ordinal))
-                  copies cells frames)
-          (list :group members root ordinal group number next copies cells frames))))
+                                       (fn-gns-group-value-root (fn-gnix-val (fn-gns-at 4 next)))
+                                       (list :ordinal ordinal))
+                  copies cells frames
+                  (fn-gns-group-value-high (fn-gnix-val (fn-gns-at 4 next))))
+          (list :group members root ordinal group number next copies cells frames high))))
      ((eq phase :number)
       (let ((next (fn-gns-update-step child)))
         (if (eq (fn-gns-at 0 next) :done)
             (list :publish members root ordinal group number
-                  (fn-gns-update-begin :group group root (fn-gns-at 5 next))
+                  (fn-gns-update-begin :group group root
+                    (fn-gns-group-value (max high number) (fn-gns-at 5 next)))
                   (+ copies (fn-gns-at 8 next)) (+ cells (fn-gns-at 10 next))
-                  (+ frames (fn-gns-at 9 next)))
-          (list :number members root ordinal group number next copies cells frames))))
+                  (+ frames (fn-gns-at 9 next)) high)
+          (list :number members root ordinal group number next copies cells frames high))))
      ((eq phase :publish)
       (let ((next (fn-gns-update-step child)))
         (if (eq (fn-gns-at 0 next) :done)
             (list :next (fn-ag-cdr members) (fn-gns-at 5 next) ordinal "" 1 nil
                   (+ copies (fn-gns-at 8 next)) (+ cells (fn-gns-at 10 next))
-                  (+ frames (fn-gns-at 9 next)))
-          (list :publish members root ordinal group number next copies cells frames))))
+                  (+ frames (fn-gns-at 9 next)) high)
+          (list :publish members root ordinal group number next copies cells frames high))))
      (t c))))
 (defun fn-gns-stage-result (c)
   (declare (xargs :guard t))
@@ -108,25 +112,30 @@
   (if (and (consp members) (consp (car members))
            (stringp (car (car members))) (posp (cdr (car members))))
       (let* ((g (car (car members))) (n (cdr (car members)))
-             (nr (fn-gnix-set n (list :ordinal ordinal) (fn-gns-group-get g 0 0 root))))
-        (fn-gns-memberships-root (cdr members) ordinal (fn-gns-group-set g 0 0 nr root)))
+             (v (fn-gns-group-get g 0 0 root))
+             (nr (fn-gnix-set n (list :ordinal ordinal) (fn-gns-group-value-root v))))
+        (fn-gns-memberships-root (cdr members) ordinal
+          (fn-gns-group-set g 0 0
+            (fn-gns-group-value (max n (fn-gns-group-value-high v)) nr) root)))
     root))
 (defun fn-gns-stage-denotation (c)
   (declare (xargs :guard (fn-gns-stage-cursorp c)))
   (let ((phase (fn-gns-at 0 c)) (members (fn-gns-at 1 c)) (root (fn-gns-at 2 c))
         (ordinal (fn-gns-at 3 c)) (group (fn-gns-at 4 c)) (number (fn-gns-at 5 c))
-        (child (fn-gns-at 6 c)))
+        (child (fn-gns-at 6 c)) (high (fn-gns-at 10 c)))
     (cond
      ((eq phase :next) (fn-gns-memberships-root members ordinal root))
      ((eq phase :group)
       (fn-gns-memberships-root (fn-ag-cdr members) ordinal
         (fn-gns-group-set group 0 0
-          (fn-gnix-set number (list :ordinal ordinal)
-            (fn-gns-group-get (fn-gns-at 1 child) (fn-gns-at 2 child)
-                              (fn-gns-at 3 child) (fn-gns-at 4 child))) root)))
+          (let ((v (fn-gns-group-get (fn-gns-at 1 child) (fn-gns-at 2 child)
+                                    (fn-gns-at 3 child) (fn-gns-at 4 child))))
+            (fn-gns-group-value (max number (fn-gns-group-value-high v))
+              (fn-gnix-set number (list :ordinal ordinal) (fn-gns-group-value-root v)))) root)))
      ((eq phase :number)
       (fn-gns-memberships-root (fn-ag-cdr members) ordinal
-        (fn-gns-group-set group 0 0 (fn-gns-update-denotation child) root)))
+        (fn-gns-group-set group 0 0
+          (fn-gns-group-value (max high number) (fn-gns-update-denotation child)) root)))
      ((eq phase :publish)
       (fn-gns-memberships-root (fn-ag-cdr members) ordinal (fn-gns-update-denotation child)))
      (t root))))
@@ -161,7 +170,7 @@
         (:executable-counterpart unary--) (:executable-counterpart zp)
         fn-gns-group-begin
         fn-gns-update-begin-number-denotation fn-gns-update-begin-group-denotation
-        fn-gns-group-done-lookup fn-gns-update-done-root))
+        fn-gns-group-done-lookup fn-gns-update-done-root max))
     :expand ((fn-gns-memberships-root (fn-gns-at 1 c) (fn-gns-at 3 c) (fn-gns-at 2 c))))))
 (defthm fn-gns-stage-begin-denotation
   (implies (natp ordinal)

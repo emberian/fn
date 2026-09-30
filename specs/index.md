@@ -146,3 +146,15 @@ refuses; mismatch after durable completion requires recovery. Loading uses
 the same assigned-row insertion. Those publisher/owner hooks and full
 funding/refinement/native composition remain open; component source proofs
 and fixtures do not establish their completion.
+
+The number-source assignment cursor now retains one immutable initial group
+root while walking the pending row's original memberships. Repeated group
+names use that same initial high, as `fn-cat-assign-numbers` does. Group
+terminal metadata is `(:group-number high numberTrie)`; selected trie/high
+projections read the same terminal. High-aware insertion carries the prior
+scalar high between child phases, avoiding a second group scan. Assignment
+and metadata insertion have guarded source evidence; the actual pending
+adapter and catalog-high lineage remain unadmitted/open, as do atomic
+registered publication, durable hooks, full constructor/retention funding and
+served OVER composition. An arbitrary terminal's shape check inspects only
+its fixed prefix, rather than walking a malformed terminal list.

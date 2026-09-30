@@ -19029,9 +19029,16 @@
         "books/group-number-source-update.lisp",
         "books/group-number-source-key.lisp",
         "tests/acl2/group-number-source-tests.lisp",
-        "specs/index.md"
+        "specs/index.md",
+        "books/group-number-source-assignment.lisp",
+        "books/group-number-source-stage.lisp",
+        "books/group-number-source-pending.lisp",
+        "tests/acl2/group-number-source-assignment-tests.lisp",
+        "planning/evidence/number-source-assignment-2026-09-30/README.md",
+        "books/group-number-source-high.lisp",
+        "tests/acl2/group-number-source-high-tests.lisp"
       ],
-      "progress_note": "Guarded cursor/update component source replay and literal low-level fixtures; no committed publication authority or served caller. Atomic shared publisher and owner durable hook are explicitly open. No certification/native/deployment claim."
+      "progress_note": "Guarded resumable assignment against one immutable high root and high-aware persistent insertion are source-replayed with literal duplicate/old-root/zero/wide-number witnesses; assignment step domain hypotheses have literal removals. Pending adapter fn-cat-assign equation is authored but UNADMITTED: exact catalog cache world unavailable before startup. Registered root/high catalog lineage, atomic publisher, owner durable hooks, full funding and actual OVER/native composition remain open. No certification/native/deployment claim."
     }
   ]
 }
