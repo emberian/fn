@@ -1615,7 +1615,12 @@ allocation and returns both vector and lease; `fnn-owner-release-extents`
 keeps the lease through checkpoint reseating and clears the publication
 buffer alias before release, including scheduling refusal and fault unwind.
 This lease cannot enter the verified cache through the ordinary read
-settlement entry. Derived list/decoder allocation, native
+settlement entry. Ordinary synchronous misses use `fnn-extent-entry-direct`: an
+explicit offline context may read directly; a funded context admits an exact
+verified-read token before allocation, waits for the private read/verifier
+activation to return, then transfers its vector to the charged cache and
+settles the local I/O row. Failed cache transfer retains the lease when an
+alias may remain. Cache-off refuses before allocation. Derived list/decoder allocation, native
 startup wiring and the missing-policy startup surface remain integration
 obligations; the supplied protected-vector demand does not fund them.
 

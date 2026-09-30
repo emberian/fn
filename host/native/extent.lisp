@@ -444,24 +444,11 @@ No recovery activation remains. Retained decoder array highwater is separate."
       (setq *fnn-extent-cache* nil *fnn-extent-lz-last* nil)
       (fnn-extent-cache-release tokens))))
 
-(defun fnn-extent-entry (file eoff elen trailer)
-  "The verified entry (its protected prefix at [EOFF, EOFF+ELEN) of FILE
-and its trailer) of the descriptor whose expected trailer is TRAILER, from
-the cache under that identity or read once and decided by ACL2 against it
-(fnn-extent-entry-verdict); every verdict but :ok is refused by name.
-Called with the realizer's lock held."
-  (let ((hit (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)
-                                       (eql (third e) elen) (eql (fourth e) trailer)))
-                      *fnn-extent-cache*)))
-    (if hit
-        (progn (incf (first *fnn-extent-stats*))
-               (unless (eq hit (first *fnn-extent-cache*))
-                 (setq *fnn-extent-cache* (cons hit (delete hit *fnn-extent-cache* :test #'eq))))
-               (cddddr hit))
-      (let* ((octets (if *fnn-extent-no-io*
-                         (throw 'fnn-extent-cold (list file eoff elen trailer))
-                         (fnn-extent-read-entry file eoff elen)))
-             (verdict (fnn-extent-entry-verdict octets elen trailer)))
+(defun fnn-extent-read-verified (file eoff elen trailer)
+  "Synchronous private read/verifier activation. Caller already owns a lease
+or explicitly selected offline mode; extent lock remains held."
+  (let* ((octets (fnn-extent-read-entry file eoff elen))
+         (verdict (fnn-extent-entry-verdict octets elen trailer)))
         (unless (eq verdict :ok)
           (incf (third *fnn-extent-stats*))
           (error 'fnn-extent-fault
@@ -476,13 +463,70 @@ Called with the realizer's lock held."
                    (t
                     (format nil "arena-extent-verdict: ACL2 answered ~s for the entry at ~a"
                             verdict (fnn-extent-where file eoff))))))
-        ;; Direct/offline population has no issued token. Supported served
-        ;; pool integration must fund it separately, never claim a refund.
+    octets))
+
+(defun fnn-extent-sync-settle (row token verdict cachedp)
+  "The synchronous read activation returned or unwound before this call.
+The local exact I/O row belongs only to this activation, under extent lock."
+  (destructuring-bind (settled answer) (fnn-call 'fn-pio-complete row token verdict)
+    (declare (ignore settled))
+    (when (eq answer :stale) (fnn-fault "synchronous cold completion lost its token"))
+    (unless (eq (first (fnn-core-page-read-pool 'fn-owner-page-read-settle token cachedp)) :settled)
+      (fnn-fault "synchronous cold completion lost its resource lease"))))
+
+(defun fnn-extent-entry-direct (file eoff elen trailer)
+  "A synchronous miss reserves before allocation. Its execution slot is
+conservatively charged while the persistent native worker baseline stays put.
+A served result transfers to the cache before the caller borrows the vector."
+  (let ((mode (first (fnn-core-page-read-pool 'fn-owner-page-read-direct-mode))))
+    (when (eq mode :offline)
+      (let ((octets (fnn-extent-read-verified file eoff elen trailer)))
         (multiple-value-bind (cachedp evicted)
             (fnn-extent-cache-store file eoff elen trailer octets)
           (declare (ignore cachedp))
           (fnn-extent-cache-release evicted))
-        octets))))
+        (return-from fnn-extent-entry-direct octets)))
+    (unless (eq mode :funded-pool) (fnn-refuse "extent read refused: ~a" mode))
+    (let ((cache-mode (fnn-core 'fn-pxe-cache-mode (plusp (fnn-extent-cache-limit)))))
+      (unless (eq cache-mode :ready) (fnn-refuse "extent read refused: ~a" cache-mode)))
+    (destructuring-bind (word token &rest ignored)
+        (fnn-core-page-read-pool 'fn-owner-page-read-admit 0 file eoff elen trailer)
+      (declare (ignore ignored))
+      (unless (eq word :admitted) (fnn-refuse "extent read refused: ~a" word))
+      (let ((row (fnn-core 'fn-pio-own-admitted-token token))
+            (octets nil) (transferring nil))
+        (unless row (fnn-fault "synchronous admitted token lacks its owned read"))
+        (unwind-protect
+             (progn
+               (setq octets (fnn-extent-read-verified file eoff elen trailer))
+               ;; Once cache mutation begins, an exceptional transfer retains
+               ;; the lease: uncertainty about an alias never authorizes refund.
+               (setq transferring t)
+               (multiple-value-bind (cachedp evicted)
+                   (fnn-extent-cache-store file eoff elen trailer octets token)
+                 (unless cachedp (fnn-fault "funded synchronous result has no cache owner"))
+                 (fnn-extent-cache-release evicted)
+                 (fnn-extent-sync-settle row token :ok t))
+               octets)
+          (unless transferring
+            ;; Read/verifier stack and its buffer-stobj alias have unwound.
+            (setq octets nil)
+            (fnn-extent-sync-settle row token :error nil)))))))
+
+(defun fnn-extent-entry (file eoff elen trailer)
+  "The verified vector under the complete descriptor identity. Called with
+extent lock held; caller keeps that lock until its final vector borrow ends."
+  (let ((hit (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)
+                                       (eql (third e) elen) (eql (fourth e) trailer)))
+                      *fnn-extent-cache*)))
+    (if hit
+        (progn (incf (first *fnn-extent-stats*))
+               (unless (eq hit (first *fnn-extent-cache*))
+                 (setq *fnn-extent-cache* (cons hit (delete hit *fnn-extent-cache* :test #'eq))))
+               (cddddr hit))
+      (if *fnn-extent-no-io*
+          (throw 'fnn-extent-cold (list file eoff elen trailer))
+        (fnn-extent-entry-direct file eoff elen trailer)))))
 
 (defun fnn-extent-discovery-release (token)
   "Extent lock held. Caller relinquished the exact unverified buffer lease."

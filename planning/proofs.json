@@ -17625,7 +17625,7 @@
         "host/native/extent.lisp",
         "host/native/owner.lisp"
       ],
-      "progress_note": "Clean source sessions: baseline27/pureteeth48/adapter18; selected layout p12layout16forms; discovery p12discovery6forms and p12discoveryteeth16forms; final lifecycle/discovery adapter p12modehostclean26forms, all zero refused. Native configuration/startup and lifetime call sites are separate physical-owner integration; no matching image/native verdict or full Store rescue claim. Native discovery source now reserves before allocation in fnn-extent-entry-fresh and retains its exact lease through the final fn-octets-pub borrow in fnn-owner-release-extents. This covers the protected vector lifetime only; no productive startup or decoded-output funding claim."
+      "progress_note": "Clean source sessions: baseline27/pureteeth48/adapter18; selected layout p12layout16forms; discovery p12discovery6forms and p12discoveryteeth16forms; final lifecycle/discovery adapter p12modehostclean26forms, all zero refused. Native configuration/startup and lifetime call sites are separate physical-owner integration; no matching image/native verdict or full Store rescue claim. Native discovery source now reserves before allocation in fnn-extent-entry-fresh and retains its exact lease through the final fn-octets-pub borrow in fnn-owner-release-extents. This covers the protected vector lifetime only; no productive startup or decoded-output funding claim. Synchronous verified misses now admit before allocation, hold a local exact I/O row until private read/verifier return, transfer to charged cache, then settle. The existing completion/refund claims apply; full allocator and productive startup obligations remain."
     },
     {
       "id": "PRF-1073",
