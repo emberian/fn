@@ -6576,7 +6576,10 @@
         "Feed varied bytes through the scalar word accumulator; assert complete partial/eighth-byte/final-pad antecedents, exact existing fn-hp-pack8 outputs and no extra word after an aligned stream.",
         "For every remaining word-boundary hypothesis, retain all other hypotheses and affirm both failure of the removed premise and failure of the literal conclusion in a labeled argument/cursor mutation.",
         "Traverse a nonempty nested/dotted resident row with source-reference descriptors; check every literal invariant/residual/capture antecedent and compare interpreted output with fn-scc-encode.",
-        "Classify a 200-byte prefix ending in a non-byte symbol and complete within810 descriptor ticks using maintained non-octets suffix tasks."
+        "Classify a 200-byte prefix ending in a non-byte symbol and complete within810 descriptor ticks using maintained non-octets suffix tasks.",
+        "Compose descriptor traversal with scalar and opaque leaf byte cursors; assert every per-byte invariant/residual and exact current-codec output before and after a scheduling interruption.",
+        "Feed the complete resident byte stream through bounded word push/finish and compare packed zero-padded output with the current pack8 oracle.",
+        "Census the identical captured row without retaining encoded bytes; interrupt/resume, compare the terminal exact count with codec length and explicitly refuse a corrupted census total at the u64 edge."
       ],
       "expected": [
         "No source-list copy or whole-row encoding occurs at begin or tick.",
@@ -6591,7 +6594,7 @@
         "tests/acl2/history-record-cursor-tests.lisp",
         "specs/history-record-cursor.md"
       ],
-      "execution_scope": "Resident tree descriptor, opaque-leaf byte and scalar word-accumulator source libraries only. Scalar byte composition, borrowed cold spans, total census/producer/profile bridge and native qualification remain open."
+      "execution_scope": "Resident descriptor, scalar/leaf byte composition, exact byte census and scalar word-boundary source libraries only. Borrowed cold spans, general progress, total padded placement/producer/profile bridge and native qualification remain open."
     },
     {
       "id": "SCN-1009",
