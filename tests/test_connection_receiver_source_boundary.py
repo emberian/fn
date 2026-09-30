@@ -11,6 +11,8 @@ import unittest
 from tests.test_native_receiver_failure_boundary import ROOT, proof_repl
 
 SUBJECTS = {
+    "planning/evidence/connection-receiver-source-2026-09-30/acquisition-gate-recording/controller-source.lisp": {
+        "fn-rxt-pending-rangep", "fn-owner-rx-turn-parser-acquirablep", "fn-owner-rx-turn-parser-acquire"},
     "planning/evidence/connection-receiver-source-2026-09-30/native-hooks/selected-source.lisp": {
         "fnn-owner-connection-open-locked", "fnn-owner-connection-close-locked", "fnn-owner-receiver-turn-start"},
     "books/connection-receiver-source.lisp": {
@@ -59,7 +61,7 @@ class ConnectionReceiverSourceBoundary(unittest.TestCase):
                 "file_hashes": {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in SUBJECTS},
                 "fixture_sha256": hashlib.sha256(fixture.encode()).hexdigest(),
                 "exit_code": run.returncode, "scenarios": int(match[1]) if match else None,
-                "scope": "Literal actual 16 functions, recording runtime getter/core/registry/STATE; no installation/native/proof/funding claim"
+                "scope": "Literal actual 19 functions, recording runtime getter/core/registry/STATE; no installation/native/proof/funding claim"
             }, indent=2) + "\n")
         self.assertEqual(source, after, "source changed during boundary test")
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
@@ -70,6 +72,7 @@ class ConnectionReceiverSourceBoundary(unittest.TestCase):
         source, _ = selected()
         fixture = (ROOT / "tests/fixtures/connection_receiver_source_boundary.lisp").read_text()
         mutations = {
+            "filled-gate-deadlock": ("(fn-owner-rx-turn-parser-acquirablep ticket fn-rx-provider\n", "(fn-owner-rx-turn-consumablep ticket fn-rx-provider\n"),
             "open-suffix-unfunded": ("(* 8 path)", "(* 7 path)"),
             "close-suffix-unfunded": ("(* 6 path)", "(* 5 path)"),
             "post-open-capacity-unchecked": ("(equal capacity capacity1)", "t"),
