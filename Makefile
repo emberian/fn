@@ -1056,6 +1056,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/response-plan-token-tests \
 	books/over-byte-cursor \
 	books/over-byte-invariants \
+	books/served-plan-byte-cursor \
+	tests/acl2/served-plan-byte-cursor-tests \
 	tests/acl2/over-byte-cursor-tests \
 	books/nov-row-facts \
 	tests/acl2/nov-row-facts-tests \

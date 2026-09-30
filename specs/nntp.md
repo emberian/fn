@@ -2235,3 +2235,17 @@ or unrestricted federation is implied by this profile. Those need explicit
 policy and authorization. First client acceptance tests should include an actual
 newsreader and an independent transcript client, rather than only fn talking to
 itself. Legacy convenience aliases are added only with documented semantics.
+
+The dormant `served-plan-byte-cursor` adapter retains the entire untouched
+effect tail and saved quantum inside each returned full plan. A caller must
+retain that returned plan before another atomic call can cold-throw.
+`fn-spbc-finish` publishes exactly the last returned quantum's prefix once
+and retains its exact continuation with the captured response origin.
+Resuming with a different origin token returns `:stale-pin` without changing
+the plan. The adapter requires a cursor at the effect head: initial
+nonreply-prefix positioning is still an explicit composed-boundary obligation,
+so it never hides an uncharged effect-spine scan. Cached and legacy real-row
+fixtures drain through several quantum splits with a retained effect tail.
+These are source components only. Full original reply refinement, actual
+`fn-splan-cursor-step`/host activation, window cancellation and scalar/funding
+joins remain open together; no partial default activation is claimed.
