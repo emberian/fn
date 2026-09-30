@@ -367,6 +367,51 @@
                          fn-index-backing)))
                  (mv (if ok :owned :recovery-required) remaining fn-index-backing))))))))))
 
+; A definite prepare refusal may precede offered-query capture. Persist the
+; exact admitted NEW identity before abort; stale is never release evidence.
+(defun fn-irr-request-abort-prepared (nonce fuel fn-index-backing fn-page-read-pool)
+ (declare (xargs :stobjs (fn-index-backing fn-page-read-pool) :guard (natp fuel)
+                 :verify-guards nil))
+ (let* ((receipt (fn-ibp-request-pending fn-index-backing))
+        (request (fn-irr-receipt-request receipt))
+        (prepared (fn-ibp-connection-pending fn-index-backing))
+        (new (fn-omk-at 1 prepared)))
+  (cond
+   ((not (and (posp nonce) (equal nonce (fn-omk-at 2 receipt))
+               (eq (fn-omk-at 0 receipt) :index-request-receipt)))
+    (mv :stale nil fuel fn-index-backing fn-page-read-pool))
+   ((eq (fn-omk-at 7 receipt) :source-aborted)
+    (mv :aborted (fn-omk-at 9 receipt) fuel fn-index-backing fn-page-read-pool))
+   ((not (and (eq (fn-omk-at 7 receipt) :source-owned)
+               (null (fn-omk-at 9 receipt)) (null (fn-irr-request-rc request))
+               (fn-omk-widthp prepared 8)
+               (eq (fn-omk-at 0 prepared) :connection-reservation)
+               (equal (fn-omk-at 2 prepared) (fn-omk-at 1 request))
+               (fn-ich-tokenp new)
+               (not (equal new (fn-irr-request-holder request)))
+               (member-eq (fn-omk-at 6 prepared) '(:charged :registered :source-owned))))
+    (mv :recovery-required nil fuel fn-index-backing fn-page-read-pool))
+   ((< fuel (* 5 (+ 1 (fn-ibp-slot-depth fn-index-backing))))
+    (mv :yield nil fuel fn-index-backing fn-page-read-pool))
+   (t
+    (let ((fn-index-backing
+           (update-fn-ibp-request-pending
+            (fn-irr-receipt-keep receipt request :prepare-abort-intent
+                                (list :reader-prepare-abort new nil))
+            fn-index-backing)))
+     (mv-let (word left fn-index-backing fn-page-read-pool)
+      (fn-icr-abort new fuel fn-index-backing fn-page-read-pool)
+      (if (not (eq word :released))
+          (mv :recovery-required new left fn-index-backing fn-page-read-pool)
+        (let ((fn-index-backing
+               (update-fn-ibp-request-pending
+                (fn-irr-receipt-keep receipt request :source-aborted new)
+                fn-index-backing)))
+         (mv :aborted new left fn-index-backing fn-page-read-pool)))))))))
+
+(verify-guards fn-irr-request-abort-prepared
+ :hints (("Goal" :in-theory (disable fn-icr-abort fn-irr-receipt-keep))))
+
 ; The serialized producer calls this immediately after its actual pure RC.
 ; No source lookup/capture yield occurs between this transition and STATE
 ; owner/credits/exposure installation plus commit-current. Earlier yielding
@@ -382,10 +427,13 @@
         ((or (fn-irq-ready-phasep phase) (eq phase :read-offer-ready)
              (fn-irq-committed-phasep phase))
          (mv :observed fn-index-backing))
-        ((not (and (member-eq phase '(:source-owned :offer-owned))
+        ((not (and (member-eq phase '(:source-owned :source-aborted :offer-owned))
                    (null (fn-irr-request-rc request))
                    (consp rc) (eq (fn-omk-at 0 (car rc)) :fn-own-tls-result)
                    (or (and (eq phase :source-owned) (null (fn-omk-at 9 receipt))
+                            (not (fn-own-tls-result-repinned (car rc))))
+                       (and (eq phase :source-aborted)
+                            (fn-ich-tokenp (fn-omk-at 9 receipt))
                             (not (fn-own-tls-result-repinned (car rc))))
                        (and (eq phase :offer-owned)
                             (fn-irr-repin-intentp (fn-omk-at 9 receipt))))))
@@ -402,10 +450,14 @@
                      (list (fn-omk-at 0 receipt) (fn-omk-at 1 receipt)
                            (fn-omk-at 2 receipt) (fn-omk-at 3 receipt)
                            (fn-omk-at 4 receipt) (fn-omk-at 5 receipt)
-                           next-request (if (eq phase :offer-owned) :read-offer-ready :read-ready)
+                           next-request (cond ((eq phase :offer-owned) :read-offer-ready)
+                                 ((eq phase :source-aborted) :read-ready-repin-aborted)
+                                 (t :read-ready))
                            (fn-omk-at 8 receipt) (fn-omk-at 9 receipt))
                      fn-index-backing)))
-             (mv (if (eq phase :offer-owned) :read-offer-ready :read-ready)
+             (mv (cond ((eq phase :offer-owned) :read-offer-ready)
+                                 ((eq phase :source-aborted) :read-ready-repin-aborted)
+                                 (t :read-ready))
                  fn-index-backing))))))
 
 ; The actual RC selects this transition. Both query references are held at

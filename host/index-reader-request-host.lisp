@@ -60,6 +60,25 @@
          (mv owned remaining fn-mio$c))
         (mv (if (eq owned :owned) :offer-ready owned) pin remaining fn-mio$c state)))))))
 
+; INTERNAL definite pre-dispatch refusal cleanup. The helper derives the
+; admitted NEW identity from current core rows and persists its disposition;
+; neither stale nor missing reservation permits native custody to be dropped.
+(defun fn-owner-index-reader-request-abort-prepared
+ (token fuel fn-mio$c fn-page-read-pool state)
+ (declare (xargs :stobjs (fn-mio$c fn-page-read-pool state) :mode :program))
+ (mv-let (word disposition left fn-mio$c fn-page-read-pool)
+  (stobj-let ((fn-index-backing (fn-mio$c-provider fn-mio$c)))
+   (word disposition left fn-index-backing fn-page-read-pool)
+   (let* ((receipt (fn-ibp-request-pending fn-index-backing))
+          (nonce (fn-omk-at 2 receipt)) (ordinal (fn-omk-at 3 receipt))
+          (generation (fn-irq-receipt-request-generation receipt)))
+    (if (not (and (posp nonce) (natp ordinal) (posp generation)
+                  (equal token (fn-irq-candidate-token nonce ordinal generation))))
+        (mv :stale nil fuel fn-index-backing fn-page-read-pool)
+      (fn-irr-request-abort-prepared nonce fuel fn-index-backing fn-page-read-pool)))
+   (mv word disposition left fn-mio$c fn-page-read-pool))
+  (mv word disposition left fn-mio$c fn-page-read-pool state)))
+
 ; INTERNAL producer-only boundary, included after owner STATE/credits/exposure
 ; definitions. The actual caller derives RC from current STATE under the same
 ; serialized gate, after source+construction admission, and calls this without
