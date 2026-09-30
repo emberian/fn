@@ -355,3 +355,16 @@ The complete Store abstraction additionally contains configuration, frontier,
 identity/key state, verdict/index state, consumer and topic state. Its equality
 through actual configured recovery, then the owner/controller, is the remaining
 composition work. No production path evaluates these proof-only histories.
+
+The complete consumer fold is a proved component of that composition:
+`fn-osa-canonical-history-keeps-complete-consumer-replay` preserves the entire
+`fn-cpe-projection-replay` result under canonical remapping, for any starting
+projection and expected journal coordinate. Its step boundary is
+`fn-osa-remap-keeps-consumer-projection-step`. These preserve refusal reasons
+as well as successful metadata and cursors; no consumer field is projected
+away. A mixed bootstrap/register/composite ARTICLE/ACK witness has a nonempty
+account and scope and a changed payload handle. Negative target handles and
+corrupted source row validity refute the two hypotheses in the logical model.
+The mandatory coherent CP7/record12/held16/stage8 migration must retain this
+whole-result property; full identity/topic, configured open, physical bytes
+and owner/controller composition remain open.

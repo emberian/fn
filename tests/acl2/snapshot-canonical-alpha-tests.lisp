@@ -66,3 +66,36 @@
        (equal (fn-sn-row-verdicts-fold *osac-canonical* nil)
               (fn-sn-row-verdicts-fold *osac-rows* nil)))
 )
+
+; Complete consumer result across mixed durable metadata and a relocated
+; composite-held ARTICLE. The account, scope and acknowledged cursor survive.
+(defconst *osac-cp-boot* (fn-cpe-make 0 0 0 '(:bootstrap (1) (2))))
+(defconst *osac-cp-register* (fn-cpe-make 1 1 1 '(:register (3) (4) (5) 1 1 1)))
+(defconst *osac-cp-cursor* (fn-cp-cursor '(1) '(2) '(3) '(4) '(5) 1 1 1 2))
+(defconst *osac-cp-ack* (fn-cpe-make 3 3 3 (list :ack *osac-cp-cursor*)))
+(defconst *osac-cp-rows*
+  (list *osac-cp-boot* *osac-cp-register* (nth 2 *osac-rows*) *osac-cp-ack*))
+(assert-event
+ (let* ((canonical (fn-orm-capture *osac-cp-rows* 0))
+        (source-result (fn-cpe-projection-replay nil *osac-cp-rows* 0)))
+   (and (fn-orm-rowsp *osac-cp-rows*) (natp 0)
+        (not (equal canonical *osac-cp-rows*))
+        (equal (car source-result) :ok)
+        (fn-cp-statep (cadr source-result))
+        (equal (nth 7 (fn-cp-find '(3) (nth 5 (cadr source-result)))) 2)
+        (equal (fn-cpe-projection-replay nil canonical 0) source-result))))
+; Hypothesis removal: a negative target handle corrupts the retained row.
+(assert-event
+ (with-guard-checking :none
+   (and (fn-orm-rowsp *osac-cp-rows*) (not (natp -1))
+        (not (equal (fn-cpe-projection-replay
+                      nil (fn-orm-capture *osac-cp-rows* -1) 0)
+                     (fn-cpe-projection-replay nil *osac-cp-rows* 0))))))
+; Corrupted-state row-validity removal: remapping repairs an invalid handle,
+; so replay refusal differs from the valid reconstructed ARTICLE result.
+(assert-event
+ (with-guard-checking :none
+   (let ((rows (list (update-nth 4 -1 (car *osac-rows*)))))
+     (and (not (fn-orm-rowsp rows)) (natp 0)
+          (not (equal (fn-cpe-projection-replay nil (fn-orm-capture rows 0) 0)
+                       (fn-cpe-projection-replay nil rows 0)))))))

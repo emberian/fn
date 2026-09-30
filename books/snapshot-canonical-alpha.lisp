@@ -151,3 +151,45 @@
                            (fn-osa-row-on-valid-input-by-definition
                             fn-orm-row fn-orm-sealsp fn-store-event-p
                             fn-sn-row-verdict-pair)))))
+
+; Consumer replay depends on complete event metadata and journal position,
+; never the relocated article payload handle.  Preserve its entire result,
+; including refusal reasons, rather than projecting only successful cursors.
+(defthm fn-osa-remap-keeps-consumer-projection-step
+  (implies (and (fn-store-event-p row) (natp handle))
+           (equal (fn-cpe-projection-step projection (fn-orm-row row handle) expected)
+                  (fn-cpe-projection-step projection row expected)))
+  :hints (("Goal" :do-not-induct t
+           :cases ((fn-held-p row) (fn-hstxa-p row))
+           :use (fn-osa-remap-preserves-row-discriminants-and-coordinate
+                 fn-orm-row-retains-the-complete-payload-independent-projection)
+           :in-theory
+           (e/d (fn-cpe-projection-step fn-held-is-no-wire-event
+                 fn-hstxa-is-no-wire-event fn-hstxa-is-not-held)
+                (fn-orm-row fn-store-event-p fn-store-event-sequence
+                 fn-held-p fn-hstxa-p fn-cpe-eventp fn-cpe-operation
+                 fn-cpe-projection-advance fn-cpe-projection-decision
+                 fn-cp-state fn-cp-initial fn-cp-apply
+                 fn-orm-held fn-hstxa-make fn-hstxa-stxa fn-hstxa-held
+                 fn-osa-remap-preserves-row-discriminants-and-coordinate)))))
+
+(local
+ (defun fn-osa-consumer-induct (rows handle projection expected)
+   (if (atom rows) (list handle projection expected)
+     (let ((one (fn-cpe-projection-step projection (car rows) expected)))
+       (fn-osa-consumer-induct
+        (cdr rows) (if (fn-orm-sealsp (car rows)) (+ 1 handle) handle)
+        (fn-cp-nth 1 one) (1+ (nfix expected)))))))
+
+(defthm fn-osa-canonical-history-keeps-complete-consumer-replay
+  (implies (and (fn-orm-rowsp rows) (natp handle))
+           (equal (fn-cpe-projection-replay
+                   projection (fn-orm-capture rows handle) expected)
+                  (fn-cpe-projection-replay projection rows expected)))
+  :hints (("Goal"
+           :induct (fn-osa-consumer-induct rows handle projection expected)
+           :in-theory
+           (e/d (fn-orm-capture fn-orm-rowsp fn-cpe-projection-replay)
+                (fn-osa-row-on-valid-input-by-definition
+                 fn-orm-row fn-orm-sealsp fn-store-event-p
+                 fn-cpe-projection-step)))))
