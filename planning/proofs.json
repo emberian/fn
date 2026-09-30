@@ -18021,6 +18021,25 @@
         "tests/acl2/history-resource-refinement-tests.lisp"
       ],
       "progress_note": "Clean protected persvati hrf3 admitted all21 source forms (20/20 named events match), then17 fixture forms/11 literal witness assertions. Source and7 source-loaded dependencies cost30.74 ACL2 seconds/8,326,300 prover steps; all sessions stopped. Static teeth11/0 and scoped theory0 findings, ID claims checked. Source-dependency loads are not certificates; no host wiring, image/native or full W8 completion claim. Named theorems are component evidence, not cited events until actual host composition."
+    },
+    {
+      "id": "PRF-1110",
+      "title": "Iterated post-reservation refusal consumes exact finite identity headroom",
+      "statement": "Source reference component over actual fn-sn-refuse-reservation(fn-olr-sn-reserve(s), old-frontier), the host store reserve/refuse composition. fn-rfh-n-refusals-have-exact-bounded-frontier: under fn-rfh-ready-p (typed Store, ready files, idle/unfenced node admitting the successor), n repetitions leave frontier=min(UINT32_MAX, original-frontier+nfix(n)). fn-rfh-exhaustion-is-exactly-consumed-headroom relates that trace to host-used fn-bs-frontier-next: its successor is NIL exactly when nfix(n) reaches initial remaining headroom. Actual native fnn-log-reserve asks fn-store-metadata-frontier-next before mutating its log kernel and refuses NIL as finite transaction-ID domain exhausted. fn-rfh-n-refusals-keep-records-and-configuration preserves records/groups/capacity with no hypotheses; the redundant readiness premise was removed only after proving the stronger statement. This is a logical reference trace; fn-olr-sn-reserve remains an unguard-verified boundary driver and this iteration is not a new served function. Preflight refusal before reservation is a separate zero-identity-use path. OPEN: current composed owner mapping and matching native refusal/near-ceiling evidence; physical/transient rescue funding including finite identity-space reserve (saturation alone does not preserve rescue capability); full refusal histories; codec/profile domain evolution. No universal promise that refusing requests preserves identity headroom: requests after reservation consume one until the named ceiling.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-1000"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/refusal-headroom.lisp",
+        "tests/acl2/refusal-headroom-tests.lisp"
+      ],
+      "progress_note": "Clean protected persvati rfh2 admitted the source and 79 source dependencies (157.12 ACL2 seconds; 33,691,947 prover steps), then the final export theory form and all 13 fixture forms / five assertions. All 18 named source events match the file. Scoped theory and teeth checks passed with zero findings; ledger/current regenerated remotely. Session stopped and source evidence committed. No certification or native claim. Component theorems are not cited host keystones until exact owner composition and matching evidence."
     }
   ]
 }

@@ -302,6 +302,8 @@
     "tests/acl2/byte-store-state-checkpoint-program-tests",
     "books/store-node-resolution",
     "books/refusal-effect",
+    "books/refusal-headroom",
+    "tests/acl2/refusal-headroom-tests",
     "books/closure-open",
     "books/store-identity-sequence-invariants",
     "tests/acl2/store-identity-sequence-invariants-tests",
@@ -1636,26 +1638,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1699,
-    "books_in_root_closure": 1696,
-    "roots": 1632,
-    "theorems": 27816,
-    "functions": 18131,
-    "assert_events": 22987,
+    "books": 1701,
+    "books_in_root_closure": 1698,
+    "roots": 1634,
+    "theorems": 27831,
+    "functions": 18135,
+    "assert_events": 22992,
     "must_fails": 2496,
     "prover_refusals": 0,
     "encapsulates": 156,
     "guards": {
       "verified": 3460,
-      "declared-off": 2084,
-      "default-guarded": 9853,
-      "default-unguarded": 2734
+      "declared-off": 2086,
+      "default-guarded": 9854,
+      "default-unguarded": 2735
     },
     "suspect_theorems": 1228,
     "export_hygiene_warnings": 318,
     "enabled_projection_warnings": 52,
     "teeth_form_warnings": 272,
-    "include_hygiene_warnings": 2419,
+    "include_hygiene_warnings": 2420,
     "host_names_warnings": 2087,
     "hand_written_record_warnings": 18
   },
@@ -23592,6 +23594,32 @@
         "fn-rfx-unaffordable-prepare-is-unchanged-by-definition",
         "fn-rfx-unserved-prepare-is-unchanged-by-definition"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/refusal-headroom.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 15,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "refusal-effect"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -46175,6 +46203,33 @@
         "../../books/refusal-effect",
         "owner-config-tests",
         "owner-prepare-served-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/refusal-headroom-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 5,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 7,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/refusal-headroom",
+        "../../books/store-observed"
       ],
       "system_includes": [],
       "suspects": [],
@@ -71136,6 +71191,13 @@
         "line": 51,
         "include": "store-log-route-phases",
         "included": "books/store-log-route-phases.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/refusal-headroom.lisp",
+        "line": 5,
+        "include": "refusal-effect",
+        "included": "books/refusal-effect.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

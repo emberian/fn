@@ -313,6 +313,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-state-checkpoint-program-tests \
 	books/store-node-resolution \
 	books/refusal-effect \
+	books/refusal-headroom \
+	tests/acl2/refusal-headroom-tests \
 	books/closure-open \
 	books/store-identity-sequence-invariants \
 	tests/acl2/store-identity-sequence-invariants-tests \

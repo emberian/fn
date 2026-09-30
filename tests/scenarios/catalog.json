@@ -6327,6 +6327,30 @@
         "tests/acl2/history-resource-refinement-tests.lisp"
       ],
       "execution_scope": "ACL2 retained-ledger component witnesses only; complete owner lifecycle and external-history checker integration remain open."
+    },
+    {
+      "id": "SCN-1019",
+      "title": "Repeated semantic refusals preserve accepted history and exhaust identities without wraparound",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-017"
+      ],
+      "steps": [
+        "Commit a nonempty held article through actual reserve, prepare, order and finish; repeat actual reserve/refuse20times.",
+        "Open a valid nonempty persisted history with allocator frontier two below its codec ceiling; complete real recovery barriers and repeat9 refusals.",
+        "Compare actual fn-bs-frontier-next with remaining headroom at one, two and nine attempts.",
+        "Remove the ready-boundary hypothesis using the reachable reserved phase; check the expected frontier and exhaustion claims both fail."
+      ],
+      "expected": [
+        "The frontier grows by min(attempts, remaining headroom); no allocation wraps or reuses an identity.",
+        "Record history, served groups and capacity remain unchanged, even without the readiness hypothesis.",
+        "The host-used allocation predicate returns NIL at exactly exhausted headroom; the native maps this to its existing named refusal before log mutation."
+      ],
+      "evidence": [
+        "tests/acl2/refusal-headroom-tests.lisp"
+      ],
+      "execution_scope": "Logical reference composition and actual observed-open witnesses. Matching native owner trace and physical funding evidence remain open."
     }
   ]
 }
