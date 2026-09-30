@@ -35,6 +35,7 @@
 (in-package "ACL2")
 (include-book "reclaim-rule")
 (include-book "reclaim-tombstone")
+(include-book "article-subject")
 (include-book "poster-bytes")
 (include-book "blake3")
 
@@ -538,8 +539,15 @@
   (declare (xargs :guard (natp n)))
   (if (zp n) nil (cons 0 (fn-rcl-zeros (1- n)))))
 
+; The subject's selected identity codec is the same uint32 length profile
+; as the current Article record codec. Refuse unsupported constructor inputs;
+; never truncate the protected projection or change a bytes commitment.
+(defun fn-rcl-payload-profilep (payload)
+ (declare (xargs :guard t))
+ (and (fn-cbor-octet-listp (fn-asj-project payload))
+      (<= (len (fn-asj-project payload)) *fn-cbor-max-uint*)))
 (defun fn-rcl-tombstone-of (payload msgid)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-rcl-payload-profilep payload) :verify-guards nil))
   (let* ((agent (fn-pb-path-agent payload msgid))
          (subject (fn-pb-subject payload agent msgid))
          (sourcep (equal (car subject) :source)))
@@ -551,7 +559,7 @@
                                     (fn-rcl-zeros 32))
                                   (append (fn-rcl-u64-octets (len payload))
                                           (append (fn-rcl-u64-octets (len agent))
-                                                  agent))))))))
+                                                  (append (fn-asj-subject payload) agent)))))))))
 
 ; A submission against a tombstone: the comparison `fn-pb-same-articlep'
 ; makes, over the digests the tombstone kept.  The source arm applies when
@@ -678,8 +686,19 @@
  (defthm fn-rcl-true-listp-zeros
    (true-listp (fn-rcl-zeros n))))
 
+(local
+ (defthm fn-rcl-article-subject-shape
+   (and (true-listp (fn-asj-subject payload))
+        (equal (len (fn-asj-subject payload)) *fn-rcl-article-subject-size*))
+   :hints (("Goal" :in-theory (e/d (fn-asj-subject fn-id-render
+                                    fn-frame-digest-octet-listp
+                                    fn-frame-digest-length
+                                    fn-cbor-octet-listp-implies-true-listp)
+                                  (fn-asj-preimage))))))
+
 (verify-guards fn-rcl-tombstone-of
-  :hints (("Goal" :in-theory (disable fn-blake3 fn-pb-subject fn-pb-path-agent))))
+  :hints (("Goal" :in-theory (e/d (fn-rcl-payload-profilep)
+                   (fn-blake3 fn-pb-subject fn-pb-path-agent fn-asj-subject fn-asj-project)))))
 
 ; The fields of a tombstone read back what `fn-rcl-tombstone-of' put there.
 (defthm fn-rcl-tombstone-of-fields
@@ -692,10 +711,13 @@
          (implies (equal (car (fn-pb-subject payload agent msgid)) :source)
                   (equal (fn-rcl-tomb-source-digest tomb)
                          (fn-blake3 (cdr (fn-pb-subject payload agent msgid)))))
-         (equal (fn-rcl-tomb-agent tomb) agent)))
+         (equal (fn-rcl-tomb-agent tomb) agent)
+         (equal (fn-rcl-tomb-article-subject tomb) (fn-asj-subject payload))))
   ; SEC-006: the agent is now read through fn-cll-skip; the proof is the
   ; same case split, without destructor elimination or induction.
-  :hints (("Goal" :in-theory (e/d (fn-rcl-tombstone-of) (fn-blake3 fn-pb-subject
+  :hints (("Goal" :in-theory (e/d (fn-rcl-tombstone-of fn-rcl-tombstonep
+                                  fn-rcl-prefixp fn-rcl-at-leastp-is-len)
+                            (fn-asj-subject fn-asj-preimage fn-asj-project fn-blake3 fn-pb-subject
                                                         fn-pb-path-agent))
            :do-not '(generalize eliminate-destructors fertilize)
            :do-not-induct t)))
