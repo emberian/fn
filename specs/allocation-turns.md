@@ -107,3 +107,19 @@ capacity multiplication and token FLOOR/MOD/+1 operations. Guarded complete
 result refinements also cover actual registration and its ICS preflight join.
 Nested registry event and abort/settle internal census remains named and open;
 its absence is not a zero cost assumption.
+
+The readonly internal `fn-ats-role-bodyp(slot, nonce, role, slots, pool)` requires
+that exact installed role and phase3 together with the direct current SAMEpool
+receipt, actual active/draining mode and positive active count. In particular,
+uncertainty retains nonce/role/phase but closes this authority by recovery mode;
+a successful finish also consumes it. It creates no receipt, performs no scan,
+and supplies no installer or BODY price. An index-writer caller passes its literal
+installed role, never a STATE mirror or a caller's family-shaped claim.
+
+Normal203103 adds paired source PREPARE and ticket witnesses for prepared,
+unavailable, refused, yield, finish, duplicate finish, fault and repeated fault.
+A proved full one-slot/all-ten-field pool decoder, exact changed ticket and
+universal MIO/STATE/other-global frames account for complete effects. Fault keeps
+phase3 and A/count while fencing mode, not a fabricated phase6 transition.
+START's provider effect witness and nested registry event/abort source census
+remain open, as does whole source/native allowance installation.

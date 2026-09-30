@@ -17581,6 +17581,21 @@
           "pending_subject": "Actual internal reserve/register source observer; nested registry event and abort/settle source internals, full literal-state teeth and selected installed tariff remain open."
         }
       ]
+    },
+    {
+      "id": "PRF-1175",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ats-role-bodyp-uncertainty-closes-authority",
+          "pending_subject": "Readonly concrete internal BODY receipt authority; actual index-writer caller, genuine installed allowance and runtime qualification remain separate."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ats-role-bodyp-left-consumes-authority",
+          "pending_subject": "Readonly concrete internal BODY receipt authority; actual index-writer caller, genuine installed allowance and runtime qualification remain separate."
+        }
+      ]
     }
   ]
 }

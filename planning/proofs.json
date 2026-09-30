@@ -18177,9 +18177,36 @@
         "planning/evidence/connection-source-census-2026-09-30/README.md",
         "tests/acl2/connection-operation-source-cost-tests.lisp",
         "books/connection-reserve-source-cost.lisp",
-        "planning/evidence/manifests/certify-20260930T192841Z-3902429.json"
+        "planning/evidence/manifests/certify-20260930T192841Z-3902429.json",
+        "tests/acl2/connection-source-compose-tests.lisp",
+        "planning/evidence/manifests/certify-20260930T203103Z-1338622.json"
       ],
-      "progress_note": "Normal exact source leaves passed. Source-only component; no genuine physical allowance installation, whole request/frame tariff, or served activation claim. Literal primitive/domain teeth shipped; complete composed-state witness and nested callee accounting are still open. Normal192841 adds actual reserve/register complete-results and ICS join with existing PRS observer, including52 source cells and36/35 material operations on fresh/recycled reserved branches. Nested registry event and abort/settle source internals and complete literal-state teeth remain open."
+      "progress_note": "Normal exact source leaves passed. Source-only component; no genuine physical allowance installation, whole request/frame tariff, or served activation claim. Literal primitive/domain teeth shipped; complete composed-state witness and nested callee accounting are still open. Normal192841 adds actual reserve/register complete-results and ICS join with existing PRS observer, including52 source cells and36/35 material operations on fresh/recycled reserved branches. Nested registry event and abort/settle source internals and complete literal-state teeth remain open. Normal203103 adds exact PREPARE/ticket complete changed-state view decoder, universal MIO/STATE/other-global frames and eight paired complete output/effect literals. START provider-state literal and nested event/abort census still open."
+    },
+    {
+      "id": "PRF-1175",
+      "title": "Readonly current SAMEpool role BODY receipt authority",
+      "statement": "The guard-verified readonly concrete receipt predicate checks direct installed slot, SAMEpool association, exact current shared nonce, immutable installed role, BODY phase, active/draining mode and positive active count. Actual uncertainty closes authority while retaining the receipt, and actual successful finish consumes authority. Reachable source fixtures cover constructor, entry, payment, finish, reuse and uncertainty. It supplies no genuine installer or operation/runtime allowance.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-042"
+      ],
+      "depends_on": [
+        "PRF-1156",
+        "PRF-1157"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "planning/evidence/manifests/certify-20260930T203103Z-1338622.json",
+        "tests/acl2/allocation-turn-body-authority-tests.lisp",
+        "planning/evidence/connection-source-census-2026-09-30/README.md"
+      ],
+      "progress_note": "Source component only; genuine installation/profile/constructor baseline and body allowance remain open. The predicate rejects recovery mode even when matching nonce/role/BODY phase survive uncertainty.",
+      "events": [
+        "fn-ats-role-bodyp-uncertainty-closes-authority",
+        "fn-ats-role-bodyp-left-consumes-authority"
+      ]
     }
   ]
 }
