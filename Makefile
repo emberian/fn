@@ -613,9 +613,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/page-read-ownership-tests \
 	host/page-read-host \
 	books/page-read-resources \
+	books/page-file-lease \
+	tests/acl2/page-file-lease-tests \
 	books/page-read-executor \
 	tests/acl2/page-read-executor-tests \
 	host/page-executor-host \
+	host/page-file-lease-host \
 	tests/acl2/page-read-ledger-tests \
 	tests/acl2/page-read-host-tests \
 	tests/acl2/store-profile-carried-tests \
@@ -705,6 +708,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-rotation-buffer \
 	tests/acl2/bp-node-rotation-buffer-tests \
 	books/bp-held-projection \
+	books/bp-recovery-guards \
 	books/bp-recovery-profile \
 	tests/acl2/bp-recovery-profile-tests \
 	tests/acl2/bp-held-projection-tests \
@@ -1499,6 +1503,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-time-bars \
 	tests/acl2/owner-time-bars-tests \
 	tests/acl2/tls-handshake-budget-tests \
+	tests/acl2/tls-proxy-tests \
 	tests/acl2/owner-cold-line-tests \
 	books/owner-resource-line \
 	tests/acl2/owner-resource-line-tests \
@@ -1508,6 +1513,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/response-plan-pins-tests \
 	books/page-read-ownership \
 	tests/acl2/page-read-ownership-tests \
+	books/page-file-lease \
+	tests/acl2/page-file-lease-tests \
 	books/page-read-executor \
 	tests/acl2/page-read-executor-tests \
 	books/feed-restart-domain \
@@ -1518,6 +1525,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/web-render \
 	books/web-render-keystones \
 	tests/acl2/web-render-tests \
+	books/web-health \
+	tests/acl2/web-health-tests \
 	books/web-session \
 	books/web-session-keystones \
 	tests/acl2/web-session-tests \

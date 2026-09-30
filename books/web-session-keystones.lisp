@@ -428,3 +428,20 @@
                                       fn-wss-k-group fn-wss-k-article fn-wss-k-submit
                                       fn-wss-bound-by-281 fn-wss-trouble fn-wss-redirect)
            :expand ((fn-web-step config sessions flow event fn-web-in fn-web-out)))))
+
+; PRF-1100: the actual composed host-called step answers a health
+; observation without opening/sending a reader, changing sessions or
+; allocating a report proportional to stored data. fn-oct-len-is-len is
+; the octet-buffer boundary theorem for the logical output length.
+(defthm fn-web-health-step-preserves-sessions-and-bounds-body
+  (implies (and (equal (fn-wss-f-route flow) :health)
+                (not (equal (fn-wss-car event) :begin)))
+           (let ((reply (fn-web-step config sessions flow event fn-web-in fn-web-out)))
+             (and (equal (car (car reply)) :respond)
+                  (member (cadr (car reply)) '(200 503))
+                  (equal (cadr reply) sessions)
+                  (<= (len (caddr reply)) 23))))
+  :hints (("Goal" :in-theory (e/d (fn-web-step fn-wss-write fn-whl-answer
+                                    fn-wr-octets-only)
+                                   (fn-wss-begin fn-wss-f-route fn-wss-car
+                                    fn-whl-word)))))

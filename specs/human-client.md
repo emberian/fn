@@ -193,6 +193,18 @@ thread, a request completed within 15 seconds, the idle life of a session
 (`[web] idle_seconds`, 12 hours) and the number kept (`[web]
 max_sessions`, 64; each holds one owner connection).
 
+Q10d, WEB-005: `GET /health` and `HEAD /health` use the same running owner,
+with no account/session or second image process. ACL2 projects the fixed
+scheduler mode, whether free space was observed, and whether checkpoint
+publication is deferred. `200` requires observed space, mode `:ok` or
+`:slow` (the existing PRF-358 disk-health policy), and no deferred checkpoint.
+Full/stalled disk, deferred publication, malformed or unobserved inputs
+answer `503`; the fixed plain-text body is at most 23 octets and never
+copies counters or peer names. `HEAD` suppresses that body while preserving
+its length. This local readiness policy does not replace the full operator
+health verdict and does not claim namespace, profile, route or receipt
+health. The existing HTTP parser, request bounds and listener TLS apply.
+
 ### The reader in the release
 
 WEB-004: The release turns on the node's own web face with

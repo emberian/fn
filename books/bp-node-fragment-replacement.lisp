@@ -146,3 +146,6 @@
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
 (in-theory (disable (:definition fn-bpnf-find-arrival)))
+
+; Executable prerequisites of the host-called family recovery fold.
+(verify-guards fn-bpnf-find-arrival)

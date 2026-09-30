@@ -12,7 +12,8 @@ Six commands and a certificate make a node.
 
 *What you need:*
 - Linux x86-64 with systemd, glibc 2.36 or later and OpenSSL 3:
-  Debian 12 or Ubuntu 24.04. Minimal Debian 12 also needs
+  Debian 12 or Ubuntu 24.04. Ubuntu 22.04 is unsupported by the distributed binary
+  because its glibc is below the 2.36 floor. Minimal Debian 12 also needs
   libssl3, openssl and sudo.
 - Or OpenBSD 7.9: see the follow-up to this article.
 - Root, and a disk that keeps its word (part 4).
