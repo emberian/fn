@@ -2863,5 +2863,93 @@ class ChangedDependencyTests(unittest.TestCase):
             self.assertNotIn("--ld books/base", seen[-1][-1], extra)
 
 
+
+class AttachmentOrderTests(unittest.TestCase):
+    def test_event_detection_preserves_code_data_and_signatures(self):
+        for text in ('(attach-stobj generic concrete)',
+                     '(progn (attach-stobj generic concrete))',
+                     '(encapsulate () (local (attach-stobj generic concrete)))',
+                     '(with-prover-time-limit 1 (attach-stobj generic concrete))'):
+            self.assertTrue(proof_repl.attachment_events(text), text)
+        for text in ('(defun f () \'(attach-stobj generic concrete))',
+                     '(defthm f t :hints (("Goal" :use (attach-stobj generic concrete))))',
+                     '(encapsulate (((attach-stobj *) => *)) (defthm f t))',
+                     '(value-triple \'(attach-stobj generic concrete))'):
+            self.assertFalse(proof_repl.attachment_events(text), text)
+
+    def test_dfs_source_replay_refuses_attachment_closure(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            (root / 'attach.lisp').write_text(
+                '(include-book "extent")\n(attach-stobj generic extent)\n'
+                '(include-book "generic")\n(include-book "catalog")\n')
+            for name in ('extent', 'generic', 'catalog', 'fixture'):
+                (root / (name + '.lisp')).write_text('(defthm ordinary t)\n')
+            graph = {'fixture': ['attach'], 'attach': ['extent', 'generic', 'catalog'],
+                     'extent': [], 'generic': [], 'catalog': ['generic']}
+            order = proof_repl.dependency_order(graph, {'extent', 'generic', 'attach'}, 'fixture')
+            self.assertLess(order.index('generic'), order.index('attach'))
+            with mock.patch.object(proof_repl, 'ROOT', root):
+                message = proof_repl.attachment_source_refusal(graph, order)
+                self.assertIn('refusing source dependency replay across attach-stobj in attach', message)
+                self.assertIn('compatible certified attachment', message)
+                self.assertIsNone(proof_repl.attachment_source_refusal(graph, []))
+                self.assertIsNone(proof_repl.attachment_source_refusal({'extent': []}, ['extent']))
+
+    def test_named_attachment_source_refuses_before_cache_probe_or_child(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            (root / 'fixture.lisp').write_text('(include-book "attach")\n')
+            (root / 'attach.lisp').write_text(
+                '(include-book "extent")\n(attach-stobj generic extent)\n'
+                '(include-book "generic")\n')
+            for name in ('extent', 'generic'):
+                (root / (name + '.lisp')).write_text('(defthm ordinary t)\n')
+            with mock.patch.object(proof_repl, 'ROOT', root), \
+                 mock.patch.dict(os.environ, {'FN_ACL2': '/not-launched/acl2'}), \
+                 mock.patch.object(proof_repl.acl2_toolchain, 'fingerprint') as fingerprint, \
+                 mock.patch.object(proof_repl.certs, 'install_artifact_set') as install:
+                ok, detail, order = proof_repl.install_closure('fixture', ['attach'])
+            self.assertFalse(ok)
+            self.assertEqual(order, [])
+            self.assertIn('refusing source dependency replay', detail)
+            fingerprint.assert_not_called()
+            install.assert_not_called()
+
+    def test_encapsulated_attachment_refuses_before_sending_any_form(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            (root / 'attach.lisp').write_text(
+                '(include-book "extent")\n(attach-stobj generic extent)\n'
+                '(include-book "generic")\n')
+            for encapsulate, skip in ((True, set()), (False, {'generic'})):
+                acl2 = mock.Mock()
+                state = {'loaded': [], 'ld_loaded': {}}
+                with mock.patch.object(proof_repl, 'ROOT', root):
+                    self.assertFalse(proof_repl.load_book(
+                        acl2, 'attach', state, 1, skip, encapsulate=encapsulate))
+                acl2.send.assert_not_called()
+                self.assertEqual(state['loaded'], [])
+                self.assertEqual(state['ld_loaded'], {})
+                self.assertIn('source-order preflight', state['stopped_at'])
+
+    def test_supported_certified_include_is_sent_in_declared_order(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            (root / 'fixture.lisp').write_text(
+                '(in-package "ACL2")\n(include-book "attach")\n'
+                '(include-book "consumer")\n(defthm observation t)\n')
+            acl2 = mock.Mock()
+            acl2.send.return_value = ('', False)
+            state = {'loaded': [], 'ld_loaded': {}}
+            with mock.patch.object(proof_repl, 'ROOT', root):
+                self.assertTrue(proof_repl.load_book(acl2, 'fixture', state, 1, set()))
+            sent = [call.args[0] for call in acl2.send.call_args_list]
+            self.assertLess(sent.index('(include-book "attach")'),
+                            sent.index('(include-book "consumer")'))
+            self.assertLess(sent.index('(include-book "consumer")'),
+                            sent.index('(defthm observation t)'))
+
+
 if __name__ == "__main__":
     unittest.main()
