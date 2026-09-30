@@ -1599,6 +1599,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/pagestore-digest-cursor-refinement \
 	books/pagestore-digest-byte-cursor \
 	books/pagestore-digest-byte-refinement \
+	books/pagestore-digest-cursor-domain \
+	tests/acl2/pagestore-digest-cursor-domain-tests \
+	books/pagestore-digest-byte-domain \
+	tests/acl2/pagestore-digest-byte-domain-tests \
 	tests/acl2/pagestore-digest-cursor-tests \
 	tests/acl2/pagestore-digest-cursor-refinement-tests \
 	tests/acl2/pagestore-digest-byte-cursor-tests \
