@@ -1608,6 +1608,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/statement-recover-stream-tests \
 	tests/acl2/statement-physical-tests \
 	books/article-subject \
+	books/acceptance-binding \
+	books/acceptance-binding-catalog \
+	books/acceptance-binding-relay \
+	tests/acl2/acceptance-binding-tests \
+	tests/acl2/acceptance-binding-catalog-tests \
+	tests/acl2/acceptance-binding-relay-tests \
 	tests/acl2/article-subject-tests \
 	tests/acl2/group-authority-tests \
 	books/store-node-correspondence \

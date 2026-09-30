@@ -452,6 +452,58 @@ conflict publication remain open under PRF-1108. A distinct current-format
 binding representation must carry them without truncating provenance or
 reducing any supported metadata profile.
 
+### 2.6 Binding representation and mandatory integration layout
+
+The representation component is `books/acceptance-binding.lisp`. Its logical
+value is `(profile received-subject)`, where profile is exactly `:post-d25`,
+`:relay-v1` or `:native-source` and received-subject is the canonical 48-octet
+`fn/subject/v1` identity (version 1, BLAKE3 algorithm 2). `fn-ab-of-received`
+computes that commitment from the supplied received octets in ACL2; it does
+not infer the profile. Only the actual admission context may select one.
+
+The distinct binary field is exactly 56 octets: `NUL || "FN-AB1"` (7),
+profile code 1/2/3 (1), received-subject (48). `fn-ab-decode` checks this fixed
+bound before its octet walk and rejects unknown codes, missing or trailing
+bytes, and another identity version/algorithm as `:invalid-binding`. The
+codec's roundtrip does not establish that a reception was durably accepted.
+It neither wraps nor consumes the existing 256-octet provenance allowance.
+
+The selected integration layout, still pending, appends a required binding
+argument to both constructors:
+
+```lisp
+(fn-record-make sequence txid generation msgid payload groups
+                obligation-id content-subject release-evidence charge stamp
+                binding) ; twelve fields; binding at 11
+(fn-held-make sequence txid generation msgid payload groups
+              obligation-id content-subject release-evidence charge stamp
+              facts context numbers withdrawn binding) ; sixteen; binding at 15
+```
+
+The old eleven wire fields and fifteen held fields keep their meanings and
+positions. The wire codec appends the binding as one CBOR byte string (58
+encoded octets including its head), raises its fixed/wide overhead accounting
+by 58, and updates profile validation and publication funding in the same
+change. The retained representation carries the immutable descriptor; intern,
+materialization, canonical handle remapping, checkpoint and replay copy it
+exactly. Its checkpoint tree size is that tree's actual encoding, not the
+wire-field length. Native kind-4 envelopes keep their existing outer format
+and authored source; their article child carries the binding. Non-article
+Store events are unaffected. The genesis schema commitment must change.
+No implicit constructor profile, old-format reader or missing-field fallback
+is permitted. This layout is not yet the current served wire schema.
+
+The proposed `books/acceptance-binding-catalog.lisp` returns the whole retained row via the
+existing concrete Message-ID column and newest-visible selection; its logical
+reference is the visible-row query, not the metadata-losing acceptance
+article. Its admission is still blocked by the catalog-commit keyring dependency;
+its theorem and fixtures are not yet verified.
+`books/acceptance-binding-relay.lisp` provides the selected relay
+comparison component, including an explicit collision residual after reclaim.
+Neither component changes the host's current D25 comparator or publishes
+conflicting evidence. PRF-1108 remains planned until the mandatory integration
+and funded publication steps satisfy section 2.5.
+
 ## 3. Group policy on inbound transit
 
 The gate on a peer-transit article is `fn-pol-admitp`, evaluated against **this
