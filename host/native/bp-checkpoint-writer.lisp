@@ -6,7 +6,7 @@
 
 (defstruct (fnn-bpck-io (:constructor %make-fnn-bpck-io))
   stage job digest-state control fd (close-result :closed)
-  (source-result :returned) failure)
+  (source-result :returned) failure core-failure)
 
 (defun fnn-bps-checkpoint-digest-call (record name &rest arguments)
   (apply #'fnn-call name
@@ -26,6 +26,10 @@
 Every condition leaves caller-visible stage, descriptor and close evidence.
 No turn loops over the job; cancellation prevents scheduling the next turn,
 then closes/settles the retained stage before any charge can be refunded."
+  ;; A failed core observation cannot authorize another filesystem turn.
+  ;; Keep the record/FD charged for recovery; do not synthesize a core state.
+  (when (fnn-bpck-io-core-failure record)
+    (return-from fnn-bps-checkpoint-turn record))
   (setf (fnn-bpck-io-source-result record) :running)
   (unwind-protect
        (handler-case
@@ -100,11 +104,17 @@ then closes/settles the retained stage before any charge can be refunded."
                (:done nil)
                (otherwise (fnn-bps-checkpoint-observe record :error))))
          (error (condition)
-           (setf (fnn-bpck-io-failure record) condition
-                 (fnn-bpck-io-job record)
-                 (fnn-core 'fn-bpck-stage-observation
-                           (fnn-bpck-io-job record) :ambiguous))
-           (fnn-bps-checkpoint-observe record :error)))
+           (setf (fnn-bpck-io-failure record) condition)
+           (handler-case
+               (progn
+                 (setf (fnn-bpck-io-job record)
+                       (fnn-core 'fn-bpck-stage-observation
+                                 (fnn-bpck-io-job record) :ambiguous))
+                 (fnn-bps-checkpoint-observe record :error))
+             (error (core-condition)
+               ;; Both conditions and the actual FD/source position remain
+               ;; visible even when the core cannot record the I/O outcome.
+               (setf (fnn-bpck-io-core-failure record) core-condition)))))
     (setf (fnn-bpck-io-source-result record) :returned))
   record)
 
@@ -112,5 +122,9 @@ then closes/settles the retained stage before any charge can be refunded."
   "Stop future source turns after the active turn has returned.
 This requests a retained close turn; it does not delete staging or refund.
 The scheduler must call it only after joining the active action."
-  (fnn-bps-checkpoint-observe record :cancel)
+  (unless (fnn-bpck-io-core-failure record)
+    (handler-case (fnn-bps-checkpoint-observe record :cancel)
+      (error (condition)
+        (setf (fnn-bpck-io-failure record) condition
+              (fnn-bpck-io-core-failure record) condition))))
   record)

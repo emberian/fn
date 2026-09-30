@@ -10,8 +10,8 @@
     "books/page-maintenance-lease.lisp": "4fb06d4753dccf66ec43cc056758567d8335864045abcc9d36ce0b758827b235",
     "books/page-read-ledger.lisp": "9e51c34af4af7300ac68f805c55a4b6bbce52ad078c60c483876988690a9ffd0",
     "books/page-read-resources.lisp": "50a31ef23b2133cd454a9d4eebfa4245062e99dce1482bc67a343d19618a6c9c",
-    "host/native/bp-checkpoint-writer.lisp": "636a20f534ea5f8aa40eb227b95487d76e3b38958f4ab24b3b9625388fdff028",
-    "tests/bp_checkpoint_writer_host_refuter.lisp": "9cd9fd818db02aeb8dffb2d57e6879a34e27c7c48ed7b747752c675ba8f6c4d2",
+    "host/native/bp-checkpoint-writer.lisp": "492836db2cd59fd4ff2e580806ab619caf73a91f24e9109c7ff986744eabae9a",
+    "tests/bp_checkpoint_writer_host_refuter.lisp": "3f8e789cf700a04422f112320173d6ffeaeb7bf75aac7b71907240ed229c4545",
     "tests/acl2/bp-node-checkpoint-job-tests.lisp": "bc4fccd59ed6e53eb642ecc6fa17bfd6859332cb5e7aabb0e004813770be0eaa",
     "tests/acl2/bp-node-checkpoint-digest-tests.lisp": "b73b3430b979d099f17907f8a769772cf6947396adacee803accf285214208f1",
     "books/bp-node-checkpoint-stack.lisp": "a004d178b66467438833c23e5df215e1dd4353cbddda8325b57fdfba97a8b2ac",
@@ -59,7 +59,8 @@
   "recording_refuter": {
     "command": "/opt/homebrew/bin/sbcl --script tests/bp_checkpoint_writer_host_refuter.lisp",
     "status": "passed",
-    "effects": "recorded stubs only; no disk/network/native execution"
+    "effects": "recorded stubs only; no disk/network/native execution",
+    "secondary_failure_increment": "Same caller-visible I/O record retains original write/cancel failure and failed core observation; latched core failure forbids further turns. Recording stubs only; no disk/native qualification."
   },
   "remaining": [
     "actual charged capture and CURRENT state epoch/token freeze",
