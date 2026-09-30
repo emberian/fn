@@ -132,6 +132,7 @@
 (include-book "owner-snapshot-recovery")
 (include-book "snapshot-prepare")
 (include-book "snapshot-row-remap")
+(include-book "snapshot-source-cursor")
 (include-book "owner-control-post-reason")
 (include-book "peer-transit-authority")
 (include-book "article-subject")

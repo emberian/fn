@@ -4819,3 +4819,7 @@
 (definterface fn-owner-page-file-pin-file :class :common-lisp-compliant)
 (definterface fn-owner-page-file-pin-read :class :common-lisp-compliant
   :keystones ((fn-prd-admit-preserves-pool-funding :via fn-prd-admit)))
+
+; S7 borrowed source adapter; full funded controller remains planned.
+(definterface fn-owner-osn-source-context :class :program)
+(definterface fn-owner-osn-source-begin :class :program)

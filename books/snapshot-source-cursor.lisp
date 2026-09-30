@@ -136,4 +136,27 @@
                   (equal (fn-osrc-at 8 next) (fn-osrc-at 11 cursor)))))
   :hints (("Goal" :in-theory (enable fn-osrc-restart fn-osrc-guardp
                                      fn-osrc-with fn-osrc-at update-nth))))
-(in-theory (disable fn-osrc-at fn-osrc-token fn-osrc-begin fn-osrc-with fn-osrc-restart fn-osrc-guardp fn-osrc-tick))
+
+; Read-only scalar admission context. No captured Store is retained here.
+(defun fn-osrc-source-context (field count epoch phase)
+  (declare (xargs :guard t))
+  (let* ((based (and (consp field) (eq (car field) :hrs-based)))
+         (handle (if based (fn-osrc-at 1 field) nil))
+         (base (if based (nfix (fn-osrc-at 4 handle)) 0)))
+    (cond ((not (equal phase :ready)) (list :refused :capture-not-ready))
+          ((or (not (natp count)) (< count base)) (list :refused :capture-count))
+          (t (list :ready epoch count base (- count base) handle)))))
+(defthm fn-osrc-source-context-readiness-and-count-split
+  (implies (equal (car (fn-osrc-source-context field count epoch phase)) :ready)
+           (let ((answer (fn-osrc-source-context field count epoch phase)))
+             (and (equal phase :ready) (natp count)
+                  (equal (fn-osrc-at 1 answer) epoch)
+                  (equal (fn-osrc-at 2 answer) count)
+                  (natp (fn-osrc-at 3 answer)) (natp (fn-osrc-at 4 answer))
+                  (equal (+ (fn-osrc-at 3 answer) (fn-osrc-at 4 answer)) count)
+                  (equal (fn-osrc-at 5 answer)
+                         (if (and (consp field) (equal (car field) :hrs-based))
+                             (fn-osrc-at 1 field) nil)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-osrc-source-context fn-osrc-at))))
+(in-theory (disable fn-osrc-at fn-osrc-token fn-osrc-begin fn-osrc-with fn-osrc-restart fn-osrc-guardp fn-osrc-tick fn-osrc-source-context))

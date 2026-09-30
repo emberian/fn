@@ -342,8 +342,11 @@ thirteen-cell cursor carries scalar epoch, capture lease, pass and row ordinal;
 only a completion matching that exact issued token advances the source. A
 restart requires a drained pass, increases its pass serial and reuses the
 prepared pointer. It refuses while a row request is outstanding or rows remain.
-Delayed completions from an earlier pass cannot supply a new pass's row. This
-protocol does not establish decoder contents, authenticated page mapping,
+Delayed completions from an earlier pass cannot supply a new pass's row.
+The host source-context adapter reads the ready phase and scalar frontier/count
+with the borrowed records-field; it splits base/suffix counts without history
+materialization. Its source-begin adapter initializes the same captured-field
+cursor. This protocol does not establish decoder contents, authenticated page mapping,
 funded reversal scratch or the complete online producer.
 
 ### Bounded borrowed history decoding (planned, PRF-1102 / SCN-1014)
@@ -491,3 +494,14 @@ Cold string spans supply one authenticated source byte to the same core,
 without whole-string construction. Capture/root/source-position authority
 belongs to the surrounding source cursor. Absent Message-IDs keep the existing
 zero key; a present string returns one plus its FNV result. No format changes.
+
+
+The captured MKEY client (`books/snapshot-message-key.lisp`, PRF-1124) selects
+ordinary or composite Message-ID through fixed row paths and retains a borrowed
+string span. Every cold byte completion must match the epoch/capture-lease/pass/
+ordinal token and exact issued absolute position. A stale completion refuses
+without advancing the cursor. Each accepted completion uses the existing FNV
+byte core once. Current component proofs preserve residual hashing with an
+explicit authenticated-byte meaning premise; the full decoder/span abstraction,
+four-column/padding validation, terminal inverse, resource admission and actual
+producer composition remain open.

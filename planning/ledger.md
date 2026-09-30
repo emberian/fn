@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1778 |
-| Certification roots in the Makefile | 1705 |
-| Books inside the root closure | 1770 |
-| `defthm` and `defthmd` events | 28337 |
-| `defun` events | 18633 |
+| Books read | 1781 |
+| Certification roots in the Makefile | 1712 |
+| Books inside the root closure | 1774 |
+| `defthm` and `defthmd` events | 28353 |
+| `defun` events | 18641 |
 | Functions with verified guards | 3486 |
-| Functions declared `:verify-guards nil` and never verified | 2158 |
-| Functions left at the default with an explicit guard | 10218 |
-| Functions left at the default with no guard | 2771 |
-| `assert-event` checks | 23552 |
+| Functions declared `:verify-guards nil` and never verified | 2159 |
+| Functions left at the default with an explicit guard | 10222 |
+| Functions left at the default with no guard | 2774 |
+| `assert-event` checks | 23570 |
 | `must-fail` checks | 2507 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 157 |
@@ -474,6 +474,7 @@ that `make certify` requests.
 | `books/history-image-fold.lisp` | root | 17 | 6 | 0/1/2/3 | 0 | 0 | 0 |
 | `books/history-image-header.lisp` | closure | 7 | 3 | 0/0/2/1 | 0 | 0 | 0 |
 | `books/history-image-snapshot.lisp` | root | 8 | 24 | 0/0/20/4 | 0 | 0 | 0 |
+| `books/history-key-cursor.lisp` | closure | 9 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/history-knowledge.lisp` | root | 32 | 9 | 0/9/0/0 | 0 | 0 | 4 |
 | `books/history-page-buffer.lisp` | closure | 12 | 6 | 0/0/3/3 | 0 | 0 | 0 |
 | `books/history-page-cursor.lisp` | closure | 13 | 8 | 0/0/6/2 | 0 | 0 | 0 |
@@ -911,12 +912,12 @@ that `make certify` requests.
 | `books/snapshot-capture-lease.lisp` | closure | 4 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/snapshot-decode-remap.lisp` | closure | 7 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/snapshot-file-copy.lisp` | root | 3 | 4 | 0/0/4/0 | 0 | 0 | 1 |
-| `books/snapshot-message-key.lisp` | - | 0 | 11 | 0/0/11/0 | 0 | 0 | 0 |
+| `books/snapshot-message-key.lisp` | closure | 6 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/snapshot-prepare.lisp` | closure | 13 | 10 | 1/3/6/0 | 0 | 0 | 0 |
 | `books/snapshot-publication.lisp` | closure | 2 | 4 | 0/1/3/0 | 0 | 0 | 1 |
 | `books/snapshot-row-remap.lisp` | closure | 16 | 15 | 0/1/14/0 | 0 | 0 | 2 |
 | `books/snapshot-segments.lisp` | root | 52 | 32 | 0/9/18/5 | 0 | 0 | 0 |
-| `books/snapshot-source-cursor.lisp` | closure | 6 | 7 | 0/0/7/0 | 0 | 0 | 0 |
+| `books/snapshot-source-cursor.lisp` | closure | 7 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/snoc-list.lisp` | root | 30 | 14 | 2/0/12/0 | 0 | 0 | 2 |
 | `books/source-projection-bridge.lisp` | root | 23 | 3 | 0/1/1/1 | 0 | 0 | 0 |
 | `books/source-routes.lisp` | closure | 16 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -1403,6 +1404,7 @@ that `make certify` requests.
 | `tests/acl2/history-image-campaign-tests.lisp` | root | 1 | 13 | 0/5/1/7 | 16 | 0 | 0 |
 | `tests/acl2/history-image-census-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
 | `tests/acl2/history-image-header-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 5 | 0 | 0 |
+| `tests/acl2/history-key-cursor-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 6 | 0 | 0 |
 | `tests/acl2/history-knowledge-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 50 | 2 | 0 |
 | `tests/acl2/history-page-buffer-tests.lisp` | root | 1 | 4 | 0/4/0/0 | 3 | 0 | 0 |
 | `tests/acl2/history-page-cursor-tests.lisp` | root | 0 | 2 | 0/1/0/1 | 14 | 0 | 0 |
@@ -1714,11 +1716,12 @@ that `make certify` requests.
 | `tests/acl2/snapshot-capture-lease-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 0 | 0 |
 | `tests/acl2/snapshot-decode-remap-tests.lisp` | root | 10 | 1 | 0/0/0/1 | 1 | 0 | 0 |
 | `tests/acl2/snapshot-file-copy-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 1 | 0 |
+| `tests/acl2/snapshot-message-key-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 9 | 0 | 0 |
 | `tests/acl2/snapshot-prepare-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 14 | 0 | 0 |
 | `tests/acl2/snapshot-publication-tests.lisp` | root | 0 | 4 | 0/2/2/0 | 3 | 0 | 0 |
 | `tests/acl2/snapshot-row-remap-tests.lisp` | root | 7 | 3 | 0/3/0/0 | 8 | 0 | 0 |
 | `tests/acl2/snapshot-segments-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 7 | 0 | 0 |
-| `tests/acl2/snapshot-source-cursor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
+| `tests/acl2/snapshot-source-cursor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/snoc-list-tests.lisp` | root | 4 | 0 | 0/0/0/0 | 37 | 0 | 0 |
 | `tests/acl2/source-projection-bridge-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 5 | 3 | 0 |
 | `tests/acl2/source-routes-tests.lisp` | root | 0 | 23 | 0/12/0/11 | 23 | 7 | 0 |

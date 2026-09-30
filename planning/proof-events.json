@@ -17542,6 +17542,11 @@
           "kind": "theorem",
           "name": "fn-osrc-restart-advances-pass-and-preserves-source-identity",
           "pending_subject": "Captured-field source protocol is a library component pending real decoder and producer controller; it does not certify row contents or whole-source semantics."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osrc-source-context-readiness-and-count-split",
+          "pending_subject": "Cheap actual source adapter; complete authenticated row provider and funded snapshot controller remain open."
         }
       ]
     },
@@ -17794,6 +17799,41 @@
         {
           "kind": "theorem",
           "name": "fn-prf-acquired-file-is-held"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1124",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-omk-begin-establishes-the-executable-cursor",
+          "pending_subject": "Message-ID library component: full source-span abstraction, terminal inverse, literal hypothesis teeth and actual producer composition remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-omk-span-completion-requires-the-issued-offset-and-token",
+          "pending_subject": "Message-ID library component: full source-span abstraction, terminal inverse, literal hypothesis teeth and actual producer composition remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-omk-continue-is-one-byte-and-keeps-borrow-identities",
+          "pending_subject": "Message-ID library component: full source-span abstraction, terminal inverse, literal hypothesis teeth and actual producer composition remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-omk-continuation-keeps-the-executable-cursor",
+          "pending_subject": "Message-ID library component: full source-span abstraction, terminal inverse, literal hypothesis teeth and actual producer composition remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-omk-resident-step-preserves-the-current-message-residual",
+          "pending_subject": "Message-ID library component: full source-span abstraction, terminal inverse, literal hypothesis teeth and actual producer composition remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-omk-span-step-preserves-the-specified-message-residual",
+          "pending_subject": "Message-ID library component: full source-span abstraction, terminal inverse, literal hypothesis teeth and actual producer composition remain open."
         }
       ]
     }

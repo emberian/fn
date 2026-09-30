@@ -4742,6 +4742,18 @@ reads run as a :control quantum; the thread's registration is the roster's."
                 (setf (fnn-owner-service-publisher service) thread)
                 (push thread (fnn-owner-service-workers service)))))))))))
 
+(defun fnn-snapshot-source-context ()
+  "Observe scalar source admission context while the caller holds owner mutex."
+  (fnn-owner-core 'fn-owner-osn-source-context))
+
+(defun fnn-snapshot-source-begin (captured)
+  "Initialize the source cursor from the funded controller's actual capture.
+No based row is decoded and no suffix is reversed by this call."
+  (let ((answer (fnn-core 'fn-owner-osn-source-begin captured)))
+    (unless (eq (first answer) :source)
+      (fnn-refuse "snapshot source refused: ~a" (second answer)))
+    (second answer)))
+
 (defun fnn-snapshot-prepare-configured-fold (configs records)
   "Resume the captured prefix's paused configuration fold one tick at a time.
 Each continuation owns its unconsumed lists by pointer.  This is a preparer

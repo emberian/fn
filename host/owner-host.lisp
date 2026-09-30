@@ -45,6 +45,7 @@
 (include-book "../books/owner-snapshot-recovery")
 (include-book "../books/snapshot-prepare")
 (include-book "../books/snapshot-row-remap")
+(include-book "../books/snapshot-source-cursor")
 ; Row S10 (lane operability-2): a refused control post completion names the
 ; Store's word on the reply and the line.
 (include-book "../books/owner-control-post-reason")
@@ -929,6 +930,25 @@
                      (fn-owner-store-profile state)
                      (fn-owner-sco-global 'fn-store-genesis state)
                      (fn-own-node-secret owner)))))))
+
+(defun fn-owner-osn-source-context (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((st (fn-own-store (fn-owner-core state))) (files (fn-sn-files st)))
+    (value (fn-osrc-source-context (fn-sf-records-field files)
+                                  (fn-sf-records-count files)
+                                  (fn-sf-frontier files) (fn-sf-phase files)))))
+
+; The caller admitted actual maintenance and the root lease before capture.
+; This adapter borrows the records-field, never the eager records accessor.
+(defun fn-owner-osn-source-begin (capture)
+  (declare (xargs :mode :program))
+  (let* ((lease (fn-osrc-at 1 capture)) (count (fn-osrc-at 1 lease))
+         (st (fn-osrc-at 2 capture)) (files (fn-sn-files st)))
+    (if (and (equal (fn-osrc-at 0 capture) :captured) (natp count)
+             (equal (fn-sf-phase files) :ready))
+        (list :source (fn-osrc-begin (fn-sf-records-field files) count
+                                    (fn-sf-frontier files) lease))
+      (list :refused :capture-state))))
 
 (defun fn-owner-osn-release (ticket state)
   (declare (xargs :stobjs state :mode :program))

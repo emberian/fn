@@ -18156,7 +18156,7 @@
     {
       "id": "PRF-1099",
       "title": "Captured based-history source cursor binds row completion identity and resumes snoc order restoration",
-      "statement": "Library subjects fn-osrc-begin/tick borrow the captured records-field and scalar total count, epoch and capture lease. No fn-sfr-list, fn-sfr-nth or eager fn-hp-x-at is called. Snoc order restoration copies one cell per tick; completed rows advance exactly one ordinal and preserve source field, count, base handle, epoch and lease. A based row completion is emitted only for the current issued token (epoch,lease,pass,ordinal); executable cursor natural counters are established and preserved without a suffix recognizer. Outputs distinguish resident suffix rows from concrete decoded nodes. The completed ordered suffix pointer remains retained as rows drain; The fixed thirteen-cell cursor carries a pass serial. fn-osrc-restart requires a fully drained pass, increments that serial, resets the ordinal in constant work and reuses the same prepared pointer. It refuses while a prefix request is outstanding or rows remain; delayed completions from a preceding pass cannot match the new token. Correctness of provider row contents, complete source-list refinement, span remap, funded reversal scratch, private fixed-page decoder and actual producer controller remain open; protocol progress alone is not a full bounded snapshot claim.",
+      "statement": "Library subjects fn-osrc-begin/tick borrow the captured records-field and scalar total count, epoch and capture lease. No fn-sfr-list, fn-sfr-nth or eager fn-hp-x-at is called. Snoc order restoration copies one cell per tick; completed rows advance exactly one ordinal and preserve source field, count, base handle, epoch and lease. A based row completion is emitted only for the current issued token (epoch,lease,pass,ordinal); executable cursor natural counters are established and preserved without a suffix recognizer. Outputs distinguish resident suffix rows from concrete decoded nodes. The completed ordered suffix pointer remains retained as rows drain; The fixed thirteen-cell cursor carries a pass serial. fn-osrc-restart requires a fully drained pass, increments that serial, resets the ordinal in constant work and reuses the same prepared pointer. It refuses while a prefix request is outstanding or rows remain; delayed completions from a preceding pass cannot match the new token. Correctness of provider row contents, complete source-list refinement, span remap, funded reversal scratch, private fixed-page decoder and actual producer controller remain open; protocol progress alone is not a full bounded snapshot claim. Actual host adapters fn-owner-osn-source-context/source-begin obtain only fixed-shape captured field/handle and scalar ready/count/frontier data; successful source-context splits total into base and suffix counts without traversing history.",
       "milestone": "M5",
       "requirements": [
         "HST-040"
@@ -18171,13 +18171,16 @@
         "fn-osrc-row-advances-one-ordinal-and-keeps-capture",
         "fn-osrc-reversal-copies-exactly-one-suffix-cell",
         "fn-osrc-continuation-keeps-the-executable-cursor",
-        "fn-osrc-restart-advances-pass-and-preserves-source-identity"
+        "fn-osrc-restart-advances-pass-and-preserves-source-identity",
+        "fn-osrc-source-context-readiness-and-count-split"
       ],
       "evidence": [
         "books/snapshot-source-cursor.lisp",
-        "tests/acl2/snapshot-source-cursor-tests.lisp"
+        "tests/acl2/snapshot-source-cursor-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp"
       ],
-      "progress_note": "Clean proper-local persvati osrc75 loads source in one encapsulate: 31 test forms, zero refusals, 130,524 steps / 0.18 ACL2 sec, including prepared-pointer replay, drained restart, outstanding restart refusal and delayed prior-pass completion refusal. Session stopped; provider abstract-row inverse/host composition pending. No certification/image/native claim."
+      "progress_note": "Clean proper-local persvati osrc75 loads source in one encapsulate: 31 test forms, zero refusals, 130,524 steps / 0.18 ACL2 sec, including prepared-pointer replay, drained restart, outstanding restart refusal and delayed prior-pass completion refusal. Session stopped; provider abstract-row inverse/host composition pending. No certification/image/native claim. Fresh proper-local osrc83 includes the source-context split and nonready/count refusal witnesses: 34 forms, zero refusal, 141,780 steps /0.20 ACL2 sec; stopped. The host-called begin is a source protocol adapter, not a complete producer."
     },
     {
       "id": "PRF-1102",
@@ -18824,6 +18827,36 @@
         "tests/acl2/page-file-lease-tests.lisp"
       ],
       "progress_note": "Source library and physical bridge only; no startup activation, native/image execution, bounded page authentication, or full P12 claim. Clean source gates recorded in persistent-cold-executor evidence."
+    },
+    {
+      "id": "PRF-1124",
+      "title": "Bounded captured Message-ID extraction and salted FNV continuation",
+      "statement": "Planned full captured-row MKEY boundary: fn-omk-begin/tick consumes one resident character or one token-bound verified borrowed span byte, preserving capture/pass/ordinal and maintenance lease, and returns exactly the current fn-hp-mkey without materializing cold strings. Guard-verified library components establish and preserve fixed nine-cell state, advance exactly one byte, refuse stale token/offset completions unchanged, and preserve current resident or explicitly specified span-message FNV residuals. Decoder/source abstraction, four-column and padding validation, funding, terminal whole-run refinement and actual host composition remain open; these components cite no production event.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-040"
+      ],
+      "depends_on": [
+        "PRF-1096",
+        "PRF-1099",
+        "PRF-1102"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-omk-begin-establishes-the-executable-cursor",
+        "fn-omk-span-completion-requires-the-issued-offset-and-token",
+        "fn-omk-continue-is-one-byte-and-keeps-borrow-identities",
+        "fn-omk-continuation-keeps-the-executable-cursor",
+        "fn-omk-resident-step-preserves-the-current-message-residual",
+        "fn-omk-span-step-preserves-the-specified-message-residual"
+      ],
+      "evidence": [
+        "books/snapshot-message-key.lisp",
+        "tests/acl2/snapshot-message-key-tests.lisp",
+        "specs/checkpoint.md"
+      ],
+      "progress_note": "Fresh protected proper-local omkt81 loaded actual source dependencies and 22 test forms with zero refusal: 5,041,507 steps /17.36 ACL2 seconds. Full resident/span hash compatibility, complete residual positives, stale-pass and stale-offset refusals and source-byte correspondence mutation are included. Session stopped. Remaining hypothesis-removal and whole-source composition obligations are open; no certificate/image/native or complete snapshot claim."
     }
   ]
 }

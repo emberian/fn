@@ -1551,6 +1551,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/snapshot-row-remap-tests \
 	tests/acl2/snapshot-decode-remap-tests \
 	tests/acl2/snapshot-source-cursor-tests \
+	tests/acl2/snapshot-message-key-tests \
 	tests/acl2/snapshot-capture-lease-tests \
 	tests/acl2/snapshot-publication-tests \
 	books/history-scalar-cursor \

@@ -104,3 +104,17 @@
         (equal stale (list :refused :row-completion waiting)))))
 (assert-event (equal (fn-osrc-restart *osrc-wait*)
                      (list :refused :source-not-drained *osrc-wait*)))
+
+; Actual pre-capture adapter's complete scalar admission context.
+(assert-event
+ (let ((answer (fn-osrc-source-context *osrc-source* 3 7 :ready)))
+   (and (equal (car answer) :ready) (equal :ready :ready) (natp 3)
+        (equal (fn-osrc-at 1 answer) 7) (equal (fn-osrc-at 2 answer) 3)
+        (natp (fn-osrc-at 3 answer)) (natp (fn-osrc-at 4 answer))
+        (equal (+ (fn-osrc-at 3 answer) (fn-osrc-at 4 answer)) 3)
+        (equal (fn-osrc-at 5 answer) (fn-osrc-at 1 *osrc-source*))
+        (equal answer (list :ready 7 3 1 2 (fn-osrc-at 1 *osrc-source*))))))
+(assert-event (equal (fn-osrc-source-context *osrc-source* 3 7 :prepared)
+                      '(:refused :capture-not-ready)))
+(assert-event (equal (fn-osrc-source-context *osrc-source* 0 7 :ready)
+                      '(:refused :capture-count)))

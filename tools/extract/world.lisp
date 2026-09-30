@@ -257,6 +257,7 @@
 (include-book "../../books/owner-snapshot-recovery")
 (include-book "../../books/snapshot-prepare")
 (include-book "../../books/snapshot-row-remap")
+(include-book "../../books/snapshot-source-cursor")
 (include-book "../../books/owner-control-post-reason")
 (include-book "../../books/peer-transit-authority")
 (include-book "../../books/article-subject")
