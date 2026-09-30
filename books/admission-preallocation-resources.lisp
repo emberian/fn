@@ -3,6 +3,7 @@
 ; Supplied demand or a returned old ROW is not an allocation capability.
 (in-package "ACL2")
 (include-book "page-read-ledger")
+(include-book "index-query-resources")
 
 (local (defthm fn-apr-natural-vector-true-listp
  (implies (fn-prs-nats-p x) (true-listp x))
@@ -44,7 +45,7 @@
  (and (fn-apr-widthp 5 row) (fn-apr-tokenp token)
       (fn-apr-tokenp (fn-prl-nth 0 row))
       (equal token (fn-prl-nth 0 row))
-      (member-eq (fn-prl-nth 2 row) '(:reserved :produced :uncertain))))
+      (member-eq (fn-prl-nth 2 row) '(:reserved :produced :promoted :uncertain))))
 
 ; Internal algebra only: CURRENT is fetched from the actual exclusive owner
 ; pending slot in the atomic STATE+pool wrapper, never accepted from its caller.
@@ -98,6 +99,48 @@
            (fn-prl-build (fn-prl-nth 0 ledger)
               (fn-prs-release-reusable (fn-prl-nth 1 ledger) (fn-prl-nth 1 current))
               (fn-prl-nth 2 ledger) (fn-prl-nth 3 ledger) (fn-prl-baseline ledger))))))
+
+ ; INTERNAL only: RETAINED comes from the installed backing producer and the
+; actual wrapper must fetch CURRENT. No host-supplied retained vector is a grant.
+; Spent nonce is excluded; C->U transfer and row reduction happen together.
+(defun fn-apr-promotablep (token retained current ledger)
+ (declare (xargs :guard t))
+ (and (fn-apr-livep token current)
+      (eq (fn-prl-nth 2 current) :produced)
+      (fn-prs-vectorp retained) (equal (fn-prl-nth 4 retained) 0)
+      (fn-prs-vectorp (fn-prl-nth 1 current))
+      (fn-prs-vectorp (fn-prl-nth 1 ledger))
+      (fn-prs-vectorp (fn-prl-baseline ledger))
+      (fn-prs-below retained (fn-prl-nth 1 current))
+      (fn-prs-below retained (fn-prl-nth 1 ledger))))
+(defun fn-apr-promote (token retained current ledger)
+ (declare (xargs :guard t
+          :guard-hints (("Goal" :in-theory
+            (enable fn-apr-promotablep)))))
+ (if (not (fn-apr-promotablep token retained current ledger))
+  (mv :refused current ledger)
+  (mv :promoted
+      (list token
+            (fn-prs-release-reusable (fn-prl-nth 1 current) retained)
+            :promoted (fn-prl-nth 3 current) (fn-prl-nth 4 current))
+      (fn-iqr-promoted-ledger ledger retained))))
+(defthm fn-apr-refused-promotion-keeps-authority
+ (implies (not (fn-apr-promotablep token retained current ledger))
+  (and (equal (mv-nth 1 (fn-apr-promote token retained current ledger)) current)
+       (equal (mv-nth 2 (fn-apr-promote token retained current ledger)) ledger))))
+(defthm fn-apr-current-backing-cannot-be-promoted-twice
+ (implies (equal (mv-nth 0 (fn-apr-promote token retained current ledger)) :promoted)
+  (let ((next-current (mv-nth 1 (fn-apr-promote token retained current ledger)))
+        (next-ledger (mv-nth 2 (fn-apr-promote token retained current ledger))))
+   (and (equal (mv-nth 0 (fn-apr-promote token retained next-current next-ledger)) :refused)
+        (equal (mv-nth 1 (fn-apr-promote token retained next-current next-ledger)) next-current)
+        (equal (mv-nth 2 (fn-apr-promote token retained next-current next-ledger)) next-ledger))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+  (e/d (fn-apr-promote fn-apr-promotablep fn-prl-nth)
+       (fn-apr-livep fn-prs-vectorp fn-prs-below fn-prs-release-reusable
+        fn-iqr-promoted-ledger fn-prl-baseline)))))
+(in-theory (disable fn-apr-promotablep fn-apr-promote))
 
 (defthm fn-apr-busy-preserves-shared-authority
  (implies current

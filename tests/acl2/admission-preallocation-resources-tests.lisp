@@ -74,3 +74,29 @@
  (and (not (fn-apr-tokenp '(:admission-grant (nested old row) 7 5 9 17 :article)))
       (eq (aprt3 0 (fn-apr-release '(:admission-grant (nested old row) 7 5 9 17 :article)
                                   :joined *aprt-row* *aprt-issued*)) :stale)))
+; Installed backing transfers once from C to U while reducing the SAME stored
+; remaining claim. Final release cannot refund that permanent transfer.
+(assert-event
+ (let* ((token (fn-prl-nth 0 *aprt-row*))
+        (produced (aprt2 1 (fn-apr-produced token '(:next-ready) *aprt-row*)))
+        (row (aprt3 1 (fn-apr-promote token '(40 80 0 0 0) produced *aprt-issued*)))
+        (ledger (aprt3 2 (fn-apr-promote token '(40 80 0 0 0) produced *aprt-issued*)))
+        (settled (aprt3 2 (fn-apr-release token :joined row ledger))))
+  (and (fn-apr-promotablep token '(40 80 0 0 0) produced *aprt-issued*)
+       (eq (aprt3 0 (fn-apr-promote token '(40 80 0 0 0) produced *aprt-issued*)) :promoted)
+       (equal (fn-prl-nth 1 row) '(60 120 0 0 1))
+       (equal (fn-prl-baseline ledger) '(40 80 0 0 0))
+       (equal (fn-prl-nth 1 ledger) '(60 120 0 0 1))
+       (equal (fn-iqr-resident-total ledger) (fn-iqr-resident-total *aprt-issued*))
+       (equal (aprt3 1 (fn-apr-promote token '(40 80 0 0 0) row ledger)) row)
+       (equal (aprt3 2 (fn-apr-promote token '(40 80 0 0 0) row ledger)) ledger)
+       (equal (fn-prl-baseline settled) '(40 80 0 0 0))
+       (equal (fn-prl-nth 1 settled) '(0 0 0 0 1))
+       (equal (fn-prl-nth 2 settled) 1))))
+; Promotion underflow/corrupt current resource cannot become installed U.
+(assert-event
+ (let ((token (fn-prl-nth 0 *aprt-row*)))
+  (and (eq (aprt3 0 (fn-apr-promote token '(101 0 0 0 0)
+          (aprt2 1 (fn-apr-produced token '(:next-ready) *aprt-row*)) *aprt-issued*)) :refused)
+       (eq (aprt3 0 (fn-apr-promote token '(40 80 0 0 1)
+          (aprt2 1 (fn-apr-produced token '(:next-ready) *aprt-row*)) *aprt-issued*)) :refused))))
