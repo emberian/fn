@@ -2243,6 +2243,23 @@ octets (`fn-pset-login-file`), which the connection's reader
 rename and applies `peer set NAME --login FILE`. `peer add` stays for a
 peer no invitation made.
 
+**Independent pull login (PKT-431, PRF-1130, SCN-1036).**
+`peer pull-login NAME FILE|- ALLOW-CLEAR` publishes the single-valued
+`pull-auth-profile` extension row; ALLOW-CLEAR must be `true` or `false`.
+FILE names an existing owner-only FNAUTH1 credential file, prepared with
+the same login-file format as `peer login`. This command selects that file;
+it does not create it or change the outbound feed's credential. `-` selects
+anonymous pull explicitly. With no pull row, the legacy outbound credential
+and its allow-clear policy still apply. A pull row, including an empty
+profile, takes precedence; its own allow-clear word controls the existing
+loopback-lab exception. Both NEWNEWS pull and catch-up use this selection.
+`peer set` preserves the extension, including when `--send -` removes the
+outbound credential. `peer add` replaces the complete record and drops it.
+This directional credential selection is fn policy; RFC 4643 §2.3 supplies
+the AUTHINFO exchange, RFC 4642 §2.2 the unchanged TLS preamble, and
+RFC 3977 §7.4 the NEWNEWS command. Source admission and authored native
+witnesses do not establish a matching-image observation or certification.
+
 NNT-030: A friend's node and this one become peers from one invitation each way of the exchange: the accept configures the inviter at the invitee from the invitation's signed address in one record before the enrolment, the confirm configures the invitee at the inviter, and a crash between record and enrolment is resumed without a second record
 
 NNT-022: A peering confirm ends with the invitee configured as a peer in the same configuration record that consumes the invitation, a declined key statement stays declined across a restart unless a new statement is decided, and an accepted key statement whose change a crash cut finishes under its own admission context

@@ -93,6 +93,8 @@
 ; supersedes the old one on extension.
 (defconst *fn-pcb-catch-up-interval-slot* "catch-up-interval")
 
+(defconst *fn-pcb-pull-auth-slot* "pull-auth-profile")
+
 (defun fn-pcb-budget-slotp (slot)
   ; The single-valued slots: a new row replaces the old one on extension.
   (declare (xargs :guard t))
@@ -100,7 +102,8 @@
       (equal slot *fn-pcb-pull-interval-slot*)
       (equal slot *fn-pcb-pull-unavailable-slot*)
       (equal slot *fn-pcb-distributions-slot*)
-      (equal slot *fn-pcb-catch-up-interval-slot*)))
+      (equal slot *fn-pcb-catch-up-interval-slot*)
+      (equal slot *fn-pcb-pull-auth-slot*)))
 
 (defun fn-pcb-slot-memberp (slot rows)
   (declare (xargs :guard t))

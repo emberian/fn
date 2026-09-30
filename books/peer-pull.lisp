@@ -56,6 +56,7 @@
 (include-book "nntp-responses")
 (include-book "peer-carriage-rows")
 (include-book "peer-config")
+(include-book "peer-pull-auth")
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -1942,7 +1943,7 @@
 ; inbound accept-groups, so a pull asks for exactly what this node would
 ; accept from that peer if it pushed.
 ;
-; The plan carries the transport's security and the peer's outbound
+; The plan carries the transport's security and the peer's selected pull
 ; credential policy as the configuration states them; whether the round may
 ; use them is `fn-pull-plan-verdict' (books/peer-pull-session.lisp), decided
 ; before any connection.  A TLS transport whose server name or trust anchor
@@ -1965,13 +1966,6 @@
            (list :tls (if (equal (fn-cfg-row-c ts) "implicit") :implicit :starttls)
                  (fn-cfg-row-c sn) (fn-cfg-peer-trust-of-row ta)))
           (t nil))))
-
-(defun fn-pull-auth-of-rows (rows)
-  (declare (xargs :guard t))
-  (let ((oa (fn-cfg-peer-slot rows "outbound-auth-profile")))
-    (if (and oa (stringp (fn-cfg-row-c oa)))
-        (list :authinfo (fn-cfg-row-c oa) (equal (fn-cfg-row-n oa) 1))
-      nil)))
 
 (defun fn-pull-plan-of-rows (name rows)
   (declare (xargs :guard t))
@@ -2050,6 +2044,50 @@
 (defun fn-pull-plan-security (p) (declare (xargs :guard t)) (fn-pull-at 5 p))
 (defun fn-pull-plan-auth (p) (declare (xargs :guard t)) (fn-pull-at 6 p))
 (defun fn-pull-plan-bound (p) (declare (xargs :guard t)) (fn-pull-at 7 p))
+
+; A returned plan must carry the credential selected for its own configured
+; peer.  This logical provenance predicate is not run on the served path.
+(defun fn-pull-plan-credential-sourcep (plan names peers)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (or (and (equal (fn-pull-plan-peer plan)
+                      (fn-record-string-octets (car names)))
+               (equal (fn-pull-plan-auth plan)
+                      (fn-pull-auth-of-rows
+                       (fn-cfg-rows-with-key peers (car names)))))
+          (fn-pull-plan-credential-sourcep plan (cdr names) peers))
+    nil))
+
+(local
+ (defthm fn-pull-plan-of-rows-credential-fields
+   (implies (fn-pull-plan-of-rows name rows)
+            (and (equal (fn-pull-plan-peer (fn-pull-plan-of-rows name rows))
+                        (fn-record-string-octets name))
+                 (equal (fn-pull-plan-auth (fn-pull-plan-of-rows name rows))
+                        (fn-pull-auth-of-rows rows))))
+   :hints (("Goal" :in-theory (enable fn-pull-plan-of-rows
+                                      fn-pull-plan-peer fn-pull-plan-auth
+                                      fn-pull-at)))))
+
+(local
+ (defthm fn-pull-plans-of-credential-source
+   (implies (member-equal plan (fn-pull-plans-of names peers))
+            (fn-pull-plan-credential-sourcep plan names peers))
+   :hints (("Goal" :induct (fn-pull-plans-of names peers)
+            :in-theory (e/d (fn-pull-plans-of
+                              fn-pull-plan-credential-sourcep member-equal)
+                             (fn-pull-plan-of-rows fn-pull-plan-peer
+                              fn-pull-plan-auth fn-pull-auth-of-rows))))))
+
+; Host subject: fn-owner-pull-plans calls fn-pull-plans.  Together with
+; fn-pull-auth-after-extension this covers dedicated and anonymous policies,
+; even when the outbound policy differs or is absent.
+(defthm fn-pull-plans-credentials-come-from-selected-peer
+  (implies (member-equal plan (fn-pull-plans peers))
+           (fn-pull-plan-credential-sourcep plan (fn-cfg-peer-names peers) peers))
+  :hints (("Goal" :in-theory (enable fn-pull-plans))))
+
+(in-theory (disable fn-pull-plan-credential-sourcep))
 
 ; The schedule the owner holds, reconfigured from the live plans at NOW.
 (defun fn-pull-schedule (plans now tbl)

@@ -17673,6 +17673,19 @@
           "name": "fn-fc-temporary-mode-refusal-closes-without-stopping"
         }
       ]
+    },
+    {
+      "id": "PRF-1130",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pull-auth-after-extension"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pull-plans-credentials-come-from-selected-peer"
+        }
+      ]
     }
   ]
 }

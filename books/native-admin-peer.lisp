@@ -26,6 +26,7 @@
 (include-book "consumer-position")
 ; Row S5: `peer set NAME --FLAG VALUE ...' (books/peer-set.lisp).
 (include-book "peer-set")
+(include-book "peer-pull-auth")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md
@@ -313,6 +314,19 @@ decoded as source-address for durable command compatibility."
              :accepted nil :extend-peer
              (fn-record-string-octets (nth 2 words)) 0 nil rows)
           (fn-native-admin-result :refused :pull nil nil 0 nil nil))))
+     ; PKT-431: a reader credential independent of the outbound feed.
+     ; `peer pull-login NAME FILE|- ALLOW-CLEAR'; '-' selects anonymous.
+     ((equal (nth 1 words) "pull-login")
+      (if (and (equal (len words) 5)
+               (fn-cfg-cstringp (nth 3 words))
+               (member-equal (nth 4 words) '("true" "false")))
+          (fn-native-admin-result
+           :accepted nil :extend-peer
+           (fn-record-string-octets (nth 2 words)) 0 nil
+           (list (fn-pull-auth-row (nth 2 words)
+                                  (if (equal (nth 3 words) "-") "" (nth 3 words))
+                                  (equal (nth 4 words) "true"))))
+        (fn-native-admin-result :refused :pull-login nil nil 0 nil nil)))
      ; PRF-325: `peer catch-up NAME SECONDS' (0 stops): catch up from the
      ; peer by XFNCATCHUP every SECONDS (books/peer-catchup.lisp
      ; `fn-cu-plans'); one single-valued row.

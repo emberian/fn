@@ -1375,6 +1375,10 @@
     "tests/acl2/peer-carriage-tests",
     "books/peer-pull",
     "tests/acl2/peer-pull-tests",
+    "books/peer-pull-auth",
+    "tests/acl2/peer-pull-auth-tests",
+    "tests/acl2/native-admin-peer-pull-auth-tests",
+    "tests/acl2/native-admin-pull-auth-tests",
     "books/peer-pull-session",
     "tests/acl2/peer-pull-session-tests",
     "books/peer-catchup-serve",
@@ -1712,26 +1716,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1775,
-    "books_in_root_closure": 1772,
-    "roots": 1708,
-    "theorems": 28486,
-    "functions": 18610,
-    "assert_events": 23521,
-    "must_fails": 2506,
+    "books": 1779,
+    "books_in_root_closure": 1776,
+    "roots": 1712,
+    "theorems": 28493,
+    "functions": 18614,
+    "assert_events": 23557,
+    "must_fails": 2507,
     "prover_refusals": 0,
     "encapsulates": 157,
     "guards": {
       "verified": 3489,
       "declared-off": 2168,
-      "default-guarded": 10174,
-      "default-unguarded": 2779
+      "default-guarded": 10176,
+      "default-unguarded": 2781
     },
     "suspect_theorems": 1233,
     "export_hygiene_warnings": 331,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2471,
+    "include_hygiene_warnings": 2473,
     "host_names_warnings": 2137,
     "hand_written_record_warnings": 18
   },
@@ -16060,6 +16064,7 @@
         "peer-carriage-rows",
         "peer-config",
         "peer-host",
+        "peer-pull-auth",
         "peer-set"
       ],
       "system_includes": [],
@@ -22569,7 +22574,7 @@
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 6,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -23002,6 +23007,33 @@
       "read_error": null
     },
     {
+      "book": "books/peer-pull-auth.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 4,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "peer-carriage-rows",
+        "peer-config"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/peer-pull-session.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -23036,7 +23068,7 @@
       "book": "books/peer-pull.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 93,
+      "theorems": 96,
       "functions": 128,
       "guards": {
         "verified": 22,
@@ -23056,6 +23088,7 @@
         "nntp-responses",
         "peer-carriage-rows",
         "peer-config",
+        "peer-pull-auth",
         "scheduler-peers"
       ],
       "system_includes": [
@@ -42214,6 +42247,59 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/native-admin-peer-pull-auth-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 14,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/native-admin-peer"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/native-admin-pull-auth-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/native-admin",
+        "native-admin-peer-pull-auth-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/native-admin-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -47150,6 +47236,33 @@
         "must-fail-checked",
         "owner-served-carried-tests",
         "peer-inbound-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/peer-pull-auth-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 18,
+      "must_fails": 1,
+      "prover_refusals": 0,
+      "defconsts": 7,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/peer-pull",
+        "must-fail-checked"
       ],
       "system_includes": [],
       "suspects": [],
@@ -59110,7 +59223,7 @@
     {
       "theorem": "fn-pull-fixed-fold",
       "book": "books/peer-pull.lisp",
-      "line": 1167,
+      "line": 1168,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "definition-restated: the conclusion is the body of fn-pull-fixed"
@@ -59119,7 +59232,7 @@
     {
       "theorem": "fn-pull-list-of-true-list",
       "book": "books/peer-pull.lisp",
-      "line": 884,
+      "line": 885,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-pull-list and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-pull-list and the conclusion is that branch's value"
@@ -63347,7 +63460,7 @@
     {
       "theorem": "kind-of-result",
       "book": "books/native-admin-peer.lisp",
-      "line": 692,
+      "line": 706,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -63381,7 +63494,7 @@
     {
       "theorem": "name-of-result",
       "book": "books/native-admin-peer.lisp",
-      "line": 692,
+      "line": 706,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -63488,7 +63601,7 @@
     {
       "theorem": "status-of-result",
       "book": "books/native-admin-peer.lisp",
-      "line": 692,
+      "line": 706,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -79714,6 +79827,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/native-admin-pull-auth-tests.lisp",
+        "line": 4,
+        "include": "native-admin-peer-pull-auth-tests",
+        "included": "tests/acl2/native-admin-peer-pull-auth-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/native-admin-tests.lisp",
         "line": 4,
         "include": "../../books/codec-attach",
@@ -82133,6 +82253,13 @@
         "line": 42,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/peer-pull-auth-tests.lisp",
+        "line": 4,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

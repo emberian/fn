@@ -892,7 +892,7 @@
                (not (equal (caddr words) "")))
           (fn-native-admin-result :accepted nil :remove-peer (caddr argv) 0 nil nil))
          ((and (consp (cdr words))
-               (member-equal (cadr words) '("budget" "carries" "pull" "distributions"
+               (member-equal (cadr words) '("budget" "carries" "pull" "pull-login" "distributions"
                                             "catch-up" "feed" "set")))
           (fn-native-admin-peer-extend-plan words))
          (t (fn-native-admin-peer-plan words))))

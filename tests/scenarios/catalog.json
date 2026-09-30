@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6712,6 +6712,37 @@
         "planning/history-decode-contract.md"
       ],
       "execution_scope": "Source component tests only. General stream inverse, page-source authentication, integrated native caller and full producer remain open."
+    },
+    {
+      "id": "SCN-1036",
+      "title": "Dedicated pull credential survives feed edits and restart",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-023"
+      ],
+      "steps": [
+        "Configure scratch A with TLS-only reader authentication and B with a wrong outbound credential. Select a separate correct pull-login file and pull the first article while both distinct profiles remain configured.",
+        "Stop B, disable outbound with peer set --send -, restart B, and pull a second article."
+      ],
+      "expected": [
+        "Both articles are present exactly once; the reader selection survives the feed edit and persisted restart.",
+        "The recording proxy sees no AUTHINFO or archive-reading command in plaintext."
+      ],
+      "evidence": [
+        "tests/test_native_peer_pull.py",
+        "tests/acl2/peer-pull-auth-tests.lisp",
+        "tests/acl2/native-admin-pull-auth-tests.lisp",
+        "tests/acl2/native-admin-peer-pull-auth-tests.lisp",
+        "planning/evidence/peering-pull-credential-source-2026-09-29.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_peer_pull",
+        "cases": [
+          "NativePeerPullTests.test_pull_only_credential_survives_feed_edits_and_restart"
+        ],
+        "native": true
+      }
     }
   ]
 }
