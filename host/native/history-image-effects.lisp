@@ -22,8 +22,8 @@ released before I/O. The retained writer/page generation cannot change until
 its exact observation is consumed. Short/error is uncertain, never retry."
   (let* ((cursor (fnn-hpi-writer-cursor writer))
          (plan (sb-thread:with-mutex (*fnn-extent-lock*)
-                 (fnn-core-page-read-pool 'fn-owner-history-image-effect-plan
-                                         cursor effect (fnn-hpi-stage-id stage))))
+                 (first (fnn-core-page-read-pool 'fn-owner-history-image-effect-plan
+                                                cursor effect (fnn-hpi-stage-id stage)))))
          (data (fnn-hpi-stage-scratch stage))
          (got -1) (status :error) (bytes nil))
     (unless (eq (first plan) :io)
@@ -56,11 +56,11 @@ its exact observation is consumed. Short/error is uncertain, never retry."
           (error () (setf got -1 status :error)))
         (when (eq operation :read)
           (let ((returned (sb-thread:with-mutex (*fnn-extent-lock*)
-                            (fnn-core-page-read-pool 'fn-owner-history-image-effect-read-count
-                             cursor effect (fnn-hpi-stage-id stage) got status))))
+                            (first (fnn-core-page-read-pool 'fn-owner-history-image-effect-read-count
+                                    cursor effect (fnn-hpi-stage-id stage) got status)))))
             ; This is a bounded representation copy of core-selected <=64
             ; verified returned octets, never a page/history materialization.
             (setf bytes (fnn-octet-list (subseq data 0 returned)))))))
     (sb-thread:with-mutex (*fnn-extent-lock*)
-      (fnn-core-page-read-pool 'fn-owner-history-image-effect-result
-                               cursor effect (fnn-hpi-stage-id stage) got status bytes))))
+      (first (fnn-core-page-read-pool 'fn-owner-history-image-effect-result
+                                      cursor effect (fnn-hpi-stage-id stage) got status bytes)))))

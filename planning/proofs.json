@@ -19201,6 +19201,31 @@
         "tests/acl2/history-image-effect-tests.lisp"
       ],
       "progress_note": "Actual core/native definitions authored WIP; guard/source replay, keystone/teeth and real native scenario remain open. No activation or funding adequacy claim."
+    },
+    {
+      "id": "PRF-1144",
+      "title": "Actual private canonical image writer preserves image, authority and terminal root",
+      "statement": "Actual fn-hpi-tick, reached through fn-owner-history-image-tick and fnn-hpi-step, composes the resident/cold canonical byte source, four scalar columns and pool with exact rounded layout, acknowledged positional stage writes, actual pgs-dcb digest steps, bounded data/table digest spools,341-entry tables and the complete M-page directory. Under the carried captured-source, typed maintenance/fixed-buffer, live exact growth receipt and effect/response invariants, every step preserves the canonical image residual/effects and all frozen identity/frontier fields; page reset/reuse follows only its exact definite write ACK. Uncertain persistence fences recovery without release. Terminal returns exact captured node/salt/count/trail and the concrete pgs-x-write-rec-compatible full root (with an explicit abstract digest observation obligation for equivalence to logical pgs-make-rec) for the outer existing fn-his-binding, after all actual image writes, digest and spool acknowledgments. This is the full writer obligation, not a corollary or a resident-only helper claim. Initial whole-operation funding, physical I/O assumptions and complete outer Store summary/A-F-P-E-R/publication are separate open dependencies.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [
+        "PRF-1088",
+        "PRF-1087",
+        "PRF-1142"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": [
+        "books/history-image-producer.lisp",
+        "books/history-image-record-root.lisp",
+        "host/history-image-producer-host.lisp",
+        "host/native/history-image-writer.lisp",
+        "tests/acl2/history-image-producer-tests.lisp",
+        "specs/history-image-producer.md",
+        "planning/evidence/history-image-producer-source-2026-09-30.json"
+      ],
+      "progress_note": "All current writer definitions and guards admitted in protected hpi3. Complete decoded-cold-row trajectory compares all nine physical pages, seven data/table digest spools, canonical padding/metadata, exact frozen terminal fields and full root against independent actual pgs-x-write-rec; stale-stage, uncertain outcome and malformed-octet mutation fixtures pass. Source runtime evidence only; full canonical residual/effect/authority/progress theorem, general concrete record boundary, initial whole-operation demand and actual native joined execution remain open. No certification, image or publication claim. Fresh hpi4 exact test root loads 28 proper-local source dependencies and 13 target forms, ready/error-free before explicit stop: 130.53 ACL2 seconds /44,475,652 prover steps; 95 matching cached books reused."
     }
   ]
 }

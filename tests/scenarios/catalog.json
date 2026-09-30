@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6990,6 +6990,35 @@
         ],
         "native": true
       }
+    },
+    {
+      "id": "SCN-1050",
+      "title": "Complete private canonical image stream survives interruptions and rejects stale authority",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [],
+      "steps": [
+        "Capture an actual resident/cold source, issue its real maintenance/stage identity and census; complete actual growth before backing operations.",
+        "Drive fn-hpi-tick through all five buffers, header/padding, acknowledged positional writes, stage-byte digests, data/table spools, all tables and all M directory pages.",
+        "Compare complete image pages, spool digests, root and frozen node/salt/count/trail with the current canonical format and original outer fn-his-binding.",
+        "Interrupt each stream phase, resume the same continuation and retain exact row/source/maintenance/stage/buffer identities.",
+        "Mutate stage ID, effect serial, buffer generation, source pass, exact retained grant receipt, response position/length and outcome; require stale/refused/recovery distinctions with no unauthorized reuse, source advance or credit release.",
+        "Join actual native staging cleanup/publication separately with the complete outer Store summary and framed A/F/P/E/R acceptance path."
+      ],
+      "expected": [
+        "No whole image/history materialization in the served writer, no alternate hash or F constructor.",
+        "Only exact completed writes authorize buffer reuse; partial or uncertain effects cannot produce the terminal root.",
+        "The actual terminal commits to all directory pages and names the data page count; incomplete work yields or resumes.",
+        "Source admission, general proof, native qualification and actual publication remain separate coordinates."
+      ],
+      "implementation": {
+        "test": "tests/acl2/history-image-producer-tests.lisp"
+      },
+      "evidence": [
+        "specs/history-image-producer.md",
+        "planning/evidence/history-image-producer-source-2026-09-30.json"
+      ],
+      "execution_scope": "Complete small decoded-cold-row ACL2 source trajectory and explicit stale-stage/uncertain/malformed-byte mutations pass in fresh exact-source hpi4, with full image/spools/concrete-root comparison. General full trajectory/effect proof, multi-table/multi-page directory witnesses, all interruption cuts and actual native joined execution remain pending."
     }
   ]
 }

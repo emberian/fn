@@ -7,6 +7,7 @@
 (include-book "history-page-metadata")
 (include-book "snapshot-maintenance-demand")
 (include-book "pagestore-digest-byte-cursor")
+(include-book "history-image-record-root")
 
 ; Fixed controller/meta fields only, never a stored-data traversal. This
 ; guarded updater preserves the model update on every actual slot0..24.
@@ -538,7 +539,7 @@
         (let ((bytes (pgs-dcb-result-octets pgs-digest-state)))
           (if (eq kind :directory)
               (let* ((layout (fn-omk-at 1 (fn-omk-at 6 c)))
-                     (root (pgs-make-rec 1 1 (fn-omk-at 1 layout) (pgs-octets-be-nat bytes)))
+                     (root (fn-hpir-root 1 1 (fn-omk-at 1 layout) (pgs-octets-be-nat bytes)))
                      (terminal (list :image-complete (fn-omk-at 1 c) (fn-omk-at 3 c)
                                      (fn-omk-at 11 c) (fn-omk-at 12 c) (fn-omk-at 7 c)
                                      (fn-omk-at 13 c) root (fn-omk-at 2 (fn-omk-at 6 c)))))
