@@ -28,6 +28,7 @@ SELECTED = {
         "fnn-with-roster", "fnn-owner-gated", "fnn-payload-lifecycle-drain",
         "fnn-owner-stop-service-locked", "fnn-owner-signal-commit",
         "fnn-owner-shared-action-locked", "fnn-owner-serialized",
+        "fnn-owner-connection-selected-p",
         "fnn-owner-receiver-fill",
     ],
 }
