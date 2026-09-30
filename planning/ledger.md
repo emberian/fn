@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1775 |
-| Certification roots in the Makefile | 1700 |
-| Books inside the root closure | 1768 |
-| `defthm` and `defthmd` events | 28333 |
-| `defun` events | 18618 |
+| Books read | 1778 |
+| Certification roots in the Makefile | 1705 |
+| Books inside the root closure | 1770 |
+| `defthm` and `defthmd` events | 28337 |
+| `defun` events | 18633 |
 | Functions with verified guards | 3486 |
 | Functions declared `:verify-guards nil` and never verified | 2158 |
-| Functions left at the default with an explicit guard | 10203 |
+| Functions left at the default with an explicit guard | 10218 |
 | Functions left at the default with no guard | 2771 |
-| `assert-event` checks | 23542 |
+| `assert-event` checks | 23552 |
 | `must-fail` checks | 2507 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 157 |
@@ -28,7 +28,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
 | Include-hygiene warnings | 2472 |
-| Host-names warnings | 2138 |
+| Host-names warnings | 2154 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -737,6 +737,7 @@ that `make certify` requests.
 | `books/packed-octets.lisp` | closure | 48 | 17 | 2/0/15/0 | 0 | 0 | 0 |
 | `books/packed-submission.lisp` | closure | 37 | 27 | 1/0/24/2 | 0 | 0 | 0 |
 | `books/page-discovery-ledger.lisp` | root | 2 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/page-file-lease.lisp` | root | 4 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/page-read-executor.lisp` | root | 11 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/page-read-ledger.lisp` | root | 9 | 16 | 0/0/16/0 | 0 | 0 | 0 |
 | `books/page-read-ownership.lisp` | root | 12 | 11 | 0/0/11/0 | 0 | 0 | 0 |
@@ -910,6 +911,7 @@ that `make certify` requests.
 | `books/snapshot-capture-lease.lisp` | closure | 4 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/snapshot-decode-remap.lisp` | closure | 7 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/snapshot-file-copy.lisp` | root | 3 | 4 | 0/0/4/0 | 0 | 0 | 1 |
+| `books/snapshot-message-key.lisp` | - | 0 | 11 | 0/0/11/0 | 0 | 0 | 0 |
 | `books/snapshot-prepare.lisp` | closure | 13 | 10 | 1/3/6/0 | 0 | 0 | 0 |
 | `books/snapshot-publication.lisp` | closure | 2 | 4 | 0/1/3/0 | 0 | 0 | 1 |
 | `books/snapshot-row-remap.lisp` | closure | 16 | 15 | 0/1/14/0 | 0 | 0 | 2 |
@@ -1605,6 +1607,7 @@ that `make certify` requests.
 | `tests/acl2/owner-verdict-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
 | `tests/acl2/packed-submission-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 0 | 0 |
 | `tests/acl2/page-discovery-ledger-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `tests/acl2/page-file-lease-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
 | `tests/acl2/page-read-executor-tests.lisp` | root | 0 | 6 | 0/0/6/0 | 14 | 0 | 0 |
 | `tests/acl2/page-read-host-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 5 | 0 | 0 |
 | `tests/acl2/page-read-ledger-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |

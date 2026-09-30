@@ -204,6 +204,7 @@
 (include-book "../../books/cold-read-layout")
 (include-book "../../host/page-read-host")
 (include-book "../../books/page-read-executor")
+(include-book "../../books/page-file-lease")
 (include-book "../../books/history-columns-relation")
 (include-book "../../books/open-frontier")
 (include-book "../../books/poster-bytes")

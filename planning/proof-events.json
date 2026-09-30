@@ -17783,6 +17783,19 @@
           "name": "fn-cvcg-accepted-publication-count-fits-profile"
         }
       ]
+    },
+    {
+      "id": "PRF-1106",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-prf-acquire-preserves-pool-funding"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prf-acquired-file-is-held"
+        }
+      ]
     }
   ]
 }

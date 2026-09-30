@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6478,7 +6478,8 @@
         "Enter served mode before a funded recovery; an uninitialized or served-but-unfunded context cannot issue a file identity. Explicit offline open is distinguishable and cannot silently replace served mode.",
         "Admit a typed unverified discovery lease, retain the file against close while its protected vector is borrowed, reject verified-cache settlement, release once after relinquishing the buffer, and reject replay or mutated identity.",
         "Release the stall, observe the private job return, publish one verified buffer in cache and settle its exact token; replay the old token, then evict it and physically close its file. Unexpected worker death requires a real join first.",
-        "Admit a typed unverified discovery lease before allocation; fnn-extent-entry-fresh returns vector and lease. fnn-owner-release-extents retains the lease through publication-buffer reseating, clears the buffer alias, then releases. Hold the file against close, reject verified-cache settlement, and reject replay or mutated identity."
+        "Admit a typed unverified discovery lease before allocation; fnn-extent-entry-fresh returns vector and lease. fnn-owner-release-extents retains the lease through publication-buffer reseating, clears the buffer alias, then releases. Hold the file against close, reject verified-cache settlement, and reject replay or mutated identity.",
+        "Exercise a synchronous verified miss in explicit offline, funded served, uninitialized and cache-off contexts; a successful served vector transfers to charged cache only after private read/verifier return. A read fault releases after unwind; an uncertain cache transfer retains the charge."
       ],
       "expected": [
         "Refused issue creates no buffer, thread, descriptor or identity and returns the ACL2 resource-unavailable reply without borrowing rescue.",
@@ -6496,7 +6497,7 @@
         "host/native/extent.lisp",
         "host/native/owner.lisp"
       ],
-      "execution_scope": "Model/adapter source REPL and native source-load checks only; native scenario and actual allocator/profile refinement pending. Discovery vector lifetime is wired, but synchronous verified reads, decoded representations and checkpoint/suffix rescue remain open."
+      "execution_scope": "Model/adapter source REPL and bare native source-load checks only. Persistent executor, funded verified vector transfer and exact checkpoint root/page leases are source components. Full decoder/resource startup/maintenance admission integration and matching native scenario remain pending; no selected-runtime activation or rescue claim."
     },
     {
       "id": "SCN-1004",
@@ -6514,7 +6515,7 @@
       ],
       "expected": [
         "Admission refuses before new buffer/thread/job allocation when all slots remain charged. Cancellation neither releases the slot nor closes the held file.",
-        "One admitted token owns one executor slot. Returned result stays charged until matching settled I/O and physical publication/discard.",
+        "One admitted token owns one executor slot. Returned result stays charged until matching settled I/O and physical publication/discard; both worker and owner result-transfer activations have returned before refund, and readiness never lends the private result.",
         "Old token cannot return or free a reused worker; cached buffer remains charged until actual eviction. Permanent executor/table storage remains baseline-funded through shutdown.",
         "Partial startup tears down only resources actually created, joins created workers and fences ambiguous close; restart derives fresh process-local identity state."
       ],
@@ -6662,6 +6663,33 @@
         "books/legacy-parser-reference.lisp",
         "tests/acl2/legacy-parser-cursor-tests.lisp"
       ]
+    },
+    {
+      "id": "SCN-1016",
+      "title": "Checkpoint file pin outlives page borrows without retaining unrelated generations",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Under the owner capture mutex, retain one immutable checkpoint handle and acquire its exact file pin before releasing the mutex.",
+        "Request a fixed16KiB page under that pin ticket; acquire a fresh discovery buffer lease before off-lock pread. Keep the exact buffer token through authentication and decoder consumption.",
+        "Finish a page and relinquish its aliases; release that page lease while retaining the root pin for later scans.",
+        "After all scans and workers finish, release the root pin. Replay/mutate either token and require stale refusal; a still-live page lease independently prevents physical close.",
+        "Reject mismatched root tickets, noncanonical page offsets and offsets outside the selected signed64 pread representation."
+      ],
+      "expected": [
+        "Root capture consumes metadata and one descriptor/retention credit; it consumes no read worker.",
+        "Registered files and root pins jointly fit the descriptor/retention coordinate. A root pin holds exactly its selected file, not all later publications.",
+        "The region base already skips the FNSI wrapper; physical offset is base plus the core-authorized relative offset.",
+        "No raw page is called authenticated by this lease bridge. A source cursor must validate root/directory/table/data and exact buffer identity before using bytes."
+      ],
+      "evidence": [
+        "tests/acl2/page-file-lease-tests.lisp",
+        "host/native/owner.lisp"
+      ],
+      "execution_scope": "Source-only library/adapter and raw-host checks; producer activation and matching native execution pending."
     }
   ]
 }
