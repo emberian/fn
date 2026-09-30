@@ -17461,6 +17461,21 @@
           "pending_subject": "Certified internal component subject; actual selected-runtime/source installation and native operation ticket/outer-return composition are not activated in this packet."
         }
       ]
+    },
+    {
+      "id": "PRF-1163",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-owner-index-connection-finish-consumes-one",
+          "pending_subject": "Actual guarded internal completion callback, named by fixed native companion; selected factory/installation and complete caller join remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-index-connection-fault-is-idempotent",
+          "pending_subject": "Actual guarded internal completion callback, named by fixed native companion; selected factory/installation and complete caller join remain open."
+        }
+      ]
     }
   ]
 }

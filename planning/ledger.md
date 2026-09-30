@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1718 |
-| Certification roots in the Makefile | 1629 |
-| Books inside the root closure | 1699 |
-| `defthm` and `defthmd` events | 27743 |
-| `defun` events | 18242 |
-| Functions with verified guards | 3462 |
-| Functions declared `:verify-guards nil` and never verified | 2091 |
-| Functions left at the default with an explicit guard | 9954 |
+| Books read | 1720 |
+| Certification roots in the Makefile | 1631 |
+| Books inside the root closure | 1702 |
+| `defthm` and `defthmd` events | 27754 |
+| `defun` events | 18250 |
+| Functions with verified guards | 3465 |
+| Functions declared `:verify-guards nil` and never verified | 2094 |
+| Functions left at the default with an explicit guard | 9956 |
 | Functions left at the default with no guard | 2735 |
-| `assert-event` checks | 23056 |
+| `assert-event` checks | 23060 |
 | `must-fail` checks | 2496 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
-| Theorems flagged SUSPECT by shape | 1228 |
+| Theorems flagged SUSPECT by shape | 1230 |
 | Export-hygiene warnings | 317 |
 | Enabled-projection warnings | 52 |
 | Teeth-form warnings | 272 |
-| Include-hygiene warnings | 2429 |
+| Include-hygiene warnings | 2431 |
 | Host-names warnings | 2160 |
 | Hand-written-record warnings | 18 |
 
@@ -383,6 +383,7 @@ that `make certify` requests.
 | `books/config-stream.lisp` | root | 21 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/config.lisp` | root | 115 | 285 | 33/0/252/0 | 0 | 0 | 1 |
 | `books/connection-budget.lisp` | root | 36 | 26 | 0/0/26/0 | 0 | 0 | 2 |
+| `books/connection-operation-ticket.lisp` | root | 11 | 5 | 3/0/2/0 | 0 | 0 | 2 |
 | `books/consumer-artifact-retry.lisp` | root | 21 | 3 | 0/0/2/1 | 0 | 0 | 0 |
 | `books/consumer-bound.lisp` | root | 26 | 15 | 7/1/7/0 | 0 | 0 | 5 |
 | `books/consumer-event-index.lisp` | root | 29 | 20 | 4/1/15/0 | 0 | 0 | 0 |
@@ -890,7 +891,7 @@ that `make certify` requests.
 | `books/served.lisp` | root | 171 | 89 | 7/5/77/0 | 0 | 0 | 54 |
 | `books/sha256.lisp` | root | 30 | 31 | 2/0/29/0 | 0 | 0 | 0 |
 | `books/snapshot-segments.lisp` | root | 52 | 32 | 0/9/18/5 | 0 | 0 | 0 |
-| `books/snapshot-source-token.lisp` | - | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/snapshot-source-token.lisp` | closure | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/snoc-list.lisp` | root | 30 | 14 | 2/0/12/0 | 0 | 0 | 2 |
 | `books/source-projection-bridge.lisp` | root | 23 | 3 | 0/1/1/1 | 0 | 0 | 1 |
 | `books/source-routes.lisp` | closure | 16 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -1294,6 +1295,7 @@ that `make certify` requests.
 | `tests/acl2/config-stream-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 42 | 0 | 0 |
 | `tests/acl2/config-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 104 | 0 | 0 |
 | `tests/acl2/connection-budget-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 57 | 11 | 0 |
+| `tests/acl2/connection-operation-ticket-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 4 | 0 | 0 |
 | `tests/acl2/consumer-artifact-retry-tests.lisp` | root | 0 | 8 | 0/2/0/6 | 8 | 2 | 0 |
 | `tests/acl2/consumer-bound-tests.lisp` | root | 0 | 23 | 0/11/0/12 | 62 | 5 | 0 |
 | `tests/acl2/consumer-event-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 3 | 0 |
@@ -2435,6 +2437,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-own-view-verdicts-of-make-group-indexed` | `books/owner.lisp` | 751 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-own-view-version-of-fn-own-view-make` | `books/owner.lisp` | 822 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-own-view-version-of-make-group-indexed` | `books/owner.lisp` | 736 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-owner-index-connection-fault-raw-with` | `books/connection-operation-ticket.lisp` | 143 | instance-corollary: the statement is fn-owner-index-connection-fault-preserves-carried-pool instantiated, discharging nothing |
+| `fn-owner-index-connection-finish-raw-with` | `books/connection-operation-ticket.lisp` | 134 | instance-corollary: the statement is fn-owner-index-connection-finish-preserves-carried-pool instantiated, discharging nothing |
 | `fn-oxr-xref-server-of-reader-env` | `books/owner-xref-read.lisp` | 24 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-pa-served-post-word-is-the-served-word-otherwise` | `books/peer-authored-accept.lisp` | 655 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pa-served-post-word and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-pa-served-post-word and the conclusion is that branch's value |
 | `fn-pak-post-admission-refused-is-the-boundary-by-definition` | `books/post-admission-keyed.lisp` | 52 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pak-post-admission and the conclusion is that arm's value |

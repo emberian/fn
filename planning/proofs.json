@@ -18079,6 +18079,33 @@
         "planning/evidence/manifests/certify-20260930T154935Z-91174.json"
       ],
       "progress_note": "Ordinary narrow component/bridge certification; selected raw declaration admission and reachable concrete tests. Runtime/source installation, native outer closure join and immutable image qualification remain open; no green transfer."
+    },
+    {
+      "id": "PRF-1163",
+      "title": "Actual connection ticket finish consumes one allocating turn and repeated fault retains the complete result",
+      "statement": "For actual fn-owner-index-connection-finish, :left implies active turns decreases by exactly one and cumulative allocation A is unchanged. Actual fn-owner-index-connection-fault is idempotent as a full multiple-value result; ticket STATE, scheduling slots, allocation and identities are retained while mode fences to recovery. Guarded raw dispatch preserves carried pool state; genuine installation and prepare/start integration remain separate.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-10001"
+      ],
+      "depends_on": [
+        "PRF-1154"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "events": [
+        "fn-owner-index-connection-finish-consumes-one",
+        "fn-owner-index-connection-fault-is-idempotent"
+      ],
+      "evidence": [
+        "books/connection-operation-ticket.lisp",
+        "host/connection-operation-ticket-host.lisp",
+        "tests/acl2/connection-operation-ticket-tests.lisp",
+        "tests/native/connection-ticket-core-component.lisp",
+        "specs/connection-ticket.md",
+        "planning/evidence/connection-ticket-actual-core-2026-09-30"
+      ],
+      "progress_note": "Guarded strict ticket completion and actual compiled-core/native transport component; installation/profile/ticket setup are fixtures. Complete source allowance, prepare/start, genuine installer and served activation remain open."
     }
   ]
 }
