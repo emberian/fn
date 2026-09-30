@@ -339,6 +339,20 @@ policy (NIL when absent)."
 ;; threads reserve beside it; the launcher passes `--control-stack-size KB'
 ;; too. The explicit cold-pool extension adds heap and persistent executor
 ;; native storage to this same observed machine decision; ACL2 chooses it.
+(defun fnn-cold-runtime-observation ()
+  "Observe the selected runtime inputs for fn-crb-start-plan.
+Call only in the serialized startup interval before application creators.
+The registry includes dead nodes; LIST-ALL-THREADS would undercount it.
+Zeroed starting-list cells are tombstones, not active creators. An unavailable
+runtime observation returns NIL so ACL2 refuses, never a guessed zero."
+  (handler-case
+      (list (lisp-implementation-type) (lisp-implementation-version)
+            (machine-type) (software-type)
+            (sb-thread::avl-count sb-thread::*all-threads*)
+            (length sb-thread::*joinable-threads*)
+            (count-if (lambda (entry) (typep entry 'sb-thread:thread)) sb-thread::*starting-threads*))
+    (error () nil)))
+
 (defun fnn-heap-reservation (profile connections &optional action observed cold-resources)
   (let* ((core (fnn-heap-image-observation))
          (machine (fnn-heap-observations))

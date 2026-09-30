@@ -584,6 +584,8 @@
     "books/page-read-ledger",
     "books/page-discovery-ledger",
     "books/cold-read-layout",
+    "books/cold-read-window",
+    "tests/acl2/cold-read-window-tests",
     "books/cold-runtime-bound",
     "books/assumptions-cold-runtime",
     "books/page-maintenance-lease",
@@ -1655,27 +1657,27 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1717,
-    "books_in_root_closure": 1714,
-    "roots": 1651,
-    "theorems": 27836,
-    "functions": 18200,
-    "assert_events": 23013,
+    "books": 1721,
+    "books_in_root_closure": 1716,
+    "roots": 1653,
+    "theorems": 27840,
+    "functions": 18213,
+    "assert_events": 23019,
     "must_fails": 2496,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
       "verified": 3460,
       "declared-off": 2084,
-      "default-guarded": 9904,
+      "default-guarded": 9917,
       "default-unguarded": 2752
     },
     "suspect_theorems": 1227,
     "export_hygiene_warnings": 318,
     "enabled_projection_warnings": 52,
     "teeth_form_warnings": 272,
-    "include_hygiene_warnings": 2421,
-    "host_names_warnings": 2095,
+    "include_hygiene_warnings": 2422,
+    "host_names_warnings": 2100,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -9356,6 +9358,32 @@
         "heap-reservation",
         "native-config",
         "page-read-resources"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/cold-read-window.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 10,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "cold-read-layout"
       ],
       "system_includes": [],
       "suspects": [],
@@ -26750,7 +26778,7 @@
       "book": "books/store-checkpoint-tables.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 71,
+      "theorems": 72,
       "functions": 42,
       "guards": {
         "verified": 3,
@@ -36871,7 +36899,9 @@
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
-      "includes": [],
+      "includes": [
+        "../../host/cold-read-bootstrap-host"
+      ],
       "system_includes": [
         "std/testing/assert-bang"
       ],
@@ -36955,6 +36985,34 @@
       "encapsulates": 0,
       "includes": [
         "../../books/cold-read-reservation"
+      ],
+      "system_includes": [
+        "std/testing/assert-bang"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/cold-read-window-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/cold-read-window"
       ],
       "system_includes": [
         "std/testing/assert-bang"
@@ -40784,16 +40842,16 @@
       "book": "tests/acl2/msgid-pages-exec-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 5,
-      "functions": 14,
+      "theorems": 6,
+      "functions": 17,
       "guards": {
         "verified": 0,
         "declared-off": 3,
-        "default-guarded": 11,
+        "default-guarded": 14,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 10,
+      "assert_events": 12,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 4,
@@ -48284,6 +48342,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-checkpoint-open-guard-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 2,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-checkpoint-open"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/store-checkpoint-open-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -48306,6 +48390,32 @@
         "../../books/store-checkpoint-codec",
         "../../books/store-checkpoint-open",
         "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/store-checkpoint-tables-guard-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 2,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-checkpoint-tables"
       ],
       "system_includes": [],
       "suspects": [],
@@ -58534,7 +58644,7 @@
     {
       "theorem": "fn-sco-select-named-refuses-schema",
       "book": "books/store-checkpoint-tables.lisp",
-      "line": 1114,
+      "line": 1129,
       "reasons": [
         "arm-of-definition: constant arguments select one IF/COND arm of fn-sco-select-named and the conclusion is that arm's value"
       ]
@@ -58542,7 +58652,7 @@
     {
       "theorem": "fn-sco-select-named-unfolds",
       "book": "books/store-checkpoint-tables.lisp",
-      "line": 1109,
+      "line": 1124,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-sco-select-named and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-sco-select-named and the conclusion is that branch's value"
@@ -81226,6 +81336,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/store-checkpoint-open-guard-tests.lisp",
+        "line": 4,
+        "include": "../../books/store-checkpoint-open",
+        "included": "books/store-checkpoint-open.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/store-checkpoint-open-tests.lisp",
         "line": 9,
         "include": "must-fail-checked",
@@ -89300,7 +89417,42 @@
       },
       {
         "host": "host/native/heap.lisp",
-        "line": 363,
+        "line": 342,
+        "name": "lisp-implementation-type",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/heap.lisp",
+        "line": 342,
+        "name": "lisp-implementation-version",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/heap.lisp",
+        "line": 342,
+        "name": "machine-type",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/heap.lisp",
+        "line": 342,
+        "name": "software-type",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/heap.lisp",
+        "line": 342,
+        "name": "count-if",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/heap.lisp",
+        "line": 377,
         "name": "fnn-register-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
