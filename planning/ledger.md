@@ -14,12 +14,12 @@ stale. Counts describe artifacts, not coverage; see
 | Certification roots in the Makefile | 1797 |
 | Books inside the root closure | 1865 |
 | `defthm` and `defthmd` events | 29687 |
-| `defun` events | 19036 |
+| `defun` events | 19037 |
 | Functions with verified guards | 3510 |
 | Functions declared `:verify-guards nil` and never verified | 2275 |
-| Functions left at the default with an explicit guard | 10399 |
+| Functions left at the default with an explicit guard | 10400 |
 | Functions left at the default with no guard | 2852 |
-| `assert-event` checks | 24015 |
+| `assert-event` checks | 24016 |
 | `must-fail` checks | 2531 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 159 |
@@ -119,7 +119,7 @@ that `make certify` requests.
 | `books/article.lisp` | root | 38 | 61 | 50/0/11/0 | 0 | 0 | 1 |
 | `books/assumptions-durable.lisp` | closure | 7 | 6 | 0/0/0/6 | 0 | 0 | 0 |
 | `books/assumptions-publication.lisp` | root | 4 | 3 | 0/0/0/3 | 0 | 0 | 0 |
-| `books/assumptions-selected-runtime-native-constructors.lisp` | root | 4 | 9 | 0/0/8/1 | 0 | 0 | 0 |
+| `books/assumptions-selected-runtime-native-constructors.lisp` | root | 4 | 10 | 0/0/9/1 | 0 | 0 | 0 |
 | `books/assumptions-stored.lisp` | closure | 1 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/assumptions.lisp` | root | 20 | 16 | 0/1/0/15 | 0 | 0 | 0 |
 | `books/auth-secret.lisp` | root | 21 | 14 | 0/0/14/0 | 0 | 0 | 0 |
@@ -1788,7 +1788,7 @@ that `make certify` requests.
 | `tests/acl2/scheduler-peers-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/scheduler-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 103 | 0 | 0 |
 | `tests/acl2/scram-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 27 | 0 | 0 |
-| `tests/acl2/selected-runtime-native-constructor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
+| `tests/acl2/selected-runtime-native-constructor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/serve-depth-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 35 | 0 | 0 |
 | `tests/acl2/served-catalog-chain-tests.lisp` | root | 6 | 5 | 0/2/0/3 | 4 | 7 | 0 |
 | `tests/acl2/served-catalog-join-entry-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 27 | 0 | 0 |

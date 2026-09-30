@@ -15,9 +15,10 @@ class ConnectionConstructorFamilyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory)
             for name in ('subjects.lisp', 'measure.lisp', 'cases.lisp', 'run.lisp',
-                         'collector-subject.lisp', 'collector-driver.lisp'):
+                         'collector-subject.lisp', 'collector-driver.lisp',
+                         'collector-binding-subject.lisp', 'collector-binding-driver.lisp'):
                 shutil.copyfile(EVIDENCE / name, target / name)
-            for driver in ('run.lisp', 'collector-driver.lisp'):
+            for driver in ('run.lisp', 'collector-driver.lisp', 'collector-binding-driver.lisp'):
                 run = subprocess.run([shutil.which('sbcl'), '--noinform', '--disable-debugger',
                                       '--script', driver], cwd=target,
                                      capture_output=True, text=True, timeout=30)
@@ -28,8 +29,10 @@ class ConnectionConstructorFamilyTests(unittest.TestCase):
                     self.assertIn('PASS exact scalar fault/escape tags preserve cause without rendering', run.stdout)
                     self.assertIn('HASH-DEFAULT-BACKING shared=T', run.stdout)
                     self.assertIn('PASS actual fixed fault paths measured', run.stdout)
-                else:
+                elif driver == 'collector-driver.lisp':
                     self.assertIn('PASS installation-only collector constructor', run.stdout)
+                else:
+                    self.assertIn('PASS collector binding factory/selection-fault object scope', run.stdout)
 
 
 if __name__ == '__main__':

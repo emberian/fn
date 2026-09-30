@@ -19035,9 +19035,9 @@
         "tests/test_native_connection_constructor_family.py",
         "specs/selected-runtime-native-constructors.md",
         "planning/evidence/native-connection-constructors-2026-09-30/coordinate.json",
-        "planning/evidence/manifests/certify-20260930T145915Z-51305.json"
+        "planning/evidence/manifests/certify-20260930T153223Z-77645.json"
       ],
-      "progress_note": "Two exact source roots normal certified with no installed dependencies; conditional consistency/subtotal only. Fresh SBCL2.6.8 Linux X86-64 native fixture measures exact current objects and retention/fault effects; ARM64 mismatch kept as refuter. No installed unit-family receipt, complete physical operation bound, current served activation or image qualification."
+      "progress_note": "Two exact source roots normal certified with no installed dependencies; conditional consistency/subtotal only. Fresh SBCL2.6.8 Linux X86-64 native fixture measures exact current objects and retention/fault effects; ARM64 mismatch kept as refuter. No installed unit-family receipt, complete physical operation bound, current served activation or image qualification. Collector binding5 factory112 owns its sample64 exactly once; installed baseline960. Recording selector factory tests do not qualify the actual allocator callbacks."
     }
   ]
 }

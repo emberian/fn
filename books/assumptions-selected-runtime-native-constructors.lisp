@@ -25,6 +25,12 @@
    '("74534be69b34f36febcd54c0a5d59ff85ccd91ccc320b8a2e2497d135196b384" 80))
   (:collector-installation
    '("eddb37b731320ad116e92db517cc05eec041896f785d5e4a51b832c2b4d5134b" 64))
+  (:collector-binding
+   '("3987ee7f4984169d94a6c861c3008d9c3755a0dc1fa78a74dc6379378dfbdba2" 48))
+  (:collector-bound-factory
+   '(("08c86911ef661c94bce815cd46fa67438c6954cb52f4c985100b44247772de3a"
+      "3987ee7f4984169d94a6c861c3008d9c3755a0dc1fa78a74dc6379378dfbdba2"
+      "eddb37b731320ad116e92db517cc05eec041896f785d5e4a51b832c2b4d5134b") 112))
   (otherwise nil)))
 (defun fn-srnc-unit-coordinate-p (unit source runtime)
  (declare (xargs :guard t))
@@ -115,3 +121,9 @@
 (defun fn-srnc-installation-owned-census (services collectors)
  (declare (xargs :guard (and (natp services) (natp collectors))))
  (+ (* 848 (nfix services)) (* 64 (nfix collectors))))
+
+; The actual binding factory creates exactly one sample. Count it once;
+; callback selection/frame/error scratch remains its own installation term.
+(defun fn-srnc-bound-installation-owned-census (services bindings)
+ (declare (xargs :guard (and (natp services) (natp bindings))))
+ (+ (* 848 (nfix services)) (* 112 (nfix bindings))))

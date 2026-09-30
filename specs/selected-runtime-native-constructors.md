@@ -13,8 +13,10 @@ The current Linux X86-64 SBCL 2.6.8 native component, with the recorded binary/c
 | mux connection | 256 | entire current object, including custody field |
 | fixed-tag fault | 80 | fixed condition object and existing cause pointer |
 | collection observation | 64 | installation-only preallocated seven-field carrier |
+| collection binding | 48 | five pointers, copier disabled |
+| bound collector factory | 112 | one binding plus its SAME64 sample, callback selection separate |
 
-The shared default hash backing is an existing 48-byte image root, not two fresh service arrays. Constants, classes, default global roots and compiler first-use belong to the installation baseline. One service plus one collector owned baseline is 912 octets. A retained service, mux, two old/new nodes and one fixed fault subtotal is 1280. Actual core disposition permits node release; socket close, native phase or GC does not refund charge. Constructor escape retains the raw token, including after a node was allocated but could not be published.
+The shared default hash backing is an existing 48-byte image root, not two fresh service arrays. Constants, classes, default global roots and compiler first-use belong to the installation baseline. One service plus one unbound collector sample is 912 octets. The actual installed binding factory creates one sample itself: service plus binding/sample is 960, without counting the sample twice. A retained service, mux, two old/new nodes and one fixed fault subtotal is 1280. Actual core disposition permits node release; socket close, native phase or GC does not refund charge. Constructor escape retains the raw token, including after a node was allocated but could not be published.
 
 The fresh fixture covers intrusive live/retiring overlap and release, constructor faults before/after allocation, and exact fixed-tag callback error/throw paths with a condition printer trap. It preserves source identity and records ARM64/Darwin separately: node64 and fault96 fail the Linux node/fault request. Batching is an allocation refuter only; TLAB accounting and concurrent/GC allocation mean `get-bytes-consed` differences are not a physical upper bound.
 

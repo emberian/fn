@@ -31,3 +31,14 @@
       (equal (fn-srnc-unit-status :collector-installation
                (car (fn-srnc-unit-row :collector-installation)) *fn-srnc-runtime*)
              :native-owned-row)))
+
+(assert-event
+ (and (equal (fn-srnc-bound-installation-owned-census 1 1) 960)
+      (equal (fn-srnc-unit-request :collector-binding) 48)
+      (equal (fn-srnc-unit-request :collector-bound-factory) 112)
+      (equal (fn-srnc-unit-status :collector-bound-factory
+               (car (fn-srnc-unit-row :collector-bound-factory)) *fn-srnc-runtime*)
+             :native-owned-row)
+      (equal (fn-srnc-unit-status :collector-bound-factory
+               (car (fn-srnc-unit-row :collector-binding)) *fn-srnc-runtime*)
+             :unavailable)))
