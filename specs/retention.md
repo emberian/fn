@@ -276,6 +276,18 @@ The carried total and each keyed count/charge are bounded by the retention
 ledger's capacity under the ledger invariant and view correspondence. They fit
 uint64 when that capacity is below 2^64. This is a conditional numeric bound,
 with explicit invalid-ledger, corrupt-view and over-word-capacity witnesses;
-it is not a runtime ceiling or permission to truncate. The actual configured
-owner capacity bridge, cumulative path support and physical allocation proof
-remain part of the reservation obligation.
+it is not a runtime ceiling or permission to truncate. The phase-aware `fn-cst-relation` now establishes uint32 capacity for the actual
+Store node through ready, reserved, pending, completing and recovery/fault
+branches. Together with view correspondence it implies all three uint64
+results without a separate numeric capacity premise. The two-hold observed-open
+witness and corrupted-view/configuration-link witnesses exercise that boundary.
+Actual owner configured-domain preservation, cumulative path support and physical
+allocation proof remain part of the reservation obligation.
+
+`fn-rov-update` now has an unconditional retained trie cons bound: the old trie
+plus twice the visited subject length plus three conses. This covers arrival
+and release as well as no-change/invalid arms. The largest metadata-path
+witness releases its last hold and still retains 515 trie conses at total zero;
+a duplicate release retains that same tree. Both arrivals and releases must
+therefore be charged against cumulative durable transaction credit before the
+reservation model can be claimed as a physical bound. No served scan is added.
