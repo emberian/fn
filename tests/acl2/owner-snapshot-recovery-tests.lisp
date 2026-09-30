@@ -314,3 +314,80 @@
       (not (fn-osr-retainedp *osr-retained-completing-missing-verdicts*))
       (not (fn-osr-retainedp
             (fn-sn-finish *osr-retained-completing-missing-verdicts*)))))
+
+; Every literal preparation/refusal/abort output preserves the complete
+; semantic view. ARTICLE preparation below is a real reserved live transition.
+(make-event `(defconst *osr-retained-reserved*
+  ',(csnt-reserve *osr-retained-ready*)))
+(assert-event
+ (and (equal (fn-osr-retained-view (fn-sn-prepare *osr-retained-reserved* *osr-pending-row*))
+             (fn-osr-retained-view *osr-retained-reserved*))
+      (equal (fn-osr-retained-view (fn-sn-prepare-retention *osr-retained-reserved* *osr-pending-row*))
+             (fn-osr-retained-view *osr-retained-reserved*))
+      (equal (fn-osr-retained-view (fn-sn-prepare-identity *osr-retained-reserved* *osr-pending-row*))
+             (fn-osr-retained-view *osr-retained-reserved*))
+      (equal (fn-osr-retained-view (fn-sn-prepare-consumer *osr-retained-reserved* *osr-pending-row*))
+             (fn-osr-retained-view *osr-retained-reserved*))
+      (equal (fn-osr-retained-view (fn-sn-prepare-topic *osr-retained-reserved* *osr-pending-row*))
+             (fn-osr-retained-view *osr-retained-reserved*))
+      (equal (fn-osr-retained-view (fn-sn-refuse-reservation *osr-retained-reserved* 4))
+             (fn-osr-retained-view *osr-retained-reserved*))
+      (equal (fn-osr-retained-view (fn-sn-known-abort *osr-retained-reserved*))
+             (fn-osr-retained-view *osr-retained-reserved*))
+      (equal (fn-sf-phase (fn-sn-files
+                          (fn-sn-prepare *osr-retained-reserved* *osr-pending-row*)))
+             :record-staged)))
+(make-event `(defconst *osr-retained-record-attempted*
+  ',(fn-snrt-run (fn-sn-prepare *osr-retained-reserved* *osr-pending-row*)
+                '((:io :record-file :ok) (:io :record-link :ok)))))
+(assert-event
+ (and (fn-osr-retainedp *osr-retained-record-attempted*)
+      (equal (fn-sf-phase (fn-sn-files *osr-retained-record-attempted*)) :record-attempted)
+      (equal (fn-osr-retained-view
+              (fn-sn-io *osr-retained-record-attempted* :record-directory :ok))
+             (fn-osr-retained-view *osr-retained-record-attempted*))
+      (equal (len (fn-sf-records
+                   (fn-sn-files
+                    (fn-sn-io *osr-retained-record-attempted* :record-directory :ok)))) 5)))
+; Boundary congruence composes the complete view with the full live relation.
+(assert-event
+ (and (fn-osr-retainedp *osr-retained-ready*)
+      (fn-osr-livep *osr-retained-configured*)
+      (equal (fn-osr-retained-view *osr-retained-ready*)
+             (fn-osr-retained-view *osr-retained-configured*))
+      (fn-osr-retainedp *osr-retained-configured*)))
+; Corrupted-state omission: live identity/configuration remains, but a different
+; statement generation changes the complete view and invalidates full carry.
+(assert-event
+ (and (fn-osr-retainedp *osr-retained-ready*)
+      (fn-osr-livep *osr-retained-wrong-generation*)
+      (not (equal (fn-osr-retained-view *osr-retained-ready*)
+                  (fn-osr-retained-view *osr-retained-wrong-generation*)))
+      (not (fn-osr-retainedp *osr-retained-wrong-generation*))))
+
+; Omit source carry while affirming both other congruence hypotheses.
+(assert-event
+ (and (not (fn-osr-retainedp *osr-retained-wrong-generation*))
+      (fn-osr-livep *osr-retained-wrong-generation*)
+      (equal (fn-osr-retained-view *osr-retained-wrong-generation*)
+             (fn-osr-retained-view *osr-retained-wrong-generation*))
+      (not (fn-osr-retainedp *osr-retained-wrong-generation*))))
+(defconst *osr-retained-missing-node* (update-nth 3 nil *osr-retained-ready*))
+; Omit target live carry: all retained observations still match, but the
+; actual configured node is missing, and full recovery carry must fail.
+(assert-event
+ (and (fn-osr-retainedp *osr-retained-ready*)
+      (not (fn-osr-livep *osr-retained-missing-node*))
+      (equal (fn-osr-retained-view *osr-retained-ready*)
+             (fn-osr-retained-view *osr-retained-missing-node*))
+      (not (fn-osr-retainedp *osr-retained-missing-node*))))
+(defconst *osr-retained-record-attempted-wrong-cursor*
+  (update-nth 9 6 *osr-retained-record-attempted*))
+; Corrupted-state omission of the I/O full-carry premise: the invalid cursor
+; includes padding beyond history, so actual append changes its observed prefix.
+(assert-event
+ (and (not (fn-osr-retainedp *osr-retained-record-attempted-wrong-cursor*))
+      (not (equal
+            (fn-osr-retained-view
+             (fn-sn-io *osr-retained-record-attempted-wrong-cursor* :record-directory :ok))
+            (fn-osr-retained-view *osr-retained-record-attempted-wrong-cursor*)))))

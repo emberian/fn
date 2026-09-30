@@ -329,8 +329,12 @@ Actual durable `fn-sn-finish` also preserves the entire carry: its ordinary
 and composite verdict publication and frozen row delta advance the same
 completed history prefix, while current keyring resolution and the retired
 field remain carried. No historical payload is reparsed by this publication.
-Full producer readiness still requires preservation across the other actual
-transitions, the canonical writer/load payload alpha boundary, and owner
+The proof-only retained view preserves all additional fields plus the
+completed history prefix across actual prepare/refuse/abort and I/O transitions.
+Composing that view with the existing configured-owner transition relation
+yields the complete carry; the raw components do not replace owner-side
+served-record and staged-candidate obligations.
+Full producer readiness still requires that owner-context composition, the canonical writer/load payload alpha boundary, and owner
 node-secret installation. The owner secret is
 separate from the Store statement keytable. Canonical row handles and paused
 checkpoint summaries do not become identical to live fields by assertion.
