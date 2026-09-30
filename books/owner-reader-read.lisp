@@ -191,7 +191,8 @@
                   (full (fn-ocfg-read x id (take (fn-own-tls-result-consumed r)
                                                  (fn-oct-slice-list i end fn-octets))
                                       fn-arena)))
-             (and (equal (fn-own-tls-result-effects r) (car full))
+             (and (equal (fn-ovw-expand (fn-own-tls-result-effects r) fn-arena fn-cat)
+                         (fn-ovw-expand (car full) fn-arena fn-cat))
                   (equal (fn-own-tls-result-owner r) (cdr full)))))
   :hints (("Goal" :use ((:instance fn-scr-ocfg-read-span-is-reference-under-ocl-relation (oc x))
                         (:instance fn-ocri-host-tls-read-refines-historical-read
@@ -322,11 +323,14 @@
                   (equal (fn-own-facts o2) (fn-own-facts o))
                   (equal (fn-ocfg-config oc2) (fn-ocfg-config oc))
                   (equal (fn-ocfg-staged oc2) (fn-ocfg-staged oc))
-                  (equal (fn-own-tls-result-effects r)
-                         (car (fn-ocfg-read (fn-ocfg-with-view oc (car views)) id
-                                            (take (fn-own-tls-result-consumed r)
-                                                  (fn-oct-slice-list i end fn-octets))
-                                            fn-arena))))))
+                  ;; the effects, modulo the OVER cursor (books/served-catalog-chain.lisp)
+                  (equal (fn-ovw-expand (fn-own-tls-result-effects r) fn-arena fn-cat)
+                         (fn-ovw-expand
+                          (car (fn-ocfg-read (fn-ocfg-with-view oc (car views)) id
+                                             (take (fn-own-tls-result-consumed r)
+                                                   (fn-oct-slice-list i end fn-octets))
+                                             fn-arena))
+                          fn-arena fn-cat)))))
   :hints (("Goal" :use ((:instance fn-orr-reader-relation-at-a-captured-view)
                         (:instance fn-orr-span-read-keeps-the-reader-relation-and-the-rest
                                    (x (fn-ocfg-with-view oc (car views))))

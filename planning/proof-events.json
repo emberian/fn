@@ -17182,6 +17182,39 @@
           "name": "fn-pct-requested-article-is-handed-to-the-local-transport"
         }
       ]
+    },
+    {
+      "id": "PRF-1020",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-run-is-over-range-cat"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-run-is-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-step-progresses"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-step-window-at-most-w"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-lines-is-view"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-step-of-commit-pinned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ovw-step-of-withdraw-pinned"
+        }
+      ]
     }
   ]
 }
