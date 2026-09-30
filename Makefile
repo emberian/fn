@@ -488,6 +488,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-buffer-tests \
 	books/store-log-walk-once \
 	books/store-log-walk-sized \
+	books/snapshot-row-source-grammar \
+	books/snapshot-row-source-cold-refinement \
 	tests/acl2/store-log-walk-sized-tests \
 	tests/acl2/store-log-walk-once-tests \
 	books/store-log-segments \
