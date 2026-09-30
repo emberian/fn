@@ -433,3 +433,21 @@ digest at that ordinal. The emitter retains only one256-bit digest and scalar
 state. It preserves concrete scratch representation and epoch/lease identity.
 Complete spool admission, authenticated reads, final root binding and served
 composition remain open; no host caller or certification claim is added.
+
+### Bounded borrowed history decoding (planned, PRF-1102 / SCN-1014)
+
+The captured history source is decoded incrementally using the unchanged tree
+codec. `books/history-decode-stream.lisp` consumes one verified byte per active
+step and retains source epoch and lease; raw string, symbol and octet payloads
+remain borrowed spans in `books/history-decode-nodes.lisp`. Its non-executable
+abstraction denotes the existing logical row. Numeric decoding refines the
+current little-endian reader, including accepted nonminimal spellings. The
+canonical encoder must classify pair-shaped octet lists incrementally and
+canonicalize empty octet spans to NIL rather than copy old instruction bytes.
+
+The full requirement remains open: captured-root directory/table/data
+validation, exact row semantic inverse, padding and MKEY validation, carried
+source-token binding, funded node/stack allocation, guard-verified host
+composition and matching native evidence. Neither a source parser nor a
+fixed page buffer alone establishes that boundary. See
+[the concrete contract](../planning/history-decode-contract.md).
