@@ -7349,9 +7349,13 @@
         "No newercommit appears in retained old capture; no grant/root release from shape, copied payload or Flush alone. Missing genuine issuer remains unavailable."
       ],
       "evidence": [
-        "tests/acl2/ninep-header-tests.lisp"
+        "tests/acl2/ninep-header-tests.lisp",
+        "tests/acl2/ninep-fields-tests.lisp",
+        "tests/acl2/ninep-version-tests.lisp",
+        "tests/acl2/ninep-group-directory-source-tests.lisp",
+        "tests/acl2/ninep-protocol-host-tests.lisp"
       ],
-      "scope_note": "Specified native acceptance scenario, not executed. Current source header witnesses are separate from native mounted source/lifetime qualification."
+      "scope_note": "Specified native acceptance scenario, not executed. Normal source header/field/version and borrowed group-trie/host witnesses are separate from native mounted source/lifetime qualification."
     }
   ]
 }

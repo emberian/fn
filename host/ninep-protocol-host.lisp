@@ -53,3 +53,26 @@
  :rule-classes nil
  :hints (("Goal" :in-theory
           (e/d (fn-ninep-version-reply) (fn-9p-version-at)))))
+
+(include-book "../books/ninep-group-directory-source")
+
+; Internal borrowed cursor only. This does not issue a mounted source or
+; expose a supplied root as an authenticated publication.
+(defun fn-ninep-group-directory-step (tasks state)
+ (declare (xargs :stobjs state :guard t))
+ (mv-let (word entry next) (fn-9p-ge-step tasks)
+  (mv word entry next state)))
+
+(defthm fn-ninep-group-directory-step-preserves-source
+ (and (equal (fn-9p-ge-remaining tasks)
+             (append
+              (if (equal (mv-nth 0 (fn-ninep-group-directory-step tasks state)) :group)
+                  (list (mv-nth 1 (fn-ninep-group-directory-step tasks state))) nil)
+              (fn-9p-ge-remaining
+               (mv-nth 2 (fn-ninep-group-directory-step tasks state)))))
+      (equal (mv-nth 3 (fn-ninep-group-directory-step tasks state)) state))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+          (e/d (fn-ninep-group-directory-step)
+               (fn-9p-ge-step fn-9p-ge-remaining))
+          :use fn-9p-ge-step-preserves-ordered-directory)))

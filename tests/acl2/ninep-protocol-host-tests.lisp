@@ -26,3 +26,14 @@
        (equal (nth 2 large) the-state))))
 (defthm ninep-host-prefix-preserves-need-and-refusal
  (ninep-host-prefix-refusals the-state) :rule-classes nil)
+
+(defun-nx ninep-host-directory-positive (the-state)
+ (let* ((tasks '((:visit ((:group-number 5 nil) nil) (0 1 1 0 0 0 0 1) 8)))
+        (answer (mv-list 4 (fn-ninep-group-directory-step tasks the-state))))
+  (and (equal (nth 0 answer) :group)
+       (equal (nth 1 answer) '(:group-path (0 1 1 0 0 0 0 1) 8 (:group-number 5 nil)))
+       (equal (nth 3 answer) the-state)
+       (equal (fn-9p-ge-remaining tasks)
+              (append (list (nth 1 answer)) (fn-9p-ge-remaining (nth 2 answer)))))))
+(defthm ninep-host-directory-complete-positive
+ (ninep-host-directory-positive the-state) :rule-classes nil)

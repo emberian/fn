@@ -1821,11 +1821,11 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1909,
+    "books": 1914,
     "books_in_root_closure": 1885,
     "roots": 1817,
-    "theorems": 29890,
-    "functions": 19154,
+    "theorems": 29920,
+    "functions": 19191,
     "assert_events": 24066,
     "must_fails": 2519,
     "prover_refusals": 0,
@@ -1833,14 +1833,14 @@
     "guards": {
       "verified": 3540,
       "declared-off": 2289,
-      "default-guarded": 10452,
-      "default-unguarded": 2873
+      "default-guarded": 10485,
+      "default-unguarded": 2877
     },
-    "suspect_theorems": 1258,
+    "suspect_theorems": 1260,
     "export_hygiene_warnings": 350,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2577,
+    "include_hygiene_warnings": 2581,
     "host_names_warnings": 2197,
     "hand_written_record_warnings": 18
   },
@@ -12600,6 +12600,90 @@
       "read_error": null
     },
     {
+      "book": "books/group-number-source-assignment.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 12,
+      "functions": 12,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 12,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "group-number-source"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/group-number-source.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 8,
+      "functions": 11,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 11,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "group-number-trie"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/group-number-trie.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 2,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "acceptance-alloc"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/group-status.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -17840,6 +17924,37 @@
         "arithmetic/top"
       ],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/ninep-group-directory-source.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 4,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "group-number-source-assignment"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [
+        "fn-9p-ge-tree-of-atom",
+        "fn-9p-ge-tree-unfolds"
+      ],
       "read_error": null
     },
     {
@@ -45763,6 +45878,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/ninep-group-directory-source-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 3,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/ninep-group-directory-source"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/ninep-header-tests.lisp",
       "in_root_closure": false,
       "is_root": false,
@@ -45792,13 +45933,13 @@
       "book": "tests/acl2/ninep-protocol-host-tests.lisp",
       "in_root_closure": false,
       "is_root": false,
-      "theorems": 2,
-      "functions": 2,
+      "theorems": 3,
+      "functions": 3,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 2
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -57207,6 +57348,24 @@
       "line": 278,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-9p-ge-tree-of-atom",
+      "book": "books/ninep-group-directory-source.lisp",
+      "line": 78,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-9p-ge-tree and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis negates a branch test of fn-9p-ge-tree and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-9p-ge-tree-unfolds",
+      "book": "books/ninep-group-directory-source.lisp",
+      "line": 68,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-9p-ge-tree and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis is a branch test of fn-9p-ge-tree and the conclusion is that branch's value"
       ]
     },
     {
@@ -73581,6 +73740,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/group-number-source-assignment.lisp",
+        "line": 4,
+        "include": "group-number-source",
+        "included": "books/group-number-source.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/group-number-trie.lisp",
+        "line": 3,
+        "include": "acceptance-alloc",
+        "included": "books/acceptance-alloc.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/heap-figure.lisp",
         "line": 68,
         "include": "outcome-class",
@@ -76959,6 +77132,13 @@
         "line": 4,
         "include": "ninep-header",
         "included": "books/ninep-header.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/ninep-group-directory-source.lisp",
+        "line": 5,
+        "include": "group-number-source-assignment",
+        "included": "books/group-number-source-assignment.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -84673,6 +84853,13 @@
         "line": 2,
         "include": "../../books/ninep-fields",
         "included": "books/ninep-fields.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/ninep-group-directory-source-tests.lisp",
+        "line": 2,
+        "include": "../../books/ninep-group-directory-source",
+        "included": "books/ninep-group-directory-source.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

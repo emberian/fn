@@ -83,15 +83,18 @@ borrowed reads and query/response/worker aliases have actually settled.
 
 Current provider ingredients are guarded grouped number lookup,
 registered row read and selected-query/QPG byte interfaces. Operational mount
-issuance, group-name/member enumeration, durable source correspondence and
+issuance, rendered group-name/member enumeration, durable source correspondence and
 native registration remain open shared integration subjects. The protocol
 machine must not replace them with a host callback or flat catalog.
 
 ## Evidence scope
 
-The source header codec and literal wire/refusal/mutation fixtures have a
-normal narrow certificate. Body fields, fid state, actual provider composition
-and native client scenarios remain open; this is not a served mount claim.
+The concrete header and resumable body-field codecs, version negotiation and
+exact reply bytes have normal narrow source certificates. A bounded group-trie
+walker preserves the ordered directory while borrowing persistent bit paths
+and actual group values; it does not yet render names/stat entries or issue a
+mount. Full parser refinement, fid state, actual provider composition and
+native client scenarios remain open; this is not a served mount claim.
 SCN-1064 requires an external client on a scratch store, tiny message sizes,
 exact binary/dotted/long article ranges through both paths, paged directories,
 commit invisibility, reclamation while source is held, readonly refusals,
