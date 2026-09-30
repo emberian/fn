@@ -48,3 +48,31 @@ class TypedSourceBackendTests(unittest.TestCase):
         verdict = judge_scenario(scenario, observe((directory / "log").read_text(), 0), 0)
         self.assertEqual(verdict.kind, "consistent")
         self.assertIn("typed-window-settled", verdict.witnesses_observed)
+
+    def test_declared_healing_bound_cannot_pass_without_measurement(self):
+        directory = EVIDENCE / "trial-0000"
+        scenario = Scenario.load(directory / "scenario.json")
+        scenario.healing_bound = {"kind": "seconds", "value": 1, "source": "unit declared bound"}
+        verdict = judge_scenario(scenario, observe((directory / "log").read_text(), 0), 0)
+        self.assertEqual(verdict.kind, "harness-failure")
+        self.assertEqual(verdict.cause, "typed-source-healing-unmeasured")
+
+    def test_other_profile_witnesses_cannot_be_claimed(self):
+        from tools.resilience.scenario import check, ScenarioError
+        directory = EVIDENCE / "trial-0000"
+        scenario = Scenario.load(directory / "scenario.json")
+        scenario.witnesses = ["post-accepted"]
+        with self.assertRaises(ScenarioError): check(scenario)
+
+    def test_earlier_release_does_not_close_a_later_live_request(self):
+        from tools.resilience.scenario import Operation
+        evidence = EVIDENCE.parent
+        data = json.loads((evidence / "model-trials.json").read_text())[0][:4]
+        scenario = Scenario("prefix", "Terminal live request", "typed-window-model",
+                            {"recipe": "typed-window-assigned-vector"}, [{"name": "core", "kind": "client"}],
+                            [Operation(s["id"], "core", "window-" + s["action"],
+                                       {"request": s["request"], "selector": s["selector"]}) for s in data],
+                            [], [data[-1]["id"]], ["typed-window-settled"])
+        journal = observe((evidence / "model-trials.log").read_text(), 0)
+        journal.records = journal.records[:4]  # Oracle unit over retained actual transition prefix.
+        self.assertEqual(judge_scenario(scenario, journal, 0).kind, "no-witness")

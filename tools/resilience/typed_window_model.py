@@ -175,6 +175,8 @@ def from_scenario(scenario):
     """Use shared Scenario IR without fabricating native fault coordinates."""
     if scenario.contract != "typed-window-model":
         raise ValueError("typed-window backend requires its contract profile")
+    if scenario.witnesses != ["typed-window-settled"]:
+        raise ValueError("typed-window model supports only its actual settlement witness")
     if scenario.initial.get("recipe") != "typed-window-assigned-vector":
         raise ValueError("typed-window model requires its exact supplied-vector fixture")
     if scenario.faults:
@@ -200,9 +202,14 @@ def judge_scenario(scenario, journal, trial):
     settled = [step.id for step, row in zip(steps, rows)
                if step.action in ("release", "settle") and row.get("answer") == ":RELEASED"
                and row.get("close") == ":CLOSABLE" and row.get("workers") == 0]
-    if "typed-window-settled" in scenario.witnesses and not settled:
+    terminal_clear = bool(rows) and rows[-1].get("close") == ":CLOSABLE" and rows[-1].get("workers") == 0
+    if "typed-window-settled" in scenario.witnesses and (not settled or not terminal_clear):
         return Verdict("no-witness", scenario_id=scenario.id, journal_digest=journal.digest(),
                        cause="typed-window-settlement-not-observed",
+                       pending_rules=verdict.pending_rules).sign()
+    if scenario.healing_bound is not None:
+        return Verdict("harness-failure", scenario_id=scenario.id, journal_digest=journal.digest(),
+                       cause="typed-source-healing-unmeasured",
                        pending_rules=verdict.pending_rules).sign()
     if any(identity not in identities for identity in scenario.healing):
         raise ValueError("unknown typed-window healing operation")
