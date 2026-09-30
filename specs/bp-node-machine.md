@@ -5061,3 +5061,23 @@ encoded malformed-symbol scenario and the real delivery producer witness
 name the changed boundary. Full source replay, bounded restart codec work,
 qualified native interruption/restart and complete held-field symbol grammar
 remain separate pending coordinates.
+
+### Registered CURRENT consumer source boundary (2026-09-30)
+
+The token-only `fn-owner-bp-controller-step` reads CURRENT from the concrete
+controller registry, performs the actual guarded `fn-bpnj-step`, and exposes
+its effects only after the registry replacement reports `:updated`. The
+structural CURRENT-list refinement and existing progress guard preservation
+compose with registered read/replacement carry to preserve the entire registry
+carry. The native consumer performs this decision under the shared extent
+mutex and returns before durability I/O. It remains unhooked: this source
+boundary does not install constructor funding, registration or the compiled
+callback. Concrete local-stobj recovery/dispatch teeth are explicitly unfunded
+storage fixtures; corrupted-state hypothesis removals are logical witnesses,
+and the executable consumer guard refuses corrupted carry.
+
+Exact source admission evidence is
+`planning/evidence/bp-registered-dispatch-20260930/manifest.json`.
+Bounded checkpoint reopening, full held producer grammar, installed runtime
+and disk capacity, funded receipt query, and the whole interrupted delivery
+and retirement trajectory remain open.
