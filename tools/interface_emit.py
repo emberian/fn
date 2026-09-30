@@ -206,7 +206,7 @@ def render_raw_declarations(decls: list[dict]) -> str:
     for d in decls:
         guarded = d.get("raw_guarded")
         if not d.get("raw_with") and guarded is None:
-            if d["name"] in {"fn-di-raw-with-problem", "fn-di-raw-guarded-problem"}:
+            if d["name"] in {"fn-di-raw-with-problem", "fn-di-raw-guarded-problem", "fn-di-raw-guarded-target"}:
                 forms.append('(definterface {} :class :{} :direct {})'.format(
                     d["name"], d["class"], json.dumps(d["direct"])))
             continue

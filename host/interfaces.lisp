@@ -4906,6 +4906,22 @@
   :class :common-lisp-compliant :root :extract
   :raw-guarded (2 (nil fn-page-read-pool) (nil)))
 
+; Fixed nested receiver family; genuine installed provider ownership is
+; supplied by the issued RX factory, not by these startup declarations.
+(definterface create-fn-rx-provider :class :common-lisp-compliant :root :extract
+  :raw-guarded (0 () (fn-rx-provider)))
+(definterface fn-rxp-fill-range :class :common-lisp-compliant :root :extract
+  :raw-guarded (5 (nil nil nil nil fn-rx-provider)
+                   (nil nil nil nil fn-rx-provider)))
+(definterface fn-rxp-fence :class :common-lisp-compliant :root :extract
+  :raw-guarded (2 (nil fn-rx-provider) (nil fn-rx-provider)))
+(definterface fn-rxp-currentp :class :common-lisp-compliant :root :extract
+  :raw-guarded (2 (nil fn-rx-provider) (nil)))
+(definterface fn-rxp-token :class :common-lisp-compliant :root :extract
+  :raw-guarded (1 (fn-rx-provider) (nil)))
+
+(definterface fn-di-raw-guarded-target :class :program
+  :direct "Startup-only exact registered abstract creator EXEC resolution.")
 (definterface fn-di-raw-guarded-problem
  :class :program
  :direct "Startup declaration validator over the loaded world; no per-request decision")

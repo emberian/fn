@@ -547,6 +547,40 @@
         (msg "~x0 raw-guarded guard contains a kind, invariant, or relation beyond supplied stobj recognition" name))
        (t nil)))))
 
+(defun fn-di-raw-guarded-target (name kvs w)
+  (declare (xargs :mode :program))
+  ; Only a creator may resolve through the registered abstract stobj EXEC.
+  ; Ordinary callbacks retain their original subject and raw definition.
+  (let ((problem (fn-di-raw-guarded-problem name kvs w)))
+    (if problem (mv problem nil)
+      (let* ((outputs (stobjs-out name w))
+             (st (and (equal (len outputs) 1) (car outputs)))
+             (candidatep (and st (equal (getpropc name 'formals :none w) nil)
+                              (equal (stobjs-in name w) nil)))
+             (creatorp (and candidatep (eq name (get-stobj-creator st w))))
+             (info (and creatorp (getpropc st 'absstobj-info nil w))))
+        (if (and candidatep (not creatorp))
+            (mv (msg "~x0 lacks its registered stobj creator role" name) nil)
+          (if (not info) (mv nil name)
+          (let* ((foundation (and (consp info) (car info)))
+                 (entry (and (true-listp info) (alistp (cdr info))
+                             (assoc-eq name (cdr info))))
+                 (target (and (true-listp entry) (equal (len entry) 3)
+                              (caddr entry))))
+            (if (and (symbolp foundation) foundation
+                     (not (eq foundation st))
+                     target (symbolp target)
+                     (eq target (get-stobj-creator foundation w))
+                     (equal (getpropc name 'formals :none w) nil)
+                     (equal (getpropc target 'formals :none w) nil)
+                     (equal (stobjs-in target w) nil)
+                     (equal (stobjs-out target w) (list foundation))
+                     (eq (symbol-class target w) :common-lisp-compliant)
+                     (fn-di-raw-guarded-conjunctsp
+                      (fn-di-conjuncts (guard target nil w)) nil nil w))
+                (mv nil target)
+              (mv (msg "~x0 has missing or incompatible registered creator EXEC metadata" name) nil)))))))))
+
 (defun fn-di-problem (name kvs w)
   (declare (xargs :mode :program))
   ; nil, or a msg naming the first check the world refutes
