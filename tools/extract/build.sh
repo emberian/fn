@@ -30,7 +30,13 @@ ROOTS=${FN_EXTRACT_ROOTS:-$FN_EXTRACT_ROOTS_DECLARED}
 EXTRA=${FN_EXTRACT_EXTRA:-$FN_EXTRACT_EXTRA_DECLARED}
 python3 "$X/world.py" --check
 # The world, loaded once per world digest and saved (world_image.sh).
-WORLD=$(sh "$X/world_image.sh" "$TREE")
+WORLD=${FN_EXTRACT_WORLD_IMAGE:-$(sh "$X/world_image.sh" "$TREE")}
+# An explicit world must have the same binding as the cache's world. The
+# oracle and SBCL product consequently cannot export from different worlds.
+TOOLCHAIN=$(python3 "$TREE/tools/acl2_toolchain.py" identity "$ACL2")
+KEY=$(python3 "$X/world.py" --digest "$TREE" --acl2 "$ACL2" \
+      --variant "${FN_EXTRACT_VARIANT:-default}" --toolchain-identity "$TOOLCHAIN")
+python3 "$X/world_binding.py" check "$WORLD" "$KEY" "${FN_EXTRACT_VARIANT:-default}"
 cat > "$OUT/extract.lsp" <<LSP
 (ld "tools/extract/frontend.lisp")
 (xt-extract-with (quote ($ROOTS)) (quote ($EXTRA)) "build/extract/served.json" state)

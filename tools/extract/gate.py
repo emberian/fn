@@ -77,6 +77,7 @@ class Tools:
     owner: list = field(default_factory=lambda: ["python3", str(X / "owner.py")])
     per: int = 20
     source: str = None
+    variant: str = "default"
 
 
 def sha256_file(path):
@@ -102,6 +103,7 @@ class Gate:
         self.children = []
         self.step = "setup"
         self.env = dict(os.environ)
+        self.env["FN_EXTRACT_VARIANT"] = tools.variant
         self.env["LD_LIBRARY_PATH"] = tools.chicken_lib
         self.acl2_env = {k: v for k, v in self.env.items()}
         self.acl2_env["ACL2_CUSTOMIZATION"] = "NONE"
@@ -205,7 +207,9 @@ class Gate:
         k = self.tree / "build" / "core"
         (k / "fn-core").unlink(missing_ok=True)
         log = self.c / "core-build.log"
-        self.need("core.sh", self.t.core, stdout=log, stderr="stdout", log=log)
+        env = dict(self.env, FN_CORE_NAME="fn-core", FN_NATIVE_PROFILE="developer",
+                   FN_CORE_OUT=str(k), FN_EXTRACT_IMAGE=str(self.image))
+        self.need("core.sh", self.t.core, stdout=log, stderr="stdout", log=log, env=env)
         for name in ("core.json", "defs.lisp", "packages.lisp", "core-world.lisp", "host-block.lisp", "inventory.json", "fn-core.core"):
             self.nonempty(k / name, "core")
         exe = k / "fn-core"
@@ -417,7 +421,9 @@ class Gate:
             self.fail("gen wrote no candidates")
         lsp = c / "fcheck.lsp"
         with open(lsp, "w") as h:
-            for f in ("world.lisp", "world-host.lisp", "frontend.lisp", "fcheck.lisp"):
+            suffix = "-dtn" if self.t.variant == "dtn" else ""
+            for f in ("world" + suffix + ".lisp", "world-host" + suffix + ".lisp",
+                      "frontend.lisp", "fcheck.lisp"):
                 h.write('(ld "tools/extract/%s")\n' % f)
             for f in files:
                 h.write('(xt-fcheck "%s" "%s.vec" state)\n' % (c / f, c / f))
@@ -469,14 +475,16 @@ class Gate:
                 self.fail("the world names %s, which is not in the tree" % path)
             entries.append({"kind": kind, "path": rel, "sha256": sha256_file(path)})
 
-        for name in ("world.lisp", "world-host.lisp"):
+        suffix = "-dtn" if self.t.variant == "dtn" else ""
+        world_file, host_file = "world" + suffix + ".lisp", "world-host" + suffix + ".lisp"
+        for name in (world_file, host_file):
             add("world-file", "tools/extract/" + name, self.x / name)
-        for m in re.finditer(r'^\(include-book "\.\./\.\./([^"]+)"\)', (self.x / "world.lisp").read_text(), re.M):
+        for m in re.finditer(r'^\(include-book "\.\./\.\./([^"]+)"\)', (self.x / world_file).read_text(), re.M):
             rel = m.group(1) + ".cert"
             if not (self.tree / rel).is_file():
                 self.fail("the world includes %s, which has no certificate (%s)" % (m.group(1), rel))
             add("certificate", rel, self.tree / rel)
-        for m in re.finditer(r'^\(ld "\.\./\.\./([^"]+)"', (self.x / "world-host.lisp").read_text(), re.M):
+        for m in re.finditer(r'^\(ld "\.\./\.\./([^"]+)"', (self.x / host_file).read_text(), re.M):
             add("host-program", m.group(1), self.tree / m.group(1))
         digest = hashlib.sha256("".join("%s %s %s\n" % (x["kind"], x["path"], x["sha256"]) for x in entries)
                                 .encode()).hexdigest()
@@ -539,6 +547,7 @@ class Gate:
         doc = {
             "status": "frozen",
             "source": self.t.source,
+            "variant": self.t.variant,
             "image": {"launcher": str(self.image), "launcher_sha256": sha256_file(self.image),
                       "core": str(image_core) if image_core.is_file() else None,
                       "core_sha256": sha256_file(image_core) if image_core.is_file() else None},
@@ -583,6 +592,8 @@ class Gate:
         self.c.mkdir(parents=True)
         self.write_status("RUNNING")
         try:
+            if self.t.variant not in ("default", "dtn"):
+                self.fail("unsupported extraction variant " + self.t.variant)
             for name, stepfn in (("1 build", self.build), ("1b manifest", self.manifest), ("1c core", self.core),
                                  ("2 transcripts", self.transcripts), ("3 probes", self.probes),
                                  ("4 store", self.store), ("5 stateful", self.stateful),
@@ -613,7 +624,8 @@ def tools_from_env():
                  swarm=["swarm-build"], build=["sh", str(X / "build.sh")], core=["sh", str(X / "core.sh")],
                  store=os.environ.get("EXTRACT_STORE", "/tank/fn/scratch/fixtures/n1k-2k/store"),
                  per=int(os.environ.get("EXTRACT_FCHECK_PER", "20")),
-                 source=os.environ.get("FN_EXTRACT_SOURCE"))
+                 source=os.environ.get("FN_EXTRACT_SOURCE"),
+                 variant=os.environ.get("FN_EXTRACT_VARIANT", "default"))
 
 
 def main(argv):

@@ -91,6 +91,19 @@ class VariantTests(unittest.TestCase):
             self.assertIn("requires production profile", done.stderr)
             self.assertFalse((Path(directory) / "out").exists())
 
+    def test_named_product_refuses_other_variant_before_output(self):
+        import os
+        for name, variant in (("fn-host-developer", "dtn"), ("fn-host-dtn", "default"),
+                              ("fn-core", "unknown")):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
+                env = dict(os.environ, FN_CORE_NAME=name, FN_EXTRACT_VARIANT=variant,
+                           FN_CORE_OUT=directory + "/out")
+                done = subprocess.run(["sh", str(ROOT / "tools/extract/core.sh"), str(ROOT)],
+                                      env=env, capture_output=True, text=True)
+                self.assertEqual(done.returncode, 2)
+                self.assertIn("variant", done.stderr)
+                self.assertFalse((Path(directory) / "out").exists())
+
     def test_same_launcher_path_new_toolchain_is_a_new_world(self):
         with tempfile.TemporaryDirectory() as directory:
             root = tree(directory)

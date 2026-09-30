@@ -219,6 +219,9 @@ elif role == "core":
     # stand-in for tools/extract/core.sh TREE: a core that answers as the image
     k = os.path.join(args[0], "build", "core")
     os.makedirs(k, exist_ok=True)
+    json.dump({name: os.environ.get(name) for name in
+               ("FN_CORE_NAME", "FN_CORE_OUT", "FN_NATIVE_PROFILE", "FN_EXTRACT_VARIANT", "FN_EXTRACT_IMAGE")},
+              open(os.path.join(k, "build-env.json"), "w"))
     if FAULT == "core-build-exit":
         print("stand-in core build failing"); sys.exit(3)
     for n in ("core.json", "defs.lisp", "packages.lisp", "core-world.lisp", "host-block.lisp", "fn-core.core"):
@@ -395,6 +398,42 @@ class ExtractGateTest(unittest.TestCase):
         done = subprocess.run([PY, "-c", "import hashlib, ssl; hashlib.sha256(b'')"],
                               env=g.env, capture_output=True, text=True)
         self.assertEqual(done.returncode, 0, done.stderr)
+
+    def test_dtn_gate_uses_only_dtn_world_in_every_stage(self):
+        fx = Fixture()
+        try:
+            fx.tools.variant = "dtn"
+            for name in ("world", "world-host"):
+                source = fx.tree / "tools/extract" / (name + ".lisp")
+                source.rename(source.with_name(name + "-dtn.lisp"))
+            rc, out, status, g = fx.run()
+            self.assertEqual(rc, 0, out)
+            self.assertEqual(status["status"], "PASS")
+            manifest = json.loads((g.c / "extraction-manifest.json").read_text())
+            self.assertEqual(manifest["variant"], "dtn")
+            paths = [e["path"] for e in manifest["admitted_world"]["entries"]]
+            self.assertEqual(paths[:2], ["tools/extract/world-dtn.lisp", "tools/extract/world-host-dtn.lisp"])
+            program = (g.c / "fcheck.lsp").read_text()
+            self.assertIn('(ld "tools/extract/world-dtn.lisp")', program)
+            self.assertIn('(ld "tools/extract/world-host-dtn.lisp")', program)
+            self.assertNotIn('(ld "tools/extract/world.lisp")', program)
+            env = json.loads((fx.tree / "build/core/build-env.json").read_text())
+            self.assertEqual(env, {"FN_CORE_NAME": "fn-core", "FN_NATIVE_PROFILE": "developer",
+                                  "FN_CORE_OUT": str(fx.tree.resolve() / "build/core"),
+                                  "FN_EXTRACT_VARIANT": "dtn", "FN_EXTRACT_IMAGE": str(fx.image)})
+        finally:
+            fx.close()
+
+    def test_unknown_variant_refuses_before_build_children(self):
+        fx = Fixture()
+        try:
+            fx.tools.variant = "unknown"
+            rc, out, status, _ = fx.run()
+            self.assertEqual(rc, 1, out)
+            self.assertEqual(status["step"], "setup")
+            self.assertEqual(status["children"], [])
+        finally:
+            fx.close()
 
     def test_owner_gate_refuses_incomplete_or_disagreeing_runs(self):
         for fault, reason in (("owner-exit", "exited 73"),
