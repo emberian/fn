@@ -380,3 +380,20 @@ not a zero-allocation assertion: old/new reserve arrays, payload/header
 constructors, selected compiler callbacks/frames/cache/GC and full definite
 cleanup lifetime still require their actual funded runtime join. Installed
 Store/CP7/pool/source authority and complete INITIAL admission remain open.
+
+
+The selected concrete buffer routines now have trusted-source observers with
+complete returned effects and source event counts. Actual initialization
+performs69030 array writes and `7+H+(2 if H<32768 else0)` fill updates, where
+H is the captured preset suffix length. Resize events are precisely the
+three indicators for old capacities below65536/3494/64. After these explicit
+reserves, actual append-octet/list/back routines take no implicit growth
+branch. Larger preallocated arrays produce zero resize events.
+
+The complete six-output/count boundary has fresh, shipped and preallocated
+positives, all three retained typed-array removals and labelled count
+mutations. Traces preserve actual reserve/write arguments and borrowed
+operations; trace/MV lists are proof artifacts, not target allocations.
+Source resize/write counts are not a compiled allocation charge. Actual
+array payload/header lowering, callbacks/frames/cache/GC, old/new coexistence
+and definite full lifetime still need the selected runtime funding join.
