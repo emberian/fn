@@ -18773,9 +18773,11 @@
         "tests/acl2/native-admin-pull-auth-tests.lisp",
         "tests/test_native_peer_pull.py",
         "tests/acl2/native-admin-peer-pull-auth-tests.lisp",
-        "planning/evidence/peering-pull-credential-source-2026-09-29.md"
+        "planning/evidence/peering-pull-credential-source-2026-09-29.md",
+        "planning/evidence/peering-native-operator-source-2026-09-30.md",
+        "planning/evidence/peering-native-operator-source-2026-09-30.json"
       ],
-      "progress_note": "Clean protected q12pa admitted auth tests with carriage/auth/full pull in proper encapsulates (22 forms, 7.86 ACL2 seconds/3316412 steps), plus six actual-anonymous witness forms. Clean q12at admitted peer grammar/preservation tests (21 forms, 12.02 seconds/4984483 steps including dependencies), plus NUL refusal. After exact shared Store repairs, clean q12af admitted all six actual native-admin dispatch/live-delta tests with source dependencies in proper encapsulates (73.78 seconds/23310938 steps including dependencies). Unrelated native-operator source dependency cold-resources preservation remains under owner repair. Matching-image SCN-1036 execution and certification remain open.",
+      "progress_note": "Clean protected q12pa admitted auth tests with carriage/auth/full pull in proper encapsulates (22 forms, 7.86 ACL2 seconds/3316412 steps), plus six actual-anonymous witness forms. Clean q12at admitted peer grammar/preservation tests (21 forms, 12.02 seconds/4984483 steps including dependencies), plus NUL refusal. After exact shared Store repairs, clean q12af admitted all six actual native-admin dispatch/live-delta tests with source dependencies in proper encapsulates (73.78 seconds/23310938 steps including dependencies). Cold-policy path repair2412428db preserved the full field without weakening the theorem; fresh protected q12op2 at ac817eb51 admitted all483 native-operator test forms,232 matching cached dependencies plus28 proper-local source dependencies,70.86 ACL2 seconds/17426325 steps. Session stopped. This is source admission only. Matching-image SCN-1036 execution and certification remain open.",
       "events": [
         "fn-pull-auth-after-extension",
         "fn-pull-plans-credentials-come-from-selected-peer"

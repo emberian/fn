@@ -1759,9 +1759,9 @@
     "books": 1819,
     "books_in_root_closure": 1816,
     "roots": 1752,
-    "theorems": 29077,
+    "theorems": 29078,
     "functions": 18798,
-    "assert_events": 23856,
+    "assert_events": 23859,
     "must_fails": 2517,
     "prover_refusals": 0,
     "encapsulates": 158,
@@ -16604,7 +16604,7 @@
       "book": "books/native-config-paths.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 9,
+      "theorems": 10,
       "functions": 9,
       "guards": {
         "verified": 0,
@@ -43406,10 +43406,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 34,
+      "assert_events": 37,
       "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 6,
+      "defconsts": 9,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
