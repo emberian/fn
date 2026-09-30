@@ -1096,6 +1096,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-range-source \
 	books/over-reply-source \
 	books/over-byte-range-relation \
+	books/served-range-step-source \
+	books/over-reply-row-frame \
+	books/over-byte-terminal-selected \
+	books/over-byte-full-parser-range \
+	tests/acl2/over-byte-full-parser-range-tests \
 	tests/acl2/over-byte-range-relation-tests \
 	tests/acl2/served-selected-article-tests \
 	tests/acl2/over-byte-selected-row-relation-tests \
