@@ -153,3 +153,11 @@
     (word fn-pww-carry fn-octets pgs-digest-state fn-ew-buffer)
     (fn-dwc-read-observation token revision io-status fn-pww-carry fn-octets pgs-digest-state fn-ew-buffer)
     (mv word fn-pww-node))))
+
+; Exact six guard events admitted in the matched protected source world.
+(verify-guards fn-dwc-begin)
+(verify-guards fn-dwc-one)
+(verify-guards fn-dwc-node-one)
+(verify-guards fn-dwc-read-observation)
+(verify-guards fn-dwc-node-begin)
+(verify-guards fn-dwc-node-read-observation)
