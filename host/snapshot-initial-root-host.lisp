@@ -10,10 +10,17 @@
          (context (fn-prl-nth 3 initial)))
     (and (fn-sni-livep ledger source maintenance)
          (equal file (fn-hrs-h-file (fn-prl-nth 5 context))))))
+(defun fn-owner-recovery-initial-root-reservedp (ledger maintenance)
+  (declare (xargs :guard t))
+  (let* ((initial (fn-prl-nth 3 (cdr (fn-prl-binding maintenance (fn-prl-nth 3 ledger)))))
+         (role (fn-sni-role-entry :source-root (fn-prl-nth 6 initial))))
+    (equal (fn-prl-nth 1 role) :reserved)))
 (defun fn-owner-recovery-initial-root-acquire (source maintenance file fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
-  (if (not (fn-owner-recovery-initial-root-filep
-            (fn-owner-page-read-ledger fn-page-read-pool) source maintenance file))
+  (if (not (and (fn-owner-recovery-initial-root-filep
+                 (fn-owner-page-read-ledger fn-page-read-pool) source maintenance file)
+                (fn-owner-recovery-initial-root-reservedp
+                 (fn-owner-page-read-ledger fn-page-read-pool) maintenance)))
       (mv :initial-source-unavailable nil fn-page-read-pool)
     (mv-let (word token fn-page-read-pool)
       (fn-owner-page-file-pin file fn-page-read-pool)

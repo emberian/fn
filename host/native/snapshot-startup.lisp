@@ -91,7 +91,8 @@ canonical readiness or a publication capability."
              (let ((begun (fnn-core-state 'fn-owner-recovery-census-begin
                                           token (fourth admission))))
                (setq job (%fnn-snapshot-recovery-job-open
-                          service begun root maintenance view)))
+                          service begun root maintenance view))
+               (setf (fnn-snapshot-job-initial-source job) token))
              (handler-case
                  (progn
                    (setq workspace (%fnn-snapshot-initial-workspace-create admission))
@@ -142,4 +143,4 @@ internal seal/install must consume them before startup clears its source."
       (fnn-snapshot-capture-uncertain (condition) (error condition))
       (error (condition)
         (error 'fnn-snapshot-startup-retained :job job :workspace workspace
-               :message (format nil "startup census did not complete: ~a" condition))))))
+               :cause condition :message (format nil "startup census did not complete: ~a" condition))))))
