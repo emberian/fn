@@ -3742,7 +3742,8 @@
         "PRF-221",
         "PRF-229",
         "PRF-241",
-        "PRF-302"
+        "PRF-302",
+        "PRF-1168"
       ],
       "verification": [
         "proof",
@@ -3759,9 +3760,13 @@
         "tests/acl2/catalog-commit-tests.lisp",
         "tests/acl2/catalog-delta-tests.lisp",
         "tests/acl2/catalog-number-index-tests.lisp",
-        "books/config-policy-delta.lisp"
+        "books/config-policy-delta.lisp",
+        "books/index-backing-row-carry.lisp",
+        "tests/acl2/index-backing-row-carry-tests.lisp",
+        "specs/index-row-carry.md",
+        "planning/evidence/index-row-carry-2026-09-30"
       ],
-      "implementation_note": "Partial (catalog-slice, 2026-09-26): the held record, the interns and the catalog stobj with its obligations and keystones are certified (PRF-201); the catalog does not yet serve a path (PreparedCommit, the delta, the relation at open, the served reads and the host are PKT-585). Continuation catalog-slice-2 (2026-09-26): PreparedCommit and completion by token (books/catalog-commit.lisp, PRF-203), the shared transition fn-sn-finish-held equal to fn-sn-finish on the article arm under alpha and the context of the bytes, the context theorem in its re-decide form (the generation names the keyring; a stale context is refused by name), the delta grammar and its resumable application (books/catalog-delta.lisp), and the maintained relation R with its entries as the load fold (books/catalog-relation.lisp: written, admitted in the REPL, RED at certification at fn-cat-wire-list-of-redecide, not a root, not claimed; PKT-585). Still not served: the host calls none of it (steps 7 to 9 of PKT-585: the served reads, the host lines, the measurement).",
+      "implementation_note": "Partial (catalog-slice, 2026-09-26): the held record, the interns and the catalog stobj with its obligations and keystones are certified (PRF-201); the catalog does not yet serve a path (PreparedCommit, the delta, the relation at open, the served reads and the host are PKT-585). Continuation catalog-slice-2 (2026-09-26): PreparedCommit and completion by token (books/catalog-commit.lisp, PRF-203), the shared transition fn-sn-finish-held equal to fn-sn-finish on the article arm under alpha and the context of the bytes, the context theorem in its re-decide form (the generation names the keyring; a stale context is refused by name), the delta grammar and its resumable application (books/catalog-delta.lisp), and the maintained relation R with its entries as the load fold (books/catalog-relation.lisp: written, admitted in the REPL, RED at certification at fn-cat-wire-list-of-redecide, not a root, not claimed; PKT-585). Still not served: the host calls none of it (steps 7 to 9 of PKT-585: the served reads, the host lines, the measurement). PRF-1168 supplies conditional modern held16 intern/assignment and physical row-prefix source proofs; the actual recursive publisher/reader and retained arena-source composition remains open.",
       "note": "Lane catalog-slice (wave 5 lane 2, D33; the consolidation design of 2026-09-26, section 1)."
     },
     {
@@ -3781,16 +3786,21 @@
         "PRF-991",
         "PRF-1018",
         "PRF-1037",
-        "PRF-1044"
+        "PRF-1044",
+        "PRF-1168"
       ],
       "verification": [
         "proof",
         "measurement"
       ],
       "evidence": [
-        "planning/evidence/catalog-slice-2026-09-26.md"
+        "planning/evidence/catalog-slice-2026-09-26.md",
+        "books/index-backing-row-carry.lisp",
+        "tests/acl2/index-backing-row-carry-tests.lisp",
+        "specs/index-row-carry.md",
+        "planning/evidence/index-row-carry-2026-09-30"
       ],
-      "implementation_note": "The served catalog reads its indexed columns; the Message-ID column uses the keyed page table (PRF-1037). P2 slice 3 installs the current generation key at open and asks its saturation verdict before staging (PRF-1044). The served host now preserves :mpx-saturated as a named refusal rather than erasing it into generic :refused; the broadened NNTP refusal distinctness and uncertainty-separation theorems and their literal positive witnesses are REPL-admitted. Matching candidate certification/native execution, served crafted-collision/saturation activation, refusal-finder composition and retained-generation resource evidence remain open. The catalog rows are still heap-resident until P3/P4; no constant-memory whole-store claim follows.",
+      "implementation_note": "The served catalog reads its indexed columns; the Message-ID column uses the keyed page table (PRF-1037). P2 slice 3 installs the current generation key at open and asks its saturation verdict before staging (PRF-1044). The served host now preserves :mpx-saturated as a named refusal rather than erasing it into generic :refused; the broadened NNTP refusal distinctness and uncertainty-separation theorems and their literal positive witnesses are REPL-admitted. Matching candidate certification/native execution, served crafted-collision/saturation activation, refusal-finder composition and retained-generation resource evidence remain open. The catalog rows are still heap-resident until P3/P4; no constant-memory whole-store claim follows. PRF-1168 supplies conditional modern held16 intern/assignment and physical row-prefix source proofs; the actual recursive publisher/reader and retained arena-source composition remains open.",
       "note": "Lane catalog-slice (wave 5 lane 2, D33)."
     },
     {

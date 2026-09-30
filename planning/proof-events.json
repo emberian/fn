@@ -17678,6 +17678,48 @@
         }
       ],
       "pending_subject": "Actual registered query-token attachment, source-publication correspondence and funded scheduling caller remain required; authority-current is not the complete query decision."
+    },
+    {
+      "id": "PRF-1168",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ibrc-intern-establishes-row-domain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ibrc-buffer-intern-establishes-row-domain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ibrc-assignment-step-preserves-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ibrc-actual-assigned-row-domain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ibrc-withdrawal-preserves-row-domain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ibrc-row-set-appends-domain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ibrc-row-seal-preserves-domain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ibrc-row-copy-owned-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ibrc-physical-row-read-domain"
+        }
+      ],
+      "pending_subject": "Actual recursive provider/page-root carry, registered writer publication and captured arena incarnation/source correspondence remain open."
     }
   ]
 }
