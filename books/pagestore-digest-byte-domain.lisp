@@ -114,11 +114,33 @@
                                   fn-b3-output-cv fn-b3-output-root pgs-octets-be-nat))
             :do-not-induct t)))
 
+; Project only the observed position before opening the domain; digest values
+; and other state effects cannot influence this scalar obligation.
+(local
+ (defthm pgs-dbd-core-step-position-unfolds
+  (equal (pgs-dc-pos (mv-nth 1 (pgs-dc-step block pgs-digest-state)))
+         (case (pgs-dc-mode pgs-digest-state)
+           (:node (if (< 128 (- (pgs-dc-end pgs-digest-state) (pgs-dc-start pgs-digest-state)))
+                      (pgs-dc-pos pgs-digest-state) (pgs-dc-start pgs-digest-state)))
+           (:chunk (if (<= (- (pgs-dc-end pgs-digest-state) (pgs-dc-pos pgs-digest-state)) 8)
+                       (pgs-dc-pos pgs-digest-state) (+ 8 (pgs-dc-pos pgs-digest-state))))
+           (:return (if (and (not (zp (pgs-dc-depth pgs-digest-state)))
+                            (<= (pgs-dc-depth pgs-digest-state) 64)
+                            (equal (fn-b3-nthx 0 (pgs-dc-framesi (- (pgs-dc-depth pgs-digest-state) 1) pgs-digest-state)) :left))
+                        (nfix (fn-b3-nthx 1 (pgs-dc-framesi (- (pgs-dc-depth pgs-digest-state) 1) pgs-digest-state)))
+                      (pgs-dc-pos pgs-digest-state)))
+           (otherwise (pgs-dc-pos pgs-digest-state))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (pgs-dc-step)
+                  (nth update-nth fn-b3-output fn-b3-output-cv fn-b3-output-root
+                   pgs-octets-be-nat pgs-dc-pad-block fn-b3-cv8 fn-b3-nthx floor mod expt))))))
+
 (defthm pgs-dbd-core-step-keeps-position-byte-backed
   (implies (and (pgs-dbd-domainp limit byte-total pgs-digest-state))
            (<= (* 8 (pgs-dc-pos (mv-nth 1 (pgs-dc-step block pgs-digest-state)))) byte-total))
   :hints (("Goal"
-            :use ((:instance pgs-dbd-top-frame-unfolds
+            :use ((:instance pgs-dbd-core-step-position-unfolds)
+                  (:instance pgs-dbd-top-frame-unfolds
                     (depth (pgs-dc-depth pgs-digest-state)) (total (pgs-dc-total pgs-digest-state)))
                   (:instance pgs-dcd-top-frame-unfolds
                     (depth (pgs-dc-depth pgs-digest-state)) (total (pgs-dc-total pgs-digest-state)))
@@ -127,11 +149,9 @@
                   (:instance pgs-dbd-word-before-end-is-byte-backed
                     (word-offset (fn-b3-nthx 1 (pgs-dc-framesi
                                       (- (pgs-dc-depth pgs-digest-state) 1) pgs-digest-state)))))
-            :in-theory (e/d (pgs-dbd-domainp pgs-dcd-domainp pgs-dc-step)
-                             (nth update-nth pgs-dcd-framesp pgs-dbd-framesp pgs-dcd-powerp
-                                  pgs-dbd-top-frame-unfolds pgs-dcd-top-frame-unfolds
-                                  pgs-dbd-word-before-end-is-byte-backed fn-b3-output
-                                  fn-b3-output-cv fn-b3-output-root pgs-octets-be-nat))
+            :in-theory (union-theories (theory 'minimal-theory)
+                          '(pgs-dbd-domainp pgs-dcd-domainp natp posp zp nfix
+                            member-equal member-eq eql))
             :do-not-induct t)))
 
 (defthm pgs-dbd-tail-update-keeps-page-domain

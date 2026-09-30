@@ -108,5 +108,28 @@
       "Actual bounded native scheduler, publication/restart",
       "Selected runtime initial demand, supported B/U shared pool installation"
     ]
+  },
+  "exact_trailer_increment": {
+    "source_hashes": {
+      "books/bp-node-checkpoint-trailer.lisp": "84fac5f4c14303adb381c0113410b6e18a9169dfd5860f3a232f428cf58155ad",
+      "tests/acl2/bp-node-checkpoint-trailer-tests.lisp": "2511a1c4af5931f80b4683994b81d7202d2ea2d709ab313b661ad83eb7a90f07",
+      "books/pagestore-digest-cursor-domain.lisp": "08a55ce36e983b28dd106e7144b8aa38067a930c5454fb03f058ade6acd61936",
+      "books/pagestore-digest-byte-domain.lisp": "204f92c4298e7ed0b02f16ddb53b19bd9ccb2a05593cdf408ec5a5121ceb12f4"
+    },
+    "session": "bpck-trailer6",
+    "root_forms": 13,
+    "root_acl2_seconds": 29.25,
+    "root_prover_steps": 10419889,
+    "literal_teeth": [
+      "fn-bpckt-terminal-positive",
+      "fn-bpckt-implementation-terminal-positive",
+      "fn-bpckt-missing-done-counterexample",
+      "fn-bpckt-corrupted-source-invariant-counterexample"
+    ],
+    "teeth_prover_steps": 2392,
+    "domain_repair": "a5ff40274f0b5fc9228dffbc219ff8927f909b8e selected hint atop reader 9d0ba and 4e42 exact source",
+    "scope": "Proper source admission and conditional exact BP emit-prefix to terminal frame trailer; four joint attachments discharged. No certification, stage-file source-effect/trajectory preservation, runtime funding, scheduler/native activation or full interrupted slice qualification.",
+    "logs": "build/proof-repl/bpck-trailer6",
+    "session_stopped": true
   }
 }
