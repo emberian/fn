@@ -12,7 +12,8 @@
 (assert-event
  (and (eq (symbol-class 'fn-bps-asb-readonly-keyp (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-bps-asb-coordinate (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-bps-asb-step (w state)) :common-lisp-compliant)))
+      (eq (symbol-class 'fn-bps-asb-step (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-bps-asb-positionp (w state)) :common-lisp-compliant)))
 
 (defun fn-bpspt-run (cursor remaining fuel)
   (declare (xargs :guard t :measure (nfix fuel)
@@ -23,6 +24,7 @@
                                       (if (consp remaining) (list (car remaining)) nil)) 1))
            (next (fn-bps-field 2 step)))
       (if (not (and (natp (fn-bps-get :offset cursor))
+                    (fn-bps-asb-positionp cursor) (fn-bps-asb-positionp next)
                     (natp (fn-bps-field 3 step))
                     (equal (fn-bps-asb-coordinate next) (fn-bps-asb-coordinate cursor))
                     (equal (fn-bps-get :offset next)
@@ -85,3 +87,30 @@
                     (+ (fix (fn-bps-get :offset corrupted)) (fn-bps-field 1 drive))))
         (not (equal (fn-bps-get :offset (fn-bps-field 2 step))
                     (+ (fix (fn-bps-get :offset corrupted)) (fn-bps-field 3 step)))))))
+
+(assert-event
+ (and (natp 100) (natp (len *fn-bpspt-wire*))
+      (fn-bps-asb-positionp *fn-bpspt-start*)))
+
+; Complete start premise: both coordinates are natural, including a refused
+; unsupported kind. The range facts do not claim valid grammar or profile.
+(assert-event
+ (let ((cursor (fn-bps-asb-start 99 :position 100 0 *fn-bpspt-limits*)))
+   (and (natp 100) (natp 0) (fn-bps-asb-positionp cursor)
+        (eq (fn-bps-get :status cursor) :refused))))
+; Each omission affirmatively retains the other numeric start hypothesis.
+(assert-event
+ (and (natp 3) (not (natp -1))
+      (not (fn-bps-asb-positionp (fn-bps-asb-start 11 :position -1 3 *fn-bpspt-limits*)))))
+(assert-event
+ (and (natp 100) (not (natp -1))
+      (not (fn-bps-asb-positionp (fn-bps-asb-start 11 :position 100 -1 *fn-bpspt-limits*)))))
+; Corrupted-state omission: mutate only offset below start, then quantum zero
+; preserves the invalid range in both actual drive and step. Sole premise.
+(assert-event
+ (let* ((corrupted (fn-bps-put :offset 99 *fn-bpspt-start*))
+        (drive (fn-bps-asb-drive corrupted *fn-bpspt-wire* 0))
+        (step (fn-bps-asb-step corrupted (fn-bps-window-make :position 99 *fn-bpspt-wire*) 0)))
+   (and (not (fn-bps-asb-positionp corrupted))
+        (not (fn-bps-asb-positionp (car drive)))
+        (not (fn-bps-asb-positionp (fn-bps-field 2 step))))))

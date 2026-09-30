@@ -242,3 +242,50 @@
   :hints (("Goal" :in-theory (e/d (fn-bps-asb-step fn-bps-field)
                                  (fn-bps-get fn-bps-stop fn-bps-asb-drive
                                   fn-bps-asb-drive-rest-is-exact-unconsumed-suffix)))))
+
+; Ghost range invariant. The served path carries it; it does not revalidate.
+(defun fn-bps-asb-positionp (cursor)
+  (declare (xargs :guard t))
+  (let ((start (fn-bps-get :start cursor))
+        (length (fn-bps-get :length cursor))
+        (offset (fn-bps-get :offset cursor)))
+    (and (natp start) (natp length) (natp offset)
+         (<= start offset) (<= offset (+ start length)))))
+
+(defthm fn-bps-asb-start-establishes-source-range
+  (implies (and (natp start-offset) (natp declared-length))
+           (fn-bps-asb-positionp
+            (fn-bps-asb-start kind backing-id start-offset declared-length limits)))
+  :hints (("Goal" :in-theory (e/d (fn-bps-asb-start fn-bps-asb-positionp fn-bps-get fn-bps-stop fn-bps-put)
+                                 (fn-bps-limitsp fn-bps-uintp fn-bps-field)))))
+
+(local
+ (defthm fn-bps-position-drive-offset-upper-bound-by-definition
+   (implies (and (natp (fn-bps-get :start cursor))
+                 (natp (fn-bps-get :length cursor))
+                 (natp (fn-bps-get :offset cursor))
+                 (<= (fn-bps-get :offset cursor)
+                     (+ (fn-bps-get :start cursor) (fn-bps-get :length cursor))))
+            (<= (fn-bps-get :offset (car (fn-bps-asb-drive cursor octets quantum)))
+                (+ (fn-bps-get :start cursor) (fn-bps-get :length cursor))))
+   :hints (("Goal" :induct (fn-bps-asb-drive cursor octets quantum)
+            :in-theory (e/d (fn-bps-asb-drive fn-bps-field)
+                            (fn-bps-get fn-bps-stop fn-bps-stage fn-bps-internal-step
+                             fn-bps-internal-stagep fn-bps-asb-octet
+                             fn-bps-asb-drive-offset-is-consumed-prefix
+                             fn-bps-asb-drive-rest-is-exact-unconsumed-suffix))))))
+
+(defthm fn-bps-asb-drive-preserves-source-range
+  (implies (fn-bps-asb-positionp cursor)
+           (fn-bps-asb-positionp (car (fn-bps-asb-drive cursor octets quantum))))
+  :hints (("Goal" :use ((:instance fn-bps-position-drive-offset-upper-bound-by-definition))
+           :in-theory (e/d (fn-bps-asb-positionp)
+                           (fn-bps-asb-drive fn-bps-get fn-bps-field
+                            fn-bps-position-drive-offset-upper-bound-by-definition)))))
+
+(defthm fn-bps-asb-step-preserves-source-range
+  (implies (fn-bps-asb-positionp cursor)
+           (fn-bps-asb-positionp (fn-bps-field 2 (fn-bps-asb-step cursor window quantum))))
+  :hints (("Goal" :in-theory (e/d (fn-bps-asb-step fn-bps-field fn-bps-asb-positionp)
+                                 (fn-bps-asb-drive fn-bps-get fn-bps-stop
+                                  fn-bps-asb-drive-rest-is-exact-unconsumed-suffix)))))

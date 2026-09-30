@@ -1069,6 +1069,14 @@ Omitting the readonly-key or natural-offset premise has explicit counterexamples
 absent offset is a separately labelled corrupted-state case. Equal IDs and
 offsets remain insufficient for provider byte equality or pinned lifetime.
 
+The same position book establishes natural start/declared-length/offset
+with `start <= offset <= start + declared-length` and preserves the entire
+range through the actual drive and step. Its ghost predicate is never served
+revalidation. Literal witnesses check every exercised byte/metadata transition,
+each omitted natural start coordinate, and an offset-only below-start corruption.
+This range property is separate from grammar validity, emitted span semantics
+and physical provider provenance.
+
 The logical target-graph reference in `books/bpsec-target.lisp` binds each
 ASB as `(block-number . ASB)`, checks actual block existence/type, unique
 service/target pairs, forbidden security targets and payload BCB flags. Every
