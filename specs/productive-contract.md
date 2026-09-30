@@ -148,10 +148,11 @@ with no cause, the must-fail for an uncertain with no cause, and a mutant
 cause function that drops the outstanding-completion case and leaves the
 unconfirmed `:durable` claim without one.
 
-## 5. The served read and the peer transfer (open)
+## 5. Served reads and transfer progress
 
 The same shape is owed for ARTICLE by number and by Message-ID and for an
-accepted IHAVE/TAKETHIS; both are stated here and unproved.
+accepted inbound IHAVE/TAKETHIS; both remain open. Outbound local transfer
+progress is a separate contract below.
 
 - **Read.** A pinned reader (`fn-own-conn-version`) whose view holds the
   article (by number in a selected group, or by Message-ID) and whose
@@ -167,6 +168,43 @@ accepted IHAVE/TAKETHIS; both are stated here and unproved.
   the record in the durable history. The subject is
   `fn-own-transit-outcome`; the store and owner parts of section 3 are
   shared, only the finish word and the rendering differ.
+
+### Outbound local transfer
+
+The host calls `fn-own-feed-port-tick-peer` from `fn-owner-feed-tick`.
+`fn-pct-tick-offers-the-queued-article` (PRF-1055) states its complete
+productive offer contract: a valid selectable feed with an encodable FNFD
+record emits CHECK or IHAVE, records the same Message-ID and attempt, marks
+that entry offered and advances the attempt counter. CHECK/IHAVE offers do
+not carry the article. `fn-pct-tick-hands-nothing-otherwise` (PRF-1056)
+separates accepted quiet ticks from explicit port refusals. Refusal preserves
+the table and releases no records or effects.
+
+The peer's 335/238 requests the article (RFC 3977 §6.3.2; RFC 4644 §§2.4–2.5).
+`fn-owner-feed-octets` calls `fn-own-feed-port-observe-peer` with the article
+bytes from `fn-ofa-feed-article` (the arena abstraction, never its handle).
+`fn-pct-requested-article-is-handed-to-the-local-transport` (PRF-1062)
+requires a valid feed, that reply code, an offered entry, a natural connection
+and an encodable sent record. It guarantees the exact command effect carrying
+those bytes, the `:feed-sent` record naming the same Message-ID and attempt,
+the entry in sent state, and no second attempt allocation.
+
+The native publication renders/dot-stuffs the command and appends its sealed
+FNFD record before writing the socket. Socket and disk operations remain the
+host I/O trust boundary; this is not a newly named ACL2 assumption. Core
+admission of these theorems is not certification or native execution evidence.
+The matching image run is the runner's pending gate. The native witness
+`test_productive_local_transfer_precedes_remote_acceptance` observes the
+complete article (including a literal leading-dot body line) while its
+scripted peer withholds 239. It does not stand in for an actual remote durable
+acceptance or application-processing claim. Those remote obligations, and the
+inbound durable transit paragraph above, remain independent and open.
+
+Teeth in `tests/acl2/productive-transfer-tests.lisp` assert each literal
+antecedent and complete conclusion, remove each hypothesis while checking all
+retained hypotheses, and distinguish a mutant offer record from the required
+sent record. A redundant bound-entry premise was removed only after proving
+the weaker offer/send statements; validity implies the entry exists.
 
 ## 6. The external observer (PRF-1003)
 

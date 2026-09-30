@@ -33,9 +33,11 @@ OPERATIONS = ("post", "read", "list-group", "retry", "recover", "restart", "chec
               "status", "reader-snapshot", "deliver-chunk", "disconnect", "policy-change",
               "acquire-hold", "release-hold", "begin-compaction", "reclaim",
               "cancel-reader", "retire-generation", "deliver-delayed-page",
-              "receipt", "replay-media", "probe")
+              "receipt", "replay-media", "probe",
+              "model-prepare", "model-complete", "model-recover")
 FAULT_ACTIONS = ("kill", "lose-response", "withhold-completion", "report-error",
-                 "drop-writes", "substitute-record", "rollback", "interleave")
+                 "drop-writes", "substitute-record", "rollback", "interleave",
+                 "deliver-stale-completion")
 FAULT_CLASSES = ("contract-admissible", "assumption-challenging")
 STAGES = ("issued", "performed", "persisted", "observed")
 WITNESSES = ("post-accepted", "retry-reconciled", "read-completed",
@@ -46,9 +48,12 @@ WITNESSES = ("post-accepted", "retry-reconciled", "read-completed",
              # the interop backend (W7e, adapters/inn_lab.py): a copy served
              # by the other agent matched under the named normalization; a
              # Path loop refused; a second offer refused as held
-             "relay-normalized", "loop-refused", "duplicate-refused")
+             "relay-normalized", "loop-refused", "duplicate-refused",
+             "model-prepared", "model-published", "model-settled",
+             "issued-read-held", "cancelled-read-settled", "retired-file-closed",
+             "independent-response-held", "response-hold-settled")
 REPLAY = ("exact", "timed", "image")
-CONTRACTS = ("local-commit-log",)
+CONTRACTS = ("local-commit-log", "acceptance-model", "page-io-ownership", "reclaim-response-hold")
 CANDIDATE_RULES = ("absent", "present", "either")
 # The routes a post's cut is reached by; the registry carries each route's
 # column where they differ (design §5: `operator post' and `store post' are
@@ -66,14 +71,16 @@ EXPECTED = ("consistent", "violation", "inconclusive", "no-witness", "harness-fa
 # `kill_form` the cut that already exists for a process death there, if any.
 PENDING_BOUNDARIES = {
     "page-read-outstanding": {
-        "note": "reader cancel, generation retire, then the read delivered",
+        "note": "issued read cancelled, immutable file incarnation retired, then completion discarded",
         "operations": ("read", "reader-snapshot"),
         "owner": "online-reclaim-8",
         "kill_form": None,
-        "coordinate": "none yet: the hold sits in fn-owner-chunk-span (host/native/owner.lisp) "
-                      "after the reader's snapshot and before the page's delivery; reader "
-                      "generations are reclaim's since the pin port (extent-identity finished "
-                      "at ef75e8f4e), so online-reclaim-8 adds the held form"},
+        "coordinate": "matching-image execution pending: source6a6302488 adds "
+                      "FN_NATIVE_PAGE_IO_HOLD=RELEASE-FILE after real issue/token/fd/buffer "
+                      "acquisition in fnn-extent-prefetch (host/native/extent.lisp). "
+                      "tools/resilience/adapters/page_io.py records cancelled-token "
+                      "settlement, blocked retired-file close and a distinct productive "
+                      "retained read; worker thread death is a separate pending claim"},
     "reclaim-candidate-selected": {
         "note": "a new independent hold before the destructive action",
         "operations": ("reclaim",),
@@ -86,10 +93,12 @@ PENDING_BOUNDARIES = {
                                "+fnn-reclaim-cuts+; the held point is reclaim-CUT",
                       "source": "lane/online-reclaim a8b5e0f72 (its developer image does not "
                                 "build yet: a definterface :kinds refusal on fn-arx-file-count)"},
-        "coordinate": "kill form FN_NATIVE_RECLAIM_FAULT=captured:kill on dev; held form "
-                      "FN_NATIVE_RECLAIM_HOLD=captured:RELEASE-FILE on lane/online-reclaim "
-                      "a8b5e0f72: the runner that acquires a hold at it is the next increment; "
-                      "until the selector is in this tree and that runner exists, pending"},
+        "coordinate": "matching-image execution pending: capture hold "
+                      "FN_NATIVE_RECLAIM_HOLD=captured:RELEASE-FILE is in this tree, and "
+                      "response-pin sourcecaa3bc7e acquires the independent live hold. "
+                      "tools/resilience/adapters/reclaim_hold.py observes actual OVER "
+                      "quantum-held, reader deferral, named response settlement and "
+                      "productive reclaim; no plan-only substitute or physical-sector claim"},
     "receipt-observed": {
         "note": "duplicate, reorder with a policy change, lose its durable completion",
         "operations": ("receipt",),
@@ -247,7 +256,12 @@ def boundary_registry() -> dict:
     if str(ROOT) not in sys.path:
         sys.path.insert(0, str(ROOT))
     from tests.campaign import native_cuts  # noqa: E402
-    registry = {}
+    registry = {"model-completion-delivery": {
+        "source": "books/acceptance.lisp:fn-accept-complete/fn-accept-recover",
+        "operations": ["model-complete", "model-recover"],
+        "actions": ["report-error", "deliver-stale-completion"],
+        "executable": True, "backend": "acceptance-model",
+        "rule": None, "rules": {}, "tables": []}}
     tables = (("POST_LOG_CUTS", native_cuts.POST_LOG_CUTS),
               ("POST_CUTS", native_cuts.POST_CUTS),
               ("RECOVERY_CUTS", native_cuts.RECOVERY_CUTS),
@@ -370,6 +384,20 @@ def validate(scenario: Scenario, registry: dict | None = None) -> list:
             problems.append("{}: unknown operation {}".format(o.id, o.op))
         if o.actor not in actors:
             problems.append("{}: unknown actor {}".format(o.id, o.actor))
+        if o.op.startswith("model-"):
+            if scenario.contract != "acceptance-model":
+                problems.append(o.id + ": model operation requires acceptance-model profile")
+            if o.args.get("identity") not in ("A", "B"):
+                problems.append(o.id + ": model fixture identity must be A or B")
+            generation = o.args.get("generation")
+            if type(generation) is not int or generation < 0:
+                problems.append(o.id + ": model generation must be natural")
+            allowed = {"model-complete": ("durable", "aborted", "indeterminate"),
+                       "model-recover": ("committed", "absent")}
+            if o.op in allowed and o.args.get("result") not in allowed[o.op]:
+                problems.append(o.id + ": invalid model result")
+        elif scenario.contract == "acceptance-model":
+            problems.append(o.id + ": acceptance-model requires model operations")
         if o.op == "post" and not o.args.get("groups"):
             problems.append("{}: a post names its groups".format(o.id))
         if o.op == "retry":
@@ -420,14 +448,13 @@ def validate(scenario: Scenario, registry: dict | None = None) -> list:
 # nemesis needs does not.  Keyed by the operation's `op` and the recipe.
 PENDING_INTERLEAVES = {
     ("policy-change", "bp-node"): {
-        "coordinate": "no live path: `operator CONFIG bp-route remove` under a running "
-                      "`bp-node serve` is refused store-held (a process holds the store lock "
-                      "and no control socket is there to reach it; rf4-444f-2's words); "
-                      "`bp-node serve` opens no control socket and the owner service "
-                      "(`operator run`) does not embed the BP node, so the live "
-                      "reconfiguration path (host/native/control.lisp :admin -> "
-                      "fnn-owner-live-admin-serialized) cannot reach a BP node's route table",
-        "owner": "coordinator (finding, resilience-framework-5)"},
+        "coordinate": "live BP route control matching-image execution pending: "
+                      "the adapter stages `bp-node serve ... --control-config CONFIG` and "
+                      "requires actual BP NODE CONTROL for this Store; the earlier image "
+                      "rf4-444f-2 refused live `bp-route remove` as store-held. "
+                      "Source0238f266f provides the same serialized BP owner pump during the "
+                      "receipt decided hold; offline edits cannot stand in for its native run",
+        "owner": "bp_resume (serialized live BP control); resilience (SCN-218 adapter)"},
 }
 
 

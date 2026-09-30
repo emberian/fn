@@ -51,43 +51,15 @@ PRIOR = {"id": "post-prior", "groups": [GROUP]}
 
 
 def _pending_page_read() -> Scenario:
-    return Scenario(
-        id="schedule-page-read-outstanding",
-        title="a page read outstanding: the reader cancelled, the old generation retired, "
-              "the delayed page delivered; the read completes with the article's bytes",
-        requirements=["STO-002"], contract="local-commit-log",
-        initial={"recipe": "served-node", "groups": [GROUP], "prior": [PRIOR]},
-        actors=adapter.ACTORS,
-        operations=[Operation("snapshot", "client", "reader-snapshot", {"article": "post-prior"}),
-                    Operation("read-prior", "client", "read", {"article": "post-prior"}),
-                    Operation("cancel", "nemesis", "cancel-reader", {"reader": "snapshot"}),
-                    Operation("retire", "nemesis", "retire-generation"),
-                    Operation("deliver", "nemesis", "deliver-delayed-page",
-                              {"article": "post-prior"})],
-        faults=[Fault("read-prior", "page-read-outstanding", "interleave", "contract-admissible",
-                      "performed", "served-post", ("cancel", "retire", "deliver"))],
-        healing=["deliver"], witnesses=["read-completed", "read-during-competing-work"],
-        healing_bound=adapter.healing_bound())
+    # Cancellation discards the old token; productivity is a separate read.
+    # The row remains pending until its matching-image native run is recorded.
+    from .adapters import page_io
+    return page_io.example()
 
 
 def _pending_reclaim() -> Scenario:
-    return Scenario(
-        id="schedule-reclaim-candidate-selected",
-        title="a reclaim candidate selected: a new independent hold is acquired before the "
-              "destructive action; the held article is still read whole, eligible content "
-              "is freed",
-        requirements=["STO-002"], contract="local-commit-log",
-        initial={"recipe": "served-node", "groups": [GROUP], "prior": [PRIOR]},
-        actors=adapter.ACTORS,
-        operations=[Operation("reclaim-1", "client", "reclaim"),
-                    Operation("hold", "nemesis", "acquire-hold", {"article": "post-prior"}),
-                    Operation("read-prior", "nemesis", "read", {"article": "post-prior"}),
-                    Operation("release", "nemesis", "release-hold", {"article": "post-prior"})],
-        faults=[Fault("reclaim-1", "reclaim-candidate-selected", "interleave",
-                      "contract-admissible", "performed", "store-post",
-                      ("hold", "read-prior"))],
-        healing=["release"], witnesses=["reclaim-freed", "read-during-competing-work"],
-        healing_bound=adapter.healing_bound())
+    from .adapters import reclaim_hold
+    return reclaim_hold.example()
 
 
 def _receipt(variant: str) -> Scenario:

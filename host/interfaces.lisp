@@ -1879,6 +1879,9 @@
 (definterface fn-splan-cursor-window
   :class ::common-lisp-compliant)
 
+(definterface fn-splan-cursor-resume-ms
+  :class ::common-lisp-compliant)
+
 (definterface fn-splan-window-size
   :class ::common-lisp-compliant
   :keystones (fn-splan-window-size-is-positive-until-done))
@@ -4596,6 +4599,28 @@
 (definterface fn-osc-advance :class :common-lisp-compliant)
 
 (definterface fn-osd-seal-program :class :common-lisp-compliant)
+; Serialized BP node local control (route-only first increment).
+(definterface fn-bpnc-config-bound
+  :class ::common-lisp-compliant)
+(definterface fn-bpnc-startup
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnc-ready-startup-binds-the-parsed-store))
+(definterface fn-bpnc-turn-plan
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnc-grant-is-the-authorized-route-plan))
+(definterface fn-bpnc-socket-initial
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnc-open-run-live-iff-both-completions-succeed))
+(definterface fn-bpnc-socket-action
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnc-retirement-stops-the-control-listener))
+(definterface fn-bpnc-socket-step
+  :class ::common-lisp-compliant
+  :keystones (fn-bpnc-open-run-live-iff-both-completions-succeed
+              fn-bpnc-retirement-stops-the-control-listener))
+
+(definterface fn-bpnc-status-unavailable
+  :class ::common-lisp-compliant)
 ; Called directly only while installing dispatch from the loaded image world.
 (definterface fn-di-raw-with-problem
   :class :program
@@ -4614,3 +4639,9 @@
 
 (definterface fn-osp-assemble :class :common-lisp-compliant)
 (definterface fn-owner-osn-prepared-run :class :program)
+(definterface fn-pio-reap-work :class :common-lisp-compliant)
+(definterface fn-pio-worker-death-step :class :common-lisp-compliant
+  :kinds ((deadp booleanp)))
+
+(definterface fn-pio-file-issue :class :common-lisp-compliant
+  :keystones ((fn-pio-successive-file-issues-have-distinct-identities :via fn-pio-file-issue)))

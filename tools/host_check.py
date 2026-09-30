@@ -1636,26 +1636,27 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--timeout-seconds", type=int, default=DEFAULT_TIMEOUT_SECONDS)
     parser.add_argument("--log-dir", default=None,
                         help="write each session's transcript here")
-    parser.add_argument("--load", action="store_true",
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--load", action="store_true",
                         help="load the raw host/native files in the build's order into one "
                              "bare ACL2 and report errors, arity, macro order and names "
                              "nothing defines (seconds; no image build).  Requires FN_ACL2 "
                              "(or acl2 on PATH): exit 2 NOT RUN without it")
-    parser.add_argument("--tables", action="store_true",
+    mode.add_argument("--tables", action="store_true",
                         help="static: refuse a global make-hash-table in host/ that is "
                              "neither :synchronized t nor declared thread-confined or "
                              "guarded-by a lock (no ACL2)")
-    parser.add_argument("--alone", action="store_true",
+    mode.add_argument("--alone", action="store_true",
                         help="load each FILE (default: every host file) alone in its own "
                              "ACL2: a diagnosis, not the gate (build order is the gate)")
-    parser.add_argument("--world", action="store_true",
+    mode.add_argument("--world", action="store_true",
                         help="static: every name a raw host/native file passes to fnn-core* "
                              "or fnn-call is defined in the world of the image that loads it "
                              "(build.lisp, build-dtn.lisp; FILEs name other build scripts)")
-    parser.add_argument("--interfaces", action="store_true",
+    mode.add_argument("--interfaces", action="store_true",
                         help="static: the declared-interface step (interface_emit --check's "
                              "findings, counts per touched host file); --load adds the world half")
-    parser.add_argument("--forward", action="store_true",
+    mode.add_argument("--forward", action="store_true",
                         help="static: a call in an ld host file of a name only a later "
                              "form of the ld files defines (no ACL2; --load runs it too)")
     parser.add_argument("--build", default=None,
@@ -1666,10 +1667,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--require-world", action="store_true",
                         help="with --load: exit 2 NOT RUN when the certified umbrella is "
                              "not available, rather than falling back to a bare ACL2")
-    parser.add_argument("--books", action="store_true",
+    mode.add_argument("--books", action="store_true",
                         help="static: every name an ld host file calls that a repository "
                              "book defines is in the image world (BUILD... default both)")
-    parser.add_argument("--read", action="store_true",
+    mode.add_argument("--read", action="store_true",
                         help="static: every host/ file (or FILE) reads as s-expressions "
                              "(no ACL2; half a second)")
     args = parser.parse_args(argv)

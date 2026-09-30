@@ -654,6 +654,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-progress-invariants \
 	books/bp-node-progress-guards \
 	books/bp-node-job-offer-guards \
+	books/bp-node-control \
 	books/bp-node-progress-premises \
 	tests/acl2/bp-node-progress-premises-tests \
 	books/bp-node-progress-bridge \
@@ -702,6 +703,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-job-offer \
 	books/bp-node-job-offer-progress \
 	tests/acl2/bp-node-job-offer-tests \
+	tests/acl2/bp-node-control-tests \
 	books/bp-node-job-cursor \
 	tests/acl2/bp-node-job-cursor-tests \
 	books/bp-node-run-class \
@@ -980,6 +982,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-view \
 	books/served-columns \
 	tests/acl2/served-columns-tests \
+	books/nov-byte-window \
+	tests/acl2/nov-byte-window-tests \
+	books/nov-column-window \
+	tests/acl2/nov-column-window-tests \
 	books/served-catalog \
 	books/served-catalog-chain \
 	books/served-catalog-owner \
@@ -1279,6 +1285,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/productive-contract \
 	books/productive-observer \
 	tests/acl2/productive-contract-tests \
+	books/productive-transfer \
+	tests/acl2/productive-transfer-tests \
 	tests/acl2/owner-numbering-tests \
 	books/number-durability \
 	books/number-durability-handles \
@@ -1475,6 +1483,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-reclaim-conns-tests \
 	tests/acl2/owner-reclaim-pass-tests \
 	tests/acl2/owner-reclaim-carry-tests \
+	tests/acl2/owner-retain-state-tests \
 	tests/acl2/owner-reclaim-ready-tests \
 	tests/acl2/control-request-word-tests \
 	tests/acl2/packed-submission-tests \
@@ -1491,6 +1500,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/snapshot-capture-lease-tests \
 	tests/acl2/snapshot-publication-tests \
 	tests/acl2/owner-snapshot-request-tests \
+	books/owner-snapshot-recovery \
+	tests/acl2/owner-snapshot-recovery-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
 	books/state-globals \
@@ -1558,6 +1569,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/stx-node-lace \
 	books/stx-policy \
 	books/peer-transit-authority \
+	books/article-subject \
+	tests/acl2/article-subject-tests \
+	tests/acl2/group-authority-tests \
 	books/store-node-correspondence \
 	books/stx-epochs \
 	books/stx-authority \

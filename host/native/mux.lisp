@@ -377,17 +377,35 @@ DONEP)."
                                  (fnn-mux-conn-class conn)
                                  (and (fnn-mux-conn-zout conn) t)))
 
+(defun fnn-mux-plan-yield (conn plan after &optional empty-progressp)
+  "Retain the cursor's exact continuation and ownership until its
+positive ACL2 scheduling delay expires.  AFTER belongs to the whole reply."
+  (let ((ms (fnn-core 'fn-splan-cursor-resume-ms)))
+    (unless (and (integerp ms) (> ms 0))
+      (fnn-fault "owner returned a malformed cursor resume delay"))
+    (when (fnn-developer-selector "FN_NATIVE_OVER_WINDOW")
+      (fnn-err "OVER ~a cid=~d" (if empty-progressp "empty-yield" "cursor-yield")
+               (fnn-mux-conn-cid conn)))
+    (setf (fnn-mux-conn-plan conn) plan
+          (fnn-mux-conn-after conn) after
+          (fnn-mux-conn-out conn) nil
+          (fnn-mux-conn-out-at conn) 0
+          (fnn-mux-conn-out-deadline conn) nil
+          (fnn-mux-conn-want conn) nil
+          (fnn-mux-conn-resume-at conn)
+          (+ (fnn-now) (round (* ms internal-time-units-per-second) 1000)))))
+
 (defun fnn-mux-queue-plan (loop conn plan after)
   "Write the step's render PLAN a window at a time (HST-023): the first
 window now, each next one when the socket took the last (fnn-mux-flush).
 The connection holds one window and the plan's continuation, never the
 whole reply; a plan with nothing to write runs AFTER at once."
-  (multiple-value-bind (octets rest donep)
+  (multiple-value-bind (octets rest donep yieldedp)
       (fnn-mux-render-next loop conn plan)
     (setf (fnn-mux-conn-plan conn) (if donep nil rest))
-    (if (> (length octets) 0)
-        (fnn-mux-queue loop conn octets :send-reply after)
-      (fnn-mux-after loop conn after))))
+    (cond (yieldedp (fnn-mux-plan-yield conn rest after t))
+          ((> (length octets) 0) (fnn-mux-queue loop conn octets :send-reply after))
+          (t (fnn-mux-after loop conn after)))))
 
 (defun fnn-mux-flush (loop conn)
   "Write the queued window; when the socket took it, render the plan's next
@@ -407,9 +425,18 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
       (unless (fnn-mux-conn-out conn)
         (return-from fnn-mux-flush nil))
       (let ((plan (fnn-mux-conn-plan conn)))
+        ;; A completed output window must not chain another semantic
+        ;; cursor quantum into this same I/O event, even when the socket
+        ;; could accept every window immediately.  Timers re-feed it.
+        (when (and plan (fnn-core 'fn-splan-at-cursorp plan))
+          (fnn-mux-plan-yield conn plan (fnn-mux-conn-after conn))
+          (return-from fnn-mux-flush nil))
         (if plan
-            (multiple-value-bind (octets rest donep)
+            (multiple-value-bind (octets rest donep yieldedp)
                 (fnn-mux-render-next loop conn plan)
+              (when yieldedp
+                (fnn-mux-plan-yield conn rest (fnn-mux-conn-after conn) t)
+                (return-from fnn-mux-flush nil))
               (setf (fnn-mux-conn-plan conn) (if donep nil rest)
                     (fnn-mux-conn-out conn) (fnn-mux-z-out conn octets)
                     (fnn-mux-conn-out-at conn) 0
@@ -660,6 +687,7 @@ no exposure wait pending."
                          (and (fnn-mux-conn-zin conn)
                               (fnn-zin-pending (fnn-mux-conn-zin conn))))
                      (null (fnn-mux-conn-out conn))
+                     (null (fnn-mux-conn-plan conn))
                      (null (fnn-mux-conn-await conn))
                      (null (fnn-mux-conn-resume-at conn)))
           do (when (or *fnn-sigterm-requested* (fnn-owner-service-stopping service))
@@ -1003,9 +1031,13 @@ operation then observes the error or the end of input)."
               ((and (eq (fnn-mux-conn-phase conn) :serving)
                     (due (fnn-mux-conn-resume-at conn)))
                (setf (fnn-mux-conn-resume-at conn) nil)
-               (fnn-mux-work loop conn))
+               (if (fnn-mux-conn-plan conn)
+                   (fnn-mux-queue-plan loop conn (fnn-mux-conn-plan conn)
+                                       (fnn-mux-conn-after conn))
+                 (fnn-mux-work loop conn)))
               ((and (eq (fnn-mux-conn-phase conn) :serving)
                     (null (fnn-mux-conn-out conn))
+                    (null (fnn-mux-conn-plan conn))
                     (null (fnn-mux-conn-input conn))
                     (null (fnn-mux-conn-await conn))
                     (null (fnn-mux-conn-resume-at conn))
@@ -1038,6 +1070,7 @@ whatever the descriptor says."
                    (and (eq (fnn-mux-conn-phase conn) :serving)
                         (fnn-mux-conn-channel conn)
                         (null (fnn-mux-conn-out conn))
+                        (null (fnn-mux-conn-plan conn))
                         (null (fnn-mux-conn-input conn))
                         (null (fnn-mux-conn-await conn))
                         (null (fnn-mux-conn-resume-at conn))
@@ -1066,7 +1099,10 @@ whatever the descriptor says."
          (pending (fnn-mux-pending-tls loop)))
     (dolist (conn pending)
       (fnn-mux-dispatch loop conn))
-    (let* ((polled (remove-if (lambda (conn) (zerop (fnn-mux-interest conn)))
+    (let* ((polled (remove-if (lambda (conn)
+                               (or (eq (fnn-mux-conn-phase conn) :done)
+                                   (and (zerop (fnn-mux-interest conn))
+                                        (null (fnn-mux-conn-plan conn)))))
                               (fnn-mux-loop-conns loop)))
            (n (1+ (length polled)))
            (fds (make-array n)) (events (make-array n))
@@ -1094,13 +1130,21 @@ whatever the descriptor says."
         (loop for conn in polled for i from 1
               unless (or (zerop (aref revents i))
                          (eq (fnn-mux-conn-phase conn) :done))
-                do (fnn-mux-dispatch loop conn)))))
+                do (if (and (fnn-mux-conn-plan conn)
+                            (zerop (fnn-mux-interest conn))
+                            (not (zerop (logand (aref revents i) +fnn-mux-poll-trouble+))))
+                       ;; A timer-held plan still observes actual descriptor
+                       ;; failure.  POLLIN/EOF alone is deliberately absent:
+                       ;; a client may SHUT_WR and read the complete reply.
+                       (fnn-mux-guarded (loop conn) (fnn-mux-finish loop conn))
+                     (fnn-mux-dispatch loop conn))))))
   ;; PKT-875: what this loop still owes its clients, for a stop's drain.
   (let ((owed (count-if (lambda (conn)
                           (and (not (eq (fnn-mux-conn-phase conn) :done))
                                (or (fnn-mux-conn-await conn)
                                    (and (fnn-mux-conn-replying conn)
-                                        (fnn-mux-conn-out conn)))))
+                                        (or (fnn-mux-conn-out conn)
+                                            (fnn-mux-conn-plan conn))))))
                         (fnn-mux-loop-conns loop))))
     (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
       (setf (fnn-mux-loop-unsent loop) owed)))

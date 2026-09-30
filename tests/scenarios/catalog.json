@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6242,20 +6242,23 @@
         "Issue and hold an actual cold pread off both locks; release within deadline and read original article.",
         "Issue another cold pread, observe 403 deadline, disconnect the client, open a replacement request and install a reclaim that retires the old file.",
         "Observe close-held for that issued file before release; deliver success, injected stale and duplicate completion variants; assert no publish after cancellation and eventual descriptor close.",
-        "Deliver short/error after timeout and assert named store fault and fault exit rather than an unobserved detached exception."
+        "Deliver short/error after timeout and assert named store fault and fault exit rather than an unobserved detached exception.",
+        "Refuse an injected thread launch before worker/buffer creation; settle the issued token as error and fence."
       ],
       "expected": [
         "Matching verified success advances the original request with exact article bytes.",
         "Cancellation retains buffer/fd ownership; retirement cannot close the fd while worker still runs.",
         "Late completion never delivers into the replacement request; duplicate/stale has no second publication or settlement.",
-        "Late error/short faults the store, with no fabricated article and no uncertain/absent classification."
+        "Late error/short faults the store, with no fabricated article and no uncertain/absent classification.",
+        "Definite launch failure creates no detached worker and releases no ownership twice."
       ],
       "implementation": {
         "test": "tests.test_native_page_io",
         "cases": [
           "PageIOTests.test_matching_success_publishes_and_advances_the_original_request",
           "PageIOTests.test_cancel_retire_and_reuse_keep_the_old_fd_until_actual_completion",
-          "PageIOTests.test_a_late_short_or_error_is_settled_and_fences_the_store"
+          "PageIOTests.test_a_late_short_or_error_is_settled_and_fences_the_store",
+          "PageIOTests.test_failed_launch_settles_without_worker_or_buffer"
         ],
         "native": true
       },
@@ -6288,6 +6291,40 @@
         "tests/acl2/snapshot-row-remap-tests.lisp"
       ],
       "note": "Remap source/teeth are partial component evidence only. Genuine running producer/controller, physical writer/load map and matching native restore/cut execution remain pending."
+    },
+    {
+      "id": "SCN-218",
+      "title": "A running BP node serializes receipt route removal during its decided hold, then heals and releases the sender obligation once",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-002",
+        "HST-010"
+      ],
+      "steps": [
+        "Start the receiver BP node with its exact Store control config and observe BP NODE CONTROL naming Store/control.sock. Reach the actual receipt-observed decided hold before completion.",
+        "Use operator CONFIG bp-route remove against the same running receiver. Release the hold; dispatch the retained receipt with its route absent. Restore the route and dispatch again.",
+        "Observe receipt-accepted at the sender, stop it before reading obligation status, and probe the receiver Store for one article and the expected identity."
+      ],
+      "expected": [
+        "The successful live route change is handled by the same serialized owner while the receipt is held; a missing control listener remains pending by name.",
+        "Dispatch with the removed route reports no-route; dispatch after restoration reports sent. Receipt observation does not erase the accepted application effect.",
+        "The sender obligation is receipted and unpinned after the durable receipt; the receiver contains exactly one application effect. Missing hold, route mutation, healing or productive witnesses cannot yield green."
+      ],
+      "implementation": {
+        "test": "tests.test_native_resilience_cuts",
+        "cases": [
+          "test_schedule_point_scenarios_reach_their_expected_verdict_or_are_pending_by_name"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "tools/resilience/adapters/bp_node.py",
+        "tools/resilience/schedule_points.py",
+        "tests/test_resilience_bp_control.py",
+        "planning/evidence/resilience-bp-control-2026-09-29.md"
+      ],
+      "execution_scope": "Source adapter and BP live-control source0238f266f integrated for schedule-receipt-observed-reorder. A matching runner image/native run remains pending; adapter unit tests do not establish native activation or receipt ordering."
     }
   ]
 }

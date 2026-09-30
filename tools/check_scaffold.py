@@ -16,6 +16,10 @@ from tools import ledger  # noqa: E402  (after ROOT is on the path)
 sys.path.insert(0, str(ROOT / "tools"))
 ERRORS: list[str] = []
 IGNORED = {".git", ".venv", ".cache", "build", "var", "__pycache__"}
+# The shared allocator pads to three digits; it does not stop at 999.
+REQUIREMENT_ID = r"[A-Z]{3}-\d{3,}"
+PROOF_ID = r"PRF-\d{3,}"
+SCENARIO_ID = r"SCN-\d{3,}"
 
 
 def fail(message: str) -> None:
@@ -223,13 +227,13 @@ def main() -> int:
     assumptions = set(re.findall(r"(?m)^\| (A-[A-Z-]+) \|",
                                  (ROOT / "specs/failures.md").read_text()))
     assumption_books()
-    requirements = registry("planning/requirements.json", "requirements", r"[A-Z]{3}-\d{3}")
-    proofs = registry("planning/proofs.json", "proofs", r"PRF-\d{3}")
-    scenarios = registry("tests/scenarios/catalog.json", "scenarios", r"SCN-\d{3}")
+    requirements = registry("planning/requirements.json", "requirements", REQUIREMENT_ID)
+    proofs = registry("planning/proofs.json", "proofs", PROOF_ID)
+    scenarios = registry("tests/scenarios/catalog.json", "scenarios", SCENARIO_ID)
 
     definitions = {}
     for path in (ROOT / "specs").glob("*.md"):
-        for ident in re.findall(r"(?m)^([A-Z]{3}-\d{3}):", path.read_text()):
+        for ident in re.findall(rf"(?m)^({REQUIREMENT_ID}):", path.read_text()):
             if ident in definitions:
                 fail(f"{ident}: more than one authoritative definition")
             definitions[ident] = path

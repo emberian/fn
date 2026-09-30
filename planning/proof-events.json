@@ -17287,6 +17287,10 @@
         {
           "kind": "theorem",
           "name": "fn-pio-close-waits-for-every-worker"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pio-successive-file-issues-have-distinct-identities"
         }
       ]
     },
@@ -17310,6 +17314,136 @@
           "name": "fn-orm-continue-keeps-the-executable-cursor"
         }
       ]
+    },
+    {
+      "id": "PRF-1067",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-owner-retain-carry-of-put"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-retain-carry-of-other-global-put"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-retain-carry-put-frames-global-association"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1055",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pct-tick-offers-the-queued-article"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1056",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pct-tick-hands-nothing-otherwise"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1062",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pct-requested-article-is-handed-to-the-local-transport"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1058",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-asj-permitted-relay-transform-preserves-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-asj-body-of-strip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-asj-strip-preserves-byte-order"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1061",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-set-group-authority-installs-binding"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1063",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnc-ready-startup-binds-the-parsed-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnc-grant-is-the-authorized-route-plan"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1064",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnc-open-run-live-iff-both-completions-succeed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnc-retirement-stops-the-control-listener"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1068",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-osr-open-establishes-live-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-live-capture-opens"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-ready-capture-keeps-established-projections"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-finish-preserves-identity-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-finish-preserves-live-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-configure-durable-preserves-live-carry"
+        }
+      ],
+      "pending_subject": "fn-osr-capture is a pure inverse dependency; the running snapshot producer capture caller and maintained keyed/verdict/index fields are not integrated by this slice."
+    },
+    {
+      "id": "PRF-1066",
+      "events": []
     }
   ]
 }

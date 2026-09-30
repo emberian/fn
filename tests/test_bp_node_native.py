@@ -117,7 +117,7 @@ class NativeBpNodeTests(unittest.TestCase):
             self.assertEqual(result.returncode, EXIT.OK, result.stderr)
 
     def start_node(self, receiver, *, once=True, extra_env=None, trust=True,
-                   inbound=True, transfer_mru=1048576):
+                   inbound=True, transfer_mru=1048576, control=False):
         node = "dtn://receiver/" if receiver else "dtn://sender/"
         peer = "dtn://sender/" if receiver else "dtn://receiver/"
         journal = self.receiver_journal if receiver else self.sender_journal
@@ -154,9 +154,11 @@ class NativeBpNodeTests(unittest.TestCase):
              node, peer, node, "native-policy", node,
              "127.0.0.1", str(self.relay.port),
              "1" if once else "0", "3600000", "2", "32", str(transfer_mru),
-             "0", "0"],
+             "0", "0", *(["--control-config", str(config)] if control else [])],
             cwd=ROOT, env=environment(extra_env))
         self.addCleanup(process.stop, 5)
+        if control:
+            process.announcement(b"BP NODE CONTROL ", timeout=45)
         line = process.announcement(b"BP NODE LISTENING ", timeout=45)
         return process, int(line.rsplit(b" ", 1)[1])
 
@@ -1250,6 +1252,65 @@ class NativeBpNodeTests(unittest.TestCase):
         restarted = self.dispatch_receiver()
         self.assertEqual(restarted.returncode, EXIT.OK, restarted.stderr)
         self.assertIn(b"BP node receipt queued", restarted.stdout)
+        self.assertEqual(self.receiver_articles(), 1)
+
+    def test_live_route_control_is_durable_and_pumped_at_receipt_hold(self):
+        """SCN-218 boundary: actual operator CONFIG mutates the held owner."""
+        receiver, port = self.start_node(
+            True, control=True,
+            extra_env={"FN_BP_NODE_TEST_PAUSE_AFTER_OUTBOX": "1"})
+        sent = self.send_request(port, "control-held-request")
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
+        self.wait_for_output(receiver, b"BP NODE OUTBOX DURABLE", timeout=120)
+        config = self.tmp / "receiver-fn.toml"
+        socket_path = self.receiver_store / "control.sock"
+        self.assertTrue(socket_path.exists())
+        before = len(tuple((self.receiver_store / "config").iterdir()))
+        refused = self.invoke("operator", config, "group", "create", "fn.unrelated")
+        self.assertEqual(refused.returncode, EXIT.REFUSED, refused.stderr)
+        self.assertIn(b"unsupported-bp-control-operation", refused.stdout)
+        self.assertEqual(len(tuple((self.receiver_store / "config").iterdir())), before)
+        removed = self.invoke("operator", config, "bp-route", "remove",
+                              "dtn://sender/*", "sender-boundary")
+        self.assertEqual(removed.returncode, EXIT.OK, removed.stderr)
+        self.assertEqual(len(tuple((self.receiver_store / "config").iterdir())), before + 1)
+        restored = self.invoke("operator", config, "bp-route", "add",
+                               "dtn://sender/*", "sender-boundary")
+        self.assertEqual(restored.returncode, EXIT.OK, restored.stderr)
+        self.assertEqual(len(tuple((self.receiver_store / "config").iterdir())), before + 2)
+        self.assertIsNone(receiver.poll())
+        frontier = self.receiver_journal / "sequence" / "frontier.fnb"
+        before_frontier = frontier.read_bytes()
+        receiver.kill()
+        receiver.wait(timeout=15)
+        restarted = self.dispatch_receiver()
+        self.assertEqual(restarted.returncode, EXIT.OK, restarted.stderr)
+        self.assertEqual(frontier.read_bytes(), before_frontier)
+        self.assertNotIn(b"BP node receipt queued", restarted.stdout)
+        self.assertEqual(self.receiver_articles(), 1)
+
+    def test_control_config_for_another_store_is_refused_before_listener(self):
+        wrong = self.tmp / "wrong-control.toml"
+        wrong.write_text(f'[store]\npath = "{self.sender_store}"\n', encoding="ascii")
+        result = run(self.dispatch_receiver_args() + ["--control-config", str(wrong)],
+                     cwd=ROOT, env=environment(), timeout=120)
+        self.assertEqual(result.returncode, EXIT.REFUSED, result.stderr)
+        self.assertIn(b"control-store-mismatch", result.stdout + result.stderr)
+        self.assertNotIn(b"BP NODE CONTROL", result.stdout)
+        self.assertFalse((self.sender_store / "control.sock").exists())
+        self.assertFalse((self.receiver_store / "control.sock").exists())
+
+    def test_control_listener_retires_after_one_normal_bp_session(self):
+        peer, peer_port = self.start_node(False, once=False)
+        self.relay.route(peer_port)
+        receiver, port = self.start_node(True, control=True)
+        socket_path = self.receiver_store / "control.sock"
+        self.assertTrue(socket_path.exists())
+        sent = self.send_request(port, "control-one-session")
+        self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
+        self.assertEqual(receiver.wait(timeout=120), EXIT.OK, receiver.diagnostics())
+        self.assertFalse(socket_path.exists())
+        peer.stop(grace=5)
         self.assertEqual(self.receiver_articles(), 1)
 
     def test_death_after_durable_outbox_does_not_allocate_second_sequence(self):

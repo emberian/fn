@@ -450,6 +450,9 @@ BOX
 # (limits-live-5, decision-keystones-3; obstructions-5 item 34).
 step world-check python3 tools/extract/world.py --check
 step interfaces-check python3 tools/interface_emit.py --check
+# A repository declaration is not evidence its book is in this image.
+# Reject a missing native entry before spending time on certification.
+step host-books python3 tools/host_check.py --books
 toolchain=\$(python3 tools/acl2_toolchain.py identity "\$ACL2") || finish 14
 step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
 step certify $WRAP python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
