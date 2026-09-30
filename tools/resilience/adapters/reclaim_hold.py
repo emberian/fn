@@ -16,6 +16,7 @@ import time
 from tests.native_harness import Client, start
 from tests.test_native_expiry import GROUP, PAST, article, msgid
 from tools.resilience import checker
+from tools.resilience.checker import Verdict
 from tools.resilience.adapters.native_cuts import ACTORS, healing_bound, served_matches
 from tools.resilience.adapters.page_io import Fixture, file_hash, HarnessFailure
 from tools.resilience.journal import Journal
@@ -78,6 +79,8 @@ def run_scenario(scenario, image, work, fault_hook=True):
     owner = reclaim = response = None
     capture_release, response_stall = work / "reclaim-release", work / "response-stall"
     observed_stderr_bytes = 0
+    primary = None
+    cleanup_errors = []
 
     def observed():
         if owner.stderr.dropped:
@@ -96,6 +99,8 @@ def run_scenario(scenario, image, work, fault_hook=True):
         raise HarnessFailure(cause)
 
     try:
+        if not fixture.image.is_file():
+            raise HarnessFailure("reclaim-image-unavailable")
         canonical = example()
         for field in ("contract", "initial", "operations", "faults", "healing", "witnesses"):
             if getattr(scenario, field) != getattr(canonical, field):
@@ -167,17 +172,35 @@ def run_scenario(scenario, image, work, fault_hook=True):
         j.stage("healing", "ended", elapsed=time.monotonic() - healing_started)
         verdict = checker.check(scenario, j)
     except Exception as error:
+        primary = dict(exception=type(error).__name__, diagnostic=str(error))
         verdict = checker.harness_failure(scenario, j, str(error)[:500])
     finally:
-        capture_release.write_bytes(b"cleanup release")
-        response_stall.unlink(missing_ok=True)
+        # Each owned cleanup is attempted even when another fails. Retain the
+        # original outcome independently; cleanup never supplies a cut receipt.
+        def cleanup(name, action):
+            try:
+                action()
+            except Exception as error:
+                detail = dict(action=name, exception=type(error).__name__, diagnostic=str(error))
+                cleanup_errors.append(detail)
+                j.environment("reclaim-cleanup-failed", **detail)
+        cleanup("release-capture", lambda: capture_release.write_bytes(b"cleanup release"))
+        cleanup("release-response-stall", lambda: response_stall.unlink(missing_ok=True))
         if response is not None:
-            response.close(False)
+            cleanup("close-response", lambda: response.close(False))
         if reclaim is not None:
-            reclaim.stop()
-        fixture.doCleanups()
+            cleanup("stop-reclaim", reclaim.stop)
+        cleanup("fixture-cleanups", fixture.doCleanups)
         if owner is not None:
-            (work / "owner.stderr").write_bytes(owner.stderr.since(0))
+            cleanup("retain-owner-stderr", lambda: (work / "owner.stderr").write_bytes(owner.stderr.since(0)))
+    (work / "primary-outcome.json").write_text(json.dumps(
+        dict(failure=primary, verdict=verdict.to_json(), cleanup_errors=cleanup_errors), indent=2) + "\n")
+    if cleanup_errors:
+        cause = "reclaim-cleanup-incomplete"
+        if verdict.cause:
+            cause = verdict.cause + ";" + cause
+        verdict = Verdict("harness-failure", scenario_id=scenario.id, journal_digest=j.digest(),
+                          cause=cause, explanation="Owned cleanup failed; original outcome retained.").sign()
     j.write(work / "journal.jsonl")
     (work / "scenario.json").write_text(json.dumps(scenario.to_json(), indent=2) + "\n")
     (work / "verdict.json").write_text(json.dumps(verdict.to_json(), indent=2) + "\n")
@@ -189,7 +212,8 @@ def run_scenario(scenario, image, work, fault_hook=True):
               "books/response-plan-pins.lisp", "books/owner-reclaim-pass.lisp")
     (work / "manifest.json").write_text(json.dumps(dict(
         source_revision=subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
-        image=str(fixture.image), image_sha256=file_hash(fixture.image),
+        image=str(fixture.image), image_sha256=file_hash(fixture.image) if fixture.image.is_file() else None,
+        image_present=fixture.image.is_file(), cleanup_complete=not cleanup_errors,
         inputs={p: file_hash(ROOT / p) for p in inputs}, observed_stderr_bytes=observed_stderr_bytes,
         scenario=scenario.id, scope="capture-first independent response ownership; physical sector release unclaimed"),
         indent=2) + "\n")
