@@ -1,0 +1,118 @@
+; Literal actual reader BEGIN teeth. The family is a logical model, never
+; installed native runtime authority. The source pin is actually registered
+; and admitted through FN-PRL-REGISTER/FN-PRF-ACQUIRE, not a fabricated row.
+(in-package "ACL2")
+(include-book "../../books/snapshot-initial-reader")
+(include-book "../../books/page-file-lease")
+(defconst *snirt-source* '(:recovery-source 3 11 0))
+(defconst *snirt-root* '(:pgs-commit 17 91 3 0 0))
+(defconst *snirt-handle* (list :hrs-handle 42 *snirt-root* 0 3 '(1 1 1 1 1) '(0 1 2 3 4) 3))
+(defconst *snirt-field* (list :hrs-based *snirt-handle*))
+(defconst *snirt-descriptor* (list :recovery-census *snirt-source* 11 8 nil *snirt-field* 3 31 nil))
+(defconst *snirt-table* '((:model-primary :heap :model-body)))
+(defconst *snirt-family* '(:runtime-operation-family :initial :model-runtime :model-image
+ :model-profile :model-pool :model-creator ((:request :model-primary :model-body 32 2))
+ nil nil nil nil nil :model-borrowed-roots :model-cleanup))
+(defconst *snirt-issued* (mv-list 2 (fn-sni-issue (fn-prl-make '(1000000 1000000 10 4 100))
+ *snirt-source* *snirt-descriptor* *snirt-family* *snirt-table*)))
+(defconst *snirt-maintenance* (fn-prl-nth 2 (mv-nth 0 *snirt-issued*)))
+(defconst *snirt-registered* (mv-list 2 (fn-prl-register (mv-nth 1 *snirt-issued*) 42 '(32 0 1 0 0))))
+(defconst *snirt-pin* (mv-list 3 (fn-prf-acquire (mv-nth 1 *snirt-registered*) 42 '(32 0 1 0 1))))
+(defconst *snirt-root-claim* (mv-list 2 (fn-sni-role-claim (mv-nth 2 *snirt-pin*)
+ *snirt-maintenance* *snirt-source* :source-root (mv-nth 1 *snirt-pin*))))
+(defconst *snirt-entered* (mv-list 2 (fn-sni-role-claim (mv-nth 1 *snirt-root-claim*)
+ *snirt-maintenance* *snirt-source* :allocation-turn
+ (list :initial-constructor *snirt-maintenance* *snirt-source*))))
+(defconst *snirt-live* (mv-nth 1 *snirt-entered*))
+(defconst *snirt-ticket* (fn-prl-nth 1 (mv-nth 1 *snirt-pin*)))
+(defconst *snirt-page-source* '(31 (3 3) 0 0))
+(defthm snirt-reachable-core-producer-premises
+ (and (equal (car (mv-nth 0 *snirt-issued*)) :admitted)
+      (equal (mv-nth 0 *snirt-registered*) :registered)
+      (equal (mv-nth 0 *snirt-pin*) :admitted)
+      (equal (mv-nth 0 *snirt-root-claim*) :claimed)
+      (equal (mv-nth 0 *snirt-entered*) :claimed)
+      (not (equal (fn-prl-nth 2 *snirt-source*) (fn-prl-nth 7 *snirt-descriptor*))))
+ :rule-classes nil)
+(defthm snirt-begin-literal-positive
+ (let ((ledger *snirt-live*) (source *snirt-source*) (maintenance *snirt-maintenance*) (page-source *snirt-page-source*) (root-ticket *snirt-ticket*))
+ (and (equal (mv-nth 0 (fn-snir-begin ledger source maintenance page-source root-ticket)) :reader) (let* ((initial (fn-snir-initial ledger maintenance))
+         (context (fn-prl-nth 3 initial))
+         (actual (fn-hsr-source-begin (fn-hrs-h-rec (fn-prl-nth 5 context))
+                                      page-source root-ticket maintenance))
+         (result (fn-snir-begin ledger source maintenance page-source root-ticket))
+         (next (mv-nth 4 result))
+         (token (mv-nth 1 result)))
+   (and (fn-snir-sourcep ledger source maintenance page-source root-ticket)
+        (equal (mv-nth 0 actual) :idle)
+        (equal token (list :initial-reader maintenance source root-ticket (mv-nth 2 actual)))
+        (equal (mv-nth 2 result) (mv-nth 1 actual))
+        (equal (mv-nth 3 result) (mv-nth 2 actual))
+        (fn-sni-livep next source maintenance)
+        (equal (fn-prl-nth 0 next) (fn-prl-nth 0 ledger))
+        (equal (fn-prl-nth 1 next) (fn-prl-nth 1 ledger))
+        (equal (fn-prl-nth 2 next) (fn-prl-nth 2 ledger))
+        (equal (fn-prl-nth 4 next) (fn-prl-nth 4 ledger))
+        (equal (fn-sni-role-entry :reader (fn-prl-nth 6 (fn-snir-initial next maintenance)))
+               (list :reader :held token))))))
+ :rule-classes nil)
+(defthm snirt-begin-remove-reader-success
+ (let ((ledger *snirt-live*) (source *snirt-source*) (maintenance *snirt-maintenance*) (page-source '(11 (3 3) 0 0)) (root-ticket *snirt-ticket*))
+ (and (not (equal (mv-nth 0 (fn-snir-begin ledger source maintenance page-source root-ticket)) :reader)) (not (let* ((initial (fn-snir-initial ledger maintenance))
+         (context (fn-prl-nth 3 initial))
+         (actual (fn-hsr-source-begin (fn-hrs-h-rec (fn-prl-nth 5 context))
+                                      page-source root-ticket maintenance))
+         (result (fn-snir-begin ledger source maintenance page-source root-ticket))
+         (next (mv-nth 4 result))
+         (token (mv-nth 1 result)))
+   (and (fn-snir-sourcep ledger source maintenance page-source root-ticket)
+        (equal (mv-nth 0 actual) :idle)
+        (equal token (list :initial-reader maintenance source root-ticket (mv-nth 2 actual)))
+        (equal (mv-nth 2 result) (mv-nth 1 actual))
+        (equal (mv-nth 3 result) (mv-nth 2 actual))
+        (fn-sni-livep next source maintenance)
+        (equal (fn-prl-nth 0 next) (fn-prl-nth 0 ledger))
+        (equal (fn-prl-nth 1 next) (fn-prl-nth 1 ledger))
+        (equal (fn-prl-nth 2 next) (fn-prl-nth 2 ledger))
+        (equal (fn-prl-nth 4 next) (fn-prl-nth 4 ledger))
+        (equal (fn-sni-role-entry :reader (fn-prl-nth 6 (fn-snir-initial next maintenance)))
+               (list :reader :held token)))))))
+ :rule-classes nil)
+(defthm snirt-captured-ticket-mutant-refused
+ (equal (fn-snir-begin *snirt-live* *snirt-source* *snirt-maintenance*
+                      *snirt-page-source* (1+ *snirt-ticket*))
+        (mv '(:retained :initial-reader-source) nil nil nil *snirt-live*)) :rule-classes nil)
+(defthm snirt-no-constructor-entry-refused
+ (equal (fn-snir-begin (mv-nth 1 *snirt-root-claim*) *snirt-source* *snirt-maintenance*
+                      *snirt-page-source* *snirt-ticket*)
+        (mv '(:retained :initial-reader-source) nil nil nil (mv-nth 1 *snirt-root-claim*)))
+ :rule-classes nil)
+(defthm snirt-duplicate-reader-constructor-retains-first
+ (let ((first (mv-list 5 (fn-snir-begin *snirt-live* *snirt-source* *snirt-maintenance*
+                                     *snirt-page-source* *snirt-ticket*))))
+  (and (equal (mv-nth 0 first) :reader)
+       (equal (fn-snir-begin (mv-nth 4 first) *snirt-source* *snirt-maintenance*
+                            *snirt-page-source* *snirt-ticket*)
+              (mv '(:retained :unavailable) nil nil nil (mv-nth 4 first))))) :rule-classes nil)
+
+; Mutation: a genuinely admitted pin to a DIFFERENT incarnation is not
+; custody of the retained source handle, even with the same live INITIAL.
+(defthm snirt-foreign-admitted-source-pin-refused
+ (let* ((registered (mv-list 2 (fn-prl-register (mv-nth 1 *snirt-issued*) 43 '(32 0 1 0 0))))
+        (pin (mv-list 3 (fn-prf-acquire (mv-nth 1 registered) 43 '(32 0 1 0 1))))
+        (root (mv-list 2 (fn-sni-role-claim (mv-nth 2 pin) *snirt-maintenance*
+                       *snirt-source* :source-root (mv-nth 1 pin))))
+        (entered (mv-list 2 (fn-sni-role-claim (mv-nth 1 root) *snirt-maintenance*
+                    *snirt-source* :allocation-turn
+                    (list :initial-constructor *snirt-maintenance* *snirt-source*))))
+        (ledger (mv-nth 1 entered))
+        (ticket (fn-prl-nth 1 (mv-nth 1 pin))))
+  (and (equal (mv-nth 0 registered) :registered)
+       (equal (mv-nth 0 pin) :admitted)
+       (equal (mv-nth 0 root) :claimed)
+       (equal (mv-nth 0 entered) :claimed)
+       (fn-sni-livep ledger *snirt-source* *snirt-maintenance*)
+       (not (equal (fn-prl-nth 2 (mv-nth 1 pin)) (fn-hrs-h-file *snirt-handle*)))
+       (equal (fn-snir-begin ledger *snirt-source* *snirt-maintenance* *snirt-page-source* ticket)
+              (mv '(:retained :initial-reader-source) nil nil nil ledger))))
+ :rule-classes nil)

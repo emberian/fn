@@ -117,3 +117,25 @@ actual preservation of these interval facts is a separate open composition
 join. A caller's NAT extent-limit cannot replace either profile or interval
 authority. Full INIT scratch/FD/root/old-new/spool/outer-frame resources,
 selected compiled workspaces and definite cleanup remain open.
+
+The additive history-reader constructor boundary is
+`fn-owner-recovery-initial-reader-begin(source,maintenance,page-source4,root-ticket,pool,STATE)`.
+It checks actual current INITIAL ownership and invokes guard-verified
+`fn-snir-begin`. That core derives the F root from the captured based handle,
+requires the held SAME-ledger source-root pin's file and ticket, captured
+frontier/(cold-ticket,total-count) and in-base ordinal, and held constructor
+turn. It calls actual `fn-hsr-source-begin` and claims the reader role before
+a native digest/reader creator may escape. Its five core returned values are
+related to that actual call, the exact ACL2-issued lifetime token, source
+custody and unchanged charge/budget/identity/baseline. The PROGRAM caller
+returns `(:reader token cursor binding root-ticket)`; no host computes the token.
+
+The root-acquisition caller must likewise compare the internally captured
+source file before pinning. A genuinely admitted pin of another file is not
+custody of this source; the reader refuses it. Ordinary live-reader bindings
+are not new INITIAL lifetime identities. Per-page `:closed` only settles page
+I/O: it cannot return the reader's private digest/cursor/binding or allocator
+turn. There is no reader RETURN accepting page status, aliases set NIL, or a
+joined Boolean. Actual private holder/return observations, two independent
+outer reference readers and their distinct later growth, runtime/default
+creator allowances and full native startup remain open.

@@ -531,6 +531,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/payload-pull-runtime-workspace-tests \
 	books/snapshot-initial-request \
 	books/snapshot-initial-custody \
+	books/snapshot-initial-reader \
+	tests/acl2/snapshot-initial-reader-tests \
+	tests/acl2/snapshot-initial-reader-host-tests \
 	tests/acl2/snapshot-initial-custody-tests \
 	tests/acl2/snapshot-initial-host-tests \
 	books/snapshot-maintenance-profile \
