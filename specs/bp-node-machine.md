@@ -5092,3 +5092,20 @@ refused. This predicate is not resource authority: the same shared-pool claim
 and registered pending job must still be established before capture/effects.
 Source-only guard/fixture evidence:
 `planning/evidence/bp-checkpoint-operation-20260930/manifest.json`.
+
+### Held producer grammar source boundary (2026-09-30)
+
+The proposed cold-recovery auxiliary grammar follows the actual received,
+forwarding, delivery and deletion constructors. It is not installed in recovery.
+The seven actual held-row constructors preserve that auxiliary grammar under
+their stated source/record hypotheses; literal positives and complete
+hypothesis-removal witnesses accompany them. In particular, an uncertain
+forward result needs the actual retained-attempt match gate: applying it to a
+busy slot produces a malformed auxiliary slot.
+
+Typed accepted handoffs have a finite symbol domain. This proves neither the
+complete CK7 symbol domain nor a bounded executable decoder. Received and
+reassembled source carry, the full recovery refinement, registered funding,
+compiled runtime and the interrupted native delivery scenario remain open.
+Exact source admission and retained refusals are recorded in
+`planning/evidence/bp-held-producer-grammar-20260930/manifest.json`.
