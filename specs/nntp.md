@@ -1937,7 +1937,12 @@ fold-byte transitions preserve it; a complete physical CRLF pair preserves
 the value, and the completed line endpoint identifies the normalized span.
 Normalization also commutes with the projection's first-hit update, keeping
 a present empty value distinct from an absent column. These component
-theorems do not yet establish whole-header correspondence.
+theorems do not yet establish whole-header correspondence. The actual
+`fn-nlv-run` traversal of arbitrary new-field and folded physical lines
+now preserves that value relation, identifies the completed normalized
+span, selects the exact name and keeps previously completed columns. The
+remaining join is the complete successful header traversal and final catalog
+materialization; malformed grammar is handled by the separate validity proof.
 
 This component is not served yet. `fn-lpc-agreesp` states the full remaining
 comparison with actual `fn-hnov-of` and `fn-hf-body-lines-of`; it is a

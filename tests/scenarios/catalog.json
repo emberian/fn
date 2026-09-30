@@ -6620,7 +6620,8 @@
         "Exercise five selected fields, mixed-case and repeated names, empty initial values completed by folds, TAB versus exactly one initial SP, missing fields and physical lines of 998 and 999 octets.",
         "Exercise invalid names, orphan folds, empty final fields, missing separator, bare CR/LF, header NUL, body NUL and unterminated body; compare terminal results with fn-hnov-of and fn-hf-body-lines-of.",
         "Mutate continuation position, source handle, first-header selection and whitespace normalization separately.",
-        "Check the literal actual value-transition invariant and remove its value correspondence, phase, line-budget and valid-byte hypotheses individually while affirming all retained hypotheses; verify folded completed source spans and absent-versus-empty first hits."
+        "Check the literal actual value-transition invariant and remove its value correspondence, phase, line-budget and valid-byte hypotheses individually while affirming all retained hypotheses; verify folded completed source spans and absent-versus-empty first hits.",
+        "Check literal arbitrary-line theorem instances for actual new-field/fold runs, completed source spans, selected name and preserved earlier columns; remove source-value correspondence and fold-local visibility independently."
       ],
       "expected": [
         "Each tick consumes and reports at most its fuel, preserves handle and pin and makes bounded progress. No final tick walks or copies the full source or field.",
@@ -6633,7 +6634,10 @@
         "tests/acl2/legacy-parser-cursor-tests.lisp",
         "books/legacy-parser-values.lisp",
         "tests/acl2/legacy-parser-values-tests.lisp",
-        "planning/evidence/legacy-parser-values-source.md"
+        "planning/evidence/legacy-parser-values-source.md",
+        "books/legacy-parser-value-run.lisp",
+        "tests/acl2/legacy-parser-value-run-tests.lisp",
+        "planning/evidence/legacy-parser-value-run-source.md"
       ]
     },
     {

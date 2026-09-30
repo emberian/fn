@@ -394,7 +394,7 @@ anything a book does not already decide.
 | `fn-hrcur-` | `history-record-cursor` | Resumable resident history codec leaf, word, and descriptor components. |
 | `fn-lpc-` | `legacy-parser-cursor`, `legacy-parser-reference`, `legacy-parser-header` | Bounded legacy header/body cursor with source spans and logical refinement vocabulary. |
 
-| `fn-lpv-`, `fn-lpvt-`, `lpvt-` | `legacy-parser-values`, `tests/acl2/legacy-parser-values-tests` | Logical source-slice and unfolded value normalization invariants; never served materialization |
+| `fn-lpv-`, `fn-lpvt-`, `lpvt-`, `lpvrt-` | `legacy-parser-values`, `legacy-parser-value-run`, their ACL2 test books | Logical source-slice and unfolded value normalization invariants; never served materialization |
 | `fn-hpm-` | `history-page-metadata` | Fixed-scratch current-format metadata spool emission component. |
 | `fn-hpi-` | `history-page-io` | Current image positional page ranges and nonoverlap; physical I/O remains separate. |
 | `fn-hdc-` | `history-decode-nodes`, `history-decode-cursor`, `history-decode-stream` | Borrowed current-format history decode nodes, byte feed, and component proof vocabulary. |
