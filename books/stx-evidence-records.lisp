@@ -196,31 +196,6 @@
                    (fn-cbor-ag-cdr (nth 9 items))
                    (fn-cbor-ag-cdr (nth 10 items))))))
 
-(defun fn-stxe-size-at (n sizes)
-  (declare (xargs :guard (natp n) :measure (nfix n)))
-  (if (consp sizes)
-      (if (zp n) (car sizes) (fn-stxe-size-at (1- n) (cdr sizes)))
-    nil))
-
-; The three lengths come from the same item parse that constructs the verdict.
-; They are temporary provenance, not a second decode of the accepted payload.
-(defun fn-stxe-decode-exact-sized (octets)
-  (declare (xargs :guard t))
-  (if (not (fn-cbor-at-mostp octets *fn-stxe-max-octets*))
-      (mv (fn-stmt-error :limit) nil)
-    (mv-let (decoded sizes)
-      (fn-stmt-decode-items-sized-bounded
-       11 octets *fn-cbor-max-input* *fn-cbor-max-bytes*)
-      (if (not (fn-stmt-okp decoded))
-          (mv decoded nil)
-        (let ((result (fn-stxe-of-items (fn-stmt-value decoded))))
-          (mv result
-              (if (fn-stmt-okp result)
-                  (list (fn-stxe-size-at 6 sizes)
-                        (fn-stxe-size-at 8 sizes)
-                        (fn-stxe-size-at 10 sizes))
-                nil)))))))
-
 (defun fn-stxe-decode-exact (octets)
   (declare (xargs :guard t))
   (if (not (fn-cbor-at-mostp octets *fn-stxe-max-octets*))
@@ -229,63 +204,6 @@
       (if (not (fn-stmt-okp decoded))
           decoded
         (fn-stxe-of-items (fn-stmt-value decoded))))))
-
-(defthm fn-stxe-sized-result-is-existing-by-definition
-  (equal (mv-nth 0 (fn-stxe-decode-exact-sized octets))
-         (fn-stxe-decode-exact octets))
-  :rule-classes nil
-  :hints (("Goal"
-           :use ((:instance fn-stmt-sized-result-is-existing
-                            (fuel 11) (outer-budget *fn-cbor-max-input*)
-                            (item-budget *fn-cbor-max-bytes*)))
-           :in-theory (e/d (fn-stxe-decode-exact-sized fn-stxe-decode-exact
-                            fn-stmt-decode-items)
-                           (fn-stxe-of-items
-                            fn-stmt-okp fn-stmt-value fn-cbor-at-mostp)))))
-
-(local (defun fn-stxe-provenance-induct (n items sizes)
- (if (or (zp n) (atom items)) (list items sizes)
-  (fn-stxe-provenance-induct (1- n) (cdr items) (if (consp sizes) (cdr sizes) nil)))))
-
-(local (defthm fn-stxe-provenance-at
- (implies (and (natp n) (fn-stmt-item-sizes-correspondsp items sizes))
-  (equal (fn-stxe-size-at n sizes)
-         (if (equal (car (nth n items)) :bytes) (len (cdr (nth n items))) nil)))
- :hints (("Goal" :induct (fn-stxe-provenance-induct n items sizes)
-          :in-theory (enable fn-stxe-provenance-induct fn-stxe-size-at
-                             fn-stmt-item-sizes-correspondsp nth)))))
-
-(local (defthm fn-stxe-octet-chars-length
- (equal (len (fn-record-octets-chars xs)) (len xs))
- :hints (("Goal" :in-theory (enable fn-record-octets-chars)))))
-
-(local (defthm fn-stxe-octet-chars-characters
- (character-listp (fn-record-octets-chars xs))
- :hints (("Goal" :in-theory (enable fn-record-octets-chars)))))
-
-(local (defthm fn-stxe-octets-string-length
- (implies (fn-cbor-octet-listp xs)
-          (equal (length (fn-record-octets-string xs)) (len xs)))
- :hints (("Goal" :in-theory (e/d (fn-record-octets-string length)
-                                (fn-record-octets-chars))))))
-
-(defthm fn-stxe-sized-byte-lengths-correspond
- (implies (fn-stmt-okp (mv-nth 0 (fn-stxe-decode-exact-sized octets)))
-  (equal (mv-nth 1 (fn-stxe-decode-exact-sized octets))
-         (let ((e (fn-stmt-value (mv-nth 0 (fn-stxe-decode-exact-sized octets)))))
-           (list (length (fn-stxe-msgid e))
-                 (len (fn-stxe-detail e)) (len (fn-stxe-profile e))))))
- :hints (("Goal" :do-not-induct t
-          :use ((:instance fn-stmt-sized-lengths-correspond
-                          (fuel 11) (outer-budget *fn-cbor-max-input*)
-                          (item-budget *fn-cbor-max-bytes*)))
-          :in-theory (e/d (fn-stxe-decode-exact-sized fn-stxe-of-items
-                            fn-stxe-items-p fn-stxe-make fn-stxe-msgid
-                            fn-stxe-detail fn-stxe-profile fn-stmt-ok fn-stmt-okp
-                            fn-stmt-value fn-stmt-bytes-item-p fn-cbor-ag-cdr)
-                           (fn-record-octets-string fn-stxe-size-at
-                            fn-stmt-item-sizes-correspondsp
-                            fn-cbor-octet-listp fn-cbor-at-mostp)))))
 
 (in-theory (disable (:d fn-stxe-tokenp) (:d fn-stxe-token-code)
                     (:d fn-stxe-code-token) (:d fn-stxe-bounded-octetsp)
@@ -296,6 +214,4 @@
                     (:d fn-stxe-from-verdict) (:d fn-stxe-items)
                     (:d fn-stxe-encode-items) (:d fn-stxe-encode-items-bounded)
                     (:d fn-stxe-encode) (:d fn-stxe-items-p)
-                    (:d fn-stxe-of-items) (:d fn-stxe-size-at)
-                    (:d fn-stxe-decode-exact-sized)
-                    (:d fn-stxe-decode-exact)))
+                    (:d fn-stxe-of-items) (:d fn-stxe-decode-exact)))

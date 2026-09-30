@@ -41,15 +41,11 @@
 
 (in-package "ACL2")
 (include-book "statement-items")
-(include-book "statement-size-values")
 
 (encapsulate
   (((fn-stmt-encode-items *) => *
     :formals (items) :guard (fn-stmt-item-listp items))
    ((fn-stmt-decode-items-bounded * * * *) => *
-    :formals (fuel octets outer-budget item-budget)
-    :guard (and (natp fuel) (natp outer-budget) (natp item-budget)))
-   ((fn-stmt-decode-items-sized-bounded * * * *) => (mv * *)
     :formals (fuel octets outer-budget item-budget)
     :guard (and (natp fuel) (natp outer-budget) (natp item-budget)))
    ((fn-stmt-decode-prefix-items-bounded * * * *) => *
@@ -66,30 +62,6 @@
            (declare (xargs :guard (and (natp fuel) (natp outer-budget)
                                        (natp item-budget))))
            (fn-stmt-decode-items-bounded-impl fuel octets outer-budget item-budget)))
-
-  (local (defun fn-stmt-decode-items-sized-bounded (fuel octets outer-budget item-budget)
-           (declare (xargs :guard (and (natp fuel) (natp outer-budget)
-                                       (natp item-budget))))
-           (fn-stmt-decode-items-sized-bounded-impl fuel octets outer-budget item-budget)))
-
-  (defthm fn-stmt-sized-result-is-existing
-    (equal (mv-nth 0 (fn-stmt-decode-items-sized-bounded
-                      fuel octets outer-budget item-budget))
-           (fn-stmt-decode-items-bounded fuel octets outer-budget item-budget))
-    :rule-classes nil
-    :hints (("Goal" :use fn-stmt-sized-bounded-projection-by-definition)))
-
-  (defthm fn-stmt-sized-lengths-correspond
-    (implies (fn-stmt-okp
-              (mv-nth 0 (fn-stmt-decode-items-sized-bounded
-                         fuel octets outer-budget item-budget)))
-             (fn-stmt-item-sizes-correspondsp
-              (fn-stmt-value
-               (mv-nth 0 (fn-stmt-decode-items-sized-bounded
-                          fuel octets outer-budget item-budget)))
-              (mv-nth 1 (fn-stmt-decode-items-sized-bounded
-                         fuel octets outer-budget item-budget))))
-    :hints (("Goal" :use fn-stmt-sized-bounded-lengths-correspond)))
 
   (local (defun fn-stmt-decode-prefix-items-bounded (count octets outer-budget item-budget)
            (declare (xargs :guard (and (natp count) (natp outer-budget)
