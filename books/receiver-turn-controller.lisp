@@ -77,6 +77,53 @@
  (if (and (eq (fn-rxt-phase fn-receiver-turn) :live)
           (fn-rxt-ticket fn-receiver-turn))
      (fn-rxt-source fn-receiver-turn) nil))
+; The capacity-only provider range is not incoming custody authority. This
+; paired gate reads the current fixed turn slot and the same pool. Its carried
+; association is established by the paired installer and actual begin, not by
+; equality of a connection id, publication holder, or served-step result.
+(defun fn-rxt-live-claim-p
+ (ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)
+ (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
+ (let* ((receiver-token (fn-rxp-token fn-rx-provider))
+        (source (fn-rxt-source fn-receiver-turn))
+        (ledger (fn-owner-page-read-ledger fn-page-read-pool))
+        (charged (fn-prl-nth 1 ledger)))
+  (and (eq (fn-prp-mode fn-page-read-pool) :served)
+       (eq (fn-rxt-phase fn-receiver-turn) :live)
+       (null (fn-rxt-job fn-receiver-turn))
+       (consp ticket) (eq (car ticket) :receiver-turn)
+       (consp (cdr ticket)) (natp (cadr ticket)) (null (cddr ticket))
+       (equal ticket (fn-rxt-ticket fn-receiver-turn))
+       (natp (fn-prl-nth 2 ledger))
+       (< (cadr ticket) (fn-prl-nth 2 ledger))
+       (fn-rxt-installed-anchor-p receiver-token fn-rx-provider fn-receiver-turn)
+       (fn-rxp-currentp receiver-token fn-rx-provider)
+       (consp source) (eq (car source) :receiver-source)
+       (consp (cdr source)) (equal (cadr source) ticket)
+       (consp (cddr source)) (equal (caddr source) receiver-token)
+       (consp (cdddr source))
+       (equal (cadddr source) (fn-rxp-instance fn-rx-provider))
+       (null (cddddr source))
+       (fn-rxt-issued-demandp (fn-rxt-demand fn-receiver-turn))
+       (fn-prs-vectorp charged)
+       (fn-prs-below (fn-rxt-demand fn-receiver-turn) charged))))
+(defun fn-owner-rx-turn-fill-range
+ (ticket n limits fuel fn-rx-provider fn-receiver-turn fn-page-read-pool)
+ (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
+ (if (not (fn-rxt-live-claim-p ticket fn-rx-provider fn-receiver-turn fn-page-read-pool))
+     (mv :receiver-unavailable 0 0 fuel fn-rx-provider fn-receiver-turn fn-page-read-pool)
+  (mv-let (word start end left fn-rx-provider)
+    (fn-rxp-fill-range (fn-rxp-token fn-rx-provider) n limits fuel fn-rx-provider)
+    (mv word start end left fn-rx-provider fn-receiver-turn fn-page-read-pool))))
+; Admission returns a ticket only for the newly issued turn. Busy/refused
+; callers must not acquire another request's retained ticket from this entry.
+(defun fn-owner-rx-turn-start
+ (receiver-token demand fn-rx-provider fn-receiver-turn fn-page-read-pool)
+ (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
+ (mv-let (word fn-receiver-turn fn-page-read-pool)
+   (fn-owner-rx-turn-begin receiver-token demand fn-rx-provider fn-receiver-turn fn-page-read-pool)
+   (mv word (if (eq word :admitted) (fn-rxt-ticket fn-receiver-turn) nil)
+       fn-receiver-turn fn-page-read-pool)))
 (defthm fn-owner-rx-turn-begin-uses-actual-pool-nonce
  (implies
   (equal (mv-nth 0 (fn-owner-rx-turn-begin receiver-token demand fn-rx-provider
@@ -125,3 +172,21 @@
                                          fn-receiver-turn fn-page-read-pool)))
         (fn-rxt-receipt fn-receiver-turn))
  :hints (("Goal" :in-theory (enable fn-owner-rx-turn-begin fn-prs-issue))))
+(defthm fn-owner-rx-turn-fill-range-refines-provider-range-by-definition
+ (implies
+  (fn-rxt-live-claim-p ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)
+  (equal
+   (fn-owner-rx-turn-fill-range ticket n limits fuel fn-rx-provider fn-receiver-turn fn-page-read-pool)
+   (mv-let (word start end left provider)
+    (fn-rxp-fill-range (fn-rxp-token fn-rx-provider) n limits fuel fn-rx-provider)
+    (mv word start end left provider fn-receiver-turn fn-page-read-pool))))
+ :hints (("Goal" :in-theory (enable fn-owner-rx-turn-fill-range)))
+ :rule-classes nil)
+(defthm fn-owner-rx-turn-fill-range-refuses-without-current-claim-by-definition
+ (implies
+  (not (fn-rxt-live-claim-p ticket fn-rx-provider fn-receiver-turn fn-page-read-pool))
+  (equal
+   (fn-owner-rx-turn-fill-range ticket n limits fuel fn-rx-provider fn-receiver-turn fn-page-read-pool)
+   (mv :receiver-unavailable 0 0 fuel fn-rx-provider fn-receiver-turn fn-page-read-pool)))
+ :hints (("Goal" :in-theory (enable fn-owner-rx-turn-fill-range)))
+ :rule-classes nil)

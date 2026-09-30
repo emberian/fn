@@ -412,3 +412,14 @@ a second fresh controller. Raw constructor/object association, startup
 precharge and failure/recovery cuts still require matching evidence. Every
 fill needs the actual admitted turn ticket; the capacity-only child range
 helper is not authority to overwrite a transferred receiver source.
+
+The paired scalar range subject is `fn-owner-rx-turn-fill-range`: exact turn
+ticket, source vector length, limits, fuel, provider, turn and SAME pool;
+it returns word/start/end/remaining fuel/provider/turn/pool. It checks the
+maintained live current slot, immutable installation anchor, spent pool nonce
+and current charged contribution before delegating the private capacity range.
+Refusal preserves all stobjs and fuel. `fn-owner-rx-turn-start` returns a ticket
+only for a newly admitted turn; busy callers receive NIL, never the retained
+request's ticket. These guarded source boundaries do not acknowledge a raw
+copy, authorize consumer sequencing or establish custody transfer/settlement.
+Canonical demand and the actual backing association remain activation gates.

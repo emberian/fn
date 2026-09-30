@@ -58,3 +58,36 @@
        (equal (mv-nth 1 answer) controller)
        (equal (mv-nth 2 answer) *fn-rxt-model-pool*)))
  :rule-classes nil)
+
+(defthm fn-rxt-range-positive-literal
+ (let* ((first (fn-owner-rx-turn-start '(:rx-capacity 0 0 4096) '(256 0 0 0 1)
+                *fn-rxt-model-provider* *fn-rxt-model-control* *fn-rxt-model-pool*))
+        (ticket (mv-nth 1 first)) (control (mv-nth 2 first)) (pool (mv-nth 3 first)))
+  (and (equal (mv-nth 0 first) :admitted)
+       (equal ticket '(:receiver-turn 1))
+       (fn-rxt-live-claim-p ticket *fn-rxt-model-provider* control pool)
+       (equal (fn-owner-rx-turn-fill-range ticket 16 nil 16
+                  *fn-rxt-model-provider* control pool)
+              (mv :receive-copy 0 16 0 *fn-rxt-model-provider* control pool))))
+ :rule-classes nil)
+; Wrong request identity: all other installation/claim state is retained.
+(defthm fn-rxt-range-foreign-ticket-literal
+ (let* ((first (fn-owner-rx-turn-start '(:rx-capacity 0 0 4096) '(256 0 0 0 1)
+                *fn-rxt-model-provider* *fn-rxt-model-control* *fn-rxt-model-pool*))
+        (control (mv-nth 2 first)) (pool (mv-nth 3 first)))
+  (and (equal (mv-nth 0 first) :admitted)
+       (fn-rxt-live-claim-p '(:receiver-turn 1) *fn-rxt-model-provider* control pool)
+       (not (fn-rxt-live-claim-p '(:receiver-turn 0) *fn-rxt-model-provider* control pool))
+       (equal (fn-owner-rx-turn-fill-range '(:receiver-turn 0) 16 nil 16
+                  *fn-rxt-model-provider* control pool)
+              (mv :receiver-unavailable 0 0 16 *fn-rxt-model-provider* control pool))))
+ :rule-classes nil)
+(defthm fn-rxt-start-busy-does-not-return-held-ticket-literal
+ (let* ((first (fn-owner-rx-turn-start '(:rx-capacity 0 0 4096) '(256 0 0 0 1)
+                *fn-rxt-model-provider* *fn-rxt-model-control* *fn-rxt-model-pool*))
+        (control (mv-nth 2 first)) (pool (mv-nth 3 first)))
+  (and (equal (mv-nth 0 first) :admitted)
+       (equal (fn-owner-rx-turn-start '(:rx-capacity 0 0 4096) '(256 0 0 0 1)
+                  *fn-rxt-model-provider* control pool)
+              (mv :receiver-turn-busy nil control pool))))
+ :rule-classes nil)
