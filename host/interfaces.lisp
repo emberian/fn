@@ -2665,6 +2665,9 @@
 
 (definterface fn-bpnpf-bundle-octets
   :class ::common-lisp-compliant)
+
+(definterface fn-bpnpf-held-octets
+  :class ::common-lisp-compliant)
 (definterface fn-bpnf-family-publication-authorize
   :class ::common-lisp-compliant
   :keystones (fn-bpnf-family-publication-authorize-admits-exactly-the-issued-pending-family))

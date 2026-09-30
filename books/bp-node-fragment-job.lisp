@@ -24,14 +24,15 @@
 ; the kind-18 application and the proposal and persistence steps built on
 ; it equal their fn-bpnf originals (the -is-the-* theorems).  The originals
 ; stay the logical reference every existing theorem is about.
+; The received-wire bundle limit applies to each fragment, not to the
+; whole internal image. Reassembly still checks the final held occupancy.
 ;
-; The plan takes a LIMIT, the profile's bundle octets
-; (fn-bpnpf-bundle-octets), in place of the plan's *fn-bpnf-max-held-image*
+; The plan takes a LIMIT, the profile's held octets
+; (fn-bpnpf-held-octets), in place of the plan's *fn-bpnf-max-held-image*
 ; data cap (D27): a reassembled image past the limit is refused by name,
 ; (:refused :bundle-beyond-profile), before any record is built
 ; (fn-bpfj-plan-refuses-past-the-limit-by-name); within the limit, with the
-; limit within the codec's width as profile admission guarantees
-; (fn-bpnpf-profile-within-codec-widths), it is the plan
+; limit within the codec's width as an explicit theorem premise, it is the plan
 ; (fn-bpfj-plan-is-the-plan-within-the-limit).
 ;
 ; NOT bounded here: the whole-bundle encode (fn-bpb-encode of the

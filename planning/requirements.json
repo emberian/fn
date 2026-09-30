@@ -2591,7 +2591,7 @@
         "fn-bpfw-reassemble-is-spec",
         "fn-bpfs-plan-fragments-reassemble-uncapped"
       ],
-      "note": "Lane bp-n16-prod-2 (2026-09-25), PRF-114, SCN-059. Lane bp-lifecycle (2026-09-25): PRF-121, SCN-067. Lane bp-lifecycle-3 (2026-09-26): PRF-131, SCN-077 (specified; blocked by the ADU and bundle-decoder ceilings). Lane bp-lifecycle-5 (2026-09-26): PRF-136 (the selector re-encodes no row of a family without its offset-zero fragment)."
+      "note": "Lane bp-n16-prod-2 (2026-09-25), PRF-114, SCN-059. Lane bp-lifecycle (2026-09-25): PRF-121, SCN-067. Lane bp-lifecycle-3 (2026-09-26): PRF-131, SCN-077 (specified; blocked by the ADU and bundle-decoder ceilings). Lane bp-lifecycle-5 (2026-09-26): PRF-136 (the selector re-encodes no row of a family without its offset-zero fragment). 2026-09-30: the reassembly job host supplies the existing held-octet budget as its internal image limit; the received-wire limit still bounds each fragment. SCN-077 keeps its original 10 MiB input and profile, pending matching native rerun."
     },
     {
       "id": "NNT-022",
