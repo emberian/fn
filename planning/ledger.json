@@ -1552,6 +1552,12 @@
     "books/stx-node-lace",
     "books/stx-policy",
     "books/peer-transit-authority",
+    "books/statement-snapshot-keyring",
+    "books/statement-recover-stream",
+    "books/statement-keyring-publication",
+    "books/native-statement-material",
+    "tests/acl2/statement-keyring-publication-tests",
+    "tests/acl2/statement-recover-stream-tests",
     "books/article-subject",
     "tests/acl2/article-subject-tests",
     "tests/acl2/group-authority-tests",
@@ -1634,26 +1640,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1697,
-    "books_in_root_closure": 1694,
-    "roots": 1630,
-    "theorems": 27804,
-    "functions": 18123,
-    "assert_events": 22976,
+    "books": 1704,
+    "books_in_root_closure": 1700,
+    "roots": 1636,
+    "theorems": 27840,
+    "functions": 18151,
+    "assert_events": 22988,
     "must_fails": 2496,
     "prover_refusals": 0,
     "encapsulates": 156,
     "guards": {
-      "verified": 3460,
-      "declared-off": 2084,
-      "default-guarded": 9845,
-      "default-unguarded": 2734
+      "verified": 3462,
+      "declared-off": 2087,
+      "default-guarded": 9866,
+      "default-unguarded": 2736
     },
-    "suspect_theorems": 1227,
-    "export_hygiene_warnings": 318,
-    "enabled_projection_warnings": 52,
+    "suspect_theorems": 1228,
+    "export_hygiene_warnings": 320,
+    "enabled_projection_warnings": 53,
     "teeth_form_warnings": 272,
-    "include_hygiene_warnings": 2417,
+    "include_hygiene_warnings": 2426,
     "host_names_warnings": 2087,
     "hand_written_record_warnings": 18
   },
@@ -10241,7 +10247,6 @@
       ],
       "system_includes": [],
       "suspects": [
-        "fn-csi-files-of-update-replayed",
         "fn-csi-files-of-with-consumer",
         "fn-csi-files-of-with-topic",
         "fn-csi-identity-next-of-update",
@@ -15951,6 +15956,34 @@
         "fn-native-operator-control-outcome-passes-a-bindable-path",
         "fn-nop-native-action-of-unaccepted"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/native-statement-material.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "native-hybrid-control",
+        "policy",
+        "stx-lace"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -23101,18 +23134,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 13,
+      "functions": 14,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 13,
+        "default-guarded": 14,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 2,
+      "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [],
@@ -25845,6 +25878,67 @@
       "read_error": null
     },
     {
+      "book": "books/statement-keyring-publication.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 12,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "hybrid-lifecycle-store-invariants",
+        "statement-recover-stream"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-skp-resolution-of-advance",
+        "fn-skp-resolution-of-update-accepted",
+        "fn-skp-resolution-of-update-indexed",
+        "fn-skp-resolution-of-with-consumer",
+        "fn-skp-resolution-of-with-topic"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/statement-recover-stream.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 8,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 7,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "payload-lz-replay",
+        "statement-snapshot-keyring",
+        "store-recover-stream"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/statement-seam.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -25866,6 +25960,33 @@
       "includes": [
         "statement-codec",
         "statement-items"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/statement-snapshot-keyring.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 8,
+      "functions": 7,
+      "guards": {
+        "verified": 2,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 2,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "hybrid-lifecycle",
+        "principal"
       ],
       "system_includes": [],
       "suspects": [],
@@ -27931,7 +28052,7 @@
       "book": "books/store-node-invariants-base.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 113,
+      "theorems": 117,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -27999,7 +28120,6 @@
       "suspects": [
         "fn-sn-composite-delta-of-typed-article",
         "fn-sn-store-of-node-with-retention",
-        "fn-sni-files-index-of-constructors",
         "fn-sni-replaying-has-no-indexed-rows"
       ],
       "read_error": null
@@ -28149,12 +28269,12 @@
       "book": "books/store-node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 82,
-      "functions": 70,
+      "theorems": 84,
+      "functions": 73,
       "guards": {
         "verified": 39,
         "declared-off": 2,
-        "default-guarded": 29,
+        "default-guarded": 32,
         "default-unguarded": 0
       },
       "verify_guards_events": 39,
@@ -28169,6 +28289,7 @@
         "consumer-store-projection",
         "records-seam",
         "records-stamp",
+        "statement-snapshot-keyring",
         "store-files-invariants",
         "stx-index",
         "stx-reader",
@@ -28185,7 +28306,6 @@
         "fn-sn-files-of-fn-sn-make-v2",
         "fn-sn-files-of-fn-sn-make-v6",
         "fn-sn-files-of-fn-sn-update",
-        "fn-sn-files-of-fn-sn-update-replayed",
         "fn-sn-files-of-fn-sn-with-event-index",
         "fn-sn-groups-of-fn-sn-make",
         "fn-sn-groups-of-fn-sn-make-v2",
@@ -28203,7 +28323,6 @@
         "fn-sn-keyring-snapshots-of-fn-sn-make-v2",
         "fn-sn-node-of-fn-sn-make",
         "fn-sn-node-of-fn-sn-make-v2",
-        "fn-sn-state-fields-of-fn-sn-update-replayed",
         "fn-sn-state-fields-of-fn-sn-with-consumer",
         "fn-sn-state-fields-of-fn-sn-with-topic",
         "fn-sn-verdicts-of-fn-sn-make",
@@ -28700,7 +28819,7 @@
       "book": "books/store-reclaim-pack.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 28,
+      "theorems": 29,
       "functions": 16,
       "guards": {
         "verified": 0,
@@ -28762,12 +28881,12 @@
       "book": "books/store-reclaim.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 39,
-      "functions": 39,
+      "theorems": 40,
+      "functions": 40,
       "guards": {
         "verified": 1,
         "declared-off": 5,
-        "default-guarded": 33,
+        "default-guarded": 34,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -28778,6 +28897,7 @@
       "defmacros": 0,
       "encapsulates": 2,
       "includes": [
+        "article-subject",
         "blake3",
         "poster-bytes",
         "reclaim-rule",
@@ -45869,6 +45989,35 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/reclaim-article-subject-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 5,
+      "defmacros": 4,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/crypto-attach",
+        "../../books/records-attach",
+        "../../books/store-reclaim-pack",
+        "article-subject-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/reclaim-instant-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -47387,6 +47536,62 @@
         "../../books/crypto-attach",
         "../../books/state-digest",
         "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/statement-keyring-publication-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/crypto-attach",
+        "../../books/statement-keyring-publication"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/statement-recover-stream-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 2,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 7,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/crypto-attach",
+        "../../books/statement-recover-stream"
       ],
       "system_includes": [],
       "suspects": [],
@@ -52964,14 +53169,6 @@
       ]
     },
     {
-      "theorem": "fn-csi-files-of-update-replayed",
-      "book": "books/consumer-store-invariants.lisp",
-      "line": 85,
-      "reasons": [
-        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
-      ]
-    },
-    {
       "theorem": "fn-csi-files-of-with-consumer",
       "book": "books/consumer-store-invariants.lisp",
       "line": 79,
@@ -56947,7 +57144,7 @@
     {
       "theorem": "fn-rclp-event-of-an-unrewritten-event-by-definition",
       "book": "books/store-reclaim-pack.lisp",
-      "line": 191,
+      "line": 194,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-rclp-event and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-rclp-event and the conclusion is that branch's value"
@@ -56956,7 +57153,7 @@
     {
       "theorem": "fn-rclp-index-built-is-the-index-by-definition",
       "book": "books/store-reclaim-pack.lisp",
-      "line": 115,
+      "line": 116,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "reflexive-conclusion: a conjunct is (equal X X)"
@@ -58944,6 +59141,46 @@
       ]
     },
     {
+      "theorem": "fn-skp-resolution-of-advance",
+      "book": "books/statement-keyring-publication.lisp",
+      "line": 77,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-skp-resolution-of-update-accepted",
+      "book": "books/statement-keyring-publication.lisp",
+      "line": 73,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-skp-resolution-of-update-indexed",
+      "book": "books/statement-keyring-publication.lisp",
+      "line": 70,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-skp-resolution-of-with-consumer",
+      "book": "books/statement-keyring-publication.lisp",
+      "line": 36,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-skp-resolution-of-with-topic",
+      "book": "books/statement-keyring-publication.lisp",
+      "line": 39,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
       "theorem": "fn-sl-list-of-fn-own-ledger-field",
       "book": "books/owner.lisp",
       "line": 970,
@@ -58988,7 +59225,7 @@
     {
       "theorem": "fn-sn-article-record-without-a-usable-clock-is-refused",
       "book": "books/store-node.lisp",
-      "line": 824,
+      "line": 862,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-article-record and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-sn-article-record and the conclusion is that branch's value"
@@ -58997,7 +59234,7 @@
     {
       "theorem": "fn-sn-capacity-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 389,
+      "line": 390,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59005,7 +59242,7 @@
     {
       "theorem": "fn-sn-capacity-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 348,
+      "line": 349,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59022,7 +59259,7 @@
     {
       "theorem": "fn-sn-config-history-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 422,
+      "line": 423,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59030,7 +59267,7 @@
     {
       "theorem": "fn-sn-config-history-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 379,
+      "line": 380,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59038,7 +59275,7 @@
     {
       "theorem": "fn-sn-files-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 391,
+      "line": 392,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59046,7 +59283,7 @@
     {
       "theorem": "fn-sn-files-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 351,
+      "line": 352,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59054,7 +59291,7 @@
     {
       "theorem": "fn-sn-files-of-fn-sn-make-v6",
       "book": "books/store-node.lisp",
-      "line": 218,
+      "line": 219,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59062,7 +59299,7 @@
     {
       "theorem": "fn-sn-files-of-fn-sn-update",
       "book": "books/store-node.lisp",
-      "line": 515,
+      "line": 516,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59070,15 +59307,7 @@
     {
       "theorem": "fn-sn-files-of-fn-sn-update-indexed",
       "book": "books/store-node-invariants-base.lisp",
-      "line": 920,
-      "reasons": [
-        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
-      ]
-    },
-    {
-      "theorem": "fn-sn-files-of-fn-sn-update-replayed",
-      "book": "books/store-node.lisp",
-      "line": 760,
+      "line": 950,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59086,7 +59315,7 @@
     {
       "theorem": "fn-sn-files-of-fn-sn-with-consumer",
       "book": "books/store-node-invariants-base.lisp",
-      "line": 712,
+      "line": 742,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59094,7 +59323,7 @@
     {
       "theorem": "fn-sn-files-of-fn-sn-with-event-index",
       "book": "books/store-node.lisp",
-      "line": 792,
+      "line": 830,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59102,7 +59331,7 @@
     {
       "theorem": "fn-sn-files-of-fn-sn-with-topic",
       "book": "books/store-node-invariants-base.lisp",
-      "line": 718,
+      "line": 748,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59110,7 +59339,7 @@
     {
       "theorem": "fn-sn-finish-disabled-is-no-op",
       "book": "books/store-node-invariants-base.lisp",
-      "line": 606,
+      "line": 636,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-finish and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-finish and the conclusion is that branch's value"
@@ -59119,7 +59348,7 @@
     {
       "theorem": "fn-sn-groups-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 387,
+      "line": 388,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59127,7 +59356,7 @@
     {
       "theorem": "fn-sn-groups-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 345,
+      "line": 346,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59135,7 +59364,7 @@
     {
       "theorem": "fn-sn-identity-next-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 418,
+      "line": 419,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59143,7 +59372,7 @@
     {
       "theorem": "fn-sn-identity-next-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 375,
+      "line": 376,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59151,7 +59380,7 @@
     {
       "theorem": "fn-sn-identity-next-of-fn-sn-update",
       "book": "books/store-node.lisp",
-      "line": 522,
+      "line": 523,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59159,7 +59388,7 @@
     {
       "theorem": "fn-sn-identity-next-of-fn-sn-with-event-index",
       "book": "books/store-node.lisp",
-      "line": 724,
+      "line": 762,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59167,7 +59396,7 @@
     {
       "theorem": "fn-sn-index-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 397,
+      "line": 398,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59175,7 +59404,7 @@
     {
       "theorem": "fn-sn-index-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 360,
+      "line": 361,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59183,7 +59412,7 @@
     {
       "theorem": "fn-sn-initial-node-has-an-empty-store-unfolds",
       "book": "books/store-node-invariants-base.lisp",
-      "line": 1261,
+      "line": 1291,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59191,7 +59420,7 @@
     {
       "theorem": "fn-sn-keyring-generation-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 407,
+      "line": 408,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59199,7 +59428,7 @@
     {
       "theorem": "fn-sn-keyring-generation-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 363,
+      "line": 364,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59207,7 +59436,7 @@
     {
       "theorem": "fn-sn-keyring-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 395,
+      "line": 396,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59215,7 +59444,7 @@
     {
       "theorem": "fn-sn-keyring-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 357,
+      "line": 358,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59223,7 +59452,7 @@
     {
       "theorem": "fn-sn-keyring-snapshots-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 414,
+      "line": 415,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59231,7 +59460,7 @@
     {
       "theorem": "fn-sn-keyring-snapshots-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 371,
+      "line": 372,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59248,7 +59477,7 @@
     {
       "theorem": "fn-sn-node-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 393,
+      "line": 394,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59256,7 +59485,7 @@
     {
       "theorem": "fn-sn-node-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 354,
+      "line": 355,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59264,7 +59493,7 @@
     {
       "theorem": "fn-sn-node-of-fn-sn-make-v6",
       "book": "books/store-node-invariants-base.lisp",
-      "line": 630,
+      "line": 660,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59272,7 +59501,7 @@
     {
       "theorem": "fn-sn-node-of-fn-sn-with-consumer",
       "book": "books/store-node-invariants-base.lisp",
-      "line": 638,
+      "line": 668,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59280,7 +59509,7 @@
     {
       "theorem": "fn-sn-node-of-fn-sn-with-topic",
       "book": "books/store-node-invariants-base.lisp",
-      "line": 644,
+      "line": 674,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59336,17 +59565,9 @@
       ]
     },
     {
-      "theorem": "fn-sn-state-fields-of-fn-sn-update-replayed",
-      "book": "books/store-node.lisp",
-      "line": 665,
-      "reasons": [
-        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
-      ]
-    },
-    {
       "theorem": "fn-sn-state-fields-of-fn-sn-with-consumer",
       "book": "books/store-node.lisp",
-      "line": 611,
+      "line": 649,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59354,7 +59575,7 @@
     {
       "theorem": "fn-sn-state-fields-of-fn-sn-with-topic",
       "book": "books/store-node.lisp",
-      "line": 638,
+      "line": 676,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59362,7 +59583,7 @@
     {
       "theorem": "fn-sn-store-event-fields-of-an-article-record",
       "book": "books/store-node-invariants-base.lisp",
-      "line": 838,
+      "line": 868,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-store-event-generation and the conclusion is that arm's value"
       ]
@@ -59386,7 +59607,7 @@
     {
       "theorem": "fn-sn-verdicts-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 411,
+      "line": 412,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59394,7 +59615,7 @@
     {
       "theorem": "fn-sn-verdicts-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 367,
+      "line": 368,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59402,7 +59623,7 @@
     {
       "theorem": "fn-sn-verdicts-of-fn-sn-make-v6",
       "book": "books/store-node-invariants-base.lisp",
-      "line": 400,
+      "line": 429,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59410,7 +59631,7 @@
     {
       "theorem": "fn-sn-verdicts-of-fn-sn-with-consumer",
       "book": "books/store-node-invariants-base.lisp",
-      "line": 394,
+      "line": 423,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59418,7 +59639,7 @@
     {
       "theorem": "fn-sn-verdicts-of-fn-sn-with-topic",
       "book": "books/store-node-invariants-base.lisp",
-      "line": 408,
+      "line": 437,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59457,17 +59678,9 @@
       ]
     },
     {
-      "theorem": "fn-sni-files-index-of-constructors",
-      "book": "books/store-node-invariants.lisp",
-      "line": 955,
-      "reasons": [
-        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
-      ]
-    },
-    {
       "theorem": "fn-sni-replaying-has-no-indexed-rows",
       "book": "books/store-node-invariants.lisp",
-      "line": 993,
+      "line": 992,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-indexed-rows-of and the conclusion is that arm's value"
       ]
@@ -59572,7 +59785,7 @@
     {
       "theorem": "fn-snt-initial-node-is-idle",
       "book": "books/store-node-invariants-base.lisp",
-      "line": 1927,
+      "line": 1957,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61222,7 +61435,7 @@
     {
       "theorem": "store-event-decode-of-a-record-octets",
       "book": "books/store-reclaim-pack.lisp",
-      "line": 239,
+      "line": 264,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-store-event-decode-exact and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-store-event-decode-exact and the conclusion is that branch's value"
@@ -62450,6 +62663,12 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-rii-opened-index-is-frozen-row-projection",
+        "book": "books/replay-identity-index.lisp",
+        "line": 1348,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-scr-served-conn-live-is-view-live",
         "book": "books/served-catalog-chain.lisp",
         "line": 1838,
@@ -62806,7 +63025,7 @@
       {
         "theorem": "fn-snt-apply-event-from-idle-is-at-the-successor",
         "book": "books/store-node-invariants-base.lisp",
-        "line": 1724,
+        "line": 1754,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -62824,7 +63043,13 @@
       {
         "theorem": "fn-rclp-index-built-is-the-index-by-definition",
         "book": "books/store-reclaim-pack.lisp",
-        "line": 115,
+        "line": 116,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-rclp-event-retains-article-subject",
+        "book": "books/store-reclaim-pack.lisp",
+        "line": 242,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -63676,10 +63901,11 @@
           "books/hybrid-lifecycle-store-invariants.lisp",
           "books/owner-signed-post.lisp",
           "books/owner-snapshot-recovery.lisp",
+          "books/statement-keyring-publication.lisp",
           "books/store-finalize-incremental.lisp",
           "books/store-node.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 5 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 6 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-stxk-context-verdicts",
@@ -63690,10 +63916,18 @@
           "books/owner-signed-post.lisp",
           "books/served-catalog-join-frame.lisp",
           "books/served-catalog-join-host-identity-finish.lisp",
-          "books/store-finalize-incremental.lisp",
-          "books/store-node.lisp"
+          "books/store-finalize-incremental.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 6 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 5 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-stxk-context-current-generation",
+        "book": "books/stx-keyring-records.lisp",
+        "line": 142,
+        "stated_in": [
+          "books/statement-keyring-publication.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-transfer-work-value",
@@ -70081,6 +70315,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/native-statement-material.lisp",
+        "line": 6,
+        "include": "native-hybrid-control",
+        "included": "books/native-hybrid-control.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/native-status-columns.lisp",
         "line": 36,
         "include": "owner-reader-view",
@@ -71446,6 +71687,34 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/statement-keyring-publication.lisp",
+        "line": 4,
+        "include": "hybrid-lifecycle-store-invariants",
+        "included": "books/hybrid-lifecycle-store-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/statement-recover-stream.lisp",
+        "line": 5,
+        "include": "store-recover-stream",
+        "included": "books/store-recover-stream.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/statement-recover-stream.lisp",
+        "line": 6,
+        "include": "payload-lz-replay",
+        "included": "books/payload-lz-replay.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/statement-snapshot-keyring.lisp",
+        "line": 6,
+        "include": "hybrid-lifecycle",
+        "included": "books/hybrid-lifecycle.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/store-budget-naming.lisp",
         "line": 28,
         "include": "byte-store-txn-name",
@@ -71776,14 +72045,14 @@
       },
       {
         "book": "books/store-node.lisp",
-        "line": 16,
+        "line": 17,
         "include": "stx-reader",
         "included": "books/stx-reader.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/store-node.lisp",
-        "line": 18,
+        "line": 19,
         "include": "records-stamp",
         "included": "books/records-stamp.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -79755,6 +80024,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/reclaim-article-subject-tests.lisp",
+        "line": 6,
+        "include": "../../books/records-attach",
+        "included": "books/records-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/reclaim-article-subject-tests.lisp",
+        "line": 7,
+        "include": "article-subject-tests",
+        "included": "tests/acl2/article-subject-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/reclaim-instant-tests.lisp",
         "line": 8,
         "include": "must-fail-checked",
@@ -80424,6 +80707,20 @@
         "line": 17,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/statement-keyring-publication-tests.lisp",
+        "line": 5,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/statement-recover-stream-tests.lisp",
+        "line": 5,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -82572,7 +82869,7 @@
       },
       {
         "host": "host/hybrid-signature-host.lisp",
-        "line": 71,
+        "line": 72,
         "name": "fn-sn-keyring-snapshots",
         "source": "books/store-node.lisp",
         "reason": "defined in books/store-node.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -89243,294 +89540,294 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2503,
+        "line": 2500,
         "name": "fnn-extent-register-at",
         "source": "host/native/extent.lisp",
         "reason": "defined in host/native/extent.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2769,
+        "line": 2754,
         "name": "string-trim",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2769,
+        "line": 2754,
         "name": "read-line",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2811,
+        "line": 2796,
         "name": "fnn-%statfs",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2844,
+        "line": 2829,
         "name": "fill-pointer",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 3371,
+        "line": 3356,
         "name": "unsigned-byte",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 3371,
+        "line": 3356,
         "name": "file-length",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 3371,
+        "line": 3356,
         "name": "read-sequence",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 3429,
+        "line": 3414,
         "name": "functionp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 4053,
+        "line": 4038,
         "name": "search",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5138,
+        "line": 5123,
         "name": "write-byte",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5534,
+        "line": 5519,
         "name": "find-if",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5558,
+        "line": 5543,
         "name": "find-class",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5558,
+        "line": 5543,
         "name": "slot-value",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5823,
+        "line": 5808,
         "name": "round",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5970,
+        "line": 5955,
         "name": "*error-output*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6037,
+        "line": 6022,
         "name": "terpri",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6064,
+        "line": 6049,
         "name": "macro-function",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6064,
+        "line": 6049,
         "name": "set-difference",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6231,
+        "line": 6216,
         "name": "minusp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6350,
+        "line": 6335,
         "name": "list*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6565,
+        "line": 6550,
         "name": "file-namestring",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6613,
+        "line": 6598,
         "name": "some",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6613,
+        "line": 6598,
         "name": "fnn-extent-register",
         "source": "host/native/extent.lisp",
         "reason": "defined in host/native/extent.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6780,
+        "line": 6765,
         "name": "*fn-lg-genesis*",
         "source": "books/store-log.lisp",
         "reason": "defined in books/store-log.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6801,
+        "line": 6786,
         "name": "*standard-input*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6970,
+        "line": 6955,
         "name": "notevery",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 7467,
+        "line": 7450,
         "name": "multiple-value-setq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 7467,
+        "line": 7450,
         "name": "decoded",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 8022,
+        "line": 8005,
         "name": "nth-value",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 8079,
+        "line": 8062,
         "name": "namestring",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 8094,
+        "line": 8077,
         "name": "fnn-operator-emit-result",
         "source": "host/native/operator.lisp",
         "reason": "defined in host/native/operator.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 8224,
+        "line": 8207,
         "name": "fn-profile-limit",
         "source": "books/profile-limits.lisp",
         "reason": "defined in books/profile-limits.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 8251,
+        "line": 8234,
         "name": "fnn-heap-history-octets",
         "source": "host/native/heap.lisp",
         "reason": "defined in host/native/heap.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 8290,
+        "line": 8273,
         "name": "open",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 8290,
+        "line": 8273,
         "name": "logandc2",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 8327,
+        "line": 8310,
         "name": "fnn-tls-send-all",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 8327,
+        "line": 8310,
         "name": "fnn-tls-read",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 8327,
+        "line": 8310,
         "name": "fnn-tls-open-client-context",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 8327,
+        "line": 8310,
         "name": "fnn-tls-connect",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 8327,
+        "line": 8310,
         "name": "fnn-tls-close-channel",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 8327,
+        "line": 8310,
         "name": "fnn-tls-close-context",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -94549,84 +94846,84 @@
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 97,
+        "line": 98,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 220,
+        "line": 221,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 259,
+        "line": 260,
         "name": "revappend",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 353,
+        "line": 354,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 704,
+        "line": 712,
         "name": "explode-atom",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 763,
+        "line": 771,
         "name": "last",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 859,
+        "line": 867,
         "name": "atom",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 934,
+        "line": 942,
         "name": "reverse",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 977,
+        "line": 985,
         "name": "er-let*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 977,
+        "line": 985,
         "name": "prepared",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 1202,
+        "line": 1210,
         "name": "subsetp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 1353,
+        "line": 1361,
         "name": "fn-arena-count",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"

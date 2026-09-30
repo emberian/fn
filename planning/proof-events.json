@@ -17469,6 +17469,37 @@
           "name": "fn-bplc-bind-and-retire-account-exact-descriptor-completions"
         }
       ]
+    },
+    {
+      "id": "PRF-1070",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-skp-finish-preserves-resolution"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1078",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ssr-resident-step-of-append"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1079",
+      "events": []
+    },
+    {
+      "id": "PRF-1089",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rclp-event-retains-article-subject"
+        }
+      ]
     }
   ]
 }

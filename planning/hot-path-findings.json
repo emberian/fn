@@ -1,9 +1,25 @@
 {
+  "accepted": {
+    "fn-nntp-nexts-boundedp recursion G": {
+      "class": "accepted",
+      "cost": "one natp test and one integer compare against *fn-nntp-max-article-number* per configured group; no allocation, no article visited",
+      "packet": "J1 (join-f2-9 / join-f2-10)",
+      "reason": "COORDINATOR RULING 2026-09-29 (on join-f2-9's open question): KEEP the watermark check. The conjunct is carried by fn-onb-boundp (PRF-958, books/owner-number-bound.lisp), which fn-ocl-relation does not include; dropping it would spread fn-onb-boundp through the relation-form keystones (fn-oop-*), and an O(groups) integer compare is not a served-path cost worth that. The group-name conjunct was proved carried (PRF-1010) and dropped.",
+      "via": "fn-acar-nntp-projectionp (books/owner-advance-carried.lisp), evaluated at every durable POST re-pin of the reader session (host/owner-host.lisp, the re-pin after an owner advance)"
+    },
+    "note": "Walks accepted by a coordinator ruling that tools/hot_path_check.py does not report (a dimension it does not seed, e.g. G, the configured groups). Named here so the acceptance and its reason are on record; the checker reads only 'findings'."
+  },
   "findings": {
     "fn-acceptedp recursion N": {
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
       "packet": "PKT-448 (a)"
+    },
+    "fn-ag-rev-onto recursion N": {
+      "class": "unexpected",
+      "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
+      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-index-build recursion N', same traversal, same class]",
+      "packet": "PKT-324 (1)"
     },
     "fn-article-list-shapep recursion N": {
       "class": "unexpected",
@@ -19,14 +35,6 @@
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
       "packet": "PKT-448 (a)"
-    },
-    "fn-bpah-apply-delivery recursion F": {
-      "class": "unexpected",
-      "packet": "PKT-308"
-    },
-    "fn-bpn-append recursion J": {
-      "class": "unexpected",
-      "packet": "PKT-308"
     },
     "fn-bpn-enqueue-step len J": {
       "class": "unexpected",
@@ -52,31 +60,11 @@
       "class": "unexpected",
       "packet": "PKT-308"
     },
-    "fn-bpn-jobs-octets recursion J": {
-      "class": "unexpected",
-      "packet": "PKT-308"
-    },
-    "fn-bpn-jobs-octets*1* recursion J": {
-      "class": "unexpected",
-      "packet": "PKT-308"
-    },
     "fn-bpn-machine-statep len J": {
       "class": "unexpected",
       "packet": "PKT-308"
     },
-    "fn-bpn-ready-peers recursion J": {
-      "class": "unexpected",
-      "packet": "PKT-308"
-    },
     "fn-bpn-record-applicablep len J": {
-      "class": "unexpected",
-      "packet": "PKT-308"
-    },
-    "fn-bpn-replace-job recursion J": {
-      "class": "unexpected",
-      "packet": "PKT-308"
-    },
-    "fn-bpn-report-apply-delete recursion F": {
       "class": "unexpected",
       "packet": "PKT-308"
     },
@@ -104,14 +92,10 @@
       "class": "unexpected",
       "packet": "PKT-308"
     },
-    "fn-bpn-resume-jobs recursion J": {
-      "class": "unexpected",
-      "packet": "PKT-308"
-    },
     "fn-bpnd-held-list-debt-loop recursion F": {
       "class": "unexpected",
-      "packet": "PKT-308",
-      "note": "[batch AZ: serve-depth (PRF-362) runs this walk as a loop; moved from 'fn-bpnd-held-list-debt recursion F', same traversal, same class]"
+      "note": "[batch AZ: serve-depth (PRF-362) runs this walk as a loop; moved from 'fn-bpnd-held-list-debt recursion F', same traversal, same class]",
+      "packet": "PKT-308"
     },
     "fn-bpnf-active-set-rows*1* recursion F": {
       "class": "unexpected",
@@ -129,10 +113,6 @@
       "class": "unexpected",
       "packet": "PKT-308"
     },
-    "fn-bpnf-family-next-aux*1* recursion F": {
-      "class": "unexpected",
-      "packet": "PKT-308"
-    },
     "fn-bpnf-family-plan*1* len F": {
       "class": "unexpected",
       "packet": "PKT-308"
@@ -146,10 +126,6 @@
       "packet": "PKT-308"
     },
     "fn-bpnf-find-held recursion F": {
-      "class": "unexpected",
-      "packet": "PKT-308"
-    },
-    "fn-bpnf-held-octets recursion F": {
       "class": "unexpected",
       "packet": "PKT-308"
     },
@@ -201,10 +177,6 @@
       "class": "unexpected",
       "packet": "PKT-504 (b)"
     },
-    "fn-bpnp-forward-plan-rows recursion F": {
-      "class": "unexpected",
-      "packet": "PKT-504 (b)"
-    },
     "fn-bpnp-forward-result-replace*1* recursion F": {
       "class": "unexpected",
       "packet": "PKT-308"
@@ -218,10 +190,6 @@
       "packet": "PKT-504 (b)"
     },
     "fn-bpnp-forward-unrouted#guard true-listp F": {
-      "class": "unexpected",
-      "packet": "PKT-504 (b)"
-    },
-    "fn-bpnp-forward-unrouted-rows recursion F": {
       "class": "unexpected",
       "packet": "PKT-504 (b)"
     },
@@ -271,8 +239,8 @@
     },
     "fn-cev-queue-envelopes-loop recursion N": {
       "class": "unexpected",
-      "packet": "PKT-658",
-      "note": "[batch AZ: serve-depth (PRF-362) runs this walk as a loop; moved from 'fn-cev-queue-envelopes recursion N', same traversal, same class]"
+      "note": "[batch AZ: serve-depth (PRF-362) runs this walk as a loop; moved from 'fn-cev-queue-envelopes recursion N', same traversal, same class]",
+      "packet": "PKT-658"
     },
     "fn-cpa-last-record recursion N": {
       "class": "cold",
@@ -280,8 +248,8 @@
     },
     "fn-cpe-projection-replay recursion N": {
       "class": "cold",
-      "packet": "PKT-448 (d)",
-      "note": "cold since the fn-sn-recover cut (tools/hot_path_dimensions.json, flip-bridge 2026-09-27): its only served path was fn-owner-step's (:reopen) / (:store (:recover)) arm, which no host line selects; it runs at the open and recovery entries"
+      "note": "cold since the fn-sn-recover cut (tools/hot_path_dimensions.json, flip-bridge 2026-09-27): its only served path was fn-owner-step's (:reopen) / (:store (:recover)) arm, which no host line selects; it runs at the open and recovery entries",
+      "packet": "PKT-448 (d)"
     },
     "fn-ctl-apply-records recursion N": {
       "class": "unexpected",
@@ -290,14 +258,14 @@
     "fn-ctl-configs-through-loop recursion N": {
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
-      "packet": "PKT-448 (b)",
-      "note": "[batch AZ: serve-depth (PRF-362) runs this walk as a loop; moved from 'fn-ctl-configs-through recursion N', same traversal, same class]"
+      "note": "[batch AZ: serve-depth (PRF-362) runs this walk as a loop; moved from 'fn-ctl-configs-through recursion N', same traversal, same class]",
+      "packet": "PKT-448 (b)"
     },
     "fn-ctl-drop-via-rev recursion N": {
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
-      "packet": "PKT-448 (b)",
-      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-ctl-drop-via recursion N', same traversal, same class]"
+      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-ctl-drop-via recursion N', same traversal, same class]",
+      "packet": "PKT-448 (b)"
     },
     "fn-ctl-has-msgid-p recursion N": {
       "class": "unexpected",
@@ -324,20 +292,20 @@
     "fn-ctl-subseq-diff-rev recursion N": {
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
-      "packet": "PKT-448 (b)",
-      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-ctl-subseq-diff recursion N', same traversal, same class]"
+      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-ctl-subseq-diff recursion N', same traversal, same class]",
+      "packet": "PKT-448 (b)"
     },
     "fn-ctl-subseq-diff-rev true-list-fix N": {
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
-      "packet": "PKT-448 (b)",
-      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-ctl-subseq-diff true-list-fix N', same traversal, same class]"
+      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-ctl-subseq-diff true-list-fix N', same traversal, same class]",
+      "packet": "PKT-448 (b)"
     },
     "fn-ctl-visible-filter-rev recursion N": {
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
-      "packet": "PKT-448 (b)",
-      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-ctl-visible-filter recursion N', same traversal, same class]"
+      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-ctl-visible-filter recursion N', same traversal, same class]",
+      "packet": "PKT-448 (b)"
     },
     "fn-cvec-debt-from recursion N": {
       "class": "unexpected",
@@ -354,24 +322,28 @@
     },
     "fn-gac-restrict-articles-loop recursion N": {
       "class": "cold",
-      "packet": "PKT-643",
-      "note": "lane nntp-bugs (PKT-643, PRF-913): a read-restricted session's view is prepared once per pin by host/owner-host.lisp fn-owner-chunk-span-at -> books/served-catalog-chain.lisp fn-scr-prepare-access -> books/group-access-cache.lisp fn-gacc-prepare: kept while the pin holds, grown by the acceptances since (fn-gacc-grow: one cut, one trie path copy and its bucket entries per article), built (this walk) only at a restart, a withdrawal (the control cut moves) or a new rule; every command reads it (fn-scr-cached-view). The per-command build in fn-scr-auth-delegate is the fallback when no prepared entry is keyed to the pin (a GROUP re-pin inside one read). [batch AZ: serve-depth (PRF-362) runs this walk as a loop]"
+      "note": "lane nntp-bugs (PKT-643, PRF-913): a read-restricted session's view is prepared once per pin by host/owner-host.lisp fn-owner-chunk-span-at -> books/served-catalog-chain.lisp fn-scr-prepare-access -> books/group-access-cache.lisp fn-gacc-prepare: kept while the pin holds, grown by the acceptances since (fn-gacc-grow: one cut, one trie path copy and its bucket entries per article), built (this walk) only at a restart, a withdrawal (the control cut moves) or a new rule; every command reads it (fn-scr-cached-view). The per-command build in fn-scr-auth-delegate is the fallback when no prepared entry is keyed to the pin (a GROUP re-pin inside one read). [batch AZ: serve-depth (PRF-362) runs this walk as a loop]",
+      "packet": "PKT-643"
+    },
+    "fn-gacc-grow recursion N": {
+      "class": "cold",
+      "note": "lane nntp-bugs (PKT-643, PRF-913): the access cache's prepare (host/owner-host.lisp fn-owner-chunk-span-at -> fn-scr-prepare-access -> fn-gacc-prepare -> fn-gacc-refresh) walks the k articles accepted since the entry (fn-gacc-prefix's prefix), one cut, one trie path copy and its bucket entries each; never the retained history.",
+      "packet": "PKT-643"
+    },
+    "fn-gacc-prefix recursion N": {
+      "class": "cold",
+      "note": "lane nntp-bugs (PKT-643, PRF-913): the access cache's prepare (host/owner-host.lisp fn-owner-chunk-span-at -> fn-scr-prepare-access -> fn-gacc-prepare -> fn-gacc-refresh) walks the new visible article list only when the connection's pin moved, and stops at the first tail EQUAL (EQ first) to the entry's articles: k steps for the k acceptances since the entry; the whole list only when the entry is not a tail, where the build follows (the cold build: a restart, a withdrawal, a new rule).",
+      "packet": "PKT-643"
     },
     "fn-hist-load-events recursion N": {
       "class": "cold",
-      "packet": "PKT-448 (d)",
-      "note": "lane history-columns-3: replaces fn-cei-build-aux (the retired store-node event index's open build). The history stobj's load at every open/install (fn-owner-install-extended) and the refresh's reload arm after a store open or reset (fn-host-hist-sync -> fn-hist-refresh, flag fn-store-sn-hist-reload): once per open, O(N) at about 0.34 us/record; every other read syncs only the rows committed since."
+      "note": "lane history-columns-3: replaces fn-cei-build-aux (the retired store-node event index's open build). The history stobj's load at every open/install (fn-owner-install-extended) and the refresh's reload arm after a store open or reset (fn-host-hist-sync -> fn-hist-refresh, flag fn-store-sn-hist-reload): once per open, O(N) at about 0.34 us/record; every other read syncs only the rows committed since.",
+      "packet": "PKT-448 (d)"
     },
     "fn-hist-refresh true-list-fix N": {
       "class": "cold",
-      "packet": "PKT-448 (d)",
-      "note": "lane history-columns-3: replaces fn-cei-build-aux (the retired store-node event index's open build). The history stobj's load at every open/install (fn-owner-install-extended) and the refresh's reload arm after a store open or reset (fn-host-hist-sync -> fn-hist-refresh, flag fn-store-sn-hist-reload): once per open, O(N) at about 0.34 us/record; every other read syncs only the rows committed since."
-    },
-    "fn-ag-rev-onto recursion N": {
-      "class": "unexpected",
-      "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
-      "packet": "PKT-324 (1)",
-      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-index-build recursion N', same traversal, same class]"
+      "note": "lane history-columns-3: replaces fn-cei-build-aux (the retired store-node event index's open build). The history stobj's load at every open/install (fn-owner-install-extended) and the refresh's reload arm after a store open or reset (fn-host-hist-sync -> fn-hist-refresh, flag fn-store-sn-hist-reload): once per open, O(N) at about 0.34 us/record; every other read syncs only the rows committed since.",
+      "packet": "PKT-448 (d)"
     },
     "fn-ks-find-statement recursion N": {
       "class": "unexpected",
@@ -391,13 +363,23 @@
     },
     "fn-nh-forward-charge-acc recursion N": {
       "class": "unexpected",
-      "packet": "PKT-324 (8)",
-      "note": "[batch AZ: health-truth-status: the forward-pin charge runs as an accumulator loop; moved from 'fn-nh-forward-charge recursion N', same traversal, same class]"
+      "note": "[batch AZ: health-truth-status: the forward-pin charge runs as an accumulator loop; moved from 'fn-nh-forward-charge recursion N', same traversal, same class]",
+      "packet": "PKT-324 (8)"
     },
     "fn-nh-forward-count-acc recursion N": {
       "class": "unexpected",
-      "packet": "PKT-324 (8)",
-      "note": "[batch AZ: health-truth-status: the forward-pin count runs as an accumulator loop; moved from 'fn-nh-forward-count recursion N', same traversal, same class]"
+      "note": "[batch AZ: health-truth-status: the forward-pin count runs as an accumulator loop; moved from 'fn-nh-forward-count recursion N', same traversal, same class]",
+      "packet": "PKT-324 (8)"
+    },
+    "fn-nlp-fill recursion N": {
+      "class": "resumable",
+      "note": "lane obligations-paged (PRF-371): one page's lines, at most *fn-nls-chunk-octets* octets per request; the cursor carries the rest to the next request.",
+      "packet": "PKT-470"
+    },
+    "fn-nlp-header len N": {
+      "class": "unexpected",
+      "note": "lane obligations-paged (PRF-371): the obligations report's header count (len of the retention ledger), once per report on its first page, never per page; a count walk, no rendering (1,000,000 obligations: first page 0.06 s at syn1m-2k).",
+      "packet": "PKT-324 (8)"
     },
     "fn-nls-obligation-lines-rev recursion N": {
       "class": "unexpected",
@@ -421,21 +403,17 @@
       "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
       "packet": "PKT-448 (c)"
     },
-    "fn-nntp-index-config-digest len N": {
-      "class": "unexpected",
-      "packet": "PKT-448 (f)"
-    },
     "fn-nntp-newnews-scan-loop recursion N": {
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep OVER at 56f94181: OVER median 0.88 ms to 3.43 ms (x3.89) from N 1,000 to 10,000 while STAT stays flat; aggregate, the row cannot name the walk",
-      "packet": "PKT-448 (c)",
-      "note": "[batch AZ: serve-depth (PRF-362) runs this walk as a loop; moved from 'fn-nntp-newnews-scan recursion N', same traversal, same class]"
+      "note": "[batch AZ: serve-depth (PRF-362) runs this walk as a loop; moved from 'fn-nntp-newnews-scan recursion N', same traversal, same class]",
+      "packet": "PKT-448 (c)"
     },
     "fn-node-binding-ids-rev recursion N": {
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
-      "packet": "PKT-448 (a)",
-      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-node-binding-ids recursion N', same traversal, same class]"
+      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-node-binding-ids recursion N', same traversal, same class]",
+      "packet": "PKT-448 (a)"
     },
     "fn-node-binding-list-shapep recursion N": {
       "class": "unexpected",
@@ -445,28 +423,33 @@
     "fn-node-binding-msgids-rev recursion N": {
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
-      "packet": "PKT-448 (a)",
-      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-node-binding-msgids recursion N', same traversal, same class]"
+      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-node-binding-msgids recursion N', same traversal, same class]",
+      "packet": "PKT-448 (a)"
     },
     "fn-node-find-binding recursion N": {
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
       "packet": "PKT-448 (a)"
     },
+    "fn-nsc-tally-loop recursion N": {
+      "class": "unexpected",
+      "note": "lane scale-reads-status (PRF-368): the live status reclaim line's ONE walk over the articles (was four walks, each realizing and digest-checking every payload); the tombstone flag is read from the catalog column. Still O(articles) per status under the owner mutex: 2.2 s at syn1m-2k live.",
+      "packet": "PKT-324 (8)"
+    },
     "fn-oclc-configure append N": {
       "class": "unexpected",
-      "packet": "PKT-448 (e)",
-      "note": "moved from fn-cpo-configure-durable by control-quanta (batch AW): the carried completion walks the CONFIG history (config records, not articles) as the replayed one did; fn-cpr-loop's replay is gone"
+      "note": "moved from fn-cpo-configure-durable by control-quanta (batch AW): the carried completion walks the CONFIG history (config records, not articles) as the replayed one did; fn-cpr-loop's replay is gone",
+      "packet": "PKT-448 (e)"
     },
     "fn-oclc-configure len N": {
       "class": "unexpected",
-      "packet": "PKT-448 (e)",
-      "note": "moved from fn-cpo-configure-durable by control-quanta (batch AW): the carried completion walks the CONFIG history (config records, not articles) as the replayed one did; fn-cpr-loop's replay is gone"
+      "note": "moved from fn-cpo-configure-durable by control-quanta (batch AW): the carried completion walks the CONFIG history (config records, not articles) as the replayed one did; fn-cpr-loop's replay is gone",
+      "packet": "PKT-448 (e)"
     },
     "fn-oclc-configure true-listp N": {
       "class": "unexpected",
-      "packet": "PKT-448 (e)",
-      "note": "moved from fn-cpo-configure-durable by control-quanta (batch AW): the carried completion walks the CONFIG history (config records, not articles) as the replayed one did; fn-cpr-loop's replay is gone"
+      "note": "moved from fn-cpo-configure-durable by control-quanta (batch AW): the carried completion walks the CONFIG history (config records, not articles) as the replayed one did; fn-cpr-loop's replay is gone",
+      "packet": "PKT-448 (e)"
     },
     "fn-own-retain-find-id-unguarded recursion N": {
       "class": "cold",
@@ -482,63 +465,73 @@
     },
     "fn-pgc-obligation-ids-rev recursion N": {
       "class": "unexpected",
-      "packet": "PKT-448 (h)",
-      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-pgc-obligation-ids recursion N', same traversal, same class]"
+      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-pgc-obligation-ids recursion N', same traversal, same class]",
+      "packet": "PKT-448 (h)"
     },
     "fn-pgc-release-ids-rev recursion N": {
       "class": "unexpected",
-      "packet": "PKT-448 (h)",
-      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-pgc-release-ids recursion N', same traversal, same class]"
+      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-pgc-release-ids recursion N', same traversal, same class]",
+      "packet": "PKT-448 (h)"
     },
     "fn-prc-add-new-releases recursion N": {
       "class": "unexpected",
-      "packet": "open",
-      "note": "post-alloc-3 retain (PRF-289, books/post-retain-carried.lisp): fn-prc-refresh's delta on the served POST (fn-owner-prepare-buffer) and at the owner open (fn-owner-install-extended). The same ledger is one EQ test; a commit is O(1) (the walk's whole-tail EQUAL is one EQ test); a release walks the pins to the released pin's position (hbox REPL, 10,000 pins, pin #5000: ~50 us, no allocation); k retention steps between POSTs are one walk, O(N) at worst with no allocation but the new ids. A delta that does not have this shape falls to the rebuild (fn-prc-build)."
+      "note": "post-alloc-3 retain (PRF-289, books/post-retain-carried.lisp): fn-prc-refresh's delta on the served POST (fn-owner-prepare-buffer) and at the owner open (fn-owner-install-extended). The same ledger is one EQ test; a commit is O(1) (the walk's whole-tail EQUAL is one EQ test); a release walks the pins to the released pin's position (hbox REPL, 10,000 pins, pin #5000: ~50 us, no allocation); k retention steps between POSTs are one walk, O(N) at worst with no allocation but the new ids. A delta that does not have this shape falls to the rebuild (fn-prc-build).",
+      "packet": "open"
     },
     "fn-prc-add-pins recursion N": {
       "class": "unexpected",
-      "packet": "open",
-      "note": "post-alloc-3 retain (PRF-289, books/post-retain-carried.lisp): fn-prc-refresh's rebuild (fn-prc-build). The owner open (fn-owner-install-extended) builds the carry for the ledger it opens with (hbox REPL, 10,000 pins: 4.8 MB, 0.02 s), so on the served POST (fn-owner-prepare-buffer) it runs only when the carry names a ledger no retention delta reaches, which no host-selected owner step produces between an open and a POST (a reopen goes through the open)."
+      "note": "post-alloc-3 retain (PRF-289, books/post-retain-carried.lisp): fn-prc-refresh's rebuild (fn-prc-build). The owner open (fn-owner-install-extended) builds the carry for the ledger it opens with (hbox REPL, 10,000 pins: 4.8 MB, 0.02 s), so on the served POST (fn-owner-prepare-buffer) it runs only when the carry names a ledger no retention delta reaches, which no host-selected owner step produces between an open and a POST (a reopen goes through the open).",
+      "packet": "open"
     },
     "fn-prc-add-releases recursion N": {
       "class": "unexpected",
-      "packet": "open",
-      "note": "post-alloc-3 retain (PRF-289, books/post-retain-carried.lisp): fn-prc-refresh's rebuild (fn-prc-build). The owner open (fn-owner-install-extended) builds the carry for the ledger it opens with (hbox REPL, 10,000 pins: 4.8 MB, 0.02 s), so on the served POST (fn-owner-prepare-buffer) it runs only when the carry names a ledger no retention delta reaches, which no host-selected owner step produces between an open and a POST (a reopen goes through the open)."
+      "note": "post-alloc-3 retain (PRF-289, books/post-retain-carried.lisp): fn-prc-refresh's rebuild (fn-prc-build). The owner open (fn-owner-install-extended) builds the carry for the ledger it opens with (hbox REPL, 10,000 pins: 4.8 MB, 0.02 s), so on the served POST (fn-owner-prepare-buffer) it runs only when the carry names a ledger no retention delta reaches, which no host-selected owner step produces between an open and a POST (a reopen goes through the open).",
+      "packet": "open"
     },
     "fn-prc-all-released recursion N": {
       "class": "unexpected",
-      "packet": "open",
-      "note": "post-alloc-3 retain (PRF-289, books/post-retain-carried.lisp): fn-prc-refresh's delta on the served POST (fn-owner-prepare-buffer) and at the owner open (fn-owner-install-extended). The same ledger is one EQ test; a commit is O(1) (the walk's whole-tail EQUAL is one EQ test); a release walks the pins to the released pin's position (hbox REPL, 10,000 pins, pin #5000: ~50 us, no allocation); k retention steps between POSTs are one walk, O(N) at worst with no allocation but the new ids. A delta that does not have this shape falls to the rebuild (fn-prc-build)."
+      "note": "post-alloc-3 retain (PRF-289, books/post-retain-carried.lisp): fn-prc-refresh's delta on the served POST (fn-owner-prepare-buffer) and at the owner open (fn-owner-install-extended). The same ledger is one EQ test; a commit is O(1) (the walk's whole-tail EQUAL is one EQ test); a release walks the pins to the released pin's position (hbox REPL, 10,000 pins, pin #5000: ~50 us, no allocation); k retention steps between POSTs are one walk, O(N) at worst with no allocation but the new ids. A delta that does not have this shape falls to the rebuild (fn-prc-build).",
+      "packet": "open"
     },
     "fn-prc-pins-walk recursion N": {
       "class": "unexpected",
-      "packet": "open",
-      "note": "post-alloc-3 retain (PRF-289, books/post-retain-carried.lisp): fn-prc-refresh's delta on the served POST (fn-owner-prepare-buffer) and at the owner open (fn-owner-install-extended). The same ledger is one EQ test; a commit is O(1) (the walk's whole-tail EQUAL is one EQ test); a release walks the pins to the released pin's position (hbox REPL, 10,000 pins, pin #5000: ~50 us, no allocation); k retention steps between POSTs are one walk, O(N) at worst with no allocation but the new ids. A delta that does not have this shape falls to the rebuild (fn-prc-build)."
+      "note": "post-alloc-3 retain (PRF-289, books/post-retain-carried.lisp): fn-prc-refresh's delta on the served POST (fn-owner-prepare-buffer) and at the owner open (fn-owner-install-extended). The same ledger is one EQ test; a commit is O(1) (the walk's whole-tail EQUAL is one EQ test); a release walks the pins to the released pin's position (hbox REPL, 10,000 pins, pin #5000: ~50 us, no allocation); k retention steps between POSTs are one walk, O(N) at worst with no allocation but the new ids. A delta that does not have this shape falls to the rebuild (fn-prc-build).",
+      "packet": "open"
     },
     "fn-prc-releases-tailp recursion N": {
       "class": "unexpected",
-      "packet": "open",
-      "note": "post-alloc-3 retain (PRF-289, books/post-retain-carried.lisp): fn-prc-refresh's delta on the served POST (fn-owner-prepare-buffer) and at the owner open (fn-owner-install-extended). The same ledger is one EQ test; a commit is O(1) (the walk's whole-tail EQUAL is one EQ test); a release walks the pins to the released pin's position (hbox REPL, 10,000 pins, pin #5000: ~50 us, no allocation); k retention steps between POSTs are one walk, O(N) at worst with no allocation but the new ids. A delta that does not have this shape falls to the rebuild (fn-prc-build)."
+      "note": "post-alloc-3 retain (PRF-289, books/post-retain-carried.lisp): fn-prc-refresh's delta on the served POST (fn-owner-prepare-buffer) and at the owner open (fn-owner-install-extended). The same ledger is one EQ test; a commit is O(1) (the walk's whole-tail EQUAL is one EQ test); a release walks the pins to the released pin's position (hbox REPL, 10,000 pins, pin #5000: ~50 us, no allocation); k retention steps between POSTs are one walk, O(N) at worst with no allocation but the new ids. A delta that does not have this shape falls to the rebuild (fn-prc-build).",
+      "packet": "open"
+    },
+    "fn-rcl-class-count-loop recursion N": {
+      "class": "unexpected",
+      "note": "bp-retention-leftovers (PKT-844, 2026-09-27): the signed and kept classes status prints beside the reclaim counts (fn-rcl-store-classes); the same per-article walk as fn-rcl-summary-in, on the offline/operator status report only, never per request. [batch AY: the walk runs as a loop (fn-rcl-class-count-loop); moved from 'fn-rcl-class-count-in recursion N', same traversal, same class]",
+      "packet": "PKT-324 (8)"
     },
     "fn-rcl-held-count-loop recursion N": {
       "class": "unexpected",
-      "packet": "PKT-324 (8)",
-      "note": "audit-fixes (2026-09-27): fn-rcl-held-count over the arena (the counts read handle bytes since the flip); the same walk under its arena name. [batch AY: the walk runs as a loop (fn-rcl-held-count-loop); moved from 'fn-rcl-held-count-in recursion N', same traversal, same class]"
-    },
-    "fn-rcl-summary-loop recursion N": {
-      "class": "unexpected",
-      "packet": "PKT-324 (8)",
-      "note": "audit-fixes (2026-09-27): fn-rcl-summary over the arena (the counts read handle bytes since the flip); the same walk under its arena name. [batch AY: the walk runs as a loop (fn-rcl-summary-loop); moved from 'fn-rcl-summary-in recursion N', same traversal, same class]"
+      "note": "audit-fixes (2026-09-27): fn-rcl-held-count over the arena (the counts read handle bytes since the flip); the same walk under its arena name. [batch AY: the walk runs as a loop (fn-rcl-held-count-loop); moved from 'fn-rcl-held-count-in recursion N', same traversal, same class]",
+      "packet": "PKT-324 (8)"
     },
     "fn-rcl-held-verdicts-loop recursion N": {
       "class": "unexpected",
-      "packet": "PKT-324 (8)",
-      "note": "[batch AZ: health-truth-status (PRF-361): the counts ask the held test of the held verdicts only, one walk of the verdict list per render; moved from 'fn-rcl-verdict-heldp recursion N', same traversal, same class] [batch AZ: serve-depth (PRF-362) runs this walk as a loop; moved from 'fn-rcl-held-verdicts recursion N', same traversal, same class]"
+      "note": "[batch AZ: health-truth-status (PRF-361): the counts ask the held test of the held verdicts only, one walk of the verdict list per render; moved from 'fn-rcl-verdict-heldp recursion N', same traversal, same class] [batch AZ: serve-depth (PRF-362) runs this walk as a loop; moved from 'fn-rcl-held-verdicts recursion N', same traversal, same class]",
+      "packet": "PKT-324 (8)"
+    },
+    "fn-rcl-summary-loop recursion N": {
+      "class": "unexpected",
+      "note": "audit-fixes (2026-09-27): fn-rcl-summary over the arena (the counts read handle bytes since the flip); the same walk under its arena name. [batch AY: the walk runs as a loop (fn-rcl-summary-loop); moved from 'fn-rcl-summary-in recursion N', same traversal, same class]",
+      "packet": "PKT-324 (8)"
+    },
+    "fn-rclp-index-into recursion N": {
+      "class": "unexpected",
+      "note": "online-reclaim-8 (2026-09-29): the reclaim context's Message-ID index (books/store-reclaim-pack.lisp fn-rclp-index-built = fn-rclp-index-into over the articles from nil; fn-rclp-index-into-finds, fn-rclp-article-index-finds-the-article): ONE forward pass over the Store's articles per `store reclaim' (offline, --dry-run, --recorded, or the live pass's context, off the owner mutex), never per request or arrival; each record's step is then one hashed lookup. It replaced a whole reversed copy of the article list followed by the pass (moved from 'fn-rclp-reversed recursion N'). The pass over the articles is the verb's own dimension, the same as its pass over the records.",
+      "packet": "PKT-324 (8)"
     },
     "fn-replay-identity-loop recursion N": {
       "class": "cold",
-      "packet": "PKT-223",
-      "note": "cold since the fn-sn-recover cut (tools/hot_path_dimensions.json, flip-bridge 2026-09-27): its only served path was fn-owner-step's (:reopen) / (:store (:recover)) arm, which no host line selects; it runs at the open and recovery entries"
+      "note": "cold since the fn-sn-recover cut (tools/hot_path_dimensions.json, flip-bridge 2026-09-27): its only served path was fn-owner-step's (:reopen) / (:store (:recover)) arm, which no host line selects; it runs at the open and recovery entries",
+      "packet": "PKT-223"
     },
     "fn-replay-loop recursion N": {
       "class": "unexpected",
@@ -552,8 +545,8 @@
     "fn-retain-obligation-ids-rev recursion N": {
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
-      "packet": "PKT-448 (a)",
-      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-retain-obligation-ids recursion N', same traversal, same class]"
+      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-retain-obligation-ids recursion N', same traversal, same class]",
+      "packet": "PKT-448 (a)"
     },
     "fn-retain-obligation-listp recursion N": {
       "class": "unexpected",
@@ -571,8 +564,8 @@
     "fn-retain-release-ids-rev recursion N": {
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
-      "packet": "PKT-448 (a)",
-      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-retain-release-ids recursion N', same traversal, same class]"
+      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-retain-release-ids recursion N', same traversal, same class]",
+      "packet": "PKT-448 (a)"
     },
     "fn-retain-release-listp recursion N": {
       "class": "unexpected",
@@ -582,8 +575,8 @@
     "fn-retain-remove-id-rev recursion N": {
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
-      "packet": "PKT-448 (h)",
-      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-retain-remove-id recursion N', same traversal, same class]"
+      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-retain-remove-id recursion N', same traversal, same class]",
+      "packet": "PKT-448 (h)"
     },
     "fn-retain-statep len N": {
       "class": "unexpected",
@@ -593,8 +586,8 @@
     "fn-retain-sum-acc recursion N": {
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
-      "packet": "PKT-448 (a)",
-      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-retain-sum recursion N', same traversal, same class]"
+      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-retain-sum recursion N', same traversal, same class]",
+      "packet": "PKT-448 (a)"
     },
     "fn-rtf-pin-count len N": {
       "class": "unexpected",
@@ -610,18 +603,18 @@
     },
     "fn-sbud-record-octets-acc recursion N": {
       "class": "unexpected",
-      "packet": "PKT-324 (5)",
-      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-sbud-record-octets recursion N', same traversal, same class]"
+      "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-sbud-record-octets recursion N', same traversal, same class]",
+      "packet": "PKT-324 (5)"
     },
     "fn-scka-canon-rows-rev recursion N": {
       "class": "unexpected",
-      "packet": "PKT-041",
-      "note": "checkpoint-arena-2 (2026-09-27): the state checkpoint publication's setup canonicalizes the live rows (alpha of each row through the arena, interned at the canonical handle) and reads each canonical payload's length for the arena run's batches: one walk of the history per publication, where fn-sco-capture's walk was; reached from the verb (fn-store-sco-publish-setup) and the owner's publication thread off the mutex (fn-owner-sco-prepare), never from a served command [batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-scka-canon-rows recursion N', same traversal, same class]"
+      "note": "checkpoint-arena-2 (2026-09-27): the state checkpoint publication's setup canonicalizes the live rows (alpha of each row through the arena, interned at the canonical handle) and reads each canonical payload's length for the arena run's batches: one walk of the history per publication, where fn-sco-capture's walk was; reached from the verb (fn-store-sco-publish-setup) and the owner's publication thread off the mutex (fn-owner-sco-prepare), never from a served command [batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-scka-canon-rows recursion N', same traversal, same class]",
+      "packet": "PKT-041"
     },
     "fn-scka-next-checkpoint nthcdr N": {
       "class": "unexpected",
-      "packet": "PKT-041",
-      "note": "checkpoint-arena-3 (2026-09-27): the state checkpoint verb takes NEXT as the owner does, the open's E extended over the rows after it (fn-scka-next-checkpoint), instead of canonicalizing every row again to compare with E; the extension walks E's prefix once (the drop to the suffix, the rows' count) per publication, reached from the verb (fn-store-sco-publish-setup) and the owner's publication thread off the mutex, never from a served command"
+      "note": "checkpoint-arena-3 (2026-09-27): the state checkpoint verb takes NEXT as the owner does, the open's E extended over the rows after it (fn-scka-next-checkpoint), instead of canonicalizing every row again to compare with E; the extension walks E's prefix once (the drop to the suffix, the rows' count) per publication, reached from the verb (fn-store-sco-publish-setup) and the owner's publication thread off the mutex, never from a served command",
+      "packet": "PKT-041"
     },
     "fn-sco-cpr-prefix recursion N": {
       "class": "unexpected",
@@ -629,8 +622,8 @@
     },
     "fn-sco-drop recursion N": {
       "class": "unexpected",
-      "packet": "PKT-041",
-      "note": "checkpoint-arena-3 (2026-09-27): the state checkpoint verb takes NEXT as the owner does, the open's E extended over the rows after it (fn-scka-next-checkpoint), instead of canonicalizing every row again to compare with E; the extension walks E's prefix once (the drop to the suffix, the rows' count) per publication, reached from the verb (fn-store-sco-publish-setup) and the owner's publication thread off the mutex, never from a served command"
+      "note": "checkpoint-arena-3 (2026-09-27): the state checkpoint verb takes NEXT as the owner does, the open's E extended over the rows after it (fn-scka-next-checkpoint), instead of canonicalizing every row again to compare with E; the extension walks E's prefix once (the drop to the suffix, the rows' count) per publication, reached from the verb (fn-store-sco-publish-setup) and the owner's publication thread off the mutex, never from a served command",
+      "packet": "PKT-041"
     },
     "fn-sf-candidatep len N": {
       "class": "unexpected",
@@ -669,28 +662,29 @@
       "confirmed": "section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
       "packet": "PKT-448 (a)"
     },
-    "fn-sim-acceptance-durable-okp len N": {
-      "class": "unexpected",
-      "packet": "PKT-448 (f)"
-    },
     "fn-sl-of len N": {
       "class": "cold",
-      "packet": "PKT-448 (d)",
-      "note": "the model crash event (fn-sn-crash -> fn-sf-crash builds the post-crash image with fn-sf-make, which converts its lists to snoc-lists, books/snoc-list.lisp): reached only through fn-own-step's (:store (:crash ...)) arm, which no host line selects (every fn-owner-step call names its event); post-alloc-2 2026-09-27"
+      "note": "the model crash event (fn-sn-crash -> fn-sf-crash builds the post-crash image with fn-sf-make, which converts its lists to snoc-lists, books/snoc-list.lisp): reached only through fn-own-step's (:store (:crash ...)) arm, which no host line selects (every fn-owner-step call names its event); post-alloc-2 2026-09-27",
+      "packet": "PKT-448 (d)"
     },
     "fn-sl-of true-listp N": {
       "class": "cold",
-      "packet": "PKT-448 (d)",
-      "note": "the model crash event (fn-sn-crash -> fn-sf-crash builds the post-crash image with fn-sf-make, which converts its lists to snoc-lists, books/snoc-list.lisp): reached only through fn-own-step's (:store (:crash ...)) arm, which no host line selects (every fn-owner-step call names its event); post-alloc-2 2026-09-27"
+      "note": "the model crash event (fn-sn-crash -> fn-sf-crash builds the post-crash image with fn-sf-make, which converts its lists to snoc-lists, books/snoc-list.lisp): reached only through fn-own-step's (:store (:crash ...)) arm, which no host line selects (every fn-owner-step call names its event); post-alloc-2 2026-09-27",
+      "packet": "PKT-448 (d)"
     },
     "fn-sl-rev-onto recursion N": {
       "class": "cold",
-      "packet": "PKT-448 (d)",
-      "note": "the model crash event (fn-sn-crash -> fn-sf-crash builds the post-crash image with fn-sf-make, which converts its lists to snoc-lists, books/snoc-list.lisp): reached only through fn-own-step's (:store (:crash ...)) arm, which no host line selects (every fn-owner-step call names its event); post-alloc-2 2026-09-27"
+      "note": "the model crash event (fn-sn-crash -> fn-sf-crash builds the post-crash image with fn-sf-make, which converts its lists to snoc-lists, books/snoc-list.lisp): reached only through fn-own-step's (:store (:crash ...)) arm, which no host line selects (every fn-owner-step call names its event); post-alloc-2 2026-09-27",
+      "packet": "PKT-448 (d)"
     },
     "fn-sn-find-record recursion N": {
       "class": "unexpected",
       "packet": "PKT-448 (d)"
+    },
+    "fn-sn-row-verdicts-fold recursion N": {
+      "class": "unexpected",
+      "confirmed": "Source bridge restores all held/composite accepted verdicts at fn-sn-update-replayed via a retained-row fold. This is linear in retained history, including checkpoint finalization; no suffix-only or constant-work claim. Carrying the captured verdict projection is the finite continuation.",
+      "packet": "PRF-1070 retained recovery projection continuation"
     },
     "fn-sn-verdict-listp recursion N": {
       "class": "unexpected",
@@ -699,8 +693,8 @@
     },
     "fn-store-sco-publish-next len N": {
       "class": "unexpected",
-      "packet": "PKT-041",
-      "note": "checkpoint-arena-3 (2026-09-27): the state checkpoint verb takes NEXT as the owner does, the open's E extended over the rows after it (fn-scka-next-checkpoint), instead of canonicalizing every row again to compare with E; the extension walks E's prefix once (the drop to the suffix, the rows' count) per publication, reached from the verb and the owner's publication thread off the mutex, never from a served command [online-reclaim-8: the verb's setup split into fn-store-sco-publish-next + fn-owner-sco-setup-of (the reclaim's staged checkpoint writes the history image as a publication); moved from 'fn-store-sco-publish-setup len N', same traversal, same class]"
+      "note": "checkpoint-arena-3 (2026-09-27): the state checkpoint verb takes NEXT as the owner does, the open's E extended over the rows after it (fn-scka-next-checkpoint), instead of canonicalizing every row again to compare with E; the extension walks E's prefix once (the drop to the suffix, the rows' count) per publication, reached from the verb and the owner's publication thread off the mutex, never from a served command [online-reclaim-8: the verb's setup split into fn-store-sco-publish-next + fn-owner-sco-setup-of (the reclaim's staged checkpoint writes the history image as a publication); moved from 'fn-store-sco-publish-setup len N', same traversal, same class]",
+      "packet": "PKT-041"
     },
     "fn-store-sn-article-count len N": {
       "class": "unexpected",
@@ -713,16 +707,12 @@
     },
     "fn-th-prefix-loop recursion N": {
       "class": "cold",
-      "packet": "PKT-448 (d)",
-      "note": "cold since the fn-sn-recover cut (tools/hot_path_dimensions.json, flip-bridge 2026-09-27): its only served path was fn-owner-step's (:reopen) / (:store (:recover)) arm, which no host line selects; it runs at the open and recovery entries"
+      "note": "cold since the fn-sn-recover cut (tools/hot_path_dimensions.json, flip-bridge 2026-09-27): its only served path was fn-owner-step's (:reopen) / (:store (:recover)) arm, which no host line selects; it runs at the open and recovery entries",
+      "packet": "PKT-448 (d)"
     },
-    "fn9p-servable-articles recursion N": {
-      "class": "unexpected",
-      "packet": "PKT-448 (f)"
-    },
-    "fn9p-status-octets len N": {
-      "class": "unexpected",
-      "packet": "PKT-448 (f)"
+    "fn-xpy-walk recursion N": {
+      "class": "cold",
+      "packet": "PKT-891"
     },
     "fnn-bp-profile-open length F": {
       "class": "cold",
@@ -731,61 +721,7 @@
     "fnn-bp-profile-session length F": {
       "class": "unexpected",
       "packet": "PKT-448 (f)"
-    },
-    "fn-rcl-class-count-loop recursion N": {
-      "class": "unexpected",
-      "packet": "PKT-324 (8)",
-      "note": "bp-retention-leftovers (PKT-844, 2026-09-27): the signed and kept classes status prints beside the reclaim counts (fn-rcl-store-classes); the same per-article walk as fn-rcl-summary-in, on the offline/operator status report only, never per request. [batch AY: the walk runs as a loop (fn-rcl-class-count-loop); moved from 'fn-rcl-class-count-in recursion N', same traversal, same class]"
-    },
-    "fn-rclp-index-into recursion N": {
-      "class": "unexpected",
-      "packet": "PKT-324 (8)",
-      "note": "online-reclaim-8 (2026-09-29): the reclaim context's Message-ID index (books/store-reclaim-pack.lisp fn-rclp-index-built = fn-rclp-index-into over the articles from nil; fn-rclp-index-into-finds, fn-rclp-article-index-finds-the-article): ONE forward pass over the Store's articles per `store reclaim' (offline, --dry-run, --recorded, or the live pass's context, off the owner mutex), never per request or arrival; each record's step is then one hashed lookup. It replaced a whole reversed copy of the article list followed by the pass (moved from 'fn-rclp-reversed recursion N'). The pass over the articles is the verb's own dimension, the same as its pass over the records."
-    },
-    "fn-nsc-tally-loop recursion N": {
-      "class": "unexpected",
-      "packet": "PKT-324 (8)",
-      "note": "lane scale-reads-status (PRF-368): the live status reclaim line's ONE walk over the articles (was four walks, each realizing and digest-checking every payload); the tombstone flag is read from the catalog column. Still O(articles) per status under the owner mutex: 2.2 s at syn1m-2k live."
-    },
-    "fn-nsc-report len N": {
-      "class": "unexpected",
-      "packet": "PKT-324 (8)",
-      "note": "lane scale-reads-status (PRF-368): the status line's articles= count (len of the article list), as fn-nls-report's; the live twin of the same term."
-    },
-    "fn-nlp-fill recursion N": {
-      "class": "resumable",
-      "packet": "PKT-470",
-      "note": "lane obligations-paged (PRF-371): one page's lines, at most *fn-nls-chunk-octets* octets per request; the cursor carries the rest to the next request."
-    },
-    "fn-nlp-header len N": {
-      "class": "unexpected",
-      "packet": "PKT-324 (8)",
-      "note": "lane obligations-paged (PRF-371): the obligations report's header count (len of the retention ledger), once per report on its first page, never per page; a count walk, no rendering (1,000,000 obligations: first page 0.06 s at syn1m-2k)."
-    },
-    "fn-gacc-prefix recursion N": {
-      "class": "cold",
-      "packet": "PKT-643",
-      "note": "lane nntp-bugs (PKT-643, PRF-913): the access cache's prepare (host/owner-host.lisp fn-owner-chunk-span-at -> fn-scr-prepare-access -> fn-gacc-prepare -> fn-gacc-refresh) walks the new visible article list only when the connection's pin moved, and stops at the first tail EQUAL (EQ first) to the entry's articles: k steps for the k acceptances since the entry; the whole list only when the entry is not a tail, where the build follows (the cold build: a restart, a withdrawal, a new rule)."
-    },
-    "fn-gacc-grow recursion N": {
-      "class": "cold",
-      "packet": "PKT-643",
-      "note": "lane nntp-bugs (PKT-643, PRF-913): the access cache's prepare (host/owner-host.lisp fn-owner-chunk-span-at -> fn-scr-prepare-access -> fn-gacc-prepare -> fn-gacc-refresh) walks the k articles accepted since the entry (fn-gacc-prefix's prefix), one cut, one trie path copy and its bucket entries each; never the retained history."
-    },
-    "fn-xpy-walk recursion N": {
-      "class": "cold",
-      "packet": "PKT-891"
     }
   },
-  "note": "Every traversal of retained state that tools/hot_path_check.py finds on a path from a host entry, keyed 'function primitive dimension', with the packet that owns it (planning/backlog-2026-09-25.md; PKT-448's lettered items are the finds no earlier packet owned). This is a list, not a baseline: every entry here is a find the report prints, whatever its class. --strict fails on an unexpected find not listed here (NEW) and on a listed key that no longer occurs (STALE): remove an entry by removing the walk, in the same commit. 'confirmed' names the scaling row (planning/evidence/hot-path-checker-2026-09-26.md) that measured it; absent means static only.",
-  "accepted": {
-    "note": "Walks accepted by a coordinator ruling that tools/hot_path_check.py does not report (a dimension it does not seed, e.g. G, the configured groups). Named here so the acceptance and its reason are on record; the checker reads only 'findings'.",
-    "fn-nntp-nexts-boundedp recursion G": {
-      "via": "fn-acar-nntp-projectionp (books/owner-advance-carried.lisp), evaluated at every durable POST re-pin of the reader session (host/owner-host.lisp, the re-pin after an owner advance)",
-      "cost": "one natp test and one integer compare against *fn-nntp-max-article-number* per configured group; no allocation, no article visited",
-      "reason": "COORDINATOR RULING 2026-09-29 (on join-f2-9's open question): KEEP the watermark check. The conjunct is carried by fn-onb-boundp (PRF-958, books/owner-number-bound.lisp), which fn-ocl-relation does not include; dropping it would spread fn-onb-boundp through the relation-form keystones (fn-oop-*), and an O(groups) integer compare is not a served-path cost worth that. The group-name conjunct was proved carried (PRF-1010) and dropped.",
-      "class": "accepted",
-      "packet": "J1 (join-f2-9 / join-f2-10)"
-    }
-  }
+  "note": "Every traversal of retained state that tools/hot_path_check.py finds on a path from a host entry, keyed 'function primitive dimension', with the packet that owns it (planning/backlog-2026-09-25.md; PKT-448's lettered items are the finds no earlier packet owned). This is a list, not a baseline: every entry here is a find the report prints, whatever its class. --strict fails on an unexpected find not listed here (NEW) and on a listed key that no longer occurs (STALE): remove an entry by removing the walk, in the same commit. 'confirmed' names the scaling row (planning/evidence/hot-path-checker-2026-09-26.md) that measured it; absent means static only."
 }

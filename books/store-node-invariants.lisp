@@ -610,7 +610,6 @@
                      (fn-stxk-p (fn-sn-completion-record s)))
                  (not (fn-hstxa-p (fn-sn-completion-record s))))
             (and (equal (fn-sn-index (fn-sn-finish s)) (fn-sn-index s))
-                 (equal (fn-sn-keyring (fn-sn-finish s)) (fn-sn-keyring s))
                  (equal (fn-stx-store (fn-sn-node (fn-sn-finish s)))
                         (fn-stx-store (fn-sn-node s)))))
    :hints (("Goal" :in-theory (e/d (fn-sn-finish fn-sn-completion-enabledp)

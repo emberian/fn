@@ -416,6 +416,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-set-tests \
 	books/store-reclaim-pack \
 	tests/acl2/store-reclaim-pack-tests \
+	tests/acl2/reclaim-article-subject-tests \
 	books/history-knowledge \
 	tests/acl2/history-knowledge-tests \
 	books/store-reclaim-stream \
@@ -1567,6 +1568,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/stx-node-lace \
 	books/stx-policy \
 	books/peer-transit-authority \
+	books/statement-snapshot-keyring \
+	books/statement-recover-stream \
+	books/statement-keyring-publication \
+	books/native-statement-material \
+	tests/acl2/statement-keyring-publication-tests \
+	tests/acl2/statement-recover-stream-tests \
 	books/article-subject \
 	tests/acl2/article-subject-tests \
 	tests/acl2/group-authority-tests \
