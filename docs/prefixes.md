@@ -398,6 +398,8 @@ anything a book does not already decide.
 | `fn-hpm-` | `history-page-metadata` | Fixed-scratch current-format metadata spool emission component. |
 | `fn-hpi-` | `history-page-io` | Current image positional page ranges and nonoverlap; physical I/O remains separate. |
 | `fn-hdc-` | `history-decode-nodes`, `history-decode-cursor`, `history-decode-stream` | Borrowed current-format history decode nodes, byte feed, and component proof vocabulary. |
+
+| `fn-cpc-` | `consumer-publication-charge` | Scalar actual consumer publication charge and retained release vector; constructor correspondence, profile adapter and durable host integration remain separate obligations. |
 | `pgs-dc-`, `pgs-dcr-`, `pgs-dcb-`, `pgs-dbr-` | `pagestore-digest-cursor`, `pagestore-digest-cursor-refinement`, `pagestore-digest-byte-cursor`, `pagestore-digest-byte-refinement` | Bounded page and byte digest continuation; conditional phase/terminal proof vocabulary, full maintained trajectory remains open. |
 | `fn-hsr-` | `history-page-reader`, `history-page-reader-verdict` | Selected page-entry scanner and canonical word verdict components; authentication/controller composition remains open. |
 | `fn-rfh-` | `refusal-headroom` | Reference iteration over actual reserve/refuse subjects; exact finite identity consumption, without rescue preservation claim. |
