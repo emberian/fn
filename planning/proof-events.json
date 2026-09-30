@@ -3357,7 +3357,8 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-evc-class-by-shape-is-fn-cpe-eventp"
+          "name": "fn-evc-class-by-shape-is-fn-cne-eventp",
+          "pending_subject": "Current FNCE4 category widens this carried recognizer; changed Store/caller refinement not qualified. The current catalog-commit hint still cites the removed local-only recognizer theorem and requires a named repair."
         },
         {
           "kind": "theorem",

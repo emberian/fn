@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2241 |
-| Certification roots in the Makefile | 2053 |
-| Books inside the root closure | 2191 |
-| `defthm` and `defthmd` events | 32560 |
-| `defun` events | 20874 |
+| Books read | 2242 |
+| Certification roots in the Makefile | 2054 |
+| Books inside the root closure | 2192 |
+| `defthm` and `defthmd` events | 32561 |
+| `defun` events | 20876 |
 | Functions with verified guards | 3738 |
 | Functions declared `:verify-guards nil` and never verified | 2536 |
-| Functions left at the default with an explicit guard | 11590 |
+| Functions left at the default with an explicit guard | 11592 |
 | Functions left at the default with no guard | 3010 |
-| `assert-event` checks | 24505 |
+| `assert-event` checks | 24510 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 166 |
@@ -481,7 +481,7 @@ that `make certify` requests.
 | `books/consumer-store-events.lisp` | root | 1 | 13 | 13/0/0/0 | 0 | 0 | 0 |
 | `books/consumer-store-invariants.lisp` | root | 101 | 5 | 0/5/0/0 | 0 | 0 | 8 |
 | `books/consumer-store-projection.lisp` | root | 2 | 4 | 4/0/0/0 | 0 | 0 | 0 |
-| `books/consumer-transaction-dispatch.lisp` | root | 1 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/consumer-transaction-dispatch.lisp` | root | 2 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/consumer-wait-codec.lisp` | root | 10 | 8 | 6/0/2/0 | 0 | 0 | 0 |
 | `books/consumer-wait.lisp` | root | 10 | 12 | 4/3/5/0 | 0 | 0 | 0 |
 | `books/consumer-withdrawal.lisp` | root | 19 | 10 | 2/0/8/0 | 0 | 0 | 2 |
@@ -1692,6 +1692,7 @@ that `make certify` requests.
 | `tests/acl2/consumer-remote-operation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 1 | 0 | 0 |
 | `tests/acl2/consumer-remote-query-profile-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
 | `tests/acl2/consumer-remote-scope-tests.lisp` | root | 0 | 4 | 0/2/2/0 | 7 | 0 | 0 |
+| `tests/acl2/consumer-remote-store-category-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
 | `tests/acl2/consumer-remote-transaction-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
 | `tests/acl2/consumer-remote-wire-charge-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 4 | 0 | 0 |
 | `tests/acl2/consumer-store-events-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 6 | 1 | 0 |
@@ -1699,7 +1700,7 @@ that `make certify` requests.
 | `tests/acl2/consumer-store-node-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 32 | 0 | 0 |
 | `tests/acl2/consumer-store-projection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 1 | 0 |
 | `tests/acl2/consumer-topic-store-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
-| `tests/acl2/consumer-transaction-dispatch-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
+| `tests/acl2/consumer-transaction-dispatch-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
 | `tests/acl2/consumer-wait-codec-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 28 | 5 | 0 |
 | `tests/acl2/consumer-wait-tests.lisp` | root | 0 | 23 | 0/11/0/12 | 40 | 15 | 0 |
 | `tests/acl2/consumer-withdrawal-tests.lisp` | root | 2 | 11 | 0/5/0/6 | 66 | 7 | 0 |

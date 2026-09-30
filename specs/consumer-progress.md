@@ -802,3 +802,19 @@ This policy is not allocation authority: selected host representation and
 retained current-source custody require their genuine installed issuer, which
 is currently unavailable. The existing typed C delta codec carries the row;
 atomic current-C publication remains the actual collector's responsibility.
+### Complete remote category below Store (source join)
+
+The logical Store event union recognizes local FNCE1 and remote FNCE4 as
+`:consumer`, while FNCE2/3 retain private `:consumer-authority`. The shared
+bounded version dispatch selects the exact respective decoder; shared magic
+alone does not select authority. Complete logical remote event recognition
+requires nonempty strictly ordered valid bounded names and exact fixed head.
+Those whole-query recognizers/reference encoders are not the served chunk
+producer. Generic old CP replay refuses `:remote-consumer-interpreter-required`
+until the genuine carried remote operation is installed; it cannot acknowledge
+registration by merely advancing the frontier. The existing fixed512 generic
+publication estimate remains unchanged and does not grant remote admission.
+Actual operator query limit, Store R, frame/runtime representation and pooled
+quantum/lifetime admission must agree on the same retained operation. Selected
+modern category source hunks and authored regressions are an integration packet,
+not current full Store or endpoint qualification.
