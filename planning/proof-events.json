@@ -17765,9 +17765,33 @@
         {
           "kind": "theorem",
           "name": "fn-iprc-copy-one-appended-domain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-iprc-share-one-preserves-row-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-iprc-directory-replace-shares-other-leaf"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-iprc-row-seal-establishes-directory-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-iprc-root-one-completes-directory-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-iprc-writer-complete-publishes-row-domain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-iprc-borrowed-directory-row-read-domain"
         }
       ],
-      "pending_subject": "Actual recursive row-write/copy/shared-descriptor preservation to published captured row-root/ordinal + retained arena incarnation; durable append/withdraw/redecide/policy event source attachment."
+      "pending_subject": "Actual served sealed-PC/SAMEarena source attachment and complete durable event roster; query capture/lifetime/owner STATE composition remains conditional. Actual internal copy/seal/share/root/publication/read boundary now has maintained typed-row carry."
     }
   ]
 }

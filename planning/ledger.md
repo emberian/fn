@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1926 |
-| Certification roots in the Makefile | 1799 |
-| Books inside the root closure | 1878 |
-| `defthm` and `defthmd` events | 29348 |
-| `defun` events | 19365 |
+| Books read | 1928 |
+| Certification roots in the Makefile | 1800 |
+| Books inside the root closure | 1880 |
+| `defthm` and `defthmd` events | 29399 |
+| `defun` events | 19388 |
 | Functions with verified guards | 3601 |
-| Functions declared `:verify-guards nil` and never verified | 2258 |
+| Functions declared `:verify-guards nil` and never verified | 2267 |
 | Functions left at the default with an explicit guard | 10651 |
-| Functions left at the default with no guard | 2855 |
+| Functions left at the default with no guard | 2869 |
 | `assert-event` checks | 23995 |
 | `must-fail` checks | 2506 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 159 |
+| `encapsulate` events | 170 |
 | Theorems flagged SUSPECT by shape | 1235 |
 | Export-hygiene warnings | 352 |
 | Enabled-projection warnings | 58 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2587 |
+| Include-hygiene warnings | 2592 |
 | Host-names warnings | 2137 |
 | Hand-written-record warnings | 18 |
 
@@ -591,6 +591,7 @@ that `make certify` requests.
 | `books/index-backing-layout.lisp` | - | 5 | 7 | 2/0/4/1 | 0 | 0 | 0 |
 | `books/index-backing-page-owners.lisp` | - | 0 | 9 | 1/0/8/0 | 0 | 0 | 0 |
 | `books/index-backing-provider.lisp` | - | 18 | 56 | 24/0/32/0 | 0 | 0 | 0 |
+| `books/index-backing-publication-directory-carry.lisp` | closure | 24 | 10 | 0/7/0/3 | 0 | 0 | 0 |
 | `books/index-backing-publication-row-carry.lisp` | closure | 20 | 4 | 0/0/1/3 | 0 | 0 | 0 |
 | `books/index-backing-publication.lisp` | - | 0 | 9 | 5/0/4/0 | 0 | 0 | 0 |
 | `books/index-backing-resource-driver.lisp` | - | 5 | 12 | 5/0/7/0 | 0 | 0 | 0 |
@@ -1575,6 +1576,7 @@ that `make certify` requests.
 | `tests/acl2/identity-retain-carried-tests.lisp` | root | 0 | 5 | 0/3/0/2 | 39 | 0 | 0 |
 | `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 0 | 0 |
 | `tests/acl2/incoming-authority-freshness-tests.lisp` | - | 0 | 2 | 0/0/0/2 | 10 | 0 | 0 |
+| `tests/acl2/index-backing-publication-directory-tests.lisp` | root | 27 | 13 | 0/2/0/11 | 0 | 0 | 0 |
 | `tests/acl2/index-backing-publication-mapping-tests.lisp` | root | 25 | 9 | 0/1/0/8 | 0 | 0 | 0 |
 | `tests/acl2/index-backing-publication-row-carry-tests.lisp` | root | 19 | 8 | 0/2/0/6 | 0 | 0 | 0 |
 | `tests/acl2/index-backing-row-carry-tests.lisp` | root | 9 | 10 | 0/0/1/9 | 13 | 0 | 0 |

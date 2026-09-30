@@ -138,3 +138,42 @@ are separate from the source scenario that calls CopyOne twice, actual RowSeal,
 two actual RowRootOne steps, and the recursive row reader through the resulting
 descriptor. That scenario observes the same assigned pointer and retained old
 descriptor; it does not establish publication of that root or source authenticity.
+
+## Persistent directory and actual publication boundary
+
+The directory successor uses the same physical row-prefix relation. It adds no
+served validation. Actual shared-page Begin/One and generation publish/drop
+operations preserve every selected row path because they modify distinct
+metadata. Actual RowSeal preserves the copied prefix and initializes the
+persistent directory update from its retained old publication and new chunk.
+
+A proof-only directory selection/intent relation follows actual DirPutStep
+through descent and branch rebuild. Successful completion produces that exact
+root; replacing one writable path preserves other readable leaves. Actual
+RowRootOne carries the intent across scheduling steps and installs the completed
+root. Actual WriterComplete preserves row typing and publishes the builder's
+row root/depth, with arena incarnation/prefix obtained from its actual registered
+generation read. These are conditional producer invariants, not claims that a
+ready builder or matching arena number establishes provenance.
+
+Actual DirectoryStep preserves selection across yield and returns the selected
+borrowed descriptor. Composing its actual borrow with NodeRowRead proves the
+held16 domain under the retained physical prefix, ordinal bound and both success
+statuses. The proof-only directory-row relation records typing at the selected
+physical path; availability and descriptor authenticity remain separate. A
+missing root or failed borrow is never permission to read or make a decision.
+
+The modern executable core fixture now runs actual prepare/assignment, two
+CopyOne calls, RowSeal, RootOne steps, WriterComplete, directory borrow and row
+read. It observes the SAME assigned pointer and distinct C=2, F=19, V=3 with
+arena incarnation7/prefix2. Physical children, generation grants/capture and
+ready table metadata are explicitly fixture prerequisites. Literal removals
+cover every hypothesis of the seal/root/published-domain/borrowed-read boundaries;
+corrupted headers/directories and continuations are labeled separately. Actual
+shared-page retain is also exercised and preserves the selected typed prefix.
+
+Normal qualification of the additive directory book/test remains pending at
+its exact source hashes. The genuine served sealed-PC/SAMEarena producer hook,
+query capture lifetime, durable event source correspondence for the full roster,
+cold held16 loader, admitted constructors and complete operation funding remain
+open. The fixture does not assert those properties.

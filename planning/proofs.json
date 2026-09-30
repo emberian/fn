@@ -18941,7 +18941,7 @@
     {
       "id": "PRF-1168",
       "title": "Actual held16 producers and physical row prefixes preserve the reader row domain",
-      "statement": "Actual held16 intern and prepare establish binding, withdrawal, optional NOV and same-result payload-prefix domains. Actual shared-pool generation reserve/register retain the prepared commit and actual assignment publishes typed assigned8 field5. Actual recursive write and owner-metadata steps preserve typed prefixes; successful actual copy/append extends the owner-selected destination prefix. Physical prefix preservation supports an actual recursive node-row-read conditional boundary. Maintained shared-root/publication/captured arena-incarnation and complete durable event coverage remain open.",
+      "statement": "Actual held16 intern/prepare, shared-pool generation reserve/register, assignment, recursive copy, seal, shared-page retain, persistent directory construction and actual writer completion establish/preserve typed row-prefix carry. Actual borrowed-directory NodeRowRead returns the typed held16 pointer under that carry, bound and result status. Genuine served prepared source/SAMEarena lifetime, captured query and complete durable event publication remain open.",
       "milestone": "M5",
       "requirements": [
         "REP-013",
@@ -18973,7 +18973,13 @@
         "fn-iprc-node-row-write-extends-prefix",
         "fn-iprc-copy-cell-preserves-destination-prefix",
         "fn-iprc-copy-cell-extends-owned-prefix",
-        "fn-iprc-copy-one-appended-domain"
+        "fn-iprc-copy-one-appended-domain",
+        "fn-iprc-share-one-preserves-row-prefix",
+        "fn-iprc-directory-replace-shares-other-leaf",
+        "fn-iprc-row-seal-establishes-directory-carry",
+        "fn-iprc-root-one-completes-directory-carry",
+        "fn-iprc-writer-complete-publishes-row-domain",
+        "fn-iprc-borrowed-directory-row-read-domain"
       ],
       "evidence": [
         "books/index-backing-row-carry.lisp",
@@ -18985,9 +18991,12 @@
         "tests/acl2/index-backing-publication-row-carry-tests.lisp",
         "planning/evidence/index-publication-row-carry-2026-09-30",
         "tests/acl2/index-backing-publication-mapping-tests.lisp",
-        "planning/evidence/index-publication-mapping-2026-09-30"
+        "planning/evidence/index-publication-mapping-2026-09-30",
+        "books/index-backing-publication-directory-carry.lisp",
+        "tests/acl2/index-backing-publication-directory-tests.lisp",
+        "planning/evidence/index-publication-directory-2026-09-30"
       ],
-      "progress_note": "Frozen predecessor00c0 normal193424 passes. New separate recursive write/owner metadata/copy extension source and literal modern producer/COW fixtures pass in protected pub-map; changed bytes await matching normal. Caller/root/arena incarnation, complete event publication and genuine constructor/funding/activation remain open."
+      "progress_note": "Predecessor00c0 normal193424 passes; 2df mapping normal pending. Additive directory successor proofs and literal full copy-to-published-read core scenario pass in modern pub-map; normal pending for new bytes. Fixture children/grants/arena/table-ready setup is explicit, no genuine funding/source/activation claim."
     }
   ]
 }
