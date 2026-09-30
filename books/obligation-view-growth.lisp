@@ -44,3 +44,5 @@
                    (weight (nfix (+ 1 (- (nfix (fn-retain-reserved old))
                                          (nfix (fn-retain-reserved new))))))
                    (trie (cdr view)))))))
+
+(in-theory (disable fn-rov-update-subject))
