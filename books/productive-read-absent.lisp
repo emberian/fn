@@ -13,6 +13,47 @@
     session
     (if (fn-nntp-number-tokenp token) (fn-proto-text * :no-number) (fn-proto-text * :no-msgid))))
 
+; Expansion cannot disguise this ARTICLE-specific reply.
+(defthm
+  fn-pcr-expanded-absent-reply-is-the-raw-reply
+  (let
+    ((expected (fn-nntp-result-effects (fn-pcr-absent-reply session token))))
+    (implies
+      (equal (fn-ovw-expand effects fn-arena fn-cat) (fn-ovw-expand expected fn-arena fn-cat))
+      (equal effects expected)))
+  :rule-classes
+  nil
+  :hints
+  (("Goal"
+     :use
+     ((:instance
+        fn-pcr-expand-inverts-a-distinct-single-reply
+        (octets
+          (if
+            (fn-nntp-number-tokenp token)
+            (append (fn-nntp-string-octets "423 no article with that number") (quote (13 10)))
+            (append (fn-nntp-string-octets "430 no article with that message-id") (quote (13 10))))))
+       (:instance
+         fn-pcr-over-cursor-never-expands-to-an-article-reply
+         (cur (car (cdr (car effects))))
+         (tail nil))
+       (:instance
+         fn-ovw-expand-of-single-effects
+         (text
+           (if
+             (fn-nntp-number-tokenp token)
+             "423 no article with that number"
+             "430 no article with that message-id"))))
+     :in-theory
+     (e/d
+       (fn-pcr-absent-reply
+         fn-nntp-single
+         fn-nntp-result-effects
+         fn-nntp-make-result
+         fn-nntp-crlf)
+       (fn-nntp-number-tokenp fn-ovw-expand fn-ovw-cursor-octets
+         fn-ovw-expand-of-single-effects fn-ovw-expand-of-reply-cons)))))
+
 (defthm
   fn-pcr-absent-retrieval-preserves-the-cursor
   (let
@@ -767,7 +808,39 @@
              (fn-ocfg-owner oc)
              (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))
        (:instance fn-pcr-served-read-is-the-reference-read)
-       fn-otb-a-late-page-is-unavailable-never-absent)
+       fn-otb-a-late-page-is-unavailable-never-absent
+       (:instance
+         fn-pcr-expanded-absent-reply-is-the-raw-reply
+         (effects
+           (fn-own-tls-result-effects
+             (car
+               (fn-mca-read-span
+                 credits
+                 oc
+                 views
+                 id
+                 i
+                 end
+                 cache
+                 s
+                 slots
+                 reserve
+                 fn-octets
+                 fn-arena
+                 fn-cat))))
+         (session
+           (fn-post-session-base
+             (fn-peer-session-base
+               (fn-auth-view-session
+                 (fn-served-conn-session
+                   (fn-own-tls-served-conn
+                     (fn-ocfg-owner oc)
+                     (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
+                 (fn-served-conn-config
+                   (fn-own-tls-served-conn
+                     (fn-ocfg-owner oc)
+                     (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))))))
+         (token token)))
      :in-theory
      (union-theories
        (quote (fn-pcr-take-physical-line fn-pcr-tls-served-wire-by-definition))

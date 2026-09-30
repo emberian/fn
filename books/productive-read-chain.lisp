@@ -613,30 +613,64 @@
    car-cons cdr-cons)
  (theory 'minimal-theory)))))
 
-(defthm fn-pcr-mca-is-the-counted-configured-read-by-definition
-  (implies (and (equal (car (fn-mcr-resize
-                           credits (fn-mca-conn-key id)
-                           (fn-mca-need (fn-own-tls-result-owner
-                                        (fn-oas-read-span oc views id i end cache s slots
-                                                          fn-octets fn-arena fn-cat))
-                                        id reserve))) :ok)
-                (not (fn-oas-over-p oc (fn-own-tls-result-owner
-                                      (fn-otm-read-span oc views id i end cache s
-                                                        fn-octets fn-arena fn-cat)) id slots))
-                (not (eq (fn-otm-admit-post s) :shed)) (not (consp views))
-                (fn-gacc-okp cache) (fn-ocl-relation oc)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
-                (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
-                (fn-scol-okp fn-arena fn-cat) (natp i) (natp end))
-           (equal (car (fn-mca-read-span credits oc views id i end cache s slots reserve
-                                         fn-octets fn-arena fn-cat))
-                  (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
-  :hints (("Goal"
-           :use (fn-mca-read-span-within-the-credit-unfolds
-                 fn-oas-read-span-when-held-unfolds fn-otm-read-span-when-admitted-unfolds
-                 fn-orr-read-span-without-a-capture-is-the-span-read-by-definition
-                 fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
-           :in-theory (theory 'minimal-theory))))
+(defthm
+  fn-pcr-mca-is-the-counted-configured-read-by-definition
+  (implies
+    (and
+      (equal
+        (car
+          (fn-mcr-resize
+            credits
+            (fn-mca-conn-key id)
+            (fn-mca-need
+              (fn-own-tls-result-owner
+                (fn-oas-read-span oc views id i end cache s slots fn-octets fn-arena fn-cat))
+              id
+              reserve)))
+        :ok)
+      (not
+        (fn-oas-over-p
+          oc
+          (fn-own-tls-result-owner
+            (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat))
+          id
+          slots))
+      (not (eq (fn-otm-admit-post s) :shed))
+      (not (consp views))
+      (fn-gacc-okp cache)
+      (fn-ocl-relation oc)
+      (fn-scar-view-indexedp (fn-ocfg-owner oc))
+      (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
+      (fn-scol-okp fn-arena fn-cat)
+      (natp i)
+      (natp end))
+    (fn-scr-tls-agrees
+      (car
+        (fn-mca-read-span
+          credits
+          oc
+          views
+          id
+          i
+          end
+          cache
+          s
+          slots
+          reserve
+          fn-octets
+          fn-arena
+          fn-cat))
+      (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
+  :hints
+  (("Goal"
+     :use
+     (fn-mca-read-span-within-the-credit-unfolds
+       fn-oas-read-span-when-held-unfolds
+       fn-otm-read-span-when-admitted-unfolds
+       fn-orr-read-span-without-a-capture-is-the-span-read-by-definition
+       fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
+     :in-theory
+     (theory (quote minimal-theory)))))
 
 (local
  (defthm fn-pcr-take-full-list
@@ -659,21 +693,262 @@
           (fn-own-conn-wire conn))
    :hints (("Goal" :in-theory (enable fn-own-tls-served-conn fn-own-served-conn)))))
 
-(defthm fn-pcr-host-called-read-answers-the-numbered-article
-(let* ((o (fn-ocfg-owner oc)) (conn (fn-own-find-conn id (fn-own-conns o))) (sc (fn-own-tls-served-conn o conn)) (as (fn-served-conn-session sc)) (config (fn-served-conn-config sc)) (archive (fn-served-conn-archive sc)) (index (fn-served-conn-pinned-index sc)) (observation (fn-served-conn-observation sc)) (peer (fn-auth-view-session as config)) (viewarchive (fn-auth-view-archive as config archive)) (viewindex (fn-auth-view-index as config archive index)) (viewconfig (fn-auth-view-config as (fn-auth-moderation-config as config) archive)) (ps (fn-peer-session-base peer)) (session (fn-post-session-base ps)) (env (fn-post-reader-env viewconfig observation)) (group (fn-nntp-session-group session)) (number (fn-nntp-decimal-value token)) (article (fn-nntp-find-group-number group number (fn-state-articles viewarchive))) (server (fn-nntp-xref-server env)) (r (fn-pcr-220-reply session article number group server fn-arena)) (p (car (fn-mca-read-span credits oc views id i end cache s slots reserve fn-octets fn-arena fn-cat)))) (implies (and (equal (car (fn-mcr-resize credits (fn-mca-conn-key id) (fn-mca-need (fn-own-tls-result-owner (fn-oas-read-span oc views id i end cache s slots fn-octets fn-arena fn-cat)) id reserve))) :ok) (not (fn-oas-over-p oc (fn-own-tls-result-owner (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat)) id slots)) (not (eq (fn-otm-admit-post s) :shed)) (not (consp views)) (fn-gacc-okp cache) (fn-ocl-relation oc) (fn-scar-view-indexedp (fn-ocfg-owner oc)) (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat) (natp i) (natp end) conn completed (equal (fn-oct-slice-list i end fn-octets) (append line (quote (13 10)))) (fn-served-conn-shapep sc) (equal (fn-served-conn-wire sc) (fn-wire-make-state :command nil 0 nil nil 0 line-limit body-limit)) (fn-wire-statep (fn-served-conn-wire sc)) (fn-wire-line-contentp line) (natp line-limit) (<= (len line) line-limit) (not (fn-served-haltedp sc)) (fn-auth-sessionp as) (not (fn-auth-session-handshakingp as)) (not (fn-auth-sasl-waitingp as)) (or (not (fn-auth-config-requiredp (fn-auth-session-config as))) (fn-auth-session-subject as)) (fn-peer-sessionp peer) (null (fn-peer-session-peer peer)) (fn-post-sessionp ps) (not (fn-post-session-awaiting ps)) (fn-nntp-sessionp session) (equal (fn-nntp-session-openp session) t) (fn-nntp-session-projected session) (fn-nntp-command-inputp line) (fn-nntp-command-arguments-at-mostp (list *fn-pcr-article-keyword* token)) (equal (fn-nntp-tokenize line) (list *fn-pcr-article-keyword* token)) (fn-arena-p fn-arena) (fn-nntp-number-tokenp token) group (consp article) server (fn-gidx-pinp viewindex) (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token)) (fn-nntp-response-okp-of-bytes article (fn-nntp-article-bytes article fn-arena) :article) (fn-nntp-response-okp-of-bytes article (fn-pcr-served-octets server article fn-arena) :article)) (and (equal (fn-otb-dependency-step since now limit completed) :serve) (equal (fn-own-tls-result-consumed p) (+ 2 (len line))) (equal (fn-own-tls-result-effects p) (fn-nntp-result-effects r)) (equal (fn-own-tls-result-owner p) (cdr (fn-ocfg-read oc id (append line (quote (13 10))) fn-arena))))))
-  :rule-classes nil
-  :hints (("Goal" :use (
- fn-pcr-mca-is-the-counted-configured-read-by-definition
- (:instance fn-pcr-configured-reader-counted-answer-by-definition (octets (append line '(13 10))))
- (:instance fn-pcr-command-line-counted-step-consumes-the-physical-line (conn (fn-own-tls-served-conn (fn-ocfg-owner oc) (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))
- (:instance fn-served-step-counted-fast-is-reference (conn (fn-own-tls-served-conn (fn-ocfg-owner oc) (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))) (octets (append line '(13 10))))
- (:instance fn-served-step-counted-result-is-step-of-consumed-prefix (conn (fn-own-tls-served-conn (fn-ocfg-owner oc) (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))) (octets (append line '(13 10))))
- (:instance fn-pcr-served-step-answers-the-numbered-article (conn (fn-own-tls-served-conn (fn-ocfg-owner oc) (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))
- (:instance fn-pcr-served-read-is-the-reference-read)
- fn-otb-a-late-page-is-unavailable-never-absent)
- :in-theory (union-theories
- '(fn-pcr-take-physical-line fn-pcr-tls-served-wire-by-definition)
- (theory 'minimal-theory)))))
+(defthm
+  fn-pcr-host-called-read-answers-the-numbered-article
+  (let*
+    ((o (fn-ocfg-owner oc))
+      (conn (fn-own-find-conn id (fn-own-conns o)))
+      (sc (fn-own-tls-served-conn o conn))
+      (as (fn-served-conn-session sc))
+      (config (fn-served-conn-config sc))
+      (archive (fn-served-conn-archive sc))
+      (index (fn-served-conn-pinned-index sc))
+      (observation (fn-served-conn-observation sc))
+      (peer (fn-auth-view-session as config))
+      (viewarchive (fn-auth-view-archive as config archive))
+      (viewindex (fn-auth-view-index as config archive index))
+      (viewconfig (fn-auth-view-config as (fn-auth-moderation-config as config) archive))
+      (ps (fn-peer-session-base peer))
+      (session (fn-post-session-base ps))
+      (env (fn-post-reader-env viewconfig observation))
+      (group (fn-nntp-session-group session))
+      (number (fn-nntp-decimal-value token))
+      (article (fn-nntp-find-group-number group number (fn-state-articles viewarchive)))
+      (server (fn-nntp-xref-server env))
+      (r (fn-pcr-220-reply session article number group server fn-arena))
+      (p
+        (car
+          (fn-mca-read-span
+            credits
+            oc
+            views
+            id
+            i
+            end
+            cache
+            s
+            slots
+            reserve
+            fn-octets
+            fn-arena
+            fn-cat))))
+    (implies
+      (and
+        (equal
+          (car
+            (fn-mcr-resize
+              credits
+              (fn-mca-conn-key id)
+              (fn-mca-need
+                (fn-own-tls-result-owner
+                  (fn-oas-read-span oc views id i end cache s slots fn-octets fn-arena fn-cat))
+                id
+                reserve)))
+          :ok)
+        (not
+          (fn-oas-over-p
+            oc
+            (fn-own-tls-result-owner
+              (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat))
+            id
+            slots))
+        (not (eq (fn-otm-admit-post s) :shed))
+        (not (consp views))
+        (fn-gacc-okp cache)
+        (fn-ocl-relation oc)
+        (fn-scar-view-indexedp (fn-ocfg-owner oc))
+        (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
+        (fn-scol-okp fn-arena fn-cat)
+        (natp i)
+        (natp end)
+        conn
+        completed
+        (equal (fn-oct-slice-list i end fn-octets) (append line (quote (13 10))))
+        (fn-served-conn-shapep sc)
+        (equal
+          (fn-served-conn-wire sc)
+          (fn-wire-make-state :command nil 0 nil nil 0 line-limit body-limit))
+        (fn-wire-statep (fn-served-conn-wire sc))
+        (fn-wire-line-contentp line)
+        (natp line-limit)
+        (<= (len line) line-limit)
+        (not (fn-served-haltedp sc))
+        (fn-auth-sessionp as)
+        (not (fn-auth-session-handshakingp as))
+        (not (fn-auth-sasl-waitingp as))
+        (or
+          (not (fn-auth-config-requiredp (fn-auth-session-config as)))
+          (fn-auth-session-subject as))
+        (fn-peer-sessionp peer)
+        (null (fn-peer-session-peer peer))
+        (fn-post-sessionp ps)
+        (not (fn-post-session-awaiting ps))
+        (fn-nntp-sessionp session)
+        (equal (fn-nntp-session-openp session) t)
+        (fn-nntp-session-projected session)
+        (fn-nntp-command-inputp line)
+        (fn-nntp-command-arguments-at-mostp (list *fn-pcr-article-keyword* token))
+        (equal (fn-nntp-tokenize line) (list *fn-pcr-article-keyword* token))
+        (fn-arena-p fn-arena)
+        (fn-nntp-number-tokenp token)
+        group
+        (consp article)
+        server
+        (fn-gidx-pinp viewindex)
+        (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token))
+        (fn-nntp-response-okp-of-bytes article (fn-nntp-article-bytes article fn-arena) :article)
+        (fn-nntp-response-okp-of-bytes
+          article
+          (fn-pcr-served-octets server article fn-arena)
+          :article))
+      (and
+        (equal (fn-otb-dependency-step since now limit completed) :serve)
+        (equal (fn-own-tls-result-consumed p) (+ 2 (len line)))
+        (equal (fn-own-tls-result-effects p) (fn-nntp-result-effects r))
+        (equal
+          (fn-own-tls-result-owner p)
+          (cdr (fn-ocfg-read oc id (append line (quote (13 10))) fn-arena))))))
+  :rule-classes
+  nil
+  :hints
+  (("Goal"
+     :use
+     (fn-pcr-mca-is-the-counted-configured-read-by-definition
+       (:instance
+         fn-pcr-configured-reader-counted-answer-by-definition
+         (octets (append line (quote (13 10)))))
+       (:instance
+         fn-pcr-command-line-counted-step-consumes-the-physical-line
+         (conn
+           (fn-own-tls-served-conn
+             (fn-ocfg-owner oc)
+             (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))
+       (:instance
+         fn-served-step-counted-fast-is-reference
+         (conn
+           (fn-own-tls-served-conn
+             (fn-ocfg-owner oc)
+             (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
+         (octets (append line (quote (13 10)))))
+       (:instance
+         fn-served-step-counted-result-is-step-of-consumed-prefix
+         (conn
+           (fn-own-tls-served-conn
+             (fn-ocfg-owner oc)
+             (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
+         (octets (append line (quote (13 10)))))
+       (:instance
+         fn-pcr-served-step-answers-the-numbered-article
+         (conn
+           (fn-own-tls-served-conn
+             (fn-ocfg-owner oc)
+             (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))
+       (:instance fn-pcr-served-read-is-the-reference-read)
+       fn-otb-a-late-page-is-unavailable-never-absent
+       (:instance
+         fn-pcr-expanded-numbered-220-is-the-raw-reply
+         (effects
+           (fn-own-tls-result-effects
+             (car
+               (fn-mca-read-span
+                 credits
+                 oc
+                 views
+                 id
+                 i
+                 end
+                 cache
+                 s
+                 slots
+                 reserve
+                 fn-octets
+                 fn-arena
+                 fn-cat))))
+         (session
+           (fn-post-session-base
+             (fn-peer-session-base
+               (fn-auth-view-session
+                 (fn-served-conn-session
+                   (fn-own-tls-served-conn
+                     (fn-ocfg-owner oc)
+                     (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
+                 (fn-served-conn-config
+                   (fn-own-tls-served-conn
+                     (fn-ocfg-owner oc)
+                     (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))))))
+         (article
+           (fn-nntp-find-group-number
+             (fn-nntp-session-group
+               (fn-post-session-base
+                 (fn-peer-session-base
+                   (fn-auth-view-session
+                     (fn-served-conn-session
+                       (fn-own-tls-served-conn
+                         (fn-ocfg-owner oc)
+                         (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
+                     (fn-served-conn-config
+                       (fn-own-tls-served-conn
+                         (fn-ocfg-owner oc)
+                         (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))))))
+             (fn-nntp-decimal-value token)
+             (fn-state-articles
+               (fn-auth-view-archive
+                 (fn-served-conn-session
+                   (fn-own-tls-served-conn
+                     (fn-ocfg-owner oc)
+                     (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
+                 (fn-served-conn-config
+                   (fn-own-tls-served-conn
+                     (fn-ocfg-owner oc)
+                     (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
+                 (fn-served-conn-archive
+                   (fn-own-tls-served-conn
+                     (fn-ocfg-owner oc)
+                     (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))))))
+         (number (fn-nntp-decimal-value token))
+         (group
+           (fn-nntp-session-group
+             (fn-post-session-base
+               (fn-peer-session-base
+                 (fn-auth-view-session
+                   (fn-served-conn-session
+                     (fn-own-tls-served-conn
+                       (fn-ocfg-owner oc)
+                       (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
+                   (fn-served-conn-config
+                     (fn-own-tls-served-conn
+                       (fn-ocfg-owner oc)
+                       (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))))))
+         (server
+           (fn-nntp-xref-server
+             (fn-post-reader-env
+               (fn-auth-view-config
+                 (fn-served-conn-session
+                   (fn-own-tls-served-conn
+                     (fn-ocfg-owner oc)
+                     (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
+                 (fn-auth-moderation-config
+                   (fn-served-conn-session
+                     (fn-own-tls-served-conn
+                       (fn-ocfg-owner oc)
+                       (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
+                   (fn-served-conn-config
+                     (fn-own-tls-served-conn
+                       (fn-ocfg-owner oc)
+                       (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))
+                 (fn-served-conn-archive
+                   (fn-own-tls-served-conn
+                     (fn-ocfg-owner oc)
+                     (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))
+               (fn-served-conn-observation
+                 (fn-own-tls-served-conn
+                   (fn-ocfg-owner oc)
+                   (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))))
+         (fn-arena fn-arena)))
+     :in-theory
+     (union-theories
+       (quote (fn-pcr-take-physical-line fn-pcr-tls-served-wire-by-definition))
+       (theory (quote minimal-theory))))))
 
 (local
  (defthm fn-pcr-valid-peer-has-valid-post
