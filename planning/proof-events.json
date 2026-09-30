@@ -6108,7 +6108,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cfg-add-peer-rows-extends-the-group"
+          "name": "fn-cfg-add-peer-rows-extends-the-filtered-group"
         },
         {
           "kind": "theorem",
@@ -15575,7 +15575,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-pset-plan-sets-the-record-and-keeps-the-extensions"
+          "name": "fn-pset-plan-keeps-ordinary-extensions-and-invalidates-receipt"
         },
         {
           "kind": "theorem",
@@ -17780,6 +17780,10 @@
         }
       ],
       "pending_subject": "Native window dispatch is staged: no served descriptor/admission join. Adapter equations name the actual executor subjects. Demand adequacy, authentic native trajectory and served reachability remain open."
+    },
+    {
+      "id": "PRF-1151",
+      "events": []
     }
   ]
 }
