@@ -2668,9 +2668,6 @@
 (definterface fn-bpfj-finishedp
   :class ::common-lisp-compliant)
 
-(definterface fn-bpnpf-bundle-octets
-  :class ::common-lisp-compliant)
-
 (definterface fn-bpnpf-held-octets
   :class ::common-lisp-compliant)
 (definterface fn-bpnf-family-publication-authorize
