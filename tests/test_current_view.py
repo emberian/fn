@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import tempfile
+import json
 import unittest
 from unittest.mock import patch
 
@@ -55,6 +56,14 @@ class TestedCoordinateTests(unittest.TestCase):
                        {"image": "qualified", "profile": "small", "source": "rev"}]:
             with self.subTest(tested=tested), self.assertRaises(current_view.ViewError):
                 self.render(tested)
+
+    @patch.object(current_view, "record_link", return_value="record-link")
+    @patch.object(current_view, "carried", return_value=(True, "matching"))
+    def test_existing_sidecar_coordinates(self, carried, record_link):
+        view = json.loads((current_view.ROOT / current_view.SIDECAR).read_text())
+        for capability in view["capabilities"]:
+            with self.subTest(capability=capability["id"]):
+                current_view.tested_coordinate(Path("."), capability, view["images"], None, [])
 
     @patch.object(current_view, "record_link", return_value="record-link")
     @patch.object(current_view, "carried", return_value=(True, "matching"))

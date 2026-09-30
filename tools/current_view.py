@@ -192,7 +192,7 @@ def tested_coordinate(root: Path, cap: dict, images: dict, evidence: Evidence,
         if not isinstance(tested, dict):
             raise ViewError(f"{ident}: tested must be null or an image/lab coordinate")
         expected = {"image", "profile"} if "image" in tested else {"record", "source", "profile"}
-        if not expected <= tested.keys() or ("image" in tested and {"record", "source"} & tested.keys()):
+        if not expected <= tested.keys() or ("image" in tested and "source" in tested):
             raise ViewError(f"{ident}: invalid tested coordinate")
         if any(not isinstance(tested[k], str) or not tested[k].strip() for k in expected):
             raise ViewError(f"{ident}: tested coordinates must be nonempty strings")
