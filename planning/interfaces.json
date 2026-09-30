@@ -25614,7 +25614,12 @@
       "subsystem": "nntp/served",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "i",
+          "natp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -26005,7 +26010,12 @@
       "subsystem": "nntp/served",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "n",
+          "natp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -26022,7 +26032,12 @@
       "subsystem": "nntp/served",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "n",
+          "natp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -26430,7 +26445,12 @@
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "i",
+          "natp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -26464,7 +26484,12 @@
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "n",
+          "natp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
