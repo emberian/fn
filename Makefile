@@ -877,6 +877,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-session \
 	books/nntp-projection \
 	books/nov-fields \
+	books/legacy-parser-catalog \
+	tests/acl2/legacy-parser-catalog-tests \
 	books/nntp-article-pass \
 	books/nntp-responses \
 	books/nntp-article-block \
