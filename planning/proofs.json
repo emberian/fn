@@ -18550,6 +18550,26 @@
         "planning/history-page-cursor-contract.md"
       ],
       "progress_note": "Clean protected auto-persvati hcht63 loaded census, scratch and header source in proper encapsulates plus9header test forms with zero refusals:1.09ACL2seconds/35708steps. All15census testbodyforms then passed in the same clean session. Source guardverified and named component refinements admitted; full per-literal hypothesis audit and composed keystone remain open. No certificate/native/host claim."
+    },
+    {
+      "id": "PRF-1101",
+      "title": "W8 retention ledger logical/resource maintenance refinement component",
+      "statement": "Planned composition target; source component in books/history-resource-refinement.lisp. fn-hrf-alpha separates logical active obligation id/subject/kind/evidence plus permanent release history from resource capacity/reserved/per-pin charges. fn-hrf-release-refines-abstract-maintenance proves a commuting square for existing fn-hkn-release-retention under an alist pin domain; fn-hrf-maintenance-preserves-logical-obligations preserves the logical projection. fn-hrf-common-admission-preserves-logical-equivalence proves equal logical outcomes for actual fn-retain-admit when initial logical projections match and both ledgers admit. fn-hrf-release-preserves-logical-equivalence proves matching logical results for actual fn-retain-release under both ledger invariants and initial logical equivalence. These are retained-ledger component theorems, not registry keystones over the complete host-called owner. OPEN: actual reclaim eligibility and owner transition bridge, immutable selected subject/profile and conflict evidence, policy/revocation history, snapshot carry inverse, physical resource vector/funded settlement, bounded continuation induction and complete external histories retaining every capacity refusal. No unrestricted future-observation equivalence or byte-accurate funding claim.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-017",
+        "STO-014"
+      ],
+      "depends_on": [
+        "PRF-998"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/history-resource-refinement.lisp",
+        "tests/acl2/history-resource-refinement-tests.lisp"
+      ],
+      "progress_note": "Clean protected persvati hrf3 admitted all21 source forms (20/20 named events match), then17 fixture forms/11 literal witness assertions. Source and7 source-loaded dependencies cost30.74 ACL2 seconds/8,326,300 prover steps; all sessions stopped. Static teeth11/0 and scoped theory0 findings, ID claims checked. Source-dependency loads are not certificates; no host wiring, image/native or full W8 completion claim. Named theorems are component evidence, not cited events until actual host composition."
     }
   ]
 }

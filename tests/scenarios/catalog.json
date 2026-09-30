@@ -6525,6 +6525,32 @@
         "planning/evidence/nov-line-projection-source.md"
       ],
       "execution_scope": "Clean source REPL only; no served cursor or native completion claim."
+    },
+    {
+      "id": "SCN-1013",
+      "title": "Retained obligation logic survives explicit resource maintenance",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-017",
+        "STO-014"
+      ],
+      "steps": [
+        "Build a nonempty ledger by actual fn-retain-admit and reduce one retained pin through fn-hkn-release-retention.",
+        "Check the full logical/resource commuting square and each promised obligation field.",
+        "Admit the same affordable request on both ledgers and release with matching evidence.",
+        "Retain both observations when a larger request is capacity-refused before maintenance and admitted afterward.",
+        "Affirm retained hypotheses, falsify each omitted literal hypothesis and conclusion; corrupt accounting and mutate evidence separately."
+      ],
+      "expected": [
+        "Maintenance preserves logical obligations and release history, and changes resources exactly through the abstract maintenance step.",
+        "Common-admitted requests and matching releases have equal logical results.",
+        "Capacity disagreement is observed; no refusal event is dropped and unrestricted future equivalence is not claimed."
+      ],
+      "evidence": [
+        "tests/acl2/history-resource-refinement-tests.lisp"
+      ],
+      "execution_scope": "ACL2 retained-ledger component witnesses only; complete owner lifecycle and external-history checker integration remain open."
     }
   ]
 }
