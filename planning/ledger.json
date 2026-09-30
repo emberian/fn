@@ -1108,6 +1108,8 @@
     "books/served-plan-window",
     "books/served-plan-position-window",
     "books/served-plan-head-window",
+    "books/served-render-holder",
+    "tests/acl2/served-render-holder-tests",
     "tests/acl2/served-plan-head-window-tests",
     "tests/acl2/served-plan-position-window-tests",
     "books/served-plan-byte-cursor",
@@ -1854,26 +1856,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1926,
-    "books_in_root_closure": 1918,
-    "roots": 1850,
-    "theorems": 29808,
-    "functions": 19110,
+    "books": 1928,
+    "books_in_root_closure": 1920,
+    "roots": 1852,
+    "theorems": 29817,
+    "functions": 19116,
     "assert_events": 24046,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
       "verified": 3519,
-      "declared-off": 2309,
-      "default-guarded": 10428,
+      "declared-off": 2311,
+      "default-guarded": 10432,
       "default-unguarded": 2854
     },
     "suspect_theorems": 1254,
     "export_hygiene_warnings": 343,
     "enabled_projection_warnings": 55,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2638,
+    "include_hygiene_warnings": 2640,
     "host_names_warnings": 2189,
     "hand_written_record_warnings": 18
   },
@@ -28861,6 +28863,32 @@
       "read_error": null
     },
     {
+      "book": "books/served-render-holder.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 4,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "served-plan-head-window"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/served-reply-buffer.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -53315,6 +53343,32 @@
       "includes": [
         "../../books/served-plan",
         "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/served-render-holder-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/served-render-holder"
       ],
       "system_includes": [],
       "suspects": [],
@@ -79316,6 +79370,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/served-render-holder.lisp",
+        "line": 5,
+        "include": "served-plan-head-window",
+        "included": "books/served-plan-head-window.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/served-reply-buffer.lisp",
         "line": 36,
         "include": "served-plan-shape",
@@ -88721,6 +88782,13 @@
         "line": 18,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/served-render-holder-tests.lisp",
+        "line": 2,
+        "include": "../../books/served-render-holder",
+        "included": "books/served-render-holder.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

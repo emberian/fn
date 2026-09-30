@@ -10,14 +10,14 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1926 |
-| Certification roots in the Makefile | 1850 |
-| Books inside the root closure | 1918 |
-| `defthm` and `defthmd` events | 29808 |
-| `defun` events | 19110 |
+| Books read | 1928 |
+| Certification roots in the Makefile | 1852 |
+| Books inside the root closure | 1920 |
+| `defthm` and `defthmd` events | 29817 |
+| `defun` events | 19116 |
 | Functions with verified guards | 3519 |
-| Functions declared `:verify-guards nil` and never verified | 2309 |
-| Functions left at the default with an explicit guard | 10428 |
+| Functions declared `:verify-guards nil` and never verified | 2311 |
+| Functions left at the default with an explicit guard | 10432 |
 | Functions left at the default with no guard | 2854 |
 | `assert-event` checks | 24046 |
 | `must-fail` checks | 2519 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 343 |
 | Enabled-projection warnings | 55 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2638 |
+| Include-hygiene warnings | 2640 |
 | Host-names warnings | 2189 |
 | Hand-written-record warnings | 18 |
 
@@ -989,6 +989,7 @@ that `make certify` requests.
 | `books/served-plan.lisp` | root | 31 | 21 | 0/1/20/0 | 0 | 0 | 2 |
 | `books/served-range-source.lisp` | root | 1 | 3 | 2/0/1/0 | 0 | 0 | 0 |
 | `books/served-range-step-source.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/served-render-holder.lisp` | root | 4 | 5 | 0/1/4/0 | 0 | 0 | 0 |
 | `books/served-reply-buffer.lisp` | root | 8 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/served-scan.lisp` | root | 12 | 2 | 1/1/0/0 | 0 | 0 | 3 |
 | `books/served-selected-article.lisp` | root | 3 | 2 | 1/0/1/0 | 0 | 0 | 0 |
@@ -1855,6 +1856,7 @@ that `make certify` requests.
 | `tests/acl2/served-plan-position-tests.lisp` | root | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/served-plan-position-window-tests.lisp` | root | 4 | 1 | 0/1/0/0 | 1 | 0 | 0 |
 | `tests/acl2/served-plan-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 39 | 8 | 0 |
+| `tests/acl2/served-render-holder-tests.lisp` | root | 5 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `tests/acl2/served-reply-buffer-tests.lisp` | root | 0 | 4 | 0/0/4/0 | 7 | 2 | 0 |
 | `tests/acl2/served-scan-tests.lisp` | root | 0 | 18 | 0/15/0/3 | 22 | 0 | 0 |
 | `tests/acl2/served-selected-article-tests.lisp` | root | 6 | 3 | 0/2/1/0 | 1 | 0 | 0 |

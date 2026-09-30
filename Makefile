@@ -1119,6 +1119,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-plan-window \
 	books/served-plan-position-window \
 	books/served-plan-head-window \
+	books/served-render-holder \
+	tests/acl2/served-render-holder-tests \
 	tests/acl2/served-plan-head-window-tests \
 	tests/acl2/served-plan-position-window-tests \
 	books/served-plan-byte-cursor \
