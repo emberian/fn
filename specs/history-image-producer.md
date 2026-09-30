@@ -285,3 +285,25 @@ Exact combined source evidence is
 All thirty-six assertions pass. Full image residual/progress, private
 payload/FD coupling, captured source authority and INITIAL runtime funding
 remain open. Runtime is unchanged; PRF-1144 remains planned/events[].
+
+
+The actual scalar payload accessor `fn-hie-page-byte` now has a full-output
+serialization boundary: under its actual live write plan, supported byte
+index and selected full concrete page, it returns the corresponding octet
+of `pgs-words-le-octets` applied to that retained prefix. All five buffer
+selectors use the same boundary. This connects actual native payload
+selection to the logical codec without adding another host codec.
+
+Five literal positives are labelled constructed supported page-effect
+phases with actual maintenance admission, growth receipt, concrete scratch
+writes and issued positional effects. Three mutation/removal fixtures retain
+the other facts and distinguish an unwritten cell from refused authority
+or selector. Each checks the complete context and complete output, including
+the mutated model side. These are not full-image or native witnesses.
+The clean source package and all eight assertions are recorded in
+`planning/evidence/history-image-effect-payload-source-2026-09-30.json`.
+Official local IHS support was source-loaded without matching certificates;
+that limitation is explicit in the manifest. Full image/progress, private
+spool/digest/root, retained FD roles, installed source authority and complete
+INITIAL runtime funding remain open. Runtime is unchanged; PRF-1144 remains
+planned with no completion events.
