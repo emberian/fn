@@ -10,15 +10,15 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1904 |
-| Certification roots in the Makefile | 1820 |
-| Books inside the root closure | 1896 |
-| `defthm` and `defthmd` events | 29977 |
-| `defun` events | 19080 |
+| Books read | 1906 |
+| Certification roots in the Makefile | 1821 |
+| Books inside the root closure | 1898 |
+| `defthm` and `defthmd` events | 30035 |
+| `defun` events | 19089 |
 | Functions with verified guards | 3513 |
-| Functions declared `:verify-guards nil` and never verified | 2278 |
+| Functions declared `:verify-guards nil` and never verified | 2280 |
 | Functions left at the default with an explicit guard | 10410 |
-| Functions left at the default with no guard | 2879 |
+| Functions left at the default with no guard | 2886 |
 | `assert-event` checks | 23990 |
 | `must-fail` checks | 2516 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 340 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2574 |
+| Include-hygiene warnings | 2576 |
 | Host-names warnings | 2199 |
 | Hand-written-record warnings | 18 |
 
@@ -422,6 +422,7 @@ that `make certify` requests.
 | `books/decoded-window-descriptor.lisp` | closure | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/decoded-window-lease.lisp` | closure | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/decoded-window-literal-trajectory.lisp` | closure | 19 | 3 | 0/2/0/1 | 0 | 0 | 2 |
+| `books/decoded-window-output-trajectory.lisp` | closure | 47 | 7 | 0/2/0/5 | 0 | 0 | 0 |
 | `books/decoded-window-read.lisp` | closure | 3 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/decoded-window-step-trajectory.lisp` | closure | 12 | 4 | 0/0/0/4 | 0 | 0 | 1 |
 | `books/defevent.lisp` | root | 0 | 14 | 0/0/0/14 | 0 | 0 | 0 |
@@ -1427,6 +1428,7 @@ that `make certify` requests.
 | `tests/acl2/decoded-window-executor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/decoded-window-lease-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/decoded-window-literal-trajectory-tests.lisp` | root | 6 | 2 | 0/2/0/0 | 0 | 0 | 0 |
+| `tests/acl2/decoded-window-output-trajectory-tests.lisp` | root | 11 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/decoded-window-publication-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 1 | 0 | 0 |
 | `tests/acl2/decoded-window-read-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 1 | 0 | 0 |
 | `tests/acl2/decoded-window-step-trajectory-tests.lisp` | root | 12 | 3 | 0/0/0/3 | 0 | 0 | 0 |

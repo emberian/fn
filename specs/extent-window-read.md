@@ -305,3 +305,17 @@ literal positives, complete removals and exact source gate.
 The final-budget component evidence is
 `planning/evidence/decoded-window-budget-completion-source-2026-09-30.md`;
 its source gate and literal tests do not enable the dormant native driver.
+
+The actual basic loop also has an unconditional full seven-value/effects
+normalization to existing ACT/PULL transitions at explicitly source-observed
+semantic fuel. Its completed two-output-window calls agree with the completed
+whole call in status, input cursor, decoder/history/table and bytes. The
+cleared-scratch form concatenates the two byte results. The retained form
+requires normalized frontier order, first actual `:full`, and both resumed
+and whole calls not yielding; the cleared form requires proper initial output
+and those actual completion premises. Charged remaining fuel is deliberately
+excluded from this semantic observation, since output-dependent batching can
+change the charge. This source boundary does not yet compose cold-controller
+input credit/cuts, selected dictionary and accumulated digest, and does not
+authorize native decoded execution or provide total runtime funding.
+See `planning/evidence/decoded-window-output-trajectory-source-2026-09-30.md`.

@@ -17825,9 +17825,24 @@
           "kind": "theorem",
           "name": "fn-pwz-final-envelope-active-budget-positive",
           "note": "Actual controller final envelope plus active mode imply remaining charged budget at least3839+7C, including terminal drain/decoded states. Actual terminal source positive and complete envelope/active-mode removals. Source action charge only; no compiled tariff/native demand or full bytes/digest convergence."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-basic-loop-is-atomic-unconditionally",
+          "note": "Actual fn-zin-loop complete seven-value/effects result equals existing ACT/PULL atomic schedule at explicitly observed semantic fuel, unconditionally. Runtime unchanged; real initialized fixed-Huffman full128-byte literal checks the entire tuple."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-basic-loop-general-output-windows",
+          "note": "Actual basic-loop two output-window calls agree with actual whole call in status/IP/state/history/table/output under normalized frontier order, actual first :full and resumed/whole no-yield. Independent adequately completed charges, no remaining-fuel equality; complete positive and all four removals."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-basic-loop-general-cleared-windows",
+          "note": "Actual basic-loop cleared scratch output resumption agrees in status/IP/state/history/table and concatenated bytes under proper initial output, first :full and resumed/whole no-yield. Complete positive/removals include actual pulled malformed-header and separately corrupted improper-output witnesses. No native activation or full controller/dictionary/digest claim."
         }
       ],
-      "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. Full arbitrary-window decoder/dictionary bytes/status/digest trajectory, compiled workspace funding and actual typed lifetime/consumer joins remain open; source charged-budget invariants do not complete PRF-1131."
+      "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. Actual basic-loop output-window semantic normalization does not yet compose controller credit/input cuts, selected dictionary, accumulated digest, complete compiled workspace funding or retained native buffer/view/consumer joins; PRF-1131 remains incomplete."
     }
   ]
 }

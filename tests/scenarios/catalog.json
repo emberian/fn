@@ -6617,7 +6617,8 @@
         "Normalize the actual ready mode8 literal STEP full tuple to emitted-count calls of the existing actual ACT. Reach the branch through actual initializer/basic scalar scheduling and observe actual ahead scheduling readiness; affirm every full condition and conclusion. Separately remove positive room, mode8, fresh fields and complete bomb readiness while checking all retained conditions and failure of the conclusion.",
         "Normalize every actual positive-room STEP branch/refusal to existing ACTs, and actual basic loop/stored credit/codec seven-value tuple to ACT/PULL replay with the same charged schedule. Affirm full source-reached positives, exact room and both buffer removals, and clipped-match premise removals. Do not infer output-limit confluence or sufficient initial budget from this matched schedule.",
         "Run the actual basic-loop charged-budget and successful compressed-controller carry source witnesses, including complete hypothesis removals and real LEN65535 header carry; keep accepted terminal final-charge and native adequacy open.",
-        "Actual initialized/hash-primed/issued-read controller retains final budget through repeated codec windows to terminal decoded TIN6/TOUT251. Actual all-outcome envelope and active3839+7C bound have complete positives/removals; the corrupt-pool empty-stream special decision is labeled separately. Full arbitrary-window bytes/status/digest and native funding/holder remain open."
+        "Actual initialized/hash-primed/issued-read controller retains final budget through repeated codec windows to terminal decoded TIN6/TOUT251. Actual all-outcome envelope and active3839+7C bound have complete positives/removals; the corrupt-pool empty-stream special decision is labeled separately. Full arbitrary-window bytes/status/digest and native funding/holder remain open.",
+        "Compare actual initialized basic-loop full128-byte result to unconditional atomic ACT/PULL normalization; compare independent completed whole/two-window calls, then cleared scratch output with concatenated bytes, status, cursor and complete state/history/table effects. Affirm every condition and conclusion and remove each retained condition; actual external reserved-header pull and separately corrupted improper-output witnesses remain distinct. Do not equate charged remaining fuel or infer full controller/dictionary/digest/native completion."
       ],
       "expected": [
         "The exact requested bytes remain private until accepted codec terminal/exactN and full raw extent integrity.",
@@ -6667,7 +6668,10 @@
         "planning/evidence/decoded-window-budget-source-2026-09-30.md",
         "books/decoded-window-budget-completion.lisp",
         "tests/acl2/decoded-window-budget-completion-tests.lisp",
-        "planning/evidence/decoded-window-budget-completion-source-2026-09-30.md"
+        "planning/evidence/decoded-window-budget-completion-source-2026-09-30.md",
+        "books/decoded-window-output-trajectory.lisp",
+        "tests/acl2/decoded-window-output-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-output-trajectory-source-2026-09-30.md"
       ],
       "execution_scope": "Protected source composition and literal local-buffer witnesses only; no native served enablement or qualification."
     },
