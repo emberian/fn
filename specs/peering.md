@@ -3179,3 +3179,10 @@ article framing and its final reply (RFC 3977 section 3.1.1, RFC 4644 section
 2.5); a reply alone cannot seal the corpus observation. Refusals before a
 transfer carry no block. This is external observation evidence, not a durable
 acceptance authority.
+
+The programmatic INN harness may optionally hand the exact control and
+throttle-resume exchange plus full readback bytes to an external corpus
+observer after recording its own assertion. That default-off callback
+returns no owner/admission authority and its result never changes the lab
+assertion. Missing execution creates no corpus receipt; retained scripted
+fixtures establish the observer interface only.
