@@ -63,6 +63,23 @@ the figure as it will be; the generated block marks those `landing` with the
 lane and sha, and `--check` treats their citations as pending until they
 land. Nothing pending is claimed.
 
+## Pre-admission allocation accounting under construction
+
+The actual cold-read issuer allocates while checking its resource vectors,
+before publishing the new logical debit. The proof-only observation in
+`books/page-read-issue-source-cost.lisp` equates its complete result to
+`fn-prs-issue`; an admitted result entails 30 explicit vector CONS and 31
+source ADD operations. This source roster does not include compiler frames,
+recognizers, allocator slack or collection, and is not a physical allowance.
+The [source evidence](../planning/evidence/page-read-issue-source-cost-2026-09-30/README.md)
+names the exact bytes and executable outcome witnesses.
+
+A complete served allowance must pay the admission gate before those
+allocations occur. Logical release does not establish that its objects have
+been collected. Process-wide allocation accounting and a matched runtime
+collector observation are being implemented; these source results do not
+close P12 or the physical-memory contract.
+
 ## The profile P
 
 Every bound below is a function of the operator's supported profile, never
