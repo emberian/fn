@@ -6723,6 +6723,7 @@
         "Scan actual directory codec entries across a 16KiB page boundary, retaining only six selected words.",
         "Check literal invariant, identity, one-word progress, exact selection, accumulated malformed flag and terminal extraction claims, with each removable hypothesis contradicted separately.",
         "Detect a newer txid in an unselected entry and nonzero trailing padding.",
+        "Compare incremental txid/padding and directory/table verdicts with current logical codecs; check digest damage priority and literal hypothesis removals.",
         "Planned: bind exact file incarnation and fresh buffer identity to root-directory-table-data authentication and demonstrate stale completion refusal."
       ],
       "expected": [
@@ -6735,7 +6736,8 @@
       },
       "evidence": [
         "tests/acl2/history-page-reader-tests.lisp",
-        "specs/history-auth-reader.md"
+        "specs/history-auth-reader.md",
+        "tests/acl2/history-page-reader-verdict-tests.lisp"
       ],
       "execution_scope": "Scanner component source only; authenticated continuation and host integration remain open."
     }

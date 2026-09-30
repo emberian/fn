@@ -72,3 +72,13 @@ refines `pgs-decode-table` directly. This extraction is not authenticated; the
 whole canonical verdict bridge and real digest/request continuation are open.
 `hsread2` clean source admission and literal witnesses are recorded separately
 from future certification in the committed source evidence.
+
+`history-page-reader-verdict` now proves the incremental stream predicate
+equal to the current decoder's txid check plus canonical zero padding. Its
+guarded `fn-hsr-page-verdict` agrees with the existing directory/table logical
+verdicts, including digest-damage priority. The initial sufficient-word-count
+premise was proved redundant and removed: the old logical decoder pads absent
+words with zeros. This fact never licenses short physical reads; complete
+16KiB read validation remains a separate continuation obligation. The observed
+digest parameter is component vocabulary until the real digest cursor is
+composed; this component alone cannot authenticate a source page.
