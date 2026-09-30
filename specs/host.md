@@ -1597,3 +1597,23 @@ its committed frontier and concurrent key/configuration changes, and its
 marker-last durability program need their own implementation and evidence.
 SCN-217 uses stopped copies with explicitly supplied completion-observation
 fixtures; it establishes no running-capture guarantee.
+
+## Allocation collector composition (not installed)
+
+The fixed native bridge uses the guarded allocation-epoch request and
+observation callbacks declared in `host/allocation-epoch-host.lisp`. Under
+the same pool's extent mutex it retains the actual issued association,
+epoch and nonce, invokes the selected full collector, and forwards the raw
+observation to the core. Only the core validates geometry and changes epoch
+accounting; native completion takes a binding and nonce, never supplied
+occupied bytes. Deferred collection and replay fence recovery. An escaping
+callback fences before unlock without refunding or retrying the request.
+
+[Actual core/native component evidence](../planning/evidence/runtime-collector-actual-core-2026-09-30/README.md)
+exercises the real compiled definitions and concrete pool in a dedicated
+disposable process. Its installation/profile and drain count are fixtures.
+It establishes no process-wide allocation barrier, genuine installation,
+complete allowance, worker-receipt ownership or served activation. Repeated
+non-quiescent requests need their own prepaid control suffix; they precede
+Qcollect debit. The native files remain outside the served load sequence
+until those producer and runtime obligations are joined.
