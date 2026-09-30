@@ -719,16 +719,17 @@ flight, which the host puts in place)."
         ((equal kind :peers) 3) ((equal kind :obligations) 4)
         ((equal kind :control) 5) ((equal kind :health) 6)
         ((equal kind :accounts) 7)
-        ; 12: past the frame-kind-3 codes (books/control-evidence.lisp
-        ; fn-cev-kind-code 8..11), so no code names two reports.
-        ((equal kind :consumers) 12) (t 0)))
+        ; 13: after the frame-kind-3 codes (books/control-evidence.lisp
+        ; fn-cev-kind-code 8..12, including obligation-subject), so no code
+        ; names two reports in the shared FNLS allocation table.
+        ((equal kind :consumers) 13) (t 0)))
 
 (defun fn-nls-code-kind (code)
   (declare (xargs :guard t))
   (cond ((equal code 1) :status) ((equal code 2) :pins)
         ((equal code 3) :peers) ((equal code 4) :obligations)
         ((equal code 5) :control) ((equal code 6) :health)
-        ((equal code 7) :accounts) ((equal code 12) :consumers) (t nil)))
+        ((equal code 7) :accounts) ((equal code 13) :consumers) (t nil)))
 
 (local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (defun fn-nls-seal (kind payload)

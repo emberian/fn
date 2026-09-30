@@ -4171,7 +4171,11 @@ the node retires (row S9), refuse it by name instead."
       ;; not this retire's.
       (handler-case (sb-posix:unlink (fnn-owner-retire-report-path service))
         (sb-posix:syscall-error () nil))
-      (fnn-pull-service-wake service)
+      ;; NEWNEWS pulling is an optional runtime extension: the DTN image
+      ;; does not load pull-service.lisp. Stop its I/O only when that
+      ;; extension is present; ACL2's retire decision is the same in both.
+      (when (fboundp 'fnn-pull-service-wake)
+        (funcall (symbol-function 'fnn-pull-service-wake) service))
       (fnn-log-line (fnn-core 'fn-nret-begin-log-line seconds)))
     (list :reason (first answer) (second answer))))
 

@@ -165,8 +165,9 @@
   :class :program
   :exempt ((argv-octets "the argv preflight is the check: it refuses a malformed argv by name")))
 
-(definterface fn-native-operator-host-run
+(definterface fn-native-operator-host-run-at
   :class :program
+  :kinds ((cwd fn-cbor-octet-listp) (config-path fn-cbor-octet-listp))
   :exempt ((argv-octets "a list of argument octet lists, preflighted (fn-native-operator-host-preflight)")
            (config-octets "read by fnn-operator-read-config, bounded; NIL when absent")))
 
@@ -3466,7 +3467,8 @@
   :class ::program)
 
 (definterface fn-native-operator-host-account-hash-text
-  :class ::program)
+  :class ::program
+  :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-native-operator-host-control-outcome
   :class ::program)
@@ -4624,3 +4626,85 @@
 
 (definterface fn-pio-file-issue :class :common-lisp-compliant
   :keystones ((fn-pio-successive-file-issues-have-distinct-identities :via fn-pio-file-issue)))
+
+
+(definterface fn-native-operator-host-result-init-budget
+  :class ::program)
+
+(definterface fn-native-operator-host-result-init-sizing
+  :class ::program)
+
+(definterface fn-native-operator-host-result-retire-control-path-octets
+  :class ::program)
+
+(definterface fn-native-operator-host-result-self-signed
+  :class :program)
+
+(definterface fn-native-operator-host-self-signed-outcome
+  :class :program
+  :exempt ((cert-exists "the host's lstat of tls_cert, a boolean ACL2 reads as observed")
+           (key-exists "the host's lstat of tls_key, a boolean ACL2 reads as observed")))
+
+(definterface fn-native-operator-host-self-signed-refused
+  :class :program
+  :exempt ((reason "the refusal word fn-tls-self-signed-host-plan or -pem returned; any other value is refused as :self-signed")))
+
+(definterface fn-nret-begin-answer
+  :class :common-lisp-compliant)
+
+(definterface fn-nret-begin-log-line
+  :class :common-lisp-compliant)
+
+(definterface fn-nret-end-log-line
+  :class :common-lisp-compliant)
+
+(definterface fn-nret-no-report-line
+  :class :common-lisp-compliant)
+
+(definterface fn-nret-not-running-line
+  :class :common-lisp-compliant)
+
+(definterface fn-nret-refusal-line
+  :class :common-lisp-compliant)
+
+(definterface fn-nret-refused-log-line
+  :class :common-lisp-compliant)
+
+(definterface fn-nret-report-file-name
+  :class :common-lisp-compliant)
+
+(definterface fn-nret-request
+  :class :common-lisp-compliant
+  :keystones (fn-nret-request-of-request-argv
+              fn-nret-request-window-is-bounded))
+
+(definterface fn-owner-retire-report
+  :class ::program
+  :keystones ((fn-oret-report-carries-the-obligations-report :via fn-oret-report)))
+
+(definterface fn-owner-retire-step
+  :class ::program
+  :keystones ((fn-oret-drain-step-ends-by-the-window :via fn-oret-drain-step)
+              (fn-oret-drain-step-waits-while-feeds-drain :via fn-oret-drain-step)))
+
+(definterface fn-tls-self-signed-host-certificate-pem
+  :class :program
+  :kinds ((tbs fn-cbor-octet-listp) (sig fn-cbor-octet-listp))
+  :keystones ((fn-ssc-certificate-pem-carries-the-body :via fn-ssc-certificate-pem)))
+
+(definterface fn-tls-self-signed-host-key-pem
+  :class :program
+  :kinds ((der fn-cbor-octet-listp))
+  :keystones ((fn-ssc-key-pem-carries-the-key :via fn-ssc-key-pem)))
+
+(definterface fn-tls-self-signed-host-plan
+  :class :program
+  :kinds ((serial fn-cbor-octet-listp) (spki fn-cbor-octet-listp))
+  :exempt ((names "ACL2's own names from fn-native-operator-host-result-self-signed, handed back unchanged; fn-ssc-plan refuses a bad one by name")
+           (days "ACL2's own days from the same request")
+           (now-ms "the wall reading fn-otm-wall-reading returned")
+           (has-wall "the wall reading's usable flag; fn-ssc-plan refuses :clock without it"))
+  :keystones ((fn-ssc-plan-body-is-one-sequence :via fn-ssc-plan)))
+
+(definterface fn-tls-self-signed-host-serial-octets
+  :class :program)

@@ -459,6 +459,9 @@ fn operator CONFIG consumer unbind agent-bob
 fn operator CONFIG consumer show
 ```
 
+`consumer show` lists only `consumer NAME account LOGIN` bindings.
+It does not print invitations, redeemed accounts or account access rules.
+
 Bind a consumer after `fn consumer register` made it: a name no consumer
 has is refused (`unknown-consumer`). A bound consumer uses its account's
 password. Outside the account's rule it is refused and keeps its place. See [agents](agents.md#programs-on-the-nodes-own-machine).
