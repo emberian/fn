@@ -1168,6 +1168,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/records-freeze-tests \
 	tests/acl2/catalog-record-tests \
 	tests/acl2/index-backing-row-carry-tests \
+	tests/acl2/index-backing-publication-row-carry-tests \
 	tests/acl2/catalog-tests \
 	tests/acl2/catalog-commit-tests \
 	tests/acl2/catalog-delta-tests \

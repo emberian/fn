@@ -17717,9 +17717,37 @@
         {
           "kind": "theorem",
           "name": "fn-ibrc-physical-row-read-domain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-iprc-prepare-establishes-row-domain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-iprc-reserve-attaches-actual-prepared-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-iprc-register-preserves-prepared-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-iprc-assignment-begin-attaches-prepared-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-iprc-assignment-one-publishes-typed-assigned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-iprc-actual-node-read-row-domain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-iprc-context-update-preserves-row-domain"
         }
       ],
-      "pending_subject": "Actual recursive provider/page-root carry, registered writer publication and captured arena incarnation/source correspondence remain open."
+      "pending_subject": "Actual recursive row-write/copy/shared-descriptor preservation to published captured row-root/ordinal + retained arena incarnation; durable append/withdraw/redecide/policy event source attachment."
     }
   ]
 }
