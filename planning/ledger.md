@@ -10,14 +10,14 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1964 |
+| Books read | 1969 |
 | Certification roots in the Makefile | 1866 |
-| Books inside the root closure | 1937 |
-| `defthm` and `defthmd` events | 30156 |
-| `defun` events | 19249 |
+| Books inside the root closure | 1938 |
+| `defthm` and `defthmd` events | 30178 |
+| `defun` events | 19253 |
 | Functions with verified guards | 3544 |
-| Functions declared `:verify-guards nil` and never verified | 2334 |
-| Functions left at the default with an explicit guard | 10513 |
+| Functions declared `:verify-guards nil` and never verified | 2337 |
+| Functions left at the default with an explicit guard | 10514 |
 | Functions left at the default with no guard | 2858 |
 | `assert-event` checks | 24064 |
 | `must-fail` checks | 2519 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 348 |
 | Enabled-projection warnings | 55 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2694 |
+| Include-hygiene warnings | 2702 |
 | Host-names warnings | 2193 |
 | Hand-written-record warnings | 18 |
 
@@ -693,7 +693,7 @@ that `make certify` requests.
 | `books/operator-report-fields.lisp` | root | 34 | 27 | 6/0/21/0 | 0 | 0 | 0 |
 | `books/outcome-class.lisp` | root | 8 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/over-byte-cached-row-source.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 1 |
-| `books/over-byte-cursor.lisp` | root | 23 | 8 | 4/0/4/0 | 0 | 0 | 1 |
+| `books/over-byte-cursor.lisp` | root | 22 | 8 | 4/0/4/0 | 0 | 0 | 1 |
 | `books/over-byte-full-parser-range.lisp` | root | 15 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/over-byte-full-run-relation.lisp` | root | 5 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/over-byte-full-seek-range.lisp` | root | 15 | 1 | 0/1/0/0 | 0 | 0 | 1 |
@@ -707,10 +707,13 @@ that `make certify` requests.
 | `books/over-byte-semantic-carry.lisp` | root | 17 | 2 | 0/2/0/0 | 0 | 0 | 1 |
 | `books/over-byte-terminal-selected.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/over-cursor-shape.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 1 |
+| `books/over-held-row-carry.lisp` | - | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/over-held-row-establishment.lisp` | - | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/over-held-row.lisp` | - | 1 | 3 | 1/0/2/0 | 0 | 0 | 0 |
 | `books/over-range-all-step-source.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/over-reply-row-frame.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/over-reply-source.lisp` | root | 0 | 1 | 1/0/0/0 | 0 | 0 | 0 |
+| `books/over-row-piece-shape.lisp` | closure | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/over-row-pieces.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/over-row-state.lisp` | closure | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/over-window.lisp` | root | 30 | 6 | 1/3/2/0 | 0 | 0 | 0 |
@@ -1681,6 +1684,8 @@ that `make certify` requests.
 | `tests/acl2/over-byte-seek-parser-range-tests.lisp` | root | 7 | 2 | 0/1/0/1 | 0 | 0 | 0 |
 | `tests/acl2/over-byte-selected-row-relation-tests.lisp` | root | 10 | 3 | 0/2/0/1 | 0 | 0 | 0 |
 | `tests/acl2/over-byte-semantic-carry-tests.lisp` | root | 19 | 8 | 0/5/0/3 | 0 | 0 | 0 |
+| `tests/acl2/over-held-row-carry-tests.lisp` | - | 3 | 1 | 0/1/0/0 | 0 | 0 | 0 |
+| `tests/acl2/over-held-row-establishment-tests.lisp` | - | 6 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `tests/acl2/over-held-row-tests.lisp` | - | 6 | 2 | 0/1/1/0 | 0 | 0 | 0 |
 | `tests/acl2/over-window-tests.lisp` | root | 6 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/owner-ack-after-barrier-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 40 | 0 | 0 |
@@ -2526,7 +2531,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-oas-queue-of-set-conns` | `books/owner-article-slots.lisp` | 391 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-oas-read-span-when-held-unfolds` | `books/owner-article-slots.lisp` | 285 | arm-of-definition: the hypotheses select one IF/COND arm of fn-oas-read-span and the conclusion is that arm's value |
 | `fn-oas-refusal-line-follows-the-disk-unfolds` | `books/owner-article-slots.lisp` | 277 | definition-restated: the conclusion is the body of fn-oas-refusal-line |
-| `fn-obc-quantum-ready-stays-ready` | `books/over-byte-cursor.lisp` | 372 | arm-of-definition: the hypotheses select one IF/COND arm of fn-obc-quantum-one and the conclusion is that arm's value |
+| `fn-obc-quantum-ready-stays-ready` | `books/over-byte-cursor.lisp` | 363 | arm-of-definition: the hypotheses select one IF/COND arm of fn-obc-quantum-one and the conclusion is that arm's value |
 | `fn-obcarry-row-id-is-record-id` | `books/over-byte-semantic-carry.lisp` | 75 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-obcr-body-lines-of-facts` | `books/over-byte-cached-row-source.lisp` | 12 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-obcr-nil-span-value` | `books/over-byte-row-relation.lisp` | 54 | arm-of-definition: constant arguments select one IF/COND arm of fn-lpc-span-value and the conclusion is that arm's value |
