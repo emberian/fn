@@ -17,7 +17,7 @@
 (defvar *fnn-owner-caller-reservation* nil)
 (defparameter +fnn-lock-un+ 8)
 (defstruct fnn-log fd spare)
-(defstruct fnn-store log lock-fd completion-pending fenced)
+(defstruct fnn-store log lock-fd completion-pending fenced recovery-identity recovery-source)
 (defstruct fnn-owner-service store)
 (defvar *recorded* nil)
 (defvar *fail-close* nil)
@@ -307,8 +307,12 @@ Store close errors are physical uncertainty, never silent authority release."
          result))
       (otherwise (fnn-fault "malformed Store settlement action ~a" action)))))
 
+(defparameter *combined-recovery-aliases* nil)
 
-(let* ((store (make-fnn-store :log (make-fnn-log :fd 401) :lock-fd 402 :completion-pending :owed))
+
+(let* ((store (make-fnn-store :log (make-fnn-log :fd 401) :lock-fd 402 :completion-pending :owed
+                         :recovery-identity (and *combined-recovery-aliases* :identity)
+                         :recovery-source (and *combined-recovery-aliases* :source)))
        (service (make-fnn-owner-service :store store)))
  (assert (eq (fnn-owner-run-admission) :start))
  (fnn-owner-claim-run-authority)
@@ -340,6 +344,8 @@ Store close errors are physical uncertainty, never silent authority release."
  (assert (eq *fnn-owner-retained-service* service))
  (assert (= (fnn-store-lock-fd store) 402))
  (assert (= (fnn-log-fd (fnn-store-log store)) 401))
+ (assert (eq (fnn-store-recovery-identity store) (and *combined-recovery-aliases* :identity)))
+ (assert (eq (fnn-store-recovery-source store) (and *combined-recovery-aliases* :source)))
  (assert (eq (fnn-owner-run-admission) :held))
  (assert (handler-case (progn (fnn-owner-claim-run-authority) nil) (error () t)))
  (assert (eq *fnn-owner-retained-service* service))
@@ -367,6 +373,8 @@ Store close errors are physical uncertainty, never silent authority release."
  (assert (null (fnn-store-log store)))
  (assert (null (fnn-store-lock-fd store)))
  (assert (null (fnn-store-completion-pending store)))
+ (assert (null (fnn-store-recovery-identity store)))
+ (assert (null (fnn-store-recovery-source store)))
  (assert (eq (fnn-owner-run-admission) :start))
  (assert (= (count '(:close 401 nil) *recorded* :test #'equal) 1))
  (assert (= (count '(:close 402 nil) *recorded* :test #'equal) 1))
@@ -377,7 +385,9 @@ Store close errors are physical uncertainty, never silent authority release."
 ;; makes no claim that the already-attempted unlock left the lock held.
 (dolist (failing-fd '(503 501 502))
  (let* ((store (make-fnn-store :log (make-fnn-log :fd 501
-                   :spare (and (= failing-fd 503) (list 1 "/recording-stage" 503))) :lock-fd 502))
+                   :spare (and (= failing-fd 503) (list 1 "/recording-stage" 503))) :lock-fd 502
+                  :recovery-identity (and *combined-recovery-aliases* :identity)
+                  :recovery-source (and *combined-recovery-aliases* :source)))
         (service (make-fnn-owner-service :store store))
         (*fnn-owner-retained-service* nil)
         (*fnn-owner-retained-settlement* :held)
@@ -393,6 +403,8 @@ Store close errors are physical uncertainty, never silent authority release."
    (assert (equal (fnn-log-spare (fnn-store-log store)) '(1 "/recording-stage" 503))))
   (assert (eq (fnn-owner-run-admission) :held))
   (assert (fnn-store-fenced store))
+  (assert (eq (fnn-store-recovery-identity store) (and *combined-recovery-aliases* :identity)))
+  (assert (eq (fnn-store-recovery-source store) (and *combined-recovery-aliases* :source)))
   ;; Existing continuation carries :held, so it never retries/reuses an
   ;; ambiguously closed descriptor. These are independent recording Stores.
   (let ((count-before (length *recorded*)))

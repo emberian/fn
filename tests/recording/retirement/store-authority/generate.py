@@ -44,7 +44,7 @@ parts=['''(defpackage "ACL2" (:use "CL"))
 (defvar *fnn-owner-caller-reservation* nil)
 (defparameter +fnn-lock-un+ 8)
 (defstruct fnn-log fd spare)
-(defstruct fnn-store log lock-fd completion-pending fenced)
+(defstruct fnn-store log lock-fd completion-pending fenced recovery-identity recovery-source)
 (defstruct fnn-owner-service store)
 (defvar *recorded* nil)
 (defvar *fail-close* nil)
@@ -72,8 +72,11 @@ for n in ['fnn-log-queue-push','fnn-log-sink-accept','fnn-log-writer-loop','fnn-
  parts.append(take('host/native/io.lisp',n))
 for n in ['fnn-owner-run-admission','fnn-owner-claim-run-authority','fnn-owner-retain-run-authority','fnn-owner-store-settlement']:
  parts.append(take('host/native/owner.lisp',n))
+parts.append('(defparameter *combined-recovery-aliases* '+('t' if 'fnn-store-recovery-identity' in forms['fnn-store-close'] else 'nil')+')')
 parts.append('''
-(let* ((store (make-fnn-store :log (make-fnn-log :fd 401) :lock-fd 402 :completion-pending :owed))
+(let* ((store (make-fnn-store :log (make-fnn-log :fd 401) :lock-fd 402 :completion-pending :owed
+                         :recovery-identity (and *combined-recovery-aliases* :identity)
+                         :recovery-source (and *combined-recovery-aliases* :source)))
        (service (make-fnn-owner-service :store store)))
  (assert (eq (fnn-owner-run-admission) :start))
  (fnn-owner-claim-run-authority)
@@ -105,6 +108,8 @@ parts.append('''
  (assert (eq *fnn-owner-retained-service* service))
  (assert (= (fnn-store-lock-fd store) 402))
  (assert (= (fnn-log-fd (fnn-store-log store)) 401))
+ (assert (eq (fnn-store-recovery-identity store) (and *combined-recovery-aliases* :identity)))
+ (assert (eq (fnn-store-recovery-source store) (and *combined-recovery-aliases* :source)))
  (assert (eq (fnn-owner-run-admission) :held))
  (assert (handler-case (progn (fnn-owner-claim-run-authority) nil) (error () t)))
  (assert (eq *fnn-owner-retained-service* service))
@@ -132,6 +137,8 @@ parts.append('''
  (assert (null (fnn-store-log store)))
  (assert (null (fnn-store-lock-fd store)))
  (assert (null (fnn-store-completion-pending store)))
+ (assert (null (fnn-store-recovery-identity store)))
+ (assert (null (fnn-store-recovery-source store)))
  (assert (eq (fnn-owner-run-admission) :start))
  (assert (= (count '(:close 401 nil) *recorded* :test #'equal) 1))
  (assert (= (count '(:close 402 nil) *recorded* :test #'equal) 1))
@@ -142,7 +149,9 @@ parts.append('''
 ;; makes no claim that the already-attempted unlock left the lock held.
 (dolist (failing-fd '(503 501 502))
  (let* ((store (make-fnn-store :log (make-fnn-log :fd 501
-                   :spare (and (= failing-fd 503) (list 1 "/recording-stage" 503))) :lock-fd 502))
+                   :spare (and (= failing-fd 503) (list 1 "/recording-stage" 503))) :lock-fd 502
+                  :recovery-identity (and *combined-recovery-aliases* :identity)
+                  :recovery-source (and *combined-recovery-aliases* :source)))
         (service (make-fnn-owner-service :store store))
         (*fnn-owner-retained-service* nil)
         (*fnn-owner-retained-settlement* :held)
@@ -158,6 +167,8 @@ parts.append('''
    (assert (equal (fnn-log-spare (fnn-store-log store)) '(1 "/recording-stage" 503))))
   (assert (eq (fnn-owner-run-admission) :held))
   (assert (fnn-store-fenced store))
+  (assert (eq (fnn-store-recovery-identity store) (and *combined-recovery-aliases* :identity)))
+  (assert (eq (fnn-store-recovery-source store) (and *combined-recovery-aliases* :source)))
   ;; Existing continuation carries :held, so it never retries/reuses an
   ;; ambiguously closed descriptor. These are independent recording Stores.
   (let ((count-before (length *recorded*)))
