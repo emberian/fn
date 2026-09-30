@@ -17674,6 +17674,18 @@
         {
           "kind": "theorem",
           "name": "fn-hsz-remap-preserves-canonical-size"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsz-remap-root-preserves-canonical-size"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hds-info-pair-preserves-canonical-size"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hds-select-fields-preserves-correspondence"
         }
       ],
       "pending_subject": "Constructor component; currently unreachable-in-composition. Actual owner writer installation and bounded bootstrap are open; no live funding/reserve claim."

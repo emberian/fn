@@ -69,9 +69,28 @@ with NIL verdicts, while the checkpoint identity value is the full
 be relabeled as this full accumulator. Installation must maintain the actual
 checkpoint context and its sidecar together through all replay/composite and
 owner writer paths, with bootstrap carries produced in the bounded decoder.
-The decoder currently returns normalized atom/pair/span descriptors without
-size sidecars; accepted symbol aliases and zero-length byte spans must use
-their normalized canonical descriptor before sizing.
+The decoder's public atom/pair/span descriptors stay unchanged. The source
+prototype `fn-hds-begin`/`fn-hds-feed` returns the exact parser plus a parallel
+temporary annotation stack, a streamed NIL-prefix bit and a usable bit. A
+leaf annotation is `(root-carry)`; a pair is `(root-carry car-info . cdr-info)`.
+`fn-hds-info-root` reads its root carry, and `fn-hds-select-fields(n, info)`
+returns field carries plus usability while walking only the selected spine.
+The six identity fields use `n=6`; octet-span children remain single leaves.
+Pair construction and successful selection preserve their exact logical
+correspondence. Length/list-shape premises were removed after proving the
+stronger selection theorem. Literal leaf, NIL-matcher, constructor and field
+selection witnesses are source-admitted in a fresh protected session.
+
+The full byte-fed stream invariant and bootstrap of the actual checkpoint
+identity accumulator are still open. This prototype is not host installed.
+Accepted NIL symbol aliases and zero-length byte spans use their normalized
+canonical sizes; arbitrary nonminimal integer spelling uses the decoded value.
+Each annotation leaf allocates four cons cells, each annotation pair five,
+including its three-scalar root carry; the additional size-stack cell, actual
+decoder nodes and source pool coexist. These are representation counts, not a
+proved or measured funded heap bound. Selection retains only six root carries
+and their fixed list spine after child scratch is dropped; row completion
+retains only the root size, never uncharged per-field row metadata.
 
 Every constructor of consumer, topic, identity and held/context values must
 establish or preserve its carried correspondence. A missing or stale carry

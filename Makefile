@@ -1687,6 +1687,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-tree-size-tests \
 	tests/acl2/held-record-size-tests \
 	tests/acl2/identity-context-size-tests \
+	tests/acl2/history-decode-size-tests \
 	tests/acl2/stx-accept-records-tests \
 	tests/acl2/store-node-index-tests \
 	tests/acl2/store-node-correspondence-tests \
