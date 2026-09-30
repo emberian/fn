@@ -20,8 +20,8 @@ NAME=${FN_CORE_NAME:-fn-core}
 case $NAME in fn-core|fn-host|fn-host-developer|fn-host-dtn|fn-host-dtn-developer) ;; *)
     echo "core: unsupported product name: $NAME" >&2; exit 2 ;; esac
 case $NAME in
-    fn-host-dtn*) VARIANT=dtn; BUILD=host/native/build-dtn.lisp; DEFAULT_IMAGE=fn-host-dtn-developer ;;
-    *) VARIANT=default; BUILD=host/native/build.lisp; DEFAULT_IMAGE=fn-host-developer ;;
+    fn-host-dtn*) VARIANT=dtn; BUILD=host/native/build-dtn.lisp; DEFAULT_IMAGE=fn-host-dtn ;;
+    *) VARIANT=default; BUILD=host/native/build.lisp; DEFAULT_IMAGE=fn-host ;;
 esac
 case $NAME in
     fn-core) PROFILE=${FN_NATIVE_PROFILE:-developer} ;;
@@ -33,6 +33,7 @@ if [ -n "${FN_NATIVE_PROFILE:-}" ] && [ "$FN_NATIVE_PROFILE" != "$PROFILE" ]; th
     echo "core: product name $NAME requires $PROFILE profile" >&2; exit 2
 fi
 export FN_EXTRACT_VARIANT=$VARIANT FN_NATIVE_PROFILE=$PROFILE
+[ "$PROFILE" != developer ] || DEFAULT_IMAGE=$DEFAULT_IMAGE-developer
 IMAGE=${FN_EXTRACT_IMAGE:-$TREE/build/$DEFAULT_IMAGE}
 SBCL=${SBCL:-$(sed -n 's/^exec "\([^"]*\)" .*/\1/p' "$IMAGE")}
 SBCL_HOME=${SBCL_HOME:-$(sed -n "s/^export SBCL_HOME='\([^']*\)'/\1/p" "$IMAGE")}
