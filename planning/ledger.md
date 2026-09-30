@@ -10,21 +10,21 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1885 |
-| Certification roots in the Makefile | 1800 |
-| Books inside the root closure | 1868 |
-| `defthm` and `defthmd` events | 29733 |
-| `defun` events | 19044 |
-| Functions with verified guards | 3516 |
-| Functions declared `:verify-guards nil` and never verified | 2275 |
-| Functions left at the default with an explicit guard | 10408 |
-| Functions left at the default with no guard | 2845 |
+| Books read | 1888 |
+| Certification roots in the Makefile | 1803 |
+| Books inside the root closure | 1871 |
+| `defthm` and `defthmd` events | 29777 |
+| `defun` events | 19076 |
+| Functions with verified guards | 3522 |
+| Functions declared `:verify-guards nil` and never verified | 2277 |
+| Functions left at the default with an explicit guard | 10421 |
+| Functions left at the default with no guard | 2856 |
 | `assert-event` checks | 24018 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
 | Theorems flagged SUSPECT by shape | 1256 |
-| Export-hygiene warnings | 348 |
+| Export-hygiene warnings | 350 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
 | Include-hygiene warnings | 2557 |
@@ -994,6 +994,7 @@ that `make certify` requests.
 | `books/store-capacity-vector.lisp` | root | 52 | 22 | 0/4/17/1 | 0 | 0 | 5 |
 | `books/store-carried-folds.lisp` | root | 12 | 5 | 0/2/3/0 | 0 | 0 | 2 |
 | `books/store-checkpoint-arena-load.lisp` | root | 55 | 7 | 2/1/3/1 | 0 | 0 | 3 |
+| `books/store-checkpoint-arena-size-load.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-arena-writer.lisp` | root | 65 | 23 | 11/1/11/0 | 0 | 0 | 2 |
 | `books/store-checkpoint-arena.lisp` | root | 56 | 27 | 5/11/11/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-buffer.lisp` | root | 31 | 9 | 3/0/6/0 | 0 | 0 | 0 |
@@ -1002,6 +1003,7 @@ that `make certify` requests.
 | `books/store-checkpoint-open.lisp` | root | 42 | 30 | 11/0/19/0 | 0 | 0 | 2 |
 | `books/store-checkpoint-reader.lisp` | root | 65 | 17 | 0/2/15/0 | 0 | 0 | 0 |
 | `books/store-checkpoint-share.lisp` | root | 6 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/store-checkpoint-size-reader.lisp` | root | 44 | 23 | 6/2/12/3 | 0 | 0 | 0 |
 | `books/store-checkpoint-tables-reader.lisp` | root | 43 | 13 | 3/0/9/1 | 0 | 0 | 1 |
 | `books/store-checkpoint-tables.lisp` | root | 71 | 42 | 3/4/34/1 | 1 | 0 | 2 |
 | `books/store-config-generation.lisp` | root | 5 | 1 | 1/0/0/0 | 0 | 0 | 0 |
@@ -1842,6 +1844,7 @@ that `make certify` requests.
 | `tests/acl2/store-checkpoint-arena-tests.lisp` | root | 4 | 20 | 0/19/1/0 | 34 | 1 | 0 |
 | `tests/acl2/store-checkpoint-digest-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 4 | 0 |
 | `tests/acl2/store-checkpoint-open-tests.lisp` | root | 1 | 1 | 0/1/0/0 | 33 | 10 | 0 |
+| `tests/acl2/store-checkpoint-size-reader-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 0 | 0 | 0 |
 | `tests/acl2/store-checkpoint-tables-tests.lisp` | root | 2 | 8 | 0/8/0/0 | 18 | 9 | 0 |
 | `tests/acl2/store-config-generation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 2 | 0 |
 | `tests/acl2/store-event-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |

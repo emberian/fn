@@ -1110,10 +1110,13 @@
     "books/store-checkpoint-reader",
     "books/store-checkpoint-tables",
     "books/store-checkpoint-tables-reader",
+    "books/store-checkpoint-size-reader",
+    "tests/acl2/store-checkpoint-size-reader-tests",
     "books/owner-checkpoint-writer",
     "books/owner-checkpoint-pipeline",
     "books/store-checkpoint-arena",
     "books/store-checkpoint-share",
+    "books/store-checkpoint-arena-size-load",
     "books/store-checkpoint-arena-load",
     "books/store-checkpoint-arena-writer",
     "tests/acl2/octets-stobj-tests",
@@ -1804,23 +1807,23 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1885,
-    "books_in_root_closure": 1868,
-    "roots": 1800,
-    "theorems": 29733,
-    "functions": 19044,
+    "books": 1888,
+    "books_in_root_closure": 1871,
+    "roots": 1803,
+    "theorems": 29777,
+    "functions": 19076,
     "assert_events": 24018,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
-      "verified": 3516,
-      "declared-off": 2275,
-      "default-guarded": 10408,
-      "default-unguarded": 2845
+      "verified": 3522,
+      "declared-off": 2277,
+      "default-guarded": 10421,
+      "default-unguarded": 2856
     },
     "suspect_theorems": 1256,
-    "export_hygiene_warnings": 348,
+    "export_hygiene_warnings": 350,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
     "include_hygiene_warnings": 2557,
@@ -29043,6 +29046,33 @@
       "read_error": null
     },
     {
+      "book": "books/store-checkpoint-arena-size-load.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-checkpoint-share",
+        "store-checkpoint-size-reader"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/store-checkpoint-arena-writer.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -29268,6 +29298,35 @@
       "encapsulates": 0,
       "includes": [],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/store-checkpoint-size-reader.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 44,
+      "functions": 23,
+      "guards": {
+        "verified": 6,
+        "declared-off": 2,
+        "default-guarded": 12,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 6,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-checkpoint-tables-reader",
+        "store-tree-size"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -52948,6 +53007,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-checkpoint-size-reader-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 8
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-checkpoint-arena-size-load"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/store-checkpoint-tables-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -68382,6 +68467,18 @@
         "theorem": "fn-scka-concat-of-chunks",
         "book": "books/store-checkpoint-arena.lisp",
         "line": 361,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-scsr-octet-consumed-length",
+        "book": "books/store-checkpoint-size-reader.lisp",
+        "line": 82,
+        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
+      },
+      {
+        "theorem": "fn-scsr-octet-carry-is-actual-canonical-size",
+        "book": "books/store-checkpoint-size-reader.lisp",
+        "line": 115,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
