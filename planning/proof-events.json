@@ -17484,6 +17484,66 @@
           "kind": "theorem",
           "name": "fn-osrc-continuation-keeps-the-executable-cursor",
           "pending_subject": "Captured-field source protocol is a library component pending real decoder and producer controller; it does not certify row contents or whole-source semantics."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osrc-restart-advances-pass-and-preserves-source-identity",
+          "pending_subject": "Captured-field source protocol is a library component pending real decoder and producer controller; it does not certify row contents or whole-source semantics."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1069",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-osc-successful-step-is-the-exact-bounded-prefix",
+          "pending_subject": "Source preparer/publication component; complete funded online snapshot controller and matching image/native qualification remain open."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1071",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bs-imp-program-crash-is-no-store-or-the-complete-store",
+          "pending_subject": "Source preparer/publication component; complete funded online snapshot controller and matching image/native qualification remain open."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1077",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-osp-cpr-tick-refines-the-paused-fold",
+          "pending_subject": "Source preparer/publication component; complete funded online snapshot controller and matching image/native qualification remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osp-cpr-continue-consumes-exactly-one-input",
+          "pending_subject": "Source preparer/publication component; complete funded online snapshot controller and matching image/native qualification remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osp-cpr-continue-preserves-configured-state",
+          "pending_subject": "Source preparer/publication component; complete funded online snapshot controller and matching image/native qualification remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osp-fold-tick-retains-the-four-summary-values",
+          "pending_subject": "Source preparer/publication component; complete funded online snapshot controller and matching image/native qualification remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osp-fold-continue-is-exactly-one-record",
+          "pending_subject": "Source preparer/publication component; complete funded online snapshot controller and matching image/native qualification remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osp-fold-natural-counter-is-preserved",
+          "pending_subject": "Source preparer/publication component; complete funded online snapshot controller and matching image/native qualification remain open."
         }
       ]
     }

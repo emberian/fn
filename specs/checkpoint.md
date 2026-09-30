@@ -350,3 +350,12 @@ source-token binding, funded node/stack allocation, guard-verified host
 composition and matching native evidence. Neither a source parser nor a
 fixed page buffer alone establishes that boundary. See
 [the concrete contract](../planning/history-decode-contract.md).
+
+Borrowed decoded rows use shallow pair-node remap: ordinary held field four
+changes to the target handle, or composite field two's held field four changes.
+All other node references, including raw string/symbol spans, original signed
+statement, frozen context and any appended binding descriptor remain borrowed.
+The non-executable decoder abstraction refines those updates to the same
+logical row field replacement. This structural component does not yet prove
+decoder grammar carry, physical payload correspondence or full producer
+recovery. No terminal string coercion or symbol interning is introduced.
