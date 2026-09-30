@@ -1,17 +1,14 @@
 ; Exact shared state definitions extracted from current owner-host/recovery.
 ; No owner validity is recomputed here and no supplied readiness flag exists.
 (in-package "ACL2")
+(include-book "owner-config-state")
 (include-book "owner-state-accessors")
 (include-book "state-globals")
 (include-book "public-exposure")
 (include-book "owner-credits")
 (include-book "heap-store-figure")
 
-(defun fn-owner-config (state)
-  ; The one live configuration.  No host global shadows this value: every
-  ; caller reads the generation replayed into and published by fn-ocfg.
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
-  (fn-ocfg-config (fn-owner-ocfg state)))
+; fn-owner-config moved unchanged to owner-config-state.
 
 (defun fn-owner-install-served-effects (effects state)
   (declare (xargs :stobjs state :guard t))

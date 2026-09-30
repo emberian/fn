@@ -1,14 +1,12 @@
 ; Full-context canonical sidecar installation/lifecycle boundary.
 ; Correspondence is a producer proof obligation, never a served graph scan.
 (in-package "ACL2")
+(include-book "owner-canonical-read-state")
 (include-book "store-tree-size")
 (include-book "owner-canonical-epoch")
 (include-book "snapshot-source-token")
 
-(defun fn-owner-canonical-state (state)
-  (declare (xargs :stobjs state :guard t))
-  (and (boundp-global 'fn-owner-canonical-state state)
-       (f-get-global 'fn-owner-canonical-state state)))
+; fn-owner-canonical-state moved unchanged to owner-canonical-read-state.
 
 (defun fn-owner-canonical-reset (state)
   (declare (xargs :stobjs state :guard t))
@@ -46,13 +44,7 @@
            (state (f-put-global 'fn-owner-canonical-pending nil state)))
       (mv :installed state))))
 
-(defun fn-owner-canonical-availablep (durable-count state)
-  (declare (xargs :stobjs state :guard t))
-  (let ((c (fn-owner-canonical-state state)))
-    (and (fn-omk-widthp c 10) (eq (fn-omk-at 0 c) :ready)
-         (natp (fn-owner-canonical-epoch state))
-         (equal (fn-omk-at 1 c) (fn-owner-canonical-epoch state))
-         (natp durable-count) (equal (fn-omk-at 2 c) durable-count))))
+; fn-owner-canonical-availablep moved unchanged to owner-canonical-read-state.
 
 ; Called under the same owner mutex as cheapcapture6. Return the existing
 ; immutable ten-cell tuple, without copying its graphs or widening cheap6.

@@ -1963,7 +1963,33 @@ ACL2_BOOKS ?= books/defrecord \
     books/group-number-source-assignment \
     books/ninep-group-directory-source \
     tests/acl2/allocation-dual-ceiling-tests \
-    tests/acl2/ninep-group-directory-source-tests
+    tests/acl2/ninep-group-directory-source-tests \
+    books/consumer-account-availability \
+    books/consumer-account-state \
+    books/incoming-authority-freshness \
+    books/index-adoption-context \
+    books/index-backing-request-adoption \
+    books/index-connection-repin \
+    books/index-incoming-request \
+    books/index-query-slot-issuer \
+    books/index-range-controller \
+    books/index-reader-request \
+    books/owner-canonical-read-state \
+    books/owner-config-selector \
+    books/owner-config-state \
+    books/owner-incoming-freshness \
+    books/receiver-custody-row \
+    books/receiver-held-ticket \
+    books/receiver-index-custody \
+    books/receiver-query-binding \
+    books/receiver-query-custody-producer \
+    books/receiver-query-freshness \
+    books/served-plan-head-window \
+    books/served-plan-position \
+    books/served-plan-shape \
+    books/served-plan-window \
+    books/served-render-holder \
+    books/store-node-files-selector
 
 .PHONY: host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none

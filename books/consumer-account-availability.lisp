@@ -1,0 +1,15 @@
+; Exact shared account availability decision; public body unchanged.
+(in-package "ACL2")
+(include-book "consumer-position-fields")
+
+(defun fn-cra-availablep (cp epoch event-count publication)
+  (declare (xargs :guard t))
+  (let ((authority (fn-cp-nth 6 cp)))
+    (and (eq (fn-cp-nth 0 publication) :ready)
+         (natp epoch) (equal epoch (fn-cp-nth 1 publication))
+         (fn-cp-nth 3 authority)
+         (equal (fn-cp-nth 3 authority) (fn-cp-nth 2 publication))
+         (equal (fn-cp-nth 1 authority) (fn-cp-nth 3 publication))
+         (natp event-count) (natp (fn-cp-nth 4 publication))
+         (<= (fn-cp-nth 4 publication) event-count)
+         (fn-cp-nth 5 publication) t)))
