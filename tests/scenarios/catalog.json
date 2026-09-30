@@ -7022,9 +7022,10 @@
       "evidence": [
         "specs/history-image-producer.md",
         "planning/evidence/history-image-producer-source-2026-09-30.json",
-        "planning/evidence/history-image-native-profile-source-2026-09-30.json"
+        "planning/evidence/history-image-native-profile-source-2026-09-30.json",
+        "planning/evidence/history-image-positional-source-2026-09-30/coordinate.json"
       ],
-      "execution_scope": "Complete small decoded-cold-row ACL2 source trajectory and explicit stale-stage/uncertain/malformed-byte mutations pass in fresh exact-source hpi4, with full image/spools/concrete-root comparison. General full trajectory/effect proof, multi-table/multi-page directory witnesses, all interruption cuts and actual native joined execution remain pending."
+      "execution_scope": "Complete small decoded-cold-row ACL2 source trajectory and explicit stale-stage/uncertain/malformed-byte mutations pass in fresh exact-source hpi4, with full image/spools/concrete-root comparison. General full trajectory/effect proof, multi-table/multi-page directory witnesses, all interruption cuts and actual native joined execution remain pending. Separate named visible positional assumption and witness-shaped literal tests passed in hpipos2; no actual native FD/disk qualification."
     },
     {
       "id": "SCN-1054",

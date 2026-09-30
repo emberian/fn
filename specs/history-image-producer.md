@@ -93,3 +93,14 @@ composed source world as the changed writer guards and full cold image fixture.
 Profile refusal preserves all ten controller outputs. Whole INIT adequacy,
 writer invariant/progress and actual native execution remain open; evidence is
 `planning/evidence/history-image-native-profile-source-2026-09-30.json`.
+
+Private-stage and spool byte fidelity is the distinct named
+A-HPI-POSITIONAL-IO assumption over the existing byte-store content/splice
+model. A full successful write changes exactly the requested visible slice;
+a full successful read returns that visible range. Neither is a durability
+barrier. The actual retained staging holder must bind FD/inode identity and
+exclusive operation order, and qualification must discharge those laws. Short
+or uncertain outcomes remain unconstrained and fenced. General writer fidelity
+proofs must take the named predicates explicitly; interval proofs do not imply
+byte fidelity. Literal local-witness constraint teeth are separate from native
+qualification.
