@@ -27,7 +27,8 @@
 (defun fn-rpv-livep (s token) (declare (xargs :guard t))
   (and (fn-rpv-ledgerp s) (fn-rpv-token-matchp token (fn-omk-at 0 (fn-omk-at 3 s)))))
 (defun fn-rpv-acquire (s prefix source maintenance) (declare (xargs :guard t))
-  (let ((ticket (fn-omk-at 3 source)))
+  ; RSA token is (:recovery-source ticket process-epoch ack-serial).
+  (let ((ticket (fn-omk-at 1 source)))
     (cond ((not (and (fn-rpv-ledgerp s) (natp prefix)
                      (fn-omk-widthp source 4)
                      (eq (fn-omk-at 0 source) :recovery-source)

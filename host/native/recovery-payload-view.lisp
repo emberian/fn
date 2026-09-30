@@ -31,6 +31,10 @@
         (declare (ignore pool state))
         (when erp (fnn-fault "recovery view core release failed"))
         answer))))
+(define-condition fnn-snapshot-startup-root-retained (fnn-store-indeterminate)
+  ((token :initarg :token :reader fnn-snapshot-startup-root-retained-token)
+   (source :initarg :source :reader fnn-snapshot-startup-root-retained-source)
+   (maintenance :initarg :maintenance :reader fnn-snapshot-startup-root-retained-maintenance)))
 (defun fnn-snapshot-recovery-root-acquire (service base-handle maintenance source)
   (declare (ignore service))
   (sb-thread:with-mutex (*fnn-extent-lock*)
@@ -39,7 +43,8 @@
                                 source maintenance (fnn-core 'fn-hrs-h-file base-handle))
       (declare (ignore ignored))
       (unless (eq word :admitted)
-        (error 'fnn-store-indeterminate
+        (error 'fnn-snapshot-startup-root-retained
+               :token token :source source :maintenance maintenance
                :message (format nil "startup root retained: ~a token=~a" word token)))
       token)))
 (defun fnn-snapshot-recovery-root-release (service token maintenance source)
