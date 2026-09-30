@@ -82,3 +82,11 @@ join retains action/outcome and fences without repeating I/O. Callbacks have
 no setter/install and default NIL. Missing installation refuses before record
 construction. This does not discharge actual callback/BODY/stage installation,
 digest factory or cleanup/close qualification.
+
+Native record primitive/result ownership is serialized with a nonwaiting
+action mutex, distinct from the extent mutex. A busy scheduler turn makes no
+core call or source-return update; definite return is published by the primitive
+owner. The public record constructor remains an infrastructure unavailable
+fault before allocation: compiled role callbacks are not per-job constructor
+authority. Runtime/physical must supply the actual record11+mutex creator gate
+and same-job claim before activation; raw recording fixtures are unfunded.

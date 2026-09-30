@@ -5304,3 +5304,20 @@ cannot adopt a prior carry. This readout is a dependency of the actual SAME-pool
 publication consumer, not a constructor or promotion permission. The scoped
 source/fixture evidence is
 `planning/evidence/bp-digest-workspace-install-readout-20260930/manifest.json`.
+
+### Native primitive/result custody
+
+The retained native I/O record now owns a nonwaiting action mutex. A competing
+turn cannot join the placeholder unknown result while the primitive is still
+running; the primitive owner publishes source-return under that mutex. Failed
+core observations retain the action/result and fence subsequent turns, so an
+already attempted write is not repeated. The actual old caller is refuted by
+a held-open/competing-thread recording test; the corrected caller passes.
+
+Compiled callback presence does not establish a per-job record constructor
+claim. Until the genuine guarded allocator exists, the public native record
+constructor raises an infrastructure fault before allocation or registry lookup;
+semantic runtime refusal remains ACL2-owned. Positive recording fixtures use
+an explicitly unfunded raw constructor. The record11 and mutex creator/frame
+envelopes are not installed or inferred from these tests. Evidence:
+`planning/evidence/bp-checkpoint-native-custody-20260930/manifest.json`.

@@ -7,21 +7,30 @@
 
 (defstruct (fnn-bpck-registered-io (:constructor %make-fnn-bpck-registered-io))
   controller stage action fd (close-result :closed) (outcome :idle)
+  (action-lock (sb-thread:make-mutex)) (source-result :returned)
   status failure core-failure)
 
 (defun fnn-bps-registered-checkpoint-record (controller stage)
-  ;; Missing installation refuses before constructing the native I/O record.
-  (unless (and *fnn-bpck-prefix-next-callback* *fnn-bpck-prefix-observe-callback*)
-    (return-from fnn-bps-registered-checkpoint-record
-      (values :bp-runtime-unavailable nil)))
-  (values :retained (%make-fnn-bpck-registered-io :controller controller :stage stage)))
+  ;; A compiled callback is a role, not a per-job constructor claim. The
+  ;; genuine registered claim/creator gate is not installed yet. Refuse before
+  ;; constructing the record/mutex or looking up any registry object.
+  (declare (ignore controller stage))
+  (fnn-fault "the guarded per-job BP native holder allocator is not installed"))
 
 (defun fnn-bps-registered-checkpoint-prefix-turn (record fuel)
   "One prepare/primitive or observation join. RECORD remains caller-visible.
 No native CURRENT, checkpoint job or digest stobj is authoritative here."
   (when (fnn-bpck-registered-io-core-failure record)
     (return-from fnn-bps-registered-checkpoint-prefix-turn record))
-  (handler-case
+  ;; One primitive/result owner per record. A concurrent scheduler quantum
+  ;; never joins the placeholder :unknown while the primitive is still running.
+  ;; This lock is distinct from the semantic extent lock and is never waited on.
+  (sb-thread:with-mutex ((fnn-bpck-registered-io-action-lock record) :wait-p nil)
+   (when (fnn-bpck-registered-io-core-failure record)
+    (return-from fnn-bps-registered-checkpoint-prefix-turn record))
+   (setf (fnn-bpck-registered-io-source-result record) :running)
+   (unwind-protect
+    (handler-case
       (if (fnn-bpck-registered-io-action record)
           ;; An already attempted primitive is never repeated, even if its
           ;; core observation fails or cancellation/recovery races this turn.
@@ -77,4 +86,5 @@ No native CURRENT, checkpoint job or digest stobj is authoritative here."
                         (fnn-bpck-registered-io-outcome record) :unknown))))))
     (error (condition)
       (setf (fnn-bpck-registered-io-core-failure record) condition)))
+    (setf (fnn-bpck-registered-io-source-result record) :returned)))
   record)
