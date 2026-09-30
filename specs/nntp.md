@@ -1879,6 +1879,15 @@ The owning response must retain the origin generation pin until all span
 bytes drain or it cancels. This component is not yet wired into the served
 cursor and does not establish legacy parser refinement or runtime costs.
 
+The direct-row component `fn-nrf-facts` reads the already-selected catalog
+row once and returns its decided facts only for an arena handle. It does
+not search the Message-ID history. Under the maintained column relation F,
+those facts equal the facts of that row's payload. Its cached pieces denote
+the exact article NOV row when the cache is valid and the article retains
+the selected row's payload identity. Visibility and group membership remain
+the selecting cursor's responsibility; cache existence alone grants neither.
+This accessor is not yet called by the served cursor.
+
 ### Bounded legacy hydration source component (PRF-1094, SCN-1009)
 
 `fn-lpc-begin(handle, length, origin-pin)` captures immutable source identity;
