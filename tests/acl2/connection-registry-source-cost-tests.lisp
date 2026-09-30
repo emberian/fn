@@ -5,7 +5,7 @@
  (let* ((before (update-fn-ich-segment-id 1 (create-fn-ibp-connection-segment)))
         (token '(:connection-holder 2 1 0)) (grant '(40 0 0 0 1))
         (row (list :connection-holder token 42 nil :reserved grant 0))
-        (after (list (cons row (make-list 63 :initial-element nil)) 1 1)))
+        (after (list (cons row (make-list 63 :initial-element nil)) 1 1 (make-list 64 :initial-element nil))))
   (and (fn-ibp-connection-segmentp before) (fn-ich-tokenp token)
        (natp 42) grant (equal (fn-omk-at 2 token) (fn-ich-segment-id before))
        (< (fn-ich-active before) 64)
@@ -16,7 +16,7 @@
 (defthm icrct-literal-stale-complete
  (let* ((token '(:connection-holder 2 1 0)) (grant '(40 0 0 0 1))
         (row (list :connection-holder token 42 nil :reserved grant 0))
-        (before (list (cons row (make-list 63 :initial-element nil)) 1 1)))
+        (before (list (cons row (make-list 63 :initial-element nil)) 1 1 (make-list 64 :initial-element nil))))
   (and (fn-ibp-connection-segmentp before) (fn-ich-tokenp token)
        (equal (fn-ich-reserve token 42 grant before) (list :stale before))
        (equal (fn-ichc-reserve token 42 grant before) (list :stale before (list nil 0 nil nil)))))
