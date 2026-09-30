@@ -2481,6 +2481,48 @@
      fn-ag-car fn-ag-cdr car-cons cdr-cons
      (:type-prescription true-listp-append) true-listp)))))
 
+(defthm fn-scr-source-own-read-span-consumed-is-bounded
+ (let ((r (fn-scr-source-own-read-span o id i end cache fn-octets fn-arena fn-cat)))
+  (and (natp (fn-own-tls-result-consumed r))
+       (<= (fn-own-tls-result-consumed r) (nfix (- end i)))))
+ :rule-classes nil
+ :hints (("Goal"
+  :cases ((and (natp i) (natp end) (<= i end)))
+  :use ((:instance fn-scrs-source-loop-consumed-bounds
+         (conn (fn-own-tls-served-conn o (fn-own-find-conn id (fn-own-conns o))))
+         (live (fn-sn-node (fn-own-store o)))
+         (trie (fn-own-view-index (fn-own-view o)))
+         (lver (fn-own-view-version (fn-own-view o)))
+         (arts (fn-state-articles (fn-own-view-archive (fn-own-view o))))
+         (consumed 0) (acc nil)))
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-scr-source-own-read-span fn-scr-source-step-span-fast
+     fn-scr-source-step-span-core fn-scr-source-scan-span
+     fn-own-tls-make-result fn-own-tls-result-consumed
+     fn-served-counted-make fn-served-counted-consumed
+     fn-scrs-consumed-of-counted-make fn-ag-car fn-ag-cdr car-cons cdr-cons
+     natp nfix fix unicity-of-0)))
+ ("Subgoal 2" :expand
+  ((:free (conn live trie lver arts)
+    (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+                                 fn-octets fn-arena fn-cat 0 nil))))))
+
+(defthm fn-scr-ocfg-source-read-span-establishes-response-domain
+ (let ((r (fn-scr-ocfg-source-read-span oc id i end cache fn-octets fn-arena fn-cat)))
+  (and (true-listp (fn-own-tls-result-effects r))
+       (natp (fn-own-tls-result-consumed r))
+       (<= (fn-own-tls-result-consumed r) (nfix (- end i)))))
+ :rule-classes nil
+ :hints (("Goal"
+  :use ((:instance fn-scr-source-own-read-span-effects-are-proper
+                  (o (fn-ocfg-owner oc)))
+        (:instance fn-scr-source-own-read-span-consumed-is-bounded
+                  (o (fn-ocfg-owner oc))))
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-scr-ocfg-source-read-span fn-own-tls-make-result
+     fn-own-tls-result-effects fn-own-tls-result-consumed
+     fn-ag-car fn-ag-cdr car-cons cdr-cons)))))
+
 (verify-guards fn-scr-source-scan-span-loop
  :hints (("Goal"
    :in-theory (e/d (fn-served-counted-make fn-served-counted-result)
