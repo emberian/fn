@@ -114,6 +114,18 @@ the host tracks offsets and never reruns a state transition to finish a write.
 Quotas bound per-session staging and pending effects so one peer cannot monopolize
 the state owner merely by refusing to consume output.
 
+Q10d: each accepted NNTP socket's service-log connection line carries exactly
+one `client-address` field projected by ACL2 from the supplied fixed-width
+family/address observation. This is the kernel transport source on direct
+connections and the asserted source after trusted PROXY admission. The
+assertion confers no configured peer identity. IPv4 is dotted decimal; IPv6 is eight expanded
+lowercase hexadecimal groups. Invalid or absent observations are named
+`unobserved`, never substituted with a peer name. Rendering/validation inspect
+at most 4 or 16 input octets; every complete line contains no CR or LF.
+Logical control/pull connections have no accepted client socket and retain
+their existing logical connection line. The OS observation's truth and the
+physical log write are assumptions/measurements, not proved by the renderer.
+
 HST-003: platform persistence primitives have a documented contract tied to
 A-DURABILITY and A-WRITE-ISOLATION. The host reports known failure and uncertain
 completion distinctly. Recovery owns reconciliation after uncertainty; socket
@@ -394,7 +406,9 @@ Native peering now composes with that same public owner lifecycle in source.
 At accept, raw Lisp supplies only the kernel address family and fixed-width
 address octets. `fn-owner-peer-for-socket-address` owns their numeric IPv4 or
 IPv6-loopback projection and configured-peer lookup, and `fn-owner-open-peer` owns
-the session role. The lookup and open occur under the shared owner mutex. The
+the session role. The lookup and open occur under the shared owner mutex. Trusted PROXY
+connections skip this peer lookup: their asserted address is used for
+admission and logging, without granting a configured peer identity. The
 public operator installs the existing outbound feed's start, wake and close
 hooks on this owner; the developer-only low-level owner entry remains a
 separate diagnostic and does not acquire those hooks. A source-matched
@@ -1442,16 +1456,34 @@ the one reply being written (the connection is neither read nor stepped
 while it is queued, so a client that does not read meets TCP backpressure
 and holds one reply), and its timers: the exposure wait (`fn-exp-charge`'s
 milliseconds), the idle check (`fn-exp-idle` each second without input), the
-send deadline (10 s), the handshake deadline (10 s) and the drain after a
-graceful close (1 s). TLS never waits inside OpenSSL: SSL_accept, SSL_read
-and SSL_write are single attempts answering which readiness to wait for,
-with partial writes, moving write buffers and released idle buffers; at
-most 8 handshakes per loop are in progress. An implicit-TLS connection meets
-`fn-exp-open` before any handshake work (PKT-639), when a handshake slot is
-free; until then it waits unadmitted (no handshake work, no share of the
-capacity) in a queue of at most 256 per loop for at most 10 s, and past that
-it is closed (`busy`, `timeout`). A refused one is closed without SSL_accept; a TLS failure is
-named in the service log (`tls refused reason=... connection=N`, PKT-640).
+send deadline (10 s), the configured handshake deadline
+(`tls-handshake-ms`, default 5 s) and the drain after a graceful close (1 s).
+TLS never waits inside OpenSSL: SSL_accept, SSL_read and SSL_write are
+single attempts answering which readiness to wait for, with partial writes,
+moving write buffers and released idle buffers. ACL2's `fn-hsb-admit`
+limits the whole node to L (`tls-handshakes-in-flight`, default 16) in
+flight and L starts per second. At most 32L sockets wait unadmitted for a
+slot, each under the configured deadline. Each untrusted source also pays
+its token bucket, with the finite operator override list supplying shared
+addresses' rates; trusted sources retain all node-wide limits. An
+implicit-TLS connection meets `fn-exp-open` before SSL_accept. Refusals and
+TLS failures are named in the service log (PKT-639, PKT-640, PRF-986).
+
+On the implicit-TLS listener, only a transport peer explicitly listed in
+`tls-proxy-trusted-peers` supplies a PROXY header. The node charges the
+transport source's handshake slot first, reads only the bounded pieces
+`fn-pxy-step` requests, then charges the asserted source at handover. The
+asserted address grants no authenticated peer identity. The host captures
+one header deadline from `fn-pxy-deadline` and preserves it across all
+partial reads. `fn-pxy-observe`, through `fn-owner-proxy-step` and
+`fn-owner-proxy-timeout-line`, decides every timer observation and both
+sides of a nonblocking read: at or after the deadline even a complete
+header is refused as `proxy-timeout`; malformed clock observations are
+`proxy-clock`. Input never extends the deadline. The proof establishes the
+bounded, timely decision under the supplied monotonic clock observations;
+OS scheduling and clock fidelity remain host assumptions. The native
+`test_native_tls_proxy` module covers trusted/untrusted paths, both header
+versions, source charges, silent headers and slow partial headers.
 
 The memory (books/connection-budget.lisp): a connection costs a heap part
 (the record, its input, the one reply of the stated workload -- the
@@ -1587,6 +1619,14 @@ opened by this action. Accepted output is `blessed snapshot=DIR
 transactions=N`; the exit code follows ACL2's status. PRF-1050 states the
 three-observation blessing predicate, with teeth in
 `tests/acl2/owner-snapshot-request-tests.lisp`; SCN-217 exercises the host.
+
+These observation verdicts cover ordinary known open refusals. They do not
+turn a malformed durable profile, an arbitrary core fault or uncertain I/O
+into a refused observation. The existing store-profile boundary
+`fn-spo-config-open` distinguishes a sealed foreign-format refusal (exit 1)
+from rejected/corrupted durable metadata (fault, exit 4). Blessing preserves
+that distinction; an absent completion marker still prevents any open,
+including an open that would discover corrupt metadata.
 
 The marker is the producer's completion observation, not authentication of
 a snapshot producer or proof of atomic capture. Its fields are provenance.

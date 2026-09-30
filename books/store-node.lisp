@@ -273,17 +273,21 @@
                            (k 13))))))
 
 (local
- (defthm fn-sn-caddr-is-nth-two
-   (equal (caddr x) (nth 2 x))
-   :hints (("Goal" :in-theory (enable nth)))))
+ (defthm fn-sn-nth2-is-caddr
+   (equal (nth 2 x) (caddr x))
+   :hints (("Goal" :expand ((nth 2 x) (nth 1 (cdr x)) (nth 0 (cddr x)))
+            :in-theory (enable nth zp)))))
 
 (defthm fn-sn-files-of-fn-sn-with-configuration
   (equal (fn-sn-files
           (fn-sn-with-configuration s groups capacity node config-history))
          (fn-sn-files s))
-  :hints (("Goal" :in-theory
-           (e/d (fn-sn-files)
-                (fn-sn-with-configuration)))))
+  :hints (("Goal"
+           :use ((:instance fn-sn-with-configuration-preserves-unselected-slot (k 2)))
+           :in-theory
+           (e/d (fn-sn-files fn-sn-nth2-is-caddr)
+                (fn-sn-with-configuration nth
+                 fn-sn-with-configuration-preserves-unselected-slot)))))
 
 (defthm fn-sn-groups-of-fn-sn-with-configuration
   (equal (fn-sn-groups
@@ -297,12 +301,30 @@
          capacity)
   :hints (("Goal" :in-theory
            (enable fn-sn-capacity fn-sn-with-configuration))))
+(local
+ (defthm fn-sn-nth3-is-cadddr
+   (equal (nth 3 x) (cadddr x))
+   :hints (("Goal" :expand ((nth 3 x) (nth 2 (cdr x))
+                            (nth 1 (cddr x)) (nth 0 (cdddr x)))
+            :in-theory (enable nth zp)))))
+(local
+ (defthm fn-sn-with-configuration-node-slot
+   (equal (nth 3 (fn-sn-with-configuration
+                  s groups capacity node config-history))
+          node)
+   :hints (("Goal" :in-theory
+            (e/d (fn-sn-with-configuration nth-update-nth)
+                 (nth update-nth fn-sn-nth3-is-cadddr))))))
 (defthm fn-sn-node-of-fn-sn-with-configuration
   (equal (fn-sn-node
           (fn-sn-with-configuration s groups capacity node config-history))
          node)
-  :hints (("Goal" :in-theory
-           (enable fn-sn-node fn-sn-with-configuration))))
+  :hints (("Goal"
+           :use ((:instance fn-sn-with-configuration-node-slot))
+           :in-theory
+           (e/d (fn-sn-node fn-sn-nth3-is-cadddr)
+                (fn-sn-with-configuration nth update-nth
+                 fn-sn-with-configuration-node-slot)))))
 (defthm fn-sn-config-history-of-fn-sn-with-configuration
   (equal (fn-sn-config-history
           (fn-sn-with-configuration s groups capacity node config-history))

@@ -123,6 +123,20 @@ generation at 3. A reader that has not seen a reconfiguration need not be
 advanced to answer correctly, and "the reply is consistent with exactly one
 generation" stays true across a busy posting period.
 
+The actual native replay has the same count meaning: on success,
+`fn-cvcg-config-replay-generation-counts-records` equates the generation of
+`fn-cnode-config-replay` with the number of configuration records supplied.
+`fn-cvcg-accepted-publication-count-fits-profile` then states that an
+accepted `fn-cvec-native-admin-authorize` names exactly one plus the
+existing count and that this next count fits the operator profile's
+`max-config-generations`. These source theorems live in
+`books/store-config-generation.lisp` (PRF-1097, PKT-183). The host caller is
+`fn-store-cfg-native-admin-authorize` in `host/store-node-host.lisp`;
+publication still uses its existing lock, candidate-open and namespace
+observations. This is fn's configuration contiguity guarantee. The witnesses
+exercise a successful two-record replay and actual publication, then stale
+sequence replay and a refused publication beyond the profile count.
+
 ### 1.4 The record kind
 
 The journal becomes a two-kind stream. The frame layer already carries a kind

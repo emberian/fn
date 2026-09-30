@@ -339,6 +339,16 @@
        (equal (fn-arena$a-seal-list '(6 7 8) *pat-a*) '((1 2 3) (4 5) (6 7 8))))
   :rule-classes nil)
 
+; PRF-118 positive: fn-arena-bytes-seal-buffer{correspondence}.
+; Assert both literal hypotheses and the complete concrete/logical relation
+; after a nonempty buffer is sealed into an already nonempty arena.
+(defthm pat-w-seal-buffer-correspondence
+  (and (fn-arena$corr *pat-c* *pat-a*)
+       (fn-octets-p '(6 7 8))
+       (fn-arena$corr (fn-arena$c-seal-buffer '(6 7 8) *pat-c*)
+                     (fn-arena$a-seal-buffer '(6 7 8) *pat-a*)))
+  :rule-classes nil)
+
 ; seal-list without octets: the array cannot hold 300 and the concrete
 ; recognizer fails; the abstraction still appends.
 (defthm pat-w-seal-list-without-octets
@@ -355,6 +365,7 @@
 ; -----------------------------------------------------------------------------
 ; The keystones on ground values.
 
+; PRF-118 positive: fn-arena-seal-keeps-sealed, both hypotheses and equality.
 ; A sealed handle is immutable under a seal: handle 1 before and after.
 (defthm pat-w-seal-keeps-sealed
   (and (natp 1) (< 1 (fn-arena-count *pat-a*))
@@ -388,6 +399,7 @@
           (fn-arena-payload 2 *pat-a*))
    :rule-classes nil))
 
+; PRF-118 positive: fn-arena-seal-new-handle, the complete equality.
 ; The new handle is the old count and denotes the sealed octets; the count
 ; grows by one.  No hypothesis: no removal witness exists.
 (defthm pat-w-seal-new-handle
@@ -396,6 +408,7 @@
        (equal (fn-arena-count (fn-arena-seal-list '(9) *pat-a*)) 3))
   :rule-classes nil)
 
+; PRF-118 positive: fn-arena-seals-keep-sealed, both hypotheses and equality.
 ; A sequence of seals keeps every handle it found.
 (defthm pat-w-seals-keep-sealed
   (and (natp 0) (< 0 (fn-arena-count *pat-a*))
@@ -445,6 +458,7 @@
                    (not (fn-arn-store-corr '((4 5) (1 2 3)) (list *pat-r1* *pat-r2*))))
   :rule-classes nil)
 
+; PRF-118 positive: fn-arn-store-corr-of-commit, initial relation and conclusion.
 (defthm pat-w-store-corr-of-commit
   (and (fn-arn-store-corr *pat-a* (list *pat-r1* *pat-r2*))
        (fn-arn-store-corr (fn-arena-seal-list (fn-record-payload *pat-r3*) *pat-a*)
@@ -465,6 +479,7 @@
                       (append (list *pat-r1* *pat-r2*) (list *pat-r3*)))
    :rule-classes nil))
 
+; PRF-118 positive: fn-arn-store-corr-of-open, complete hypothesis-free conclusion.
 (defthm pat-w-store-corr-of-open
   (and (fn-arn-store-corr (fn-arn-seal-many (fn-arn-payloads-of (list *pat-r1* *pat-r2* *pat-r3*)) nil)
                           (list *pat-r1* *pat-r2* *pat-r3*))

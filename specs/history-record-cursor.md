@@ -1,0 +1,227 @@
+# Bounded history record preparation cursor
+
+S7/P12/D33 component; PRF-1088 and SCN-1005. This is a source library
+boundary, with no host caller, producer completion, physical allocation,
+certification, qualified-image or publication claim.
+
+## Controller contract
+
+The private snapshot builder consumes the captured immutable source-list
+reference directly. It does not first call `fn-hrc-load` or construct a doubling
+suffix array. A census pass computes exact encoded byte counts without retaining
+encoded rows; a second pass re-begins the identical pinned remapped history rows and emits
+current-format bytes. The remapped history row and original arena payload handles are distinct;
+this codec neither reads payload nor re-interns a row. Capture epoch, arena
+incarnation and maintenance resource
+lease remain owned by the controller across both passes. A cursor preserves
+the supplied capture and lease identities; it does not validate or manufacture
+their liveness. Publication and ambiguous I/O are separate controller events.
+
+The assembler selects a disk-backed private builder: canonical placement is
+computed in ACL2 from the completed census, and bounded page buffers emit the
+four metadata columns and encoded pool in physical page order. Additional
+read-only source passes are permitted; no whole-row encoded blob is retained.
+The existing `pgs-x-grow-image` whole-array allocation/zero-fill and
+`fn-hp-x-append-step` relocation are not called by a bounded private-builder tick.
+A future in-memory alternative needs segmented backing or an independently
+proved resumable migration, including old/new coexistence and initialization.
+Neither backing implementation nor physical pools are supplied by this book.
+
+## First implemented codec boundary: opaque octet leaves
+
+`fn-hrcur-leaf-begin(octets, capture, lease)` allocates one seven-cell cursor
+and retains the source pointer. It performs no source scan, copy or encoding.
+This boundary is for the existing tree codec's **nonempty opaque octet leaf**;
+NIL and non-octet lists need the general tree cursor and are deliberately refused.
+
+`fn-hrcur-leaf-tick(cursor)` returns `(mv verdict octet next-cursor)`:
+
+- `:continue` advances one classification/count cell or a phase transition;
+- `:emit` returns exactly one codec byte;
+- `:prepared` ends this byte stream, with no durable acceptance meaning;
+- `(:refused :event)` rejects a malformed/nonempty leaf or an unrepresentable
+  current-format length; `(:refused :cursor)` rejects a malformed cursor.
+
+The count phase validates one source octet cell per tick. It does not invoke
+`fn-sccb-treep`, `len` on a retained source suffix, `coerce` or `fn-scc-encode`.
+The fixed seven-cell shape checker does not inspect the retained source fields.
+`fn-hrcur-leaf-invariantp` and `fn-hrcur-leaf-rest` are proof vocabulary only;
+they are absent from the runtime guard and tick. The count is bounded by the
+existing history image's u64 encoded-length representation, not a new operator
+profile or stored-data ceiling. Format representability failure is explicit.
+
+After classification, one bounded prefix is constructed: opcode, natural's
+length-of-length and at most eight u64 length digits, at most ten cells. The
+existing `fn-scc-le-digits`/`fn-scc-nat-octets` work is fixed by that codec width.
+Prefix emission visits one cell per tick, and body emission advances the original
+source pointer one cell per tick. Exhausting a scheduling quantum retains the
+cursor; it never truncates or substitutes a completed record.
+
+`fn-hrcur-begin-refines-octet-leaf` connects the initial logical residual to
+**the existing `fn-scc-encode`**, not a separately specified encoder.
+`fn-hrcur-leaf-tick-refines-residual` equates each pre-tick residual with the
+emitted byte, if any, followed by the post-tick residual.
+`fn-hrcur-leaf-tick-preserves` preserves the carried invariant and byte/verdict
+domain. Capture and lease identities are preserved on every branch, including
+refusal. Their semantic liveness remains a controller obligation.
+
+## Allocation and retention
+
+Begin allocates seven list cells; a normal tick allocates seven replacement
+cursor cells. Prefix creation additionally allocates at most ten final prefix
+cells and the existing natural helper's transient digit list, each at most eight
+cells. Old and new cursors coexist until the runtime reclaims them. Multiple-value
+return representation, runtime stack frames and scalar/bignum representation
+are additional costs, not assumed zero.
+
+The original leaf remains referenced throughout classification and prefix
+emission. Body emission drops consumed source references from the cursor, but
+the captured Store/pin can still retain them. Dropping a reference does not prove
+collector reclamation or justify refunding the controller's source reservation.
+The page-buffer pool, task-stack storage, staging file and queued I/O have
+separate admission/lifetime accounting. No numerical physical reserve or
+unimplemented pool is assumed here.
+
+## Implemented bounded word accumulator
+
+`fn-hrcur-word-push(octet, k, w)` accepts the next byte and the carried
+partial-word scalars. `k` is in 0..7 and `w` is the little-endian value of
+those `k` bytes. It returns `(mv verdict word k2 w2)`, accumulating one byte
+as `:continue`, or returning one u64 `:emit` on the eighth byte and resetting
+both scalars. Invalid byte/word state returns a named refusal.
+
+`fn-hrcur-word-finish(k, w)` emits a nonempty final partial word, zero-padded
+through eight bytes, and resets. An exactly aligned stream (`k = 0`) returns
+`:prepared` without an extra word. Scalars are bounded by the existing u64
+word representation. There is no encoded-row list, byte copying, reversal or
+source scan in either function; `expt` uses only the fixed 0..7 byte offset.
+
+`fn-hrcur-word-push-refines-partial` preserves the exact partial little-endian
+value. `fn-hrcur-word-push-refines-pack8` equates the eighth-byte emission with
+the existing **`fn-hp-pack8`**, and
+`fn-hrcur-word-finish-refines-pad8` equates the final word with that same
+packer over exact zero padding. `fn-hrcur-word-push-preserves` establishes the
+permitted verdict and u64 output domain. `true-listp` hypotheses on the logical
+partial prefix were removed only after proving all three weakened boundaries.
+Reachable eight-byte/partial/aligned traces and a literal removal witness for
+every remaining word-boundary hypothesis are supplied; invalid cursor examples
+are explicitly argument mutations/corrupted state.
+
+This supplies scalar packing boundaries; the resident byte controller and census
+below are also implemented. A production word-controller and the total padded
+census/region-placement equality remain assembly obligations. The caller must thread each emitted
+codec byte through push and invoke finish only at that stream's terminal state.
+No scratch-buffer or physical allocator is inferred from the scalar functions.
+
+## Implemented resident tree descriptor cursor
+
+`fn-hrcur-tree-begin(tree, capture, lease)` allocates a three-cell outer
+cursor, a two-cell initial task and one task-list cell. It retains the resident
+source tree without scanning it. `fn-hrcur-tree-tick(cursor)` returns
+`(mv verdict descriptor next-cursor)` with the same continue/emit/prepared
+separation. Emissions are `(:atom source-atom)`,
+`(:octets source-leaf exact-count)` or `(:byte CONS-opcode)`; they retain
+source references and are **not** whole-atom byte expansion.
+
+An explicit task stack traverses car, cdr and postfix CONS. Classifying a
+possible opaque octet leaf visits one source spine cell per tick and retains
+its original pointer and counted prefix. A failed classification beyond a
+byte prefix carries a proved `:non-octets` task for the remaining suffix.
+Byte-headed non-opaque tasks propagate that fact, avoiding repeated scans of
+a shrinking suffix. Non-byte heads return the child suffix to ordinary
+classification. A 200-byte prefix followed by a symbol completes within
+810 descriptor ticks and still matches the original encoder; this is a
+specific source-model witness, not a matched native cost measurement or a
+general asymptotic completion claim.
+
+`fn-hrcur-tree-domainp`, task/list invariants, descriptor interpretation and
+residual functions are proof vocabulary only. The source domain reflects
+existing scalar encodability and u64 image count representability for each
+retained cons spine. Its connection to the captured producer/profile invariant
+is still an assembly obligation. No whole-source domain check is executed by
+begin, tick or a runtime guard. Safe logical prefix/tail functions permit the
+codec's dotted trees without passing them to guarded Lisp list utilities.
+
+`fn-hrcur-tree-begin-refines-encode` connects the initial descriptor residual
+to existing `fn-scc-encode`. `fn-hrcur-tree-tick-refines-residual` proves exact
+interpreted descriptor/pre/post residual conservation;
+`fn-hrcur-tree-tick-preserves` preserves the carried source/task invariant,
+permitted verdict and emitted descriptor validity. Capture and lease identities
+are unchanged even on malformed-cursor refusal. The interpreter is proof-only;
+the byte controller holds at most one active leaf/scalar cursor before returning
+to descriptor traversal. The assembler routes emitted bytes to the word accumulator.
+
+A count advance allocates one four-cell task, one task-list cell and one
+three-cell cursor (eight cells); a pair expansion allocates three two-cell
+tasks, three task-list cells and the cursor (twelve cells). Emission allocates
+a two/three-cell descriptor and a three-cell replacement cursor. Remaining
+stack/source references are shared. Old/new cell coexistence, runtime return
+objects and retained source/pins still need concrete admission/lifetime
+accounting. Arbitrary source depth is not silently truncated; task-stack
+growth is incremental and must be funded from the supported source profile.
+
+## Implemented resident byte stream and census
+
+`fn-hrcur-byte-begin(source, capture, lease)` accepts `(:resident row)` and
+retains references in a six-cell controller. Its phases are descriptor traversal,
+scalar emission, opaque-leaf emission and done. `(:decoded node)` is explicitly
+refused in this checkpoint; its borrowed-span extension is a remaining seam.
+`fn-hrcur-byte-tick` performs one descriptor action or one leaf/scalar action.
+An opaque descriptor already carries its exact count, so the controller begins
+its bounded prefix directly without a second source classification pass.
+
+The source domain now uses `fn-hrsc-domainp` for atoms, including the existing
+255-digit scalar width and length-prefix representability. This strengthens
+only proof vocabulary. No domain predicate or suffix validator is called by
+the served tick. Each successful tick emits at most one byte, preserves the
+carried invariant and capture/lease identities, and conserves the exact
+`fn-scc-encode` residual. Prepared implies an empty residual. Scalar text
+emission indexes the retained string; runtime never coerces a string to a list.
+
+Controller replacement adds six cells to the chosen subcursor's bounded
+allocation. A scalar begin adds ten cells. An opaque prefix begin adds seven
+leaf cells, a prefix of at most ten cells and bounded transient length digits.
+Traversal stack, source references, old/new cursors and captured pins coexist
+until reclaimed; this book supplies no physical allocator or reservation refund.
+
+`fn-hrcur-census-begin(source, capture, lease)` adds a three-cell cursor and
+zero count. `fn-hrcur-census-tick` consumes the same byte controller, increases
+its u64 count only on `:emit`, and returns that exact count only on `:prepared`.
+It refuses before u64 overflow. Neither census nor byte emission retains an
+encoded-row list. The census invariant conserves count plus the logical residual
+length, and its initial refinement names `len(fn-scc-encode row)`. Its required
+whole encoded-size hypothesis is a carried producer/profile fact, never a
+runtime whole-row scan. A practically executable removal witness for this
+initial u64-size premise remains open.
+
+Tests reach every resident phase, interrupt and resume a nested dotted row,
+compare complete bytes with the current codec, feed those bytes through the
+word accumulator including final zero padding, and compare completed census
+count with the codec length. Corrupted scalar metadata and a census total at
+the u64 edge are separately labeled hypothesis removals. The composed word
+trace is a test oracle, not a production word-controller completion theorem.
+
+## Remaining union obligations
+
+The resident byte stream and exact byte census are admitted library components.
+Production word-stream composition, full padding/placement equality and general
+completion progress remain open.
+The actual cold source is the sum `(:resident row)` / `(:decoded node)`;
+borrowed decoded spans must stream by pinned pool offsets, with no whole-string
+coerce/intern at a terminal tick. Decoded CONS trees that abstract to octet
+lists need resumable opaque-leaf classification; a zero-length opcode6 span
+abstracts to NIL and canonically encodes as opcode0. Nonminimal old length
+spellings are regenerated in current canonical form, never copied blindly.
+
+Message-ID key hashing must consume characters incrementally and equal
+`fn-hp-mkey`. The completed census must prove all five region lengths and
+placement equal the existing `fn-hp-row`/`fn-hp-x-blocks` format. The
+source/profile invariant must establish representability before allocation;
+a whole-row predicate is never a per-tick runtime guard.
+
+Literal reachable leaf/word/tree traces and corrupted-state hypothesis removals
+are in `tests/acl2/history-record-cursor-tests.lisp`. Initial leaf refinement's
+u64-size hypothesis has no practically executable removal witness at this
+stage; it is not represented as fully toothed. Full cold-source and actual controller
+proof, funding, matched measurements, actual producer calls and coalesced
+qualification remain open under the original S7/P12 portfolio.

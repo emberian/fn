@@ -273,6 +273,7 @@
 (include-book "books/bp-node-rotation-buffer")
 ;; The held projection at open: fnn-bps-open calls fn-bphp-recover-auto-event.
 (include-book "books/bp-held-projection")
+(include-book "books/bp-recovery-guards")
 (include-book "books/bp-recovery-profile")
 (include-book "books/bp-node-retire")
 ;; Natural rotation at a node verb's open (fnn-bps-rotate-when-due calls
@@ -306,6 +307,7 @@
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/page-read-host.lisp" :ld-error-action :error)
 (ld "host/page-executor-host.lisp" :ld-error-action :error)
+(ld "host/page-file-lease-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
 ;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.
 (include-book "books/store-checkpoint-buffer")

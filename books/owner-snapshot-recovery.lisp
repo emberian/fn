@@ -1448,3 +1448,261 @@
                  fn-osr-configure-durable-keeps-retained-fields
                  fn-osr-configure-durable-keeps-projections
                  fn-osr-configure-durable-preserves-live-carry)))))
+
+(local (defthm fn-osr-index-add-no-delta
+  (equal (fn-stx-index-add index nil) index)
+  :hints (("Goal" :in-theory '(fn-stx-index-add)))))
+
+(local (defthm fn-osr-finish-keeps-retired-index
+  (equal (fn-sn-event-index (fn-sn-finish s)) (fn-sn-event-index s))
+  :hints (("Goal" :in-theory
+           (e/d (fn-sn-finish fn-sn-finish-identity fn-sn-advance-identity-next
+                 fn-sn-update-indexed fn-sn-update-accepted
+                 fn-sn-with-topic fn-sn-with-consumer)
+                (fn-sn-event-index fn-sn-make-v6 fn-sn-composite-delta
+                 fn-stxk-context-current-generation fn-stxk-context-next
+                 fn-stxk-context-snapshots fn-stxk-context-verdicts fn-replay-verdict-pairs
+                 fn-stxe-p fn-stxk-p fn-hstxa-p fn-store-retention-event-p
+                 fn-cpe-eventp fn-th-topic-eventp fn-sn-completion-enabledp fn-sn-completion-record
+                 fn-sn-statep fn-sf-statep fn-node-complete fn-replay-apply-record
+                 fn-replay-apply-retention-event fn-replay-identity-step
+                 fn-sn-identity-context fn-cpe-projection-step fn-th-prefix-step
+                 fn-sf-core-completion fn-sf-emit-success fn-stx-index-add))))))
+
+(local (defthm fn-osr-finish-advances-frozen-index
+  (implies (and (fn-sn-statep s) (fn-sn-completion-enabledp s))
+           (equal (fn-sn-index (fn-sn-finish s))
+                  (fn-stx-index-add (fn-sn-index s)
+                                   (fn-sn-row-delta (fn-sn-completion-record s)))))
+  :hints (("Goal"
+           :in-theory
+           (e/d (fn-sn-finish fn-sn-finish-identity fn-sn-accepted-delta
+                 fn-sn-composite-delta fn-sn-row-delta fn-sn-statep)
+                (fn-sn-index fn-sn-make-v6 fn-sn-completion-enabledp fn-sn-completion-record
+                 fn-stxk-context-current-generation fn-stxk-context-next
+                 fn-stxk-context-snapshots fn-stxk-context-verdicts fn-replay-verdict-pairs
+                 fn-sf-statep fn-node-statep fn-node-complete
+                 fn-replay-apply-record fn-replay-apply-retention-event
+                 fn-replay-identity-step fn-sn-identity-context
+                 fn-cpe-projection-step fn-th-prefix-step
+                 fn-sf-core-completion fn-sf-emit-success fn-stx-index-add
+                 fn-store-event-p fn-store-retention-event-p
+                 fn-stxe-p fn-stxk-p fn-hstxa-p fn-cpe-eventp fn-th-topic-eventp
+                 fn-held-p fn-prin-keyringp))))))
+
+(local (defthm fn-osr-standalone-verdict-emits-no-acceptance
+  (implies (and (fn-stxe-p event)
+                (equal (fn-stxk-context-kind
+                        (fn-replay-identity-step (fn-sn-identity-context s) event)) :ok))
+           (equal (fn-stxk-context-verdicts
+                   (fn-replay-identity-step (fn-sn-identity-context s) event)) nil))
+  :hints (("Goal"
+           :use ((:instance fn-hls-snapshot-identity-step-has-no-new-verdict)
+                 (:instance fn-hls-snapshot-disjoint-from-other-store-events)
+                 (:instance fn-hls-retained-kind4-disjoint-from-other-store-events))
+           :in-theory
+           (e/d (fn-replay-identity-step fn-replay-identity-wire
+                 fn-sn-identity-context fn-stxk-context fn-stxk-fault)
+                (fn-stxe-p fn-stxk-p fn-hstxa-p fn-stxa-p
+                 fn-store-event-sequence fn-sn-identity-next
+                 fn-stxk-apply-verdict fn-stxk-apply-snapshot
+                 fn-hsig-article-event-carried-bindsp
+                 fn-hsig-article-event-revoked-bindsp
+                 fn-hsig-article-event-snapshot-bindsp))))))
+
+(local (defthm fn-osr-composite-enabled-decode-ok
+  (implies (and (fn-csi-livep s) (fn-sn-completion-enabledp s)
+                (fn-hstxa-p (fn-sn-completion-record s)))
+           (fn-stmt-okp
+            (fn-stxe-decode-exact
+             (fn-stxa-verdict-event (fn-hstxa-stxa (fn-sn-completion-record s))))))
+  :hints (("Goal"
+           :use (fn-osr-enabled-identity-step-ok
+                 (:instance fn-hls-retained-kind4-disjoint-from-other-store-events
+                            (event (fn-sn-completion-record s)))
+                 (:instance fn-hls-kind4-disjoint-from-other-store-events
+                            (event (fn-hstxa-stxa (fn-sn-completion-record s)))))
+           :in-theory
+           (e/d (fn-replay-identity-step fn-replay-identity-wire fn-sn-identity-context
+                 fn-stxk-context fn-stxk-fault fn-stxa-bindsp
+                 fn-hsig-article-event-carried-bindsp fn-hsig-article-event-revoked-bindsp)
+                (fn-csi-livep fn-sn-completion-enabledp fn-sn-completion-record
+                 fn-stxe-decode-exact fn-stxe-p fn-stxk-p
+                 fn-hstxa-p fn-stxa-p fn-hsig-article-event-snapshot-bindsp
+                 fn-stxk-apply-verdict fn-replay-apply-carried-verdict
+                 fn-replay-apply-revoked-verdict fn-stxk-apply-snapshot
+                 fn-osr-enabled-identity-step-ok))))))
+
+(local (defthm fn-osr-finish-advances-retained-verdicts
+  (implies (and (fn-csi-livep s) (fn-sn-completion-enabledp s))
+           (equal (fn-sn-verdicts (fn-sn-finish s))
+                  (let ((pair (fn-sn-row-verdict-pair (fn-sn-completion-record s))))
+                    (if pair (cons pair (fn-sn-verdicts s)) (fn-sn-verdicts s)))))
+  :hints (("Goal"
+           :use (fn-osr-enabled-completion-is-next-event
+                 fn-osr-composite-enabled-decode-ok
+                 fn-hls-finish-kind4-verdicts
+                 (:instance fn-hls-kind4-identity-step-ok-has-evidence-record
+                            (event (fn-sn-completion-record s)))
+                 fn-osr-enabled-identity-step-ok)
+           :in-theory
+           (e/d (fn-store-event-p fn-sn-finish fn-sn-finish-identity fn-sn-row-verdict-pair
+                 fn-replay-verdict-pair fn-replay-verdict-pairs)
+                (fn-sn-make-v6 fn-sn-verdicts fn-csi-livep fn-sn-completion-enabledp
+                 fn-sn-completion-record fn-sn-statep fn-sf-statep
+                 fn-store-retention-event-p fn-stxe-p fn-stxk-p fn-hstxa-p fn-held-p
+                 fn-cpe-eventp fn-th-topic-eventp fn-replay-identity-step
+                 fn-sn-identity-context fn-stxe-decode-exact fn-node-complete
+                 fn-replay-apply-record fn-replay-apply-retention-event
+                 fn-cpe-projection-step fn-th-prefix-step fn-sf-core-completion
+                 fn-sf-emit-success fn-sn-composite-delta fn-stx-index-add
+                 fn-osr-composite-enabled-decode-ok fn-hls-finish-kind4-verdicts
+                 fn-osr-enabled-identity-step-ok
+                 fn-osr-enabled-completion-is-next-event))))))
+(local (defthm fn-osr-finish-preserves-retained-verdict-prefix
+  (implies (and (fn-osr-verdict-prefixp s) (fn-csi-livep s))
+           (fn-osr-verdict-prefixp (fn-sn-finish s)))
+  :hints (("Goal"
+           :do-not '(preprocess)
+           :cases ((fn-sn-completion-enabledp s))
+           :use (fn-sn-finish-disabled-is-no-op fn-snt-finish-image
+                 fn-sn-finish-enabled-advances-identity-next
+                 fn-csi-enabled-phase-by-definition fn-osr-finish-advances-retained-verdicts
+                 (:instance fn-csi-take-next
+                            (n (fn-sn-identity-next s))
+                            (records (fn-sf-records (fn-sn-files s))))
+                 (:instance fn-sn-row-verdicts-of-append-one
+                            (rows (take (fn-sn-identity-next s)
+                                        (fn-sf-records (fn-sn-files s))))
+                            (row (fn-sn-completion-record s))))
+           :in-theory
+           (e/d (fn-osr-verdict-prefixp fn-csi-livep fn-csi-completion-lastp
+                 fn-sn-identity-sequencep fn-sf-completion-phasep)
+                (fn-sn-finish fn-sn-verdicts fn-sn-identity-next fn-sn-files fn-sf-records
+                 fn-sn-completion-enabledp fn-sn-completion-record fn-sn-statep fn-sf-statep
+                 fn-sn-row-verdict-pair fn-sn-row-verdicts fn-sn-row-verdicts-of-append-one
+                 fn-osr-finish-advances-retained-verdicts))))))
+
+(local (defthm fn-osr-finish-preserves-frozen-index-prefix
+  (implies (and (fn-osr-frozen-index-prefixp s) (fn-csi-livep s))
+           (fn-osr-frozen-index-prefixp (fn-sn-finish s)))
+  :hints (("Goal"
+           :do-not '(preprocess)
+           :cases ((fn-sn-completion-enabledp s))
+           :use (fn-sn-finish-disabled-is-no-op fn-snt-finish-image
+                 fn-sn-finish-enabled-advances-identity-next
+                 fn-csi-enabled-phase-by-definition fn-osr-finish-advances-frozen-index
+                 (:instance fn-csi-take-next
+                            (n (fn-sn-identity-next s))
+                            (records (fn-sf-records (fn-sn-files s))))
+                 (:instance fn-sn-index-of-rows-of-append-one
+                            (rows (take (fn-sn-identity-next s)
+                                        (fn-sf-records (fn-sn-files s))))
+                            (row (fn-sn-completion-record s))))
+           :in-theory
+           (e/d (fn-osr-frozen-index-prefixp fn-csi-livep fn-csi-completion-lastp
+                 fn-sn-identity-sequencep fn-sf-completion-phasep)
+                (fn-sn-finish fn-sn-index fn-sn-identity-next fn-sn-files fn-sf-records
+                 fn-sn-completion-enabledp fn-sn-completion-record fn-sn-statep fn-sf-statep
+                 fn-sn-row-delta fn-stx-index-add fn-sn-index-of-rows
+                 fn-sn-index-of-rows-of-append-one fn-osr-finish-advances-frozen-index))))))
+
+(defthm fn-osr-finish-preserves-full-retained-carry
+  (implies (fn-osr-retainedp s)
+           (fn-osr-retainedp (fn-sn-finish s)))
+  :hints (("Goal"
+           :use (fn-osr-finish-preserves-live-carry fn-skp-finish-preserves-resolution
+                 fn-osr-finish-preserves-retained-verdict-prefix
+                 fn-osr-finish-preserves-frozen-index-prefix fn-osr-finish-keeps-retired-index)
+           :in-theory
+           (e/d (fn-osr-retainedp fn-osr-livep fn-sti-livep)
+                (fn-sn-finish fn-csi-livep fn-skp-resolvedp fn-osr-identity-prefixp
+                 fn-cst-relation fn-sn-event-index fn-osr-verdict-prefixp
+                 fn-osr-frozen-index-prefixp fn-osr-finish-preserves-live-carry
+                 fn-skp-finish-preserves-resolution
+                 fn-osr-finish-preserves-retained-verdict-prefix
+                 fn-osr-finish-preserves-frozen-index-prefix fn-osr-finish-keeps-retired-index)))))
+
+; This boundary view includes every additional semantic carry and the rows
+; to which it refers. It is proof vocabulary, not a served-state revalidation.
+(defun fn-osr-retained-view (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (list (fn-sn-keyring s) (fn-sn-keyring-generation s)
+        (fn-sn-keyring-snapshots s) (fn-sn-verdicts s) (fn-sn-index s)
+        (fn-sn-event-index s)
+        (take (fn-sn-identity-next s) (fn-sf-records (fn-sn-files s)))))
+
+(defthm fn-osr-retained-view-connects-full-carry
+  (implies (and (fn-osr-retainedp a) (fn-osr-livep b)
+                (equal (fn-osr-retained-view a) (fn-osr-retained-view b)))
+           (fn-osr-retainedp b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-osr-retained-view fn-osr-retainedp fn-skp-resolvedp
+                 fn-osr-verdict-prefixp fn-osr-frozen-index-prefixp)
+                (fn-osr-livep fn-sn-keyring fn-sn-keyring-generation
+                 fn-sn-keyring-snapshots fn-sn-verdicts fn-sn-index fn-sn-event-index
+                 fn-sn-identity-next fn-sn-files fn-sf-records take
+                 fn-ssk-keyring-of-snapshots fn-ssk-generation
+                 fn-sn-row-verdicts fn-sn-index-of-rows)))))
+
+(local (defthm fn-osr-update-retained-selectors
+  (let ((b (fn-sn-update s files node)))
+    (and (equal (fn-sn-keyring b) (fn-sn-keyring s))
+         (equal (fn-sn-keyring-generation b) (fn-sn-keyring-generation s))
+         (equal (fn-sn-keyring-snapshots b) (fn-sn-keyring-snapshots s))
+         (equal (fn-sn-verdicts b) (fn-sn-verdicts s))
+         (equal (fn-sn-index b) (fn-sn-index s))
+         (equal (fn-sn-event-index b) (fn-sn-event-index s))
+         (equal (fn-sn-identity-next b) (fn-sn-identity-next s))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-sn-update)
+                (fn-sn-make-v6 fn-sn-keyring fn-sn-keyring-generation
+                 fn-sn-keyring-snapshots fn-sn-verdicts fn-sn-index
+                 fn-sn-event-index fn-sn-identity-next))))))
+
+(defthm fn-osr-preparations-keep-retained-view
+  (and (equal (fn-osr-retained-view (fn-sn-prepare s record)) (fn-osr-retained-view s))
+       (equal (fn-osr-retained-view (fn-sn-prepare-retention s record)) (fn-osr-retained-view s))
+       (equal (fn-osr-retained-view (fn-sn-prepare-identity s record)) (fn-osr-retained-view s))
+       (equal (fn-osr-retained-view (fn-sn-prepare-consumer s record)) (fn-osr-retained-view s))
+       (equal (fn-osr-retained-view (fn-sn-prepare-topic s record)) (fn-osr-retained-view s))
+       (equal (fn-osr-retained-view (fn-sn-refuse-reservation s txid)) (fn-osr-retained-view s))
+       (equal (fn-osr-retained-view (fn-sn-known-abort s)) (fn-osr-retained-view s)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-osr-retained-view fn-sn-prepare fn-sn-prepare-retention
+                 fn-sn-prepare-identity fn-sn-prepare-consumer fn-sn-prepare-topic
+                 fn-sn-refuse-reservation fn-sn-known-abort fn-sn-known-abort-files
+                 fn-sn-known-abort-file-start fn-sf-prepare-record fn-sf-refuse-reservation
+                 fn-sf-prepublish-abort fn-sf-abort-completion fn-sf-record-file-result)
+                (fn-sn-update fn-sn-make-v6 fn-sn-statep fn-sf-statep
+                 fn-sn-record-bindsp fn-sn-prepare-node fn-node-complete
+                 fn-replay-advance-txid fn-replay-apply-retention-event fn-replay-apply-record
+                 fn-replay-identity-step fn-sn-identity-context fn-cpe-projection-step
+                 fn-th-prefix-step fn-stxe-p fn-stxk-p fn-hstxa-p fn-held-p
+                 fn-store-retention-event-p fn-cpe-eventp fn-th-topic-eventp
+                 fn-sn-keyring fn-sn-keyring-generation fn-sn-keyring-snapshots
+                 fn-sn-verdicts fn-sn-index fn-sn-event-index fn-sn-identity-next
+                 fn-sn-files fn-sf-records take)))))
+
+(defthm fn-osr-io-keeps-retained-view
+  (implies (fn-osr-retainedp s)
+           (equal (fn-osr-retained-view (fn-sn-io s operation result))
+                  (fn-osr-retained-view s)))
+  :hints (("Goal"
+           :use ((:instance fn-csi-take-append-after-prefix
+                            (n (fn-sn-identity-next s))
+                            (records (fn-sf-records (fn-sn-files s)))
+                            (suffix (list (fn-sf-record-candidate (fn-sn-files s))))))
+           :in-theory
+           (e/d (fn-osr-retainedp fn-osr-livep fn-osr-identity-prefixp fn-osr-retained-view
+                 fn-sn-io fn-sn-file-step fn-sf-start-frontier fn-sf-frontier-file-result
+                 fn-sf-frontier-replace-result fn-sf-frontier-dir-result fn-sf-record-file-result
+                 fn-sf-record-link-result fn-sf-record-dir-result fn-sf-recovery-barrier)
+                (fn-sn-update fn-sn-make-v6 fn-sn-statep fn-sf-statep fn-cst-relation
+                 fn-sti-livep fn-skp-resolvedp fn-osr-verdict-prefixp fn-osr-frozen-index-prefixp
+                 fn-sn-keyring fn-sn-keyring-generation fn-sn-keyring-snapshots
+                 fn-sn-verdicts fn-sn-index fn-sn-event-index fn-sn-identity-next
+                 fn-sn-files fn-sf-records take fn-replay-identity
+                 fn-osr-context-view fn-stxk-context-kind
+                 fn-sn-identity-context fn-csi-take-append-after-prefix)))))

@@ -25,6 +25,10 @@
         (case (car action)
           (:respond (mv (list (reverse actions) sessions (fn-octets-list fn-web-out) (reverse sent))
                         fn-web-in fn-web-out))
+          (:health
+           (wsst-loop (1- fuel) config sessions (second action)
+                      (list :health-observation (car replies))
+                      opens (cdr replies) actions sent fn-web-in fn-web-out))
           (:open (wsst-loop (1- fuel) config sessions (car (last action)) (list :opened (car opens))
                             (cdr opens) replies actions sent fn-web-in fn-web-out))
           (:close (wsst-loop (1- fuel) config sessions (car (last action)) (list :closed)
@@ -398,3 +402,107 @@
   *cfg* *ss* 300 nil nil nil))
 (assert-event (and (equal (cadr (car (car *rm-bad*))) 400)
                    (not (search "HTTP/1.1" (wsst-str (nth 2 *rm-bad*))))))
+
+; Q10d: complete parsed GET and HEAD flows, no account, no reader/NNTP
+; action, and exactly the existing owner observation supplied as a reply.
+(defconst *whs-get*
+  (wsst-request (wsst-get "/health") *cfg* nil 200 nil nil
+                '((:owner :ok t :clear))))
+(assert-event
+ (and (equal (car (car (car *whs-get*))) :health)
+      (equal (car (cadr (car *whs-get*))) :respond)
+      (equal (cadr (cadr (car *whs-get*))) 200)
+      (equal (cadddr (cadr (car *whs-get*))) t)
+      (null (cadr *whs-get*))
+      (equal (caddr *whs-get*) (wsst-octs "ready
+"))
+      (<= (len (caddr *whs-get*)) 23)
+      (null (cadddr *whs-get*))))
+(defconst *whs-head*
+  (wsst-request (wsst-crlf (list "HEAD /health HTTP/1.1" "Host: a" ""))
+                *cfg* nil 200 nil nil '((:owner :ok t :clear))))
+(assert-event
+ (and (equal (cadr (cadr (car *whs-head*))) 200)
+      (null (cadddr (cadr (car *whs-head*))))
+      (null (cadddr *whs-head*))))
+(defconst *whs-stalled*
+  (wsst-request (wsst-get "/health") *cfg* nil 200 nil nil
+                '((:owner :stalled t :clear))))
+(assert-event
+ (and (equal (cadr (cadr (car *whs-stalled*))) 503)
+      (equal (caddr *whs-stalled*) (wsst-octs "unavailable disk
+"))
+      (null (cadr *whs-stalled*))
+      (<= (len (caddr *whs-stalled*)) 23)
+      (null (cadddr *whs-stalled*))))
+(defconst *whs-unknown*
+  (wsst-request (wsst-get "/health") *cfg* nil 200 nil nil '(:malformed)))
+(assert-event
+ (and (equal (cadr (cadr (car *whs-unknown*))) 503)
+      (equal (caddr *whs-unknown*) (wsst-octs "unobserved
+"))))
+(defconst *whs-post*
+  (wsst-request (wsst-post-req "/health" "" "") *cfg* nil 200 nil nil nil))
+(assert-event (equal (cadar (car *whs-post*)) 405))
+
+; Literal composed-step antecedents and conclusion at the observation step.
+(defun whs-step (flow event)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-web-in
+    (mv-let (r fn-web-in)
+      (with-local-stobj fn-web-out
+        (mv-let (r fn-web-in fn-web-out)
+          (mv-let (action sessions fn-web-out)
+            (fn-web-step *cfg* nil flow event fn-web-in fn-web-out)
+            (mv (list action sessions (fn-octets-list fn-web-out)) fn-web-in fn-web-out))
+          (mv r fn-web-in)))
+      r)))
+(defun whs-begin ()
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-web-in
+    (mv-let (r fn-web-in)
+      (let* ((fn-web-in (fn-octets-from-list (wsst-get "/health") fn-web-in))
+             (limits (fn-wrq-limits 16384 100000))
+             (framed (fn-web-head-frame 0 limits fn-web-in))
+             (parsed (fn-web-parse-head (cadr framed) limits fn-web-in)))
+        (mv (list :begin (cadr parsed) (cadr framed) (cadr framed) 200 nil nil nil
+                  :inet '(127 0 0 1)) fn-web-in))
+      r)))
+(defconst *whs-flow* (cadar (car *whs-get*)))
+(defconst *whs-event* '(:health-observation (:owner :ok t :clear)))
+(defconst *whs-direct* (whs-step *whs-flow* *whs-event*))
+(assert-event
+ (and (equal (fn-wss-f-route *whs-flow*) :health)
+      (not (equal (fn-wss-car *whs-event*) :begin))
+      (equal (car (car *whs-direct*)) :respond)
+      (member (cadr (car *whs-direct*)) '(200 503))
+      (equal (cadr *whs-direct*) nil)
+      (<= (len (caddr *whs-direct*)) 23)))
+; Omit the flow hypothesis: the retained non-begin hypothesis holds; the
+; omitted hypothesis and the code-membership conclusion both fail.
+(defconst *whs-no-flow* (whs-step nil *whs-event*))
+(assert-event
+ (and (not (equal (fn-wss-f-route nil) :health))
+      (not (equal (fn-wss-car *whs-event*) :begin))
+      (not (member (cadr (car *whs-no-flow*)) '(200 503)))))
+(must-fail-checked
+ (defthm whs-without-health-flow
+   (member (cadr (car *whs-no-flow*)) '(200 503)) :rule-classes nil))
+; Omit non-begin: a fully parsed new health request retains health FLOW
+; but starts a new observation (action :health), so :respond is false.
+(defconst *whs-new-begin* (whs-begin))
+(defconst *whs-begin-again* (whs-step *whs-flow* *whs-new-begin*))
+(assert-event
+ (and (equal (fn-wss-f-route *whs-flow*) :health)
+      (equal (fn-wss-car *whs-new-begin*) :begin)
+      (not (equal (car (car *whs-begin-again*)) :respond))))
+(must-fail-checked
+ (defthm whs-without-non-begin
+   (equal (car (car *whs-begin-again*)) :respond) :rule-classes nil))
+
+; The unsupported POST's 405 carries the resource's Allow field.
+(assert-event
+ (equal (cdr (assoc-equal (wsst-octs "Allow") (caddar (car *whs-post*))))
+        (wsst-octs "GET, HEAD")))
+(assert-event (equal (fn-wss-allow-value '(:get :post)) (wsst-octs "GET, HEAD, POST")))
+(assert-event (equal (fn-wss-allow-value '(:post)) (wsst-octs "POST")))

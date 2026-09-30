@@ -41,6 +41,22 @@
 
 (assert-event (equal (bphht-exec) (list t t nil nil nil nil)))
 
+; PRF-215 literal positives: fn-bphh-octets-at-p-is-equal-payload and
+; fn-bphh-request-article-matches-is-wire. The existing live execution above
+; covers the boundary's positive/mutated payloads; here affirmatively assert
+; the sole arena hypothesis and each theorem's complete equality.
+(defthm bphht-literal-positive
+  (let* ((held (mv-nth 0 (fn-cat-intern-list *crt-w* nil 0 nil)))
+         (arena (mv-nth 1 (fn-cat-intern-list *crt-w* nil 0 nil)))
+         (request (bphht-req *crt-art*)))
+    (and (fn-arena-p arena)
+         (equal (fn-bphh-octets-at-p *crt-art* 0 0 arena)
+                (equal *crt-art* (fn-arena-payload 0 arena)))
+         (equal (fn-bphh-request-article-matches request held arena)
+                (equal (fn-bpa-request-article request)
+                       (fn-record-payload (fn-held-wire-of held arena))))))
+  :rule-classes nil)
+
 ; Hypothesis removal (fn-arena-p): over a value that is not an arena (a
 ; payload that is not a true list) the retained parts hold (a handle, the
 ; octets of the slice) while the hypothesis fails and the conclusion fails:
@@ -58,4 +74,25 @@
  (defthm bphht-equation-without-arena
    (equal (fn-bphh-octets-at-p '(1 2) 0 0 '((1 2 . 3)))
           (equal '(1 2) (fn-arena-payload 0 '((1 2 . 3)))))
+   :rule-classes nil))
+
+; PRF-215 hypothesis removal for the request wrapper's exact equation:
+; the same improper payload refutes fn-arena-p; the in-place walk accepts
+; the request while the materialized record comparison refuses it.
+(defthm bphht-request-without-arena
+  (let ((held (mv-nth 0 (fn-cat-intern-list *crt-w* nil 0 nil))))
+    (and (not (fn-arena-p '((1 2 . 3))))
+         (not (equal (fn-bphh-request-article-matches
+                       (bphht-req '(1 2)) held '((1 2 . 3)))
+                     (equal (fn-bpa-request-article (bphht-req '(1 2)))
+                            (fn-record-payload
+                             (fn-held-wire-of held '((1 2 . 3)))))))))
+  :rule-classes nil)
+(must-fail-checked
+ (defthm bphht-request-equation-without-arena
+   (let ((held (mv-nth 0 (fn-cat-intern-list *crt-w* nil 0 nil))))
+     (equal (fn-bphh-request-article-matches
+             (bphht-req '(1 2)) held '((1 2 . 3)))
+            (equal (fn-bpa-request-article (bphht-req '(1 2)))
+                   (fn-record-payload (fn-held-wire-of held '((1 2 . 3)))))))
    :rule-classes nil))
