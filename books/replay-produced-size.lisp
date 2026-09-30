@@ -65,7 +65,12 @@
           (fn-scs-carryp (fn-ics-field n fields)))
  :hints (("Goal" :in-theory (e/d (fn-ics-carriesp)
              (fn-scs-fixed-carriesp fn-ics-field fn-scs-carry-listp))))))
-(verify-guards fn-ris-produced-step)
+(verify-guards fn-ris-produced-step
+ :hints (("Goal" :in-theory
+  (disable fn-replay-identity-produced-effects fn-rpe-produced-effects
+           fn-rpe-produce fn-rpe-result fn-rpe-lengths
+           fn-rpe-carried-bindsp fn-rpe-revoked-bindsp fn-rpe-stxa-bindsp
+           fn-rpe-snapshot-bindsp fn-rpe-verdict-effect))))
 (defthm fn-ris-produced-step-is-public-replay
  (equal (mv-nth 0 (fn-ris-produced-step ctx fields event snapshot-carry))
         (fn-replay-identity-step ctx event))
@@ -147,23 +152,23 @@
  :hints (("Goal"
   :use ((:instance fn-rips-sized-child-is-record
           (octets (fn-stxa-verdict-event (fn-replay-identity-wire event))))
-        (:instance fn-stxs-success-byte-lengths-correspond
-          (octets (fn-stxa-verdict-event (fn-replay-identity-wire event))))
-        (:instance fn-stxs-decode-ok-is-public
-          (octets (fn-stxa-verdict-event (fn-replay-identity-wire event))))
-        (:instance fn-hsig-article-event-carried-bindsp-facts
+        (:instance fn-rpe-binding-consumers-require-parser-success
+          (evidence (fn-rpe-produce (fn-replay-identity-wire event)))
+          (snapshot (fn-stxk-find
+           (fn-stxa-keyring-generation (fn-replay-identity-wire event))
+           (fn-stxk-context-snapshots ctx))))
+        (:instance fn-rpe-producer-retains-exact-event-and-parser-values
           (event (fn-replay-identity-wire event)))
-        (:instance fn-hsig-article-event-revoked-bindsp-facts
-          (event (fn-replay-identity-wire event))))
+        fn-rpe-produced-verdict-lengths-are-actual)
   :in-theory (e/d (fn-replay-identity-produced-effects
-                   fn-replay-identity-produced-verdict-effect)
-                 (fn-replay-identity-wire fn-stxs-decode fn-stxe-decode-exact
-                  fn-stmt-okp fn-stmt-value fn-stxk-p fn-stxe-p fn-stxa-p
-                  fn-stxk-apply-snapshot fn-stxk-apply-verdict fn-stxk-find
-                  fn-stxa-bindsp fn-hsig-article-event-carried-bindsp
-                  fn-hsig-article-event-revoked-bindsp fn-hsig-article-event-snapshot-bindsp
-                  fn-replay-apply-carried-verdict fn-replay-apply-revoked-verdict
-                  fn-stxs-success-byte-lengths-correspond)))))
+                   fn-rpe-produced-effects fn-rpe-verdict-effect)
+                 (fn-replay-identity-wire fn-rpe-produce fn-rpe-result fn-rpe-lengths
+                  fn-rpe-carried-bindsp fn-rpe-revoked-bindsp fn-rpe-stxa-bindsp
+                  fn-rpe-snapshot-bindsp fn-stxs-decode fn-stmt-okp fn-stmt-value
+                  fn-stxk-p fn-stxe-p fn-stxa-p fn-stxk-apply-snapshot
+                  fn-stxk-apply-verdict fn-stxk-find fn-replay-apply-carried-verdict
+                  fn-replay-apply-revoked-verdict fn-stxe-msgid fn-stxe-detail
+                  fn-stxe-profile length len)))))
 
 (local (defthm fn-rips-record-lengths-shape
  (implies (fn-stxe-p child)
