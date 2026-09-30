@@ -190,7 +190,10 @@ def run_scenario(scenario, image, work, fault_hook=True):
             cleanup("close-response", lambda: response.close(False))
         if reclaim is not None:
             cleanup("stop-reclaim", reclaim.stop)
-        cleanup("fixture-cleanups", fixture.doCleanups)
+        def fixture_cleanup():
+            if fixture.doCleanups() is False:
+                raise RuntimeError("unittest fixture reported cleanup failure")
+        cleanup("fixture-cleanups", fixture_cleanup)
         if owner is not None:
             cleanup("retain-owner-stderr", lambda: (work / "owner.stderr").write_bytes(owner.stderr.since(0)))
     (work / "primary-outcome.json").write_text(json.dumps(
