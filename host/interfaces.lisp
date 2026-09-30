@@ -2314,6 +2314,7 @@
 
 (definterface fn-bpfs-fragment-outcome
   :class ::common-lisp-compliant
+  :keystones (fn-bpfs-fragment-outcome-refines-ordered-send)
   :kinds ((index natp)))
 
 (definterface fn-bpfs-plan

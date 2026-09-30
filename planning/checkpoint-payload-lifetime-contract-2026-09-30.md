@@ -103,3 +103,39 @@ helper's green test cannot substitute for the actual composed controller.
 
 This contract resolves the representation choice. Full S7/P12/W8 behavior,
 funding, source proofs, certification and native evidence remain open.
+
+## Native reset serialization selection
+
+Inspection of producer source `57b70ff2b` confirms that the two destructive
+entry points now call the guarded clear adapter. It also confirms that
+`fnn-call` does not serialize concurrent calls. A lease check and clear inside
+one ACL2 function therefore do not establish native mutual exclusion. Locking
+only the lease table would still permit unrelated owner STATE mutations to
+race with a recovery clear.
+
+Keep destructive clear within quiescent startup or recovery. Use one lifecycle
+mutex associated with the actual arena to exclude reset from transitions into
+and out of owner service. Quiescent means before owner workers start, or after
+every owner worker and outstanding borrower has definitely joined. Register
+serving before exposing any worker. Startup failure must join any partially
+started workers before restoring quiescent status.
+
+During serving or draining, reject reset before accessing mutable ACL2 STATE
+or the arena. The lifecycle phase is a native scheduling observation; ACL2
+makes the reset-permission decision through a state-free entry. During an
+allowed quiescent interval, hold the lifecycle mutex across the existing
+guarded reset, clear and incarnation update. The existing live-lease refusal
+still applies: quiescence does not manufacture a joined-cleanup result.
+
+Capture, acquire and release use owner-then-lifecycle lock order. A lifecycle
+mutex holder never waits for the owner gate or for a worker to join. Drain and
+join outside that mutex, then establish quiescence under it. Live recovery
+must follow this stop/drain/join sequence; no generic live-clear path is added.
+This choice does not add a global lock around ordinary steady-state ACL2 calls.
+
+The producer owns the implementation and its source/native evidence. Exercise
+both barrier orderings: reset completes before owner startup/capture, or owner
+startup/capture wins and reset refuses without changing the arena or lease.
+Include draining, partial startup failure and outstanding cleanup. This is a
+selected implementation obligation, not evidence that the native ordering is
+already implemented or proved.

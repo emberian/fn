@@ -108,13 +108,19 @@ Including `books/assumptions.lisp` reaches all of them.
 **The digest left that boundary on 2026-09-20.** `books/blake3.lisp` defines
 BLAKE3 over octet lists as a total, guard-verified ACL2 function (SHA-256's
 `books/sha256.lisp` until 2026-09-28, store format 10; SHA-256 now remains only
-as RFC 8315's Cancel-Lock hash), and `books/crypto-attach.lisp` attaches it
-(through its buffer twin `books/blake3-stobj.lisp`) to both digest seams — `fn-digest`
-(`books/crypto-seam.lisp`) and `fn-frame-digest` (`books/frame-octets.lisp`) —
-after discharging every constraint each `encapsulate` states. So the digest is
-now **computed in logic by a proved-executable definition**: no host digest
-stands behind a content identity, an AUTHINFO verifier or a frame the core
-reasons about, and the identity derivation has one owner. Agreement with the
+as RFC 8315's Cancel-Lock hash). The identity digest `fn-digest` remains a
+shape-constrained seam attached to the proved buffer implementation by
+`books/crypto-attach.lisp`. Frame integrity `fn-frame-digest` is now a closed,
+guard-verified definition calling that same implementation, with an explicit
+logical BLAKE3 bridge. Its public shape theorems are unchanged. The buffer
+and range entries retain checked representation attachments to this concrete
+frame function. This makes streamed frame checks composable with the actual
+algorithm without introducing an equality axiom.
+
+The saved native image's accelerated primitive remains the separately named
+A-CRYPTO-NATIVE boundary in [failures](../specs/failures.md); the logical
+BLAKE3 proof does not prove the C library or host replacement correct.
+Agreement with the
 standard is by evaluation against the published vectors
 (`tests/acl2/blake3-tests.lisp`, the BLAKE3 repository's vectors), which is evidence, not a proof that the
 definition and the document agree on every input.
@@ -123,7 +129,7 @@ What remains assumed is unchanged and is stated as before: **collision
 resistance and preimage resistance are A-CRYPTO** (`specs/failures.md`,
 `books/assumptions.lisp`). `defattach` adds no axiom; it discharges the
 constraints and makes ground terms evaluate, so every theorem that held of the
-seam holds now, with the same hypotheses and no more. The seam's own local
+seam holds now, with the same hypotheses and no more. The identity seam's own local
 witness is still the constant zero digest, and
 `tests/acl2/crypto-seam-tests.lisp` still attaches a colliding toy realiser to
 keep that visible. Signature verification remains trusted: `fn-sig-verify` and

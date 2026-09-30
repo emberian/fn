@@ -1556,7 +1556,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "note": "Lane w11/workflow-replay, book books/bp-workflow-replay-status.lisp, teeth in tests/acl2/bp-workflow-records-tests.lisp. The subject of the first two keystones is what host/workflow-host.lisp:63 (fn-workflow-work-status) calls; of the last two, what host/workflow-host.lisp:73 (fn-workflow-work-origin) calls on the list host/workflow-host.lisp:8 records. Certified on hbox, run-20260921T005523Z-05dc, build/acl2/certify-20260921T005528Z-1361353. Before the ION extension, the native workflow host called fn-bprl-replay-journal, which also interprets :undertake and :release; fn-bprl-replay-work-status-is-durable-status-restarted certifies that successful predecessor path, with an extended reachable journal and a malformed-suffix must-fail tooth in tests/acl2/bp-release-tests.lisp (persvati manifests certify-20260923T173933Z-2312844.json and certify-20260923T174038Z-2322911.json). The earlier fn-bp replay theorem remains scoped to its original record language. The :enqueue kind hypothesis of fn-bp-durable-enqueue-after-open-reads-enqueued has a constructed rather than a reached tooth, and the test book says so: fn-bp-prepare-attempt only prepares an attempt for a work the image holds, so the composed machine reaches no :attempt pending over an image that holds none. Current scope correction (2026-09-24): host/workflow-host.lisp fn-workflow-install-replay now calls fn-bpiw-replay-journal, whose mixed FNWF stream includes :ion-route and :ion-observed. The two certified single-record structural projections in books/bp-ion-workflow.lisp do not yet lift the work-status theorem through that complete replay. A named actual-caller correspondence with a reachable mixed-history witness remains open; predecessor certificates do not discharge it. Hence the target is in-progress, while its existing component theorems remain intact. Replay fence (lane ion-replay-fence, 2026-09-24): fn-bpiw-replay-records now reconstructs the unrecorded reopen fence before a :recovery outcome (fn-bpiw-replay-fence, books/bp-ion-workflow.lisp), as fn-bp-replay-records does; before it, a journal holding a recovery outcome could not be reopened and the history preflight refused every recovery outcome (planning/evidence/m4-app-receipt-2026-09-24.md finding 4). The keystone's subject is fn-bpiw-replay-journal, called by host/workflow-host.lisp:13 (fn-workflow-install-replay) and :107 (fn-workflow-preflight-history), against fn-bpiw-apply as host/workflow-host.lisp:112 (fn-workflow-apply-record) calls it; book books/bp-ion-workflow-replay.lisp, teeth in tests/acl2/bp-ion-workflow-replay-tests.lisp (reachable enqueue, attempt and ION-carrying cuts; must-fail without the recovery-outcome and live-acceptance hypotheses; the open-success hypothesis has no separating witness because a failed open's image holds no fence, and the test book shows that refusal). Scope: one recovery outcome applied right after an open; the general live-suffix correspondence across later records is not claimed, and a live re-attempt of a :restart-observed attempt without a journaled retry request is refused by the history (the must-fail witness), which is the host's intended gate. Evidence: planning/evidence/ion-replay-fence-2026-09-24.md.",
       "evidence": [
         "books/bp-workflow-replay-status.lisp",
@@ -2029,7 +2029,7 @@
         "PRF-035"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-feed-journal-next-is-bounded-progress",
         "fn-feed-journal-uncertainty-survives-all-later-observations"
@@ -2726,7 +2726,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-clock-domain.lisp",
         "tests/acl2/bp-clock-domain-tests.lisp",
@@ -3403,7 +3403,7 @@
         "PRF-012"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-request-plan.lisp",
         "tests/acl2/bp-request-plan-tests.lisp",
@@ -4381,7 +4381,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-blake3-of-prefixed-buffer-is-blake3",
         "fn-sidb-subject-id-is-id-subject-of-payload"
@@ -4672,7 +4672,7 @@
         "PRF-046"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-fragment-send.lisp",
         "tests/acl2/bp-fragment-send-tests.lisp",
@@ -5655,7 +5655,7 @@
         "PRF-124"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/key-statements.lisp",
         "tests/acl2/key-statements-tests.lisp",
@@ -6026,7 +6026,7 @@
         "PRF-140"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/key-statements.lisp",
         "tests/acl2/key-statements-tests.lisp",
@@ -8425,7 +8425,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-smid-record-decode-of-seal",
         "fn-smid-payload-decode-of-payload",
@@ -8925,7 +8925,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-log.lisp",
         "tests/acl2/store-log-tests.lisp",
@@ -9038,7 +9038,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-bpah-handoff-report-is-application-disposition",
         "fn-bpah-persist-delivery-reports-the-record",
@@ -9251,7 +9251,7 @@
       "assumptions": [
         "A-CRYPTO-TRAILER"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-log-crash.lisp",
         "planning/evidence/w6-log-core-2026-09-27.md",
@@ -9286,7 +9286,7 @@
       "assumptions": [
         "A-CRYPTO-TRAILER"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-log-kernel.lisp",
         "planning/evidence/w6-log-core-2026-09-27.md",
@@ -11053,7 +11053,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/provenance-inspect.lisp",
         "tests/acl2/provenance-inspect-tests.lisp",
@@ -13271,7 +13271,7 @@
         "PRF-366"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-export-durability.lisp",
         "tests/acl2/store-export-durability-tests.lisp",
@@ -13919,7 +13919,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-feed.lisp",
         "books/feed-restart-domain.lisp",
@@ -14157,7 +14157,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-carry-control.lisp",
         "books/bp-carry-frame.lisp",
@@ -14764,7 +14764,7 @@
         "PRF-232"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-mount-identity.lisp",
         "tests/acl2/store-mount-identity-tests.lisp"
@@ -15079,7 +15079,7 @@
         "PRF-914"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-carry-waiver.lisp",
         "books/bp-carry-control.lisp",
@@ -15107,7 +15107,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/msgid-pages.lisp",
         "tests/acl2/msgid-pages-tests.lisp",
@@ -15168,7 +15168,7 @@
         "PRF-957"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/msgid-pages-exec.lisp",
         "tests/acl2/msgid-pages-exec-tests.lisp",
@@ -15728,7 +15728,7 @@
         "PRF-944"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-host-sequence.lisp",
         "host/bp-node-host.lisp",
@@ -15751,7 +15751,7 @@
         "PRF-983"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-host-sequence.lisp",
         "host/bp-node-host.lisp",
@@ -15853,7 +15853,7 @@
         "PRF-969"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/msgid-pages-exec.lisp",
         "tests/acl2/msgid-pages-exec-tests.lisp",
@@ -16205,7 +16205,7 @@
         "PRF-991"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/msgid-pages-exec.lisp",
         "tests/acl2/msgid-pages-exec-tests.lisp",
@@ -17006,7 +17006,7 @@
         "PRF-270"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-log-lineage.lisp",
         "tests/acl2/store-log-lineage-tests.lisp",
@@ -17090,7 +17090,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-machine-codec.lisp",
         "host/bp-node-machine-host.lisp",
@@ -17113,7 +17113,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-fnbs-delivery-publication.lisp",
         "tests/acl2/bp-fnbs-delivery-publication-tests.lisp"
@@ -17329,7 +17329,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-host-machine.lisp",
         "tests/acl2/bp-node-host-machine-tests.lisp"
@@ -17497,7 +17497,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-host-machine.lisp",
         "books/bp-node-machine-codec.lisp",
@@ -18321,7 +18321,7 @@
     {
       "id": "PRF-1093",
       "title": "Fixed private page scratch preserves the exact written prefix",
-      "statement": "Library fn-hpb is a fixed 2048-u64 concrete page scratch with used counter and borrowed capture/lease identities. Guardverified begin resets the prefix without clearing/copying the backing array; put stores one word or leaves a full page unchanged; word refuses unwritten offsets with no stale-word exposure. fn-hpb-put-refines-prefix relates concrete writes to logical prefix append under natural counter and available-capacity hypotheses. begin/put preserve the concrete representation invariant and capture/lease values as stated. Each raw recognizer is bounded by one format page, never total stored data. Resource funding, exclusion while an I/O worker owns the buffer, serialization and joined image effects belong to the pending producer composition; no host caller or served completion claim.",
+      "statement": "Library fn-hpb is a fixed 2048-u64 concrete page scratch with used counter and borrowed capture/lease identities. Guardverified begin resets the prefix without clearing/copying the backing array; put stores one word or leaves a full page unchanged; word refuses unwritten offsets with no stale-word exposure. fn-hpb-put-refines-prefix relates concrete writes to logical prefix append under natural counter and available-capacity hypotheses. begin/put preserve the concrete representation invariant and capture/lease values as stated. Each raw recognizer is bounded by one format page, never total stored data. Resource funding, exclusion while an I/O worker owns the buffer, serialization and joined image effects belong to the pending producer composition; no host caller or served completion claim. The selected five-region scratch uses four congruent column stobjs plus the original pool buffer. fn-hpq-put writes one selected word, refining the same exact prefix and preserving all other concrete region states, all five invariants and capture/lease identity. Backing allocation, served admission and pending I/O ownership remain distinct.",
       "milestone": "M5",
       "requirements": [
         "HST-040"
@@ -18332,9 +18332,11 @@
       "evidence": [
         "books/history-page-buffer.lisp",
         "tests/acl2/history-page-buffer-tests.lisp",
-        "planning/history-page-cursor-contract.md"
+        "planning/history-page-cursor-contract.md",
+        "books/history-page-buffers.lisp",
+        "tests/acl2/history-page-buffers-tests.lisp"
       ],
-      "progress_note": "Clean protected auto-selected persvati hpbt63 admitted source in proper encapsulate plus9testbodyforms,zero refusal,0.14ACL2seconds/12267steps. Tests cover nonempty exact prefix, stale physical word after reset, actual2048word full state, capacity removal and mutation; negative counter is a proved ground logical corrupted-state witness because the raw bounded field cannot physically hold it. No certificate/native/host claim."
+      "progress_note": "Clean protected auto-selected persvati hpbt63 admitted source in proper encapsulate plus9testbodyforms,zero refusal,0.14ACL2seconds/12267steps. Tests cover nonempty exact prefix, stale physical word after reset, actual2048word full state, capacity removal and mutation; negative counter is a proved ground logical corrupted-state witness because the raw bounded field cannot physically hold it. No certificate/native/host claim. Five-region source and original scratch loaded in proper encapsulates on clean protected auto-persvati hpq63 plus6test forms,0.42ACL2seconds/27450steps,zero refusals. Selected prefix, other-region frame, all5 concrete invariants and identity proofs admitted; every selected-prefix premise has a literal corrupted-domain/state counterexample. Full per-literal helper audit, actual I/O loan and host composition remain open."
     },
     {
       "id": "PRF-1019",
@@ -18594,7 +18596,7 @@
     {
       "id": "PRF-1096",
       "title": "Resumable census and canonical header emission preserve current history image",
-      "statement": "Component fn-hcc-row reduces one completed codec byte count into exact record and individually padded payload totals, refusing stale ordinals or current u64 format overflow without changing totals. Named refinement relates successful reduction to fn-hp-pes-len and completed region lengths to fn-hp-lens. fn-hcc-cap-tick performs one capacity doubling with residual adt-pow2-at-least preservation; scalar starts/pages refine canonical adt-starts-l/adt-end-l. fn-hch-word and concrete fn-hch-tick emit one exact current fn-hp-hdr2 word into fixed page scratch, preserving its representation and capture/lease identities. Full source decoder/encoder, row census traversal, canonical body/table/directory effects, funding and publication composition remain open. No actual host caller or served completion claim.",
+      "statement": "Component fn-hcc-row reduces one completed codec byte count into exact record and individually padded payload totals, refusing stale ordinals or current u64 format overflow without changing totals. Named refinement relates successful reduction to fn-hp-pes-len and completed region lengths to fn-hp-lens. fn-hcc-cap-tick performs one capacity doubling with residual adt-pow2-at-least preservation; scalar starts/pages refine canonical adt-starts-l/adt-end-l. fn-hch-word and concrete fn-hch-tick emit one exact current fn-hp-hdr2 word into fixed page scratch, preserving its representation and capture/lease identities. Full source decoder/encoder, row census traversal, canonical body/table/directory effects, funding and publication composition remain open. No actual host caller or served completion claim. fn-hpe-tick composes one actual byte-codec tick with bounded pack8 accumulation and at most one concrete pool write. Full pages yield before consuming bytes; prepared returns exact encoded length and independently pads the final partial word. Named effects connect actual eighth-byte/final writes to fn-hp-pack8; full multi-step record/page stream induction remains open. Final fn-hcl-admit separately enforces canonical image bytes16384*N below the existing u64 format limit after capacity rounding. fn-hcl-put emits one exact current fn-hp-cells-of column word with concrete prefix effect and identity/invariant preservation; it refuses individual pad8 overflow. The twelve-cell fn-hpcx dispatcher offers an expected captured source token and producer MKEY, ticks the actual pool emitter, captures its prepared byte count once, then calls existing fn-hcl-cell and fn-hpq-put for one column per tick. Selected full pages yield unchanged; count and padded pool offset advance only after column3 stores. Scalar census/format bounds are checked before any column cell. Current-codec length attribution and selected concrete current-row prefix effects are conditional on carried child/source facts. Full cold-child, whole-producer stream/terminal, progress, funding and publication remain open.",
       "milestone": "M5",
       "requirements": [
         "HST-040"
@@ -18609,9 +18611,16 @@
         "books/history-image-header.lisp",
         "tests/acl2/history-image-census-tests.lisp",
         "tests/acl2/history-image-header-tests.lisp",
-        "planning/history-page-cursor-contract.md"
+        "planning/history-page-cursor-contract.md",
+        "books/history-image-columns.lisp",
+        "tests/acl2/history-image-columns-tests.lisp",
+        "books/history-pool-emitter.lisp",
+        "tests/acl2/history-pool-emitter-tests.lisp",
+        "books/history-pool-columns.lisp",
+        "tests/acl2/history-pool-columns-tests.lisp",
+        "planning/evidence/history-pool-columns-2026-09-30.md"
       ],
-      "progress_note": "Clean protected auto-persvati hcht63 loaded census, scratch and header source in proper encapsulates plus9header test forms with zero refusals:1.09ACL2seconds/35708steps. All15census testbodyforms then passed in the same clean session. Source guardverified and named component refinements admitted; full per-literal hypothesis audit and composed keystone remain open. No certificate/native/host claim."
+      "progress_note": "Clean protected auto-persvati hcht63 loaded census, scratch and header source in proper encapsulates plus9header test forms with zero refusals:1.09ACL2seconds/35708steps. All15census testbodyforms then passed in the same clean session. Source guardverified and named component refinements admitted; full per-literal hypothesis audit and composed keystone remain open. No certificate/native/host claim. Pool emitter clean auto-persvati hpe62 proper scratch/scalar/record/emitter encapsulates+13test forms14.87s/12100361steps; added literal single-invariant removal test43steps in the same clean world. Actual16400byte row crosses a fullpage and resumes after reset to exact current model packing. Full per-literal helper audit and whole-stream induction remain open; no producer completion. Canonical columns/domain clean auto-persvati hclt62 sourceproper encapsulates+8testforms0.63s/35393steps. Rounded total-image overflow checked separately from valid per-region lengths. Actual pool-to-column dispatcher final clean auto-persvati hpcolt5 proper9source encapsulates+19testbodyforms0refusals24.82ACL2seconds/18009881steps, plus offered-resident literal positive73steps/0.01s in same clean world. Actual partial/aligned rows fill column1 via2048puts, interrupt/reset/resume and complete only after column3. Four prefix, three attribution, sole pagefull and sole rowdone removals affirm retained conditions and failed conclusions. Phase premise removed after weakened general pagefull proof. Shape/all5concrete/regionidentity/nonselected-frame/source-token-count/pendingordinal guards admitted. Inherited resident initial u64-size removal and full helper audit remain open. PRF staysplanned/events[]; no host/certificate/native/image/wholeproducer/cold/progress/funding/publication claim. Namespace correction preserves descriptor fn-hpc and renames new pool dispatcher fn-hpcx. Fresh hpcolx2 proper-local10actualbooks+21tests0refusals/43.18ACL2seconds/18391436steps includes actual both-API coexistence. Full image/host/funding/terminal producer unchanged open; no old qualification transferred."
     },
     {
       "id": "PRF-1101",
@@ -18933,6 +18942,51 @@
         "fn-fc-temporary-mode-refusal-closes-without-stopping"
       ],
       "progress_note": "Clean protected source admission and full positive/hypothesis-removal witnesses passed; certification and matching-image native observation pending."
+    },
+    {
+      "id": "PRF-1135",
+      "title": "Fragment outcome refines the ordered transfer observation loop",
+      "statement": "The host-called fn-bpfs-fragment-outcome (host/native/bp-service.lisp fnn-bps-send-effect) equals fn-bpfs-send-observations of an accepted prefix followed by the current transfer outcome, under fn-bpfs-accepted-prefixp of that prefix (fn-bpfs-fragment-outcome-refines-ordered-send). The logical observation loop stops at the first nonaccepted transfer. Starting at a one-based index, it answers :failed exactly when index=1 and the first observation is :failed (fn-bpfs-send-observations-failed-only-at-first-transfer); a failed transfer after earlier accepted fragments answers :uncertain. This is fn's local transport-outcome policy, distinct from RFC9171 section5.8 fragmentation and RFC9174 section5.4.1 Transfer MRU. It proves neither durable acceptance nor remote receipt, and excludes the host's outer exception handler and unobserved physical effects.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-114"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/bp-fragment-send.lisp",
+        "tests/acl2/bp-fragment-send-tests.lisp"
+      ],
+      "progress_note": "Clean protected source root on persvati: 60 forms, zero refusals, 2.23 ACL2 seconds, 605792 prover steps; changed bp-fragment-send source encapsulated over 13 matching cached dependencies. Exact certification is pending the shared runner; no image/native qualification claim.",
+      "events": [
+        "fn-bpfs-fragment-outcome-refines-ordered-send",
+        "fn-bpfs-send-observations-failed-only-at-first-transfer"
+      ]
+    },
+    {
+      "id": "PRF-1136",
+      "title": "Checkpoint recovery establishes the historical reader relation",
+      "statement": "The actual host-called fn-ock-recover-extended (host/owner-host.lisp fn-owner-recover-extended) establishes fn-ocri-relation after recovering the complete captured prefix plus suffix whenever its result is not :fault. The proof uses named equality to full recovery and the existing live-owner relation establishment. It assumes no reader relation before recovery. The test fixture has nonempty retention history and configuration records; held article and future schema union coverage remain separate.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-296"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-reader-establishment.lisp",
+        "tests/acl2/owner-reader-establishment-tests.lisp"
+      ],
+      "events": [
+        "fn-orri-recover-installs-historical-reader-relation"
+      ],
+      "progress_note": "Clean protected source root:13 forms,zero refusals,0.14 ACL2 seconds,20451 prover steps over291 matching cached dependencies. Shared certification pending; no image/native qualification."
     }
   ]
 }

@@ -289,6 +289,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-checkpoint-open-tests \
 	books/owner-checkpoint-open \
 	tests/acl2/owner-checkpoint-open-tests \
+	tests/acl2/owner-reader-establishment-tests \
 	tests/acl2/store-checkpoint-tables-tests \
 	tests/acl2/store-checkpoint-arena-tests \
 	books/heap-store-figure \
@@ -1145,6 +1146,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/payload-extent-tests \
 	tests/acl2/payload-commit-extent-tests \
 	tests/acl2/frame-digest-buffer-tests \
+	tests/acl2/frame-digest-concrete-tests \
 	tests/acl2/records-freeze-tests \
 	tests/acl2/catalog-record-tests \
 	tests/acl2/catalog-tests \
@@ -1640,6 +1642,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-page-cursor-tests \
 	tests/acl2/history-page-layout-tests \
 	tests/acl2/history-page-buffer-tests \
+	tests/acl2/history-page-buffers-tests \
+	tests/acl2/history-pool-emitter-tests \
+	tests/acl2/history-image-columns-tests \
+	tests/acl2/history-pool-columns-tests \
 	tests/acl2/history-image-census-tests \
 	tests/acl2/history-image-header-tests \
 	tests/acl2/history-page-metadata-tests \
