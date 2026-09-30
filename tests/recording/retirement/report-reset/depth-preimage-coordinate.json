@@ -1,0 +1,7 @@
+{
+  "preimage_path": "/Users/ember/dev/fn/build/lanes/depth-debt-3/host/native/owner.lisp",
+  "preimage_sha256": "eadf359f7c70ef8f9b1d7b262146a730a956df830aa3f6d3f8524679e3f3bf01",
+  "expected_after_sha256": "076dcd511e73982148348967e3a5f196a61505c61e9c5b4047e21cbf5a33474d",
+  "old_function_sha256": "3579f5faa6d99cdf3d6a2667fb19ab81b2463e9a63384555e03545d19aa090d4",
+  "new_function_sha256": "36a73fc9a16d2258c2944e95be7e94753d4464652097735dd6b2488caeb1a4f9"
+}

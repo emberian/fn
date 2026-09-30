@@ -90,6 +90,7 @@
 (include-book "feed-connection-invariants")
 (include-book "native-operator")
 (include-book "operator-report-reader")
+(include-book "operator-report-reset")
 (include-book "heap-figure")
 (include-book "heap-open-nursery")
 (include-book "heap-reservation")

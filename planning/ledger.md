@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1879 |
-| Certification roots in the Makefile | 1806 |
-| Books inside the root closure | 1871 |
-| `defthm` and `defthmd` events | 29677 |
-| `defun` events | 19011 |
+| Books read | 1881 |
+| Certification roots in the Makefile | 1808 |
+| Books inside the root closure | 1873 |
+| `defthm` and `defthmd` events | 29678 |
+| `defun` events | 19012 |
 | Functions with verified guards | 3561 |
 | Functions declared `:verify-guards nil` and never verified | 2251 |
-| Functions left at the default with an explicit guard | 10369 |
+| Functions left at the default with an explicit guard | 10370 |
 | Functions left at the default with no guard | 2830 |
-| `assert-event` checks | 23979 |
+| `assert-event` checks | 23983 |
 | `must-fail` checks | 2516 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 159 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 363 |
 | Enabled-projection warnings | 62 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2589 |
+| Include-hygiene warnings | 2591 |
 | Host-names warnings | 2159 |
 | Hand-written-record warnings | 18 |
 
@@ -667,6 +667,7 @@ that `make certify` requests.
 | `books/operator-report-reader-domain.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/operator-report-reader-space.lisp` | root | 8 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/operator-report-reader.lisp` | root | 40 | 12 | 3/1/8/0 | 0 | 0 | 1 |
+| `books/operator-report-reset.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/outcome-class.lisp` | root | 8 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/over-window.lisp` | root | 30 | 6 | 1/3/2/0 | 0 | 0 | 0 |
 | `books/owner-ack-after-barrier.lisp` | root | 34 | 27 | 0/1/26/0 | 0 | 0 | 3 |
@@ -1606,6 +1607,7 @@ that `make certify` requests.
 | `tests/acl2/operator-report-reader-domain-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/operator-report-reader-space-tests.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/operator-report-reader-tests.lisp` | root | 7 | 0 | 0/0/0/0 | 9 | 0 | 0 |
+| `tests/acl2/operator-report-reset-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/outcome-class-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 37 | 7 | 0 |
 | `tests/acl2/over-window-tests.lisp` | root | 6 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/owner-ack-after-barrier-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 40 | 0 | 0 |

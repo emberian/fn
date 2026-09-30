@@ -1,0 +1,118 @@
+(require :sb-posix)
+(defpackage "ACL2" (:use "CL"))
+(in-package "ACL2")
+(declaim (notinline sb-posix:unlink))
+(defun member-eq (x xs) (member x xs :test #'eq))
+(defstruct fnn-owner-service retire stopping)
+(defmacro fnn-with-roster ((service) &body body) (declare (ignore service)) `(progn ,@body))
+(defun fnn-owner-space-preobserve (service force) (declare (ignore service force)) nil)
+(defun fnn-owner-sched-snapshot (service) (declare (ignore service)) :clock)
+(defun fnn-owner-retire-report-path (service) (declare (ignore service)) "prior-report")
+(defun fnn-log-line (line) (declare (ignore line)) nil)
+(defun fnn-fault (format &rest args) (error (apply #'format nil format args)))
+(defun fnn-core (name &rest args)
+ (if (eq name 'fn-nret-begin-log-line) :line (apply (symbol-function name) args)))
+(defvar *fences* 0)
+(defvar *barrier-fails* nil)
+(defvar *barriers* 0)
+(defun fnn-owner-service-store (service) (declare (ignore service)) :store)
+(defun fnn-store-root (store) (declare (ignore store)) "root")
+(defun fnn-fsync-dir (path) (declare (ignore path)) (incf *barriers*)
+ (when *barrier-fails* (error 'fnn-os-error :errno 5 :path "root")))
+(defun fnn-owner-fence-service (service)
+ (incf *fences*) (setf (fnn-owner-service-stopping service) t))
+
+(defun fn-nret-begin-answer (retiring)
+
+  (if retiring
+      (list :refused :already-retiring)
+    (list :accepted :draining)))
+(defun fn-orr-reset-action (observation)
+
+  (if (member-eq observation '(:removed :missing)) :continue :uncertain))
+(define-condition fnn-os-error (error)
+  ((errno :initarg :errno :reader fnn-os-errno)
+   (path :initarg :path :initform nil :reader fnn-os-path))
+  (:report (lambda (c s)
+             (format s "[Errno ~d] ~a~@[: '~a'~]"
+                     (fnn-os-errno c) (sb-int:strerror (fnn-os-errno c))
+                     (fnn-os-path c)))))
+(define-condition fnn-store-error (error)
+  ((message :initarg :message :reader fnn-message))
+  (:report (lambda (c s) (write-string (fnn-message c) s))))
+(define-condition fnn-store-indeterminate (fnn-store-error) ())
+(defun fnn-indeterminate (control &rest args)
+  (error 'fnn-store-indeterminate :message (apply #'format nil control args)))
+(defun fnn-owner-retire-begin (service seconds)
+  (let* ((s0 (progn (fnn-owner-space-preobserve service t)
+                    (fnn-owner-sched-snapshot service)))
+         (answer
+           (fnn-with-roster (service)
+             (let ((a (fnn-core 'fn-nret-begin-answer
+                                (and (fnn-owner-service-retire service) t))))
+               (when (eq (first a) :accepted)
+                 (setf (fnn-owner-service-retire service) (list s0 seconds)))
+               a))))
+    (unless (and (consp answer) (member (first answer) '(:accepted :refused)))
+      (fnn-fault "owner returned a malformed retire answer ~a" answer))
+    (when (eq (first answer) :accepted)
+      ;; A report an earlier retire left (the node was started again) is
+      ;; not this retire's.
+      (let ((reset
+              (handler-case
+                  (progn (sb-posix:unlink (fnn-owner-retire-report-path service))
+                         :removed)
+                (sb-posix:syscall-error (condition)
+                  (if (= (sb-posix:syscall-errno condition) sb-posix:enoent)
+                      :missing :failed)))))
+        ;; Only a definite unlink/absence observation permits the directory
+        ;; barrier. Its failure also cannot authorize a fresh-report response.
+        (when (eq (fnn-core 'fn-orr-reset-action reset) :continue)
+          (handler-case
+              (fnn-fsync-dir (fnn-store-root (fnn-owner-service-store service)))
+            (fnn-os-error () (setf reset :failed))))
+        (when (eq (fnn-core 'fn-orr-reset-action reset) :uncertain)
+          ;; Intent is already published. Preserve it and fence; never answer
+          ;; accepted while an earlier run's report may still be present.
+          (fnn-owner-fence-service service)
+          (fnn-indeterminate "retire report reset failed; owner fenced")))
+      ;; NEWNEWS pulling is an optional runtime extension: the DTN image
+      ;; does not load pull-service.lisp. Stop its I/O only when that
+      ;; extension is present; ACL2's retire decision is the same in both.
+      (when (fboundp 'fnn-pull-service-wake)
+        (funcall (symbol-function 'fnn-pull-service-wake) service))
+      (fnn-log-line (fnn-core 'fn-nret-begin-log-line seconds)))
+    (list :reason (first answer) (second answer))))
+
+(defun exercise (mode &optional barrier-fails)
+ (let ((old (symbol-function 'sb-posix:unlink))
+       (service (make-fnn-owner-service)) (calls 0) (answer nil) (uncertain nil))
+  (setf *fences* 0 *barriers* 0 *barrier-fails* barrier-fails)
+  (unwind-protect
+    (progn
+     (setf (symbol-function 'sb-posix:unlink)
+       (lambda (path) (declare (ignore path)) (incf calls)
+         (case mode (:removed 0)
+           (:missing (error 'sb-posix:syscall-error :errno sb-posix:enoent :name "unlink"))
+           (:failed (error 'sb-posix:syscall-error :errno sb-posix:eacces :name "unlink")))))
+     (handler-case (setf answer (fnn-owner-retire-begin service 4))
+       (fnn-store-indeterminate () (setf uncertain t)))
+     (assert (equal (fnn-owner-retire-begin service 4)
+                    '(:reason :refused :already-retiring)))
+     (assert (= calls 1))
+     (assert (fnn-owner-service-retire service))
+     (format t "RESET ~s answer=~s uncertain=~s fences=~s intent=~s~%"
+       mode answer uncertain *fences* (fnn-owner-service-retire service))
+     (when (and (not barrier-fails) (member mode '(:removed :missing)))
+       (assert (equal answer '(:reason :accepted :draining))) (assert (not uncertain)))
+     (when (or (eq mode :failed) barrier-fails)
+       (if t
+         (progn (assert uncertain) (assert (null answer))
+                (assert (= *fences* 1)) (assert (fnn-owner-service-stopping service)))
+         (assert (equal answer '(:reason :accepted :draining))))))
+    (setf (symbol-function 'sb-posix:unlink) old))))
+(exercise :removed)
+(exercise :missing)
+(exercise :failed)
+(exercise :removed t)
+(exercise :missing t)

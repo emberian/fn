@@ -409,3 +409,5 @@ anything a book does not already decide.
   execute on the served path.
 
 | `fn-oru-` | `operator-report-reader`, `tests/acl2/operator-report-reader-tests` | Fixed-prefix UTF-8 validation and validate/rewind/copy controller for the additive actual CLI report consumer; complete uncapped decoder acceptance refinement. Public selection/library/descriptor lifetime/runtime funding remain open. |
+
+| `fn-orr-` | operator report reset disposition | `operator-report-reset` |

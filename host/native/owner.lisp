@@ -4308,8 +4308,24 @@ the node retires (row S9), refuse it by name instead."
     (when (eq (first answer) :accepted)
       ;; A report an earlier retire left (the node was started again) is
       ;; not this retire's.
-      (handler-case (sb-posix:unlink (fnn-owner-retire-report-path service))
-        (sb-posix:syscall-error () nil))
+      (let ((reset
+              (handler-case
+                  (progn (sb-posix:unlink (fnn-owner-retire-report-path service))
+                         :removed)
+                (sb-posix:syscall-error (condition)
+                  (if (= (sb-posix:syscall-errno condition) sb-posix:enoent)
+                      :missing :failed)))))
+        ;; Only a definite unlink/absence observation permits the directory
+        ;; barrier. Its failure also cannot authorize a fresh-report response.
+        (when (eq (fnn-core 'fn-orr-reset-action reset) :continue)
+          (handler-case
+              (fnn-fsync-dir (fnn-store-root (fnn-owner-service-store service)))
+            (fnn-os-error () (setf reset :failed))))
+        (when (eq (fnn-core 'fn-orr-reset-action reset) :uncertain)
+          ;; Intent is already published. Preserve it and fence; never answer
+          ;; accepted while an earlier run's report may still be present.
+          (fnn-owner-fence-service service)
+          (fnn-indeterminate "retire report reset failed; owner fenced")))
       ;; NEWNEWS pulling is an optional runtime extension: the DTN image
       ;; does not load pull-service.lisp. Stop its I/O only when that
       ;; extension is present; ACL2's retire decision is the same in both.

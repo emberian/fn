@@ -1,0 +1,16 @@
+{
+  "sources": {
+    "books/native-retire.lisp": "60a1fe3da9f482e3a7cef2d3c930a833ba641f76423d26c24e729f2ba8d504dd",
+    "books/operator-report-reset.lisp": "c47a3d7190ac97ec7049b4eb616708159bf12d6fdbb7d5d07ff26313fcf0649c",
+    "host/native/io.lisp": "2a0e58ae828331c0a9831e06db2ebd5f86e4d813eb6913f66474fcf586f725a3",
+    "host/native/owner.lisp": "92b6b871acb8143c9894ba49a16982c9944f82ba0988414b8124aefacc4ca54b"
+  },
+  "forms_sha256": {
+    "fn-nret-begin-answer": "9831a77fa5d6dda3c9e9273ab40d17213c07dc43249715091573044bf4df9502",
+    "fn-orr-reset-action": "322d6400c6f7cae2b53ac0aaac40986821b0e828b22c6913a12da39b1ed2ca6e",
+    "fnn-store-error": "24a2872a43358e6e6b3979ced66c738c13fba3a10b0481512339f700a14d7646",
+    "fnn-store-indeterminate": "69e4cdd0a3dbad8872d7fc8f65796b37844b060126da02bde9a838baedb495dc",
+    "fnn-indeterminate": "9deb5112cde8ec52b11180d0f82c8296f96d48499f01fe950ed7db51d16fb4e2",
+    "fnn-owner-retire-begin": "a3822a53dd52666ca2e1236f3e0b0251fd1b7be5c78a51f029288eaac5672450"
+  }
+}

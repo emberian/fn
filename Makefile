@@ -1306,6 +1306,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/operator-report-fields-text \
 	books/operator-report-fields-native-reference \
 	books/operator-report-reader \
+	books/operator-report-reset \
+	tests/acl2/operator-report-reset-tests \
 	books/operator-report-reader-space \
 	tests/acl2/operator-report-reader-space-tests \
 	books/operator-report-reader-domain \

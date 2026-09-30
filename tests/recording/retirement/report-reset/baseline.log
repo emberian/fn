@@ -1,0 +1,6 @@
+RESET :REMOVED answer=(:REASON :ACCEPTED :DRAINING) uncertain=NIL fences=0 intent=(:CLOCK
+                                                                                   4)
+RESET :MISSING answer=(:REASON :ACCEPTED :DRAINING) uncertain=NIL fences=0 intent=(:CLOCK
+                                                                                   4)
+RESET :FAILED answer=(:REASON :ACCEPTED :DRAINING) uncertain=NIL fences=0 intent=(:CLOCK
+                                                                                  4)

@@ -4906,3 +4906,7 @@
   :class :common-lisp-compliant
   :keystones (fn-oru-reader-step-preserves-invariant
               fn-oru-reader-output-needs-validation-and-rewind))
+
+(definterface fn-orr-reset-action
+  :class :common-lisp-compliant
+  :keystones (fn-orr-continue-requires-definite-reset))

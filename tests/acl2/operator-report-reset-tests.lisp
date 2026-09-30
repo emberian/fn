@@ -1,0 +1,11 @@
+(in-package "ACL2")
+(include-book "../../books/operator-report-reset")
+(assert-event (and (equal (fn-orr-reset-action :removed) :continue)
+                   (or (equal :removed :removed) (equal :removed :missing))))
+(assert-event (and (equal (fn-orr-reset-action :missing) :continue)
+                   (or (equal :missing :removed) (equal :missing :missing))))
+; Affirmatively omit continue: failed reset has neither definite outcome.
+(assert-event (and (not (equal (fn-orr-reset-action :failed) :continue))
+                   (not (or (equal :failed :removed) (equal :failed :missing)))
+                   (equal (fn-orr-reset-action :failed) :uncertain)))
+(assert-event (equal (fn-orr-reset-action :unknown) :uncertain))

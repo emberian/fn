@@ -252,3 +252,10 @@ cursors and this turn's singleton output: at most fifteen cells under its
 fixed ready predicate. It does not count temporary decoder objects, host
 arguments, stream buffers, frames/GC or descriptor lifetime. Those actual
 allocation and effect obligations remain open before public selection.
+
+Before answering an accepted retirement request, the owner removes any prior
+report (ENOENT means absent) and fences the Store directory. Any other unlink
+error or directory-barrier error preserves the installed retirement intent,
+fences the service and answers uncertainty; the CLI cannot then treat a stale
+prior report as this retirement's report. Repeated requests still refuse as
+already-retiring. This does not establish definite producer settlement.

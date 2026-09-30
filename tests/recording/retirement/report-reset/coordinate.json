@@ -1,0 +1,17 @@
+{
+  "sources": {
+    "books/native-retire.lisp": "60a1fe3da9f482e3a7cef2d3c930a833ba641f76423d26c24e729f2ba8d504dd",
+    "books/operator-report-reset.lisp": "c47a3d7190ac97ec7049b4eb616708159bf12d6fdbb7d5d07ff26313fcf0649c",
+    "host/native/io.lisp": "2a0e58ae828331c0a9831e06db2ebd5f86e4d813eb6913f66474fcf586f725a3",
+    "host/native/owner.lisp": "3f4e9e168ae8d2dc02ac340a1ef888307a825ffaa86d61cd55f647d4b2c296b8"
+  },
+  "forms_sha256": {
+    "fn-nret-begin-answer": "9831a77fa5d6dda3c9e9273ab40d17213c07dc43249715091573044bf4df9502",
+    "fn-orr-reset-action": "322d6400c6f7cae2b53ac0aaac40986821b0e828b22c6913a12da39b1ed2ca6e",
+    "fnn-os-error": "56b64bf6c0127324f764acb2ee41f2f027aa2db3f3efb362a8309a9a845a2f95",
+    "fnn-store-error": "24a2872a43358e6e6b3979ced66c738c13fba3a10b0481512339f700a14d7646",
+    "fnn-store-indeterminate": "69e4cdd0a3dbad8872d7fc8f65796b37844b060126da02bde9a838baedb495dc",
+    "fnn-indeterminate": "9deb5112cde8ec52b11180d0f82c8296f96d48499f01fe950ed7db51d16fb4e2",
+    "fnn-owner-retire-begin": "a636a5df05b0aebf75b15663d80c613c223bfca4d041f7a46f30e28bae838af3"
+  }
+}
