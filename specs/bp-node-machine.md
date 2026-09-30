@@ -5109,3 +5109,14 @@ reassembled source carry, the full recovery refinement, registered funding,
 compiled runtime and the interrupted native delivery scenario remain open.
 Exact source admission and retained refusals are recorded in
 `planning/evidence/bp-held-producer-grammar-20260930/manifest.json`.
+
+The actual received frame constructor and family replacement additionally
+preserve received-source carry. Family replacement preserves the typed
+auxiliaries when both source and auxiliary input carries hold and its actual
+result is `:ready`. Literal corrupt-principal data reaches the legacy family
+ready branch but fails the proposed lineage/source grammar; unrelated corrupt
+auxiliaries remain retained. These are malformed stored-data witnesses, not
+legitimate received producers. The source constructor's redundant octet premise
+was removed only after proving the weaker statement using the actual bundle
+encoder octet theorem. Exact proper source admission and complete witnesses:
+`planning/evidence/bp-held-family-source-20260930/manifest.json`.
