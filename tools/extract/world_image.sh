@@ -12,7 +12,9 @@ set -eu
 TREE=$(cd "$1" && pwd)
 ACL2=${FN_EXTRACT_ACL2:-/tank/fn/toolchains/w28/acl2-literal-4g-tls64k}
 CACHE=${FN_EXTRACT_WORLD_CACHE:-/tank/fn/scratch/extract-cache}
-KEY=$(python3 "$TREE/tools/extract/world.py" --digest "$TREE" --acl2 "$ACL2")
+VARIANT=${FN_EXTRACT_VARIANT:-default}
+case $VARIANT in default) SUFFIX= ;; dtn) SUFFIX=-dtn ;; *) echo "world_image: unsupported variant: $VARIANT" >&2; exit 2 ;; esac
+KEY=$(python3 "$TREE/tools/extract/world.py" --digest "$TREE" --acl2 "$ACL2" --variant "$VARIANT")
 [ -n "$KEY" ] || { echo "world_image: no world key from world.py --digest" >&2; exit 1; }
 DIR=$CACHE/world-$KEY
 if [ -x "$DIR/world" ] && [ -f "$DIR/world.core" ]; then
@@ -21,8 +23,8 @@ fi
 mkdir -p "$CACHE"
 TMP=$(mktemp -d "$CACHE/.world-XXXXXX")
 cat > "$TMP/save.lsp" <<LSP
-(ld "tools/extract/world.lisp")
-(ld "tools/extract/world-host.lisp")
+(ld "tools/extract/world$SUFFIX.lisp")
+(ld "tools/extract/world-host$SUFFIX.lisp")
 :q
 (save-exec "$TMP/world" "fn extraction world $KEY")
 LSP

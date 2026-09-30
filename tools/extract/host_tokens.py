@@ -40,9 +40,9 @@ def strip(s):
     return "".join(out)
 
 
-def tokens(tree):
+def tokens(tree, build="host/native/build.lisp"):
     toks = set()
-    for rel in core_build.host_files(tree):
+    for rel in core_build.host_files(tree, build):
         s = strip((tree / rel).read_text(errors="replace"))
         toks |= set(t.upper() for t in re.findall(r"(?<![\w:])([A-Za-z*$][A-Za-z0-9$*+<>=/-]*)", s))
     return sorted(toks)
@@ -50,6 +50,6 @@ def tokens(tree):
 
 if __name__ == "__main__":
     tree, out = Path(sys.argv[1]), Path(sys.argv[2])
-    toks = tokens(tree)
+    toks = tokens(tree, sys.argv[3] if len(sys.argv) > 3 else "host/native/build.lisp")
     out.write_text("(" + "\n".join('"%s"' % t for t in toks) + ")\n")
     print("host_tokens: %d words" % len(toks))

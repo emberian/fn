@@ -16,10 +16,24 @@ TREE=$(cd "$1" && pwd)
 X=$TREE/tools/extract
 OUT=${FN_CORE_OUT:-$TREE/build/core}
 ACL2=${FN_EXTRACT_ACL2:-/tank/fn/toolchains/w28/acl2-literal-4g-tls64k}
-IMAGE=${FN_EXTRACT_IMAGE:-$TREE/build/fn-host-developer}
 NAME=${FN_CORE_NAME:-fn-core}
 case $NAME in fn-core|fn-host|fn-host-developer|fn-host-dtn|fn-host-dtn-developer) ;; *)
     echo "core: unsupported product name: $NAME" >&2; exit 2 ;; esac
+case $NAME in
+    fn-host-dtn*) VARIANT=dtn; BUILD=host/native/build-dtn.lisp; DEFAULT_IMAGE=fn-host-dtn-developer ;;
+    *) VARIANT=default; BUILD=host/native/build.lisp; DEFAULT_IMAGE=fn-host-developer ;;
+esac
+case $NAME in
+    fn-core) PROFILE=${FN_NATIVE_PROFILE:-developer} ;;
+    *-developer) PROFILE=developer ;;
+    *) PROFILE=production ;;
+esac
+case $PROFILE in production|developer) ;; *) echo "core: unsupported profile: $PROFILE" >&2; exit 2 ;; esac
+if [ -n "${FN_NATIVE_PROFILE:-}" ] && [ "$FN_NATIVE_PROFILE" != "$PROFILE" ]; then
+    echo "core: product name $NAME requires $PROFILE profile" >&2; exit 2
+fi
+export FN_EXTRACT_VARIANT=$VARIANT FN_NATIVE_PROFILE=$PROFILE
+IMAGE=${FN_EXTRACT_IMAGE:-$TREE/build/$DEFAULT_IMAGE}
 SBCL=${SBCL:-$(sed -n 's/^exec "\([^"]*\)" .*/\1/p' "$IMAGE")}
 SBCL_HOME=${SBCL_HOME:-$(sed -n "s/^export SBCL_HOME='\([^']*\)'/\1/p" "$IMAGE")}
 [ -x "$SBCL" ] && [ -d "$SBCL_HOME" ] || {
@@ -30,7 +44,7 @@ OUT=$(cd "$OUT" && pwd)
 rm -f "$OUT/core.json" "$OUT/core-world.lisp" "$OUT/packages.json" "$OUT/defs.lisp" \
       "$OUT/packages.lisp" "$OUT/host-block.lisp" "$OUT/fn-core" "$OUT/fn-core.core" \
       "$OUT/$NAME" "$OUT/$NAME.core" "$OUT/source-revision" "$OUT/defs.fasl" "$OUT/clruntime.fasl"
-python3 "$X/host_tokens.py" "$TREE" "$OUT/tokens.lsp"
+python3 "$X/host_tokens.py" "$TREE" "$OUT/tokens.lsp" "$BUILD"
 # the world, loaded once per world digest and saved (world_image.sh)
 FN_EXTRACT_WORLD_IMAGE=${FN_EXTRACT_WORLD_IMAGE:-$(sh "$X/world_image.sh" "$TREE")}
 {
@@ -44,11 +58,11 @@ if grep -q "ACL2 Error" "$OUT/export.log" || [ ! -s "$OUT/core.json" ] || [ ! -s
 fi
 python3 "$X/cl.py" "$OUT/core.json" --out "$OUT/defs.lisp" --inventory "$OUT/inventory.json" \
     --packages "$OUT/packages.json" --packages-out "$OUT/packages.lisp"
-python3 "$X/core_build.py" "$TREE" "$OUT/host-block.lisp"
+python3 "$X/core_build.py" "$TREE" "$OUT/host-block.lisp" "$BUILD"
 # The image's libraries, as tools/build_native_host.sh names them for its build.
 LIB=$TREE/build/lib
+export FN_DEFLATE_LIBRARY=$LIB/libfn-deflate.so
 export FN_MLDSA_LIBRARY=$LIB/libfn-mldsa65.so FN_LZ4_LIBRARY=$LIB/libfn-lz4.so FN_BLAKE3_LIBRARY=$LIB/libfn-blake3.so
-export FN_NATIVE_PROFILE=${FN_NATIVE_PROFILE:-developer}
 # The image's runtime options (its launcher's: heap, control stack, thread-
 # local storage, from the profile: tools/build_native_host.sh), recorded in
 # the generated launcher, so the product runs as the image does.

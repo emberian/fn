@@ -65,6 +65,48 @@ class DigestTests(unittest.TestCase):
                 capture_output=True, text=True, timeout=120).returncode, 0)
 
 
+class VariantTests(unittest.TestCase):
+    def test_dtn_world_and_raw_roots_follow_dtn_build(self):
+        import core_build
+        import host_tokens
+        generated = world.render("dtn")
+        text = generated[ROOT / "tools/extract/world-dtn.lisp"]
+        host = generated[ROOT / "tools/extract/world-host-dtn.lisp"]
+        self.assertIn('(include-book "../../books/image-world-dtn")', text)
+        self.assertIn("from host/native/build-dtn.lisp:", host)
+        block = core_build.raw_block(ROOT, "host/native/build-dtn.lisp")
+        self.assertIn('(load "host/native/bp-control-client.lisp")', block)
+        self.assertNotIn('(load "host/native/pull-service.lisp")', block)
+        self.assertNotEqual(host_tokens.tokens(ROOT),
+                            host_tokens.tokens(ROOT, "host/native/build-dtn.lisp"))
+
+    def test_production_name_refuses_developer_before_runtime_or_output(self):
+        import os
+        with tempfile.TemporaryDirectory() as directory:
+            env = dict(os.environ, FN_CORE_NAME="fn-host-dtn",
+                       FN_NATIVE_PROFILE="developer", FN_CORE_OUT=directory + "/out")
+            done = subprocess.run(["sh", str(ROOT / "tools/extract/core.sh"), str(ROOT)],
+                                  env=env, capture_output=True, text=True)
+            self.assertEqual(done.returncode, 2)
+            self.assertIn("requires production profile", done.stderr)
+            self.assertFalse((Path(directory) / "out").exists())
+
+    def test_cache_key_is_selected_world_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = tree(directory)
+            for source, target in zip(world.world_paths(), world.world_paths("dtn")):
+                (root / target).write_bytes((root / source).read_bytes())
+            default = world.digest(root)
+            dtn = world.digest(root, variant="dtn")
+            self.assertNotEqual(default, dtn)
+            path = root / "tools/extract/world-host-dtn.lisp"
+            path.write_text(path.read_text() + "; DTN-only change\n")
+            self.assertEqual(default, world.digest(root))
+            self.assertNotEqual(dtn, world.digest(root, variant="dtn"))
+            with self.assertRaises(ValueError):
+                world.digest(root, variant="unknown")
+
+
 class HostPrologueTests(unittest.TestCase):
     def test_world_host_assigns_the_closure_reference_itself_when_unset(self):
         text = (ROOT / "tools/extract/world-host.lisp").read_text()
