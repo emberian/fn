@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1896 |
-| Certification roots in the Makefile | 1816 |
-| Books inside the root closure | 1888 |
-| `defthm` and `defthmd` events | 29813 |
-| `defun` events | 19047 |
+| Books read | 1898 |
+| Certification roots in the Makefile | 1817 |
+| Books inside the root closure | 1890 |
+| `defthm` and `defthmd` events | 29838 |
+| `defun` events | 19052 |
 | Functions with verified guards | 3513 |
-| Functions declared `:verify-guards nil` and never verified | 2274 |
+| Functions declared `:verify-guards nil` and never verified | 2278 |
 | Functions left at the default with an explicit guard | 10404 |
-| Functions left at the default with no guard | 2856 |
+| Functions left at the default with no guard | 2857 |
 | `assert-event` checks | 23990 |
 | `must-fail` checks | 2516 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 169 |
-| Theorems flagged SUSPECT by shape | 1248 |
+| Theorems flagged SUSPECT by shape | 1250 |
 | Export-hygiene warnings | 340 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2566 |
+| Include-hygiene warnings | 2568 |
 | Host-names warnings | 2199 |
 | Hand-written-record warnings | 18 |
 
@@ -419,6 +419,7 @@ that `make certify` requests.
 | `books/decoded-window-copy-trajectory.lisp` | closure | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/decoded-window-descriptor.lisp` | closure | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/decoded-window-lease.lisp` | closure | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/decoded-window-literal-trajectory.lisp` | closure | 19 | 3 | 0/2/0/1 | 0 | 0 | 2 |
 | `books/decoded-window-read.lisp` | closure | 3 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/defevent.lisp` | root | 0 | 14 | 0/0/0/14 | 0 | 0 | 0 |
 | `books/definterface.lisp` | root | 0 | 42 | 0/0/0/42 | 0 | 0 | 0 |
@@ -1420,6 +1421,7 @@ that `make certify` requests.
 | `tests/acl2/decoded-window-descriptor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 0 | 0 |
 | `tests/acl2/decoded-window-executor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/decoded-window-lease-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
+| `tests/acl2/decoded-window-literal-trajectory-tests.lisp` | root | 6 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `tests/acl2/decoded-window-publication-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 1 | 0 | 0 |
 | `tests/acl2/decoded-window-read-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 1 | 0 | 0 |
 | `tests/acl2/defevent-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 19 | 1 | 0 |
@@ -2702,6 +2704,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-pull-session-failure-names-every-failed-step` | `books/peer-pull-session.lisp` | 1027 | closed-theory-corollary: proved only by fn-peer-failure-words-begin-with-reason, fn-pull-session-failure-iff, fn-pull-session-failure-shape |
 | `fn-pull-session-run-keeps-the-cursor-and-journals-nothing` | `books/peer-pull-session.lisp` | 607 | closed-theory-corollary: proved only by fn-pull-session-run-journals-nothing, fn-pull-session-run-keeps-roundp, fn-pull-session-run-keeps-the-cursor |
 | `fn-pull-session-step-of-a-done-round` | `books/peer-pull-session.lisp` | 485 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pull-session-step and the conclusion is that arm's value |
+| `fn-pwz-actual-literal-first-action-effects-rewrite` | `books/decoded-window-literal-trajectory.lisp` | 210 | instance-corollary: the statement is fn-pwz-actual-literal-first-action-effects instantiated, discharging nothing |
+| `fn-pwz-literal-batch-first-action-and-tail-rewrite` | `books/decoded-window-literal-trajectory.lisp` | 195 | instance-corollary: the statement is fn-pwz-literal-batch-first-action-and-tail instantiated, discharging nothing |
 | `fn-pxy-observe-at-deadline-by-definition` | `books/tls-proxy.lisp` | 274 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pxy-observe and the conclusion is that arm's value |
 | `fn-rca-result-okp-is-line-okp` | `books/reclaim-admission.lisp` | 83 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-rci-unrecorded-is-refused-by-definition` | `books/reclaim-instant.lisp` | 194 | arm-of-definition: the hypotheses select one IF/COND arm of fn-rci-decide-stream and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-rci-decide-stream and the conclusion is that branch's value |

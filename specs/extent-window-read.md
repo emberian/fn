@@ -255,3 +255,16 @@ conclusion. Copy octets, semantic action calls and stored scheduling charges
 remain distinct; literal batching, general input/dictionary stuttering and
 total budget adequacy remain open. See
 planning/evidence/decoded-window-action-source-2026-09-30.md.
+
+The actual ready mode8 literal STEP branch now normalizes its full
+state/history/table/output tuple to the existing actual ACT sequence of
+emitted count. Its hypotheses are positive room, mode8, fresh decode
+fields and the complete actual literal readiness predicate, including
+TOUT strictly below the bomb bound. First ACT establishes the local
+terminal-register identity; no served state revalidation is introduced.
+Actual initializer/basic scheduling reachability and all four exact
+hypothesis removals accompany this component. The existing runtime is
+unchanged; the withdrawn zero-K proposal is refuted because actual
+readiness excludes that frontier. Fast-path equivalence, general
+input/dictionary trajectory, scheduling budget and native funding remain
+open. See planning/evidence/decoded-window-literal-source-2026-09-30.md.

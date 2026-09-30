@@ -17785,6 +17785,11 @@
           "kind": "theorem",
           "name": "fn-pwz-actual-codec-copy-action-effects",
           "note": "Actual mode12 controller state/history/table/scratch/private-window effects equal 64 existing fn-zin-act calls; reachable actual initializer/read/tick positive and all13 hypothesis removals. No general literal trajectory or scheduling budget claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwz-actual-ready-literal-step-is-action-trajectory",
+          "note": "Actual ready mode8 fn-zin-step full state/history/table/output equals emitted-count existing fn-zin-act calls under positive room, fresh fields and complete readiness including strict bomb bound. Actual initializer/basic scheduling positive plus four exact condition removals; fast-path, general trajectory and scheduling budget remain open."
         }
       ],
       "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. Full decoder/dictionary stuttering, total action-budget completeness, compiled workspace funding and actual typed lifetime/consumer joins remain open; these component events do not complete PRF-1131."
