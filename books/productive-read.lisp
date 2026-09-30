@@ -2,10 +2,11 @@
 ; PRF-1053 fn-pcr-served-read-is-the-reference-read, PRF-1054
 ; fn-pcr-retrieval-answers-220-with-the-stored-octets).
 ;
-; WIP -- DRAFT STATEMENTS, NOT YET REPL-ADMITTED (wind-down 2026-09-30).  Every
-; form below is the statement the lane designed from the surveyed chain; the
-; successor admits them in proof_repl (see LANEDUMP.md NEXT) before this book
-; goes into the Makefile.  The include set is a first guess.
+; DISCOVERY ADMISSIONS, NOT CERTIFICATION. Both statements were admitted in
+; protected persvati REPL pcr61. The successor composition is in
+; productive-read-chain.lisp, including an admitted complete numbered ARTICLE
+; host-called read. Complete teeth, Message-ID/absent variants and union/native
+; evidence remain open; neither book is a Makefile qualification root yet.
 ;
 ; THE SUBJECT (the function the host calls): fn-mca-read-span, which
 ; host/owner-host.lisp fn-owner-chunk-span-at calls for one served socket
@@ -45,9 +46,9 @@
 ;   peer -> post -> fn-nntp-step -> fn-nntp-command-pinned ->
 ;   fn-nntp-archive-command-pinned = fn-rcompat-retrieval (PRF-243,
 ;   fn-nntp-archive-command-pinned-article-head-is-served, nntp-pinned-msgid)
-; The five pass-through links between fn-served-step and
-; fn-nntp-archive-command-pinned are NOT proved by this book: the witness
-; evaluates them on the real fixture; they are the gap the lifecycle list names.
+; This lower book does not itself establish the protocol/wire joins.
+; productive-read-chain.lisp admits those actual joins and the full numbered
+; host read; the remaining witness/variant/evidence work stays explicit.
 
 (in-package "ACL2")
 (include-book "owner-credits")
@@ -59,9 +60,10 @@
 ; -----------------------------------------------------------------------------
 ; PRF-1053.  The host-called reader entry, with a cold page that completed
 ; and the scheduler admitting, answers exactly the reference reader's
-; answer on the connection's pinned archive: the effects and the owner of
+; answer on the connection's pinned archive after OVER cursor expansion:
+; the expanded effects and the owner of
 ; fn-mca-read-span are those of fn-ocfg-read over the consumed prefix of the
-; chunk, and the effects are fn-own-read's.  Each premise is named; the
+; chunk, and the expanded effects are fn-own-read's.  Each premise is named; the
 ; funded / within-the-slots premises are stated in the shape the chain's
 ; own theorems state them (the credit resized to what the read needs
 ; answers :ok; the read does not put the connection over the slots).
@@ -96,10 +98,13 @@
                   (natp i) (natp end)
                   (fn-wire-statep (fn-own-conn-wire conn)))
              (and (equal (fn-otb-dependency-step since now limit completed) :serve)
-                  (equal (fn-own-tls-result-effects result) (car reference))
+                  (equal (fn-ovw-expand (fn-own-tls-result-effects result) fn-arena fn-cat)
+                         (fn-ovw-expand (car reference) fn-arena fn-cat))
                   (equal (fn-own-tls-result-owner result) (cdr reference))
-                  (equal (fn-own-tls-result-effects result)
-                         (car (fn-own-read o id (take consumed octets) fn-arena))))))
+                  (equal (fn-ovw-expand (fn-own-tls-result-effects result) fn-arena fn-cat)
+                         (fn-ovw-expand
+                          (car (fn-own-read o id (take consumed octets) fn-arena))
+                          fn-arena fn-cat)))))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-mca-read-span-within-the-credit-unfolds
@@ -180,3 +185,147 @@
                             fn-nntp-framed-of-bytes fn-rcl-tombstonep fn-nntp-article-idp)))))
 
 (in-theory (disable fn-pcr-served-octets fn-pcr-220-reply))
+
+; The broad reference now compares expanded effects. These inversion facts
+; recover exact ARTICLE effects: a cursor cannot expand to these replies.
+(local
+  (defthm
+    fn-pcr-expand-is-empty-exactly
+    (equal (equal (fn-ovw-expand effects fn-arena fn-cat) nil) (equal effects nil))
+    :hints
+    (("Goal"
+       :expand
+       ((fn-ovw-expand effects fn-arena fn-cat))
+       :in-theory
+       (disable fn-ovw-cursor-effectp fn-ovw-cursor-octets)))))
+
+(defthm
+  fn-pcr-expand-inverts-a-distinct-single-reply
+  (implies
+    (and
+      (equal (fn-ovw-expand effects fn-arena fn-cat) (list (fn-nntp-reply-effect octets)))
+      (not (equal (fn-ovw-cursor-octets (car (cdr (car effects))) fn-arena fn-cat) octets)))
+    (equal effects (list (fn-nntp-reply-effect octets))))
+  :rule-classes
+  nil
+  :hints
+  (("Goal"
+     :expand
+     ((fn-ovw-expand effects fn-arena fn-cat))
+     :in-theory
+     (e/d (fn-nntp-reply-effect) (fn-ovw-cursor-effectp fn-ovw-cursor-octets)))))
+
+(defthm
+  fn-pcr-over-cursor-never-expands-to-an-article-reply
+  (let
+    ((octets (fn-ovw-cursor-octets cur fn-arena fn-cat)))
+    (and
+      (not (equal octets (append (quote (50 50 48)) tail)))
+      (not
+        (equal
+          octets
+          (append (fn-nntp-string-octets "423 no article with that number") (quote (13 10)))))
+      (not
+        (equal
+          octets
+          (append (fn-nntp-string-octets "430 no article with that message-id") (quote (13 10)))))))
+  :rule-classes
+  nil
+  :hints
+  (("Goal"
+     :in-theory
+     (e/d
+       (fn-ovw-cursor-octets fn-ovw-reply fn-ovw-status fn-ovw-empty-text fn-nntp-crlf)
+       (fn-ovw-lines fn-nntp-stuff-lines)))))
+
+(defthm
+  fn-pcr-expand-inverts-220-reply
+  (implies
+    (equal
+      (fn-ovw-expand effects fn-arena fn-cat)
+      (list (fn-nntp-reply-effect (append (quote (50 50 48)) tail))))
+    (equal effects (list (fn-nntp-reply-effect (append (quote (50 50 48)) tail)))))
+  :rule-classes
+  nil
+  :hints
+  (("Goal"
+     :use
+     ((:instance
+        fn-pcr-expand-inverts-a-distinct-single-reply
+        (octets (append (quote (50 50 48)) tail)))
+       (:instance
+         fn-pcr-over-cursor-never-expands-to-an-article-reply
+         (cur (car (cdr (car effects))))))
+     :in-theory
+     (theory (quote minimal-theory)))))
+
+(local
+  (defthm
+    fn-pcr-220-result-has-220-prefix-by-definition
+    (equal
+      (fn-nntp-result-effects (fn-pcr-220-reply session article number group server fn-arena))
+      (list
+        (fn-nntp-reply-effect
+          (append
+            (quote (50 50 48))
+            (cdr
+              (cdr
+                (cdr
+                  (car
+                    (cdr
+                      (car
+                        (fn-nntp-result-effects
+                          (fn-pcr-220-reply session article number group server fn-arena))))))))))))
+    :rule-classes
+    nil
+    :hints
+    (("Goal"
+       :in-theory
+       (e/d
+         (fn-pcr-220-reply
+           fn-nntp-result-effects
+           fn-nntp-make-result
+           fn-nntp-reply-effect
+           fn-nntp-retrieval-initial
+           fn-nntp-append-pieces
+           fn-nntp-crlf)
+         (fn-nntp-decimal-field
+           fn-article-msgid
+           fn-pcr-served-octets
+           fn-nntp-stuff-lines
+           fn-nntp-crlf-lines
+           fn-nntp-set-cursor))))))
+
+(defthm
+  fn-pcr-expanded-numbered-220-is-the-raw-reply
+  (implies
+    (equal
+      (fn-ovw-expand effects fn-arena fn-cat)
+      (fn-ovw-expand
+        (fn-nntp-result-effects (fn-pcr-220-reply session article number group server fn-arena))
+        fn-arena
+        fn-cat))
+    (equal
+      effects
+      (fn-nntp-result-effects (fn-pcr-220-reply session article number group server fn-arena))))
+  :rule-classes
+  nil
+  :hints
+  (("Goal"
+     :use
+     (fn-pcr-220-result-has-220-prefix-by-definition
+       (:instance
+         fn-pcr-expand-inverts-220-reply
+         (tail
+           (cdr
+             (cdr
+               (cdr
+                 (car
+                   (cdr
+                     (car
+                       (fn-nntp-result-effects
+                         (fn-pcr-220-reply session article number group server fn-arena)))))))))))
+     :in-theory
+     (union-theories
+       (quote (fn-ovw-expand-of-reply-cons fn-ovw-expand-of-nil))
+       (theory (quote minimal-theory))))))
