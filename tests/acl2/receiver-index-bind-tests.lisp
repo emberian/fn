@@ -1,5 +1,5 @@
 (in-package "ACL2")
-(include-book "../../books/receiver-index-custody")
+(include-book "../../books/receiver-query-binding")
 ; Internal helper model teeth, not a fabricated committed producer receipt.
 (defconst *fn-ric-bind-row*
  '(:receiver-custody :source (:index-query 2 1 1 1)
