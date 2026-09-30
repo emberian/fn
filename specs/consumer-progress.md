@@ -1147,3 +1147,24 @@ staging/durable write. The readonly getter neither rebuilds metadata nor
 establishes correspondence: every actual CP writer, reset and cold replay must
 maintain or explicitly invalidate the joint relation. The selected host join
 is source assembly only, with canonical/funding/activation still unavailable.
+
+The sole carried metadata successor is fixed5:
+`(:account-carries sevenCPfields adoptedRowsMeta pendingPrepMeta entriesListMeta)`.
+The first four meanings stay literal; the fifth holds per-entry list/tail
+annotations. Old4 is explicitly unavailable at successor producers. Actual
+initial, authority and config producers call their decision once and maintain
+this full tuple; no serving operation reconstructs an annotation from a graph.
+Ordinary consumer progress must use the maintained entry producer, not retain
+a stale slot5 carry after register, ACK, rebase or unregister.
+
+Consumer entry preparation now inspects one table cell or rebuilds one prefix
+cell per tick, retaining the unchanged suffix and its annotation. Its exact
+selection/removal matches the existing first-match semantics; duplicate states
+are corruption tests, not valid admitted tables. A ready cursor does not grant
+a publication or freshness right. The actual final classifier, new/ACK entry
+carry, parsed remote-definition validation, captured source revalidation and
+allocation/retirement/quantum funding still precede atomic final mutation.
+Process epoch alone cannot authorize a resumed mutation: all CP-changing
+writers must establish the agreed actual source rule and final validation must
+share a nonyielding owner span with frontier allocation. No schema shape,
+source proof or ready cursor silently supplies that missing lifecycle.
