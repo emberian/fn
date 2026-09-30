@@ -18979,7 +18979,11 @@
         "fn-iprc-row-seal-establishes-directory-carry",
         "fn-iprc-root-one-completes-directory-carry",
         "fn-iprc-writer-complete-publishes-row-domain",
-        "fn-iprc-borrowed-directory-row-read-domain"
+        "fn-iprc-borrowed-directory-row-read-domain",
+        "fn-ipsp-sealed-prepare-establishes-domain",
+        "fn-ipsp-sealed-reserve-register-retains-actual-row",
+        "fn-ipsp-actual-withdraw-preserves-full-domain",
+        "fn-ipsp-actual-redecide-preserves-full-domain"
       ],
       "evidence": [
         "books/index-backing-row-carry.lisp",
@@ -18994,9 +18998,14 @@
         "planning/evidence/index-publication-mapping-2026-09-30",
         "books/index-backing-publication-directory-carry.lisp",
         "tests/acl2/index-backing-publication-directory-tests.lisp",
-        "planning/evidence/index-publication-directory-2026-09-30"
+        "planning/evidence/index-publication-directory-2026-09-30",
+        "books/store-intern-row.lisp",
+        "books/catalog-prepare-sealed.lisp",
+        "books/index-backing-served-producer-carry.lisp",
+        "tests/acl2/index-backing-served-producer-tests.lisp",
+        "planning/evidence/served-publication-producer-2026-09-30"
       ],
-      "progress_note": "Predecessor00c0 normal193424 passes; 2df mapping normal pending. Additive directory successor proofs and literal full copy-to-published-read core scenario pass in modern pub-map; normal pending for new bytes. Fixture children/grants/arena/table-ready setup is explicit, no genuine funding/source/activation claim."
+      "progress_note": "Predecessor00c0 normal193424 passes; mapping/directory and served successor normals pending. Exact modern served staging+single-seal preparation, actual reserve/register attachment, full resulting catalog withdrawal/redecision domain and literal removals pass in modern pub-map. Runtime owner source/arena attachment remains index-owned; nonarticle COW/durable hook, funding/constructors and activation remain open."
     }
   ]
 }

@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1928 |
-| Certification roots in the Makefile | 1800 |
-| Books inside the root closure | 1880 |
-| `defthm` and `defthmd` events | 29399 |
-| `defun` events | 19388 |
+| Books read | 1932 |
+| Certification roots in the Makefile | 1801 |
+| Books inside the root closure | 1882 |
+| `defthm` and `defthmd` events | 29423 |
+| `defun` events | 19393 |
 | Functions with verified guards | 3601 |
 | Functions declared `:verify-guards nil` and never verified | 2267 |
-| Functions left at the default with an explicit guard | 10651 |
-| Functions left at the default with no guard | 2869 |
+| Functions left at the default with an explicit guard | 10652 |
+| Functions left at the default with no guard | 2873 |
 | `assert-event` checks | 23995 |
 | `must-fail` checks | 2506 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 170 |
-| Theorems flagged SUSPECT by shape | 1235 |
+| `encapsulate` events | 174 |
+| Theorems flagged SUSPECT by shape | 1234 |
 | Export-hygiene warnings | 352 |
 | Enabled-projection warnings | 58 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2592 |
+| Include-hygiene warnings | 2597 |
 | Host-names warnings | 2137 |
 | Hand-written-record warnings | 18 |
 
@@ -339,6 +339,7 @@ that `make certify` requests.
 | `books/catalog-number-assignment.lisp` | closure | 0 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/catalog-number-index.lisp` | root | 46 | 10 | 3/0/6/1 | 0 | 0 | 1 |
 | `books/catalog-number-window.lisp` | root | 3 | 1 | 0/1/0/0 | 0 | 0 | 0 |
+| `books/catalog-prepare-sealed.lisp` | - | 0 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/catalog-prepare.lisp` | closure | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/catalog-prepared-record.lisp` | closure | 12 | 11 | 5/0/6/0 | 0 | 0 | 0 |
 | `books/catalog-record.lisp` | root | 29 | 16 | 1/0/13/2 | 0 | 0 | 0 |
@@ -591,13 +592,14 @@ that `make certify` requests.
 | `books/index-backing-layout.lisp` | - | 5 | 7 | 2/0/4/1 | 0 | 0 | 0 |
 | `books/index-backing-page-owners.lisp` | - | 0 | 9 | 1/0/8/0 | 0 | 0 | 0 |
 | `books/index-backing-provider.lisp` | - | 18 | 56 | 24/0/32/0 | 0 | 0 | 0 |
-| `books/index-backing-publication-directory-carry.lisp` | closure | 24 | 10 | 0/7/0/3 | 0 | 0 | 0 |
+| `books/index-backing-publication-directory-carry.lisp` | closure | 25 | 10 | 0/7/0/3 | 0 | 0 | 0 |
 | `books/index-backing-publication-row-carry.lisp` | closure | 20 | 4 | 0/0/1/3 | 0 | 0 | 0 |
 | `books/index-backing-publication.lisp` | - | 0 | 9 | 5/0/4/0 | 0 | 0 | 0 |
 | `books/index-backing-resource-driver.lisp` | - | 5 | 12 | 5/0/7/0 | 0 | 0 | 0 |
 | `books/index-backing-row-carry.lisp` | closure | 17 | 4 | 0/0/4/0 | 0 | 0 | 1 |
 | `books/index-backing-row-copy.lisp` | - | 0 | 6 | 4/0/2/0 | 0 | 0 | 0 |
 | `books/index-backing-row-retain.lisp` | - | 0 | 3 | 1/0/2/0 | 0 | 0 | 0 |
+| `books/index-backing-served-producer-carry.lisp` | closure | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/index-backing-table-layout.lisp` | - | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/index-backing-table-pages.lisp` | - | 0 | 3 | 2/0/1/0 | 0 | 0 | 0 |
 | `books/index-backing-writer.lisp` | - | 0 | 6 | 2/0/4/0 | 0 | 0 | 0 |
@@ -1075,6 +1077,7 @@ that `make certify` requests.
 | `books/store-init-log-publication.lisp` | root | 9 | 3 | 0/2/1/0 | 0 | 0 | 0 |
 | `books/store-init-publication.lisp` | root | 2 | 4 | 0/2/2/0 | 0 | 0 | 0 |
 | `books/store-intern-once.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/store-intern-row.lisp` | - | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/store-intern.lisp` | root | 71 | 21 | 3/0/17/1 | 0 | 0 | 2 |
 | `books/store-log-buffer.lisp` | root | 51 | 19 | 3/1/15/0 | 0 | 0 | 0 |
 | `books/store-log-crash.lisp` | root | 93 | 17 | 0/14/2/1 | 0 | 0 | 0 |
@@ -1529,7 +1532,7 @@ that `make certify` requests.
 | `tests/acl2/heap-figure-tests.lisp` | root | 6 | 11 | 0/0/0/11 | 0 | 5 | 0 |
 | `tests/acl2/heap-open-nursery-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 0 | 1 | 0 |
 | `tests/acl2/heap-reservation-tests.lisp` | root | 0 | 18 | 0/0/0/18 | 0 | 15 | 0 |
-| `tests/acl2/held-rows-intern-tests.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 2 |
+| `tests/acl2/held-rows-intern-tests.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `tests/acl2/held-rows-tests.lisp` | root | 0 | 17 | 0/17/0/0 | 9 | 0 | 0 |
 | `tests/acl2/history-columns-relation-tests.lisp` | root | 5 | 0 | 0/0/0/0 | 2 | 1 | 0 |
 | `tests/acl2/history-columns-store-tests.lisp` | root | 2 | 3 | 0/2/1/0 | 16 | 2 | 0 |
@@ -1580,6 +1583,7 @@ that `make certify` requests.
 | `tests/acl2/index-backing-publication-mapping-tests.lisp` | root | 25 | 9 | 0/1/0/8 | 0 | 0 | 0 |
 | `tests/acl2/index-backing-publication-row-carry-tests.lisp` | root | 19 | 8 | 0/2/0/6 | 0 | 0 | 0 |
 | `tests/acl2/index-backing-row-carry-tests.lisp` | root | 9 | 10 | 0/0/1/9 | 13 | 0 | 0 |
+| `tests/acl2/index-backing-served-producer-tests.lisp` | root | 15 | 3 | 0/0/0/3 | 0 | 0 | 0 |
 | `tests/acl2/index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/injection-info-params-tests.lisp` | root | 0 | 5 | 0/0/3/2 | 48 | 14 | 0 |
 | `tests/acl2/injection-tests.lisp` | root | 0 | 11 | 0/0/0/11 | 156 | 10 | 0 |
@@ -2319,7 +2323,6 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-hp-w-cells-of-is` | `books/history-pages-write.lisp` | 257 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-hrf-reduce-pin-keeps-logical-by-definition` | `books/history-resource-refinement.lisp` | 76 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-hrt-event-is-intern-event-by-definition` | `tests/acl2/held-rows-intern-tests.lisp` | 9 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
-| `fn-hrt-row-at-is-intern-row-at-by-definition` | `tests/acl2/held-rows-intern-tests.lisp` | 30 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-hsig-keyring-snapshot-folds` | `books/hybrid-store.lisp` | 753 | arm-of-definition: the hypotheses select one IF/COND arm of fn-hsig-keyring-snapshot and the conclusion is that arm's value |
 | `fn-hw-composite-of-a-row` | `books/history-wire.lisp` | 21 | arm-of-definition: the hypotheses select one IF/COND arm of fn-hw-composite and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-hw-composite and the conclusion is that branch's value |
 | `fn-hw-composite-of-a-wire-event` | `books/history-wire.lisp` | 25 | arm-of-definition: the hypotheses select one IF/COND arm of fn-hw-composite and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-hw-composite and the conclusion is that branch's value |

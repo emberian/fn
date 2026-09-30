@@ -177,3 +177,35 @@ its exact source hashes. The genuine served sealed-PC/SAMEarena producer hook,
 query capture lifetime, durable event source correspondence for the full roster,
 cold held16 loader, admitted constructors and complete operation funding remain
 open. The fixture does not assert those properties.
+
+### Served single-seal producer and actual event replacement inputs
+
+The narrow `store-intern-row` and `catalog-prepare-sealed` leaves extract the
+actual modern `FnInternRowAt` and `FnCatPrepareSealed` without changing their
+bodies or guards. The extraction manifest pins canonical preimages and finite
+include/removal patches; an assembled cohort must retain exactly one definition.
+The staged row includes the real sixteenth acceptance-binding field.
+
+With that binding, staging at the original arena count followed by the actual
+single `FnArenaSealBuffer` establishes the prepared row's domain at the resulting
+arena prefix. Equality of the actual buffer bytes and wire payload additionally
+connects this served preparation to `FnCatPrepare`; it is required for source
+correspondence even though row-domain typing alone does not inspect bytes.
+Actual `FnIGRReserve` success and `FnIGRRegister` preserve this prepared row in
+the builder. Missing children retain the reserved source and return unavailable.
+The owner hook must still establish the same sealed arena incarnation and keep
+its lifetime through registration; equal counts alone do not prove that.
+
+Actual `FnCatWithdraw` preserves the complete resulting catalog domain when the
+old catalog carries it and the withdrawing ordinal is natural. Actual
+`FnCatRedecide` preserves it when the old catalog carries it and the selected
+ordinal is within the old count. Literal fixtures start with actual served
+prepare and `FnCatCommit`. They remove each premise independently, including
+an out-of-range redecision that appends a malformed row. These are replacement
+input contracts for the index-owned delta COW implementation. They do not yet
+establish its dispatch, bounded policy loop, combined append/cancel update,
+row-preserving durable event roster, or the final STATE publication hook.
+
+This successor has protected modern source proof and literal test evidence.
+Normal qualification remains runner-owned and pending; installation, complete
+allocation funding and served activation are not claimed.

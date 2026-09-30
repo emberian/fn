@@ -17789,6 +17789,22 @@
         {
           "kind": "theorem",
           "name": "fn-iprc-borrowed-directory-row-read-domain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipsp-sealed-prepare-establishes-domain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipsp-sealed-reserve-register-retains-actual-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipsp-actual-withdraw-preserves-full-domain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipsp-actual-redecide-preserves-full-domain"
         }
       ],
       "pending_subject": "Actual served sealed-PC/SAMEarena source attachment and complete durable event roster; query capture/lifetime/owner STATE composition remains conditional. Actual internal copy/seal/share/root/publication/read boundary now has maintained typed-row carry."

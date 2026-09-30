@@ -1160,6 +1160,7 @@
     "tests/acl2/index-backing-publication-row-carry-tests",
     "tests/acl2/index-backing-publication-mapping-tests",
     "tests/acl2/index-backing-publication-directory-tests",
+    "tests/acl2/index-backing-served-producer-tests",
     "tests/acl2/catalog-tests",
     "tests/acl2/catalog-commit-tests",
     "tests/acl2/catalog-delta-tests",
@@ -1804,26 +1805,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1928,
-    "books_in_root_closure": 1880,
-    "roots": 1800,
-    "theorems": 29399,
-    "functions": 19388,
+    "books": 1932,
+    "books_in_root_closure": 1882,
+    "roots": 1801,
+    "theorems": 29423,
+    "functions": 19393,
     "assert_events": 23995,
     "must_fails": 2506,
     "prover_refusals": 0,
-    "encapsulates": 170,
+    "encapsulates": 174,
     "guards": {
       "verified": 3601,
       "declared-off": 2267,
-      "default-guarded": 10651,
-      "default-unguarded": 2869
+      "default-guarded": 10652,
+      "default-unguarded": 2873
     },
-    "suspect_theorems": 1235,
+    "suspect_theorems": 1234,
     "export_hygiene_warnings": 352,
     "enabled_projection_warnings": 58,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2592,
+    "include_hygiene_warnings": 2597,
     "host_names_warnings": 2137,
     "hand_written_record_warnings": 18
   },
@@ -8969,6 +8970,33 @@
       "encapsulates": 0,
       "includes": [
         "catalog-number-index"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/catalog-prepare-sealed.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "catalog",
+        "catalog-prepared-record"
       ],
       "system_includes": [],
       "suspects": [],
@@ -16954,7 +16982,7 @@
       "book": "books/index-backing-publication-directory-carry.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 24,
+      "theorems": 25,
       "functions": 10,
       "guards": {
         "verified": 0,
@@ -17147,6 +17175,34 @@
       "system_includes": [
         "arithmetic-5/top"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/index-backing-served-producer-carry.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 8,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 4,
+      "includes": [
+        "catalog-prepare-sealed",
+        "index-backing-publication-row-carry",
+        "store-intern-row"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -31254,6 +31310,32 @@
       "read_error": null
     },
     {
+      "book": "books/store-intern-row.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "catalog-record"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/store-intern.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -44205,8 +44287,7 @@
       ],
       "system_includes": [],
       "suspects": [
-        "fn-hrt-event-is-intern-event-by-definition",
-        "fn-hrt-row-at-is-intern-row-at-by-definition"
+        "fn-hrt-event-is-intern-event-by-definition"
       ],
       "read_error": null
     },
@@ -45561,6 +45642,33 @@
       "encapsulates": 0,
       "includes": [
         "../../books/index-backing-row-carry"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/index-backing-served-producer-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 15,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/index-backing-served-producer-carry",
+        "index-backing-publication-row-carry-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -60062,14 +60170,6 @@
       "line": 9,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
-        "reflexive-conclusion: a conjunct is (equal X X)"
-      ]
-    },
-    {
-      "theorem": "fn-hrt-row-at-is-intern-row-at-by-definition",
-      "book": "tests/acl2/held-rows-intern-tests.lisp",
-      "line": 30,
-      "reasons": [
         "reflexive-conclusion: a conjunct is (equal X X)"
       ]
     },
@@ -77520,6 +77620,27 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/index-backing-served-producer-carry.lisp",
+        "line": 4,
+        "include": "index-backing-publication-row-carry",
+        "included": "books/index-backing-publication-row-carry.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/index-backing-served-producer-carry.lisp",
+        "line": 5,
+        "include": "store-intern-row",
+        "included": "books/store-intern-row.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/index-backing-served-producer-carry.lisp",
+        "line": 6,
+        "include": "catalog-prepare-sealed",
+        "included": "books/catalog-prepare-sealed.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/index-backing-table-layout.lisp",
         "line": 6,
         "include": "index-page-debt-transfer",
@@ -85091,6 +85212,20 @@
         "line": 2,
         "include": "../../books/index-backing-publication-row-carry",
         "included": "books/index-backing-publication-row-carry.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/index-backing-served-producer-tests.lisp",
+        "line": 2,
+        "include": "index-backing-publication-row-carry-tests",
+        "included": "tests/acl2/index-backing-publication-row-carry-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/index-backing-served-producer-tests.lisp",
+        "line": 3,
+        "include": "../../books/index-backing-served-producer-carry",
+        "included": "books/index-backing-served-producer-carry.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
