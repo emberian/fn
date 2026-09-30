@@ -1456,9 +1456,11 @@
     "books/peer-adoption-receipt-rows",
     "books/peer-adoption-invalidation",
     "books/peer-invite-retry",
+    "books/peer-invite-replay",
     "tests/acl2/peer-invite-tests",
     "tests/acl2/peer-adoption-receipt-rows-tests",
     "tests/acl2/peer-invite-retry-tests",
+    "tests/acl2/peer-invite-replay-tests",
     "tests/acl2/peer-invite-administrator-tests",
     "books/tls-reload",
     "tests/acl2/tls-reload-tests",
@@ -1818,12 +1820,12 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1899,
-    "books_in_root_closure": 1882,
-    "roots": 1814,
-    "theorems": 29831,
+    "books": 1901,
+    "books_in_root_closure": 1884,
+    "roots": 1816,
+    "theorems": 29832,
     "functions": 19096,
-    "assert_events": 24052,
+    "assert_events": 24056,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 158,
@@ -1837,7 +1839,7 @@
     "export_hygiene_warnings": 350,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2569,
+    "include_hygiene_warnings": 2572,
     "host_names_warnings": 2193,
     "hand_written_record_warnings": 18
   },
@@ -24527,6 +24529,32 @@
         "fn-peer-submission-octets-of-fn-peer-make-submission",
         "fn-peer-submission-peer-of-fn-peer-make-submission"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/peer-invite-replay.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "peer-invite-retry"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -50301,6 +50329,33 @@
       "encapsulates": 0,
       "includes": [
         "../../books/native-admin"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/peer-invite-replay-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 3,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/peer-invite-replay",
+        "peer-invite-retry-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -77554,6 +77609,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/peer-invite-replay.lisp",
+        "line": 4,
+        "include": "peer-invite-retry",
+        "included": "books/peer-invite-retry.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/peer-invite-retry.lisp",
         "line": 7,
         "include": "peer-adoption-receipt-rows",
@@ -86469,6 +86531,20 @@
         "line": 229,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/peer-invite-replay-tests.lisp",
+        "line": 2,
+        "include": "peer-invite-retry-tests",
+        "included": "tests/acl2/peer-invite-retry-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/peer-invite-replay-tests.lisp",
+        "line": 3,
+        "include": "../../books/peer-invite-replay",
+        "included": "books/peer-invite-replay.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

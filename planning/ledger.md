@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1899 |
-| Certification roots in the Makefile | 1814 |
-| Books inside the root closure | 1882 |
-| `defthm` and `defthmd` events | 29831 |
+| Books read | 1901 |
+| Certification roots in the Makefile | 1816 |
+| Books inside the root closure | 1884 |
+| `defthm` and `defthmd` events | 29832 |
 | `defun` events | 19096 |
 | Functions with verified guards | 3530 |
 | Functions declared `:verify-guards nil` and never verified | 2277 |
 | Functions left at the default with an explicit guard | 10433 |
 | Functions left at the default with no guard | 2856 |
-| `assert-event` checks | 24052 |
+| `assert-event` checks | 24056 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 350 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2569 |
+| Include-hygiene warnings | 2572 |
 | Host-names warnings | 2193 |
 | Hand-written-record warnings | 18 |
 
@@ -841,6 +841,7 @@ that `make certify` requests.
 | `books/peer-host.lisp` | closure | 12 | 21 | 0/0/21/0 | 0 | 0 | 1 |
 | `books/peer-inbound-invariants.lisp` | root | 30 | 1 | 0/0/1/0 | 0 | 0 | 1 |
 | `books/peer-inbound.lisp` | root | 82 | 80 | 15/3/62/0 | 0 | 0 | 28 |
+| `books/peer-invite-replay.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/peer-invite-retry.lisp` | root | 17 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/peer-invite.lisp` | root | 50 | 77 | 0/0/77/0 | 0 | 0 | 1 |
 | `books/peer-offer-indexed.lisp` | root | 14 | 7 | 6/0/1/0 | 0 | 0 | 0 |
@@ -1747,6 +1748,7 @@ that `make certify` requests.
 | `tests/acl2/peer-host-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 83 | 9 | 0 |
 | `tests/acl2/peer-inbound-tests.lisp` | root | 0 | 11 | 0/2/0/9 | 276 | 5 | 0 |
 | `tests/acl2/peer-invite-administrator-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
+| `tests/acl2/peer-invite-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/peer-invite-retry-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 0 | 0 |
 | `tests/acl2/peer-invite-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 157 | 27 | 0 |
 | `tests/acl2/peer-offer-indexed-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 38 | 3 | 0 |
