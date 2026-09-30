@@ -60,4 +60,20 @@
   :hints (("Goal" :in-theory (enable fn-rxb-append-byte fn-octets$a-len
                                     fn-octets$a-append-octet))))
 
+ ; Resource side of the registered RX append export. Its :exec is exactly
+; fn-octets$c-append-octet above. Capacity is physical carried state, not
+; reconstructed from the rows-only logical octet value. Actual installed
+; capacity and its retained U charge are owed by the startup/pool boundary.
+(defthm fn-rxb-installed-capacity-append-does-not-resize
+  (implies (and (<= *fn-cbud-read-quantum* (fn-octets$c-buf-length fn-octets$c))
+                (< (fn-octets$c-fill fn-octets$c)
+                   (fn-cbud-step-read-octets limits)))
+           (and (equal (fn-octets$c-buf-length
+                         (fn-octets$c-append-octet byte fn-octets$c))
+                       (fn-octets$c-buf-length fn-octets$c))
+                (equal (fn-octets$c-fill
+                         (fn-octets$c-append-octet byte fn-octets$c))
+                       (+ 1 (fn-octets$c-fill fn-octets$c)))))
+  :hints (("Goal" :in-theory (enable fn-octets$c-append-octet))))
+
 (in-theory (disable fn-rxb-append-byte fn-rxb-layout-components))

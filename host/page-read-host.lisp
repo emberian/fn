@@ -6,11 +6,10 @@
 (include-book "../books/page-read-ownership")
 (include-book "../books/page-discovery-ledger")
 (include-book "../books/cold-read-layout")
+(include-book "../books/incoming-octet-holder")
+(include-book "../books/page-read-pool-state")
 
-(defstobj fn-page-read-pool
-  (fn-prp-data :initially nil)
-  (fn-prp-mode :initially :uninitialized)
-  :inline t)
+
 
  ; A served recovery is selected explicitly before Store open. Opening an
 ; offline Store supplies a separate context; absence alone grants no I/O.
@@ -67,15 +66,9 @@
                (let ((fn-page-read-pool (update-fn-prp-mode :served fn-page-read-pool)))
                (mv :installed fn-page-read-pool))))))))
 
-(defun fn-owner-page-read-ledger (fn-page-read-pool)
-  (declare (xargs :stobjs fn-page-read-pool))
-  (fn-prl-nth 0 (fn-prp-data fn-page-read-pool)))
 
-(defun fn-owner-page-read-keep-ledger (ledger fn-page-read-pool)
-  (declare (xargs :stobjs fn-page-read-pool))
-  (let ((data (fn-prp-data fn-page-read-pool)))
-    (update-fn-prp-data (list ledger (fn-prl-nth 1 data) (fn-prl-nth 2 data)
-                              (fn-prl-nth 3 data) (fn-prl-nth 4 data)) fn-page-read-pool)))
+
+
 
  ; Explicit offline registration is distinct from an unfunded served start.
 (defun fn-owner-page-read-registration-mode (fn-page-read-pool)
@@ -186,3 +179,57 @@
     (if (equal word :stale) (mv word fn-page-read-pool)
       (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
         (mv word fn-page-read-pool)))))
+
+
+; Exclusive incoming holder is part of THIS pool, not a second state-global
+; ledger or a caller-supplied row. Serialize all these exports owner->pool.
+(defun fn-owner-incoming-reserve (demand fn-page-read-pool)
+  (declare (xargs :stobjs fn-page-read-pool))
+  (mv-let (word token ledger slot)
+    (fn-ioh-admit (fn-owner-page-read-ledger fn-page-read-pool)
+                  (fn-prp-incoming-slot fn-page-read-pool) demand)
+    (if (not (equal word :admitted)) (mv word nil fn-page-read-pool)
+      (let* ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool))
+             (fn-page-read-pool (update-fn-prp-incoming-slot slot fn-page-read-pool)))
+        (mv word token fn-page-read-pool)))))
+(defun fn-owner-incoming-mutation-allowedp (token fn-page-read-pool)
+  (declare (xargs :stobjs fn-page-read-pool))
+  (if (member-eq (fn-ioh-access (fn-prp-incoming-slot fn-page-read-pool) token :mutate)
+                 '(:unheld :holder-setup)) t nil))
+(defun fn-owner-incoming-seal (token fn-page-read-pool)
+  (declare (xargs :stobjs fn-page-read-pool))
+  (mv-let (word slot) (fn-ioh-seal (fn-prp-incoming-slot fn-page-read-pool) token)
+    (if (not (equal word :sealed)) (mv word fn-page-read-pool)
+      (let ((fn-page-read-pool (update-fn-prp-incoming-slot slot fn-page-read-pool)))
+        (mv word fn-page-read-pool)))))
+(defun fn-owner-incoming-cancel (token fn-page-read-pool)
+  (declare (xargs :stobjs fn-page-read-pool))
+  (mv-let (word slot) (fn-ioh-cancel (fn-prp-incoming-slot fn-page-read-pool) token)
+    (if (not (equal word :cancelled)) (mv word fn-page-read-pool)
+      (let ((fn-page-read-pool (update-fn-prp-incoming-slot slot fn-page-read-pool)))
+        (mv word fn-page-read-pool)))))
+(defun fn-owner-incoming-release (token joined aliases-clear fn-page-read-pool)
+  (declare (xargs :stobjs fn-page-read-pool))
+  (mv-let (word ledger slot)
+    (fn-ioh-release (fn-owner-page-read-ledger fn-page-read-pool)
+                    (fn-prp-incoming-slot fn-page-read-pool) token joined aliases-clear)
+    (if (not (equal word :released)) (mv word fn-page-read-pool)
+      (let* ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool))
+             (fn-page-read-pool (update-fn-prp-incoming-slot slot fn-page-read-pool)))
+        (mv word fn-page-read-pool)))))
+
+(defthm fn-owner-incoming-live-readonly-forbids-actual-mutation
+  (implies (member-equal (fn-prl-nth 1 (fn-prp-incoming-slot fn-page-read-pool))
+                         '(:readonly :cancelled))
+           (not (fn-owner-incoming-mutation-allowedp token fn-page-read-pool)))
+  :hints (("Goal" :cases ((fn-prp-incoming-slot fn-page-read-pool))
+           :in-theory (enable fn-owner-incoming-mutation-allowedp))))
+
+(defthm fn-owner-incoming-refused-release-keeps-pool
+  (implies (not (equal (mv-nth 0 (fn-owner-incoming-release
+                                  token joined aliases-clear fn-page-read-pool))
+                       :released))
+           (equal (mv-nth 1 (fn-owner-incoming-release
+                              token joined aliases-clear fn-page-read-pool))
+                  fn-page-read-pool))
+  :hints (("Goal" :in-theory (enable fn-owner-incoming-release))))

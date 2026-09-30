@@ -289,3 +289,13 @@ query return and last-alias clearing. Ordinary receive service needs a distinct
 funded congruent buffer at the existing connection read quantum. These source
 components remain unactivated pending actual readonly dispatch, all native and
 concrete mutation hooks, constructor census and complete startup/runtime funding.
+
+The shared pool is one three-field stobj (ledger data, lifecycle mode, incoming
+slot), declared in `books/page-read-pool-state.lisp`; extraction does not reset
+its shared NEXT. Actual wrapper sequences reject spent input tokens both while
+unheld and after fresh readmission. Repeated cancellation retains the same row.
+A receive append's no-resize theorem requires actual installed physical capacity
+and room within the existing read quantum. Matching source admission establishes
+these boundaries; the changed pool layout still needs its own startup baseline
+and qualified image, and incoming capture requires actual incremental resident
+constructor/retention demand above the retained packed/open connection charge.

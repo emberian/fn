@@ -40,7 +40,7 @@
 (defun fn-ioh-access (slot token operation)
   (declare (xargs :guard t))
   (cond ((not (member-equal operation '(:read :mutate))) :invalid-buffer-operation)
-        ((not slot) :unheld)
+        ((not slot) (if (null token) :unheld :incoming-busy))
         ((not (fn-ioh-matches slot token)) :incoming-busy)
         ((equal (fn-prl-nth 1 slot) :setup) :holder-setup)
         ((and (equal operation :read) (equal (fn-prl-nth 1 slot) :readonly))
@@ -56,7 +56,8 @@
   (declare (xargs :guard t))
   (if (and slot (fn-ioh-matches slot token)
            (member-equal (fn-prl-nth 1 slot) '(:setup :readonly :cancelled)))
-      (mv :cancelled (list token :cancelled (fn-prl-nth 2 slot)))
+      (if (equal (fn-prl-nth 1 slot) :cancelled) (mv :cancelled slot)
+      (mv :cancelled (list token :cancelled (fn-prl-nth 2 slot))))
     (mv :stale slot)))
 ; JOINED/ALIASES-CLEAR are actual observations owed by the host-called
 ; composed completion boundary. A timeout or cancellation does not settle.

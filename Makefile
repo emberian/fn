@@ -326,7 +326,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-identity-reserve \
 	books/identity-reserve-trace \
 	books/owner-identity-prepare \
+	books/page-read-pool-state \
 	books/incoming-octet-holder \
+	tests/acl2/incoming-pool-holder-tests \
 	tests/acl2/incoming-octet-holder-tests \
 	books/receive-octet-buffer \
 	tests/acl2/receive-octet-buffer-tests \

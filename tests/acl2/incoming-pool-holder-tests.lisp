@@ -1,0 +1,56 @@
+(in-package "ACL2")
+(include-book "../../host/page-read-host")
+(defun iohp-test-view (fn-page-read-pool)
+  (declare (xargs :stobjs fn-page-read-pool))
+  (list (fn-prp-data fn-page-read-pool) (fn-prp-mode fn-page-read-pool)
+        (fn-prp-incoming-slot fn-page-read-pool)))
+(defun iohp-test-in (fn-page-read-pool)
+  (declare (xargs :stobjs fn-page-read-pool :verify-guards nil))
+  (mv-let (installed fn-page-read-pool)
+    (fn-owner-page-read-install '(8192 0 0 0 8) 0 0 0 8 fn-page-read-pool)
+    (mv-let (reserved-a token-a fn-page-read-pool)
+      (fn-owner-incoming-reserve '(256 0 0 0 1) fn-page-read-pool)
+      (let ((setup-a (fn-owner-incoming-mutation-allowedp token-a fn-page-read-pool)))
+        (mv-let (sealed fn-page-read-pool) (fn-owner-incoming-seal token-a fn-page-read-pool)
+          (let ((sealed-denied (not (fn-owner-incoming-mutation-allowedp token-a fn-page-read-pool))))
+            (mv-let (cancelled fn-page-read-pool) (fn-owner-incoming-cancel token-a fn-page-read-pool)
+              (let ((cancelled-view (iohp-test-view fn-page-read-pool)))
+                (mv-let (cancelled-twice fn-page-read-pool)
+                  (fn-owner-incoming-cancel token-a fn-page-read-pool)
+                  (let ((cancel-idempotent (equal cancelled-view (iohp-test-view fn-page-read-pool))))
+                    (mv-let (unjoined fn-page-read-pool)
+                      (fn-owner-incoming-release token-a nil t fn-page-read-pool)
+                      (let ((unjoined-kept (equal cancelled-view (iohp-test-view fn-page-read-pool))))
+                        (mv-let (released-a fn-page-read-pool)
+                          (fn-owner-incoming-release token-a t t fn-page-read-pool)
+                          (let ((released-view (iohp-test-view fn-page-read-pool)))
+                            (mv-let (duplicate fn-page-read-pool)
+                              (fn-owner-incoming-release token-a t t fn-page-read-pool)
+                              (let ((duplicate-kept (equal released-view (iohp-test-view fn-page-read-pool)))
+                                    (stale-idle-denied (not (fn-owner-incoming-mutation-allowedp token-a fn-page-read-pool))))
+                                (mv-let (reserved-b token-b fn-page-read-pool)
+                                  (fn-owner-incoming-reserve '(256 0 0 0 1) fn-page-read-pool)
+                                  (let ((b-view (iohp-test-view fn-page-read-pool)))
+                                    (mv-let (stale fn-page-read-pool)
+                                      (fn-owner-incoming-release token-a t t fn-page-read-pool)
+                                      (let ((stale-kept (equal b-view (iohp-test-view fn-page-read-pool)))
+                                            (stale-denied (not (fn-owner-incoming-mutation-allowedp token-a fn-page-read-pool)))
+                                            (b-allowed (fn-owner-incoming-mutation-allowedp token-b fn-page-read-pool)))
+                                        (mv (list installed reserved-a token-a setup-a sealed sealed-denied
+                                                  cancelled cancelled-twice cancel-idempotent unjoined unjoined-kept
+                                                  released-a duplicate duplicate-kept stale-idle-denied reserved-b token-b
+                                                  stale stale-kept stale-denied b-allowed
+                                                  (fn-prl-nth 1 (fn-owner-page-read-ledger fn-page-read-pool))
+                                                  (fn-prl-nth 2 (fn-owner-page-read-ledger fn-page-read-pool)))
+                                            fn-page-read-pool)))))))))))))))))))))
+(defun iohp-test ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-page-read-pool
+    (mv-let (result fn-page-read-pool) (iohp-test-in fn-page-read-pool) result)))
+; Actual wrapper lifecycle, complete immutable pool field views at each
+; refused transition. B remains live and owns a fresh nonrecycled identity.
+(assert-event
+ (equal (iohp-test)
+        '(:installed :admitted (:incoming 0) t :sealed t
+          :cancelled :cancelled t :incoming-held t :released :incoming-held t t
+          :admitted (:incoming 1) :incoming-held t t t (256 0 0 0 2) 2)))
