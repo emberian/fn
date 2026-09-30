@@ -23,10 +23,12 @@ import json
 import os
 from pathlib import Path
 import shutil
+import ssl
 import subprocess
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
@@ -382,3 +384,154 @@ class LabTests(DryRun, unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProtectedReaderDriverTests(unittest.TestCase):
+    """Driver outcomes from a scripted peer; this cannot certify real INN."""
+
+    def driver(self):
+        namespace = {"__name__": "inn_driver_test"}
+        exec(compile(inn_lab.INN_DRIVER, "<inn_driver>", "exec"), namespace)
+        return namespace
+
+    def test_failed_login_does_not_authorize_then_correct_login_reads(self):
+        driver = self.driver()
+        commands = []
+        replies = iter(["381 password", "481 denied", "480 authenticate",
+                        "381 password", "281 authenticated", "211 group", "220 article"])
+        class ScriptedPeer:
+            greeting = "200 ready"
+            sock = SimpleNamespace(version=lambda: "TLSv1.3")
+            def __init__(self, port):
+                self.port = port
+            def starttls(self, cafile):
+                commands.append(("TLS", cafile))
+                return "382 negotiate"
+            def cmd(self, command):
+                commands.append(command)
+                return next(replies)
+            def block(self):
+                return b"Subject: test\r\n\r\nbody\r\n"
+            def close(self):
+                commands.append("closed")
+        driver["Wire"] = ScriptedPeer
+        with tempfile.TemporaryDirectory() as tmp:
+            password = Path(tmp) / "password"
+            password.write_bytes(b"fixture-secret\n")
+            result = driver["protected_read"](SimpleNamespace(
+                port=11421, cafile="scratch-ca", username="fn-lab", group="fn.letters",
+                password_file=str(password), msgid="<secure@example.invalid>"))
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(commands[0], ("TLS", "scratch-ca"))
+        self.assertEqual(commands[-1], "closed")
+        self.assertEqual(commands.count("AUTHINFO PASS fixture-secret"), 1)
+        self.assertNotIn("fixture-secret", json.dumps(result))
+        self.assertNotIn("not-the-fixture-password", json.dumps(result))
+
+    def test_refused_login_stops_without_article_or_claim_of_success(self):
+        driver = self.driver()
+        commands = []
+        replies = iter(["381 password", "481 denied", "480 authenticate",
+                        "381 password", "481 still denied"])
+        class ScriptedPeer:
+            greeting = "200 ready"
+            sock = SimpleNamespace(version=lambda: "TLSv1.3")
+            def __init__(self, port):
+                pass
+            def starttls(self, cafile):
+                return "382 negotiate"
+            def cmd(self, command):
+                commands.append(command)
+                return next(replies)
+            def close(self):
+                commands.append("closed")
+        driver["Wire"] = ScriptedPeer
+        with tempfile.TemporaryDirectory() as tmp:
+            password = Path(tmp) / "password"
+            password.write_bytes(b"fixture-secret\n")
+            result = driver["protected_read"](SimpleNamespace(
+                port=11421, cafile="scratch-ca", username="fn-lab", group="fn.letters",
+                password_file=str(password), msgid="<secure@example.invalid>"))
+        self.assertFalse(result["ok"], result)
+        self.assertNotIn("article", result)
+        self.assertFalse(any(c.startswith("ARTICLE ") for c in commands))
+        self.assertEqual(commands[-1], "closed")
+
+    def test_rejected_tls_cannot_send_credentials_and_still_closes(self):
+        driver = self.driver()
+        commands = []
+        class ScriptedPeer:
+            greeting = "200 ready"
+            def __init__(self, port):
+                pass
+            def starttls(self, cafile):
+                raise ssl.SSLCertVerificationError("untrusted certificate")
+            def cmd(self, command):
+                commands.append(command)
+                raise AssertionError("no credentials after TLS refusal")
+            def close(self):
+                commands.append("closed")
+        driver["Wire"] = ScriptedPeer
+        with self.assertRaises(ssl.SSLCertVerificationError):
+            driver["protected_read"](SimpleNamespace(port=11421, cafile="wrong-ca"))
+        self.assertEqual(commands, ["closed"])
+
+
+class ProtectedReaderFixtureTests(unittest.TestCase):
+    """The optional row is isolated and fails on authentication or article changes."""
+
+    def lab(self, security=True):
+        return inn_lab.InnLab(inn_lab.LocalHost(Path("/tmp/unused-inn-fixture")),
+            ROOT, "a" * 40, "abc1234", "dev", native_image="/opt/fn/fn-host",
+            inn_prefix="/isolated/test-inn", inn_version="2.7.4", inn_port=1,
+            nnrpd_port=2, fn_port=3, tap_out_port=4, tap_in_port=5,
+            inn_security=security, inn_security_port=6)
+
+    def test_requires_an_explicit_prefix_and_distinct_security_port(self):
+        for extra in (["--inn-security"],
+                      ["--inn-security", "--inn-prefix", "/tank/fn/inn/2.7.4"],
+                      ["--inn-security", "--inn-prefix", "/isolated/test-inn",
+                       "--inn-security-port", str(inn_lab.FN_PORT)]):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as out:
+                inn_lab.main(["HEAD", "--native-image", "/opt/fn/fn-host"] + extra)
+            self.assertEqual(out.exception.code, 2)
+
+    def test_cleanup_kills_only_the_owned_recorded_reader_pids(self):
+        lab = self.lab()
+        lab.started_pids = {"nnrpd-security": "123", "nnrpd": "456", "unrelated": "789"}
+        commands = []
+        lab.sh = lambda name, command, **kwargs: commands.append(command)
+        lab.inn_stop()
+        self.assertEqual(len(commands), 2)
+        self.assertIn("kill 123 ", commands[0])
+        self.assertIn("kill 456 ", commands[1])
+        self.assertEqual(lab.started_pids, {"unrelated": "789"})
+
+    def test_row_is_absent_when_not_selected_and_keeps_transit_gap_when_selected(self):
+        self.assertNotIn("inn-protected-reader", self.lab(False).ASSERTIONS)
+        lab = self.lab()
+        self.assertIn("inn-protected-reader", lab.ASSERTIONS)
+        self.assertTrue(any("transit relays remain clear" in x for x in lab.STANDING_GAPS))
+        config = inn_lab.READERS_SECURITY_CONF.format(prefix="/isolated/test-inn")
+        self.assertNotIn("default:", config)
+        self.assertIn("require_encryption: true", config)
+        self.assertIn("access: RA", config)
+
+    def test_success_requires_authorized_read_and_unchanged_body(self):
+        original = b"Path: fn!not-for-mail\r\nSubject: example\r\n\r\nbody\r\n"
+        for authenticated, served, expected in ((True, original, True),
+                (False, original, False), (True, original.replace(b"body", b"edit"), False),
+                (True, b"", False)):
+            lab = self.lab()
+            lab.held_octets["fn-article"] = original
+            result = dict(ok=authenticated, starttls="382 ready", tls="TLSv1.3",
+                bad_pass="481 refused", before_login="480 auth required", **{"pass": "281 accepted"},
+                article="220 article", octets=base64.b64encode(served).decode())
+            commands = []
+            lab.drive_inn = lambda phase, extra, name: (
+                commands.append(extra) or inn_lab.Step(name, extra, 0, json.dumps(result), 0))
+            checks = []
+            lab.check = lambda name, ok, *args, **kwargs: checks.append((name, ok))
+            lab.scenario_protected_read()
+            self.assertEqual(checks, [("inn-protected-reader", expected)])
+            self.assertIn('"$HOME"/fn-inn-lab/', commands[0])

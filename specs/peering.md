@@ -1574,6 +1574,26 @@ listing; the exact `kill` timing for S10/S11 as the record index at which the
 signal was sent; what was *not* shown (no TLS, no AUTHINFO, no
 Distribution, no control messages, single host, loopback only).
 
+### 5.1 Optional protected INN reader fixture (W3 source continuation)
+
+`tools/inn_lab.py --inn-security` extends the real-INN lab with a separate,
+loopback-only STARTTLS reader configured from `readers-security.conf`.
+SCN-1029 requires certificate/IP-name verification (RFC 4642 section 2),
+refused and accepted AUTHINFO USER/PASS (RFC 4643 section 2.3), refusal of
+unauthenticated read under INN's local access policy, and a read of the
+article already delivered from fn to innd. Its article comparison permits
+only the Path and Xref changes of RFC 5537 section 3.6. The source harness
+is present; real pinned-INN and matching fn-image execution remains open.
+
+This row measures the external INN reader and its access policy, not fn's
+own protected feed preamble or authorization theorem. The innd transit
+connections remain the original clear loopback connections. The standing
+plaintext INN prefix cannot be used for the optional row. Native protected
+feeding, actual Control-header outcome, Distribution, cancel/expiry,
+bidirectional streaming, failure cases beyond process death and the wider
+RFC audit remain separate original finite work. The legacy `inn-control`
+row is an IHAVE exchange, not a Control-header scenario.
+
 ## 6. The inter-agent angle
 
 Agents are principals ([identity](identity.md), `fn-prin-`): a 32-octet id
