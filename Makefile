@@ -600,6 +600,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/page-read-ownership-tests \
 	books/query-payload-grants \
 	tests/acl2/query-payload-grants-tests \
+	books/query-payload-scalar \
+	tests/acl2/query-payload-scalar-tests \
 	books/index-query-resources \
 	tests/acl2/index-query-resources-tests \
 	books/index-backing-chunks \
@@ -1471,6 +1473,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/page-read-ownership-tests \
 	books/query-payload-grants \
 	tests/acl2/query-payload-grants-tests \
+	books/query-payload-scalar \
+	tests/acl2/query-payload-scalar-tests \
 	books/index-query-resources \
 	tests/acl2/index-query-resources-tests \
 	books/index-backing-chunks \

@@ -17788,9 +17788,12 @@
         "planning/evidence/query-payload-grants-source-2026-09-30.md",
         "books/index-query-resources.lisp",
         "tests/acl2/index-query-resources-tests.lisp",
-        "planning/evidence/index-query-resources-source-2026-09-30.md"
+        "planning/evidence/index-query-resources-source-2026-09-30.md",
+        "books/query-payload-scalar.lisp",
+        "tests/acl2/query-payload-scalar-tests.lisp",
+        "planning/evidence/query-payload-scalar-source-2026-09-30.md"
       ],
-      "progress_note": "Guarded fixed-page component and fixed64 query-payload grant segment admitted with exact output/active-count source teeth. Segment token binds existing provider ticket/local slot/generation/arena incarnation/prefix/nonreused segment ID. Cancel retains debt; only joined exact settlement removes one grant. Actual nested provider admission, aggregate active-count/reset exclusion and native actual-arena association remain to integrate. No funded constructor/profile, certificate, image or default activation claim. Internal same-pool query charge algebra has guarded admission/cancel/joined release and installed-capacity C-to-U conservation. Actual token-only indexed current-row lookup/update, aggregate query-sum invariant, constructor demand and concurrent arena association remain unactivated integration obligations; host-supplied row snapshots are not authority.",
+      "progress_note": "Guarded fixed-page component and fixed64 query-payload grant segment admitted with exact output/active-count source teeth. Segment token binds existing provider ticket/local slot/generation/arena incarnation/prefix/nonreused segment ID. Cancel retains debt; only joined exact settlement removes one grant. Actual nested provider admission, aggregate active-count/reset exclusion and native actual-arena association remain to integrate. No funded constructor/profile, certificate, image or default activation claim. Internal same-pool query charge algebra has guarded admission/cancel/joined release and installed-capacity C-to-U conservation. Actual token-only indexed current-row lookup/update, aggregate query-sum invariant, constructor demand and concurrent arena association remain unactivated integration obligations; host-supplied row snapshots are not authority. Internal guarded scalar length/byte observations consume the SAME held accessor and carried arena incarnation/prefix. Actual registered selected-row/active-grant projection and STATE-derived wrapper are required; supplied held/grant arguments alone are not source authority.",
       "events": [
         "fn-ibp-table-copy-span-exact-output",
         "fn-ibp-row-copy-span-exact-output",
