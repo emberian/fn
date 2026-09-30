@@ -59,18 +59,55 @@
        (max (+ (nfix (fn-crw-nth 1 descriptor)) (nfix (fn-crw-nth 2 descriptor)) 32)
             (- (expt 2 257) 1))))
 
-; Charge each potential list payload and every digest vector slot as a
-; separately boxed maximum natural, even when they actually share/fixnum.
-; Source digest owner bounds another128 scalar results (span/power/counter,
-; checks/ceiling) per step, at most67 bits for signed64 extents. ROOT's32
-; multiply +32 add arithmetic temporaries are additional u256s.
+; Pre-normalization allocation for the selected positive primitive paths.
+; A bignum input has ceil((bits+1)/64) digits. SBCL add/sub and multiply
+; by a positive fixnum allocate an extra digit, even if normalization later
+; reduces the header. Charge the allocated extent, not the normalized value.
+(defun fn-crw-primitive-buffer-octets (magnitude)
+  (declare (xargs :guard t))
+  (fn-crl-align16
+   (+ 8 (* 8 (+ 1 (max 1 (ceiling (+ 1 (integer-length (nfix magnitude))) 64)))))))
+
+; Positive power-of-two CEILING can allocate a quotient and its successor;
+; two extra-digit buffers dominate that path as well as one add/sub buffer
+; and positive multiplication (whose result has at most twice input digits).
+; This is NOT an envelope for signed multiplication/general bignum division,
+; EXPT, ratios, compiler helpers or unknown runtime paths.
+(defun fn-crw-positive-primitive-octets (magnitude)
+  (declare (xargs :guard t))
+  (* 2 (fn-crw-primitive-buffer-octets magnitude)))
+
+; ROOT packs32 bytes with32 positive *256 and32 positive adds. Every input
+; has at most256 bits. The selected runtime allocates the extra digit before
+; normalization, so64 bytes/object rather than the normalized48-byte u256.
+(defun fn-crw-root-primitive-octets ()
+  (declare (xargs :guard t))
+  (* 64 (fn-crw-primitive-buffer-octets (- (expt 2 256) 1))))
+
+; Actual native call-list inventory across all raw branches is75 outer
+; REST/APPEND/MV conses. Fund128 to cover that simultaneous overestimate
+; plus retained result and callsite list wrappers. Borrowed argument payloads
+; are already owned; these lists do not create another integer per cell.
+(defun fn-crw-native-wrapper-conses ()
+  (declare (xargs :guard t)) 128)
+
+; Every retained payload and digest slot receives its own maximum box.
+; The128 high-level scalar-operation inventory separately receives the
+; reviewed positive primitive envelope. Its magnitude is overcharged at
+; the full descriptor/ticket ceiling (actual digest scalars have<=67bits).
+; The source-count/runtime-path join is explicitly pending, not a compiler
+; theorem. See window-source and arithmetic-source evidence beside it.
 (defun fn-crw-source-octets (descriptor ticket)
   (declare (xargs :guard t))
   (let* ((conses (+ (fn-crw-digest-conses) (fn-crw-controller-conses)))
-         (integer-octets (fn-crl-natural-octets (fn-crw-natural-ceiling descriptor ticket))))
-    (+ (fn-crw-backing-octets) (* 16 conses)
-       (* (+ conses 16 64 128) integer-octets)
-       (* 64 (fn-crl-natural-octets (- (expt 2 256) 1))))))
+         (magnitude (fn-crw-natural-ceiling descriptor ticket))
+         (integer-octets (fn-crl-natural-octets magnitude)))
+    (+ (fn-crw-backing-octets) (* 16 (+ conses (fn-crw-native-wrapper-conses)))
+       ; Another32 native scalar boxes overestimate got/fill/effect scalar
+       ; coexistence. Actual raw wrapper uses issued offset/count directly.
+       (* (+ conses 16 64 32) integer-octets)
+       (* 128 (fn-crw-positive-primitive-octets magnitude))
+       (fn-crw-root-primitive-octets))))
 
 ; Per-job resident model has collector coexistence; shared descriptors,
 ; native idle workers and removal scratch remain in permanent baseline.
@@ -112,5 +149,7 @@
 (in-theory (disable fn-crw-nth fn-crw-naturals fn-crw-supportedp
                     fn-crw-backing-octets fn-crw-digest-conses
                     fn-crw-controller-conses fn-crw-natural-ceiling
+                    fn-crw-primitive-buffer-octets fn-crw-positive-primitive-octets
+                    fn-crw-root-primitive-octets fn-crw-native-wrapper-conses
                     fn-crw-source-octets fn-crw-job-demand
                     fn-crw-decoder-backing-octets))

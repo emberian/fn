@@ -640,3 +640,12 @@ successor. A successor can need a larger object at a digit/alignment boundary;
 the old identity's width alone is insufficient. This correction does not
 close primitive arithmetic scratch, first-use native guard-cache baseline,
 actual admission integration or the full producer reserve.
+
+Raw arithmetic funding must charge pre-normalization bignum buffer extents.
+The selected positive-family inventory includes power-of-two CEILING's
+quotient-plus-successor and ROOT packing's extra limb, plus actual native
+REST/MV list wrappers. It excludes general signed division/multiplication,
+EXPT, first-use guard/cache and unexpected condition construction. The current
+source inventory is278400 resident octets for the small descriptor; it remains
+unactivated pending the selected-runtime assumption/caller join and full
+supported producer/default profile.

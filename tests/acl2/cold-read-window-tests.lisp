@@ -9,7 +9,17 @@
 ; A terabyte protected frame still uses the same fixed buffers/inventory.
 (assert! (equal (fn-crw-job-demand *crw-small* 1)
                 (fn-crw-job-demand *crw-large* 1)))
-(assert! (< (car (fn-crw-job-demand *crw-small* 1)) 262144))
+; Independent selected-layout pin: backing17280 + conses1469*16 +
+; retained/native boxes1581*48 + wrapper128*16 + scalar128*(2*64)
+; + ROOT64*64; collector doubles.
+(assert! (equal (car (fn-crw-job-demand *crw-small* 1)) 278400))
+; Mutation witness for replacing allocated bignum extent by normalized size.
+(assert! (and (equal (fn-crl-natural-octets (- (expt 2 256) 1)) 48)
+              (equal (fn-crw-primitive-buffer-octets (- (expt 2 256) 1)) 64)
+              (< (fn-crl-natural-octets (- (expt 2 256) 1))
+                 (fn-crw-primitive-buffer-octets (- (expt 2 256) 1)))
+              (equal (fn-crw-positive-primitive-octets (- (expt 2 67) 1)) 64)
+              (equal (fn-crw-root-primitive-octets) 4096)))
 ; Process-local identities are naturals, not quietly truncated u64s.
 (assert! (< (car (fn-crw-job-demand *crw-small* 1))
              (car (fn-crw-job-demand *crw-small* (expt 2 4096)))))
