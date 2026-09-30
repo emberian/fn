@@ -385,7 +385,17 @@ cannot pass the tester fixtures. Evidence:
 AFTER THE original cut prerequisites; still part of the complete-all portfolio.
 
 W7g **Hypothesis rule-based generation + dependency-aware shrinking**.
-PLANNED: stateful workloads over the IR with bundles for symbolic identities;
+IN PROGRESS: `tools/resilience/generate.py` supplies bounded acceptance
+workloads with a separate keyed fault stream; surviving fault selectors are
+unchanged by unrelated action removal. One generated 15-transition world
+executed through the actual ACL2 acceptance adapter with all three positive
+witnesses and terminal logical settlement. `tools/resilience/shrink.py`
+deletes transitive identity/explicit prerequisites, conservatively retains
+model transition producers, and calls the supplied backend for every trial.
+Only the original violation cause can survive reduction; budget exhaustion
+is reported explicitly. No real violation has yet been minimized by this
+increment. Hypothesis stateful generation remains PLANNED:
+stateful workloads over the IR with bundles for symbolic identities;
 shrinking preserves prerequisites (a retry never survives its post's
 removal); separate randomness streams; the minimized scenario reproduces
 under the same backend. AFTER THE CUT.
