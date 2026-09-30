@@ -243,3 +243,19 @@ allocation theorem or measurement. Supported-profile acceptance uses the
 resulting figure and may refuse budgets that previously fitted; it never
 silently reduces an explicitly requested profile. The carried trie support,
 uint64 value bounds and actual collector/allocator lifetimes remain open.
+
+The actual `fn-owner-prepare-identity` entry now has a preservation theorem
+for the carried obligation correspondence and exact unchanged view/ledger
+effects. Its reachable signed-post fixture stages the composite through that
+same host function; a corrupted-total fixture demonstrates why correspondence
+cannot be dropped. Other prepare variants, durable completion, recovery and
+cold swap remain separate open writer obligations.
+
+For the exact `fn-vdc-put` updater, a count/charge pair grows the resulting
+trie's cons-cell count by at most 2*subject-length + 3. The cold fold's bound
+is the seed's count plus twice the summed key lengths plus three times the
+number of contributions; this bound is unconditional on contribution typing.
+These are retained tree-shape bounds, not allocator/collector measurements or
+bounds on numeric object sizes. Connecting admitted transaction history to
+the cumulative subject support and bounded integers remains necessary for the
+physical reservation claim above.

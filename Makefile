@@ -410,9 +410,13 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/native-status-columns-tests \
 	books/view-delta \
 	books/view-delta-concrete \
+	books/view-delta-space \
+	tests/acl2/view-delta-space-tests \
 	books/retention-obligation-view \
 	books/retention-obligation-view-status \
 	books/owner-obligation-state \
+	books/owner-obligation-writers \
+	tests/acl2/owner-obligation-writers-tests \
 	books/retention-obligation-view-node \
 	books/obligation-subject-grammar \
 	books/obligation-subject-report \

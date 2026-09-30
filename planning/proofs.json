@@ -17812,9 +17812,13 @@
       "status": "planned",
       "evidence": [
         "books/view-delta-concrete.lisp",
+        "books/view-delta-space.lisp",
+        "tests/acl2/view-delta-space-tests.lisp",
         "books/retention-obligation-view.lisp",
         "books/retention-obligation-view-node.lisp",
         "books/owner-obligation-state.lisp",
+        "books/owner-obligation-writers.lisp",
+        "tests/acl2/owner-obligation-writers-tests.lisp",
         "books/owner-reclaim-carry.lisp",
         "books/retention-obligation-view-status.lisp",
         "books/obligation-subject-report.lisp",
@@ -17825,7 +17829,7 @@
         "tests/acl2/obligation-subject-tests.lisp",
         "tests/test_native_obligation_subject.py"
       ],
-      "progress_note": "Clean narrow hbox REPL source evidence for core, node completion/recover and report/codec/operator boundaries, with full antecedent and mutation/corrupted-state teeth. No committed certification manifest or matching native execution. The lifetime-T arithmetic reservation is included in both store and offline-operation figures, with explicit support-hypothesis teeth. Every actual owner writer, carried funding invariant and measured real-caller fast path remain open; no W9 completion claim."
+      "progress_note": "Clean narrow hbox REPL source evidence for core, node completion/recover and report/codec/operator boundaries, with full antecedent and mutation/corrupted-state teeth. No committed certification manifest or matching native execution. The lifetime-T arithmetic reservation is included in both store and offline-operation figures, with explicit support-hypothesis teeth. Actual fn-owner-prepare-identity preserves correspondence and exact view/ledger effects; literal relation and live signed-post/corrupted-total witnesses added. The exact radix updater and cold fold have retained cons-cell bounds, with the fold weakened after proving typing unnecessary. Other actual owner writers, cumulative support/uint64/physical allocation invariant and measured real-caller fast path remain open; no W9 completion claim."
     },
     {
       "id": "PRF-1072",
