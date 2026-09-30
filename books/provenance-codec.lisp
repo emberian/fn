@@ -590,7 +590,8 @@
            (equal (fn-prov-of-wire (fn-prov-wire p)) p))
   :hints (("Goal"
            :cases ((stringp p))
-           :use ((:instance fn-record-string-octets-of-octets-string
+           :use (fn-prov-wire-octets-are-octets
+                 (:instance fn-record-string-octets-of-octets-string
                             (octets (fn-prov-wire-octets p)))
                  (:instance fn-record-string-round-trip (text p))
                  (:instance fn-id-unhex-of-hex-octets
