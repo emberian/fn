@@ -16,20 +16,26 @@
 ; Internal producer endpoint, deliberately absent from the host callback
 ; roster. Matching registered publication/query/grant is the producer's
 ; establishment obligation, not a :ready argument supplied by the host.
-(defun fn-rh-producer-install (effects pin query resource origin fn-render-holder)
+(defun fn-rh-producer-install-positioned (positioned pin query resource origin fn-render-holder)
  (declare (xargs :stobjs fn-render-holder :guard t))
  (if (fn-rh-live fn-render-holder)
   (mv :busy fn-render-holder)
   (let* ((fn-render-holder
            (update-fn-rh-plan
-             (fn-spp-begin (fn-splan-of-effects effects) origin resource)
-             fn-render-holder))
+             positioned fn-render-holder))
          (fn-render-holder (update-fn-rh-pin pin fn-render-holder))
          (fn-render-holder (update-fn-rh-query query fn-render-holder))
          (fn-render-holder (update-fn-rh-resource resource fn-render-holder))
          (fn-render-holder (update-fn-rh-origin origin fn-render-holder))
          (fn-render-holder (update-fn-rh-live t fn-render-holder)))
    (mv :installed fn-render-holder))))
+
+(defun fn-rh-producer-install (effects pin query resource origin fn-render-holder)
+ (declare (xargs :stobjs fn-render-holder :guard t))
+ (if (fn-rh-live fn-render-holder) (mv :busy fn-render-holder)
+  (fn-rh-producer-install-positioned
+   (fn-spp-begin (fn-splan-of-effects effects) origin resource)
+   pin query resource origin fn-render-holder)))
 
 (defun fn-rh-status (fn-render-holder)
  (declare (xargs :stobjs fn-render-holder :guard t))
@@ -71,6 +77,19 @@
           (if (equal i j) value (nth i xs))))
   :hints (("Goal" :induct (update-nth j value xs)))))
 
+(defthm fn-rh-installed-positioned-plan-is-same-registered-plan
+ (implies (not (fn-rh-live fn-render-holder))
+  (let ((next (mv-nth 1 (fn-rh-producer-install-positioned
+                        positioned pin query resource origin fn-render-holder))))
+   (and (equal (fn-rh-plan next) positioned)
+        (equal (fn-rh-pin next) pin)
+        (equal (fn-rh-query next) query)
+        (equal (fn-rh-resource next) resource)
+        (equal (fn-rh-origin next) origin))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+  (e/d (fn-rh-producer-install-positioned) (nth update-nth nth-add1)))))
+
 (defthm fn-rh-installed-plan-is-exact-producer-effect-trace
  (implies (not (fn-rh-live fn-render-holder))
   (let ((next (mv-nth 1 (fn-rh-producer-install
@@ -81,7 +100,7 @@
         (equal (fn-rh-resource next) resource)
         (equal (fn-rh-origin next) origin))))
  :rule-classes nil
- :hints (("Goal" :in-theory (e/d (fn-rh-producer-install fn-rh-trace
+ :hints (("Goal" :in-theory (e/d (fn-rh-producer-install fn-rh-producer-install-positioned fn-rh-trace
                             fn-splan-of-effects)
                            (nth update-nth nth-add1)))))
 

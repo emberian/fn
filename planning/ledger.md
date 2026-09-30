@@ -10,14 +10,14 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1928 |
-| Certification roots in the Makefile | 1852 |
-| Books inside the root closure | 1920 |
-| `defthm` and `defthmd` events | 29817 |
-| `defun` events | 19116 |
+| Books read | 1930 |
+| Certification roots in the Makefile | 1854 |
+| Books inside the root closure | 1922 |
+| `defthm` and `defthmd` events | 29825 |
+| `defun` events | 19123 |
 | Functions with verified guards | 3519 |
-| Functions declared `:verify-guards nil` and never verified | 2311 |
-| Functions left at the default with an explicit guard | 10432 |
+| Functions declared `:verify-guards nil` and never verified | 2312 |
+| Functions left at the default with an explicit guard | 10438 |
 | Functions left at the default with no guard | 2854 |
 | `assert-event` checks | 24046 |
 | `must-fail` checks | 2519 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 343 |
 | Enabled-projection warnings | 55 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2640 |
+| Include-hygiene warnings | 2642 |
 | Host-names warnings | 2189 |
 | Hand-written-record warnings | 18 |
 
@@ -549,6 +549,7 @@ that `make certify` requests.
 | `books/image-world-dtn.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/image-world-store-test.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/image-world.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/index-range-controller.lisp` | root | 3 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/index.lisp` | root | 35 | 26 | 24/0/2/0 | 0 | 0 | 3 |
 | `books/injection-info-params-invariants.lisp` | root | 82 | 4 | 0/0/4/0 | 0 | 0 | 2 |
 | `books/injection-info-params.lisp` | root | 1 | 11 | 0/0/11/0 | 0 | 0 | 0 |
@@ -989,7 +990,7 @@ that `make certify` requests.
 | `books/served-plan.lisp` | root | 31 | 21 | 0/1/20/0 | 0 | 0 | 2 |
 | `books/served-range-source.lisp` | root | 1 | 3 | 2/0/1/0 | 0 | 0 | 0 |
 | `books/served-range-step-source.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/served-render-holder.lisp` | root | 4 | 5 | 0/1/4/0 | 0 | 0 | 0 |
+| `books/served-render-holder.lisp` | root | 5 | 6 | 0/1/5/0 | 0 | 0 | 0 |
 | `books/served-reply-buffer.lisp` | root | 8 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/served-scan.lisp` | root | 12 | 2 | 1/1/0/0 | 0 | 0 | 3 |
 | `books/served-selected-article.lisp` | root | 3 | 2 | 1/0/1/0 | 0 | 0 | 0 |
@@ -1540,6 +1541,7 @@ that `make certify` requests.
 | `tests/acl2/hybrid-store-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 4 | 8 | 0 |
 | `tests/acl2/identity-retain-carried-tests.lisp` | root | 0 | 5 | 0/3/0/2 | 39 | 0 | 0 |
 | `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 0 | 0 |
+| `tests/acl2/index-range-controller-tests.lisp` | root | 4 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `tests/acl2/index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/injection-info-params-tests.lisp` | root | 0 | 5 | 0/0/3/2 | 48 | 14 | 0 |
 | `tests/acl2/injection-tests.lisp` | root | 0 | 11 | 0/0/0/11 | 156 | 10 | 0 |

@@ -1109,6 +1109,8 @@
     "books/served-plan-position-window",
     "books/served-plan-head-window",
     "books/served-render-holder",
+    "books/index-range-controller",
+    "tests/acl2/index-range-controller-tests",
     "tests/acl2/served-render-holder-tests",
     "tests/acl2/served-plan-head-window-tests",
     "tests/acl2/served-plan-position-window-tests",
@@ -1856,26 +1858,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1928,
-    "books_in_root_closure": 1920,
-    "roots": 1852,
-    "theorems": 29817,
-    "functions": 19116,
+    "books": 1930,
+    "books_in_root_closure": 1922,
+    "roots": 1854,
+    "theorems": 29825,
+    "functions": 19123,
     "assert_events": 24046,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
       "verified": 3519,
-      "declared-off": 2311,
-      "default-guarded": 10432,
+      "declared-off": 2312,
+      "default-guarded": 10438,
       "default-unguarded": 2854
     },
     "suspect_theorems": 1254,
     "export_hygiene_warnings": 343,
     "enabled_projection_warnings": 55,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2640,
+    "include_hygiene_warnings": 2642,
     "host_names_warnings": 2189,
     "hand_written_record_warnings": 18
   },
@@ -15911,6 +15913,32 @@
       "read_error": null
     },
     {
+      "book": "books/index-range-controller.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "served-render-holder"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/index.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -28866,12 +28894,12 @@
       "book": "books/served-render-holder.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 4,
-      "functions": 5,
+      "theorems": 5,
+      "functions": 6,
       "guards": {
         "verified": 0,
         "declared-off": 1,
-        "default-guarded": 4,
+        "default-guarded": 5,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -44617,6 +44645,32 @@
       "encapsulates": 0,
       "includes": [
         "../../books/identity-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/index-range-controller-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 4,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/index-range-controller"
       ],
       "system_includes": [],
       "suspects": [],
@@ -77074,6 +77128,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/index-range-controller.lisp",
+        "line": 4,
+        "include": "served-render-holder",
+        "included": "books/served-render-holder.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/injection-info-params-invariants.lisp",
         "line": 26,
         "include": "poster-bytes-invariants",
@@ -85002,6 +85063,13 @@
         "line": 13,
         "include": "post-retain-carried-tests",
         "included": "tests/acl2/post-retain-carried-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/index-range-controller-tests.lisp",
+        "line": 2,
+        "include": "../../books/index-range-controller",
+        "included": "books/index-range-controller.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

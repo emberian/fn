@@ -1120,6 +1120,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-plan-position-window \
 	books/served-plan-head-window \
 	books/served-render-holder \
+	books/index-range-controller \
+	tests/acl2/index-range-controller-tests \
 	tests/acl2/served-render-holder-tests \
 	tests/acl2/served-plan-head-window-tests \
 	tests/acl2/served-plan-position-window-tests \
