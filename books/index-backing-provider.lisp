@@ -781,7 +781,7 @@
     (fn-ibp-selected-read selected fuel fn-index-backing)
     (mv status held fuel-left)))
 
-(defun fn-ibp-node-query-authorization (token fuel slot depth fn-ibp-node)
+(defun fn-ibp-node-query-grant-read (token mode fuel slot depth fn-ibp-node)
   (declare (xargs :stobjs fn-ibp-node :measure (nfix depth)
                   :guard (and (fn-ibp-query-tokenp token) (natp fuel)
                               (natp slot) (natp depth)) :verify-guards nil))
@@ -810,7 +810,9 @@
                      (equal (fn-omk-at 3 payload-token) (nth 4 token))
                      (equal (fn-omk-at 6 payload-token) (nth 2 token))
                      (equal (fn-omk-at 0 row) grant)
-                     (eq (fn-omk-at 2 row) :active))
+                     (case mode (:serve (eq (fn-omk-at 2 row) :active))
+                                (:settle (member-eq (fn-omk-at 2 row) '(:active :cancelled)))
+                                (otherwise nil)))
                 (mv :authorized payload-token grant)
               (mv :recovery-required nil nil))))
         (mv status payload-token grant (- fuel 1)))))
@@ -820,7 +822,7 @@
                    (fn-ibp-node-children-get 'fn-ibp-node-left fn-ibp-node
                                              (create-fn-ibp-node-left))))
         (status payload-token grant fuel-left)
-        (fn-ibp-node-query-authorization token (- fuel 1) (floor slot 2) (- depth 1) fn-ibp-node-left)
+        (fn-ibp-node-query-grant-read token mode (- fuel 1) (floor slot 2) (- depth 1) fn-ibp-node-left)
         (mv status payload-token grant fuel-left))))
         (t (if (not (fn-ibp-node-children-boundp 'fn-ibp-node-right fn-ibp-node))
         (mv :unavailable nil nil fuel)
@@ -828,10 +830,15 @@
                    (fn-ibp-node-children-get 'fn-ibp-node-right fn-ibp-node
                                              (create-fn-ibp-node-right))))
         (status payload-token grant fuel-left)
-        (fn-ibp-node-query-authorization token (- fuel 1) (floor slot 2) (- depth 1) fn-ibp-node-right)
+        (fn-ibp-node-query-grant-read token mode (- fuel 1) (floor slot 2) (- depth 1) fn-ibp-node-right)
         (mv status payload-token grant fuel-left))))))
-(verify-guards fn-ibp-node-query-authorization)
+(verify-guards fn-ibp-node-query-grant-read)
 
+
+(defun fn-ibp-node-query-authorization (token fuel slot depth fn-ibp-node)
+  (declare (xargs :stobjs fn-ibp-node
+                  :guard (and (fn-ibp-query-tokenp token) (natp fuel) (natp slot) (natp depth))))
+  (fn-ibp-node-query-grant-read token :serve fuel slot depth fn-ibp-node))
 
 (defun fn-ibp-node-payload-live (token grant fuel slot depth fn-ibp-node)
   (declare (xargs :stobjs fn-ibp-node :measure (nfix depth)

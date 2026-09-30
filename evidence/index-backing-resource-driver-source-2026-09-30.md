@@ -33,3 +33,17 @@ Open: actual operation-derived capture demand and root/input/arena issuance,
 aggregate query debt correspondence, coupled qpg cancellation/alias-joined
 release, COW publication/retirement, source abstraction/full firstaccepted
 answer proof and actual caller activation. No full-slice closure is claimed.
+
+Coupled lifecycle amendment: fn-miq-cancel and fn-miq-release now thread the
+same provider and pool, authenticate the current resource row and exact qpg
+child, retain cancellation debt, and retire the query slot only on joined
+release. Parent aggregate decreases only for the actual released qpg child.
+All changed guards passed in protected mib: internal guard 8,947 steps,
+structural shape fact 25,437 steps, parent guard 7,009 steps (0.35 seconds
+combined). Shape facts are guard support, not operational carry keystones.
+The composed synthetic-installed-state witness passed 2,843 steps: two grants,
+repeat cancellation, unjoined refusal to refund, joined A release, stale A
+release, B's exact remaining 4096 reservation, qpg/parent active count one,
+and actual A slot retirement. The earlier slot-reuse/current-row regression
+also passed 3,054 steps. Complete pool funding, actual alias join authorization,
+aggregate conservation refinement and durable publication remain open.
