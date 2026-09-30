@@ -63,3 +63,10 @@ The actual query capture must reserve its slot, retained roots, payload arena an
 Reuse the five-coordinate `fn-prs-issue` admission algebra against the same installed budget, baseline and aggregate charge used by the other pool consumers. A separate query registry must not introduce a second independently spendable copy of that budget. The concrete query rows can live in the bounded segmented registry, with a named relation to the logical ownership ledger and a maintained aggregate. Installation and release must preserve that relation as well as the pool funding invariant; cancellation retains charge until definite joined cleanup. Already allocated registry and buffer capacity remains charged at its retained high-water allocation.
 
 The existing logical `fn-prl-binding`, `fn-prl-remove` and file-held operations traverse active rows; `fn-prl-remove` also allocates their replacement list. Calling those operations directly in an adapter is not constant work. A concrete segmented implementation needs its boundary correspondence; a transitional served use of list operations needs an explicit supported-profile bound and funding for their full traversal and allocation. This is a constraint on the actual query admission join, not a prerequisite to redesign unrelated P12 code.
+
+The actual S7 assembly also exposed the missing bounded outer Store writer.
+The canonical history image does not replace the arena and F/P/E/R runs.
+The selected [reference-aware writer contract](checkpoint-reference-cursor-2026-09-30.md)
+preserves exact schema-3 bytes, candidate order and composite payload meaning,
+using resumable reference comparison, census, emission and framing. Its
+funding joins the same maintenance authority; source design is not completion.
