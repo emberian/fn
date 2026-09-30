@@ -370,3 +370,5 @@ anything a book does not already decide.
 | `fn-oqr-` | obligation-subject-report | W9 exact keyed count/charge report and reconstruction boundary |
 | `fn-pct-` | `productive-transfer`, `tests/acl2/productive-transfer-tests` | Productive outbound NNTP offer and requested article effect; local journal and attempt, explicit quiet/refused outcomes; no remote acceptance claim (W6b) |
 | `fn-gat-`, `gat-` | `tests/acl2/group-authority-tests` | Explicit authority publication and replay teeth; distinct posting policy and principal bindings. |
+
+| `fn-vcs-` | view-delta-space | W9 exact radix updater and cold-fold retained cons-cell accounting |
