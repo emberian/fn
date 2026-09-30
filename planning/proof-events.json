@@ -17432,36 +17432,6 @@
       ]
     },
     {
-      "id": "PRF-1068",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-osr-open-establishes-live-carry"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-osr-live-capture-opens"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-osr-ready-capture-keeps-established-projections"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-osr-finish-preserves-identity-prefix"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-osr-finish-preserves-live-carry"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-osr-configure-durable-preserves-live-carry"
-        }
-      ],
-      "pending_subject": "fn-osr-capture is a pure inverse dependency; the running snapshot producer capture caller and maintained keyed/verdict/index fields are not integrated by this slice."
-    },
-    {
       "id": "PRF-1066",
       "events": []
     },
@@ -17635,6 +17605,48 @@
           "name": "fn-bpaj-replay-rest-receiver-is-receiver-replay-rest"
         }
       ]
+    },
+    {
+      "id": "PRF-1068",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-osr-open-establishes-full-retained-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-ready-capture-keeps-retained-fields"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-configure-durable-preserves-full-retained-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-open-establishes-live-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-live-capture-opens"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-ready-capture-keeps-established-projections"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-finish-preserves-identity-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-finish-preserves-live-carry"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osr-configure-durable-preserves-live-carry"
+        }
+      ],
+      "pending_subject": "Pure actual capture/recovery inverse dependency with full retained semantic fields. Actual producer capture/canonical writer/load payload alpha and complete live transition/owner installation bridges remain open; no full producer completion claim."
     }
   ]
 }
