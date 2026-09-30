@@ -1848,12 +1848,24 @@ PRF-1066 supplies an implementation component for that remaining claim:
 `fn-nbw-step` retains immutable cached strings plus an offset and emits at
 most its fuel in octets. Piece-end transitions consume fuel as well, so an
 empty field makes strict progress under a positive budget. The exact
-produced prefix plus remaining pieces is the original row; the cached-row
+produced prefix plus remaining pieces is the original row; the output remains
+an octet list whenever the pieces and accumulated prefix carry octets. The cached-row
 abstraction connects those pieces to the article's complete NOV row under
 the maintained column relation. These functions are not yet the served
 cursor implementation. Integration, legacy rows without a decided NOV,
 the maintained codec bound on numeric setup and matched runtime cost
 measurement remain open; no complete long-row scheduling claim is made.
+
+The decimal setup component `fn-nbw-decimal-tick` retains an unrendered
+natural and a reverse-produced character suffix. Each division spends fuel;
+exhaustion retains the exact decimal residual and resumes. Under the
+selected record codec's `max-octets` bound it finishes within ten divisions
+and ten characters. That premise is conditional: composite article length
+and the actual served byte/body-line fields still need their maintained
+profile/representation bridge. Wider supported values use the general
+continuation; this component never truncates them to ten digits. The work
+count measures divisions, not machine bit complexity of arbitrary bignums;
+actual runtime cost still requires the maintained representation bound.
 
 ### Bounded legacy hydration source component (PRF-1094, SCN-1009)
 
@@ -1900,6 +1912,7 @@ allocation accounting, actual cursor composition
 and matched runtime measurements remain open. The source stores fixed-size
 records and source references and reports raw-byte work; that statement
 alone is not a physical allocation or latency qualification.
+
 
 ## Public exposure (NNT-031)
 
