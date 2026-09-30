@@ -454,7 +454,8 @@
       "profile": "persisted operator profile; existing record metadata subject type",
       "latest": "Source integration and clean narrow hbox REPL evidence for concrete delta/oracle, node completion/recovery, owner installation effects, exact report substitution and query/FNLS/operator boundaries; no certification or matching native pass.",
       "obstruction": "PRF-1052 planned: every actual owner writer relation, cumulative zero trie path funding/coexistence, measured actual reads and matching union native evidence remain open.",
-      "next": "Prove actual owner transition preservation and funded representation; runner coalesced certification and status_live_posts/capacity_vector/obligation_subject natives, then matched cost evidence."
+      "next": "Prove actual owner transition preservation and funded representation; runner coalesced certification and status_live_posts/capacity_vector/obligation_subject natives, then matched cost evidence.",
+      "tested": null
     },
     {
       "id": "D40",
@@ -468,7 +469,8 @@
       "profile": "carried owner state; supported persisted operator profile",
       "latest": "Exact guard-verified definition extraction and clean hbox source REPL proofs; live signed prepare/seal and durable completion/ready witnesses, plus corrupted carry hypothesis-removal. No certificate or matching image qualification.",
       "obstruction": "Program prepares, cold initialization, live reclaim swap, full completion relation and actual native producer/domain contracts remain open; program extraction remains unintegrated.",
-      "next": "Prove exact initialization and swap, then article producer codec/catalog guard contracts; runner certifies and tests a matching union with both dispatch selectors before any raw annotation or curve claim."
+      "next": "Prove exact initialization and swap, then article producer codec/catalog guard contracts; runner certifies and tests a matching union with both dispatch selectors before any raw annotation or curve claim.",
+      "tested": null
     }
   ],
   "other_deployments": [
