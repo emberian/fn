@@ -1870,26 +1870,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1951,
-    "books_in_root_closure": 1934,
+    "books": 1955,
+    "books_in_root_closure": 1936,
     "roots": 1866,
-    "theorems": 30080,
-    "functions": 19172,
+    "theorems": 30087,
+    "functions": 19177,
     "assert_events": 24056,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
-      "verified": 3525,
-      "declared-off": 2328,
-      "default-guarded": 10462,
+      "verified": 3526,
+      "declared-off": 2329,
+      "default-guarded": 10465,
       "default-unguarded": 2857
     },
     "suspect_theorems": 1266,
     "export_hygiene_warnings": 348,
     "enabled_projection_warnings": 55,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2675,
+    "include_hygiene_warnings": 2683,
     "host_names_warnings": 2193,
     "hand_written_record_warnings": 18
   },
@@ -19365,6 +19365,33 @@
       "read_error": null
     },
     {
+      "book": "books/nov-held-row-pieces.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "held-record",
+        "nntp-syntax"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/nov-line-projection.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -19477,11 +19504,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 2,
+      "functions": 1,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 2,
+        "default-guarded": 1,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -19493,6 +19520,7 @@
       "encapsulates": 0,
       "includes": [
         "catalog",
+        "nov-held-row-pieces",
         "nov-piece-window"
       ],
       "system_includes": [],
@@ -19928,11 +19956,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 23,
-      "functions": 12,
+      "functions": 8,
       "guards": {
         "verified": 4,
         "declared-off": 0,
-        "default-guarded": 8,
+        "default-guarded": 4,
         "default-unguarded": 0
       },
       "verify_guards_events": 4,
@@ -19946,8 +19974,8 @@
         "catalog-number-read",
         "legacy-parser-header",
         "nov-row-capture",
-        "over-cursor-shape",
         "over-row-pieces",
+        "over-row-state",
         "response-plan-token"
       ],
       "system_includes": [],
@@ -20333,6 +20361,36 @@
       "read_error": null
     },
     {
+      "book": "books/over-held-row.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 1,
+      "functions": 3,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "legacy-parser-cursor",
+        "nov-held-row-pieces",
+        "nov-piece-window",
+        "over-row-pieces",
+        "over-row-state"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/over-range-all-step-source.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -20434,6 +20492,32 @@
         "legacy-parser-cursor",
         "nntp-syntax",
         "nov-piece-window"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/over-row-state.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "over-cursor-shape"
       ],
       "system_includes": [],
       "suspects": [],
@@ -48199,6 +48283,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/over-held-row-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 6,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/over-held-row"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/over-window-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -62229,7 +62339,7 @@
     {
       "theorem": "fn-obc-quantum-ready-stays-ready",
       "book": "books/over-byte-cursor.lisp",
-      "line": 395,
+      "line": 372,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-obc-quantum-one and the conclusion is that arm's value"
       ]
@@ -78597,6 +78707,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/nov-row-capture.lisp",
+        "line": 6,
+        "include": "nov-held-row-pieces",
+        "included": "books/nov-held-row-pieces.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/nov-row-facts-model.lisp",
         "line": 3,
         "include": "nov-row-capture",
@@ -78697,8 +78814,8 @@
       {
         "book": "books/over-byte-cursor.lisp",
         "line": 7,
-        "include": "over-cursor-shape",
-        "included": "books/over-cursor-shape.lisp",
+        "include": "over-row-state",
+        "included": "books/over-row-state.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -78968,6 +79085,41 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/over-held-row.lisp",
+        "line": 4,
+        "include": "over-row-state",
+        "included": "books/over-row-state.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-held-row.lisp",
+        "line": 5,
+        "include": "nov-held-row-pieces",
+        "included": "books/nov-held-row-pieces.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-held-row.lisp",
+        "line": 6,
+        "include": "legacy-parser-cursor",
+        "included": "books/legacy-parser-cursor.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-held-row.lisp",
+        "line": 7,
+        "include": "nov-piece-window",
+        "included": "books/nov-piece-window.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-held-row.lisp",
+        "line": 8,
+        "include": "over-row-pieces",
+        "included": "books/over-row-pieces.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/over-range-all-step-source.lisp",
         "line": 4,
         "include": "served-range-source",
@@ -79007,6 +79159,13 @@
         "line": 5,
         "include": "nov-piece-window",
         "included": "books/nov-piece-window.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-row-state.lisp",
+        "line": 3,
+        "include": "over-cursor-shape",
+        "included": "books/over-cursor-shape.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -87211,6 +87370,13 @@
         "line": 2,
         "include": "../../books/over-byte-full-run-relation",
         "included": "books/over-byte-full-run-relation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/over-held-row-tests.lisp",
+        "line": 2,
+        "include": "../../books/over-held-row",
+        "included": "books/over-held-row.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
