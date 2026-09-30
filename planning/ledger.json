@@ -416,6 +416,8 @@
     "tests/acl2/store-reclaim-pack-tests",
     "tests/acl2/reclaim-article-subject-tests",
     "books/history-knowledge",
+    "books/history-resource-refinement",
+    "tests/acl2/history-resource-refinement-tests",
     "tests/acl2/history-knowledge-tests",
     "books/store-reclaim-stream",
     "tests/acl2/store-reclaim-stream-tests",
@@ -520,6 +522,8 @@
     "books/store-capacity-vector",
     "tests/acl2/store-capacity-vector-tests",
     "books/store-capacity-config",
+    "books/store-config-generation",
+    "tests/acl2/store-config-generation-tests",
     "tests/acl2/store-capacity-config-tests",
     "books/config-carried-candidate",
     "tests/acl2/config-carried-candidate-tests",
@@ -896,6 +900,15 @@
     "books/nntp-session",
     "books/nntp-projection",
     "books/nov-fields",
+    "books/nov-line-projection",
+    "tests/acl2/nov-line-projection-tests",
+    "books/legacy-parser-cursor",
+    "books/legacy-parser-reference",
+    "books/legacy-parser-header",
+    "books/legacy-parser-validity",
+    "tests/acl2/legacy-parser-cursor-tests",
+    "tests/acl2/legacy-parser-header-tests",
+    "tests/acl2/legacy-parser-validity-tests",
     "books/nntp-article-pass",
     "books/nntp-responses",
     "books/nntp-article-block",
@@ -1516,9 +1529,15 @@
     "tests/acl2/owner-control-post-reason-tests",
     "tests/acl2/owner-export-request-tests",
     "books/owner-snapshot-request",
+    "books/history-scalar-cursor",
+    "tests/acl2/history-scalar-cursor-tests",
+    "books/history-record-cursor",
+    "tests/acl2/history-record-cursor-tests",
     "tests/acl2/history-page-cursor-tests",
     "tests/acl2/history-page-layout-tests",
     "tests/acl2/history-page-buffer-tests",
+    "tests/acl2/history-image-census-tests",
+    "tests/acl2/history-image-header-tests",
     "tests/acl2/owner-snapshot-request-tests",
     "books/owner-snapshot-recovery",
     "tests/acl2/owner-snapshot-recovery-tests",
@@ -1677,26 +1696,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1736,
-    "books_in_root_closure": 1733,
-    "roots": 1673,
-    "theorems": 28058,
-    "functions": 18400,
-    "assert_events": 23300,
-    "must_fails": 2504,
+    "books": 1757,
+    "books_in_root_closure": 1754,
+    "roots": 1692,
+    "theorems": 28241,
+    "functions": 18533,
+    "assert_events": 23452,
+    "must_fails": 2506,
     "prover_refusals": 0,
     "encapsulates": 157,
     "guards": {
-      "verified": 3481,
-      "declared-off": 2101,
-      "default-guarded": 10053,
-      "default-unguarded": 2765
+      "verified": 3483,
+      "declared-off": 2143,
+      "default-guarded": 10138,
+      "default-unguarded": 2769
     },
-    "suspect_theorems": 1230,
-    "export_hygiene_warnings": 324,
+    "suspect_theorems": 1231,
+    "export_hygiene_warnings": 329,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2436,
+    "include_hygiene_warnings": 2455,
     "host_names_warnings": 2137,
     "hand_written_record_warnings": 18
   },
@@ -12514,6 +12533,32 @@
       "read_error": null
     },
     {
+      "book": "books/history-image-census.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 12,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 7,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-pages-row"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/history-image-fold.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -12538,6 +12583,34 @@
       "system_includes": [
         "arithmetic/top"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/history-image-header.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 7,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-image-census",
+        "history-page-buffer",
+        "history-pages-placed"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -13317,6 +13390,36 @@
       "read_error": null
     },
     {
+      "book": "books/history-record-cursor.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 35,
+      "functions": 24,
+      "guards": {
+        "verified": 0,
+        "declared-off": 9,
+        "default-guarded": 15,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-pages-words",
+        "store-tree-codec"
+      ],
+      "system_includes": [
+        "arithmetic/top",
+        "ihs/quotient-remainder-lemmas"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/history-records-disk.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -13370,6 +13473,63 @@
       ],
       "system_includes": [
         "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/history-resource-refinement.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 12,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 8,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-knowledge"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-hrf-reduce-pin-keeps-logical-by-definition"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/history-scalar-cursor.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 17,
+      "functions": 12,
+      "guards": {
+        "verified": 0,
+        "declared-off": 4,
+        "default-guarded": 8,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-tree-codec"
+      ],
+      "system_includes": [
+        "arithmetic/top",
+        "ihs/quotient-remainder-lemmas"
       ],
       "suspects": [],
       "read_error": null
@@ -15125,6 +15285,114 @@
       "encapsulates": 0,
       "includes": [
         "statement"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/legacy-parser-cursor.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 9,
+      "functions": 23,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 22,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "nov-fields",
+        "payload-arena",
+        "reclaim-tombstone"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/legacy-parser-header.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 19,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 6,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "legacy-parser-cursor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/legacy-parser-reference.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 28,
+      "functions": 12,
+      "guards": {
+        "verified": 0,
+        "declared-off": 6,
+        "default-guarded": 6,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "catalog-record",
+        "legacy-parser-cursor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/legacy-parser-validity.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 19,
+      "functions": 11,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 9,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "legacy-parser-header",
+        "nov-line-projection"
       ],
       "system_includes": [],
       "suspects": [],
@@ -17737,6 +18005,32 @@
       "includes": [
         "acceptance-alloc",
         "article-fields"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/nov-line-projection.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 13,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 8,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "nov-fields"
       ],
       "system_includes": [],
       "suspects": [],
@@ -27074,6 +27368,32 @@
         "fn-sct-event-index-of-capture",
         "fn-sct-records-of-capture"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/store-config-generation.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 1,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-capacity-config"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -39938,6 +40258,58 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/history-image-census-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 15,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-image-census"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/history-image-header-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 5,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-image-header"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/history-knowledge-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -40343,6 +40715,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/history-record-cursor-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 7,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 32,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-record-cursor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/history-records-disk-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -40391,6 +40789,58 @@
       "includes": [
         "../../books/history-records",
         "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/history-resource-refinement-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 11,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-resource-refinement"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/history-scalar-cursor-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 23,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-scalar-cursor"
       ],
       "system_includes": [],
       "suspects": [],
@@ -40866,6 +41316,84 @@
         "../../books/codec-attach",
         "../../books/lace-invariants",
         "crypto-seam-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/legacy-parser-cursor-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 34,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 27,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/legacy-parser-reference"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/legacy-parser-header-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/legacy-parser-header"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/legacy-parser-validity-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 15,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/legacy-parser-validity"
       ],
       "system_includes": [],
       "suspects": [],
@@ -42770,6 +43298,32 @@
       "includes": [
         "../../books/nov-column-window",
         "served-columns-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/nov-line-projection-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 12,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/nov-line-projection"
       ],
       "system_includes": [],
       "suspects": [],
@@ -48882,6 +49436,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-config-generation-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 2,
+      "prover_refusals": 0,
+      "defconsts": 9,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-config-generation",
+        "store-capacity-config-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/store-event-replay-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -54750,6 +55331,14 @@
       "theorem": "fn-hp-w-cells-of-is",
       "book": "books/history-pages-write.lisp",
       "line": 257,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-hrf-reduce-pin-keeps-logical-by-definition",
+      "book": "books/history-resource-refinement.lisp",
+      "line": 76,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -63102,6 +63691,36 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-lpc-search-count-is-body-lines-of",
+        "book": "books/legacy-parser-reference.lisp",
+        "line": 142,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-lpc-feed-body-lines-is-body-lines-of",
+        "book": "books/legacy-parser-reference.lisp",
+        "line": 222,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-lpc-tick-full-body-lines-is-body-lines-of",
+        "book": "books/legacy-parser-reference.lisp",
+        "line": 250,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-lpc-feed-body-lines-is-body-lines-of-all-tails",
+        "book": "books/legacy-parser-reference.lisp",
+        "line": 297,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-lpc-tick-full-body-lines",
+        "book": "books/legacy-parser-reference.lisp",
+        "line": 308,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-mod-entry-group-of-an-entry",
         "book": "books/moderation.lisp",
         "line": 341,
@@ -64424,13 +65043,14 @@
           "books/article-buffer.lisp",
           "books/article-invariants.lisp",
           "books/article-properties.lisp",
+          "books/nov-line-projection.lisp",
           "books/peer-authored-accept.lisp",
           "books/relay-source.lisp",
           "books/source-projection-bridge.lisp",
           "books/topic-history-metadata-invariants.lisp",
           "tests/acl2/article-tests.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 8 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 9 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-field-raw-lines",
@@ -64460,10 +65080,11 @@
         "stated_in": [
           "books/article-work.lisp",
           "books/injection-invariants.lisp",
+          "books/nov-line-projection.lisp",
           "books/topic-history-metadata-invariants.lisp",
           "tests/acl2/article-tests.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 4 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 5 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-result-article",
@@ -68322,6 +68943,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/history-image-census.lisp",
+        "line": 5,
+        "include": "history-pages-row",
+        "included": "books/history-pages-row.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/history-image-header.lisp",
+        "line": 4,
+        "include": "history-pages-placed",
+        "included": "books/history-pages-placed.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/history-image-snapshot.lisp",
         "line": 22,
         "include": "history-image-fold",
@@ -68448,10 +69083,38 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/history-record-cursor.lisp",
+        "line": 4,
+        "include": "store-tree-codec",
+        "included": "books/store-tree-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/history-record-cursor.lisp",
+        "line": 5,
+        "include": "history-pages-words",
+        "included": "books/history-pages-words.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/history-records.lisp",
         "line": 50,
         "include": "history-pages-view",
         "included": "books/history-pages-view.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/history-resource-refinement.lisp",
+        "line": 5,
+        "include": "history-knowledge",
+        "included": "books/history-knowledge.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/history-scalar-cursor.lisp",
+        "line": 3,
+        "include": "store-tree-codec",
+        "included": "books/store-tree-codec.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -71157,6 +71820,41 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/legacy-parser-cursor.lisp",
+        "line": 4,
+        "include": "nov-fields",
+        "included": "books/nov-fields.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/legacy-parser-header.lisp",
+        "line": 3,
+        "include": "legacy-parser-cursor",
+        "included": "books/legacy-parser-cursor.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/legacy-parser-reference.lisp",
+        "line": 4,
+        "include": "legacy-parser-cursor",
+        "included": "books/legacy-parser-cursor.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/legacy-parser-validity.lisp",
+        "line": 4,
+        "include": "legacy-parser-header",
+        "included": "books/legacy-parser-header.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/legacy-parser-validity.lisp",
+        "line": 5,
+        "include": "nov-line-projection",
+        "included": "books/nov-line-projection.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/limits-live.lisp",
         "line": 32,
         "include": "byte-store-frame",
@@ -71623,6 +72321,13 @@
         "line": 17,
         "include": "acceptance-alloc",
         "included": "books/acceptance-alloc.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/nov-line-projection.lisp",
+        "line": 5,
+        "include": "nov-fields",
+        "included": "books/nov-fields.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -78052,6 +78757,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/history-resource-refinement-tests.lisp",
+        "line": 5,
+        "include": "../../books/history-resource-refinement",
+        "included": "books/history-resource-refinement.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/hostile-reader-archive.lisp",
         "line": 32,
         "include": "control-served-tests",
@@ -78238,6 +78950,27 @@
         "line": 7,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/legacy-parser-cursor-tests.lisp",
+        "line": 4,
+        "include": "../../books/legacy-parser-reference",
+        "included": "books/legacy-parser-reference.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/legacy-parser-header-tests.lisp",
+        "line": 2,
+        "include": "../../books/legacy-parser-header",
+        "included": "books/legacy-parser-header.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/legacy-parser-validity-tests.lisp",
+        "line": 2,
+        "include": "../../books/legacy-parser-validity",
+        "included": "books/legacy-parser-validity.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -79120,6 +79853,13 @@
         "line": 3,
         "include": "served-columns-tests",
         "included": "tests/acl2/served-columns-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nov-line-projection-tests.lisp",
+        "line": 2,
+        "include": "../../books/nov-line-projection",
+        "included": "books/nov-line-projection.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -82018,6 +82758,20 @@
         "line": 19,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-config-generation-tests.lisp",
+        "line": 2,
+        "include": "../../books/store-config-generation",
+        "included": "books/store-config-generation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-config-generation-tests.lisp",
+        "line": 3,
+        "include": "store-capacity-config-tests",
+        "included": "tests/acl2/store-capacity-config-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

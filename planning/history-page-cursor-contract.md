@@ -174,3 +174,37 @@ array I/O primitive needs its own named effect bridge before removing them
 from the demand. Neither begin nor a timeout releases the physical owner's
 lease: the controller may reuse scratch only after synchronous completion or
 observed worker death and join.
+
+## Census and header source contract (PRF-1096)
+
+`fn-hcc-row(count,pool,ordinal,encoded)` returns verdict/new-count/new-pool.
+Only `:counted` advances. The record source ordinal must equal count; the
+codec must supply the exact canonical current `fn-scc-encode` byte length of
+the remapped abstract row. Each row is padded separately to8 bytes. Captured
+source may be resident or decoded tagged nodes with borrowed spans: this
+boundary does not convert either representation. Repeated column passes share
+source epoch, original arena incarnation and immutable descriptor references.
+
+`fn-hcc-cap-begin(used)` returns required pages and initial capacity;
+`fn-hcc-cap-tick(need,cap)` returns done/continue/invalid and capacity, doubling
+once on continuation. u64 used bytes imply need<=2^50; continuation preserves
+cap<2^51. Empty used bytes return zero capacity. Two cursors suffice because
+the first four regions have identical lengths. `fn-hcc-starts(column-cap)` and
+`fn-hcc-pages(column-cap,pool-cap)` refine canonical starts/end, without image
+allocation. Final physical layout remains `fn-hpl-layout(N)`.
+
+`fn-hch-word(i,count,pool,column-cap,pool-cap)` selects one current header word
+by fixed scalar cases. `fn-hch-tick(...,fn-hpb)` uses the scratch used counter
+as i, stores one exact header word, preserves identities/representation, or
+returns done with the full buffer unchanged. Scalar guards constrain count to
+61 bits, pool to64, capacities to51: these are consequences of current codec
+field/domain arithmetic, not arbitrary data caps. A complete operator profile
+must establish them before capture/admission. Header scratch execution never
+calls `fn-hp-hdr2`; that full list occurs only in the refinement and tests.
+
+Source decoder contract selected with producer: source sum `(:resident row)`
+or `(:decoded node)`; decoded constructors atom/pair/span borrow immutable pool
+bytes. Span opcode/package/offset/length must be consumed directly by encoder.
+Canonical octet-list classification must still resume over pair nodes; copying
+a noncanonical incoming CONS encoding would change existing canonical output.
+Source adapter tokens bind epoch/lease/ordinal; no duplicate completion advances.

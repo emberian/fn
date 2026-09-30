@@ -17647,6 +17647,19 @@
         }
       ],
       "pending_subject": "Pure actual capture/recovery inverse dependency with full retained semantic fields. Actual producer capture/canonical writer/load payload alpha and complete live transition/owner installation bridges remain open; no full producer completion claim."
+    },
+    {
+      "id": "PRF-1097",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cvcg-config-replay-generation-counts-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvcg-accepted-publication-count-fits-profile"
+        }
+      ]
     }
   ]
 }
