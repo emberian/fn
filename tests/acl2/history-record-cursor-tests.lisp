@@ -235,3 +235,91 @@
      (declare (ignore word k2 w2))
      (and (fn-scc-octetp octet) (not (fn-hrcur-wordp k w))
           (not (member-eq v '(:continue :emit)))))))
+
+; Tree descriptor interpreter is an oracle used only by this test. Production
+; passes at most one pending descriptor to a byte cursor, not this flattening.
+(defun fn-hrcur-test-tree-tracep (fuel c)
+  (declare (xargs :guard (natp fuel) :verify-guards nil))
+  (if (zp fuel) t
+    (mv-let (v descriptor next) (fn-hrcur-tree-tick c)
+      (and (fn-hrcur-tree-invariantp c)
+           (fn-hrcur-tree-invariantp next)
+           (member-eq v '(:continue :emit :prepared))
+           (implies (eq v :emit) (fn-hrcur-descriptorp descriptor))
+           (equal (fn-hrcur-tree-rest (fn-hrcur-field 0 c))
+                  (if (eq v :emit)
+                      (append (fn-hrcur-descriptor-octets descriptor)
+                              (fn-hrcur-tree-rest (fn-hrcur-field 0 next)))
+                    (fn-hrcur-tree-rest (fn-hrcur-field 0 next))))
+           (equal (fn-hrcur-field 1 next) (fn-hrcur-field 1 c))
+           (equal (fn-hrcur-field 2 next) (fn-hrcur-field 2 c))
+           (fn-hrcur-test-tree-tracep (1- fuel) next)))))
+
+(defun fn-hrcur-test-tree-run (fuel c)
+  (declare (xargs :guard (natp fuel) :verify-guards nil))
+  (if (zp fuel) (list :yield c nil)
+    (mv-let (v descriptor next) (fn-hrcur-tree-tick c)
+      (cond ((eq v :prepared) (list :prepared next nil))
+            ((eq v :continue) (fn-hrcur-test-tree-run (1- fuel) next))
+            ((eq v :emit)
+             (let ((rest (fn-hrcur-test-tree-run (1- fuel) next)))
+               (list (car rest) (cadr rest)
+                     (append (fn-hrcur-descriptor-octets descriptor) (caddr rest)))))
+            (t (list v next nil))))))
+
+(defconst *fn-hrcur-test-tree*
+  '(:article 17 (0 127 255) "subject" (:groups "fn.test") (:alpha . :beta) nil -9 #\A))
+(defconst *fn-hrcur-test-tree-begin*
+  (fn-hrcur-tree-begin *fn-hrcur-test-tree* '(:captured 37 4) '(:lease 61)))
+
+; Complete literal initial-refinement hypothesis and both conclusions.
+(assert-event
+ (and (fn-hrcur-tree-domainp *fn-hrcur-test-tree*)
+      (fn-hrcur-tree-invariantp *fn-hrcur-test-tree-begin*)
+      (equal (fn-hrcur-tree-rest (fn-hrcur-field 0 *fn-hrcur-test-tree-begin*))
+             (fn-scc-encode *fn-hrcur-test-tree*))))
+
+; Nonempty composite trace exercises repeated prefix scanning, opaque leaf,
+; non-octet/dotted-tail descent, atom descriptors and CONS byte descriptors.
+(assert-event (fn-hrcur-test-tree-tracep 150 *fn-hrcur-test-tree-begin*))
+(assert-event
+ (let ((result (fn-hrcur-test-tree-run 150 *fn-hrcur-test-tree-begin*)))
+   (and (equal (car result) :prepared)
+        (equal (caddr result) (fn-scc-encode *fn-hrcur-test-tree*)))))
+
+; Stop before tree/atom completion, then resume exactly the retained task stack.
+(assert-event
+ (let* ((first (fn-hrcur-test-tree-run 13 *fn-hrcur-test-tree-begin*))
+        (second (fn-hrcur-test-tree-run 150 (cadr first))))
+   (and (equal (car first) :yield) (equal (car second) :prepared)
+        (equal (append (caddr first) (caddr second))
+               (fn-scc-encode *fn-hrcur-test-tree*)))))
+
+; Literal sole-hypothesis removal, corrupted scan state: fake complete count
+; does not equal the immutable source length. Both emitted descriptor validity
+; and the exact residual conclusion fail, with no other hypotheses to omit.
+(assert-event
+ (let ((bad '(((:scan (1 2) nil 0)) :capture :lease)))
+   (mv-let (v descriptor next) (fn-hrcur-tree-tick bad)
+     (and (not (fn-hrcur-tree-invariantp bad))
+          (eq v :emit) (not (fn-hrcur-descriptorp descriptor))
+          (not (equal (fn-hrcur-tree-rest (fn-hrcur-field 0 bad))
+                      (append (fn-hrcur-descriptor-octets descriptor)
+                              (fn-hrcur-tree-rest (fn-hrcur-field 0 next)))))))))
+
+; Initial-domain hypothesis is material: the current scalar format represents
+; fewer than256 length digits. This 2056-bit argument is not a producer state.
+(assert-event
+ (let* ((x (expt 256 256)) (c (fn-hrcur-tree-begin x :capture :lease)))
+   (and (not (fn-hrcur-tree-domainp x))
+        (not (fn-hrcur-tree-invariantp c)))))
+
+; A non-octet after a long byte prefix is discovered once. The carried
+; :non-octets task prevents rescanning the same shrinking suffix each time.
+(assert-event
+ (let* ((x (append (fn-scc-repeat 200 9) (list :x)))
+        (c (fn-hrcur-tree-begin x :capture :lease))
+        (result (fn-hrcur-test-tree-run 810 c)))
+   (and (fn-hrcur-tree-domainp x)
+        (equal (car result) :prepared)
+        (equal (caddr result) (fn-scc-encode x)))))

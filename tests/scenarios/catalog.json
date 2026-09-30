@@ -6277,7 +6277,9 @@
         "Check each reached state against complete invariant, permitted verdict and exact pre/post residual equation; compare final bytes with fn-scc-encode.",
         "Separately corrupt the prefix byte or count relation and affirm failure of the omitted invariant hypothesis and theorem conclusion.",
         "Feed varied bytes through the scalar word accumulator; assert complete partial/eighth-byte/final-pad antecedents, exact existing fn-hp-pack8 outputs and no extra word after an aligned stream.",
-        "For every remaining word-boundary hypothesis, retain all other hypotheses and affirm both failure of the removed premise and failure of the literal conclusion in a labeled argument/cursor mutation."
+        "For every remaining word-boundary hypothesis, retain all other hypotheses and affirm both failure of the removed premise and failure of the literal conclusion in a labeled argument/cursor mutation.",
+        "Traverse a nonempty nested/dotted resident row with source-reference descriptors; check every literal invariant/residual/capture antecedent and compare interpreted output with fn-scc-encode.",
+        "Classify a 200-byte prefix ending in a non-byte symbol and complete within810 descriptor ticks using maintained non-octets suffix tasks."
       ],
       "expected": [
         "No source-list copy or whole-row encoding occurs at begin or tick.",
@@ -6292,7 +6294,7 @@
         "tests/acl2/history-record-cursor-tests.lisp",
         "specs/history-record-cursor.md"
       ],
-      "execution_scope": "Opaque-leaf and scalar word-accumulator source libraries only. Full general tree/scalar stream, composed total word/census/producer and native qualification remain open."
+      "execution_scope": "Resident tree descriptor, opaque-leaf byte and scalar word-accumulator source libraries only. Scalar byte composition, borrowed cold spans, total census/producer/profile bridge and native qualification remain open."
     }
   ]
 }

@@ -112,21 +112,73 @@ cursor or the total padded census equality. The caller must thread each emitted
 codec byte through push and invoke finish only at that stream's terminal state.
 No scratch-buffer or physical allocator is inferred from the scalar functions.
 
+## Implemented resident tree descriptor cursor
+
+`fn-hrcur-tree-begin(tree, capture, lease)` allocates a three-cell outer
+cursor, a two-cell initial task and one task-list cell. It retains the resident
+source tree without scanning it. `fn-hrcur-tree-tick(cursor)` returns
+`(mv verdict descriptor next-cursor)` with the same continue/emit/prepared
+separation. Emissions are `(:atom source-atom)`,
+`(:octets source-leaf exact-count)` or `(:byte CONS-opcode)`; they retain
+source references and are **not** whole-atom byte expansion.
+
+An explicit task stack traverses car, cdr and postfix CONS. Classifying a
+possible opaque octet leaf visits one source spine cell per tick and retains
+its original pointer and counted prefix. A failed classification beyond a
+byte prefix carries a proved `:non-octets` task for the remaining suffix.
+Byte-headed non-opaque tasks propagate that fact, avoiding repeated scans of
+a shrinking suffix. Non-byte heads return the child suffix to ordinary
+classification. A 200-byte prefix followed by a symbol completes within
+810 descriptor ticks and still matches the original encoder; this is a
+specific source-model witness, not a matched native cost measurement or a
+general asymptotic completion claim.
+
+`fn-hrcur-tree-domainp`, task/list invariants, descriptor interpretation and
+residual functions are proof vocabulary only. The source domain reflects
+existing scalar encodability and u64 image count representability for each
+retained cons spine. Its connection to the captured producer/profile invariant
+is still an assembly obligation. No whole-source domain check is executed by
+begin, tick or a runtime guard. Safe logical prefix/tail functions permit the
+codec's dotted trees without passing them to guarded Lisp list utilities.
+
+`fn-hrcur-tree-begin-refines-encode` connects the initial descriptor residual
+to existing `fn-scc-encode`. `fn-hrcur-tree-tick-refines-residual` proves exact
+interpreted descriptor/pre/post residual conservation;
+`fn-hrcur-tree-tick-preserves` preserves the carried source/task invariant,
+permitted verdict and emitted descriptor validity. Capture and lease identities
+are unchanged even on malformed-cursor refusal. The interpreter is proof-only;
+the byte controller must hold at most one pending descriptor and route it to
+the leaf/scalar byte cursor, then the word accumulator.
+
+A count advance allocates one four-cell task, one task-list cell and one
+three-cell cursor (eight cells); a pair expansion allocates three two-cell
+tasks, three task-list cells and the cursor (twelve cells). Emission allocates
+a two/three-cell descriptor and a three-cell replacement cursor. Remaining
+stack/source references are shared. Old/new cell coexistence, runtime return
+objects and retained source/pins still need concrete admission/lifetime
+accounting. Arbitrary source depth is not silently truncated; task-stack
+growth is incremental and must be funded from the supported source profile.
+
 ## Remaining union obligations
 
-General trees, strings/symbol names and numbers need an explicit task stack and
-resumable scalar/string traversal with exact `fn-scc-program` residuals. Octet
-classification must itself resume. Composed word streaming must prove its total
-zero-padding/word count agrees with the existing row. Message-ID key hashing
-must consume characters incrementally and equal `fn-hp-mkey`. The completed
-census must prove all five region lengths and placement equal the existing
-`fn-hp-row`/`fn-hp-x-blocks` format. The source/profile invariant must establish
-representability before allocation; a whole-row predicate is never a per-tick
-runtime guard.
+The resident scalar/string helper and tree descriptor library must compose into
+one byte/word stream with exact total census/padding and completion progress.
+The actual cold source is the sum `(:resident row)` / `(:decoded node)`;
+borrowed decoded spans must stream by pinned pool offsets, with no whole-string
+coerce/intern at a terminal tick. Decoded CONS trees that abstract to octet
+lists need resumable opaque-leaf classification; a zero-length opcode6 span
+abstracts to NIL and canonically encodes as opcode0. Nonminimal old length
+spellings are regenerated in current canonical form, never copied blindly.
 
-Literal reachable leaf/word traces and corrupted-state hypothesis removals are
-in `tests/acl2/history-record-cursor-tests.lisp`. Initial leaf refinement's
+Message-ID key hashing must consume characters incrementally and equal
+`fn-hp-mkey`. The completed census must prove all five region lengths and
+placement equal the existing `fn-hp-row`/`fn-hp-x-blocks` format. The
+source/profile invariant must establish representability before allocation;
+a whole-row predicate is never a per-tick runtime guard.
+
+Literal reachable leaf/word/tree traces and corrupted-state hypothesis removals
+are in `tests/acl2/history-record-cursor-tests.lisp`. Initial leaf refinement's
 u64-size hypothesis has no practically executable removal witness at this
-stage; it is not represented as fully toothed. Full tree/census/controller
+stage; it is not represented as fully toothed. Full cold/byte/census/controller
 proof, funding, matched measurements, actual producer calls and coalesced
 qualification remain open under the original S7/P12 portfolio.
