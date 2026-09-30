@@ -14,6 +14,9 @@ FN_CERTIFY_JOBS ?= 1
 # its slot: the brief's three-minute rule, with a minute of slack.
 FN_LD_TIMEOUT_SECONDS ?= 240
 ACL2_BOOKS ?= books/defrecord \
+	books/consumer-transaction-dispatch \
+	tests/acl2/consumer-transaction-dispatch-tests \
+	tests/acl2/store-binding-stage-routing-tests \
 	books/consumer-account-input \
 	books/consumer-account-adoption-driver \
 	books/consumer-account-adoption-state \

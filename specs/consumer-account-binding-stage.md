@@ -1,5 +1,16 @@
 # Durable signing-binding preparation
 
+Store dispatch now has one explicit `fnce` version namespace: version1 local
+consumer events, version2 original account stages, version3 binding stage and
+reserved version4 remote consumer events. Magic alone does not select a decoder.
+`fn-cne-decode-exact` routes versions1–3 to their respective exact decoders;
+version4 explicitly refuses until the endpoint's bounded parser joins. Joint
+`fn-cae-eventp` recognizes account2/binding3 for retained/wire fields, encoding,
+identity-neutral replay and control-row classification. Generic CP completion
+continues to refuse both with `:authority-interpreter-required`; only the saved
+paired transaction decision can update authority. These modern Store source
+hunks are integration inputs, not currently qualified full Store boundaries.
+
 The account adoption producer must durably retain the signing decision selected
 with each winning credential. A prepared account row alone does not contain this
 provenance. These FNCE stages prepare the replacement configuration privately;

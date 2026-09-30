@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2059 |
-| Certification roots in the Makefile | 1875 |
-| Books inside the root closure | 1974 |
-| `defthm` and `defthmd` events | 31494 |
-| `defun` events | 20138 |
+| Books read | 2062 |
+| Certification roots in the Makefile | 1878 |
+| Books inside the root closure | 1977 |
+| `defthm` and `defthmd` events | 31495 |
+| `defun` events | 20141 |
 | Functions with verified guards | 3696 |
 | Functions declared `:verify-guards nil` and never verified | 2445 |
-| Functions left at the default with an explicit guard | 11084 |
+| Functions left at the default with an explicit guard | 11087 |
 | Functions left at the default with no guard | 2913 |
-| `assert-event` checks | 24238 |
+| `assert-event` checks | 24245 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
@@ -439,6 +439,7 @@ that `make certify` requests.
 | `books/consumer-store-events.lisp` | root | 1 | 13 | 13/0/0/0 | 0 | 0 | 0 |
 | `books/consumer-store-invariants.lisp` | root | 101 | 5 | 0/5/0/0 | 0 | 0 | 8 |
 | `books/consumer-store-projection.lisp` | root | 2 | 4 | 4/0/0/0 | 0 | 0 | 0 |
+| `books/consumer-transaction-dispatch.lisp` | root | 1 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/consumer-wait-codec.lisp` | root | 10 | 8 | 6/0/2/0 | 0 | 0 | 0 |
 | `books/consumer-wait.lisp` | root | 10 | 12 | 4/3/5/0 | 0 | 0 | 0 |
 | `books/consumer-withdrawal.lisp` | root | 19 | 10 | 2/0/8/0 | 0 | 0 | 2 |
@@ -1547,6 +1548,7 @@ that `make certify` requests.
 | `tests/acl2/consumer-store-node-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 32 | 0 | 0 |
 | `tests/acl2/consumer-store-projection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 1 | 0 |
 | `tests/acl2/consumer-topic-store-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
+| `tests/acl2/consumer-transaction-dispatch-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/consumer-wait-codec-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 28 | 5 | 0 |
 | `tests/acl2/consumer-wait-tests.lisp` | root | 0 | 23 | 0/11/0/12 | 40 | 15 | 0 |
 | `tests/acl2/consumer-withdrawal-tests.lisp` | root | 2 | 11 | 0/5/0/6 | 66 | 7 | 0 |
@@ -2004,6 +2006,7 @@ that `make certify` requests.
 | `tests/acl2/statement-keyring-publication-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 6 | 0 | 0 |
 | `tests/acl2/statement-recover-stream-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 2 | 0 | 0 |
 | `tests/acl2/statement-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 40 | 0 | 0 |
+| `tests/acl2/store-binding-stage-routing-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
 | `tests/acl2/store-budget-article-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 27 | 2 | 0 |
 | `tests/acl2/store-budget-naming-tests.lisp` | root | 0 | 4 | 0/3/1/0 | 61 | 17 | 0 |
 | `tests/acl2/store-budget-stored-post-tests.lisp` | root | 0 | 8 | 0/6/0/2 | 34 | 4 | 0 |
@@ -3256,7 +3259,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-stmt-receipt-policy-id-of-fn-stmt-make-receipt` | `books/statement.lisp` | 620 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-stmt-receipt-subject-of-fn-stmt-make-receipt` | `books/statement.lisp` | 614 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-stmt-signature-of-fn-stmt-make` | `books/statement.lisp` | 610 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-store-event-article-encoding-is-legacy-record-encoding` | `books/store-events.lisp` | 287 | arm-of-definition: the hypotheses select one IF/COND arm of fn-store-event-encode and the conclusion is that arm's value |
+| `fn-store-event-article-encoding-is-legacy-record-encoding` | `books/store-events.lisp` | 288 | arm-of-definition: the hypotheses select one IF/COND arm of fn-store-event-encode and the conclusion is that arm's value |
 | `fn-stx-admission-is-peer-independent-by-definition` | `books/stx-policy.lisp` | 60 | definition-restated: the conclusion is the body of fn-stx-transit-authority-ok |
 | `fn-stx-equivocating-creator-is-never-admitted` | `books/stx-authority.lisp` | 62 | arm-of-definition: the hypotheses select one IF/COND arm of fn-stx-authority-outcome and the conclusion is that arm's value |
 | `fn-stx-forked-authority-is-its-own-outcome` | `books/stx-authority.lisp` | 75 | arm-of-definition: the hypotheses select one IF/COND arm of fn-stx-authority-outcome and the conclusion is that arm's value |
