@@ -1924,30 +1924,48 @@
     "tests/acl2/post-identity-captured-source-trace-tests",
     "tests/acl2/post-identity-captured-tests",
     "tests/acl2/reader-response-disposition-tests",
-    "tests/acl2/receiver-parser-stage-tests"
+    "tests/acl2/receiver-parser-stage-tests",
+    "books/bpsec-operation",
+    "books/bpsec-provider-model",
+    "books/bpsec-target",
+    "books/bpsec-target-cursor",
+    "books/connection-read-quantum",
+    "books/incoming-copy-association",
+    "books/index-incoming-input-source",
+    "books/post-identity-source-cursor-source-body",
+    "books/post-identity-source-cursor-source-complete",
+    "books/public-exposure-selectors",
+    "books/query-payload-byte-boundary",
+    "books/query-payload-length-boundary",
+    "books/query-payload-scalar",
+    "books/query-payload-state",
+    "tests/acl2/bpsec-operation-tests",
+    "tests/acl2/bpsec-target-cursor-tests",
+    "tests/acl2/bpsec-target-tests",
+    "tests/acl2/post-identity-source-cursor-source-complete-tests"
   ],
   "totals": {
-    "books": 2107,
-    "books_in_root_closure": 2027,
-    "roots": 1923,
-    "theorems": 32099,
-    "functions": 20314,
-    "assert_events": 24309,
+    "books": 2125,
+    "books_in_root_closure": 2049,
+    "roots": 1941,
+    "theorems": 32182,
+    "functions": 20387,
+    "assert_events": 24359,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
       "verified": 3696,
-      "declared-off": 2500,
-      "default-guarded": 11138,
-      "default-unguarded": 2980
+      "declared-off": 2506,
+      "default-guarded": 11201,
+      "default-unguarded": 2984
     },
-    "suspect_theorems": 1283,
+    "suspect_theorems": 1284,
     "export_hygiene_warnings": 381,
     "enabled_projection_warnings": 67,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2723,
-    "host_names_warnings": 2311,
+    "include_hygiene_warnings": 2747,
+    "host_names_warnings": 2345,
     "hand_written_record_warnings": 19
   },
   "books": [
@@ -8249,6 +8267,113 @@
       "read_error": null
     },
     {
+      "book": "books/bpsec-operation.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 14,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 14,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bpsec-model"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-bps-op-foreign-completion-preserves-rightful-state-by-definition"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/bpsec-provider-model.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 2,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bpsec-model"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bpsec-target-cursor.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 11,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 11,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bpsec-target"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bpsec-target.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 21,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 21,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-bundle",
+        "bpsec-asb"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/bpsec.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -8268,7 +8393,11 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "bpsec-asb"
+        "bpsec-asb",
+        "bpsec-operation",
+        "bpsec-provider-model",
+        "bpsec-target",
+        "bpsec-target-cursor"
       ],
       "system_includes": [],
       "suspects": [],
@@ -10775,22 +10904,23 @@
       "book": "books/connection-budget.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 38,
-      "functions": 35,
+      "theorems": 36,
+      "functions": 34,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 35,
+        "default-guarded": 34,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 13,
+      "defconsts": 11,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "connection-read-quantum",
         "deflate-inflate",
         "heap-figure",
         "nntp-compress",
@@ -10802,7 +10932,34 @@
       ],
       "suspects": [
         "fn-cbud-conn-octets-is-the-parts",
-        "fn-cbud-handshake-octets-is-the-slots",
+        "fn-cbud-handshake-octets-is-the-slots"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/connection-read-quantum.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "public-exposure-selectors"
+      ],
+      "system_includes": [],
+      "suspects": [
         "fn-cbud-step-read-octets-under-a-rate-by-definition"
       ],
       "read_error": null
@@ -17289,8 +17446,36 @@
       "read_error": null
     },
     {
+      "book": "books/incoming-copy-association.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "incoming-buffer-carrier-shape",
+        "incoming-copy-stobj",
+        "page-read-pool-state"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/incoming-copy-stobj.lisp",
-      "in_root_closure": false,
+      "in_root_closure": true,
       "is_root": false,
       "theorems": 14,
       "functions": 16,
@@ -17342,7 +17527,7 @@
     },
     {
       "book": "books/incoming-setup-ranges.lisp",
-      "in_root_closure": false,
+      "in_root_closure": true,
       "is_root": false,
       "theorems": 8,
       "functions": 8,
@@ -17360,7 +17545,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "connection-budget",
+        "connection-read-quantum",
         "incoming-octet-holder"
       ],
       "system_includes": [],
@@ -17575,6 +17760,33 @@
       "includes": [
         "index-backing-connection-pins",
         "page-read-pool-state"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/index-incoming-input-source.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "consumer-position-fields",
+        "incoming-copy-association"
       ],
       "system_includes": [],
       "suspects": [],
@@ -26841,7 +27053,7 @@
     },
     {
       "book": "books/payload-view-lease.lisp",
-      "in_root_closure": false,
+      "in_root_closure": true,
       "is_root": false,
       "theorems": 10,
       "functions": 9,
@@ -28612,6 +28824,63 @@
       "read_error": null
     },
     {
+      "book": "books/post-identity-source-cursor-source-body.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 14,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "post-identity-source-cursor-source-path"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/post-identity-source-cursor-source-complete.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 19,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "post-identity-source-cursor-skip",
+        "post-identity-source-cursor-source-body"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/post-identity-source-cursor-source-context.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -28724,7 +28993,7 @@
       "book": "books/post-identity-source-cursor-source-metadata.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 12,
+      "theorems": 15,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -28752,11 +29021,11 @@
       "book": "books/post-identity-source-cursor-source-path.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 30,
-      "functions": 2,
+      "theorems": 39,
+      "functions": 3,
       "guards": {
         "verified": 0,
-        "declared-off": 2,
+        "declared-off": 3,
         "default-guarded": 0,
         "default-unguarded": 0
       },
@@ -29653,11 +29922,11 @@
       "in_root_closure": true,
       "is_root": false,
       "theorems": 1,
-      "functions": 12,
+      "functions": 11,
       "guards": {
         "verified": 1,
         "declared-off": 0,
-        "default-guarded": 11,
+        "default-guarded": 10,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -29669,8 +29938,33 @@
       "encapsulates": 0,
       "includes": [
         "config",
-        "native-config"
+        "native-config",
+        "public-exposure-selectors"
       ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/public-exposure-selectors.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [],
       "system_includes": [],
       "suspects": [],
       "read_error": null
@@ -29680,11 +29974,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 36,
-      "functions": 82,
+      "functions": 80,
       "guards": {
         "verified": 10,
         "declared-off": 0,
-        "default-guarded": 72,
+        "default-guarded": 70,
         "default-unguarded": 0
       },
       "verify_guards_events": 10,
@@ -29706,8 +30000,34 @@
       "read_error": null
     },
     {
+      "book": "books/query-payload-byte-boundary.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "query-payload-length-boundary"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/query-payload-grants.lisp",
-      "in_root_closure": false,
+      "in_root_closure": true,
       "is_root": false,
       "theorems": 5,
       "functions": 8,
@@ -29726,6 +30046,87 @@
       "encapsulates": 0,
       "includes": [
         "snapshot-source-token"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/query-payload-length-boundary.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 8,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../host/query-payload-scalar-host"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/query-payload-scalar.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "held-record",
+        "payload-arena",
+        "payload-view-lease",
+        "query-payload-grants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/query-payload-state.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "payload-view-lease"
       ],
       "system_includes": [],
       "suspects": [],
@@ -43041,6 +43442,85 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/bpsec-operation-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 7,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 21,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bpsec-operation"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bpsec-target-cursor-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 12,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bpsec-target-cursor",
+        "bpsec-target-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bpsec-target-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 15,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 12,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bpsec-target"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/byte-store-fault-keystones-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -56152,6 +56632,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/post-identity-source-cursor-source-complete-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 16,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/post-identity-source-cursor-source-complete"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/post-identity-source-cursor-source-date-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -63822,6 +64328,14 @@
       ]
     },
     {
+      "theorem": "fn-bps-op-foreign-completion-preserves-rightful-state-by-definition",
+      "book": "books/bpsec-operation.lisp",
+      "line": 161,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-bps-op-complete and the conclusion is that arm's value"
+      ]
+    },
+    {
       "theorem": "fn-bpsc-invalid-releases-no-contact-event-by-definition",
       "book": "books/bp-contact-service.lisp",
       "line": 64,
@@ -64223,7 +64737,7 @@
     {
       "theorem": "fn-cbud-conn-octets-is-the-parts",
       "book": "books/connection-budget.lisp",
-      "line": 490,
+      "line": 469,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "definition-restated: the conclusion is the body of fn-cbud-conn-octets"
@@ -64232,15 +64746,15 @@
     {
       "theorem": "fn-cbud-handshake-octets-is-the-slots",
       "book": "books/connection-budget.lisp",
-      "line": 760,
+      "line": 739,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
     },
     {
       "theorem": "fn-cbud-step-read-octets-under-a-rate-by-definition",
-      "book": "books/connection-budget.lisp",
-      "line": 145,
+      "book": "books/connection-read-quantum.lisp",
+      "line": 22,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-cbud-step-read-octets and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-cbud-step-read-octets and the conclusion is that branch's value"
@@ -79105,10 +79619,66 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/bpsec-operation.lisp",
+        "line": 6,
+        "include": "bpsec-model",
+        "included": "books/bpsec-model.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec-provider-model.lisp",
+        "line": 4,
+        "include": "bpsec-model",
+        "included": "books/bpsec-model.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec-target-cursor.lisp",
+        "line": 7,
+        "include": "bpsec-target",
+        "included": "books/bpsec-target.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec-target.lisp",
+        "line": 5,
+        "include": "bpsec-asb",
+        "included": "books/bpsec-asb.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/bpsec.lisp",
         "line": 4,
         "include": "bpsec-asb",
         "included": "books/bpsec-asb.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec.lisp",
+        "line": 5,
+        "include": "bpsec-target",
+        "included": "books/bpsec-target.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec.lisp",
+        "line": 6,
+        "include": "bpsec-target-cursor",
+        "included": "books/bpsec-target-cursor.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec.lisp",
+        "line": 7,
+        "include": "bpsec-provider-model",
+        "included": "books/bpsec-provider-model.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec.lisp",
+        "line": 8,
+        "include": "bpsec-operation",
+        "included": "books/bpsec-operation.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -79459,6 +80029,13 @@
         "line": 99,
         "include": "nntp-compress",
         "included": "books/nntp-compress.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/connection-read-quantum.lisp",
+        "line": 3,
+        "include": "public-exposure-selectors",
+        "included": "books/public-exposure-selectors.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -82815,6 +83392,27 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/incoming-copy-association.lisp",
+        "line": 4,
+        "include": "incoming-buffer-carrier-shape",
+        "included": "books/incoming-buffer-carrier-shape.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/incoming-copy-association.lisp",
+        "line": 5,
+        "include": "incoming-copy-stobj",
+        "included": "books/incoming-copy-stobj.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/incoming-copy-association.lisp",
+        "line": 6,
+        "include": "page-read-pool-state",
+        "included": "books/page-read-pool-state.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/incoming-copy-stobj.lisp",
         "line": 5,
         "include": "incoming-setup-ranges",
@@ -82875,6 +83473,20 @@
         "line": 6,
         "include": "page-read-pool-state",
         "included": "books/page-read-pool-state.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/index-incoming-input-source.lisp",
+        "line": 3,
+        "include": "incoming-copy-association",
+        "included": "books/incoming-copy-association.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/index-incoming-input-source.lisp",
+        "line": 4,
+        "include": "consumer-position-fields",
+        "included": "books/consumer-position-fields.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -84593,6 +85205,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/post-identity-source-cursor-source-body.lisp",
+        "line": 3,
+        "include": "post-identity-source-cursor-source-path",
+        "included": "books/post-identity-source-cursor-source-path.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/post-identity-source-cursor-source-complete.lisp",
+        "line": 3,
+        "include": "post-identity-source-cursor-source-body",
+        "included": "books/post-identity-source-cursor-source-body.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/post-identity-source-cursor-source-path.lisp",
         "line": 3,
         "include": "post-identity-source-cursor-source-metadata",
@@ -84684,6 +85310,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/public-exposure-rows.lisp",
+        "line": 69,
+        "include": "public-exposure-selectors",
+        "included": "books/public-exposure-selectors.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/public-exposure.lisp",
         "line": 77,
         "include": "public-exposure-rows",
@@ -84702,6 +85335,20 @@
         "line": 79,
         "include": "protocol-table",
         "included": "books/protocol-table.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/query-payload-byte-boundary.lisp",
+        "line": 2,
+        "include": "query-payload-length-boundary",
+        "included": "books/query-payload-length-boundary.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/query-payload-scalar.lisp",
+        "line": 4,
+        "include": "query-payload-grants",
+        "included": "books/query-payload-grants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -88426,6 +89073,34 @@
         "line": 2,
         "include": "../../books/bpsec-asb",
         "included": "books/bpsec-asb.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bpsec-operation-tests.lisp",
+        "line": 3,
+        "include": "../../books/bpsec-operation",
+        "included": "books/bpsec-operation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bpsec-target-cursor-tests.lisp",
+        "line": 2,
+        "include": "../../books/bpsec-target-cursor",
+        "included": "books/bpsec-target-cursor.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bpsec-target-cursor-tests.lisp",
+        "line": 3,
+        "include": "bpsec-target-tests",
+        "included": "tests/acl2/bpsec-target-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bpsec-target-tests.lisp",
+        "line": 2,
+        "include": "../../books/bpsec-target",
+        "included": "books/bpsec-target.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -94001,6 +94676,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/post-identity-source-cursor-source-complete-tests.lisp",
+        "line": 3,
+        "include": "../../books/post-identity-source-cursor-source-complete",
+        "included": "books/post-identity-source-cursor-source-complete.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/post-identity-source-cursor-source-path-tests.lisp",
         "line": 3,
         "include": "../../books/post-identity-source-cursor-source-path",
@@ -97597,6 +98279,216 @@
         "host": "host/index-connection-pins-host.lisp",
         "line": 28,
         "name": "status",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 13,
+        "name": "fn-iiq-context-ready-p",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 13,
+        "name": "fn-iaf-holder=",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 13,
+        "name": "fn-iaf-octets=",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 37,
+        "name": "fn-owner-incoming-freshness-state",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 37,
+        "name": "mv",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 37,
+        "name": "stobj-let",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 37,
+        "name": "fn-index-backing",
+        "source": "books/index-backing-provider.lisp",
+        "reason": "defined in books/index-backing-provider.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 37,
+        "name": "fn-mio$c-provider",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 37,
+        "name": "word",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 37,
+        "name": "fn-iiq-reserve-or-resume",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 37,
+        "name": "fn-iiq-reserve-scratch",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 37,
+        "name": "attempted",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 37,
+        "name": "fn-iiq-attempted-token",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 37,
+        "name": "keep-word",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 37,
+        "name": "fn-iiq-keep-input-source",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 37,
+        "name": "fn-iiq-retain-generation",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 37,
+        "name": "fn-iiq-adopt-pending",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 37,
+        "name": "fn-owner-incoming-context-read",
+        "source": "books/owner-incoming-context.lisp",
+        "reason": "defined in books/owner-incoming-context.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 37,
+        "name": "fn-ibp-query-tokenp",
+        "source": "books/index-backing-provider.lisp",
+        "reason": "defined in books/index-backing-provider.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 99,
+        "name": "fn-owner-incoming-authority-recheck",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 99,
+        "name": "fn-mio-current-publication-read",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 99,
+        "name": "fn-iiq-installed-runtime-source",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 99,
+        "name": "fn-ibp-current-publication",
+        "source": "books/index-backing-publication.lisp",
+        "reason": "defined in books/index-backing-publication.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 99,
+        "name": "fn-omk-at",
+        "source": "books/snapshot-source-token.lisp",
+        "reason": "defined in books/snapshot-source-token.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 128,
+        "name": "verify-guards",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 128,
+        "name": "disable",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 135,
+        "name": "defthm",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 135,
+        "name": "implies",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 135,
+        "name": "mv-nth",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/index-incoming-request-host.lisp",
+        "line": 135,
+        "name": "e/d",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
@@ -110064,8 +110956,8 @@
         "host": "host/owner-host.lisp",
         "line": 1586,
         "name": "fn-owner-incoming-row",
-        "source": "host/page-read-host.lisp",
-        "reason": "defined in host/page-read-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+        "source": "books/incoming-copy-association.lisp",
+        "reason": "defined in books/incoming-copy-association.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/owner-host.lisp",
@@ -110596,15 +111488,15 @@
         "host": "host/post-identity-captured-host.lisp",
         "line": 39,
         "name": "fn-miq-selected-payload-length",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+        "source": "host/query-payload-scalar-host.lisp",
+        "reason": "defined in host/query-payload-scalar-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/post-identity-captured-host.lisp",
         "line": 39,
         "name": "fn-miq-selected-payload-byte",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+        "source": "host/query-payload-scalar-host.lisp",
+        "reason": "defined in host/query-payload-scalar-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/post-identity-captured-host.lisp",
@@ -110631,15 +111523,15 @@
         "host": "host/post-identity-captured-host.lisp",
         "line": 71,
         "name": "fn-iiq-completed-input-source",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+        "source": "books/index-incoming-input-source.lisp",
+        "reason": "defined in books/index-incoming-input-source.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/post-identity-captured-host.lisp",
         "line": 71,
         "name": "fn-owner-index-incoming-begin",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+        "source": "host/index-incoming-request-host.lisp",
+        "reason": "defined in host/index-incoming-request-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/post-identity-captured-host.lisp",
@@ -110675,6 +111567,34 @@
         "name": "fn-miq-selected-read",
         "source": "books/index-backing-provider.lisp",
         "reason": "defined in books/index-backing-provider.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/query-payload-scalar-host.lisp",
+        "line": 6,
+        "name": "mv",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/query-payload-scalar-host.lisp",
+        "line": 32,
+        "name": "defthm",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/query-payload-scalar-host.lisp",
+        "line": 32,
+        "name": "implies",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/query-payload-scalar-host.lisp",
+        "line": 32,
+        "name": "enable",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/reader-host.lisp",

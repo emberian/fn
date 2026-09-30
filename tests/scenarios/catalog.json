@@ -7452,6 +7452,34 @@
         "tests/acl2/ninep-header-tests.lisp"
       ],
       "scope_note": "Specified native acceptance scenario, not executed. Current source header witnesses are separate from native mounted source/lifetime qualification."
+    },
+    {
+      "id": "SCN-1068",
+      "title": "BPSec stale foreign cancelled duplicate and uncertain completions emit no evidence",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-018"
+      ],
+      "steps": [
+        "Complete nonempty BIB and BCB operation records against exact current references; retain full evidence and settled state.",
+        "Change target number, expected span or input incarnation on a valid foreign descriptor; preserve rightful issued state.",
+        "Revoke policy/key/input references, omit or malform current authority; settle without evidence.",
+        "Cancel an issued request, repeat a settled result, and deliver a late verified observation after an uncertain completion.",
+        "Exercise closed status/detail/output pairs, fixed record lengths and span overflow; assert hypothesis-removal and corrupted-state teeth."
+      ],
+      "expected": [
+        "Only exact issued/current/verified metadata yields evidence; no supplied observation proves a real primitive.",
+        "Foreign/malformed completions leave rightful pending state unchanged.",
+        "Cancelled/stale/duplicate results carry no evidence. Uncertain remains distinct from failed and retires its token.",
+        "No completion or cancellation reopens a retired operation. No physical worker return, charge refund or backing release is inferred."
+      ],
+      "evidence": [
+        "books/bpsec-operation.lisp",
+        "tests/acl2/bpsec-operation-tests.lisp",
+        "planning/evidence/bpsec-operation-source-2026-09-30.json"
+      ],
+      "execution_scope": "Literal ACL2 component/source fixtures; actual immutable registry, provider, current lease, cryptographic realizer and native gate remain open."
     }
   ]
 }

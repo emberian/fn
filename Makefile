@@ -1935,7 +1935,25 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/post-identity-captured-source-trace-tests \
     tests/acl2/post-identity-captured-tests \
     tests/acl2/reader-response-disposition-tests \
-    tests/acl2/receiver-parser-stage-tests
+    tests/acl2/receiver-parser-stage-tests \
+    books/bpsec-operation \
+    books/bpsec-provider-model \
+    books/bpsec-target \
+    books/bpsec-target-cursor \
+    books/connection-read-quantum \
+    books/incoming-copy-association \
+    books/index-incoming-input-source \
+    books/post-identity-source-cursor-source-body \
+    books/post-identity-source-cursor-source-complete \
+    books/public-exposure-selectors \
+    books/query-payload-byte-boundary \
+    books/query-payload-length-boundary \
+    books/query-payload-scalar \
+    books/query-payload-state \
+    tests/acl2/bpsec-operation-tests \
+    tests/acl2/bpsec-target-cursor-tests \
+    tests/acl2/bpsec-target-tests \
+    tests/acl2/post-identity-source-cursor-source-complete-tests
 
 .PHONY: host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none

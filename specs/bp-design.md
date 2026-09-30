@@ -1031,9 +1031,72 @@ never verified. Explicit empty parameters are refused in this supported
 profile. Literal codec scenarios are SCN-1065/1066. Structural parsing is
 distinct from target-graph validity and cryptographic verification.
 
+The logical target-graph reference in `books/bpsec-target.lisp` binds each
+ASB as `(block-number . ASB)`, checks actual block existence/type, unique
+service/target pairs, forbidden security targets and payload BCB flags. Every
+actual security block must be covered by one binding or exactly the opaque
+BIB set derived from parsed BCB targets. Missing security coverage returns
+unsupported before pending plaintext. A BIB hidden by a BCB is never parsed
+as an ASB; it returns `:pending-plaintext` after the remaining checks. The
+complete graph must be recomputed over the authenticated transformed view
+after decryption, while retaining the original ciphertext wire.
+
+`fn-bps-parsed-bindings-matchp` is the mandatory logical exact-data premise
+for a statement about the actual bundle: each binding equals decoding its
+actual block data. Number/type equality alone does not establish that fact.
+The stale-ASB witness retains those coordinates while changing actual target
+bytes and demonstrates the missing relation. The logical checker is not
+installed as a served list scan or whole-data re-decoder. Its operational
+candidate in `books/bpsec-target-cursor.lisp` uses `fn-bps-target-start` and
+`fn-bps-target-step`: one scheduling unit performs one metadata transition,
+one block-number lookup comparison or one set probe. Aggregate metadata is
+preflighted before constructing bound-number and service-target lists; the
+first excess refuses the operator limit. The initial structural input
+relation is a carried guard, not repeated validation inside the unit step.
+Component theorems bound work by the quantum and show that split quanta
+preserve the complete cursor and exact work. Whole graph equivalence and
+state preservation remain PRF-1179 work, with no actual host installation.
+
+`books/bpsec-provider-model.lisp` names the logical unique-backing relation
+and `fn-bps-window-backing-matchp`. A same-ID/same-offset byte substitution
+fails this relation. The predicate specifies the required provider premise;
+it does not establish a physical provider or authorize a supplied window.
+
+REP-018: Receiver-only BPSec completion compares fixed immutable-reference
+metadata against the exact issued operation and current authority snapshot.
+Only a valid verified completion for that operation may emit descriptor-bound
+evidence. Revocation, cancellation, duplication and uncertainty never reopen a
+retired token or imply application acceptance. This remains specified until the
+actual immutable registry, canonical plan, primitive provenance and serialized
+current-policy lease are established at the BP caller.
+
+`books/bpsec-operation.lisp` implements the frozen receiver completion layout
+from architectural contract 6b42c2a93 §5.1. `fn-bps-op-complete` always returns
+`(:bps-completed disposition reason next-state evidence)`; malformed and foreign
+completions preserve the rightful state, exact cancelled/stale completions settle
+without evidence, and duplicate completions are ignored. The closed primitive
+status/detail pairs keep unavailable/fault observations uncertain. Verified BIB
+has nil output; verified BCB has an immutable plaintext reference. These are
+bounded record-shape checks, not authentic primitive observations. The literal
+operation descriptor is twelve cells including its tag, following the frozen
+field order; no padding or extra wire field is introduced.
+
+References are `(:bps-ref slot incarnation)` with uint64 fields, in distinct
+token/held/policy/key/input namespaces. A named injective immutable registry
+relation must bind them to actual held objects, policy/key generations and
+ACL2-produced canonical input plans; it is not established here. Byte spans in
+this completion leaf additionally require uint64 backing IDs. Resolved scope is
+0..7 after profile validation; separate tags retain exact spans, while a
+ciphertext-tail tag has nil expected reference and requires upstream exact input
+construction. The actual host obtains current references under its serialized
+policy lease. No full ASB, bundle, key, plan or plaintext is traversed by the
+completion decision. PRF-1185 and SCN-1068 cover matching and logical retirement,
+not crypto, physical worker return, charge refund, pin release or native policy
+admission. A retry after uncertainty requires a fresh nonreused token.
+
 Full cursor invariant preservation, equality for every chunk/quantum
-schedule, operational span refinement, target graph (PRF-1179), canonical
-cryptographic inputs, descriptor-bound primitive completion, explicit key
+schedule, operational span refinement, served target graph (PRF-1179), canonical
+cryptographic inputs, actual descriptor-bound primitive completion, explicit key
 policy, durable nonce allocation and native admission remain open. Actual
 ACL2 admission is component evidence; normal certification and the matching
 native security trajectory are separate coordinates.

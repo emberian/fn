@@ -113,3 +113,36 @@
     fn-psc-source-recipe-paid-run-preserves-generated-path-flag nth len nfix))))
 
 (local (in-theory (disable fn-psc-source-control-step-unfolds)))
+(local (defthm fn-psc-source-paid-run-preserves-configuration
+ (equal (fn-psc-configuration (fn-psc-model-byte-run fuel c incoming held))
+        (fn-psc-configuration c))
+ :hints (("Goal" :induct (fn-psc-model-byte-run fuel c incoming held)
+  :in-theory (e/d (fn-psc-model-byte-run) (fn-psc-step fn-psc-configuration nth len))))))
+
+(local (defthm fn-psc-source-stamp-initializer-establishes-source-resumes
+ (implies (fn-psc-source-contextp c incoming held)
+  (fn-psc-source-resumep (fn-psc-literal pos *fn-inj-injection-date-field* :source-stamp c)))
+ :hints (("Goal" :in-theory (e/d (fn-psc-source-contextp fn-psc-source-resumep fn-psc-literal fn-psc-compare)
+  (fn-psc-model-source nth len update-nth nfix))))))
+
+(defthm fn-psc-source-after-path-complete-keeps-source-agent-and-msgid
+ (implies (and (fn-psc-source-contextp c incoming held) (natp pos)
+               (<= pos (len (fn-psc-model-source c incoming held))))
+  (let ((d (fn-psc-model-source-after-path-complete pos c incoming held)))
+   (and (equal (fn-psc-model-source d incoming held) (fn-psc-model-source c incoming held))
+        (equal (fn-psc-model-retained-agent d incoming) (fn-psc-model-retained-agent c incoming))
+        (equal (fn-psc-get msgid d) (fn-psc-get msgid c)))))
+ :hints (("Goal" :do-not-induct t
+  :use (fn-psc-source-stamp-initializer-establishes-source-resumes
+        (:instance fn-psc-source-paid-run-preserves-configuration
+          (fuel (fn-psc-model-source-after-path-cost pos c incoming held))
+          (c (fn-psc-literal pos *fn-inj-injection-date-field* :source-stamp c)))
+        (:instance fn-psc-source-byte-run-preserves-incoming-agent
+          (fuel (fn-psc-model-source-after-path-cost pos c incoming held))
+          (c (fn-psc-literal pos *fn-inj-injection-date-field* :source-stamp c)))
+        fn-psc-source-after-path-complete-is-actual-paid-steps)
+  :in-theory (e/d (fn-psc-configuration
+                   fn-psc-model-source fn-psc-model-retained-agent fn-psc-literal fn-psc-compare)
+   (fn-psc-source-stamp-initializer-establishes-source-resumes fn-psc-source-contextp fn-psc-source-resumep fn-psc-source-after-path-complete-is-current-buffer-inverse fn-psc-model-source-after-path-complete fn-psc-model-source-after-path-cost fn-psc-model-byte-run
+    fn-psc-source-paid-run-preserves-configuration fn-psc-source-byte-run-preserves-incoming-agent
+    fn-psc-source-after-path-complete-is-actual-paid-steps nth nthcdr len update-nth nfix)))))

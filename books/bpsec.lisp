@@ -2,3 +2,7 @@
 ; No operational security gate or cryptographic realization is claimed.
 (in-package "ACL2")
 (include-book "bpsec-asb")
+(include-book "bpsec-target")
+(include-book "bpsec-target-cursor")
+(include-book "bpsec-provider-model")
+(include-book "bpsec-operation")

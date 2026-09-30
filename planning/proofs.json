@@ -19128,16 +19128,27 @@
         "PRF-1178"
       ],
       "assumptions": [],
-      "status": "planned",
-      "evidence": [
-        "specs/bp-design.md"
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-bps-target-drive-work-does-not-exceed-quantum",
+        "fn-bps-target-drive-composes-quanta"
       ],
-      "progress_note": "Claimed target-graph work; parser source does not establish this target. No implementation/proof/native claim."
+      "evidence": [
+        "books/bpsec-target.lisp",
+        "tests/acl2/bpsec-target-tests.lisp",
+        "planning/evidence/bpsec-target-source-2026-09-30.json",
+        "specs/bp-design.md",
+        "books/bpsec-target-cursor.lisp",
+        "books/bpsec-provider-model.lisp",
+        "tests/acl2/bpsec-target-cursor-tests.lisp",
+        "planning/evidence/bpsec-target-cursor-source-2026-09-30.json"
+      ],
+      "progress_note": "Logical graph/reference data-match premise plus bounded metadata cursor source. Final fresh16fixtureforms15.82s7199127steps with6proper-local source/test dependencies and7matchingcached dependencies. Guards, unconditional quantum work bound and complete-cursor/work quantum-composition event admitted; literal quantum1/17/reference cases and provider-byte substitution refusal pass. Full state preservation/every-schedule reference equivalence, actual pinned provider/caller, complete post-decrypt graph, normal certification/native security gate remain open."
     },
     {
       "id": "PRF-1145",
       "title": "Bounded D25 virtual-byte agent and injection inverse",
-      "statement": "Planned actual captured confirmation boundary: fn-psc-begin/demand/step/result consume token-bound leased bytes in one paid byte/control transition, yielding incoming-derived agent spans and per-source K,A,B descriptors exactly matching fn-pb-path-agent and fn-pbb-source-index with logical Message-ID string-octet abstraction. One incoming agent controls both inverses, preserving current recipe and malformed fallback behavior. Exact source components establish full incoming agent completion and legal span, current Cancel-Lock/Key skip, generated leading Path prefix, complete after-Path v1/v2 recipes, and v3 unsplice, together with actual paid component traces and fixed-state frames. The universal source-index begin-to-terminal legal descriptor composition, demanded-byte authority/bounds, physical lifetime/funding and actual native composed caller remain open. No complete boundary theorem or native SAME is claimed.",
+      "statement": "Planned actual captured confirmation boundary: fn-psc-begin/demand/step/result consume token-bound leased bytes in one paid byte/control transition, yielding incoming-derived agent spans and per-source K,A,B descriptors exactly matching fn-pb-path-agent and fn-pbb-source-index with logical Message-ID string-octet abstraction. One incoming agent controls both inverses, preserving current recipe and malformed fallback behavior. Exact source components establish full incoming agent completion and legal span, current Cancel-Lock/Key skip, generated leading Path prefix, complete after-Path v1/v2 recipes, and v3 unsplice, together with actual paid component traces and fixed-state frames. Protected source admission now establishes the universal actual begin-to-paid-completion source-index boundary for both modes, exact current descriptor/no-source result, phase done and legal K<=A<=B<=N bounds under core-derived lengths and legal SAME incoming agent span. The named ghost completion/cost are proof-only summaries of actual byte/control steps. Remaining hypothesis minimality, demanded-byte authority/bounds, physical lifetime/allocation/funding and actual native composed caller/SAME remain open. No normal certification, image or deployment claim is made.",
       "milestone": "M5",
       "requirements": [],
       "depends_on": [],
@@ -19182,7 +19193,11 @@
         "books/post-identity-source-cursor-source-metadata.lisp",
         "books/post-identity-source-cursor-source-path.lisp",
         "tests/acl2/post-identity-source-cursor-source-path-tests.lisp",
-        "planning/evidence/post-identity-source-cursor/source-path-proper-local.json"
+        "planning/evidence/post-identity-source-cursor/source-path-proper-local.json",
+        "books/post-identity-source-cursor-source-body.lisp",
+        "books/post-identity-source-cursor-source-complete.lisp",
+        "tests/acl2/post-identity-source-cursor-source-complete-tests.lisp",
+        "planning/evidence/post-identity-source-cursor/source-complete-proper-local.json"
       ],
       "progress_note": "Protected proper-local pc26 eleven-source replay passed57.51 ACL2 seconds /28,441,177steps,9 rootforms. Actual agent begin→paid completion returns no-source or legal natural S<=E<=N incoming span, exact fn-pb-path-agent denotation. Certified c2ea invariant bytes preserved by unchanged source-lineage factoring. v1-v2 source-index inverse/token/lease/funding/native composition OPEN; no normalcert/image/fullmission claim. Protected proper-local pc22 ten-source replay passed60.01 ACL2 seconds /28,118,362steps,9 loaded rootforms. Whole Lock-Key/Path-first/block-fallback incoming agent span equals actual fn-pb-path-agent with exact retained Message-ID, plus paid runtime completion. Complete literal teeth including extent removal. Span bounds, v1-v2 source-index, token/lease/funding/native composition OPEN. Runtime57f unchanged. Protected proper-local pc21 nine-source replay passed64.46 ACL2 seconds /26,518,914steps,6 loaded rootforms; extent-removal additional82steps. Exact incoming/held Cancel-Lock-Key skip equals fn-pbb-skip-at plus paid cursor trace. Whole Path/block precedence, v1-v2 inverse, token/lease/funding/native composition OPEN. Runtime57f unchanged. Protected proper-local pc20 eight-source replay passed81.04 ACL2 seconds /24,101,816steps,8 loaded rootforms. Full optional block agent span equals actual fn-pb-block-agent and paid cursor trace, with all optional fields/Info-only/malformed/short-stamp/wrong-msgid literal witnesses and extent removal. Whole Lock-Key/Path precedence agent and v1-v2 inverse remain OPEN. Protected proper-local pc18 seven-source replay passed39.12 ACL2 seconds /22,025,731 steps,6 loaded root forms. Injection-Info agent span equals actual fn-pb-info-line-agent and exact paid trace; plain/parameter/malformed/empty prefix literal witnesses and extent removal pass. Protected proper-local pc17 six-source replay passed45.39 ACL2 seconds /21,369,461 steps,4 testbody forms. Actual retained Message-ID comparison matches fn-record-string-octets and current Message-ID line strip with exact paid runtime trace; full literal reachable positive/malformed/source-extent-removal teeth pass. Leading uppercase Path and v3 unsplice component evidence retained. Full block agent/Lock-Key/v1-v2/source-index inverse and demand/funding/lease/native join OPEN; no certificate/image/completion claim. Runtime57f unchanged. Protected proper-local pc29 twelve-source leaves +seven rootforms passed75.78s/32,909,064steps. Exact captured31 Date wrapper matches current buffer strip and actual paid trace, including complete incoming/held/malformed/EOF and capture-bound removal. Full source-index/native mission remain OPEN. Fresh pc32 twelve confined source leaves +eight rootforms passed71.39s/30,404,211steps after explicit full-paid context hint. Info continuation/source metadata frame and strengthened literals pass. Full source-index/native mission OPEN. Fresh pc34 fourteen proper-local leaves +13 loaded rootforms passed82.05s/37,434,523steps; full after-Stamp v1/v2 semantic inverse and paid trace,12 complete branch literals. Additional semantic capture-bound removal110steps; paid-trace hypothesis minimality remains open. Runtime57f/c2ea invariant unchanged. Full source-index/native/resource mission OPEN. Protected proper-local pc35 fifteen-source Stamp geometry replay passed133.43s/37,483,008steps,6 complete positive literals; capture-equality removal65steps. Exact short clamped-date reference/runtime bridge and carried capture bounds established. Full after-path/source-index/native/resource mission OPEN; runtime/c2ea unchanged. Protected proper-local pc36 sixteen-source replay passed162.07s/38,167,049steps,14 complete positives; extent-hypothesis removal84steps. Full after-Path semantic inverse and actual paid cursor trace now joined across Info-only/bad-Stamp/good-Stamp v1/v2. Leading Path/skip/v3 full source-index/native/resource mission OPEN; runtime/c2ea unchanged. Fresh proper-local pc38 eighteen-source replay108.79s/39,404,969steps joins generated leading Path exact strip/flag and paid trace; seven prefix positives, skip/natural-position removal and two recipe flag positives pass. Full source-index begin/result/native/resource remains open; runtime/c2ea unchanged."
     },
@@ -19515,6 +19530,33 @@
         "planning/evidence/captured-native-caller-2026-09-30.md"
       ],
       "progress_note": "Protected exact mandatoryheld16/record12 current-RCL2 runtime is guard-verified; matching narrow normal manifests qualify its conditional digest, group, payload, classifier/hash-choice/domain and producer/agent/source geometry/continuation/paid trace components. Latest source trace normal185253 passed2fresh/80reuse with82 unchanged hashes. Actual completed paid source effects now source-admitted for funded feedback, readonly NEXT and pooled held-NEXT, preserving exact descriptors, BOTH-whole fallback and immediate length conflict. Complete retained-premise teeth and actual local input/pool/status/fuel fixtures pass; normal194035 completion passed2fresh/82reuse in6.216s with84 unchanged hashes and2 exact nonce markers. Runtime/parser bytes unchanged. Universal source-index inverse, selected held-byte denotation/current source faithfulness, funded provider/holder/lifetime and full SAME/native composition remain OPEN. Original cached provenance33 uncited stays separate from25 exact external mappings/eight primitive full-closure gaps; publication held for coherent owner schema cohort. Full target stays planned/events[]. Actual native post-boundary caller source now selects retained original input and shared-fuel PIC callbacks; exact unavailable-source and synthetic callback transport test passed. New PROGRAM leaf translation/guards, installed captured allowance/constructor, genuine all-alias retirement, consumer prepared carry and full semantic/producer/funding/native composition remain OPEN. No historical component normal is transferred to changed assembled ancestry."
+    },
+    {
+      "id": "PRF-1185",
+      "title": "BPSec evidence requires exact issued operation and current verified completion",
+      "statement": "Additive subject fn-bps-op-complete emits evidence only for valid issued state, matching valid verified completion and exact wellformed current held/policy/key/input references. Completion and cancellation preserve valid operation state; cancelled and settled operations never reopen or emit evidence. The subject is not installed on the actual BP host yet. Trusted primitive provenance, immutable reference registry, canonical inputs, nonreused token allocation and actual current-policy lease are separate caller obligations. Source matching is not cryptographic security or application acceptance.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-018"
+      ],
+      "depends_on": [
+        "PRF-1178",
+        "PRF-1179"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-bps-op-evidence-requires-issued-current-verified",
+        "fn-bps-op-complete-preserves-operation",
+        "fn-bps-op-cancel-preserves-operation",
+        "fn-bps-op-completion-never-reopens-retired-operation"
+      ],
+      "evidence": [
+        "books/bpsec-operation.lisp",
+        "tests/acl2/bpsec-operation-tests.lisp",
+        "planning/evidence/bpsec-operation-source-2026-09-30.json"
+      ],
+      "progress_note": "Source-only exact protected persvati w28 admission; fresh31fixtureforms1.09s211704steps, model/operation proper-local and4matchingcached deps/0missing. All guards and four evidence/preservation/retirement events admitted. First reservedSTATE formal refusal repaired without weakening guard; evidence rewrite orientation repaired by rule-classes nil. Full actual provider/provenance/current lease/native gate and normal certification remain open."
     }
   ]
 }

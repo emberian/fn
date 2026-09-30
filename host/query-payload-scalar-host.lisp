@@ -1,0 +1,41 @@
+; Actual selected-row lookup precedes every scalar arena observation.
+(in-package "ACL2")
+(include-book "../books/index-backing-provider")
+(include-book "../books/query-payload-scalar")
+(include-book "../books/query-payload-state")
+(defun fn-miq-selected-payload-length (selected fuel fn-mio$c fn-arena state)
+  (declare (xargs :stobjs (fn-mio$c fn-arena state) :guard (natp fuel)))
+  (mv-let (word held grant left)
+    (fn-miq-selected-read selected fuel fn-mio$c)
+    (cond ((not (eq word :selected)) (mv word nil left))
+          ((not (and (natp left) (<= left fuel))) (mv :invalid-selected-carry nil fuel))
+          (t (fn-qps-selected-length selected held grant
+                              (fn-owner-query-payload-ledger state) left fn-arena)))))
+(defun fn-miq-selected-payload-byte (selected index fuel fn-mio$c fn-arena state)
+  (declare (xargs :stobjs (fn-mio$c fn-arena state)
+                  :guard (and (natp index) (natp fuel))))
+  (mv-let (word held grant left)
+    (fn-miq-selected-read selected fuel fn-mio$c)
+    (cond ((not (eq word :selected)) (mv word nil left))
+          ((not (and (natp left) (<= left fuel))) (mv :invalid-selected-carry nil fuel))
+          (t (fn-qps-selected-byte selected held grant
+                            (fn-owner-query-payload-ledger state) index left fn-arena)))))
+; Actual provider aggregate and snapshot slot are decided together in ACL2.
+; Native installation must supply this exact retained provider object.
+(defun fn-owner-query-payload-lifecycle-decision (phase event joined fn-mio$c state)
+  (declare (xargs :stobjs (fn-mio$c state) :guard t))
+  (let ((ledger (fn-owner-query-payload-ledger state)))
+    (if (not (fn-pvl-ledgerp ledger)) (list :refused phase)
+      (let ((owned (or (fn-omk-at 2 ledger) (fn-mio-payload-owned-p fn-mio$c))))
+        (if (and owned (eq event :reset)) (list :refused phase)
+          (fn-pvl-runtime-step phase event owned joined))))))
+(defthm fn-owner-query-payload-active-cannot-reset
+  (implies (fn-mio-payload-owned-p fn-mio$c)
+    (equal (fn-owner-query-payload-lifecycle-decision phase :reset joined fn-mio$c state)
+           (list :refused phase)))
+  :hints (("Goal" :in-theory (enable fn-owner-query-payload-lifecycle-decision))))
+(defthm fn-owner-query-payload-active-cannot-retire
+  (implies (fn-mio-payload-owned-p fn-mio$c)
+    (equal (fn-owner-query-payload-lifecycle-decision phase :joined joined fn-mio$c state)
+           (list :refused phase)))
+  :hints (("Goal" :in-theory (enable fn-owner-query-payload-lifecycle-decision fn-pvl-runtime-step))))

@@ -296,4 +296,76 @@
     fn-psc-model-source fn-psc-model-retained-agent
     fn-psc-source-byte-run-addition fn-psc-comparison-next-is-actual-paid-trace fn-psc-comparison-complete-is-actual-steps fn-psc-source-literal-next-is-actual-paid-steps fn-psc-source-path-agent-next-is-paid-steps fn-psc-comparison-statep nth len nfix)))))
 
+(local (defthm fn-psc-source-cdr-update-positive
+ (implies (posp i)
+  (equal (cdr (update-nth i value c)) (update-nth (1- i) value (cdr c))))
+ :hints (("Goal" :expand ((update-nth i value c)) :in-theory (enable posp nfix)))))
+
+(local (defthm fn-psc-source-update-overwrites
+ (implies (natp i)
+  (equal (update-nth i a (update-nth i b c)) (update-nth i a c)))
+ :hints (("Goal" :induct (update-nth i b c) :in-theory (enable update-nth)))))
+
+(local (defun fn-psc-source-update-induct (i j c)
+ (declare (xargs :guard t :verify-guards nil :measure (nfix i)))
+ (if (or (zp i) (zp j)) c (fn-psc-source-update-induct (1- i) (1- j) (cdr c)))))
+
+(local (defthm fn-psc-source-update-order
+ (implies (and (natp i) (natp j) (< i j))
+  (equal (update-nth j b (update-nth i a c)) (update-nth i a (update-nth j b c))))
+ :hints (("Goal" :induct (fn-psc-source-update-induct i j c)
+  :in-theory (enable fn-psc-source-update-induct update-nth)))))
+
+(local (defthm fn-psc-source-update-order-by-index
+ (implies (and (natp i) (natp j) (< i j))
+  (equal (update-nth j b (update-nth i a c)) (update-nth i a (update-nth j b c))))
+ :rule-classes ((:rewrite :loop-stopper nil))
+ :hints (("Goal" :use fn-psc-source-update-order :in-theory (disable fn-psc-source-update-order update-nth)))))
+
+(local (defthm fn-psc-source-body-literal-base-initializer-is-self
+ (equal (fn-psc-literal (fn-psc-get base (fn-psc-literal pos bytes resume c)) bytes resume
+                        (fn-psc-literal pos bytes resume c))
+        (fn-psc-literal pos bytes resume c))
+ :hints (("Goal" :in-theory (e/d (fn-psc-literal fn-psc-compare nfix)
+  (nth len update-nth))))))
+
+(local (defthm fn-psc-source-body-literal-reinitialization-is-self
+ (equal (fn-psc-literal pos bytes resume (fn-psc-literal pos bytes resume c))
+        (fn-psc-literal pos bytes resume c))
+ :hints (("Goal" :in-theory (e/d (fn-psc-literal fn-psc-compare nfix) (nth len update-nth))))))
+
+(defthm fn-psc-source-path-prefix-issued-stamp-initializer-is-self
+ (implies (and (fn-psc-source-contextp c incoming held) (natp pos)
+               (equal (fn-psc-get skip c) pos))
+  (let ((d (fn-psc-model-source-path-prefix-complete pos c incoming held)))
+   (equal (fn-psc-literal (fn-psc-get base d) *fn-inj-injection-date-field* :source-stamp d) d)))
+ :hints (("Goal" :do-not-induct t
+  :in-theory (e/d (fn-psc-model-source-path-prefix-complete)
+   (fn-psc-model-source-literal-complete fn-psc-model-comparison-complete
+    fn-psc-literal fn-psc-agent-compare fn-psc-compare fn-psc-step
+    fn-psc-source-contextp fn-psc-model-source fn-psc-model-retained-agent
+    fn-psc-source-path-prefix-complete-is-paid-steps fn-psc-source-literal-next-is-actual-paid-steps
+    fn-psc-source-path-agent-next-is-paid-steps fn-psc-comparison-next-is-actual-paid-trace
+    fn-psc-comparison-complete-is-actual-steps fn-psc-source-byte-run-addition nth len update-nth)))))
+
+(local (defthm fn-psc-source-paid-run-preserves-configuration
+ (equal (fn-psc-configuration (fn-psc-model-byte-run fuel c incoming held))
+        (fn-psc-configuration c))
+ :hints (("Goal" :induct (fn-psc-model-byte-run fuel c incoming held)
+  :in-theory (e/d (fn-psc-model-byte-run) (fn-psc-step fn-psc-configuration nth len))))))
+
+(defthm fn-psc-source-path-prefix-complete-configuration-frame
+ (implies (and (fn-psc-source-contextp c incoming held) (natp pos)
+               (equal (fn-psc-get skip c) pos))
+  (equal (fn-psc-configuration (fn-psc-model-source-path-prefix-complete pos c incoming held))
+         (fn-psc-configuration c)))
+ :hints (("Goal" :do-not-induct t
+  :use (fn-psc-source-path-prefix-complete-is-paid-steps
+        (:instance fn-psc-source-paid-run-preserves-configuration
+          (fuel (fn-psc-model-source-path-prefix-cost pos c incoming held))
+          (c (fn-psc-literal pos *fn-inj-path-field* :source-path-field c))))
+  :in-theory (e/d (fn-psc-configuration fn-psc-literal fn-psc-compare)
+   (fn-psc-model-source-path-prefix-complete fn-psc-model-source-path-prefix-cost fn-psc-model-byte-run
+    fn-psc-source-path-prefix-complete-is-paid-steps fn-psc-source-paid-run-preserves-configuration nth len update-nth nfix)))))
+
 (local (in-theory (disable fn-psc-source-path-literal-complete-unfolds)))

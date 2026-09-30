@@ -3,7 +3,7 @@
 ; are installed. No host range arithmetic; no implicit backing capacity.
 (in-package "ACL2")
 (include-book "incoming-octet-holder")
-(include-book "connection-budget")
+(include-book "connection-read-quantum")
 
 ; Plan=(token total installed-capacity quantum offset pending phase).
 ; Pending is a fixed four-field grant (:incoming-copy token start count).
