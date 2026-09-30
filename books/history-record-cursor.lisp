@@ -2,6 +2,7 @@
 ; Library only. No actual producer/host, physical pool or publication claim.
 (in-package "ACL2")
 (include-book "store-tree-codec")
+(include-book "history-pages-words")
 (local (include-book "arithmetic/top" :dir :system))
 (local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
 
@@ -181,3 +182,116 @@
 
 (in-theory (disable fn-hrcur-leaf-begin fn-hrcur-leaf-tick
                     fn-hrcur-leaf-invariantp fn-hrcur-leaf-rest))
+
+
+; The accumulator holds at most seven bytes, not a growing encoded row.
+(defun fn-hrcur-wordp (k w)
+  (declare (xargs :guard t))
+  (and (natp k) (< k 8) (natp w) (< w (expt 256 k))))
+
+(defun fn-hrcur-word-push (octet k w)
+  (declare (xargs :guard t))
+  (if (and (fn-scc-octetp octet) (fn-hrcur-wordp k w))
+      (let ((next (+ w (* octet (expt 256 k)))))
+        (if (equal k 7) (mv :emit next 0 0)
+          (mv :continue nil (+ 1 k) next)))
+    (mv (list :refused :word-cursor) nil 0 0)))
+
+(defun fn-hrcur-word-finish (k w)
+  (declare (xargs :guard t))
+  (cond ((not (fn-hrcur-wordp k w))
+         (mv (list :refused :word-cursor) nil 0 0))
+        ((equal k 0) (mv :prepared nil 0 0))
+        (t (mv :emit w 0 0))))
+
+(local
+ (defthm fn-hrcur-unle-is-le-value
+   (equal (adt-unle (len b) b) (fn-scc-le-value b))
+   :hints (("Goal" :induct (len b) :in-theory (enable adt-unle fn-scc-le-value)))))
+
+(local
+ (defthm fn-hrcur-le-value-append
+   (equal (fn-scc-le-value (append a b))
+          (+ (fn-scc-le-value a) (* (expt 256 (len a)) (fn-scc-le-value b))))
+   :hints (("Goal" :induct (len a) :in-theory (enable fn-scc-le-value)))))
+
+(defthm fn-hrcur-word-push-preserves
+  (implies (and (fn-scc-octetp octet) (fn-hrcur-wordp k w))
+           (and (member-eq (mv-nth 0 (fn-hrcur-word-push octet k w))
+                           '(:continue :emit))
+                (fn-hrcur-wordp (mv-nth 2 (fn-hrcur-word-push octet k w))
+                               (mv-nth 3 (fn-hrcur-word-push octet k w)))
+                (implies (equal (mv-nth 0 (fn-hrcur-word-push octet k w)) :emit)
+                         (unsigned-byte-p 64 (mv-nth 1 (fn-hrcur-word-push octet k w))))))
+  :hints (("Goal" :cases ((equal k 0) (equal k 1) (equal k 2) (equal k 3)
+                          (equal k 4) (equal k 5) (equal k 6) (equal k 7))
+           :in-theory (enable fn-hrcur-wordp fn-hrcur-word-push fn-scc-octetp))))
+
+(defthm fn-hrcur-word-push-refines-partial
+  (implies (and (equal k (len prefix)) (< k 7)
+                (equal w (adt-unle k prefix)) (fn-hrcur-wordp k w)
+                (fn-scc-octetp octet))
+           (and (equal (mv-nth 0 (fn-hrcur-word-push octet k w)) :continue)
+                (equal (mv-nth 2 (fn-hrcur-word-push octet k w)) (+ 1 k))
+                (equal (mv-nth 3 (fn-hrcur-word-push octet k w))
+                       (adt-unle (+ 1 k) (append prefix (list octet))))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hrcur-unle-is-le-value (b prefix))
+                 (:instance fn-hrcur-unle-is-le-value (b (append prefix (list octet)))))
+           :expand ((fn-scc-le-value (list octet)))
+           :in-theory (e/d (fn-hrcur-word-push fn-scc-octetp)
+                            (adt-unle fn-scc-le-value expt floor mod
+                             fn-hrcur-unle-is-le-value)))))
+
+(defthm fn-hrcur-word-push-refines-pack8
+  (implies (and (equal (len prefix) 7)
+                (equal w (adt-unle 7 prefix)) (fn-hrcur-wordp 7 w)
+                (fn-scc-octetp octet))
+           (and (equal (mv-nth 0 (fn-hrcur-word-push octet 7 w)) :emit)
+                (equal (mv-nth 1 (fn-hrcur-word-push octet 7 w))
+                       (car (fn-hp-pack8 1 (append prefix (list octet)))))
+                (equal (mv-nth 2 (fn-hrcur-word-push octet 7 w)) 0)
+                (equal (mv-nth 3 (fn-hrcur-word-push octet 7 w)) 0)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hrcur-unle-is-le-value (b prefix))
+                 (:instance fn-hrcur-unle-is-le-value (b (append prefix (list octet)))))
+           :expand ((fn-scc-le-value (list octet)))
+           :in-theory (e/d (fn-hrcur-word-push fn-hp-pack8 fn-scc-octetp)
+                            (adt-unle fn-scc-le-value floor mod
+                             fn-hrcur-unle-is-le-value)))))
+
+(local
+ (defthm fn-hrcur-le-value-zeros
+   (equal (fn-scc-le-value (adt-zeros n)) 0)
+   :hints (("Goal" :induct (adt-zeros n)
+            :in-theory (e/d (fn-scc-le-value adt-zeros) (floor mod))))))
+
+(local
+ (defthm fn-hrcur-unle-zero-pad
+   (implies (and (natp k) (<= k 8) (equal (len prefix) k))
+            (equal (adt-unle 8 (append prefix (adt-zeros (- 8 k))))
+                   (adt-unle k prefix)))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-hrcur-unle-is-le-value (b prefix))
+                  (:instance fn-hrcur-unle-is-le-value
+                             (b (append prefix (adt-zeros (- 8 k))))))
+            :in-theory (disable adt-unle fn-scc-le-value adt-zeros
+                                fn-hrcur-unle-is-le-value floor mod)))))
+
+(defthm fn-hrcur-word-finish-refines-pad8
+  (implies (and (equal k (len prefix)) (< 0 k)
+                (equal w (adt-unle k prefix)) (fn-hrcur-wordp k w))
+           (and (equal (mv-nth 0 (fn-hrcur-word-finish k w)) :emit)
+                (equal (mv-nth 1 (fn-hrcur-word-finish k w))
+                       (car (fn-hp-pack8 1
+                                        (append prefix (adt-zeros (- 8 k))))))
+                (equal (mv-nth 2 (fn-hrcur-word-finish k w)) 0)
+                (equal (mv-nth 3 (fn-hrcur-word-finish k w)) 0)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hrcur-unle-zero-pad))
+           :expand ((:free (bs) (fn-hp-pack8 1 bs)))
+           :in-theory (e/d (fn-hrcur-word-finish)
+                            (adt-unle fn-scc-le-value adt-zeros fn-hp-pack8
+                             fn-hrcur-unle-is-le-value fn-hrcur-unle-zero-pad)))))
+
+(in-theory (disable fn-hrcur-wordp fn-hrcur-word-push fn-hrcur-word-finish))

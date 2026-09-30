@@ -98,3 +98,140 @@
         (< (+ (len x) 2 (len (fn-scc-le-digits (len x)))) *fn-hrcur-u64-bound*)
         (not (equal (fn-hrcur-leaf-rest (fn-hrcur-leaf-begin x :c :l))
                     (fn-scc-encode x))))))
+
+; Word accumulator trace uses the original pack8 as the output oracle.
+; All literal preservation and partial/full boundary antecedents are checked.
+(defun fn-hrcur-test-word-tracep (xs prefix k w)
+  (declare (xargs :guard t :verify-guards nil :measure (len xs)))
+  (if (consp xs)
+      (mv-let (verdict word k2 w2) (fn-hrcur-word-push (car xs) k w)
+        (and (fn-scc-octetp (car xs)) (fn-hrcur-wordp k w)
+             (equal k (len prefix)) (equal w (adt-unle k prefix))
+             (fn-hrcur-wordp k2 w2)
+             (member-eq verdict '(:continue :emit))
+             (if (< k 7)
+                 (and (equal verdict :continue) (equal k2 (+ 1 k))
+                      (equal w2 (adt-unle (+ 1 k) (append prefix (list (car xs)))))
+                      (fn-hrcur-test-word-tracep (cdr xs) (append prefix (list (car xs))) k2 w2))
+               (and (equal (len prefix) 7) (equal verdict :emit)
+                    (unsigned-byte-p 64 word)
+                    (equal word (car (fn-hp-pack8 1 (append prefix (list (car xs))))))
+                    (equal k2 0) (equal w2 0)
+                    (fn-hrcur-test-word-tracep (cdr xs) nil k2 w2)))))
+    (mv-let (verdict word k2 w2) (fn-hrcur-word-finish k w)
+      (and (equal k (len prefix)) (equal w (adt-unle k prefix))
+           (fn-hrcur-wordp k w) (equal k2 0) (equal w2 0)
+           (if (< 0 k)
+               (and (equal verdict :emit)
+                    (equal word (car (fn-hp-pack8 1 (append prefix (adt-zeros (- 8 k)))))))
+             (and (equal verdict :prepared) (null word)))))))
+
+(assert-event (fn-hrcur-test-word-tracep '(0 1 127 128 255 64 3 9 255 7 0) nil 0 0))
+(assert-event (fn-hrcur-test-word-tracep '(255 255 255 255 255 255 255 255) nil 0 0))
+
+(defun fn-hrcur-test-partial-conclusion (prefix octet k w)
+  (declare (xargs :guard t :verify-guards nil))
+  (mv-let (v word k2 w2) (fn-hrcur-word-push octet k w)
+    (declare (ignore word))
+    (and (equal v :continue) (equal k2 (+ 1 k))
+         (equal w2 (adt-unle (+ 1 k) (append prefix (list octet)))))))
+
+; One literal partial-boundary hypothesis is omitted per case. Every other
+; hypothesis is checked affirmatively. Corrupted-state/argument mutations,
+; not assertions that the composed producer reaches invalid word states.
+(assert-event
+ (let ((prefix nil) (octet 1) (k 1) (w 0))
+   (and (not (equal k (len prefix))) (< k 7)
+        (equal w (adt-unle k prefix)) (fn-hrcur-wordp k w) (fn-scc-octetp octet)
+        (not (fn-hrcur-test-partial-conclusion prefix octet k w)))))
+(assert-event
+ (let ((prefix '(0 0 0 0 0 0 0)) (octet 1) (k 7) (w 0))
+   (and (equal k (len prefix)) (not (< k 7))
+        (equal w (adt-unle k prefix)) (fn-hrcur-wordp k w) (fn-scc-octetp octet)
+        (not (fn-hrcur-test-partial-conclusion prefix octet k w)))))
+(assert-event
+ (let ((prefix '(0)) (octet 1) (k 1) (w 1))
+   (and (equal k (len prefix)) (< k 7)
+        (not (equal w (adt-unle k prefix))) (fn-hrcur-wordp k w) (fn-scc-octetp octet)
+        (not (fn-hrcur-test-partial-conclusion prefix octet k w)))))
+(assert-event
+ (let ((prefix '(300)) (octet 1) (k 1) (w 300))
+   (and (equal k (len prefix)) (< k 7)
+        (equal w (adt-unle k prefix)) (not (fn-hrcur-wordp k w)) (fn-scc-octetp octet)
+        (not (fn-hrcur-test-partial-conclusion prefix octet k w)))))
+(assert-event
+ (let ((prefix nil) (octet 300) (k 0) (w 0))
+   (and (equal k (len prefix)) (< k 7)
+        (equal w (adt-unle k prefix)) (fn-hrcur-wordp k w) (not (fn-scc-octetp octet))
+        (not (fn-hrcur-test-partial-conclusion prefix octet k w)))))
+
+(defun fn-hrcur-test-full-conclusion (prefix octet w)
+  (declare (xargs :guard t :verify-guards nil))
+  (mv-let (v word k2 w2) (fn-hrcur-word-push octet 7 w)
+    (and (equal v :emit)
+         (equal word (car (fn-hp-pack8 1 (append prefix (list octet)))))
+         (equal k2 0) (equal w2 0))))
+
+(assert-event
+ (let ((prefix nil) (octet 1) (w 0))
+   (and (not (equal (len prefix) 7)) (equal w (adt-unle 7 prefix))
+        (fn-hrcur-wordp 7 w) (fn-scc-octetp octet)
+        (not (fn-hrcur-test-full-conclusion prefix octet w)))))
+(assert-event
+ (let ((prefix '(0 0 0 0 0 0 0)) (octet 1) (w 1))
+   (and (equal (len prefix) 7) (not (equal w (adt-unle 7 prefix)))
+        (fn-hrcur-wordp 7 w) (fn-scc-octetp octet)
+        (not (fn-hrcur-test-full-conclusion prefix octet w)))))
+(assert-event
+ (let* ((prefix '(0 0 0 0 0 0 300)) (octet 1) (w (adt-unle 7 prefix)))
+   (and (equal (len prefix) 7) (equal w (adt-unle 7 prefix))
+        (not (fn-hrcur-wordp 7 w)) (fn-scc-octetp octet)
+        (not (fn-hrcur-test-full-conclusion prefix octet w)))))
+(assert-event
+ (let ((prefix '(0 0 0 0 0 0 0)) (octet 300) (w 0))
+   (and (equal (len prefix) 7) (equal w (adt-unle 7 prefix))
+        (fn-hrcur-wordp 7 w) (not (fn-scc-octetp octet))
+        (not (fn-hrcur-test-full-conclusion prefix octet w)))))
+
+(defun fn-hrcur-test-pad-conclusion (prefix k w)
+  (declare (xargs :guard t :verify-guards nil))
+  (mv-let (v word k2 w2) (fn-hrcur-word-finish k w)
+    (and (equal v :emit)
+         (equal word (car (fn-hp-pack8 1 (append prefix (adt-zeros (- 8 k))))))
+         (equal k2 0) (equal w2 0))))
+
+(assert-event
+ (let ((prefix '(1 2)) (k 1) (w 1))
+   (and (not (equal k (len prefix))) (< 0 k)
+        (equal w (adt-unle k prefix)) (fn-hrcur-wordp k w)
+        (not (fn-hrcur-test-pad-conclusion prefix k w)))))
+(assert-event
+ (let ((prefix nil) (k 0) (w 0))
+   (and (equal k (len prefix)) (not (< 0 k))
+        (equal w (adt-unle k prefix)) (fn-hrcur-wordp k w)
+        (not (fn-hrcur-test-pad-conclusion prefix k w)))))
+(assert-event
+ (let ((prefix '(0)) (k 1) (w 1))
+   (and (equal k (len prefix)) (< 0 k)
+        (not (equal w (adt-unle k prefix))) (fn-hrcur-wordp k w)
+        (not (fn-hrcur-test-pad-conclusion prefix k w)))))
+(assert-event
+ (let ((prefix '(300)) (k 1) (w 300))
+   (and (equal k (len prefix)) (< 0 k)
+        (equal w (adt-unle k prefix)) (not (fn-hrcur-wordp k w))
+        (not (fn-hrcur-test-pad-conclusion prefix k w)))))
+
+; Word-state and octet-domain hypotheses are both necessary to the permitted
+; verdict part of the preservation theorem. Other hypothesis stays true.
+(assert-event
+ (let ((octet 300) (k 0) (w 0))
+   (mv-let (v word k2 w2) (fn-hrcur-word-push octet k w)
+     (declare (ignore word k2 w2))
+     (and (not (fn-scc-octetp octet)) (fn-hrcur-wordp k w)
+          (not (member-eq v '(:continue :emit)))))))
+(assert-event
+ (let ((octet 0) (k 0) (w 1))
+   (mv-let (v word k2 w2) (fn-hrcur-word-push octet k w)
+     (declare (ignore word k2 w2))
+     (and (fn-scc-octetp octet) (not (fn-hrcur-wordp k w))
+          (not (member-eq v '(:continue :emit)))))))
