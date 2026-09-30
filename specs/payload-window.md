@@ -190,3 +190,15 @@ compiled frames and other decoder/controller calls are separate obligations.
 The primitive source review permits a conservative32-byte pre-normalization
 buffer for each selected72/73-bit signed neg/add; source-to-compiled lowering
 still needs its explicit narrow runtime contract.
+
+
+The actual copy-counter roster is joined to the shared selected runtime in
+`payload-copy-runtime-workspace.lisp`. Under the exact qualified-coordinate
+requirement and named single NEG/ADD allocation assumptions, one negation and
+two additions per copied byte have a conditional96*K-byte workspace envelope.
+The scalar demand selector refuses an unsupported coordinate/span; it is not
+a new stored-data policy or complete decoder funding gate. Actual compiler
+lowering, other arithmetic/modes, constructors, frames, first-use/cache,
+collector coexistence and retained activation-to-return lifetimes remain
+separate obligations before native admission. The central assumptions umbrella
+must include the shared book at convergence.

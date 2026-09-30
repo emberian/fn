@@ -18039,7 +18039,7 @@
     {
       "id": "PRF-1132",
       "title": "Carried scalar widths and input span for bounded stored DEFLATE (funding open)",
-      "statement": "Actual fn-pzw-initialize establishes bit-buffer, Huffman-register and header-width carry without prior-state hypotheses. Actual fn-pzw-stored-chunk preserves bit carry under octet input, strong Huffman carry on every exit except bad-code, fixed Huffman scalar bounds on every exit, and header bounds under the carried fixed table representation. Returned IP is natural and in [START,END] under natural START and START<=END. These component facts do not establish primitive operation counts, selected-runtime allocation adequacy, old-success/action-budget completeness or served admission. Actual stored-input credit establishes and the actual inner loop preserves credited TIN plus unread span<=2*C and produced plus remaining output room<=N+1 from captured source containment and produced-length carry. Under supported signed63-bit C/N, actual bomb, output-plus-preset and budget expressions have73/64/68-bit magnitude bounds. Actual closed trusted-source observers for nine nonrecursive profile helpers have value projection and dynamic binary-add/multiply/unary-negation counts. Under stored admissibility and signed63-bit C, decoded N and carried output-plus-preset have72-bit magnitude bounds and actual budget has73-bit magnitude bound, without a new N63 data ceiling. Full decoder primitive counts and compiled workspaces remain open. Actual fn-zin-copy value/effects projection and a counter-family trace establish K unary-negation plus2K binary-add events, with operand magnitude below2^72 under the copied-span bound; small ring/index arithmetic and whole decoder/compiled demand are separate.",
+      "statement": "Actual fn-pzw-initialize establishes bit-buffer, Huffman-register and header-width carry without prior-state hypotheses. Actual fn-pzw-stored-chunk preserves bit carry under octet input, strong Huffman carry on every exit except bad-code, fixed Huffman scalar bounds on every exit, and header bounds under the carried fixed table representation. Returned IP is natural and in [START,END] under natural START and START<=END. These component facts do not establish primitive operation counts, selected-runtime allocation adequacy, old-success/action-budget completeness or served admission. Actual stored-input credit establishes and the actual inner loop preserves credited TIN plus unread span<=2*C and produced plus remaining output room<=N+1 from captured source containment and produced-length carry. Under supported signed63-bit C/N, actual bomb, output-plus-preset and budget expressions have73/64/68-bit magnitude bounds. Actual closed trusted-source observers for nine nonrecursive profile helpers have value projection and dynamic binary-add/multiply/unary-negation counts. Under stored admissibility and signed63-bit C, decoded N and carried output-plus-preset have72-bit magnitude bounds and actual budget has73-bit magnitude bound, without a new N63 data ceiling. Full decoder primitive counts and compiled workspaces remain open. Actual fn-zin-copy value/effects projection and a counter-family trace establish K unary-negation plus2K binary-add events, with operand magnitude below2^72 under the copied-span bound; small ring/index arithmetic and whole decoder/compiled demand are separate. Conditional shared selected-runtime single NEG/ADD assumptions bound the actual copy counter roster by96*K bytes under the explicit copied-span and coordinate; this is not actual compiler-lowering or complete decoder/job adequacy.",
       "milestone": "M5",
       "requirements": [
         "STO-037"
@@ -18047,7 +18047,9 @@
       "depends_on": [
         "PRF-1112"
       ],
-      "assumptions": [],
+      "assumptions": [
+        "A-SELECTED-RUNTIME-PRIMITIVES"
+      ],
       "status": "planned",
       "evidence": [
         "books/payload-window-width.lisp",
@@ -18070,7 +18072,10 @@
         "planning/evidence/payload-window-expanded-profile-width-2026-09-30.md",
         "books/payload-copy-source-trace.lisp",
         "tests/acl2/payload-copy-source-trace-tests.lisp",
-        "planning/evidence/payload-copy-source-trace-2026-09-30.md"
+        "planning/evidence/payload-copy-source-trace-2026-09-30.md",
+        "books/payload-copy-runtime-workspace.lisp",
+        "tests/acl2/payload-copy-runtime-workspace-tests.lisp",
+        "planning/evidence/payload-copy-runtime-workspace-2026-09-30.md"
       ],
       "progress_note": "Protected source-only component proof and literal teeth checkpoint. No new served keystone/certificate/image/native claim; source proof coordinates and remaining funding obligations are recorded in the evidence file."
     },

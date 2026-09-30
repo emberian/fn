@@ -6347,7 +6347,8 @@
         "Check literal boundary73/64/68-bit arithmetic witnesses, each retained-hypothesis removal and separate coefficient mutations; confirm72bits fails at the supported maximum C.",
         "Check all nine literal actual helper value/count projections, source subtraction negation omission mutant, disjoint selector and admissibility refusal; reject unknown generator operators and stale pinned artifacts.",
         "Check complete widened C63/stored-allowance positive, every retained expected/budget/output width hypothesis removal, and signed63 decoded-policy mutation.",
-        "Evaluate actual two-byte and zero-copy ring/output effects with full counter-count/domain conclusions; remove the operand-width premise and test the two-operations-per-byte tariff mutation."
+        "Evaluate actual two-byte and zero-copy ring/output effects with full counter-count/domain conclusions; remove the operand-width premise and test the two-operations-per-byte tariff mutation.",
+        "Check exact actual counter-roster domain/count join and conditional workspace positive; remove typed-demand coordinate/span premises and actual roster-width premise; distinguish omitted-negation charge mutation from allocator claims."
       ],
       "expected": [
         "Bit buffer remains at most39bits and exact length-relative Huffman carry is preserved only on non-error exits; every walker exit remains within the stated fixed scalar bounds.",
@@ -6357,7 +6358,8 @@
         "Internal credited-input plus unread span is<=2C and produced plus remaining scratch room is<=N+1; actual bomb/output-plus-preset/budget are below2^73/2^64/2^68 under explicit supported profiles.",
         "Actual nine-helper arithmetic source counts distinguish addition, multiplication and unary negation; generated observer allocations do not price compiled implementation allocation.",
         "Stored admissible N may exceed2^63; N and carried output-plus-preset remain below2^72 and budget below2^73 at C63. No new stored-data ceiling or native funding activation.",
-        "Actual copy large-counter family records one negation plus two additions per byte; this does not price the surrounding small-index/decoder/compiler work."
+        "Actual copy large-counter family records one negation plus two additions per byte; this does not price the surrounding small-index/decoder/compiler work.",
+        "The counter-only96*K charge is conditional on named single-primitive runtime assumptions; complete compiled decoder demand remains open."
       ],
       "evidence": [
         "tests/acl2/payload-window-width-tests.lisp",
@@ -6373,7 +6375,10 @@
         "tests/acl2/payload-window-expanded-profile-width-tests.lisp",
         "planning/evidence/payload-window-expanded-profile-width-2026-09-30.md",
         "tests/acl2/payload-copy-source-trace-tests.lisp",
-        "planning/evidence/payload-copy-source-trace-2026-09-30.md"
+        "planning/evidence/payload-copy-source-trace-2026-09-30.md",
+        "books/payload-copy-runtime-workspace.lisp",
+        "tests/acl2/payload-copy-runtime-workspace-tests.lisp",
+        "planning/evidence/payload-copy-runtime-workspace-2026-09-30.md"
       ],
       "execution_scope": "Protected source replay only; the codec/runtime/controller/host composition remains open."
     },
