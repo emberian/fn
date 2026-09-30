@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1693 |
-| Certification roots in the Makefile | 1626 |
-| Books inside the root closure | 1690 |
-| `defthm` and `defthmd` events | 27705 |
-| `defun` events | 18135 |
-| Functions with verified guards | 3472 |
-| Functions declared `:verify-guards nil` and never verified | 2078 |
-| Functions left at the default with an explicit guard | 9852 |
+| Books read | 1695 |
+| Certification roots in the Makefile | 1628 |
+| Books inside the root closure | 1692 |
+| `defthm` and `defthmd` events | 27709 |
+| `defun` events | 18145 |
+| Functions with verified guards | 3474 |
+| Functions declared `:verify-guards nil` and never verified | 2084 |
+| Functions left at the default with an explicit guard | 9854 |
 | Functions left at the default with no guard | 2733 |
-| `assert-event` checks | 22978 |
+| `assert-event` checks | 22991 |
 | `must-fail` checks | 2496 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 156 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 317 |
 | Enabled-projection warnings | 52 |
 | Teeth-form warnings | 272 |
-| Include-hygiene warnings | 2410 |
+| Include-hygiene warnings | 2413 |
 | Host-names warnings | 2098 |
 | Hand-written-record warnings | 18 |
 
@@ -241,7 +241,7 @@ that `make certify` requests.
 | `books/bp-node-rotation-due.lisp` | root | 6 | 3 | 0/1/2/0 | 0 | 0 | 0 |
 | `books/bp-node-rotation-slice.lisp` | root | 12 | 2 | 0/0/1/1 | 0 | 0 | 0 |
 | `books/bp-node-rotation-step.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 1 |
-| `books/bp-node-rotation.lisp` | root | 28 | 12 | 0/1/11/0 | 0 | 0 | 0 |
+| `books/bp-node-rotation.lisp` | root | 28 | 12 | 1/1/10/0 | 0 | 0 | 0 |
 | `books/bp-node-run-class.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node.lisp` | root | 25 | 32 | 23/0/9/0 | 0 | 0 | 2 |
 | `books/bp-outbound.lisp` | root | 10 | 13 | 2/0/11/0 | 0 | 0 | 0 |
@@ -262,6 +262,7 @@ that `make certify` requests.
 | `books/bp-receiver-state-invariants.lisp` | root | 31 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/bp-receiver-store-invariants.lisp` | root | 12 | 4 | 0/4/0/0 | 0 | 0 | 0 |
 | `books/bp-receiver-trace-invariants.lisp` | root | 6 | 1 | 0/1/0/0 | 0 | 0 | 0 |
+| `books/bp-recovery-profile.lisp` | root | 4 | 4 | 1/0/3/0 | 0 | 0 | 0 |
 | `books/bp-release-authority.lisp` | root | 20 | 22 | 3/17/2/0 | 0 | 0 | 1 |
 | `books/bp-release-invariants.lisp` | root | 46 | 0 | 0/0/0/0 | 0 | 0 | 2 |
 | `books/bp-release-replay-status.lisp` | root | 12 | 1 | 0/1/0/0 | 0 | 0 | 0 |
@@ -1188,6 +1189,7 @@ that `make certify` requests.
 | `tests/acl2/bp-receiver-evolving-tests.lisp` | root | 0 | 6 | 0/4/0/2 | 97 | 13 | 0 |
 | `tests/acl2/bp-receiver-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/bp-receiver-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 19 | 2 | 0 |
+| `tests/acl2/bp-recovery-profile-tests.lisp` | root | 0 | 6 | 0/6/0/0 | 13 | 0 | 0 |
 | `tests/acl2/bp-release-authority-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 44 | 20 | 0 |
 | `tests/acl2/bp-release-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 86 | 5 | 0 |
 | `tests/acl2/bp-report-author-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 4 | 1 | 0 |

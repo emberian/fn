@@ -17427,6 +17427,23 @@
           "name": "fn-cfg-set-group-authority-installs-binding"
         }
       ]
+    },
+    {
+      "id": "PRF-1090",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bprpf-admitted-row-has-bounded-adu"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprpf-admitted-checkpoint-bounds-every-held-adu"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprpf-ready-recovery-bounds-every-held-adu"
+        }
+      ]
     }
   ]
 }

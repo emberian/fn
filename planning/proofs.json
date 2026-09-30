@@ -18019,11 +18019,6 @@
       "id": "PRF-1090",
       "title": "Actual BP recovery checks saved and checkpoint-held ADUs against the current profile before installation",
       "statement": "The native fnn-bps-read-received-rows calls fn-bprpf-row-admit before retaining each bounded FNBS frame: an admitted saved kind-5 row has fragment total ADU length, or nonfragment payload length, at most the current profile ADU bound. fnn-bps-open calls fn-bprpf-selection-admit before suffix replay: every checkpoint-held member fits that ADU bound. It then calls fn-bprpf-admit-recovery on the actual fn-bphp-recover-auto-event result before installation: every held member of a ready admitted result fits the ADU bound. Invalid profiles and over-limit ADUs have named faults; existing non-ready replay results remain non-ready. Each caller uses the same existing fn-bpnpf-bundle-adu-length interpretation as receive admission. The row check precedes family replay even for later-deleted receptions. The per-frame codec read bound and profile checkpoint read/depth bounds constrain input separately; this theorem does not establish those bounds or resumable open work. PKT-311a; remaining profile repair/widening PKT-311b/c not closed.",
-      "events": [
-        "fn-bprpf-admitted-row-has-bounded-adu",
-        "fn-bprpf-admitted-checkpoint-bounds-every-held-adu",
-        "fn-bprpf-ready-recovery-bounds-every-held-adu"
-      ],
       "milestone": "M4",
       "requirements": [
         "REP-008",
@@ -18034,7 +18029,7 @@
         "PRF-134"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "planned",
       "evidence": [
         "books/bp-recovery-profile.lisp",
         "tests/acl2/bp-recovery-profile-tests.lisp",
@@ -18042,7 +18037,7 @@
         "tests/test_bp_fragment_node_native.py",
         "planning/evidence/bp-recovery-profile-2026-09-30.md"
       ],
-      "progress_note": "Source increment active: clean admission/guard and teeth verification in progress; combined certification and matching native cases pending runner. No qualified image or deployment claim."
+      "progress_note": "Clean persvati bpradu-final loaded22/22 test forms, no refusals; new definitions/guards and dependencies admitted from source, not certified. Session stopped. Final interface/ledger/host gates pending; matching native and combined certification remain runner-owned."
     }
   ]
 }
