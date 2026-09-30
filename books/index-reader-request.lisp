@@ -58,7 +58,6 @@
 (defun fn-irr-pending-read (token fn-index-backing)
  (declare (xargs :stobjs fn-index-backing :guard t))
  (let* ((receipt (fn-ibp-request-pending fn-index-backing))
-        (request (fn-irr-receipt-request receipt))
         (ordinal (fn-omk-at 3 receipt))
         (nonce (fn-omk-at 2 receipt))
         (generation (fn-irq-receipt-request-generation receipt)))
@@ -345,7 +344,7 @@
           (stobj-let ((fn-ibp-node (fn-ibp-registry fn-index-backing)))
             (word row left)
             (fn-ibp-node-generation-read generation fuel
-              (1- (fn-omk-at 2 generation)) depth fn-ibp-node)
+              (1- (nth 2 generation)) depth fn-ibp-node)
             (mv word row left))
           (if (not (and (eq word :present) (natp left) (<= left fuel)
                         (eq (fn-omk-at 7 row) :live) (posp (fn-omk-at 4 row))

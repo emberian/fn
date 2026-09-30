@@ -2116,6 +2116,21 @@
 ; PRF-1152: actual source-bounded machine preserves the original counted
 ; machine's complete result on precisely the consumed input prefix. Proposed
 ; proof; source admission is pending in the frozen affected scanner world.
+(verify-guards fn-scr-source-prepare-span-loop
+ :hints (("Goal"
+          :in-theory (e/d (fn-served-counted-make fn-served-counted-result)
+                          (fn-scr-dispatch-events fn-wire-fast-statep
+                           fn-served-counted-consumed))
+          :use ((:instance fn-scr-dispatch-events-preserves-fast-statep
+                           (conn (fn-served-conn-with-wire
+                                  conn (fn-wsp-state (fn-wire-scan
+                                   (fn-served-conn-wire conn) i end fn-octets))))
+                           (events (fn-wsp-events (fn-wire-scan
+                                    (fn-served-conn-wire conn) i end fn-octets))))))))
+(verify-guards fn-scr-source-prepare-span)
+(verify-guards fn-scr-source-boundary-dispatch
+ :hints (("Goal" :in-theory (disable fn-scr-dispatch-events))))
+
 (defthm fn-scr-source-scan-span-is-scan-of-consumed-prefix
  (let ((r (fn-scr-source-scan-span conn i end live trie lver arts cache
                                   fn-octets fn-arena fn-cat)))

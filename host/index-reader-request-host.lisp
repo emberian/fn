@@ -72,7 +72,6 @@
    (stobj-let ((fn-index-backing (fn-mio$c-provider fn-mio$c)))
     (word left fn-index-backing fn-page-read-pool)
     (let* ((receipt (fn-ibp-request-pending fn-index-backing))
-           (request (fn-irr-receipt-request receipt))
            (nonce (fn-omk-at 2 receipt))
            (ordinal (fn-omk-at 3 receipt))
            (generation (fn-irq-receipt-request-generation receipt)))
