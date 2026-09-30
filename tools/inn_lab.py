@@ -139,11 +139,12 @@ LOOP2_ID = "<inn-lab-loop2-{tag}@example.invalid>"
 FN_POST_ID = "<inn-lab-fn-post-{tag}@example.invalid>"
 FN_OPERATOR_ID = "<inn-lab-fn-operator-{tag}@example.invalid>"
 FN_LOOP_ID = "<inn-lab-fn-loop-{tag}@example.invalid>"
+FN_PROTECTED_ID = "<inn-lab-fn-protected-{tag}@example.invalid>"
 FN_FROM_ID = "<inn-lab-fn-from-{tag}@example.invalid>"
 FN_PATH_ID = "<inn-lab-fn-path-{tag}@example.invalid>"
 ABSENT_ID = "<inn-lab-absent-{tag}@example.invalid>"
 ID_TEMPLATES = ("FED_ID", "LOOP_ID", "LOOP2_ID", "FN_POST_ID", "FN_OPERATOR_ID",
-                "FN_LOOP_ID", "FN_FROM_ID", "FN_PATH_ID", "ABSENT_ID")
+                "FN_LOOP_ID", "FN_FROM_ID", "FN_PATH_ID", "FN_PROTECTED_ID", "ABSENT_ID")
 
 
 def message_ids(tag: str) -> dict:
@@ -481,7 +482,9 @@ auth "protected-fixture" {{
 access "protected-fixture" {{
     users: "fn-lab"
     newsgroups: "fn.*"
-    access: RA
+    access: {access}
+    nnrpdposthost: 127.0.0.1
+    nnrpdpostport: {inn_port}
 }}
 """
 
@@ -828,7 +831,7 @@ class InnLab(deploy_gate.DeployGate):
                  "inn read of fn's article", "fn post vs fn served",
                  "fn served vs inn served", "operator post feed", "inn control",
                  "innfeed to fn", "inn served vs fn served", "duplicates", "fn loop",
-                 "fn term", "innd cut", "inn protected reader")
+                 "fn term", "innd cut", "inn protected reader", "fn protected injection")
     # What this lab decides.  Nothing of deploy_gate's own inventory is
     # inherited: those assertions are about the development store CLI and
     # its certificates, and this lab runs neither.
@@ -900,6 +903,11 @@ class InnLab(deploy_gate.DeployGate):
         "fn-articles-survived-term": (
             "after SIGTERM, recover and restart, fn serves the articles it held "
             "byte-identical", ("fn-article", "inn-article")),
+        "fn-protected-injection": (
+            "with its clear feed paused, native fn's separate STARTTLS/USER-PASS "
+            "peer received accepted feed code235 for a fresh article; the real "
+            "authenticated nnrpd reader served that Message-ID, subject and body, "
+            "and the article was absent from the clear transit relay", ("",)),
         "inn-protected-reader": (
             "the separate nnrpd reader completed certificate/name-verified STARTTLS "
             "(382), refused a bad password (481) and unauthenticated read (480), "
@@ -931,7 +939,7 @@ class InnLab(deploy_gate.DeployGate):
                  nnrpd_port, fn_port, tap_out_port, tap_in_port,
                  lab_root=DEFAULT_LAB_ROOT, native_openssl_prefix=None,
                  extra_overlays=(), feed_wait=90, inn_security=False,
-                 inn_security_port=INN_SECURITY_PORT, **kwargs):
+                 inn_security_port=INN_SECURITY_PORT, inn_security_feed=False, **kwargs):
         super().__init__(*args, **kwargs)
         if not native_image:
             raise GateError("the fn side is the native image or the lab does not run "
@@ -942,6 +950,12 @@ class InnLab(deploy_gate.DeployGate):
         self.inn_version = inn_version
         self.inn_security = inn_security
         self.inn_security_port = inn_security_port
+        self.inn_security_feed = inn_security_feed
+        if inn_security_feed and not inn_security:
+            raise GateError("--inn-security-feed requires --inn-security")
+        if not inn_security_feed:
+            self.ASSERTIONS = {name: value for name, value in self.ASSERTIONS.items()
+                               if name != "fn-protected-injection"}
         if inn_security and inn_prefix.rstrip("/") == "{}/{}".format(
                 DEFAULT_INN_ROOT, inn_version):
             raise GateError("--inn-security requires a separate TLS-capable "
@@ -949,7 +963,8 @@ class InnLab(deploy_gate.DeployGate):
         if inn_security:
             self.STANDING_GAPS = tuple(
                 "The optional reader uses verified STARTTLS and USER/PASS; the "
-                "transit relays remain clear and address-authorized. No "
+                "transit relays remain clear and address-authorized. The optional "
+                "native protected injection is recorded separately. No "
                 "Distribution, control messages, cancel or expiry is exercised."
                 if gap.startswith("No TLS,") else gap for gap in self.STANDING_GAPS)
         else:
@@ -1326,6 +1341,7 @@ ls $P/db
 
     def inn_security_configure(self, fields):
         """Only the explicitly isolated test prefix; credentials are scratch files."""
+        fields = dict(fields, access="RPIA" if self.inn_security_feed else "RA")
         self.push_file(READERS_SECURITY_CONF.format(**fields),
                        "{}/etc/readers-security.conf".format(self.inn_prefix), mode="640")
         openssl = (self.native_openssl_prefix.rstrip("/") + "/bin/openssl"
@@ -1335,6 +1351,7 @@ set -e
 P={p}
 umask 077
 {ssl} rand -hex 24 > {run}/inn-security.password
+{{ printf 'FNAUTH1\\nfn-lab\\n'; cat {run}/inn-security.password; }} > {run}/inn-security.fnauth
 hash=$({ssl} passwd -6 -stdin < {run}/inn-security.password)
 printf 'fn-lab:%s\\n' "$hash" > $P/db/security-newsusers
 {ssl} req -x509 -newkey rsa:2048 -nodes -days 2 -sha256 \\
@@ -1489,6 +1506,80 @@ kill -0 $pid 2>/dev/null && echo INNFEED-ALIVE || echo INNFEED-GONE
             return "(no exchange on the relay)"
         return "{}: {}".format("+".join(found["verbs"]), " / ".join(
             one for one in (found["offer"], found["result"]) if one) or "(no reply)")
+
+    @staticmethod
+    def protected_feed_acceptance(text, peer, msgid):
+        wanted = {"accepted", "feed", "peer=" + peer,
+                  "message-id=" + msgid, "code=235"}
+        return next((line for line in text.splitlines()
+                     if line.startswith("accepted feed ") and wanted.issubset(set(line.split()))), "")
+
+    def wait_protected_feed(self, peer, msgid):
+        started = time.monotonic()
+        polls = 0
+        line = ""
+        path = self.node_dir + "/owner-main.log"
+        while True:
+            polls += 1
+            done = self.host.sh("cat {} 2>/dev/null || true".format(path), 60)
+            line = self.protected_feed_acceptance(done.stdout.decode("utf-8", "replace"),
+                                                  peer, msgid)
+            if line or time.monotonic() - started > self.feed_wait:
+                break
+            time.sleep(2)
+        self.steps.append(Step("native protected-feed outcome", "cat {} ({} polls)".format(
+            path, polls), 0, line or "no matching accepted code235", time.monotonic() - started))
+        return line
+
+    def scenario_protected_feed(self):
+        """Native feed to nnrpd injection: TLS/auth scope, not relay preservation."""
+        peer = "inn-security"
+        pause = self.sh("pause clear INN feed", self.cd(self.operator(
+            "peer", "feed", FN_PEER_NAME, "pause")), timeout=600, expect=None)
+        if pause.rc != 0:
+            self.check("fn-protected-injection", False, "clear feed could not be paused",
+                       observed=pause.first_line)
+            return
+        added = self.sh("native protected INN injection peer", self.cd(self.operator(
+            "peer", "add", peer, INN_PATH_IDENTITY, "127.0.0.1",
+            str(self.inn_security_port), "-", "'fn.*'", "source-address", "127.0.0.1",
+            self.run + "/inn-security.fnauth", "false", "false", "starttls", "127.0.0.1",
+            self.inn_prefix + "/etc/security-cert.pem")), timeout=600, expect=None)
+        if added.rc != 0:
+            self.check("fn-protected-injection", False, "protected peer was refused",
+                       observed=added.first_line)
+            return
+        self.sh("native protected peer as applied", self.cd(self.operator("peer", "list")),
+                timeout=600, expect=None)
+        msgid = self.ids["FN_PROTECTED_ID"]
+        payload = article(msgid, "native protected INN injection", self.date)
+        path = self.put_article("fn-protected", payload)
+        posted = self.drive_inn("post", "--port {} --msgid {} --file {}".format(
+            self.fn_port, shlex.quote(msgid), shell_fixture_path(path)), "POST for protected native feed")
+        accepted = (self.wait_protected_feed(peer, msgid)
+                    if posted.rc == 0 and self.payload(posted).get("ok") else "")
+        probe = self.drive_inn("protected-read",
+            "--port {} --cafile {} --password-file {} --group {} --msgid {}".format(
+                self.inn_security_port,
+                shell_fixture_path(self.inn_prefix + "/etc/security-cert.pem"),
+                shell_fixture_path(self.run + "/inn-security.password"), GROUP,
+                shlex.quote(msgid)), "read native protected injection from INN")
+        read = self.payload(probe)
+        served = self.octets_of(read)
+        same_payload = bool(served and header_value(served, "Message-ID") == msgid
+                            and header_value(served, "Subject") == header_value(payload, "Subject")
+                            and header_differences(payload, served)["body_identical"])
+        self.read_tap()
+        clear = find_exchange(self.tap_text, "{}>{}".format(self.tap_out_port, self.inn_port), msgid)
+        ok = bool(posted.rc == 0 and self.payload(posted).get("ok") and accepted and probe.rc == 0
+                  and read.get("ok") and same_payload and clear is None)
+        self.facts["fn protected injection"] = "{}; ARTICLE={}; payload={}; clear relay={}".format(
+            accepted or "no accepted protected feed code235", read.get("article"),
+            "same Message-ID/Subject/body" if same_payload else "missing or changed",
+            "absent" if clear is None else self.reply_summary(clear))
+        self.check("fn-protected-injection", ok,
+                   "native protected injection did not establish every selected assertion",
+                   observed=self.facts["fn protected injection"])
 
     def scenario_protected_read(self):
         probe = self.drive_inn("protected-read",
@@ -2022,6 +2113,8 @@ rm -f {p}/run/innd.pid {p}/run/control.ctl
         self.scenario_inn_control()
         self.scenario_innfeed_to_fn()
         self.scenario_duplicates_and_loop()
+        if self.inn_security_feed:
+            self.scenario_protected_feed()
         self.scenario_fn_term()
         self.scenario_innd_cut()
 
@@ -2083,6 +2176,9 @@ def main(argv=None) -> int:
     parser.add_argument("--inn-security", action="store_true",
                         help="add certificate-verified STARTTLS and USER/PASS reader "
                              "checks; requires a separate TLS-capable --inn-prefix")
+    parser.add_argument("--inn-security-feed", action="store_true",
+                        help="also run native fn STARTTLS/USER-PASS IHAVE into nnrpd's "
+                             "injection endpoint; requires --inn-security")
     parser.add_argument("--inn-security-port", type=int, default=INN_SECURITY_PORT)
     parser.add_argument("--fn-port", type=int, default=FN_PORT)
     parser.add_argument("--tap-out-port", type=int, default=TAP_OUT_PORT)
@@ -2097,6 +2193,8 @@ def main(argv=None) -> int:
                      "or the lab does not run (D07)")
     ports = (args.inn_port, args.nnrpd_port, args.fn_port, args.tap_out_port,
              args.tap_in_port)
+    if args.inn_security_feed and not args.inn_security:
+        parser.error("--inn-security-feed requires --inn-security")
     if args.inn_security:
         if not args.inn_prefix or args.inn_prefix.rstrip("/") == "{}/{}".format(
                 DEFAULT_INN_ROOT, args.inn_version):
@@ -2127,7 +2225,8 @@ def main(argv=None) -> int:
                  nnrpd_port=args.nnrpd_port, fn_port=args.fn_port,
                  tap_out_port=args.tap_out_port, tap_in_port=args.tap_in_port,
                  feed_wait=args.feed_wait, extra_overlays=overlays[1:],
-                 inn_security=args.inn_security, inn_security_port=args.inn_security_port)
+                 inn_security=args.inn_security, inn_security_port=args.inn_security_port,
+                 inn_security_feed=args.inn_security_feed)
     started = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     clock = time.monotonic()
     failure = None

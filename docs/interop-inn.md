@@ -91,7 +91,7 @@ INN. The runner owns the isolated build and the matching-image run.
         --inn-prefix /tank/fn/inn/2.7.4-tls-lab --inn-security
 
 The lab creates a short-lived self-signed certificate with IP subjectAltName
-`127.0.0.1`, an encrypted `ckpasswd` fixture entry, and a mode-0600 scratch
+`127.0.0.1`, a hashed `ckpasswd` fixture entry, and a mode-0600 scratch
 password file. The client trusts that certificate and verifies the IP name;
 it never disables verification. The password is read from the scratch file,
 not passed in argv or printed in the result. An alternate `readers.conf`
@@ -107,12 +107,30 @@ except the already permitted Path/Xref relay changes. A changed body or
 failed authentication makes the row fail. The source scenario is SCN-1029.
 
 This exercises INN's protected reader access to an article originating at
-fn. Native fn feeding over TLS/AUTHINFO, actual `Control:` traffic and its
-outcome, Distribution, cancel and expiry remain separate work. `nnrpd`'s
+fn. The native protected injection row below, actual `Control:` traffic and
+its outcome, Distribution, cancel and expiry are separate work. `nnrpd`'s
 IHAVE facility is an injecting endpoint, not the `innd` transit listener;
 an eventual protected injection row must name that scope. The existing row
 called `inn-control` is manual IHAVE/duplicate/loop traffic and does not
 exercise a Usenet control message.
+
+`--inn-security-feed` additionally selects native fn's protected outbound
+feed (requires `--inn-security`). After the baseline clear scenarios, the
+lab applies `peer feed inn pause`, then adds an outbound-only peer with
+STARTTLS, IP-name verification against the scratch certificate, an FNAUTH1
+account profile and `allow-clear false`. The alternate INN access block
+adds posting/IHAVE permission and explicitly hands injection to the lab's
+innd port. A fresh article is posted only after the clear pause and the
+protected peer are accepted.
+
+The row requires fn's actual `accepted feed peer=inn-security ... code=235`
+observation for that fresh Message-ID, a protected INN read of the same
+Message-ID/Subject/body, and absence of that article from the clear relay.
+Encrypted NNTP replies are not visible on the clear tap: the record names
+the native reply observation rather than inventing a decrypted transcript.
+INN nnrpd may change injection headers, so this row makes no transit
+Path/Xref-only preservation claim. Its scenario is SCN-1030. This source
+fixture awaits real pinned-INN and matching native-image execution.
 
 The INN behavior and configuration above follow its pinned 2.7.4 PODs and
 [the nnrpd manual](https://www.eyrie.org/~eagle/software/inn/docs-2.7/nnrpd.html)

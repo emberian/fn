@@ -512,7 +512,7 @@ class ProtectedReaderFixtureTests(unittest.TestCase):
         lab = self.lab()
         self.assertIn("inn-protected-reader", lab.ASSERTIONS)
         self.assertTrue(any("transit relays remain clear" in x for x in lab.STANDING_GAPS))
-        config = inn_lab.READERS_SECURITY_CONF.format(prefix="/isolated/test-inn")
+        config = inn_lab.READERS_SECURITY_CONF.format(prefix="/isolated/test-inn", inn_port=1, access="RA")
         self.assertNotIn("default:", config)
         self.assertIn("require_encryption: true", config)
         self.assertIn("access: RA", config)
@@ -535,3 +535,56 @@ class ProtectedReaderFixtureTests(unittest.TestCase):
             lab.scenario_protected_read()
             self.assertEqual(checks, [("inn-protected-reader", expected)])
             self.assertIn('"$HOME"/fn-inn-lab/', commands[0])
+
+
+class ProtectedInjectionFixtureTests(unittest.TestCase):
+    """Native-feed assertion accounting, without claiming an INN/native run."""
+
+    def test_feed_outcome_requires_exact_peer_subject_and_accepted_code(self):
+        wanted = "accepted feed peer=inn-security message-id=<fresh@x> code=235 time=none"
+        self.assertEqual(inn_lab.InnLab.protected_feed_acceptance(wanted, "inn-security", "<fresh@x>"), wanted)
+        for text in (wanted.replace("235", "435"), wanted.replace("fresh", "older"),
+                     wanted.replace("inn-security", "inn"), wanted.replace("accepted", "refused"),
+                     "other words " + wanted):
+            self.assertEqual(inn_lab.InnLab.protected_feed_acceptance(text, "inn-security", "<fresh@x>"), "")
+
+    def test_refused_pause_prevents_new_peer_or_post(self):
+        lab = ProtectedReaderFixtureTests().lab()
+        commands = []
+        lab.sh = lambda name, command, **kwargs: (
+            commands.append(command) or inn_lab.Step(name, command, 1, "refused pause", 0))
+        checks = []
+        lab.check = lambda name, ok, *args, **kwargs: checks.append((name, ok))
+        lab.scenario_protected_feed()
+        self.assertEqual(len(commands), 1)
+        self.assertEqual(checks, [("fn-protected-injection", False)])
+
+    def test_completed_tls_feed_still_fails_when_clear_relay_carried_article(self):
+        for clear in (False, True):
+            lab = ProtectedReaderFixtureTests().lab()
+            msgid = lab.ids["FN_PROTECTED_ID"]
+            served = inn_lab.article(msgid, "native protected INN injection", lab.date)
+            commands = []
+            lab.sh = lambda name, command, **kwargs: (
+                commands.append((name, command)) or inn_lab.Step(name, command, 0, "accepted", 0))
+            lab.put_article = lambda name, octets: "/scratch/fn-protected.article"
+            lab.wait_protected_feed = lambda peer, ident: "accepted feed peer=" + peer + " message-id=" + ident + " code=235"
+            lab.drive_inn = lambda phase, extra, name: inn_lab.Step(name, extra, 0,
+                json.dumps(dict(ok=True, article="220 article", octets=base64.b64encode(served).decode())), 0)
+            lab.read_tap = lambda: None
+            if clear:
+                lab.tap_text = "\n".join([
+                    tap_line("4>1", 1, "client", ("IHAVE " + msgid + "\r\n").encode() + served + b".\r\n"),
+                    tap_line("4>1", 1, "server", b"200 ready\r\n335 send\r\n235 accepted\r\n")])
+            checks = []
+            lab.check = lambda name, ok, *args, **kwargs: checks.append((name, ok))
+            lab.scenario_protected_feed()
+            self.assertEqual(checks, [("fn-protected-injection", not clear)])
+            self.assertIn("peer feed inn pause", commands[0][1])
+            self.assertIn("source-address 127.0.0.1", commands[1][1])
+            self.assertIn("false false starttls 127.0.0.1", commands[1][1])
+
+    def test_injection_flag_requires_the_protected_reader_and_is_absent_by_default(self):
+        self.assertNotIn("fn-protected-injection", ProtectedReaderFixtureTests().lab().ASSERTIONS)
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            inn_lab.main(["HEAD", "--native-image", "/opt/fn/fn-host", "--inn-security-feed"])
