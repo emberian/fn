@@ -2608,9 +2608,9 @@ empties it first (fnn-bridge-recover)."
 
 (defun fnn-recover-suffix-intern (suffix configs acc &optional recovery-authority)
   "Intern decoded suffix chunks over the arena left by the selected checkpoint.
-fn-store-statement-replay-seed reads the selected fn-store-sco-current
+fn-store-statement-replay-seed-sized reads the selected fn-store-sco-current
 checkpoint's captured identity epoch; it never uses the current live keyring.
-fn-ssr-intern-step :resident carries that keyring, generation and cursor
+fn-ssrs-intern-step :resident carries that keyring, generation and cursor
 between every record and chunk. fn-ssr-resident-step-of-append proves the
 chunk composition, including arena effects, under true-listp of the first
 chunk. The result is (values ROWS ACC2 ORIGINAL-IDENTITY), rows oldest first
@@ -2621,28 +2621,46 @@ or :bad on invalid configuration, decode or identity replay. ACC2 is
 fn-ofw-wire-next over decoded events, starting at ACC. The suffix is decoded
 one work quantum at a time using fn-srs-chunk-fullp. The optional cold
 authority is issued by ACL2 before this loop; each produced completion
-consumes that exact token and returns its successor as the fourth value."
+consumes that exact token and returns its successor as the fourth value.
+Parallel same-decision fields and status are fifth and sixth; unavailable
+metadata never changes the original row/identity/arena result. Snapshot child
+carry is unavailable until its actual row provider supplies provenance."
   (if (eq (fnn-core 'fn-store-sn-recover-records nil configs) :bad)
-      (values :bad acc nil recovery-authority)
-      (let ((next (fnn-recover-record-chunks suffix)) (rows (fnn-core-state 'fn-store-statement-replay-seed)) (fold acc))
+      (values :bad acc nil recovery-authority nil :unavailable)
+      (let* ((next (fnn-recover-record-chunks suffix))
+             (seed (fnn-core-state 'fn-store-statement-replay-seed-sized))
+             (rows (first seed)) (fields (second seed))
+             (metadata (third seed)) (fold acc))
+        ; Observe the actual seed as well: an empty suffix still carries
+        ; its original prefix through the same issued-token association.
+        (when recovery-authority
+          (let ((answer (fnn-core-state 'fn-owner-recovery-source-observe-seed-sized
+                                        recovery-authority
+                                        (fnn-core 'fn-ssr-at 3 rows) fields metadata)))
+            (unless (eq (first answer) :counted)
+              (fnn-fault "cold source rejected replay seed: ~a" answer))
+            (setq recovery-authority (second answer))))
         (loop
           (let ((decoded (funcall next)))
             (when (eq decoded :end) (return))
-            (when (eq decoded :bad) (return-from fnn-recover-suffix-intern (values :bad acc nil recovery-authority)))
-            (setq fold (fnn-core 'fn-ofw-wire-next decoded fold)
-                  rows (first (fnn-call 'fn-ssr-intern-step rows decoded nil nil :resident nil (fnn-live-arena))))
-            (when (eq rows :bad) (return-from fnn-recover-suffix-intern (values :bad acc nil recovery-authority)))
+            (when (eq decoded :bad) (return-from fnn-recover-suffix-intern (values :bad acc nil recovery-authority nil :unavailable)))
+            (setq fold (fnn-core 'fn-ofw-wire-next decoded fold))
+            (let ((answer (fnn-call 'fn-ssrs-intern-step rows fields decoded
+                                   nil nil :resident nil nil (fnn-live-arena))))
+              (setq rows (first answer) fields (second answer)
+                    metadata (third answer)))
+            (when (eq rows :bad) (return-from fnn-recover-suffix-intern (values :bad acc nil recovery-authority nil :unavailable)))
             (when recovery-authority
               ; Retain the issued lexical token across this actual producer
               ; call. A current-token lookup would accept stale callbacks.
-              (let ((answer (fnn-core-state 'fn-owner-recovery-source-observe
+              (let ((answer (fnn-core-state 'fn-owner-recovery-source-observe-sized
                                             recovery-authority
-                                            (fnn-core 'fn-ssr-at 3 rows) fold)))
+                                            (fnn-core 'fn-ssr-at 3 rows) fold fields metadata)))
                 (unless (eq (first answer) :counted)
                   (fnn-fault "cold source rejected replay completion: ~a" answer))
                 (setq recovery-authority (second answer))))))
         (values (fnn-core 'fn-ssr-rows rows) fold
-                (fnn-core 'fn-ssr-at 3 rows) recovery-authority))))
+                (fnn-core 'fn-ssr-at 3 rows) recovery-authority fields metadata))))
 
 (defun fnn-recover-suffix-rows (store suffix config-records &optional (interned nil internedp)
                                       (original-identity nil))

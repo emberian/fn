@@ -22,6 +22,20 @@
                      state)))
         (mv nil word state)))))
 
+; Native suffix fold starts at zero; the selected checkpoint frontier is
+; already retained by the issuer. Seed observation uses that exact scalar,
+; without altering the legacy suffix fold or supplying a guessed frontier.
+(defun fn-owner-recovery-source-observe-seed-sized
+    (token original-context fields status state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((c (fn-owner-recovery-global 'fn-owner-recovery-source state)))
+    (if (not (and (equal (fn-omk-at 7 c) 0)
+                   (equal (fn-rsa-context-count original-context)
+                          (fn-omk-at 4 c))))
+        (value '(:unavailable :recovery-seed))
+      (fn-owner-recovery-source-observe-sized
+       token original-context (fn-omk-at 5 c) fields status state))))
+
 ; Final installation consumes this exact pending record internally. The
 ; caller supplies its frozen token, never fields or a new current token.
 (defun fn-owner-recovery-source-sized-readout (token state)

@@ -1,0 +1,21 @@
+; Final recovery installer consumes same-pass pending carries internally.
+; Physical/source/carry/funding provenance remains the composed caller duty.
+(in-package "ACL2")
+(include-book "recovery-source-sized-host")
+(include-book "recovery-source-install-host")
+
+(defun fn-owner-recovery-source-install-sized (token cpfields pool rows state)
+ (declare (xargs :stobjs state :mode :program))
+ (mv-let (erp metadata state)
+         (fn-owner-recovery-source-sized-readout token state)
+  (if (or erp (not (and (fn-omk-widthp metadata 3)
+                        (eq (fn-omk-at 0 metadata) :ready))))
+      (mv erp metadata state)
+   (mv-let (erp word state)
+           (fn-owner-recovery-source-install token (fn-omk-at 2 metadata)
+                                             cpfields pool rows state)
+    (if (or erp (not (and (fn-omk-widthp word 2)
+                          (eq (fn-omk-at 0 word) :installed))))
+        (mv erp word state)
+      (let ((state (f-put-global 'fn-owner-recovery-sized-pending nil state)))
+        (mv nil word state)))))))

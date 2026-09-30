@@ -4821,9 +4821,6 @@
   :class :common-lisp-compliant)
 (definterface fn-ssr-seed
   :class :common-lisp-compliant)
-; Source: host/store-node-host.lisp, program mode over STATE.
-(definterface fn-store-statement-replay-seed
-  :class :program)
 ; Source: books/stx-keyring-records.lisp, guard T.
 (definterface fn-stxk-initial-context
   :class :common-lisp-compliant)
@@ -4942,8 +4939,13 @@
 
 ; PRF-1149 cold recovery authority; final installer is owner-install scoped.
 (definterface fn-owner-recovery-source-start :class ::program)
-(definterface fn-owner-recovery-source-observe :class ::program)
 
 (definterface fn-ssr-at :class :common-lisp-compliant)
 
 (definterface fn-owner-recovery-source-reset :class ::program)
+
+(definterface fn-owner-recovery-source-observe-sized :class :program)
+(definterface fn-store-statement-replay-seed-sized :class :program)
+(definterface fn-ssrs-intern-step :class :common-lisp-compliant)
+
+(definterface fn-owner-recovery-source-observe-seed-sized :class :program)

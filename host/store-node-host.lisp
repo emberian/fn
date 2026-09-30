@@ -561,11 +561,7 @@ reopen predicate, writer-lock observation and observed final namespace."
 
 
  ; A checkpoint suffix starts at its captured identity epoch, not NIL/0.
-(defun fn-store-statement-replay-seed (state)
- (declare (xargs :stobjs state :mode :program))
- (let ((checkpoint (fn-store-sco-current state)))
-  (value (fn-ssr-seed (if checkpoint (fn-sco-identity checkpoint)
-                           (fn-stxk-initial-context 0))))))
+(include-book "store-statement-replay-size-host")
 
 (include-book "store-checkpoint-decode-host")
 
