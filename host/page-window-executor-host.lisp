@@ -87,3 +87,22 @@
          (list (nth 0 acquire) (nth 1 acquire) (nth 1 admit)
                (fn-owner-page-read-keep-ledger (nth 2 acquire) fn-page-read-pool))))))
   :hints (("Goal" :in-theory (enable fn-prw-admit fn-pwx-acquire))))
+
+(defun fn-owner-page-window-byte-at (worker token plan file eoff elen poff plen trailer i fn-ew-buffer fn-page-read-pool)
+  (declare (xargs :stobjs (fn-ew-buffer fn-page-read-pool) :guard (true-listp plan)))
+  (fn-pwr-byte-at (fn-owner-page-read-ledger fn-page-read-pool) worker token plan
+                 file eoff elen poff plen trailer i fn-ew-buffer))
+
+(defthm fn-owner-page-window-byte-at-refines-by-definition
+  (equal
+   (mv-list 2 (fn-owner-page-window-byte-at worker token plan file eoff elen poff plen trailer i fn-ew-buffer fn-page-read-pool))
+   (mv-list 2 (fn-pwr-byte-at (fn-owner-page-read-ledger fn-page-read-pool) worker token plan
+                            file eoff elen poff plen trailer i fn-ew-buffer))))
+
+(defun fn-owner-page-window-outcome (worker token plan fn-page-read-pool)
+  (declare (xargs :stobjs fn-page-read-pool :guard (true-listp plan)))
+  (fn-pwr-outcome (fn-owner-page-read-ledger fn-page-read-pool) worker token plan))
+
+(defthm fn-owner-page-window-outcome-refines-by-definition
+  (equal (fn-owner-page-window-outcome worker token plan fn-page-read-pool)
+         (fn-pwr-outcome (fn-owner-page-read-ledger fn-page-read-pool) worker token plan)))

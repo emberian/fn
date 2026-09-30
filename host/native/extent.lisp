@@ -285,6 +285,50 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
                                     (fnn-cold-worker-row worker) token plan i window)
           (values word byte))))))
 
+(declaim (notinline fnn-extent-window-outcome))
+(defun fnn-extent-window-outcome (worker token)
+  "Scalar-only terminal disposition; integrity failure is never a new miss."
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (unless (fnn-extent-executor-observe-returned worker)
+      (return-from fnn-extent-window-outcome :pending))
+    (let ((result (fnn-cold-worker-result worker)))
+      (when (typep result 'condition) (error result))
+      (first (fnn-core-page-read-pool 'fn-owner-page-window-outcome
+               (fnn-cold-worker-row worker) token (first result))))))
+
+(defun fnn-extent-window-byte-at (worker token file eoff elen poff plen trailer i)
+  "Original arena payload coordinate goes unchanged to the core scalar join."
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (unless (fnn-extent-executor-observe-returned worker)
+      (return-from fnn-extent-window-byte-at (values :pending nil)))
+    (let ((result (fnn-cold-worker-result worker)))
+      (when (typep result 'condition) (error result))
+      (destructuring-bind (plan window) result
+        (destructuring-bind (word byte)
+            (fnn-core-page-read-pool 'fn-owner-page-window-byte-at
+              (fnn-cold-worker-row worker) token plan file eoff elen poff plen trailer i window)
+          (values word byte))))))
+
+;;; Future owner quantum bindings retain the exact charged cold row. These
+;;; are thread-dynamic references, not a second window cache or a new map.
+;;; No served caller binds them until allocator and owner lifetime joins land.
+(defvar *fnn-extent-window-worker* nil)
+(defvar *fnn-extent-window-token* nil)
+
+(defun fnn-extent-window-realize-octet (file eoff elen poff plen trailer i)
+  "Staged realizer: scalar success or the core's complete cold descriptor."
+  (multiple-value-bind (word byte)
+      (if *fnn-extent-window-worker*
+          (fnn-extent-window-byte-at *fnn-extent-window-worker* *fnn-extent-window-token*
+                                    file eoff elen poff plen trailer i)
+        (values :unavailable nil))
+    (cond ((eq word :byte) byte)
+          ((eq word :unavailable)
+           (throw 'fnn-extent-cold
+             (fnn-core 'fn-pwr-cold-descriptor file eoff elen poff plen trailer i)))
+          (t (error 'fnn-extent-fault
+                    :message "arena-extent-read: window was not an authenticated returned result")))))
+
 (defun fnn-extent-window-release (worker token)
   "Caller holds no buffer aliases. Drop the sole retained result BEFORE refund."
   (sb-thread:with-mutex (*fnn-extent-lock*)

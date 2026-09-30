@@ -4564,3 +4564,8 @@
 (definterface fn-owner-page-window-executor-release :class :common-lisp-compliant
   :keystones ((fn-pwx-release-requires-exact-returned-window-and-slot :via fn-pwx-release)))
 (definterface fn-owner-page-window-byte :class :common-lisp-compliant)
+
+(definterface fn-owner-page-window-byte-at :class :common-lisp-compliant)
+(definterface fn-pwr-cold-descriptor :class :common-lisp-compliant)
+
+(definterface fn-owner-page-window-outcome :class :common-lisp-compliant)
