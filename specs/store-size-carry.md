@@ -81,8 +81,15 @@ correspondence. Length/list-shape premises were removed after proving the
 stronger selection theorem. Literal leaf, NIL-matcher, constructor and field
 selection witnesses are source-admitted in a fresh protected session.
 
-The full byte-fed stream invariant and bootstrap of the actual checkpoint
-identity accumulator are still open. This prototype is not host installed.
+The separate source book `history-decode-size-refinement` now admits the actual
+byte-fed annotation-stack transition under parser coherence, an octet source
+pool with the parser end in bounds, exact agreement of the supplied byte with
+the source position, prefix coherence, prior annotation correspondence and a
+usable output. It also admits prefix preservation and the completed symbol
+matcher relation to actual NIL normalization. These are source admissions;
+literal stream-theorem witnesses, an induction through arbitrary scheduler
+partitions, completed-row extraction and bootstrap of the actual checkpoint
+identity accumulator remain open. This prototype is not host installed.
 Accepted NIL symbol aliases and zero-length byte spans use their normalized
 canonical sizes; arbitrary nonminimal integer spelling uses the decoded value.
 Each annotation leaf allocates four cons cells, each annotation pair five,
