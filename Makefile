@@ -601,6 +601,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/page-read-pool-state \
 	books/page-read-binding-revision \
 	tests/acl2/page-read-binding-revision-tests \
+	books/render-window-terminal-cursor \
+	tests/acl2/render-window-terminal-cursor-tests \
+	books/render-window-terminal-slot \
+	tests/acl2/render-window-terminal-slot-tests \
+	books/render-window-terminal-provider \
 	books/query-payload-grants \
 	tests/acl2/query-payload-grants-tests \
 	books/query-payload-state \
@@ -1490,6 +1495,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/page-read-pool-state \
 	books/page-read-binding-revision \
 	tests/acl2/page-read-binding-revision-tests \
+	books/render-window-terminal-cursor \
+	tests/acl2/render-window-terminal-cursor-tests \
+	books/render-window-terminal-slot \
+	tests/acl2/render-window-terminal-slot-tests \
+	books/render-window-terminal-provider \
 	books/query-payload-grants \
 	tests/acl2/query-payload-grants-tests \
 	books/query-payload-state \
