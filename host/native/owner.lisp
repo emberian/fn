@@ -4742,6 +4742,31 @@ reads run as a :control quantum; the thread's registration is the roster's."
                 (setf (fnn-owner-service-publisher service) thread)
                 (push thread (fnn-owner-service-workers service)))))))))))
 
+(defstruct (fnn-snapshot-payload-view (:constructor fnn-make-snapshot-payload-view (token arena)))
+  token arena)
+
+(defun fnn-snapshot-payload-view-acquire (service maintenance)
+  "Inside the owner capture mutex, after maintenance admission and capture.
+The holder retains this actual arena instance through definite inner cleanup."
+  (declare (ignore service))
+  (let* ((arena (fnn-live-arena))
+         (answer (destructuring-bind (erp val &rest ignored)
+                     (fnn-call 'fn-owner-payload-view-acquire maintenance arena *the-live-state*)
+                   (declare (ignore ignored))
+                   (when erp (fnn-fault "payload view acquire core error")) val)))
+    (if (eq (first answer) :acquired)
+        (values :acquired (fnn-make-snapshot-payload-view (second answer) arena))
+      (values :refused answer))))
+
+(defun fnn-snapshot-payload-view-live-p (holder)
+  "Under owner mutex; source-row authorization is separately carried."
+  (fnn-core-state 'fn-owner-payload-view-live-p (fnn-snapshot-payload-view-token holder)))
+
+(defun fnn-snapshot-payload-view-release (holder settlement)
+  "Inside owner mutex, only after every inner worker/buffer borrow is joined."
+  (fnn-core-state 'fn-owner-payload-view-release
+                  (fnn-snapshot-payload-view-token holder) settlement))
+
 (defun fnn-snapshot-source-context ()
   "Observe scalar source admission context while the caller holds owner mutex."
   (fnn-owner-core 'fn-owner-osn-source-context))

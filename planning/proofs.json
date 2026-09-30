@@ -17768,7 +17768,7 @@
     {
       "id": "PRF-1057",
       "title": "Issued cold page reads retain identity and worker ownership through cancellation and late completion",
-      "statement": "Host/native/extent.lisp fnn-extent-complete-read calls fn-pio-complete. Publication requires its exact immutable token (process-local read ID, original CID, file incarnation ID, offset, length, expected trailer), phase issued and successful full commitment check, and settles once. fn-pio-cancel retains token and unsettled ownership even after deadline/client loss. fnn-extent-close calls fn-pio-file-clear-p over carried valid ownership rows: every issued/cancelled worker naming a retired file prevents close independently of the arena-reader generation gate. Duplicate/stale completions cannot publish or settle twice. Host OS/thread/mutex/table fidelity is A-HOST; observed worker death and join (or definite failed launch) is required before settlement. Incarnation allocator fn-pio-file-issue derives process-local identities and successive admitted allocations are distinct; a failed open spends its name and invalid carried counter refuses rather than resetting. No funded read-pool admission or memory bound is claimed; repeated detached workers remain P12 open. The operator-funded local file namespace can exhaust before open without wrapping or refunding a spent name; admitted resource-pool tokens establish the identical owned read row and use the ledger’s single counter. These are partial algebra/lifetime subjects; supported profile installation, retained runtime storage and legacy large-frame streaming remain open.",
+      "statement": "Host/native/extent.lisp fnn-extent-complete-read calls fn-pio-complete. Publication requires its exact immutable token (process-local read ID, original CID, file incarnation ID, offset, length, expected trailer), phase issued and successful full commitment check, and settles once. fn-pio-cancel retains token and unsettled ownership even after deadline/client loss. fnn-extent-close calls fn-pio-file-clear-p over carried valid ownership rows: every issued/cancelled worker naming a retired file prevents close independently of the arena-reader generation gate. Duplicate/stale completions cannot publish or settle twice. Host OS/thread/mutex/table fidelity is A-HOST; observed worker death and join (or definite failed launch) is required before settlement. Incarnation allocator fn-pio-file-issue derives process-local identities and successive admitted allocations are distinct; a failed open spends its name and invalid carried counter refuses rather than resetting. No funded read-pool admission or memory bound is claimed; repeated detached workers remain P12 open. The operator-funded local file namespace can exhaust before open without wrapping or refunding a spent name; admitted resource-pool tokens establish the identical owned read row and use the ledger\u2019s single counter. These are partial algebra/lifetime subjects; supported profile installation, retained runtime storage and legacy large-frame streaming remain open.",
       "milestone": "M5",
       "requirements": [
         "STO-017"
@@ -18158,9 +18158,11 @@
         "tests/acl2/snapshot-row-remap-tests.lisp",
         "host/native/owner.lisp",
         "books/snapshot-decode-remap.lisp",
-        "tests/acl2/snapshot-decode-remap-tests.lisp"
+        "tests/acl2/snapshot-decode-remap-tests.lisp",
+        "books/snapshot-held-remap.lisp",
+        "tests/acl2/snapshot-held-remap-tests.lisp"
       ],
-      "progress_note": "Clean proper-local persvati osrm64t loaded the current snapshot-row-remap dependency inside an encapsulate and all29 test forms without refusal, 1.20 ACL2 seconds/83,440 steps. Both orphan ordinary/composite intern positives and wrong composite-held payload mutation evaluated; the tick/row functions are guard verified with no suffix guard. No certification, matching image/native or full producer claim. Borrowed-node component fn-odm-held/composite now guardverified and structurally refines fixed update-nth4 / composite2+held4 under explicit pair-prefix premises. Clean proper-local odmt77: constructors and remap source encapsulated, 19teeth forms, zero refusal, 26,872 steps /0.17ACL2sec. Positive complete antecedent/conclusion witnesses and literal prefix/index removals included; redundant root-prefix hypothesis removed after proof. This component has no host caller yet and is not cited as a served event; decoder shape/source alpha/controller integration remain open."
+      "progress_note": "Clean proper-local persvati osrm64t loaded the current snapshot-row-remap dependency inside an encapsulate and all29 test forms without refusal, 1.20 ACL2 seconds/83,440 steps. Both orphan ordinary/composite intern positives and wrong composite-held payload mutation evaluated; the tick/row functions are guard verified with no suffix guard. No certification, matching image/native or full producer claim. Borrowed-node component fn-odm-held/composite now guardverified and structurally refines fixed update-nth4 / composite2+held4 under explicit pair-prefix premises. Clean proper-local odmt77: constructors and remap source encapsulated, 19teeth forms, zero refusal, 26,872 steps /0.17ACL2sec. Positive complete antecedent/conclusion witnesses and literal prefix/index removals included; redundant root-prefix hypothesis removed after proof. This component has no host caller yet and is not cited as a served event; decoder shape/source alpha/controller integration remain open. Actual fn-orm-held now borrows the complete tail after slot4 with five fixed prefix conses, and unconditional exact update-nth4/fulltail/metadata boundaries. Narrow proper-local ohrt90:13forms,147475steps/0.76ACL2sec, zero refusal; held-shape full positive and both literal hypothesis removals pass. Current whole Store remap replay osrm84 stops before target in article-subject; no old full-world evidence transferred to changed source."
     },
     {
       "id": "PRF-1099",
@@ -18871,9 +18873,10 @@
       "evidence": [
         "books/snapshot-message-key.lisp",
         "tests/acl2/snapshot-message-key-tests.lisp",
-        "specs/checkpoint.md"
+        "specs/checkpoint.md",
+        "books/snapshot-source-token.lisp"
       ],
-      "progress_note": "Fresh protected proper-local omkt81 loaded actual source dependencies and 22 test forms with zero refusal: 5,041,507 steps /17.36 ACL2 seconds. Full resident/span hash compatibility, complete residual positives, stale-pass and stale-offset refusals and source-byte correspondence mutation are included. Session stopped. Remaining hypothesis-removal and whole-source composition obligations are open; no certificate/image/native or complete snapshot claim."
+      "progress_note": "Fresh protected proper-local omkt81 loaded actual source dependencies and 22 test forms with zero refusal: 5,041,507 steps /17.36 ACL2 seconds. Full resident/span hash compatibility, complete residual positives, stale-pass and stale-offset refusals and source-byte correspondence mutation are included. Session stopped. Remaining hypothesis-removal and whole-source composition obligations are open; no certificate/image/native or complete snapshot claim. Scalar token definitions extracted verbatim into snapshot-source-token. Current MKEY hints explicitly open the extracted fixed token/selector functions; fresh proper-local omkt96 actual dependency union+22tests passes234372steps/1.48ACL2sec, zero refusal. No new source alpha or terminal claim."
     },
     {
       "id": "PRF-1104",
@@ -18961,6 +18964,41 @@
         "planning/evidence/history-page-reader-verdict-source-2026-09-30.json"
       ],
       "progress_note": "First scanner component: clean protected persvati hsread2 source-dependency replay, proper local scope; 41 test forms loaded, 28 literal assertions passed; static teeth and narrow theory checks green. Runtime scanner functions guard verified. No full authentication, certificate, host or native claim. Canonical-verdict increment: clean proper-local hsrcanon2, 17 test forms / 11 assertions, 4.89 ACL2 seconds / 1,676,570 steps. Redundant stream length premise proved removable; short I/O is a separate continuation obligation."
+    },
+    {
+      "id": "PRF-1133",
+      "title": "Captured payload incarnation lease and destructive-reset exclusion",
+      "statement": "Planned full actual snapshot payload lifetime boundary: an admitted capture retains its actual arena instance, incarnation and immutable prefix, carried source-handle correspondence, and exact per-read current-placement ownership through definite joined cleanup. Fixed logical ledger components establish live token identity from the already issued capture ticket, retain ownership on cancellation/uncertain cleanup, reject stale or duplicate release, refuse destructive reset with a live view, and advance incarnation without reusing a spent capture ticket. Source constructors, append/faithful relocation correspondence, actual read/reset concurrency and cleanup composition, charged maintenance metadata/retirement debt and full payload alpha remain open. A nonnil resource reference in the library is not a funding proof.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-040"
+      ],
+      "depends_on": [
+        "PRF-1099"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "pending_subjects": [
+        "fn-pvl-acquire-establishes-live-incarnation",
+        "fn-pvl-refused-acquisition-keeps-ownership",
+        "fn-pvl-unjoined-release-keeps-live-ownership",
+        "fn-pvl-release-requires-exact-live-token-and-joined-cleanup",
+        "fn-pvl-reset-refuses-a-live-view",
+        "fn-pvl-reset-advances-incarnation-without-reusing-a-ticket",
+        "fn-pvl-refused-clear-keeps-the-actual-arena",
+        "fn-pvl-accepted-clear-is-the-actual-empty-arena"
+      ],
+      "evidence": [
+        "books/payload-view-lease.lisp",
+        "tests/acl2/payload-view-lease-tests.lisp",
+        "host/payload-view-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/io.lisp",
+        "specs/checkpoint.md",
+        "books/payload-view-arena.lisp",
+        "tests/acl2/payload-view-arena-tests.lisp"
+      ],
+      "progress_note": "Clean protected proper-local pvlt95 fixed token and lease source plus19testforms:219406steps/0.32ACL2seconds, zero refusal. Literal live-token/joined-observation removals, cancel/uncertain retention, reset refusal, reset-after-release, spent-ID/duplicate release and stale prior-incarnation tests pass. Native adapter/root reset source gates recorded below; no certification/image/native/activation or funded producer claim. Guard-verified actual fn-pvl-clear has exact unchanged-arena refusal and empty-arena accepted effects; pvlar99 clean source6forms/219584steps/0.62ACL2sec. Native program adapter pvlhost100 source7forms plus kernel dependencies clean223428steps/0.28ACL2sec. Fresh proper-local pvlat102 source kernel+arena boundary and8testforms pass219584steps/0.27ACL2sec with count/every captured payload observations, append-after-capture and reset-after-retirement. Static interface/read/books gates pass; bare raw default47/47 and DTN31/31 pass, without evaluated certified world. Final recovery refusal is ordered before checkpoint-state clear; matching rerun recorded in evidence. Actual concurrent reset serialization/source relation/maintenance-live join remain open."
     }
   ]
 }

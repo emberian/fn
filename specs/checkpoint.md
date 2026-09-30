@@ -564,3 +564,14 @@ refinement and a conditional terminal correspondence to concrete `fn-blake3`
 are source-admitted. This does not equate the constrained `fn-frame-digest`
 with its realizer; streamed protected extents still need the existing joint
 attachment/refinement pattern at their actual consumer boundary.
+
+The pending online controller binds a logical payload-view holder to the actual
+arena instance. Its token names incarnation, captured prefix and the already
+issued capture ticket; the fixed ledger tracks spent-ticket high water rather
+than issuing an independent counter. Cancellation and uncertain cleanup retain
+the view, and destructive reset refuses until exact-token definite joined
+cleanup retires it. Current native recovery/arena-load clear sites route through
+the core reset decision. These source components do not establish captured-row
+source authorization, funded metadata/retirement debt, physical current-placement
+acquisition, concurrent reset serialization or complete snapshot recovery. A
+borrowed nonnil maintenance reference is not itself admission evidence.

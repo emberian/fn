@@ -129,6 +129,7 @@
 (include-book "owner-compact-request")
 (include-book "owner-export-request")
 (include-book "snapshot-capture-lease")
+(include-book "../host/payload-view-host")
 (include-book "owner-snapshot-recovery")
 (include-book "snapshot-prepare")
 (include-book "snapshot-row-remap")

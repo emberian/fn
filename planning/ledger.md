@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1810 |
-| Certification roots in the Makefile | 1738 |
-| Books inside the root closure | 1807 |
-| `defthm` and `defthmd` events | 28764 |
-| `defun` events | 18754 |
+| Books read | 1817 |
+| Certification roots in the Makefile | 1741 |
+| Books inside the root closure | 1813 |
+| `defthm` and `defthmd` events | 28776 |
+| `defun` events | 18765 |
 | Functions with verified guards | 3492 |
-| Functions declared `:verify-guards nil` and never verified | 2205 |
-| Functions left at the default with an explicit guard | 10268 |
+| Functions declared `:verify-guards nil` and never verified | 2206 |
+| Functions left at the default with an explicit guard | 10278 |
 | Functions left at the default with no guard | 2789 |
-| `assert-event` checks | 23697 |
+| `assert-event` checks | 23721 |
 | `must-fail` checks | 2507 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
-| Theorems flagged SUSPECT by shape | 1237 |
+| Theorems flagged SUSPECT by shape | 1235 |
 | Export-hygiene warnings | 335 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
 | Include-hygiene warnings | 2493 |
-| Host-names warnings | 2154 |
+| Host-names warnings | 2157 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -784,6 +784,8 @@ that `make certify` requests.
 | `books/payload-lz-record.lisp` | root | 51 | 17 | 0/0/17/0 | 0 | 0 | 2 |
 | `books/payload-lz-replay.lisp` | root | 14 | 8 | 2/0/6/0 | 0 | 0 | 1 |
 | `books/payload-lz-value.lisp` | root | 8 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/payload-view-arena.lisp` | closure | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/payload-view-lease.lisp` | closure | 6 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/peer-authored-accept.lisp` | root | 23 | 14 | 1/0/13/0 | 0 | 0 | 1 |
 | `books/peer-carriage-rows.lisp` | root | 41 | 14 | 1/0/13/0 | 0 | 0 | 0 |
 | `books/peer-carriage.lisp` | root | 47 | 22 | 0/1/20/1 | 0 | 0 | 4 |
@@ -926,12 +928,14 @@ that `make certify` requests.
 | `books/snapshot-capture-lease.lisp` | closure | 4 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/snapshot-decode-remap.lisp` | closure | 7 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/snapshot-file-copy.lisp` | root | 3 | 4 | 0/0/4/0 | 0 | 0 | 1 |
-| `books/snapshot-message-key.lisp` | closure | 6 | 10 | 0/0/10/0 | 0 | 0 | 0 |
+| `books/snapshot-held-remap.lisp` | closure | 7 | 3 | 0/0/3/0 | 0 | 0 | 0 |
+| `books/snapshot-message-key.lisp` | closure | 6 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/snapshot-prepare.lisp` | closure | 13 | 10 | 1/3/6/0 | 0 | 0 | 0 |
 | `books/snapshot-publication.lisp` | closure | 2 | 4 | 0/1/3/0 | 0 | 0 | 1 |
-| `books/snapshot-row-remap.lisp` | closure | 16 | 15 | 0/1/14/0 | 0 | 0 | 2 |
+| `books/snapshot-row-remap.lisp` | closure | 13 | 13 | 0/1/12/0 | 0 | 0 | 0 |
 | `books/snapshot-segments.lisp` | root | 52 | 32 | 0/9/18/5 | 0 | 0 | 0 |
 | `books/snapshot-source-cursor.lisp` | closure | 7 | 8 | 0/0/8/0 | 0 | 0 | 0 |
+| `books/snapshot-source-token.lisp` | - | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/snoc-list.lisp` | root | 30 | 14 | 2/0/12/0 | 0 | 0 | 2 |
 | `books/source-projection-bridge.lisp` | root | 23 | 3 | 0/1/1/1 | 0 | 0 | 0 |
 | `books/source-routes.lisp` | closure | 16 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -1653,6 +1657,8 @@ that `make certify` requests.
 | `tests/acl2/payload-kinds-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
 | `tests/acl2/payload-lz-append-tests.lisp` | root | 5 | 0 | 0/0/0/0 | 22 | 8 | 0 |
 | `tests/acl2/payload-lz-record-tests.lisp` | root | 11 | 0 | 0/0/0/0 | 14 | 10 | 0 |
+| `tests/acl2/payload-view-arena-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 5 | 0 | 0 |
+| `tests/acl2/payload-view-lease-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 0 | 0 |
 | `tests/acl2/peer-authored-accept-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 51 | 15 | 0 |
 | `tests/acl2/peer-carriage-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 121 | 22 | 0 |
 | `tests/acl2/peer-catchup-tests.lisp` | root | 1 | 8 | 0/1/0/7 | 44 | 9 | 0 |
@@ -1745,6 +1751,7 @@ that `make certify` requests.
 | `tests/acl2/snapshot-capture-lease-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 0 | 0 |
 | `tests/acl2/snapshot-decode-remap-tests.lisp` | root | 10 | 1 | 0/0/0/1 | 1 | 0 | 0 |
 | `tests/acl2/snapshot-file-copy-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 1 | 0 |
+| `tests/acl2/snapshot-held-remap-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
 | `tests/acl2/snapshot-message-key-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 9 | 0 | 0 |
 | `tests/acl2/snapshot-prepare-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 14 | 0 | 0 |
 | `tests/acl2/snapshot-publication-tests.lisp` | root | 0 | 4 | 0/2/2/0 | 3 | 0 | 0 |
@@ -2408,8 +2415,6 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-orcn-swap-base-view` | `books/owner-reclaim-conns.lisp` | 59 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-orcn-swapped-owner-conns` | `books/owner-reclaim-conns.lisp` | 64 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-ores-submission-intent-publication-unfolds` | `books/owner-results.lisp` | 260 | definition-restated: the conclusion is the body of fn-ores-submission-intent-publication |
-| `fn-orm-held-has-the-same-wire-projection-at-the-same-bytes` | `books/snapshot-row-remap.lisp` | 38 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-orm-held-keeps-every-retained-field-except-the-handle` | `books/snapshot-row-remap.lisp` | 16 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-orr-own-with-view-fields` | `books/owner-reader-read.lisp` | 234 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-orr-read-span-without-a-capture-is-the-span-read-by-definition` | `books/owner-reader-read.lisp` | 349 | arm-of-definition: the hypotheses select one IF/COND arm of fn-orr-read-span and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-orr-read-span and the conclusion is that branch's value |
 | `fn-orr-tls-result-of-make` | `books/owner-reader-read.lisp` | 280 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

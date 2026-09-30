@@ -254,6 +254,7 @@
 (include-book "../../books/owner-checkpoint-open")
 (include-book "../../books/owner-export-request")
 (include-book "../../books/snapshot-capture-lease")
+(include-book "../../host/payload-view-host")
 (include-book "../../books/owner-snapshot-recovery")
 (include-book "../../books/snapshot-prepare")
 (include-book "../../books/snapshot-row-remap")

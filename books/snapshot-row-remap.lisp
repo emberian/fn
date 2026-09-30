@@ -2,44 +2,9 @@
 ; Captured held metadata is retained, rather than reparsed at NIL keys/gen0.
 ; Payload bytes remain in the source arena and are streamed by its writer.
 (in-package "ACL2")
+(include-book "snapshot-held-remap")
 (include-book "store-events")
 (include-book "store-intern")
-(defun fn-orm-held (row handle)
-  (declare (xargs :guard t))
-  (fn-held-make (fn-held-sequence row) (fn-held-txid row)
-                (fn-held-generation row) (fn-held-msgid row) handle
-                (fn-held-groups row) (fn-held-obligation-id row)
-                (fn-held-content-subject row) (fn-held-release-evidence row)
-                (fn-held-charge row) (fn-held-stamp row)
-                (fn-held-facts row) (fn-held-context row)
-                (fn-held-numbers row) (fn-held-withdrawn row)))
-(defthm fn-orm-held-keeps-every-retained-field-except-the-handle
-  (let ((new (fn-orm-held row handle)))
-    (and (equal (fn-held-sequence new) (fn-held-sequence row))
-         (equal (fn-held-txid new) (fn-held-txid row))
-         (equal (fn-held-generation new) (fn-held-generation row))
-         (equal (fn-held-msgid new) (fn-held-msgid row))
-         (equal (fn-held-payload new) handle)
-         (equal (fn-held-groups new) (fn-held-groups row))
-         (equal (fn-held-obligation-id new) (fn-held-obligation-id row))
-         (equal (fn-held-content-subject new) (fn-held-content-subject row))
-         (equal (fn-held-release-evidence new) (fn-held-release-evidence row))
-         (equal (fn-held-charge new) (fn-held-charge row))
-         (equal (fn-held-stamp new) (fn-held-stamp row))
-         (equal (fn-held-facts new) (fn-held-facts row))
-         (equal (fn-held-context new) (fn-held-context row))
-         (equal (fn-held-numbers new) (fn-held-numbers row))
-         (equal (fn-held-withdrawn new) (fn-held-withdrawn row))))
-  :hints (("Goal" :in-theory (enable fn-orm-held fn-held-internals fn-record-internals))))
-(defthm fn-orm-held-preserves-the-held-shape
-  (implies (and (fn-held-p row) (natp handle))
-           (fn-held-p (fn-orm-held row handle)))
-  :hints (("Goal" :in-theory (enable fn-orm-held fn-held-p fn-held-internals fn-record-internals))))
-(defthm fn-orm-held-has-the-same-wire-projection-at-the-same-bytes
-  (equal (fn-held-wire (fn-orm-held row handle) bytes)
-         (fn-held-wire row bytes))
-  :hints (("Goal" :in-theory (enable fn-orm-held fn-held-wire
-                                     fn-held-internals fn-record-internals))))
 ; Bounded outer-spine recognition never traverses a payload or a retained
 ; suffix.  Source validity is a carried invariant, not the execution guard.
 (defun fn-orm-spinep (n x)
@@ -63,13 +28,6 @@
                         (fn-orm-held (fn-hstxa-held row) handle)))
         (t row)))
 
-(defun fn-orm-metadata (row)
-  (declare (xargs :guard t))
-  (list (fn-held-sequence row) (fn-held-txid row) (fn-held-generation row)
-        (fn-held-msgid row) (fn-held-groups row) (fn-held-obligation-id row)
-        (fn-held-content-subject row) (fn-held-release-evidence row)
-        (fn-held-charge row) (fn-held-stamp row) (fn-held-facts row)
-        (fn-held-context row) (fn-held-numbers row) (fn-held-withdrawn row)))
 (defun fn-orm-projection (row)
   (declare (xargs :guard t))
   (cond ((fn-held-p row) (list :article (fn-orm-metadata row)))
@@ -284,7 +242,7 @@
 
 ; Definitions stay closed in consumers.  A tick's execution guard is only
 ; its fixed-position natural handle, not this proof's suffix recognizer.
-(in-theory (disable fn-orm-held fn-orm-spinep fn-orm-row fn-orm-metadata
+(in-theory (disable fn-orm-tail fn-orm-held fn-orm-spinep fn-orm-row fn-orm-metadata
                     fn-orm-projection fn-orm-sealsp fn-orm-rowsp fn-orm-capture
                     fn-orm-at fn-orm-begin fn-orm-tick fn-orm-value
                     fn-orm-project-rows fn-orm-payload-bytes fn-orm-retained-alpha))

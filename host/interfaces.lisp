@@ -4823,3 +4823,9 @@
 ; S7 borrowed source adapter; full funded controller remains planned.
 (definterface fn-owner-osn-source-context :class :program)
 (definterface fn-owner-osn-source-begin :class :program)
+
+; Logical arena incarnation ownership; maintenance/source joins remain external.
+(definterface fn-owner-payload-view-acquire :class :program)
+(definterface fn-owner-payload-view-live-p :class :program)
+(definterface fn-owner-payload-view-release :class :program)
+(definterface fn-owner-payload-view-reset :class :program)

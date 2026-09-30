@@ -1459,8 +1459,9 @@ and any previous selected checkpoint before initializing the epoch."
 ;; fn-ssr-intern-step (rows and the statement epoch in one cell), then the open
 ;; over the rows.
 (defun fnn-bridge-recover-begin ()
+  (unless (eq (first (fnn-core-arena-state 'fn-owner-payload-view-reset)) :reset)
+    (fnn-fault "arena reset refused: captured payload view still owned"))
   (fnn-core-state 'fn-store-sco-clear)
-  (fnn-call 'fn-arena-clear (fnn-live-arena))
   (list (fnn-core 'fn-ssr-seed (fnn-core 'fn-stxk-initial-context 0))))
 
 (defun fnn-bridge-recover-step (replay decoded)
@@ -2539,7 +2540,8 @@ arena (invariant-risk; host/store-node-host.lisp fn-store-sco-decode's note).
 A refusal leaves a partial arena that nothing reads: the full replay
 empties it first (fnn-bridge-recover)."
   (let ((arena (fnn-live-arena)) (octets (fnn-live-octets)) (i start) (left count))
-    (fnn-call 'fn-arena-clear arena)
+    (unless (eq (first (fnn-core-arena-state 'fn-owner-payload-view-reset)) :reset)
+      (fnn-fault "checkpoint arena reset refused: captured payload view still owned"))
     (loop while (> left 0) do
       (let* ((k (min left +fnn-checkpoint-load-batch-payloads+))
              (answer (fnn-call 'fn-scka-seal-n i end k octets arena)))
