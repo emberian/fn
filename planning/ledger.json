@@ -1608,6 +1608,10 @@
     "tests/acl2/history-page-cursor-tests",
     "tests/acl2/history-page-layout-tests",
     "tests/acl2/history-page-buffer-tests",
+    "tests/acl2/history-page-buffers-tests",
+    "tests/acl2/history-pool-emitter-tests",
+    "tests/acl2/history-image-columns-tests",
+    "tests/acl2/history-pool-columns-tests",
     "tests/acl2/history-image-census-tests",
     "tests/acl2/history-image-header-tests",
     "tests/acl2/history-page-metadata-tests",
@@ -1770,26 +1774,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1834,
-    "books_in_root_closure": 1831,
-    "roots": 1766,
-    "theorems": 29375,
-    "functions": 18858,
-    "assert_events": 23894,
+    "books": 1843,
+    "books_in_root_closure": 1839,
+    "roots": 1770,
+    "theorems": 29432,
+    "functions": 18888,
+    "assert_events": 23909,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
       "verified": 3508,
-      "declared-off": 2250,
-      "default-guarded": 10272,
-      "default-unguarded": 2828
+      "declared-off": 2263,
+      "default-guarded": 10286,
+      "default-unguarded": 2831
     },
     "suspect_theorems": 1246,
     "export_hygiene_warnings": 339,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2525,
+    "include_hygiene_warnings": 2526,
     "host_names_warnings": 2156,
     "hand_written_record_warnings": 18
   },
@@ -12864,6 +12868,33 @@
       "read_error": null
     },
     {
+      "book": "books/history-image-columns.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 6,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-image-census",
+        "history-page-buffer"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/history-image-fold.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -12999,6 +13030,32 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/history-page-buffers.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 5,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 1,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-page-buffer"
+      ],
       "system_includes": [],
       "suspects": [],
       "read_error": null
@@ -13801,6 +13858,62 @@
         "arithmetic-5/top",
         "arithmetic/top"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/history-pool-columns.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 16,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-image-columns",
+        "history-page-buffers",
+        "history-pool-emitter",
+        "snapshot-source-token"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/history-pool-emitter.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 11,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 2,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-page-buffer",
+        "history-record-cursor"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -27518,6 +27631,30 @@
       "system_includes": [
         "arithmetic/top"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/snapshot-source-token.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -41680,6 +41817,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/history-image-columns-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-image-columns"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/history-image-header-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -41756,6 +41919,32 @@
       "encapsulates": 0,
       "includes": [
         "../../books/history-page-buffer"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/history-page-buffers-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-page-buffers"
       ],
       "system_includes": [],
       "suspects": [],
@@ -42209,6 +42398,60 @@
       "includes": [
         "../../books/history-pages-write-keys",
         "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/history-pool-columns-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 13,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 4,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 3,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-page-cursor",
+        "../../books/history-pool-columns"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/history-pool-emitter-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 5,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-pages-row",
+        "../../books/history-pool-emitter"
       ],
       "system_includes": [],
       "suspects": [],
@@ -81432,6 +81675,13 @@
         "line": 19,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/history-pool-emitter-tests.lisp",
+        "line": 3,
+        "include": "../../books/history-pages-row",
+        "included": "books/history-pages-row.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
