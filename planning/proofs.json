@@ -17948,7 +17948,7 @@
         "tests/acl2/bp-node-control-tests.lisp",
         "host/native/bp-control.lisp"
       ],
-      "progress_note": "Clean persvati proof REPL bpnc-clean admitted 17/17 forms, 17150 prover steps; exact teeth18/18. Matching combined image/native evidence pending; no qualification claim.",
+      "progress_note": "PRF-1064 actual-world subject repair: clean persvati bpnc-subject admitted revised literal initial/two-step theorem and 19 test forms, then the exact all-fnnames world-subject assertion passed (now committed as the twentieth form). Dependencies explicitly source-loaded; no certification claim. Matching combined actual-world/image/native evidence remains runner-owned and pending.",
       "events": [
         "fn-bpnc-ready-startup-binds-the-parsed-store",
         "fn-bpnc-grant-is-the-authorized-route-plan"
@@ -17957,7 +17957,7 @@
     {
       "id": "PRF-1064",
       "title": "BP control listener complete bind install retire protocol",
-      "statement": "Host-called subjects fn-bpnc-socket-initial, fn-bpnc-socket-action and fn-bpnc-socket-step, called by fnn-bpnc-start/step/retire. The composed open run reaches live exactly when the startup is ready and both bind and install completions succeed. From prepared, bound or live, stop produces an actual retire effect; its completion reaches closed on success or fenced otherwise, with no next effect. Raw listener, lease and installed inode ownership are retained until retirement. Teeth assert the entire equivalence for successful open and both failed completions; positive retirement success/failure and corrupt-phase hypothesis removal. Scope is the explicit control listener; BP transport listener rebinding remains open.",
+      "statement": "Host-called subjects fn-bpnc-socket-initial, fn-bpnc-socket-action and fn-bpnc-socket-step, called by fnn-bpnc-start/step/retire. The literal socket-initial followed by the bind-result and install-result socket-step calls reaches live exactly when the startup is ready and both completions succeed. fn-bpnc-socket-open-run-by-definition connects the retained model helper to this host composition; it is not cited as a keystone. From prepared, bound or live, stop produces an actual retire effect; its completion reaches closed on success or fenced otherwise, with no next effect. Raw listener, lease and installed inode ownership are retained until retirement. Teeth assert the entire equivalence for successful open and both failed completions; positive retirement success/failure and corrupt-phase hypothesis removal. Scope is the explicit control listener; BP transport listener rebinding remains open.",
       "milestone": "M4",
       "requirements": [
         "HST-002",
@@ -17971,7 +17971,7 @@
         "tests/acl2/bp-node-control-tests.lisp",
         "host/native/bp-control.lisp"
       ],
-      "progress_note": "Clean persvati proof REPL bpnc-clean admitted 17/17 forms, 17150 prover steps; exact teeth18/18. Matching combined image/native evidence pending; no qualification claim.",
+      "progress_note": "PRF-1064 actual-world subject repair: clean persvati bpnc-subject admitted revised literal initial/two-step theorem and 19 test forms, then the exact all-fnnames world-subject assertion passed (now committed as the twentieth form). Dependencies explicitly source-loaded; no certification claim. Matching combined actual-world/image/native evidence remains runner-owned and pending.",
       "events": [
         "fn-bpnc-open-run-live-iff-both-completions-succeed",
         "fn-bpnc-retirement-stops-the-control-listener"
