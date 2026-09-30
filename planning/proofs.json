@@ -17950,6 +17950,32 @@
         "fn-bpnc-open-run-live-iff-both-completions-succeed",
         "fn-bpnc-retirement-stops-the-control-listener"
       ]
+    },
+    {
+      "id": "PRF-1154",
+      "title": "Internal allocation epoch preserves prepaid state and matched nonzero collection suffix",
+      "statement": "Guarded internal allocation epoch entry/body preserve scalar state and monotonic A; consumed-turn settlement preserves A; successful matched collector reset preserves state with epoch+1 and installed Qresume; state implies the qualified affine footprint bound. Same-pool wrappers update actual fn-page-read-pool fields. These are internal integration subjects with no served host caller yet, not installed-runtime authority. Hypothesis-removal and positive teeth cover the named scalar events.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-10001"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-aec-enter-preserves-allocation-state",
+        "fn-aec-body-preserves-allocation-state",
+        "fn-aec-consumed-turn-settlement-preserves-state",
+        "fn-aec-collector-reset-preserves-state",
+        "fn-aec-state-footprint-bound"
+      ],
+      "evidence": [
+        "books/allocation-epoch.lisp",
+        "books/allocation-epoch-pool.lisp",
+        "tests/acl2/allocation-epoch-tests.lisp",
+        "planning/evidence/allocation-epoch-core-2026-09-30"
+      ],
+      "progress_note": "Protected source admission and guard verification with exact teeth; source manifest records scope. Runner certification/native coordinate pending; real installation and composition joins remain open."
     }
   ]
 }
