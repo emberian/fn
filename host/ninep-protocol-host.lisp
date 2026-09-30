@@ -39,3 +39,17 @@
  :rule-classes nil
  :hints (("Goal" :in-theory
           (e/d (fn-ninep-request-step) (fn-9p-fields-step)))))
+
+(include-book "../books/ninep-version")
+
+(defun fn-ninep-version-reply (server-msize cursor fn-octets state)
+ (declare (xargs :stobjs (fn-octets state) :guard t))
+ (mv (fn-9p-version-at server-msize cursor fn-octets) state))
+
+(defthm fn-ninep-version-reply-is-core-wire-boundary
+ (and (equal (mv-nth 0 (fn-ninep-version-reply server cursor fn-octets state))
+             (fn-9p-version-at server cursor fn-octets))
+      (equal (mv-nth 1 (fn-ninep-version-reply server cursor fn-octets state)) state))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+          (e/d (fn-ninep-version-reply) (fn-9p-version-at)))))

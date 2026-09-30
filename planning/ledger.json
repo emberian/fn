@@ -1821,26 +1821,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1907,
+    "books": 1909,
     "books_in_root_closure": 1885,
     "roots": 1817,
-    "theorems": 29880,
-    "functions": 19146,
+    "theorems": 29890,
+    "functions": 19154,
     "assert_events": 24066,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
       "verified": 3540,
-      "declared-off": 2288,
-      "default-guarded": 10446,
-      "default-unguarded": 2872
+      "declared-off": 2289,
+      "default-guarded": 10452,
+      "default-unguarded": 2873
     },
     "suspect_theorems": 1258,
     "export_hygiene_warnings": 350,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2575,
+    "include_hygiene_warnings": 2577,
     "host_names_warnings": 2197,
     "hand_written_record_warnings": 18
   },
@@ -17863,6 +17863,34 @@
       "encapsulates": 0,
       "includes": [
         "octets-stobj"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/ninep-version.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 3,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 6,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "ninep-fields"
       ],
       "system_includes": [
         "arithmetic/top"
@@ -45781,6 +45809,32 @@
       "encapsulates": 0,
       "includes": [
         "../../host/ninep-protocol-host"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/ninep-version-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 7,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/ninep-version"
       ],
       "system_includes": [],
       "suspects": [],
@@ -76908,6 +76962,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/ninep-version.lisp",
+        "line": 3,
+        "include": "ninep-fields",
+        "included": "books/ninep-fields.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/nntp-article-block.lisp",
         "line": 27,
         "include": "protocol-table",
@@ -84619,6 +84680,13 @@
         "line": 3,
         "include": "../../books/ninep-header",
         "included": "books/ninep-header.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/ninep-version-tests.lisp",
+        "line": 2,
+        "include": "../../books/ninep-version",
+        "included": "books/ninep-version.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

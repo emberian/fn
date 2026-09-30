@@ -19088,9 +19088,12 @@
         "books/ninep-fields.lisp",
         "tests/acl2/ninep-fields-tests.lisp",
         "planning/evidence/manifests/certify-20260930T213247Z-2592943.json",
-        "planning/evidence/manifests/certify-20260930T213317Z-2600819.json"
+        "planning/evidence/manifests/certify-20260930T213317Z-2600819.json",
+        "books/ninep-version.lisp",
+        "tests/acl2/ninep-version-tests.lisp",
+        "planning/evidence/manifests/certify-20260930T214200Z-2737234.json"
       ],
-      "progress_note": "Normal 213247 certifies the actual guarded bounded field step, carried-ready preservation and six literal wire fixtures; normal 213317 certifies the actual host dispatch and unchanged STATE bridge. Matching dependencies install from cache; their uncited status is explicit in the manifests. Full literal parser refinement, fids, genuine committed mount issuer, native/runtime funding and source lifetime remain open. No activation, image or deployment claim."
+      "progress_note": "Normal 213247 certifies the actual guarded bounded field step, carried-ready preservation and six literal wire fixtures; normal 213317 certifies the actual host dispatch and unchanged STATE bridge. Matching dependencies install from cache; their uncited status is explicit in the manifests. Full literal parser refinement, fids, genuine committed mount issuer, native/runtime funding and source lifetime remain open. No activation, image or deployment claim. Normal 214200 certifies core-owned version negotiation, literal octet selector refinement, reply-size/msize bounds, actual version host bridge and complete literal reply/refusal/hypothesis-removal fixtures. Mounted-holder/pin issuer and group enumeration are absent, not inferred from current publication readout."
     }
   ]
 }
