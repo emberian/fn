@@ -5197,3 +5197,16 @@ confers no digest, recovered-state or publication authority. Incremental source
 evidence is `planning/evidence/bp-bounded-checkpoint-header-20260930/manifest.json`.
 Registered charged integrity workspace, selected runtime/profile installation
 and actual bounded native reopen remain open.
+
+The internal `fn-bpfr-payload-run` feeds the actual bounded decoder one read
+of at most64 bytes. It refuses a read beyond the declared payload length before
+decoder work, and reports `:decoded` only with the exact declared offset and
+no leftover input. `fn-bpfr-payload-run-bounds-work` bounds both byte reads and
+constructor/reversal turns by the supplied scheduling quantum. Literal actual
+70-byte CK7 decoding across64+6 reads, interrupted/resumed decoding, trailer
+overrun and short-payload refusal, and the quantum-hypothesis removal accompany
+the source boundary. Evidence is
+`planning/evidence/bp-bounded-checkpoint-payload-20260930/manifest.json`.
+`Decoded` is a parse result, not durable/recovered acceptance. Registered
+integrity workspace, maintained recovery carry and selected runtime/profile
+authority still precede public/native entry.
