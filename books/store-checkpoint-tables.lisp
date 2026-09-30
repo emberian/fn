@@ -61,6 +61,10 @@
 (in-package "ACL2")
 (include-book "store-checkpoint-open")
 (include-book "store-checkpoint-codec")
+
+; This book's tuple lemmas use fixed NTH projections. Keep that vocabulary
+; stable when a composed caller enables CAR/CDR normalization rules.
+(local (in-theory (disable adt-nth-0 adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 ;; Rules withdrawn at their source that this book's proofs use
@@ -1056,7 +1060,8 @@
                           (list :refused :close)
                         tables)))))
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-sct-run-decode-of-run-segments (prog (nth 0 progs))
+           :use (fn-sct-len-4-shape
+                 (:instance fn-sct-run-decode-of-run-segments (prog (nth 0 progs))
                             (rest (append (fn-sct-run-segments (nth 1 progs) seg s)
                                           (fn-sct-run-segments (nth 2 progs) seg s)
                                           (fn-sct-run-segments (nth 3 progs) seg s))))
