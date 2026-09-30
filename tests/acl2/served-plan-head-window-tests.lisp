@@ -1,0 +1,75 @@
+(in-package "ACL2")
+(include-book "../../books/served-plan-head-window")
+
+(defconst *sphwt-plan*
+ '(nil (:log accepted) (:retain source) (:reply (49 50 51))
+       (:log after-reply) (:over-cursor ("fn.test" 1 100000 7 nil t)) (:close)))
+(defun-nx sphwt-conclusionp (p w fn-octets)
+ (declare (xargs :stobjs fn-octets :verify-guards nil))
+ (let* ((cur (if (consp (fn-spp-cur p)) (fn-spp-cur p)
+                (fn-srb-effect-octets (fn-ag-car (fn-spp-rest p)))))
+        (actual (fn-spp-head-window p w fn-octets))
+        (old (fn-splan-window (fn-spp-active-plan p) (min w (len cur)) fn-octets))
+        (next (mv-nth 1 actual)))
+  (and (equal (mv-nth 0 actual) (mv-nth 0 old))
+       (equal (mv-nth 2 actual) (mv-nth 2 old))
+       (equal (fn-spp-active-plan next) (mv-nth 1 old))
+       (equal (fn-spp-prefix next) (fn-spp-prefix p))
+       (equal (fn-spp-origin next) (fn-spp-origin p))
+       (equal (fn-spp-resource next) (fn-spp-resource p)))))
+
+(defthm sphwt-actual-position-head-positive
+ (let* ((p (mv-nth 1 (fn-spp-tick (fn-spp-begin *sphwt-plan* :origin :funded) 2)))
+        (w 100) (fn-octets nil) (actual (fn-spp-head-window p w fn-octets)))
+  (and (natp w) (eq (fn-spp-status p) :reply)
+       (true-listp (fn-srb-effect-octets (fn-ag-car (fn-spp-rest p))))
+       (sphwt-conclusionp p w fn-octets)
+       (equal (mv-nth 2 actual) '(49 50 51))
+       (equal (fn-spp-rest (mv-nth 1 actual)) (cdr (fn-spp-rest p)))
+       (eq (fn-spp-status (mv-nth 1 actual)) :position)))
+ :rule-classes nil)
+
+; All retained hypotheses hold; fractional capacity makes actual ZP true
+; while the old minimum is the natural length, so the literal relation fails.
+(defthm sphwt-without-natural-window-corrupted-state
+ (let ((p (fn-spp-make '(65) nil '((:log retained)) :origin :funded))
+       (w 3/2) (fn-octets nil))
+  (and (not (natp w)) (eq (fn-spp-status p) :reply) (true-listp (fn-spp-cur p))
+       (not (sphwt-conclusionp p w fn-octets))))
+ :rule-classes nil)
+
+(defthm sphwt-without-reply-status-corrupted-state
+ (let* ((p (fn-spp-begin '(nil (:log retained) (:reply (65))) :origin :funded))
+        (w 1) (fn-octets nil))
+  (and (natp w) (not (eq (fn-spp-status p) :reply))
+       (true-listp (fn-srb-effect-octets (fn-ag-car (fn-spp-rest p))))
+       (not (sphwt-conclusionp p w fn-octets))))
+ :rule-classes nil)
+
+(defthm sphwt-without-proper-head-corrupted-state
+ (let ((p (fn-spp-make '(65 . 66) nil '((:log retained)) :origin :funded))
+       (w 2) (fn-octets nil))
+  (and (natp w) (eq (fn-spp-status p) :reply) (not (true-listp (fn-spp-cur p)))
+       (not (sphwt-conclusionp p w fn-octets))))
+ :rule-classes nil)
+
+(defun sphwt-actual-buffer-windows (fn-octets)
+ (declare (xargs :stobjs fn-octets :verify-guards nil))
+ (mv-let (position-status p work)
+   (fn-spp-tick (fn-spp-begin *sphwt-plan* :origin :funded) 2)
+  (declare (ignore position-status work))
+  (mv-let (status p1 fn-octets) (fn-spp-head-window p 2 fn-octets)
+   (let ((first-good (and (eq status :ok) (equal (fn-octets-len fn-octets) 2)
+                          (equal (fn-octets-get 0 fn-octets) 49)
+                          (equal (fn-octets-get 1 fn-octets) 50))))
+    (mv-let (status p2 fn-octets) (fn-spp-head-window p1 100 fn-octets)
+     (mv-let (position-status p3 work) (fn-spp-tick p2 1)
+      (mv (and first-good (eq status :ok) (equal (fn-octets-len fn-octets) 1)
+               (equal (fn-octets-get 0 fn-octets) 51)
+               (eq (fn-spp-status p2) :position) (eq position-status :cursor) (equal work 1)
+               (equal (fn-spp-prefix p3) '((:log after-reply) (:retain source) (:log accepted)))
+               (equal (fn-spp-origin p3) :origin) (equal (fn-spp-resource p3) :funded))
+          fn-octets)))))))
+
+(assert-event (mv-let (good fn-octets) (sphwt-actual-buffer-windows fn-octets)
+                (mv good fn-octets)) :stobjs-out '(nil fn-octets))

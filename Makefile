@@ -608,6 +608,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/page-read-ledger \
 	books/page-discovery-ledger \
 	books/cold-read-layout \
+	books/cold-guard-bootstrap \
+	tests/acl2/cold-guard-bootstrap-tests \
 	tests/acl2/page-discovery-ledger-tests \
 	tests/acl2/cold-read-layout-tests \
 	books/page-read-ownership \
@@ -615,11 +617,20 @@ ACL2_BOOKS ?= books/defrecord \
 	host/page-read-host \
 	books/page-read-resources \
 	books/page-file-lease \
+	books/page-window-lease \
+	books/page-window-executor \
+	books/page-window-read \
+	tests/acl2/page-window-executor-tests \
+	tests/acl2/page-window-read-tests \
+	tests/acl2/page-window-admission-tests \
+	tests/acl2/page-window-lease-tests \
 	tests/acl2/page-file-lease-tests \
 	books/page-read-executor \
 	tests/acl2/page-read-executor-tests \
 	host/page-executor-host \
 	host/page-file-lease-host \
+	host/page-window-lease-host \
+	host/page-window-executor-host \
 	tests/acl2/page-read-ledger-tests \
 	tests/acl2/page-read-host-tests \
 	tests/acl2/store-profile-carried-tests \
@@ -1089,8 +1100,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-plan-position-tests \
 	books/served-plan-window \
 	books/served-plan-position-window \
+	books/served-plan-head-window \
+	tests/acl2/served-plan-head-window-tests \
 	tests/acl2/served-plan-position-window-tests \
 	books/served-plan-byte-cursor \
+	books/served-plan-byte-carry \
+	tests/acl2/served-plan-byte-carry-tests \
 	tests/acl2/served-plan-position-byte-tests \
 	tests/acl2/served-plan-byte-cursor-tests \
 	tests/acl2/over-byte-cursor-tests \
@@ -1570,6 +1585,19 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/arena-reader-pins-tests \
 	books/response-plan-pins \
 	tests/acl2/response-plan-pins-tests \
+	books/page-read-ownership \
+	tests/acl2/page-read-ownership-tests \
+	books/page-file-lease \
+	books/page-window-lease \
+	books/page-window-executor \
+	books/page-window-read \
+	tests/acl2/page-window-executor-tests \
+	tests/acl2/page-window-read-tests \
+	tests/acl2/page-window-admission-tests \
+	tests/acl2/page-window-lease-tests \
+	tests/acl2/page-file-lease-tests \
+	books/page-read-executor \
+	tests/acl2/page-read-executor-tests \
 	books/feed-restart-domain \
 	tests/acl2/feed-restart-domain-tests \
 	books/web-request \

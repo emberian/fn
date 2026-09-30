@@ -1952,3 +1952,65 @@ the producer adopts these entries. Existing global oldest-pin retirement
 stays in place for unmigrated readers, whose live arena placement lookup
 still precedes physical lease acquisition; the new API alone cannot justify
 weakening that protection.
+
+### Exact requested-window resource lifetime
+
+PRF-1119 / SCN-1025 introduce a typed window lease containing a fresh ticket
+and `(file eoff elen poff plen offset trailer)`. Supplied demand covers the
+fixed input, digest, output and optional decoder representations; ELEN is
+metadata and does not select a whole-extent allocation. The separate
+selected-runtime demand helper must establish adequacy before activation.
+
+An admitted window prevents its exact file's close. Worker return changes
+only its phase and keeps every charge. After the worker has relinquished its
+private activation and the consumer has released every output alias, final
+release refunds reusable resources once. One worker credit remains held
+through the output borrow, conservatively bounding outstanding job/buffer
+leases by the admitted worker budget. Cancellation and deadline expiry do
+not establish physical return. Ordinary verified-extent cache settlement
+cannot consume this typed token. Each repeated request gets a fresh ticket.
+
+The source stobj adapters have complete answer/effect equations. They remain
+unreachable in composition pending actual authenticated window execution,
+its allocator demand and persistent worker dispatch. Return is a physical
+observation, never proof that the bytes passed digest or decoder checks.
+
+
+PRF-1128 / SCN-1035 stage the persistent physical window worker with the
+complete immutable typed token, including payload position and length. Its
+existing four-field core slot binds the exact token and slot; actual worker
+return retains all job credits and the physical file. Scalar borrowing checks
+that returned binding and the actual stream's published plan. The native worker
+runs `fn-ews-begin/effect/tick/read` over fixed 64-byte input and a private
+16 KiB output window; all read coordinates/counts and digest decisions come
+from ACL2. The final release clears its retained result before refund. The
+native trajectory correspondence, complete selected-runtime demand, served
+seven-field descriptor/admission join, productive reclamation/rescue and default
+activation remain open. These are source components, not qualified execution.
+
+
+The staged PRF-1128 payload-coordinate seam passes the arena's original
+payload-relative index unchanged. `fn-pwr-byte-at` checks the six original
+physical/payload coordinates and subtracts the requested offset only in ACL2;
+no host coordinate arithmetic chooses a byte. Its core terminal outcome keeps
+ready, stale ownership and read/commitment/digest/state/bounds failures distinct.
+An actual failed authenticated scan is not a cold miss and cannot trigger an
+indefinite rescan. The native thread-dynamic worker/token references are a
+staged owner-quantum seam, not a second window cache; the default durable
+realizer remains unchanged. Root contract963b327f3 additionally requires the
+producer's source-authorized logical lease bound to the actual arena instance,
+current physical placement acquisition under owner-to-extent locks, staged
+buffer ownership and inner cleanup before logical release. Those joins,
+cancellation publication rights and full allocator/native evidence remain open.
+
+
+The dormant PRF-1128 lifetime seam revokes cancelled jobs without fabricating
+physical return. Credits and file ownership survive cancellation until actual
+worker return and exact cancelled settlement; scalar publication is denied.
+Cancellation is cooperative between bounded core actions: an already authorized
+action may finish. The bound-arena current getter executes under owner exclusion,
+then admits the selected exact descriptor under extent exclusion before unlock.
+The dedicated 21-name guard cache has a sourced permanent baseline, but startup
+installation, selected-runtime adequacy, captured-row authorization and native
+execution remain separate obligations. Compressed getters refuse before eager
+decoding. The default realizer does not enable this staged mode.

@@ -6572,13 +6572,15 @@
         "Install explicit operator worker/descriptor/read/file budgets, baseline-fund and preallocate fixed executors and tables before owner recovery.",
         "Hold actual pread on every admitted worker and cancel clients repeatedly; issue another read while the pool is full.",
         "Release one worker result, verify owner settlement then reuse that worker for a newer exact token; deliver its older token again.",
-        "Fail executor startup partway, exercise process death with queued/running/returned jobs, and restart without publishing old results."
+        "Fail executor startup partway, exercise process death with queued/running/returned jobs, and restart without publishing old results.",
+        "Inject an unexpected runtime error whose datum is the private array; preserve the store fault while handing off only a fixed diagnostic."
       ],
       "expected": [
         "Admission refuses before new buffer/thread/job allocation when all slots remain charged. Cancellation neither releases the slot nor closes the held file.",
         "One admitted token owns one executor slot. Returned result stays charged until matching settled I/O and physical publication/discard; both worker and owner result-transfer activations have returned before refund, and readiness never lends the private result.",
         "Old token cannot return or free a reused worker; cached buffer remains charged until actual eviction. Permanent executor/table storage remains baseline-funded through shutdown.",
-        "Partial startup tears down only resources actually created, joins created workers and fences ambiguous close; restart derives fresh process-local identity state."
+        "Partial startup tears down only resources actually created, joins created workers and fences ambiguous close; restart derives fresh process-local identity state.",
+        "Unexpected condition arguments do not escape in the private result; known extent fault messages are preserved."
       ],
       "evidence": [
         "books/page-read-executor.lisp",
@@ -6963,6 +6965,67 @@
         ],
         "native": true
       }
+    },
+    {
+      "id": "SCN-1025",
+      "title": "Window range identity and physical return fence final resource release",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Register one physical incarnation and admit a supplied fixed window demand for an extent much larger than the requested output.",
+        "Attempt release before actual return and return a token with another requested offset.",
+        "Observe actual return while the consumer retains the output, then relinquish all aliases and release.",
+        "Admit the same descriptor again and deliver the old completion token."
+      ],
+      "expected": [
+        "Admission preserves funding and the file cannot close while the exact window token is live.",
+        "Cancellation or stale range cannot release a running job; ordinary whole-extent cache settlement rejects the typed window token.",
+        "Return keeps all credits and file retention. Final release refunds reusable credits once and preserves permanent baseline and spent identity.",
+        "Fresh ticket prevents an earlier completion from settling a later scan even when descriptors are identical."
+      ],
+      "evidence": [
+        "books/page-window-lease.lisp",
+        "host/page-window-lease-host.lisp",
+        "tests/acl2/page-window-lease-tests.lisp"
+      ],
+      "execution_scope": "Source model and adapter only; runtime demand adequacy, actual worker/window wiring, integrity and native behavior remain pending."
+    },
+    {
+      "id": "SCN-1035",
+      "title": "Persistent window slots retain complete range identity and credits through scalar borrowing",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Admit a typed window at ticket zero and bind physical slot zero.",
+        "Attempt return/release with a changed offset or another slot, and attempt to steal the live token.",
+        "Run the actual core raw digest trajectory on three bytes and its real trailer, then observe physical return and borrow one scalar.",
+        "Drop all native result aliases before final release, then attempt repeated release.",
+        "Request offset one, pass the arena payload-relative index unchanged, alter payload coordinates, and run actual damaged-prefix, wrong-commitment and short-read scans.",
+        "Cancel exact running and returned windows, deny scalar publication, retain charges until actual return and exact cancelled settlement; stage bound-arena current-placement capture before off-lock read."
+      ],
+      "expected": [
+        "Exact binding preserves every supplied charge. Altered range and worker slot cannot return or release the job.",
+        "Actual return retains worker credit and file lease. The actual authenticated stream authorizes scalar 2 at relative offset 1; a running slot remains unavailable.",
+        "Final release refunds once and restores an ordinary idle slot. No result vector is exposed through the scalar borrow API.",
+        "ACL2 computes the exact window-relative scalar index; mismatching original coordinates and pre-window indices do not borrow bytes. Core outcomes preserve read/digest/commitment failure distinctly from a new cold request.",
+        "Cancellation never fabricates worker return or refunds a running job. A wrong token cannot settle; final exact settlement refunds once after aliases end. Compressed current getters refuse before eager decoding."
+      ],
+      "evidence": [
+        "tests/acl2/page-window-executor-tests.lisp",
+        "tests/acl2/page-window-read-tests.lisp",
+        "host/native/extent.lisp",
+        "tests/acl2/page-window-admission-tests.lisp",
+        "planning/evidence/physical-window-source-2026-09-30.md",
+        "planning/evidence/physical-window-coordinate-source-2026-09-30.md",
+        "tests/native/page-window-lifecycle.lisp"
+      ],
+      "execution_scope": "Source model/adapter and staged raw wrapper only. Actual native observation, adequate native demand and served activation remain pending."
     }
   ]
 }
