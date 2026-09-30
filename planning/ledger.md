@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1930 |
-| Certification roots in the Makefile | 1789 |
-| Books inside the root closure | 1897 |
-| `defthm` and `defthmd` events | 29911 |
-| `defun` events | 19285 |
-| Functions with verified guards | 3529 |
-| Functions declared `:verify-guards nil` and never verified | 2313 |
-| Functions left at the default with an explicit guard | 10572 |
-| Functions left at the default with no guard | 2871 |
-| `assert-event` checks | 24141 |
+| Books read | 1934 |
+| Certification roots in the Makefile | 1793 |
+| Books inside the root closure | 1904 |
+| `defthm` and `defthmd` events | 29932 |
+| `defun` events | 19297 |
+| Functions with verified guards | 3532 |
+| Functions declared `:verify-guards nil` and never verified | 2315 |
+| Functions left at the default with an explicit guard | 10578 |
+| Functions left at the default with no guard | 2872 |
+| `assert-event` checks | 24154 |
 | `must-fail` checks | 2520 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 161 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 346 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2571 |
+| Include-hygiene warnings | 2582 |
 | Host-names warnings | 2243 |
 | Hand-written-record warnings | 18 |
 
@@ -345,7 +345,7 @@ that `make certify` requests.
 | `books/catalog-view.lisp` | root | 21 | 12 | 5/0/6/1 | 0 | 0 | 3 |
 | `books/catalog.lisp` | root | 385 | 131 | 14/20/70/27 | 0 | 0 | 7 |
 | `books/cbor-invariants.lisp` | root | 73 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/cbor-size-reader.lisp` | - | 6 | 2 | 2/0/0/0 | 0 | 0 | 0 |
+| `books/cbor-size-reader.lisp` | closure | 6 | 2 | 2/0/0/0 | 0 | 0 | 0 |
 | `books/cbor.lisp` | root | 18 | 35 | 35/0/0/0 | 0 | 0 | 2 |
 | `books/checkpoint-auxiliary.lisp` | root | 0 | 12 | 7/0/0/5 | 0 | 0 | 0 |
 | `books/checkpoint-codec.lisp` | root | 110 | 32 | 13/0/18/1 | 0 | 0 | 2 |
@@ -997,15 +997,15 @@ that `make certify` requests.
 | `books/state-digest.lisp` | root | 23 | 29 | 0/0/25/4 | 0 | 0 | 0 |
 | `books/state-globals.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/statement-attach.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/statement-codec-size-reader.lisp` | - | 7 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/statement-codec-size-reader.lisp` | closure | 7 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/statement-codec.lisp` | root | 38 | 7 | 0/0/6/1 | 0 | 0 | 1 |
 | `books/statement-invariants.lisp` | root | 57 | 1 | 0/0/0/1 | 0 | 0 | 1 |
 | `books/statement-items.lisp` | root | 2 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/statement-keyring-publication.lisp` | root | 12 | 1 | 0/0/1/0 | 0 | 0 | 5 |
 | `books/statement-recover-sized.lisp` | - | 3 | 3 | 1/0/2/0 | 0 | 0 | 1 |
 | `books/statement-recover-stream.lisp` | root | 8 | 7 | 0/0/7/0 | 0 | 0 | 0 |
-| `books/statement-seam.lisp` | root | 12 | 4 | 0/0/4/0 | 0 | 0 | 0 |
-| `books/statement-size-values.lisp` | - | 0 | 1 | 0/1/0/0 | 0 | 0 | 0 |
+| `books/statement-seam.lisp` | root | 14 | 5 | 0/0/5/0 | 0 | 0 | 0 |
+| `books/statement-size-values.lisp` | closure | 0 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/statement-snapshot-keyring.lisp` | root | 8 | 7 | 2/0/5/0 | 0 | 0 | 0 |
 | `books/statement.lisp` | root | 24 | 56 | 0/0/56/0 | 0 | 0 | 13 |
 | `books/store-budget-article.lisp` | root | 9 | 7 | 0/0/7/0 | 0 | 0 | 0 |
@@ -1108,6 +1108,7 @@ that `make certify` requests.
 | `books/store-reclaim-stream.lisp` | root | 13 | 4 | 0/3/1/0 | 0 | 0 | 3 |
 | `books/store-reclaim.lisp` | root | 40 | 40 | 1/5/34/0 | 0 | 0 | 0 |
 | `books/store-records-field.lisp` | root | 15 | 10 | 0/0/10/0 | 0 | 0 | 0 |
+| `books/store-recover-stream-sized.lisp` | root | 13 | 5 | 1/2/2/0 | 0 | 0 | 0 |
 | `books/store-recover-stream.lisp` | root | 25 | 16 | 1/6/9/0 | 0 | 0 | 1 |
 | `books/store-replay-bound.lisp` | root | 8 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/store-retention-codec-invariants.lisp` | root | 21 | 1 | 0/1/0/0 | 0 | 0 | 0 |
@@ -1123,6 +1124,7 @@ that `make certify` requests.
 | `books/stx-index.lisp` | root | 93 | 38 | 10/0/20/8 | 0 | 0 | 10 |
 | `books/stx-invariants.lisp` | root | 24 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/stx-keyring-records.lisp` | root | 13 | 28 | 12/0/16/0 | 0 | 0 | 0 |
+| `books/stx-keyring-size-reader.lisp` | root | 6 | 4 | 2/0/1/1 | 0 | 0 | 0 |
 | `books/stx-lace-rows.lisp` | closure | 19 | 1 | 0/0/1/0 | 0 | 0 | 1 |
 | `books/stx-lace.lisp` | root | 17 | 8 | 0/0/8/0 | 0 | 0 | 1 |
 | `books/stx-node-lace.lisp` | root | 18 | 4 | 1/0/3/0 | 0 | 0 | 1 |
@@ -1964,6 +1966,7 @@ that `make certify` requests.
 | `tests/acl2/store-reclaim-pack-tests.lisp` | root | 0 | 4 | 0/1/0/3 | 29 | 6 | 0 |
 | `tests/acl2/store-reclaim-stream-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 7 | 1 | 0 |
 | `tests/acl2/store-reclaim-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 74 | 21 | 0 |
+| `tests/acl2/store-recover-stream-sized-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 7 | 0 | 0 |
 | `tests/acl2/store-recover-stream-tests.lisp` | root | 2 | 11 | 0/11/0/0 | 15 | 0 | 1 |
 | `tests/acl2/store-replay-bound-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/store-retention-codec-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 1 | 0 |
@@ -1972,6 +1975,7 @@ that `make certify` requests.
 | `tests/acl2/stx-accept-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 30 | 0 | 0 |
 | `tests/acl2/stx-evidence-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 2 | 0 |
 | `tests/acl2/stx-keyring-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 30 | 0 | 0 |
+| `tests/acl2/stx-keyring-size-reader-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 6 | 0 | 0 |
 | `tests/acl2/stx-reader-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/stx-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 42 | 0 | 0 |
 | `tests/acl2/stx-transit-tests.lisp` | root | 0 | 24 | 0/13/11/0 | 154 | 5 | 0 |
