@@ -20,7 +20,8 @@
            (fn-stmt-decode-prefix-items-bounded
             fn-stmt-decode-prefix-items-bounded-impl)
            :hints (("Goal"
-                    :use (fn-stmt-impl-encode-items-of-atom
+                    :use (fn-stmt-decode-items-bounded-reference-by-definition
+                          fn-stmt-impl-encode-items-of-atom
                           fn-stmt-impl-encode-items-of-cons
                           fn-stmt-impl-decode-items-bounded-of-encode
                           fn-stmt-impl-decode-items-bounded-canonical

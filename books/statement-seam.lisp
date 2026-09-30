@@ -41,6 +41,7 @@
 
 (in-package "ACL2")
 (include-book "statement-items")
+(include-book "statement-items-reference")
 
 (encapsulate
   (((fn-stmt-encode-items *) => *
@@ -68,6 +69,14 @@
                                        (natp item-budget))))
            (fn-stmt-decode-prefix-items-bounded-impl count octets outer-budget
                                                      item-budget)))
+
+  ; Full semantic specification, including refusal and budget precedence.
+  ; This is a definitional seam bridge, not the incremental parser keystone.
+  (defthm fn-stmt-decode-items-bounded-reference-by-definition
+    (equal (fn-stmt-decode-items-bounded fuel octets outer-budget item-budget)
+           (fn-stmt-decode-items-bounded-impl fuel octets outer-budget item-budget))
+    :rule-classes nil
+    :hints (("Goal" :in-theory (enable fn-stmt-decode-items-bounded))))
 
   (defthm fn-stmt-encode-items-of-atom
     (implies (not (consp items))
