@@ -67,3 +67,32 @@
                 (fn-lpc-tick fn-lpc-ready-p fn-npw-one fn-npw-piecesp
                  fn-obc-row-ready fn-obc-next-range fn-obc-parser-pieces
                  fn-lpc-tombstonep nth)))))
+
+(defthm fn-ohr-active-one-emits-row-residual-and-retains-source
+  (implies (and (fn-ohr-active-p s fn-arena)
+                (equal (nth 2 s) :emit))
+           (let ((result (fn-ohr-active-one s fn-arena)))
+             (and (equal (append (mv-nth 0 result)
+                                 (fn-npw-remaining
+                                  (nth 4 (mv-nth 1 result))
+                                  (nth 5 (mv-nth 1 result)) fn-arena))
+                         (fn-npw-remaining (nth 4 s) (nth 5 s) fn-arena))
+                  (equal (nth 0 (mv-nth 1 result)) (nth 0 s))
+                  (implies (mv-nth 1 result)
+                           (equal (nth 1 (mv-nth 1 result)) (nth 1 s)))
+                  (<= (len (mv-nth 0 result)) 1)
+                  (implies (consp (nth 4 s))
+                           (fn-ohr-active-p (mv-nth 1 result) fn-arena)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :expand ((fn-npw-piecesp (nth 4 s) fn-arena)
+                    (:free (pos arena) (fn-npw-remaining nil pos arena)))
+           :use ((:instance fn-npw-one-residual
+                            (pieces (nth 4 s)) (pos (nth 5 s)))
+                 (:instance fn-npw-one-output-bounded
+                            (pieces (nth 4 s)) (pos (nth 5 s)))
+                 (:instance fn-npw-one-keeps-pieces
+                            (pieces (nth 4 s)) (pos (nth 5 s))))
+           :in-theory
+           (e/d (fn-ohr-active-p fn-ohr-active-one fn-obc-make fn-obc-begin)
+                (fn-npw-one fn-npw-remaining fn-npw-piecesp fn-lpc-tick)))))
