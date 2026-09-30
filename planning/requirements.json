@@ -207,7 +207,7 @@
         "tests/evidence/2026-09-18-assurance.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Primitive/record full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 §4.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema1-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
+      "implementation_note": "Primitive/record full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 \u00a74.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema1-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
       "keystones": [
         "fn-cbor-value-round-trip",
         "fn-cbor-accepted-input-is-canonical",
@@ -1456,7 +1456,7 @@
     },
     {
       "id": "NNT-008",
-      "title": "NEWNEWS answers from this node’s durable acceptance stamp",
+      "title": "NEWNEWS answers from this node\u2019s durable acceptance stamp",
       "specification": "specs/nntp.md#polling-newnews",
       "milestone": "M3",
       "status": "implemented",
@@ -1474,7 +1474,7 @@
         "specs/nntp.md",
         "specs/nntp-audit.md"
       ],
-      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner’s durable whole-second acceptance stamp; an article without a natural stamp uses the nearest later stamped acceptance, else the pinned reader wall second, else remains visible; no record carries such a stamp since schema 0 was deleted (no migrations: fresh deploys at 6.6.0), and deleting this horizon is open. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
+      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner\u2019s durable whole-second acceptance stamp; an article without a natural stamp uses the nearest later stamped acceptance, else the pinned reader wall second, else remains visible; no record carries such a stamp since schema 0 was deleted (no migrations: fresh deploys at 6.6.0), and deleting this horizon is open. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
       "note": "The DATE-to-NEWNEWS no-miss guarantee across a reader pin and in-flight prepare remains T6 under A-CLOCK."
     },
     {
@@ -5699,15 +5699,11 @@
     {
       "id": "HST-040",
       "title": "Running and stopped snapshot producers capture one committed Store frontier and coherent identity/configuration epoch, restore the retained state, and fund bounded work with marker-last completion",
-      "specification": "specs/host.md#snapshot-producer",
+      "specification": "specs/checkpoint.md#running-and-stopped-snapshot-producer",
       "milestone": "M5",
       "status": "planned",
       "proof_targets": [
         "PRF-1068",
-        "PRF-1069",
-        "PRF-1071",
-        "PRF-1074",
-        "PRF-1077",
         "PRF-1086",
         "PRF-1092"
       ],
@@ -5717,20 +5713,15 @@
         "test"
       ],
       "evidence": [
-        "books/snapshot-file-copy.lisp",
-        "tests/acl2/snapshot-file-copy-tests.lisp",
-        "books/snapshot-publication.lisp",
-        "tests/acl2/snapshot-publication-tests.lisp",
-        "books/snapshot-capture-lease.lisp",
-        "tests/acl2/snapshot-capture-lease-tests.lisp",
-        "books/snapshot-prepare.lisp",
-        "tests/acl2/snapshot-prepare-tests.lisp",
+        "books/owner-snapshot-recovery.lisp",
+        "tests/acl2/owner-snapshot-recovery-tests.lisp",
         "books/history-page-cursor.lisp",
         "tests/acl2/history-page-cursor-tests.lisp",
         "books/history-page-layout.lisp",
-        "tests/acl2/history-page-layout-tests.lisp"
+        "tests/acl2/history-page-layout-tests.lisp",
+        "planning/history-page-cursor-contract.md"
       ],
-      "implementation_note": "S7 producer in development on codex/operability-producer; grammar and bounded copy cursor only. Full maintained-projection recovery and resource lifetime funding remain required, no producer completion claim."
+      "implementation_note": "The full S7 producer remains planned. Landed components are the live snapshot inverse and bounded descriptor/scalar page-layout libraries; these have no new producer host caller. Capture/controller, bounded history preparation, physical admission, full retained-projection recovery, I/O effects and marker-last publication are still required. Unmerged producer prototypes and their separate proof targets are not cited as landed evidence."
     }
   ]
 }

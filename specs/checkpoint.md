@@ -348,3 +348,28 @@ water `1+M+N+T`; a single-address operation computes one member. Both refine
 constant-work table-count function and current-format u64/u32 checks. This
 removes whole-run allocation planning from the proposed private writer; it
 neither allocates backing pages nor proves platform file-offset representation.
+
+## Running and stopped snapshot producer
+
+HST-040 remains planned: the producer must capture one committed Store
+frontier, its configuration history, genesis identity, retained identity
+snapshots/verdicts and keyring generation. Restore must recover retained
+article/conflict/provenance, configuration, identity, consumer obligation,
+topic, resource and history state at that frontier. Transient connections,
+recovery barriers and process-local descriptors are not copied state.
+
+A running capture must retain the immutable Store/image epoch and a resource
+lease while later publications proceed. New resident, disk, descriptor,
+worker and pinned old-artifact demands must be admitted under the supported
+profile before work. Each scheduling step bounds work and fresh allocation;
+a depleted quantum resumes without truncating retained data. The completion
+marker is published last after all promised target data and namespace
+barriers are durable. Ambiguous publication/fence failures remain uncertain
+and preserve recovery evidence.
+
+The live-carry inverse PRF-1068 and page-descriptor/layout components
+PRF-1086/1092 are dependencies of that producer, not its completion. The
+landed library continuations do not install a producer host call, allocate
+its resources, replace whole history build/flush, or establish full retained
+projection and byte-effect refinement. The unmerged producer prototype's
+other proof roots are not imported by these leaf components.
