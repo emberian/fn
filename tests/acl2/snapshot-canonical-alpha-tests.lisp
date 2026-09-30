@@ -2,6 +2,7 @@
 ; composite payload. Physical copy/decoder correspondence remains external.
 (in-package "ACL2")
 (include-book "../../books/snapshot-canonical-alpha")
+(include-book "../../books/owner-snapshot-recovery")
 (include-book "../../books/codec-attach")
 (include-book "snapshot-node-alpha-tests")
 (include-book "statement-recover-stream-tests")

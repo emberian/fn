@@ -27,6 +27,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/acceptance \
 	books/acceptance-invariants \
 	books/snapshot-node-alpha \
+	books/snapshot-config-alpha \
+	tests/acl2/snapshot-config-alpha-tests \
 	tests/acl2/snapshot-node-alpha-tests \
 	books/snapshot-canonical-alpha \
 	tests/acl2/snapshot-canonical-alpha-tests \

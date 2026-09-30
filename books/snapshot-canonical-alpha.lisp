@@ -3,8 +3,8 @@
 ; writer/loader must establish the payload map before this boundary applies.
 (in-package "ACL2")
 (include-book "snapshot-row-remap")
-(include-book "snapshot-node-alpha")
-(include-book "owner-snapshot-recovery")
+(include-book "snapshot-config-alpha")
+(include-book "config-observed")
 (local (in-theory (disable (tau-system))))
 
 (defun fn-osa-row-alphas (rows fn-arena)
@@ -676,11 +676,6 @@
               fn-hstxa-accessors-of-make fn-held-accessors-are-the-wire-accessors
               fn-orm-held-preserves-the-held-shape fn-held-p-fields
               fn-cstp-held-kind-facts)))))
-(defun fn-osa-cnode-alpha (cn fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t))
-  (list (fn-osa-node-alpha (fn-cnode-node cn) fn-arena)
-        (fn-cnode-config cn)))
-(in-theory (disable fn-osa-cnode-alpha))
 (local
  (defthm fn-osa-cnode-state-has-node-state-by-definition
    (implies (fn-cnode-statep cn) (fn-node-statep (fn-cnode-node cn)))
@@ -725,42 +720,3 @@
                             fn-store-event-p fn-orm-row fn-orm-projection
                             fn-orm-payload-bytes fn-osa-node-alpha
                             fn-cpr-event-servedp)))))
-(local
- (defthm fn-osa-cnode-alpha-keeps-config-check-by-definition
-   (implies (equal (fn-osa-cnode-alpha a source) (fn-osa-cnode-alpha b target))
-            (equal (fn-cnode-record-acceptablep a record ceiling)
-                   (fn-cnode-record-acceptablep b record ceiling)))
-   :rule-classes nil
-   :hints (("Goal" :in-theory (e/d (fn-osa-cnode-alpha fn-osa-node-alpha
-                                      fn-cnode-record-acceptablep)
-                                     (fn-cfg-record-acceptablep fn-osa-acceptance-alpha))))))
-(local
- (defthm fn-osa-config-transition-keeps-complete-alpha
-   (implies (and (fn-cnode-statep a) (fn-cnode-statep b)
-                 (equal (fn-osa-cnode-alpha a source) (fn-osa-cnode-alpha b target)))
-            (equal (fn-osa-cnode-alpha (fn-cnode-apply-config a record ceiling) source)
-                   (fn-osa-cnode-alpha (fn-cnode-apply-config b record ceiling) target)))
-   :rule-classes nil
-   :hints (("Goal" :do-not-induct t
-            :use (fn-osa-cnode-alpha-keeps-config-check-by-definition)
-            :in-theory (e/d (fn-osa-cnode-alpha fn-osa-node-alpha
-                             fn-osa-acceptance-alpha fn-osa-pending-alpha
-                             fn-cnode-apply-config)
-                            (fn-cnode-statep fn-cnode-record-acceptablep
-                             fn-node-statep fn-statep fn-node-make-state
-                             fn-make-state fn-retain-make-state
-                             fn-articles-wire-of fn-cfg-apply-record
-                             fn-cnode-extend-nexts fn-cnode-domain-of))))))
-(local
- (defthm fn-osa-cnode-advance-keeps-complete-alpha
-   (implies (and (fn-cnode-statep a) (fn-cnode-statep b)
-                 (equal (fn-osa-cnode-alpha a source) (fn-osa-cnode-alpha b target)))
-            (equal (fn-osa-cnode-alpha (fn-cnode-make
-                    (fn-replay-advance-txid (fn-cnode-node a) txid) (fn-cnode-config a)) source)
-                   (fn-osa-cnode-alpha (fn-cnode-make
-                    (fn-replay-advance-txid (fn-cnode-node b) txid) (fn-cnode-config b)) target)))
-   :rule-classes nil
-   :hints (("Goal" :use ((:instance fn-osa-advance-keeps-full-node-alpha
-                         (a (fn-cnode-node a)) (b (fn-cnode-node b))))
-            :in-theory (e/d (fn-osa-cnode-alpha)
-                            (fn-osa-node-alpha fn-replay-advance-txid fn-cnode-statep))))))

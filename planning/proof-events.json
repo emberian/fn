@@ -17591,6 +17591,10 @@
         {
           "kind": "theorem",
           "name": "fn-osa-canonical-row-keeps-actual-node-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osa-configuration-suffix-keeps-full-result-alpha"
         }
       ],
       "pending_subject": "Full actual canonical configured recovery and owner/controller composition remain open. Cited events include the actual fn-replay-apply-record full-node row boundary, not a complete configured-open or host-level completion claim."

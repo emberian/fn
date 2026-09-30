@@ -599,3 +599,12 @@ at byte begin, and survives each actual byte step. The restored right-child
 position therefore remains within B even for partial final bytes. Complete
 actual guards and never-invalid status follow without executing this proof-only
 predicate on a served tick. Semantic trajectory/progress and funding remain open.
+
+The configuration-only suffix component in `books/snapshot-config-alpha.lisp`
+preserves the complete actual `fn-cpr-loop` result abstraction: kind, full
+configured node alpha, exact configuration, sequence and refusal reason. Its
+hypotheses are two valid configured inputs and equality of their complete
+alpha. A nonempty accepted ARTICLE followed by a group-creation configuration
+checks the full positive; corrupted-state witnesses remove either input type,
+and a valid-state witness removes incoming alpha. Event-bearing configured
+replay, opening success and physical writer/load/owner composition remain open.
