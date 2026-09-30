@@ -129,8 +129,7 @@
   (implies (fn-rov-correspondp view (fn-retain-pins (fn-rov-oc-ledger oc)))
            (fn-rov-owner-correspondp (fn-owner-install-rebuilt-ocfg oc view state))))
 (defthm fn-rov-owner-open-establishes-correspondence
-  (implies (fn-retain-obligation-listp (fn-retain-pins (fn-rov-oc-ledger oc)))
-           (fn-rov-owner-correspondp (fn-owner-install-open-ocfg oc state)))
+  (fn-rov-owner-correspondp (fn-owner-install-open-ocfg oc state))
   :hints (("Goal" :in-theory (disable fn-owner-install-rebuilt-ocfg)
            :use ((:instance fn-rov-owner-rebuilt-establishes-correspondence
                     (view (fn-rov-build (fn-retain-pins (fn-rov-oc-ledger oc)))))))))

@@ -248,8 +248,15 @@ The actual `fn-owner-prepare-identity` entry now has a preservation theorem
 for the carried obligation correspondence and exact unchanged view/ledger
 effects. Its reachable signed-post fixture stages the composite through that
 same host function; a corrupted-total fixture demonstrates why correspondence
-cannot be dropped. Other prepare variants, durable completion, recovery and
-cold swap remain separate open writer obligations.
+cannot be dropped. The actual cold installer establishes correspondence for a nonfault recovered
+owner passing the successful open check. The actual atomic reclaim swap installs the
+rebuilt view and recovered ledger together; a producer-to-swap theorem derives
+correspondence from the actual nonfault rebuild result. The cold reconstruction
+correspondence is unconditional: its earlier pin-typing hypothesis was removed
+after proving the weaker statement; executable entry guards are unchanged.
+Other prepare variants and durable completion remain separate open writer
+obligations. These proofs do not turn the eager rebuild into a bounded source
+traversal or establish every native producer premise.
 
 For the exact `fn-vdc-put` updater, a count/charge pair grows the resulting
 trie's cons-cell count by at most 2*subject-length + 3. The cold fold's bound
