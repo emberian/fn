@@ -27,7 +27,7 @@
     (:open-final-root (if (equal fd-result :closed) :open-root :fence))
     (:final-root-barrier (if (equal fd-result :open) :barrier :fence))
     (:close-final-root (if (equal fd-result :open) :close :fence))
-    (:done (if (and (equal (fn-bpn-nth 1 control) :uncertain)
+    (:done (if (and (member-equal (fn-bpn-nth 1 control) '(:uncertain :cancelled))
                     (equal fd-result :open)) :close :done))
     (otherwise :fence)))
 
@@ -52,7 +52,8 @@
 (defun fn-bpck-publication-outcome (control)
   (declare (xargs :guard t))
   (if (equal (fn-bpn-nth 0 control) :done)
-      (if (equal (fn-bpn-nth 1 control) :durable) :durable :uncertain)
+      (case (fn-bpn-nth 1 control) (:durable :durable) (:cancelled :cancelled)
+        (otherwise :uncertain))
     :pending))
 
 (defun fn-bpck-publication-observe (job control observation)
@@ -63,6 +64,20 @@
               (fn-bpck-stage-observation job :published)
             (if (equal (fn-bpck-publication-outcome next) :uncertain)
                 (fn-bpck-stage-observation job :ambiguous) job)))))
+
+(defun fn-bpck-publication-cancel (job control source)
+  (declare (xargs :guard t))
+  (cond ((not (equal source :returned)) (list control job))
+        ((equal (fn-bpn-nth 0 control) :done) (list control job))
+        ((member-equal (fn-bpn-nth 0 control)
+           '(:directory :open-generation :generation-barrier :close-generation
+             :open-initial-root :initial-root-barrier :close-initial-root :replace))
+         (list '(:done :cancelled) job))
+        (t (list '(:done :uncertain) (fn-bpck-stage-observation job :ambiguous)))))
+
+(defthm fn-bpck-publication-cancel-running-keeps-exact-job
+  (implies (not (equal source :returned))
+           (equal (fn-bpck-publication-cancel job control source) (list control job))))
 
 (defthm fn-bpck-publication-step-durable-requires-final-barrier-close
   (implies (and (not (equal (fn-bpn-nth 0 control) :done))
@@ -97,4 +112,4 @@
 
 (in-theory (disable fn-bpck-publication-begin fn-bpck-publication-action
                     fn-bpck-publication-step fn-bpck-publication-outcome
-                    fn-bpck-publication-observe))
+                    fn-bpck-publication-observe fn-bpck-publication-cancel))

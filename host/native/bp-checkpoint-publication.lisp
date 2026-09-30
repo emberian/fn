@@ -73,3 +73,19 @@ and its charge. This driver never deletes a stage or refunds installed disk."
                (setf (fnn-bpck-publication-core-failure record) core-condition)))))
     (setf (fnn-bpck-publication-source-result record) :returned))
   record)
+
+(defun fnn-bps-checkpoint-publication-cancel (record)
+  "Caller serializes with turn scheduling; a running turn remains untouched.
+Cancellation is not deletion or release. Every descriptor/debt stays retained."
+  (unless (fnn-bpck-publication-core-failure record)
+    (handler-case
+        (let ((answer (fnn-core 'fn-bpck-publication-cancel
+                                (fnn-bpck-publication-job record)
+                                (fnn-bpck-publication-control record)
+                                (fnn-bpck-publication-source-result record))))
+          (setf (fnn-bpck-publication-control record) (first answer)
+                (fnn-bpck-publication-job record) (second answer)))
+      (error (condition)
+        (setf (fnn-bpck-publication-failure record) condition
+              (fnn-bpck-publication-core-failure record) condition))))
+  record)

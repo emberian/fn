@@ -122,3 +122,21 @@
       (equal (fn-bpck-publication-action '(:done :uncertain) :closed) :done)
       (equal (fn-bpck-publication-action '(:done :uncertain) :uncertain) :done)
       (equal (fn-bpck-publication-action '(:open-generation :pending) :open) :fence)))
+
+; Cancellation cannot replace a running source's retained job/control.
+(assert-event
+ (let ((control '(:open-generation :pending)) (job *fn-bpckpt-private*))
+   (and (not (equal :running :returned))
+        (equal (fn-bpck-publication-cancel job control :running) (list control job)))))
+(assert-event
+ (let* ((control '(:replace :pending)) (job *fn-bpckpt-private*)
+        (answer (fn-bpck-publication-cancel job control :returned)))
+   (and (equal :returned :returned)
+        (not (equal (fn-bpck-publication-cancel job control :returned) (list control job)))
+        (equal (car answer) '(:done :cancelled)) (equal (cadr answer) job)
+        (equal (fn-bpck-publication-action (car answer) :open) :close)
+        (equal (fn-bpck-publication-action (car answer) :uncertain) :done))))
+(assert-event
+ (let ((answer (fn-bpck-publication-cancel *fn-bpckpt-private* '(:open-final-root :pending) :returned)))
+   (and (equal (car answer) '(:done :uncertain))
+        (equal (fn-bpn-nth 11 (cadr answer)) :uncertain))))

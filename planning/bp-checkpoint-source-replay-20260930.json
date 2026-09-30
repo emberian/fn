@@ -194,5 +194,24 @@
     "scope": "Unactivated actual native function recording plus guarded source admission. Explicit retained directory FD open/barrier/close turns; one primitive per turn, ambiguous close detached and never retried, known FD closes on uncertain barrier without publication retry. Same job token/epoch/generation/capture preserved at successful final close. No disk/native execution, registered-controller epoch fence, actual indexed grant, initial runtime envelope, installed disk promotion or restart qualification.",
     "session_stopped": true,
     "logs": "build/proof-repl/bpck-publication4"
+  },
+  "publication_cancellation_increment": {
+    "source_basis": "ed1f76f8d",
+    "source_sha256": {
+      "books/bp-node-checkpoint-publication.lisp": "bbd596a100aab0fb6731757255744dcddad4a19d0624e1f91b1abe2a63d7cf73",
+      "host/native/bp-checkpoint-publication.lisp": "e3bf3d5108a5ee80b330334e1d1a29a90fc9bdbb6198cdfe5a080c9328f9e837",
+      "tests/acl2/bp-node-checkpoint-publication-tests.lisp": "b6c35bf8c9d29f373166b8d3aa6f3682855b20a40accbe80385ab30afa5c99bc",
+      "tests/bp_checkpoint_publication_host_refuter.lisp": "967a98c64895ead22ca78b68e9165073e716371051b0f81586f7415d8fbc65d5"
+    },
+    "session": "bpck-publication-cancel",
+    "root_forms": 12,
+    "acl2_seconds": 7.33,
+    "prover_steps": 6242137,
+    "literal_assertions": 16,
+    "literal_definition_steps": 241,
+    "recording_status": "passed",
+    "session_stopped": true,
+    "logs": "build/proof-repl/bpck-publication-cancel",
+    "scope": "Unactivated guarded source and actual native-function recording only. Running source cancellation leaves exact job/control unchanged; returned pre-replacement cancellation retains private stage and closes known FD in a later bounded turn; post-replacement cancellation retains uncertainty. Core failure retains FD and fences subsequent effects. No deletion/refund, registered controller grant, runtime/FS adequacy, native crash/restart or image claim. Initial fixture include was refused because send-range relative include resolves outside remote tree; subsequent #3-#29 literal forms passed against already loaded exact source root."
   }
 }
