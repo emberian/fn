@@ -1467,9 +1467,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-adoption-receipt-rows \
 	books/peer-adoption-invalidation \
 	books/peer-invite-retry \
+	books/peer-invite-replay \
 	tests/acl2/peer-invite-tests \
 	tests/acl2/peer-adoption-receipt-rows-tests \
 	tests/acl2/peer-invite-retry-tests \
+	tests/acl2/peer-invite-replay-tests \
 	tests/acl2/peer-invite-administrator-tests \
 	books/tls-reload \
 	tests/acl2/tls-reload-tests \

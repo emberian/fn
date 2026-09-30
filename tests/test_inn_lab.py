@@ -380,5 +380,124 @@ class LabTests(DryRun, unittest.TestCase):
         self.assertTrue(self.named("innd and innfeed are gone"))
 
 
+class StreamingContinuationTests(unittest.TestCase):
+    """Scripted harness checks; no real INN or native verdict."""
+
+    def test_transcript_cannot_join_two_connections(self):
+        subject = "<stream@x>"
+        lines = [tap_line("a>b", 1, "server", b"200 ready\r\n238 <stream@x> wanted\r\n"),
+                 tap_line("a>b", 1, "client", b"CHECK <stream@x>\r\n"),
+                 tap_line("a>b", 2, "server", b"200 ready\r\n239 <stream@x> accepted\r\n"),
+                 tap_line("a>b", 2, "client", b"TAKETHIS <stream@x>\r\nSubject: s\r\n\r\nb\r\n.\r\n")]
+        found = inn_lab.find_exchange("\n".join(lines), "a>b", subject)
+        self.assertEqual(found["verbs"], ["TAKETHIS"])
+        self.assertFalse(inn_lab.streaming_transfer_completed(found, subject))
+
+    def test_driver_refusal_or_wrong_subject_never_sends_article(self):
+        from types import SimpleNamespace
+        for replies in (["500 no streaming"], ["203 streaming", "438 <stream@x> held"],
+                        ["203 streaming", "238 <other@x> wanted"]):
+            namespace = {"__name__": "driver-test"}
+            exec(compile(inn_lab.INN_DRIVER, "inn-driver", "exec"), namespace)
+            commands = []
+            answers = iter(replies)
+            class Peer:
+                greeting = "200 ready"
+                def __init__(self, port):
+                    self.sock = SimpleNamespace(sendall=lambda x: commands.append(x))
+                def cmd(self, command): commands.append(command); return next(answers)
+                def send_block(self, octets): raise AssertionError("unexpected article")
+                def close(self): commands.append("closed")
+            namespace["Wire"] = Peer
+            got = namespace["stream"](SimpleNamespace(port=1, msgid="<stream@x>", file="absent"))
+            self.assertFalse(got["ok"])
+            self.assertFalse(got["result"])
+            self.assertFalse(any(isinstance(x, bytes) for x in commands))
+            self.assertEqual(commands[-1], "closed")
+
+    def test_driver_completes_exact_subject_and_octets(self):
+        from types import SimpleNamespace
+        namespace = {"__name__": "driver-test"}
+        exec(compile(inn_lab.INN_DRIVER, "inn-driver", "exec"), namespace)
+        commands = []
+        replies = iter(["203 stream", "238 <stream@x> wanted"])
+        class Peer:
+            greeting = "200 ready"
+            def __init__(self, port):
+                self.sock = SimpleNamespace(sendall=lambda data: commands.append(data))
+            def cmd(self, command): commands.append(command); return next(replies)
+            def send_block(self, data): commands.append(data)
+            def line(self): return "239 <stream@x> accepted"
+            def close(self): commands.append("closed")
+        namespace["Wire"] = Peer
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "article"
+            path.write_bytes(b"Subject: source\r\n\r\nbody\r\n")
+            result = namespace["stream"](SimpleNamespace(port=1, msgid="<stream@x>", file=str(path)))
+        self.assertTrue(result["ok"])
+        self.assertEqual(commands, ["MODE STREAM", "CHECK <stream@x>",
+                                   b"TAKETHIS <stream@x>\r\n",
+                                   b"Subject: source\r\n\r\nbody\r\n", "closed"])
+
+    def fixture(self, mutation=None):
+        lab = object.__new__(inn_lab.InnLab)
+        lab.ids = inn_lab.message_ids("scripted")
+        lab.date = "Tue, 29 Sep 2026 12:00:00 +0000"
+        lab.fn_port, lab.inn_port, lab.nnrpd_port = 1, 2, 3
+        lab.tap_out_port, lab.tap_in_port = 4, 5
+        lab.cd = lambda x: x
+        lab.operator = lambda *args: " ".join(args)
+        lab.bin = lambda x: x
+        lab.sh = lambda name, command, **kwargs: inn_lab.Step(name, command, 0, "accepted", 0)
+        payloads = {}
+        lab.put_article = lambda name, data: payloads.setdefault(name, data) and name
+        checks, commands = [], []
+        def drive(phase, extra, name):
+            commands.append((phase, name))
+            direction = "fn-to-inn" if "fn-to-inn" in name else "inn-to-fn"
+            subject = lab.ids["FN_STREAM_ID" if direction == "fn-to-inn" else "INN_STREAM_ID"]
+            data = payloads["stream-" + direction]
+            if phase == "fetch":
+                if mutation == "retry-content" and "after duplicate" in name:
+                    data += b"mutated\r\n"
+                result = dict(article="220 article", octets=base64.b64encode(data).decode())
+            elif "retry accepted" in name:
+                result = dict(mode_stream="203 stream", offer="438 " + subject, result="")
+                if mutation == "retry-subject": result["offer"] = "438 <wrong@x>"
+            else:
+                result = dict(ok=True, octets=base64.b64encode(data).decode())
+            return inn_lab.Step(name, extra, 0, json.dumps(result), 0)
+        lab.drive_inn = drive
+        def wait(pair, subject, name):
+            direction = name.removeprefix("streaming ")
+            data = payloads["stream-" + direction]
+            if mutation == "transfer-content": data += b"changed body\r\n"
+            return dict(verbs=["CHECK", "TAKETHIS"], offer="238 " + subject,
+                        result="239 " + ("<wrong@x>" if mutation == "transfer-subject" else subject),
+                        article=data)
+        lab.wait_tap = wait
+        lab.check = lambda key, ok, *args, **kwargs: checks.append((key, kwargs.get("instance"), ok))
+        lab.record = lambda key, verdict, *args, **kwargs: checks.append((key, kwargs.get("instance"), False))
+        return lab, checks, commands
+
+    def test_both_feeds_and_duplicate_retry_require_exact_content_and_subject(self):
+        for mutation in (None, "transfer-subject", "transfer-content", "retry-subject", "retry-content"):
+            lab, checks, commands = self.fixture(mutation)
+            lab.scenario_bidirectional_streaming()
+            for direction in ("fn-to-inn", "inn-to-fn"):
+                self.assertIn(("bidirectional-streaming", direction, mutation not in ("transfer-subject", "transfer-content")), checks)
+                self.assertIn(("streaming-duplicate-retry", direction, mutation is None), checks)
+            if mutation in ("transfer-subject", "transfer-content"):
+                self.assertFalse(any("retry accepted" in name for _, name in commands))
+
+    def test_configuration_refusal_prevents_submission(self):
+        lab, checks, commands = self.fixture()
+        lab.sh = lambda name, command, **kwargs: inn_lab.Step(name, command, 1, "refused", 0)
+        lab.scenario_bidirectional_streaming()
+        self.assertFalse(commands)
+        self.assertEqual(checks, [("bidirectional-streaming", "fn-to-inn", False),
+                                  ("bidirectional-streaming", "inn-to-fn", False)])
+
+
 if __name__ == "__main__":
     unittest.main()

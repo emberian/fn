@@ -3030,3 +3030,16 @@ The internal `:accept-peer` delta is not an external administrator verb.
 Source-ID equality is a digest comparison; equality of arbitrary signed source
 bytes requires the explicit A-CRYPTO collision premise. Source admission does
 not qualify disk persistence, real signatures or matching-image crash cuts.
+
+The receipt source model also follows the accepted configuration record through
+`fn-config-replay-loop`: replay resumes the same verified adoption without
+another configuration record. An inadmissible record remains a replay fault.
+This logical replay property does not establish physical persistence or native
+process-death execution (PRF-1151, SCN-1055).
+
+SCN-1041's optional `--inn-streaming` harness checks both actual outbound
+feeds, exact CHECK/TAKETHIS subjects on one connection, and receiver content
+with only Path/Xref transit changes. A new-connection duplicate retry must
+answer CHECK438 for the accepted subject and leave receiver bytes unchanged
+(RFC 4644 sections 2.3–2.5). Scripted source harness validation is distinct
+from real INN/native observation; all other Q12 criteria remain open.

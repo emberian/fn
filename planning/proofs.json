@@ -19021,7 +19021,7 @@
     {
       "id": "PRF-1151",
       "title": "Current inviter adoption retries reuse a durable peer-specific receipt",
-      "statement": "fn-par-accept-record-plan is the ACL2 decision called by host/native/peer-invite.lisp fnn-pinv-owner-accept through fn-par-host-accept-record-plan. Its resume keystone requires the currently verified bound invitation, exact current principal/key generation, local store genesis node/history salt and exact peer-specific receipt. The actual emitted internal :accept-peer configuration fold produces :resume without another configuration or enrollment. Generic affected-peer mutation strips receipt atomically; unrelated configuration changes preserve it. Source identity equality is a digest-coordinate comparison; interpreting equal IDs as equal arbitrary signed source bytes requires A-CRYPTO collision assumptions. These properties do not establish physical disk durability, real signature security or native crash execution.",
+      "statement": "fn-par-accept-record-plan is the ACL2 decision called by host/native/peer-invite.lisp fnn-pinv-owner-accept through fn-par-host-accept-record-plan. Its resume keystone requires the currently verified bound invitation, exact current principal/key generation, local store genesis node/history salt and exact peer-specific receipt. The actual emitted internal :accept-peer configuration fold produces :resume without another configuration or enrollment. Generic affected-peer mutation strips receipt atomically; unrelated configuration changes preserve it. Source identity equality is a digest-coordinate comparison; interpreting equal IDs as equal arbitrary signed source bytes requires A-CRYPTO collision assumptions. These properties do not establish physical disk durability, real signature security or native crash execution. Accepted-record replay through fn-config-replay-loop also resumes the actual entry without another record; inadmissible records fail closed.",
       "milestone": "M3",
       "requirements": [
         "NNT-017"
@@ -19039,9 +19039,14 @@
         "tests/acl2/peer-adoption-receipt-rows-tests.lisp",
         "tests/test_native_peer_invite.py",
         "planning/evidence/peer-invite-retry-source-2026-09-30.json",
-        "tests/acl2/peer-invite-administrator-tests.lisp"
+        "tests/acl2/peer-invite-administrator-tests.lisp",
+        "books/peer-invite-replay.lisp",
+        "tests/acl2/peer-invite-replay-tests.lisp",
+        "planning/evidence/peer-invite-replay-source-2026-09-30.json",
+        "planning/evidence/q12-public-batch-2026-09-30.json",
+        "planning/evidence/manifests/certify-20260930T162612Z-1670324.json"
       ],
-      "progress_note": "Exact published-base source admission: q12pubretry30forms15.86s4352943steps with12 proper-local source dependencies; q12pubadmin3forms50.65s16742921steps with24 proper-local source dependencies including actual native-admin. Static29 witnesses0findings. Sessions stopped. Normal certification, matching-image SCN1055 and fullQ12 remain open."
+      "progress_note": "Exact published-base source admission: q12pubretry30forms15.86s4352943steps with12 proper-local source dependencies; q12pubadmin3forms50.65s16742921steps with24 proper-local source dependencies including actual native-admin. Static29 witnesses0findings. Sessions stopped. Normal certification, matching-image SCN1055 and fullQ12 remain open. Public670 batch normal1670324 passed exactly peer-invite-replay and its test root,89 matching cached dependencies,0 installed-uncited; source hashes unchanged. Whole target remains planned; nativeSCN1055 NOTRUN."
     }
   ]
 }

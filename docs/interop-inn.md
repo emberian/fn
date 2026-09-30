@@ -318,3 +318,24 @@ Repeated in every evidence file, and here once:
 - A `SIGKILL` is not a power loss, and killing one server is not a partition.
 - The native image is consumed as named; nothing here re-establishes which
   source or which certificates it was built from.
+
+## Optional complete streaming and duplicate retry
+
+`--inn-streaming` preserves the baseline IHAVE rows and adds SCN-1041.
+A fresh native POST must cross fn's actual outbound feed by CHECK/TAKETHIS,
+and a second fresh INN article must cross actual innfeed into fn. Both
+238/239 replies must name the exact subject on the same connection, and
+source/feed/receiver comparisons permit only Path and Xref changes.
+
+After each successful transfer the driver opens a new connection to the
+receiver's transit endpoint. CHECK must return 438 for that exact accepted
+subject, without TAKETHIS, and a subsequent reader fetch must return the
+same bytes. Refused configuration prevents either new submission; refused
+MODE STREAM or CHECK never sends article bytes. These are RFC 4644
+sections 2.3–2.5 exchanges with the stronger complete-content lab check.
+
+Scripted harness tests cover positive, refused, wrong-subject and changed
+content outcomes. They do not exercise real INN or the native image.
+Distribution, cancel/expiry, authenticated control discharge, window/soak
+and the remaining Q12 criteria stay open. The runner owns matching-image
+and real-INN execution.
