@@ -27,7 +27,12 @@
 
 (defun fn-bphp-replay-rows
   (rows base held handoffs prior next-arrival octets)
-  (declare (xargs :guard t :measure (acl2-count rows)))
+  (declare (xargs :guard (and (fn-bpn-machine-statep base)
+                              (natp next-arrival) (natp octets)
+                              (or (null prior)
+                                  (and (consp prior) (natp (car prior))
+                                       (natp (cdr prior)))))
+                  :measure (acl2-count rows)))
   (if (atom rows)
       (if (null rows) (list :ready held handoffs prior next-arrival)
         (list :fault :improper-rows))
@@ -152,7 +157,7 @@
 
 ; The open's entry: the relation holds at the start of the fold.
 (defun fn-bphp-replay-from (ck rows base)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpn-machine-statep base)))
   (if (fn-bpnr-checkpointp ck)
       (fn-bphp-replay-rows
        rows base (fn-bpnr-checkpoint-held ck) (fn-bpnr-checkpoint-handoffs ck)
@@ -172,7 +177,7 @@
 
 ; The event the host builds at open (fnn-bps-open).
 (defun fn-bphp-recover-auto-event (st base-records sequence-ready rows plan)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-bpn-machine-statep (fn-bpnf-base st))))
   (let* ((replay (if (equal (fn-cbor-ag-car plan) :damaged)
                      (list :fault :generation-authority)
                    (fn-bphp-replay-from (fn-bpnr-plan-checkpoint plan)

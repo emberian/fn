@@ -4976,3 +4976,14 @@ limits or make the full open resumable. Profile repair after a mismatched
 restore and codec/runtime profile widening remain PKT-311b/c. SCN-1008 names
 the actual row and checkpoint restart cases; matching native execution is
 pending, so this source increment is not a qualified recovery claim.
+
+
+The actual recovered-held event builder `fn-bphp-recover-auto-event` and its
+checkpoint-seeded replay fold are guard-verified by `bp-recovery-guards`
+(PRF-214). The caller `fnn-bps-open` supplies the base-state predicate through
+its existing initial machine invariant gate. Decoded row facts establish the
+natural epoch/operation frontier and the kind-5 bundle shape; the fold carries
+its octet and arrival scalars. This execution contract adds no runtime
+whole-held-state recognizer and leaves replay's logical result unchanged.
+SCN-1008's native recovery cases and the original scale cases still require
+matching image evidence; a guard proof is not a timing or deployment claim.

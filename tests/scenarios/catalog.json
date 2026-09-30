@@ -6366,7 +6366,7 @@
         "tests/acl2/bp-recovery-profile-tests.lisp",
         "planning/evidence/bp-recovery-profile-2026-09-30.md"
       ],
-      "execution_scope": "Native cases staged, NOT RUN at current source; runner supplies matching image evidence. ACL2 teeth also cover nonfragment payload, later-deleted row, member/readiness hypothesis removals and invalid profile."
+      "execution_scope": "Native cases staged, NOT RUN at current source; runner supplies matching image evidence. ACL2 teeth also cover nonfragment payload, later-deleted row, member/readiness hypothesis removals and invalid profile. The recovery guard increment additionally checks the actual fn-bphp-recover-auto-event world class and direct refinement subject in tests/acl2/bp-held-projection-tests.lisp; it does not replace these native cases."
     }
   ]
 }

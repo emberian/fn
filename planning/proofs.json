@@ -7955,13 +7955,14 @@
       "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-held-projection.lisp",
+        "books/bp-recovery-guards.lisp",
         "books/bp-node-machine-guards.lisp",
         "books/bp-node-foundation.lisp",
         "tests/acl2/bp-held-projection-tests.lisp",
         "host/native/bp-service.lisp",
         "planning/evidence/bp-catalog-2026-09-26.md"
       ],
-      "progress_note": "Lane bp-catalog (Opus, 2026-09-26; numbered by the batch AM runner: the lane took no ids). Measured on hbox (dtn-developer, 1,311 held rows): the dispatch open before rotation 16.1 -> 5.7 s; the held-octets calls 2,623 / 9.87 s -> 1 / 0.007 s. Teeth: tests/acl2/bp-held-projection-tests.lisp (its last assertion block needs the changed foundation and the fixture chain in one world: checked by the batch certification only). Not done: the reopen after a rotation (763 s, 99 % in the unverified fn-bpnr-checkpoint-decode: lane bp-checkpoint-open), PKT-630. 2026-09-30 BP guard prerequisite increment: forwarding/conflict/dispatch codecs and family row decoder verified through clean bpfrg-final held-projection tests19/19 with explicit source dependencies. No new matched cost claim; actual fn-bphp-recover-auto-event remains ideal until the full guard composition is proved. See planning/evidence/bp-replay-guards-2026-09-30.md.",
+      "progress_note": "Lane bp-catalog (Opus, 2026-09-26; numbered by the batch AM runner: the lane took no ids). Measured on hbox (dtn-developer, 1,311 held rows): the dispatch open before rotation 16.1 -> 5.7 s; the held-octets calls 2,623 / 9.87 s -> 1 / 0.007 s. Teeth: tests/acl2/bp-held-projection-tests.lisp (its last assertion block needs the changed foundation and the fixture chain in one world: checked by the batch certification only). Not done: the reopen after a rotation (763 s, 99 % in the unverified fn-bpnr-checkpoint-decode: lane bp-checkpoint-open), PKT-630. 2026-09-30 BP guard prerequisite increment: forwarding/conflict/dispatch codecs and family row decoder verified through clean bpfrg-final held-projection tests19/19 with explicit source dependencies. The subsequent full actual recovery guard chain is proved in bp-recovery-guards and both native builds include it; fn-bphp-recover-auto-event is common-lisp-compliant with its base-state predicate carried from fnn-bps-open existing initial invariant gate. Clean bprg-actual-final20/20 test forms include the world class/direct subject assertion. No logical body changed; no new matched cost, certification, image or native claim. See planning/evidence/bp-replay-guards-2026-09-30.md.",
       "events": [
         "fn-bphp-replay-rows-is-aux",
         "fn-bphp-held-octets-of-cons",
