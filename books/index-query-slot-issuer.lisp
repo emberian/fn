@@ -6,6 +6,7 @@
 (logic)
 (include-book "index-backing-provider")
 (include-book "page-read-pool-state")
+(include-book "index-connection-holder")
 (local (include-book "arithmetic-5/top" :dir :system))
 
 (defun fn-irq-candidate (fn-index-backing)
@@ -66,15 +67,45 @@
                         charged next (fn-prl-nth 4 budget) demand)
           (if (not (eq word :admitted))
               (mv word nil fn-index-backing fn-page-read-pool)
-            (let* ((origin (list :index-read issued))
-                   (request (list :reader-request id pin publication pre-oc rc effects origin holder-token))
-                   (receipt (list :index-request-receipt next issued ordinal candidate-kind demand request :reserved nil))
-                   (fn-index-backing (update-fn-ibp-request-pending receipt fn-index-backing))
-                   (fn-page-read-pool
+            ; Persist the SAME pool debit before allocating request/receipt.
+            ; A raw escape after debit is recovery, never unfunded retry.
+            (let* ((fn-page-read-pool
                     (fn-owner-page-read-keep-ledger
                      (fn-prl-build budget next-charge issued (fn-prl-nth 3 ledger)
-                                   (fn-prl-baseline ledger)) fn-page-read-pool)))
+                                   (fn-prl-baseline ledger)) fn-page-read-pool))
+                   (origin (list :index-read issued))
+                   (request (list :reader-request id pin publication pre-oc rc effects origin holder-token))
+                   (receipt (list :index-request-receipt next issued ordinal (list candidate-kind (fn-ipub-generation publication)) demand request :reserved nil nil))
+                   (fn-index-backing (update-fn-ibp-request-pending receipt fn-index-backing)))
               (mv :reserved issued fn-index-backing fn-page-read-pool))))))))))
+
+; Immutable request identity is distinct from eventual selected query generation.
+(defun fn-irq-request-identityp (x)
+ (declare (xargs :guard t))
+ (and (fn-omk-widthp x 2) (member-eq (fn-omk-at 0 x) '(:fresh :recycled))
+      (posp (fn-omk-at 1 x))))
+(defun fn-irq-receipt-candidate-kind (receipt)
+ (declare (xargs :guard t))
+ (let ((x (fn-omk-at 4 receipt)))
+  (if (fn-irq-request-identityp x) (fn-omk-at 0 x) nil)))
+(defun fn-irq-receipt-request-generation (receipt)
+ (declare (xargs :guard t))
+ (let ((x (fn-omk-at 4 receipt)))
+  (if (fn-irq-request-identityp x) (fn-omk-at 1 x) nil)))
+
+(defun fn-irq-committed-phasep (phase)
+ (declare (xargs :guard t))
+ (member-eq phase '(:committed :committed-repin-released :committed-repin-held :committed-repin-aborted)))
+(defun fn-irq-ready-phasep (phase)
+ (declare (xargs :guard t))
+ (member-eq phase '(:read-ready :read-ready-repin-released :read-ready-repin-held :read-ready-repin-aborted)))
+(defun fn-irq-commit-phase (phase)
+ (declare (xargs :guard t))
+ (case phase (:read-ready :committed)
+             (:read-ready-repin-released :committed-repin-released)
+             (:read-ready-repin-held :committed-repin-held)
+             (:read-ready-repin-aborted :committed-repin-aborted)
+             (otherwise :recovery-required)))
 
 ; Internal final substep of the serialized owner producer transition, after
 ; its RC owner/credits/exposure installation. It touches ONLY the current
@@ -87,14 +118,17 @@
                    (equal (fn-omk-at 0 receipt) :index-request-receipt)
                    (equal (fn-omk-at 2 receipt) nonce)))
          (mv :stale fn-index-backing))
-        ((equal (fn-omk-at 7 receipt) :committed)
-         (mv :committed fn-index-backing))
-        ((not (equal (fn-omk-at 7 receipt) :read-ready))
+        ((fn-irq-committed-phasep (fn-omk-at 7 receipt))
+         (mv (fn-omk-at 7 receipt) fn-index-backing))
+        ((not (and (fn-irq-ready-phasep (fn-omk-at 7 receipt))
+                   (or (null (fn-omk-at 9 receipt))
+                       (fn-ich-tokenp (fn-omk-at 9 receipt)))))
          (mv :recovery-required fn-index-backing))
         (t (let ((fn-index-backing
                   (update-fn-ibp-request-pending
                    (list (fn-omk-at 0 receipt) (fn-omk-at 1 receipt)
                          (fn-omk-at 2 receipt) (fn-omk-at 3 receipt)
                          (fn-omk-at 4 receipt) (fn-omk-at 5 receipt)
-                         (fn-omk-at 6 receipt) :committed step) fn-index-backing)))
-             (mv :committed fn-index-backing))))))
+                         (fn-omk-at 6 receipt) (fn-irq-commit-phase (fn-omk-at 7 receipt)) step
+                         (fn-omk-at 9 receipt)) fn-index-backing)))
+             (mv (fn-irq-commit-phase (fn-omk-at 7 receipt)) fn-index-backing))))))

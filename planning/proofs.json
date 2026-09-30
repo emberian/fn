@@ -19046,6 +19046,26 @@
         "planning/evidence/number-source-catalog-lineage-2026-09-30/README.md"
       ],
       "progress_note": "Guarded bounded assignment/high-aware persistent insertion, pointwise high maintenance, exact factored catalog/PC adapter and conditional fn-cat-assign equation source-replayed with literal removals. Empty root establishes initial high correspondence; prepared fold and actual completed-stage projection preserve queried catalog-high after actual assigned-row append. Registered publication/row lookup and mandatory-binding16 composed owner world, actual durable hooks/loader, full funding/retention and OVER/native remain open. No certification/native/deployment claim."
+    },
+    {
+      "id": "PRF-1152",
+      "title": "Actual registered reader span isolates publication refresh and preserves complete consumed-prefix behavior",
+      "statement": "The source-bounded actual counted scanner and reached owner read equal the original reader on precisely the consumed prefix, preserve the deferred command wire state, and never authorize old-view OVER effects with a later GROUP/LISTGROUP publication. Standalone refresh owns its offered publication before effects; successful repin transfers it and failed selection preserves the old holder.",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-042"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": [
+        "books/served-catalog-chain.lisp",
+        "books/index-reader-request.lisp",
+        "host/index-reader-request-host.lisp",
+        "specs/nntp.md"
+      ],
+      "progress_note": "New source-isolated scanner/caller proposal authored; guards, full consumed-prefix and source-custody refinements, literal actual multi-command fixtures, reached fn-orr call switch, installed runtime/input admission and native composition pending. Original full-span reference remains unchanged. No current proof/activation claim."
     }
   ]
 }

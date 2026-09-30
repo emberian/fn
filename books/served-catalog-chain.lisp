@@ -1404,6 +1404,74 @@
       (or (fn-served-advance-eventp (car events))
           (fn-scr-source-change-eventsp (cdr events)))))
 
+; Parsed source-changing event continuation. No host parser and no second
+; wire scan. The registered request owns this fixed8 and its borrowed refs.
+; A prefix commits against the old source and discards the speculative event.
+; Standalone parse/offer/query/dispatch/commit is one serialized span.
+(defun fn-scr-source-prepare-span-loop
+ (conn i end live trie lver arts cache fn-octets fn-arena fn-cat consumed acc)
+ (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
+                 :guard (and (fn-wire-fast-statep (fn-served-conn-wire conn))
+                             (natp i) (natp end) (<= i end)
+                             (<= end (fn-octets-len fn-octets))
+                             (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)
+                             (acl2-numberp consumed))
+                 :measure (nfix (- end i)) :verify-guards nil
+                 :hints (("Goal" :in-theory (disable fn-scr-dispatch-events
+                                                     fn-served-submission)))))
+ (if (or (not (natp i)) (not (natp end)) (>= i end)
+         (fn-served-closed-wirep (fn-served-conn-wire conn))
+         (fn-served-haltedp conn))
+     (list :source-result (fn-served-counted-make consumed
+       (fn-served-make-result conn (fn-ag-rev-onto acc nil))))
+   (let* ((w (fn-wire-scan (fn-served-conn-wire conn) i end fn-octets))
+          (next (fn-wsp-next w)))
+    (if (fn-scr-source-change-eventsp (fn-wsp-events w))
+        (if (or (consp acc) (< 0 consumed))
+            ; Commit only the prefix/pre-command wire. The speculative parse
+            ; is discarded and explicitly paid; next request parses current
+            ; unconsumed command bytes again under its current source/policy.
+            (list :source-result (fn-served-counted-make consumed
+              (fn-served-make-result conn (fn-ag-rev-onto acc nil))))
+          (list :source-boundary conn i end w consumed acc :source-change))
+      (let ((here (fn-scr-dispatch-events
+                   (fn-served-conn-with-wire conn (fn-wsp-state w))
+                   (fn-wsp-events w) live trie lver arts cache fn-arena fn-cat)))
+       (if (fn-served-submission (fn-served-result-effects here))
+           (list :source-result (fn-served-counted-make (+ consumed (- next i))
+             (fn-served-make-result (fn-served-result-conn here)
+               (fn-ag-rev-onto acc (fn-served-result-effects here)))))
+         (fn-scr-source-prepare-span-loop (fn-served-result-conn here) next end
+           live trie lver arts cache fn-octets fn-arena fn-cat
+           (+ consumed (- next i))
+           (fn-ag-rev-onto (fn-served-result-effects here) acc))))))))
+
+(defun fn-scr-source-prepare-span (conn i end live trie lver arts cache fn-octets fn-arena fn-cat)
+ (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
+                 :guard (and (fn-wire-fast-statep (fn-served-conn-wire conn))
+                             (natp i) (natp end) (<= i end)
+                             (<= end (fn-octets-len fn-octets))
+                             (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                 :verify-guards nil))
+ (fn-scr-source-prepare-span-loop conn i end live trie lver arts cache
+                               fn-octets fn-arena fn-cat 0 nil))
+
+; INTERNAL only after the SAME retained parsed boundary has acquired offered
+; source authority. This dispatches the retained events exactly once.
+(defun fn-scr-source-boundary-dispatch (boundary live trie lver arts cache fn-arena fn-cat)
+ (declare (xargs :stobjs (fn-arena fn-cat) :guard t :verify-guards nil))
+ (let* ((conn (nth 1 boundary)) (w (nth 4 boundary)))
+  (if (not (and (equal (car boundary) :source-boundary)
+                (equal (nth 7 boundary) :source-change)
+                (null (nth 6 boundary))
+                (fn-scr-source-change-eventsp (fn-wsp-events w))))
+      (mv :refused nil)
+    (let ((here (fn-scr-dispatch-events
+                 (fn-served-conn-with-wire conn (fn-wsp-state w))
+                 (fn-wsp-events w) live trie lver arts cache fn-arena fn-cat)))
+     (mv :dispatched
+         (fn-served-counted-make (- (fn-wsp-next w) (nth 2 boundary)) here))))))
+
 (defun fn-scr-source-scan-span-loop
  (conn i end live trie lver arts cache fn-octets fn-arena fn-cat consumed acc)
  (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
@@ -1423,7 +1491,7 @@
    (let* ((w (fn-wire-scan (fn-served-conn-wire conn) i end fn-octets))
           (next (fn-wsp-next w))
           (changing (fn-scr-source-change-eventsp (fn-wsp-events w))))
-     (if (and changing (consp acc))
+     (if (and changing (or (consp acc) (< 0 consumed)))
          ; Do not install the scanned wire: the entire command is unconsumed.
          (fn-served-counted-make consumed
            (fn-served-make-result conn (fn-ag-rev-onto acc nil)))
@@ -2040,6 +2108,36 @@
      (fn-ocfg-with-read-owner oc id (fn-own-tls-result-owner result)
                               (fn-own-tls-result-repinned result))
      (fn-own-tls-result-repinned result))))
+
+; PRF-1152: actual source-bounded machine preserves the original counted
+; machine's complete result on precisely the consumed input prefix. Proposed
+; proof; source admission is pending in the frozen affected scanner world.
+(defthm fn-scr-source-scan-span-is-scan-of-consumed-prefix
+ (let ((r (fn-scr-source-scan-span conn i end live trie lver arts cache
+                                  fn-octets fn-arena fn-cat)))
+  (equal r
+    (fn-scr-scan-span conn i (+ i (fn-served-counted-consumed r))
+                     live trie lver arts cache fn-octets fn-arena fn-cat)))
+ :hints (("Goal" :induct
+   (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+                                fn-octets fn-arena fn-cat 0 nil))))
+
+(verify-guards fn-scr-source-scan-span-loop
+ :hints (("Goal"
+   :in-theory (e/d (fn-served-counted-make fn-served-counted-result)
+                   (fn-scr-dispatch-events fn-wire-fast-statep
+                    fn-served-counted-consumed))
+   :use ((:instance fn-scr-dispatch-events-preserves-fast-statep
+            (conn (fn-served-conn-with-wire conn
+                     (fn-wsp-state (fn-wire-scan (fn-served-conn-wire conn)
+                                               i end fn-octets))))
+            (events (fn-wsp-events (fn-wire-scan (fn-served-conn-wire conn)
+                                               i end fn-octets))))))))
+(verify-guards fn-scr-source-scan-span)
+(verify-guards fn-scr-source-step-span-core)
+(verify-guards fn-scr-source-step-span-fast)
+(verify-guards fn-scr-source-own-read-span)
+(verify-guards fn-scr-ocfg-source-read-span)
 
 (defthm fn-scr-ocfg-read-span-is-scar-ocfg-read-span
   (implies (and (fn-gacc-okp cache) (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat)

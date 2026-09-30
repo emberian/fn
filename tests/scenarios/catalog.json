@@ -7048,6 +7048,33 @@
         "tests/acl2/group-number-source-tests.lisp"
       ],
       "notes": "Current evidence exercises low-level persistent-root source only. Actual preparation/publication, OVER visibility and native lifecycle remain open."
+    },
+    {
+      "id": "SCN-1056",
+      "title": "Actual old-source OVER, isolated GROUP/LISTGROUP refresh and new-source OVER",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-042"
+      ],
+      "steps": [
+        "Establish two actual durable publications and an issued connection holder pinned to the older source; retain original input and query grants.",
+        "Run OVER(old) followed by GROUP or LISTGROUP and OVER(new) in one incoming span, including partial-command/refill cuts.",
+        "Require first admitted request to return the exact consumed old-reply prefix and untouched pre-refresh wire, then execute the isolated refresh under an acquired offered publication.",
+        "Advance the next request from the returned exact consumed offset and new holder; repeat with failed selection, closure, cancellation and duplicate commit/resume."
+      ],
+      "expected": [
+        "Full original result/effects/state on each consumed prefix; no replay, rollback or lost input.",
+        "Old query effects keep old publication; successful refresh transfers owned offered pin, failed selection retains old pin.",
+        "LISTGROUP aliases are never authorized by the initial old publication; final/current publication is never substituted.",
+        "Once-only RC/STATE commit and actual joined cleanup retain construction, source and input custody across yields or uncertainty."
+      ],
+      "evidence": [
+        "books/served-catalog-chain.lisp",
+        "books/index-reader-request.lisp",
+        "host/index-reader-request-host.lisp"
+      ],
+      "execution_scope": "Specified only. Current scanner/source/host proposals are not admitted or activated; no positive fixture result inferred."
     }
   ]
 }

@@ -408,6 +408,19 @@ environment always carries; a blind environment answers as before.
 
 ## Sessions and framing
 
+The concrete registered reader must isolate a publication refresh from
+preceding reply effects (NNT-042, PRF-1152, SCN-1056). If a counted span has
+already produced replies, stop before executing its next parsed GROUP or
+LISTGROUP, returning the exact consumed prefix and pre-command wire state.
+The next admitted request executes the isolated refresh with ownership of
+the offered publication before any reply aliases are produced. Successful
+selection transfers that ownership to the connection; failed selection keeps
+the previous holder. This is fn's stronger representation/lifetime guarantee
+over RFC 3977 sections 6.1.1 and 6.1.2, not permission to render a whole pipelined
+span against its final publication. The source-bound implementation and its
+actual admission/native composition are still pending; the original logical
+reader remains the full consumed-prefix reference.
+
 NNT-002: maintain a per-connection selected group and current article number.
 Failed GROUP leaves them unchanged; successful GROUP selects its first available
 article or an invalid cursor for an empty group. Retrieval by Message-ID does
