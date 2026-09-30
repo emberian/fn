@@ -7,11 +7,7 @@
 (include-book "../books/page-discovery-ledger")
 (include-book "../books/cold-read-layout")
 (include-book "../books/page-maintenance-lease")
-
-(defstobj fn-page-read-pool
-  (fn-prp-data :initially nil)
-  (fn-prp-mode :initially :uninitialized)
-  :inline t)
+(include-book "../books/page-read-pool-state")
 
  ; A served recovery is selected explicitly before Store open. Opening an
 ; offline Store supplies a separate context; absence alone grants no I/O.
@@ -67,16 +63,6 @@
                                         fn-page-read-pool)))
                (let ((fn-page-read-pool (update-fn-prp-mode :served fn-page-read-pool)))
                (mv :installed fn-page-read-pool))))))))
-
-(defun fn-owner-page-read-ledger (fn-page-read-pool)
-  (declare (xargs :stobjs fn-page-read-pool))
-  (fn-prl-nth 0 (fn-prp-data fn-page-read-pool)))
-
-(defun fn-owner-page-read-keep-ledger (ledger fn-page-read-pool)
-  (declare (xargs :stobjs fn-page-read-pool))
-  (let ((data (fn-prp-data fn-page-read-pool)))
-    (update-fn-prp-data (list ledger (fn-prl-nth 1 data) (fn-prl-nth 2 data)
-                              (fn-prl-nth 3 data) (fn-prl-nth 4 data)) fn-page-read-pool)))
 
  ; Explicit offline registration is distinct from an unfunded served start.
 (defun fn-owner-page-read-registration-mode (fn-page-read-pool)

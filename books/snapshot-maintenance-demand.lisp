@@ -68,7 +68,8 @@
     (fn-prl-build (fn-prl-nth 0 ledger) (fn-prl-nth 1 ledger)
                   (fn-prl-nth 2 ledger)
                   (cons (cons maintenance
-                              (list (fn-prl-nth 0 row) :maintenance grant))
+                              (fn-pmn-row (fn-prl-nth 0 row) grant
+                                          (fn-prl-nth 3 row)))
                         (if (consp bindings) (cdr bindings) nil))
                   (fn-prl-nth 4 ledger))))
 
@@ -169,9 +170,23 @@
                                               (fn-prl-nth 3 ledger)))))))
            :in-theory
            (enable fn-osj-grow fn-osj-grant-livep fn-pmn-grow fn-prl-nth
-                   fn-prl-build fn-prl-binding fn-osj-keep-grant
+                   fn-prl-build fn-prl-binding fn-osj-keep-grant fn-pmn-row
                    fn-osj-growth-disk fn-osj-growth-requestp
                    fn-omk-at fn-omk-widthp fn-omk-tokenp))))
+
+(defthm fn-osj-growth-preserves-initial-custody
+  (equal
+   (fn-prl-nth 3
+    (cdr (fn-prl-binding
+          maintenance (fn-prl-nth 3
+                       (mv-nth 1 (fn-osj-grow ledger maintenance source stage request))))))
+   (fn-prl-nth 3 (cdr (fn-prl-binding maintenance (fn-prl-nth 3 ledger)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-osj-grow fn-osj-keep-grant fn-pmn-grow fn-pmn-row
+                 fn-prl-build fn-prl-binding fn-prl-nth)
+                (fn-osj-growth-requestp fn-osj-growth-disk fn-prs-fundedp
+                 fn-prs-plus fn-prs-vectorp)))))
 
 (in-theory (disable fn-osj-growth-requestp fn-osj-growth-disk
                     fn-osj-grant-livep fn-osj-keep-grant fn-osj-grow))
