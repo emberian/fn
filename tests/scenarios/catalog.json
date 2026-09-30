@@ -6327,6 +6327,32 @@
         "planning/evidence/payload-window-2026-09-30.md"
       ],
       "execution_scope": "Protected source REPL component evidence only; composed served path and matching natives pending."
+    },
+    {
+      "id": "SCN-1039",
+      "title": "Actual stored DEFLATE carried widths and input span",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-037"
+      ],
+      "steps": [
+        "Run actual initializer on corrupted previous bit registers and actual one-byte stored chunk; affirm complete width hypotheses and conclusions.",
+        "Remove each retained stored-bit carry hypothesis, distinguishing logical invalid-octet representation from native corrupted state; assert literal conclusion failures.",
+        "Check actual suspended and malformed/refused Huffman walks, remove carried registers and non-error premises, and distinguish a bit-count mutation.",
+        "Check an actual consuming input span and both natural-start/order hypothesis removals."
+      ],
+      "expected": [
+        "Bit buffer remains at most39bits and exact length-relative Huffman carry is preserved only on non-error exits; every walker exit remains within the stated fixed scalar bounds.",
+        "Returned input IP is natural and in the requested span; a reversed or negative logical span is an explicit counterexample outside host guards.",
+        "No selected-runtime allocation bound, native activation, new data ceiling or full old-success guarantee is inferred."
+      ],
+      "evidence": [
+        "tests/acl2/payload-window-width-tests.lisp",
+        "specs/payload-window.md",
+        "planning/evidence/payload-window-width-2026-09-30.md"
+      ],
+      "execution_scope": "Protected source replay only; the codec/runtime/controller/host composition remains open."
     }
   ]
 }
