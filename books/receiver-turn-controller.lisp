@@ -429,6 +429,16 @@
  (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
  (if (fn-owner-rx-turn-response-currentp response fn-rx-provider fn-receiver-turn fn-page-read-pool)
      (fn-rxt-source fn-receiver-turn) nil))
+; Factory-only borrowed references from the SAME recorded response episode.
+; These references cannot authorize another STATE installation or parsing.
+(defun fn-owner-rx-turn-response-result
+ (response fn-rx-provider fn-receiver-turn fn-page-read-pool)
+ (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
+ (if (not (fn-owner-rx-turn-response-currentp response fn-rx-provider fn-receiver-turn fn-page-read-pool))
+     (mv :receiver-unavailable nil nil nil nil)
+   (let ((job (fn-rxt-job fn-receiver-turn)))
+    (mv :response-result (fn-rxt-source fn-receiver-turn)
+        (fn-prl-nth 6 job) (fn-prl-nth 7 job) (fn-prl-nth 9 job)))))
 (defun fn-owner-rx-turn-consumablep
  (ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)
  (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
