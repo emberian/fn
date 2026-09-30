@@ -1890,17 +1890,19 @@ unfolded value after the one-SP rule and `fn-nov-scrub`. The actual value and
 fold-byte transitions preserve it; a complete physical CRLF pair preserves
 the value, and the completed line endpoint identifies the normalized span.
 Normalization also commutes with the projection's first-hit update, keeping
-a present empty value distinct from an absent column. These component
-theorems do not yet establish whole-header correspondence. The actual
-`fn-nlv-run` traversal of arbitrary new-field and folded physical lines
-now preserves that value relation, identifies the completed normalized
-span, selects the exact name and keeps previously completed columns. The
-remaining join is the complete successful header traversal and final catalog
-materialization; malformed grammar is handled by the separate validity proof.
+a present empty value distinct from an absent column. The complete successful
+header traversal now maintains all five source spans across arbitrary actual
+new-field and folded lines, first-field closure, the separator and body.
+`fn-lpv-complete-values-are-actual-overview-content` equates those normalized
+spans with the actual five `fn-nov-header-content` values; its only premise
+is success of the actual article parser. Literal removal witnesses distinguish
+invalid grammar, a missing current field, an overlong physical line and a
+corrupted source/span invariant. Final arena-tick/catalog composition remains.
 
 This component is not served yet. `fn-lpc-agreesp` states the full remaining
 comparison with actual `fn-hnov-of` and `fn-hf-body-lines-of`; it is a
-predicate, not a proved theorem. General header-verdict/field refinement,
+predicate, not a proved theorem. The byte-machine acceptance and successful
+field content theorems are proved separately; their arena/catalog join,
 allocation accounting, actual cursor composition
 and matched runtime measurements remain open. The source stores fixed-size
 records and source references and reports raw-byte work; that statement

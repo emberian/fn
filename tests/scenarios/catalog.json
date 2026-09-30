@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6316,12 +6316,13 @@
         "Exercise invalid names, orphan folds, empty final fields, missing separator, bare CR/LF, header NUL, body NUL and unterminated body; compare terminal results with fn-hnov-of and fn-hf-body-lines-of.",
         "Mutate continuation position, source handle, first-header selection and whitespace normalization separately.",
         "Check the literal actual value-transition invariant and remove its value correspondence, phase, line-budget and valid-byte hypotheses individually while affirming all retained hypotheses; verify folded completed source spans and absent-versus-empty first hits.",
-        "Check literal arbitrary-line theorem instances for actual new-field/fold runs, completed source spans, selected name and preserved earlier columns; remove source-value correspondence and fold-local visibility independently."
+        "Check literal arbitrary-line theorem instances for actual new-field/fold runs, completed source spans, selected name and preserved earlier columns; remove source-value correspondence and fold-local visibility independently.",
+        "Assert complete literal new-field/fold/header traversal premises and conclusions; remove every retained line-step premise and both traversal premises separately, including corrupted source-span state and malformed physical continuations."
       ],
       "expected": [
         "Each tick consumes and reports at most its fuel, preserves handle and pin and makes bounded progress. No final tick walks or copies the full source or field.",
         "The body count equals the actual catalog function even for a rejected header parse.",
-        "The five spans materialize to the existing first-header NOV semantics. This last general refinement is open; ground fixtures currently supply examples only."
+        "For every successful actual parser result, the complete byte traversal's five spans normalize to the exact first-header NOV content. The arena-tick and final catalog record join remains open."
       ],
       "evidence": [
         "books/legacy-parser-cursor.lisp",
@@ -6332,7 +6333,10 @@
         "planning/evidence/legacy-parser-values-source.md",
         "books/legacy-parser-value-run.lisp",
         "tests/acl2/legacy-parser-value-run-tests.lisp",
-        "planning/evidence/legacy-parser-value-run-source.md"
+        "planning/evidence/legacy-parser-value-run-source.md",
+        "books/legacy-parser-columns.lisp",
+        "tests/acl2/legacy-parser-columns-tests.lisp",
+        "planning/evidence/legacy-parser-columns-source.md"
       ]
     },
     {
