@@ -941,6 +941,25 @@ class GraphTests(unittest.TestCase):
         self.assertEqual(proof_repl.dependency_order(self.GRAPH, {"m", "b", "t"}),
                          ["b", "m", "t"])
 
+    def test_source_siblings_keep_declared_order_and_shared_dependency_once(self):
+        graph = {"top": ["z-local", "a-export"],
+                 "z-local": ["shared"], "a-export": ["shared"], "shared": []}
+        for subset in (["a-export", "shared", "z-local"],
+                       ["z-local", "a-export", "shared"]):
+            self.assertEqual(proof_repl.dependency_order(graph, subset, "top"),
+                             ["shared", "z-local", "a-export"])
+
+    def test_order_starts_at_the_named_root_even_when_its_name_sorts_last(self):
+        graph = {"z-top": ["b", "a"], "a": [], "b": []}
+        self.assertEqual(proof_repl.dependency_order(graph, {"a", "b"}, "z-top"),
+                         ["b", "a"])
+
+    def test_only_independent_roots_use_deterministic_name_order(self):
+        graph = {"z-root": ["z2", "z1"], "a-root": ["a2", "a1"],
+                 "z2": [], "z1": [], "a2": [], "a1": []}
+        self.assertEqual(proof_repl.dependency_order(graph, set(graph)),
+                         ["a2", "a1", "a-root", "z2", "z1", "z-root"])
+
     def test_diagnosis_names_the_root_cause_and_what_follows_it(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = worktree(temporary + "/tree")
@@ -1349,6 +1368,50 @@ class SessionTests(unittest.TestCase):
 
 @unittest.skipUnless(shutil.which(os.environ.get("FN_ACL2", "acl2")), "no ACL2 on PATH")
 class RealAcl2Tests(unittest.TestCase):
+    def test_source_siblings_preserve_local_name_scope_in_declared_order(self):
+        scratch = ROOT / "build" / "proof-repl-real-siblings"
+        scratch.mkdir(parents=True, exist_ok=True)
+        prefix = "build/proof-repl-real-siblings/"
+        (scratch / "shared.lisp").write_text(
+            '(in-package "ACL2")\n(defun sibling-shared (x) x)\n')
+        (scratch / "z-local.lisp").write_text(
+            '(in-package "ACL2")\n(include-book "shared")\n'
+            '(local (defthm sibling-collision (equal (car (cons x y)) x)))\n'
+            '(local (defthm sibling-private (equal (sibling-shared x) x)))\n'
+            '(defun sibling-first (x) (sibling-shared x))\n')
+        (scratch / "a-export.lisp").write_text(
+            '(in-package "ACL2")\n(include-book "shared")\n'
+            '(defthm sibling-collision (equal (cdr (cons x y)) y))\n')
+        (scratch / "top.lisp").write_text(
+            '(in-package "ACL2")\n(include-book "z-local")\n'
+            '(include-book "a-export")\n'
+            '(assert-event (equal (sibling-first 17) 17))\n')
+        name = "real-siblings-%d" % os.getpid()
+        cli = lambda *words: subprocess.run(  # noqa: E731
+            [sys.executable, str(ROOT / "tools" / "proof_repl.py"), *words],
+            capture_output=True, text=True, cwd=ROOT, timeout=300)
+        try:
+            graph = proof_repl.include_graph(ROOT, prefix + "top")
+            self.assertEqual(graph[prefix + "top"],
+                             [prefix + "z-local", prefix + "a-export"])
+            started = cli("start", name, prefix + "top", "--ld", prefix + "a-export",
+                          "--ld", prefix + "shared", "--ld", prefix + "z-local")
+            self.assertEqual(started.returncode, 0, started.stdout + started.stderr)
+            state = json.loads((proof_repl.SESSIONS / name / "state.json").read_text())
+            self.assertEqual(state["ld"],
+                             [prefix + "shared", prefix + "z-local", prefix + "a-export"])
+            self.assertEqual(set(state["ld_loaded"]), set(state["ld"]))
+            self.assertEqual(state["loaded"], ["in-package", "assert-event"])
+            self.assertFalse(list(scratch.glob("*.cert")))
+            hidden = cli("send", name, ":pe sibling-private")
+            self.assertEqual(hidden.returncode, 1, hidden.stdout + hidden.stderr)
+            exported = cli("send", name, ":pe sibling-collision")
+            self.assertEqual(exported.returncode, 0, exported.stdout + exported.stderr)
+        finally:
+            cli("stop", name)
+            shutil.rmtree(proof_repl.SESSIONS / name, ignore_errors=True)
+            shutil.rmtree(scratch, ignore_errors=True)
+
     def test_include_only_source_umbrella_exports_child_without_leaking_locals(self):
         scratch = ROOT / "build" / "proof-repl-real-umbrella"
         scratch.mkdir(parents=True, exist_ok=True)
