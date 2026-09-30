@@ -41,7 +41,14 @@ def fingerprint(program):
         runtimes = re.findall(r'^exec "([^"\n]+)"', text, re.M)
         if len(cores) != 1 or len(runtimes) != 1:
             raise AssertionError("reference launcher must name one core and runtime")
-        paths += [Path(cores[0]), Path(runtimes[0])]
+        def resolve_reference(value):
+            if value.startswith("$here/"):
+                return program.parent / value[len("$here/"):]
+            path = Path(value)
+            if not path.is_absolute():
+                raise AssertionError("unsupported relative product reference: " + value)
+            return path
+        paths += [resolve_reference(cores[0]), resolve_reference(runtimes[0])]
     library_dir = program.parent / "lib"
     if library_dir.is_dir():
         paths += sorted(path for path in library_dir.iterdir() if path.is_file())

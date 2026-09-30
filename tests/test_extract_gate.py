@@ -221,7 +221,7 @@ elif role == "core":
     os.makedirs(k, exist_ok=True)
     if FAULT == "core-build-exit":
         print("stand-in core build failing"); sys.exit(3)
-    for n in ("core.json", "defs.lisp", "packages.lisp", "core-world.lisp", "host-block.lisp"):
+    for n in ("core.json", "defs.lisp", "packages.lisp", "core-world.lisp", "host-block.lisp", "fn-core.core"):
         open(os.path.join(k, n), "w").write("stand-in\n")
     json.dump({"defun": 3, "star1": 1, "stobj-prim": 0, "host-defined": ["ACL2::FN-SIG-VERIFY"]},
               open(os.path.join(k, "inventory.json"), "w"))

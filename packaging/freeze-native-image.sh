@@ -38,6 +38,8 @@ mldsa=$build/lib/libfn-mldsa65.so
 [ -s "$mldsa" ] || { echo "freeze-native-image: missing $mldsa (tools/build_mldsa65.sh)" >&2; exit 4; }
 deflate=$build/lib/libfn-deflate.so
 [ -s "$deflate" ] || { echo "freeze-native-image: missing $deflate (tools/build_deflate.sh)" >&2; exit 4; }
+lz4=$build/lib/libfn-lz4.so
+[ -s "$lz4" ] || { echo "freeze-native-image: missing $lz4 (tools/build_lz4.sh)" >&2; exit 4; }
 blake3=$build/lib/libfn-blake3.so
 [ -s "$blake3" ] || { echo "freeze-native-image: missing $blake3 (tools/build_blake3.sh)" >&2; exit 4; }
 if [ -n "${FN_FREEZE_SODIUM:-}" ]; then
@@ -75,6 +77,7 @@ cp -RL "$sbcl_home"/. "$out/runtime/sbcl-home"/
 cp -L "$sodium" "$out/lib/$sodium_name"
 cp -L "$mldsa" "$out/lib/libfn-mldsa65.so"
 cp -L "$deflate" "$out/lib/libfn-deflate.so"
+cp -L "$lz4" "$out/lib/libfn-lz4.so"
 cp -L "$blake3" "$out/lib/libfn-blake3.so"
 if [ "$system" = OpenBSD ]; then
   # The runtime's DT_NEEDED objects outside the base system (/usr/lib) travel
