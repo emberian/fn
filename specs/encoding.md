@@ -8,40 +8,57 @@ native profile before publishing persistent or interoperable formats.
 `books/cbor.lisp` currently implements uint32 and definite byte strings as
 experimental primitives. `books/cbor-invariants.lisp` proves full value round
 trips and exact accepted-input re-encoding for both supported types.
-`books/records.lisp` composes them into the provisional transaction-record
-grammar (schema 1, and schema 2 when an integer field is wide) described in the [storage experiment](store-experiment.md); its invariant
-book proves the full variable-record round trip, and
-[record canonicality](../books/records-canonicality.lisp) proves every successful
-exact decode re-encodes the same octets. All 21 CBOR and 45 record functions have
-verified guards; public encode/decode boundaries retain guard T.
+`books/records.lisp` composes them into the transaction-record grammar
+(schema 3 when all integer fields fit u32, schema 4 when one requires u64)
+described in the [storage experiment](store-experiment.md). The invariant and
+[canonicality](../books/records-canonicality.lisp) books state the full
+variable-record round-trip and accepted-input re-encoding obligations.
+Changing the record grammar requires matching certification; source, proof,
+image and deployment coordinates remain separate in
+[the current view](../planning/current.md).
 
 The record codec is behind a seam (plan 2026-09-22 §4.1, step T1).
-`books/records.lisp` defines the implementation, `fn-record-encode-impl` and
-`fn-record-decode-exact-impl`; `books/records-seam.lisp` constrains
-`fn-record-encode` and `fn-record-decode-exact` by six properties (a
-non-record encodes to nil, the round trip, accepted-input canonicality, the
-accepted-input bounds, the five magic octets, and the sixth octet as the
-schema octet the decoded record needs, `fn-record-schema-octet`, 1 for a
-record whose integer fields fit u32 and 2 for a wide one) whose local witnesses are the implementation;
-`books/records-attach.lisp` attaches the implementation with `defattach`,
-which re-proves the six and adds no axiom. The header is two constraints so
-that the acceptance stamp's schema 1 ([acceptance stamp](acceptance-stamp.md)
-§2.1) widens the grammar behind the seam without moving a statement above
-it. Every record carries its stamp: the stampless schema 0 and its `:legacy`
-stamp are deleted (no migrations: fresh deploys at 6.6.0), and a schema-0
-header is refused `:unknown-version`. Article records carry a uint32 stamp in seconds since the
-DTN epoch inside the committed record; the schema-1 item adds at most five
-octets inside the existing 65,538-octet record limit. The exact octets are concrete facts of the implementation,
-`fn-record-schema1-golden-octets-are-the-encoding` in `books/records.lisp`:
-a round trip and canonicality hold of any length-preserving permutation of
-the encodings, so they do not identify the wire language. Every book above the
-codec, and the host, calls the constrained names; the image and the test
-books that evaluate ground vectors include the attachment, so the octets are
-the implementation's (`tools/codec_golden.py` compares them before and after).
+`books/records.lisp` defines `fn-record-encode-impl` and
+`fn-record-decode-exact-impl`; `books/records-seam.lisp` constrains the public
+`fn-record-encode` and `fn-record-decode-exact` by domain, round-trip,
+canonicality, input-bound, magic, schema and encoding-length properties.
+The accepted sixth octet must equal `fn-record-schema-octet` of the decoded
+record: 3 for narrow integer fields and 4 for a wide field. The local witnesses
+are the implementation; `books/records-attach.lisp` attaches that implementation
+with `defattach`, which discharges the constraints rather than adding an axiom.
+
+Every record has twelve logical fields. The acceptance stamp remains an
+unsigned integer giving whole seconds since the DTN epoch; the final field is
+the immutable first-acceptance binding. It is separate from the stored payload's
+content subject and release evidence. The binding's byte string is exactly
+56 octets: NUL followed by ASCII `FN-AB1` (seven octets together), one profile
+octet, and the 48-octet typed subject of the received bytes. Profile codes are
+1 (`:post-d25`), 2 (`:relay-v1`) and 3 (`:native-source`). The subject begins
+with ASCII `fn/subject/v1`, NUL, version 1 and algorithm 2, followed by the
+32-octet digest. `fn-ab-decode` rejects another length, magic, profile or typed
+subject header. A valid descriptor is not itself authorization.
+
+The record appends that binding as a canonical CBOR byte string after the
+stamp: the two-octet head `58 38` and 56 data octets add 58 octets to the record.
+Missing or malformed binding bytes are refused `:invalid-binding`; an extra
+item after the binding is refused `:trailing`. Schemas 0, 1 and 2 are retired
+and refused `:unknown-version`; no binding is inferred for an old record.
+Fresh deployment remains the selected format-transition policy.
+
+The exact schema-3 and schema-4 golden encodings are literal vectors in
+`books/records.lisp`, with corresponding encode and decode events including
+`fn-record-schema3-golden-octets-are-the-encoding` and its schema-4 counterpart.
+Round-trip and canonicality alone do not identify those bytes: both properties
+also hold under a length-preserving permutation of the encodings. Books above
+the codec and the host call the constrained names; image and ground-vector
+test books include the attachment. The independent CBOR probe covers narrow
+and wide records, all three binding profiles, retired schemas, inconsistent
+width markers, and invalid binding fields. Its current-source run is a
+separate obligation from historical probe results.
 The record itself -- domains, accessors, `fn-record-p`, result shapes -- is
 `books/records-shape.lisp` and is not a codec. The independent
-[CBOR probe](../docs/cbor-interop.md) covers 38 cases with cbor2. Native/signature
-schemas remain open. The
+[CBOR probe](../docs/cbor-interop.md) records its historical runs separately
+from the current grammar checks. Native/signature schemas remain open. The
 primitive limits are local experiment bounds, not a permanent format decision.
 
 ## Layers
@@ -134,8 +151,9 @@ opaque objects. An unknown schema may be carried under bounded relay policy,
 but it cannot authorize an operation or establish semantic acceptance. Migration
 preserves old objects and explicit provenance; it does not silently change the
 meaning of an existing content ID or signed statement. No release reads
-another release's store (fresh deploys at 6.6.0): record schema 1 replaced the
-stampless schema 0 outright, and the schema-0 reader is deleted.
+another release's store (fresh deploys at 6.6.0): the mandatory-binding
+record schemas 3 and 4 replace schemas 0, 1 and 2, whose version octets are
+refused rather than decoded with invented provenance.
 
 ## Experimental signed-source topic metadata
 

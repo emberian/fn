@@ -55,9 +55,14 @@ shortest argument heads, a 65535-byte payload limit, a 65538-octet input limit,
 and exact single-item decoding. Therefore generic CBOR acceptance is not
 reported as fn-profile acceptance.
 
-The schema-1 fixtures use the attached `fn-record-encode` and
+The schema-3/4 fixtures use the attached `fn-record-encode` and
 `fn-record-decode-exact` calls. cbor2 decodes the concatenated primitive items,
 re-encodes them, and supplies an independently encoded sequence back to ACL2.
+They cover narrow and wide integer fields and all three mandatory acceptance
+binding profiles. Independently encoded valid CBOR sequences also exercise
+retired version markers, mismatched width markers, missing bindings, and
+invalid binding length, magic, profile and typed-subject headers. These are
+record-grammar refusals, distinct from generic CBOR refusals.
 This checks primitive sequence interoperability for the exact record grammar;
 the separately certified codec seam establishes the general round-trip and
 canonicality claims.

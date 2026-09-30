@@ -319,6 +319,76 @@ def record_case(acl2: ACL2, name: str, fixture: str, expected_values: list[Any])
     }
 
 
+def record_refusal_case(acl2: ACL2, name: str, values: list[Any], reason: str) -> dict[str, Any]:
+    """Generic CBOR remains valid; the actual fn record grammar must refuse."""
+    encoded = b"".join(cbor2.dumps(value) for value in values)
+    generic_ok, decoded, generic_error = cbor2_decode_sequence(encoded)
+    status = acl2.record_decode_status(encoded)
+    return {
+        "name": name,
+        "encoded_length": len(encoded),
+        "encoded_sha256": hashlib.sha256(encoded).hexdigest(),
+        "cbor2_accepts_sequence": generic_ok and decoded == values,
+        "cbor2_error": generic_error,
+        "fn_record_status": status,
+        "expected_fn_record_status": reason,
+        "passed": generic_ok and decoded == values and status == reason,
+    }
+
+
+def record_cases(acl2: ACL2) -> list[dict[str, Any]]:
+    # Independent grammar literals, not bytes obtained from fn-ab-encode.
+    # The binding has magic7, profile1, and the typed received subject48.
+    subject = b"fn/subject/v1\x00\x01\x02" + bytes(32)
+    post_binding = b"\x00FN-AB1\x01" + subject
+    relay_binding = b"\x00FN-AB1\x02" + subject
+    native_binding = b"\x00FN-AB1\x03" + subject
+    post = f"(fn-ab-make :post-d25 {octet_literal(subject)})"
+    relay = f"(fn-ab-make :relay-v1 {octet_literal(subject)})"
+    native = f"(fn-ab-make :native-source {octet_literal(subject)})"
+    narrow = [b"fn-r", 3, 1, 2, 3, b"<a>", b"\x09\x08", 1, b"g", b"o", b"s", b"e", 4, 5, post_binding]
+    empty = [b"fn-r", 3, 0, 0, 0, b"<b>", b"", 0, b"o", b"s", b"e", 0, 0, relay_binding]
+    wide = narrow.copy()
+    wide[1], wide[-3] = 4, 0x100000000
+    native_values = narrow[:-1] + [native_binding]
+    results = [
+        record_case(acl2, "schema3-record-one-group",
+                    f'(fn-record-make 1 2 3 "<a>" \'(9 8) \'("g") "o" "s" "e" 4 5 {post})', narrow),
+        record_case(acl2, "schema3-record-empty-groups-relay",
+                    f'(fn-record-make 0 0 0 "<b>" nil nil "o" "s" "e" 0 0 {relay})', empty),
+        record_case(acl2, "schema4-record-wide-charge",
+                    f'(fn-record-make 1 2 3 "<a>" \'(9 8) \'("g") "o" "s" "e" 4294967296 5 {post})', wide),
+        record_case(acl2, "schema3-record-native-source",
+                    f'(fn-record-make 1 2 3 "<a>" \'(9 8) \'("g") "o" "s" "e" 4 5 {native})', native_values),
+    ]
+    for schema in (0, 1, 2, 5):
+        old_or_unknown = (wide if schema == 2 else narrow).copy()
+        old_or_unknown[1] = schema
+        if schema in (0, 1, 2):
+            old_or_unknown.pop()  # Prior grammars have no binding field.
+        if schema == 0:
+            old_or_unknown.pop()  # The retired schema0 also lacks a stamp.
+        results.append(record_refusal_case(acl2, f"record-schema{schema}-refused",
+                                           old_or_unknown, ":unknown-version"))
+    for name, values, schema in (("wide-as-narrow", wide, 3), ("narrow-as-wide", narrow, 4)):
+        wrong_schema = values.copy()
+        wrong_schema[1] = schema
+        results.append(record_refusal_case(acl2, name, wrong_schema, ":schema"))
+    results.append(record_refusal_case(acl2, "record-missing-binding", narrow[:-1], ":invalid-binding"))
+    results.append(record_refusal_case(acl2, "record-trailing-item", narrow + [0], ":trailing"))
+    for name, binding in (
+        ("short", post_binding[:-1]),
+        ("long", post_binding + b"\x00"),
+        ("magic", b"\x01" + post_binding[1:]),
+        ("profile", post_binding[:7] + b"\x00" + post_binding[8:]),
+        ("subject-kind", post_binding[:8] + b"x" + post_binding[9:]),
+        ("subject-algorithm", post_binding[:23] + b"\x01" + post_binding[24:]),
+    ):
+        results.append(record_refusal_case(acl2, f"record-binding-{name}",
+                                           narrow[:-1] + [binding], ":invalid-binding"))
+    return results
+
+
 def run_probe(acl2: ACL2) -> dict[str, Any]:
     results: list[dict[str, Any]] = []
     integer_values = (0, 23, 24, 255, 256, 65535, 65536, 0xFFFFFFFF)
@@ -376,12 +446,7 @@ def run_probe(acl2: ACL2) -> dict[str, Any]:
     results.append(refusal_case(acl2, "input-over-65538-profile-limit", over_input, generic_sequence=True))
     results.append(refusal_case(acl2, "trailing-second-item", b"\x00\x00", generic_sequence=True))
 
-    stamped_values = [b"fn-r", 1, 1, 2, 3, b"<a>", b"\x09\x08", 1, b"g", b"o", b"s", b"e", 4, 5]
-    stamped_fixture = '(fn-record-make 1 2 3 "<a>" \'(9 8) \'("g") "o" "s" "e" 4 5)'
-    results.append(record_case(acl2, "schema1-record-one-group", stamped_fixture, stamped_values))
-    empty_groups_values = [b"fn-r", 1, 0, 0, 0, b"<b>", b"", 0, b"o", b"s", b"e", 0, 0]
-    empty_groups_fixture = '(fn-record-make 0 0 0 "<b>" nil nil "o" "s" "e" 0 0)'
-    results.append(record_case(acl2, "schema1-record-empty-groups", empty_groups_fixture, empty_groups_values))
+    results.extend(record_cases(acl2))
 
     return {
         "cases": results,
@@ -410,6 +475,8 @@ def main() -> int:
         "source_digests_sha256": {
             "books/cbor.lisp": digest(ROOT / "books/cbor.lisp"),
             "books/records.lisp": digest(ROOT / "books/records.lisp"),
+            "books/records-shape.lisp": digest(ROOT / "books/records-shape.lisp"),
+            "books/acceptance-binding.lisp": digest(ROOT / "books/acceptance-binding.lisp"),
             "tests/interop_cbor.py": digest(Path(__file__).resolve()),
         },
     }

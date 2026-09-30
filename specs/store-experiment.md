@@ -20,17 +20,26 @@ prepares a post. An aborted or refused attempt may leave a gap; reopening cannot
 reuse the reservation. This is local transaction identity, not a portable origin
 sequence or an author identity. Exhaustion refuses new attempts.
 
-Local transaction records use experimental schema 0 and schema 1. Their codec is a bounded
-fixed sequence of deterministic CBOR primitives: a magic byte string, schema
-version, journal sequence, acceptance transaction ID, generation, Message-ID,
-payload, group count and groups, obligation identity, content subject, release
-evidence, and charge. Schema 1 appends one canonical uint32 acceptance stamp,
-the owner's wall reading at prepare in whole seconds since 2000-01-01 UTC.
-Schema-0 records decode with `:legacy` and re-encode to identical bytes; a live
-prepare refuses a `:legacy` record or an unusable clock before writing a record.
-The source book defines the exact field domains and golden
-vectors. This format is local and provisional; it is not D01/D09's signed native
-article envelope. Source bytes never enter a Lisp reader as executable forms.
+Local transaction records use schemas 3 and 4. Their codec is a fixed
+sequence of deterministic CBOR primitives: magic byte string, schema version,
+journal sequence, acceptance transaction ID, generation, Message-ID, payload,
+group count and groups, obligation identity, stored content subject, release
+evidence, charge, acceptance stamp, and mandatory first-acceptance binding.
+The stamp is the owner's wall reading at prepare in whole seconds since
+2000-01-01 UTC. Schema 3 requires all integer fields to fit u32; schema 4 is
+required when any of sequence, transaction ID, generation, charge or stamp
+needs u64. The reader rejects an inconsistent schema marker.
+
+The binding is a 56-octet byte string carrying its own magic, the acceptance
+profile and the typed subject of the received bytes. It is not the stored
+content subject or release evidence; see [the exact encoding](encoding.md).
+Schemas 0, 1 and 2 are refused at their version octet. Missing binding data is
+not repaired with an inferred profile or a digest of the stored payload.
+The source book defines the field domains and literal golden vectors; matching
+certification and an independent current-source interoperability run remain
+required for this format change. This is a local record grammar, distinct from
+D01/D09's signed native article envelope. Source bytes never enter a Lisp reader
+as executable forms.
 
 The first adapter uses one immutable transaction file per sequence. This buys
 simple write isolation and fault injection before segment packing/compaction.
