@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6942,6 +6942,33 @@
         ],
         "native": true
       }
+    },
+    {
+      "id": "SCN-1040",
+      "title": "Protected maintenance identities after ordinary post-reservation refusals",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "RET-002",
+        "RET-010",
+        "STO-020"
+      ],
+      "steps": [
+        "From an actual admitted state near each selected identity ceiling, execute a bounded trace of ordinary reservations followed by semantic refusal, then the exact admitted maintenance operation and its physical read schedule.",
+        "Exercise concurrent grant requests, duplicate/stale callbacks, cancellation, abandonment, known refusal and uncertain persistence at every model crash cut; reopen persistent grants and the exact owner snapshot.",
+        "Repeat at the terminal finite boundary and with invalid/missing current profile, codec or operation authority."
+      ],
+      "expected": [
+        "Ordinary reservations stop before the exact protected identity demand. ACL2 derives purpose and quota from the actual operation; no external maintenance flag or guessed margin grants access.",
+        "Grants are disjoint, cannot double-spend or steal, and every issued/possibly escaped ID remains spent. Memory settlement does not refund identities.",
+        "The admitted bounded maintenance trace can allocate its promised identities while resources remain funded; finite exhaustion is named and never wraps. Logical outcomes agree only on common-admitted continuations; refusals remain in the observation trace.",
+        "Persistent grant replay/snapshot/profile/runtime representations agree at the current format; missing fields never receive old-format inference."
+      ],
+      "evidence": [
+        "specs/retention.md",
+        "books/refusal-headroom.lisp",
+        "tests/acl2/refusal-headroom-tests.lisp"
+      ]
     }
   ]
 }

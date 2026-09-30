@@ -17,6 +17,42 @@ headroom. Admission also bounds CPU/work and staging. A node may reject new work
 when it cannot honor the terms. Indefinite retention plus finite storage implies
 eventual refusal under unlimited input; do not hide that tradeoff in GC.
 
+## Finite identities for maintenance
+
+RET-010 (fn guarantee, implementation open): persistent transaction IDs and
+process-local read IDs are separate finite resources in R of alpha=(L,R).
+Capacity admission and no-wrap arithmetic alone do not establish maintenance
+headroom. ACL2 derives maintenance purpose from the actual admitted operation
+and reserves its identity demand together with its other resources. Ordinary
+reservation refuses before consuming that protected demand, including paths
+whose later semantic preparation refuses after a reservation.
+
+The quota comes from the actual bounded maintenance publication/read trace
+and the selected codecs' representable domains. A caller-supplied maintenance
+flag, memory margin, object count, or guessed multiple of a page count is not
+an authority or a request census. Current compact/reclaim publication writes a
+checkpoint and consumes no Store journal transaction ID; an authorized Store
+release writes one. Current forward-undertaking debt names required releases,
+but connecting that carried debt to allocator reservation remains open.
+The authenticated reader's per-selection request bound is not yet a complete
+producer trace bound across source passes, staged digest and cache dispatch.
+
+Each grant owns its exact identities. Concurrent grants cannot double-spend or
+steal each other's interval. Issued or possibly escaped identities never roll
+back or recycle after refusal, cancellation, uncertain persistence or a stale
+callback. Persistent grants require replay and snapshot representation when
+they cross a durable boundary. Profile validation, current format and runtime
+representation must agree; no old-format inference supplies a missing grant.
+
+The guarantee is conditional on the finite domain and an admitted bounded
+trace. Exhaustion is an explicit named refusal, never wrapping or an unlimited
+lifetime claim. Maintenance may consume R while preserving promised L on
+common-admitted continuations; resource refusals stay observable. PRF-1134 and
+SCN-1040 track the actual allocator, host writer, continuation, crash and
+recovery obligations. Existing PRF-1110 proves saturation of the current
+unprotected allocator and supplies the motivating counterexample, not this
+new guarantee.
+
 ## Receipts and release
 
 RET-003: receipt kinds distinguish transmission, reception, durable object

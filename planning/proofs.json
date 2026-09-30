@@ -18893,6 +18893,27 @@
         "fn-fc-temporary-mode-refusal-closes-without-stopping"
       ],
       "progress_note": "Clean protected source admission and full positive/hypothesis-removal witnesses passed; certification and matching-image native observation pending."
+    },
+    {
+      "id": "PRF-1134",
+      "title": "Actual operation-bound maintenance identities survive ordinary refusals",
+      "statement": "Prove actual purpose-aware persistent and local identity reservation against finite selected codec/runtime domains. ACL2 derives maintenance purpose and bounded trace demand from the admitted operation; ordinary reservations preserve protected quota. Each live grant owns a disjoint nonrecycled interval, accounted alongside other resources; issued/uncertain/canceled/stale identities never roll back. Bridge the actual host writer, replay/snapshot representation and continuation alpha(L,R), naming finite exhaustion. A per-selection read bound is not a full producer census. No implementation or proof is currently claimed.",
+      "milestone": "M5",
+      "requirements": [
+        "RET-002",
+        "RET-010",
+        "STO-020"
+      ],
+      "depends_on": [
+        "PRF-1110",
+        "PRF-1101"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "specs/retention.md"
+      ],
+      "progress_note": "Root assigned allocator implementation to W8. Claim announced before writing. Current source fnn-log-reserve has no operation-bound grant; local fn-prl-admit/fn-pmn-admit share an unprotected finite next counter. Producer request census and current-format/profile joins remain open. No proposed theorem is admitted or certified."
     }
   ]
 }
