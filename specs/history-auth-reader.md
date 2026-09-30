@@ -82,3 +82,11 @@ words with zeros. This fact never licenses short physical reads; complete
 16KiB read validation remains a separate continuation obligation. The observed
 digest parameter is component vocabulary until the real digest cursor is
 composed; this component alone cannot authenticate a source page.
+
+The ref-aware checkpoint cursor may issue fixed child demand
+`(:need-byte absolute-pool-position :mid-character child-index)`. The actual
+outer provider retains that request and applies the same source4, current child
+coordinate, pool extent, reader serial and buffer identity fences as other
+borrowed-byte phases. Unknown kinds and stale coordinates refuse. This route
+adds no whole-string conversion; actual op3 lineage and paired independent
+reader/resource authority remain separate producer obligations.

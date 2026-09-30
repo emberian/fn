@@ -36,7 +36,7 @@
                   (natp root-ticket) (equal root-ticket (fn-omk-at 2 binding))
                   (fn-omk-token-matchp (fn-omk-at 1 demand) (fn-omk-at 1 binding))
                   (member-eq (fn-omk-at 2 demand) '(:cells :decode :padding :key
-                    :octet-nil :symbol-normalize :span-body :opaque-span)) (natp (fn-omk-at 3 demand))
+                    :octet-nil :symbol-normalize :span-body :opaque-span :mid-character)) (natp (fn-omk-at 3 demand))
                   (equal (fn-omk-at 4 demand) (fn-hsr-field 3 c))
                   (fn-hsr-auth-verified-byte-demand offset c)))
         '(:refused :source-byte)
@@ -65,7 +65,7 @@
                 (equal root-ticket (fn-omk-at 2 binding))
                 (fn-omk-token-matchp (fn-omk-at 1 demand) (fn-omk-at 1 binding))
                 (member-eq (fn-omk-at 2 demand) '(:cells :decode :padding :key
-                    :octet-nil :symbol-normalize :span-body :opaque-span)) (natp (fn-omk-at 3 demand))
+                    :octet-nil :symbol-normalize :span-body :opaque-span :mid-character)) (natp (fn-omk-at 3 demand))
                 (natp (fn-omk-at 4 demand)) (natp (fn-omk-at 5 demand))
                 (< (fn-omk-at 5 demand) 16384)))
       '(:refused :source-demand)

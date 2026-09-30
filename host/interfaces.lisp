@@ -4886,7 +4886,6 @@
 (definterface fn-owner-maintenance-grow :class :common-lisp-compliant)
 (definterface fn-owner-maintenance-release :class :common-lisp-compliant)
 (definterface fn-osj-capture-ticket :class :common-lisp-compliant)
-(definterface fn-osj-cleanup-word :class :common-lisp-compliant)
 (definterface fn-ocb-begin :class :common-lisp-compliant)
 (definterface fn-ocb-request :class :common-lisp-compliant)
 (definterface fn-ocb-demand :class :common-lisp-compliant)
@@ -4944,3 +4943,5 @@
 ; PRF-1149 cold recovery authority; final installer is owner-install scoped.
 (definterface fn-owner-recovery-source-start :class ::program)
 (definterface fn-owner-recovery-source-observe :class ::program)
+
+(definterface fn-ssr-at :class :common-lisp-compliant)

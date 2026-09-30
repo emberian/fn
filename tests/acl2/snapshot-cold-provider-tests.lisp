@@ -50,3 +50,24 @@
 (assert-event (and (fn-omk-guardp *ocb-key-cursor*)
                   (equal (fn-ocb-key-observation *ocb-key-cursor* '(:supply 9 42))
                          '(:refused :key-byte))))
+
+; The ref-aware cursor's issued MID character rides the same unchanged fence.
+(defconst *ocb-mid-child* '(:need-byte 8 :mid-character 0))
+(defconst *ocb-mid-c*
+ (mv-let (word next)
+  (fn-ocb-request (fn-ocb-begin *ocbt-h* *ocbt-source* :resource) *ocb-mid-child*)
+  (declare (ignore word)) next))
+(assert-event
+ (mv-let (word next)
+  (fn-ocb-complete *ocb-mid-c* *ocbt-source* *ocb-mid-child*
+                  '(:byte (9 (17 2) 1 0) :mid-character 0 5 8 65))
+  (and (fn-ocb-childp *ocb-mid-child*)
+       (equal (fn-ocb-demand *ocb-mid-c*)
+              '(:need-byte (9 (17 2) 1 0) :mid-character 0 5 8))
+       (equal word '(:supply 8 65)) (equal (fn-omk-at 3 next) 1))))
+(assert-event
+ (mv-let (word next)
+  (fn-ocb-complete *ocb-mid-c* *ocbt-source* '(:need-byte 8 :mid-character 1)
+                  '(:byte (9 (17 2) 1 0) :mid-character 0 5 8 65))
+  (and (not (fn-ocb-child-matchp *ocb-mid-child* '(:need-byte 8 :mid-character 1)))
+       (not (equal (car word) :supply)) (equal next *ocb-mid-c*))))

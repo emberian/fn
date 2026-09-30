@@ -6849,7 +6849,8 @@
         "Check literal invariant, identity, one-word progress, exact selection, accumulated malformed flag and terminal extraction claims, with each removable hypothesis contradicted separately.",
         "Detect a newer txid in an unselected entry and nonzero trailing padding.",
         "Compare incremental txid/padding and directory/table verdicts with current logical codecs; check digest damage priority and literal hypothesis removals.",
-        "Planned: bind exact file incarnation and fresh buffer identity to root-directory-table-data authentication and demonstrate stale completion refusal."
+        "Planned: bind exact file incarnation and fresh buffer identity to root-directory-table-data authentication and demonstrate stale completion refusal.",
+        "Route issued MID string-span demand through actual :mid-character mapping and authenticated scalar phase gate; reject wrong child coordinate, unknown kind and stale source."
       ],
       "expected": [
         "Selected entry matches existing pgs-decode-table exactly, including a straddling entry.",
@@ -6862,7 +6863,10 @@
       "evidence": [
         "tests/acl2/history-page-reader-tests.lisp",
         "specs/history-auth-reader.md",
-        "tests/acl2/history-page-reader-verdict-tests.lisp"
+        "tests/acl2/history-page-reader-verdict-tests.lisp",
+        "tests/acl2/history-auth-reader-mid-phase-tests.lisp",
+        "tests/acl2/snapshot-cold-provider-tests.lisp",
+        "planning/evidence/snapshot-mid-source-2026-09-30/reader-coordinate.json"
       ],
       "execution_scope": "Scanner component source only; authenticated continuation and host integration remain open."
     },
@@ -7043,9 +7047,44 @@
       },
       "evidence": [
         "specs/recovery-source-authority.md",
-        "planning/evidence/recovery-source-authority-source-2026-09-30.json"
+        "planning/evidence/recovery-source-authority-source-2026-09-30.json",
+        "planning/evidence/recovery-state-boundary-2026-09-30/native-review.md"
       ],
       "execution_scope": "Source-only scalar/token fixtures pass in fresh protected rsag3; actual loader/SSR/install and native accepted-history scenario remain specified and open."
+    },
+    {
+      "id": "SCN-1048",
+      "title": "Actual snapshot backing growth and retained ledger authority",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-026"
+      ],
+      "steps": [
+        "Admit an actual maintenance row, submit exact census request and assert every literal matching/funding/live-grant conclusion.",
+        "Remove actual-success antecedent separately for every theorem and negate the corresponding conclusion, distinguishing malformed prior state.",
+        "Mutate stage ID, spool size and descriptor credit; affirm refusal and exact unchanged ledger.",
+        "Release the actual maintenance row after logical joined cleanup and assert stale grant refusal and spent identity retention.",
+        "Call the actual funded-pool stobj growth entry; affirm named representation equality and remove its funded-mode premise.",
+        "Mutate receipt source pass/layout after actual growth and assert it does not match retained row.",
+        "Replay the unchanged grant theorem and all existing literal teeth after pagestore-exec; explicit ledger field facts must survive its normalization theory."
+      ],
+      "expected": [
+        "Disk credit includes exact stage-end and both digest spools; no guessed zero disk.",
+        "Whole initial runtime/source adequacy and actual physical cleanup correspondence stay open."
+      ],
+      "evidence": [
+        "tests/acl2/snapshot-maintenance-demand-tests.lisp",
+        "specs/snapshot-maintenance-demand.md",
+        "planning/evidence/snapshot-maintenance-growth-2026-09-30.md",
+        "tests/acl2/snapshot-maintenance-host-tests.lisp",
+        "tests/acl2/snapshot-maintenance-pagestore-world-tests.lisp",
+        "planning/evidence/snapshot-maintenance-pagestore-world-2026-09-30.md",
+        "books/snapshot-maintenance-profile.lisp",
+        "tests/acl2/snapshot-maintenance-profile-tests.lisp",
+        "planning/evidence/snapshot-maintenance-profile-2026-09-30/README.md"
+      ],
+      "execution_scope": "Protected proper-local source proof and literal teeth only; no served activation."
     }
   ]
 }

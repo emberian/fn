@@ -14,6 +14,9 @@ FN_CERTIFY_JOBS ?= 1
 # its slot: the brief's three-minute rule, with a minute of slack.
 FN_LD_TIMEOUT_SECONDS ?= 240
 ACL2_BOOKS ?= books/defrecord \
+	books/snapshot-maintenance-profile \
+	tests/acl2/snapshot-maintenance-profile-tests \
+	tests/acl2/snapshot-maintenance-host-tests \
 	books/defkeystone \
 	books/definterface \
 	books/defevent \

@@ -7205,14 +7205,21 @@ Store); the history's COUNT (the open keeps no records, PKT-823)."
     (setf (fnn-store-recovery-identity store) identity))
   (length records))
 
-(defun fnn-recover-log-from-state-checkpoint (store config-records records)
+(defun fnn-recover-log-from-state-checkpoint
+    (store config-records records &optional
+           (checkpoint-status nil checkpoint-loaded-p) checkpoint-sequence recovery-authority)
   "fnn-recover-from-state-checkpoint over the log's records: the suffix is
 the records at or after the checkpoint's S (the log holds every record).
 Answers the history's COUNT, S plus the suffix's (PKT-823): the covered
 prefix is not re-encoded (fn-store-sco-prefix-octets), since the log holds
 it (`fnn-log-history-records'); NIL when the open falls back to the full
-replay."
-  (multiple-value-bind (status sequence) (fnn-state-checkpoint-load store)
+replay. The second value is the exact cold authority returned by suffix
+replay, or NIL on full replay. When CHECKPOINT-LOADED-P, use the caller's
+successful load and lexical authority: loading again would replace its
+generation. Legacy direct calls load once and return no cold authority."
+  (multiple-value-bind (status sequence)
+      (if checkpoint-loaded-p (values checkpoint-status checkpoint-sequence)
+        (fnn-state-checkpoint-load store))
     (let* ((count (if (eq status :ok)
                       (fnn-core 'fn-store-sco-observed-count
                                 (loop for i below (length records) collect i) 0)
@@ -7223,16 +7230,21 @@ replay."
         (fnn-fault "ACL2 returned a malformed checkpoint selection"))
       (when (eq (first choice) :full-replay)
         (setf (fnn-store-open-mode store) (list :full-replay (second choice)))
-        (return-from fnn-recover-log-from-state-checkpoint nil))
+        (return-from fnn-recover-log-from-state-checkpoint (values nil nil)))
       (let* ((s (second choice))
              (suffix (nthcdr s records)))
-        (unless (eq (fnn-recover-suffix-rows store suffix config-records) :recovering)
-          (fnn-core-state 'fn-store-sco-clear)
-          (fnn-bridge-reset)
-          (setf (fnn-store-open-mode store) (list :full-replay :checkpoint-open-refused))
-          (return-from fnn-recover-log-from-state-checkpoint nil))
-        (setf (fnn-store-open-mode store) (list :checkpoint s (length suffix)))
-        (+ s (length suffix))))))
+        (multiple-value-bind (rows fold original-identity successor)
+            (fnn-recover-suffix-intern suffix (mapcar #'fnn-octet-list config-records)
+                                      0 recovery-authority)
+          (declare (ignore fold))
+          (unless (eq (fnn-recover-suffix-rows store suffix config-records
+                                              rows original-identity) :recovering)
+            (fnn-core-state 'fn-store-sco-clear)
+            (fnn-bridge-reset)
+            (setf (fnn-store-open-mode store) (list :full-replay :checkpoint-open-refused))
+            (return-from fnn-recover-log-from-state-checkpoint (values nil nil)))
+          (setf (fnn-store-open-mode store) (list :checkpoint s (length suffix)))
+          (values (+ s (length suffix)) successor))))))
 
 (defun fnn-store-recovery-barriers (store)
   "The open's recovery barriers' thunks after P-LOG-RECOVER's segment fence,
@@ -7771,8 +7783,12 @@ does, and records how the log holds the history (fnn-store-log-history) for
                              (if log-position
                                  (fnn-recover-log-from-log-checkpoint store config-records records
                                                                       sequence decoded original-identity)
-                               (or (fnn-recover-log-from-state-checkpoint store config-records records)
-                                   (fnn-recover-log-replay store records config-records)))))))))
+                               (multiple-value-bind (checkpoint-count checkpoint-authority)
+                                   (fnn-recover-log-from-state-checkpoint
+                                     store config-records records status sequence recovery-authority)
+                                 (setq recovery-authority checkpoint-authority)
+                                 (or checkpoint-count
+                                     (fnn-recover-log-replay store records config-records))))))))))
           (setf (fnn-store-config-generation store) (fnn-bridge-config-generation)
                 (fnn-store-config-served store) (fnn-bridge-config-names 'fn-store-cfg-served)
                 (fnn-store-config-domain store) (fnn-bridge-config-names 'fn-store-cfg-domain)))

@@ -8,7 +8,7 @@
   (and (fn-omk-widthp request 4) (eq (fn-omk-at 0 request) :need-byte)
        (natp (fn-omk-at 1 request))
        (member-eq (fn-omk-at 2 request)
-                  '(:octet-nil :symbol-normalize :span-body :opaque-span :key))
+                  '(:octet-nil :symbol-normalize :span-body :opaque-span :mid-character :key))
        (natp (fn-omk-at 3 request))))
 (defun fn-ocb-child-matchp (a b)
   (declare (xargs :guard t))
