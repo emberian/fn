@@ -7154,12 +7154,14 @@
       "expected": [
         "Refused filing-group creation prevents control injection. innd replies335/235, and its real innfeed receives238/239 or335/235 from fn.",
         "The fresh Message-ID appears in control.checkgroups numbered membership and not in fn.letters. Control header/body are retained; only transit Path/Xref changes are permitted.",
-        "LIST ACTIVE for the proposed group replies215 with no group. Actual Control-header traffic is distinguished from the old inn-control manual IHAVE row."
+        "LIST ACTIVE for the proposed group replies215 with no group. Actual Control-header traffic is distinguished from the old inn-control manual IHAVE row.",
+        "An optional default-off raw corpus callback runs after the existing assertion with exact expected subject, exchange and full served bytes. Its return value changes no assertion; prerequisite failure supplies no corpus receipt."
       ],
       "evidence": [
         "tools/inn_lab.py",
         "tests/test_inn_lab.py",
-        "docs/interop-inn.md"
+        "docs/interop-inn.md",
+        "planning/evidence/peering-inn-corpus-hook-source-2026-09-30.json"
       ],
       "execution_scope": "Source-present W3 unsigned checkgroups traffic/filing fixture. Fifteen scoped scripted-peer/harness assertions do not establish a real INN/native run. INN controlchan and authenticated discharge are not claimed; newgroup/rmgroup execution remains D29 deferred. Distribution/cancel/expiry/streaming and broader Q12/W3 criteria remain open."
     },
@@ -7262,13 +7264,15 @@
         "Rejected throttle prevents source submission; a failed temporary-failure/reopen/go prerequisite is NOT EXERCISED for the dependent resume row.",
         "INN400 is observed, rather than inferred from absent delivery. The retry-delay measurement is external evidence for the peer-add 1000 ms profile, with 0.2 second tolerance; it is not an ACL2 timing theorem.",
         "The actual queued-source publication must survive cold restart and cross the actual outbound feed after go with matching Message-ID and unchanged body/fields except Path/Xref.",
-        "No scripted server, direct relay client or socket ACK stands in for the native feed. No 431/436 mid-body/capacity or power-loss claim."
+        "No scripted server, direct relay client or socket ACK stands in for the native feed. No 431/436 mid-body/capacity or power-loss claim.",
+        "An optional default-off raw corpus callback runs after the existing assertion with exact expected subject, exchange and full served bytes. Its return value changes no assertion; prerequisite failure supplies no corpus receipt."
       ],
       "evidence": [
         "tools/inn_lab.py",
         "tests/test_inn_lab.py",
         "docs/interop-inn.md",
-        "planning/evidence/peering-inn-throttle-source-2026-09-30.json"
+        "planning/evidence/peering-inn-throttle-source-2026-09-30.json",
+        "planning/evidence/peering-inn-corpus-hook-source-2026-09-30.json"
       ],
       "execution_scope": "Source-present actual-INN observation stage; local scripted fixture accounting only. No matching current native executable exists; actual INN/native NOT RUN. Original bidirectional S9 and all eight Q12 anchors remain open."
     },

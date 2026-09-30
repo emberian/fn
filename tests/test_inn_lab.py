@@ -982,11 +982,24 @@ class CheckgroupsFixtureTests(unittest.TestCase):
                         filing={"ids": [msgid]}, ordinary={"ids": []}, active_rows=[])
                 return inn_lab.Step(name, extra, 0, json.dumps(result), 0)
             lab.drive_inn = drive
-            checks = []
+            checks, observations = [], []
             lab.check = lambda name, ok, *args, **kwargs: checks.append((name, ok))
+            def observe(key, expected_id, exchange, served):
+                self.assertEqual(checks, [("inn-checkgroups-control", expected)])
+                observations.append((key, expected_id, exchange, served))
+                return "held"  # callback disposition never changes the assertion
+            lab.resilience_observer = observe
             lab.scenario_checkgroups_control()
             self.assertIn(b"\r\nControl: checkgroups\r\n", captured[0])
             self.assertEqual(checks, [("inn-checkgroups-control", expected)])
+            self.assertEqual(len(observations), 1)
+            key, observed_id, exchange, served = observations[0]
+            self.assertEqual((key, observed_id), ("inn-checkgroups-control", msgid))
+            self.assertEqual(exchange["article"], arrived())
+            if mutation == "subject":
+                self.assertEqual(inn_lab.header_value(served, "Message-ID"), "<wrong-subject@example.invalid>")
+            if mutation == "body":
+                self.assertNotEqual(exchange["article"], served)
 
 class InnLifecycleFixtureTests(unittest.TestCase):
     """External observer fixtures; these never supply a native verdict."""
@@ -1178,6 +1191,27 @@ class InnThrottleFixtureTests(unittest.TestCase):
             self.assertEqual(checks, [("inn-throttle-blocked", blocked),
                 ("inn-throttle-resumed", inn_lab.deploy_gate.NOT_EXERCISED if resumed is None else resumed)], mutation)
             self.assertEqual(commands[-1][0], "unthrottle scratch INN")
+
+    def test_optional_corpus_callback_retains_failed_readback_and_skips_prerequisite_failure(self):
+        for mutation in (None, "receiver-content", "receiver-subject", "reply-subject", "recover-refused", "throttle-refused"):
+            lab, checks, commands, payloads = self.fixture(mutation)
+            observations = []
+            def observe(key, expected_id, exchange, served):
+                self.assertEqual(checks[-1][0], "inn-throttle-resumed")
+                observations.append((key, expected_id, exchange, served))
+                return "held"
+            lab.resilience_observer = observe
+            lab.scenario_throttle()
+            if mutation in ("recover-refused", "throttle-refused"):
+                self.assertFalse(observations)
+                continue
+            self.assertEqual(len(observations), 1)
+            key, expected_id, exchange, served = observations[0]
+            self.assertEqual((key, expected_id), ("inn-throttle-resumed", lab.ids["FN_THROTTLE_ID"]))
+            self.assertEqual(exchange["article"], payloads["throttle"])
+            self.assertEqual(checks[-1], ("inn-throttle-resumed", mutation is None))
+            if mutation == "receiver-content": self.assertNotEqual(exchange["article"], served)
+            if mutation == "receiver-subject": self.assertEqual(inn_lab.header_value(served, "Message-ID"), "<wrong@x>")
 
     def test_refused_throttle_prevents_submission_and_is_not_a_weak_failure_scenario(self):
         lab, checks, commands, payloads = self.fixture("throttle-refused")

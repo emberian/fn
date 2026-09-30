@@ -503,3 +503,13 @@ observed). A final reply alone never qualifies an article transfer, including
 a truncated TAKETHIS transcript with239. Pre-transfer IHAVE/CHECK refusals
 remain complete without a body. These are observer facts, distinct from a
 native durable-acceptance decision.
+
+Programmatic `InnLab(..., resilience_observer=callback)` optionally retains
+raw corpus observations after the existing control and throttle-resume
+assertions. The callback receives `(key, expected_message_id, exchange,
+full_readback_bytes)`; its return value cannot decide a lab assertion. It is
+disabled by default. The W7 `Recorder` adapter (source a8636bc71/9f565eaec)
+can persist these bytes in an exclusively owned output directory once its
+matching adapter source is integrated. Missing prerequisite execution makes
+no callback and produces no corpus receipt. A scripted callback run remains
+a scripted observer test, with no physical INN/native evidence.

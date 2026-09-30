@@ -1065,7 +1065,7 @@ class InnLab(deploy_gate.DeployGate):
                  extra_overlays=(), feed_wait=90, inn_streaming=False, inn_distribution=False,
                  inn_security=False, inn_security_port=INN_SECURITY_PORT,
                  inn_security_feed=False, inn_controls=False, inn_cancel=False, inn_expiry=False,
-                 inn_throttle=False, **kwargs):
+                 inn_throttle=False, resilience_observer=None, **kwargs):
         super().__init__(*args, **kwargs)
         if not native_image:
             raise GateError("the fn side is the native image or the lab does not run "
@@ -1080,6 +1080,7 @@ class InnLab(deploy_gate.DeployGate):
         self.inn_cancel = inn_cancel
         self.inn_expiry = inn_expiry
         self.inn_throttle = inn_throttle
+        self.resilience_observer = resilience_observer
         if not inn_throttle:
             self.ASSERTIONS = {name: value for name, value in self.ASSERTIONS.items()
                                if not name.startswith("inn-throttle-")}
@@ -1721,6 +1722,8 @@ kill -0 $pid 2>/dev/null && echo INNFEED-ALIVE || echo INNFEED-GONE
             view.get("active_rows"), header_value(served, "Control"))
         self.check("inn-checkgroups-control", ok, "actual checkgroups control failed its filing/no-execution assertion",
                    observed=self.facts["actual checkgroups control"])
+        if self.resilience_observer is not None:
+            self.resilience_observer("inn-checkgroups-control", msgid, found, served)
 
     @staticmethod
     def protected_feed_acceptance(text, peer, msgid):
@@ -2757,6 +2760,8 @@ printf '{group}\\n' | "$P/bin/expireover" -f - -Z {run}/expiry.lowmark
         self.check("inn-throttle-resumed", ok,
                    "queued source did not resume through the actual feed with exact receiver content",
                    observed=self.reply_summary(found))
+        if self.resilience_observer is not None:
+            self.resilience_observer("inn-throttle-resumed", msgid, found, received)
 
     # -- the whole lab ----------------------------------------------------
     def execute(self):
