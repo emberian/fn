@@ -7046,6 +7046,32 @@
         ],
         "native": true
       }
+    },
+    {
+      "id": "SCN-1045",
+      "title": "A captured query retains table and catalog row backing through COW growth and exact release",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020",
+        "STO-027"
+      ],
+      "steps": [
+        "Create bounded fixed table/row chunks, copy a span into a distinct unpublished chunk and seal its exact identity.",
+        "Capture a query with table root, row root, catalog count C, Store frontier F and operational key.",
+        "Incrementally build/grow a fresh generation while the old query probes its original table and confirms the same retained catalog row.",
+        "Publish atomically, cancel or finish the old query, settle all page borrows and release its exact ticket."
+      ],
+      "expected": [
+        "Copy changes precisely its span and preserves all other cells; negative logical-index hypothesis-removal witnesses fail the complete output conclusion. Wrong identity cannot seal or reinitialize a sealed chunk.",
+        "Old query sees its captured row context despite catalog append/context mutation and table grow/key change; no current-row fallback.",
+        "Every old/new/scratch/backing charge survives through actual last borrow and query release; duplicate or stale release cannot refund another query."
+      ],
+      "evidence": [
+        "tests/acl2/index-backing-chunks-tests.lisp",
+        "planning/evidence/index-backing-chunks-source-2026-09-30.md"
+      ],
+      "execution_scope": "Only fixed-chunk source component tested at this checkpoint. Actual provider capture/COW/grow/retirement, native execution and funding remain under implementation."
     }
   ]
 }

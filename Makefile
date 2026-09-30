@@ -626,6 +626,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/page-read-ownership-tests \
 	host/page-read-host \
 	books/page-read-resources \
+	books/index-backing-chunks \
+	tests/acl2/index-backing-chunks-tests \
 	books/page-file-lease \
 	tests/acl2/page-file-lease-tests \
 	books/page-read-executor \
@@ -1546,6 +1548,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/response-plan-pins-tests \
 	books/page-read-ownership \
 	tests/acl2/page-read-ownership-tests \
+	books/index-backing-chunks \
+	tests/acl2/index-backing-chunks-tests \
 	books/page-file-lease \
 	tests/acl2/page-file-lease-tests \
 	books/page-read-executor \

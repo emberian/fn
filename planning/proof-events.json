@@ -17752,6 +17752,20 @@
           "name": "fn-fc-temporary-mode-refusal-closes-without-stopping"
         }
       ]
+    },
+    {
+      "id": "PRF-1139",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ibp-table-copy-span-exact-output"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ibp-row-copy-span-exact-output"
+        }
+      ],
+      "pending_subject": "Internal fixed-page chunk component only. Actual nested provider capture, directory association, COW publication, query payload grants and funded retirement remain unimplemented; no host boundary or activation claim."
     }
   ]
 }
