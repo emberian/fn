@@ -347,7 +347,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-fci-` | `feed-connection-invariants`, `tests/acl2/feed-connection-invariants-tests` | Carried validity of the outbound connection table: initialization, selected-state preservation, exact put/remove lookup, and table preservation, so served reply calls do not rescan all peer buffers. |
 | `fn-feed-` | `peer-feed`, `peer-feed-invariants`, `tests/acl2/peer-feed-tests` | The outbound feed machine of specs/peering.md §3: the per-peer feed record (queue of (message-id, offer-state), backoff, in-flight offer, attempt counter), enqueue on a durable local acceptance, selection under the scheduler's contact window, the RFC 3977 §6.3.2 / RFC 4644 response-code map, the FNFD journal record kinds and their frame codec, the replay fold and the restart that resolves an in-flight offer by CHECK/IHAVE |
 
-| `fn-bpaj-` | `bp-native-app` | Native BP request intent, exact evolving-Store binding, and receipt-journal replay join; host wrappers use the same dispatch definitions |
+| `fn-bpaj-` | `bp-native-app`, `bp-native-app-replay-bridge` | Native BP request intent, exact evolving-Store binding, and receipt-journal replay join; host wrappers use the same dispatch definitions |
 | `fn-bpnc-` | `bp-node-control` | Serialized same-owner BP configuration authority and control socket completion states |
 | `fn-bplc-` | `bp-node-listener-control` | Configuration-derived listener generations, bind/install/retire effects, descriptor credits, accepted-session pins and process-death recovery |
 | `fnn-bpnc-`, `fnn-bplc-` | `host/native/bp-control`, `host/native/bp-listener-control` | Raw sole-writer control and socket I/O following the ACL2 configuration and listener plans |

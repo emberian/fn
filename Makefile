@@ -824,6 +824,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-receipt-records-tests \
 	books/bp-native-app \
 	tests/acl2/bp-native-app-tests \
+	books/bp-native-app-replay-bridge \
+	tests/acl2/bp-native-app-replay-bridge-tests \
 	books/bp-native-app-fast \
 	tests/acl2/bp-native-app-fast-tests \
 	books/bp-transit-join \
