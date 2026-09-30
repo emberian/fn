@@ -166,3 +166,20 @@ INIT/native qualification. The named visible-byte assumptions establish no
 durability. Exact source evidence is
 `planning/evidence/history-image-private-trace-source-2026-09-30.json`;
 PRF-1144 remains planned with no completion events.
+
+
+The actual `fn-hpi-tick` directory-emission phase now appends the canonical
+global `pgs-encode-run` word and grows the concrete scratch to its next
+canonical prefix while preserving the ledger, four other buffers and digest
+state. Its carried proof invariant relates ordinal/component to page/used
+position, remaining words, the captured table count and the exact current
+cached digest. The served step does not reevaluate that model. A full small
+decoded-row/page/spool trajectory reaches the positive; current-cache
+corruption and missing-cache IO demand separately falsify the two literal
+premises and complete results.
+
+This is a continuing directory-word phase law. Preservation of the entire
+carried invariant, page handoff/reset, table packing with 341 entries and two trailing zero words,
+whole pool/data/digest/root fidelity and strict productive progress remain
+open. No initial/native/qualification scope is transferred. Exact source
+evidence is `planning/evidence/history-image-directory-phase-source-2026-09-30.json`.
