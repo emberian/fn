@@ -220,3 +220,14 @@
                 (< (nth 7 s) (nth 8 s)))
            (equal (nth 7 (fn-hdc-feed byte s)) (+ 1 (nth 7 s))))
   :hints (("Goal" :in-theory (enable fn-hdc-move fn-hdc-finish-number fn-hdc-state) :do-not-induct t)))
+
+; Constant-depth result extraction; remaining metadata/padding/MKEY checks are
+; the outer row join's responsibility before publishing a decoded source row.
+(defun fn-hdc-result (s)
+  (declare (xargs :guard (fn-hdc-statep s)))
+  (cond ((eq (nth 0 s) :done)
+         (if (and (consp (nth 9 s)) (null (cdr (nth 9 s))))
+             (list :ok (car (nth 9 s)))
+           '(:refused :tree)))
+        ((eq (nth 0 s) :refused) '(:refused :tree))
+        (t '(:yield))))

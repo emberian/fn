@@ -80,3 +80,93 @@ premises were removed only after the weaker theorem was admitted. These are
 source admissions, not certification. No native module applies yet: this
 component has no host caller. Full byte-stream semantic equivalence remains
 open despite the finite compatibility witnesses.
+
+
+Current-codec symbol normalization is an additional bounded component in
+`books/history-symbol-normalize.lisp`. Package index 1 can name imported
+COMMON-LISP symbols, and `NIL` in packages 1 or 2 denotes NIL rather than a
+non-NIL symbol. An authenticated page digest does not imply canonical spelling.
+The normalizer derives the exact import table from `(pkg-imports "ACL2")`,
+proves all its home packages COMMON-LISP, and verifies that the other two codec
+packages have no imports. Arbitrary names remain borrowed spans.
+
+`fn-hdsn-begin(pkg,offset,count)` creates a seven-cell cursor.
+`fn-hdsn-tick(cursor)` returns two values: `:continue`, `(:need-byte offset
+serial)`, `(:done (opcode package))`, or `:refused`, plus the next cursor.
+`fn-hdsn-supply(offset,serial,byte,cursor)` consumes one exact requested byte,
+returns `:continue` and the next cursor, or refuses without advancement.
+A tick skips at most one static candidate; a supply compares one source byte
+against one character of the existing imported symbol name. Neither operation
+assembles or interns the input name. Opcode 0 means NIL; otherwise opcode 4 and
+the canonical package accompany the original name span unchanged. Names are
+case-sensitive. Keyword NIL and all T spellings retain the appropriate symbol
+instruction. The authenticated provider and controller retain the captured
+root/file lease, epoch, pass, row ordinal and read ownership throughout the
+scan; the local request serial also rejects duplicate and stale completions.
+
+Named semantic obligations connect classification to the existing
+`fn-scc-intern`, establish initial residual meaning, preserve that meaning
+through actual tick and byte-supply calls, and identify the terminal descriptor.
+The supplied byte must equal the corresponding character of the logical source
+name, and the source length must be the cursor's count. These are provider
+refinement premises, not runtime whole-name checks. Coherence is established at
+begin and preserved; each successful candidate skip or byte comparison strictly
+decreases a proof-only remaining-work measure. The selected table contains 978
+imports and has measure 12,249; initial remaining work is at most 12,250,
+independent of source name length. This bounds productive scan transitions;
+a waiting read remains pending and is not charged as productive advancement.
+Under the same test driver, ACL2 CAR used 160 ticks and 9 byte supplies, ACL2 NIL
+611 and 29, an unmatched `fn-private-name` 979 and 41, and COMMON-LISP NIL 4 and 3.
+A static trie could reduce aggregate work but is not needed for bounded ticks.
+
+The source-row request token is now `(epoch lease pass ordinal)`, with a
+monotone pass on restart. The normalizer's serial is local to that outer token;
+providers must not accept a prior pass merely because its offset is identical.
+The mandatory transit-binding schema extension appends a held-row field; it
+does not change this generic postfix decoder or symbol normalizer. Fixed-depth
+producer remapping must use the producer's current schema, not a cached arity.
+
+The symbol normalizer checkpoint passed a clean protected hbox `hdsn3` test-root
+load with all four source dependencies encapsulated: 27 test-root forms,
+4,840,666 total prover steps and 11.30 ACL2 seconds. Nineteen literal assertions
+and four ground semantic proofs passed. The narrow theory and teeth checks have
+zero findings. These are source admissions; no certificate, host invocation,
+qualified image or full decoder inverse is claimed.
+
+The normalizer now includes only `store-tree-codec`, so encoders can consume it
+without importing the byte parser. A clean protected persvati `hdsn4` test-root
+replay with the normalizer in one encapsulate passed all 27 forms, 3,628,003
+prover steps and 8.29 ACL2 seconds. Its narrow API and semantics are unchanged.
+
+
+The generic current-format inverse is now a source proof in
+`books/history-decode-refinement.lisp`: `fn-hdc-current-codec-refinement`
+equates the abstraction of repeated public `fn-hdc-feed` calls followed by
+`fn-hdc-result` to `fn-scc-decode-tree` over every natural in-bounds slice of
+an immutable octet pool. Malformed programs and nonminimal scalar spellings
+are included. `fn-hdc-result` returns `(:ok node)`, `(:yield)` or
+`(:refused :tree)` with fixed-depth access. The whole-pool model runner and
+abstraction are proof-only, never served functions.
+
+The per-feed inverse requires coherent carried parser state, an octet pool,
+end within that pool, an octet supplied byte, and equality of that byte with
+the immutable source at the parser position. A separate recursive invariant
+names proper atom/pair/span shape and every span's nonnegative start/count
+with start+count at most captured end. Actual feed preserves it. It is carried
+proof vocabulary and never evaluated as a whole-tree runtime check. General
+run-level epoch/lease preservation and fuel partition justify suspension
+within payload and early malformed refusal. They do not establish physical
+pin lifetime, allocation funding or authenticated provider bytes.
+
+Literal source tests assert complete inverse premises and conclusion for
+NIL, empty octets, nonminimal numbers, import NIL alias, arbitrary symbol,
+string/CONS, embedded slices and malformed opcode/package/stack/length
+programs. Source-byte hypothesis removal and separately labeled corrupted
+cached-tag/stack witnesses affirm all retained premises and conclusion
+failure. The octet-pool and negative-offset removal candidates remain
+unestablished; failed proof search is not evidence of necessity.
+
+PRF-1102 remains planned because authenticated page-byte mapping, outer token
+matching, row columns/padding/MKEY, canonical cold reencoding, concrete node
+funding and the actual host composition remain open. Source admissions carry
+no certificate, qualified image or deployment coordinate.

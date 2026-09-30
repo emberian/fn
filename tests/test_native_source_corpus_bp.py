@@ -39,7 +39,7 @@ Every decision is an image's; Python observes replies, logs and bytes:
 
 The table is printed as one `SOURCE-CORPUS-BP-TABLE <json>` line.
 
-Run: FN_NATIVE_DTN_HOST=<fn-host-dtn-developer> FN_NATIVE_HOST=<fn-host-developer>
+Run: FN_NATIVE_DTN_HOST=<fn-host-dtn-developer> FN_NATIVE_HOST=<fn-host>
      FN_DTN7_REPO=<dtn7-rs checkout> python3 -m unittest tests.test_native_source_corpus_bp
 """
 
