@@ -1404,7 +1404,8 @@
         "PRF-074",
         "PRF-189",
         "PRF-206",
-        "PRF-904"
+        "PRF-904",
+        "PRF-1103"
       ],
       "verification": [
         "proof",
@@ -1421,7 +1422,8 @@
         "tests/evidence/2026-09-18-wildmat-storage.json",
         "planning/evidence/wave-realignment-2026-09-19.md",
         "books/nntp-xref.lisp",
-        "tests/test_native_reader_index.py"
+        "tests/test_native_reader_index.py",
+        "books/nov-line-projection.lisp"
       ],
       "implementation_note": "Actual recovered memberships feed LISTGROUP and filtered ACTIVE/NEWSGROUPS through ACL2. Independent client tests exact stored views. Complete reader/overview/profile guarantees remain open. LIST COUNTS (RFC 6048 section 2.2) answers each group's exact count from the pinned buckets (PRF-073), and a Message-ID retrieval answers the article's number in the selected group, or 0 (RFC 3977 section 6.2.1.2).",
       "keystones": [
@@ -1583,7 +1585,9 @@
         "PRF-095",
         "PRF-094",
         "PRF-1063",
-        "PRF-1064"
+        "PRF-1064",
+        "PRF-1075",
+        "PRF-1076"
       ],
       "verification": [
         "proof",
@@ -1599,7 +1603,11 @@
         "planning/evidence/native-raw-integration-w35-2026-09-21/README.md",
         "books/bp-node-control.lisp",
         "tests/acl2/bp-node-control-tests.lisp",
-        "host/native/bp-control.lisp"
+        "host/native/bp-control.lisp",
+        "books/bp-node-listener-control.lisp",
+        "tests/acl2/bp-node-listener-control-tests.lisp",
+        "host/native/bp-listener-control.lisp",
+        "planning/evidence/bp-listener-control-2026-09-29.md"
       ],
       "implementation_note": "Logical single-owner serialization is implemented. The frozen03 native runtime exercises concurrent uncertainty fencing and worker lifetime, with FNFD intent reconciliation after independent restart. Full concurrent backpressure, stale completion and production two-peer lifecycle composition remain open. The integrated control endpoint uses an adjacent persistent lease and worker-owned final socket close, with bounded accept polling for orderly SIGTERM. Scoped native collision, repeated-signal and lost-reply/restart tests passed. U18's active-client ceiling, absolute frame deadline and linear bounded accumulation are now integrated with scoped native slow-drip and excess-client witnesses; complete concurrent host refinement and the combined Linux image remain open.",
       "note": "Bounded protocol effects and scoped native mutex/worker runtime evidence are recorded separately. Frozen03 supersedes the historical owner-does-not-certify blocker; it does not establish complete serialization, backpressure or crash correspondence for every later native module."
@@ -2170,7 +2178,8 @@
         "PRF-134",
         "PRF-249",
         "PRF-961",
-        "PRF-962"
+        "PRF-962",
+        "PRF-1090"
       ],
       "verification": [
         "proof",
@@ -2263,7 +2272,8 @@
         "PRF-088",
         "PRF-361",
         "PRF-997",
-        "PRF-998"
+        "PRF-998",
+        "PRF-1089"
       ],
       "verification": [
         "proof",
@@ -2281,9 +2291,10 @@
         "books/store-reclaim-holders.lisp",
         "books/nntp-reclaimed.lisp",
         "books/native-live-status.lisp",
-        "planning/evidence/reclaim-host-2026-09-25.md"
+        "planning/evidence/reclaim-host-2026-09-25.md",
+        "tests/acl2/reclaim-article-subject-tests.lisp"
       ],
-      "implementation_note": "The rule is two :set-limit configuration rows (retention, retention-days) set by `admin retention set keep-forever | released-by-all-holders | release-after DAYS` through the ordinary reconfiguration record; no row is keep-forever (D03's default). fn-rcl-verdict decides one article: tombstone, rule, age, authorship verdict, reader pin, consumer cursor, undelivered feed to a live peer, BP obligation. The tombstone replaces only the payload octets of the article record (NUL \"FN-RCL1\", the payload's SHA-256, its D25 source SHA-256 under its own agent, its length, that agent). The host calls fn-store-existing-action for D25 at every list site and fn-pidx-existing-action at the buffer sites (their pre-flip twins fn-rcl-existing-action and fn-rclb-existing-action were retired, PKT-860) and serves 423/430 \"article reclaimed\" from fn-nntp-article-response. OVER, XOVER and NEWNEWS drop a reclaimed article; `status` prints the rule and the reclaimable, held and reclaimed counts (books/native-live-status.lisp). Not yet implemented: the host `store reclaim` verb and `--dry-run`, its byte program and cuts, the native N=5,000 scenario; the consumer projection is read conservatively and feed state and FNBS rows are not read; the retention ledger keeps the reclaimed article's charge."
+      "implementation_note": "The rule is two :set-limit configuration rows (retention, retention-days) set by `admin retention set keep-forever | released-by-all-holders | release-after DAYS` through the ordinary reconfiguration record; no row is keep-forever (D03's default). fn-rcl-verdict decides one article: tombstone, rule, age, authorship verdict, reader pin, consumer cursor, undelivered feed to a live peer, BP obligation. The tombstone replaces only the payload octets of the article record (NUL \"FN-RCL2\", the payload's BLAKE3, its D25 source BLAKE3 under its own agent, its length, the typed relay-v1 article subject and that agent). The host calls fn-store-existing-action for D25 at every list site and fn-pidx-existing-action at the buffer sites (their pre-flip twins fn-rcl-existing-action and fn-rclb-existing-action were retired, PKT-860) and serves 423/430 \"article reclaimed\" from fn-nntp-article-response. OVER, XOVER and NEWNEWS drop a reclaimed article; `status` prints the rule and the reclaimable, held and reclaimed counts (books/native-live-status.lisp). Not yet implemented: the host `store reclaim` verb and `--dry-run`, its byte program and cuts, the native N=5,000 scenario; the consumer projection is read conservatively and feed state and FNBS rows are not read; the retention ledger keeps the reclaimed article's charge."
     },
     {
       "id": "NNT-012",
@@ -2553,7 +2564,8 @@
         "PRF-136",
         "PRF-225",
         "PRF-250",
-        "PRF-989"
+        "PRF-989",
+        "PRF-1090"
       ],
       "verification": [
         "proof",
@@ -2966,7 +2978,11 @@
         "PRF-275",
         "PRF-283",
         "PRF-314",
-        "PRF-329"
+        "PRF-329",
+        "PRF-1065",
+        "PRF-1073",
+        "PRF-1082",
+        "PRF-1080"
       ],
       "verification": [
         "proof",
@@ -2982,7 +2998,7 @@
         "books/store-carried-folds.lisp",
         "tests/acl2/store-carried-folds-tests.lisp"
       ],
-      "implementation_note": "The served gates keep a release record for every open forward undertaking and one for the maintenance release (fn-cvec-verdict-at, fn-cvec-article-budget-for, fn-cvec-article-verdict-at); configuration records other than `retention set` leave the last generation to it (fn-cvec-config-generations); `status` prints `maintenance-reserve octets=R transactions=N debt=D held|short`."
+      "implementation_note": "The served gates keep a release record for every open forward undertaking and one for the maintenance release (fn-cvec-verdict-at, fn-cvec-article-budget-for, fn-cvec-article-verdict-at); configuration records other than `retention set` leave the last generation to it (fn-cvec-config-generations); `status` prints `maintenance-reserve octets=R transactions=N debt=D held|short`. P12 partial (paged-history-5): exact token cold-pool admission and settlement library plus stobj adapter (PRF-1065, SCN-1002); supplied demand only. Full actual allocation/profile funding, persistent table capacity, checkpoint/recovery old/new reserve and suffix rescue remain unimplemented; the existing one-release reserve is not the full resource-vector proof. PRF-1082 adds a host-called numerical launcher extension for explicit cold resources, with no productive supported policy claim until the measured allocator/initialization consumer is integrated."
     },
     {
       "id": "CNS-003",
@@ -3376,7 +3392,9 @@
         "PRF-304",
         "PRF-967",
         "PRF-1063",
-        "PRF-1064"
+        "PRF-1064",
+        "PRF-1075",
+        "PRF-1076"
       ],
       "verification": [
         "proof",
@@ -3392,7 +3410,11 @@
         "planning/evidence/operator-daily-2026-09-26.md",
         "books/bp-node-control.lisp",
         "tests/acl2/bp-node-control-tests.lisp",
-        "host/native/bp-control.lisp"
+        "host/native/bp-control.lisp",
+        "books/bp-node-listener-control.lisp",
+        "tests/acl2/bp-node-listener-control-tests.lisp",
+        "host/native/bp-listener-control.lisp",
+        "planning/evidence/bp-listener-control-2026-09-29.md"
       ],
       "implementation_note": "health: reason=starting on the first line when the lock is held where an owner would listen (exit 20, the fenced state). Offline control/peer verbs: fn-native-control-liveness over the socket node and the lock; a stale node is removed under the control-path lease. Refusal by name: a control post and a live reconfiguration print ACL2's reason word after the status (`refused operator post REFUSED unknown-group`, `refused operator control REFUSED no-such-grant`), carried by the reasoned FNCT kinds 13/17 and reply kind 18 (books/native-control-reason.lisp) so an old client's plain request still reads the plain reply. health's starting clears on the listening observation (fn-nh-starting-clears-on-listening). Open: PKT-472."
     },
@@ -4407,7 +4429,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-234"
+        "PRF-234",
+        "PRF-089"
       ],
       "verification": [
         "proof",
@@ -4433,7 +4456,7 @@
         "planning/evidence/manifests/certify-20260927T022825Z-256887.json",
         "planning/evidence/consumer-identity-2026-09-27/native-a3-test_native_consumer_identity.log"
       ],
-      "implementation_note": "A client contract, not an RFC requirement; the rule is NNT-046's (local policy after INN readers.conf). The binding is a durable configuration record (:consumer-bind, delta code 24), offline or live; no store record, no store format change. The credential is the account's own (AUTHINFO's verifier; no consumer-specific secret). Decided by ember 2026-09-27 (PKT-642).",
+      "implementation_note": "A client contract, not an RFC requirement; the rule is NNT-046's (local policy after INN readers.conf). The binding is a durable configuration record (:consumer-bind, delta code 24), offline or live; no store record, no store format change. The credential is the account's own (AUTHINFO's verifier; no consumer-specific secret). Decided by ember 2026-09-27 (PKT-642). Q10c: consumer show reports only current consumer bindings in configuration row order, not pending invitations or redeemed accounts; live and offline use the same renderer. Source continuation and matching native confirmation are recorded separately.",
       "note": "The local socket stays the owner's (0600): a process with the owner's uid can still use unbound consumers; carrying bound requests to a non-owner peer is PKT-673."
     },
     {
@@ -4779,7 +4802,8 @@
         "PRF-932",
         "PRF-1020",
         "PRF-1059",
-        "PRF-1066"
+        "PRF-1066",
+        "PRF-1094"
       ],
       "verification": [
         "proof",
@@ -5683,7 +5707,8 @@
       "milestone": "M4",
       "status": "specified",
       "proof_targets": [
-        "PRF-1058"
+        "PRF-1058",
+        "PRF-1089"
       ],
       "verification": [
         "proof",
@@ -5692,9 +5717,10 @@
       "evidence": [
         "books/article-subject.lisp",
         "tests/acl2/article-subject-tests.lisp",
-        "tests/test_native_article_subject.py"
+        "tests/test_native_article_subject.py",
+        "tests/acl2/reclaim-article-subject-tests.lisp"
       ],
-      "note": "Projection and byte-preservation forms admitted in clean REPL; native coordinate pending runner image. Original bytes commitments and signatures unchanged. Durable Message-ID binding/retained tombstone article subject remains open."
+      "note": "Projection and byte-preservation forms admitted in clean REPL; native coordinate pending runner image. Original bytes commitments and signatures unchanged. FN-RCL2 retains the selected relay-v1 commitment through the host reclaim rewrite (PRF-1089); durable duplicate/conflict selection and retained conflict provenance remain open. No equality of protected bytes is inferred from commitment equality."
     },
     {
       "id": "SUB-007",
@@ -5703,7 +5729,10 @@
       "milestone": "M4",
       "status": "specified",
       "proof_targets": [
-        "PRF-1061"
+        "PRF-1061",
+        "PRF-1070",
+        "PRF-1078",
+        "PRF-1079"
       ],
       "verification": [
         "proof",
@@ -5714,9 +5743,50 @@
         "books/config-invariants.lisp",
         "books/native-admin.lisp",
         "tests/acl2/group-authority-tests.lisp",
-        "tests/test_native_group_authority.py"
+        "tests/test_native_group_authority.py",
+        "books/statement-snapshot-keyring.lisp",
+        "books/statement-recover-stream.lisp",
+        "books/statement-keyring-publication.lisp",
+        "books/native-statement-material.lisp",
+        "tests/acl2/statement-keyring-publication-tests.lisp",
+        "tests/acl2/statement-recover-stream-tests.lisp"
       ],
-      "note": "Configuration implementation and clean REPL complete; running pin/replacement native pending new image. Productive verified authority through hybrid-snapshot/legacy-statement index bridge remains active finite work."
+      "note": "Explicit configuration and durable snapshot/legacy-statement bridge are source implementation input with clean narrow REPL checks. Active policy is reverified under active keys; frozen history and plain held verdicts are restored. Productive native enrollment/admission/restart/rotation/fork fixture awaits matching new immutable image; physical hypothesis-removal teeth and full inverse/startup composition remain open."
+    },
+    {
+      "id": "HST-040",
+      "title": "Running and stopped snapshot producers capture one committed Store frontier and coherent identity/configuration epoch, restore the retained state, and fund bounded work with marker-last completion",
+      "specification": "specs/checkpoint.md#running-and-stopped-snapshot-producer",
+      "milestone": "M5",
+      "status": "planned",
+      "proof_targets": [
+        "PRF-1068",
+        "PRF-1086",
+        "PRF-1092",
+        "PRF-1093",
+        "PRF-1096"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-snapshot-recovery.lisp",
+        "tests/acl2/owner-snapshot-recovery-tests.lisp",
+        "books/history-page-cursor.lisp",
+        "tests/acl2/history-page-cursor-tests.lisp",
+        "books/history-page-layout.lisp",
+        "tests/acl2/history-page-layout-tests.lisp",
+        "planning/history-page-cursor-contract.md",
+        "books/history-page-buffer.lisp",
+        "tests/acl2/history-page-buffer-tests.lisp",
+        "books/history-image-census.lisp",
+        "books/history-image-header.lisp",
+        "tests/acl2/history-image-census-tests.lisp",
+        "tests/acl2/history-image-header-tests.lisp"
+      ],
+      "implementation_note": "The full S7 producer remains planned. Landed components are the live snapshot inverse and bounded descriptor/scalar page-layout libraries; these have no new producer host caller. Capture/controller, bounded history preparation, physical admission, full retained-projection recovery, I/O effects and marker-last publication are still required. Unmerged producer prototypes and their separate proof targets are not cited as landed evidence."
     }
   ]
 }

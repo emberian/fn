@@ -34,6 +34,8 @@
   (declare (xargs :guard t))
   (if (equal (fn-cbor-ag-car plan) :selected) (fn-bpn-nth 1 plan) nil))
 
+(verify-guards fn-bpnr-plan-checkpoint)
+
 (defun fn-bpnr-plan-generation (plan)
   (declare (xargs :guard t))
   (if (equal (fn-cbor-ag-car plan) :selected)

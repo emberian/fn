@@ -60,7 +60,8 @@ enabled = true
 # The service log: one line per post (served or control) and per accepted
 # connection, outcome word first and the same word the reply carries; the
 # connection lines say the ROLE the owner gave the connection at accept,
-# `reader` or `peer name=...`.  The path must be absolute.  `run` opens it
+# `reader` or `peer name=...`.  A relative path is under this file's
+# directory, as every path here is.  `run` opens it
 # append-only (created 0640 if absent, never through a symlink) before it
 # opens the store; fn never truncates or rotates it, so give it to your log
 # rotation tool (copytruncate) if it must be bounded.  Remove this table to

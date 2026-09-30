@@ -8,6 +8,7 @@ import collections
 import os
 from pathlib import Path
 import re
+import socket
 import time
 import unittest
 
@@ -117,7 +118,7 @@ class NativeBpNodeTests(unittest.TestCase):
             self.assertEqual(result.returncode, EXIT.OK, result.stderr)
 
     def start_node(self, receiver, *, once=True, extra_env=None, trust=True,
-                   inbound=True, transfer_mru=1048576, control=False):
+                   inbound=True, transfer_mru=1048576, control=False, configured=False):
         node = "dtn://receiver/" if receiver else "dtn://sender/"
         peer = "dtn://sender/" if receiver else "dtn://receiver/"
         journal = self.receiver_journal if receiver else self.sender_journal
@@ -149,7 +150,7 @@ class NativeBpNodeTests(unittest.TestCase):
         receipts = self.receiver_receipts if receiver else self.tmp / "sender-fnrj"
         workflow = self.tmp / "receiver-fnwf" if receiver else self.sender_workflow
         process = start(
-            [IMAGE, "--fn", "bp-node", "serve", str(listen_port),
+            [IMAGE, "--fn", "bp-node", "serve", "-" if configured else str(listen_port),
              str(journal), str(store), str(receipts), str(workflow),
              node, peer, node, "native-policy", node,
              "127.0.0.1", str(self.relay.port),
@@ -1288,6 +1289,119 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(frontier.read_bytes(), before_frontier)
         self.assertNotIn(b"BP node receipt queued", restarted.stdout)
         self.assertEqual(self.receiver_articles(), 1)
+
+    def change_receiver_boundary(self, port, *, timeout=120):
+        return self.invoke(
+            "operator", self.tmp / "receiver-fn.toml", "bp-boundary", "add",
+            "sender-boundary", "sender.bp.gate.invalid", "dtn://sender/", port,
+            "fn.test", "32768", "16", "contact", self.relay.port, timeout=timeout)
+
+    @staticmethod
+    def read_exact(connection, length):
+        result = b""
+        while len(result) < length:
+            piece = connection.recv(length - len(result))
+            if not piece:
+                raise AssertionError("TCPCL session ended before its expected frame")
+            result += piece
+        return result
+
+    def test_live_listener_rebind_keeps_old_session_generation_and_fd(self):
+        receiver, old_port = self.start_node(True, once=False, control=True, configured=True)
+        initial = receiver.announcement(b"BP NODE GENERATION ", timeout=30)
+        old_generation = int(initial.split()[3])
+        with Acl2Session(IMAGE) as bridge:
+            contact = acl2_octets(bridge.call("(fn-tcl-encode (fn-tcl-make-contact 4 0))"))
+            init = acl2_octets(bridge.call(
+                "(fn-tcl-encode (fn-tcl-make-sess-init 10 1024 1048576 "
+                "(fn-record-string-octets \"dtn://sender/\") nil))"))
+            server_init = acl2_octets(bridge.call(
+                "(fn-tcl-encode (fn-tcl-make-sess-init 10 1024 1048576 "
+                "(fn-record-string-octets \"dtn://receiver/\") nil))"))
+            keepalive = acl2_octets(bridge.call("(fn-tcl-encode (fn-tcl-make-keepalive))"))
+        with socket.create_connection(("127.0.0.1", old_port), timeout=15) as old:
+            old.settimeout(20)
+            old.sendall(contact)
+            self.assertEqual(self.read_exact(old, len(contact)), contact)
+            self.assertEqual(self.read_exact(old, len(server_init)), server_init)
+            old.sendall(init)
+            active = receiver.announcement(b"BP NODE GENERATION ", timeout=30)
+            self.assertTrue(active.rstrip().endswith(b"SESSION " + str(old_generation).encode()), active)
+            new_port = free_port()
+            changed = self.change_receiver_boundary(new_port)
+            self.assertEqual(changed.returncode, EXIT.OK, changed.stderr)
+            self.assertEqual(receiver.announcement(b"BP NODE LISTENING ", timeout=30).rstrip(),
+                             b"BP NODE LISTENING " + str(new_port).encode())
+            installed = receiver.announcement(b"BP NODE GENERATION ", timeout=30)
+            self.assertNotEqual(int(installed.split()[3]), old_generation)
+            self.assertIn(b"LISTENER-FDS 1 PEAK 2", installed)
+            self.assertTrue(installed.rstrip().endswith(b"SESSION " + str(old_generation).encode()), installed)
+            with self.assertRaises(OSError):
+                socket.create_connection(("127.0.0.1", old_port), timeout=2)
+            # Actual established old TCPCL FD still exchanges core-made wire
+            # after its listening descriptor has been retired.
+            old.sendall(keepalive)
+            self.assertEqual(self.read_exact(old, len(keepalive)), keepalive)
+        # The old session has closed; a new acceptance belongs to the installed generation.
+        with socket.create_connection(("127.0.0.1", new_port), timeout=15) as new:
+            accepted = receiver.announcement(b"BP NODE GENERATION ", timeout=30)
+            self.assertTrue(accepted.rstrip().endswith(b"SESSION " + installed.split()[3]), accepted)
+            new.sendall(contact)
+            self.assertEqual(self.read_exact(new, len(contact)), contact)
+        self.assertIsNone(receiver.poll(), receiver.diagnostics())
+
+    def test_live_listener_occupied_port_is_uncertain_and_restart_reconciles(self):
+        receiver, old_port = self.start_node(True, once=False, control=True, configured=True)
+        receiver.announcement(b"BP NODE GENERATION ", timeout=30)
+        before = len(tuple((self.receiver_store / "config").iterdir()))
+        with socket.socket() as occupied:
+            occupied.bind(("127.0.0.1", 0))
+            occupied.listen(1)
+            new_port = occupied.getsockname()[1]
+            changed = self.change_receiver_boundary(new_port)
+            self.assertEqual(changed.returncode, EXIT.UNCERTAIN, changed.stderr)
+            self.assertEqual(receiver.wait(timeout=45), EXIT.UNCERTAIN, receiver.diagnostics())
+            self.assertEqual(len(tuple((self.receiver_store / "config").iterdir())), before + 1)
+            with self.assertRaises(OSError):
+                socket.create_connection(("127.0.0.1", old_port), timeout=2)
+        restarted, installed = self.start_node(True, once=False, trust=False, control=True, configured=True)
+        self.assertEqual(installed, new_port)
+        self.assertIn(b"LISTENER-FDS 1", restarted.announcement(b"BP NODE GENERATION ", timeout=30))
+        self.assertEqual(len(tuple((self.receiver_store / "config").iterdir())), before + 1)
+        self.assertIsNone(restarted.poll(), restarted.diagnostics())
+
+    def test_death_at_each_live_listener_effect_recovers_published_configuration(self):
+        # Each real process-death label is a book-declared crash point.
+        cuts = ("configuration-published", "before-bind", "after-bind", "before-install",
+                "after-install", "before-retire", "after-retire")
+        for cut in cuts:
+            with self.subTest(cut=cut):
+                receiver, old_port = self.start_node(
+                    True, once=False, control=True, configured=True,
+                    extra_env={"FN_BP_LISTENER_TEST_PAUSE_CUT": cut})
+                receiver.announcement(b"BP NODE GENERATION ", timeout=30)
+                before = len(tuple((self.receiver_store / "config").iterdir()))
+                new_port = free_port()
+                client = start(
+                    [IMAGE, "--fn", "operator", str(self.tmp / "receiver-fn.toml"),
+                     "bp-boundary", "add", "sender-boundary", "sender.bp.gate.invalid",
+                     "dtn://sender/", str(new_port), "fn.test", "32768", "16",
+                     "contact", str(self.relay.port)], cwd=ROOT, env=environment())
+                self.addCleanup(client.stop, 5)
+                self.assertEqual(receiver.announcement(b"BP LISTENER CUT ", timeout=45).rstrip(),
+                                 b"BP LISTENER CUT " + cut.encode())
+                self.assertEqual(len(tuple((self.receiver_store / "config").iterdir())), before + 1)
+                receiver.kill()
+                receiver.wait(timeout=15)
+                self.assertEqual(client.wait(timeout=30), EXIT.UNCERTAIN, client.diagnostics())
+                with self.assertRaises(OSError):
+                    socket.create_connection(("127.0.0.1", old_port), timeout=2)
+                restarted, port = self.start_node(
+                    True, once=False, trust=False, control=True, configured=True)
+                self.assertEqual(port, new_port)
+                self.assertIn(b"LISTENER-FDS 1", restarted.announcement(b"BP NODE GENERATION ", timeout=30))
+                self.assertEqual(len(tuple((self.receiver_store / "config").iterdir())), before + 1)
+                restarted.stop(grace=5)
 
     def test_control_config_for_another_store_is_refused_before_listener(self):
         wrong = self.tmp / "wrong-control.toml"

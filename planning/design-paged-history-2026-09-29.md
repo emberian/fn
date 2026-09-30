@@ -144,6 +144,34 @@ refund. Only the first actual matching completion settles ownership, then
 refunds after dropping the extent mutex; the wrapper must prove exactly-once
 settlement and the lock order. A refused issue allocates no buffer/thread.
 
+The next pool increment (`page-read-ledger`, `page-read-host`, PRF-1065,
+SCN-1002) binds the complete immutable token to its charge in a dedicated
+ACL2 stobj. Actual worker death plus join, rather than a callback still
+running on that worker, is the native release observation. A cached vector
+retains its buffer charge until eviction; the file incarnation retains its
+FD charge until actual close. Persistent hash arrays may retain peak capacity
+after removing entries and must be baseline-funded at installation. The
+current adapter accepts supplied accounting inputs; it establishes no
+measured allocator bound or productive supported profile by itself.
+
+The operational grammar now names five explicit, positive u64 quantities:
+`cold_heap_octets`, `cold_workers`, `cold_descriptors`, `cold_read_ids` and
+`cold_file_ids`. Read and file identities have independent finite namespaces;
+neither wraps or refunds names. The file wrapper calls
+`fn-pio-file-issue-with-limit` before opening. Registration passes the actual
+path string to ACL2's `fn-prs-incarnation-path-demand`; the selected 64-bit
+SBCL string-layout model charges `32 + 4 * length(path)`, in addition to the
+supplied incarnation bookkeeping and collector copy allowance. The saved
+SBCL 2.6.8 hbox layout probe supports this target choice, not an arbitrary
+Common Lisp allocator guarantee. The native supported-profile consumer and
+physical baseline remain open, so explicit policy is still refused by run.
+
+The agreed follow-on uses persistent startup executors: their stack/runtime
+storage is baseline-funded until service shutdown, and each running or
+returned job holds a worker lease until exact owner settlement. It does not
+infer RSS release from joined thread death. Hash bucket capacity, cache
+buffers and decoder highwater have separate lifetimes and funding duties.
+
 Remaining complete increments, in order:
 
 1. Supported operator resource policy, representability and initial funding;
@@ -498,3 +526,63 @@ GPT-6's 2026-09-29 calls (planning/review-2026-09-29-gpt6-decisions.md):
   stobj needs its inputs in the logic: the saturated export takes the key
   as an argument and its logic is over the fold `fn-mpxt-build key rows`;
   the catalog's correspondence clause is that equality.
+
+## P12 startup and physical funding join — 2026-09-30
+
+This is the concrete next implementation contract for paged funding and
+physical lifetime. It does not activate the currently unsupported resource
+policy or claim full Store rescue. The coordinator selected funded supported
+defaults before served recovery; an unfunded startup compatibility mode is
+not part of the design. Until the join is implemented, a missing/unsupported
+policy refusal is an integration frontier, not the intended default service.
+
+The existing prelaunch path `fnn-heap-store-profile` loads the persisted
+profile through `fnn-load-config`. The run path is
+`fnn-operator-execute-run` → `fnn-control-owner-run-normalized` →
+`fnn-owner-run` → `fnn-owner-install` → `fnn-open-live-store` → recovery.
+Install the ACL2-supported policy and its permanent baseline before calling
+`fnn-owner-install`; only then create native storage and start persistent
+executors. The same normalized profile/policy must feed the launcher and
+that installation. `cold_heap_octets` is dynamic allowance: the pool budget
+and baseline also include each actual executor's stack/runtime, and the
+launcher reserves those workers separately from connection threads.
+
+The concrete APIs are `fn-owner-page-read-install-baseline`, then
+`fnn-extent-pool-storage-start(F,W,9)` and `fnn-extent-executor-start(W)`.
+The six physical maps are four incarnation maps at capacity F, one issued
+map at W and one cache-token map at 9: the current ACL2 cache retains eight
+entries and insertion may briefly retain a ninth. Capacity is normalized to
+at least eight by ACL2 before native construction. The pinned runtime silently
+clamps constructor capacity at 2^24; the supported configuration must reject
+an unrepresentable request before allocation. Permanent backing stays charged
+after removal; job completion releases a lease, not the idle thread's storage.
+An executor slot is a 64-byte native object, a 32-byte waitqueue, one 16-byte
+all-workers list cell and a four-cons ACL2 row. The native probe confirmed
+these target object sizes. Source and hash-array measurements are recorded in
+`evidence/paged-resource-pool/`; allocator assumptions remain runtime-specific.
+
+| Default component | Concrete source / remaining boundary |
+| --- | --- |
+| Cache allowance | The earlier design selected 64 MiB; the durable `page-cache-octets` field remains unimplemented. It must fund actual retained representations, independently of the eight-entry work policy. |
+| Worker count | A supported operational concurrency choice, funded with the exact launcher stack/runtime. The narrow native fixture uses two, not an inferred production default. |
+| Descriptor capacity F | Must be bounded open descriptor slots with pinned refusal/eviction, or a proved bound from the enforced suffix and retained active generations. Do not allocate four all-history maps from total T merely to obtain a numeric bound. |
+| Incarnation after descriptor eviction | Live extent handles still need the same immutable file identity; reopening a replaced pathname or an unlinked old checkpoint is invalid. Retained physical names and their retirement need a real contract before such eviction. |
+| Fresh protected read | Typed `(:discovery id file eoff elen)` lease, file held until the borrowed vector is relinquished; no fabricated integrity trailer, and no verified-cache settlement. |
+| Decoder and page scratch | Charge compressed input list, input/output arrays, subsequence, decoded list and retained decoder highwater. A page adapter may simultaneously hold 2048 u64 words, 16384 bytes, and a 2048-cons word list with boxed integers. A returned list can outlive the primitive. |
+| Ordinary cold extent | ELEN may pack many records, so a record size is not its bound. Current whole-extent allocation needs exact funding; a useful default otherwise requires streaming verification and requested slices/windows. No arbitrary stored-data cap substitutes for that change. |
+| Ledger mutation scratch | Register/settle/remove copy list spines; baseline or per-step scratch must cover their actual bounded active cardinality and collector coexistence. |
+
+A default is supported only after these allocations agree with profile
+representation and launcher funding. Explicit offline tooling enters its own
+bounded lifecycle; absence of pool state grants no offline permission to a
+served read. Named prelisten refusal and a 403 response to an admitted running
+service are distinct outcomes and must be tested separately.
+
+Snapshot preparation adds another, separate contract. The private builder's
+fixed page scratch and digest state can be leased before capture, and staging
+growth admitted before writes, but that only establishes a safe attempt and
+cleanup. Full P12 rescue requires enough resources to finish for the accepted
+state: the canonical target page count cannot be inferred from wire history
+bytes or record count alone because retained context and key snapshots are
+encoded too. The old/new/staging/spool coexistence and dW+ before POST remain
+open. Refusing midway and deleting staging is not that stronger rescue claim.

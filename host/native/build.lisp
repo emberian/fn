@@ -188,6 +188,7 @@
 ;; fn-heap-open-nursery-trigger (the open's trigger sized to its history).
 (include-book "books/heap-open-nursery")
 (include-book "books/heap-reservation")
+(include-book "books/cold-read-reservation")
 (include-book "books/native-control")
 (include-book "books/native-control-reason")
 ; PKT-209: `control log' and `control evidence'.
@@ -272,6 +273,7 @@
 (include-book "books/bp-node-rotation-buffer")
 ;; The held projection at open: fnn-bps-open calls fn-bphp-recover-auto-event.
 (include-book "books/bp-held-projection")
+(include-book "books/bp-recovery-profile")
 (include-book "books/bp-node-retire")
 ;; Natural rotation at a node verb's open (fnn-bps-rotate-when-due calls
 ;; fn-bpnrd-due-rotation-event; profile 3).
@@ -302,6 +304,8 @@
 ;; fnn-command-init-published asks fn-bs-init-pub-admission.
 (include-book "books/store-init-publication")
 (ld "host/store-host.lisp" :ld-error-action :error)
+(ld "host/page-read-host.lisp" :ld-error-action :error)
+(ld "host/page-executor-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
 ;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.
 (include-book "books/store-checkpoint-buffer")
@@ -337,6 +341,7 @@
 (ld "host/anchor-server-host.lisp" :ld-error-action :error)
 (ld "host/reader-host.lisp" :ld-error-action :error)
 (ld "host/owner-host.lisp" :ld-error-action :error)
+(ld "host/page-read-host.lisp" :ld-error-action :error)
 (ld "host/native-config-host.lisp" :ld-error-action :error)
 (ld "host/native-auth-host.lisp" :ld-error-action :error)
 (ld "host/native-auth-admin-host.lisp" :ld-error-action :error)
@@ -523,6 +528,7 @@
         (load "host/native/bp-contact.lisp")
         ; After FNBS: `bp-obligation request' hands its ADU to the carrier.
         (load "host/native/bp-obligation.lisp")
+        (load "host/native/bp-listener-control.lisp")
         (load "host/native/bp-control.lisp")
         (load "host/native/bp-node.lisp")
         ; `acl2 session': developer images only (the test fixtures' ACL2).
