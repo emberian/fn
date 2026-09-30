@@ -458,3 +458,36 @@ conversion nor terminal span materialization is permitted. Canonical body,
 table/directory emission, offset-domain checks, resource admission and complete
 publication refinement remain open. This source increment carries no served
 keystone or certification claim.
+
+`books/history-page-metadata.lisp` (PRF-1104) emits the existing six-word
+address/transaction/digest entry into the same scratch. `fn-hpm-tick` carries
+ordinal, component and remaining run words; each stored word advances once.
+Page-full, done and address/ordinal refusal preserve cursor and scratch. The
+ordinal/component survives scratch consumption/reset, since a directory entry
+may straddle physical pages. Named entry, run-position and concrete effect
+refinements use `pgs-entry-words` and `pgs-encode-run`; a table is the single-page
+case, with its341entries and two final zeros. Digest source attribution remains
+an explicit premise: the spool reader must return the exact captured/staged
+digest at that ordinal. The emitter retains only one256-bit digest and scalar
+state. It preserves concrete scratch representation and epoch/lease identity.
+Complete spool admission, authenticated reads, final root binding and served
+composition remain open; no host caller or certification claim is added.
+
+The scalar layout component also exposes `fn-hpi-region/page` in
+`books/history-page-io.lisp`: positional whole-file requests use the unchanged
+FNSI base plus the physical page offset. Accepted ranges fit the image region
+and admitted runtime/profile extent, and different pages do not overlap. The
+extent is an admission input, not a hard-coded storage ceiling. This is the
+ACL2 addressing seam for eliminating the native by-address hash. Registered
+reader extents already include the FNSI base; their relative requests must not
+add it again. The physical/controller layer still owns matching request tokens,
+short/ambiguous I/O verdicts and cancellation/pin lifetime.
+
+The MKEY column uses the existing salted32-bit FNV over Message-ID characters.
+`books/history-key-cursor.lisp` (PRF-1096) supplies a bounded one-byte core and a
+resident string client. Initial, residual and terminal refinements connect it
+to `fn-hist-hash` and `fn-hp-mkey`; scalar hash domain and progress are preserved.
+Cold string spans supply one authenticated source byte to the same core,
+without whole-string construction. Capture/root/source-position authority
+belongs to the surrounding source cursor. Absent Message-IDs keep the existing
+zero key; a present string returns one plus its FNV result. No format changes.
