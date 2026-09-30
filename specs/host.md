@@ -1597,3 +1597,37 @@ its committed frontier and concurrent key/configuration changes, and its
 marker-last durability program need their own implementation and evidence.
 SCN-217 uses stopped copies with explicitly supplied completion-observation
 fixtures; it establishes no running-capture guarantee.
+
+
+## Selected collector observation component (not yet installed)
+
+`host/native/runtime-collector.lisp` supplies a preallocated
+`fnn-runtime-collection` observation carrier and the internal primitive
+`fnn-runtime-collect-into`. The installed core must associate the carrier
+with the actual pool, epoch and issued collection nonce before invocation.
+The primitive leaves those identities unchanged; it first marks the sample
+uncertain, then invokes the selected SBCL full collector. A deferred
+collection is distinguished from completion. A completed sample contains
+raw dynamic-space page high-water, page size and dynamic reservation; only
+ACL2 may derive the occupied-prefix allowance and validate it against the
+installed runtime association. No host-supplied memory allowance is accepted.
+
+The caller must close admission for all allocating participants, drain them
+without holding the locks they require, and retain the barrier through core
+completion. Runtime finalizers/hooks and foreign allocations require their
+own supported contract; thread quiescence is not established by this
+primitive. A raw escape preserves uncertainty and the request identity. Old
+numeric fields have no authority unless the new sample is completed and
+matches the outstanding core request. Logical release, automatic collection
+and primitive return alone never reset allocation accounting.
+
+The selected dynamic prefix includes holes and page slack below its high
+page; it excludes other Lisp spaces, stacks, GC metadata and foreign memory.
+Future allocation needs allocator acquisition/slack charges beyond requested
+object bytes. Completion must prepay its observation/acknowledgment suffix,
+and successful collection need not make enough space for new work.
+
+[Exact component evidence](../planning/evidence/runtime-collector-2026-09-30/README.md)
+covers fresh SBCL 2.6.8 Linux only. The process barrier, nonce-only core
+wrapper, installed geometry and full runtime allowance remain open; this
+file is not in the served image load sequence yet.

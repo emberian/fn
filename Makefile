@@ -589,6 +589,13 @@ ACL2_BOOKS ?= books/defrecord \
 	books/post-admission-keyed \
 	tests/acl2/post-admission-keyed-tests \
 	tests/acl2/page-read-resources-tests \
+	tests/acl2/page-read-issue-source-cost-tests \
+	tests/acl2/bp-node-fragment-step-job-tests \
+	tests/acl2/index-backing-connection-pins-tests \
+	tests/acl2/index-connection-holder-tests \
+	tests/acl2/index-connection-issuer-tests \
+	tests/acl2/index-connection-repin-prepare-tests \
+	tests/acl2/index-connection-repin-tests \
 	tests/acl2/store-profile-carried-tests \
 	books/replay-identity-index \
 	tests/acl2/replay-identity-index-tests \
