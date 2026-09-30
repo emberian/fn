@@ -1404,7 +1404,8 @@
         "PRF-074",
         "PRF-189",
         "PRF-206",
-        "PRF-904"
+        "PRF-904",
+        "PRF-1103"
       ],
       "verification": [
         "proof",
@@ -1421,7 +1422,8 @@
         "tests/evidence/2026-09-18-wildmat-storage.json",
         "planning/evidence/wave-realignment-2026-09-19.md",
         "books/nntp-xref.lisp",
-        "tests/test_native_reader_index.py"
+        "tests/test_native_reader_index.py",
+        "books/nov-line-projection.lisp"
       ],
       "implementation_note": "Actual recovered memberships feed LISTGROUP and filtered ACTIVE/NEWSGROUPS through ACL2. Independent client tests exact stored views. Complete reader/overview/profile guarantees remain open. LIST COUNTS (RFC 6048 section 2.2) answers each group's exact count from the pinned buckets (PRF-073), and a Message-ID retrieval answers the article's number in the selected group, or 0 (RFC 3977 section 6.2.1.2).",
       "keystones": [
@@ -4801,7 +4803,8 @@
         "PRF-932",
         "PRF-1020",
         "PRF-1059",
-        "PRF-1066"
+        "PRF-1066",
+        "PRF-1094"
       ],
       "verification": [
         "proof",
@@ -5741,7 +5744,9 @@
         "PRF-1068",
         "PRF-1086",
         "PRF-1092",
-        "PRF-1093"
+        "PRF-1093",
+        "PRF-1096",
+        "PRF-1104"
       ],
       "verification": [
         "proof",
@@ -5757,7 +5762,15 @@
         "tests/acl2/history-page-layout-tests.lisp",
         "planning/history-page-cursor-contract.md",
         "books/history-page-buffer.lisp",
-        "tests/acl2/history-page-buffer-tests.lisp"
+        "tests/acl2/history-page-buffer-tests.lisp",
+        "books/history-image-census.lisp",
+        "books/history-image-header.lisp",
+        "tests/acl2/history-image-census-tests.lisp",
+        "tests/acl2/history-image-header-tests.lisp",
+        "books/history-page-metadata.lisp",
+        "tests/acl2/history-page-metadata-tests.lisp",
+        "books/history-page-io.lisp",
+        "tests/acl2/history-page-io-tests.lisp"
       ],
       "implementation_note": "The full S7 producer remains planned. Landed components are the live snapshot inverse and bounded descriptor/scalar page-layout libraries; these have no new producer host caller. Capture/controller, bounded history preparation, physical admission, full retained-projection recovery, I/O effects and marker-last publication are still required. Unmerged producer prototypes and their separate proof targets are not cited as landed evidence."
     }

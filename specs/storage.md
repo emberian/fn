@@ -1356,6 +1356,28 @@ is one transaction id (`fn-rfx-refused-post-consumes-one-txid`), and that
 path never spends a recovery barrier
 (`fn-hkn-refusal-keeps-the-recovery-barriers`).
 
+The corrected W8 relation is `alpha(s) = (L(s), R(s))`: physical maintenance
+preserves promised logical obligations while an explicit abstract maintenance
+transition changes resources. Operations admitted on both sides preserve their
+promised results; capacity responses may differ. A checker retains every
+refused event and explains that difference through resource state. It must not
+filter refused operations out to obtain equality. Once one side accepts work
+that the other refuses, their later logical histories can differ; the common
+admission condition cannot simply be forgotten at the next operation.
+
+The source component `books/history-resource-refinement.lisp` (PRF-1101,
+SCN-1013) makes that separation for the retention ledger: `L` contains active
+obligation identity, subject, kind, evidence and permanent release history;
+`R` contains capacity, reserved amount and each pin's charge. Its maintenance
+square covers `fn-hkn-release-retention`; its operation lemmas cover actual
+`fn-retain-admit` and `fn-retain-release`. These ledger units are not a physical
+memory/disk/descriptor/slot accounting vector. The component's projection is
+not the full node abstraction: selected subject profiles, authority/version,
+conflict evidence, numbering, snapshot carry and physical ownership must be
+framed by the complete host-called owner/reclamation bridge. That bridge,
+revocation, refused-request identity headroom and the bounded continuation
+checker remain open. The component is not a served whole-state traversal.
+
 The two operations (the Fable mandate, section 8):
 
 - **History compaction** (replacing history by a summary sufficient for
