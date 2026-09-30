@@ -7,6 +7,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 
 | Tag | Books | Meaning |
 | --- | --- | --- |
+| `fn-whl-` | `web-health` | Bounded live-owner readiness observations and HTTP answer; fixed disk/checkpoint state and at most 23 body octets, no store or feed traversal |
 | `fn-state-`, `fn-pending-`, `fn-accept-`, `fn-install-`, `fn-allocate-`, `fn-initial-`, `fn-articles-`, `fn-membership(s)-`, `fn-next-`, `fn-bump-`, `fn-clear-`, `fn-find-`, `fn-all-`, `fn-advance-`, `fn-make-`, `fn-pair-`, `fn-string-`, `fn-octet-`, `fn-no-`, `fn-selection-` | `acceptance`, `acceptance-invariants` | Logical acceptance machine: staged allocation, durable completion, fences, primitive domains |
 | `fn-apr-` | `acceptance-payload-ref` | The acceptance state's payload field as a reference to the record's bytes: the relation (every article's payload is its article record's; every article record names an article) established by the replay fold, and the host readers (the feed reply, the bridge lookup) that read the record through the event index instead of the acceptance article, with the boundary theorems |
 | `fn-sg-` | `state-globals` | State globals under guard verification: `put-global` keeps `state-p1` for every key `state-p1` does not constrain, the fact a host file that chains `f-put-global` owes at each put (row K2; `host/reader-host.lisp`). |

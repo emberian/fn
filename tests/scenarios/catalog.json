@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6301,6 +6301,39 @@
         "tests/acl2/page-read-ownership-tests.lisp"
       ],
       "execution_scope": "Pending matching union image; ownership only, no funded worker/buffer admission claim."
+    },
+    {
+      "id": "SCN-1012",
+      "title": "Network readiness on the existing owner without a second image process",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "WEB-005"
+      ],
+      "steps": [
+        "Start one scratch native owner with web listener and required authentication.",
+        "Without account or cookies, repeat GET /health and issue HEAD /health on the same owner process.",
+        "Drive reached scheduler full/stalled/slow and deferred/unobserved health observations through the model and parsed HTTP flow."
+      ],
+      "expected": [
+        "Observed ready returns 200 and ready newline; Content-Type plain text, no-store, no cookies, body at most 23 octets.",
+        "HEAD has identical status and Content-Length with empty body; owner PID remains alive/unchanged.",
+        "Full/stalled/deferred/unobserved return 503 by the named observation; slow remains clear under existing health policy.",
+        "No reader open/send, session change or full store/feed report allocation in the composed health step."
+      ],
+      "implementation": {
+        "test": "tests.test_native_web",
+        "cases": [
+          "test_health_is_bounded_readiness_in_the_running_owner_without_login"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "tests/test_native_web.py",
+        "tests/acl2/web-health-tests.lisp",
+        "tests/acl2/web-session-tests.lisp"
+      ],
+      "execution_scope": "Source scheduler and HTTP flow admission only so far. Matching plain/TLS native union and committed certification are pending; unchanged PID alone is not a process-spawn trace."
     }
   ]
 }

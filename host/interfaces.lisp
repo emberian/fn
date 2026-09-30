@@ -3185,7 +3185,8 @@
   :class ::program)
 
 (definterface fn-web-host-step
-  :class ::program)
+  :class ::program
+  :keystones ((fn-web-health-step-preserves-sessions-and-bounds-body :via fn-web-step)))
 
 (definterface fn-web-req-clen
   :class ::common-lisp-compliant)
@@ -4708,3 +4709,8 @@
 
 (definterface fn-tls-self-signed-host-serial-octets
   :class :program)
+
+; Q10d bounded observation for the owner's web readiness route.
+(definterface fn-web-host-health-observe
+  :class :program
+  :keystones ((fn-whl-success-requires-observed-clear-owner :via fn-whl-observe)))

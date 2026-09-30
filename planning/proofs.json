@@ -12428,7 +12428,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/web-request.lisp",
         "tests/acl2/web-request-tests.lisp",
@@ -12461,7 +12461,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/web-render.lisp",
         "books/web-render-keystones.lisp",
@@ -12521,7 +12521,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/web-config.lisp",
         "host/web-host.lisp",
@@ -18081,6 +18081,38 @@
         "tests/acl2/nov-column-window-tests.lisp"
       ],
       "progress_note": "Clean persvati REPL: gpt61-nbw4 25/25 forms (21 same +2 macro named forms), gpt61-nbwt4 12/12 (11 named exact), gpt61-nbwc2 10/10 (6 named exact), gpt61-nbwct3 16/16 including actual intern/commit/lookup positive and literal hypothesis removal for F, exact facts and ok. All stopped. Source-dependency loads are not certificates. No host call, qualified image, allocator measurement or completed Q5c/J1 claim. Work/fuel models loop iterations and output length, not measured physical resources. Numeric setup still requires maintained codec/profile premise. Legacy parse/cache hydration remains owned open. The two named library theorems are retained as component evidence, not cited registry events: no served keystone is claimed until the actual host-called byte cursor composes them."
+    },
+    {
+      "id": "PRF-1100",
+      "title": "Bounded network readiness from the running owner",
+      "statement": "The actual host-called fn-web-step health observation branch preserves its sessions, responds with 200 or 503 and at most 23 body octets. fn-whl-answer composed with fn-whl-observe succeeds only when current scheduler space is observed, existing operator disk health is clear, and checkpoint publication is not deferred. Malformed/unobserved values remain 503, not fabricated ready. Fixed disk/checkpoint observations and a constant vocabulary replace full report walks. Source guards and literal reached scheduler/parsed HTTP positive and hypothesis-removal witnesses; physical statvfs truth and host process behavior remain measured, not proved. Named host callers: host/web-host.lisp fn-web-host-step and fn-web-host-health-observe, from host/native/web-host.lisp fnn-web-request under owner serialization. This is local readiness, not all ten operator health states.",
+      "milestone": "M6",
+      "requirements": [
+        "WEB-005"
+      ],
+      "depends_on": [
+        "PRF-339",
+        "PRF-358",
+        "PRF-359"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-whl-success-requires-observed-clear-owner",
+        "fn-whl-answer-body-is-bounded",
+        "fn-web-health-step-preserves-sessions-and-bounds-body"
+      ],
+      "evidence": [
+        "books/web-health.lisp",
+        "books/web-session.lisp",
+        "books/web-session-keystones.lisp",
+        "tests/acl2/web-health-tests.lisp",
+        "tests/acl2/web-session-tests.lisp",
+        "host/web-host.lisp",
+        "host/native/web-host.lisp",
+        "tests/test_native_web.py"
+      ],
+      "progress_note": "Clean persvati source roots: oa61-health web-health-tests 25/25; oa61-web-health-ready web-session-tests 125/125 forms, including parsed GET/HEAD/POST, reached unavailable states and literal composed hypothesis-removal teeth; 60/60 named events match the file. Full dependencies loaded in local encapsulates; 18.09 s and 9,881,238 prover steps. Both sessions stopped. Source admission is not committed certification. Matching plain/TLS native web tests remain runner-owned; no lane image/native campaign."
     }
   ]
 }

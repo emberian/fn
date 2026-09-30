@@ -1466,6 +1466,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/web-render \
 	books/web-render-keystones \
 	tests/acl2/web-render-tests \
+	books/web-health \
+	tests/acl2/web-health-tests \
 	books/web-session \
 	books/web-session-keystones \
 	tests/acl2/web-session-tests \
