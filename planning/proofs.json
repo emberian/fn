@@ -1115,7 +1115,11 @@
       "status": "certified",
       "evidence": [],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
-      "note": "`tests/acl2/stx-transit-tests` CERTIFIES since w10/substrate-2, so the S3-1 witnesses have now RUN; before that they were written and unexecuted. 2026-09-29 (lane stx-model, PKT-892): the keystone now lives in books/stx-node-lace.lisp over the node lace read through the arena; until then it was satisfied by the EMPTY lace over every node the machine produces (planning/evidence/stx-vacuity-2026-09-29.md); the transit tests witness it with a non-empty lace over handle nodes."
+      "note": "`tests/acl2/stx-transit-tests` CERTIFIES since w10/substrate-2, so the S3-1 witnesses have now RUN; before that they were written and unexecuted. 2026-09-29 (lane stx-model, PKT-892): the keystone now lives in books/stx-node-lace.lisp over the node lace read through the arena; until then it was satisfied by the EMPTY lace over every node the machine produces (planning/evidence/stx-vacuity-2026-09-29.md); the transit tests witness it with a non-empty lace over handle nodes.",
+      "events": [
+        "fn-stx-lace-of-accept-is-merge",
+        "fn-stx-transit-ids-are-union"
+      ]
     },
     {
       "id": "PRF-022",
@@ -1134,7 +1138,11 @@
       "status": "certified",
       "evidence": [],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
-      "note": "`tests/acl2/stx-transit-tests` CERTIFIES since w10/substrate-2, so the S3-2 fork witnesses have now RUN. 2026-09-29 (lane stx-model, PKT-892): the keystone now lives in books/stx-node-lace.lisp over the node lace read through the arena; until then it was satisfied by the EMPTY lace over every node the machine produces (planning/evidence/stx-vacuity-2026-09-29.md); the transit tests witness it with a non-empty lace over handle nodes."
+      "note": "`tests/acl2/stx-transit-tests` CERTIFIES since w10/substrate-2, so the S3-2 fork witnesses have now RUN. 2026-09-29 (lane stx-model, PKT-892): the keystone now lives in books/stx-node-lace.lisp over the node lace read through the arena; until then it was satisfied by the EMPTY lace over every node the machine produces (planning/evidence/stx-vacuity-2026-09-29.md); the transit tests witness it with a non-empty lace over handle nodes.",
+      "events": [
+        "fn-stx-transit-equivocation-is-detected",
+        "fn-stx-transit-equivocation-survives-later-merges"
+      ]
     },
     {
       "id": "PRF-023",
@@ -3007,7 +3015,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/consumer-owner-local.lisp",
         "tests/acl2/consumer-owner-local-tests.lisp",
@@ -3624,6 +3632,7 @@
         "fn-sco-capture-of-later-configs",
         "fn-cpr-loop-append",
         "fn-replay-identity-append",
+        "fn-replay-identity-append-of-true-lists",
         "fn-cpe-projection-replay-append",
         "fn-th-prefix-project-append",
         "fn-cei-build-append",
@@ -3736,7 +3745,8 @@
         "fn-nntp-hdr-fn-control-status-is-the-model-status",
         "fn-own-read-archive-command-is-the-pinned-dispatcher",
         "fn-own-related-conn-control",
-        "fn-ctl-served-status-is-control-status"
+        "fn-ctl-served-status-is-control-status",
+        "fn-own-read-of-a-withdrawn-article-answers-430-withdrawn"
       ]
     },
     {
@@ -3798,7 +3808,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-live-status.lisp",
         "tests/acl2/native-live-status-tests.lisp",
@@ -3951,7 +3961,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/frame-fields.lisp",
         "books/frame-invariants.lisp",
@@ -4025,7 +4035,7 @@
       "progress_note": "Open: the durable `store reclaim` byte program and its `--dry-run` verb in books/native-operator (design B, reclaim through the compaction pack: planning/evidence/reclaim-host-2026-09-25.md); the reclaimed record's own replay step; holders: the consumer reading is conservative (a lagging consumer holds every article), feed state and FNBS rows are not read, reader pins have no durable form (offline reclaim needs none); the retention charge released with the payload; articles with a verdict other than :absent are held; the buffer's source digest slices the two ranges of the D32 description into one list on the resend-of-a-reclaimed-article path (a two-range buffer digest reader would remove it); native N=5,000 run and cut campaign (SCN-048). audit-fixes rcl (2026-09-27): since the acceptance flip the reclaim counts (status's reclaim line, the reclaim verbs' reports) read each article's HANDLE as its octets, so reclaimable-octets and freed-octets were 0 and a tombstoned article counted reclaimable again. fn-rcl-store-counts now takes the arena (host: fn-native-live-status-host-offline/-answer, fn-store-reclaim-decide(-stream), fn-store-log-reclaim-decide-stream pass the live fn-arena) and reads lengths and the tombstone head through it; KEYSTONE fn-rcl-store-counts-is-the-model-over-alpha: the counts are fn-rcl-summary / fn-rcl-held-count over ALPHA of the Store's articles (tests/acl2/store-reclaim-holders-tests.lisp).",
       "events": [
         "fn-rcl-reclaimable-is-no-obligation-names-it",
-        "fn-rcl-reclaim-never-touches-a-held-article",
+        "fn-rclp-event-never-touches-a-held-article",
         "fn-rcl-reclaim-keeps-the-duplicate-history",
         "fn-rcl-reclaim-keeps-every-binding",
         "fn-rcl-reclaim-keeps-the-numbering",
@@ -4098,7 +4108,7 @@
       "id": "PRF-095",
       "title": "The operator surface's verdicts are ACL2's: the served bound, refused-POST log lines, the credential change's effect, the developer init words, needs-upgrade and the rollback check",
       "milestone": "M5",
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "requirements": [
         "HST-001",
         "HST-002"
@@ -4512,7 +4522,7 @@
         "PRF-084"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-invite.lisp",
         "books/config.lisp",
@@ -4679,7 +4689,7 @@
         "PRF-099"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-invite.lisp",
         "books/key-statements.lisp",
@@ -4713,7 +4723,8 @@
         "fn-ks-reopen-is-blind-to-later-configuration",
         "fn-ks-a-decline-replays-as-a-decline",
         "fn-ks-recorded-recovery-completes-the-cut",
-        "fn-pcb-admission-verdict-names-its-class"
+        "fn-pcb-admission-verdict-names-its-class",
+        "fn-pcb-admission-verdict-names-a-revocation"
       ]
     },
     {
@@ -4787,7 +4798,9 @@
         "fn-sbud-article-verdict-keeps-history",
         "fn-sbud-prepare-under-article-budget-keeps-history",
         "fn-post-admitted-article-keeps-history",
-        "fn-sbud-article-figure-bounds-the-record"
+        "fn-sbud-article-figure-bounds-the-record",
+        "fn-sbud-article-gate-figure-bounds-every-record",
+        "fn-sbud-article-verdict-keeps-history-for-every-record"
       ]
     },
     {
@@ -4869,7 +4882,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/consumer-owner-local-progress.lisp",
         "tests/acl2/consumer-owner-local-progress-tests.lisp",
@@ -5047,7 +5060,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-reclaim-pack.lisp",
         "tests/acl2/store-reclaim-pack-tests.lisp",
@@ -5074,7 +5087,7 @@
         "fn-rclp-events-keep-the-summary-shape",
         "fn-rclp-a-reclaimed-event-stays-reclaimed",
         "fn-rclp-events-idempotent",
-        "fn-rclp-events-never-touch-a-held-article",
+        "fn-rclp-event-never-touches-a-held-article",
         "fn-rclp-events-keep-every-other-kind",
         "fn-rclp-freed-octets-account",
         "fn-rclp-freed-is-the-admission-count",
@@ -5098,7 +5111,7 @@
         "PRF-089"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-health.lisp",
         "tests/acl2/native-health-tests.lisp",
@@ -5188,7 +5201,7 @@
         "PRF-112"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-operator.lisp",
         "books/feed-connection.lisp",
@@ -5762,7 +5775,7 @@
         "PRF-102"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-capacity-vector.lisp",
         "books/store-capacity-config.lisp",
@@ -5812,7 +5825,7 @@
         "PRF-124"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-invite.lisp",
         "tests/acl2/peer-invite-tests.lisp",
@@ -5841,7 +5854,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/public-exposure.lisp",
         "books/public-exposure-rows.lisp",
@@ -6065,7 +6078,7 @@
         "PRF-130"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/outcome-class.lisp",
         "books/bp-run-class.lisp",
@@ -6112,7 +6125,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/hybrid-store-injected.lisp",
         "books/native-hybrid-control.lisp",
@@ -6260,6 +6273,8 @@
         "fn-auth-step-pinned-xredeem-before-tls-is-483",
         "fn-auth-step-pinned-xredeem-pass-holds-for-the-owner",
         "fn-auth-step-pinned-redeem-outcome-answers-the-word",
+        "fn-auth-step-pinned-host-event-answers-nothing",
+        "fn-auth-step-pinned-stray-event-changes-nothing",
         "fn-auth-step-redeem-hold-keeps-the-role",
         "fn-acct-redeem-bounded-plan-refuses-exactly-past-the-operator-bound",
         "fn-acct-redeem-word-is-bound-only-after-a-durable-redeem",
@@ -6307,7 +6322,7 @@
         "PRF-143"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-health.lisp",
         "books/native-control.lisp",
@@ -6341,7 +6356,8 @@
         "fn-nh-starting-clears-on-listening",
         "fn-native-control-printed-reason-is-the-decisions",
         "fn-nctrl-reasoned-read-of-encode",
-        "fn-nctrl-reason-word-of-a-reason-is-not-none"
+        "fn-nctrl-reason-word-of-a-reason-is-not-none",
+        "fn-native-control-host-refusal-names-its-class"
       ]
     },
     {
@@ -6432,7 +6448,7 @@
         "PRF-166"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/login-binding-live.lisp",
         "tests/acl2/login-binding-live-tests.lisp",
@@ -6550,7 +6566,7 @@
         "PRF-160"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-invite.lisp",
         "tests/acl2/peer-invite-tests.lisp",
@@ -6681,7 +6697,7 @@
         "PRF-172"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "statement": "books/control-evidence.lisp fn-cev-evidence-decision-is-in-the-log: for every RAW, VERDICTS, RECORDS, CONFIGS and MSGID, with WS equal to (fn-ctl-articles-withdrawals RAW VERDICTS RECORDS CONFIGS) (the owner's maintained relation: the carried records are the journal of the carried archive, established by fn-own-start's refresh and preserved by fn-own-refresh through fn-ctl-refresh-withdrawals-is-the-journal and fn-ctl-articles-withdrawals-is-the-journal; the offline report establishes it by construction), the decision fn-cev-plan of the article fn-cev-find-article names is a member of WS iff it is a withdrawal record (fn-ctl-withdrawalp). fn-cev-decision-line-is-a-log-line: then the decision's words (fn-cev-decision-line) are \"decision=\" followed by the log's line for that record (fn-cev-log-line), a member of fn-cev-log-lines WS. Host: fn-cev-report is rendered by fn-cev-live-report from host/native-live-status-host.lisp fn-native-live-status-host-answer (host/native/control.lisp fnn-control-live-status-answer, under the owner mutex) and by fn-cev-offline-report from fn-native-live-status-host-offline (host/native/io.lisp fnn-command-live-report); the operator's words come from books/control-evidence-grammar.lisp fn-cevg-parse through books/native-operator.lisp's parse (fn-cevg-parse-kind-is-a-kind), dispatched as a status report. PKT-220: books/native-health.lisp fn-nls-obligations-figures-are-the-retention-figures: for every PROFILE, OC, CACHE and OBS, the report the running owner renders for :obligations (fn-nls-live-report, from fn-native-live-status-host-answer through fn-nh-answer-report) is \"obligations=\" (fn-rtf-pin-count S) \" reserved=\" (fn-rtf-reserved S) and the obligation lines, with S the owner's Store node; books/retention-figures.lisp fn-rtf-pin-count and fn-rtf-reserved are what the offline `store ROOT retention` prints (host/store-node-host.lisp fn-store-sn-pin-count, fn-store-sn-reserved, from host/native/io.lisp fnn-command-retention). EXTENSION (lane friend-blockers, 2026-09-27, the stranger rehearsal's stops): PKT-707: status prints `capacity articles-left=N` (fn-nls-capacity-words in the live report, fn-nls-capacity-line from host/native/io.lisp fnn-out-headroom); KEYSTONE fn-nls-articles-left-is-zero-when-full: at the transaction budget, or with the history bound spent, the line says 0. The decision `control evidence` prints is the refresh's own, fn-ctl-article-plan over the article's row (flip-L8-2).",
       "evidence": [
         "books/control-evidence.lisp",
@@ -7172,7 +7188,7 @@
         "PRF-118"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "create-fn-cat{correspondence}",
         "fn-cat-commit{correspondence}",
@@ -7247,7 +7263,7 @@
         "PRF-201"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "planning/evidence/catalog-slice-2026-09-26.md",
         "books/served.lisp",
@@ -7453,7 +7469,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-config.lisp",
         "tests/acl2/native-config-tests.lisp",
@@ -7508,7 +7524,7 @@
         "PRF-183"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-heap-decide-admits-every-store-the-profile-admits",
         "fn-heap-decide-refuses-exactly-past-the-machine",
@@ -7543,7 +7559,8 @@
         "fn-heap-store-history-holds-payload-and-memberships",
         "fn-heap-arena-octets-slope",
         "fn-heap-records-retained-within-the-terms",
-        "fn-heap-small-profile-run-fits-a-two-gib-machine"
+        "fn-heap-small-profile-run-fits-a-two-gib-machine",
+        "fn-heap-record-charge-is-the-budgets-charge"
       ],
       "evidence": [
         "books/heap-figure.lisp",
@@ -7614,7 +7631,7 @@
         "PRF-161"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/public-exposure.lisp",
         "books/public-exposure-rows.lisp",
@@ -7835,7 +7852,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/tls-reload.lisp",
         "tests/acl2/tls-reload-tests.lisp",
@@ -7865,7 +7882,7 @@
         "PRF-212"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/tls-reload.lisp",
         "tests/acl2/tls-reload-tests.lisp",
@@ -7985,7 +8002,7 @@
         "PRF-186"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/config-carried-candidate.lisp",
         "tests/acl2/config-carried-candidate-tests.lisp",
@@ -8191,7 +8208,7 @@
         "PRF-188"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/reader-open-carried.lisp",
         "tests/acl2/reader-open-carried-tests.lisp",
@@ -8342,7 +8359,7 @@
         "PRF-097"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "planning/evidence/manifests/certify-20260928T163441Z-33654.json",
         "books/peer-host.lisp",
@@ -8428,7 +8445,7 @@
         "PRF-198"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/connection-budget.lisp",
         "tests/acl2/connection-budget-tests.lisp",
@@ -8572,7 +8589,7 @@
         "PRF-222"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/consumer-bound.lisp",
         "books/config.lisp",
@@ -9114,7 +9131,7 @@
         "PRF-234"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/consumer-wait.lisp",
         "books/consumer-wait-codec.lisp",
@@ -9460,7 +9477,7 @@
         "PRF-210"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/config.lisp",
         "books/config-invariants.lisp",
@@ -9530,14 +9547,11 @@
       "progress_note": "Lane compress-2 (Opus 5.5, 2026-09-29): theorem set changed with the codec. Retired with books/payload-lz.lisp: fn-lz-seal-form-denotes, fn-lz-seal-form-of-literal-block, fn-lz-decode-of-literal-block, fn-lz-run-out-len-bound, fn-lz-decode-buf-out-len-bound, fn-lz-run-extends-out, fn-lz-lits-words-is-append, fn-lz-match-bulk-is-copy-match (the seal-form's denotation is the frame keystone fn-lzr-expand-of-seal, PRF-326). New: the events above.",
       "pending_subject": "No host line calls fn-lz-* yet: lane C2 (arena-compressed) makes the compressed arena attachment whose seal is fn-lz-seal-form and whose reader is fn-lz-decode-buf, after the records flip lands.",
       "events": [
-        "fn-lz-seal-form-denotes",
-        "fn-lz-seal-form-of-literal-block",
-        "fn-lz-decode-of-literal-block",
-        "fn-lz-run-out-len-bound",
-        "fn-lz-decode-buf-out-len-bound",
-        "fn-lz-run-extends-out",
-        "fn-lz-lits-words-is-append",
-        "fn-lz-match-bulk-is-copy-match"
+        "fn-pzd-decode-bufs-is-decode",
+        "fn-zin-payload-bufs-is-payload-with",
+        "fn-pzd-decode-ok",
+        "fn-pzd-decode-of-empty",
+        "fn-zin-payload-bufs-ignores-buffers"
       ]
     },
     {
@@ -9634,7 +9648,7 @@
         "PRF-252"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/consumer-reason.lisp",
         "books/consumer-owner-local.lisp",
@@ -9666,7 +9680,7 @@
         "PRF-263"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/consumer-withdrawal.lisp",
         "tests/acl2/consumer-withdrawal-tests.lisp",
@@ -9972,7 +9986,7 @@
         "PRF-259"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/config-owner-carried.lisp",
         "tests/acl2/config-owner-carried-tests.lisp",
@@ -10248,7 +10262,7 @@
         "PRF-191"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-log-ocl.lisp",
         "planning/evidence/control-quanta-2-2026-09-27.md",
@@ -10280,7 +10294,7 @@
         "PRF-209"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/config-owner-carried.lisp",
         "host/owner-host.lisp",
@@ -10453,7 +10467,7 @@
         "PRF-144"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-prepare-served.lisp",
         "books/owner-prepare-served-ocl.lisp",
@@ -10496,7 +10510,7 @@
         "PRF-287"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-prepare-served.lisp",
         "books/owner-prepare-served-ocl.lisp",
@@ -10765,7 +10779,7 @@
         "PRF-209"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/config-owner-live-authorize.lisp",
         "tests/acl2/config-owner-live-authorize-tests.lisp",
@@ -10960,7 +10974,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-control-launch.lisp",
         "tests/acl2/native-control-launch-tests.lisp",
@@ -10996,7 +11010,9 @@
       ],
       "progress_note": "Lane host-decisions-2 (Opus 5.5, 2026-09-27; packet C). Teeth: tests/acl2/clock-reading-tests.lisp: one DTN epoch in the tree (equal to the NNTP book's); a 2026 reading with 500 ms bound (wall, error and monotonic asserted); the epoch itself usable, one millisecond before it not; each usability conjunct removed takes the wall away (no claim, negative reading, negative and non-numeric error); a malformed monotonic counter is still an observation. assurance-hygiene-4 (2026-09-29): the subject fn-clkr-observation-of-ns is not on the served path (its one caller, host/bp-ingress-host.lisp, is DEAD); the served wall decision is fn-otm-wall-reading (host/native/io.lisp fnn-owner-wall-milliseconds), and the cited KEYSTONE is now fn-clkr-wall-reading-is-the-ns-decision: for integer seconds and natural microseconds at the DTN epoch's offset, the served reading has a wall exactly when fn-clkr-observation-of-ns's ns reading is at or after the epoch, and the wall is the same milliseconds past it. fn-clkr-observation-of-ns-decides-the-wall stays in the book, uncited. assurance-hygiene-5 (2026-09-29): the open half closed. fn-otm-wall-reading lost its offset argument (the epoch is ACL2's constant; the offset hypothesis of the keystone is gone); fn-otm-monotonic-ms and fn-otm-boottime-ms convert the raw monotonic readings, the host's arithmetic deleted at every site; books/clock-reading is in both image worlds so host/interfaces.lisp names the keystones. Teeth: clock-reading-tests clkt-monotonic-* (two positives, removal witnesses for the rate, natp ticks, posp units, natp seconds and natp nanoseconds hypotheses).",
       "events": [
-        "fn-clkr-observation-of-ns-decides-the-wall"
+        "fn-clkr-wall-reading-is-the-ns-decision",
+        "fn-clkr-monotonic-readings-are-the-ns-decision",
+        "fn-clkr-wall-seconds-is-the-ns-decision"
       ]
     },
     {
@@ -11386,7 +11402,8 @@
         "fn-cvec-statement-admission-keeps-the-vector",
         "fn-cvec-statement-row-within-its-figure",
         "fn-pvc-statement-verdict-carried-is-cvec-statement-verdict-at",
-        "fn-oii-publication-group-count-is-the-rows"
+        "fn-oii-publication-group-count-is-the-rows",
+        "fn-cvec-held-row-within-its-figure"
       ]
     },
     {
@@ -11513,7 +11530,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/heap-reservation.lisp",
         "tests/acl2/heap-reservation-tests.lisp",
@@ -11969,7 +11986,8 @@
         "fn-lzr-intern-step-refines",
         "fn-lzr-commit-reseats-keep-the-arena",
         "fn-lzr-lz-read-is-the-lz-value",
-        "fn-lzr-dicts-add-keeps-bindings"
+        "fn-lzr-dicts-add-keeps-bindings",
+        "fn-lzr-decode-bufs-is-the-lz-value"
       ]
     },
     {
@@ -11984,7 +12002,7 @@
         "PRF-271"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/reclaim-instant.lisp",
         "tests/acl2/reclaim-instant-tests.lisp",
@@ -12021,7 +12039,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-feed.lisp",
         "books/peer-feed-invariants.lisp",
@@ -12066,7 +12084,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-live-status.lisp",
         "tests/acl2/native-live-status-tests.lisp",
@@ -12336,7 +12354,7 @@
         "PRF-292"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/nov-fields.lisp",
         "books/held-record.lisp",
@@ -12482,7 +12500,7 @@
       "events": [
         "fn-web-session-route-needs-its-session",
         "fn-web-session-sends-only-to-its-connection",
-        "fn-web-sessions-bound-by-281",
+        "fn-web-step-admits-no-session-but-by-281",
         "fn-wss-body-cannot-end-the-article",
         "fn-wss-emit-body-is-stuff"
       ]
@@ -12497,7 +12515,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/web-config.lisp",
         "host/web-host.lisp",
@@ -12965,7 +12983,7 @@
         "PRF-311"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-time-model.lisp",
         "tests/acl2/owner-time-space-tests.lisp",
@@ -13142,7 +13160,7 @@
         "PRF-332"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-status-columns.lisp",
         "tests/acl2/native-status-columns-tests.lisp",
@@ -13291,7 +13309,7 @@
         "PRF-368"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-live-pages.lisp",
         "tests/acl2/native-live-pages-tests.lisp",
@@ -13443,7 +13461,7 @@
         "PRF-378"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/clock-unit.lisp",
         "books/config.lisp",
@@ -13941,7 +13959,11 @@
         "fn-ndur-host-open-node-is-the-replay",
         "fn-ndur-decode-of-a-scanned-prefix",
         "fn-ndur-cpr-loop-prefix-grows",
-        "fn-ndur-recovery-never-reissues-a-logged-txid"
+        "fn-ndur-recovery-never-reissues-a-logged-txid",
+        "fn-ndh-replay-extension-keeps-every-number",
+        "fn-ndh-recovery-keeps-every-visible-number",
+        "fn-ndh-cpr-loop",
+        "fn-ndh-cst-replay-node"
       ]
     },
     {
@@ -13961,7 +13983,14 @@
         "tests/acl2/hmac-sha256-tests.lisp",
         "tests/acl2/scram-tests.lisp"
       ],
-      "progress_note": "Lane sasl increment 1 (2026-09-28): the two books and their test books certify (persvati run-20260928T221347Z-9d5b, certify-20260928T221526Z-3212938: 4 passed, none over 10 s). Increment 2 (lane sasl): the served AUTHINFO SASL arm calls it through books/sasl.lisp, and the events are cited."
+      "progress_note": "Lane sasl increment 1 (2026-09-28): the two books and their test books certify (persvati run-20260928T221347Z-9d5b, certify-20260928T221526Z-3212938: 4 passed, none over 10 s). Increment 2 (lane sasl): the served AUTHINFO SASL arm calls it through books/sasl.lisp, and the events are cited.",
+      "events": [
+        "fn-scram-honest-proof-verifies",
+        "fn-scram-finish-refuses-another-nonce",
+        "fn-scram-finish-refuses-another-binding",
+        "fn-scram-finish-accepts-only-a-valid-proof",
+        "fn-hmac-from-states-is-hmac"
+      ]
     },
     {
       "id": "PRF-385",
@@ -14142,7 +14171,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-control.lisp",
         "books/native-control-reason.lisp",
@@ -14252,7 +14281,12 @@
         "tests/acl2/nntp-post-tests.lisp",
         "planning/evidence/pkt-615-number-bound-2026-09-28.md"
       ],
-      "progress_note": "Lane join-f2-615 (Claude Opus 5.5, 2026-09-28; PKT-615 as decided). REPL-admitted on the laptop over the changed closure; teeth: reachable positive witnesses (the configured owner's first POST, the mixed journal's replay), constructed boundary witnesses at the bound (labelled), hypothesis-removal witnesses for the fit and the prior bound."
+      "progress_note": "Lane join-f2-615 (Claude Opus 5.5, 2026-09-28; PKT-615 as decided). REPL-admitted on the laptop over the changed closure; teeth: reachable positive witnesses (the configured owner's first POST, the mixed journal's replay), constructed boundary witnesses at the bound (labelled), hypothesis-removal witnesses for the fit and the prior bound.",
+      "events": [
+        "fn-snb-replay-apply-record-keeps-nexts-bounded",
+        "fn-snb-replay-keeps-nexts-bounded",
+        "fn-snb-replayed-acceptance-is-projection"
+      ]
     },
     {
       "id": "PRF-927",
@@ -14312,10 +14346,8 @@
       "events": [
         "fn-xrt-reseat-frame-keeps-the-arena",
         "fn-xrt-reseat-checkpoint-frame-keeps-the-arena",
-        "fn-xrt-first-naming-none",
-        "fn-xrt-first-naming-found",
-        "fn-xrt-first-naming-compose",
-        "fn-xrt-close-set-is-safe"
+        "fn-xrt-quiet-files-are-unnamed",
+        "fn-xrt-dropped-file-is-released"
       ]
     },
     {
@@ -14699,20 +14731,46 @@
         "fn-onb-store-boundp-of-finish",
         "fn-onb-boundp-of-refresh",
         "fn-onb-boundp-of-psrv-prepare",
-        "fn-onb-boundp-at-owner-prepare-buffer"
+        "fn-onb-boundp-at-owner-prepare-buffer",
+        "fn-onb-boundp-at-owner-prepare-identity",
+        "fn-onb-boundp-when-open-okp",
+        "fn-onbj-boundp-of-ocfg-step-owner-event",
+        "fn-onbj-boundp-at-owner-begin",
+        "fn-onbj-boundp-at-owner-declare-group",
+        "fn-onbj-boundp-at-owner-observe",
+        "fn-onbj-boundp-at-owner-node-secret",
+        "fn-onbj-boundp-at-owner-install-profile",
+        "fn-onbj-arm-acar-outcome",
+        "fn-onbj-boundp-at-owner-open-peer",
+        "fn-onbj-boundp-at-owner-log-reserve",
+        "fn-onbj-boundp-at-owner-log-order",
+        "fn-onbj-boundp-at-owner-open",
+        "fn-onbj-boundp-at-owner-open-captured",
+        "fn-onbj-boundp-at-owner-exposure-open",
+        "fn-onbj-boundp-at-owner-read-step",
+        "fn-onbj-boundp-at-owner-chunk-span",
+        "fn-onbj-boundp-at-owner-chunk-span-carried",
+        "fn-onbj-boundp-at-owner-chunk-span-fully-carried",
+        "fn-onbj-boundp-at-owner-known-abort",
+        "fn-onbj-boundp-at-owner-refuse-reservation",
+        "fn-onbj-boundp-of-ccar-ocfg-complete",
+        "fn-onbj-boundp-at-host-article-finish",
+        "fn-onbj-boundp-at-owner-prepare-buffer",
+        "fn-onbj-boundp-at-owner-reconfigure-complete",
+        "fn-onbj-open-okp-is-boundp-when-idle"
       ]
     },
     {
       "id": "PRF-986",
       "title": "The TLS handshake is an admission ACL2 decides before SSL_accept: a per-source token bucket, a node-wide in-flight and per-second bound (PKT-639, W2a)",
-      "statement": "books/tls-handshake-decision.lisp and books/tls-handshake-budget.lisp (fn-hsb-). fn-hsb-admit s hl trustedp address now queuedp decides :admit ID, :wait or :refuse (:handshake-budget or :busy) for a source (an IPv4 address or an IPv6 /64) under the operator's rows tls-handshakes-per-source-per-minute (N), tls-handshakes-in-flight (L), tls-handshake-ms (D). KEYSTONE fn-hsb-steps-keep-the-bound: from fn-hsb-okp (at most L in flight, at most L started in the tick, at most 32L waiting) every admit, done and leave keeps it. KEYSTONE fn-hsb-admits-per-tick-are-bounded: over any event sequence from any state, the admissions in one one-second tick are at most the largest L they were decided under. KEYSTONE fn-hsb-source-admits-are-bounded: from any state, over events with nondecreasing times in [T0,T1] decided at source KEY's own rate N (fn-hsb-source-rate: the operator's override for KEY, else the row), one untrusted source is admitted at most N + N(T1-T0)/60000 handshakes. KEYSTONE fn-hsb-buckets-are-bounded: over any events decided under limits whose L is at most LMAX, the per-source accounting table holds at most max(its start, 64 x LMAX) rows (a new source past 64 x L after the prune is refused :sources-full; no row is evicted). fn-hsb-mapped-address-is-one-source: an IPv4-mapped IPv6 address (::ffff:a.b.c.d) is its IPv4 source. The CGNAT overrides: the policy row tls-handshake-source-overrides (ADDRESS=N or ADDRESS/64=N, comma-separated, or none) is parsed by fn-hsb-overrides-of-word (books/tls-handshake-source.lisp), admitted by the administrative plan (books/native-admin.lisp fn-native-admin-plan, `policy set tls-handshake-source-overrides WORD`) exactly when that parse lists it, else refused :override-address or :overrides-full; fn-hsb-overrides-of-word-is-bounded: every admitted list holds at most the profile's tls-handshake-source-overrides (64) entries. fn-hsb-scratch-within-the-machine-term: the handshakes in flight under the host's limits hold at most L x *fn-cbud-handshake-scratch-octets* (128 KiB, stated) of native scratch, exactly the term books/connection-budget.lisp charges to the machine's base (fn-cbud-handshake-octets; PRF-223's run decision and live reconfiguration, fn-cbud-deltas-refusal-keeps-the-machine-held), and at most the scratch of any held slots at least L; fn-hsb-lim-in-flight-is-the-charged-slots: the L the host's limits resolve is the L the run charges. THE PROXY HEADER on a trusted path (books/tls-proxy.lisp, item 4): KEYSTONE fn-pxy-direct-unless-trusted: fn-pxy-begin answers (:direct) -- nothing is read for a header -- exactly when the transport peer is in none of the policy row tls-proxy-trusted-peers' ranges, and otherwise (:read 6 WHY) with WHY a listed range matching the peer. KEYSTONE fn-pxy-step-reads-within-the-bound: fn-pxy-step, over any octets read so far, asks for at least one and at most 528 - read more (so the header is never over-read and at most 528 octets are read for it), answers a header only as exactly the octets read, and otherwise refuses by name (:proxy-malformed, :proxy-oversize, :proxy-unsupported). KEYSTONE fn-pxy-handover-keeps-the-bound: fn-pxy-handover (the proxy's handshake done, the asserted source's admitted, charging its own per-source budget) keeps fn-hsb-okp; it is two events of the event language (fn-pxy-handover-is-two-events-by-definition), so every bound over any event sequence covers both charges. Books: books/tls-handshake-source.lisp (the source key and the override list, split by lane tls-handshake-budget-3 so native-admin admits the row without the decision's closure), books/tls-handshake-decision.lisp (the decision, the step bound, the scratch term) and books/tls-handshake-budget.lisp (the bounds over any event sequence), split by lane tls-handshake-budget-2. Host subjects: host/owner-host.lisp fn-owner-proxy-begin, fn-owner-proxy-step, fn-owner-proxy-handover (called by host/native/mux.lisp fnn-mux-proxy-or-admit, fnn-mux-proxy-readable, fnn-mux-proxy-handover), fn-owner-handshake-limits (reads the override row), fn-owner-handshake-admit, fn-owner-handshake-done, fn-owner-handshake-leave (called by host/native/mux.lisp fnn-mux-begin, fnn-mux-request-handshake, fnn-mux-start-waiting-handshake, fnn-mux-finish).",
+      "statement": "books/tls-handshake-decision.lisp and books/tls-handshake-budget.lisp (fn-hsb-). fn-hsb-admit s hl trustedp address now queuedp decides :admit ID, :wait or :refuse (:handshake-budget or :busy) for a source (an IPv4 address or an IPv6 /64) under the operator's rows tls-handshakes-per-source-per-minute (N), tls-handshakes-in-flight (L), tls-handshake-ms (D). KEYSTONE fn-hsb-steps-keep-the-bound: from fn-hsb-okp (at most L in flight, at most L started in the tick, at most 32L waiting) every admit, done and leave keeps it. KEYSTONE fn-hsb-admits-per-tick-are-bounded: over any event sequence from any state, the admissions in one one-second tick are at most the largest L they were decided under. KEYSTONE fn-hsb-source-admits-are-bounded: from any state, over events with nondecreasing times in [T0,T1] decided at source KEY's own rate N (fn-hsb-source-rate: the operator's override for KEY, else the row), one untrusted source is admitted at most N + N(T1-T0)/60000 handshakes. KEYSTONE fn-hsb-buckets-are-bounded: over any events decided under limits whose L is at most LMAX, the per-source accounting table holds at most max(its start, 64 x LMAX) rows (a new source past 64 x L after the prune is refused :sources-full; no row is evicted). fn-hsb-mapped-address-is-one-source: an IPv4-mapped IPv6 address (::ffff:a.b.c.d) is its IPv4 source. The CGNAT overrides: the policy row tls-handshake-source-overrides (ADDRESS=N or ADDRESS/64=N, comma-separated, or none) is parsed by fn-hsb-overrides-of-word (books/tls-handshake-source.lisp), admitted by the administrative plan (books/native-admin.lisp fn-native-admin-plan, `policy set tls-handshake-source-overrides WORD`) exactly when that parse lists it, else refused :override-address or :overrides-full; fn-hsb-overrides-of-word-is-bounded: every admitted list holds at most the profile's tls-handshake-source-overrides (64) entries. fn-hsb-scratch-within-the-machine-term: the handshakes in flight under the host's limits hold at most L x *fn-cbud-handshake-scratch-octets* (128 KiB, stated) of native scratch, exactly the term books/connection-budget.lisp charges to the machine's base (fn-cbud-handshake-octets; PRF-223's run decision and live reconfiguration, fn-cbud-deltas-refusal-keeps-the-machine-held), and at most the scratch of any held slots at least L; fn-hsb-lim-in-flight-is-the-charged-slots: the L the host's limits resolve is the L the run charges. THE PROXY HEADER on a trusted path (books/tls-proxy.lisp, item 4): KEYSTONE fn-pxy-direct-unless-trusted: fn-pxy-begin answers (:direct) -- nothing is read for a header -- exactly when the transport peer is in none of the policy row tls-proxy-trusted-peers' ranges, and otherwise (:read 6 WHY) with WHY a listed range matching the peer. KEYSTONE fn-pxy-step-reads-within-the-bound: fn-pxy-step, over any octets read so far, asks for at least one and at most 528 - read more (so the header is never over-read and at most 528 octets are read for it), answers a header only as exactly the octets read, and otherwise refuses by name (:proxy-malformed, :proxy-oversize, :proxy-unsupported). KEYSTONE fn-pxy-handover-keeps-the-bound: fn-pxy-handover (the proxy's handshake done, the asserted source's admitted, charging its own per-source budget) keeps fn-hsb-okp; it is two events of the event language (fn-pxy-handover-is-two-events-by-definition), so every bound over any event sequence covers both charges. Books: books/tls-handshake-source.lisp (the source key and the override list, split by lane tls-handshake-budget-3 so native-admin admits the row without the decision's closure), books/tls-handshake-decision.lisp (the decision, the step bound, the scratch term) and books/tls-handshake-budget.lisp (the bounds over any event sequence), split by lane tls-handshake-budget-2. Host subjects: host/owner-host.lisp fn-owner-proxy-begin, fn-owner-proxy-step, fn-owner-proxy-handover (called by host/native/mux.lisp fnn-mux-proxy-or-admit, fnn-mux-proxy-readable, fnn-mux-proxy-handover), fn-owner-handshake-limits (reads the override row), fn-owner-handshake-admit, fn-owner-handshake-done, fn-owner-handshake-leave (called by host/native/mux.lisp fnn-mux-begin, fnn-mux-request-handshake, fnn-mux-start-waiting-handshake, fnn-mux-finish). The captured PROXY deadline is computed by fn-pxy-deadline from monotonic clock ticks, the admitted handshake milliseconds and the clock frequency. Host fn-owner-proxy-step and fn-owner-proxy-timeout-line call fn-pxy-observe before/after reads and at timer observations. KEYSTONE fn-pxy-observe-keeps-the-read-bound preserves the framing bound and permits a header only on natural clock observations strictly before its captured deadline; a complete header at or after it refuses :proxy-timeout, invalid observations refuse :proxy-clock. Byte progress never refreshes the header deadline. Clock fidelity and scheduling remain host assumptions; this is not a hard real-time wall-clock guarantee.",
       "milestone": "M5",
       "requirements": [],
       "depends_on": [
         "PRF-211"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/tls-handshake-source.lisp",
         "books/tls-handshake-decision.lisp",
@@ -14722,7 +14780,7 @@
         "books/tls-proxy.lisp",
         "tests/acl2/tls-proxy-tests.lisp"
       ],
-      "progress_note": "Lanes tls-handshake-budget, -2, -3 (Claude Opus 5.5, 2026-09-29; row W2a, PKT-639). REPL-admitted in clean sessions (tls-handshake-source, tls-handshake-decision, tls-handshake-budget, native-admin and their teeth); host_check --load 42/42; natives tests.test_native_tls_handshake_budget and tests.test_native_mux OK at 3a8457340. Certification: the tree's background cite.",
+      "progress_note": "Lanes tls-handshake-budget, -2, -3 (Claude Opus 5.5, 2026-09-29; row W2a, PKT-639). REPL-admitted in clean sessions (tls-handshake-source, tls-handshake-decision, tls-handshake-budget, native-admin and their teeth); host_check --load 42/42; natives tests.test_native_tls_handshake_budget and tests.test_native_mux OK at 3a8457340. Certification: the tree's background cite. 2026-09-30 resumed lane: clean source replay at merged dev019; original proxy59, handshake101 and connection-budget109 test forms pass. Timed read bound and 14 deadline witnesses admitted; exact current native/image evidence remains pending runner convergence. Scratch128KiB is a stated constant, not a measurement.",
       "events": [
         "fn-hsb-steps-keep-the-bound",
         "fn-hsb-admits-per-tick-are-bounded",
@@ -14733,7 +14791,8 @@
         "fn-hsb-overrides-of-word-is-bounded",
         "fn-pxy-direct-unless-trusted",
         "fn-pxy-step-reads-within-the-bound",
-        "fn-pxy-handover-keeps-the-bound"
+        "fn-pxy-handover-keeps-the-bound",
+        "fn-pxy-observe-keeps-the-read-bound"
       ]
     },
     {
@@ -14821,7 +14880,7 @@
         "PRF-172"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/control-request-word.lisp",
         "tests/acl2/control-request-word-tests.lisp",
@@ -14872,7 +14931,7 @@
         "PRF-937"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/limits-live.lisp",
         "tests/acl2/limits-live-tests.lisp"
@@ -15094,7 +15153,7 @@
         "PRF-143"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-operator-stage.lisp",
         "tests/acl2/native-operator-stage-tests.lisp",
@@ -15123,7 +15182,7 @@
         "PRF-358"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-health.lisp",
         "books/native-status-columns.lisp",
@@ -15234,7 +15293,7 @@
         "PRF-106"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-frb-open-as-is-ref-open-as",
         "fn-frb-open-payload-as-is-ref-open-as",
@@ -15270,7 +15329,7 @@
         "PRF-368"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/native-status-columns.lisp",
         "books/native-live-status.lisp",
@@ -15571,7 +15630,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-maintenance-request.lisp",
         "tests/acl2/owner-maintenance-request-tests.lisp"
@@ -15592,7 +15651,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-maintenance-request.lisp",
         "tests/acl2/owner-maintenance-request-tests.lisp"
@@ -16153,7 +16212,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-set.lisp",
         "books/native-admin-peer.lisp",
@@ -16855,7 +16914,7 @@
         "HST-001"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/identity-retain-carried.lisp",
         "tests/acl2/identity-retain-carried-tests.lisp"
@@ -16884,7 +16943,7 @@
         "HST-001"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/identity-retain-carried.lisp",
         "tests/acl2/identity-retain-carried-tests.lisp"
@@ -17514,7 +17573,7 @@
         "PRF-284"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/post-admission-keyed.lisp",
         "books/served-catalog-owner-keyed.lisp",
@@ -17870,7 +17929,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-control.lisp",
         "tests/acl2/bp-node-control-tests.lisp",
@@ -17893,7 +17952,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-node-control.lisp",
         "tests/acl2/bp-node-control-tests.lisp",

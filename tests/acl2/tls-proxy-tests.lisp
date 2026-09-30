@@ -127,3 +127,47 @@
                      "tls refused reason=proxy-malformed proxy=10.1.2.3"))
 (assert-event (equal (fn-pxy-refusal-line :proxy-timeout *pxt-mapped-proxy*)
                      "tls refused reason=proxy-timeout proxy=10.1.2.3"))
+
+; --- KEYSTONE fn-pxy-observe-keeps-the-read-bound.
+; Real nonempty v1 and v2 header observations on each side of the deadline.
+(defconst *pxt-deadline* (fn-pxy-deadline 100 2000 1000))
+(assert-event (equal *pxt-deadline* 2100))
+(assert-event (equal (fn-pxy-deadline 100 1 60) 101))
+(assert-event (equal (fn-pxy-deadline 100 0 1000) nil))
+(assert-event (equal (fn-pxy-deadline 100 2000 0) nil))
+
+; Literal complete conclusion of fn-pxy-observe-keeps-the-read-bound.
+(defmacro pxt-timed-conclusion (octets deadline now)
+  `(let ((r (fn-pxy-observe ,octets ,deadline ,now)))
+     (and (implies (equal (car r) :more)
+                   (and (posp (cadr r))
+                        (<= (+ (len ,octets) (cadr r)) *fn-pxy-max*)))
+          (implies (equal (car r) :header)
+                   (and (equal (cadr r) (len ,octets))
+                        (<= (len ,octets) *fn-pxy-max*)
+                        (natp ,deadline) (natp ,now) (< ,now ,deadline)))
+          (member-equal (car r) '(:more :header :refuse)))))
+(assert-event
+ (and (equal (car (fn-pxy-observe *pxt-v1* *pxt-deadline* 2099)) :header)
+      (pxt-timed-conclusion *pxt-v1* *pxt-deadline* 2099)))
+(assert-event
+ (and (equal (car (fn-pxy-observe *pxt-v2* *pxt-deadline* 2099)) :header)
+      (pxt-timed-conclusion *pxt-v2* *pxt-deadline* 2099)))
+(assert-event
+ (and (equal (fn-pxy-observe (take 20 *pxt-v1*) *pxt-deadline* 2099) '(:more 1))
+      (pxt-timed-conclusion (take 20 *pxt-v1*) *pxt-deadline* 2099)))
+(assert-event
+ (and (equal (fn-pxy-observe *pxt-v1* *pxt-deadline* 2100) '(:refuse :proxy-timeout))
+      (pxt-timed-conclusion *pxt-v1* *pxt-deadline* 2100)))
+(assert-event
+ (and (equal (fn-pxy-observe (take 20 *pxt-v1*) *pxt-deadline* 2200) '(:refuse :proxy-timeout))
+      (pxt-timed-conclusion (take 20 *pxt-v1*) *pxt-deadline* 2200)))
+; Corrupted clock state refuses instead of lending a late header authority.
+(assert-event (equal (fn-pxy-observe *pxt-v1* nil 2100) '(:refuse :proxy-clock)))
+(assert-event (equal (fn-pxy-observe *pxt-v1* *pxt-deadline* -1) '(:refuse :proxy-clock)))
+; Mutation: bypassing the clock with the untimed parser accepts at the
+; exact deadline. The actual host-called decision refuses the same bytes.
+(assert-event
+ (and (equal (car (fn-pxy-step *pxt-v1*)) :header)
+      (not (< 2100 *pxt-deadline*))
+      (equal (fn-pxy-observe *pxt-v1* *pxt-deadline* 2100) '(:refuse :proxy-timeout))))

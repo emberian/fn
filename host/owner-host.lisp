@@ -3938,25 +3938,32 @@
 ;; with the transport peer), the host asks whether the peer is a trusted
 ;; proxy: (:direct), or (:read K WHY) -- read the header, K octets first.  A
 ;; peer outside the operator's `tls-proxy-trusted-peers' is never read.
-(defun fn-owner-proxy-begin (family address state)
+(defun fn-owner-proxy-begin (family address now ms ticks-per-second state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-pxy-begin (cons family address)
-                       (fn-pxy-config-peers (fn-cfg-value (fn-owner-config state))))))
+  (let ((path (fn-pxy-begin (cons family address)
+                           (fn-pxy-config-peers (fn-cfg-value (fn-owner-config state))))))
+    (value (if (equal (car path) :read)
+               (append path (list (fn-pxy-deadline now ms ticks-per-second)))
+             path))))
 
 ;; OCTETS, everything read for the header so far: (:more K), (:header N
 ;; SOURCE) or (:refuse REASON LINE), LINE the service log's line naming the
 ;; transport peer (FAMILY . ADDRESS).
-(defun fn-owner-proxy-step (family address octets state)
+(defun fn-owner-proxy-step (family address octets deadline now state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((r (fn-pxy-step octets)))
+  (let ((r (fn-pxy-observe octets deadline now)))
     (value (if (equal (car r) :refuse)
                (list :refuse (cadr r) (fn-pxy-refusal-line (cadr r) (cons family address)))
              r))))
 
-;; The header's deadline passed: the service log's line.
-(defun fn-owner-proxy-timeout-line (family address state)
+;; A timer observation: nil while time remains, otherwise ACL2's refusal
+;; line. The same check runs before a read; fn-owner-proxy-step checks again
+;; after it, so scheduler delay cannot authorize a header past the deadline.
+(defun fn-owner-proxy-timeout-line (family address deadline now state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-pxy-refusal-line :proxy-timeout (cons family address))))
+  (let ((r (fn-pxy-observe nil deadline now)))
+    (value (and (equal (car r) :refuse)
+                (fn-pxy-refusal-line (cadr r) (cons family address))))))
 
 ;; The header named SOURCE (or :local): the proxy's handshake ID is handed
 ;; over to the asserted source, which is charged its own per-source budget

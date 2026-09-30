@@ -186,7 +186,8 @@
 
 (defconst *fn-pxy-reasons*
   '((:proxy-malformed . "proxy-malformed") (:proxy-oversize . "proxy-oversize")
-    (:proxy-unsupported . "proxy-unsupported") (:proxy-timeout . "proxy-timeout")))
+    (:proxy-unsupported . "proxy-unsupported") (:proxy-timeout . "proxy-timeout")
+    (:proxy-clock . "proxy-clock")))
 
 ; The service log's line for a refused header: the transport peer (the
 ; proxy), and no asserted source (none was believed).
@@ -245,3 +246,46 @@
                         (:instance fn-hsb-admit-keeps-the-bound
                                    (s (fn-hsb-done s id)) (address asserted)
                                    (queuedp nil))))))
+
+; Clock observations are host input; ACL2 owns the captured deadline and
+; every timeout decision. The host uses this decision before and after a
+; nonblocking read, and on timer observations. A complete late header is
+; refused, and partial progress never refreshes the captured deadline.
+; A single captured deadline, in the monotonic clock's native integer ticks.
+; Invalid observations refuse; bytes never refresh the deadline.
+(defun fn-pxy-deadline (now ms ticks-per-second)
+  (declare (xargs :guard t))
+  (and (natp now) (posp ms) (posp ticks-per-second)
+       (+ now (ceiling (* ms ticks-per-second) 1000))))
+
+(defun fn-pxy-observe (octets deadline now)
+  (declare (xargs :guard t))
+  (cond ((not (and (natp deadline) (natp now)))
+         (list :refuse :proxy-clock))
+        ((<= deadline now) (list :refuse :proxy-timeout))
+        (t (fn-pxy-step octets))))
+
+(defthm fn-pxy-observe-before-deadline-by-definition
+  (implies (and (natp deadline) (natp now) (< now deadline))
+           (equal (fn-pxy-observe octets deadline now)
+                  (fn-pxy-step octets)))
+  :hints (("Goal" :in-theory (disable fn-pxy-step))))
+
+(defthm fn-pxy-observe-at-deadline-by-definition
+  (implies (and (natp deadline) (natp now) (<= deadline now))
+           (equal (fn-pxy-observe octets deadline now)
+                  (list :refuse :proxy-timeout)))
+  :hints (("Goal" :in-theory (disable fn-pxy-step))))
+
+(defthm fn-pxy-observe-keeps-the-read-bound
+  (let ((r (fn-pxy-observe octets deadline now)))
+    (and (implies (equal (car r) :more)
+                  (and (posp (cadr r))
+                       (<= (+ (len octets) (cadr r)) *fn-pxy-max*)))
+         (implies (equal (car r) :header)
+                  (and (equal (cadr r) (len octets))
+                       (<= (len octets) *fn-pxy-max*)
+                       (natp deadline) (natp now) (< now deadline)))
+         (member-equal (car r) '(:more :header :refuse))))
+  :hints (("Goal" :in-theory (disable fn-pxy-step)
+                  :use fn-pxy-step-reads-within-the-bound)))

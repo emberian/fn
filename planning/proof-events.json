@@ -14224,6 +14224,10 @@
         {
           "kind": "theorem",
           "name": "fn-pxy-handover-keeps-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pxy-observe-keeps-the-read-bound"
         }
       ]
     },

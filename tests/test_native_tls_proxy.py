@@ -24,6 +24,7 @@ import socket
 import ssl
 import struct
 import time
+import threading
 import unittest
 
 from tests.native_harness import EXIT, Node, executable, native_image
@@ -121,6 +122,43 @@ class NativeTlsProxyTests(unittest.TestCase):
         time.sleep(0.5)
         text = self.log.read_text(errors="replace") if self.log.exists() else ""
         self.assertNotIn("198.51.100.66", text)
+        self.assertIsNone(self.node.process.poll(), "the owner exited")
+
+    def test_partial_header_progress_does_not_refresh_the_deadline(self):
+        self.policy("tls-handshake-ms", 2000)
+        self.node.start()
+        raw = socket.create_connection(("127.0.0.1", self.node.tls_port), timeout=6,
+                                       source_address=(PROXY, 0))
+        stopped = threading.Event()
+
+        def drip():
+            for octet in v1("198.51.100.7")[:10]:
+                if stopped.wait(0.3):
+                    return
+                try:
+                    raw.sendall(bytes([octet]))
+                except OSError:
+                    return
+
+        began = time.monotonic()
+        sender = threading.Thread(target=drip)
+        sender.start()
+        try:
+            try:
+                observed = raw.recv(16)
+            except ConnectionResetError:
+                observed = b""
+            self.assertEqual(observed, b"")
+            elapsed = time.monotonic() - began
+            self.assertGreater(elapsed, 1.5, elapsed)
+            self.assertLess(elapsed, 3.5, elapsed)
+        finally:
+            stopped.set()
+            sender.join(timeout=2)
+            raw.close()
+        self.assertFalse(sender.is_alive())
+        self.log_text("tls refused reason=proxy-timeout proxy=127.0.0.10")
+        self.assertTrue(self.served(PROXY, v2("198.51.100.8")))
         self.assertIsNone(self.node.process.poll(), "the owner exited")
 
     def test_a_malformed_or_silent_header_from_the_proxy_is_refused_by_name(self):

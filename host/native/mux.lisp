@@ -938,41 +938,61 @@ answers :wait (the node's slots or this second's starts are spent)."
           (fnn-owner-socket-address service (fnn-mux-conn-socket conn))
         (let ((path (fnn-owner-serialized
                      service nil
-                     (lambda () (fnn-owner-core 'fn-owner-proxy-begin family address))
+                     (lambda () (fnn-owner-core 'fn-owner-proxy-begin family address
+                                              (fnn-now) ms internal-time-units-per-second))
                      :reader)))
           (cond ((equal path '(:direct)) (fnn-mux-admit loop conn ms))
-                ((and (consp path) (eq (first path) :read) (posp (second path)))
+                ((and (consp path) (eq (first path) :read) (posp (second path))
+                      (natp (fourth path)))
                  (setf (fnn-mux-conn-phase conn) :proxy
                        (fnn-mux-conn-proxy-read conn) nil
                        (fnn-mux-conn-proxy-want conn) (second path)
-                       (fnn-mux-conn-hs-deadline conn) (fnn-mux-ms-ticks ms)
+                       (fnn-mux-conn-hs-deadline conn) (fourth path)
                        (fnn-mux-conn-want conn) :input))
                 (t (fnn-fault "owner returned a malformed proxy path"))))))))
 
+(defun fnn-mux-proxy-expired (loop conn)
+  "Ask ACL2 about the captured deadline; close only on its refusal."
+  (let ((service (fnn-mux-service loop)))
+    (multiple-value-bind (family address)
+        (fnn-owner-socket-address service (fnn-mux-conn-socket conn))
+      (let ((line (fnn-owner-serialized
+                   service nil
+                   (lambda () (fnn-owner-core 'fn-owner-proxy-timeout-line
+                                              family address
+                                              (fnn-mux-conn-hs-deadline conn) (fnn-now)))
+                   :reader)))
+        (when line
+          (fnn-mux-handshake-refused loop conn line)
+          t)))))
+
 (defun fnn-mux-proxy-readable (loop conn)
-  "Read at most what ACL2 asked for of the PROXY header, then ask again."
-  (let ((got (fnn-mux-read-plain (fnn-mux-conn-fd conn)
-                                 (fnn-make-octets (fnn-mux-conn-proxy-want conn)))))
-    (cond ((eq got :input) nil)
-          ((zerop (length got)) (fnn-mux-finish loop conn))
-          (t
-           (setf (fnn-mux-conn-proxy-read conn)
-                 (append (fnn-mux-conn-proxy-read conn) (coerce got 'list)))
-           (let ((service (fnn-mux-service loop)))
-             (multiple-value-bind (family address)
-                 (fnn-owner-socket-address service (fnn-mux-conn-socket conn))
-               (let ((r (fnn-owner-serialized
-                         service nil
-                         (lambda () (fnn-owner-core 'fn-owner-proxy-step family address
-                                                    (fnn-mux-conn-proxy-read conn)))
-                         :reader)))
-                 (case (and (consp r) (first r))
-                   (:more (unless (posp (second r))
-                            (fnn-fault "owner returned a malformed proxy read"))
-                          (setf (fnn-mux-conn-proxy-want conn) (second r)))
-                   (:header (fnn-mux-proxy-handover loop conn family address (third r)))
-                   (:refuse (fnn-mux-handshake-refused loop conn (third r)))
-                   (t (fnn-fault "owner returned a malformed proxy step"))))))))))
+  "Read at most ACL2's request, checking its captured deadline on both sides."
+  (unless (fnn-mux-proxy-expired loop conn)
+    (let ((got (fnn-mux-read-plain (fnn-mux-conn-fd conn)
+                                  (fnn-make-octets (fnn-mux-conn-proxy-want conn)))))
+      (cond ((eq got :input) nil)
+            ((zerop (length got)) (fnn-mux-finish loop conn))
+            (t
+             (setf (fnn-mux-conn-proxy-read conn)
+                   (append (fnn-mux-conn-proxy-read conn) (coerce got 'list)))
+             (let ((service (fnn-mux-service loop)))
+               (multiple-value-bind (family address)
+                   (fnn-owner-socket-address service (fnn-mux-conn-socket conn))
+                 (let ((r (fnn-owner-serialized
+                           service nil
+                           (lambda () (fnn-owner-core 'fn-owner-proxy-step family address
+                                                      (fnn-mux-conn-proxy-read conn)
+                                                      (fnn-mux-conn-hs-deadline conn)
+                                                      (fnn-now)))
+                           :reader)))
+                   (case (and (consp r) (first r))
+                     (:more (unless (posp (second r))
+                              (fnn-fault "owner returned a malformed proxy read"))
+                            (setf (fnn-mux-conn-proxy-want conn) (second r)))
+                     (:header (fnn-mux-proxy-handover loop conn family address (third r)))
+                     (:refuse (fnn-mux-handshake-refused loop conn (third r)))
+                     (t (fnn-fault "owner returned a malformed proxy step")))))))))))
 
 (defun fnn-mux-proxy-handover (loop conn family address header-source)
   (let* ((service (fnn-mux-service loop))
@@ -1124,17 +1144,8 @@ operation then observes the error or the end of input)."
                     (due (fnn-mux-conn-hs-deadline conn)))
                (fnn-mux-tls-log loop conn :timeout)
                (fnn-mux-finish loop conn))
-              ((and (eq (fnn-mux-conn-phase conn) :proxy)
-                    (due (fnn-mux-conn-hs-deadline conn)))
-               (multiple-value-bind (family address)
-                   (fnn-owner-socket-address service (fnn-mux-conn-socket conn))
-                 (let ((line (ignore-errors
-                              (fnn-owner-serialized
-                               service nil
-                               (lambda () (fnn-owner-core 'fn-owner-proxy-timeout-line
-                                                          family address))
-                               :reader))))
-                   (fnn-mux-handshake-refused loop conn line))))
+              ((eq (fnn-mux-conn-phase conn) :proxy)
+               (fnn-mux-proxy-expired loop conn))
               ((and (eq (fnn-mux-conn-phase conn) :draining)
                     (due (fnn-mux-conn-drain-deadline conn)))
                (fnn-mux-finish loop conn))
