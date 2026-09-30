@@ -58,3 +58,16 @@
    (and (equal rows '((:retention :undertake 0 1 0 "a" "b" "c" 1)))
         (equal rows (fn-srs-decode wire)) (equal carries '(nil))
         (fn-srss-carries-correspondsp rows carries)))))
+; Width lemma's sole retained seed hypothesis is necessary; provenance is
+; intentionally not required for this structural statement.
+(assert-event
+ (let ((acc '(row)) (carries nil))
+  (mv-let (rows out) (fn-srss-decode-loop nil acc carries)
+   (and (not (equal (len acc) (len carries))) (true-listp out)
+        (not (equal (len rows) (len out)))))))
+; Improper seed tails do not need whole-list validation for aligned width.
+(assert-event
+ (mv-let (rows out) (fn-srss-decode-loop nil '(a . tail) '(nil . tail))
+  (and (not (true-listp '(a . tail))) (not (true-listp '(nil . tail)))
+       (equal (len '(a . tail)) (len '(nil . tail)))
+       (true-listp out) (equal (len rows) (len out)))))

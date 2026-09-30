@@ -125,8 +125,7 @@
 
 
 (defthm fn-srss-loop-preserves-aligned-width
- (implies (and (true-listp acc) (true-listp carries) (equal (len acc) (len carries))
-               (not (equal (mv-nth 0 (fn-srss-decode-loop octet-records acc carries)) :bad)))
+ (implies (equal (len acc) (len carries))
   (and (true-listp (mv-nth 1 (fn-srss-decode-loop octet-records acc carries)))
        (equal (len (mv-nth 1 (fn-srss-decode-loop octet-records acc carries)))
               (len (mv-nth 0 (fn-srss-decode-loop octet-records acc carries))))))
@@ -136,11 +135,10 @@
    (fn-srss-event-decode fn-rcon-wire-event-p fn-store-event-decode-exact
     fn-srss-event-result-rewrites-by-definition)))))
 
-(defthm fn-srss-success-has-aligned-snapshot-carries
- (implies (not (equal (mv-nth 0 (fn-srss-decode octet-records)) :bad))
-  (and (true-listp (mv-nth 1 (fn-srss-decode octet-records)))
+(defthm fn-srss-has-aligned-snapshot-carries
+ (and (true-listp (mv-nth 1 (fn-srss-decode octet-records)))
        (equal (len (mv-nth 1 (fn-srss-decode octet-records)))
-              (len (mv-nth 0 (fn-srss-decode octet-records))))))
+              (len (mv-nth 0 (fn-srss-decode octet-records)))))
  :rule-classes nil
  :hints (("Goal" :use ((:instance fn-srss-loop-preserves-aligned-width (acc nil) (carries nil)))
   :in-theory (e/d (fn-srss-decode) (fn-srss-decode-loop)))))
