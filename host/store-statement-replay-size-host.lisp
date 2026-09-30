@@ -14,17 +14,21 @@
 
 (defun fn-store-srs-seed (checkpoint info)
  (declare (xargs :guard t))
- (mv-let (metadata root fields) (fn-sctsr-original-context-carries info)
-  (declare (ignore root))
-  (fn-ssrs-seed (if checkpoint (fn-sco-identity checkpoint)
-                   (fn-stxk-initial-context 0))
-                (if (and checkpoint (eq metadata :ready)) fields nil))))
+ (if checkpoint
+  (mv-let (metadata root fields) (fn-sctsr-original-context-carries info)
+   (declare (ignore root))
+   (fn-ssrs-seed (fn-sco-identity checkpoint)
+                 (if (eq metadata :ready) fields nil)))
+  ; The public no-checkpoint seed is this exact empty original context.
+  ; Its six carries come from the guarded constructor, not a summary scan.
+  (mv-let (ctx fields) (fn-ics-begin 0)
+   (fn-ssrs-seed ctx fields))))
 
 (defthm fn-store-srs-seed-original-result-unfolds
  (equal (mv-nth 0 (fn-store-srs-seed checkpoint info))
         (fn-ssr-seed (if checkpoint (fn-sco-identity checkpoint)
                          (fn-stxk-initial-context 0))))
- :hints (("Goal" :in-theory (e/d (fn-store-srs-seed fn-ssrs-seed)
+ :hints (("Goal" :in-theory (e/d (fn-store-srs-seed fn-ssrs-seed fn-ics-begin)
                      (fn-sctsr-original-context-carries fn-ssr-seed)))))
 
 (defun fn-store-statement-replay-seed-sized (state)
