@@ -2,13 +2,8 @@
 ; Correspondence is a producer proof obligation, never a served graph scan.
 (in-package "ACL2")
 (include-book "store-tree-size")
-(include-book "state-globals")
+(include-book "owner-canonical-epoch")
 (include-book "snapshot-source-token")
-
-(defun fn-owner-canonical-epoch (state)
-  (declare (xargs :stobjs state :guard t))
-  (if (boundp-global 'fn-owner-canonical-epoch state)
-      (f-get-global 'fn-owner-canonical-epoch state) 0))
 
 (defun fn-owner-canonical-state (state)
   (declare (xargs :stobjs state :guard t))
