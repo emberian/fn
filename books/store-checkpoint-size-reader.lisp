@@ -203,6 +203,23 @@
                             fn-scc-intern fn-scsr-pair-info
                             fn-oct-slice-list-is-take-nthcdr)))))
 
+; The original reference lookup projects an article/composite payload from
+; the raw P row. Its annotation must follow that same fixed field selection.
+; Walk at most the literal field index (4 or 6), never the selected payload.
+(defun fn-scsr-info-field (n info)
+ (declare (xargs :guard (natp n) :measure (nfix n)))
+ (if (and (fn-scs-carryp (fn-scsr-info-root info))
+          (consp (fn-scsr-cdr info)))
+     (if (zp n) (fn-scsr-car (fn-scsr-cdr info))
+       (fn-scsr-info-field (1- n) (fn-scsr-cdr (fn-scsr-cdr info))))
+   nil))
+(defun fn-scsr-payload-info (value info)
+ (declare (xargs :guard t))
+ (cond ((not (consp value)) nil)
+       ((stringp (fn-sco-at 3 value)) (fn-scsr-info-field 4 info))
+       ((consp (fn-sco-at 6 value)) (fn-scsr-info-field 6 info))
+       (t info)))
+
 (defun fn-sctsr-step (i end stack infos table info-table fn-octets)
   (declare (xargs :stobjs fn-octets
                   :guard (and (natp i) (natp end) (< i end)
@@ -212,10 +229,12 @@
       (let ((n (fn-sccr-read-nat (+ 1 i) end fn-octets)))
         (if (not n)
             (mv nil nil)
-          (let ((v (fn-sct-ref-get (car n) table)))
+          (let* ((raw (fn-cei-get (car n) table))
+                 (v (fn-sct-payload-of raw)))
             (if (not v) (mv :dangling nil)
               (mv (cons (cons v stack) (cdr n))
-                  (cons (fn-cei-get (car n) info-table) infos))))))
+                  (cons (fn-scsr-payload-info raw (fn-cei-get (car n) info-table))
+                        infos))))))
     (fn-scsr-step i end stack infos fn-octets)))
 
 (defthm fn-sctsr-step-result-is-existing-by-definition
@@ -223,7 +242,7 @@
          (fn-sctr-step i end stack table fn-octets))
   :rule-classes nil
   :hints (("Goal" :use fn-scsr-step-result-is-existing-by-definition
-           :in-theory (enable fn-sctsr-step fn-sctr-step))))
+           :in-theory (enable fn-sctsr-step fn-sctr-step fn-sct-ref-get))))
 
 (local (defthm fn-sctsr-step-projection-rewrite
   (equal (mv-nth 0 (fn-sctsr-step i end stack infos table info-table fn-octets))
@@ -299,24 +318,25 @@
                               (natp ea) (natp eb) (<= ea eb) (<= eb (fn-octets-len fn-octets))
                               (natp ra) (natp rb) (<= ra rb) (<= rb (fn-octets-len fn-octets)))))
   (let ((f (fn-sctr-decode-rows fa fb nil fn-octets)))
-    (if (not (eq (car f) :ok)) (mv f nil)
+    (if (not (eq (car f) :ok)) (mv f nil nil)
       (let ((frows (cadr f)))
         (if (not (and (consp frows) (null (cdr frows)) (fn-sct-f-rowp (car frows))))
-            (mv (list :refused :f-row) nil)
+            (mv (list :refused :f-row) nil nil)
           (let* ((frow (car frows)) (s (cadr frow)))
             (mv-let (p pinfos) (fn-sctsr-decode-rows pa pb nil nil fn-octets)
-              (if (not (eq (car p) :ok)) (mv p nil)
-                (if (not (equal (len (cadr p)) s)) (mv (list :refused :close) nil)
+              (if (not (eq (car p) :ok)) (mv p nil nil)
+                (if (not (equal (len (cadr p)) s)) (mv (list :refused :close) nil nil)
                   (let* ((table (fn-cei-build (cadr p)))
                          (info-table (fn-scsr-info-index pinfos))
                          (e (fn-sctr-decode-rows ea eb table fn-octets)))
-                    (if (not (eq (car e) :ok)) (mv e nil)
-                      (if (not (equal (len (cadr e)) s)) (mv (list :refused :close) nil)
+                    (if (not (eq (car e) :ok)) (mv e nil nil)
+                      (if (not (equal (len (cadr e)) s)) (mv (list :refused :close) nil nil)
                         (mv-let (r rinfos) (fn-sctsr-decode-rows ra rb table info-table fn-octets)
-                          (if (not (eq (car r) :ok)) (mv r nil)
-                            (if (not (equal (len (cadr r)) 4)) (mv (list :refused :close) nil)
+                          (if (not (eq (car r) :ok)) (mv r nil nil)
+                            (if (not (equal (len (cadr r)) 4)) (mv (list :refused :close) nil nil)
                               (mv (list :ok (list frow (cadr p) (cadr e) (cadr r)))
-                                  (fn-scsr-car (fn-scsr-cdr rinfos))))))))))))))))))
+                                  (fn-scsr-car (fn-scsr-cdr rinfos))
+                                  (list :summary-region ra rb :R 1)))))))))))))))))
 
 (local (defthm fn-sctsr-decode-rows-projection-rewrite
  (equal (mv-nth 0 (fn-sctsr-decode-rows start end table info-table fn-octets))
@@ -355,6 +375,47 @@
         (mv :ready (fn-scsr-info-root info) fields)
       (mv :unavailable nil nil))))
 
+(local (defun fn-scsr-select-provenance-ind (n info x)
+ (declare (xargs :measure (nfix n)))
+ (if (zp n) (list info x)
+   (fn-scsr-select-provenance-ind (1- n) (fn-scsr-cdr (fn-scsr-cdr info)) (cdr x)))))
+(defthm fn-scsr-select-fields-preserves-provenance
+ (implies (and (natp n) (true-listp x) (equal (len x) n)
+               (fn-scsr-info-provenancep info x)
+               (fn-scs-carryp (fn-scsr-info-root info))
+               (mv-nth 1 (fn-scsr-select-fields n info)))
+          (fn-scs-correspondsp (mv-nth 0 (fn-scsr-select-fields n info)) x))
+ :hints (("Goal" :induct (fn-scsr-select-provenance-ind n info x)
+          :in-theory (e/d (fn-scsr-select-fields fn-scsr-info-provenancep
+                           fn-scsr-info-root fn-scsr-car fn-scsr-cdr
+                           fn-scs-correspondsp)
+                          (fn-scs-summary fn-scs-atom fn-scs-carryp)))))
+
+(defthm fn-sctsr-original-context-ready-has-exact-carries
+ (implies (and (true-listp ctx) (equal (len ctx) 6)
+               (fn-scsr-info-provenancep info ctx)
+               (equal (mv-nth 0 (fn-sctsr-original-context-carries info)) :ready))
+          (and (equal (mv-nth 1 (fn-sctsr-original-context-carries info))
+                      (fn-scs-summary ctx))
+               (fn-scs-correspondsp
+                (mv-nth 2 (fn-sctsr-original-context-carries info)) ctx)))
+ :hints (("Goal" :use ((:instance fn-scsr-select-fields-preserves-provenance
+                         (n 6) (x ctx))
+                       (:instance fn-scsr-provenance-valid-root (x ctx)))
+          :in-theory (e/d (fn-sctsr-original-context-carries)
+                          (fn-scsr-select-fields fn-scsr-info-provenancep
+                           fn-scsr-select-fields-preserves-provenance
+                           fn-scsr-provenance-valid-root fn-scs-correspondsp
+                           fn-scs-summary fn-scs-carryp fn-scsr-info-root)))))
+
+(defthm fn-scsr-info-field-preserves-provenance
+ (implies (and (natp n) (fn-scsr-info-provenancep info x))
+          (fn-scsr-info-provenancep (fn-scsr-info-field n info) (nth n x)))
+ :hints (("Goal" :induct (fn-scsr-select-provenance-ind n info x)
+          :in-theory (e/d (fn-scsr-info-field fn-scsr-info-provenancep
+                           fn-scsr-info-root fn-scsr-car fn-scsr-cdr nth)
+                          (fn-scs-summary fn-scs-carryp fn-scs-atom)))))
+
 (local (defthm fn-sctsr-step-infos-true-listp
  (implies (true-listp infos)
           (true-listp (mv-nth 1 (fn-sctsr-step i end stack infos table info-table fn-octets))))
@@ -374,26 +435,26 @@
   (declare (xargs :stobjs fn-octets :guard t :verify-guards nil))
   (let ((start (if (consp plan) (fn-sccr-at 1 (car plan)) 0)))
     (if (not (fn-sccr-planp plan start fn-octets))
-        (mv (list :refused :layout) nil)
+        (mv (list :refused :layout) nil nil)
       (let ((h (and (consp plan) (fn-scc-parse-header (fn-sccr-at 0 (car plan))))))
-        (if (not h) (mv (list :refused :header) nil)
+        (if (not h) (mv (list :refused :header) nil nil)
           (let* ((s (nth 3 h)) (f (fn-sctr-next-run plan s fn-octets)))
-            (if (not (eq (car f) :ok)) (mv f nil)
+            (if (not (eq (car f) :ok)) (mv f nil nil)
               (let ((p (fn-sctr-next-run (nth 3 f) s fn-octets)))
-                (if (not (eq (car p) :ok)) (mv p nil)
+                (if (not (eq (car p) :ok)) (mv p nil nil)
                   (let ((e (fn-sctr-next-run (nth 3 p) s fn-octets)))
-                    (if (not (eq (car e) :ok)) (mv e nil)
+                    (if (not (eq (car e) :ok)) (mv e nil nil)
                       (let ((r (fn-sctr-next-run (nth 3 e) s fn-octets)))
-                        (if (not (eq (car r) :ok)) (mv r nil)
-                          (if (consp (nth 3 r)) (mv (list :refused :trailing) nil)
-                            (mv-let (tables info)
+                        (if (not (eq (car r) :ok)) (mv r nil nil)
+                          (if (consp (nth 3 r)) (mv (list :refused :trailing) nil nil)
+                            (mv-let (tables info region)
                               (fn-sctsr-decode-programs
                                (nth 1 f) (nth 2 f) (nth 1 p) (nth 2 p)
                                (nth 1 e) (nth 2 e) (nth 1 r) (nth 2 r) fn-octets)
-                              (if (not (eq (car tables) :ok)) (mv tables nil)
+                              (if (not (eq (car tables) :ok)) (mv tables nil nil)
                                 (if (not (equal (fn-sco-at 1 (fn-sct-tables-f (cadr tables))) s))
-                                    (mv (list :refused :close) nil)
-                                  (mv tables info)))))))))))))))))
+                                    (mv (list :refused :close) nil nil)
+                                  (mv tables info region)))))))))))))))))
 
 )
 (local (defthm fn-sctsr-decode-programs-projection-rewrite
@@ -428,8 +489,276 @@
                           (fn-sctsr-load fn-sccr-planp fn-scc-parse-header fn-sccr-join
                            fn-sctr-decode-rows fn-cei-build fn-sct-f-rowp)))))
 
+(defthm fn-scsr-payload-info-preserves-provenance
+ (implies (and (fn-scsr-info-provenancep info value)
+               (fn-sct-payload-of value))
+          (fn-scsr-info-provenancep (fn-scsr-payload-info value info)
+                                   (fn-sct-payload-of value)))
+ :hints (("Goal" :do-not-induct t
+          :use ((:instance fn-scsr-info-field-preserves-provenance (n 4) (x value))
+                (:instance fn-scsr-info-field-preserves-provenance (n 6) (x value)))
+          :in-theory (e/d (fn-scsr-payload-info fn-sct-payload-of
+                           fn-sct-octets-or-nil fn-sco-at)
+                          (fn-scsr-info-field fn-scsr-info-provenancep
+                           fn-scsr-info-field-preserves-provenance
+                           fn-scc-octets-valuep)))))
+
+(defthm fn-sctsr-step-preserves-partial-provenance
+ (implies
+  (and (fn-octets-p fn-octets) (natp i) (natp end) (< i end)
+       (<= end (len fn-octets)) (fn-scsr-stack-provenancep infos stack)
+       (implies (equal (fn-sccr-cell i fn-octets) *fn-sct-op-ref*)
+         (let ((ordinal (car (fn-sccr-read-nat (+ 1 i) end fn-octets))))
+          (fn-scsr-info-provenancep (fn-cei-get ordinal info-table)
+                                    (fn-cei-get ordinal table))))
+       (consp (fn-sctr-step i end stack table fn-octets)))
+  (fn-scsr-stack-provenancep
+   (mv-nth 1 (fn-sctsr-step i end stack infos table info-table fn-octets))
+   (car (fn-sctr-step i end stack table fn-octets))))
+ :hints (("Goal" :do-not-induct t
+          :use (fn-scsr-step-preserves-partial-provenance
+                (:instance fn-scsr-payload-info-preserves-provenance
+                 (value (fn-cei-get (car (fn-sccr-read-nat (+ 1 i) end fn-octets)) table))
+                 (info (fn-cei-get (car (fn-sccr-read-nat (+ 1 i) end fn-octets)) info-table))))
+          :in-theory (e/d (fn-sctsr-step fn-sctr-step fn-sct-ref-get
+                           fn-scsr-stack-provenancep)
+                          (fn-scsr-step fn-sccr-step fn-sccr-read-nat
+                           fn-sccr-cell fn-cei-get fn-sct-payload-of
+                           fn-scsr-payload-info fn-scsr-info-provenancep
+                           fn-scsr-payload-info-preserves-provenance
+                           fn-scsr-step-preserves-partial-provenance)))))
+
+(local (defthm fn-scsr-info-index-aux-has-existing-sequence-trie
+ (equal (car (fn-scsr-info-index-aux infos ordinal (fn-cei-sequence-trie index)))
+        (fn-cei-sequence-trie (fn-cei-build-aux infos ordinal index)))
+ :hints (("Goal" :induct (fn-cei-build-aux infos ordinal index)
+          :in-theory (e/d (fn-scsr-info-index-aux fn-cei-build-aux
+                           fn-cei-put fn-cei-sequence-trie)
+                          (fn-cei-msgid-add fn-cei-put-digits fn-cp-uintp
+                           fn-cbor-u32-bytes fn-cei-count fn-cei-msgid-trie))))))
+
+(defthm fn-scsr-info-index-lookup-is-row
+ (implies (and (true-listp infos)
+               (<= (len infos) (1+ *fn-cbor-max-uint*)) (fn-cp-uintp ordinal))
+          (equal (fn-cei-get ordinal (fn-scsr-info-index infos))
+                 (if (< ordinal (len infos)) (nth ordinal infos) nil)))
+ :hints (("Goal" :use ((:instance fn-cei-get-of-build-is-committed-event
+                                  (events infos) (sequence ordinal))
+                       (:instance fn-scsr-info-index-aux-has-existing-sequence-trie
+                                  (ordinal 0) (index nil)))
+          :in-theory (e/d (fn-scsr-info-index fn-cei-build fn-cei-get
+                           fn-cei-sequence-trie)
+                          (fn-scsr-info-index-aux fn-cei-build-aux fn-cei-get-digits
+                           fn-cei-get-of-build-is-committed-event fn-cei-get-of-build-aux
+                           fn-scsr-info-index-aux-has-existing-sequence-trie)))))
+
+(local (defun fn-scsr-nth-provenance-ind (n infos rows)
+ (declare (xargs :measure (nfix n)))
+ (if (zp n) (list infos rows)
+  (fn-scsr-nth-provenance-ind (1- n) (cdr infos) (cdr rows)))))
+
+(local (defthm fn-scsr-stack-provenance-nth
+ (implies (and (natp n) (fn-scsr-stack-provenancep infos rows))
+          (fn-scsr-info-provenancep (nth n infos) (nth n rows)))
+ :hints (("Goal" :induct (fn-scsr-nth-provenance-ind n infos rows)
+          :in-theory (e/d (fn-scsr-stack-provenancep fn-scsr-info-provenancep
+                           fn-scsr-info-root nth)
+                          (fn-scs-summary fn-scs-carryp))))) )
+
+(local (defthm fn-scsr-stack-provenance-list-shape
+ (implies (and (true-listp rows) (fn-scsr-stack-provenancep infos rows))
+          (and (true-listp infos) (equal (len infos) (len rows))))
+ :hints (("Goal" :induct (fn-scsr-stack-provenancep infos rows)
+          :in-theory (enable fn-scsr-stack-provenancep)))))
+
+(defthm fn-scsr-built-dictionary-preserves-provenance
+ (implies (and (true-listp rows) (fn-scsr-stack-provenancep infos rows)
+               (<= (len rows) (1+ *fn-cbor-max-uint*)))
+          (fn-scsr-info-provenancep
+           (fn-cei-get ordinal (fn-scsr-info-index infos))
+           (fn-cei-get ordinal (fn-cei-build rows))))
+ :hints (("Goal" :do-not-induct t :cases ((fn-cp-uintp ordinal))
+          :use (fn-scsr-stack-provenance-list-shape
+                (:instance fn-scsr-stack-provenance-nth (n ordinal))
+                (:instance fn-scsr-info-index-lookup-is-row)
+                (:instance fn-cei-get-of-build-is-committed-event
+                            (events rows) (sequence ordinal)))
+          :in-theory (e/d (fn-cei-get)
+                          (fn-cei-get-digits fn-scsr-info-index fn-cei-build
+                           fn-scsr-info-provenancep fn-scsr-info-root
+                           fn-scsr-stack-provenance-nth fn-scsr-stack-provenance-list-shape
+                           fn-scsr-info-index-lookup-is-row
+                           fn-cei-get-of-build-is-committed-event
+                           fn-scsr-stack-provenancep fn-scs-summary fn-scs-carryp)))))
+
+(local (defthm fn-scsr-get-is-sequence-trie-lookup
+ (implies (equal (fn-cei-sequence-trie a) (fn-cei-sequence-trie b))
+          (equal (fn-cei-get ordinal a) (fn-cei-get ordinal b)))
+ :hints (("Goal" :in-theory (e/d (fn-cei-get) (fn-cei-get-digits fn-cei-sequence-trie))))))
+
+(local (in-theory (disable fn-scsr-get-is-sequence-trie-lookup)))
+
+(defthm fn-scsr-dictionary-trie-preserves-provenance
+ (implies (and (true-listp rows) (fn-scsr-stack-provenancep row-infos rows)
+               (<= (len rows) (1+ *fn-cbor-max-uint*))
+               (equal table (fn-cei-build rows))
+               (equal (fn-cei-sequence-trie info-table)
+                      (fn-cei-sequence-trie (fn-scsr-info-index row-infos))))
+          (fn-scsr-info-provenancep (fn-cei-get ordinal info-table)
+                                    (fn-cei-get ordinal table)))
+ :hints (("Goal" :use ((:instance fn-scsr-built-dictionary-preserves-provenance (infos row-infos))
+                       (:instance fn-scsr-get-is-sequence-trie-lookup
+                        (a info-table) (b (fn-scsr-info-index row-infos))))
+          :in-theory (disable fn-scsr-info-provenancep fn-cei-get fn-cei-build
+                              fn-scsr-info-index fn-cei-sequence-trie
+                              fn-scsr-get-is-sequence-trie-lookup
+                              fn-scsr-built-dictionary-preserves-provenance))))
+
+(defthm fn-sctsr-run-preserves-partial-provenance
+ (implies
+  (and (fn-octets-p fn-octets) (natp i) (natp end) (<= i end)
+       (<= end (len fn-octets)) (fn-scsr-stack-provenancep infos stack)
+       (true-listp rows) (fn-scsr-stack-provenancep row-infos rows)
+       (<= (len rows) (1+ *fn-cbor-max-uint*))
+       (equal table (fn-cei-build rows))
+       (equal (fn-cei-sequence-trie info-table)
+              (fn-cei-sequence-trie (fn-scsr-info-index row-infos)))
+       (true-listp (mv-nth 0 (fn-sctsr-run i end stack infos table info-table fn-octets))))
+  (fn-scsr-stack-provenancep
+   (mv-nth 1 (fn-sctsr-run i end stack infos table info-table fn-octets))
+   (mv-nth 0 (fn-sctsr-run i end stack infos table info-table fn-octets))))
+ :rule-classes nil
+ :hints (("Goal" :induct (fn-sctsr-run i end stack infos table info-table fn-octets)
+          :in-theory (e/d (fn-sctsr-run)
+                          (fn-sctsr-step fn-sctr-step fn-cei-build fn-scsr-info-index
+                           fn-scsr-get-is-sequence-trie-lookup fn-cei-sequence-trie
+                           fn-scsr-stack-provenancep fn-scsr-info-provenancep fn-cei-get
+                           fn-cp-uintp fn-sctsr-step-preserves-partial-provenance
+                           fn-scsr-dictionary-trie-preserves-provenance)))
+         ("Subgoal *1/3" :use
+          ((:instance fn-sctsr-step-preserves-partial-provenance)
+           (:instance fn-scsr-dictionary-trie-preserves-provenance
+                        (ordinal (car (fn-sccr-read-nat (+ 1 i) end fn-octets))))))))
+
+(local (defun fn-scsr-reverse-provenance-ind (infos rows ai ar)
+ (if (consp rows)
+     (fn-scsr-reverse-provenance-ind (cdr infos) (cdr rows)
+                                    (cons (car infos) ai) (cons (car rows) ar))
+   (list ai ar))))
+
+(local (defthm fn-scsr-provenance-of-revappend
+ (implies (and (fn-scsr-stack-provenancep infos rows)
+               (fn-scsr-stack-provenancep ai ar))
+          (fn-scsr-stack-provenancep (revappend infos ai) (revappend rows ar)))
+ :hints (("Goal" :induct (fn-scsr-reverse-provenance-ind infos rows ai ar)
+          :in-theory (enable fn-scsr-stack-provenancep revappend)))))
+
+(local (defthm fn-scsr-provenance-of-reverse
+ (implies (and (true-listp rows) (fn-scsr-stack-provenancep infos rows))
+          (fn-scsr-stack-provenancep (reverse infos) (reverse rows)))
+ :hints (("Goal" :use ((:instance fn-scsr-provenance-of-revappend (ai nil) (ar nil)))
+          :in-theory (e/d (reverse) (fn-scsr-provenance-of-revappend
+                                    fn-scsr-stack-provenancep))))))
+
+(defthm fn-sctsr-decode-rows-preserves-partial-provenance
+ (implies
+  (and (fn-octets-p fn-octets) (natp start) (natp end) (<= start end)
+       (<= end (len fn-octets))
+       (true-listp rows) (fn-scsr-stack-provenancep row-infos rows)
+       (<= (len rows) (1+ *fn-cbor-max-uint*))
+       (equal table (fn-cei-build rows))
+       (equal (fn-cei-sequence-trie info-table)
+              (fn-cei-sequence-trie (fn-scsr-info-index row-infos)))
+       (equal (car (mv-nth 0 (fn-sctsr-decode-rows start end table info-table fn-octets))) :ok))
+  (fn-scsr-stack-provenancep
+   (mv-nth 1 (fn-sctsr-decode-rows start end table info-table fn-octets))
+   (cadr (mv-nth 0 (fn-sctsr-decode-rows start end table info-table fn-octets)))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+          :use ((:instance fn-sctsr-run-preserves-partial-provenance
+                            (i start) (stack nil) (infos nil))
+                (:instance fn-scsr-provenance-of-reverse
+                  (infos (mv-nth 1 (fn-sctsr-run start end nil nil table info-table fn-octets)))
+                  (rows (mv-nth 0 (fn-sctsr-run start end nil nil table info-table fn-octets)))))
+          :in-theory (e/d (fn-sctsr-decode-rows)
+                          (fn-sctsr-run fn-sctr-run fn-scsr-get-is-sequence-trie-lookup fn-cei-sequence-trie
+                           fn-scsr-provenance-of-reverse fn-scsr-stack-provenancep)))))
+
+(local (defthm fn-sctsr-decode-rows-ok-list-shape
+ (implies (equal (car (mv-nth 0 (fn-sctsr-decode-rows start end table info-table fn-octets))) :ok)
+          (true-listp (cadr (mv-nth 0 (fn-sctsr-decode-rows start end table info-table fn-octets)))))
+ :hints (("Goal" :in-theory (e/d (fn-sctsr-decode-rows fn-sctr-decode-rows)
+                                (fn-sctsr-run fn-sctr-run))))))
+
+(local (defthm fn-scsr-nth-one-is-cadr
+ (equal (nth 1 x) (cadr x))
+ :hints (("Goal" :expand ((nth 1 x) (nth 0 (cdr x)))))))
+
+(defthm fn-sctsr-decode-programs-original-context-provenance
+ (implies
+  (and (fn-octets-p fn-octets)
+       (natp fa) (natp fb) (<= fa fb) (<= fb (len fn-octets))
+       (natp pa) (natp pb) (<= pa pb) (<= pb (len fn-octets))
+       (natp ea) (natp eb) (<= ea eb) (<= eb (len fn-octets))
+       (natp ra) (natp rb) (<= ra rb) (<= rb (len fn-octets))
+       (equal (car (mv-nth 0 (fn-sctsr-decode-programs fa fb pa pb ea eb ra rb fn-octets))) :ok)
+       (<= (fn-sco-at 1 (fn-sct-tables-f
+            (cadr (mv-nth 0 (fn-sctsr-decode-programs fa fb pa pb ea eb ra rb fn-octets)))))
+           (1+ *fn-cbor-max-uint*)))
+  (fn-scsr-info-provenancep
+   (mv-nth 1 (fn-sctsr-decode-programs fa fb pa pb ea eb ra rb fn-octets))
+   (cadr (nth 3 (cadr (mv-nth 0 (fn-sctsr-decode-programs fa fb pa pb ea eb ra rb fn-octets)))))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+          :use ((:instance fn-sctsr-decode-rows-ok-list-shape
+                   (start pa) (end pb) (table nil) (info-table nil))
+                (:instance fn-sctsr-decode-rows-preserves-partial-provenance
+                  (start pa) (end pb) (rows nil) (row-infos nil) (table nil) (info-table nil))
+                (:instance fn-sctsr-decode-rows-preserves-partial-provenance
+                  (start ra) (end rb)
+                  (rows (cadr (mv-nth 0 (fn-sctsr-decode-rows pa pb nil nil fn-octets))))
+                  (row-infos (mv-nth 1 (fn-sctsr-decode-rows pa pb nil nil fn-octets)))
+                  (table (fn-cei-build (cadr (mv-nth 0 (fn-sctsr-decode-rows pa pb nil nil fn-octets)))))
+                  (info-table (fn-scsr-info-index (mv-nth 1 (fn-sctsr-decode-rows pa pb nil nil fn-octets)))))
+                (:instance fn-scsr-stack-provenance-nth
+                  (n 1)
+                  (infos (mv-nth 1
+                    (fn-sctsr-decode-rows ra rb
+                     (fn-cei-build (cadr (mv-nth 0 (fn-sctsr-decode-rows pa pb nil nil fn-octets))))
+                     (fn-scsr-info-index (mv-nth 1 (fn-sctsr-decode-rows pa pb nil nil fn-octets))) fn-octets)))
+                  (rows (cadr (mv-nth 0
+                    (fn-sctsr-decode-rows ra rb
+                     (fn-cei-build (cadr (mv-nth 0 (fn-sctsr-decode-rows pa pb nil nil fn-octets))))
+                     (fn-scsr-info-index (mv-nth 1 (fn-sctsr-decode-rows pa pb nil nil fn-octets))) fn-octets))))))
+          :in-theory (e/d (fn-sctsr-decode-programs fn-scsr-car fn-scsr-cdr fn-sco-at fn-sct-tables-f)
+                          (fn-sctsr-decode-rows fn-sctr-decode-rows fn-cei-build
+                           fn-sct-log-positionp fn-sctsr-decode-rows-ok-list-shape
+                           fn-scsr-info-index fn-scsr-stack-provenancep
+                           fn-scsr-info-provenancep fn-scsr-stack-provenance-nth
+                           fn-scsr-get-is-sequence-trie-lookup fn-cei-sequence-trie
+                           fn-sctsr-decode-rows-projection-rewrite
+                           fn-sctsr-decode-programs-projection-rewrite)))))
+
+(defthm fn-sctsr-decode-programs-success-region
+ (implies (equal (car (mv-nth 0 (fn-sctsr-decode-programs fa fb pa pb ea eb ra rb fn-octets))) :ok)
+          (equal (mv-nth 2 (fn-sctsr-decode-programs fa fb pa pb ea eb ra rb fn-octets))
+                 (list :summary-region ra rb :R 1)))
+ :hints (("Goal" :in-theory (e/d (fn-sctsr-decode-programs)
+                      (fn-sctsr-decode-rows fn-sctr-decode-rows fn-cei-build fn-scsr-info-index
+                       fn-sct-f-rowp fn-scsr-car fn-scsr-cdr
+                       fn-sctsr-decode-programs-projection-rewrite)))))
+(defthm fn-sctsr-load-refusal-has-no-region
+ (implies (not (equal (car (mv-nth 0 (fn-sctsr-load plan fn-octets))) :ok))
+          (equal (mv-nth 2 (fn-sctsr-load plan fn-octets)) nil))
+ :hints (("Goal" :in-theory (e/d (fn-sctsr-load fn-sctsr-decode-programs)
+                      (fn-sctsr-decode-rows fn-sctr-decode-rows fn-cei-build fn-scsr-info-index
+                       fn-sct-f-rowp fn-scsr-car fn-scsr-cdr fn-sccr-planp fn-scc-parse-header
+                       fn-sctr-next-run fn-sct-tables-f fn-sco-at
+                       fn-sctsr-decode-programs-projection-rewrite)))))
+
 (in-theory (disable fn-scsr-info-root fn-scsr-info-leaf fn-scsr-info-pair
                     fn-scsr-pair-info fn-scsr-step fn-sctsr-step
+                    fn-scsr-info-field fn-scsr-payload-info
                     fn-sctsr-run fn-sctsr-decode-rows fn-sctsr-decode-programs
                     fn-scsr-info-index-aux fn-scsr-info-index
                     fn-scsr-select-fields fn-sctsr-original-context-carries
