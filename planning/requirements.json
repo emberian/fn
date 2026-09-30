@@ -5723,7 +5723,9 @@
         "tests/acl2/allocation-epoch-collection-request-tests.lisp",
         "host/connection-operation-ticket-host.lisp",
         "tests/acl2/connection-operation-ticket-tests.lisp",
-        "specs/connection-ticket.md"
+        "specs/connection-ticket.md",
+        "tests/native/runtime-geometry-lock-component.lisp",
+        "planning/evidence/runtime-geometry-lock-2026-09-30"
       ],
       "implementation_note": "Internal guarded scalar, same-pool, installed-geometry observation and actual sharedPRS nonce source. Genuine runtime/source tariff installation, process-wide barrier, identity rescue and once-only allocating-turn producer joins remain open; no activation/funding claim. Guarded STATE-ticket completion and idempotent fault are exercised through actual native transport; fixture installation and operation setup do not establish complete allowance or activation."
     },

@@ -135,3 +135,15 @@ already own the prepaid control/turn suffix covering dispatch, result handling
 and no-effect return. Qcollect funds the successful quiescent request's issuer
 and ledger work; it cannot fund repeated non-quiescent polling retroactively.
 Permanent baseline is not a substitute for cumulative allocation accounting.
+
+## Locked native geometry snapshot
+
+The selected `fnn-runtime-geometry-into` primitive reads mutable page high-water
+under the runtime allocator's actual page-table lock, with interrupts and GC
+inhibited across that fixed read and unwind-protected release. The signed page
+index is immediate on the selected runtime. Immutable page size and reservation
+are copied after unlock, so unsigned reservation boxing and carrier validation
+never allocate while holding the allocator lock. The collector marks completion
+only after the full observation returns; a raw escape retains uncertainty and
+the existing nonce/charge recovery fence. This primitive establishes neither
+process-wide participant quiescence nor the installer/complete allowance.
