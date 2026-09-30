@@ -1487,6 +1487,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/snapshot-file-copy \
 	tests/acl2/snapshot-file-copy-tests \
 	tests/acl2/history-page-cursor-tests \
+	tests/acl2/history-page-layout-tests \
 	tests/acl2/snapshot-prepare-tests \
 	tests/acl2/snapshot-capture-lease-tests \
 	tests/acl2/snapshot-publication-tests \

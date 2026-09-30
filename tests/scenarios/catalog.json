@@ -6276,19 +6276,22 @@
       "steps": [
         "Capture a nonempty existing plan with two data pages, a table page and a two-page directory.",
         "Tick through data, table, directory and terminal phases, checking the literal residual theorem and identity preservation each time.",
-        "Corrupt the directory counter; separately mutate an emitted selector."
+        "Corrupt the directory counter; separately mutate an emitted selector.",
+        "Compute a nonempty scalar layout and compare its directory/data/table allocation with the actual fresh allocator; exercise each range/type hypothesis independently."
       ],
       "expected": [
         "Each valid tick emits one exact original descriptor or yields without losing remaining writes.",
         "The captured lease and source epoch are unchanged.",
-        "Invalid counter fails both the invariant and theorem conclusion; selector mutation fails exact plan equality."
+        "Invalid counter fails both the invariant and theorem conclusion; selector mutation fails exact plan equality.",
+        "Scalar addresses equal indexed fresh allocation without building an allocation list in execution; representation overflow refuses before allocation."
       ],
       "implementation": {
         "test": "tests/acl2/history-page-cursor-tests.lisp",
         "native": false
       },
       "evidence": [
-        "tests/acl2/history-page-cursor-tests.lisp"
+        "tests/acl2/history-page-cursor-tests.lisp",
+        "tests/acl2/history-page-layout-tests.lisp"
       ],
       "execution_scope": "Library component only; no actual host or funded producer completion claim."
     }

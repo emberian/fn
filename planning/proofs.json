@@ -17912,6 +17912,28 @@
         "planning/history-page-cursor-contract.md"
       ],
       "progress_note": "Clean protected auto-selected persvati hpct64: source book in proper encapsulate plus 25 test forms, zero refusal, 7.39 ACL2 seconds/381482 prover steps; two additional production-plan tooth forms passed in that clean session. Build+commit witness uses actual fn-his-build and fn-his-commit over nonempty history. No certificate, host call or native claim."
+    },
+    {
+      "id": "PRF-1092",
+      "title": "Private history scalar layout refines fresh page allocation",
+      "statement": "Library fn-hpl-layout computes current-format data/table/directory page counts and physical bases without materializing allocation runs. An accepted layout has exactly the directory start, contiguous singles and high water of pgs-alloc on fresh state (nil 1). fn-hpl-single-address returns exactly the indexed allocated single under natural in-range index/count and positive directory span. Uses pgs-x-ntables rather than the logical pgs-ntables execution loop. Current u64 image count/address and u32 directory-span representation checks refuse by name. This is the physical-address component of the census-driven disk-backed private writer; page I/O effects, file-offset platform representation, resource admission, history census and root/binding composition remain open. No host caller or producer completion claim.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-040"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [
+        "fn-hpl-layout-refines-fresh-allocation",
+        "fn-hpl-single-address-is-allocated"
+      ],
+      "evidence": [
+        "books/history-page-layout.lisp",
+        "tests/acl2/history-page-layout-tests.lisp",
+        "planning/history-page-cursor-contract.md"
+      ],
+      "progress_note": "Clean protected auto-persvati hplt62 admitted source in proper encapsulate and12testbodyforms,0.06ACL2seconds/6152steps,zero refusal. Three literal hypothesis-removal assertions then passed in same clean session. Source guardverified; no certificate/native claim."
     }
   ]
 }
