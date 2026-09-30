@@ -225,6 +225,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-files-teeth-tests \
 	books/store-node \
 	books/store-node-existing-invariants \
+	books/poster-bytes-source \
+	books/poster-bytes-source-buffer \
 	books/poster-bytes \
 	books/store-node-invariants-base \
 	books/store-node-invariants \
