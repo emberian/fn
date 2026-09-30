@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1920 |
+| Books read | 1930 |
 | Certification roots in the Makefile | 1789 |
 | Books inside the root closure | 1897 |
-| `defthm` and `defthmd` events | 29828 |
-| `defun` events | 19256 |
-| Functions with verified guards | 3519 |
-| Functions declared `:verify-guards nil` and never verified | 2312 |
-| Functions left at the default with an explicit guard | 10556 |
-| Functions left at the default with no guard | 2869 |
-| `assert-event` checks | 24139 |
+| `defthm` and `defthmd` events | 29911 |
+| `defun` events | 19285 |
+| Functions with verified guards | 3529 |
+| Functions declared `:verify-guards nil` and never verified | 2313 |
+| Functions left at the default with an explicit guard | 10572 |
+| Functions left at the default with no guard | 2871 |
+| `assert-event` checks | 24141 |
 | `must-fail` checks | 2520 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 160 |
-| Theorems flagged SUSPECT by shape | 1251 |
+| `encapsulate` events | 161 |
+| Theorems flagged SUSPECT by shape | 1252 |
 | Export-hygiene warnings | 346 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2565 |
-| Host-names warnings | 2221 |
+| Include-hygiene warnings | 2571 |
+| Host-names warnings | 2244 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -118,7 +118,7 @@ that `make certify` requests.
 | `books/article-work.lisp` | root | 25 | 7 | 0/0/0/7 | 0 | 0 | 0 |
 | `books/article.lisp` | root | 38 | 61 | 50/0/11/0 | 0 | 0 | 1 |
 | `books/assumptions-durable.lisp` | closure | 7 | 6 | 0/0/0/6 | 0 | 0 | 0 |
-| `books/assumptions-hpi-positional.lisp` | closure | 2 | 2 | 0/0/0/2 | 0 | 0 | 0 |
+| `books/assumptions-hpi-positional.lisp` | closure | 3 | 3 | 0/0/0/3 | 0 | 0 | 0 |
 | `books/assumptions-publication.lisp` | root | 4 | 3 | 0/0/0/3 | 0 | 0 | 0 |
 | `books/assumptions-stored.lisp` | closure | 1 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/assumptions.lisp` | root | 20 | 16 | 0/1/0/15 | 0 | 0 | 0 |
@@ -345,6 +345,7 @@ that `make certify` requests.
 | `books/catalog-view.lisp` | root | 21 | 12 | 5/0/6/1 | 0 | 0 | 3 |
 | `books/catalog.lisp` | root | 385 | 131 | 14/20/70/27 | 0 | 0 | 7 |
 | `books/cbor-invariants.lisp` | root | 73 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/cbor-size-reader.lisp` | - | 6 | 2 | 2/0/0/0 | 0 | 0 | 0 |
 | `books/cbor.lisp` | root | 18 | 35 | 35/0/0/0 | 0 | 0 | 2 |
 | `books/checkpoint-auxiliary.lisp` | root | 0 | 12 | 7/0/0/5 | 0 | 0 | 0 |
 | `books/checkpoint-codec.lisp` | root | 110 | 32 | 13/0/18/1 | 0 | 0 | 2 |
@@ -548,6 +549,7 @@ that `make certify` requests.
 | `books/hybrid-store-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/hybrid-store.lisp` | closure | 23 | 25 | 2/0/23/0 | 0 | 0 | 1 |
 | `books/ideal.lisp` | root | 9 | 16 | 0/2/14/0 | 0 | 0 | 7 |
+| `books/identity-context-size.lisp` | - | 20 | 8 | 2/0/6/0 | 0 | 0 | 0 |
 | `books/identity-invariants.lisp` | root | 43 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/identity-retain-carried.lisp` | root | 15 | 14 | 12/0/2/0 | 0 | 0 | 1 |
 | `books/identity.lisp` | root | 2 | 22 | 4/0/18/0 | 0 | 0 | 0 |
@@ -910,8 +912,12 @@ that `make certify` requests.
 | `books/relay-source.lisp` | root | 33 | 10 | 0/0/9/1 | 0 | 0 | 0 |
 | `books/relay.lisp` | root | 0 | 32 | 0/15/17/0 | 0 | 0 | 0 |
 | `books/replay-historical-limits.lisp` | root | 44 | 17 | 0/0/14/3 | 0 | 0 | 0 |
+| `books/replay-identity-effects.lisp` | - | 1 | 2 | 1/0/1/0 | 0 | 0 | 0 |
 | `books/replay-identity-index.lisp` | root | 67 | 39 | 21/0/18/0 | 0 | 0 | 0 |
+| `books/replay-identity-produced.lisp` | - | 1 | 2 | 1/0/1/0 | 0 | 0 | 0 |
+| `books/replay-identity-size.lisp` | - | 13 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/replay-invariants.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/replay-produced-size.lisp` | - | 19 | 4 | 2/0/2/0 | 0 | 0 | 0 |
 | `books/replay.lisp` | root | 42 | 31 | 19/0/12/0 | 0 | 0 | 7 |
 | `books/response-plan-pins.lisp` | root | 13 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/retention-figures.lisp` | root | 0 | 2 | 0/2/0/0 | 0 | 0 | 0 |
@@ -991,12 +997,15 @@ that `make certify` requests.
 | `books/state-digest.lisp` | root | 23 | 29 | 0/0/25/4 | 0 | 0 | 0 |
 | `books/state-globals.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/statement-attach.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/statement-codec-size-reader.lisp` | - | 7 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/statement-codec.lisp` | root | 38 | 7 | 0/0/6/1 | 0 | 0 | 1 |
 | `books/statement-invariants.lisp` | root | 57 | 1 | 0/0/0/1 | 0 | 0 | 1 |
 | `books/statement-items.lisp` | root | 2 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/statement-keyring-publication.lisp` | root | 12 | 1 | 0/0/1/0 | 0 | 0 | 5 |
+| `books/statement-recover-sized.lisp` | - | 3 | 3 | 1/0/2/0 | 0 | 0 | 1 |
 | `books/statement-recover-stream.lisp` | root | 8 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/statement-seam.lisp` | root | 12 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/statement-size-values.lisp` | - | 0 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/statement-snapshot-keyring.lisp` | root | 8 | 7 | 2/0/5/0 | 0 | 0 | 0 |
 | `books/statement.lisp` | root | 24 | 56 | 0/0/56/0 | 0 | 0 | 13 |
 | `books/store-budget-article.lisp` | root | 9 | 7 | 0/0/7/0 | 0 | 0 | 0 |
@@ -1110,6 +1119,7 @@ that `make certify` requests.
 | `books/stx-carrier.lisp` | root | 56 | 31 | 8/0/23/0 | 0 | 0 | 0 |
 | `books/stx-epochs.lisp` | root | 17 | 13 | 0/1/12/0 | 0 | 0 | 1 |
 | `books/stx-evidence-records.lisp` | root | 18 | 27 | 8/0/19/0 | 0 | 0 | 1 |
+| `books/stx-evidence-size-reader.lisp` | - | 12 | 3 | 0/0/2/1 | 0 | 0 | 0 |
 | `books/stx-index.lisp` | root | 93 | 38 | 10/0/20/8 | 0 | 0 | 10 |
 | `books/stx-invariants.lisp` | root | 24 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/stx-keyring-records.lisp` | root | 13 | 28 | 12/0/16/0 | 0 | 0 | 0 |
@@ -1491,7 +1501,7 @@ that `make certify` requests.
 | `tests/acl2/history-image-effect-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
 | `tests/acl2/history-image-funded-host-tests.lisp` | - | 0 | 3 | 0/3/0/0 | 1 | 0 | 0 |
 | `tests/acl2/history-image-header-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 5 | 0 | 0 |
-| `tests/acl2/history-image-positional-assumption-tests.lisp` | - | 0 | 2 | 0/0/0/2 | 4 | 0 | 0 |
+| `tests/acl2/history-image-positional-assumption-tests.lisp` | - | 0 | 2 | 0/0/0/2 | 6 | 0 | 0 |
 | `tests/acl2/history-image-producer-tests.lisp` | - | 0 | 7 | 0/6/0/1 | 5 | 0 | 0 |
 | `tests/acl2/history-image-profile-tests.lisp` | - | 1 | 2 | 0/2/0/0 | 1 | 0 | 0 |
 | `tests/acl2/history-image-record-root-refinement-tests.lisp` | - | 0 | 1 | 0/1/0/0 | 2 | 0 | 0 |
@@ -3073,6 +3083,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-sscan-dispatch-no-events` | `books/served-scan.lisp` | 132 | arm-of-definition: the hypotheses select one IF/COND arm of fn-scar-dispatch-events and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-scar-dispatch-events and the conclusion is that branch's value |
 | `fn-sscan-handshaking-of-with-wire` | `books/served-scan.lisp` | 101 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sscan-with-wire-twice` | `books/served-scan.lisp` | 95 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-ssrs-produced-context-is-public` | `books/statement-recover-sized.lisp` | 61 | instance-corollary: the statement is fn-ris-produced-step-is-public-replay instantiated, discharging nothing |
 | `fn-sti-prepare-article-unreserved-no-op-by-definition` | `books/topic-history-store-invariants.lisp` | 280 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-prepare and the conclusion is that arm's value |
 | `fn-stmt-content-id-unfolds` | `books/statement-invariants.lisp` | 314 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-stmt-header-creator-of-fn-stmt-make-header` | `books/statement.lisp` | 585 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
