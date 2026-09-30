@@ -24,6 +24,7 @@ Validation: Python syntax compilation, the existing obligation caller
 boundary source test and a fake executable with actual loopback NNTP pass.
 The fake inspection fails if its owner is still active, and its returned
 core record differs from both input and served Xref-bearing ARTICLE.
+Refused (1) and uncertain (3) fake posts both abort and stop that owner.
 These checks do not establish native producer acceptance,
 BP delivery, signature integration, or persistence behavior at these bytes.
 Earlier module verdicts are not transferred to these changed fixtures.

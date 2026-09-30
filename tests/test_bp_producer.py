@@ -52,3 +52,14 @@ while True:
             self.assertFalse((root / "owner-active").exists())
             self.assertTrue((root / "store-producer" / "article-0.nntp").read_bytes()
                             .startswith(b"Xref: serving "))
+            source = image.read_text()
+            for exit_code in (1, 3):
+                with self.subTest(post_exit=exit_code):
+                    image.write_text(source.replace(
+                        'if args[2] != "run":',
+                        'if args[2] == "post":\n    sys.exit({})\nif args[2] != "run":'
+                        .format(exit_code)))
+                    with self.assertRaises(AssertionError):
+                        post_articles(self, image, root / ("refused-" + str(exit_code)),
+                                      [("<failed>", b"input differs")])
+                    self.assertFalse((root / "owner-active").exists())
