@@ -1144,7 +1144,7 @@ class NativeBpNodeTests(unittest.TestCase):
                      if line.startswith(b"BP transport work=") and
                      b"status=attempted" in line]
         self.assertTrue(attempted, interrupted.stdout)
-        self.assertTrue(relay_cut_completed.wait(10),
+        self.assertTrue(self.relay.drain(relay_cut_completed, 10),
                         "actual relay cut callback did not complete; fault observation missing")
         observe("receipt-contact-uncertain", exit_code=interrupted.returncode,
                 stdout=interrupted.stdout, stderr=interrupted.stderr,
