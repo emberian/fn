@@ -6981,6 +6981,31 @@
         "docs/interop-inn.md"
       ],
       "execution_scope": "Source-present partial W3 fixture. Scripted harness assertions check verdict accounting and race detection only; no real INN or matching native-image run yet. The native parsed reply is recorded, not an invented decrypted wire transcript. Actual Control-header behavior and the wider W3/Q12 remainder remain open."
+    },
+    {
+      "id": "SCN-1033",
+      "title": "Actual unsigned checkgroups control from pinned INN innfeed is filed only in native fn control hierarchy and cannot automatically create the proposed group",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-010"
+      ],
+      "steps": [
+        "Select --inn-controls on the existing native fn/pinned real-INN lab, independently of TLS flags. Configure the INN control.checkgroups group/feed and create fn control.checkgroups through the native operator.",
+        "IHAVE a fresh article to innd with actual Control: checkgroups, ordinary Newsgroups fn.letters and a body proposing fn.checkgroups.proposed; observe INN innfeed acceptance on the relay.",
+        "From the separate 127.0.0.2 reader address, enumerate local article numbers in both filing and ordinary groups, STAT those numbers, retrieve the control article and LIST ACTIVE for the proposed group."
+      ],
+      "expected": [
+        "Refused filing-group creation prevents control injection. innd replies335/235, and its real innfeed receives238/239 or335/235 from fn.",
+        "The fresh Message-ID appears in control.checkgroups numbered membership and not in fn.letters. Control header/body are retained; only transit Path/Xref changes are permitted.",
+        "LIST ACTIVE for the proposed group replies215 with no group. Actual Control-header traffic is distinguished from the old inn-control manual IHAVE row."
+      ],
+      "evidence": [
+        "tools/inn_lab.py",
+        "tests/test_inn_lab.py",
+        "docs/interop-inn.md"
+      ],
+      "execution_scope": "Source-present W3 unsigned checkgroups traffic/filing fixture. Fifteen scoped scripted-peer/harness assertions do not establish a real INN/native run. INN controlchan and authenticated discharge are not claimed; newgroup/rmgroup execution remains D29 deferred. Distribution/cancel/expiry/streaming and broader Q12/W3 criteria remain open."
     }
   ]
 }
