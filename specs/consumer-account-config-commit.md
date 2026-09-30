@@ -98,3 +98,30 @@ installation still have to join. Startup/reload caller source now names the
 pooled admission gate and refuses before preparation while its genuine
 allowance/turn producer is unavailable. No prior direct credential installation
 may substitute for that missing authority.
+
+## Historical control configuration in the same source
+
+The actual accepted C successor produces one newest-first projection entry:
+`(:control-config-projection effective-config Cgeneration Csequence Ctxid
+keyring-generation recorded-source-token predecessor)`. `fn-capr-config-step-with-projection`
+calls the existing shared C decision once and retains its original state/full
+publication result, adding this fourth output. Its high callback and control
+continuation remain unadmitted and inactive until the real prefix caller joins.
+
+`fn-ccpx-begin/tick` inspect one projection cell per tick. A selected value is
+from the newest Ctxid no later than the queried article/held-event txid; newest
+same-txid wins. The actual publisher must establish monotone Ctxid and Csequence
+and a real genesis/checkpoint seed. Absent seed or missing older prefix is
+unavailable. The logical `fn-ccpx-at` is a reference walker, never served.
+Recorded entry token is provenance; live custody belongs the separately captured
+chain root and actual INITIAL/checkpoint source, rechecked after every yield.
+Neither a shape check nor a lookup result grants account authority or funding.
+
+`fn-ctcp-article-begin/step` drafts the actual prefix history lookup followed by
+one historical-config cell and the existing withdrawal-plan/tlocks constructor.
+The caller must retain the once-produced physical/identity event decision while
+this lookup yields, then join the saved plan into the common visibility/CP
+completion. Existing high `fn-capr-event-step` still refuses the typed source
+until that completion is installed; it cannot replay a marker through ordinary
+`fn-ctl-config-at`. Verdict lookup, scalar/runtime envelopes and new retained
+projection graph lifetime remain actual caller obligations.

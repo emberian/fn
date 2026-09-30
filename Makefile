@@ -190,6 +190,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-account-transaction-driver-tests \
 	tests/acl2/consumer-transaction-dispatch-tests \
 	tests/acl2/consumer-configured-authority-replay-tests \
+	tests/acl2/control-config-projection-tests \
 	tests/acl2/store-binding-stage-routing-tests \
 	tests/acl2/consumer-account-initial-tests \
 	tests/acl2/consumer-account-relation-tests \

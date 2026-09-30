@@ -4,6 +4,7 @@
 ; components only until their durable codec and authenticated host path land.
 (in-package "ACL2")
 (include-book "cbor-invariants")
+(include-book "consumer-position-fields")
 (include-book "rev-onto") ; the loop twins' step
 
 (defconst *fn-cp-max-id* 64)
@@ -23,17 +24,12 @@
   (and (consp x) (fn-cbor-at-mostp x *fn-cp-max-id*)
        (fn-cbor-octet-listp x)))
 
-(defun fn-cp-uintp (x)
-  (and (natp x) (<= x *fn-cbor-max-uint*)))
+
 
 ; Total fixed-field access.  It never walks the Store or a retained article;
 ; callers use only small record indices, and no whole-record recognizer runs
 ; on a served decision path.
-(defun fn-cp-nth (n x)
-  (declare (xargs :guard (natp n) :measure (nfix n)))
-  (if (zp n)
-      (if (consp x) (car x) nil)
-    (fn-cp-nth (1- n) (if (consp x) (cdr x) nil))))
+
 
 ; A decoded cursor: (:cursor history incarnation consumer principal query
 ;                    query-version view-version registration-epoch position).
@@ -589,7 +585,7 @@
   :rule-classes :forward-chaining)
 
 (verify-guards fn-cp-idp)
-(verify-guards fn-cp-uintp)
+
 (verify-guards fn-cp-authority-namespace)
 (verify-guards fn-cp-account-creation)
 (verify-guards fn-cp-cursor)
