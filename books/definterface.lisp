@@ -324,14 +324,15 @@
 
 (defun fn-di-stobj-recognizer-conjunctp (c formals stobjs w)
   (declare (xargs :mode :program))
-  ; (R v) with v a stobj formal and R a function of that stobj (its
-  ; recognizer, as :stobjs puts it in the guard): the stobj discipline
+  ; (R v) with v a stobj formal and R its exact world recognizer:
+  ; accessors also carry the stobj-function property, but a field's value
+  ; is not established by the stobj calling convention. The discipline
   ; establishes it -- the live stobj is that stobj -- so raw dispatch skips
   ; nothing here
   (and (consp c) (symbolp (car c)) (consp (cdr c)) (null (cddr c))
        (symbolp (cadr c)) (member-eq (cadr c) formals)
        (nth (fn-di-position (cadr c) formals 0) stobjs)
-       (eq (getpropc (car c) 'stobj-function nil w) (cadr c))))
+       (eq (car c) (get-stobj-recognizer (cadr c) w))))
 
 (defun fn-di-invariant-conjuncts (conjuncts formals stobjs kinds w)
   (declare (xargs :mode :program))
