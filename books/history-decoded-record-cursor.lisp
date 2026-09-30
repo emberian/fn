@@ -196,11 +196,11 @@
             :use ((:instance coerce-inverse-1 (x (fn-scc-octets-chars bytes)))
                   (:instance fn-hrcur-nil-octets-chars-roundtrip)
                   (:instance fn-scc-octets-chars-character-listp (xs bytes)))
-            :in-theory (e/d (fn-scc-chars-octets)
+            :in-theory (remove-equal '(:rewrite fn-midx-equal-lists-have-equal-string-coercions)
+             (e/d (fn-scc-chars-octets)
                             (fn-scc-octets-chars fn-scc-octet-listp
                              fn-hrcur-nil-octets-chars-roundtrip coerce-inverse-1
-                             fn-scc-octets-chars-character-listp
-                             fn-midx-equal-lists-have-equal-string-coercions))))))
+                             fn-scc-octets-chars-character-listp)))))))
 
 (local
  (defthm fn-hrcur-nil-prefix-length
@@ -247,11 +247,11 @@
                  (:instance fn-hrcur-nil-prefix-length
                             (xs (fn-hrcur-tail offset pool))))
            :in-theory
-           (e/d (fn-hrcur-nil-model fn-hdc-span fn-hdc-abstract)
+           (remove-equal '(:rewrite fn-midx-equal-lists-have-equal-string-coercions)
+             (e/d (fn-hrcur-nil-model fn-hdc-span fn-hdc-abstract)
                 (fn-scc-intern fn-scc-octets-chars fn-hrcur-prefix fn-hrcur-tail
                  fn-hrcur-nil-intern-null-by-definition fn-hrcur-nil-bytes-name
-                 fn-hrcur-nil-prefix-length fn-hrcur-nil-slice-octets
-                 fn-midx-equal-lists-have-equal-string-coercions)))))
+                 fn-hrcur-nil-prefix-length fn-hrcur-nil-slice-octets))))))
 
 (defun fn-hrcur-nil-work (c)
   (declare (xargs :guard t :verify-guards nil))

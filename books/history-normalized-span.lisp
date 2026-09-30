@@ -48,13 +48,14 @@
                                             (take count (nthcdr offset pool))) 'string)))
                  (:instance fn-hrcur-span-string-refines-abstract-codec))
            :in-theory
-           (e/d (fn-hrcur-span-wire fn-hdc-abstract fn-hdc-span
+           (remove-equal '(:rewrite fn-midx-equal-lists-have-equal-string-coercions)
+             (e/d (fn-hrcur-span-wire fn-hdc-abstract fn-hdc-span
                  fn-scc-program fn-scc-atom-octets fn-scc-octets-valuep
                  fn-scc-string-octets)
                 (fn-hdsn-classify-name fn-scc-intern fn-scc-package-index
                  fn-scc-nat-octets fn-scc-chars-octets fn-scc-octets-chars
-                 take nthcdr fn-midx-equal-lists-have-equal-string-coercions
-                 fn-hrcur-span-string-refines-abstract-codec fn-hdsn-intern-name)))))
+                 take nthcdr
+                 fn-hrcur-span-string-refines-abstract-codec fn-hdsn-intern-name))))))
 
 (defthm fn-hrcur-ns-classified-descriptorp
   (implies (and (member-equal pkg '(0 1 2)) (stringp name))
