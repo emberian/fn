@@ -91,6 +91,36 @@ class VariantTests(unittest.TestCase):
             self.assertIn("requires production profile", done.stderr)
             self.assertFalse((Path(directory) / "out").exists())
 
+    def test_same_launcher_path_new_toolchain_is_a_new_world(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = tree(directory)
+            self.assertNotEqual(world.digest(root, "/acl2", toolchain_identity="first"),
+                                world.digest(root, "/acl2", toolchain_identity="second"))
+
+    def test_saved_world_binding_refuses_unknown_and_every_mismatched_input(self):
+        import json
+        import world_binding
+        with tempfile.TemporaryDirectory() as directory:
+            image = Path(directory) / "world"
+            core = Path(str(image) + ".core")
+            image.write_bytes(b"launcher")
+            core.write_bytes(b"saved core")
+            with self.assertRaises(FileNotFoundError):
+                world_binding.check(image, "source", "dtn")
+            world_binding.record(image).write_text(json.dumps(
+                world_binding.binding(image, "source", "dtn")))
+            world_binding.check(image, "source", "dtn")
+            for key, variant in (("other-source", "dtn"), ("source", "default")):
+                with self.assertRaises(ValueError):
+                    world_binding.check(image, key, variant)
+            for artifact in (image, core):
+                original = artifact.read_bytes()
+                artifact.write_bytes(original + b"mutation")
+                with self.assertRaises(ValueError):
+                    world_binding.check(image, "source", "dtn")
+                artifact.write_bytes(original)
+                world_binding.check(image, "source", "dtn")
+
     def test_cache_key_is_selected_world_only(self):
         with tempfile.TemporaryDirectory() as directory:
             root = tree(directory)
