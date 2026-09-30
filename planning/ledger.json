@@ -1870,26 +1870,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1978,
+    "books": 1979,
     "books_in_root_closure": 1938,
     "roots": 1866,
-    "theorems": 30251,
-    "functions": 19291,
+    "theorems": 30252,
+    "functions": 19296,
     "assert_events": 24064,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
-      "verified": 3547,
+      "verified": 3549,
       "declared-off": 2350,
-      "default-guarded": 10528,
+      "default-guarded": 10531,
       "default-unguarded": 2866
     },
     "suspect_theorems": 1266,
     "export_hygiene_warnings": 348,
     "enabled_projection_warnings": 55,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2713,
+    "include_hygiene_warnings": 2714,
     "host_names_warnings": 2193,
     "hand_written_record_warnings": 18
   },
@@ -16209,6 +16209,34 @@
       "includes": [
         "index-range-controller",
         "receiver-render-custody"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/index-range-render-demand.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 1,
+      "functions": 5,
+      "guards": {
+        "verified": 2,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 2,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "index-backing-provider",
+        "index-publication-shape",
+        "index-range-held-row-controller"
       ],
       "system_includes": [],
       "suspects": [],
@@ -78706,6 +78734,13 @@
         "line": 4,
         "include": "index-range-controller",
         "included": "books/index-range-controller.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/index-range-render-demand.lisp",
+        "line": 5,
+        "include": "index-range-held-row-controller",
+        "included": "books/index-range-held-row-controller.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
