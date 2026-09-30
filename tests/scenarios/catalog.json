@@ -6992,13 +6992,15 @@
         "Admit the exact incoming holder from the shared funded pool before frontier reservation and buffer setup, seal it, then yield a query.",
         "Attempt native refill/clear/release and every abstract/concrete mutation from unrelated ordinary and maintenance jobs; continue ordinary receive service through its separately funded congruent buffer.",
         "Cancel the query while aliases remain, then separately observe query return and final alias clearing; exercise stale token, duplicate release and exhausted namespace.",
-        "For ordinary filled receiver input, evaluate without STATE mutation, stage the actual RC, then inject escape before and after each cache/credits/owner/exposure install write and before readiness publication."
+        "For ordinary filled receiver input, evaluate without STATE mutation, stage the actual RC, then inject escape before and after each cache/credits/owner/exposure install write and before readiness publication.",
+        "For ordinary nonquery response output, retain the actual issued episode/parser root with no IRQ actor in the output slot; try stale-episode access, receiver begin/reuse/fill, and stage preservation while output remains."
       ],
       "expected": [
         "ACL2 permits only exact holder setup before seal and exact authorized readonly dispatch afterward. Live/cancelled held input and binding/groups/inflight references remain unchanged.",
         "Ordinary receives remain bounded by the existing connection quantum and do not copy retained POST payload; complete permanent/source-overlap/runtime/startup demand is paid before allocation.",
         "Cancellation alone never refunds or frees backing. Exact completed-and-cleared settlement releases reusable charge once, retains spent identity, and stale/duplicate operations cannot steal ownership.",
-        "Installing and incomplete progress publication refuse public consumers while retaining exact RC/source/cursor and claim; finish reads the staged RC. No episode/alias return or refill follows from staging or STOPPING."
+        "Installing and incomplete progress publication refuse public consumers while retaining exact RC/source/cursor and claim; finish reads the staged RC. No episode/alias return or refill follows from staging or STOPPING.",
+        "An output bundle blocks input reuse until real output-storage last-borrow/return receipts. Episode-qualified access never fabricates a query or establishes storage funding; six-field controller measurements remain historical."
       ],
       "evidence": [
         "books/incoming-octet-holder.lisp",
@@ -7006,9 +7008,10 @@
         "books/receive-octet-buffer.lisp",
         "specs/retention.md",
         "books/receiver-turn-controller.lisp",
-        "tests/acl2/receiver-parser-stage-tests.lisp"
+        "tests/acl2/receiver-parser-stage-tests.lisp",
+        "tests/acl2/receiver-output-custody-tests.lisp"
       ],
-      "evidence_note": "Three unactivated source assertions pass for shared identity, seal/mutation exclusion, cancellation-held settlement and stale/concurrent attempts. Actual native routes and receive liveness/funding remain incomplete. Staging source retention and progress-publication cut have literal source-model evidence; actual reader upper escape tests are a separate frozen coordinate. Terminal/detachment and runtime funding remain incomplete."
+      "evidence_note": "Three unactivated source assertions pass for shared identity, seal/mutation exclusion, cancellation-held settlement and stale/concurrent attempts. Actual native routes and receive liveness/funding remain incomplete. Staging source retention and progress-publication cut have literal source-model evidence; actual reader upper escape tests are a separate frozen coordinate. Terminal/detachment and runtime funding remain incomplete. Seven-field output source and busy/stale/preservation literals are source-only in historical pool3; actual outgoing issuer/return and new runtime constructor envelope remain open."
     }
   ]
 }
