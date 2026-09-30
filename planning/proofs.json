@@ -18013,15 +18013,13 @@
       "depends_on": [],
       "assumptions": [],
       "status": "planned",
-      "events": [
-        "fn-hpc-tick-refines-existing-plan"
-      ],
+      "events": [],
       "evidence": [
         "books/history-page-cursor.lisp",
         "tests/acl2/history-page-cursor-tests.lisp",
         "planning/history-page-cursor-contract.md"
       ],
-      "progress_note": "Clean protected auto-selected persvati hpct64: source book in proper encapsulate plus 25 test forms, zero refusal, 7.39 ACL2 seconds/381482 prover steps; two additional production-plan tooth forms passed in that clean session. Build+commit witness uses actual fn-his-build and fn-his-commit over nonempty history. No certificate, host call or native claim."
+      "progress_note": "Clean protected auto-selected persvati hpct64: source book in proper encapsulate plus 25 test forms, zero refusal, 7.39 ACL2 seconds/381482 prover steps; two additional production-plan tooth forms passed in that clean session. Build+commit witness uses actual fn-his-build and fn-his-commit over nonempty history. No certificate, host call or native claim. Named library theorems are component evidence only; served event citations await an actual composed host caller."
     },
     {
       "id": "PRF-1092",
@@ -18034,16 +18032,13 @@
       "depends_on": [],
       "assumptions": [],
       "status": "planned",
-      "events": [
-        "fn-hpl-layout-refines-fresh-allocation",
-        "fn-hpl-single-address-is-allocated"
-      ],
+      "events": [],
       "evidence": [
         "books/history-page-layout.lisp",
         "tests/acl2/history-page-layout-tests.lisp",
         "planning/history-page-cursor-contract.md"
       ],
-      "progress_note": "Clean protected auto-persvati hplt62 admitted source in proper encapsulate and12testbodyforms,0.06ACL2seconds/6152steps,zero refusal. Three literal hypothesis-removal assertions then passed in same clean session. Source guardverified; no certificate/native claim."
+      "progress_note": "Clean protected auto-persvati hplt62 admitted source in proper encapsulate and12testbodyforms,0.06ACL2seconds/6152steps,zero refusal. Three literal hypothesis-removal assertions then passed in same clean session. Source guardverified; no certificate/native claim. Named library theorems are component evidence only; served event citations await an actual composed host caller."
     }
   ]
 }
