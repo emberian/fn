@@ -6391,7 +6391,12 @@
         "tests/acl2/payload-action-source-trace-tests.lisp",
         "tools/payload_action_trace.py",
         "tests/test_payload_action_trace.py",
-        "planning/evidence/payload-action-source-trace-2026-09-30/README.md"
+        "planning/evidence/payload-action-source-trace-2026-09-30/README.md",
+        "books/assumptions-selected-runtime-shift.lisp",
+        "books/payload-budget-shift-workspace.lisp",
+        "tests/acl2/selected-runtime-shift-tests.lisp",
+        "tests/acl2/payload-budget-shift-workspace-tests.lisp",
+        "planning/evidence/selected-runtime-shift-2026-09-30/README.md"
       ],
       "execution_scope": "Protected source replay only; the codec/runtime/controller/host composition remains open."
     },

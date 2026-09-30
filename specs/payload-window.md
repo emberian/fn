@@ -230,3 +230,16 @@ and bit-buffer helpers remain explicit unpriced events. Literal guarded
 success/refusal fixtures and an omitted-negation mutation accompany the
 unconditional projection/count theorems; these have no removable hypotheses.
 This does not establish all decoder modes or actual allocator adequacy.
+
+
+Actual saved-core diagnostics show `fn-pzd-budget` constant factors16/2
+lowering to ASH4/1, while bomb/allowance ratio multiplications call generic
+multiply. `payload-budget-shift-workspace.lisp` therefore maps the actual
+budget source roster to two positive shifts and two adds, rejecting unknown
+factors instead of dropping them. `A-SELECTED-RUNTIME-SHIFT-RESULT` is limited
+to positive ASH result buffers at counts1/4 under the exact shared coordinate.
+The conditional128-byte sum includes two shift RESULTS and two add primitives.
+Internal fixnum shift temporaries, compiled call/frame and collector lifetimes
+remain open; this sum is not total ASH or decoder allocation demand. New
+literal domain-removal and unsupported-factor mutation teeth preserve that
+scope, and the central inclusion patch remains a convergence obligation.

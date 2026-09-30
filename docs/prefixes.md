@@ -371,3 +371,5 @@ anything a book does not already decide.
 | `fn-srp-positive-`, `fn-assume-srp-positive-`, `srpos-t-` | `assumptions-selected-runtime-positive`, its tests | Conditional fixed positive factor 2/16/256 primitive family; shares selected coordinate and excludes served plan-position APIs and complete runtime/job adequacy |
 
 | `fn-pat-` | `payload-action-source-trace`, `payload-action-source-counts` | actual emit/pull/match return/effects observers and arithmetic-site counts; borrowed costs remain open |
+
+| `fn-pbs-` | `payload-budget-shift-workspace` | actual budget source roster mapped to selected ASH result/add families; full runtime adequacy open |

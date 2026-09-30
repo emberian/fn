@@ -487,6 +487,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/payload-action-source-trace \
 	books/payload-action-source-counts \
 	tests/acl2/payload-action-source-trace-tests \
+	books/assumptions-selected-runtime-shift \
+	books/payload-budget-shift-workspace \
+	tests/acl2/selected-runtime-shift-tests \
+	tests/acl2/payload-budget-shift-workspace-tests \
 	books/payload-lz-dict-1 \
 	books/payload-lz-dicts \
 	books/payload-lz-value \
