@@ -128,6 +128,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-account-carried \
 	books/consumer-account-initial \
 	books/consumer-account-relation \
+	books/consumer-account-relation-stage \
 	books/consumer-account-auth \
 	books/consumer-account-state \
 	books/consumer-config-authority \
@@ -142,6 +143,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-account-carried-tests \
 	tests/acl2/consumer-account-initial-tests \
 	tests/acl2/consumer-account-relation-tests \
+	tests/acl2/consumer-account-relation-stage-tests \
 	tests/acl2/consumer-account-auth-tests \
 	tests/acl2/consumer-config-authority-tests \
 	tests/acl2/consumer-config-publication-tests \

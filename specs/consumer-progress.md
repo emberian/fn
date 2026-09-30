@@ -1091,3 +1091,10 @@ A valid-looking phantom credential demonstrates why shape alone is insufficient.
 Parsed request-byte funding precedes credential hashing. The selected actual
 owner read wrapper is source assembly only: installed publication, metadata
 funding, resumable current readscope and the TLS FNCR endpoint remain open.
+
+The actual account begin establishes empty complete candidate coverage. Each
+selected stage preserves complete reconstruction under explicit fresh ordering,
+watermark and exact new-binding conditions. These conditions remain obligations
+of the actual row/tombstone planner and old-cursor lifecycle. This construction
+proof complements prepare/fence and current lookup; it supplies neither canonical
+metadata nor funding or atomic owner/recovery establishment by itself.
