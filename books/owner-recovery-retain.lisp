@@ -13,26 +13,17 @@
 (include-book "heap-store-figure")
 (include-book "owner-canonical-state")
 (include-book "owner-authority-proposal-state")
+(include-book "owner-connection-state")
 
 ; Their declared guards are t; proof is against the exact imported bodies.
 (verify-guards fn-orcp-swapped-owner)
 (verify-guards fn-orcp-swapped-ocfg)
 
-(defun fn-owner-credit-reserve (state)
-  (declare (xargs :stobjs state :guard t))
-  (let ((r (and (boundp-global 'fn-owner-credit-reserve state)
-                (f-get-global 'fn-owner-credit-reserve state))))
-    (if (posp r) r (fn-heap-article-reserve-octets nil))))
 
-(defun fn-owner-credits (state)
-  (declare (xargs :stobjs state :guard t))
-  (let ((l (and (boundp-global 'fn-owner-credits state)
-                (f-get-global 'fn-owner-credits state))))
-    (or l (fn-mca-default (fn-owner-credit-reserve state)))))
 
-(defun fn-owner-put-credits (l state)
-  (declare (xargs :stobjs state :guard t))
-  (f-put-global 'fn-owner-credits l state))
+
+
+
 
 ; Structural entry premise for the exact producer native binds as REBUILT.
 ; These are definitional guard bridges, not cited carry keystones and not

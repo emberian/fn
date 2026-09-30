@@ -484,6 +484,7 @@
         ; The writable NNTP owner.  It registers the `owner' verb and calls
         ; only host/owner-host.lisp wrappers for protocol and state decisions.
         (load "host/native/owner.lisp")
+        (load "host/native/receiver-parser-turn.lisp")
         ; Its connections on a fixed set of I/O loops (PKT-605).
         (load "host/native/mux.lisp")
         ; The outbound feed is a lifecycle extension of that same owner.  The

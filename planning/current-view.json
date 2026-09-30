@@ -230,7 +230,7 @@
       },
       "profile": "default",
       "latest": "a resend at a later second is answered duplicate where the image before D25 answered conflict ([d25-dup-conflict](evidence/d25-dup-conflict-2026-09-24.md)).",
-      "obstruction": "no two-node matrix or operator campaign on an image with D25; a poster Date equal to fn's rendering of the injection second is outside the invariance theorems; D25's provenance question (review \u00a7D25) is open.",
+      "obstruction": "no two-node matrix or operator campaign on an image with D25; a poster Date equal to fn's rendering of the injection second is outside the invariance theorems; D25's provenance question (review §D25) is open.",
       "next": "the shared qualification of an image carrying D25, with the transit duplicate rows and K1's died-present resubmissions answered duplicate."
     },
     {
@@ -238,7 +238,7 @@
       "name": "a connection-local fault costs one connection",
       "contract": "A connection-local fault closes that connection and keeps every other, and an open at `max-conns` answers nothing and leaves the owner unchanged; a fault in a shared owner action fail-stops.",
       "host": {
-        "function": "fn-ocfg-fault",
+        "function": "fn-owner-callback-fault",
         "file": "host/owner-host.lisp"
       },
       "keystone": "fn-ocfg-fault-keeps-every-other-connection",
@@ -248,8 +248,9 @@
       },
       "profile": "default",
       "latest": "owner 18/18 (local fault, disconnect, reset), control 14/14 with the busy ceiling, POST-CONCURRENT accepted ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
-      "obstruction": "the property's sentence still says any fault; the review restates it as connection-local containment with fail-stop of uncertain shared authority, not yet in the plan.",
-      "next": "the restated P5 in the plan and scoreboard, with a native case showing a shared-action fault exits 4 and leaves no half state."
+      "obstruction": "Actual PROGRAM alias now delegates the guarded callback, whose complete result/STATE projection is component admitted. Current modern include closure, native shared-action fail-stop and changed runtime installer are not qualified; historical images do not cover this source.",
+      "next": "the restated P5 in the plan and scoreboard, with a native case showing a shared-action fault exits 4 and leaves no half state.",
+      "bridge": "fn-owner-callback-fault-complete-effects"
     },
     {
       "id": "P6",

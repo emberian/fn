@@ -1890,7 +1890,52 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-image-campaign-tests \
 	books/image-world \
 	books/image-world-dtn \
-	books/image-world-store-test
+	books/image-world-store-test \
+    books/acceptance-binding-held-gate \
+    books/connection-receiver-source-invariants \
+    books/owner-reader-response-domain \
+    books/pagestore-digest-block-predicate \
+    books/post-identity-captured \
+    books/post-identity-captured-agent-join \
+    books/post-identity-captured-classification \
+    books/post-identity-captured-digest-block \
+    books/post-identity-captured-groups-refinement \
+    books/post-identity-captured-hash-choice \
+    books/post-identity-captured-hash-domain \
+    books/post-identity-captured-hash-entry \
+    books/post-identity-captured-hash-refinement \
+    books/post-identity-captured-holder \
+    books/post-identity-captured-payload-refinement \
+    books/post-identity-captured-refinement \
+    books/post-identity-captured-source-completion \
+    books/post-identity-captured-source-context \
+    books/post-identity-captured-source-continuation \
+    books/post-identity-captured-source-pair-context \
+    books/post-identity-captured-source-parser-context \
+    books/post-identity-captured-source-trace \
+    books/reader-response-disposition \
+    books/served-step \
+    tests/acl2/connection-receiver-source-tests \
+    tests/acl2/owner-reader-response-domain-tests \
+    tests/acl2/post-identity-captured-agent-join-tests \
+    tests/acl2/post-identity-captured-classification-tests \
+    tests/acl2/post-identity-captured-digest-block-tests \
+    tests/acl2/post-identity-captured-groups-refinement-tests \
+    tests/acl2/post-identity-captured-hash-choice-tests \
+    tests/acl2/post-identity-captured-hash-domain-tests \
+    tests/acl2/post-identity-captured-hash-entry-tests \
+    tests/acl2/post-identity-captured-hash-refinement-tests \
+    tests/acl2/post-identity-captured-holder-tests \
+    tests/acl2/post-identity-captured-payload-refinement-tests \
+    tests/acl2/post-identity-captured-refinement-tests \
+    tests/acl2/post-identity-captured-source-completion-tests \
+    tests/acl2/post-identity-captured-source-continuation-tests \
+    tests/acl2/post-identity-captured-source-pair-context-tests \
+    tests/acl2/post-identity-captured-source-parser-context-tests \
+    tests/acl2/post-identity-captured-source-trace-tests \
+    tests/acl2/post-identity-captured-tests \
+    tests/acl2/reader-response-disposition-tests \
+    tests/acl2/receiver-parser-stage-tests
 
 .PHONY: host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
@@ -2440,3 +2485,5 @@ test: check certify
 
 test-modules:
 	$(PYTHON) tools/test_budget.py $(MODULES) --logs build/test-budget
+
+# Current captured and RX component roots; proof/native scope stays explicit.

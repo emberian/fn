@@ -69,9 +69,10 @@
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
         "books/store-node-existing-invariants.lisp",
-        "tests/acl2/store-node-existing-tests.lisp"
+        "tests/acl2/store-node-existing-tests.lisp",
+        "tests/test_native_captured_attempt.py"
       ],
-      "execution_scope": "Validated for abstract atomic acceptance; the native path is one article posted to two groups through the operator, one local number in each group across a restart, an identical resubmission accepted as the duplicate and a changed source under the held Message-ID refused without replacing the stored octets (tests/test_native_conformance.py). The charged pin is not observed by that case. The Python-host implementation (tests/test_store.py) retired with the Python host.",
+      "execution_scope": "Validated for abstract atomic acceptance; the native path is one article posted to two groups through the operator, one local number in each group across a restart, an identical resubmission accepted as the duplicate and a changed source under the held Message-ID refused without replacing the stored octets (tests/test_native_conformance.py). The charged pin is not observed by that case. The Python-host implementation (tests/test_store.py) retired with the Python host. Captured-caller source transport fixture additionally executes the actual native attempt before frontier: actual runtime source unavailable refuses before fill; synthetic unfunded retained callbacks preserve one shared remaining quantum and returned effects before fault. This fixture does not validate parser/provider authority, installed runtime allowance, all-alias retirement or the changed served image.",
       "implementation": {
         "test": "tests.test_native_conformance",
         "cases": [

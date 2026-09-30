@@ -2038,3 +2038,38 @@ current golden vectors and the retired-header refusal authored in
 `records-current-schema-tests`. This changes no supported-profile limit.
 The new fixture has not run at this assembled coordinate. Older codec ceiling
 fixtures still require migration; no deployed store compatibility is claimed.
+
+
+### Captured confirmation caller source (PRF-1148)
+
+The retained source controller is `fn-pic-held-next`, `fn-pic-next` and
+`fn-pic-digest-next`, using bounded scalar payload reads and the current RCL2
+semantics after the mandatory binding gate on one selected held row. The
+actual native `fnn-owner-attempt` now calls
+`fnn-owner-captured-precheck-locked` between its post precheck and frontier.
+Its dedicated holder retains the original `fn-input-copy`, SAME provider,
+arena, octets, pool and digest objects, and selected compiled callbacks.
+The core `fn-owner-pic-next` derives the completed input and issued query
+from the current owner context, then selects/reads the actual provider row
+and steps the bounded controller. Scalar read and funded feedback reserve
+from the same caller quantum; confirmation and retirement receive its
+remaining fuel. Native code transports core words and returned effects.
+
+`fn-owner-pic-demand` reads the actual installed runtime source and role
+table. The captured allowance lowering/constructor issuer is unavailable;
+no parser shape or request subtotal supplies a grant. Without an installed
+holder the actual attempt returns the core's named unavailable word before
+payload fill, legacy comparison or frontier advancement. Only a fully
+settled core absence may proceed. `fn-owner-pic-retire` retains the original
+input/query/controller and returns `:retire-unavailable`: the genuine
+all-alias receipt producer is missing, and lexical return is not settlement.
+The later `fn-owner-prepare-buffer` comparator/carry boundary remains open.
+
+SCN-002's exact native transport fixture checks the unavailable call site,
+shared remaining fuel and retention before an error escapes. Its synthetic
+callbacks are unfunded; it supplies no parser/provider/retirement authority.
+Earlier normal manifests qualify only their exact component source and
+include closures. New caller PROGRAM translation/guards, installed costs
+and original input factory, universal parser/consumer inverse, producer
+authority, lifetime/funding and changed native image qualification remain
+open. PRF-1148 stays planned with no completion events.

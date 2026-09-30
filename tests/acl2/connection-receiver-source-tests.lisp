@@ -1,0 +1,150 @@
+(in-package "ACL2")
+(include-book "../../books/connection-receiver-source-invariants")
+
+; Model fixture only: the grant/pin below do not establish installed runtime
+; authority or a constructor allowance. Actual wrapper/readout evidence is
+; separately required before the served path can issue an input turn.
+(defun fn-crx-test-association (fn-ibp-connection-segment)
+ (declare (xargs :stobjs fn-ibp-connection-segment :guard t))
+ (let* ((holder '(:connection-holder 7 1 0))
+        (origin (fn-crx-open-origin (list :opened 12 holder)
+                                   '(:rx-capacity 3 9 4096) 9))
+        (fn-ibp-connection-segment
+         (update-fn-ich-segment-id 1 fn-ibp-connection-segment)))
+  (mv-let (reserved fn-ibp-connection-segment)
+   (fn-ich-reserve holder 12 :fixture-grant fn-ibp-connection-segment)
+   (mv-let (attached fn-ibp-connection-segment)
+    (fn-ich-attach holder :fixture-pin fn-ibp-connection-segment)
+    (let ((prior (fn-ich-row holder fn-ibp-connection-segment))
+          (prior-id (fn-ich-segment-id fn-ibp-connection-segment))
+          (prior-active (fn-ich-active fn-ibp-connection-segment)))
+     (mv-let (bound fn-ibp-connection-segment)
+      (fn-ich-rx-bind 12 holder origin fn-ibp-connection-segment)
+      (mv-let (read-word actual)
+       (fn-ich-rx-origin 12 holder fn-ibp-connection-segment)
+       (let* ((positive (and (eq reserved :reserved) (eq attached :attached)
+                            (eq bound :associated) (eq read-word :current)
+                            (equal actual origin)
+                            (equal prior (fn-ich-row holder fn-ibp-connection-segment))
+                            (equal prior-id (fn-ich-segment-id fn-ibp-connection-segment))
+                            (equal prior-active (fn-ich-active fn-ibp-connection-segment))))
+              (different (fn-crx-open-origin (list :opened 12 holder)
+                                             '(:rx-capacity 4 10 4096) 10)))
+        (mv-let (rebound fn-ibp-connection-segment)
+         (fn-ich-rx-bind 12 holder different fn-ibp-connection-segment)
+         (mv-let (word1 retained)
+          (fn-ich-rx-origin 12 holder fn-ibp-connection-segment)
+          (mv-let (invalid fn-ibp-connection-segment)
+           (fn-ich-rx-bind 13 holder origin fn-ibp-connection-segment)
+           (mv-let (word2 missing)
+            (fn-ich-rx-origin 13 holder fn-ibp-connection-segment)
+            (let ((removed (and (not (eq invalid :associated))
+                                (not (and (eq word2 :current) (equal missing origin))))))
+             (mv-let (closed fn-ibp-connection-segment)
+              (fn-ich-close 12 holder fn-ibp-connection-segment)
+              (mv-let (word3 gone)
+               (fn-ich-rx-origin 12 holder fn-ibp-connection-segment)
+               (mv (and positive removed (eq rebound :recovery-required)
+                        (eq word1 :current) (equal retained origin)
+                        (eq closed :closing) (eq word3 :stale) (null gone))
+                   fn-ibp-connection-segment))))))))))))))))
+
+(defun fn-crx-test-run ()
+ (declare (xargs :guard t))
+ (with-local-stobj fn-ibp-connection-segment
+  (mv-let (ok fn-ibp-connection-segment)
+   (fn-crx-test-association fn-ibp-connection-segment) ok)))
+(assert-event (fn-crx-test-run))
+
+(defconst *fn-crx-test-origin*
+ (fn-crx-open-origin '(:opened 12 (:connection-holder 7 1 0))
+                      '(:rx-capacity 3 9 4096) 9))
+(defconst *fn-crx-test-issued*
+ (fn-crx-issued *fn-crx-test-origin* :admitted '(:receiver-turn 8)))
+(assert-event
+ (fn-crx-turn-currentp *fn-crx-test-issued* 12 '(:connection-holder 7 1 0)
+                       '(:receiver-turn 8) '(:rx-capacity 3 9 4096) 9))
+; Literal full-antecedent/conclusion witness: every substituted coordinate
+; differs affirmatively while all unchanged coordinates remain the issued ones.
+(assert-event
+ (and
+  (not (equal 13 12))
+  (not (equal '(:connection-holder 8 1 0) '(:connection-holder 7 1 0)))
+  (not (equal '(:receiver-turn 9) '(:receiver-turn 8)))
+  (not (equal '(:rx-capacity 4 9 4096) '(:rx-capacity 3 9 4096)))
+  (not (equal 10 9))
+  (fn-crx-turn-currentp *fn-crx-test-issued* 12 '(:connection-holder 7 1 0)
+                        '(:receiver-turn 8) '(:rx-capacity 3 9 4096) 9)
+  (not (fn-crx-turn-currentp *fn-crx-test-issued* 13 '(:connection-holder 7 1 0)
+                             '(:receiver-turn 8) '(:rx-capacity 3 9 4096) 9))
+  (not (fn-crx-turn-currentp *fn-crx-test-issued* 12 '(:connection-holder 8 1 0)
+                             '(:receiver-turn 8) '(:rx-capacity 3 9 4096) 9))
+  (not (fn-crx-turn-currentp *fn-crx-test-issued* 12 '(:connection-holder 7 1 0)
+                             '(:receiver-turn 9) '(:rx-capacity 3 9 4096) 9))
+  (not (fn-crx-turn-currentp *fn-crx-test-issued* 12 '(:connection-holder 7 1 0)
+                             '(:receiver-turn 8) '(:rx-capacity 4 9 4096) 9))
+  (not (fn-crx-turn-currentp *fn-crx-test-issued* 12 '(:connection-holder 7 1 0)
+                             '(:receiver-turn 8) '(:rx-capacity 3 9 4096) 10))))
+(assert-event
+ (and (null (fn-crx-revoke *fn-crx-test-issued* 12 '(:connection-holder 7 1 0)))
+      (not (fn-crx-turn-currentp
+            (fn-crx-revoke *fn-crx-test-issued* 12 '(:connection-holder 7 1 0))
+            12 '(:connection-holder 7 1 0) '(:receiver-turn 8) '(:rx-capacity 3 9 4096) 9))
+      (equal (fn-crx-revoke *fn-crx-test-issued* 13 '(:connection-holder 7 1 0))
+             *fn-crx-test-issued*)))
+(assert-event
+ (and (null (fn-crx-open-origin '(:recovery-required 12 (:connection-holder 7 1 0))
+                                '(:rx-capacity 3 9 4096) 9))
+      (null (fn-crx-open-origin '(:refused nil nil) '(:rx-capacity 3 9 4096) 9))
+      (null (fn-crx-issued *fn-crx-test-origin* :receiver-turn-busy '(:receiver-turn 8)))))
+
+; Sole antecedent removal for fn-crx-current-turn-cannot-cross-connection:
+; a stale caller CID fails CURRENTP, but the substituted actual CID is current,
+; so the literal theorem's first conjunct is false. All other coordinates agree.
+(assert-event
+ (and (not (fn-crx-turn-currentp *fn-crx-test-issued* 13 '(:connection-holder 7 1 0)
+                                '(:receiver-turn 8) '(:rx-capacity 3 9 4096) 9))
+      (not (equal 12 13))
+      (fn-crx-turn-currentp *fn-crx-test-issued* 12 '(:connection-holder 7 1 0)
+                            '(:receiver-turn 8) '(:rx-capacity 3 9 4096) 9)))
+
+; Actual live segment revocation precedes logical close; no supplied descriptor
+; can remain readable during the intervening closing/cleanup span.
+(defun fn-crx-test-stored-revocation (fn-ibp-connection-segment)
+ (declare (xargs :stobjs fn-ibp-connection-segment :guard t))
+ (let* ((holder '(:connection-holder 7 1 0))
+        (origin *fn-crx-test-origin*)
+        (fn-ibp-connection-segment
+         (update-fn-ich-segment-id 1 fn-ibp-connection-segment)))
+  (mv-let (reserved fn-ibp-connection-segment)
+   (fn-ich-reserve holder 12 :fixture-grant fn-ibp-connection-segment)
+   (mv-let (attached fn-ibp-connection-segment)
+    (fn-ich-attach holder :fixture-pin fn-ibp-connection-segment)
+    (mv-let (bound fn-ibp-connection-segment)
+     (fn-ich-rx-bind 12 holder origin fn-ibp-connection-segment)
+     (let ((row (fn-ich-row holder fn-ibp-connection-segment))
+           (active (fn-ich-active fn-ibp-connection-segment)))
+      (mv-let (revoked fn-ibp-connection-segment)
+       (fn-ich-rx-revoke 12 holder fn-ibp-connection-segment)
+       (mv-let (read-word missing)
+        (fn-ich-rx-origin 12 holder fn-ibp-connection-segment)
+        (let ((positive
+               (and (eq reserved :reserved) (eq attached :attached)
+                    (eq bound :associated) (eq revoked :revoked)
+                    (eq read-word :receiver-unavailable) (null missing)
+                    (equal row (fn-ich-row holder fn-ibp-connection-segment))
+                    (equal active (fn-ich-active fn-ibp-connection-segment)))))
+         (mv-let (wrong fn-ibp-connection-segment)
+          (fn-ich-rx-revoke 13 holder fn-ibp-connection-segment)
+          (mv-let (again fn-ibp-connection-segment)
+           (fn-ich-rx-revoke 12 holder fn-ibp-connection-segment)
+           (mv-let (closed fn-ibp-connection-segment)
+            (fn-ich-close 12 holder fn-ibp-connection-segment)
+            (mv (and positive (eq wrong :stale) (eq again :revoked)
+                     (eq closed :closing)) fn-ibp-connection-segment)))))))))))))
+(defun fn-crx-test-stored-revocation-run ()
+ (declare (xargs :guard t))
+ (with-local-stobj fn-ibp-connection-segment
+  (mv-let (ok fn-ibp-connection-segment)
+   (fn-crx-test-stored-revocation fn-ibp-connection-segment) ok)))
+(assert-event (fn-crx-test-stored-revocation-run))

@@ -21,8 +21,10 @@
   (and (eq word :current)
        (fn-crx-turn-currentp (fn-owner-rx-connection-issued state)
                              id holder ticket capacity instance)
-       (fn-owner-rx-turn-consumablep ticket fn-rx-provider
-                                     fn-receiver-turn fn-page-read-pool))))
+       ; This gate precedes parser acquisition. A newly filled turn is not
+       ; yet consumable by the parser; admit exactly the acquisition domain.
+       (fn-owner-rx-turn-parser-acquirablep ticket fn-rx-provider
+                                           fn-receiver-turn fn-page-read-pool))))
 
 (defun fn-owner-rx-connection-revoke (id holder state)
  (declare (xargs :stobjs state :guard t))

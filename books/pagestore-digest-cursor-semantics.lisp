@@ -1,6 +1,7 @@
 ;; Proof-only whole-trajectory semantics. No list vocabulary runs in the host.
 (in-package "ACL2")
 (include-book "pagestore-digest-byte-refinement")
+(include-book "pagestore-digest-block-predicate")
 (include-book "pagestore-digest-byte-domain")
 (include-book "pagestore-digest-cursor-counter")
 (local (include-book "arithmetic-5/top" :dir :system))
@@ -238,12 +239,6 @@
        (equal (pgs-dcr-denote msg pgs-digest-state)
               (fn-b3-node *fn-b3-iv* msg 0 0))))
 
-(defun-nx pgs-dcs-blockp (block msg pgs-digest-state)
-  (declare (xargs :stobjs pgs-digest-state :verify-guards nil))
-  (implies (pgs-dc-needs-block pgs-digest-state)
-           (equal block (fn-b3-words 16
-                          (pgs-dcr-span (pgs-dc-pos pgs-digest-state)
-                                         (pgs-dc-end pgs-digest-state) msg)))))
 
 (defthm pgs-dcs-chunk-nonlast-preserves-denotation
   (implies (and (equal (pgs-dc-mode pgs-digest-state) :chunk)

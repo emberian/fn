@@ -37,6 +37,7 @@
 (include-book "../books/receiver-provider")
 (include-book "../books/receiver-turn-controller")
 (include-book "receiver-source-gate-host")
+(include-book "post-identity-captured-host")
 (include-book "../books/owner-config")
 (include-book "../books/owner-authority-proposal-state")
 (include-book "../books/consumer-account-carries-state")
@@ -274,6 +275,7 @@
 (include-book "../books/owner-number-bound")
 (include-book "../books/owner-outcome-pinned")
 (include-book "../books/owner-retire-counted")
+(include-book "../books/owner-connection-callbacks")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -344,11 +346,7 @@
                     (fn-own-clock (fn-owner-core state))))
              :usable :clock-unusable)))
 
-(defun fn-owner-config (state)
-  ; The one live configuration.  No host global shadows this value: every
-  ; caller reads the generation replayed into and published by fn-ocfg.
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
-  (fn-ocfg-config (fn-owner-ocfg state)))
+
 
 ;; The injection configuration the owner has installed (fn-own-config): the
 ;; one served POST and control submission read, whose bound is the store
@@ -393,24 +391,11 @@
 ; the effects' (the native host renders the step's plan off the mutex,
 ; fn-owner-chunk-span and books/served-plan.lisp, HST-023; before it the
 ; octet buffer of PRF-192, books/served-reply-buffer.lisp).
-(defun fn-owner-install-served-effects (effects state)
-  (declare (xargs :stobjs state :guard t))
-  (let* ((state (f-put-global 'fn-owner-effects effects state))
-         (state (f-put-global 'fn-owner-output nil state))
-         (state (f-put-global 'fn-owner-closep (fn-served-closingp effects) state))
-         ; RFC 4642 section 2.2.2: the host owes a TLS handshake.  The book
-         ; decided it (fn-auth-starttls, books/nntp-auth.lisp); this reads
-         ; its answer off the effect list, exactly as the close is read.
-         (state (f-put-global 'fn-owner-starttlsp
-                              (if (fn-served-starttlsp effects) t nil) state))
-         (state (f-put-global 'fn-owner-submittedp
-                              (if (fn-served-submission effects) t nil) state)))
-    state))
+
 
 (defun fn-owner-install-effects (effects state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((state (fn-owner-install-served-effects effects state)))
-    (f-put-global 'fn-owner-output (fn-served-reply-octets effects) state)))
+  (fn-owner-callback-install-effects effects state))
 
 
 ;; The process root (P3 owner open, books/owner-checkpoint-open.lisp).  Both
@@ -2628,11 +2613,7 @@
       (let ((state (f-put-global 'fn-owner-auth acfg state)))
         (value :ok)))))
 
-(defun fn-owner-auth (state)
-  (declare (xargs :stobjs state :guard t))
-  (if (boundp-global 'fn-owner-auth state)
-      (f-get-global 'fn-owner-auth state)
-    (fn-auth-open-config)))
+
 
 ; PRF-234 (CNS-006): a consumer bound to an account.  ACL2 decides the
 ; binding, the credential (the account's own, against the credential table
@@ -2751,30 +2732,8 @@
         (t (value nil))))
 
 (defun fn-owner-open-peer (peer-octets state)
-  (declare (xargs :stobjs state :mode :program
-                  :guard (fn-cbor-octet-listp peer-octets)))
-  (let ((peer (fn-store-octets->string peer-octets)))
-    (if (equal peer :bad)
-        (value nil)
-      (let* ((before (fn-owner-core state))
-             (id (fn-own-next-id before))
-             ; The owner's AUTHINFO policy, the same value fn-owner-open
-             ; pins into a reader.  A peer connection was opened with no
-             ; policy at all, and the owner resolves a connection to a peer
-             ; by source address alone (fn-owner-peer-name-for below), so on
-             ; a box where a configured peer is on loopback that was every
-             ; client: the operator's credential reached nothing.
-             (opened (fn-ocfg-open-peer (fn-owner-ocfg state) peer
-                                        (fn-owner-auth state)))
-             (state (fn-owner-install-ocfg (cdr opened) state))
-             (state (fn-owner-install-effects (car opened) state))
-             (state (f-put-global 'fn-owner-log-line
-                                  (fn-olog-connection-line
-                                   (fn-owner-core state) id peer-octets)
-                                  state)))
-        (if (fn-own-find-conn id (fn-own-conns (fn-owner-core state)))
-            (value id)
-          (value nil))))))
+  (declare (xargs :stobjs state :mode :program :guard (fn-cbor-octet-listp peer-octets)))
+  (fn-owner-callback-open-peer peer-octets state))
 
 ; The transfer decision for the transit submission in flight, over the LIVE
 ; node and the live configuration (RFC 4644 2.4.2: the offer was advisory).
@@ -3818,11 +3777,7 @@
 ; the socket without a reply.
 ; PKT-828 (books/owner-reader-view.lisp).  The reader views the committer
 ; captured: nil (none held: readers read the working view), (D) or (D N).
-(defun fn-owner-reader-views (state)
-  (declare (xargs :stobjs state :guard t))
-  (if (boundp-global 'fn-owner-reader-views state)
-      (f-get-global 'fn-owner-reader-views state)
-    nil))
+
 
 ; The committer's capture at EVENT (:start before a START's drain, :next
 ; before a START-NEXT's, :unnext when that START-NEXT took nobody, :complete
@@ -3845,48 +3800,19 @@
 ; the queue a POST joins and every other field are the entry's.
 (defun fn-owner-at-reader-view (state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((views (fn-owner-reader-views state)))
-    (if (consp views)
-        (fn-owner-install-ocfg (fn-ocfg-at-reader-view (fn-owner-ocfg state) views)
-                               state)
-      state)))
+  (fn-owner-callback-at-reader-view state))
 
 (defun fn-owner-at-working-view (working state)
   (declare (xargs :stobjs state :mode :program))
-  (if (consp (fn-owner-reader-views state))
-      (fn-owner-install-ocfg (fn-ocfg-with-view (fn-owner-ocfg state) working) state)
-    state))
+  (fn-owner-callback-at-working-view working state))
 
 (defun fn-owner-open-at (state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((before (fn-owner-core state))
-         (id (fn-own-next-id before))
-         ; fn-ocar-ocfg-open (books/owner-open-carried.lisp) is fn-ocfg-open
-         ; under the configured owner's relation
-         ; (fn-ocar-ocfg-open-is-ocfg-open-under-ocl-relation): the greeting
-         ; takes the view archive's fn-statep, the store node's
-         ; fn-node-statep and the configuration's fn-cfgp from the relation
-         ; instead of evaluating them per connection (PKT-455 (1)).
-         (opened (fn-ocar-ocfg-open (fn-owner-ocfg state)
-                                    (fn-owner-auth state)))
-         (state (fn-owner-install-ocfg (cdr opened) state))
-         (state (fn-owner-install-effects (car opened) state))
-         (state (f-put-global 'fn-owner-log-line
-                              (fn-olog-connection-line (fn-owner-core state)
-                                                       id nil)
-                              state)))
-    (if (fn-own-find-conn id (fn-own-conns (fn-owner-core state)))
-        (value id)
-      (value nil))))
+  (fn-owner-callback-open-at state))
 
 (defun fn-owner-open (state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((working (fn-own-view (fn-owner-core state)))
-         (state (fn-owner-at-reader-view state)))
-    (mv-let (erp val state)
-      (fn-owner-open-at state)
-      (let ((state (fn-owner-at-working-view working state)))
-        (mv erp val state)))))
+  (fn-owner-callback-open state))
 
 
 ; One observed socket region is one ACL2 prefix transition
@@ -3923,27 +3849,15 @@
 ;; computed; the clock is the owner's current observation, which the host
 ;; advanced just before (fnn-owner-advance-clock).
 
-(defun fn-owner-exposure-state (state)
-  (declare (xargs :stobjs state :guard t))
-  (if (boundp-global 'fn-owner-exposure state)
-      (f-get-global 'fn-owner-exposure state)
-    (fn-exp-initial)))
 
-(defun fn-owner-exposure-publicp (state)
-  (declare (xargs :stobjs state :guard t))
-  (and (boundp-global 'fn-owner-exposure-public state)
-       (f-get-global 'fn-owner-exposure-public state)))
 
-(defun fn-owner-exposure-now (state)
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
-  (fn-clock-monotonic (fn-own-clock (fn-owner-core state))))
+
+
+
 
 (defun fn-owner-exposure-limits (state)
   (declare (xargs :stobjs state :mode :program))
-  (fn-exp-limits (fn-cfg-value (fn-owner-config state))
-                 (fn-own-max-conns (fn-owner-core state))
-                 (fn-owner-exposure-publicp state)
-                 (fn-auth-config-requiredp (fn-owner-auth state))))
+  (fn-owner-callback-exposure-limits state))
 
 ;; PRF-986 (PKT-639, W2a): the TLS handshake as an admission decision
 ;; (books/tls-handshake-budget.lisp).  The limits are the operator's live
@@ -4219,14 +4133,17 @@
 ; the connection's own buffer after the mutex is released.  The owner and
 ; exposure states are installed through fn-owner-install-ocfg and
 ; fn-owner-exposure-observe.
-(defun fn-owner-chunk-span-at (id start end sched fn-octets fn-arena fn-cat state)
-  (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
-  (let ((owner (fn-owner-core state)))
-    (if (not (fn-own-find-conn id (fn-own-conns owner)))
-        (value :unknown)
-      (if (not (and (natp start) (natp end) (<= start end)
-                    (<= end (fn-octets-len fn-octets))))
-          (value :bad-range)
+; Pure current evaluation. SAME owner gate covers evaluation, parser stage,
+; STATE install and parser finish. No STATE write precedes retaining ACTUAL RC.
+(defun fn-owner-chunk-span-evaluate (id start end sched fn-octets fn-arena fn-cat state)
+ (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
+ (let ((owner (fn-owner-core state)))
+  (cond ((not (fn-own-find-conn id (fn-own-conns owner)))
+         (mv :unknown nil nil state))
+        ((not (and (natp start) (natp end) (<= start end)
+                   (<= end (fn-octets-len fn-octets))))
+         (mv :bad-range nil nil state))
+        (t
         ;; PKT-828: at the reader view while the committer holds a capture,
         ;; the working view put back after it (books/owner-reader-read.lisp
         ;; fn-orr-read-span; with no capture it is fn-scr-ocfg-read-span).
@@ -4259,33 +4176,116 @@
         ;; (fn-scr-prepare-access-keeps-okp), so every read's cache satisfies
         ;; the chain equation's fn-gacc-okp.  Memory: one entry per read rule
         ;; text in use (measure at convergence).
-        (let* ((cache (fn-scr-prepare-access (fn-owner-access-cache state) owner id))
-               (state (f-put-global 'fn-owner-access-cache cache state))
-               (rc (fn-mca-read-span
-                    (fn-owner-credits state)
-                    (fn-owner-ocfg state) (fn-owner-reader-views state)
-                    id start end cache sched
-                    (fn-owner-article-slots state)
-                    (fn-owner-credit-reserve state)
-                    fn-octets fn-arena fn-cat))
-               (result (car rc))
-               (state (fn-owner-put-credits (cdr rc) state))
-               (effects (fn-own-tls-result-effects result))
-               (consumed (fn-own-tls-result-consumed result))
-               (state (fn-owner-install-ocfg
-                       (fn-own-tls-result-owner result) state))
-               ; PRF-161: progress, failed logins and submissions of this step.
-               (state (fn-owner-exposure-observe id effects consumed state)))
-          (value (fn-splan-step-make
-                  effects
-                  (fn-served-closingp effects)
-                  (fn-served-starttlsp effects)
-                  (fn-served-submission effects)
-                  consumed
-                  ; One line per 441 the effects send (books/owner-log.lisp
-                  ; fn-olog-served-refusal-lines-one-per-441).
-                  (fn-olog-served-refusal-lines (fn-owner-core state) id effects)
-                  (f-get-global 'fn-owner-exposure-close state))))))))
+         (let* ((cache (fn-scr-prepare-access (fn-owner-access-cache state) owner id))
+                (RC (fn-mca-read-span
+                      (fn-owner-credits state)
+                      (fn-owner-ocfg state) (fn-owner-reader-views state)
+                      id start end cache sched (fn-owner-article-slots state)
+                      (fn-owner-credit-reserve state) fn-octets fn-arena fn-cat)))
+          (mv nil cache RC state))))))
+
+; Internal consumer of the SAME actual evaluation. Parser caller registers RC
+; before this function; legacy delegation retains its original output shape.
+(defun fn-owner-chunk-span-install-result (id cache RC state)
+ (declare (xargs :stobjs state :mode :program))
+ (let* ((result (car RC))
+        (effects (fn-own-tls-result-effects result))
+        (consumed (fn-own-tls-result-consumed result))
+        (state (f-put-global 'fn-owner-access-cache cache state))
+        (state (fn-owner-put-credits (cdr RC) state))
+        (state (fn-owner-install-ocfg (fn-own-tls-result-owner result) state))
+        (state (fn-owner-exposure-observe id effects consumed state)))
+  (mv (fn-splan-step-make
+       effects (fn-served-closingp effects) (fn-served-starttlsp effects)
+       (fn-served-submission effects) consumed
+       (fn-olog-served-refusal-lines (fn-owner-core state) id effects)
+       (f-get-global 'fn-owner-exposure-close state)) state)))
+
+(defun fn-owner-chunk-span-current-result (id start end sched fn-octets fn-arena fn-cat state)
+ (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
+ (mv-let (erp cache RC state)
+  (fn-owner-chunk-span-evaluate id start end sched fn-octets fn-arena fn-cat state)
+  (if erp (mv nil erp nil state)
+   (mv-let (step state) (fn-owner-chunk-span-install-result id cache RC state)
+    (mv nil step RC state)))))
+
+(defun fn-owner-chunk-span-at (id start end sched fn-octets fn-arena fn-cat state)
+ (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
+ (mv-let (erp step RC state)
+  (fn-owner-chunk-span-current-result id start end sched fn-octets fn-arena fn-cat state)
+  (declare (ignore RC)) (mv erp step state)))
+
+; INTERNAL actual producer. Native holds the same owner gate across acquisition,
+; evaluation, retained RC staging, STATE install and actor finish. Runtime
+; admission must cover overlapping root11/cache/RC/step construction.
+(defun fn-owner-rx-turn-parser-span
+ (id connectionHolderToken sched ticket fn-rx-provider fn-receiver-turn
+  fn-rx-capacity-current fn-page-read-pool fn-arena fn-cat state)
+ (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-rx-capacity-current
+                          fn-page-read-pool fn-arena fn-cat state) :mode :program))
+ (let* ((preOC (fn-owner-ocfg state))
+        (conn (fn-own-find-conn id (fn-own-conns (fn-owner-core state)))))
+  (if (not (and conn
+                  (fn-owner-rx-parser-source-currentp
+                   id connectionHolderToken ticket fn-rx-provider
+                   fn-receiver-turn fn-rx-capacity-current fn-page-read-pool state)))
+      (mv :unavailable-parser-source nil nil fn-rx-provider fn-receiver-turn fn-page-read-pool state)
+   (mv-let (acquired fn-receiver-turn fn-page-read-pool)
+    (fn-owner-rx-turn-parser-acquire ticket preOC (fn-own-conn-wire conn)
+                                    fn-rx-provider fn-receiver-turn fn-page-read-pool)
+    (if (not (member-eq acquired '(:parser-acquired :already-parser-owned)))
+        (mv acquired nil nil fn-rx-provider fn-receiver-turn fn-page-read-pool state)
+     (mv-let (rangeWord start end)
+      (fn-owner-rx-turn-consumer-range ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)
+      (if (not (eq rangeWord :receiver-readable))
+          (mv rangeWord nil nil fn-rx-provider fn-receiver-turn fn-page-read-pool state)
+       (mv-let (erp cache RC state)
+        (stobj-let ((fn-octets-rx (fn-rxp-octets fn-rx-provider))
+                    (fn-rx-carry (fn-rxp-carry fn-rx-provider)))
+         (erp cache RC state)
+         (if (fn-rxc-currentp (fn-rxc-token fn-rx-carry) fn-rx-carry)
+             (fn-owner-chunk-span-evaluate id start end sched
+                                          fn-octets-rx fn-arena fn-cat state)
+           (mv :receiver-unavailable nil nil state))
+         (mv erp cache RC state))
+        (if (or erp (not RC))
+            (mv-let (fenced fn-rx-provider fn-receiver-turn fn-page-read-pool)
+             (fn-owner-rx-turn-parser-fence ticket RC (fn-own-conn-wire conn) nil
+                                           fn-rx-provider fn-receiver-turn fn-page-read-pool)
+             (mv fenced nil nil fn-rx-provider fn-receiver-turn fn-page-read-pool state))
+         (mv-let (staged fn-rx-provider fn-receiver-turn fn-page-read-pool)
+          (fn-owner-rx-turn-parser-stage ticket RC fn-rx-provider fn-receiver-turn fn-page-read-pool)
+          (if (not (eq staged :parser-staged))
+              (mv-let (fenced fn-rx-provider fn-receiver-turn fn-page-read-pool)
+               (fn-owner-rx-turn-parser-fence ticket RC (fn-own-conn-wire conn) nil
+                                             fn-rx-provider fn-receiver-turn fn-page-read-pool)
+               (mv fenced nil nil fn-rx-provider fn-receiver-turn fn-page-read-pool state))
+           (mv-let (readWord retainedRC)
+            (fn-owner-rx-turn-parser-staged-rc ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)
+            (if (not (eq readWord :staged-result))
+                (mv-let (fenced fn-rx-provider fn-receiver-turn fn-page-read-pool)
+                 (fn-owner-rx-turn-parser-fence ticket RC (fn-own-conn-wire conn) nil
+                                               fn-rx-provider fn-receiver-turn fn-page-read-pool)
+                 (mv fenced nil nil fn-rx-provider fn-receiver-turn fn-page-read-pool state))
+             ; Any raw escape from these writes leaves the actual controller
+             ; :parser-installing with SAME RC and revoked provider capacity.
+             (mv-let (step state)
+              (fn-owner-chunk-span-install-result id cache retainedRC state)
+              (let* ((currentConn (fn-own-find-conn id (fn-own-conns (fn-owner-core state))))
+                     (wire (and currentConn (fn-own-conn-wire currentConn))))
+               (mv-let (finished episode fn-rx-provider fn-receiver-turn fn-page-read-pool)
+                (fn-owner-rx-turn-parser-finish ticket wire step
+                                               fn-rx-provider fn-receiver-turn fn-page-read-pool)
+                (cond ((eq finished :parser-progress-recorded)
+                       (mv finished nil nil fn-rx-provider fn-receiver-turn fn-page-read-pool state))
+                      ((eq finished :response-recorded)
+                       (mv finished step episode fn-rx-provider fn-receiver-turn fn-page-read-pool state))
+                      (t
+                       (mv-let (fenced fn-rx-provider fn-receiver-turn fn-page-read-pool)
+                        (fn-owner-rx-turn-parser-fence ticket retainedRC wire step
+                                                      fn-rx-provider fn-receiver-turn fn-page-read-pool)
+                        (mv fenced nil nil fn-rx-provider fn-receiver-turn fn-page-read-pool state))))))))))))))))))))
+
 
 ; Row A4 (c), lane composed-owner-3 (PRF-933): the line of the octet buffer
 ; that begins at START, whose page did not come within the dependency
@@ -4432,12 +4432,7 @@
 
 (defun fn-owner-close (id fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))
-  (let* ((state (fn-owner-step (list :close id) fn-arena state))
-         ;; Lane credits: the connection's body and queued submissions are
-         ;; freed with it; what the committer took and the batch in flight
-         ;; keep their credit (fn-mca-close-keeps-what-the-commit-owns).
-         (state (fn-owner-put-credits (fn-mca-close (fn-owner-credits state) id) state)))
-    (value :closed)))
+  (fn-owner-callback-close id fn-arena state))
 
 ; The host-fault boundary (books/owner-fault.lisp).
 ;
@@ -4455,14 +4450,7 @@
 ; defect and not a served event.
 (defun fn-owner-fault (id state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((owner (fn-owner-core state))
-         (knownp (if (fn-own-find-conn id (fn-own-conns owner)) t nil))
-         (result (fn-ocfg-fault (fn-owner-ocfg state) id))
-         (state (fn-owner-install-ocfg (cdr result) state))
-         (state (fn-owner-install-effects (car result) state))
-         ;; Lane credits: as a close (fn-mca-close-keeps-what-the-commit-owns).
-         (state (fn-owner-put-credits (fn-mca-close (fn-owner-credits state) id) state)))
-    (value (if knownp :faulted :unknown))))
+  (fn-owner-callback-fault id state))
 
 (defun fn-owner-advance (id fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))

@@ -17823,6 +17823,31 @@
           "pending_subject": "Component scheduling subject only: actual BP host has no installed fn-bps-asb-step immutable provider or admission gate. Full cursor invariant/partition equivalence and provider lifetime remain open; proper-local source admission is not normal certification."
         }
       ]
+    },
+    {
+      "id": "PRF-1182",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-crx-accepted-association-is-readable",
+          "pending_subject": "Actual guarded internal RX association/custody subject; accepted-open/turn/getter/close host composition and complete native qualification remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-crx-bind-preserves-connection-custody",
+          "pending_subject": "Actual guarded internal RX association/custody subject; accepted-open/turn/getter/close host composition and complete native qualification remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-crx-current-turn-cannot-cross-connection",
+          "pending_subject": "Actual guarded internal RX association/custody subject; accepted-open/turn/getter/close host composition and complete native qualification remain open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-crx-revocation-blocks-new-acquisition",
+          "pending_subject": "Actual guarded internal RX association/custody subject; accepted-open/turn/getter/close host composition and complete native qualification remain open."
+        }
+      ]
     }
   ]
 }
