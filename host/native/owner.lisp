@@ -1222,6 +1222,7 @@ fence; no semantic action of any worker, that one included, can run after it
 ANSWERING is also remembered in SPARING (PKT-562): a later stop -- the run's
 cleanup stop, which passes no ANSWERING -- spares it too, so it cannot shut
 the socket while that worker is still writing its reply."
+  (fnn-payload-lifecycle-drain service)
   (fnn-with-roster (service)
     (unless (fnn-owner-service-stopping service)
       (setf (fnn-owner-service-stopping service) t
@@ -2766,24 +2767,30 @@ preparing another batch (books/owner-commit-fairness.lisp)."
       wake)))
 
 (defun fnn-owner-start-syncer (service gen)
-  "The SYNC of the sealed batch in its own thread, the owner released; its
-word is left for the COMPLETE, with GEN, the generation its request was
-issued under (books/owner-time-bars.lisp fn-otb-issue), and the committer is
-woken."
+  "Sync one sealed batch off owner lock. Roster ownership survives a failed
+committer until actual shutdown joins this worker."
   (let ((result (list nil)))
     (setf (fnn-owner-service-synced service) nil)
-    (values
-     (sb-thread:make-thread
-      (lambda ()
-        (multiple-value-bind (word condition)
-            (handler-case (fnn-owner-commit-sync service)
-              (serious-condition (e) (values :failed e)))
-          (setf (car result) (list* gen word condition)))
-        (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
-          (setf (fnn-owner-service-synced service) t)
-          (sb-thread:condition-notify (fnn-owner-service-commit-ready service))))
-      :name "fn owner syncer")
-     result)))
+    (fnn-with-roster (service)
+      (let ((worker
+              (sb-thread:make-thread
+               (lambda ()
+                 (unwind-protect
+                      (progn
+                        (multiple-value-bind (word condition)
+                            (handler-case (fnn-owner-commit-sync service)
+                              (serious-condition (e) (values :failed e)))
+                          (setf (car result) (list* gen word condition)))
+                        (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+                          (setf (fnn-owner-service-synced service) t)
+                          (sb-thread:condition-notify (fnn-owner-service-commit-ready service))))
+                   (fnn-with-roster (service)
+                     (setf (fnn-owner-service-workers service)
+                           (delete sb-thread:*current-thread*
+                                   (fnn-owner-service-workers service) :test #'eq)))))
+               :name "fn owner syncer")))
+        (push worker (fnn-owner-service-workers service))
+        (values worker result)))))
 
 (defun fnn-owner-members-named (members cids)
   "The MEMBERS (CID REPLY WORD RENDER) whose cid ACL2 named in CIDS, in order."
@@ -5358,6 +5365,8 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                   ;; machine (books/connection-budget.lisp), refused by name
                   ;; before anything listens; then the I/O loops.
                   (fnn-mux-budget-install service tls-context)
+                  (sb-thread:with-mutex ((fnn-owner-service-lock service))
+                    (fnn-payload-lifecycle-start service))
                   (fnn-owner-start-committer service)
                   (fnn-mux-start service)
                   ;; PKT-283's native witness: the Store is recovered and
@@ -5449,6 +5458,11 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                     (let ((committer (fnn-owner-service-committer service)))
                       (when committer
                         (ignore-errors (sb-thread:join-thread committer :default nil))))
+                    ;; A failed committer can leave an in-flight syncer. No
+                    ;; further syncer can start once the committer has returned.
+                    (let ((worker (fnn-owner-service-committer service)))
+                      (when (or (null worker) (not (sb-thread:thread-alive-p worker)))
+                        (fnn-owner-wait-workers service)))
                     (fnn-owner-measure-report)
                     ;; Keep the captured listener fd live while the focused
                     ;; test delivers a repeated SIGTERM during cleanup.
@@ -5457,10 +5471,26 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                                    "1")
                       (fnn-out "OWNER-CLEANUP")
                       (sleep 2))
-                    (dolist (hook (fnn-owner-service-close-hooks service))
-                      (ignore-errors (funcall hook service)))
-                    (fnn-owner-feed-close-all service)
-                    (fnn-store-close (fnn-owner-service-store service)))
+                    ;; Failed module cleanup is never evidence of quiescence.
+                    (let ((modules-joined t))
+                      (dolist (hook (fnn-owner-service-close-hooks service))
+                        (handler-case (funcall hook service)
+                          (serious-condition () (setq modules-joined nil))))
+                      (fnn-owner-feed-close-all service)
+                      (fnn-store-close (fnn-owner-service-store service))
+                      (when (and modules-joined
+                                 (null (fnn-with-roster (service)
+                                         (fnn-owner-service-workers service)))
+                                 (null (fnn-owner-service-cold-head service))
+                                 (every (lambda (slot)
+                                          (let ((worker (fnn-cold-worker-thread slot)))
+                                            (or (null worker)
+                                                (not (sb-thread:thread-alive-p worker)))))
+                                        *fnn-cold-workers*)
+                                 (let ((worker (fnn-owner-service-committer service)))
+                                   (or (null worker) (not (sb-thread:thread-alive-p worker)))))
+                        (sb-thread:with-mutex ((fnn-owner-service-lock service))
+                          (fnn-payload-lifecycle-joined service)))))
                (setq *fnn-sigterm-wakeup-fd* nil)
                (dolist (extra more-listeners) (fnn-socket-shut extra))
                (when tls-listener (fnn-socket-shut tls-listener))
@@ -5538,3 +5568,71 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                    fault nil :inet nil connection-fault-operation)))
 
 (fnn-register-developer-verb "owner" #'fnn-command-owner)
+
+(defstruct (fnn-snapshot-payload-view (:constructor fnn-make-snapshot-payload-view (token arena)))
+  token arena)
+
+(defun fnn-payload-lifecycle-start (service)
+  "Owner mutex held; register before any core worker/thread is exposed."
+  (sb-thread:with-mutex (*fnn-payload-lifecycle-lock*)
+    (unless (eq (first (fnn-payload-lifecycle-answer :start)) :allowed)
+      (fnn-fault "payload arena lifecycle refused owner startup"))
+    (let ((answer (fnn-payload-lifecycle-answer
+                   :start (fnn-core-state 'fn-owner-payload-view-owned-p))))
+      (unless (eq (first answer) :allowed)
+        (fnn-fault "payload arena lifecycle refused owner startup"))
+      (setf *fnn-payload-lifecycle-arena* (fnn-live-arena)
+            *fnn-payload-lifecycle-owner* service
+            *fnn-payload-lifecycle-phase* (second answer)))))
+
+(defun fnn-payload-lifecycle-drain (service)
+  "Owner mutex held. Signal only; joining is always outside this exclusion."
+  (sb-thread:with-mutex (*fnn-payload-lifecycle-lock*)
+    (when (eq service *fnn-payload-lifecycle-owner*)
+      (let ((answer (fnn-payload-lifecycle-answer :drain)))
+        (when (eq (first answer) :allowed)
+          (setf *fnn-payload-lifecycle-phase* (second answer)))))))
+
+(defun fnn-payload-lifecycle-joined (service)
+  "Owner mutex held AFTER definite worker, module, and buffer cleanup."
+  (sb-thread:with-mutex (*fnn-payload-lifecycle-lock*)
+    (when (eq service *fnn-payload-lifecycle-owner*)
+      (let ((answer (fnn-payload-lifecycle-answer
+                     :joined (fnn-core-state 'fn-owner-payload-view-owned-p) t)))
+        (when (eq (first answer) :allowed)
+          (setf *fnn-payload-lifecycle-phase* (second answer)
+                *fnn-payload-lifecycle-owner* nil))))))
+
+(defun fnn-snapshot-payload-view-acquire (service maintenance)
+  "Owner capture mutex held; lifecycle exclusion covers instance and STATE."
+  (sb-thread:with-mutex (*fnn-payload-lifecycle-lock*)
+    (let ((permission (fnn-payload-lifecycle-answer :capture)))
+      (unless (and (eq (first permission) :allowed)
+                   (eq service *fnn-payload-lifecycle-owner*))
+        (return-from fnn-snapshot-payload-view-acquire
+          (values :refused '(:refused :arena-not-serving)))))
+    (let* ((arena *fnn-payload-lifecycle-arena*)
+           (answer (destructuring-bind (erp val &rest ignored)
+                       (fnn-call 'fn-owner-payload-view-acquire maintenance arena *the-live-state*)
+                     (declare (ignore ignored))
+                     (when erp (fnn-fault "payload view acquire core error")) val)))
+      (if (eq (first answer) :acquired)
+          (values :acquired (fnn-make-snapshot-payload-view (second answer) arena))
+        (values :refused answer)))))
+
+(defun fnn-snapshot-payload-view-live-p (holder)
+  "Owner mutex held; authorization to a captured source row is separate."
+  (sb-thread:with-mutex (*fnn-payload-lifecycle-lock*)
+    (and (eq (first (fnn-payload-lifecycle-answer :borrow)) :allowed)
+         (eq (fnn-snapshot-payload-view-arena holder) *fnn-payload-lifecycle-arena*)
+         (fnn-core-state 'fn-owner-payload-view-live-p
+                         (fnn-snapshot-payload-view-token holder)))))
+
+(defun fnn-snapshot-payload-view-release (holder settlement)
+  "Owner mutex held after definite cleanup; uncertainty retains ownership."
+  (sb-thread:with-mutex (*fnn-payload-lifecycle-lock*)
+    (if (and (eq (first (fnn-payload-lifecycle-answer :borrow)) :allowed)
+             (eq (fnn-snapshot-payload-view-arena holder) *fnn-payload-lifecycle-arena*))
+        (fnn-core-state 'fn-owner-payload-view-release
+                        (fnn-snapshot-payload-view-token holder) settlement)
+      '(:refused :payload-view-instance))))

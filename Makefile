@@ -592,6 +592,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/page-read-ledger \
 	books/page-discovery-ledger \
 	books/cold-read-layout \
+	books/cold-guard-bootstrap \
+	tests/acl2/cold-guard-bootstrap-tests \
 	tests/acl2/page-discovery-ledger-tests \
 	tests/acl2/cold-read-layout-tests \
 	books/page-read-ownership \

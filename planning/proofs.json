@@ -17734,7 +17734,7 @@
     {
       "id": "PRF-1128",
       "title": "An exact typed window stays on its physical worker until the final scalar borrow ends",
-      "statement": "Subjects fn-pwx-acquire, fn-pwx-return and fn-pwx-release retain the immutable nine-field window token in the existing persistent four-field worker row. The core binds the exact slot and full descriptor; acquisition and physical return preserve every supplied charge; final release requires both exact returned bindings and refunds once. Native extent worker dispatch calls the stobj adapters with complete answer/effect equations. Actual raw fn-ews execution retains only a private fixed window and fn-pwr-byte permits scalar access only through matching returned ownership and a published core plan. Scalar authorization is a definition equation; native trajectory correspondence, adequate native demand, served activation and full P12 remain open. The staged payload-coordinate accessor checks the original six physical/payload coordinates and computes the relative window index in ACL2. Core terminal outcome distinguishes authenticated readiness, stale ownership and integrity/I/O failure; a failed authenticated scan never asks for a rescan.",
+      "statement": "Subjects fn-pwx-acquire, fn-pwx-return and fn-pwx-release retain the immutable nine-field window token in the existing persistent four-field worker row. The core binds the exact slot and full descriptor; acquisition and physical return preserve every supplied charge; final release requires both exact returned bindings and refunds once. Native extent worker dispatch calls the stobj adapters with complete answer/effect equations. Actual raw fn-ews execution retains only a private fixed window and fn-pwr-byte permits scalar access only through matching returned ownership and a published core plan. Scalar authorization is a definition equation; native trajectory correspondence, adequate native demand, served activation and full P12 remain open. The staged payload-coordinate accessor checks the original six physical/payload coordinates and computes the relative window index in ACL2. Core terminal outcome distinguishes authenticated readiness, stale ownership and integrity/I/O failure; a failed authenticated scan never asks for a rescan. Exact cancellation revokes further scheduled work and scalar publication while retaining the ledger through actual return; only the matching cancelled-returned worker can settle. The dormant native current getter binds the actual logical-view arena under owner exclusion and issues the current seven-field descriptor before unlocking.",
       "milestone": "M5",
       "requirements": [
         "STO-020"
@@ -17753,9 +17753,11 @@
         "tests/acl2/page-window-read-tests.lisp",
         "tests/acl2/page-window-admission-tests.lisp",
         "planning/evidence/physical-window-source-2026-09-30.md",
-        "planning/evidence/physical-window-coordinate-source-2026-09-30.md"
+        "planning/evidence/physical-window-coordinate-source-2026-09-30.md",
+        "planning/evidence/physical-window-lifetime-source-2026-09-30.md",
+        "tests/native/page-window-lifecycle.lisp"
       ],
-      "progress_note": "Source component with clean source REPL evidence; no certificate/image/native qualification or served activation claim. Supplied demand is not allocator adequacy. Payload-coordinate/outcome source equations and actual nonzero-offset, wrong-coordinate, damaged-prefix, wrong-commitment and short-read witnesses pass. Arena-incarnation/logical-source lease, current-placement capture, cancellation rights, dedicated guard baseline and native composition remain open.",
+      "progress_note": "Source-only staged cancellation/current-placement integration. Exact producer lifecycle305fb5aee and dedicated guard roster21 imported; no certificate, image execution, funded startup, captured-source authorization refinement, full native correspondence or default activation claim. Cooperative cancellation permits the already-authorized bounded step to finish. Normal and cancelled settlement clear the sole retained result before refund.",
       "events": [
         "fn-pwx-release-requires-exact-returned-window-and-slot",
         "fn-pwx-other-request-cannot-return-or-release"

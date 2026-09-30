@@ -106,3 +106,51 @@
 (defthm fn-owner-page-window-outcome-refines-by-definition
   (equal (fn-owner-page-window-outcome worker token plan fn-page-read-pool)
          (fn-pwr-outcome (fn-owner-page-read-ledger fn-page-read-pool) worker token plan)))
+
+(defun fn-owner-page-window-executor-cancel (worker token fn-page-read-pool)
+  (declare (xargs :stobjs fn-page-read-pool))
+  (mv-let (word worker1 ledger)
+    (fn-pwx-cancel (fn-owner-page-read-ledger fn-page-read-pool) worker token)
+    (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
+      (mv word worker1 fn-page-read-pool))))
+
+(defthm fn-owner-page-window-executor-cancel-refines-by-definition
+  (equal (mv-list 3 (fn-owner-page-window-executor-cancel worker token fn-page-read-pool))
+    (let ((r (mv-list 3 (fn-pwx-cancel (fn-owner-page-read-ledger fn-page-read-pool) worker token))))
+      (list (nth 0 r) (nth 1 r) (fn-owner-page-read-keep-ledger (nth 2 r) fn-page-read-pool))))
+  :hints (("Goal" :in-theory (enable fn-pwx-cancel))))
+
+(defun fn-owner-page-window-executor-settle-cancelled (worker token fn-page-read-pool)
+  (declare (xargs :stobjs fn-page-read-pool))
+  (mv-let (word worker1 ledger)
+    (fn-pwx-settle-cancelled (fn-owner-page-read-ledger fn-page-read-pool) worker token)
+    (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
+      (mv word worker1 fn-page-read-pool))))
+
+(defthm fn-owner-page-window-executor-settle-cancelled-refines-by-definition
+  (equal (mv-list 3 (fn-owner-page-window-executor-settle-cancelled worker token fn-page-read-pool))
+    (let ((r (mv-list 3 (fn-pwx-settle-cancelled (fn-owner-page-read-ledger fn-page-read-pool) worker token))))
+      (list (nth 0 r) (nth 1 r) (fn-owner-page-read-keep-ledger (nth 2 r) fn-page-read-pool))))
+  :hints (("Goal" :in-theory (enable fn-pwx-settle-cancelled))))
+
+(defun fn-owner-page-window-work-permittedp (worker token fn-page-read-pool)
+  (declare (xargs :stobjs fn-page-read-pool))
+  (fn-pwx-work-permittedp (fn-owner-page-read-ledger fn-page-read-pool) worker token))
+
+(include-book "../books/payload-arena")
+
+; Caller authorization comes from the captured provider row and live logical
+; holder. This getter alone never grants authority to an arbitrary handle.
+(defun fn-owner-page-window-current-octet (h i fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (natp h) (< h (fn-arena-count fn-arena))
+                              (natp i) (< i (fn-arena-payload-len h fn-arena)))))
+  (fn-arena-get h i fn-arena))
+
+(defthm fn-owner-page-window-current-octet-refines-arena-by-definition
+  (equal (fn-owner-page-window-current-octet h i fn-arena)
+         (fn-arena-get h i fn-arena)))
+
+(defun fn-owner-page-window-decoded-refusal ()
+  (declare (xargs :guard t))
+  :decoded-window-unavailable)

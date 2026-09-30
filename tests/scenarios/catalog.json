@@ -6368,13 +6368,15 @@
         "Attempt return/release with a changed offset or another slot, and attempt to steal the live token.",
         "Run the actual core raw digest trajectory on three bytes and its real trailer, then observe physical return and borrow one scalar.",
         "Drop all native result aliases before final release, then attempt repeated release.",
-        "Request offset one, pass the arena payload-relative index unchanged, alter payload coordinates, and run actual damaged-prefix, wrong-commitment and short-read scans."
+        "Request offset one, pass the arena payload-relative index unchanged, alter payload coordinates, and run actual damaged-prefix, wrong-commitment and short-read scans.",
+        "Cancel exact running and returned windows, deny scalar publication, retain charges until actual return and exact cancelled settlement; stage bound-arena current-placement capture before off-lock read."
       ],
       "expected": [
         "Exact binding preserves every supplied charge. Altered range and worker slot cannot return or release the job.",
         "Actual return retains worker credit and file lease. The actual authenticated stream authorizes scalar 2 at relative offset 1; a running slot remains unavailable.",
         "Final release refunds once and restores an ordinary idle slot. No result vector is exposed through the scalar borrow API.",
-        "ACL2 computes the exact window-relative scalar index; mismatching original coordinates and pre-window indices do not borrow bytes. Core outcomes preserve read/digest/commitment failure distinctly from a new cold request."
+        "ACL2 computes the exact window-relative scalar index; mismatching original coordinates and pre-window indices do not borrow bytes. Core outcomes preserve read/digest/commitment failure distinctly from a new cold request.",
+        "Cancellation never fabricates worker return or refunds a running job. A wrong token cannot settle; final exact settlement refunds once after aliases end. Compressed current getters refuse before eager decoding."
       ],
       "evidence": [
         "tests/acl2/page-window-executor-tests.lisp",
@@ -6382,7 +6384,8 @@
         "host/native/extent.lisp",
         "tests/acl2/page-window-admission-tests.lisp",
         "planning/evidence/physical-window-source-2026-09-30.md",
-        "planning/evidence/physical-window-coordinate-source-2026-09-30.md"
+        "planning/evidence/physical-window-coordinate-source-2026-09-30.md",
+        "tests/native/page-window-lifecycle.lisp"
       ],
       "execution_scope": "Source model/adapter and staged raw wrapper only. Actual native observation, adequate native demand and served activation remain pending."
     }

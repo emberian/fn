@@ -1913,3 +1913,15 @@ producer's source-authorized logical lease bound to the actual arena instance,
 current physical placement acquisition under owner-to-extent locks, staged
 buffer ownership and inner cleanup before logical release. Those joins,
 cancellation publication rights and full allocator/native evidence remain open.
+
+
+The dormant PRF-1128 lifetime seam revokes cancelled jobs without fabricating
+physical return. Credits and file ownership survive cancellation until actual
+worker return and exact cancelled settlement; scalar publication is denied.
+Cancellation is cooperative between bounded core actions: an already authorized
+action may finish. The bound-arena current getter executes under owner exclusion,
+then admits the selected exact descriptor under extent exclusion before unlock.
+The dedicated 21-name guard cache has a sourced permanent baseline, but startup
+installation, selected-runtime adequacy, captured-row authorization and native
+execution remain separate obligations. Compressed getters refuse before eager
+decoding. The default realizer does not enable this staged mode.
