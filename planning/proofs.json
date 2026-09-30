@@ -19063,9 +19063,11 @@
         "books/served-catalog-chain.lisp",
         "books/index-reader-request.lisp",
         "host/index-reader-request-host.lisp",
-        "specs/nntp.md"
+        "specs/nntp.md",
+        "tests/acl2/served-catalog-source-scan-tests.lisp",
+        "planning/evidence/reader-source-prefix-2026-09-30/manifest.json"
       ],
-      "progress_note": "New source-isolated scanner/caller proposal authored; guards, full consumed-prefix and source-custody refinements, literal actual multi-command fixtures, reached fn-orr call switch, installed runtime/input admission and native composition pending. Original full-span reference remains unchanged. No current proof/activation claim."
+      "progress_note": "Unchanged source-scan consumed-prefix theorem admitted in retained scannerpub1 with local count/wire/effects invariant; all additive scanner/prepare/dispatch guards and actual OVER\u2192GROUP/LISTGROUP\u2192OVER literal prefix/remainder/effect witnesses passed. Source-only manifest reader-source-prefix-2026-09-30. Full target remains planned: universal staged prepare/dispatch equation, actual offered-source custody, reached fn-orr switch, bounded refresh replies, runtime/RX/native and complete S7 remain open."
     }
   ]
 }

@@ -417,9 +417,11 @@ the offered publication before any reply aliases are produced. Successful
 selection transfers that ownership to the connection; failed selection keeps
 the previous holder. This is fn's stronger representation/lifetime guarantee
 over RFC 3977 sections 6.1.1 and 6.1.2, not permission to render a whole pipelined
-span against its final publication. The source-bound implementation and its
-actual admission/native composition are still pending; the original logical
-reader remains the full consumed-prefix reference.
+span against its final publication. The unchanged source-scan prefix equation and executable scanner/prepare/dispatch
+guards are admitted with literal GROUP and LISTGROUP prefix/remainder witnesses.
+Universal staged preparation, actual offered-source custody, bounded refresh replies
+and admission/native composition remain pending; the original logical reader
+remains the full consumed-prefix reference.
 
 NNT-002: maintain a per-connection selected group and current article number.
 Failed GROUP leaves them unchanged; successful GROUP selects its first available

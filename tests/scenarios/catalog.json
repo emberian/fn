@@ -7072,9 +7072,11 @@
       "evidence": [
         "books/served-catalog-chain.lisp",
         "books/index-reader-request.lisp",
-        "host/index-reader-request-host.lisp"
+        "host/index-reader-request-host.lisp",
+        "tests/acl2/served-catalog-source-scan-tests.lisp",
+        "planning/evidence/reader-source-prefix-2026-09-30/manifest.json"
       ],
-      "execution_scope": "Specified only. Current scanner/source/host proposals are not admitted or activated; no positive fixture result inferred."
+      "execution_scope": "Pure actual scanner/prepare/dispatch component with opened reader and real stobjs passes OVER\u2192GROUP/LISTGROUP\u2192OVER literal consumed-prefix, pre-command state, isolated command, complete remaining input/effects/final-connection equality. Two durable publication holders, actual registered request/custody, failed-selection/native/funding full scenario remain specified and unactivated."
     }
   ]
 }

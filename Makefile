@@ -1148,6 +1148,7 @@ ACL2_BOOKS ?= books/group-number-source-reader-refinement \
 	tests/acl2/served-catalog-view-tests \
 	tests/acl2/served-catalog-chain-tests \
 	tests/acl2/served-catalog-scan-tests \
+	tests/acl2/served-catalog-source-scan-tests \
 	tests/acl2/served-catalog-owner-tests \
 	tests/acl2/served-catalog-join-tests \
 	tests/acl2/served-catalog-join-open-tests \
