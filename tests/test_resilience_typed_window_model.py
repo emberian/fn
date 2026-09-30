@@ -66,3 +66,15 @@ class TypedWindowModelTests(unittest.TestCase):
                                 [{"name": "client", "kind": "client"}], operations,
                                 [], [operations[-1].id], ["typed-window-settled"])
             self.assertEqual(judge_scenario(scenario, observe(text, trial), trial).kind, expected)
+
+    def test_retained_bundle_campaign_actual_verdicts(self):
+        import json
+        from pathlib import Path
+        from tools.resilience.scenario import Scenario
+        from tools.resilience.typed_window_model import judge_scenario
+        evidence = Path(__file__).resolve().parents[1] / "planning/evidence/resilience-typed-window-2026-09-30/stateful"
+        text = (evidence / "stateful-trials.log").read_text()
+        for i, data in enumerate(json.loads((evidence / "stateful-trials.json").read_text())):
+            verdict = judge_scenario(Scenario.from_json(data), observe(text, i), i)
+            self.assertEqual(verdict.kind, "consistent")
+            self.assertIn("typed-window-settled", verdict.witnesses_observed)
