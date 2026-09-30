@@ -4560,18 +4560,20 @@
 (definterface fn-owner-page-window-executor-return :class :common-lisp-compliant)
 (definterface fn-owner-page-window-executor-release :class :common-lisp-compliant
   :keystones ((fn-pwx-release-requires-exact-returned-window-and-slot :via fn-pwx-release)))
-(definterface fn-owner-page-window-byte :class :common-lisp-compliant)
+(definterface fn-owner-page-window-byte :class :common-lisp-compliant
+  :kinds ((plan true-listp)))
 
-(definterface fn-owner-page-window-byte-at :class :common-lisp-compliant)
+(definterface fn-owner-page-window-byte-at :class :common-lisp-compliant
+  :kinds ((plan true-listp)))
 (definterface fn-pwr-cold-descriptor :class :common-lisp-compliant)
 
-(definterface fn-owner-page-window-outcome :class :common-lisp-compliant)
+(definterface fn-owner-page-window-outcome :class :common-lisp-compliant
+  :kinds ((plan true-listp)))
 
 (definterface fn-owner-page-window-executor-cancel :class :common-lisp-compliant)
 (definterface fn-owner-page-window-executor-settle-cancelled :class :common-lisp-compliant)
 (definterface fn-owner-page-window-work-permittedp :class :common-lisp-compliant)
 
-(definterface fn-owner-page-window-current-octet :class :common-lisp-compliant)
 (definterface fn-owner-page-window-decoded-refusal :class :common-lisp-compliant)
 
 ; Exact private cache declarations imported from 4b9be704b.
@@ -4600,3 +4602,11 @@
 (definterface fn-owner-page-file-issued-count :class :common-lisp-compliant)
 (definterface fn-pwz-tokenp :class :common-lisp-compliant
   :direct "Guard-t full decoded token discrimination precedes raw token destructuring; decoded execution remains refused")
+
+(definterface fn-owner-page-window-current-octet-fenced :class :common-lisp-compliant)
+(definterface fn-cgb-index :class :common-lisp-compliant
+  :direct "Guard-t fixed roster index for installed compiled callbacks")
+(definterface fn-cgb-capacity :class :common-lisp-compliant
+  :direct "Guard-t fixed callback vector capacity from the core roster")
+(definterface fn-cgb-raw-classp :class :common-lisp-compliant
+  :direct "Core requires actual world common-lisp-compliant class before raw installation")

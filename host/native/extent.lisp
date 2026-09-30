@@ -388,9 +388,9 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
                   (*fnn-extent-window-token* nil))
               (catch 'fnn-extent-cold
                 (return-from fnn-extent-window-current-acquire
-                  (values :byte
-                    (first (fnn-core-cold-values 'fn-owner-page-window-current-octet h i arena))
-                    nil nil))))))
+                  (destructuring-bind (word scalar)
+                    (fnn-core-cold-values 'fn-owner-page-window-current-octet-fenced h i arena)
+                    (values word scalar nil nil)))))))
       ;; The dynamic scalar activation has unwound; no buffer alias escaped.
       (multiple-value-bind (token word worker) (fnn-extent-issue-window descriptor)
         (values word nil token worker))))))

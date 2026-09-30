@@ -1206,25 +1206,59 @@ kind); :unknown when the world has no formals for NAME (a raw primitive)."
 ; These helpers are unactivated until that startup/caller coordinate lands.
 ; This cache is permanently funded and never refunded by a settled job.
 (defvar *fnn-cold-entry-guard-specs* nil)
+(defvar *fnn-cold-raw-callbacks* nil)
+; Failed partial construction remains retained and permanently charged.
+(defvar *fnn-cold-raw-pending* nil)
 
 (defun fnn-cold-guard-cache-prepare (plan)
   (unless (fn-cgb-planp plan)
     (error 'fnn-store-fault :message "cold guard cache: missing funded bootstrap plan"))
+  (when (or *fnn-cold-entry-guard-specs* *fnn-cold-raw-callbacks* *fnn-cold-raw-pending*)
+    (error 'fnn-store-fault :message "cold guard cache: fresh installation required"))
+  ; Validate actual stripped-world classes and existing raw function objects
+  ; before allocating either cache. Qualified caller guards remain required.
+  (dolist (name (fn-cgb-roster))
+    (unless (and (fn-cgb-raw-classp name
+                   (getpropc name 'symbol-class nil (w *the-live-state*)))
+                 (fboundp name) (compiled-function-p (symbol-function name)))
+      (error 'fnn-store-fault :message "cold guard cache: guarded compiled callback unavailable")))
   (let* ((cache (make-hash-table :test 'eq :size (nth 7 plan)
                                :rehash-size 1 :rehash-threshold 1.0 :synchronized t))
          (*fnn-entry-guard-specs* cache))
-    ; Only the fixed core roster can populate this preallocated cache.
+    (setf *fnn-cold-entry-guard-specs* cache)
     (dolist (name (fn-cgb-roster))
       (unless (fn-cgb-specp name (fnn-entry-guard-spec name))
         (error 'fnn-store-fault :message "cold guard cache: unsupported image guard metadata")))
-    (setf *fnn-cold-entry-guard-specs* cache)
+    (let ((callbacks (make-array (fn-cgb-capacity) :initial-element nil)))
+      (setf *fnn-cold-raw-pending* callbacks)
+      (dolist (name (fn-cgb-roster))
+        (setf (aref callbacks (fn-cgb-index name)) (symbol-function name)))
+      (setf *fnn-cold-raw-callbacks* callbacks *fnn-cold-raw-pending* nil))
     cache))
 
 (defun fnn-cold-call (name &rest args)
-  (unless (and *fnn-cold-entry-guard-specs* (fn-cgb-namep name))
+  (unless (and *fnn-cold-entry-guard-specs* *fnn-cold-raw-callbacks*
+               (fn-cgb-namep name))
     (error 'fnn-store-fault :message "cold guard cache: unprepared or unsupported entry"))
-  (let ((*fnn-entry-guard-specs* *fnn-cold-entry-guard-specs*))
-    (apply #'fnn-call name args)))
+  (let* ((*fnn-entry-guard-specs* *fnn-cold-entry-guard-specs*)
+         (callback (aref *fnn-cold-raw-callbacks* (fn-cgb-index name)))
+         (outcome :thrown) (values nil))
+    (unless (compiled-function-p callback)
+      (error 'fnn-store-fault :message "cold guard cache: compiled callback missing"))
+    (fnn-entry-guard name args)
+    ; Apply the installed raw body directly. No *1* interpreter fallback.
+    (setq values
+          (catch 'raw-ev-fncall
+            (handler-case
+                (prog1 (multiple-value-list (apply callback args))
+                  (setq outcome :ok))
+              (serious-condition (c)
+                (setq outcome (princ-to-string c)) nil))))
+    (case outcome
+      (:ok values)
+      (:thrown (fnn-fault "ACL2 raw callback error in ~(~a~): ~a" name
+                          (handler-case (princ-to-string values) (error () "guard violation"))))
+      (t (fnn-fault "ACL2 raw callback error in ~(~a~): ~a" name outcome)))))
 
 (defun fnn-entry-guard-describe (value)
   "A bounded description of VALUE's kind (never its contents)."

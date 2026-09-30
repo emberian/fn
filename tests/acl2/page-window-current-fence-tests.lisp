@@ -1,0 +1,13 @@
+(in-package "ACL2")
+(include-book "../../host/page-window-executor-host")
+(defun fn-pwf-fence-fixture-run (fn-arena)
+  (declare (xargs :stobjs fn-arena))
+  (let ((fn-arena (fn-arena-seal-list '(10 20) fn-arena)))
+    (mv (and (equal (mv-list 2 (fn-owner-page-window-current-octet-fenced 0 1 fn-arena)) '(:byte 20))
+             (equal (mv-list 2 (fn-owner-page-window-current-octet-fenced 0 2 fn-arena)) '(:invalid-current-byte nil))
+             (equal (mv-list 2 (fn-owner-page-window-current-octet-fenced 1 0 fn-arena)) '(:invalid-current-byte nil))
+             (equal (mv-list 2 (fn-owner-page-window-current-octet-fenced -1 0 fn-arena)) '(:invalid-current-byte nil))) fn-arena)))
+(defun fn-pwf-fence-fixture ()
+  (with-local-stobj fn-arena
+    (mv-let (answer fn-arena) (fn-pwf-fence-fixture-run fn-arena) answer)))
+(assert-event (fn-pwf-fence-fixture))

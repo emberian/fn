@@ -15,7 +15,7 @@
     fn-owner-page-window-executor-cancel
     fn-owner-page-window-executor-settle-cancelled
     fn-owner-page-window-work-permittedp
-    fn-owner-page-window-current-octet fn-owner-page-window-decoded-refusal))
+    fn-owner-page-window-current-octet-fenced fn-owner-page-window-decoded-refusal))
 
 (defun fn-cgb-roster ()
   (declare (xargs :guard t)) *fn-cgb-roster*)
@@ -28,25 +28,42 @@
   (declare (xargs :guard t))
   (fn-crl-table-capacity (len *fn-cgb-roster*)))
 
+(defun fn-cgb-index-aux (name names index)
+  (declare (xargs :guard (and (symbolp name) (natp index))))
+  (if (consp names)
+      (if (eq name (car names)) index
+        (fn-cgb-index-aux name (cdr names) (+ 1 index)))
+    nil))
+(defun fn-cgb-index (name)
+  (declare (xargs :guard t))
+  (and (symbolp name) (fn-cgb-index-aux name *fn-cgb-roster* 0)))
+(defun fn-cgb-raw-classp (name class)
+  (declare (xargs :guard t))
+  (and (fn-cgb-namep name) (eq class :common-lisp-compliant)))
+; Existing image function objects are borrowed, not constructed by this cache.
+; One fixed pointer vector is permanently retained after installation.
+(defun fn-cgb-callback-octets ()
+  (declare (xargs :guard t))
+  (* 2 (fn-crl-array-octets (fn-cgb-capacity) 8)))
+
 ; The21-entry roster has7 unary guards on begin, six other single checks,
-; and two NAT checks on current-octet; its two bound comparisons are omitted
-; by the cheap-guard extractor but still occupy prewarm conjunct cells.
+; Fenced current-octet has guard t and refuses invalid scalar bounds in core.
 ; Each cache spec is one cons; every check is four fields plus its list cell.
 ; Names/formals/recognizer kinds are image-world pointers, not copied strings.
 (defun fn-cgb-retained-conses ()
-  (declare (xargs :guard t)) (+ 21 (* 5 (+ 7 6 2))))
+  (declare (xargs :guard t)) (+ 21 (* 5 (+ 7 6))))
 
 ; Guard-conjunct extraction: begin's7 leaves and at most1+...+6 copied
-; append cells; current-octet has4 leaves and1+2+3 append cells;
-; the other19 entries each have one leaf. The roster21 cells
+; append cells; the other20 entries each have one leaf. The roster21 cells
 ; are separately funded even though the immutable compiled literal can share.
 (defun fn-cgb-prewarm-conses ()
-  (declare (xargs :guard t)) (+ 21 4 7 1 2 3 4 5 6 4 1 2 3 19))
+  (declare (xargs :guard t)) (+ 21 4 7 1 2 3 4 5 6 20))
 
 (defun fn-cgb-baseline-octets ()
   (declare (xargs :guard t))
-  (* 2 (+ (fn-crl-table-octets (fn-cgb-capacity) nil)
-          (* 16 (+ (fn-cgb-retained-conses) (fn-cgb-prewarm-conses))))))
+  (+ (fn-cgb-callback-octets)
+     (* 2 (+ (fn-crl-table-octets (fn-cgb-capacity) nil)
+             (* 16 (+ (fn-cgb-retained-conses) (fn-cgb-prewarm-conses)))))))
 
 (defun fn-cgb-arity (name)
   (declare (xargs :guard t))
@@ -61,13 +78,13 @@
     (fn-pwr-cold-descriptor 7) (fn-owner-page-window-outcome 4)
     ((fn-owner-page-window-executor-cancel
       fn-owner-page-window-executor-settle-cancelled
-      fn-owner-page-window-work-permittedp fn-owner-page-window-current-octet) 3)
+      fn-owner-page-window-work-permittedp fn-owner-page-window-current-octet-fenced) 3)
     (fn-owner-page-window-decoded-refusal 0) (otherwise 0)))
 
 (defun fn-cgb-check-count (name)
   (declare (xargs :guard t))
   (case name
-    (fn-ews-begin 7) (fn-owner-page-window-current-octet 2)
+    (fn-ews-begin 7)
     ((fn-ews-effect fn-ews-tick fn-ews-read fn-owner-page-window-byte
       fn-owner-page-window-byte-at fn-owner-page-window-outcome) 1)
     (otherwise 0)))
@@ -94,7 +111,7 @@
         (if (member-eq name '(fn-ews-read fn-owner-page-window-byte
                              fn-owner-page-window-byte-at fn-owner-page-window-outcome)) 2 0)
         (equal name 'fn-ews-begin)
-        (if (or (eq name 'fn-ews-begin) (eq name 'fn-owner-page-window-current-octet))
+        (if (eq name 'fn-ews-begin)
             'natp 'true-listp) (cdr spec))))
 
 ; Exact constructor coordinate carried by the admitted bootstrap plan.
@@ -111,6 +128,7 @@
   :rule-classes nil)
 
 (in-theory (disable fn-cgb-roster fn-cgb-namep fn-cgb-capacity
+                    fn-cgb-index fn-cgb-raw-classp fn-cgb-callback-octets
                     fn-cgb-retained-conses fn-cgb-prewarm-conses
                     fn-cgb-baseline-octets fn-cgb-planp fn-cgb-arity
                     fn-cgb-check-count fn-cgb-checksp fn-cgb-specp))

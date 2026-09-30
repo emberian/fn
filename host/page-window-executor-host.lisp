@@ -151,6 +151,19 @@
   (equal (fn-owner-page-window-current-octet h i fn-arena)
          (fn-arena-get h i fn-arena)))
 
+(defun fn-owner-page-window-current-octet-fenced (h i fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (and (natp h) (< h (fn-arena-count fn-arena))
+           (natp i) (< i (fn-arena-payload-len h fn-arena)))
+      (mv :byte (fn-arena-get h i fn-arena))
+    (mv :invalid-current-byte nil)))
+(defthm fn-owner-page-window-current-fence-refines-arena-by-definition
+  (implies (and (natp h) (< h (fn-arena-count fn-arena))
+                (natp i) (< i (fn-arena-payload-len h fn-arena)))
+    (equal (mv-list 2 (fn-owner-page-window-current-octet-fenced h i fn-arena))
+           (list :byte (fn-arena-get h i fn-arena))))
+  :rule-classes nil)
+
 (defun fn-owner-page-window-decoded-refusal ()
   (declare (xargs :guard t))
   :decoded-window-unavailable)

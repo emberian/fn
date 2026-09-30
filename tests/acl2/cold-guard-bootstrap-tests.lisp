@@ -9,16 +9,16 @@
               (not (fn-cgb-namep 'fn-owner-step))
               (not (fn-cgb-namep nil))))
 ; Independent source and selected layout pins, no runtime allocation claim.
-(assert! (equal (fn-cgb-retained-conses) 96))
-(assert! (equal (fn-cgb-prewarm-conses) 82))
+(assert! (equal (fn-cgb-retained-conses) 86))
+(assert! (equal (fn-cgb-prewarm-conses) 73))
 (assert! (equal (fn-crl-table-octets 21 nil) 848))
-(assert! (equal (fn-cgb-baseline-octets) 7392))
+(assert! (equal (fn-cgb-baseline-octets) 7168))
 
-(assert! (fn-cgb-planp '(:admitted nil (7392 0 0 0 0) 8 8 9 1 21)))
+(assert! (fn-cgb-planp '(:admitted nil (7168 0 0 0 0) 8 8 9 1 21)))
 ; Mutation witnesses: oldseven-field shape, wrong capacity, missing credit.
-(assert! (and (not (fn-cgb-planp '(:admitted nil (7392 0 0 0 0) 8 8 9 1)))
-              (not (fn-cgb-planp '(:admitted nil (7392 0 0 0 0) 8 8 9 1 12)))
-              (not (fn-cgb-planp '(:admitted nil (7391 0 0 0 0) 8 8 9 1 21)))))
+(assert! (and (not (fn-cgb-planp '(:admitted nil (7168 0 0 0 0) 8 8 9 1)))
+              (not (fn-cgb-planp '(:admitted nil (7168 0 0 0 0) 8 8 9 1 12)))
+              (not (fn-cgb-planp '(:admitted nil (7167 0 0 0 0) 8 8 9 1 21)))))
 
 (assert! (and (fn-cgb-specp 'fn-crw-supportedp '(2))
               (fn-cgb-specp 'fn-ews-read '(6 (2 s true-listp list)))
@@ -37,12 +37,21 @@
               (not (fn-cgb-specp 'fn-owner-page-window-byte-at '(13 (2 plan true-listp list))))
               (not (fn-cgb-specp 'fn-owner-step '(2)))))
 
-(assert! (and (fn-cgb-specp 'fn-owner-page-window-current-octet
-                          '(3 (0 h natp natural) (1 i natp natural)))
+(assert! (and (fn-cgb-specp 'fn-owner-page-window-current-octet-fenced
+                          '(3))
               (fn-cgb-specp 'fn-owner-page-window-executor-cancel '(3))
               (fn-cgb-specp 'fn-owner-page-window-decoded-refusal '(0))))
-(assert! (and (not (fn-cgb-specp 'fn-owner-page-window-current-octet
+(assert! (and (not (fn-cgb-specp 'fn-owner-page-window-current-octet-fenced
                                '(3 (0 h natp natural))))
-              (not (fn-cgb-specp 'fn-owner-page-window-current-octet
+              (not (fn-cgb-specp 'fn-owner-page-window-current-octet-fenced
                                '(3 (0 h natp natural) (1 i true-listp list))))
               (not (fn-cgb-specp 'fn-owner-page-window-decoded-refusal '(1)))))
+
+(assert! (equal (fn-cgb-callback-octets) 384))
+(assert! (and (equal (fn-cgb-index 'fn-crw-supportedp) 0)
+              (equal (fn-cgb-index 'fn-owner-page-window-decoded-refusal) 20)
+              (not (fn-cgb-index 'unknown-entry))))
+(assert! (and (fn-cgb-raw-classp 'fn-ews-begin :common-lisp-compliant)
+              (not (fn-cgb-raw-classp 'fn-ews-begin :ideal))
+              (not (fn-cgb-raw-classp 'fn-ews-begin :program))
+              (not (fn-cgb-raw-classp 'unknown-entry :common-lisp-compliant))))
