@@ -10750,7 +10750,7 @@
         "PRF-164"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-reader-read.lisp",
         "tests/acl2/owner-reader-read-tests.lisp",
@@ -12276,7 +12276,7 @@
         "PRF-302"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-rcompat-reply-cat-is-rcompat-reply",
         "fn-rcompat-retrieval-cat-is-retrieval",
@@ -13158,7 +13158,7 @@
         "PRF-332"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-nntp-verdict-hdr-response-cat-is-archive",
         "fn-nntp-verdict-hdr-range-cat-is-archive",
@@ -13664,7 +13664,7 @@
         "PRF-377"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/memory-credits.lisp",
         "books/owner-credits.lisp",
@@ -14100,7 +14100,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/nntp-responses.lisp",
         "books/nntp.lisp",
@@ -14166,7 +14166,7 @@
         "PRF-222"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/group-access-cache.lisp",
         "books/group-access.lisp",
@@ -14330,7 +14330,7 @@
         "PRF-918"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-reclaim.lisp",
         "tests/acl2/owner-reclaim-tests.lisp",
@@ -17855,7 +17855,7 @@
         "HST-001"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-reclaim-carry.lisp",
         "tests/acl2/owner-reclaim-carry-tests.lisp"

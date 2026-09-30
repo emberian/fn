@@ -603,7 +603,9 @@
  (defthm fn-lg-octets-append
    (implies (true-listp a)
             (equal (fn-cbor-octet-listp (append a b))
-                   (and (fn-cbor-octet-listp a) (fn-cbor-octet-listp b))))))
+                   (and (fn-cbor-octet-listp a) (fn-cbor-octet-listp b))))
+   :hints (("Goal" :induct (binary-append a b)
+            :in-theory (enable fn-cbor-octet-listp)))))
 (local
  (defthm fn-lg-octets-true-listp
    (implies (fn-cbor-octet-listp x) (true-listp x))))
