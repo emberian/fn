@@ -17290,9 +17290,21 @@
         {
           "kind": "theorem",
           "name": "fn-ibp-row-copy-span-exact-output"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-qpg-acquisition-adds-exactly-one-active-grant"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-qpg-settlement-removes-exactly-one-active-grant"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-qpg-cancellation-retains-all-grant-debt"
         }
       ],
-      "pending_subject": "Internal fixed-page chunk component only. Actual nested provider capture, directory association, COW publication, query payload grants and funded retirement remain unimplemented; no host boundary or activation claim."
+      "pending_subject": "Internal fixed-page and fixed64 query-payload grant components only. Exact nested provider admission/association, aggregate reset exclusion, native actual arena binding, COW publication and funded retirement remain open; no activation claim."
     }
   ]
 }

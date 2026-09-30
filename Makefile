@@ -598,6 +598,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/cold-read-layout-tests \
 	books/page-read-ownership \
 	tests/acl2/page-read-ownership-tests \
+	books/query-payload-grants \
+	tests/acl2/query-payload-grants-tests \
 	books/index-backing-chunks \
 	tests/acl2/index-backing-chunks-tests \
 	books/page-file-lease \
@@ -1465,6 +1467,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/arena-reader-pins-tests \
 	books/page-read-ownership \
 	tests/acl2/page-read-ownership-tests \
+	books/query-payload-grants \
+	tests/acl2/query-payload-grants-tests \
 	books/index-backing-chunks \
 	tests/acl2/index-backing-chunks-tests \
 	books/page-file-lease \
