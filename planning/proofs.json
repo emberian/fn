@@ -17762,6 +17762,31 @@
         "fn-pwx-release-requires-exact-returned-window-and-slot",
         "fn-pwx-other-request-cannot-return-or-release"
       ]
+    },
+    {
+      "id": "PRF-1139",
+      "title": "Leased fixed-page index generations retain table and catalog backing through COW publication",
+      "statement": "The selected provider owns actual fixed2048-u64 table chunks and256 immutable catalog-row-reference chunks, bounded persistent directory roots, query/generation identities and retired backing. Chunk copy subjects fn-ibp-table-copy-span and fn-ibp-row-copy-span have exact entire output effects with bounded64/32-cell work; copied chunks are unpublished and later sealed. Full capture, actual directory/chunk association, supported-profile funding, COW writer migration, incremental grow/reinsert, atomic publication and retirement through last query release remain implementation obligations. A page ID alone does not establish supplied-object provenance; the final sanctioned iterator export must select the exact nested provider child under its carried relation.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020",
+        "STO-027"
+      ],
+      "depends_on": [
+        "PRF-957"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/index-backing-chunks.lisp",
+        "tests/acl2/index-backing-chunks-tests.lisp",
+        "planning/evidence/index-backing-chunks-source-2026-09-30.md"
+      ],
+      "progress_note": "First guarded fixed-chunk source component admitted with full-output teeth, not an actual capture/provider/native/default qualification claim. Separate O/iterator owner maintains catalog rows abstraction; provider still being implemented.",
+      "events": [
+        "fn-ibp-table-copy-span-exact-output",
+        "fn-ibp-row-copy-span-exact-output"
+      ]
     }
   ]
 }

@@ -1925,3 +1925,15 @@ The dedicated 21-name guard cache has a sourced permanent baseline, but startup
 installation, selected-runtime adequacy, captured-row authorization and native
 execution remain separate obligations. Compressed getters refuse before eager
 decoding. The default realizer does not enable this staged mode.
+
+
+PRF-1139 / SCN-1045 implement the selected P2 backing provider. A query
+retains both table and catalog-row roots with captured C and separate Store
+frontier F. Actual fixed chunks are2048 u64 words or256 immutable row
+references. Copy work is64/32 cells per invocation into an unpublished chunk;
+publication seals its identity. The final iterator selects the exact nested
+provider child through a carried root/chunk relation. Root directories and
+generation/query metadata are core-owned; COW, incremental unpublished growth,
+funded capacity installation, atomic publication and charged retirement are
+required parts of this implementation. The initial chunk book alone supplies
+none of those joins. Sizes are page formats, not stored-data ceilings.
