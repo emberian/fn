@@ -145,14 +145,14 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         )
 
     def article_count(self):
-        # The node's own read-only open (`store PATH status`,
+        # The node's explicit replaying read (`store PATH status --replay`,
         # books/native-live-status.lisp fn-nls-report's `articles=' word):
         # it replays and verifies every durable record the way the served
         # path does, at any admitted record size.  The Python text bridge
         # (tools/frame_bridge.py) prints each record as a decimal list, and
         # its ACL2 exhausts its control stack decoding a 10 MiB record
         # (SCN-077), so it is not the readback here.
-        status = self.invoke("store", self.store, "status", timeout=900)
+        status = self.invoke("store", self.store, "status", "--replay", timeout=900)
         self.assertEqual(status.returncode, EXIT.OK, (status.stdout, status.stderr))
         counts = re.findall(rb"^transactions=[0-9]+ articles=([0-9]+) ",
                             status.stdout, re.MULTILINE)

@@ -168,6 +168,54 @@ the owner resolved the source address to, or nil for a reader."
            (fn-olog-field "connection" (fn-olog-decimal id))
            (fn-olog-field "time" (fn-olog-time (fn-own-clock o)))))))
 
+; Q10d: only the kernel's fixed-width address is observed by the host.
+; Keep validation and text in ACL2, with at most 4/16 input cells inspected.
+(defun fn-olog-address-octetsp (address count)
+  (declare (xargs :guard (natp count) :measure (nfix count)))
+  (if (zp count)
+      (null address)
+    (and (consp address) (natp (car address)) (<= (car address) 255)
+         (fn-olog-address-octetsp (cdr address) (1- count)))))
+
+(defun fn-olog-ipv4-text (address count)
+  (declare (xargs :guard (natp count) :measure (nfix count)))
+  (if (and (consp address) (not (zp count)))
+      (append (true-list-fix (fn-olog-decimal (nfix (car address))))
+              (if (equal count 1) nil '(46))
+              (fn-olog-ipv4-text (cdr address) (1- count)))
+    nil))
+
+(defun fn-olog-address-byte (x)
+  (declare (xargs :guard t))
+  (if (and (natp x) (<= x 255)) x 0))
+
+(defun fn-olog-ipv6-text (address pairs)
+  (declare (xargs :guard (natp pairs) :measure (nfix pairs)))
+  (if (and (consp address) (consp (cdr address)) (not (zp pairs)))
+      (append (true-list-fix
+               (fn-id-hex-octets (list (fn-olog-address-byte (car address))
+                                     (fn-olog-address-byte (cadr address)))))
+              (if (equal pairs 1) nil '(58))
+              (fn-olog-ipv6-text (cddr address) (1- pairs)))
+    nil))
+
+(defun fn-olog-socket-address (family address)
+  (declare (xargs :guard t))
+  (cond ((and (equal family :inet) (fn-olog-address-octetsp address 4))
+         (fn-olog-ipv4-text address 4))
+        ((and (equal family :inet6) (fn-olog-address-octetsp address 16))
+         (fn-olog-ipv6-text address 8))
+        (t (fn-olog-text "unobserved"))))
+
+(defun fn-olog-socket-connection-line (o id peer family address)
+  "An accepted socket's line; logical non-socket connections use the old line.
+The source-address field is the observed kernel address, not the peer's name.
+IPv6 uses eight expanded lowercase groups; no DNS or Lisp reader is involved."
+  (declare (xargs :guard t))
+  (fn-olog-join
+   (list (fn-olog-connection-line o id peer)
+         (fn-olog-field "client-address" (fn-olog-socket-address family address)))))
+
 ;; -----------------------------------------------------------------------------
 ;; Peer transfer lines: the receiver's transit outcome and the sender's feed
 ;; reply.  Before these, a peer transfer that was refused left no line on
@@ -598,6 +646,14 @@ decision injects (the outcome line is then fn-olog-control-post-line's)."
 (defthm fn-olog-connection-line-is-one-line
   (fn-olog-no-breakp (fn-olog-connection-line o id peer))
   :hints (("Goal" :in-theory (disable fn-olog-join))))
+
+; KEYSTONE (PRF-054): the actual socket log subject cannot inject a
+; second line, even from malformed family/address observations or peer names.
+(defthm fn-olog-socket-connection-line-is-one-line
+  (fn-olog-no-breakp (fn-olog-socket-connection-line o id peer family address))
+  :hints (("Goal" :in-theory (e/d (fn-olog-socket-connection-line)
+                                  (fn-olog-join fn-olog-connection-line
+                                   fn-olog-socket-address)))))
 
 (local
  (defthm fn-olog-code-class-word-has-no-break

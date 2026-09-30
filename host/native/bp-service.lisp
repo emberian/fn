@@ -1026,7 +1026,7 @@ scheduling step, whatever the family holds.")
   ;; with an offset-zero source and reassembles nothing; the host starts that
   ;; family's reassembly job (fn-bpfj-start), steps it a bounded quantum at a
   ;; time (fn-bpfj-step) until fn-bpfj-finishedp, and offers the finished job
-  ;; with the profile's bundle octets to the :family step.  Its plan reads
+  ;; with the profile's held octets to the :family step.  Its plan reads
   ;; the image out of the job and refuses an image past the limit by name
   ;; (fn-bpfj-plan-refuses-past-the-limit-by-name); a stale job plans as
   ;; (:stale :job), which issues nothing.  A family whose proposal issues
@@ -1036,7 +1036,7 @@ scheduling step, whatever the family holds.")
   ;; refusal/uncertainty does not loop.  The job the proposal read is left
   ;; in the service for its kind-18 :persist-result.
   (let ((tried nil)
-        (limit (fnn-core 'fn-bpnpf-bundle-octets (fnn-bps-profile service))))
+        (limit (fnn-core 'fn-bpnpf-held-octets (fnn-bps-profile service))))
     (loop
       (let* ((tally (fnn-bps-tally service))
              (observation (fnn-bp-observation

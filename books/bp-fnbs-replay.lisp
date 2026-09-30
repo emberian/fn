@@ -12,12 +12,20 @@
        (stringp (car row))
        (fn-cbor-octet-listp (cadr row))))
 
+(verify-guards fn-bpnf-replay-rowp)
+
 (defun fn-bpnf-replay-pair-afterp (epoch operation-id prior)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (and (natp epoch) (natp operation-id)
+                              (or (null prior)
+                                  (and (consp prior)
+                                       (natp (car prior))
+                                       (natp (cdr prior)))))))
   (or (null prior)
       (< (car prior) epoch)
       (and (equal (car prior) epoch)
            (< (cdr prior) operation-id))))
+
+(verify-guards fn-bpnf-replay-pair-afterp)
 
 (defun fn-bpnf-replay-rows-aux (rows held prior max-held max-octets)
   (declare (xargs :guard t :measure (acl2-count rows)))

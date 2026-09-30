@@ -298,3 +298,398 @@
                  fn-article-header-bytes-p fn-article-namep)
                 (fn-nlv-control-run fn-nlv-value fn-article-ftext-listp
                  fn-article-vcharp fn-article-wspp fn-article-has-vcharp)))))
+
+; A complete physical line may contain any non-CR/LF object. Malformed
+; header bytes are rejected by the grammar, not excluded by this domain.
+(local (defthm fn-nlv-control-run-cons-unfolds
+ (equal (fn-nlv-control-run (cons byte rest) c)
+        (fn-nlv-control-run rest (fn-nlv-control-byte c byte)))
+ :hints (("Goal" :expand ((fn-nlv-control-run (cons byte rest) c))
+          :in-theory (disable fn-nlv-control-run fn-nlv-control-byte)))))
+(local (defthm fn-nlv-control-run-empty-unfolds
+ (equal (fn-nlv-control-run nil c) c)
+ :hints (("Goal" :in-theory (enable fn-nlv-control-run)))))
+(defun fn-nlv-physicalp (line)
+  (declare (xargs :guard t))
+  (if (consp line)
+      (and (not (equal (car line) 13)) (not (equal (car line) 10))
+           (fn-nlv-physicalp (cdr line)))
+    (null line)))
+
+(defthm fn-nlv-value-line-phase
+  (implies (and (natp n) (<= n 998) (fn-nlv-physicalp line))
+    (equal (fn-lpc-at 0 (fn-nlv-control-run (append line '(13 10))
+                          (list :value n current visible mode)))
+           (if (and (fn-article-header-bytes-p line)
+                    (<= (+ n (len line)) 998)
+                    (or (not (equal mode :fold-empty))
+                        (fn-article-has-vcharp line)))
+               :start :bad)))
+  :hints (("Goal" :induct (fn-nlv-value-ind line n visible mode)
+           :expand ((:free (c) (fn-nlv-control-run (append line '(13 10)) c))
+                    (:free (c) (fn-nlv-control-run '(13 10) c))
+                    (:free (c) (fn-nlv-control-run '(10) c))
+                    (:free (c) (fn-nlv-control-run nil c)))
+           :in-theory (e/d (fn-nlv-control-byte fn-nlv-value
+                              fn-nlv-phase fn-lpc-at fn-nlv-physicalp
+                              fn-article-header-bytes-p fn-article-has-vcharp
+                              fn-article-header-bytep fn-article-wspp fn-article-vcharp)
+                             (fn-nlv-control-run fn-nlv-control-run-append)))))
+
+(defthm fn-nlv-first-line-phase
+  (implies (and (natp n) (<= n 998) (fn-nlv-physicalp line))
+    (equal (fn-lpc-at 0 (fn-nlv-control-run (append line '(13 10))
+                          (list :first n current visible :plain)))
+           (if (and (fn-article-header-bytes-p line)
+                    (<= (+ n (len line)) 998)
+                    (or (not (consp line)) (fn-article-wspp (car line))))
+               :start :bad)))
+  :hints (("Goal"
+           :use ((:instance fn-nlv-value-line-phase
+                   (line (cdr line)) (n (+ 1 n)) (mode :plain)
+                   (visible (and visible t))))
+           :expand ((:free (c) (fn-nlv-control-run (append line '(13 10)) c)))
+           :in-theory (e/d (fn-nlv-control-byte fn-nlv-value fn-nlv-phase fn-lpc-at
+                              fn-nlv-physicalp fn-article-header-bytes-p
+                              fn-article-header-bytep fn-article-wspp fn-article-vcharp)
+                           (fn-nlv-control-run fn-nlv-control-run-append)))))
+
+
+(local (defthm fn-nlv-first-line-car-unfolds
+ (implies (and (natp n) (<= n 998) (fn-nlv-physicalp line))
+  (equal (car (fn-nlv-control-run (append line '(13 10)) (list :first n current visible :plain)))
+   (if (and (fn-article-header-bytes-p line) (<= (+ n (len line)) 998)
+            (or (not (consp line)) (fn-article-wspp (car line)))) :start :bad)))
+ :hints (("Goal" :use fn-nlv-first-line-phase
+          :in-theory (e/d (fn-lpc-at) (fn-nlv-control-run fn-nlv-control-run-append fn-nlv-first-line-phase))))))
+
+(defun fn-nlv-name-tailp (line)
+  (declare (xargs :guard t))
+  (and (consp line)
+       (if (equal (car line) 58)
+           (and (fn-article-header-bytes-p (cdr line))
+                (or (not (consp (cdr line))) (fn-article-wspp (cadr line))))
+         (and (fn-article-ftextp (car line)) (fn-nlv-name-tailp (cdr line))))))
+
+(defthm fn-nlv-name-line-phase
+  (implies (and (natp n) (<= n 998) (fn-nlv-physicalp line))
+    (equal (fn-lpc-at 0 (fn-nlv-control-run (append line '(13 10))
+                          (list :name n current visible :plain)))
+           (if (and (fn-nlv-name-tailp line) (<= (+ n (len line)) 998))
+               :start :bad)))
+  :hints (("Goal" :induct (fn-nlv-name-ind line n)
+           :expand ((:free (c) (fn-nlv-control-run (append line '(13 10)) c)))
+           :in-theory (e/d (fn-nlv-control-byte fn-nlv-phase fn-lpc-at
+                            fn-nlv-physicalp fn-nlv-name-tailp fn-article-ftextp)
+                           (fn-nlv-control-run fn-nlv-control-run-append)))))
+
+(defthm fn-nlv-ftext-append
+  (equal (fn-article-ftext-listp (append a b))
+         (and (fn-article-ftext-listp (true-list-fix a)) (fn-article-ftext-listp b)))
+  :hints (("Goal" :induct (fn-article-ftext-listp a)
+           :in-theory (enable fn-article-ftext-listp))))
+(defthm fn-nlv-ftext-rev
+  (equal (fn-article-ftext-listp (rev a))
+         (fn-article-ftext-listp (true-list-fix a)))
+  :hints (("Goal" :induct (rev a) :in-theory (enable rev fn-article-ftext-listp))))
+(defthm fn-nlv-name-tail-is-split
+  (implies (true-listp prefix)
+   (equal (and (fn-article-ftext-listp prefix) (fn-nlv-name-tailp line))
+          (let ((split (fn-article-split-colon-aux line prefix)))
+            (and (fn-article-line-okp split)
+                 (fn-article-ftext-listp (fn-article-line-value split))
+                 (fn-article-header-bytes-p (fn-article-line-rest split))
+                 (or (not (consp (fn-article-line-rest split)))
+                     (fn-article-wspp (car (fn-article-line-rest split)))))))))
+
+(defthm fn-nlv-split-rest-true-listp
+  (implies (true-listp line)
+           (true-listp (fn-article-line-rest (fn-article-split-colon-aux line prefix))))
+  :hints (("Goal" :induct (fn-article-split-colon-aux line prefix)
+           :in-theory (enable fn-article-split-colon-aux fn-article-line-rest fn-article-error))))
+(defthm fn-nlv-split-name-consp
+  (implies (and (consp prefix) (true-listp prefix)
+                (fn-article-line-okp (fn-article-split-colon-aux line prefix)))
+           (consp (fn-article-line-value (fn-article-split-colon-aux line prefix))))
+  :hints (("Goal" :induct (fn-article-split-colon-aux line prefix)
+           :in-theory (enable fn-article-split-colon-aux fn-article-line-value
+                              fn-article-line-okp fn-article-error reverse))))
+
+(defthm fn-nlv-new-field-is-name-tail
+  (implies (true-listp line)
+   (equal (fn-article-line-okp (fn-article-new-field line))
+          (and (consp line) (fn-article-ftextp (car line))
+               (fn-nlv-name-tailp (cdr line)))))
+  :hints (("Goal"
+           :do-not-induct t
+           :use ((:instance fn-nlv-split-rest-true-listp (line (cdr line)) (prefix (list (car line))))
+                 (:instance fn-nlv-split-name-consp (line (cdr line)) (prefix (list (car line))))
+                 (:instance fn-nlv-name-tail-is-split (line (cdr line))
+                           (prefix (list (car line)))))
+           :expand ((fn-article-split-colon-aux line nil))
+           :in-theory (e/d (fn-article-new-field fn-article-namep fn-article-line-okp
+                            fn-article-line-value fn-article-line-rest fn-article-make-field
+                            fn-article-error fn-article-ftext-listp fn-article-ftextp)
+                           (fn-nlv-name-tail-is-split fn-article-split-colon-aux fn-nlv-name-tailp)))))
+
+(defthm fn-nlv-physical-line-phase
+  (implies (and (consp line) (fn-nlv-physicalp line))
+    (equal (fn-lpc-at 0 (fn-nlv-control-run (append line '(13 10))
+                          (list :start 0 current visible mode)))
+           (if (and (<= (len line) 998)
+                    (if (fn-article-wspp (car line))
+                        (and current (fn-article-fold-linep line))
+                      (and (or (not current) visible)
+                           (fn-article-ftextp (car line))
+                           (fn-nlv-name-tailp (cdr line)))))
+               :start :bad)))
+  :hints (("Goal"
+           :use ((:instance fn-nlv-value-line-phase (line (cdr line)) (n 1)
+                           (visible (and visible t)) (mode :fold-empty))
+                 (:instance fn-nlv-name-line-phase (line (cdr line)) (n 1)
+                           (current t) (visible nil)))
+           :in-theory (e/d (fn-nlv-control-byte fn-nlv-value fn-nlv-phase fn-lpc-at
+                            fn-nlv-physicalp fn-article-fold-linep fn-article-header-bytes-p
+                            fn-article-has-vcharp fn-article-header-bytep
+                            fn-article-wspp fn-article-vcharp fn-article-ftextp)
+                           (fn-nlv-control-run fn-nlv-control-run-append
+                            fn-nlv-value-line-phase fn-nlv-name-line-phase fn-nlv-name-tailp)))))
+
+(defthm fn-nlv-physicalp-true-listp
+  (implies (fn-nlv-physicalp line) (true-listp line))
+  :hints (("Goal" :induct (fn-nlv-physicalp line) :in-theory (enable fn-nlv-physicalp))))
+
+(defthm fn-nlv-physical-line-exact-grammar
+  (implies (and (consp line) (fn-nlv-physicalp line))
+    (equal (fn-lpc-at 0 (fn-nlv-control-run (append line '(13 10))
+                          (list :start 0 current visible mode)))
+           (if (and (<= (len line) *fn-article-max-line-octets*)
+                    (if (fn-article-wspp (car line))
+                        (and current (fn-article-fold-linep line))
+                      (and (or (not current) visible)
+                           (fn-article-line-okp (fn-article-new-field line)))))
+               :start :bad)))
+  :hints (("Goal" :use (fn-nlv-physical-line-phase fn-nlv-new-field-is-name-tail)
+           :in-theory (disable fn-nlv-physical-line-phase fn-nlv-new-field-is-name-tail
+                               fn-nlv-control-run fn-nlv-control-run-append fn-nlv-control-run-cons-unfolds
+                               fn-nlv-control-byte fn-lpc-at fn-nlv-physicalp
+                               fn-article-line-okp fn-article-new-field
+                               fn-article-fold-linep fn-article-ftextp fn-nlv-name-tailp))))
+
+(defthm fn-nlv-run-phase-is-control-run-phase
+  (equal (fn-lpc-at 0 (fn-nlv-run bytes s pos h pin))
+         (fn-lpc-at 0 (fn-nlv-control-run bytes (fn-nlv-control s))))
+  :hints (("Goal" :use fn-nlv-control-run-is-actual-header-run
+           :in-theory (e/d (fn-lpc-at fn-nlv-control)
+                           (fn-nlv-run fn-nlv-control-run fn-nlv-control-run-is-actual-header-run
+                            fn-nlv-control-byte fn-nlv-control-run-append)))))
+
+(defthm fn-nlv-actual-physical-line-exact-grammar
+  (implies (and (equal (fn-lpc-at 0 s) :start)
+                (equal (nfix (fn-lpc-at 1 s)) 0)
+                (consp line) (fn-nlv-physicalp line))
+    (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13 10)) s pos h pin))
+           (if (and (<= (len line) *fn-article-max-line-octets*)
+                    (if (fn-article-wspp (car line))
+                        (and (fn-lpc-at 2 s) (fn-article-fold-linep line))
+                      (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
+                           (fn-article-line-okp (fn-article-new-field line)))))
+               :start :bad)))
+  :hints (("Goal"
+           :use ((:instance fn-nlv-physical-line-exact-grammar
+                  (current (and (fn-lpc-at 2 s) t))
+                  (visible (and (fn-lpc-at 3 s) t)) (mode (fn-lpc-at 10 s)))
+                 (:instance fn-nlv-run-phase-is-control-run-phase
+                  (bytes (append line '(13 10)))))
+           :in-theory (e/d (fn-nlv-control)
+                           (fn-nlv-physical-line-exact-grammar fn-nlv-control-run-is-actual-header-run
+                            fn-nlv-control-run fn-nlv-control-run-append fn-nlv-control-run-cons-unfolds
+                            fn-nlv-control-byte fn-nlv-run fn-lpc-at
+                            fn-nlv-physical-line-phase fn-nlv-new-field-is-name-tail
+                            fn-nlv-run-phase-is-control-run-phase fn-nlv-physicalp
+                            fn-article-fold-linep fn-article-line-okp fn-article-new-field)))))
+
+; Framing faults and the exact separator/body join.
+(defun fn-nlv-header-phasep (c)
+  (declare (xargs :guard t))
+  (member-eq (fn-lpc-at 0 c) '(:start :name :first :value :bad)))
+
+(defthm fn-nlv-physical-byte-preserves-header-phase
+  (implies (and (fn-nlv-header-phasep c)
+                (not (equal byte 13)) (not (equal byte 10)))
+           (fn-nlv-header-phasep (fn-nlv-control-byte c byte)))
+  :hints (("Goal" :in-theory (enable fn-nlv-header-phasep fn-nlv-control-byte
+                                     fn-nlv-value fn-nlv-phase fn-lpc-at))))
+
+(defthm fn-nlv-physical-run-preserves-header-phase
+  (implies (and (fn-nlv-header-phasep c) (fn-nlv-physicalp line))
+           (fn-nlv-header-phasep (fn-nlv-control-run line c)))
+  :hints (("Goal" :induct (fn-nlv-control-run line c)
+           :in-theory (e/d (fn-nlv-control-run fn-nlv-physicalp)
+                           (fn-nlv-header-phasep fn-nlv-control-byte)))))
+
+(defthm fn-nlv-unfinished-header-is-not-body
+  (implies (and (fn-nlv-header-phasep c) (fn-nlv-physicalp line))
+           (and (not (equal (fn-lpc-at 0 (fn-nlv-control-run line c)) :body))
+                (not (equal (fn-lpc-at 0 (fn-nlv-control-run (append line '(13)) c)) :body))))
+  :hints (("Goal" :use fn-nlv-physical-run-preserves-header-phase
+           :in-theory (e/d (fn-nlv-header-phasep fn-nlv-control-byte fn-nlv-phase fn-lpc-at)
+                           (fn-nlv-control-run fn-nlv-physical-run-preserves-header-phase fn-nlv-physicalp)))))
+
+(defthm fn-nlv-bare-lf-is-absorbing-error
+  (implies (and (fn-nlv-header-phasep c) (fn-nlv-physicalp line))
+           (equal (fn-lpc-at 0 (fn-nlv-control-run (append line (cons 10 suffix)) c)) :bad))
+  :hints (("Goal" :use fn-nlv-physical-run-preserves-header-phase
+           :in-theory (e/d (fn-nlv-header-phasep fn-nlv-control-byte fn-nlv-phase fn-lpc-at)
+                           (fn-nlv-control-run fn-nlv-physical-run-preserves-header-phase fn-nlv-physicalp)))))
+
+(defthm fn-nlv-actual-run-bad
+  (implies (equal (fn-lpc-at 0 s) :bad) (equal (fn-nlv-run bytes s pos h pin) s))
+  :hints (("Goal" :induct (fn-nlv-run bytes s pos h pin)
+           :in-theory (e/d (fn-nlv-run fn-lpc-header-byte)
+                           (fn-lpc-at fn-lpc-put fn-lpc-value-byte fn-lpc-close-fields)))))
+
+(defthm fn-nlv-actual-separator-body-exact
+  (implies (equal (fn-lpc-at 0 s) :start)
+           (equal (equal (fn-lpc-at 0 (fn-nlv-run (append '(13 10) body) s pos h pin)) :body)
+                  (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
+                       (fn-article-body-crlfp body))))
+  :hints (("Goal"
+           :expand ((fn-nlv-run (append '(13 10) body) s pos h pin))
+           :in-theory (e/d (fn-nlv-run fn-lpc-header-byte fn-lpc-header-bad fn-nlv-body-phasep)
+                           (fn-lpc-at fn-lpc-put fn-lpc-value-byte fn-lpc-close-fields
+                            fn-article-body-crlfp fn-nlv-run-append fn-nlv-run-phase-is-control-run-phase)))))
+
+(defthm fn-nlv-header-phasep-of-control
+  (equal (fn-nlv-header-phasep (fn-nlv-control s)) (fn-nlv-header-phasep s))
+  :hints (("Goal" :in-theory (enable fn-nlv-header-phasep fn-nlv-control fn-lpc-at))))
+
+(defthm fn-nlv-actual-unfinished-header-is-not-body
+  (implies (and (equal (fn-lpc-at 0 s) :start) (fn-nlv-physicalp line))
+           (and (not (equal (fn-lpc-at 0 (fn-nlv-run line s pos h pin)) :body))
+                (not (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13)) s pos h pin)) :body))))
+  :hints (("Goal" :use ((:instance fn-nlv-unfinished-header-is-not-body (c (fn-nlv-control s))))
+           :in-theory (e/d (fn-nlv-header-phasep)
+                           (fn-nlv-run fn-nlv-control-run fn-nlv-control fn-lpc-at
+                            fn-nlv-control-byte fn-nlv-control-run-append fn-nlv-control-run-cons-unfolds
+                            fn-nlv-unfinished-header-is-not-body fn-nlv-physicalp)))))
+
+(defthm fn-nlv-actual-bare-lf-is-absorbing-error
+  (implies (and (equal (fn-lpc-at 0 s) :start) (fn-nlv-physicalp line))
+           (equal (fn-lpc-at 0 (fn-nlv-run (append line (cons 10 suffix)) s pos h pin)) :bad))
+  :hints (("Goal" :use ((:instance fn-nlv-bare-lf-is-absorbing-error (c (fn-nlv-control s))))
+           :in-theory (e/d (fn-nlv-header-phasep)
+                           (fn-nlv-run fn-nlv-control-run fn-nlv-control fn-lpc-at
+                            fn-nlv-control-byte fn-nlv-control-run-append fn-nlv-control-run-cons-unfolds
+                            fn-nlv-bare-lf-is-absorbing-error fn-nlv-physicalp)))))
+
+
+(defthm fn-nlv-cr-nonlf-byte-is-always-bad
+  (implies (not (equal byte 10))
+    (equal (fn-lpc-at 0 (fn-lpc-header-byte (fn-lpc-header-byte s 13 pos h pin) byte (+ 1 pos) h pin)) :bad))
+  :hints (("Goal" :in-theory (e/d (fn-lpc-header-byte fn-lpc-header-bad)
+                                 (fn-lpc-at fn-lpc-put fn-lpc-value-byte fn-lpc-close-fields)))))
+
+(defthm fn-nlv-actual-cr-nonlf-always-rejects
+  (implies (not (equal byte 10))
+    (equal (fn-lpc-at 0 (fn-nlv-run (append prefix (cons 13 (cons byte suffix))) s pos h pin)) :bad))
+  :hints (("Goal" :induct (fn-nlv-run prefix s pos h pin)
+           :in-theory (e/d (fn-nlv-run)
+                           (fn-lpc-header-byte fn-lpc-at fn-nlv-run-phase-is-control-run-phase
+                            fn-nlv-run-append)))))
+
+; Widest counters are dominated by source consumption, not a grammar ceiling.
+(defthm fn-nlv-next-line-aux-consumes
+  (implies (and (true-listp prefix)
+                (fn-article-line-okp (fn-article-next-line-aux octets prefix left)))
+           (<= (+ 2 (len (fn-article-line-value (fn-article-next-line-aux octets prefix left)))
+                    (len (fn-article-line-rest (fn-article-next-line-aux octets prefix left))))
+               (+ (len octets) (len prefix))))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-article-next-line-aux octets prefix left)
+           :in-theory (enable fn-article-next-line-aux fn-article-line-okp
+                              fn-article-line-value fn-article-line-rest fn-article-error reverse))))
+
+(defthm fn-nlv-next-line-consumes
+  (implies (fn-article-line-okp (fn-article-next-line octets))
+           (<= (+ 2 (len (fn-article-line-value (fn-article-next-line octets)))
+                    (len (fn-article-line-rest (fn-article-next-line octets))))
+               (len octets)))
+  :rule-classes :linear
+  :hints (("Goal" :use ((:instance fn-nlv-next-line-aux-consumes (prefix nil) (left 998)))
+           :in-theory (e/d (fn-article-next-line) (fn-article-next-line-aux)))))
+
+(defthm fn-nlv-next-line-aux-no-counter-errors
+  (not (member-equal (fn-article-next-line-aux octets prefix left)
+        '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit))))
+  :hints (("Goal" :induct (fn-article-next-line-aux octets prefix left)
+           :in-theory (enable fn-article-next-line-aux fn-article-error))))
+(defthm fn-nlv-split-colon-no-counter-errors
+  (not (member-equal (fn-article-split-colon-aux line prefix)
+        '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit))))
+  :hints (("Goal" :induct (fn-article-split-colon-aux line prefix)
+           :in-theory (enable fn-article-split-colon-aux fn-article-error))))
+(defthm fn-nlv-new-field-no-counter-errors
+  (not (member-equal (fn-article-new-field line)
+        '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit))))
+  :hints (("Goal" :use ((:instance fn-nlv-split-colon-no-counter-errors (prefix nil)))
+           :in-theory (e/d (fn-article-new-field fn-article-make-field fn-article-error)
+                                 (fn-nlv-split-colon-no-counter-errors fn-article-split-colon-aux fn-article-namep fn-article-header-bytes-p)))))
+
+(defthm fn-nlv-ok-no-counter-errors
+  (not (member-equal (cons :ok rest)
+         '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit)))))
+
+(defthm fn-nlv-next-line-does-not-return-counter-errors
+  (not (member-equal (fn-article-next-line octets)
+        '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit))))
+  :hints (("Goal" :use ((:instance fn-nlv-next-line-aux-no-counter-errors (prefix nil) (left 998)))
+           :in-theory (e/d (fn-article-next-line fn-article-next-line-aux fn-article-error) (fn-nlv-next-line-aux-no-counter-errors)))))
+
+(defthm fn-nlv-parser-counters-covered-by-source
+ (implies (and (< (len octets) (nfix lines-left))
+               (<= (+ header-bytes (len octets)) (fn-article-limit-octets limits))
+               (<= (+ (nfix nfields) (len octets)) (fn-article-limit-fields limits)))
+          (not (member-equal (fn-novlp-parse-lines octets limits lines-left header-bytes nfields columns current names)
+             '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit)))))
+ :hints (("Goal" :induct (fn-novlp-parse-lines octets limits lines-left header-bytes nfields columns current names)
+          :in-theory (e/d (fn-novlp-parse-lines fn-article-error)
+                          (member-equal len fn-nlv-new-field-is-name-tail fn-article-fold-linep fn-article-wspp
+                           fn-article-limit-fields fn-article-limit-octets fn-article-next-line fn-article-next-line-aux fn-article-new-field
+                           fn-article-line-okp fn-article-line-value fn-article-line-rest
+                           fn-article-field-closedp fn-article-add-fold fn-novlp-add-field fn-novlp-normalize)))))
+
+(defthm fn-nlv-preflight-bounds-length
+  (implies (fn-cbor-at-mostp octets bound) (<= (len octets) (nfix bound)))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-cbor-at-mostp octets bound)
+           :in-theory (enable fn-cbor-at-mostp))))
+
+(defthm fn-nlv-widest-projection-never-counter-error
+  (not (member-equal (fn-novlp-parse octets)
+        '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit))))
+  :hints (("Goal" :use ((:instance fn-nlv-parser-counters-covered-by-source
+                          (limits *fn-article-ceiling-limits*) (lines-left (+ 1 *fn-article-max-octets*))
+                          (header-bytes 0) (nfields 0)
+                          (columns (fn-novlp-columns nil *fn-novlp-names*)) (current nil) (names *fn-novlp-names*)))
+           :in-theory (e/d (fn-novlp-parse fn-novlp-parse-under fn-article-error
+                            fn-article-limit-fields fn-article-limit-lines fn-article-limit-octets)
+                           (fn-novlp-parse-lines fn-novlp-columns fn-cbor-at-mostp fn-cbor-octet-listp
+                            fn-nlv-parser-counters-covered-by-source fn-novlp-parse-under-is-parser-projection
+                            fn-novlp-parse-is-parser-projection)))))
+
+(defthm fn-nlv-projection-counter-errors-unfolds
+  (equal (member-equal (fn-novlp-result parsed names)
+          '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit)))
+         (member-equal parsed
+          '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit))))
+  :hints (("Goal" :in-theory (e/d (fn-novlp-result fn-article-result-okp)
+                                 (fn-novlp-normalize fn-novlp-columns fn-article-fields
+                                  fn-article-result-article)))))
+
+(defthm fn-nlv-actual-parser-never-counter-error
+  (not (member-equal (fn-article-parse octets)
+        '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit))))
+  :hints (("Goal" :use fn-nlv-widest-projection-never-counter-error
+           :in-theory (disable fn-nlv-widest-projection-never-counter-error
+                               fn-article-parse fn-novlp-parse fn-novlp-result member-equal))))

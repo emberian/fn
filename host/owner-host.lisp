@@ -196,6 +196,10 @@
 ; PKT-605 (PRF-223): the connection budget the run installs and every live
 ; reconfiguration keeps (fn-owner-connection-budget, fn-owner-reconfigure-deltas).
 (include-book "../books/connection-budget")
+; PRF-986 (PKT-639): the TLS handshake admission (fn-owner-handshake-admit/
+; -done/-leave) and the PROXY header on a trusted path (fn-owner-proxy-*);
+; books/tls-proxy includes the budget, the decision and the source.
+(include-book "../books/tls-proxy")
 ; PRF-192: the served reply as a range of the octet buffer (fn-served-reply-to-buffer;
 ; since HST-023 the host renders the step's plan off the mutex instead).
 (include-book "../books/served-reply-buffer")
@@ -1291,25 +1295,33 @@
 ;; :connections-exceed-memory, before the owner stages anything
 ;; (books/connection-budget.lisp fn-cbud-deltas-refusal-keeps-the-capacity-held).
 ;; Every live path reaches this function (native-admin, peer-invite, auth).
-(defun fn-owner-connection-bound (state)
+;; PRF-986's term (lane tls-handshake-budget-2): the run holds its
+;; observations and the handshake slots it charged (fn-cbud-run-held), and a
+;; live reconfiguration is the run's decision re-made on them, the handshake
+;; slots the larger of the held and the new `tls-handshakes-in-flight'
+;; (fn-cbud-deltas-refusal-keeps-the-machine-held).
+(defun fn-owner-connection-held (state)
   (declare (xargs :stobjs state :guard t))
-  (and (boundp-global 'fn-owner-connection-bound state)
-       (f-get-global 'fn-owner-connection-bound state)))
+  (and (boundp-global 'fn-owner-connection-held state)
+       (f-get-global 'fn-owner-connection-held state)))
 
 (defun fn-owner-reconfigure-deltas (id deltas fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((oc (fn-owner-ocfg state))
-         (memory (fn-cbud-deltas-refusal
-                  (fn-cfg-value (fn-ocfg-config oc))
-                  (+ 1 (fn-cfg-generation (fn-ocfg-config oc)))
-                  (fn-own-clock (fn-ocfg-owner oc))
-                  deltas (fn-owner-connection-bound state))))
+         (v (fn-cfg-value (fn-ocfg-config oc)))
+         (gen (+ 1 (fn-cfg-generation (fn-ocfg-config oc))))
+         (stamp (fn-own-clock (fn-ocfg-owner oc)))
+         (held (fn-owner-connection-held state))
+         (memory (fn-cbud-deltas-refusal v gen stamp deltas held)))
     ;; The refusal is the staging step's result value (PRF-208,
     ;; adapter-retirement: books/owner-results.lisp fn-ores-config-refused),
     ;; which every live caller's recognizer accepts.
     (if memory
         (value (fn-ores-config-refused memory))
-      (fn-owner-reconfigure-deltas-admitted id deltas fn-arena state))))
+      (let ((state (f-put-global 'fn-owner-connection-held
+                                 (fn-cbud-deltas-held v gen stamp deltas held)
+                                 state)))
+        (fn-owner-reconfigure-deltas-admitted id deltas fn-arena state)))))
 
 ; PKT-643: the restricted views prepared for read-restricted sessions
 ; (books/group-access-cache.lisp), nil before the first read.
@@ -1378,13 +1390,20 @@
   ; PROFILE the store's; TLSP whether a TLS context is loaded.  The capacity
   ; is the live configuration's.
   (declare (xargs :stobjs state :mode :program))
-  (let* ((capacity (fn-exp-connections-capacity (fn-cfg-value (fn-owner-config state))))
+  (let* ((v (fn-cfg-value (fn-owner-config state)))
+         (capacity (fn-exp-connections-capacity v))
          (article (fn-bs-profile-max-article-octets profile))
          (hneed (fn-heap-figure-octets profile core nursery))
-         (d (fn-cbud-run-decide capacity machine dynamic hneed core threads stack
+         ;; PRF-986: the handshakes' native scratch, L x the scratch with a
+         ;; TLS context, is part of the base (books/connection-budget.lisp).
+         (slots (fn-cbud-config-handshake-slots v tlsp))
+         (hs (fn-cbud-slots-octets slots))
+         (d (fn-cbud-run-decide capacity machine dynamic hneed core threads stack hs
                                  article tlsp))
-         (state (f-put-global 'fn-owner-connection-bound
-                              (and (equal (car d) :hold) (fn-cbud-held-bound d))
+         (state (f-put-global 'fn-owner-connection-held
+                              (and (equal (car d) :hold)
+                                   (fn-cbud-run-held machine dynamic hneed core threads
+                                                     stack article tlsp slots))
                               state))
          ;; The COUNT of articles in flight every served read admits within
          ;; (fn-owner-chunk-span-at): the default configuration's connections
@@ -1409,7 +1428,7 @@
                                (if (equal (car d) :hold)
                                    (fn-cbud-hold-line d article tlsp)
                                  (fn-cbud-run-refusal-line d article tlsp machine dynamic
-                                                           hneed core threads stack)))
+                                                           hneed core threads stack hs)))
                               state)))
     (value (car d))))
 
@@ -3932,9 +3951,12 @@
 (defun fn-owner-handshake-limits (state)
   (declare (xargs :stobjs state :mode :program))
   (let ((v (fn-cfg-value (fn-owner-config state))))
-    (fn-hsb-limits (fn-cfg-limit v "tls-handshakes-per-source-per-minute")
-                   (fn-cfg-limit v "tls-handshakes-in-flight")
-                   (fn-cfg-limit v "tls-handshake-ms"))))
+    (fn-hsb-limits-with (fn-cfg-limit v "tls-handshakes-per-source-per-minute")
+                        (fn-cfg-limit v "tls-handshakes-in-flight")
+                        (fn-cfg-limit v "tls-handshake-ms")
+                        ;; The CGNAT override list (policy row
+                        ;; tls-handshake-source-overrides).
+                        (fn-hsb-config-overrides v))))
 
 ;; Before any handshake work on a socket from (FAMILY . ADDRESS): QUEUEDP
 ;; when the socket is one that waited for a slot.  The value is
@@ -3946,8 +3968,11 @@
   (declare (xargs :stobjs state :mode :program))
   (let* ((hl (fn-owner-handshake-limits state))
          (source (cons family address))
+         ;; An IPv4-mapped IPv6 peer is its IPv4 address, for the trusted
+         ;; range as for the budget (fn-hsb-mapped-address-is-one-source).
          (trustedp (fn-exp-trusted-addressp
-                    source (fn-exp-lim-trusted (fn-owner-exposure-limits state))))
+                    (fn-hsb-normal-address source)
+                    (fn-exp-lim-trusted (fn-owner-exposure-limits state))))
          (r (fn-hsb-admit (fn-owner-handshake-state state) hl trustedp source
                           (fn-owner-exposure-now state) queuedp))
          (state (f-put-global 'fn-owner-handshakes (fn-hsb-state r) state))
@@ -3956,6 +3981,60 @@
                  (if (equal verdict :refuse)
                      (fn-hsb-refusal-line (fn-hsb-detail r) source)
                    nil)))))
+
+;; THE PROXY HEADER ON A TRUSTED PATH (books/tls-proxy.lisp, PRF-986 item 4).
+;; After the proxy's own handshake slot is admitted (fn-owner-handshake-admit
+;; with the transport peer), the host asks whether the peer is a trusted
+;; proxy: (:direct), or (:read K WHY) -- read the header, K octets first.  A
+;; peer outside the operator's `tls-proxy-trusted-peers' is never read.
+(defun fn-owner-proxy-begin (family address now ms ticks-per-second state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((path (fn-pxy-begin (cons family address)
+                           (fn-pxy-config-peers (fn-cfg-value (fn-owner-config state))))))
+    (value (if (equal (car path) :read)
+               (append path (list (fn-pxy-deadline now ms ticks-per-second)))
+             path))))
+
+;; OCTETS, everything read for the header so far: (:more K), (:header N
+;; SOURCE) or (:refuse REASON LINE), LINE the service log's line naming the
+;; transport peer (FAMILY . ADDRESS).
+(defun fn-owner-proxy-step (family address octets deadline now state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((r (fn-pxy-observe octets deadline now)))
+    (value (if (equal (car r) :refuse)
+               (list :refuse (cadr r) (fn-pxy-refusal-line (cadr r) (cons family address)))
+             r))))
+
+;; A timer observation: nil while time remains, otherwise ACL2's refusal
+;; line. The same check runs before a read; fn-owner-proxy-step checks again
+;; after it, so scheduler delay cannot authorize a header past the deadline.
+(defun fn-owner-proxy-timeout-line (family address deadline now state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((r (fn-pxy-observe nil deadline now)))
+    (value (and (equal (car r) :refuse)
+                (fn-pxy-refusal-line (cadr r) (cons family address))))))
+
+;; The header named SOURCE (or :local): the proxy's handshake ID is handed
+;; over to the asserted source, which is charged its own per-source budget
+;; under the node-wide bound (fn-pxy-handover-keeps-the-bound).  The value is
+;; fn-owner-handshake-admit's (VERDICT X DEADLINE-MS LINE) plus the asserted
+;; (FAMILY . ADDRESS) the connection is then served as.
+(defun fn-owner-proxy-handover (id family address source state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((hl (fn-owner-handshake-limits state))
+         (asserted (fn-pxy-asserted (cons family address) source))
+         (trustedp (fn-exp-trusted-addressp
+                    (fn-hsb-normal-address asserted)
+                    (fn-exp-lim-trusted (fn-owner-exposure-limits state))))
+         (r (fn-pxy-handover (fn-owner-handshake-state state) hl id trustedp asserted
+                             (fn-owner-exposure-now state)))
+         (state (f-put-global 'fn-owner-handshakes (fn-hsb-state r) state))
+         (verdict (fn-hsb-verdict r)))
+    (value (list verdict (fn-hsb-detail r) (fn-hsb-lim-deadline hl)
+                 (if (equal verdict :refuse)
+                     (fn-hsb-refusal-line (fn-hsb-detail r) asserted)
+                   nil)
+                 asserted))))
 
 ;; A handshake fn-owner-handshake-admit admitted ended: completed, failed,
 ;; timed out or closed.
@@ -4039,9 +4118,9 @@
     (if (fn-exp-open-id r)
         (let* ((state (fn-owner-install-effects (fn-exp-open-effects r) state))
                (state (f-put-global 'fn-owner-log-line
-                                    (fn-olog-connection-line
+                                    (fn-olog-socket-connection-line
                                      (fn-owner-core state) id
-                                     (and peer peer-octets))
+                                     (and peer peer-octets) family address)
                                     state)))
           (value (fn-exp-open-id r)))
       (let* ((state (f-put-global 'fn-owner-effects nil state))
@@ -4547,8 +4626,9 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
                          state)))
             (value (if (equal security :implicit) :await-tls :await-greeting))))))))
 
-(defun fn-owner-feed-tls-established (peer-octets state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-feed-tls-established (peer-octets fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program
+                  :guard (fn-cbor-octet-listp peer-octets)))
   (let* ((peer (fn-store-octets->string peer-octets))
          (inputs (f-get-global 'fn-owner-feed-inputs state))
          (step (and (not (equal peer :bad))
@@ -4556,15 +4636,25 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
     (if (null step) (value (fn-owner-feed-word-publication :invalid nil nil))
       (let ((state (f-put-global 'fn-owner-feed-inputs
                                  (fn-fc-table-put peer (fn-fc-next-state step) inputs) state)))
-        (value
-         (case (fn-fc-kind step)
-           (:mode (fn-owner-feed-word-publication :mode (fn-fc-mode-command) nil))
-           (:auth-user
-            (fn-owner-feed-word-publication
-             :auth-user (fn-fc-auth-user-command (fn-fc-next-state step)) nil))
-           (:ready (fn-owner-feed-word-publication :ready nil nil))
-           (:need-input (fn-owner-feed-word-publication :need-input nil nil))
-           (otherwise (fn-owner-feed-word-publication :invalid nil nil))))))))
+        (case (fn-fc-kind step)
+          (:ready
+           ;; STARTTLS without login or streaming reaches ready here, with
+           ;; no later greeting/MODE reply to install the owner's feed.
+           ;; Use the same ACL2 connection decision as reply-chunk's :ready.
+           (mv-let (erp word state)
+             (fn-owner-feed-connect peer-octets
+                                    (fn-fc-conn (fn-fc-next-state step))
+                                    (fn-fc-connection-form (fn-fc-next-state step))
+                                    fn-arena state)
+             (if erp (mv erp word state)
+               (value (fn-owner-feed-word-publication
+                       (if (equal word :ok) :ready :fault) nil nil)))))
+          (:mode (value (fn-owner-feed-word-publication :mode (fn-fc-mode-command) nil)))
+          (:auth-user
+           (value (fn-owner-feed-word-publication
+                   :auth-user (fn-fc-auth-user-command (fn-fc-next-state step)) nil)))
+          (:need-input (value (fn-owner-feed-word-publication :need-input nil nil)))
+          (otherwise (value (fn-owner-feed-word-publication :invalid nil nil))))))))
 
 (defun fn-owner-feed-read-limit ()
   "ACL2-owned upper bound for one native feed socket-read observation."
