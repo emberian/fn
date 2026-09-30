@@ -166,20 +166,29 @@ class OperatorWalkTests(unittest.TestCase):
         with the self-signed pair the image makes at ROOT/tls (row Q10a:
         `--tls-name', no `openssl' program)."""
         root = Path(tempfile.mkdtemp(prefix=name + "-", dir=self.tmp))
+        # Keep each not-yet-started node's port bound while mission/configuration
+        # runs. Two closed free_port probes may otherwise choose the same port.
+        reservation = socket.socket()
+        self.addCleanup(reservation.close)
+        reservation.bind(("127.0.0.1", 0))
         node = Node(self, IMAGE, root=root, name=name, launcher=str(self.fn), control=False,
-                    port=free_port())
+                    port=reservation.getsockname()[1])
         node.config.unlink()
         node.operator("mission", MISSION, "--port", str(node.port),
                       "--tls-name", "127.0.0.1", expect=EXIT.OK)
         node.log = root / "log" / "fn.log"
-        return self.timed(node)
+        return self.timed(node, before_start=reservation.close)
 
-    def timed(self, node):
+    def timed(self, node, before_start=None):
         """NODE's commands, starts and stops each marked with their duration."""
         for verb in ("invoke", "start", "stop"):
             def wrapped(*words, _verb=verb, _inner=getattr(node, verb), **options):
                 began = time.monotonic()
                 try:
+                    if _verb == "start" and before_start is not None:
+                        # Native fn binds its own socket. Release only this
+                        # node's reservation immediately before starting it.
+                        before_start()
                     return _inner(*words, **options)
                 finally:
                     label = " ".join(str(w) for w in words[2:4]) if _verb == "invoke" else _verb
