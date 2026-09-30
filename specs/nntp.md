@@ -406,6 +406,21 @@ environment always carries; a blind environment answers as before.
   XPAT are unchanged (XPAT Xref still matches the stored header, which has
   none: a deferral).
 
+The HEAD composition is also stated over the host-called `fn-served-step`
+(PRF-1114, `fn-hdc-command-wire-head-is-served-retrieval`). A concrete
+command-wire connection receiving a complete HEAD line produces exactly
+`fn-rcompat-retrieval`'s `:head` effects and reader session, preserving its
+pinned view, archive and Message-ID index. The literal hypotheses require
+valid bounded command framing; a valid authorized authentication session
+outside TLS/SASL negotiation; the reader role outside POST collection; an
+open projected reader; matching HEAD tokenization; an Xref server and pinned
+index; and no number/Message-ID withdrawal override. Both local-number and
+Message-ID requests have reachable complete witnesses. Each retained
+condition has a separate removal counterexample. This is a source-level
+composition of the existing RFC 3977 §6.2.2 HEAD behavior and fn's Xref
+policy, with no additional served-path validation. ARTICLE's productive
+read composition and the XPAT-on-Xref deferral are separate obligations.
+
 ## Sessions and framing
 
 NNT-002: maintain a per-connection selected group and current article number.

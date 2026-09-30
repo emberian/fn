@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1708 |
-| Certification roots in the Makefile | 1634 |
-| Books inside the root closure | 1698 |
-| `defthm` and `defthmd` events | 27920 |
-| `defun` events | 18134 |
-| Functions with verified guards | 3464 |
+| Books read | 1710 |
+| Certification roots in the Makefile | 1636 |
+| Books inside the root closure | 1700 |
+| `defthm` and `defthmd` events | 27977 |
+| `defun` events | 18135 |
+| Functions with verified guards | 3465 |
 | Functions declared `:verify-guards nil` and never verified | 2090 |
 | Functions left at the default with an explicit guard | 9846 |
 | Functions left at the default with no guard | 2734 |
-| `assert-event` checks | 22987 |
+| `assert-event` checks | 22988 |
 | `must-fail` checks | 2501 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 156 |
-| Theorems flagged SUSPECT by shape | 1231 |
+| Theorems flagged SUSPECT by shape | 1232 |
 | Export-hygiene warnings | 318 |
 | Enabled-projection warnings | 52 |
 | Teeth-form warnings | 272 |
-| Include-hygiene warnings | 2428 |
+| Include-hygiene warnings | 2432 |
 | Host-names warnings | 2087 |
 | Hand-written-record warnings | 18 |
 
@@ -873,6 +873,7 @@ that `make certify` requests.
 | `books/served-catalog.lisp` | root | 173 | 76 | 27/6/42/1 | 0 | 0 | 8 |
 | `books/served-chunk-live-free.lisp` | root | 17 | 3 | 1/0/2/0 | 0 | 0 | 5 |
 | `books/served-columns.lisp` | root | 50 | 19 | 2/2/14/1 | 0 | 0 | 0 |
+| `books/served-head-bridge.lisp` | root | 39 | 1 | 1/0/0/0 | 0 | 0 | 1 |
 | `books/served-implicit-tls.lisp` | root | 5 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/served-plan-cursor.lisp` | root | 29 | 11 | 1/3/7/0 | 0 | 0 | 1 |
 | `books/served-plan.lisp` | root | 33 | 27 | 0/1/26/0 | 0 | 0 | 2 |
@@ -1639,6 +1640,7 @@ that `make certify` requests.
 | `tests/acl2/served-chunk-live-free-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 8 | 0 | 0 |
 | `tests/acl2/served-columns-tests.lisp` | root | 3 | 10 | 0/6/4/0 | 3 | 3 | 0 |
 | `tests/acl2/served-empty-view-tests.lisp` | root | 0 | 3 | 0/1/0/2 | 7 | 0 | 0 |
+| `tests/acl2/served-head-bridge-tests.lisp` | root | 18 | 0 | 0/0/0/0 | 1 | 0 | 0 |
 | `tests/acl2/served-implicit-tls-tests.lisp` | root | 0 | 7 | 0/3/0/4 | 23 | 2 | 0 |
 | `tests/acl2/served-line-iterative-tests.lisp` | root | 0 | 4 | 0/0/4/0 | 22 | 4 | 0 |
 | `tests/acl2/served-pipelining-tests.lisp` | root | 0 | 11 | 0/5/0/6 | 37 | 3 | 0 |
@@ -2075,6 +2077,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-gac-state-nexts-of-restrict` | `books/group-access.lisp` | 569 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-gacc-restrict-articles-of-consp` | `books/group-access-cache.lisp` | 236 | branch-of-definition: the hypothesis is a branch test of fn-gac-restrict-articles and the conclusion is that branch's value |
 | `fn-hc-error-preserves-original` | `books/hybrid-carrier.lisp` | 461 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-hdc-with-wire-overwrite-by-definition` | `books/served-head-bridge.lisp` | 52 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-heap-reserve-decide-keeps-heap-figures-refusals` | `books/heap-reservation.lisp` | 219 | arm-of-definition: the hypotheses select one IF/COND arm of fn-heap-reserve-decide and the conclusion is that arm's value |
 | `fn-held-accessors-are-the-wire-accessors` | `books/held-record.lisp` | 165 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-held-wire-of-with-context` | `books/catalog-relation.lisp` | 142 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

@@ -367,3 +367,4 @@ anything a book does not already decide.
 | `fn-gat-`, `gat-` | `tests/acl2/group-authority-tests` | Explicit authority publication and replay teeth; distinct posting policy and principal bindings. |
 | `fn-cvcg-` | `store-config-generation` | Actual configuration replay generation/cardinality and profile-aware publication count bridge |
 | `fn-pcr-` | `productive-read`, `productive-read-chain`, `productive-read-message-id`, `tests/acl2/productive-read-*-tests` | Discovery composition of the host-called funded READ with actual pinned ARTICLE dispatch and wire effects; numbered reads update the cursor, Message-ID reads preserve it. Source admission and partial teeth only; qualification and remaining variants stay open (W6b). |
+| `fn-hdc-` | `served-head-bridge`, `tests/acl2/served-head-bridge-tests` | HEAD retrieval composition through the actual served byte fold (PKT-772) |

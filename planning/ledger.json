@@ -510,6 +510,8 @@
     "books/store-capacity-vector",
     "tests/acl2/store-capacity-vector-tests",
     "books/store-capacity-config",
+    "books/served-head-bridge",
+    "tests/acl2/served-head-bridge-tests",
     "books/store-config-generation",
     "tests/acl2/store-config-generation-tests",
     "tests/acl2/store-capacity-config-tests",
@@ -1638,26 +1640,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1708,
-    "books_in_root_closure": 1698,
-    "roots": 1634,
-    "theorems": 27920,
-    "functions": 18134,
-    "assert_events": 22987,
+    "books": 1710,
+    "books_in_root_closure": 1700,
+    "roots": 1636,
+    "theorems": 27977,
+    "functions": 18135,
+    "assert_events": 22988,
     "must_fails": 2501,
     "prover_refusals": 0,
     "encapsulates": 156,
     "guards": {
-      "verified": 3464,
+      "verified": 3465,
       "declared-off": 2090,
       "default-guarded": 9846,
       "default-unguarded": 2734
     },
-    "suspect_theorems": 1231,
+    "suspect_theorems": 1232,
     "export_hygiene_warnings": 318,
     "enabled_projection_warnings": 52,
     "teeth_form_warnings": 272,
-    "include_hygiene_warnings": 2428,
+    "include_hygiene_warnings": 2432,
     "host_names_warnings": 2087,
     "hand_written_record_warnings": 18
   },
@@ -25378,6 +25380,36 @@
       "read_error": null
     },
     {
+      "book": "books/served-head-bridge.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 39,
+      "functions": 1,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "nntp-auth-fold",
+        "nntp-pinned-msgid",
+        "served"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-hdc-with-wire-overwrite-by-definition"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/served-implicit-tls.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -47175,6 +47207,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/served-head-bridge-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 18,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 13,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/served-head-bridge",
+        "arena-lift",
+        "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/served-implicit-tls-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -53717,6 +53777,14 @@
       "theorem": "fn-hc-error-preserves-original",
       "book": "books/hybrid-carrier.lisp",
       "line": 461,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-hdc-with-wire-overwrite-by-definition",
+      "book": "books/served-head-bridge.lisp",
+      "line": 52,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -71773,6 +71841,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/served-head-bridge.lisp",
+        "line": 5,
+        "include": "nntp-pinned-msgid",
+        "included": "books/nntp-pinned-msgid.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/served-plan-cursor.lisp",
         "line": 101,
         "include": "over-window",
@@ -80623,6 +80698,27 @@
       {
         "book": "tests/acl2/served-empty-view-tests.lisp",
         "line": 44,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/served-head-bridge-tests.lisp",
+        "line": 3,
+        "include": "../../books/served-head-bridge",
+        "included": "books/served-head-bridge.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/served-head-bridge-tests.lisp",
+        "line": 4,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/served-head-bridge-tests.lisp",
+        "line": 5,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
