@@ -105,14 +105,16 @@
     0 0 nil))
 
 (defun fn-hdsn-next-candidate (c)
-  (declare (xargs :guard (fn-hdsn-statep c)))
+  (declare (xargs :guard (fn-hdsn-statep c)
+                  :guard-hints (("Goal" :in-theory (enable fn-hdsn-statep)))))
   (fn-hdsn-state (nth 0 c) (nth 1 c) (nth 2 c) (if (consp (nth 3 c)) (cdr (nth 3 c)) nil)
                   0 (+ 1 (nth 5 c)) nil))
 
 ; Result is (:done (opcode package)), (:need-byte offset serial), :continue
 ; or :refused. A read does not move state; its matching supply does.
 (defun fn-hdsn-tick (c)
-  (declare (xargs :guard (fn-hdsn-statep c)))
+  (declare (xargs :guard (fn-hdsn-statep c)
+                  :guard-hints (("Goal" :in-theory (enable fn-hdsn-statep)))))
   (let* ((candidates (nth 3 c)) (symbol (if (consp candidates) (car candidates) nil))
          (index (nth 4 c)) (count (nth 2 c)))
     (cond
@@ -132,7 +134,8 @@
 
 (defun fn-hdsn-supply (offset serial byte c)
   (declare (xargs :guard (and (fn-hdsn-statep c) (natp offset) (natp serial)
-                              (fn-scc-octetp byte))))
+                              (fn-scc-octetp byte))
+                  :guard-hints (("Goal" :in-theory (enable fn-hdsn-statep)))))
   (let* ((candidates (nth 3 c)) (symbol (if (consp candidates) (car candidates) nil))
          (index (nth 4 c)) (count (nth 2 c)))
     (if (and (not (nth 6 c)) (consp candidates) (symbolp symbol)
