@@ -199,23 +199,69 @@
         (bsnw-sweep-okp s bs (bsnw-sweep-pair) (bsnw-lose (car (bsnw-sweep-pair))))
         (equal (bsnw-rows s (bsnw-lose (car (bsnw-sweep-pair))))
                (list *bsk5-row* *bsk5-row-2*)))))
-; FINDING (why B29 stays PARTIAL): the sweep's names are octet lists
-; (fn-sn-staging-namep) and the byte model's names are strings (fn-bs-namep),
-; so the composed program's unlink step is not an fn-bs-stepp and its model
-; answer is :enoent: the run is the one failed-unlink pair and the orphan the
-; byte state holds as ".stage-k5-2" is never removed.  The cut after an
-; actual unlink (recovery-stage-unlinked) is unreachable from
-; fn-sn-sweep-round's output in the byte model; the theorem is true there
-; only because the byte state never changes.
+; The repaired boundary converts each octet name once. Both the unlink
+; result and the following recovery-stage-unlinked cut are reached, and the
+; orphan is actually absent. Check every pair under both pending choices,
+; with the complete keystone antecedent and its scan/kernel/open conclusion.
+(defun bsnw-sweep-all-okp (pairs s bs)
+  (if (consp pairs)
+      (and (fn-bs-crash-choicesp nil (fn-bs-pending (caar pairs))
+                                (fn-bs-unit (caar pairs)))
+           (fn-bs-crash-choicesp (bsnw-keep-choices (caar pairs)) (fn-bs-pending (caar pairs))
+                                (fn-bs-unit (caar pairs)))
+           (bsnw-sweep-okp s bs (car pairs) (bsnw-lose (caar pairs)))
+           (bsnw-sweep-okp s bs (car pairs) (bsnw-keep (caar pairs)))
+           (bsnw-sweep-all-okp (cdr pairs) s bs))
+    t))
 (assert-event
  (let ((run (bsnw-sweep-run)))
-   (and (equal (len run) 1)
-        (not (fn-bs-namep *bsnw-orphan*))
-        (equal (mv-let (r bs1) (fn-bs-unlink (bsnw-crashed) :staging *bsnw-orphan* :ok)
+   (and (equal (len run) 2)
+        (equal (fn-bs-octets-name *bsnw-orphan*) ".stage-k5-2")
+        (fn-bs-namep (fn-bs-octets-name *bsnw-orphan*))
+        (equal (fn-record-string-octets (fn-bs-octets-name *bsnw-orphan*))
+               *bsnw-orphan*)
+        (equal (mv-let (r bs1)
+                 (fn-bs-unlink (bsnw-crashed) :staging
+                               (fn-bs-octets-name *bsnw-orphan*) :ok)
                  (declare (ignore bs1)) r)
-               :enoent)
-        (equal (car (bsnw-sweep-pair)) (bsnw-crashed))
-        (fn-bs-lookup (car (bsnw-sweep-pair)) :staging ".stage-k5-2"))))
+               :ok)
+        (not (equal (caar run) (bsnw-crashed)))
+        (not (fn-bs-lookup (caar run) :staging ".stage-k5-2"))
+        (equal (car run) (cadr run))
+        (bsnw-sweep-all-okp run (bsnw-reopened) (bsnw-crashed)))))
+(local
+ (defthm bsnw-keep-is-a-crash-image
+   (fn-bs-crash-imagep bs (bsnw-keep bs))
+   :rule-classes nil
+   :hints (("Goal"
+            :in-theory (union-theories '(bsnw-keep bsnw-keep-choices)
+                                      (theory 'minimal-theory))
+            :use ((:instance fn-bs-crash-imagep-suff
+                             (s bs) (choices (bsnw-keep-choices bs))
+                             (image (bsnw-keep bs)))
+                  (:instance fn-bs-view-choices-are-choices
+                             (ops (fn-bs-pending bs))
+                             (unit (fn-bs-unit bs))))))))
+(defthm bsnw-sweep-every-pair-images-satisfy-crash-hypothesis
+  (and (fn-bs-crash-imagep (car (car (bsnw-sweep-run)))
+                           (bsnw-lose (car (car (bsnw-sweep-run)))))
+       (fn-bs-crash-imagep (car (car (bsnw-sweep-run)))
+                           (bsnw-keep (car (car (bsnw-sweep-run)))))
+       (fn-bs-crash-imagep (car (cadr (bsnw-sweep-run)))
+                           (bsnw-lose (car (cadr (bsnw-sweep-run)))))
+       (fn-bs-crash-imagep (car (cadr (bsnw-sweep-run)))
+                           (bsnw-keep (car (cadr (bsnw-sweep-run))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory (union-theories '(bsnw-lose) (theory 'minimal-theory))
+           :use ((:instance fn-bs-lose-everything-is-an-admissible-image
+                            (s (car (car (bsnw-sweep-run)))))
+                 (:instance bsnw-keep-is-a-crash-image
+                            (bs (car (car (bsnw-sweep-run)))))
+                 (:instance fn-bs-lose-everything-is-an-admissible-image
+                            (s (car (cadr (bsnw-sweep-run)))))
+                 (:instance bsnw-keep-is-a-crash-image
+                            (bs (car (cadr (bsnw-sweep-run)))))))))
 ; Drop sweep enablement: before recovery the node is not :ready and the round
 ; removes nothing, so the run is empty and has no pair.
 (assert-event
