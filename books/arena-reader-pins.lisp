@@ -358,9 +358,7 @@
                 (and (member-equal e pend)
                      (not (fn-arpn-clear-through-p (car e) pins))))
             (member-equal e (mv-nth 1 (fn-arpn-split-acc pend pins rel keep))))
-   :rule-classes nil
-   :hints (("Goal" :induct (fn-arpn-split-acc pend pins rel keep)
-                   :in-theory (disable revappend-removal)))))
+   :rule-classes nil))
 
 (defthm fn-arpn-split-keeps-every-unclear
   (implies (and (member-equal e pend)
