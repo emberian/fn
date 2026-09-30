@@ -60,6 +60,14 @@
   (equal (mv-list 3 (fn-pwx-release (nth 2 *pwx-released*) (nth 1 *pwx-released*) *prw-token*))
          (list :stale-job (nth 1 *pwx-released*) (nth 2 *pwx-released*)))))
 
+; REACHABLE POSITIVE: the exact admitted worker may act before cancellation.
+; The paired cancellation witness below must therefore distinguish revocation
+; from a definition that unconditionally refuses every worker.
+(assert-event
+ (and (equal (nth 0 *pwx-acquired*) :assigned)
+      (fn-pwx-boundp *pwx-held* *pwx-worker* *prw-token* :running)
+      (fn-pwx-work-permittedp *pwx-held* *pwx-worker* *prw-token*)))
+
 (defconst *pwx-cancelled* (mv-list 3 (fn-pwx-cancel *pwx-held* *pwx-worker* *prw-token*)))
 (defconst *pwx-cancel-return* (mv-list 3 (fn-pwx-return *pwx-held* (nth 1 *pwx-cancelled*) *prw-token*)))
 (assert-event (and (equal (nth 0 *pwx-cancelled*) :cancelled)
