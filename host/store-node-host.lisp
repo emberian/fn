@@ -41,6 +41,7 @@
 ; host's fn-scka-seal-n calls, fn-scka-finish) and its writer
 ; (fn-scka-write-setup, fn-scka-write-step, fn-scka-canon-rows).
 (include-book "../books/store-checkpoint-arena-load")
+(include-book "../books/store-checkpoint-arena-size-load")
 (include-book "store-checkpoint-context-host")
 ; PKT-854: `store ROOT digest' reads fn-sckd-tables-digest (the checkpoint's
 ; tables digest) at the open; no other host file brings it into the world.
@@ -554,26 +555,10 @@ reopen predicate, writer-lock observation and observed final namespace."
 ;; ACL2 global `fn-store-sco-checkpoint' from its decode to the open and the
 ;; next publication; the host holds only its octets and the sequence S.
 
-
-
  ; A checkpoint suffix starts at its captured identity epoch, not NIL/0.
-(defun fn-store-statement-replay-seed (state)
- (declare (xargs :stobjs state :mode :program))
- (let ((checkpoint (fn-store-sco-current state)))
-  (value (fn-ssr-seed (if checkpoint (fn-sco-identity checkpoint)
-                           (fn-stxk-initial-context 0))))))
+(include-book "store-statement-replay-size-host")
 
-(defun fn-store-sco-clear (state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((state (fn-store-sco-source-invalidate state))
-         (state (f-put-global 'fn-store-sco-checkpoint nil state))
-         (state (f-put-global 'fn-store-sco-context-info nil state))
-         (state (f-put-global 'fn-store-sco-summary-region nil state))
-         (state (f-put-global 'fn-store-sco-recovery-source nil state))
-         (state (f-put-global 'fn-store-sco-original-plan nil state))
-         (state (f-put-global 'fn-store-sco-load nil state))
-         (state (f-put-global 'fn-store-sco-open nil state)))
-    (value :cleared)))
+(include-book "store-checkpoint-decode-host")
 
 ; PLAN: one frame (HEADER A B TRAILER) per segment in file order, as the
 ; host's range reads placed them (fnn-state-checkpoint-plan,
@@ -620,63 +605,9 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; The three calls are `fn-scka-load' (books/store-checkpoint-arena-load.lisp),
 ; whose KEYSTONE fn-scka-load-of-written-file says the file the writer
 ; produced loads to its tables with the arena exactly the canonical payloads.
-(defun fn-store-sco-decode (plan fn-octets state)
-  (declare (xargs :stobjs (fn-octets state) :mode :program))
-  (let* ((o (fn-scka-open-run plan fn-octets))
-         (state (f-put-global 'fn-store-sco-checkpoint nil state)))
-    (if (and (consp o) (eq (car o) :ok))
-        (let ((state (f-put-global 'fn-store-sco-load (list (nth 4 o) (nth 5 o)) state)))
-          (mv nil (list :arena (nth 1 o) (nth 2 o) (nth 3 o)) state fn-octets))
-      (let ((state (f-put-global 'fn-store-sco-load nil state)))
-        (mv nil
-            (list :refused (if (and (consp o) (consp (cdr o))) (cadr o) :malformed))
-            state fn-octets)))))
 
-(defun fn-store-sco-decode-finish (i end fn-octets state)
-  (declare (xargs :stobjs (fn-octets state) :mode :program))
-  (let* ((load (and (boundp-global 'fn-store-sco-load state)
-                    (f-get-global 'fn-store-sco-load state)))
-         (state (f-put-global 'fn-store-sco-load nil state))
-         (loaded (if (and (consp load) (consp (cdr load)))
-                     (fn-scka-finish (car load) (cadr load) i end fn-octets)
-                   (list :refused :arena))))
-    (if (and (consp loaded) (eq (car loaded) :ok) (consp (cdr loaded)))
-        ; The tables mean the capture (fn-sct-capture-of-tables-of-capture):
-        ; the 7-tuple the open extends, its event index rebuilt from E.
-        (let* ((checkpoint (fn-sct-capture-of-tables (cadr loaded)))
-               (state (f-put-global 'fn-store-sco-checkpoint checkpoint state))
-               ; PKT-854: the tables' part of the checkpoint digest, only
-               ; when `store ROOT digest' asked (fn-store-sco-want-
-               ; checkpoint-digest); the arena's part follows the load
-               ; (fn-store-sco-note-checkpoint-digest).
-               (state (f-put-global
-                       'fn-store-sco-tables-digest
-                       (and (boundp-global 'fn-store-sco-want-digest state)
-                            (f-get-global 'fn-store-sco-want-digest state)
-                            (list (fn-sco-sequence checkpoint)
-                                  (fn-sckd-tables-digest (cadr loaded))))
-                       state))
-               ; The F row's log position and frontier (a store's
-               ; open starts its scan there: books/store-log-segments.lisp).
-               (state (f-put-global 'fn-store-sco-log-position
-                                    (list (fn-sct-tables-log (cadr loaded))
-                                          (fn-sco-at 2 (fn-sct-tables-f (cadr loaded))))
-                                    state))
-               ; The F row's NEXT: the prefix's transaction bound the
-               ; publication wrote (books/store-checkpoint-tables.lisp
-               ; fn-sct-next-of-tables-is-bound-of-loaded-records, PRF-992);
-               ; the open's fn-sfi-extend-open takes it, never a walk.
-               (state (f-put-global 'fn-store-sco-next
-                                    (fn-sct-tables-next (cadr loaded)) state)))
-          (mv nil (list :ok (fn-sco-sequence checkpoint)) state fn-octets))
-      (let* ((state (f-put-global 'fn-store-sco-checkpoint nil state))
-             (state (f-put-global 'fn-store-sco-log-position nil state))
-             (state (f-put-global 'fn-store-sco-next nil state)))
-        (mv nil
-            (list :refused (if (and (consp loaded) (consp (cdr loaded)))
-                               (cadr loaded)
-                             :malformed))
-            state fn-octets)))))
+
+
 
 ;; PKT-854 (books/store-checkpoint-digest.lisp): `store ROOT digest' asks
 ;; for the loaded checkpoint's verifiable digest before its open; the load
