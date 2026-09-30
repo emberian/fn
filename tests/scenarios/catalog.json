@@ -6286,7 +6286,8 @@
         "Stream borrowed string/octet payloads using one absolute-byte request/supply per action; interrupt/resume and compare complete current codec bytes, including empty octet span canonical NIL.",
         "Refuse a wrong or replayed payload position unchanged; affirm complete supply/tick hypotheses and residual/invariant conclusions, then literal removal witnesses for all five supply-refinement premises and nine initial-span premises.",
         "Recognize decoded package1/2 NIL spans with at most three authenticated byte supplies; interrupt/resume, preserve identities, refuse replayed positions, and prove actual decoded octet-list tail canonicalization with full positive and literal supply/progress removals.",
-        "Validate span metadata operands against the current u64 format before addition; replay unchanged full record codec/refinement fixtures after the existing row-book closure."
+        "Validate span metadata operands against the current u64 format before addition; replay unchanged full record codec/refinement fixtures after the existing row-book closure.",
+        "Initialize the actual borrowed span child from canonical symbol normalization; prove imported package and NIL alias codec equality, stream the unchanged name with yield/resume, retain capture/lease, and affirm wrong descriptor plus all six practical initializer removals."
       ],
       "expected": [
         "No source-list copy or whole-row encoding occurs at begin or tick.",
