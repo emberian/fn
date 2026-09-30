@@ -2339,9 +2339,9 @@ What differs from the design above, and why:
   (`:no-such-peer` otherwise), as reader pins never enter a durable record.
 - **Signatures.** `fn-peer-decide-transfer` and `fn-peer-transfer` take the
   obligation id and subject strings (and `fn-peer-transfer` the transaction
-  generation) as arguments: `fn-frame-digest` is constrained and unattached,
-  so ACL2 cannot evaluate `fn-id-obligation-of`; the host computes them as it
-  does for POST. `fn-peer-injection-arguments` bundles them; the `cfg-gen`
+  generation) as explicit arguments. They must be derived by ACL2; the
+  current frame digest has a concrete executable BLAKE3 definition.
+  `fn-peer-injection-arguments` bundles the supplied values; the `cfg-gen`
   leading argument waits for the owner's `fn-cnode-prepare` port.
 - **Offer decisions read the live node; the peer record stays pinned.**
   `fn-served-open-peer` pins both under their recognizers at `:open`, and
