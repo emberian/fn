@@ -443,7 +443,10 @@ The internal pending bridge reads that recipient's current receipt once and
 projects source plus consumed from its SAME saved step, rejecting malformed
 scalar consumption before any transfer. The named scalar/step equality is
 conditional on the producer's carried step domain; a committed phase alone
-cannot validate a corrupted full step. The current bridge is unadmitted.
+cannot validate a corrupted full step. The bridge's function guard and custody
+preservation theorem have passed a confined matching-source replay; the actual
+serialized producer's step-domain establishment and reachable positive witness
+remain open. This is not an activated transfer path.
 
 The query context extension reserves field9 for the fixed custody row, keeping
 payload5/effects6/origin7/receipt8 unchanged. Its source projection stores the
@@ -454,3 +457,22 @@ must preserve each holder identity and phase, including simultaneous aliases.
 Terminal source publication must precede clearing query inputs. Only that real
 all-alias disposition may resume the same immutable input at its saved suffix;
 query completion, lexical return, STOPPING, counts or a joined flag may not.
+
+The original request recipient remains immutable provenance in custody field2.
+Adoption binds query-holder field7 to the actual selected generation token,
+preserving the shared issued nonce/address and the unread suffix. Repeated
+binding preserves the current row. The RH acquisition is one-shot for that
+selected token: its producer projects the actual six RH references into the
+render root before installation and records `:render-owned`. A returned actor
+cannot be rearmed with the same query token. Worker borrows within the actor
+require their own exact registered identities and final epilogue receipts.
+
+The freshness publication reader uses the actual registered query capture and
+current registered publication. CatalogC and StoreF remain separate scalar
+coordinates; generation binds the key, and table/row identities bind the roots.
+It compares no opaque key or retained graph. A stale result requests recapture
+of the same input and intent without a new frontier allocation. Publication
+freshness alone grants no current authority: the owner must retain and recheck
+its actual epoch, configuration generation and canonical account publication
+namespace/revision under owner exclusion. The durable Store-to-publication
+correspondence and operation-derived funding are separate activation gates.
