@@ -186,3 +186,62 @@
  (declare (xargs :stobjs state :guard t))
  (fn-apr-current-operation-packet (fn-apr-owner-current state)))
 (in-theory (disable fn-apr-owner-current fn-apr-owner-produced-capture))
+
+; Internal phase selector: public wrapper supplies only actual core scalars,
+; fetched CURRENT slot and SAME pool. This cannot authorize an allocation.
+(defun fn-apr-continuation-kind (action current ledger profile-present epoch
+                                count phase completion)
+ (declare (xargs :guard t
+  :guard-hints (("Goal" :in-theory
+   (e/d (fn-apr-livep fn-apr-tokenp)
+    (fn-apr-widthp fn-prs-vectorp fn-prs-below fn-prl-nth
+     fn-apr-current-operation-packet))))))
+ (let* ((token (fn-prl-nth 0 current))
+        (charge (fn-prl-nth 1 current))
+        (charged (fn-prl-nth 1 ledger))
+        (packet (fn-apr-current-operation-packet current)))
+  (cond
+   ((not (member-eq action '(:precheck :prepare :record-dir :commit :abort :joined)))
+    :invalid-continuation-action)
+   ((not profile-present) :admission-profile-unavailable)
+   ((null current) :admission-census-unavailable)
+   ((not (fn-apr-livep token current)) :stale)
+   ((not (and (natp epoch) (equal epoch (fn-prl-nth 2 token)))) :stale)
+   ((eq (fn-prl-nth 2 current) :uncertain) :admission-recovery-required)
+   ((not (and (fn-apr-widthp 5 (fn-prl-nth 0 ledger))
+               (fn-apr-widthp 5 charged) (fn-apr-widthp 5 charge)
+               (fn-prs-vectorp (fn-prl-nth 0 ledger))
+               (fn-prs-vectorp charged) (fn-prs-vectorp charge)
+               (fn-prs-below charge charged)))
+    :invalid-resource-state)
+   ((eq (fn-prl-nth 2 current) :reserved) :admission-yield)
+   ((member-eq action '(:abort :joined)) :admission-join-unavailable)
+   ((null packet) :admission-packet-unavailable)
+   ((not (and (natp count)
+               (if (eq action :commit)
+                (and (eq phase :completing)
+                     (equal count (+ 1 (fn-prl-nth 3 token)))
+                     (equal completion
+                            (cons (fn-prl-nth 4 token) (fn-prl-nth 5 token))))
+                (and (equal count (fn-prl-nth 3 token))
+                     (cond ((eq action :prepare) (eq phase :reserved))
+                           ((eq action :record-dir) (eq phase :record-attempted))
+                           (t t))))))
+    :admission-phase-unavailable)
+   ((not (eq (fn-prl-nth 3 packet) :carried)) :canonical-size-unavailable)
+   ; Presence/shape, profile and residual C do not prove installed runtime
+   ; adequacy or a bounded semantic executor. Refuse before producer mutation.
+   (t :admission-executor-unavailable))))
+
+(defthm fn-apr-continuation-never-authorizes-producer-allocation
+ (member-eq (fn-apr-continuation-kind action current ledger profile-present
+                                     epoch count phase completion)
+  '(:invalid-continuation-action :admission-profile-unavailable
+    :admission-census-unavailable :stale :admission-recovery-required
+    :invalid-resource-state :admission-yield :admission-join-unavailable
+    :admission-packet-unavailable :admission-phase-unavailable
+    :canonical-size-unavailable :admission-executor-unavailable))
+ :hints (("Goal" :in-theory
+  (e/d (fn-apr-continuation-kind)
+   (fn-apr-livep fn-apr-widthp fn-prs-vectorp fn-prs-below
+    fn-apr-current-operation-packet fn-prl-nth)))))
