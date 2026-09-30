@@ -499,3 +499,36 @@ trace coupling, complete source/pool/image/digest/root trajectory, finite
 progress, installed source authority, INITIAL and native qualification
 remain open. Runtime is unchanged; PRF-1144 remains planned with no cited
 completion events.
+
+`fn-hpicopy-issued-padding-payload-is-original-canonical-page` joins the
+complete payload observation to the original canonical padded page. Its
+proof-only `fn-hpicopy-page` observes exactly the native executor's fixed
+16384 calls to `fn-hie-page-byte`, stopping on refusal. Under original
+padding-ready carry and complete executor context, the whole output is
+`:complete` plus the full original page. This is a list observation of the
+existing scalar/vector copy boundary, not another served codec or a claim
+that compiler/runtime marshalling is proved. The exact native loop source
+is frozen in the accompanying evidence coordinate.
+
+`fn-hpicopy-issued-padding-write-has-canonical-visible-roles` composes that
+payload with the named positional write and all three untouched-role frame
+relations. Under original padding-ready carry and the complete private step
+predicate, the entire visible target/data-spool/table-spool view is the
+original canonical target splice and both unchanged spools. Executor context
+was proved implied by these two premises and removed. Files are the stable,
+pairwise distinct retained role identities; correspondence to actual live
+FDs/inodes and the serialized native scratch is an explicit caller/trust
+obligation. Full syscall counts do not establish the named assumptions.
+
+Twenty-five complete assertions cover all five actual decoded-source pages
+and local-witness instances of the named physical assumptions. They check
+the complete payload and all three role outputs, with canonical-word and
+stale-stage mutations, lying writes, and independent data-spool corruption.
+The last retains the exact target write and every other role frame. A local
+functional instance ties these model assertions to the exact public theorem.
+The matching source coordinate is
+`planning/evidence/history-image-page-copy-source-2026-09-30.json`.
+Whole source/pool/image/spool/digest/root trajectory and finite progress,
+installed source authority, INITIAL, durability/publication and native
+qualification remain open. Runtime is unchanged; PRF-1144 stays planned
+with no cited completion events.
