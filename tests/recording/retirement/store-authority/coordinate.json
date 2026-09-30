@@ -5,7 +5,7 @@
     "host/native/io.lisp": "2a0e58ae828331c0a9831e06db2ebd5f86e4d813eb6913f66474fcf586f725a3",
     "host/native/owner.lisp": "92b6b871acb8143c9894ba49a16982c9944f82ba0988414b8124aefacc4ca54b",
     "host/native/operator.lisp": "3289ab9c42f32ff74958bd8d103792d177162fc04c9823f90dfdc6355942c938",
-    "host/native/operator-live.lisp": "8dbd7e470c76be6f2a0ca460f6ad436ae14344f235dc7b2eb7fb3e646ad7a45e"
+    "host/native/operator-live.lisp": "db922911a1ae65c5fc4e4fc8b7a57a1e7eae8820e4d74cb8fbe5c1bff38c07c6"
   },
   "scope": "Actual writer loop/start/stop/queue/sink, owner authority helpers, spare/Store close and outer operator caller; real SBCL semaphore/thread/join. Literal ACL2 scalar/sink functions with xargs removed. Recording filesystem calls and journal writes, configuration projections and owner callback. No actual disk/native image/ACL2 proof claim."
 }

@@ -42,6 +42,14 @@
 (defparameter +fnn-exit-uncertain+ 3)
 (defvar *caller-mode* :held)
 (defvar *caller-service* nil)
+(defvar *caller-statuses* nil)
+(defvar *caller-close-fault* nil)
+(defun fnn-operator-emit-status (status word reason)
+ (declare (ignore word reason))
+ (push (list status *fnn-owner-log-fd* (and *fnn-owner-retained-service* t)) *caller-statuses*))
+(defun fnn-close (fd)
+ (push (list :close fd (alive)) *recorded*)
+ (when (eql fd *caller-close-fault*) (error "recording caller close uncertainty")))
 (defun fnn-core (name &rest args)
  (case name
   ((fn-native-health-host-run-started-line fn-native-health-host-run-stopped-line) '(65))
@@ -185,12 +193,6 @@ nothing: the log is an operator's record."
                               'fn-native-operator-host-result-run-implicit-tls-port
                               result)))))
                 (setq run-code code)
-                ;; The owner's fault, when it stopped on one, is the
-                ;; result line's reason: the last line the service
-                ;; manager's journal shows for this run says why.
-                (fnn-operator-emit-status
-                 (fnn-operator-status-of-exit-code code) "run"
-                 (and (/= code +fnn-exit-ok+) *fnn-owner-last-fault*))
                 code))
               (error (condition)
                 ;; Recorded for the stop line below, then handled as before
@@ -232,18 +234,25 @@ nothing: the log is an operator's record."
               (unless (eq (fnn-owner-store-settlement
                            (if (eq holder t) nil holder)
                            *fnn-owner-retained-settlement*) :joined)
-                (return-from fnn-operator-execute-run
-                  (fnn-core 'fn-ort-log-close-exit
-                            (or run-code +fnn-exit-uncertain+)
-                            +fnn-exit-uncertain+ :held))))))))
+                (setq run-code
+                      (fnn-core 'fn-ort-log-close-exit
+                                (or run-code +fnn-exit-uncertain+)
+                                +fnn-exit-uncertain+ :held))))))
+          ;; Publish the final run result only after actual caller/Store
+          ;; teardown. A physical close fault cannot follow accepted output.
+          (fnn-operator-emit-status
+           (fnn-operator-status-of-exit-code run-code) "run"
+           (and (/= run-code +fnn-exit-ok+) *fnn-owner-last-fault*))
+          run-code))
     (error (condition)
       (let ((code (fnn-exit-code-for condition)))
         (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "run" condition)
         code))))
 
-(setq *recorded* nil *caller-mode* :held)
+(setq *recorded* nil *caller-statuses* nil *caller-mode* :held)
 (assert (= (fnn-operator-execute-run nil) 3))
 (assert (alive))
+(assert (equal *caller-statuses* '((3 123 t))))
 (assert (= *fnn-owner-log-fd* 123))
 (assert (eq *fnn-owner-retained-service* *caller-service*))
 (assert (= (fnn-store-lock-fd (fnn-owner-service-store *caller-service*)) 602))
@@ -259,13 +268,32 @@ nothing: the log is an operator's record."
 (fnn-close *fnn-owner-log-fd*)
 (setq *fnn-owner-log-fd* nil *fnn-owner-log-path* nil)
 (assert (eq (fnn-owner-store-settlement *caller-service* :joined) :joined))
-(setq *recorded* nil *caller-mode* :joined)
+(setq *recorded* nil *caller-statuses* nil *caller-mode* :joined)
 (assert (= (fnn-operator-execute-run nil) 0))
 (assert (null *fnn-owner-log-fd*))
 (assert (null *fnn-owner-retained-service*))
+(assert (equal *caller-statuses* '((0 nil nil))))
 (assert (equal (reverse *recorded*)
  '((:write 123 nil) (:write 123 nil) (:close 123 nil)
    (:close 601 nil) (:flock 602 8 nil) (:close 602 nil))))
 (format t "PASS actual outer caller: held writer bypasses stop write/FD/Store close; reentry fenced; joined exact teardown~%")
 (format t "STORE-CALLER-PASS ~s~%" (reverse *recorded*))
-
+(dolist (fd '(123 601))
+ (let ((*fnn-owner-retained-service* nil)
+       (*fnn-owner-retained-settlement* :held)
+       (*fnn-owner-reserving-thread* nil)
+       (*fnn-owner-log-fd* nil) (*fnn-owner-log-path* nil)
+       (*caller-statuses* nil) (*recorded* nil)
+       (*caller-close-fault* fd))
+  (assert (= (fnn-operator-execute-run nil) 3))
+  ;; Only final uncertainty, never an earlier accepted status. It is emitted
+  ;; after teardown observation, preserving the remaining recovery authority.
+  (assert (= (length *caller-statuses*) 1))
+  (assert (= (caar *caller-statuses*) 3))
+  (assert (eq *fnn-owner-retained-service* *caller-service*))
+  (assert (= (fnn-store-lock-fd (fnn-owner-service-store *caller-service*)) 602))
+  (assert (notany (lambda (event) (eq (car event) :flock)) *recorded*))
+  (if (= fd 123)
+   (assert (= *fnn-owner-log-fd* 123))
+   (assert (null *fnn-owner-log-fd*)))
+  (format t "PASS actual caller final-status close-fault ~d: only uncertain3, retained authority~%" fd)))

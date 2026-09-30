@@ -122,12 +122,6 @@
                               'fn-native-operator-host-result-run-implicit-tls-port
                               result)))))
                 (setq run-code code)
-                ;; The owner's fault, when it stopped on one, is the
-                ;; result line's reason: the last line the service
-                ;; manager's journal shows for this run says why.
-                (fnn-operator-emit-status
-                 (fnn-operator-status-of-exit-code code) "run"
-                 (and (/= code +fnn-exit-ok+) *fnn-owner-last-fault*))
                 code))
               (error (condition)
                 ;; Recorded for the stop line below, then handled as before
@@ -169,10 +163,16 @@
               (unless (eq (fnn-owner-store-settlement
                            (if (eq holder t) nil holder)
                            *fnn-owner-retained-settlement*) :joined)
-                (return-from fnn-operator-execute-run
-                  (fnn-core 'fn-ort-log-close-exit
-                            (or run-code +fnn-exit-uncertain+)
-                            +fnn-exit-uncertain+ :held))))))))
+                (setq run-code
+                      (fnn-core 'fn-ort-log-close-exit
+                                (or run-code +fnn-exit-uncertain+)
+                                +fnn-exit-uncertain+ :held))))))
+          ;; Publish the final run result only after actual caller/Store
+          ;; teardown. A physical close fault cannot follow accepted output.
+          (fnn-operator-emit-status
+           (fnn-operator-status-of-exit-code run-code) "run"
+           (and (/= run-code +fnn-exit-ok+) *fnn-owner-last-fault*))
+          run-code))
     (error (condition)
       (let ((code (fnn-exit-code-for condition)))
         (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "run" condition)

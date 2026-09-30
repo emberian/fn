@@ -9,3 +9,5 @@ RECORDING condition uncertain ("~a" "prior owner authority is unsettled")
 PASS actual outer caller: held writer bypasses stop write/FD/Store close; reentry fenced; joined exact teardown
 STORE-CALLER-PASS ((:WRITE 123 NIL) (:WRITE 123 NIL) (:CLOSE 123 NIL)
                    (:CLOSE 601 NIL) (:FLOCK 602 8 NIL) (:CLOSE 602 NIL))
+PASS actual caller final-status close-fault 123: only uncertain3, retained authority
+PASS actual caller final-status close-fault 601: only uncertain3, retained authority

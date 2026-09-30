@@ -190,3 +190,8 @@ Tiny scalar decisions/teeth have normal two-root certificate
 cover queued timeout, restart refusal, caller defer, joined teardown and close
 faults. Filesystem/configuration/owner callbacks are recorded, so this supplies
 no disk or qualified-image result and does not close the full producer graph.
+
+The caller publishes its final run status after caller/Store teardown, using
+the final settlement exit. A late physical close uncertainty cannot follow an
+earlier accepted status. Actual caller recording fixtures inject log/Store
+close faults and require only final uncertain3 with retained authority.
