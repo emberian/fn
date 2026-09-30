@@ -655,13 +655,33 @@ class Run:
         recipe = self.s.initial["recipe"]
         family = {"empty-store": self.run_post, "orphan-then-recover": self.run_recovery,
                   "served-node": self.run_served, "checkpoint-at-three": self.run_checkpoint}
+        cause = None
+        operational = (HarnessFailure, OSError, EOFError, subprocess.SubprocessError)
         try:
             family[recipe]()
-        except HarnessFailure as e:
-            return self.failed(str(e))
+        except operational as error:
+            cause = str(error) if isinstance(error, HarnessFailure) else (
+                "native-execution-failed:" + type(error).__name__ + ":" + str(error))
+            # Execution failures are missing evidence, never product outcomes.
+            self.j.internal("native-execution-failed", error_type=type(error).__name__,
+                            diagnostic=str(error),
+                            stdout_hex=(error.output.hex() if isinstance(
+                                getattr(error, "output", None), bytes) else None),
+                            stderr_hex=(error.stderr.hex() if isinstance(
+                                getattr(error, "stderr", None), bytes) else None))
         finally:
             if self.node is not None:
-                self.node.reap()
+                try:
+                    self.node.reap()
+                except operational as error:
+                    # Retain the node handle and primary diagnostic for an
+                    # owned cleanup retry; seal only after cleanup is observed.
+                    cleanup = "native-cleanup-failed:" + type(error).__name__ + ":" + str(error)
+                    self.j.internal("native-cleanup-failed", error_type=type(error).__name__,
+                                    diagnostic=str(error))
+                    cause = cleanup if cause is None else cause + ";" + cleanup
+        if cause is not None:
+            return self.failed(cause)
         return self.finish()
 
     # -- families
