@@ -233,8 +233,8 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 - Keystone: `fn-oqr-live-answer-is-reconstruction` (books/obligation-subject-report.lisp:52; in no registry row); no archived manifest records `books/obligation-subject-report.lisp` passed at its current source.
 - Tested: no matching image; source proof experiments are recorded separately below.
 - Deployed: no: the node runs default, this needs persisted operator profile; existing record metadata subject type.
-- Latest positive result: Source integration and clean narrow hbox REPL evidence for concrete delta/oracle, retained cons growth, actual identity prepare, node completion/recovery, cold installation/rebuild-swap, exact report substitution and query/FNLS/operator boundaries; no certification or matching native pass.
-- Remaining obstruction: PRF-1052 planned: article prepare variants and durable completion correspondence, native producer premises, cumulative zero trie path/uint64 funding, physical allocation and measured actual reads remain open.
+- Latest positive result: Clean narrow hbox source REPL evidence includes actual identity prepare, cold installation/rebuild-swap and durable finish, retained radix cons growth, conditional capacity/uint64 bounds, exact report substitution and query/FNLS/operator boundaries; no certification or matching native pass.
+- Remaining obstruction: PRF-1052 planned: remaining prepare variants/owner installations and native producer premises; configured capacity/cumulative zero-path funding; physical allocation and matched actual costs/native scenarios remain open. E739 POST scale timed out after 2261 accepted posts and is not a matching W9 measurement.
 - Next positive gate: Prove actual owner transition preservation and funded representation; runner coalesced certification and status_live_posts/capacity_vector/obligation_subject natives, then matched cost evidence.
 
 ### D40

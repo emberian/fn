@@ -405,6 +405,10 @@
     "books/owner-obligation-state",
     "books/owner-obligation-writers",
     "books/owner-obligation-recovery",
+    "books/owner-obligation-completion",
+    "tests/acl2/owner-obligation-completion-tests",
+    "books/retention-obligation-view-bounds",
+    "tests/acl2/retention-obligation-view-bounds-tests",
     "tests/acl2/owner-obligation-recovery-tests",
     "tests/acl2/owner-obligation-writers-tests",
     "books/retention-obligation-view-node",
@@ -1655,11 +1659,11 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1722,
-    "books_in_root_closure": 1719,
-    "roots": 1651,
-    "theorems": 27976,
-    "functions": 18204,
+    "books": 1726,
+    "books_in_root_closure": 1723,
+    "roots": 1655,
+    "theorems": 28010,
+    "functions": 18206,
     "assert_events": 22998,
     "must_fails": 2497,
     "prover_refusals": 0,
@@ -1668,13 +1672,13 @@
       "verified": 3466,
       "declared-off": 2092,
       "default-guarded": 9896,
-      "default-unguarded": 2750
+      "default-unguarded": 2752
     },
-    "suspect_theorems": 1233,
+    "suspect_theorems": 1239,
     "export_hygiene_warnings": 325,
     "enabled_projection_warnings": 52,
     "teeth_form_warnings": 272,
-    "include_hygiene_warnings": 2434,
+    "include_hygiene_warnings": 2438,
     "host_names_warnings": 2087,
     "hand_written_record_warnings": 18
   },
@@ -19332,6 +19336,39 @@
       "read_error": null
     },
     {
+      "book": "books/owner-obligation-completion.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 16,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner-obligation-writers"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-rov-node-of-make-v6",
+        "fn-rov-node-of-sn-advance-identity-next",
+        "fn-rov-node-of-sn-update-accepted",
+        "fn-rov-node-of-sn-update-indexed",
+        "fn-rov-node-of-sn-with-consumer",
+        "fn-rov-node-of-sn-with-topic"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/owner-obligation-recovery.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -24254,6 +24291,34 @@
         "retention"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/retention-obligation-view-bounds.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 6,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "retention-obligation-view"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -43848,6 +43913,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/owner-obligation-completion-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-obligation-completion",
+        "identity-retain-carried-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/owner-obligation-recovery-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -46950,6 +47042,32 @@
       "encapsulates": 0,
       "includes": [
         "../../books/response-plan-pins"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/retention-obligation-view-bounds-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/retention-obligation-view-bounds"
       ],
       "system_includes": [],
       "suspects": [],
@@ -58131,6 +58249,54 @@
       "line": 68,
       "reasons": [
         "closed-theory-corollary: proved only by fn-rov-answer-report-is-answer-report, fn-rov-count-is-pin-count"
+      ]
+    },
+    {
+      "theorem": "fn-rov-node-of-make-v6",
+      "book": "books/owner-obligation-completion.lisp",
+      "line": 76,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-rov-node-of-sn-advance-identity-next",
+      "book": "books/owner-obligation-completion.lisp",
+      "line": 92,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-rov-node-of-sn-update-accepted",
+      "book": "books/owner-obligation-completion.lisp",
+      "line": 100,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-rov-node-of-sn-update-indexed",
+      "book": "books/owner-obligation-completion.lisp",
+      "line": 96,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-rov-node-of-sn-with-consumer",
+      "book": "books/owner-obligation-completion.lisp",
+      "line": 84,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-rov-node-of-sn-with-topic",
+      "book": "books/owner-obligation-completion.lisp",
+      "line": 88,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
     },
     {
@@ -71442,6 +71608,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/owner-obligation-completion.lisp",
+        "line": 5,
+        "include": "owner-obligation-writers",
+        "included": "books/owner-obligation-writers.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/owner-obligation-recovery.lisp",
         "line": 4,
         "include": "owner-obligation-writers",
@@ -79345,6 +79518,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/owner-obligation-completion-tests.lisp",
+        "line": 2,
+        "include": "../../books/owner-obligation-completion",
+        "included": "books/owner-obligation-completion.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-obligation-completion-tests.lisp",
+        "line": 3,
+        "include": "identity-retain-carried-tests",
+        "included": "tests/acl2/identity-retain-carried-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/owner-obligation-recovery-tests.lisp",
         "line": 2,
         "include": "../../books/owner-obligation-recovery",
@@ -80931,6 +81118,13 @@
         "line": 9,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/retention-obligation-view-bounds-tests.lisp",
+        "line": 2,
+        "include": "../../books/retention-obligation-view-bounds",
+        "included": "books/retention-obligation-view-bounds.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

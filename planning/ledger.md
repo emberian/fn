@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1722 |
-| Certification roots in the Makefile | 1651 |
-| Books inside the root closure | 1719 |
-| `defthm` and `defthmd` events | 27976 |
-| `defun` events | 18204 |
+| Books read | 1726 |
+| Certification roots in the Makefile | 1655 |
+| Books inside the root closure | 1723 |
+| `defthm` and `defthmd` events | 28010 |
+| `defun` events | 18206 |
 | Functions with verified guards | 3466 |
 | Functions declared `:verify-guards nil` and never verified | 2092 |
 | Functions left at the default with an explicit guard | 9896 |
-| Functions left at the default with no guard | 2750 |
+| Functions left at the default with no guard | 2752 |
 | `assert-event` checks | 22998 |
 | `must-fail` checks | 2497 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 156 |
-| Theorems flagged SUSPECT by shape | 1233 |
+| Theorems flagged SUSPECT by shape | 1239 |
 | Export-hygiene warnings | 325 |
 | Enabled-projection warnings | 52 |
 | Teeth-form warnings | 272 |
-| Include-hygiene warnings | 2434 |
+| Include-hygiene warnings | 2438 |
 | Host-names warnings | 2087 |
 | Hand-written-record warnings | 18 |
 
@@ -669,6 +669,7 @@ that `make certify` requests.
 | `books/owner-number-bound-join.lisp` | root | 86 | 1 | 0/0/0/1 | 0 | 0 | 5 |
 | `books/owner-number-bound.lisp` | root | 36 | 5 | 0/0/1/4 | 0 | 0 | 0 |
 | `books/owner-numbering.lisp` | root | 47 | 4 | 0/0/2/2 | 0 | 0 | 0 |
+| `books/owner-obligation-completion.lisp` | root | 16 | 0 | 0/0/0/0 | 0 | 0 | 6 |
 | `books/owner-obligation-recovery.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-obligation-state.lisp` | root | 21 | 8 | 0/1/7/0 | 0 | 0 | 0 |
 | `books/owner-obligation-writers.lisp` | root | 12 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -835,6 +836,7 @@ that `make certify` requests.
 | `books/response-plan-pins.lisp` | root | 13 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/retention-figures.lisp` | root | 0 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/retention-invariants.lisp` | root | 17 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/retention-obligation-view-bounds.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/retention-obligation-view-node.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/retention-obligation-view-status.lisp` | root | 5 | 4 | 0/4/0/0 | 0 | 0 | 2 |
 | `books/retention-obligation-view.lisp` | root | 22 | 11 | 0/1/10/0 | 0 | 0 | 0 |
@@ -1518,6 +1520,7 @@ that `make certify` requests.
 | `tests/acl2/owner-number-bound-join-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 15 | 0 | 0 |
 | `tests/acl2/owner-number-bound-tests.lisp` | root | 2 | 2 | 0/0/0/2 | 32 | 0 | 2 |
 | `tests/acl2/owner-numbering-tests.lisp` | root | 0 | 7 | 0/4/0/3 | 34 | 5 | 0 |
+| `tests/acl2/owner-obligation-completion-tests.lisp` | root | 7 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/owner-obligation-recovery-tests.lisp` | root | 5 | 1 | 0/0/0/1 | 3 | 0 | 0 |
 | `tests/acl2/owner-obligation-writers-tests.lisp` | root | 2 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/owner-open-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 43 | 10 | 0 |
@@ -1629,6 +1632,7 @@ that `make certify` requests.
 | `tests/acl2/replay-identity-index-tests.lisp` | root | 7 | 4 | 0/0/0/4 | 24 | 6 | 0 |
 | `tests/acl2/replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 69 | 0 | 0 |
 | `tests/acl2/response-plan-pins-tests.lisp` | root | 7 | 0 | 0/0/0/0 | 3 | 0 | 0 |
+| `tests/acl2/retention-obligation-view-bounds-tests.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/retention-obligation-view-node-tests.lisp` | root | 3 | 0 | 0/0/0/0 | 2 | 0 | 0 |
 | `tests/acl2/retention-obligation-view-tests.lisp` | root | 5 | 0 | 0/0/0/0 | 4 | 1 | 0 |
 | `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 66 | 1 | 0 |
@@ -2573,6 +2577,12 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-rit-hasp-of-leaf` | `books/post-retain-carried.lisp` | 131 | arm-of-definition: the hypotheses select one IF/COND arm of fn-rit-hasp and the conclusion is that arm's value |
 | `fn-rov-answer-report-at-reader-view-from-corresponding-view` | `books/retention-obligation-view-status.lisp` | 83 | closed-theory-corollary: proved only by fn-rov-answer-report-from-corresponding-view, fn-rov-reader-view-keeps-retention |
 | `fn-rov-answer-report-from-corresponding-view` | `books/retention-obligation-view-status.lisp` | 68 | closed-theory-corollary: proved only by fn-rov-answer-report-is-answer-report, fn-rov-count-is-pin-count |
+| `fn-rov-node-of-make-v6` | `books/owner-obligation-completion.lisp` | 76 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-rov-node-of-sn-advance-identity-next` | `books/owner-obligation-completion.lisp` | 92 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-rov-node-of-sn-update-accepted` | `books/owner-obligation-completion.lisp` | 100 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-rov-node-of-sn-update-indexed` | `books/owner-obligation-completion.lisp` | 96 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-rov-node-of-sn-with-consumer` | `books/owner-obligation-completion.lisp` | 84 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-rov-node-of-sn-with-topic` | `books/owner-obligation-completion.lisp` | 88 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-rows-contexts-okp-of-atom` | `books/store-intern.lisp` | 441 | arm-of-definition: the hypotheses select one IF/COND arm of fn-rows-contexts-okp and the conclusion is that arm's value |
 | `fn-sbsp-files-of-advance-identity-next` | `books/store-budget-stored-post.lisp` | 109 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-sbsp-files-of-update-accepted` | `books/store-budget-stored-post.lisp` | 115 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
