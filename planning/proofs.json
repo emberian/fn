@@ -18097,6 +18097,28 @@
         "planning/evidence/selected-runtime-allocation-geometry-2026-09-30/README.md"
       ],
       "progress_note": "Fresh protected proper source srag2 passed 0.12 seconds /13502 steps; seven model-only teeth. No certification/image/native adequacy claim."
+    },
+    {
+      "id": "PRF-1160",
+      "title": "Conditional exact typed RX successful component object and frame unit",
+      "statement": "A-SELECTED-RUNTIME-RX-COPY-COST constrains the exact selected successful typed copy component to zero object requests and at most192 incremental control-stack bytes. Exact compiler/library/UB8 range association must be qualified; semantic correctness, wholeturn/fault/GC/firstuse/installation remain separate.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-013"
+      ],
+      "depends_on": [
+        "PRF-1150"
+      ],
+      "assumptions": [
+        "A-SELECTED-RUNTIME-RX-COPY-COST"
+      ],
+      "status": "planned",
+      "evidence": [
+        "books/assumptions-selected-runtime-rx-copy-cost.lisp",
+        "tests/acl2/selected-runtime-rx-copy-cost-tests.lisp",
+        "planning/evidence/selected-rx-copy-cost-2026-09-30/README.md"
+      ],
+      "progress_note": "Fresh protected srxc3 proper source0.03s/0steps; complete scalar three-MV positive and11 model-only retained-clause removals. No central inclusion/certification/whole-runtime authority claim."
     }
   ]
 }
