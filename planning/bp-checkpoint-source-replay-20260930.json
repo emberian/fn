@@ -71,5 +71,41 @@
     "P2 funded registered receipt query",
     "production frozen retirement settlement/report"
   ],
-  "logs": "build/proof-repl/{bpck-resource3,bpck-digest3}/log (local retained, not committed)"
+  "logs": "build/proof-repl/{bpck-resource3,bpck-digest3}/log (local retained, not committed)",
+  "exact_write_history_increment": {
+    "baseline": "386df09de",
+    "scope": "Actual private native-writer producer subject Fn-bpck-emit-step, supporting source evidence only; not certification/activation/runtime funding/native cut evidence.",
+    "source_sha256": {
+      "books/bp-node-checkpoint-emission.lisp": "3342fb54bfe6c846c6daecd6d9f6d7348db4a7848c2f7b9f88c49cb32c8d4ce8",
+      "tests/acl2/bp-node-checkpoint-emission-tests.lisp": "7baab5d0446344a98e9b295c3e7e724fee4a3b2f90b2d7a8b3fa7d5f99c66131"
+    },
+    "session": "bpck-emission2",
+    "matched_compiled_dependencies": 38,
+    "proper_source_dependencies": [
+      "bp-node-foundation",
+      "bp-fnbs-codec",
+      "bp-node-rotation-codec",
+      "bp-node-rotation-cursor",
+      "bp-node-checkpoint-job"
+    ],
+    "root_forms": 14,
+    "acl2_seconds": 7.43,
+    "prover_steps": 6416332,
+    "literal_assertions_passed": 6,
+    "fixture_forms": 15,
+    "fixture_prover_steps": 276,
+    "keystones": [
+      "fn-bpck-emit-step-preserves-exact-write-history",
+      "fn-bpck-emit-step-terminal-is-exact-frame-prefix"
+    ],
+    "hypothesis_scope": "Preservation uses only exact ghost write-history invariant; redundant emit-phase hypothesis removed after proving weakening. Terminal requires emit phase, invariant and output digest-finish; every omission has affirmative retained hypotheses and failed conclusion. Premature terminal-phase witness explicitly corrupted.",
+    "logs": "build/proof-repl/bpck-emission2",
+    "stopped": true,
+    "remaining": [
+      "Exact PGS byte trajectory/trailer joint attachment prerequisite",
+      "Charged CURRENT capture and epoch/token freeze",
+      "Actual bounded native scheduler, publication/restart",
+      "Selected runtime initial demand, supported B/U shared pool installation"
+    ]
+  }
 }
