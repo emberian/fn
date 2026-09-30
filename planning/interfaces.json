@@ -5,7 +5,7 @@
     "declared": 1335,
     "declared_and_dispatched": 1317,
     "guard_verified": 678,
-    "with_keystone": 191,
+    "with_keystone": 192,
     "raw_dispatched": 0
   },
   "raw_dispatched": [],
@@ -12148,7 +12148,11 @@
         ]
       ],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-bpfs-fragment-outcome-refines-ordered-send"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,

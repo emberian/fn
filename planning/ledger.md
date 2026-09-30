@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1832 |
-| Certification roots in the Makefile | 1765 |
-| Books inside the root closure | 1829 |
-| `defthm` and `defthmd` events | 29369 |
-| `defun` events | 18856 |
+| Books read | 1834 |
+| Certification roots in the Makefile | 1766 |
+| Books inside the root closure | 1831 |
+| `defthm` and `defthmd` events | 29375 |
+| `defun` events | 18858 |
 | Functions with verified guards | 3508 |
 | Functions declared `:verify-guards nil` and never verified | 2250 |
-| Functions left at the default with an explicit guard | 10270 |
+| Functions left at the default with an explicit guard | 10272 |
 | Functions left at the default with no guard | 2828 |
-| `assert-event` checks | 23884 |
-| `must-fail` checks | 2516 |
+| `assert-event` checks | 23894 |
+| `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
 | Theorems flagged SUSPECT by shape | 1246 |
 | Export-hygiene warnings | 339 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2521 |
+| Include-hygiene warnings | 2525 |
 | Host-names warnings | 2156 |
 | Hand-written-record warnings | 18 |
 
@@ -173,7 +173,7 @@ that `make certify` requests.
 | `books/bp-fragment-invariants.lisp` | root | 62 | 3 | 0/0/0/3 | 0 | 0 | 5 |
 | `books/bp-fragment-job-shape.lisp` | root | 3 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/bp-fragment-resume.lisp` | root | 13 | 7 | 3/0/4/0 | 0 | 0 | 0 |
-| `books/bp-fragment-send.lisp` | root | 95 | 18 | 8/4/6/0 | 0 | 0 | 10 |
+| `books/bp-fragment-send.lisp` | root | 98 | 20 | 8/4/8/0 | 0 | 0 | 10 |
 | `books/bp-fragment-sweep.lisp` | root | 56 | 24 | 8/5/11/0 | 0 | 0 | 0 |
 | `books/bp-fragment.lisp` | root | 6 | 36 | 35/1/0/0 | 0 | 0 | 0 |
 | `books/bp-handoff-report.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -722,6 +722,7 @@ that `make certify` requests.
 | `books/owner-prepare-outcome.lisp` | root | 22 | 13 | 8/0/5/0 | 0 | 0 | 0 |
 | `books/owner-prepare-served-ocl.lisp` | root | 50 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/owner-prepare-served.lisp` | root | 4 | 8 | 0/0/8/0 | 0 | 0 | 3 |
+| `books/owner-reader-establishment.lisp` | closure | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-reader-read.lisp` | root | 24 | 13 | 0/0/13/0 | 0 | 0 | 4 |
 | `books/owner-reader-view.lisp` | root | 18 | 18 | 0/0/18/0 | 0 | 0 | 2 |
 | `books/owner-reclaim-carry.lisp` | closure | 1 | 1 | 0/1/0/0 | 0 | 0 | 0 |
@@ -1195,7 +1196,7 @@ that `make certify` requests.
 | `tests/acl2/bp-forward-live-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 13 | 0 | 0 |
 | `tests/acl2/bp-fragment-fast-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
 | `tests/acl2/bp-fragment-resume-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 0 | 0 |
-| `tests/acl2/bp-fragment-send-tests.lisp` | root | 0 | 11 | 0/0/1/10 | 25 | 10 | 0 |
+| `tests/acl2/bp-fragment-send-tests.lisp` | root | 0 | 11 | 0/0/1/10 | 33 | 12 | 0 |
 | `tests/acl2/bp-fragment-sweep-tests.lisp` | root | 2 | 3 | 0/1/2/0 | 18 | 1 | 0 |
 | `tests/acl2/bp-fragment-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 88 | 0 | 1 |
 | `tests/acl2/bp-handoff-report-tests.lisp` | root | 0 | 8 | 0/8/0/0 | 10 | 1 | 0 |
@@ -1624,6 +1625,7 @@ that `make certify` requests.
 | `tests/acl2/owner-prepare-served-abort-tests.lisp` | root | 0 | 6 | 0/1/0/5 | 1 | 0 | 0 |
 | `tests/acl2/owner-prepare-served-events-tests.lisp` | root | 5 | 5 | 0/1/0/4 | 58 | 0 | 0 |
 | `tests/acl2/owner-prepare-served-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 70 | 0 | 0 |
+| `tests/acl2/owner-reader-establishment-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 1 | 0 |
 | `tests/acl2/owner-reader-read-tests.lisp` | root | 1 | 17 | 0/8/0/9 | 40 | 2 | 0 |
 | `tests/acl2/owner-reader-view-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 28 | 1 | 0 |
 | `tests/acl2/owner-reclaim-carry-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
