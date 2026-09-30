@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6468,6 +6468,34 @@
         "tests/acl2/page-read-executor-tests.lisp"
       ],
       "execution_scope": "Pure executor model source REPL and folded literal teeth only. Native executor/refinement, real process-death cuts and supported funding/profile consumer pending; not a full P12 claim."
+    },
+    {
+      "id": "SCN-1018",
+      "title": "Protected extent windows verify all protected bytes with bounded private storage",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Read a requested window crossing two bounded blocks inside a protected extent containing many records.",
+        "Keep the requested bytes private while the rest of the prefix and trailer are still being verified; exercise short reads, wrong descriptor commitment, changed prefix digest and stale physical incarnation.",
+        "Read a requested decoded window from a compressed stored payload with fixed scratch, then validate complete stream acceptance and exact decoded length.",
+        "Cancel while a worker or output borrower remains live; retain the actual file and scratch leases until relinquishment."
+      ],
+      "expected": [
+        "Read effects are ACL2-selected exact offsets/counts; per-step input is at most64 bytes and output storage at most16KiB, independent of ELEN.",
+        "No partial or unauthenticated window is public; exact output/refinement includes unchanged cells.",
+        "Supported profile lengths are resumed, never truncated or silently capped. Whole-extent and whole-decoded-list allocation is absent on the final served path."
+      ],
+      "evidence": [
+        "books/extent-window-plan.lisp",
+        "books/extent-window-buffer.lisp",
+        "books/extent-window-capture.lisp",
+        "tests/acl2/extent-window-capture-tests.lisp",
+        "specs/extent-window-read.md"
+      ],
+      "execution_scope": "Source components and concrete buffer witnesses only. Streaming digest, compressed legacy acceptance equivalence, native lifetime/funding and matching full-path execution remain open."
     }
   ]
 }
