@@ -250,13 +250,14 @@
                   (fn-hdsn-denote c name)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-hdsn-nthcdr-length (xs (coerce name 'list)) (n (nth 2 c)))
+           :use (fn-hdsn-state-fields
+                 (:instance fn-hdsn-nthcdr-length (xs (coerce name 'list)) (n (nth 2 c)))
                  (:instance fn-hdsn-nthcdr-length
                             (xs (coerce (symbol-name (car (nth 3 c))) 'list)) (n (nth 2 c))))
            :expand ((fn-hdsn-find name (nth 3 c) (nth 4 c)))
            :in-theory (e/d (fn-hdsn-tick fn-hdsn-next-candidate fn-hdsn-state
                             fn-hdsn-denote)
-                           (fn-hdsn-find member-symbol-name fn-hdsn-nthcdr-length)))))
+                           (fn-hdsn-find member-symbol-name fn-hdsn-nthcdr-length fn-hdsn-state-fields)))))
 
 (defthm fn-hdsn-done-is-denotation
   (implies (and (fn-hdsn-statep c) (stringp name)
@@ -265,13 +266,14 @@
            (equal (cadr (mv-nth 0 (fn-hdsn-tick c))) (fn-hdsn-denote c name)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-hdsn-nthcdr-length (xs (coerce name 'list)) (n (nth 2 c)))
+           :use (fn-hdsn-state-fields
+                 (:instance fn-hdsn-nthcdr-length (xs (coerce name 'list)) (n (nth 2 c)))
                  (:instance fn-hdsn-nthcdr-length
                             (xs (coerce (symbol-name (car (nth 3 c))) 'list)) (n (nth 2 c))))
            :expand ((fn-hdsn-find name (nth 3 c) (nth 4 c)))
            :in-theory (e/d (fn-hdsn-tick fn-hdsn-next-candidate fn-hdsn-state
                             fn-hdsn-denote)
-                           (fn-hdsn-find member-symbol-name fn-hdsn-nthcdr-length)))))
+                           (fn-hdsn-find member-symbol-name fn-hdsn-nthcdr-length fn-hdsn-state-fields)))))
 
 (local
  (defthm fn-hdsn-tail-step
