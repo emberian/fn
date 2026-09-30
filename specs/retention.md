@@ -363,3 +363,12 @@ This actual ordering and primitive behavior remain runtime/native obligations.
 A controlled same-object reset belongs to the installed pool bridge and requires
 definite alias/turn joins; no host Boolean, refund, constructor or reallocation
 can re-enable the fenced instance.
+
+`fn-rxp-child-corr` names the proof-only selected child relationship using the
+existing registered `fn-octets$corr`. The provider reference fill preserves this
+relationship through `fn-octets-from-list{correspondence}` with a valid byte list
+and completed range permission. This relation does not admit a separately
+supplied physical child or establish a raw pointer association. The actual
+`fnn-owner-receiver-fill` uses the sanctioned SAME-provider projection and the
+central selected array-copy semantic contract; concrete object association,
+primitive failure and the composed outer service recovery fence remain required.

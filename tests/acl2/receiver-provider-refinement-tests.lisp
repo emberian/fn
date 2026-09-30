@@ -1,0 +1,60 @@
+(in-package "ACL2")
+(include-book "../../books/receiver-provider-refinement")
+; Reference-only actual installed-capacity model; no raw pointer authority.
+(defun rxrf-physical ()
+ (list (append '(9 8) (make-list 4094 :initial-element 0)) 2))
+(defthm fn-rxp-child-correspondence-positive-literal
+ (let* ((token '(:rx-capacity 0 0 4096))
+        (provider (list '(9 8) (list token 0 4096)))
+        (bytes '(1 2 3))
+        (physical (rxrf-physical))
+        (range (fn-rxp-fill-range token (len bytes) nil 16 provider))
+        (answer (fn-rxp-fill-reference token bytes nil 16 provider)))
+  (and (fn-rxp-child-corr physical provider) (fn-cbor-octet-listp bytes)
+       (equal (mv-nth 0 range) :receive-copy)
+       (fn-rxp-child-corr (fn-octets$c-from-list bytes physical) (mv-nth 2 answer))
+       (equal (mv-nth 0 answer) :receive-copy) (equal (mv-nth 1 answer) 13)
+       (equal (mv-nth 2 answer) (list bytes (list token 0 4096)))))
+ :rule-classes nil)
+; Hypothesis removal: COPY status. Other two hypotheses remain affirmative.
+(defthm fn-rxp-child-correspondence-status-removal-literal
+ (let* ((token '(:rx-capacity 0 0 4096))
+        (foreign '(:rx-capacity 1 0 4096))
+        (provider (list '(9 8) (list token 0 4096)))
+        (bytes '(1 2 3)) (physical (rxrf-physical))
+        (range (fn-rxp-fill-range foreign (len bytes) nil 16 provider))
+        (answer (fn-rxp-fill-reference foreign bytes nil 16 provider)))
+  (and (fn-rxp-child-corr physical provider) (fn-cbor-octet-listp bytes)
+       (not (equal (mv-nth 0 range) :receive-copy))
+       (not (fn-rxp-child-corr (fn-octets$c-from-list bytes physical) (mv-nth 2 answer)))))
+ :rule-classes nil)
+; Corrupted logical-state witness: bad byte, not a guard-valid native call.
+(defthm fn-rxp-child-correspondence-byte-removal-literal
+ (let* ((token '(:rx-capacity 0 0 4096))
+        (provider (list '(9 8) (list token 0 4096)))
+        (bytes '(300)) (physical (rxrf-physical))
+        (range (fn-rxp-fill-range token (len bytes) nil 16 provider))
+        (answer (fn-rxp-fill-reference token bytes nil 16 provider)))
+  (and (fn-rxp-child-corr physical provider) (not (fn-cbor-octet-listp bytes))
+       (equal (mv-nth 0 range) :receive-copy)
+       (not (fn-rxp-child-corr (fn-octets$c-from-list bytes physical) (mv-nth 2 answer)))))
+ :rule-classes nil)
+; Corrupted logical-state witness: tail byte outside copied prefix is invalid.
+(defthm fn-rxp-child-correspondence-corr-removal-literal
+ (let* ((token '(:rx-capacity 0 0 4096))
+        (provider (list '(9 8) (list token 0 4096)))
+        (bytes '(1 2 3))
+        (physical (list '(9 8 0 0 300) 2))
+        (range (fn-rxp-fill-range token (len bytes) nil 16 provider))
+        (answer (fn-rxp-fill-reference token bytes nil 16 provider)))
+  (and (not (fn-rxp-child-corr physical provider)) (fn-cbor-octet-listp bytes)
+       (equal (mv-nth 0 range) :receive-copy)
+       (not (fn-rxp-child-corr (fn-octets$c-from-list bytes physical) (mv-nth 2 answer)))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+          (e/d (fn-octets$c-from-list fn-octets$c-clear fn-oct-write-list
+                fn-octets$c-append-octet)
+               ((:executable-counterpart fn-octets$c-from-list)
+                (:executable-counterpart fn-octets$c-clear)
+                (:executable-counterpart fn-oct-write-list)
+                (:executable-counterpart fn-octets$c-append-octet))))))

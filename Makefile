@@ -337,6 +337,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/fixed-buffer-capacity \
 	books/receiver-provider \
 	books/receiver-provider-capacity \
+	books/receiver-provider-refinement \
+	tests/acl2/receiver-provider-refinement-tests \
 	tests/acl2/receiver-provider-capacity-tests \
 	tests/acl2/receiver-provider-range-tests \
 	tests/acl2/receiver-provider-fence-tests \
