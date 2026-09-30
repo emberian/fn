@@ -6527,19 +6527,23 @@
         "Exercise literal byte-control commutation, exact body acceptance and new-field/fold physical-line conclusions; remove each retained hypothesis with all other hypotheses checked.",
         "Assert exact actual-byte start/bad result for arbitrary physical lines: missing/invalid colon or name, non-WSP first value, NUL/non-ASCII bytes, orphan and whitespace-only folds, exact 998 and 999 lengths; remove each retained start/length/nonempty/CRLF-free hypothesis while checking all others.",
         "Assert exact separator/body acceptance, rejection of unfinished headers with or without trailing CR, absorbing bare LF and universal CR/non-LF refusal; every retained hypothesis has an affirmative removal witness.",
-        "Check source-dominated parser counters, each of three retained inequality removals with others affirmed, and unconditional actual widest-parser counter-error exclusion on a nonempty successful article; label reduced profile-limit mutation separately."
+        "Check source-dominated parser counters, each of three retained inequality removals with others affirmed, and unconditional actual widest-parser counter-error exclusion on a nonempty successful article; label reduced profile-limit mutation separately.",
+        "Assert the full actual byte-machine/body iff actual parser success theorem on nonempty ordinary, folded, empty-header/binary-body, repeated unknown-field and malformed inputs, including 998/999 line lengths. Affirm both original source hypotheses on every case. Remove the octet premise with a non-octet body; prove the codec-ceiling removal on a finite symbolic oversized body without allocating it. Exercise actual scanner failure and both retained-hypothesis removals, and the generalized counter-free parser join with each inequality removed."
       ],
       "expected": [
         "Exactly the first matching fields, one initial SP removed, folding CRLF removed and TAB scrubbed to SP.",
         "All invalid/error classifications match the actual parser; binary NUL body remains valid.",
         "Both component keystones are unconditional after redundant accumulator typing was proved unnecessary.",
-        "Whitespace-only continuation after an already visible field is rejected independently of field-wide visibility."
+        "Whitespace-only continuation after an already visible field is rejected independently of field-wide visibility.",
+        "For every proper octet source within the original codec ceiling, actual byte-fold terminal :body is equivalent to actual article parser success; arbitrary malformed sources remain in scope. Arena cursor/EOF, five spans and served OVER joins remain separate obligations."
       ],
       "evidence": [
         "tests/acl2/nov-line-projection-tests.lisp",
         "planning/evidence/nov-line-projection-source.md",
         "tests/acl2/legacy-parser-validity-tests.lisp",
-        "planning/evidence/legacy-parser-validity-source.md"
+        "planning/evidence/legacy-parser-validity-source.md",
+        "tests/acl2/legacy-parser-composition-tests.lisp",
+        "planning/evidence/legacy-parser-composition-source.md"
       ],
       "execution_scope": "Clean source REPL only; no served cursor or native completion claim."
     },
