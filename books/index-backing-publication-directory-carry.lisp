@@ -5,6 +5,12 @@
 (include-book "index-backing-row-retain")
 (include-book "index-backing-writer")
 
+; The predecessor keeps this normalizer local; an includer owns its own hint.
+(local (defthm fn-ipdc-omk-at-is-nth
+ (implies (natp i) (equal (fn-omk-at i xs) (nth i xs)))
+ :hints (("Goal" :induct (fn-omk-at i xs)
+                  :in-theory (enable fn-omk-at nth)))))
+
 (encapsulate ()
 (defthm fn-iprc-share-begin-preserves-registry
  (equal (fn-ibp-registry (mv-nth 2 (fn-ipa-row-share-begin fuel fn-index-backing)))
