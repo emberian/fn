@@ -5822,9 +5822,14 @@
         "tests/acl2/consumer-remote-position-tests.lisp",
         "planning/evidence/consumer-remote-components-2026-09-30.md",
         "tests/acl2/consumer-authority-carry-tests.lisp",
-        "planning/evidence/consumer-authority-source-2026-09-30.md"
+        "planning/evidence/consumer-authority-source-2026-09-30.md",
+        "books/consumer-publication-budget.lisp",
+        "tests/acl2/consumer-publication-budget-tests.lisp",
+        "books/consumer-authority-revision.lisp",
+        "tests/acl2/consumer-authority-revision-tests.lisp",
+        "planning/evidence/consumer-budget-revision-source-2026-09-30.md"
       ],
-      "implementation_note": "Source request codec and logical remote-position kernel only. Remote10 metadata, atomic kernel proposals, fresh-epoch rebasing and metadata-preserving ACK exist. The scalar actual-charge/release-vector component is source-admitted (consumer-actual-charge-source-2026-09-30); constructor correspondence, profile adapter, durable event encoding/reservation and authenticated host dispatch remain unimplemented. Original full remote/multigroup/restore contract remains open. CP7 authority representation now source-admits adopted account rows, deletion tombstones and pending candidate separation; exact progress/frontier authority preservation and inherited local/remote kernel tests pass. No staged producer, authority writer/replay correspondence, owner carry installation or endpoint completion is claimed."
+      "implementation_note": "Source request codec and logical remote-position kernel only. Remote10 metadata, atomic kernel proposals, fresh-epoch rebasing and metadata-preserving ACK exist. The scalar actual-charge/release-vector component is source-admitted (consumer-actual-charge-source-2026-09-30); constructor correspondence, profile adapter, durable event encoding/reservation and authenticated host dispatch remain unimplemented. Original full remote/multigroup/restore contract remains open. CP7 authority representation now source-admits adopted account rows, deletion tombstones and pending candidate separation; exact progress/frontier authority preservation and inherited local/remote kernel tests pass. No staged producer, authority writer/replay correspondence, owner carry installation or endpoint completion is claimed. The current-profile actual-charge adapter and fixed-field active authority revision/discard step are source-admitted with literal witnesses. Actual constructor/canonical carry, atomic config/account publisher, joint replay and authenticated endpoint remain open; no host activation or qualification is claimed."
     }
   ]
 }

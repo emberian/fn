@@ -114,6 +114,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-position-tests \
 	books/consumer-publication-charge \
 	tests/acl2/consumer-publication-charge-tests \
+	books/consumer-publication-budget \
+	tests/acl2/consumer-publication-budget-tests \
+	books/consumer-authority-revision \
+	tests/acl2/consumer-authority-revision-tests \
 	books/consumer-store-events \
 	tests/acl2/consumer-store-events-tests \
 	books/consumer-store-projection \

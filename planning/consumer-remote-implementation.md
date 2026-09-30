@@ -189,6 +189,24 @@ The durable CPE codec still refuses remote/adoption operation tags.
 The configuration and Store histories must share one cfg-first authority
 fold using fn-cpr-config-firstp: configuration at the same txid precedes the
 Store event. Live fn-oclc-configure and fn-cpo-open-observed must establish
-the same seed relation; bootstrap must retain any prior accumulated
-authority rather than reset its revision. This producer is the next source
-increment, with the exact live/cold seams leased from the owner assembler.
+the same bootstrap relation. The root selected a fresh comparison namespace
+at the first durable consumer-authority bootstrap, when no previously usable
+cursors exist in it. It binds the current carried configuration and visibility
+roots atomically; it need not count pre-bootstrap events. No served history
+scan, config-generation-as-total-event-count or invalid nil-history CP7 is
+needed. Existing CP6 cursors require proved migration or explicit refusal;
+recovery/restore must preserve exact authority or establish a fresh durable
+nonreused incarnation and fence old progress. This producer is the next
+source increment, with the exact live/cold seams leased from the owner
+assembler. Host activation waits for actual account updates and adoption.
+
+The source adapter fn-cpb-verdict-carried now establishes current-profile
+actual-wire admission and retained release headroom. fn-carv-semantic-step
+is the bounded nonwrapping revision/discard transition: it preserves adopted
+account/creation and consumer-progress roots, advances active authority once,
+and discards pending adoption against former visibility/configuration.
+Neither helper is host-connected in this component. Before allocation the
+actual producer must apply the refusal gate; after durable publication and
+in joint recovery it must install the identical result. First bootstrap,
+actual account stage/fence, every semantic writer, canonical carry and
+retention accounting remain required.

@@ -851,6 +851,17 @@ and consumer progress do not themselves advance it. Revision and creation
 identities are nonwrapping supported-codec integers; exhaustion must refuse
 before durable publication and must never reuse an account incarnation.
 
+Its comparison namespace starts at the first durable consumer-authority
+bootstrap, only when that namespace has no previously usable cursors. The
+bootstrap atomically binds the current authoritative configuration and
+visibility roots; it does not count pre-bootstrap publications or scan the
+history. Revision is a comparison fence, not a historical policy-event count.
+The namespace/incarnation must be durably unique and nonreused across
+recovery and restore. Existing CP6 cursors require proved migration or an
+explicit refusal/invalidation; they are never silently interpreted in the
+new namespace. No remote operation becomes available before the actual
+account adoption producer and this bootstrap commit together.
+
 Adopted account rows are
 `(:account login-octets creation activep exact-adopted-descriptor-octets)`.
 Committed deletion leaves a tombstone; a later committed recreation receives
