@@ -4417,7 +4417,7 @@
         "A-WRITE-ISOLATION",
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-checkpoint-open.lisp",
         "books/owner-checkpoint-open.lisp",
@@ -6548,7 +6548,7 @@
         "PRF-104"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/acceptance.lisp",
         "books/node.lisp",
@@ -10048,7 +10048,7 @@
         "PRF-193"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/snoc-list.lisp",
         "books/store-files.lisp",
@@ -18085,7 +18085,7 @@
         "PRF-992"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-snapshot-recovery.lisp",
         "tests/acl2/owner-snapshot-recovery-tests.lisp",

@@ -133,6 +133,8 @@
     "tests/acl2/native-config-paths-tests",
     "books/native-retire",
     "books/owner-retire",
+    "books/owner-retire-cursor",
+    "tests/acl2/owner-retire-cursor-tests",
     "tests/acl2/native-retire-tests",
     "books/tls-self-signed",
     "tests/acl2/tls-self-signed-tests",
@@ -1768,23 +1770,23 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1831,
-    "books_in_root_closure": 1828,
-    "roots": 1764,
-    "theorems": 29365,
-    "functions": 18855,
-    "assert_events": 23874,
+    "books": 1833,
+    "books_in_root_closure": 1830,
+    "roots": 1766,
+    "theorems": 29370,
+    "functions": 18862,
+    "assert_events": 23878,
     "must_fails": 2516,
     "prover_refusals": 0,
     "encapsulates": 159,
     "guards": {
-      "verified": 3508,
+      "verified": 3515,
       "declared-off": 2249,
       "default-guarded": 10269,
       "default-unguarded": 2829
     },
-    "suspect_theorems": 1248,
-    "export_hygiene_warnings": 339,
+    "suspect_theorems": 1249,
+    "export_hygiene_warnings": 340,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
     "include_hygiene_warnings": 2520,
@@ -21349,6 +21351,34 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-retire-cursor.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 7,
+      "guards": {
+        "verified": 7,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 7,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner-feed"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-orc-zero-current-requires-complete-current-scan-by-definition"
+      ],
       "read_error": null
     },
     {
@@ -47231,6 +47261,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/owner-retire-cursor-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 11,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-retire-cursor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/owner-scheduler-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -59201,6 +59257,14 @@
       ]
     },
     {
+      "theorem": "fn-orc-zero-current-requires-complete-current-scan-by-definition",
+      "book": "books/owner-retire-cursor.lisp",
+      "line": 87,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-orc-zero-currentp"
+      ]
+    },
+    {
       "theorem": "fn-orcn-swap-base-view",
       "book": "books/owner-reclaim-conns.lisp",
       "line": 59,
@@ -66315,6 +66379,12 @@
         "theorem": "fn-ocfg-at-reader-view-reads-the-reader-view",
         "book": "books/owner-reader-view.lisp",
         "line": 257,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-orc-start-tally-is-the-snapshot-by-definition",
+        "book": "books/owner-retire-cursor.lisp",
+        "line": 80,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {

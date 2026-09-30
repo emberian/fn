@@ -144,6 +144,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/native-config-paths-tests \
 	books/native-retire \
 	books/owner-retire \
+	books/owner-retire-cursor \
+	tests/acl2/owner-retire-cursor-tests \
 	tests/acl2/native-retire-tests \
 	books/tls-self-signed \
 	tests/acl2/tls-self-signed-tests \
