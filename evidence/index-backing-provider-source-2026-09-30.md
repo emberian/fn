@@ -30,3 +30,22 @@ publication/retirement, operational abstract-stobj boundary and completeness,
 actual owner/Q12/BP continuations, complete semantic confirmation, cold source
 read, sanctioned D40 and immutable candidate qualification. No new authority,
 image qualification, deployment or full-slice closure follows from this packet.
+
+The active readout follow-up adopts exact `query-payload-grants.lisp` from
+3b8889fa7 and `snapshot-source-token.lisp` from ed93fc3b6. The final readonly
+`fn-miq-selected-read(selectedToken,fuel,fn-mio$c)` returns status, SAME retained
+heldref, exact payload grant token and fuel-left. Its registered segment lookup
+matches the active indexed resource claim to captured scalar root identities,
+C/F, key generation and arena incarnation/prefix. A separate recursive walk
+checks the exact active qpg child and its SAME claim token; cancelled grants
+retain debt but cannot serve this read.
+
+Protected mib replay admitted the two new recursive readers with guards
+15,076 steps; final readonly wrapper guards passed 279,047 steps/3.26 seconds.
+Physical qpg source replay passed14forms30,158steps/.39seconds and source-token
+passed5forms238steps. The synthetic retained-state composed projection witness
+passed409steps: exact full selected tuple and recovery after joined grant
+release. It does not establish writer publication, funding adequacy or actual
+arena lifecycle correspondence. The actual capture must install/update the
+indexed current claim atomically with the shared pool; no host row snapshot is
+an authority, and this readout has no such input.
