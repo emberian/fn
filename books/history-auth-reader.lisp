@@ -84,6 +84,17 @@
                   0 0 nil nil 0 m 0 0 0 :directory nil
                   (list ticket epoch 0 :directory)))))))
 
+; Initial carried shape includes the pending/borrow lifetime invariant.
+(defthm fn-hsr-auth-begin-establishes-shape
+  (implies (equal (mv-nth 0 (fn-hsr-auth-begin root ticket epoch capture lease)) :idle)
+           (and (fn-hsr-auth-shapep (mv-nth 1 (fn-hsr-auth-begin root ticket epoch capture lease)))
+                (fn-hsr-io-invariantp
+                 (fn-hsr-field 1 (mv-nth 1 (fn-hsr-auth-begin root ticket epoch capture lease))))))
+  :hints (("Goal" :in-theory
+           (enable fn-hsr-auth-begin fn-hsr-auth-shapep fn-hsr-io-begin
+                   fn-hsr-io-invariantp fn-hsr-io-shapep fn-hsr-tagp
+                   fn-hsr-widthp fn-hsr-field fn-hsr-prefixp fn-hrcur-wordp))))
+
 (defun fn-hsr-auth-open-phase (phase physical total count selected expected c pgs-digest-state)
   (declare (xargs :stobjs pgs-digest-state :guard t))
   (if (not (and (fn-hsr-auth-shapep c) (natp physical) (natp total)
@@ -302,3 +313,24 @@
            (natp offset) (< offset 16384))
       (list :buffer-byte (fn-hsr-field 5 (fn-hsr-field 1 c)) offset 1)
     nil))
+
+; A short synchronous read is uncertainty, and its returned borrow remains owned.
+(defthm fn-hsr-auth-short-completion-retains-borrow
+  (implies (and (fn-hsr-auth-shapep c)
+                (equal (fn-hsr-field 0 c) :waiting)
+                (equal (fn-hsr-field 0 (fn-hsr-field 1 c)) :waiting)
+                (equal request (fn-hsr-field 4 (fn-hsr-field 1 c)))
+                (natp discovery-id) (not (equal count 16384)))
+           (let ((next (mv-nth 1 (fn-hsr-auth-complete request discovery-id count :read-ok c))))
+             (and (equal (mv-nth 0 (fn-hsr-auth-complete request discovery-id count :read-ok c))
+                         '(:uncertain :read-completion))
+                  (equal (fn-hsr-field 0 next) :uncertain)
+                  (equal (fn-hsr-field 5 (fn-hsr-field 1 next)) discovery-id)
+                  (equal (fn-hsr-field 2 next) (fn-hsr-field 2 c))
+                  (not (fn-hsr-auth-byte-demand next))
+                  (not (fn-hsr-auth-verified-byte-demand 0 next)))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-hsr-auth-complete fn-hsr-io-complete fn-hsr-auth-shapep
+                 fn-hsr-auth-byte-demand fn-hsr-auth-verified-byte-demand fn-hsr-field)
+                (fn-hsr-io-shapep fn-hsr-put fn-hsr-rootp fn-hsr-prefixp
+                 fn-hsr-widthp fn-hsr-tagp fn-hrcur-wordp fn-hsr-scan-shapep)))))

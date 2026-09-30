@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6342,6 +6342,7 @@
         "Detect a newer txid in an unselected entry and nonzero trailing padding.",
         "Compare incremental txid/padding and directory/table verdicts with current logical codecs; check digest damage priority and literal hypothesis removals.",
         "Keep one I/O cursor across source passes; complete and release resource ID0, then reject the prior request after its serial advances. Cancel before completion without dropping pending ownership, and retain short-read uncertainty through release and cancellation.",
+        "Execute actual root-directory-table-data hashes at distinct physical17/91/304; authenticate straddling directory entry341 across17/18; refuse directory digest/shape, table and data corruption. Check shortread ID0 retains uncertainty/borrow and repeat select increments serial while refusing stale completion.",
         "Planned: bind exact file incarnation and fresh buffer identity to root-directory-table-data authentication and demonstrate stale completion refusal."
       ],
       "expected": [
@@ -6356,9 +6357,11 @@
         "tests/acl2/history-page-reader-tests.lisp",
         "specs/history-auth-reader.md",
         "tests/acl2/history-page-reader-verdict-tests.lisp",
-        "tests/acl2/history-page-reader-io-tests.lisp"
+        "tests/acl2/history-page-reader-io-tests.lisp",
+        "tests/acl2/history-auth-reader-tests.lisp",
+        "planning/evidence/history-auth-reader-source-2026-09-30.json"
       ],
-      "execution_scope": "Scanner component source only; authenticated continuation and host integration remain open."
+      "execution_scope": "Exact authenticated-reader/digest-domain library source with sixteen literal theorem witnesses; universal composed invariant/authentication/refinement/progress and host integration remain open."
     },
     {
       "id": "SCN-1006",

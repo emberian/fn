@@ -105,3 +105,13 @@ phase, length and ACL2-computed offset. Completion equality therefore compares
 a fixed flat packet under the executable outer guard; it cannot walk nested
 caller data retained as a malformed pending request. Opaque capture and lease
 references are carried, never traversed by that comparison.
+
+The composed `fn-hsr-auth-*` library now executes actual current-format root →
+directory → table → data authentication with the real digest cursor and fixed
+19-cell state. Guard admission and literal whole-chain tests include physical
+17/18/91/304 and a straddling directory entry341. Initial shape and nested I/O
+invariant, and shortread uncertainty with retained borrow, have source-admitted
+lemmas. A second logical selection preserves the pin and advances serials; an
+old completion cannot adopt a buffer. These source results do not close the
+universal composed authentication/invariant/refinement/progress theorem,
+physical funding or host activation. PRF-1107 stays planned with no events.

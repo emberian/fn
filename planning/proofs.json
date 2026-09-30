@@ -18041,9 +18041,12 @@
         "books/history-page-reader-io.lisp",
         "tests/acl2/history-page-reader-io-tests.lisp",
         "planning/evidence/history-page-reader-io-source-2026-09-30.json",
-        "planning/evidence/history-page-reader-io-flat-source-2026-09-30.json"
+        "planning/evidence/history-page-reader-io-flat-source-2026-09-30.json",
+        "books/history-auth-reader.lisp",
+        "tests/acl2/history-auth-reader-tests.lisp",
+        "planning/evidence/history-auth-reader-source-2026-09-30.json"
       ],
-      "progress_note": "First scanner component: clean protected persvati hsread2 source-dependency replay, proper local scope; 41 test forms loaded, 28 literal assertions passed; static teeth and narrow theory checks green. Runtime scanner functions guard verified. No full authentication, certificate, host or native claim. Canonical-verdict increment: clean proper-local hsrcanon2, 17 test forms / 11 assertions, 4.89 ACL2 seconds / 1,676,570 steps. Redundant stream length premise proved removable; short I/O is a separate continuation obligation. I/O increment: guarded functions, clean proper-local hsio2, 33 test forms / 20 assertions, 2.16 ACL2 seconds / 938,988 steps. Resource ID0 is admitted; NIL is the no-borrow sentinel. Actual root/digest/host composition remains open. hsio3 strengthens pending request guard to fixed scalar nine-field shape; same20 witnesses green,1.79s/1099638steps."
+      "progress_note": "First scanner component: clean protected persvati hsread2 source-dependency replay, proper local scope; 41 test forms loaded, 28 literal assertions passed; static teeth and narrow theory checks green. Runtime scanner functions guard verified. No full authentication, certificate, host or native claim. Canonical-verdict increment: clean proper-local hsrcanon2, 17 test forms / 11 assertions, 4.89 ACL2 seconds / 1,676,570 steps. Redundant stream length premise proved removable; short I/O is a separate continuation obligation. I/O increment: guarded functions, clean proper-local hsio2, 33 test forms / 20 assertions, 2.16 ACL2 seconds / 938,988 steps. Resource ID0 is admitted; NIL is the no-borrow sentinel. Actual root/digest/host composition remains open. hsio3 strengthens pending request guard to fixed scalar nine-field shape; same20 witnesses green,1.79s/1099638steps. Authenticated runtime chain now guard admitted. Fresh exact digest-domain union hsauthsol3:36 test forms,16 literal defthm witnesses,27.73ACL2s/6360561steps. Actual BLAKE3 full chain, nonidentity physical addresses, directory entry341 straddling17/18, all four corruption refusals, ID0 shortread uncertainty and second-select serial/stale completion pass. Initial shape/I/O invariant and shortread ownership lemma admitted. Universal authentication, carried composed invariant/refinement/progress, physical funding and host activation remain open; status planned/events empty."
     },
     {
       "id": "PRF-1087",

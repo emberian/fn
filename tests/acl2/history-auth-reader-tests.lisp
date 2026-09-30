@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/history-auth-reader")
+(include-book "../../books/pagestore-digest-cursor-domain")
 
 ; Logical test I/O only. Runtime clients perform one requested byte or tick;
 ; they do not materialize PAGE alists or call this fuel-driven test traversal.
@@ -108,4 +109,176 @@
     (and (equal (first r) '(:refused (:page-damaged 0 304)))
          (equal (third r) '(17 91 304))
          (not (fn-hsr-auth-verified-byte-demand 0 (second r)))))
+  :rule-classes nil)
+
+; The first physical borrow may have ID0. A short completion retains it until
+; settlement and cannot expose even one byte to the decoder.
+(defun-nx fn-hsr-auth-test-waiting ()
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((mem (update-nth *pgs-mi* (pgs-zeros 20) (create-pgs-mem)))
+         (root (mv-nth 0 (pgs-x-write-rec 0 9 17 1 *fn-hsr-auth-directory-digest*
+                                         mem (create-fn-octets-pg))))
+         (c (mv-nth 1 (fn-hsr-auth-begin root 0 41 '(:captured 7) '(:lease 8 2))))
+         (selected (fn-hsr-auth-select-page 0 c (create-pgs-digest-state)))
+         (issued (fn-hsr-auth-request (mv-nth 1 selected))))
+    (list (mv-nth 1 issued) (mv-nth 2 issued))))
+
+(defthm fn-hsr-auth-short-completion-positive
+  (let* ((issued (fn-hsr-auth-test-waiting)) (request (first issued)) (c (second issued))
+         (count 16383) (discovery-id 0)
+         (completed (fn-hsr-auth-complete request discovery-id count :read-ok c))
+         (next (mv-nth 1 completed)))
+    (and (fn-hsr-auth-shapep c)
+         (equal (fn-hsr-field 0 c) :waiting)
+         (equal (fn-hsr-field 0 (fn-hsr-field 1 c)) :waiting)
+         (equal request (fn-hsr-field 4 (fn-hsr-field 1 c)))
+         (natp discovery-id) (not (equal count 16384))
+         (equal (mv-nth 0 completed) '(:uncertain :read-completion))
+         (equal (fn-hsr-field 0 next) :uncertain)
+         (equal (fn-hsr-field 5 (fn-hsr-field 1 next)) discovery-id)
+         (equal (fn-hsr-field 2 next) (fn-hsr-field 2 c))
+         (not (fn-hsr-auth-byte-demand next))
+         (not (fn-hsr-auth-verified-byte-demand 0 next))
+         (equal (mv-nth 0 (fn-hsr-auth-release discovery-id next)) :released)
+         (equal (fn-hsr-field 0 (mv-nth 1 (fn-hsr-auth-release discovery-id next))) :uncertain)))
+  :rule-classes nil)
+
+(defthm fn-hsr-auth-begin-shape-positive
+  (let* ((root '(:pgs-commit 9 17 1 0 0))
+         (begun (fn-hsr-auth-begin root 0 41 '(:captured 7) '(:lease 8 2))))
+    (and (equal (mv-nth 0 begun) :idle)
+         (fn-hsr-auth-shapep (mv-nth 1 begun))
+         (fn-hsr-io-invariantp (fn-hsr-field 1 (mv-nth 1 begun)))))
+  :rule-classes nil)
+
+(defthm fn-hsr-auth-begin-shape-hypothesis-removal
+  (let ((begun (fn-hsr-auth-begin nil 0 41 '(:captured 7) '(:lease 8 2))))
+    (and (not (equal (mv-nth 0 begun) :idle))
+         (not (and (fn-hsr-auth-shapep (mv-nth 1 begun))
+                   (fn-hsr-io-invariantp (fn-hsr-field 1 (mv-nth 1 begun)))))))
+  :rule-classes nil)
+
+; Hypothesis-removal witness over deliberately corrupted state.
+(defthm fn-hsr-auth-short-shape-removal
+  (let* ((issued (fn-hsr-auth-test-waiting)) (original (second issued))
+         (c (fn-hsr-put 2 nil original)) (request (first issued)) (discovery-id 0) (count 16383)
+         (completed (fn-hsr-auth-complete request discovery-id count :read-ok c))
+         (next (mv-nth 1 completed)))
+    (and (equal (fn-hsr-field 0 c) :waiting) (equal (fn-hsr-field 0 (fn-hsr-field 1 c)) :waiting) (equal request (fn-hsr-field 4 (fn-hsr-field 1 c))) (natp discovery-id) (not (equal count 16384))
+         (not (fn-hsr-auth-shapep c))
+         (not (and (equal (mv-nth 0 completed) '(:uncertain :read-completion))
+                   (equal (fn-hsr-field 0 next) :uncertain)
+                   (equal (fn-hsr-field 5 (fn-hsr-field 1 next)) discovery-id)
+                   (equal (fn-hsr-field 2 next) (fn-hsr-field 2 c))
+                   (not (fn-hsr-auth-byte-demand next))
+                   (not (fn-hsr-auth-verified-byte-demand 0 next))))))
+  :rule-classes nil)
+
+; Hypothesis-removal witness over deliberately corrupted state.
+(defthm fn-hsr-auth-short-auth-mode-removal
+  (let* ((issued (fn-hsr-auth-test-waiting)) (original (second issued))
+         (c (fn-hsr-put 0 :idle original)) (request (first issued)) (discovery-id 0) (count 16383)
+         (completed (fn-hsr-auth-complete request discovery-id count :read-ok c))
+         (next (mv-nth 1 completed)))
+    (and (fn-hsr-auth-shapep c) (equal (fn-hsr-field 0 (fn-hsr-field 1 c)) :waiting) (equal request (fn-hsr-field 4 (fn-hsr-field 1 c))) (natp discovery-id) (not (equal count 16384))
+         (not (equal (fn-hsr-field 0 c) :waiting))
+         (not (and (equal (mv-nth 0 completed) '(:uncertain :read-completion))
+                   (equal (fn-hsr-field 0 next) :uncertain)
+                   (equal (fn-hsr-field 5 (fn-hsr-field 1 next)) discovery-id)
+                   (equal (fn-hsr-field 2 next) (fn-hsr-field 2 c))
+                   (not (fn-hsr-auth-byte-demand next))
+                   (not (fn-hsr-auth-verified-byte-demand 0 next))))))
+  :rule-classes nil)
+
+; Hypothesis-removal witness over deliberately corrupted state.
+(defthm fn-hsr-auth-short-io-mode-removal
+  (let* ((issued (fn-hsr-auth-test-waiting)) (original (second issued))
+         (c (fn-hsr-put 1 (fn-hsr-put 0 :idle (fn-hsr-field 1 original)) original)) (request (first issued)) (discovery-id 0) (count 16383)
+         (completed (fn-hsr-auth-complete request discovery-id count :read-ok c))
+         (next (mv-nth 1 completed)))
+    (and (fn-hsr-auth-shapep c) (equal (fn-hsr-field 0 c) :waiting) (equal request (fn-hsr-field 4 (fn-hsr-field 1 c))) (natp discovery-id) (not (equal count 16384))
+         (not (equal (fn-hsr-field 0 (fn-hsr-field 1 c)) :waiting))
+         (not (and (equal (mv-nth 0 completed) '(:uncertain :read-completion))
+                   (equal (fn-hsr-field 0 next) :uncertain)
+                   (equal (fn-hsr-field 5 (fn-hsr-field 1 next)) discovery-id)
+                   (equal (fn-hsr-field 2 next) (fn-hsr-field 2 c))
+                   (not (fn-hsr-auth-byte-demand next))
+                   (not (fn-hsr-auth-verified-byte-demand 0 next))))))
+  :rule-classes nil)
+
+; Hypothesis-removal witness.
+(defthm fn-hsr-auth-short-request-removal
+  (let* ((issued (fn-hsr-auth-test-waiting)) (original (second issued))
+         (c original) (request nil) (discovery-id 0) (count 16383)
+         (completed (fn-hsr-auth-complete request discovery-id count :read-ok c))
+         (next (mv-nth 1 completed)))
+    (and (fn-hsr-auth-shapep c) (equal (fn-hsr-field 0 c) :waiting) (equal (fn-hsr-field 0 (fn-hsr-field 1 c)) :waiting) (natp discovery-id) (not (equal count 16384))
+         (not (equal request (fn-hsr-field 4 (fn-hsr-field 1 c))))
+         (not (and (equal (mv-nth 0 completed) '(:uncertain :read-completion))
+                   (equal (fn-hsr-field 0 next) :uncertain)
+                   (equal (fn-hsr-field 5 (fn-hsr-field 1 next)) discovery-id)
+                   (equal (fn-hsr-field 2 next) (fn-hsr-field 2 c))
+                   (not (fn-hsr-auth-byte-demand next))
+                   (not (fn-hsr-auth-verified-byte-demand 0 next))))))
+  :rule-classes nil)
+
+; Hypothesis-removal witness.
+(defthm fn-hsr-auth-short-discovery-removal
+  (let* ((issued (fn-hsr-auth-test-waiting)) (original (second issued))
+         (c original) (request (first issued)) (discovery-id nil) (count 16383)
+         (completed (fn-hsr-auth-complete request discovery-id count :read-ok c))
+         (next (mv-nth 1 completed)))
+    (and (fn-hsr-auth-shapep c) (equal (fn-hsr-field 0 c) :waiting) (equal (fn-hsr-field 0 (fn-hsr-field 1 c)) :waiting) (equal request (fn-hsr-field 4 (fn-hsr-field 1 c))) (not (equal count 16384))
+         (not (natp discovery-id))
+         (not (and (equal (mv-nth 0 completed) '(:uncertain :read-completion))
+                   (equal (fn-hsr-field 0 next) :uncertain)
+                   (equal (fn-hsr-field 5 (fn-hsr-field 1 next)) discovery-id)
+                   (equal (fn-hsr-field 2 next) (fn-hsr-field 2 c))
+                   (not (fn-hsr-auth-byte-demand next))
+                   (not (fn-hsr-auth-verified-byte-demand 0 next))))))
+  :rule-classes nil)
+
+; Hypothesis-removal witness.
+(defthm fn-hsr-auth-short-count-removal
+  (let* ((issued (fn-hsr-auth-test-waiting)) (original (second issued))
+         (c original) (request (first issued)) (discovery-id 0) (count 16384)
+         (completed (fn-hsr-auth-complete request discovery-id count :read-ok c))
+         (next (mv-nth 1 completed)))
+    (and (fn-hsr-auth-shapep c) (equal (fn-hsr-field 0 c) :waiting) (equal (fn-hsr-field 0 (fn-hsr-field 1 c)) :waiting) (equal request (fn-hsr-field 4 (fn-hsr-field 1 c))) (natp discovery-id)
+         (not (not (equal count 16384)))
+         (not (and (equal (mv-nth 0 completed) '(:uncertain :read-completion))
+                   (equal (fn-hsr-field 0 next) :uncertain)
+                   (equal (fn-hsr-field 5 (fn-hsr-field 1 next)) discovery-id)
+                   (equal (fn-hsr-field 2 next) (fn-hsr-field 2 c))
+                   (not (fn-hsr-auth-byte-demand next))
+                   (not (fn-hsr-auth-verified-byte-demand 0 next))))))
+  :rule-classes nil)
+
+; A second logical read uses the same root pin and the next request serial.
+; An old completion cannot acquire ownership in the new pass.
+(defun-nx fn-hsr-auth-test-repeat-select ()
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((first-read (fn-hsr-auth-test-example 1 0 *fn-hsr-auth-directory-digest*
+                                           *fn-hsr-auth-pages* 60000))
+         (verified (second first-read))
+         (released (fn-hsr-auth-release 2 verified))
+         (selected (fn-hsr-auth-select-page 0 (mv-nth 1 released) (create-pgs-digest-state)))
+         (issued (fn-hsr-auth-request (mv-nth 1 selected))))
+    (list verified (mv-nth 0 released) (mv-nth 1 issued) (mv-nth 2 issued))))
+
+(defthm fn-hsr-auth-repeat-select-serial-positive
+  (let* ((repeated (fn-hsr-auth-test-repeat-select))
+         (verified (first repeated)) (request (third repeated)) (waiting (fourth repeated))
+         (old (first (fn-hsr-auth-test-waiting)))
+         (stale (fn-hsr-auth-complete old 88 16384 :read-ok waiting)))
+    (and (equal (fn-hsr-field 0 verified) :verified)
+         (equal (second repeated) :released)
+         (equal request '(:read-page 0 41 3 :directory 17 278528 16384 0))
+         (equal (fn-hsr-field 2 waiting) (fn-hsr-field 2 verified))
+         (equal (fn-hsr-field 6 (fn-hsr-field 1 waiting)) '(:captured 7))
+         (equal (fn-hsr-field 7 (fn-hsr-field 1 waiting)) '(:lease 8 2))
+         (equal (fn-hsr-field 3 (fn-hsr-field 1 waiting)) 4)
+         (equal (mv-nth 0 stale) '(:refused :stale-completion))
+         (equal (mv-nth 1 stale) waiting)
+         (equal (fn-hsr-field 5 (fn-hsr-field 1 waiting)) nil)))
   :rule-classes nil)
