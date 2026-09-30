@@ -17860,9 +17860,14 @@
           "kind": "theorem",
           "name": "fn-pwzd-actual-two-stored-windows-canonical-answer",
           "note": "Actual initialized FN-PZW-STORED-CHUNK twice with actual global FN-PZW-BUDGET-LEFT carry has the exact existing FN-PZD-DECODE answer and appended output under first actual :yield/:full, second neither :yield nor :full, and final output below actual canonical sentinel. No dictionary/input type, redundant prefix bound or assumed whole completion; seven complete literal positives/removals. Logical trajectory only, no native fixed1024 yield/reachable64-byte input fixture or activation inference."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pwzi-actual-refilled-stored-windows-canonical-answer",
+          "note": "Two actual initialized stored calls over separate prefix/tail buffers at position zero now equal the complete existing FN-PZD-DECODE answer using exact global budget-left. Only first :more and second neither :yield nor :full remain; logical input/dictionary types, buffer shape, final output frontier and whole completion are derived or removed after weakened proofs. Actual fixed1024/input64+6, header-cut and empty logical wrapper positives plus all three complete status removals accompany this source component. Arbitrary controller iteration, accumulated digest, selected dictionary/captured source authority and complete native funding/holder remain open. Empty C=N0 is the logical wrapper special case; controller BEGIN uses drain. The zero-request removal belongs to the general wrapper API, not fixed1024 source reachability."
         }
       ],
-      "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. The exact two-window canonical answer boundary does not complete general controller iteration/input cuts/digest, selected dictionary/captured source authority, whole compiled workspace funding or retained native buffer/view/consumer joins; PRF-1131 remains incomplete."
+      "pending_subject": "Native compressed driver remains dormant and unreachable-in-composition. The exact two-window input-refill/canonical answer boundary does not complete arbitrary controller iteration, accumulated digest, selected dictionary/captured source authority, whole compiled workspace funding or retained native buffer/view/consumer joins; PRF-1131 remains incomplete."
     }
   ]
 }

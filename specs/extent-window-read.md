@@ -347,3 +347,19 @@ input cuts/digest, dictionary authority or native holder/runtime funding. Its
 requested5 yield witness is for the general actual stored wrapper; no reachable
 fixed1024 codec yield or native64-byte input-window fixture is inferred.
 See `planning/evidence/decoded-window-canonical-trajectory-source-2026-09-30.md`.
+
+The actual input-exhausted refill also reaches the complete canonical answer
+after two separate stored calls, each beginning at position zero in its own
+input buffer. First status is `:more`; second status is neither `:yield` nor
+`:full`. Final output stays below the canonical sentinel by proof of the actual
+refusal/output and stop discipline; whole completion follows the actual charged
+budget margin. No logical input/dictionary type or supplied-buffer shape
+premise remains. A fixed1024, input64+6 positive checks actual wrapper guards and
+canonical65-byte answer. Header-cut and empty logical wrapper positives and all
+three complete status removals accompany the boundary. Empty input is the
+wrapper special case, while actual controller BEGIN uses drain; zero requested
+quantum is a general wrapper removal, not a fixed1024 tick witness. This
+component does not establish arbitrary controller schedules, accumulated digest,
+selected dictionary/captured source authority, private native holder or full
+selected runtime demand. Native compressed execution remains refused.
+See `planning/evidence/decoded-window-input-trajectory-source-2026-09-30.md`.
