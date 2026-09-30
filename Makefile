@@ -18,6 +18,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/definterface \
 	host/allocation-epoch-host \
 	books/allocation-epoch-collection-request \
+	books/connection-operation-cost \
+	books/index-connection-start \
 	books/defevent \
 	books/deftransition \
 	books/rev-onto \

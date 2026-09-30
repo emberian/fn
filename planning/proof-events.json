@@ -17426,6 +17426,31 @@
           "pending_subject": "Internal allocation-epoch subject, reached by its same-pool guarded composition; native installed dispatch/producer integration remains separately open. No served activation claim."
         }
       ]
+    },
+    {
+      "id": "PRF-1161",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ics-reserved-has-registered-receipt",
+          "pending_subject": "Internal actual connection-start/evaluator composition; public STATE ticket guard admission and installed runtime producer remain open. No served activation claim."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1162",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cop-octets-match-is-exact",
+          "pending_subject": "Internal actual connection-start/evaluator composition; public STATE ticket guard admission and installed runtime producer remain open. No served activation claim."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cop-derived-body-fits",
+          "pending_subject": "Internal actual connection-start/evaluator composition; public STATE ticket guard admission and installed runtime producer remain open. No served activation claim."
+        }
+      ]
     }
   ]
 }

@@ -18024,6 +18024,55 @@
         "planning/evidence/allocation-epoch-collection-join-2026-09-30"
       ],
       "progress_note": "Protected exact source admission and guards plus literal positive/removal and actual SAMEpool fixtures. No installed runtime, native barrier or qualification transfer."
+    },
+    {
+      "id": "PRF-1161",
+      "title": "Connection start reserves only with a matching registered receipt",
+      "statement": "The internal fn-ics-reserve-register result :reserved implies the actual returned backing retains a matching :connection-reservation token in :registered phase. The actual existing child and SAMEpool accounting are exercised by concrete fixtures; public STATE ticket composition and its producer remain separately open.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-10001"
+      ],
+      "depends_on": [
+        "PRF-1154"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-ics-reserved-has-registered-receipt"
+      ],
+      "evidence": [
+        "books/index-connection-start.lisp",
+        "tests/acl2/index-connection-start-tests.lisp",
+        "specs/connection-operation.md",
+        "planning/evidence/connection-start-join-2026-09-30"
+      ],
+      "progress_note": "Exact core source guards and theorem admission; synthetic positive/removal fixtures. Host ticket guard verification, genuine full closure installation and native activation open."
+    },
+    {
+      "id": "PRF-1162",
+      "title": "Connection operation input matching is exact and derived allocation remains immediate",
+      "statement": "A successful bounded octet match implies exact arguments; successful checked affine body evaluation returns its exact natural sum within the selected immediate domain. These conditional internal evaluator facts do not establish selected-runtime coefficients or installation authority.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-10001"
+      ],
+      "depends_on": [
+        "PRF-1154"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-cop-octets-match-is-exact",
+        "fn-cop-derived-body-fits"
+      ],
+      "evidence": [
+        "books/connection-operation-cost.lisp",
+        "tests/acl2/connection-operation-cost-tests.lisp",
+        "specs/connection-operation.md",
+        "planning/evidence/connection-start-join-2026-09-30"
+      ],
+      "progress_note": "Exact core source guards and theorem admission; synthetic positive/removal fixtures. Host ticket guard verification, genuine full closure installation and native activation open."
     }
   ]
 }
