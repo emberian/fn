@@ -6292,7 +6292,8 @@
         "Load the single guarded cold runtime in an independent source world, exercise scalar/string/octet/pair/imported-symbol/NIL current-codec outputs with finite test-driver fuel, and leave full cold all-phase proof, host funding and qualification explicitly open.",
         "Compose the actual cold runtime with one proof-only residual/invariant model across every phase; assert complete initial/tick/attributed-supply hypotheses and conclusions, each practical removal, permitted verdicts, one-octet output and unchanged demand. Keep conditional source-library semantics separate from actual parser, reader, producer and funding composition.",
         "Prove strict well-founded descent for every productive actual cold tick and attributed supply, preserve the carried progress invariant, affirm nine complete literal progress positives/removals, and compose a terminating proof-only byte-oracle run whose complete output equals the canonical supported-source encoding; affirm all four initial omissions against the full run conclusion.",
-        "Carry numeric potential, scalar/package lineage, consumed-byte node weight and borrowed spans through actual current decoder feed/run; establish the cold domain and complete canonical cold oracle stream from the bounded immutable slice without a caller node-domain assumption, and affirm complete feed/run preservation removals plus nonminimal-prefix, octet-pair and NIL-alias positives."
+        "Carry numeric potential, scalar/package lineage, consumed-byte node weight and borrowed spans through actual current decoder feed/run; establish the cold domain and complete canonical cold oracle stream from the bounded immutable slice without a caller node-domain assumption, and affirm complete feed/run preservation removals plus nonminimal-prefix, octet-pair and NIL-alias positives.",
+        "Assert unconditional actual cold tick/supply no-:write/:io statuses on a reachable initial tick, resumed borrowed span supply and malformed cursors; leave actual write-effect attribution to the outer writer."
       ],
       "expected": [
         "No source-list copy or whole-row encoding occurs at begin or tick.",
@@ -6312,7 +6313,9 @@
         "planning/evidence/history-cold-record-residual-source-2026-09-30.json",
         "planning/evidence/history-cold-record-progress-source-2026-09-30.json",
         "tests/acl2/history-cold-source-lineage-tests.lisp",
-        "planning/evidence/history-cold-source-lineage-source-2026-09-30.json"
+        "planning/evidence/history-cold-source-lineage-source-2026-09-30.json",
+        "tests/acl2/history-cold-runtime-status-tests.lisp",
+        "planning/evidence/history-cold-runtime-status-source-2026-09-30.json"
       ],
       "execution_scope": "Resident byte/census/word, borrowed raw span/NIL/normalized symbol and decoded octet scanner source libraries retain their exact protected replay evidence; initial u64-size/domain and auxiliary helper teeth remain partial. Full cold runtime residual/invariant, productive tick/supply ordinal progress and terminating non-executable exact stream now compose on the explicit decoded-source domain. Complete stream has no fixed fuel; nine progress and five full-stream positives/removals pass. Actual bounded current byte-parser source lineage now establishes the cold domain and canonical complete oracle stream; thirteen literal source-lineage events pass, while final slice/u64 practical removal teeth remain partial. Authenticated source4/pass/pin/reader byte attribution and liveness, producer/placement/profile funding and qualification remain open. No certification or native verdict transfers."
     },

@@ -499,3 +499,12 @@ Actual decoder definitions and theorem statements are unchanged. Scoped
 numeric inverse, move/feed and guard hints repair the carried field facts in
 the cached-row theory. The expensive whole inverse replay is not evidence for
 this lineage checkpoint.
+
+## Codec status and writer effects
+
+The actual cold tick and supply return neither `:write` nor `:io` for any
+input, including malformed cursors. `history-cold-runtime-status` proves
+these unconditional output boundaries using the actual child runtimes.
+A reachable initial tick, resumed borrowed-span supply and malformed-state
+fixture check the full conclusions. The writer owns its write effects;
+this status fact alone proves no persistence, funding or I/O completion.
