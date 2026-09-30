@@ -18023,7 +18023,7 @@
     {
       "id": "PRF-1107",
       "title": "Bounded authenticated current-format checkpoint page source",
-      "statement": "Planned full reader replaces eager source directory/table materialization. First component fn-hsr-scan-word consumes one u64, preserves fixed capture/lease identities and a carried invariant, advances exactly one word, and retains only the selected six-word entry while latching txid/padding failures. The selected stream is proved equal to the current pgs-decode-table entry, including cross-page entries. Authentication, root-to-table-to-data request composition, whole canonical verdict refinement, physical ownership integration and host activation remain open.",
+      "statement": "Planned full reader replaces eager source directory/table materialization. First component fn-hsr-scan-word consumes one u64, preserves fixed capture/lease identities and a carried invariant, advances exactly one word, and retains only the selected six-word entry while latching txid/padding failures. The selected stream is proved equal to the current pgs-decode-table entry, including cross-page entries. The per-word validity predicate is now proved equal to current decoded-table txid checks and zero padding; the runtime phase verdict agrees with existing directory/table model verdicts and preserves digest-failure priority. Authentication, root-to-table-to-data request composition, physical array/I/O composition and host activation remain open.",
       "milestone": "M5",
       "requirements": [],
       "depends_on": [],
@@ -18034,9 +18034,12 @@
         "books/history-page-reader.lisp",
         "tests/acl2/history-page-reader-tests.lisp",
         "specs/history-auth-reader.md",
-        "planning/evidence/history-page-reader-source-2026-09-30.json"
+        "planning/evidence/history-page-reader-source-2026-09-30.json",
+        "books/history-page-reader-verdict.lisp",
+        "tests/acl2/history-page-reader-verdict-tests.lisp",
+        "planning/evidence/history-page-reader-verdict-source-2026-09-30.json"
       ],
-      "progress_note": "First scanner component: clean protected persvati hsread2 source-dependency replay, proper local scope; 41 test forms loaded, 28 literal assertions passed; static teeth and narrow theory checks green. Runtime scanner functions guard verified. No full authentication, certificate, host or native claim."
+      "progress_note": "First scanner component: clean protected persvati hsread2 source-dependency replay, proper local scope; 41 test forms loaded, 28 literal assertions passed; static teeth and narrow theory checks green. Runtime scanner functions guard verified. No full authentication, certificate, host or native claim. Canonical-verdict increment: clean proper-local hsrcanon2, 17 test forms / 11 assertions, 4.89 ACL2 seconds / 1,676,570 steps. Redundant stream length premise proved removable; short I/O is a separate continuation obligation."
     }
   ]
 }
