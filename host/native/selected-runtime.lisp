@@ -52,8 +52,8 @@
 (defun fnn-selected-spbc-finish (carry holder)
  (fnn-srt-fixed-call *fnn-srt-spbc-finish* carry (holder)))
 
-(defun fnn-selected-rpin-token (carry pin)
- (fnn-srt-fixed-call *fnn-srt-rpin-token* carry (pin)))
+(defun fnn-selected-rpin-token (carry id owners)
+ (fnn-srt-fixed-call *fnn-srt-rpin-token* carry (id owners)))
 
 ;;; Startup only. fnn-install-raw-dispatch has already validated raw-with
 ;;; declarations and carried-entry theorem names in this exact loaded world.
