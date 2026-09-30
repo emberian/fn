@@ -26086,7 +26086,7 @@
       "suspects": [
         "fn-rfz-accessors-of-held-wire",
         "fn-rfz-assign-fields",
-        "fn-rfz-resolve-after-reclaim"
+        "fn-rfz-resolve-after-reclaim-by-definition"
       ],
       "read_error": null
     },
@@ -62869,7 +62869,7 @@
       ]
     },
     {
-      "theorem": "fn-rfz-resolve-after-reclaim",
+      "theorem": "fn-rfz-resolve-after-reclaim-by-definition",
       "book": "books/records-freeze.lisp",
       "line": 481,
       "reasons": [

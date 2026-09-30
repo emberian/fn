@@ -2756,7 +2756,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-rfx-unserved-prepare-is-unchanged-by-definition` | `books/refusal-effect.lisp` | 59 | arm-of-definition: the hypotheses select one IF/COND arm of fn-psrv-prepare and the conclusion is that arm's value |
 | `fn-rfz-accessors-of-held-wire` | `books/records-freeze.lisp` | 93 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-rfz-assign-fields` | `books/records-freeze.lisp` | 300 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-rfz-resolve-after-reclaim` | `books/records-freeze.lisp` | 481 | branch-of-definition: the hypothesis is a branch test of fn-rfz-resolve and the conclusion is that branch's value |
+| `fn-rfz-resolve-after-reclaim-by-definition` | `books/records-freeze.lisp` | 481 | branch-of-definition: the hypothesis is a branch test of fn-rfz-resolve and the conclusion is that branch's value |
 | `fn-rit-hasp-of-leaf` | `books/post-retain-carried.lisp` | 131 | arm-of-definition: the hypotheses select one IF/COND arm of fn-rit-hasp and the conclusion is that arm's value |
 | `fn-rows-contexts-okp-of-atom` | `books/store-intern.lisp` | 441 | arm-of-definition: the hypotheses select one IF/COND arm of fn-rows-contexts-okp and the conclusion is that arm's value |
 | `fn-sbsp-files-of-advance-identity-next` | `books/store-budget-stored-post.lisp` | 109 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
