@@ -15,13 +15,31 @@ from tests.test_native_expiry import DEVELOPER, DeveloperExpiryTests, ExpiryMixi
 @requires(DEVELOPER)
 class PageIOTests(unittest.TestCase):
     image = DEVELOPER
-    node = ExpiryMixin.node
     post_all = ExpiryMixin.post_all
     filled = ExpiryMixin.filled
     reclaim = ExpiryMixin.reclaim
     owner_lines = ExpiryMixin.owner_lines
     recorded_base = DeveloperExpiryTests.recorded_base
-    copy_of = DeveloperExpiryTests.copy_of
+
+    # Explicit scenario input, not a default or a full Store productivity claim.
+    cold_resources = {
+        "cold_heap_octets": 67108864,
+        "cold_workers": 2,
+        "cold_descriptors": 64,
+        "cold_read_ids": 100000,
+        "cold_file_ids": 100000,
+    }
+
+    def fund(self, node):
+        node.cold_resources = dict(self.cold_resources)
+        node.write_config()
+        return node
+
+    def node(self, name="node"):
+        return self.fund(ExpiryMixin.node(self, name))
+
+    def copy_of(self, base, name):
+        return self.fund(DeveloperExpiryTests.copy_of(self, base, name))
 
     def setUp(self):
         self.root = scratch(self, "fn-page-io-")
@@ -100,7 +118,7 @@ class PageIOTests(unittest.TestCase):
                 self.assertNotIn(b"answer=:PUBLISH", text)
                 self.assertNotIn(b"outcome uncertain", text)
 
-    def test_failed_launch_settles_without_worker_or_buffer(self):
+    def test_failed_dispatch_retains_worker_and_settles_without_buffer(self):
         node = self.filled()
         release = node.store_path.parent / "never-launched-release"
         owner = node.start(timeout=600, env={
@@ -110,10 +128,10 @@ class PageIOTests(unittest.TestCase):
         client = Client(node.port, timeout=120, greeting=None)
         self.addCleanup(client.close, False)
         client.send(("ARTICLE %s\r\n" % msgid("p0")).encode("ascii"))
-        self.wait_line(owner, rb"PAGE-IO launch-failed token=.* worker=none buffer=none")
+        self.wait_line(owner, rb"PAGE-IO dispatch-failed token=.* worker=retained buffer=none")
         self.wait_line(owner, rb"PAGE-IO settled token=.* answer=\(:FAULT :ERROR\)")
         node.exited(EXIT.FAULT, timeout=120, process=owner)
         text = owner.stderr.since(0)
         self.assertNotIn(b"PAGE-IO held", text)
         self.assertNotIn(b"answer=:PUBLISH", text)
-        self.assertIn(b"arena-extent-read: injected thread launch error", text)
+        self.assertIn(b"arena-extent-read: injected job dispatch error", text)

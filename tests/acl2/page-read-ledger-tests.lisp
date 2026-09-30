@@ -99,3 +99,30 @@
 (assert! (equal (fn-prl-close-preview (mv-nth 1 *prl-published*) 11) :read-file-held))
 (assert! (equal (fn-prl-close-preview (mv-nth 1 *prl-finished*) 11) :closable))
 (assert! (equal (fn-prl-close-preview (mv-nth 1 *prl-closed*) 11) :stale))
+
+; Permanent baseline has a nonzero physical memory coordinate. All five
+; lifecycle operations occur on this reachable registered/issued path.
+(defconst *prl-base* '(3000 0 0 0 0))
+(defconst *prl-base-install* (mv-list 2 (fn-prl-make-baseline *prl-budget* *prl-base*)))
+(defconst *prl-base-empty* (mv-nth 1 (mv-list 2 (fn-prl-register (mv-nth 1 *prl-base-install*) 11 '(8 0 1 0 0)))))
+(defconst *prl-base-read* (mv-list 3 (fn-prl-admit *prl-base-empty* 7 11 200 64 999 '(4000 0 0 1 1) '(0 0 0 1 0))))
+(defconst *prl-base-issued* (mv-nth 2 *prl-base-read*))
+(defconst *prl-base-cached* (mv-nth 1 (mv-list 2 (fn-prl-settle *prl-base-issued* (mv-nth 1 *prl-base-read*) t))))
+(defconst *prl-base-evicted* (mv-nth 1 (mv-list 2 (fn-prl-evict *prl-base-cached* (mv-nth 1 *prl-base-read*)))))
+(assert!
+ (and (equal (mv-nth 0 *prl-base-install*) :installed)
+      (equal (mv-nth 0 *prl-base-read*) :admitted)
+      (fn-prs-fundedp *prl-budget* *prl-base* '(0 0 0 0 0) (fn-prl-nth 1 *prl-base-issued*))
+      (equal (fn-prl-baseline *prl-base-empty*) *prl-base*)
+      (equal (fn-prl-baseline *prl-base-issued*) *prl-base*)
+      (equal (fn-prl-baseline *prl-base-cached*) *prl-base*)
+      (equal (fn-prl-baseline *prl-base-evicted*) *prl-base*)
+      (equal (fn-prl-baseline (mv-nth 1 (mv-list 2 (fn-prl-close *prl-base-evicted* 11)))) *prl-base*)
+      (equal (fn-prl-nth 1 *prl-base-cached*) '(4008 0 1 0 1))))
+; Enough for this job in isolation, insufficient once installed baseline is
+; counted. Refusal leaves both installed storage and reusable charges intact.
+(assert!
+ (equal (mv-list 3 (fn-prl-admit *prl-base-empty* 7 11 200 64 999 '(7000 0 0 1 1) '(0 0 0 1 0)))
+        (list :read-resources-unavailable nil *prl-base-empty*)))
+(assert! (equal (mv-list 2 (fn-prl-make-baseline *prl-budget* '(10001 0 0 0 0)))
+                '(:invalid-resource-profile nil)))

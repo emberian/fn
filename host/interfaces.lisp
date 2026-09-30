@@ -4211,13 +4211,22 @@
 
 ;; books/payload-extent-read.lisp
 
+(definterface fn-owner-chunk-span :class :program)
+(definterface fn-owner-unavailable-line-at :class :program)
+(definterface fn-store-sco-decode :class :program)
+(definterface fn-store-sco-decode-finish :class :program)
+(definterface fn-owner-resource-unavailable-line-at :class :program)
+(definterface fn-owner-page-read-close-preview :class :common-lisp-compliant)
+(definterface fn-owner-page-read-close :class :common-lisp-compliant)
+
+;; host/page-read-host.lisp: the dedicated carried resource stobj.
+(definterface fn-owner-page-read-admit :class :common-lisp-compliant)
+(definterface fn-owner-page-cache-evict :class :common-lisp-compliant)
+(definterface fn-pio-own-admitted-token
+  :class :common-lisp-compliant
+  :keystones ((fn-pio-admitted-resource-token-establishes-owned-read :via fn-pio-own-admitted-token)))
+
 ;; books/page-read-ownership.lisp (PRF-1057).
-(definterface fn-pio-issue
-  :class :common-lisp-compliant
-  :kinds ((next natp) (cid natp) (file natp) (eoff natp) (elen natp) (trailer natp)))
-(definterface fn-pio-token
-  :class :common-lisp-compliant
-  :kinds ((r true-listp)))
 (definterface fn-pio-cancel
   :class :common-lisp-compliant)
 (definterface fn-pio-complete
@@ -4501,8 +4510,22 @@
   :class ::program)
 
 (definterface fn-pio-reap-work :class :common-lisp-compliant)
+
+(definterface fn-owner-page-file-issue :class :common-lisp-compliant
+  :keystones ((fn-pio-bounded-file-issue-spends-a-fresh-representable-name :via fn-pio-file-issue-with-limit)))
+(definterface fn-owner-page-read-register-path :class :common-lisp-compliant)
+
+;; Persistent cold worker, exact assigned and settled resource binding.
+(definterface fn-pxe-new :class :common-lisp-compliant :kinds ((slot natp)))
+(definterface fn-pxe-return :class :common-lisp-compliant
+  :keystones ((fn-pxe-stale-completion-cannot-return-a-reused-worker :via fn-pxe-return)))
+(definterface fn-owner-page-executor-acquire :class :common-lisp-compliant
+  :keystones ((fn-pxe-acquired-token-cannot-own-a-second-worker :via fn-pxe-acquire)))
+(definterface fn-owner-page-executor-commit :class :common-lisp-compliant
+  :keystones ((fn-pxe-commit-requires-returned-settled-exact-job :via fn-pxe-commit)))
+
 (definterface fn-pio-worker-death-step :class :common-lisp-compliant
   :kinds ((deadp booleanp)))
 
-(definterface fn-pio-file-issue :class :common-lisp-compliant
-  :keystones ((fn-pio-successive-file-issues-have-distinct-identities :via fn-pio-file-issue)))
+(definterface fn-pxe-cache-mode :class :common-lisp-compliant
+  :kinds ((enabledp booleanp)))

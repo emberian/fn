@@ -1583,12 +1583,28 @@ These are admission refusals, with no invented deadline observation.
 Its ACL2 adapter admits only a funded
 charge and binds the whole read token to it. Refusal is unchanged; timeout
 or cancellation cannot refund. Native settlement must follow observed
-worker death and join. Cached vectors retain their charge until eviction,
+worker relinquishment; an unexpectedly dead worker is joined first. Cached vectors retain their charge until eviction,
 and incarnations retain FD credit until physical close. Hash arrays that
 retain capacity after removal need baseline funding. This implementation
 is partial: supplied charges are not an allocator refinement, and the
 performed checkpoint/recovery demand, old/new coexistence, productive
 supported profile and suffix rescue admission still need implementation.
+
+
+The persistent executor follow-on (PRF-1080, SCN-1004) retains each
+worker's stack/runtime allowance through service shutdown and owns one
+fresh admitted token per reusable worker. A returned job is not idle:
+its exact I/O row must settle and its result must transfer to funded cache
+or be discarded before the slot can be reused. The model binds each issued
+token to one executor slot, and stale completion from a prior job cannot
+return a reused worker. The native adapter now uses an intrusive idle-slot
+list and a fixed worker set; a job activation returns before the worker
+announces relinquishment, and shutdown joins before shared-file close.
+The host stobj adapters have named answer-and-effect refinement equations.
+Supported startup demand and matching native evidence are pending.
+Legacy large protected entries and compressed decode/cache storage still
+need productive bounded operations and accounting; a fixture's finite
+read pool establishes no general profile productivity.
 
 
 ### Compaction of any length (P5; STO-012)

@@ -21,6 +21,21 @@
                                             native-octets fd-bookkeeping file-limit) fn-page-read-pool)))
              (mv :installed fn-page-read-pool)))))
 
+; Persistent executors are funded before any native thread/table allocation.
+; BASELINE is never passed to per-job settlement; the job owns only a slot.
+(defun fn-owner-page-read-install-baseline (budget baseline bookkeeping fd-bookkeeping file-limit fn-page-read-pool)
+  (declare (xargs :stobjs fn-page-read-pool))
+  (cond ((fn-prp-data fn-page-read-pool) (mv :already-installed fn-page-read-pool))
+        ((not (and (natp bookkeeping) (natp fd-bookkeeping) (posp file-limit)))
+         (mv :invalid-resource-profile fn-page-read-pool))
+        (t
+         (mv-let (word ledger) (fn-prl-make-baseline budget baseline)
+           (if (not (equal word :installed)) (mv word fn-page-read-pool)
+             (let ((fn-page-read-pool
+                    (update-fn-prp-data (list ledger bookkeeping 0 fd-bookkeeping file-limit)
+                                        fn-page-read-pool)))
+               (mv :installed fn-page-read-pool)))))))
+
 (defun fn-owner-page-read-ledger (fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
   (fn-prl-nth 0 (fn-prp-data fn-page-read-pool)))

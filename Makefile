@@ -592,7 +592,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/page-read-ledger \
 	books/page-read-ownership \
 	tests/acl2/page-read-ownership-tests \
+	books/page-read-executor \
+	tests/acl2/page-read-executor-tests \
 	host/page-read-host \
+	host/page-executor-host \
 	tests/acl2/page-read-ledger-tests \
 	tests/acl2/page-read-host-tests \
 	tests/acl2/store-profile-carried-tests \
@@ -1442,6 +1445,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/arena-reader-pins-tests \
 	books/page-read-ownership \
 	tests/acl2/page-read-ownership-tests \
+	books/page-read-executor \
+	tests/acl2/page-read-executor-tests \
 	books/feed-restart-domain \
 	tests/acl2/feed-restart-domain-tests \
 	books/web-request \

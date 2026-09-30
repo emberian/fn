@@ -213,6 +213,7 @@
 (include-book "books/replay-identity-index")
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/page-read-host.lisp" :ld-error-action :error)
+(ld "host/page-executor-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
 ;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.
 (include-book "books/store-checkpoint-buffer")
@@ -245,7 +246,6 @@
 ; octet-list helpers store-host defines above it, as run_store.py's bridge does.
 (ld "host/config-host.lisp" :ld-error-action :error)
 (ld "host/native-admin-host.lisp" :ld-error-action :error)
-(ld "host/page-read-host.lisp" :ld-error-action :error)
 (ld "host/native-config-host.lisp" :ld-error-action :error)
 ; host/native/operator.lisp (loaded below) asks fn-native-auth-host-max-octets
 ; for `operator account-hash's credential file bound.
