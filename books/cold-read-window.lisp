@@ -84,9 +84,10 @@
   (declare (xargs :guard t))
   (* 64 (fn-crw-primitive-buffer-octets (- (expt 2 256) 1))))
 
-; Actual native call-list inventory across all raw branches is120 outer
-; REST/APPEND/MV conses. Fund256 to cover that simultaneous overestimate
-; plus retained result and callsite list wrappers. Borrowed argument payloads
+; Current staged raw/cancel/current-getter conservative call-list inventory
+; is250 conses, including the retained result, against a256 reserve. Literal
+; cold macros avoid an outer pool REST/APPEND layer. This is a coexistence
+; source inventory, not cumulative compiled allocation. Borrowed argument payloads
 ; are already owned; these lists do not create another integer per cell.
 (defun fn-crw-native-wrapper-conses ()
   (declare (xargs :guard t)) 256)
