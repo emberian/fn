@@ -245,3 +245,13 @@ existing whole decoder; stale ownership, mismatched request, cancellation
 and release remain distinct. This fixture does not replace the general
 decoder trajectory or native object/view binding obligations. See
 planning/evidence/decoded-window-publication-source-2026-09-30.md.
+
+The actual copy-mode controller effects also normalize to64 calls of the
+existing actual fn-zin-act: decoder state, history, table, scratch and
+selected private-window writes agree. This proof uses the existing actual
+action implementation and introduces no host byte semantics assumption.
+Complete reachable and13-condition removal witnesses check the new
+conclusion. Copy octets, semantic action calls and stored scheduling charges
+remain distinct; literal batching, general input/dictionary stuttering and
+total budget adequacy remain open. See
+planning/evidence/decoded-window-action-source-2026-09-30.md.

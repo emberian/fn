@@ -10,14 +10,14 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1894 |
-| Certification roots in the Makefile | 1815 |
-| Books inside the root closure | 1886 |
-| `defthm` and `defthmd` events | 29780 |
-| `defun` events | 19044 |
+| Books read | 1896 |
+| Certification roots in the Makefile | 1816 |
+| Books inside the root closure | 1888 |
+| `defthm` and `defthmd` events | 29813 |
+| `defun` events | 19047 |
 | Functions with verified guards | 3513 |
-| Functions declared `:verify-guards nil` and never verified | 2272 |
-| Functions left at the default with an explicit guard | 10403 |
+| Functions declared `:verify-guards nil` and never verified | 2274 |
+| Functions left at the default with an explicit guard | 10404 |
 | Functions left at the default with no guard | 2856 |
 | `assert-event` checks | 23990 |
 | `must-fail` checks | 2516 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 340 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2564 |
+| Include-hygiene warnings | 2566 |
 | Host-names warnings | 2199 |
 | Hand-written-record warnings | 18 |
 
@@ -414,6 +414,7 @@ that `make certify` requests.
 | `books/control-visible.lisp` | root | 74 | 37 | 7/0/30/0 | 0 | 0 | 2 |
 | `books/crypto-attach.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/crypto-seam.lisp` | root | 19 | 14 | 0/0/10/4 | 0 | 0 | 0 |
+| `books/decoded-window-action-trajectory.lisp` | closure | 19 | 2 | 0/1/1/0 | 0 | 0 | 0 |
 | `books/decoded-window-begin.lisp` | closure | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/decoded-window-copy-trajectory.lisp` | closure | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/decoded-window-descriptor.lisp` | closure | 0 | 9 | 0/0/9/0 | 0 | 0 | 0 |
@@ -1413,6 +1414,7 @@ that `make certify` requests.
 | `tests/acl2/control-visible-indexed-tests.lisp` | root | 0 | 7 | 0/2/0/5 | 6 | 2 | 0 |
 | `tests/acl2/control-visible-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 22 | 9 | 0 |
 | `tests/acl2/crypto-seam-tests.lisp` | root | 11 | 7 | 0/0/7/0 | 18 | 0 | 0 |
+| `tests/acl2/decoded-window-action-trajectory-tests.lisp` | root | 14 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `tests/acl2/decoded-window-begin-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 1 | 0 | 0 |
 | `tests/acl2/decoded-window-copy-trajectory-tests.lisp` | root | 18 | 1 | 0/1/0/0 | 1 | 0 | 0 |
 | `tests/acl2/decoded-window-descriptor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 0 | 0 |

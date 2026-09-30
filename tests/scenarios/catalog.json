@@ -6612,7 +6612,8 @@
         "Affirm active TOUT<=min(N,storedAllowance(C)) after actual begin/codec/read/hash; codec establishes the carry without pre-call hypotheses. Separately labelled corrupted-state read and scan-hash removals falsify only carried-output evidence and the conclusion.",
         "Check exact scalar NTH boundary and distinct decoded token11, unknown dictionary refusal, immutable shipped lookup, supplied-demand funding/file hold positives and hypothesis removals; retain native/runtime adequacy as open.",
         "Compare the actual whole decoder and authenticated bounded controller on a251-octet repeated match; reach pending mode12 through actual initialize/hash-prime/read/codec transitions, affirm the full copy-effect antecedent/conclusion, and remove each of13 conditions as separately labelled logical corrupted-state/request witnesses. Affirm complete actual copy-split effects and all three counter hypothesis removals.",
-        "Execute actual supplied-demand typed admission, shared acquire, typed initializer and authenticated bounded decoder, then actual return and scalar read on the carried source buffer; compare octet250 with the existing whole decoder and distinguish stale, unavailable, cancelled and released observations."
+        "Execute actual supplied-demand typed admission, shared acquire, typed initializer and authenticated bounded decoder, then actual return and scalar read on the carried source buffer; compare octet250 with the existing whole decoder and distinguish stale, unavailable, cancelled and released observations.",
+        "Normalize actual mode12 fn-ewz-codec-tick full state/history/table/scratch/private-window effects to64 calls of the existing actual fn-zin-act; affirm its full13-condition antecedent and conclusion through actual initialize/hash-prime/read/tick, and separately falsify each condition with the conclusion. Keep literal batching and total scheduling-budget completeness open."
       ],
       "expected": [
         "The exact requested bytes remain private until accepted codec terminal/exactN and full raw extent integrity.",
@@ -6646,7 +6647,10 @@
         "tests/acl2/decoded-window-executor-tests.lisp",
         "planning/evidence/decoded-window-shared-join-source-2026-09-30.md",
         "tests/acl2/decoded-window-publication-tests.lisp",
-        "planning/evidence/decoded-window-publication-source-2026-09-30.md"
+        "planning/evidence/decoded-window-publication-source-2026-09-30.md",
+        "books/decoded-window-action-trajectory.lisp",
+        "tests/acl2/decoded-window-action-trajectory-tests.lisp",
+        "planning/evidence/decoded-window-action-source-2026-09-30.md"
       ],
       "execution_scope": "Protected source composition and literal local-buffer witnesses only; no native served enablement or qualification."
     },
