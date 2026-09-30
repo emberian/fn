@@ -155,3 +155,13 @@ or whitespace-only first line, folds, binary body and malformed input.
 This line reference is proof vocabulary. It is not a served implementation,
 a constant-space parser, or evidence of byte-cursor correctness; that simulation,
 its guard and work obligations and matching host/image evidence remain open.
+
+The byte-side proof vocabulary in `books/legacy-parser-validity.lisp` now
+commutes exactly with the actual `fn-lpc-header-byte` transition. Its control
+projection retains phase, physical-line length, current-field presence,
+field-wide visibility and a separate physical-fold visibility mode. General
+new-field and continuation-line equations and an exact article-body grammar
+bridge are proved. The separation of visibility was necessary: a previous
+visible value cannot make a whitespace-only continuation valid. These pieces
+still require the general malformed-header rejection and complete source-span
+simulation before claiming the cursor refines the actual parser.
