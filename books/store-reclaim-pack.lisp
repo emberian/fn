@@ -53,7 +53,8 @@
 ; `fn-rclp-events-keep-every-other-kind').
 (defconst *fn-rclp-history-unit* 1)
 (defun fn-rclp-tombstoned (r)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-rcl-payload-profilep (fn-record-payload r))
+                  :verify-guards nil))
   (fn-record-make (fn-record-sequence r) (fn-record-txid r)
                   (fn-record-generation r) (fn-record-msgid r)
                   (fn-rcl-tombstone-of (fn-record-payload r)
@@ -137,6 +138,7 @@
   (declare (xargs :guard t :verify-guards nil))
   (let ((d (fn-record-decode-exact octets)))
     (and (fn-record-result-okp d)
+         (fn-rcl-payload-profilep (fn-record-payload (fn-record-result-record d)))
          (not (fn-rcl-tombstonep (fn-record-payload (fn-record-result-record d))))
          (fn-rclp-ctx-reclaimable ctx (fn-record-msgid (fn-record-result-record d)))
          (fn-record-p (fn-rclp-tombstoned (fn-record-result-record d))))))
@@ -172,7 +174,7 @@
     0))
 
 ; The octets freed: for each rewritten event, its length less its
-; replacement's.  An integer; the tombstone is 89 octets plus the Path agent,
+; replacement's.  An integer; the tombstone is 145 octets plus the Path agent,
 ; so a payload shorter than that frees a negative amount, which the verb
 ; reports and never hides.
 (defun fn-rclp-freed (events ctx)
@@ -185,7 +187,8 @@
 ; -----------------------------------------------------------------------------
 ; What a rewritten event is.
 
-(local (in-theory (disable fn-rcl-tombstone-of fn-rcl-tombstonep fn-rcl-reclaimable
+(local (in-theory (disable fn-rcl-payload-profilep
+                           fn-rcl-tombstone-of fn-rcl-tombstonep fn-rcl-reclaimable
                            fn-record-result-okp fn-record-result-record)))
 
 (defthm fn-rclp-event-of-an-unrewritten-event-by-definition
@@ -232,6 +235,28 @@
                                              (fn-record-decode-exact octets)))))))
           (and stable-under-simplificationp
                '(:in-theory (enable fn-rclp-tombstoned)))))
+
+; PRF-1089: the actual host-called per-event rewrite preserves the selected
+; relay-v1 commitment, in addition to every record identity field above.
+; This says nothing about injectivity of that commitment.
+(defthm fn-rclp-event-retains-article-subject
+  (implies (fn-rclp-rewrites-p octets ctx)
+           (equal
+            (fn-rcl-tomb-article-subject
+             (fn-record-payload
+              (fn-record-result-record (fn-record-decode-exact
+                                        (fn-rclp-event octets ctx)))))
+            (fn-asj-subject
+             (fn-record-payload
+              (fn-record-result-record (fn-record-decode-exact octets))))))
+  :hints (("Goal" :in-theory (theory 'minimal-theory)
+                  :use (fn-rclp-event-decodes-to-the-tombstoned-record
+                        (:instance fn-rcl-tombstone-of-fields
+                         (payload (fn-record-payload
+                                   (fn-record-result-record (fn-record-decode-exact octets))))
+                         (msgid (fn-record-string-octets
+                                 (fn-record-msgid
+                                  (fn-record-result-record (fn-record-decode-exact octets))))))))))
 
 ; -----------------------------------------------------------------------------
 ; The new list is an event list on the same terms as the old.

@@ -16,7 +16,8 @@ import time
 import types
 import unittest
 
-from tests.native_harness import EXIT_OK, Client, Node, free_port, native_image, scratch
+from tests.native_harness import (EXIT_OK, EXIT_REFUSED, EXIT_USAGE, Client, Node, free_port,
+                                  native_image, scratch)
 from tools.wire_stream import whole_stream
 
 
@@ -775,7 +776,8 @@ class NativePeeringTests(unittest.TestCase):
         unavailable-peer (books/native-health.lisp
         fn-nh-deferring-peer-is-held)."""
         source = self.initialize("full-source")
-        full = self.initialize("full-target", "--max-transactions", "12", "fn.test")
+        full = self.initialize("full-target", "--profile", "default", "--max-transactions", "12",
+                               "fn.test")
         port = full.port
         self.configure_peer(full, source, outbound="-")
         self.start(full)
@@ -957,6 +959,51 @@ class NativePeeringTests(unittest.TestCase):
         }, sort_keys=True))
         gate.set()
 
+    def test_productive_reader_answers_number_and_message_id(self):
+        """Recovered native ARTICLE reads preserve a selected reader's view.
+
+        The persisted article is written before the owner starts, so the
+        first retrieval traverses recovery's extent-backed representation.
+        This is successful native I/O evidence, not a disk honesty proof.
+        """
+        source = self.initialize("productive-reader")
+        message_id = "<productive-read@example.invalid>"
+        self.post(source, message_id, ".productive-read")
+        self.start(source)
+        with Client(source.port, timeout=60, greeting=(b"200",)) as client:
+            selected = client.command("GROUP fn.test")
+            self.assertTrue(selected.startswith(b"211 1 1 1 fn.test"), selected)
+            number_status, numbered = client.multiline("ARTICLE 1")
+            self.assertTrue(number_status.startswith(b"220 1 " + message_id.encode()),
+                            number_status)
+            id_status, identified = client.multiline("ARTICLE " + message_id)
+            self.assertTrue(id_status.startswith(b"220 1 " + message_id.encode()), id_status)
+            self.assertEqual(numbered, identified)
+            self.assertIn(b"Message-ID: " + message_id.encode() + b"\r\n", numbered)
+            self.assertIn(b"\r\n.productive-read\r\n", numbered)
+            self.assertTrue(client.command("ARTICLE 2").startswith(b"423"))
+            self.assertTrue(client.command("ARTICLE <missing-productive@example.invalid>").startswith(b"430"))
+            stat = client.command("STAT")
+            self.assertTrue(stat.startswith(b"223 1 " + message_id.encode()), stat)
+            # A second locally accepted article does not change this pin;
+            # selecting the group again is the explicit view advance.
+            self.post(source, "<productive-later@example.invalid>", "later")
+            self.assertTrue(client.command("ARTICLE 2").startswith(b"423"))
+            advanced = client.command("GROUP fn.test")
+            self.assertTrue(advanced.startswith(b"211 2 1 2 fn.test"), advanced)
+            self.assertTrue(client.command("STAT 2").startswith(
+                b"223 2 <productive-later@example.invalid>"))
+        self.assertIsNone(source.process.poll())
+        print("NATIVE-PEERING-WITNESS " + json.dumps({
+            "kind": "productive-reader-number-message-id-and-pinned-view",
+            "number_status": number_status.decode("ascii").rstrip(),
+            "message_id_status": id_status.decode("ascii").rstrip(),
+            "identical": numbered == identified,
+            "article_sha256": hashlib.sha256(numbered).hexdigest(),
+            "old_pin_absent_423": True, "explicit_group_advance": True,
+            "identity": self.verify_process_identity(source),
+        }, sort_keys=True))
+
     def test_feed_to_a_peer_without_streaming_falls_back_to_ihave(self):
         """PRF-207: a peer that answers MODE STREAM with 501 (RFC 3977
         section 3.2.1) is fed with IHAVE on the SAME connection; no CHECK or
@@ -1063,7 +1110,7 @@ class NativePeeringTests(unittest.TestCase):
         `down' (127.0.0.2, outbound only, at DOWN_PORT)."""
         # Room for 12,000 transactions with a record bound small enough that
         # the heap the profile asks for fits the test's 24 GiB scope.
-        node = self.initialize(marker, "--max-transactions", "12000",
+        node = self.initialize(marker, "--profile", "default", "--max-transactions", "12000",
                                "--max-record-octets", "262144",
                                "--max-history-octets", "134217728",
                                "--max-article-octets", "8192",
@@ -1189,6 +1236,64 @@ class NativePeeringTests(unittest.TestCase):
             "health": health.stdout.decode("ascii", "replace").splitlines()[:9],
             "restart_to_listening_s": round(opened, 2), "stop_s": stopped,
             "identity": identity}, sort_keys=True))
+
+    def test_retire_drains_refuses_new_connections_and_reports_a_silent_peer(self):
+        """Row S9 (PRF-1029): `retire --drain 4' on a node whose outbound
+        peer never answers (its port is closed).  A window past the bound is
+        refused by name before anything is asked; during the drain a new
+        connection gets the 502 and is closed; the window passes with the
+        three articles still owed, so the node takes its final checkpoint,
+        writes the report and stops by itself (exit 0), and `retire' prints
+        the report: the silent peer's three undelivered, state=deadline and
+        the release line.  On the stopped node `retire' is refused by name."""
+        closed = free_port()
+        node = self.fill_node("retire", closed)
+        self.start(node)
+        ids = ["<retire-{}@example.invalid>".format(n) for n in range(3)]
+        replies = self.inject(node, ids)
+        self.assertEqual({r[:3] for r in replies}, {b"239"}, replies)
+        over = node.operator("retire", "--drain", "86401", expect=EXIT_REFUSED)
+        self.assertIn(b"drain-seconds-over-bound", over.stdout + over.stderr)
+        self.assertIsNone(node.process.poll())
+        node.operator("retire", "--drain", "soon", expect=EXIT_REFUSED)
+        node.operator("retire", "now", expect=EXIT_USAGE)
+        result = {}
+        worker = threading.Thread(
+            target=lambda: result.setdefault(
+                "retire", node.operator("retire", "--drain", "4", timeout=240)))
+        worker.start()
+        refused = None
+        deadline = time.monotonic() + 30
+        while refused is None and time.monotonic() < deadline:
+            try:
+                with socket.create_connection(("127.0.0.1", node.port), timeout=10) as client:
+                    line = whole_stream(client).readline()
+                if line.startswith(b"502 "):
+                    refused = line
+                else:
+                    time.sleep(0.2)
+            except OSError:
+                time.sleep(0.2)
+        worker.join(timeout=240)
+        self.assertIsNotNone(refused, "no 502 while retiring")
+        self.assertEqual(refused, b"502 this node is retiring and accepts no new connections\r\n")
+        retire = result["retire"]
+        self.assertEqual(retire.returncode, EXIT_OK, retire.stdout + retire.stderr)
+        out = retire.stdout
+        self.assertIn(b"retire draining", out)
+        self.assertIn(b"retire peer=down undelivered=3 dropped=0", out)
+        self.assertIn(b"retired state=deadline undelivered=3", out)
+        self.assertIn(b"carry drop WORK --abandon", out)
+        report = Path(node.store_path) / "retire-report.txt"
+        self.assertTrue(report.exists())
+        self.assertIn(report.read_bytes(), out)
+        node.exited(EXIT_OK, timeout=120)
+        stopped = node.operator("retire", expect=EXIT_REFUSED)
+        self.assertIn(b"retire refused reason=not-running", stopped.stdout)
+        print("NATIVE-PEERING-WITNESS " + json.dumps({
+            "kind": "retire-silent-peer-prf-1029",
+            "refused": refused.decode("ascii", "replace").strip(),
+            "retire": out.decode("ascii", "replace").splitlines()}, sort_keys=True))
 
     def test_obligations_report_of_five_thousand_articles_answers(self):
         """PRF-336 (the openbsd-rehearsal, stop 2): `operator CONFIG

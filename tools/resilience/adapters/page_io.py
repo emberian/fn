@@ -118,6 +118,10 @@ def run_scenario(scenario, image, work, fault_hook=True):
         raise HarnessFailure(missing)
 
     try:
+        canonical = example()
+        for field in ("contract", "initial", "operations", "faults", "healing", "witnesses"):
+            if getattr(scenario, field) != getattr(canonical, field):
+                raise HarnessFailure("unsupported-page-io-recipe:" + field)
         j.stage("setup", "begun")
         base = fixture.recorded_base()
         node = fixture.copy_of(base, "issued-page")

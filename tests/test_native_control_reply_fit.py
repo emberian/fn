@@ -26,7 +26,7 @@ import unittest
 
 from tests.native_harness import EXIT_OK, EXIT_REFUSED, ROOT
 # The harness stores' init budget (tools/native_env.py): init refuses a
-# store without FN_INIT_BUDGET_MB on a large machine (batch AZ, 2026-09-28).
+# store without `init --budget MB' on a large machine (batch AZ, 2026-09-28).
 from tools.native_env import HARNESS_INIT_BUDGET_MB  # noqa: E402
 from tests.native_profile_fixture import ProfileFixture as ProfileUpgradeFixture
 
@@ -76,16 +76,16 @@ class ControlReplyFitTests(ControlReplyFitFixture):
         # above the ceiling profile's reservation (about 110 TB) so that the
         # budget check, which init runs first, admits both and the named
         # refusal is the one under test (batch AZ, 2026-09-28).
-        budget = {"FN_INIT_BUDGET_MB": "200000000"}
-        refused = self.op("init", "--max-record-octets", str(PAST),
-                          "--max-history-octets", str(PAST), "fn.test", env=budget)
+        budget = ("--budget", "200000000")
+        refused = self.op("init", *budget, "--profile", "default", "--max-record-octets", str(PAST),
+                          "--max-history-octets", str(PAST), "fn.test")
         print(refused.stderr.decode(errors="replace"), flush=True)
         self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
         # The operator's result line prints the reason word upper-cased.
         self.assertIn(NAME, refused.stderr.lower())
         self.assertIsNone(self.config_frame())
-        created = self.op("init", "--max-record-octets", str(CEILING),
-                          "--max-history-octets", str(CEILING), "fn.test", env=budget)
+        created = self.op("init", *budget, "--profile", "default", "--max-record-octets", str(CEILING),
+                          "--max-history-octets", str(CEILING), "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         self.assertEqual(self.profile_line()["max-record-octets"], CEILING)
         self.serves("init")

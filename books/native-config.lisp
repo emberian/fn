@@ -13,11 +13,11 @@
 (include-book "profile-limits") ; its figures are rows there
 
 ; Work bounds, not data bounds (D27 classification, PRF-102).  fn.toml has a
-; fixed schema: ten tables and twenty-seven keys, each admitted at most once
+; fixed schema: twelve tables and forty keys, each admitted at most once
 ; (`fn-ncfg-pair-seenp', `fn-ncfg-table-seenp'), with no repeated table, so it
 ; names no collection the store holds -- groups, peers, credentials and
 ; policy live in the store and its profile.  These two bound the work of one
-; read of that fixed-size file (its values are at most 27 x 512 octets).  The
+; read of that fixed-size file (its values are at most 40 x 512 octets).  The
 ; store profile cannot bound it in any case: fn.toml is read before the store
 ; is opened, and names the store (`[store] path').
 (defconst *fn-ncfg-max-octets* 16384)
@@ -240,7 +240,7 @@
 (defun fn-ncfg-tablep (name)
   (declare (xargs :guard t))
   (member-equal name '("store" "listener" "auth" "posting" "anchor"
-                       "acl2" "log" "control" "alerts" "ops" "web")))
+                       "acl2" "log" "control" "alerts" "ops" "web" "resources")))
 
 (defun fn-ncfg-key-allowedp (table key)
   (declare (xargs :guard t))
@@ -262,6 +262,9 @@
         ((equal table "web")
          (member-equal key '("port" "host" "site" "domain" "proxied" "tls"
                              "idle_seconds" "max_sessions")))
+        ((equal table "resources")
+         (member-equal key '("cold_heap_octets" "cold_workers"
+                             "cold_descriptors" "cold_read_ids" "cold_file_ids")))
         ((equal table "ops")
          (member-equal key '("mission" "unit" "scope" "keep_releases"
                              "log_max_bytes" "log_keep" "memory_max")))
@@ -710,7 +713,7 @@ raw owner binds exactly these octets and never resolves a name."
         *fn-ncfg-default-max-connections* *fn-ncfg-default-clock-error-ms*
         alert-command headroom refusal-rate cooldown
         mission unit scope keep-releases log-max-bytes log-keep memory-max
-        tls-port))
+        tls-port nil))
 
 (defun fn-native-config-store (c) (declare (xargs :guard t)) (fn-ncfg-nth 0 c))
 (defun fn-native-config-listener-host (c) (declare (xargs :guard t)) (fn-ncfg-nth 1 c))
@@ -783,6 +786,53 @@ raw owner binds exactly these octets and never resolves a name."
       (concatenate 'string store suffix)
     ""))
 
+(defun fn-native-config-cold-resources-wfp (x)
+  (declare (xargs :guard t))
+  (or (null x)
+      (and (true-listp x) (equal (len x) 5)
+           (posp (fn-ncfg-nth 0 x)) (<= (fn-ncfg-nth 0 x) *fn-ncfg-max-u64*)
+           (posp (fn-ncfg-nth 1 x)) (<= (fn-ncfg-nth 1 x) *fn-ncfg-max-u64*)
+           (posp (fn-ncfg-nth 2 x)) (<= (fn-ncfg-nth 2 x) *fn-ncfg-max-u64*)
+           (posp (fn-ncfg-nth 3 x)) (<= (fn-ncfg-nth 3 x) *fn-ncfg-max-u64*)
+           (posp (fn-ncfg-nth 4 x)) (<= (fn-ncfg-nth 4 x) *fn-ncfg-max-u64*))))
+
+ ; The operational cold-read pool is explicit. No storage layout changes.
+; Absence is a temporary fail-closed frontier, not a productive mission
+; profile: promised cold reads require an explicitly funded supported pool.
+(defun fn-ncfg-cold-resources (pairs)
+  (declare (xargs :guard t))
+  (let* ((heap0 (fn-ncfg-value pairs "resources" "cold_heap_octets"))
+         (workers0 (fn-ncfg-value pairs "resources" "cold_workers"))
+         (fds0 (fn-ncfg-value pairs "resources" "cold_descriptors"))
+         (ids0 (fn-ncfg-value pairs "resources" "cold_read_ids"))
+         (files0 (fn-ncfg-value pairs "resources" "cold_file_ids"))
+         (heap (fn-ncfg-nat-value heap0 :bad *fn-ncfg-max-u64*))
+         (workers (fn-ncfg-nat-value workers0 :bad *fn-ncfg-max-u64*))
+         (fds (fn-ncfg-nat-value fds0 :bad *fn-ncfg-max-u64*))
+         (ids (fn-ncfg-nat-value ids0 :bad *fn-ncfg-max-u64*))
+         (files (fn-ncfg-nat-value files0 :bad *fn-ncfg-max-u64*)))
+    (cond ((not (or heap0 workers0 fds0 ids0 files0)) nil)
+          ((and (posp heap) (posp workers) (posp fds) (posp ids) (posp files))
+           (list heap workers fds ids files))
+          (t :bad))))
+
+(defun fn-native-config-cold-resources (config)
+  (declare (xargs :guard t))
+  (fn-ncfg-nth 29 config))
+
+(local
+ (defthm fn-ncfg-cold-nat-value-range
+   (implies (not (equal (fn-ncfg-nat-value value :bad *fn-ncfg-max-u64*) :bad))
+            (and (natp (fn-ncfg-nat-value value :bad *fn-ncfg-max-u64*))
+                 (<= (fn-ncfg-nat-value value :bad *fn-ncfg-max-u64*) *fn-ncfg-max-u64*)))
+   :hints (("Goal" :in-theory (enable fn-ncfg-nat-value)))))
+
+(defthm fn-ncfg-cold-resources-is-supported-or-refused
+  (implies (not (equal (fn-ncfg-cold-resources pairs) :bad))
+           (fn-native-config-cold-resources-wfp (fn-ncfg-cold-resources pairs)))
+  :hints (("Goal" :in-theory (e/d (fn-ncfg-cold-resources fn-native-config-cold-resources-wfp)
+                                   (fn-ncfg-nat-value)))))
+
 (defun fn-ncfg-normalize (pairs)
   (declare (xargs :guard t))
   (let* ((store (fn-ncfg-string-value (fn-ncfg-value pairs "store" "path") nil *fn-ncfg-max-path* t))
@@ -819,7 +869,8 @@ raw owner binds exactly these octets and never resolves a name."
                                            *fn-ncfg-default-log-max-bytes* *fn-ncfg-max-u64*))
          (log-keep (fn-ncfg-nat-value (fn-ncfg-value pairs "ops" "log_keep")
                                       *fn-ncfg-default-log-keep* *fn-ncfg-max-u64*))
-         (memory-max (fn-ncfg-string-value (fn-ncfg-value pairs "ops" "memory_max") nil *fn-ncfg-max-text* nil)))
+         (memory-max (fn-ncfg-string-value (fn-ncfg-value pairs "ops" "memory_max") nil *fn-ncfg-max-text* nil))
+         (cold-resources (fn-ncfg-cold-resources pairs)))
     (if (or (equal store :bad) (equal host :bad) (equal port :bad)
             (equal tls-cert :bad) (equal tls-key :bad) (equal required :bad)
             (equal protected :bad) (equal auth-path :bad) (equal enabled :bad)
@@ -835,17 +886,17 @@ raw owner binds exactly these octets and never resolves a name."
             (equal refusal-rate :bad) (equal cooldown :bad)
             (equal mission :bad) (equal unit :bad) (equal scope :bad)
             (equal keep-releases :bad) (equal log-max-bytes :bad)
-            (equal log-keep :bad) (equal memory-max :bad)
+            (equal log-keep :bad) (equal memory-max :bad) (equal cold-resources :bad)
             (not (fn-ncfg-optional-absolutep alert-command))
             (not (fn-ncfg-optional-memberp mission *fn-ncfg-mission-names*))
             (not (fn-ncfg-memberp scope *fn-ncfg-ops-scopes*))
             (equal keep-releases 0) (equal log-max-bytes 0))
         :bad
-      (fn-native-config-make store host port tls-cert tls-key required protected
+      (update-nth 29 cold-resources (fn-native-config-make store host port tls-cert tls-key required protected
                              auth-path enabled agent anchor log control acl2-path acl2-slots
                              alert-command headroom refusal-rate cooldown
                              mission unit scope keep-releases log-max-bytes
-                             log-keep memory-max tls-port))))
+                             log-keep memory-max tls-port)))))
 
 (defthm fn-ncfg-listener-element-ok-is-a-projection
   (implies (equal (fn-ncfg-first (fn-ncfg-listener-element text)) :ok)
@@ -1005,6 +1056,9 @@ raw owner binds exactly these octets and never resolves a name."
          "log")
         ((fn-native-config-acl2-path config) "acl2")
         ((fn-native-config-acl2-slots config) "acl2")
+        ; Staged P12 grammar: do not silently ignore an explicit resource
+        ; policy before its supported allocator/launcher consumer lands.
+        ((fn-native-config-cold-resources config) "cold_resources")
         (t nil)))
 
 (defun fn-native-config-operator-availablep (config)

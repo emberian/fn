@@ -296,3 +296,169 @@ books (checkpoint-pack-retire, checkpoint-compaction-preservation,
 byte-store-compaction-correspondence) and host wrappers in lane
 flip-cleanup (2026-09-27). On the record log compaction and reclamation are
 the log's rotation and drop (specs/storage.md STO-012, STO-017, STO-034).
+
+### Live capture projection proof (PRF-1068; producer gate remains open)
+
+`fn-osr-capture` takes the already carried Store pointer. Its proof-side
+`fn-osr-livep` combines the phase-aware configured history relation with
+independent identity, consumer and topic prefixes. Actual successful configured
+startup establishes these prefixes; actual durable completion and configuration
+publication preserve the live carry. A live capture therefore opens successfully
+under its captured configuration history, including an in-flight transaction, without an open-success premise or a
+served history scan. At readiness, recovered node, domain/capacity, configuration/event history,
+frontier, identity cursor/snapshots, consumer obligations and topic
+conflicts/provenance equal the captured values. Source readiness and recovery
+barriers intentionally differ.
+
+This inverse is a dependency of the live producer, not its completion claim.
+The proof vocabulary `fn-osr-retainedp` additionally carries the statement
+keytable/current generation resolved from retained snapshots, ordinary held
+authorship verdicts and frozen row index from the completed prefix, and the
+retired event-index field. Actual successful configured open establishes this
+full carry; successful open also implies a proper configuration list, so that
+list check is not a separate initialization hypothesis. At readiness,
+`fn-osr-ready-capture-keeps-retained-fields` compares these fields after the same
+actual configured recovery. Its positive witness has ordinary ARTICLE rows on
+both sides of a statement-key rotation; a linked but unfinished ARTICLE shows
+why readiness remains material to that equality.
+
+Actual durable CONFIG publication also preserves this full carry without
+revalidating the history: its semantic fields and completed prefix remain
+unchanged while the configured node and configuration history advance.
+Full producer readiness still requires preservation across the other actual
+transitions, the canonical writer/load payload alpha boundary, and owner
+node-secret installation. The owner secret is
+separate from the Store statement keytable. Canonical row handles and paused
+checkpoint summaries do not become identical to live fields by assertion.
+Existing publication assumptions connect verified bytes to checkpoint tables;
+this carry adds no new assumption and does not replace that boundary.
+
+## History page write continuation (PRF-1086)
+
+`books/history-page-cursor.lisp` provides a library continuation over the current
+history image commit plan. Begin retains source list references; a tick emits
+one `(physical-address selector word-base)` descriptor or advances between data,
+table, directory and terminal phases. Its runtime guard inspects at most ten
+outer cells and three scalar counters, never a retained source suffix. The
+residual theorem equates emitted prefix plus remaining descriptors with
+`fn-his-plan-writes`; capture and lease identities remain unchanged. The caller
+must retain the source image and resource lease until consumption completes.
+SCN-1007 supplies nonempty phase and corrupted-state/mutation witnesses.
+
+This component has no host caller yet and does not bound existing whole-history
+build/flush, commit allocation/digests, or the native by-address hash. Those are
+replaced by the selected census plus disk-backed bounded-buffer design in
+[the preparation contract](../planning/history-page-cursor-contract.md), whose
+full representation, effect and funded-publication proofs remain open.
+
+The next private-writer component, `books/history-page-layout.lisp` (PRF-1092),
+computes scalar physical layout after the census supplies data-page count N.
+The existing fresh allocator reserves the directory first at address 1, then
+allocates data and table pages contiguously. The executable constructor returns
+N, table count T, directory span M, data base `1+M`, table base `1+M+N` and high
+water `1+M+N+T`; a single-address operation computes one member. Both refine
+`pgs-alloc` without constructing its list of singles. It uses the concrete
+constant-work table-count function and current-format u64/u32 checks. This
+removes whole-run allocation planning from the proposed private writer; it
+neither allocates backing pages nor proves platform file-offset representation.
+
+## Running and stopped snapshot producer
+
+HST-040 remains planned: the producer must capture one committed Store
+frontier, its configuration history, genesis identity, retained identity
+snapshots/verdicts and keyring generation. Restore must recover retained
+article/conflict/provenance, configuration, identity, consumer obligation,
+topic, resource and history state at that frontier. Transient connections,
+recovery barriers and process-local descriptors are not copied state.
+
+A running capture must retain the immutable Store/image epoch and a resource
+lease while later publications proceed. New resident, disk, descriptor,
+worker and pinned old-artifact demands must be admitted under the supported
+profile before work. Each scheduling step bounds work and fresh allocation;
+a depleted quantum resumes without truncating retained data. The completion
+marker is published last after all promised target data and namespace
+barriers are durable. Ambiguous publication/fence failures remain uncertain
+and preserve recovery evidence.
+
+The live-carry inverse PRF-1068 and page-descriptor/layout components
+PRF-1086/1092 are dependencies of that producer, not its completion. The
+landed library continuations do not install a producer host call, allocate
+its resources, replace whole history build/flush, or establish full retained
+projection and byte-effect refinement. The unmerged producer prototype's
+other proof roots are not imported by these leaf components.
+
+`books/history-page-buffer.lisp` (PRF-1093) supplies the concrete scratch page:
+a fixed 2048-u64 array, a bounded written-prefix counter, and capture/lease
+references. Begin resets only the counter and identities. Put writes one word;
+the accessor refuses unwritten offsets even when an old physical word remains
+there. The prefix refinement equates each successful put with one logical word
+append; full-page refusal leaves the state unchanged. This is one format page,
+not a data-capacity limit. Buffer allocation needs its actual runtime charge,
+and reuse must wait for completion/join of every I/O owner. The proof-only
+prefix collector is excluded from the host path; serialization and complete
+image effect composition remain open.
+
+`books/history-image-census.lisp` and `books/history-image-header.lisp`
+(PRF-1096) connect scalar census to current-format header emission. A completed
+row contributes its exact resumable-codec byte count and its own pad8 bytes;
+a stale ordinal or u64 field overflow leaves census totals unchanged. The
+four scalar regions each occupy `8*count` used bytes. Two scalar capacity
+cursors suffice for those columns and the payload region; a tick doubles once,
+with no recursive capacity calculation. Their results produce the canonical
+five starts and page count. `fn-hch-tick` writes one word of the existing
+FNADTSN2 header into the fixed scratch and returns done only after that page is
+full. The named effect theorem connects the concrete prefix to `fn-hp-hdr2`;
+no header-sized list or zero vector is constructed by execution.
+
+These are component boundaries: the exact codec count is supplied by a
+separate resumable encoder, and capture/lease identities remain in its parent
+cursor and the scratch. Captured based histories require the new bounded
+current-format decoder, including borrowed string/symbol/octet spans; resident
+suffix rows remain borrowed references. Neither an eager `fn-sf-records`
+conversion nor terminal span materialization is permitted. Canonical body,
+table/directory emission, offset-domain checks, resource admission and complete
+publication refinement remain open. This source increment carries no served
+keystone or certification claim.
+
+`books/history-page-metadata.lisp` (PRF-1104) emits the existing six-word
+address/transaction/digest entry into the same scratch. `fn-hpm-tick` carries
+ordinal, component and remaining run words; each stored word advances once.
+Page-full, done and address/ordinal refusal preserve cursor and scratch. The
+ordinal/component survives scratch consumption/reset, since a directory entry
+may straddle physical pages. Named entry, run-position and concrete effect
+refinements use `pgs-entry-words` and `pgs-encode-run`; a table is the single-page
+case, with its341entries and two final zeros. Digest source attribution remains
+an explicit premise: the spool reader must return the exact captured/staged
+digest at that ordinal. The emitter retains only one256-bit digest and scalar
+state. It preserves concrete scratch representation and epoch/lease identity.
+Complete spool admission, authenticated reads, final root binding and served
+composition remain open; no host caller or certification claim is added.
+
+The scalar layout component also exposes `fn-hpi-region/page` in
+`books/history-page-io.lisp`: positional whole-file requests use the unchanged
+FNSI base plus the physical page offset. Accepted ranges fit the image region
+and admitted runtime/profile extent, and different pages do not overlap. The
+extent is an admission input, not a hard-coded storage ceiling. This is the
+ACL2 addressing seam for eliminating the native by-address hash. Registered
+reader extents already include the FNSI base; their relative requests must not
+add it again. The physical/controller layer still owns matching request tokens,
+short/ambiguous I/O verdicts and cancellation/pin lifetime.
+
+### Bounded borrowed history decoding (planned, PRF-1102 / SCN-1014)
+
+The captured history source is decoded incrementally using the unchanged tree
+codec. `books/history-decode-stream.lisp` consumes one verified byte per active
+step and retains source epoch and lease; raw string, symbol and octet payloads
+remain borrowed spans in `books/history-decode-nodes.lisp`. Its non-executable
+abstraction denotes the existing logical row. Numeric decoding refines the
+current little-endian reader, including accepted nonminimal spellings. The
+canonical encoder must classify pair-shaped octet lists incrementally and
+canonicalize empty octet spans to NIL rather than copy old instruction bytes.
+
+The full requirement remains open: captured-root directory/table/data
+validation, exact row semantic inverse, padding and MKEY validation, carried
+source-token binding, funded node/stack allocation, guard-verified host
+composition and matching native evidence. Neither a source parser nor a
+fixed page buffer alone establishes that boundary. See
+[the concrete contract](../planning/history-decode-contract.md).
+

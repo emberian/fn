@@ -1,6 +1,9 @@
 """Issued-I/O observer and tester mutations; these are not native evidence."""
 import copy
+from pathlib import Path
+import tempfile
 import unittest
+from unittest.mock import patch
 
 from tools.resilience import checker, mutations
 from tools.resilience.adapters import page_io
@@ -33,6 +36,25 @@ def fixture():
 
 
 class PageIOObserverTests(unittest.TestCase):
+    def test_altered_recipe_is_refused_before_native_setup(self):
+        for field in ("contract", "initial", "operations", "faults", "healing", "witnesses"):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as directory:
+                s = page_io.example()
+                value = getattr(s, field)
+                if isinstance(value, str):
+                    setattr(s, field, "acceptance-model")
+                elif isinstance(value, dict):
+                    value["recipe"] = "different"
+                else:
+                    value.append(copy.deepcopy(value[0]))
+                image = Path(directory) / "fake-image"
+                image.write_bytes(b"never executed")
+                with patch.object(page_io.Fixture, "recorded_base") as setup:
+                    _, verdict = page_io.run_scenario(s, image, Path(directory) / "run")
+                setup.assert_not_called()
+                self.assertEqual(verdict.kind, "harness-failure")
+                self.assertIn("unsupported-page-io-recipe:" + field, str(verdict.to_json()))
+
     def test_bounded_token_parser_accepts_wrapping_without_reader(self):
         log = (b"PAGE-IO held token=(0 7 1 64\n 200 987654321) file=1\n"
                b"PAGE-IO cancelled token=(0 7 1 64 200 987654321)\n"

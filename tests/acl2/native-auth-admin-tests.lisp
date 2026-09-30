@@ -418,6 +418,99 @@
           t nil nil nil 128))
         :credential-shape))
 
+; -----------------------------------------------------------------------------
+; Row S6, PRF-1019: `account delete LOGIN' over the credential file.
+
+(assert-event
+ (equal (fn-native-auth-admin-plan-action
+         (fn-native-auth-admin-parse-argv
+          (fn-naa-test-argv '("delete" "native-reader"))))
+        (list :delete *fn-naa-test-name*)))
+(assert-event
+ (equal (fn-native-auth-admin-action-name
+         (fn-native-auth-admin-parse-argv
+          (fn-naa-test-argv '("delete" "native-reader"))))
+        *fn-naa-test-name*))
+(assert-event
+ (equal (fn-native-auth-admin-plan-reason
+         (fn-native-auth-admin-parse-argv (fn-naa-test-argv '("delete"))))
+        :delete-arguments))
+(assert-event
+ (equal (fn-native-auth-admin-plan-reason
+         (fn-native-auth-admin-parse-argv
+          (fn-naa-test-argv '("delete" "native-reader" "extra"))))
+        :delete-arguments))
+
+; Two logins in the file; deleting one leaves exactly the other, and the
+; written file loads.
+(defmacro fn-naa-test-two ()
+  '(fn-native-auth-admin-result-octets
+    (fn-native-auth-admin-set-password
+     (fn-naa-test-one) t *fn-naa-test-other-name* *fn-naa-test-secret*
+     *fn-naa-test-secret* *fn-naa-test-salt* nil nil t 2)))
+(defmacro fn-naa-test-deleted ()
+  '(fn-native-auth-admin-delete (fn-naa-test-two) t *fn-naa-test-name* 2))
+; Positive witness of fn-native-auth-admin-delete-decides-by-the-file: every
+; hypothesis holds (a login name; a file the loader admits), the file holds
+; the login unbound, and the accepted octets are the serialization of the
+; credentials without it.
+(assert-event (fn-native-auth-login-namep *fn-naa-test-name*))
+(assert-event
+ (equal (fn-native-auth-result-status
+         (fn-native-auth-load (fn-naa-test-two) t nil nil nil 2))
+        :accepted))
+(assert-event
+ (consp (fn-auth-find-cred
+         *fn-naa-test-name*
+         (fn-auth-config-creds
+          (fn-native-auth-result-config
+           (fn-native-auth-load (fn-naa-test-two) t nil nil nil 2))))))
+(assert-event (equal (fn-native-auth-admin-result-status (fn-naa-test-deleted))
+                     :accepted))
+(assert-event
+ (let* ((loaded (fn-native-auth-load
+                 (fn-native-auth-admin-result-octets (fn-naa-test-deleted))
+                 t nil nil nil 2))
+        (creds (fn-auth-config-creds (fn-native-auth-result-config loaded))))
+   (and (equal (fn-native-auth-result-status loaded) :accepted)
+        (null (fn-auth-find-cred *fn-naa-test-name* creds))
+        (consp (fn-auth-find-cred *fn-naa-test-other-name* creds))
+        (equal (len creds) 1))))
+; A bound login is refused by name, nothing written.
+(assert-event
+ (equal (fn-native-auth-admin-delete
+         (fn-native-auth-admin-result-octets (fn-naa-test-bound)) t
+         *fn-naa-test-name* 128)
+        (list :refused :login-bound)))
+; A login the file does not hold goes to the configuration's record.
+(assert-event
+ (equal (fn-native-auth-admin-delete (fn-naa-test-two) t
+                                     (fn-record-string-octets "robin") 2)
+        (list :account :account-login)))
+(assert-event
+ (equal (fn-native-auth-admin-delete nil nil (fn-record-string-octets "robin") 2)
+        (list :account :account-login)))
+; Teeth: the removal is not the identity, and it does not empty the file.
+(must-fail-checked
+ (defthm naat-remove-keeps-the-login
+   (equal (fn-auth-find-cred name (fn-native-auth-admin-remove name creds))
+          (fn-auth-find-cred name creds))))
+(must-fail-checked
+ (defthm naat-remove-takes-every-login
+   (equal (fn-auth-find-cred login (fn-native-auth-admin-remove name creds))
+          nil)))
+; Teeth for the keystone's hypotheses: without an admitted file the answer
+; is a refusal, not :account, although no credential is found.
+(assert-event
+ (equal (fn-native-auth-admin-result-status
+         (fn-native-auth-admin-delete (fn-record-string-octets "junk") t
+                                      *fn-naa-test-name* 2))
+        :refused))
+(assert-event
+ (equal (fn-native-auth-admin-delete (fn-naa-test-two) t
+                                     (fn-record-string-octets "") 2)
+        (list :refused :name)))
+
 ; When a durable credential change reaches service (PKT-102, PKT-221):
 ; fn-native-auth-admin-effect-word, which host/native/auth-admin.lisp
 ; fnn-native-auth-admin-result-code calls with the writer-lock observation

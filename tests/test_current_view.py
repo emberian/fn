@@ -2,7 +2,9 @@
 
 from pathlib import Path
 import tempfile
+import json
 import unittest
+from unittest.mock import patch
 
 from tools import current_view
 
@@ -28,6 +30,51 @@ class HostCallTests(unittest.TestCase):
     def test_prefix_is_not_a_call(self) -> None:
         with self.assertRaises(current_view.ViewError):
             self.locate("(fn-x-y a)\n", "fn-x")
+
+
+class TestedCoordinateTests(unittest.TestCase):
+    def render(self, tested):
+        return current_view.tested_coordinate(Path("."), {"id": "W9", "tested": tested},
+                                             {"qualified": {"qualification": "record",
+                                                             "closure_manifest": "closure"}},
+                                             None, [])
+
+    def test_null_means_no_image(self):
+        qualified, detail = self.render(None)
+        self.assertEqual(qualified, "no: no matching image evidence")
+        self.assertIn("source proof experiments", detail)
+        self.assertNotIn("lane image", detail)
+
+    def test_missing_is_an_error(self):
+        with self.assertRaisesRegex(current_view.ViewError, "lacks tested"):
+            current_view.tested_coordinate(Path("."), {"id": "W9"}, {}, None, [])
+
+    def test_invalid_coordinates_are_errors(self):
+        for tested in [False, "", [], {}, {"image": "qualified"},
+                       {"image": "unknown", "profile": "small"},
+                       {"record": "r", "source": "", "profile": "small"},
+                       {"image": "qualified", "profile": "small", "source": "rev"}]:
+            with self.subTest(tested=tested), self.assertRaises(current_view.ViewError):
+                self.render(tested)
+
+    @patch.object(current_view, "record_link", return_value="record-link")
+    @patch.object(current_view, "carried", return_value=(True, "matching"))
+    def test_existing_sidecar_coordinates(self, carried, record_link):
+        view = json.loads((current_view.ROOT / current_view.SIDECAR).read_text())
+        for capability in view["capabilities"]:
+            with self.subTest(capability=capability["id"]):
+                current_view.tested_coordinate(Path("."), capability, view["images"], None, [])
+
+    @patch.object(current_view, "record_link", return_value="record-link")
+    @patch.object(current_view, "carried", return_value=(True, "matching"))
+    def test_historical_coordinates_keep_their_meaning(self, carried, record_link):
+        qualified, detail = self.render({"image": "qualified", "profile": "small"})
+        self.assertEqual(qualified, "yes: qualified")
+        self.assertIn("closure `closure`", detail)
+        qualified, detail = self.render({"record": "lab", "source": "revision", "profile": "small"})
+        self.assertEqual(qualified, "lab only: `revision`")
+        self.assertIn("lane image of `revision`", detail)
+        self.assertIn("not a shared qualification", detail)
 
 
 class ViewTests(unittest.TestCase):
