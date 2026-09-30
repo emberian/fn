@@ -2985,14 +2985,16 @@
         "A probe consumer on B polls, B restarts, the probe polls again and acks twice.",
         "B's consumer is cut in-transaction, after-commit, at the owner after its ack commits, before Q's POST, and at the owner after Q commits; it wakes after each.",
         "Q crosses to A; A's consumer is cut after its ack and wakes; both consumers wake to their frontiers.",
-        "Separately: A's owner accepts R and A's consumer dies before recording the answer; A revokes its author; B consumes R; A wakes."
+        "Separately: A's owner accepts R and A's consumer dies before recording the answer; A revokes its author; B consumes R; A wakes.",
+        "Run the same exchange on the production image: externally SIGKILL consumers stopped at their application cuts; for the two owner cuts, hold the reply in a Unix relay, SIGKILL the owner and discard the reply, then reopen and query durable state."
       ],
       "expected": [
         "The recorded NEWNEWS answer explicitly lists R's Message-ID; no ARTICLE command for R crosses the proxy; B's Store holds one article for R and IHAVE is answered 435 duplicate.",
         "The same report and cursor bytes are re-served after the restart; the second ack leaves the position unchanged.",
         "B's database holds nothing after the first cut; one transition and one pending reply after the second; the uncertain ack settles by position; the uncertain POST settles by the resend's duplicate answer or store-observation; exactly one transition.",
         "A correlates Q with R in one transition (inbox: repeat for its own R, applied for Q); at each hop the authored source and both signatures equal the submission artifact's, checked with the receiving consumer's keyring; each node holds two articles.",
-        "B's one transition; A's resend is refused (revoked) and settles only itself; R is stored by store-observation."
+        "B's one transition; A's resend is refused (revoked) and settles only itself; R is stored by store-observation.",
+        "Each consumer cut terminates by SIGKILL; each lost owner reply is uncertain exit 3; recovered ACK/Q and all one-transition assertions match the developer case, with no developer selector sent to the production image."
       ],
       "evidence": [
         "tests/test_native_consumer_exchange_two_nodes.py",
@@ -3001,7 +3003,9 @@
         "planning/evidence/consumer-exchange/test_native_consumer_exchange_two_nodes.r2-2727a53a.log",
         "planning/evidence/consumer-exchange/test_native_consumer_exchange_two_nodes.r1-e6bab332.log",
         "tests/test_peer_pull_recording.py",
-        "planning/evidence/consumer-remainder-2026-09-30.md"
+        "planning/evidence/consumer-remainder-2026-09-30.md",
+        "tests/test_native_consumer_exchange_production.py",
+        "tests/test_consumer_process_cuts.py"
       ],
       "implementation": {
         "test": "tests.test_native_consumer_exchange_two_nodes",
@@ -3011,7 +3015,9 @@
         ],
         "native": true,
         "record": "planning/evidence/consumer-exchange-2026-09-26.md",
-        "log": "planning/evidence/consumer-exchange/test_native_consumer_exchange_two_nodes.r2-2727a53a.log"
+        "log": "planning/evidence/consumer-exchange/test_native_consumer_exchange_two_nodes.r2-2727a53a.log",
+        "production_test": "tests.test_native_consumer_exchange_production",
+        "production_note": "Source driver implemented; matching image observation pending. Reuses all six ownership cuts and durable-state assertions."
       }
     },
     {

@@ -293,6 +293,15 @@ R after the feed has stored it. The pull is enabled only after B's STAT
 confirms that first delivery; an issued NEWNEWS command alone is not evidence
 that the response listed R (PKT-392).
 (SCN-106) ([evidence](../planning/evidence/consumer-exchange-2026-09-26.md)).
+The production variant (`tests/test_native_consumer_exchange_production.py`)
+uses external process kills at the same six ownership boundaries. Application
+cuts stop the consumer so the harness can SIGKILL it; the two owner cuts hold
+an actual response in an external Unix relay, kill the owner and discard the
+reply. Reopened ACK and article state must establish the durable outcome;
+receipt of a response octet is only a cut trigger. The production owner runs
+without a developer stop selector. Matching image observations remain separate
+from this driver (PKT-466(b)).
+
 Carriage over BP through the relay network is not part of CNS-004 yet
 (PKT-333 phase 2, after the multi-peer relay).
 

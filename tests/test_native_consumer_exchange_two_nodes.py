@@ -66,21 +66,21 @@ def sha(octets):
     return hashlib.sha256(octets).hexdigest()
 
 
-@unittest.skipUnless(ENABLED, "set FN_RUN_CONSUMER_EXCHANGE=1 and a source-matched "
-                     "FN_NATIVE_DEVELOPER_HOST")
-@requires(IMAGE)
-class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
+class TwoNodeConsumerExchangeScenario:
+    """Shared scenario; subclasses choose the image and process cut driver."""
+    image = None  # concrete test subclass supplies its exact image
+
     def setUp(self):
         self.root = scratch(self, "fn-consumer-2n-")
         # The consumers' environment: no cut unless a call names one.
-        self.env = environment({"FN_CONSUMER_CUT": None})
+        self.env = environment({"FN_CONSUMER_CUT": None, "FN_CONSUMER_CUT_ACTION": None})
         self.log = []
         self.nodes = {}
         self.principals = {}
 
     # -- native processes -----------------------------------------------------
     def native(self, *words, expected=EXIT_OK):
-        result = run([IMAGE, "--fn", *words], timeout=300)
+        result = run([self.image, "--fn", *words], timeout=300)
         if expected is not None:
             self.assertEqual(result.returncode, expected,
                              (result.stdout + result.stderr).decode("utf-8", "replace"))
@@ -90,7 +90,7 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
         """A node (tests/native_harness.py Node) with a service log and its
         path identity; `store init` makes its store."""
         root = self.root / name
-        node = Node(self, IMAGE, root=root, name=name,
+        node = Node(self, self.image, root=root, name=name,
                     extra='[log]\npath = "{}"\n'.format(root / "service.log"))
         node.log = root / "service.log"
         node.path = "%s.exchange.example.invalid" % name.lower()
@@ -211,7 +211,7 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
                         keys["ed_public"], keys["ml_public"])
         config = self.root / label / "consumer.json"
         config.write_text(json.dumps({
-            "image": str(IMAGE), "control": str(node.control),
+            "image": str(self.image), "control": str(node.control),
             "consumer": label, "group": "fn.test", "application_id": APP,
             "from": "%s@example.invalid" % label,
             "db": str(self.root / label / "state.db"),
@@ -325,7 +325,7 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
                     sort_keys=True).encode())}
 
     def witness(self, case, data):
-        data = dict(data, case=case, log=self.log, image_sha256=sha(IMAGE.read_bytes()))
+        data = dict(data, case=case, log=self.log, image_sha256=sha(self.image.read_bytes()))
         text = json.dumps(data, indent=1, sort_keys=True)
         print("CONSUMER-2N-WITNESS %s sha256=%s" % (case, sha(text.encode())), flush=True)
         print(text, flush=True)
@@ -542,6 +542,13 @@ class NativeTwoNodeConsumerExchangeTests(unittest.TestCase):
             "a_outbox": final, "b_transitions": self.summary(agent_b)["transitions"]})
         self.stop(a)
         self.stop(b)
+
+
+@unittest.skipUnless(ENABLED, "set FN_RUN_CONSUMER_EXCHANGE=1 and a source-matched "
+                     "FN_NATIVE_DEVELOPER_HOST")
+@requires(IMAGE)
+class NativeTwoNodeConsumerExchangeTests(TwoNodeConsumerExchangeScenario, unittest.TestCase):
+    image = IMAGE
 
 
 if __name__ == "__main__":

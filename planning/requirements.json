@@ -3476,7 +3476,10 @@
         "tests/test_fn_consumer_journal.py",
         "planning/evidence/consumer-exchange-2026-09-26.md",
         "planning/evidence/manifests/certify-20260926T114912Z-1309060.json",
-        "planning/evidence/consumer-exchange/test_native_consumer_exchange_two_nodes.r2-2727a53a.log"
+        "planning/evidence/consumer-exchange/test_native_consumer_exchange_two_nodes.r2-2727a53a.log",
+        "tests/test_native_consumer_exchange_production.py",
+        "tests/test_consumer_process_cuts.py",
+        "planning/evidence/consumer-remainder-2026-09-30.md"
       ],
       "implementation_note": "A client contract over fn's peering; not an RFC requirement. The carriage is RFC 3977/4644 peering (IHAVE/TAKETHIS answered 435/438 for a held article, RFC 3977 section 6.3.2; the NEWNEWS pull, section 7.4, NNT-018); the stored-source guarantee is fn's (PRF-177 (a)). The Python consumer is an external client: its database lock, resend and correlation are its own bookkeeping under CNS-003.",
       "note": "Local-owner profile on each node; NNTP peering with source-address authentication on loopback in the scenario. BP carriage through the relay network is PKT-333 phase 2."

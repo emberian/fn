@@ -77,7 +77,9 @@ Developer cuts (`FN_CONSUMER_CUT`) stop the process with os._exit(97):
 its ack); `before-post` (no attempt recorded), `attempt-recorded` (in-flight
 attempt committed, nothing sent), `after-post` (fn answered, the answer not
 recorded), `in-result-transaction` (inside the answer's BEGIN IMMEDIATE,
-before COMMIT).
+before COMMIT). With `FN_CONSUMER_CUT_ACTION=stop`, the application instead
+SIGSTOPs at the same cut so the external harness can kill the process.
+This is a consumer test facility, never an fn image selector.
 """
 import argparse
 import datetime
@@ -88,6 +90,7 @@ import json
 import os
 from pathlib import Path
 import re
+import signal
 import sqlite3
 import subprocess
 import sys
@@ -228,6 +231,10 @@ def cut(point):
     if os.environ.get("FN_CONSUMER_CUT") == point:
         sys.stderr.write("CONSUMER-CUT %s\n" % point)
         sys.stderr.flush()
+        # The external harness can SIGKILL at the identical application
+        # boundary while the fn owner is an unmodified production image.
+        if os.environ.get("FN_CONSUMER_CUT_ACTION") == "stop":
+            signal.raise_signal(signal.SIGSTOP)
         os._exit(97)
 
 
