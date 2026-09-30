@@ -1567,6 +1567,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/pagestore-digest-cursor-tests \
 	tests/acl2/pagestore-digest-cursor-refinement-tests \
 	tests/acl2/pagestore-digest-byte-cursor-tests \
+	tests/acl2/pagestore-digest-cursor-union-tests \
+	tests/acl2/history-reader-digest-union-tests \
 	books/history-page-reader \
 	books/history-page-reader-verdict \
 	tests/acl2/history-page-reader-tests \
