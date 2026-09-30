@@ -170,3 +170,47 @@ incarnation changes remain explicit refinement and lifecycle obligations.
 `sol_over_served` owns this source and controller; `sol_owner_union` owns its
 actual admission/publication hooks, and `sol_index_integration` supplies the
 common row traversal. This is an implementation contract, not completion.
+
+## Consumer revisions follow the actual refresh
+
+An article append is not by itself evidence that previous consumer results
+are unchanged. A new cancellation can withdraw existing content, and an
+arriving target can resolve a previously pending withdrawal. The actual ACL2
+withdrawal refresh returns its result and a conservative semantic-effect tag
+together, reusing its computed new plan and existing-target predicate. The
+owner also checks its existing verdict-growth condition; a new verdict for
+an older article cannot be treated as ordinary append. Configuration and
+authority changes keep their separate invalidation rules. No native Boolean,
+second whole-view comparison, or blanket exclusion of signed appends supplies
+this decision. Existing traversal cost remains an open obligation.
+
+Live publication applies the revision from that same refresh result, with
+the authority state and view installed atomically. Recovery retains the
+withdrawal/view accumulator and derives the same decisions in historical
+order. Revision exhaustion must refuse before durable frontier allocation.
+Its preflight therefore needs a candidate-row lookup corresponding to the
+actual post-install lookup, preserving first/oldest-row semantics even when
+older history names the same Message-ID. A candidate must not blindly shadow
+that history. Its expected transaction, frontier and authority coordinates
+are revalidated after a yield, before allocation. The exact lookup relation,
+live/recovery joins and literal cancellation/target-arrival cases remain
+implementation obligations of the consumer and admission owners.
+
+## Incoming backing outlives a request
+
+The pool's third field holds a fixed carrier containing the operational
+backing descriptor and the current incoming-holder row. Release clears the
+row while preserving the descriptor. An uninitialized carrier is not evidence
+of zero capacity. The existing pool constructor still has three fields, but
+the carrier's allocation and retained layout require their own accounting.
+
+Actual controlled allocation/import establishes the capacity carry. Every
+reserve, replacement and failure preserves its correspondence to the concrete
+backing; payload length cannot substitute for capacity. Definitely installed
+capacity transfers from job charge to retained baseline atomically, and old
+and new backing remain charged during overlap. The incoming setup machine
+issues bounded copy ranges and seals only after their exact acknowledgements.
+A planned fixed-size RX buffer bounds a scheduling step, not stored data.
+The paged owner owns this carrier and setup machine; the admission owner owns
+its native job integration. Neither the old whole-buffer REPLACE path nor
+source-only constructor counts establish this runtime contract.
