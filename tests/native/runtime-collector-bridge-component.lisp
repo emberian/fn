@@ -1,0 +1,103 @@
+;;; Actual native bodies, real SBCL GC and mutex; recording core callbacks.
+;;; This is transport/exception evidence, not core policy or activation proof.
+(in-package "ACL2")
+(defvar *fnn-extent-lock* (sb-thread:make-mutex :name "collector component extent"))
+(defvar *fnn-test-request-word* :not-quiescent)
+(defvar *fnn-test-failure* nil)
+(defvar *fnn-test-fences* 0)
+(defvar *fnn-test-completions* 0)
+(defvar *fnn-test-pool* (vector :test-pool))
+(defvar *fnn-test-association* (list :test-association))
+(defun fnn-test-request (pool)
+  (assert (eq pool *fnn-test-pool*))
+  (assert (sb-thread:holding-mutex-p *fnn-extent-lock*))
+  (when (eq *fnn-test-failure* :request)
+    (throw 'raw-ev-fncall :injected-request-escape))
+  (values *fnn-test-request-word* *fnn-test-association* 17 29 pool))
+(defun fnn-test-complete (nonce association epoch observed-nonce status pages size reservation pool)
+  (assert (sb-thread:holding-mutex-p *fnn-extent-lock*))
+  (assert (eq pool *fnn-test-pool*))
+  (assert (eq association *fnn-test-association*))
+  (assert (= epoch 17))
+  (assert (= observed-nonce 29))
+  (assert (member status '(:completed :deferred)))
+  (when (eq status :completed)
+    (assert (and (plusp pages) (= size 32768) (<= (* pages size) reservation))))
+  (incf *fnn-test-completions*)
+  (when (eq *fnn-test-failure* :complete)
+    (error "injected core completion failure"))
+  ;; The recording core echoes disposition, including rejection of mismatch;
+  ;; the actual scalar core is separately verified by its own proof/test root.
+  (values (if (and (= nonce observed-nonce) (eq status :completed))
+              :resume :recovery-required) pool))
+(defun fnn-test-fence (pool)
+  (assert (eq pool *fnn-test-pool*))
+  (assert (sb-thread:holding-mutex-p *fnn-extent-lock*))
+  (incf *fnn-test-fences*)
+  pool)
+(defvar *fnn-test-binding*
+  (%make-fnn-runtime-collector-binding
+   :pool *fnn-test-pool* :observation (make-fnn-runtime-collection)
+   :request #'fnn-test-request :complete #'fnn-test-complete :fence #'fnn-test-fence))
+;; Exercise the actual factory and exact selected entry names. Installation
+;; cannot silently use generic dispatch or accept an absent compiled entry.
+(assert (handler-case
+            (progn (fnn-runtime-collector-binding-make *fnn-test-pool*) nil)
+          (error () t)))
+(setf (gethash 'fn-aec-pool-collection-request-internal *fnn-raw-dispatch*)
+      'fnn-test-request
+      (gethash 'fn-aec-pool-collect-observed-internal *fnn-raw-dispatch*)
+      'fnn-test-complete
+      (gethash 'fn-aec-pool-uncertain-internal *fnn-raw-dispatch*)
+      'fnn-test-fence)
+(let ((*fnn-dispatch-counterpart* t))
+  (assert (handler-case
+              (progn (fnn-runtime-collector-binding-make *fnn-test-pool*) nil)
+            (error () t))))
+(setf *fnn-test-binding* (fnn-runtime-collector-binding-make *fnn-test-pool*))
+(assert (eq (fnn-runtime-collector-binding-pool *fnn-test-binding*)
+            *fnn-test-pool*))
+(assert (eq (fnn-runtime-collector-binding-request *fnn-test-binding*)
+            (symbol-function 'fnn-test-request)))
+(let* ((binding *fnn-test-binding*)
+       (sample (fnn-runtime-collector-binding-observation binding))
+       (before sb-kernel::*gc-epoch*))
+  ;; Incomplete drain returns immediately and invokes neither GC nor complete.
+  (assert (eq (fnn-runtime-collection-step binding) :not-quiescent))
+  (assert (eq before sb-kernel::*gc-epoch*))
+  (assert (= *fnn-test-completions* 0))
+  (assert (eq (fnn-runtime-collection-status sample) :unobserved))
+  ;; An independent waiter can acquire the extent mutex after the return.
+  (let ((worker (sb-thread:make-thread
+                 (lambda () (sb-thread:with-mutex (*fnn-extent-lock*) :acquired)))))
+    (assert (eq (sb-thread:join-thread worker :timeout 2 :default :timed-out) :acquired)))
+  (setf *fnn-test-request-word* :collect)
+  (assert (eq (fnn-runtime-collection-step binding) :resume))
+  (assert (= *fnn-test-completions* 1))
+  ;; Wrong nonce reaches the core unchanged; the host never substitutes it.
+  (assert (eq (fnn-runtime-collection-complete binding 28) :recovery-required))
+  (assert (= *fnn-test-completions* 2))
+  ;; Inhibited GC is acknowledged once as deferred, never retried as success.
+  (sb-sys:without-gcing
+    (assert (eq (fnn-runtime-collection-step binding) :recovery-required))
+    (assert (eq (fnn-runtime-collection-status sample) :deferred)))
+  (assert (= *fnn-test-completions* 3))
+  (setf *fnn-test-failure* :complete)
+  (assert (handler-case (progn (fnn-runtime-collection-step binding) nil)
+            (fnn-fixed-callback-fault () t)))
+  (assert (= *fnn-test-completions* 4))
+  (assert (= *fnn-test-fences* 1))
+  (assert (eq (fnn-runtime-collection-association sample) *fnn-test-association*))
+  (assert (= (fnn-runtime-collection-nonce sample) 29))
+  (setf *fnn-test-failure* :request)
+  (assert (handler-case (progn (fnn-runtime-collection-step binding) nil)
+            (fnn-fixed-callback-fault () t)))
+  (assert (= *fnn-test-completions* 4))
+  (assert (= *fnn-test-fences* 2))
+  (setf *fnn-test-failure* :complete)
+  (assert (handler-case (progn (fnn-runtime-collection-complete binding 29) nil)
+            (fnn-fixed-callback-fault () t)))
+  (assert (= *fnn-test-completions* 5))
+  (assert (= *fnn-test-fences* 3))
+  (format t "~&COLLECTOR-BRIDGE PASS completions=~D fences=~D~%"
+          *fnn-test-completions* *fnn-test-fences*))

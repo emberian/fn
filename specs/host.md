@@ -1631,3 +1631,19 @@ and successful collection need not make enough space for new work.
 covers fresh SBCL 2.6.8 Linux only. The process barrier, nonce-only core
 wrapper, installed geometry and full runtime allowance remain open; this
 file is not in the served image load sequence yet.
+
+`host/native/runtime-collector-bridge.lisp` now transports the actual core
+request ABI through fixed compiled callbacks. It retains the returned
+association, epoch and nonce before collection; completion takes only that
+binding and the nonce and reads the raw carrier internally. Non-quiescent
+requests release the extent mutex without waiting. Escaping request or
+completion callbacks fence the same pool before unlock, retaining the charge
+and identities. The bridge never takes the owner lock while holding extent.
+
+The binding and observation are created during funded installation. Repeated
+non-quiescent calls still need their own prepaid control suffix: Qcollect is
+debited only after quiescence and does not fund those earlier returns. This
+bridge has [native component evidence](../planning/evidence/runtime-collector-bridge-2026-09-30/README.md)
+using real GC/mutex behavior and recording core callbacks. Actual verified
+dispatch, full process barrier, once-only turn receipts, runtime tariffs and
+installation remain open; the bridge is not selected in the served load.
