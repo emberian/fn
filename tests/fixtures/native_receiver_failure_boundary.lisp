@@ -29,6 +29,9 @@
 (defmacro fnn-owner-measured ((label) &body body)
   (declare (ignore label)) `(progn ,@body))
 (defun fnn-owner-space-preobserve (service) (declare (ignore service)))
+;; This suite records the scheduler; the gate-failure suite loads its actual
+;; functions and replaces these recording definitions before exercising it.
+(defun fnn-owner-gate-check (gate) (declare (ignore gate)))
 (defun fnn-owner-gate-enter (gate class) (declare (ignore gate class)) 0)
 (defun fnn-owner-gate-leave (gate class hold wait)
   (declare (ignore gate class hold wait))

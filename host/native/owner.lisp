@@ -1034,7 +1034,35 @@ one ring, so the table's key and the served boundary's are one source."
   (busy nil)
   (holder nil)
   (turn nil)
+  ;; First native scheduler failure. Retain its provenance and wake all
+  ;; waiters; an aborted gate never invokes the scheduler again.
+  (aborted nil)
   (sched nil))
+
+(defun fnn-owner-gate-abort-locked (gate condition)
+  "Caller holds the gate mutex; retain accounting and the first failure."
+  (unless (fnn-owner-gate-aborted gate)
+    (setf (fnn-owner-gate-aborted gate) condition))
+  (sb-thread:condition-broadcast (fnn-owner-gate-ready gate)))
+
+(defun fnn-owner-gate-abort (gate condition)
+  (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+    (fnn-owner-gate-abort-locked gate condition)))
+
+(defun fnn-owner-gate-check (gate)
+  (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+    (when (fnn-owner-gate-aborted gate)
+      (error (fnn-owner-gate-aborted gate)))))
+
+(defun fnn-owner-gate-fail-locked (service gate condition)
+  "Caller holds the owner mutex, never the gate mutex on entry.
+Scheduler failure cannot be attributed to one client. Retain its condition
+without rendering it, fence before owner unlock, and preserve uncertainty."
+  (fnn-owner-gate-abort gate condition)
+  (fnn-owner-stop-service-locked
+   service (if (typep condition 'fnn-store-indeterminate)
+               +fnn-exit-uncertain+ +fnn-exit-fault+))
+  (error condition))
 
 (defun fnn-make-owner-gate ()
   (%make-fnn-owner-gate :sched (fnn-core 'fn-otm-init)))
@@ -1055,6 +1083,8 @@ recognise is a host fault."
 (defun fnn-owner-gate-pick (gate)
   "The owner is free and nobody was admitted: ask ACL2 which class runs
 (nil when no class waits).  The caller holds the gate mutex."
+  (when (fnn-owner-gate-aborted gate)
+    (error (fnn-owner-gate-aborted gate)))
   (destructuring-bind (class sched)
       ;; books/owner-commit-steps.lisp: the phase of the commit in flight is
       ;; part of ACL2's value; the six counts are the host's observation.
@@ -1070,40 +1100,58 @@ recognise is a host fault."
   "Wait at the gate as CLASS until admitted; return the wait in milliseconds.
 A thread already inside cannot enter again: a nested quantum would wait on
 itself for ever, so it is a fault here (as SBCL's recursive-lock error was)."
-  (let* ((i (fnn-owner-class-index class))
-         (started (get-internal-real-time))
+  (let* ((started (get-internal-real-time))
          (ticket nil))
     (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
-      (when (eq (fnn-owner-gate-holder gate) sb-thread:*current-thread*)
-        (fnn-fault "owner re-entered by the thread holding it"))
-      (setq ticket (svref (fnn-owner-gate-next-ticket gate) i))
-      (incf (svref (fnn-owner-gate-next-ticket gate) i))
-      (incf (svref (fnn-owner-gate-waiting gate) i))
-      (loop
-        (when (and (not (fnn-owner-gate-busy gate)) (null (fnn-owner-gate-turn gate)))
-          (fnn-owner-gate-pick gate))
-        (when (and (not (fnn-owner-gate-busy gate))
-                   (eql (fnn-owner-gate-turn gate) i)
-                   (= ticket (svref (fnn-owner-gate-serving gate) i)))
-          (setf (fnn-owner-gate-busy gate) t
-                (fnn-owner-gate-holder gate) sb-thread:*current-thread*
-                (fnn-owner-gate-turn gate) nil)
-          (incf (svref (fnn-owner-gate-serving gate) i))
-          (decf (svref (fnn-owner-gate-waiting gate) i))
-          (return))
-        (sb-thread:condition-wait (fnn-owner-gate-ready gate)
-                                  (fnn-owner-gate-mutex gate))))
+      (handler-case
+          (progn
+            (when (fnn-owner-gate-aborted gate)
+              (error (fnn-owner-gate-aborted gate)))
+            (let ((i (fnn-owner-class-index class)))
+              (when (eq (fnn-owner-gate-holder gate) sb-thread:*current-thread*)
+                (fnn-fault "owner re-entered by the thread holding it"))
+              (setq ticket (svref (fnn-owner-gate-next-ticket gate) i))
+              (incf (svref (fnn-owner-gate-next-ticket gate) i))
+              (incf (svref (fnn-owner-gate-waiting gate) i))
+              (loop
+                (when (fnn-owner-gate-aborted gate)
+                  (error (fnn-owner-gate-aborted gate)))
+                (when (and (not (fnn-owner-gate-busy gate))
+                           (null (fnn-owner-gate-turn gate)))
+                  (fnn-owner-gate-pick gate))
+                (when (and (not (fnn-owner-gate-busy gate))
+                           (eql (fnn-owner-gate-turn gate) i)
+                           (= ticket (svref (fnn-owner-gate-serving gate) i)))
+                  (setf (fnn-owner-gate-busy gate) t
+                        (fnn-owner-gate-holder gate) sb-thread:*current-thread*
+                        (fnn-owner-gate-turn gate) nil)
+                  (incf (svref (fnn-owner-gate-serving gate) i))
+                  (decf (svref (fnn-owner-gate-waiting gate) i))
+                  (return))
+                (sb-thread:condition-wait (fnn-owner-gate-ready gate)
+                                          (fnn-owner-gate-mutex gate)))))
+        (serious-condition (condition)
+          (fnn-owner-gate-abort-locked gate condition)
+          (error condition))))
     (fnn-ms-since started)))
 
 (defun fnn-owner-gate-leave (gate class hold-ms wait-ms)
   "Leave the owner: fold this quantum's hold and wait, and let ACL2 admit
 the next class (none when nothing waits: fn-osch-next answers nil)."
   (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
-    (setf (fnn-owner-gate-busy gate) nil
-          (fnn-owner-gate-holder gate) nil
-          (fnn-owner-gate-sched gate)
-          (fnn-core 'fn-otm-observe (fnn-owner-gate-sched gate) class hold-ms wait-ms))
-    (fnn-owner-gate-pick gate)))
+    (handler-case
+        (progn
+          (when (fnn-owner-gate-aborted gate)
+            (error (fnn-owner-gate-aborted gate)))
+          (setf (fnn-owner-gate-busy gate) nil
+                (fnn-owner-gate-holder gate) nil
+                (fnn-owner-gate-sched gate)
+                (fnn-core 'fn-otm-observe (fnn-owner-gate-sched gate)
+                          class hold-ms wait-ms))
+          (fnn-owner-gate-pick gate))
+      (serious-condition (condition)
+        (fnn-owner-gate-abort-locked gate condition)
+        (error condition)))))
 
 (defun fnn-owner-monotonic-ms ()
   "One reading of the monotonic clock, in milliseconds: the only clock the
@@ -1292,22 +1340,38 @@ nothing.  The caller holds the owner mutex.  Returns the number shed."
     n))
 
 (defmacro fnn-owner-gated ((service class) &body body)
-  "Run BODY under the owner mutex, admitted by the gate as CLASS."
-  (let ((g (gensym "GATE")) (c (gensym "CLASS")) (w (gensym "WAITED"))
-        (h (gensym "HELD")))
-    `(let* ((,g (progn
-                  ;; PRF-359's observation, off the mutex, before the
-                  ;; quantum is admitted (fnn-owner-space-preobserve).
-                  (fnn-owner-space-preobserve ,service)
-                  (fnn-owner-service-gate ,service)))
+  "Run BODY and gate cleanup under owner exclusion; contain gate failures."
+  (let ((s (gensym "SERVICE")) (g (gensym "GATE"))
+        (c (gensym "CLASS")) (w (gensym "WAITED"))
+        (h (gensym "HELD")) (failure (gensym "FAILURE")))
+    `(let* ((,s ,service)
+            (,g (fnn-owner-service-gate ,s))
             (,c ,class)
-            (,w (fnn-owner-gate-enter ,g ,c))
+            (,w (handler-case
+                    (progn
+                      (fnn-owner-gate-check ,g)
+                      ;; Keep filesystem observation outside owner exclusion.
+                      (fnn-owner-space-preobserve ,s)
+                      (fnn-owner-gate-enter ,g ,c))
+                  (serious-condition (,failure)
+                    ;; The gate's mutex has unwound before taking the owner.
+                    (fnn-owner-gate-abort ,g ,failure)
+                    (sb-thread:with-mutex ((fnn-owner-service-lock ,s))
+                      (fnn-owner-gate-fail-locked ,s ,g ,failure)))))
             (,h (get-internal-real-time)))
-       (unwind-protect
-            (sb-thread:with-mutex ((fnn-owner-service-lock ,service))
-              ;; adapter-retirement-2's opt-in hold measurement (FN_OWNER_MEASURE)
-              (fnn-owner-measured (*fnn-owner-measure-label*) ,@body))
-         (fnn-owner-gate-leave ,g ,c (fnn-ms-since ,h) ,w)))))
+       (sb-thread:with-mutex ((fnn-owner-service-lock ,s))
+         (unwind-protect
+              (progn
+                ;; A competing entry may have aborted after our admission.
+                (handler-case (fnn-owner-gate-check ,g)
+                  (serious-condition (,failure)
+                    (fnn-owner-gate-fail-locked ,s ,g ,failure)))
+                (fnn-owner-measured (*fnn-owner-measure-label*) ,@body))
+           ;; Cleanup calls the core too. Fence its failure before releasing
+           ;; owner exclusion; gate abort wakes waiters without another pick.
+           (handler-case (fnn-owner-gate-leave ,g ,c (fnn-ms-since ,h) ,w)
+             (serious-condition (,failure)
+               (fnn-owner-gate-fail-locked ,s ,g ,failure))))))))
 
 (defun fnn-owner-stop-service-locked (service exit-code &optional answering)
   "Fence while the owner mutex is held; the first terminal outcome wins.
@@ -1358,7 +1422,10 @@ the socket while that worker is still writing its reply."
     (ignore-errors (funcall hook service))))
 
 (defun fnn-owner-stop-service (service exit-code)
-  (fnn-owner-gated (service :control)
+  ;; Shutdown cannot ask an aborted scheduler for permission. This is the
+  ;; irreversible fence/wakeup boundary, not another semantic quantum.
+  ;; The caller is outside owner exclusion, as with the previous gate entry.
+  (sb-thread:with-mutex ((fnn-owner-service-lock service))
     (fnn-owner-stop-service-locked service exit-code)))
 
 (defun fnn-owner-fence-service (service)
