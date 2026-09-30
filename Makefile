@@ -484,6 +484,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/payload-deflate \
 	books/payload-window \
 	tests/acl2/payload-window-tests \
+	books/payload-action-source-trace \
+	books/payload-action-source-counts \
+	tests/acl2/payload-action-source-trace-tests \
 	books/payload-lz-dict-1 \
 	books/payload-lz-dicts \
 	books/payload-lz-value \

@@ -216,3 +216,17 @@ an admissible stored length; unsupported wider input is labelled separately.
 Actual compiled constant-site lowering remains to be qualified before any
 complete runtime demand consumes the conditional primitive family. The
 central umbrella patch includes both shared assumption books at convergence.
+
+
+Actual emission, input-pull and match-copy observers in
+`payload-action-source-trace.lisp` are generated from the pinned actual source.
+Their value/effects equalities cover the complete returned state and buffers.
+`payload-action-source-counts.lisp` distinguishes refused/successful emission
+(two/four additions plus one multiplication), input pull (two additions), and
+match copying. For positive K, match has two plus K negations, four plus2K
+additions and one multiplication; a zero-K refusal still has one negation,
+two additions and one multiplication. Borrowed getters/setters, ring/index
+and bit-buffer helpers remain explicit unpriced events. Literal guarded
+success/refusal fixtures and an omitted-negation mutation accompany the
+unconditional projection/count theorems; these have no removable hypotheses.
+This does not establish all decoder modes or actual allocator adequacy.
