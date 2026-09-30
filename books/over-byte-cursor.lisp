@@ -10,6 +10,7 @@
 (include-book "nov-row-capture")
 (include-book "legacy-parser-header")
 (include-book "over-row-pieces")
+(include-book "over-row-piece-shape")
 
 ; Proof vocabulary; never executed by ONE or by a served admission guard.
 (defun fn-obc-statep (s fn-arena)
@@ -131,16 +132,6 @@
  (defthm fn-obc-fixed-separators-shape
    (and (fn-npw-partp '(9) fn-arena) (fn-npw-partp '(13 10) fn-arena))
    :hints (("Goal" :in-theory (enable fn-npw-partp)))))
-
-(defthm fn-obc-parser-pieces-have-shape
-  (implies (and (fn-lpc-ready-p parser fn-arena)
-                (fn-lpc-cursor-bounds-p parser))
-           (fn-npw-piecesp (fn-obc-parser-pieces number parser) fn-arena))
-  :hints (("Goal" :in-theory
-           (e/d (fn-obc-parser-pieces fn-npw-piecesp)
-                (fn-npw-partp fn-obc-span-piece fn-lpc-field fn-lpc-ready-p
-                 fn-lpc-at fn-lpc-body-lines fn-lpc-cursor-bounds-p
-                 fn-nntp-decimal-field)))))
 
 ; Selected-row proof premise. The eventual served boundary derives it
 ; from F; the cursor transition never calls this recognizer.
