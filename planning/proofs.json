@@ -18162,7 +18162,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-orm-row-retains-the-complete-payload-independent-projection",
         "fn-orm-tick-is-the-context-preserving-row-continuation",

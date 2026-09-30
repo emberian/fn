@@ -216,7 +216,6 @@
 (include-book "../host/payload-view-host")
 (include-book "owner-snapshot-recovery")
 (include-book "snapshot-prepare")
-(include-book "snapshot-row-remap")
 (include-book "snapshot-row-source-remap")
 (include-book "snapshot-source-cursor")
 (include-book "snapshot-based-provider")

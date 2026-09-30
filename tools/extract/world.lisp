@@ -271,7 +271,6 @@
 (include-book "../../host/payload-view-host")
 (include-book "../../books/owner-snapshot-recovery")
 (include-book "../../books/snapshot-prepare")
-(include-book "../../books/snapshot-row-remap")
 (include-book "../../books/snapshot-row-source-remap")
 (include-book "../../books/snapshot-source-cursor")
 (include-book "../../books/snapshot-based-provider")
