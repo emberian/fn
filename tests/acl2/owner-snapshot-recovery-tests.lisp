@@ -3,6 +3,7 @@
 (include-book "../../books/owner-snapshot-recovery")
 (include-book "config-observed-tests")
 (include-book "consumer-store-invariants-tests")
+(include-book "statement-recover-stream-tests")
 
 ; Startup uses the actual configured observed opener on a historical capacity
 ; decrease that cannot be replayed under only the final capacity.
@@ -173,3 +174,99 @@
       (not (equal (fn-sf-phase (fn-sn-files *osr-ack-reserved*)) :ready))
       (not (equal (fn-sn-node *osr-ack-reserved-open*)
                   (fn-sn-node *osr-ack-reserved*)))))
+
+; Actual sequential intern freezes ordinary ARTICLE contexts on both sides
+; of a statement-key rotation. Configured open restores the entire held fold.
+(make-event `(defconst *osr-retained-rows*
+  ',(fn-ssr-rows (car (ssrt-run *ssrt-a* *ssrt-b* nil)))))
+(defconst *osr-retained-configs*
+  (list *fn-cfg-default-record*
+        (fn-cfg-record-make
+         1 0 2 (list (fn-cfg-create-group "example" *fn-cfg-default-policy-id*))
+         *fn-cfg-default-stamp*)))
+(make-event `(defconst *osr-retained-open*
+  ',(fn-cpo-open-observed *osr-retained-configs* 4 *osr-retained-rows*)))
+(make-event `(defconst *osr-retained-ready*
+  ',(fn-snrt-run (fn-sn-open-state *osr-retained-open*)
+               '((:io :recovery-barrier :ok)
+                 (:io :recovery-barrier :ok)
+                 (:io :recovery-barrier :ok)))))
+(make-event `(defconst *osr-retained-target*
+  ',(fn-sn-open-state
+   (fn-cpo-open-observed
+    (fn-sn-config-history (fn-osr-capture *osr-retained-ready*))
+    (fn-sf-frontier (fn-sn-files (fn-osr-capture *osr-retained-ready*)))
+    (fn-sf-records (fn-sn-files (fn-osr-capture *osr-retained-ready*)))))))
+(assert-event
+ (and (true-listp *osr-retained-configs*)
+      (fn-sn-open-okp *osr-retained-open*)
+      (fn-osr-retainedp (fn-sn-open-state *osr-retained-open*))
+      (fn-osr-retainedp *osr-retained-ready*)
+      (equal (fn-sf-phase (fn-sn-files *osr-retained-ready*)) :ready)
+      (equal (len (fn-sn-verdicts *osr-retained-ready*)) 2)
+      (equal (fn-sn-keyring-generation *osr-retained-ready*) 2)
+      (equal (fn-hc-generation (fn-held-context (nth 1 *osr-retained-rows*))) 1)
+      (equal (fn-hc-generation (fn-held-context (nth 3 *osr-retained-rows*))) 2)
+      (equal (fn-sn-keyring *osr-retained-target*)
+             (fn-sn-keyring *osr-retained-ready*))
+      (equal (fn-sn-keyring-generation *osr-retained-target*)
+             (fn-sn-keyring-generation *osr-retained-ready*))
+      (equal (fn-sn-verdicts *osr-retained-target*)
+             (fn-sn-verdicts *osr-retained-ready*))
+      (equal (fn-sn-index *osr-retained-target*)
+             (fn-sn-index *osr-retained-ready*))
+      (equal (fn-sn-event-index *osr-retained-target*)
+             (fn-sn-event-index *osr-retained-ready*))))
+
+; Corrupted-state hypothesis removal: retain readiness, omit full carry.
+; Recovery independently derives generation 2, exposing the altered value.
+(defconst *osr-retained-wrong-generation*
+  (update-nth 6 99 *osr-retained-ready*))
+(assert-event
+ (and (equal (fn-sf-phase (fn-sn-files *osr-retained-wrong-generation*)) :ready)
+      (not (fn-osr-retainedp *osr-retained-wrong-generation*))
+      (not (equal (fn-sn-keyring-generation *osr-retained-target*)
+                  (fn-sn-keyring-generation *osr-retained-wrong-generation*)))))
+
+; Readiness is material: a genuine ARTICLE is linked but not completed.
+; Its ordinary held verdict belongs to recovery, not the live prefix yet.
+(defconst *osr-pending-wire*
+  (fn-record-make 4 4 4 "<pending@example>" '(67 13 10) '("example")
+                  "o3" "s3" "e3" 1 841000002))
+(make-event `(defconst *osr-pending-row*
+  ',(nth 4 (fn-ssr-rows
+            (car (ssrt-run (append *ssrt-a* *ssrt-b*)
+                           (list *osr-pending-wire*) nil))))))
+(make-event `(defconst *osr-retained-completing*
+  ',(csnt-publish
+     (fn-sn-prepare (csnt-reserve *osr-retained-ready*) *osr-pending-row*))))
+(make-event `(defconst *osr-retained-completing-target*
+  ',(fn-sn-open-state
+     (fn-cpo-open-observed
+      (fn-sn-config-history (fn-osr-capture *osr-retained-completing*))
+      (fn-sf-frontier (fn-sn-files (fn-osr-capture *osr-retained-completing*)))
+      (fn-sf-records (fn-sn-files (fn-osr-capture *osr-retained-completing*)))))))
+(assert-event
+ (and (fn-osr-retainedp *osr-retained-completing*)
+      (fn-sn-completion-enabledp *osr-retained-completing*)
+      (equal (fn-sf-phase (fn-sn-files *osr-retained-completing*)) :completing)
+      (not (equal (fn-sf-phase (fn-sn-files *osr-retained-completing*)) :ready))
+      (not (equal (fn-sn-verdicts *osr-retained-completing-target*)
+                  (fn-sn-verdicts *osr-retained-completing*)))))
+
+; Opening success is material to initialization, with a proper config list.
+(assert-event
+ (and (true-listp nil)
+      (not (fn-sn-open-okp (fn-cpo-open-observed nil 0 nil)))
+      (not (fn-osr-retainedp
+            (fn-sn-open-state (fn-cpo-open-observed nil 0 nil))))))
+; The actual fold refuses a dotted configuration history. Proper-listness
+; was proved redundant for successful-open initialization, not retained as
+; an impossible hypothesis-removal witness.
+(defconst *osr-dotted-configs* (append *osr-retained-configs* 7))
+(make-event `(defconst *osr-dotted-open*
+  ',(fn-cpo-open-observed *osr-dotted-configs* 4 *osr-retained-rows*)))
+(assert-event
+ (and (not (true-listp *osr-dotted-configs*))
+      (not (fn-sn-open-okp *osr-dotted-open*))
+      (not (fn-osr-retainedp (fn-sn-open-state *osr-dotted-open*)))))

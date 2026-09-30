@@ -311,10 +311,20 @@ conflicts/provenance equal the captured values. Source readiness and recovery
 barriers intentionally differ.
 
 This inverse is a dependency of the live producer, not its completion claim.
-Full retained recovery additionally needs the statement keytable and current
-generation, ordinary held authorship verdicts and frozen row index. Those fields
-must be established and preserved by their actual transitions and compared after
-the same actual recovery and owner node-secret installation. The owner secret is
+The proof vocabulary `fn-osr-retainedp` additionally carries the statement
+keytable/current generation resolved from retained snapshots, ordinary held
+authorship verdicts and frozen row index from the completed prefix, and the
+retired event-index field. Actual successful configured open establishes this
+full carry; successful open also implies a proper configuration list, so that
+list check is not a separate initialization hypothesis. At readiness,
+`fn-osr-ready-capture-keeps-retained-fields` compares these fields after the same
+actual configured recovery. Its positive witness has ordinary ARTICLE rows on
+both sides of a statement-key rotation; a linked but unfinished ARTICLE shows
+why readiness remains material to that equality.
+
+Full producer readiness still requires preservation of this full carry by every
+actual transition, the canonical writer/load payload alpha boundary, and owner
+node-secret installation. The owner secret is
 separate from the Store statement keytable. Canonical row handles and paused
 checkpoint summaries do not become identical to live fields by assertion.
 Existing publication assumptions connect verified bytes to checkpoint tables;
