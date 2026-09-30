@@ -422,6 +422,13 @@
        (equal (fn-prl-nth 2 response) (fn-prl-nth 10 job))
        (fn-rxt-parser-currentp (fn-prl-nth 1 response) fn-rx-provider
                                fn-receiver-turn fn-page-read-pool))))
+; Response factory source only: this never authorizes parsing or readiness.
+; The episode is the actual core-issued identity, not a lifetime ticket alone.
+(defun fn-owner-rx-turn-response-source
+ (response fn-rx-provider fn-receiver-turn fn-page-read-pool)
+ (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
+ (if (fn-owner-rx-turn-response-currentp response fn-rx-provider fn-receiver-turn fn-page-read-pool)
+     (fn-rxt-source fn-receiver-turn) nil))
 (defun fn-owner-rx-turn-consumablep
  (ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)
  (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
