@@ -3,9 +3,15 @@
 (include-book "../../books/consumer-store-projection")
 (include-book "../../books/consumer-remote-position")
 
+(defconst *cact-namespace*
+  (fn-cp-authority-namespace (make-list 32 :initial-element 9) 1))
+(defconst *cact-account-a*
+  (list :account '(97) (fn-cp-account-creation *cact-namespace* 1) t '(7 8)))
+(defconst *cact-account-b*
+  (list :account '(98) (fn-cp-account-creation *cact-namespace* 3) nil nil))
 (defconst *cact-authority*
-  '(:authority 9 4 (9) ((:account (97) 1 t (7 8))
-                       (:account (98) 3 nil nil)) nil))
+  (list :authority 9 4 *cact-namespace*
+        (list *cact-account-a* *cact-account-b*) nil))
 (defconst *cact-state*
   (fn-cp-state-carry '(1) '(2) 10 1 nil *cact-authority*))
 (defconst *cact-register*
@@ -52,16 +58,20 @@
 ; A staged candidate is not adopted authority. Its provisional account and
 ; fresh identity do not replace the admitted table before an atomic fence.
 (defconst *cact-pending*
-  (list :adoption '(10) 9 1 5 '((:account (99) 4 t (11)))
+  (list :adoption '(10) 9 3 5
+        (list :account-preparation :reverse nil
+              (list (list :account '(99) (fn-cp-account-creation *cact-namespace* 4) t '(11))
+                    *cact-account-b* *cact-account-a*)
+              nil nil *cact-namespace* 5)
         '(99) (make-list 32 :initial-element 0) nil))
 (defconst *cact-staged-authority*
-  (list :authority 9 4 '(9) (fn-cp-nth 4 *cact-authority*) *cact-pending*))
+  (list :authority 9 4 *cact-namespace* (fn-cp-nth 4 *cact-authority*) *cact-pending*))
 (assert-event
  (and (fn-cp-adoptionp *cact-pending*)
       (fn-cp-authorityp *cact-staged-authority*)
       (equal (fn-cp-authority-find '(97) (fn-cp-nth 4 *cact-staged-authority*))
-             '(:account (97) 1 t (7 8)))
+             *cact-account-a*)
       (not (fn-cp-authority-find '(99) (fn-cp-nth 4 *cact-staged-authority*)))
       (not (fn-cp-authorityp
-            (list :authority 10 4 '(9) (fn-cp-nth 4 *cact-authority*)
+            (list :authority 10 4 *cact-namespace* (fn-cp-nth 4 *cact-authority*)
                   *cact-pending*)))))

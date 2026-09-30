@@ -1,13 +1,21 @@
 (in-package "ACL2")
 (include-book "../../books/consumer-authority-revision")
 
-(defconst *cart-rows* '((:account (97) 1 t (7 8))))
+(defconst *cart-namespace*
+  (fn-cp-authority-namespace (make-list 32 :initial-element 9) 1))
+(defconst *cart-rows*
+  (list (list :account '(97) (fn-cp-account-creation *cart-namespace* 1) t '(7 8))))
 (defconst *cart-pending*
-  (list :adoption '(10) 9 1 3 '((:account (98) 2 t (11)))
+  (list :adoption '(10) 9 2 3
+        (list :account-preparation :ready nil nil
+              (append *cart-rows*
+                      (list (list :account '(98) (fn-cp-account-creation *cart-namespace* 2)
+                                  t '(11))))
+              nil *cart-namespace* 3)
         '(98) (make-list 32 :initial-element 0) t))
 (defconst *cart-state*
   (fn-cp-state-carry '(1) '(2) 11 2 '((:entry (3) (4) (5) 1 9 1 0))
-                    (list :authority 9 2 '(9) *cart-rows* *cart-pending*)))
+                    (list :authority 9 2 *cart-namespace* *cart-rows* *cart-pending*)))
 
 (assert-event (fn-cp-statep *cart-state*))
 
@@ -21,7 +29,7 @@
         (< (fn-cp-nth 1 (fn-cp-nth 6 *cart-state*)) *fn-cbor-max-uint*)
         (eq (car (fn-carv-semantic-step *cart-state*)) :ok)
         (fn-cp-statep next)
-        (equal (fn-cp-nth 6 next) (list :authority 10 2 '(9) *cart-rows* nil))
+        (equal (fn-cp-nth 6 next) (list :authority 10 2 *cart-namespace* *cart-rows* nil))
         (equal (fn-cp-nth 5 next) (fn-cp-nth 5 *cart-state*))
         (equal (fn-cp-nth 3 next) 11))))
 

@@ -836,7 +836,7 @@ served composition; authentication and persistence are still unimplemented.
 
 The consumer projection now has seven fields, with durable authority in
 trailing slot6 while the Store remains14 fields. The authority tuple is
-`(:authority revision next-creation adopted-candidate accounts pending)`.
+`(:authority revision creation-watermark authority-namespace accounts pending)`.
 The initial constructor explicitly supplies an empty authority; recovery
 does not accept a six-field projection or infer missing authority. Ordinary
 consumer progress, append-frontier advance and incarnation rollover preserve
@@ -847,9 +847,17 @@ The implementation uses one conservative global visibility revision. A
 durably adopted change that cannot be proved to preserve visibility must
 advance it, including changes outside a particular consumer's groups. Such
 cross-scope invalidation requires explicit rebase. Ordinary article append
-and consumer progress do not themselves advance it. Revision and creation
-identities are nonwrapping supported-codec integers; exhaustion must refuse
-before durable publication and must never reuse an account incarnation.
+and consumer progress do not themselves advance it. The revision is a nonwrapping supported-codec integer. Creation identity
+is an exact48octet token: current authority namespace40 plus the persisted
+new-account row-stage transaction coordinate8. The namespace is the served
+consumer incarnation32 plus its persisted authority-begin coordinate8.
+Unchanged account tokens remain literal, including across credential rotation
+and restore. New or recreated accounts name the actual committed stage, never
+a reservation expectation or an independent next-creation counter. The actual
+allocator/profile currently refuses after uint32 transaction exhaustion,
+although the authority envelope represents uint64 coordinates. Codec width
+does not establish allocator lifetime or namespace nonreuse; exhausting an
+actual supported resource must refuse before publication without wrap.
 
 Its comparison namespace starts at the first durable consumer-authority
 bootstrap, only when that namespace has no previously usable cursors. The
@@ -873,8 +881,15 @@ committed adoption does not represent two authority changes.
 A candidate table larger than one supported record is built with bounded
 staged rows, preserving unchanged identities and deletion tombstones by a
 stream merge. Its pending tuple names the candidate, expected base revision,
-maintained row count, prospective next creation, candidate rows, last login,
-digest commitment and ready status. Pending rows and provisional identities
+maintained row count, prospective creation-coordinate watermark, explicit
+preparation descriptor, last login, digest commitment and ready status.
+Preparation is `(:account-preparation phase old-cursor reverse-rows
+forward-rows root namespace watermark)`. Merge consumes one selected
+ordered row and advances the borrowed old cursor only for an exact matching
+account or deletion tombstone. Seal requires the old cursor to be empty,
+so omitting an old account cannot silently erase its creation/tombstone.
+Individually durable preparation ticks move one reversed row to the forward
+root; the final fence does not reverse, validate or reconstruct a table. Pending rows and provisional identities
 never authorize requests. A small final durable fence switches the complete
 configuration and authority together; it uses established carries and digest
 finalization, never a full-table scan. Failure or crash before the fence
@@ -897,3 +912,47 @@ retaining all existing release debt and the maintenance reserve. The atomic
 prepared-event/completion pipeline still owns durable acceptance. This
 preflight does not establish physical-frame or canonical allocation funding,
 and remote/staged events remain unavailable until those producers agree.
+
+
+The source account staging codec uses a distinct `fnce` version2 envelope
+and the logical tag `:consumer-authority`. Its bounded operations are
+`authority-begin`, `authority-row`, `authority-tombstone`,
+`authority-fence` and `authority-discard`. The envelope carries three u64
+coordinates; each row carries the exact candidate/base comparison and
+creation identity. A credential row uses the existing native AUTHINFO
+login domain (at most64octets), principal32, salt16, three32octet
+verifier keys/digests and a posting bit. That supported credential grammar
+derives a maximum321octet row. It does not cap the number of adopted
+accounts; a table uses separately charged stages. Other credential
+schemas require a corresponding versioned codec rather than truncation.
+
+The current source codec proves complete decode-after-encode and exact
+scalar charge, including coordinates above u32. It is not yet installed
+as an accepted Store event. CP7 account/revision representability, durable
+namespace/creation freshness, bounded complete-table preparation, exact
+profile/canonical/retirement funding, shared live/recovery interpretation
+and the final atomic auth configuration fence remain required before
+activation. No version1 fixed512 consumer admission covers these records.
+
+The staged source interpreter `fn-caa-step` accepts seven version2 account
+operations: begin, row, tombstone, seal, prepare, fence and discard. It returns
+`(:ok next-consumer completed-account-root-or-nil)` or a refusal. Only the
+exact ready fence returns a root for installation. That root is
+`(:account-root policy exact-login-trie forward-auth-credentials)`; trie values
+are `(:account-binding account-row credential-or-nil)`. The actual owner
+installs this separately funded sidecar and CP7 together, and the joint
+configuration-first recovery fold retains the third result. The source
+substream replay is not the complete Store/config recovery fold.
+
+The exact login trie reuses `fn-midx` character branches with the established
+AUTHINFO native domain (`fn-auth-credp`, names at most64octets). Octet keys
+map bijectively to characters; the terminal is a separate keyword. A maintained
+alphabet/uniqueness invariant bounds branch fanout by257. Structural counters
+follow the actual get/put paths: lookup visits at most257*(name-length+1)
+entries, put visits at most514*(name-length+1), and put constructs at most
+259*(name-length+1) conses. These exclude caller row/control metadata and
+are not funded quantum constants. The actual stage must compare its complete
+work and allocation demands with the admitted quantum/profile and otherwise
+yield through a cursor. Per-node canonical carry production, old/new/retired
+root funding and the atomic owner/recovery joins remain unimplemented. No
+remote endpoint or new Store-event admission is activated by this source unit.

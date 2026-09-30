@@ -118,6 +118,15 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-event-charge-tests \
 	books/consumer-publication-budget \
 	tests/acl2/consumer-publication-budget-tests \
+	books/consumer-authority-codec \
+	tests/acl2/consumer-authority-codec-tests \
+	books/consumer-account-index \
+	books/consumer-account-index-shape \
+	books/auth-credentials \
+	books/consumer-account-adoption \
+	tests/acl2/consumer-account-index-tests \
+	tests/acl2/consumer-account-index-shape-tests \
+	tests/acl2/consumer-account-adoption-tests \
 	books/consumer-authority-revision \
 	tests/acl2/consumer-authority-revision-tests \
 	books/consumer-store-events \

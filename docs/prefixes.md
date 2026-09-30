@@ -406,3 +406,9 @@ anything a book does not already decide.
 | `fn-carv-` | `consumer-authority-revision` | Fixed-field active authority revision transition, nonwrapping refusal and pending adoption invalidation; actual atomic publisher/replay integration remains separate. |
 
 | `fn-cec-` | `consumer-event-charge` | Scalar exact encoded length for the currently admitted fixed CPE grammar; variable remote/adoption events remain disabled. |
+
+| `fn-cac-` | `consumer-authority-codec` | Source version2 fixed-credential account stage/fence codec, u64 coordinates, exact charge and complete event roundtrip. Durable interpreter/publisher, lifetime authority and native activation remain open. |
+
+| `fn-cai-` | `consumer-account-index` | Exact octet login bridge to the persistent character trie; no credential merge per lookup. |
+| `fn-cais-` | `consumer-account-index-shape` | Carried trie alphabet/unique fanout and source-aligned structural cost bounds; proof-only counters, no funded quantum claim. |
+| `fn-caa-` | `consumer-account-adoption` | Bounded durable account-stage interpreter and prepared atomic fence/root result; owner/funding/config-recovery joins remain open. |

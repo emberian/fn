@@ -5807,7 +5807,8 @@
       "milestone": "M4",
       "status": "specified",
       "proof_targets": [
-        "PRF-1125"
+        "PRF-1125",
+        "PRF-1140"
       ],
       "verification": [
         "proof",
@@ -5834,9 +5835,15 @@
         "host/owner-host.lisp",
         "host/native/owner.lisp",
         "tests/native_owner_consumer_raw.lisp",
-        "planning/evidence/consumer-owner-charge-source-2026-09-30.md"
+        "planning/evidence/consumer-owner-charge-source-2026-09-30.md",
+        "books/consumer-authority-codec.lisp",
+        "tests/acl2/consumer-authority-codec-tests.lisp",
+        "planning/evidence/consumer-authority-codec-source-2026-09-30.md",
+        "books/consumer-account-adoption.lisp",
+        "tests/acl2/consumer-account-adoption-tests.lisp",
+        "planning/evidence/consumer-account-adoption-source-2026-09-30.json"
       ],
-      "implementation_note": "Source request codec and logical remote-position kernel only. Remote10 metadata, atomic kernel proposals, fresh-epoch rebasing and metadata-preserving ACK exist. The scalar actual-charge/release-vector component is source-admitted (consumer-actual-charge-source-2026-09-30); constructor correspondence, profile adapter, durable event encoding/reservation and authenticated host dispatch remain unimplemented. Original full remote/multigroup/restore contract remains open. CP7 authority representation now source-admits adopted account rows, deletion tombstones and pending candidate separation; exact progress/frontier authority preservation and inherited local/remote kernel tests pass. No staged producer, authority writer/replay correspondence, owner carry installation or endpoint completion is claimed. The current-profile actual-charge adapter and fixed-field active authority revision/discard step are source-admitted with literal witnesses. Actual constructor/canonical carry, atomic config/account publisher, joint replay and authenticated endpoint remain open; no host activation or qualification is claimed. The fixed existing CPE scalar charge now has an exact fn-cpe-encode length correspondence and all-six-kind/maximum-ACK source witnesses; variable remote/adoption constructors and actual host integration remain open. Actual legacy CPE publication now routes the event-specific carried-profile verdict before native frontier allocation. Proper source composition proves exact persisted row charge and retained release headroom; eight assertions and actual deployed-form routing/order harness pass. Full owner translation/canonical allocation and remote/account/authority endpoint remain open; no original Q13 completion or native qualification."
+      "implementation_note": "Source request codec and logical remote-position kernel only. Remote10 metadata, atomic kernel proposals, fresh-epoch rebasing and metadata-preserving ACK exist. The scalar actual-charge/release-vector component is source-admitted (consumer-actual-charge-source-2026-09-30); constructor correspondence, profile adapter, durable event encoding/reservation and authenticated host dispatch remain unimplemented. Original full remote/multigroup/restore contract remains open. CP7 authority representation now source-admits adopted account rows, deletion tombstones and pending candidate separation; exact progress/frontier authority preservation and inherited local/remote kernel tests pass. No staged producer, authority writer/replay correspondence, owner carry installation or endpoint completion is claimed. The current-profile actual-charge adapter and fixed-field active authority revision/discard step are source-admitted with literal witnesses. Actual constructor/canonical carry, atomic config/account publisher, joint replay and authenticated endpoint remain open; no host activation or qualification is claimed. The fixed existing CPE scalar charge now has an exact fn-cpe-encode length correspondence and all-six-kind/maximum-ACK source witnesses; variable remote/adoption constructors and actual host integration remain open. Actual legacy CPE publication now routes the event-specific carried-profile verdict before native frontier allocation. Proper source composition proves exact persisted row charge and retained release headroom; eight assertions and actual deployed-form routing/order harness pass. Full owner translation/canonical allocation and remote/account/authority endpoint remain open; no original Q13 completion or native qualification. Source account-staging version2 codec has complete event roundtrip, structural321octet bound and exact scalar charge at u64 coordinates; no Store acceptance/authority producer/namespace or native activation yet."
     }
   ]
 }

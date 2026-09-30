@@ -184,12 +184,43 @@
         (fn-cp-authority-find login (cdr rows)))
     nil))
 
-(defun fn-cp-authority-rowp (row next)
+ ; Creation identity is exact octets, not a separately minted counter:
+; authority namespace40 = admitted CPincarnation32 + committed begin txid8;
+; creation token48 = captured namespace40 + committed new-account stage txid8.
+; Durable history is independently bound by the cursor/request. Nonreuse is
+; an actual lifecycle condition; random bytes alone are not its proof.
+(defun fn-cp-authority-namespacep (x)
+  (declare (xargs :guard t))
+  (and (fn-cbor-octet-listp x) (equal (len x) 40)))
+
+(defun fn-cp-authority-namespace (incarnation begin-txid)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (and (fn-cbor-octet-listp incarnation) (equal (len incarnation) 32)
+           (fn-cp-uintp begin-txid))
+      (append incarnation (fn-cbor-u64-bytes begin-txid))
+    nil))
+
+(defun fn-cp-creation-coordinate (token)
+  (declare (xargs :guard t))
+  (ec-call (fn-cbor-u64-from (ec-call (nthcdr 40 token)))))
+
+(defun fn-cp-account-creation (namespace stage-txid)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (and (fn-cp-authority-namespacep namespace) (fn-cp-uintp stage-txid))
+      (append namespace (fn-cbor-u64-bytes stage-txid))
+    nil))
+
+(defun fn-cp-account-creationp (token watermark)
+  (declare (xargs :guard t))
+  (and (fn-cbor-octet-listp token) (equal (len token) 48)
+       (posp (fn-cp-creation-coordinate token))
+       (< (fn-cp-creation-coordinate token) (nfix watermark))))
+
+(defun fn-cp-authority-rowp (row watermark)
   (and (true-listp row) (equal (len row) 5)
        (eq (car row) :account)
        (consp (fn-cp-nth 1 row)) (fn-cbor-octet-listp (fn-cp-nth 1 row))
-       (posp (fn-cp-nth 2 row)) (fn-cp-uintp (fn-cp-nth 2 row))
-       (< (fn-cp-nth 2 row) (nfix next))
+       (fn-cp-account-creationp (fn-cp-nth 2 row) watermark)
        (booleanp (fn-cp-nth 3 row))
        (if (fn-cp-nth 3 row)
            (and (consp (fn-cp-nth 4 row))
@@ -203,6 +234,26 @@
            (fn-cp-authority-rowsp (cdr rows) next))
     (null rows)))
 
+ ; The explicit preparation descriptor stays inside pending slot5. Its
+; borrowed old cursor establishes complete old-account/tombstone coverage.
+; Durable preparation ticks move one row from reverse to forward before
+; the final scalar fence. The trie root is opaque here: its exact row and
+; funded representation relation belongs to the account producer boundary.
+(defun fn-cp-account-preparationp (p watermark)
+  (and (true-listp p) (equal (len p) 8)
+       (eq (car p) :account-preparation)
+       (member-eq (fn-cp-nth 1 p) '(:merge :reverse :ready))
+       (fn-cp-authority-rowsp (fn-cp-nth 2 p) watermark)
+       (fn-cp-authority-rowsp (fn-cp-nth 3 p) watermark)
+       (fn-cp-authority-rowsp (fn-cp-nth 4 p) watermark)
+       (fn-cp-authority-namespacep (fn-cp-nth 6 p))
+       (equal (fn-cp-nth 7 p) watermark)
+       (case (fn-cp-nth 1 p)
+         (:merge (null (fn-cp-nth 4 p)))
+         (:reverse (null (fn-cp-nth 2 p)))
+         (:ready (and (null (fn-cp-nth 2 p)) (null (fn-cp-nth 3 p))))
+         (otherwise nil))))
+
 (defun fn-cp-adoptionp (pending)
   (and (true-listp pending) (equal (len pending) 9)
        (eq (car pending) :adoption)
@@ -210,16 +261,20 @@
        (fn-cp-uintp (fn-cp-nth 2 pending))
        (fn-cp-uintp (fn-cp-nth 3 pending))
        (posp (fn-cp-nth 4 pending)) (fn-cp-uintp (fn-cp-nth 4 pending))
-       (fn-cp-authority-rowsp (fn-cp-nth 5 pending) (fn-cp-nth 4 pending))
-       (equal (len (fn-cp-nth 5 pending)) (fn-cp-nth 3 pending))
+       (fn-cp-account-preparationp (fn-cp-nth 5 pending) (fn-cp-nth 4 pending))
+       (equal (+ (len (fn-cp-nth 3 (fn-cp-nth 5 pending)))
+                 (len (fn-cp-nth 4 (fn-cp-nth 5 pending))))
+              (fn-cp-nth 3 pending))
        (or (null (fn-cp-nth 6 pending))
            (and (consp (fn-cp-nth 6 pending))
                 (fn-cbor-octet-listp (fn-cp-nth 6 pending))))
        (fn-cbor-octet-listp (fn-cp-nth 7 pending))
        (equal (len (fn-cp-nth 7 pending)) 32)
-       (booleanp (fn-cp-nth 8 pending))))
+       (booleanp (fn-cp-nth 8 pending))
+       (equal (fn-cp-nth 8 pending)
+              (eq (fn-cp-nth 1 (fn-cp-nth 5 pending)) :ready))))
 
-; Authority: (:authority revision next-creation adopted-candidate accounts
+; Authority: (:authority revision creation-watermark authority-namespace accounts
 ;             pending). Pending account rows and provisional creation IDs
 ; are never read as current authority. Recognizers here are proof/recovery
 ; predicates; a final fence consumes established count/ready/commitment
@@ -230,7 +285,7 @@
        (fn-cp-uintp (fn-cp-nth 1 authority))
        (posp (fn-cp-nth 2 authority))
        (fn-cp-uintp (fn-cp-nth 2 authority))
-       (or (fn-cp-idp (fn-cp-nth 3 authority))
+       (or (fn-cp-authority-namespacep (fn-cp-nth 3 authority))
            (and (null (fn-cp-nth 3 authority))
                 (null (fn-cp-nth 4 authority))))
        (fn-cp-authority-rowsp (fn-cp-nth 4 authority)
@@ -238,7 +293,9 @@
        (or (null (fn-cp-nth 5 authority))
            (and (fn-cp-adoptionp (fn-cp-nth 5 authority))
                 (equal (fn-cp-nth 2 (fn-cp-nth 5 authority))
-                       (fn-cp-nth 1 authority))))))
+                       (fn-cp-nth 1 authority))
+                (<= (fn-cp-nth 2 authority)
+                    (fn-cp-nth 4 (fn-cp-nth 5 authority)))))))
 
 (defun fn-cp-state-carry (history incarnation frontier next-epoch entries authority)
   (list :consumer-state history incarnation frontier next-epoch entries authority))
@@ -533,6 +590,8 @@
 
 (verify-guards fn-cp-idp)
 (verify-guards fn-cp-uintp)
+(verify-guards fn-cp-authority-namespace)
+(verify-guards fn-cp-account-creation)
 (verify-guards fn-cp-cursor)
 (verify-guards fn-cp-cursorp)
 (verify-guards fn-cp-id-bytes)
@@ -555,6 +614,7 @@
 (verify-guards fn-cp-authority-find)
 (verify-guards fn-cp-authority-rowp)
 (verify-guards fn-cp-authority-rowsp)
+(verify-guards fn-cp-account-preparationp)
 (verify-guards fn-cp-adoptionp)
 (verify-guards fn-cp-authorityp)
 (verify-guards fn-cp-state-carry)
