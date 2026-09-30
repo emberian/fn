@@ -2084,6 +2084,9 @@
                    (own-article-octets nil "fn.letters" nil)))
 (assert-event (fn-own-feed-any-matchp "fn.*" (fn-own-feed-groups-of
                                              (own-sub-octets-of *own-ordinary-c*))))
+; PRF-163: fn-own-sub-feed-groups-of-an-ordinary-article. The actual ordinary
+; submission below checks its complete non-control hypothesis and exact
+; unchanged base-group conclusion; this names an existing complete witness.
 (assert-event (equal (fn-own-feed-control-of (own-sub-octets-of *own-ordinary-c*)) :ordinary))
 (assert-event (equal (fn-own-sub-feed-groups (fn-own-inflight *own-ordinary-c*))
                      (fn-own-sub-feed-base-groups (fn-own-inflight *own-ordinary-c*))))
