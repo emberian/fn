@@ -25404,7 +25404,12 @@
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "plan",
+          "true-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -25421,7 +25426,12 @@
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "plan",
+          "true-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -25455,7 +25465,12 @@
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "plan",
+          "true-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -25523,7 +25538,16 @@
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "h",
+          "natp"
+        ],
+        [
+          "i",
+          "natp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,

@@ -4844,18 +4844,22 @@
 (definterface fn-owner-page-window-executor-return :class :common-lisp-compliant)
 (definterface fn-owner-page-window-executor-release :class :common-lisp-compliant
   :keystones ((fn-pwx-release-requires-exact-returned-window-and-slot :via fn-pwx-release)))
-(definterface fn-owner-page-window-byte :class :common-lisp-compliant)
+(definterface fn-owner-page-window-byte :class :common-lisp-compliant
+  :kinds ((plan true-listp)))
 
-(definterface fn-owner-page-window-byte-at :class :common-lisp-compliant)
+(definterface fn-owner-page-window-byte-at :class :common-lisp-compliant
+  :kinds ((plan true-listp)))
 (definterface fn-pwr-cold-descriptor :class :common-lisp-compliant)
 
-(definterface fn-owner-page-window-outcome :class :common-lisp-compliant)
+(definterface fn-owner-page-window-outcome :class :common-lisp-compliant
+  :kinds ((plan true-listp)))
 
 (definterface fn-owner-page-window-executor-cancel :class :common-lisp-compliant)
 (definterface fn-owner-page-window-executor-settle-cancelled :class :common-lisp-compliant)
 (definterface fn-owner-page-window-work-permittedp :class :common-lisp-compliant)
 
-(definterface fn-owner-page-window-current-octet :class :common-lisp-compliant)
+(definterface fn-owner-page-window-current-octet :class :common-lisp-compliant
+  :kinds ((h natp) (i natp)))
 (definterface fn-owner-page-window-decoded-refusal :class :common-lisp-compliant)
 
 ; Exact private cache declarations imported from 4b9be704b.
