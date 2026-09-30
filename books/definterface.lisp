@@ -22,6 +22,10 @@
 ;                                   ; extractor's EXTRA functions
 ;     [:direct "why"]               ; the raw host applies it directly, not
 ;                                   ; through fnn-call's entry guard
+;     [:raw-guarded (ARITY INPUT-STOBJ-SLOTS OUTPUT-STOBJ-SLOTS)]
+;                                   ; compiled callback with guard T or only
+;                                   ; its own supplied stobj recognizers;
+;                                   ; no invariant or relational guard
 ;     [:raw-with (THM ...)])        ; RAW DISPATCH (D40): the host calls the
 ;                                   ; guard-verified definition, not its
 ;                                   ; executable counterpart; THM ... is the

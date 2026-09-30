@@ -13,6 +13,9 @@
 (defun rg-invariant (rg-test)
  (declare (xargs :stobjs rg-test :guard (natp (rg-value rg-test))))
  (rg-value rg-test))
+(defun rg-field-guard (rg-test)
+ (declare (xargs :stobjs rg-test :guard (rg-value rg-test)))
+ (rg-value rg-test))
 (defun rg-program (x) (declare (xargs :mode :program)) x)
 (definterface create-rg-test :class :common-lisp-compliant
  :raw-guarded (0 () (rg-test)))
@@ -23,6 +26,7 @@
 (must-fail (definterface rg-kind :class :common-lisp-compliant :raw-guarded (1 (nil) (nil))))
 (must-fail (definterface rg-relation :class :common-lisp-compliant :raw-guarded (2 (nil nil) (nil))))
 (must-fail (definterface rg-invariant :class :common-lisp-compliant :raw-guarded (1 (rg-test) (nil))))
+(must-fail (definterface rg-field-guard :class :common-lisp-compliant :raw-guarded (1 (rg-test) (nil))))
 (must-fail (definterface rg-program :class :program :raw-guarded (1 (nil) (nil))))
 (must-fail (definterface rg-step :class :common-lisp-compliant :raw-guarded (1 (rg-test) (nil rg-test))))
 (must-fail (definterface rg-step :class :common-lisp-compliant :raw-guarded (2 (nil nil) (nil rg-test))))

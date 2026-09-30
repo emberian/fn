@@ -1170,6 +1170,13 @@ offered to the writer while the owner runs (PKT-508), else written here."
 ;;; dispatch, exactly as before; what raw dispatch skips is the carried
 ;;; conjuncts alone.
 ;;;
+;;; A :raw-guarded callback instead has only T or exact recognizers of its
+;;; supplied stobjs in its guard. Its declaration records the input arity
+;;; and input/output stobj slots; the world validator checks all three and
+;;; the installer requires a compiled definition. Callers must still supply
+;;; genuine stobj instances. This route carries no invariant exemption and
+;;; cannot be combined with :raw-with.
+;;;
 ;;; The table is derived from the loaded world at image build
 ;;; (fnn-install-raw-dispatch, called by host/native/build.lisp after this
 ;;; file loads): each `:raw-with' entry of the `fn-interfaces' table, refused
@@ -1210,9 +1217,9 @@ the :raw-with and :raw-guarded entries, checked against the world; the count."
                      name problem)))
           (let ((raw (find-symbol (symbol-name name) "ACL2")))
             (unless (and raw (fboundp raw))
-              (error "fnn-install-raw-dispatch: ~a is declared :raw-with but has no raw definition" name))
+              (error "fnn-install-raw-dispatch: ~a has a raw declaration but no raw definition" name))
             (unless (eq (symbol-class name wrld) :common-lisp-compliant)
-              (error "fnn-install-raw-dispatch: ~a is declared :raw-with but is ~a, not guard-verified"
+              (error "fnn-install-raw-dispatch: ~a has a raw declaration but is ~a, not guard-verified"
                      name (symbol-class name wrld)))
             (when (and guarded (not (compiled-function-p (symbol-function raw))))
               (error "fnn-install-raw-dispatch: ~a has no compiled guarded callback" name))
