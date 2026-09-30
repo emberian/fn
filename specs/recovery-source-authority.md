@@ -56,3 +56,5 @@ metadata without a new generation; the old token then refuses with unchanged
 STATE. Every new decode entry advances the generation. No graph equality is
 used to establish either fence. The exact source and recording scope are in
 `planning/evidence/recovery-source-live-metadata-2026-09-30/coordinate.json`.
+
+The sized observer calls the actual public observation once, then records fixed-six carry metadata only against its exact `:counted` successor and issued epoch/loader generation. The final installer reads `fn-owner-recovery-source-sized-readout` internally using its frozen token. Native must never supply final fields or refresh a stale token. A legitimate seed observation before the suffix loop can advance the issuer serial without replay, including an empty suffix. Unavailable metadata leaves replay usable but canonical readiness unavailable. Source and recording evidence is `planning/evidence/recovery-sized-observer-source-2026-09-30/coordinate.json`.
