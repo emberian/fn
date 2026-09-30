@@ -413,6 +413,25 @@ class TwoNodeConsumerExchangeScenario:
         restart = {"report_sha256": sha(probe_report.read_bytes()),
                    "cursor_sha256": sha(probe_cursor.read_bytes()), "acked": acked}
 
+        # PKT-255's stale acknowledgement across the real exchange:
+        # unregister/re-register the same name, then deliver the old ACK.
+        # Neither a matching endpoint nor query can revive the prior epoch.
+        self.native("consumer", "unregister", b.control, "probe")
+        fresh = self.root / "probe-new-registration.fncu"
+        self.native("consumer", "register", b.control, "probe", "fn.test", fresh)
+        new_position = fresh.read_bytes()
+        self.assertNotEqual(new_position, again_cursor.read_bytes())
+        refused = self.native("consumer", "ack", b.control, again_cursor, expected=1)
+        self.assertIn(b"consumer refused scope", refused.stdout)
+        after_refusal = self.root / "probe-after-stale-ack.fncu"
+        self.native("consumer", "position", b.control, "probe", after_refusal)
+        self.assertEqual(after_refusal.read_bytes(), new_position)
+        self.assertEqual(self.status(b, "probe")[0], 0)
+        restart["stale_ack_after_reregister"] = {
+            "outcome": refused.stdout.decode("ascii", "replace").strip(),
+            "new_cursor_sha256": sha(new_position),
+            "position_unchanged": True}
+
         # Cut 1: B dies inside its transaction; B's database holds nothing,
         # B's position did not move.
         self.consumer(agent_b, "wake", cut="in-transaction", expected=97)
