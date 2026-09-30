@@ -14,6 +14,21 @@
              '(:unavailable :remote-operation-entry-installer))))
 ; Actual current getter/STATE caller executions. These are source-world
 ; unavailable observations, not TLS/native listener or installed authority.
-(fn-owner-remote-operation-preflight :remote-header fn-page-read-pool state)
-(fn-owner-remote-operation-preflight :remote-frame fn-page-read-pool state)
-(fn-owner-remote-operation-preflight :owner-admin fn-page-read-pool state)
+(make-event
+ (mv-let (erp answer state)
+  (fn-owner-remote-operation-preflight :remote-header fn-page-read-pool state)
+  (if (and (not erp) (equal answer '(:unavailable :remote-operation-source)))
+      (value '(value-triple :passed))
+    (er soft 'remote-header "Unexpected actual preflight ~x0" answer))))
+(make-event
+ (mv-let (erp answer state)
+  (fn-owner-remote-operation-preflight :remote-frame fn-page-read-pool state)
+  (if (and (not erp) (equal answer '(:unavailable :remote-operation-source)))
+      (value '(value-triple :passed))
+    (er soft 'remote-frame "Unexpected actual preflight ~x0" answer))))
+(make-event
+ (mv-let (erp answer state)
+  (fn-owner-remote-operation-preflight :owner-admin fn-page-read-pool state)
+  (if (and (not erp) (equal answer '(:refused :remote-operation-kind)))
+      (value '(value-triple :passed))
+    (er soft 'remote-private "Unexpected actual preflight ~x0" answer))))
