@@ -1,0 +1,13 @@
+; Logical relation for item-length provenance, never a served list validation.
+(in-package "ACL2")
+(include-book "statement-items")
+(defun fn-stmt-item-sizes-correspondsp (items sizes)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp items)
+      (and (consp sizes)
+           (equal (car sizes)
+                  (if (equal (car (car items)) :bytes)
+                      (len (cdr (car items))) nil))
+           (fn-stmt-item-sizes-correspondsp (cdr items) (cdr sizes)))
+    (and (null items) (null sizes))))
+(in-theory (disable fn-stmt-item-sizes-correspondsp))

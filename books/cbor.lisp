@@ -312,11 +312,34 @@
 
 (verify-guards fn-cbor-decode-unsigned)
 
-(defun fn-cbor-decode-bytes-bounded (additional tail max-bytes)
+(defun fn-cbor-decode-bytes-sized-bounded (additional tail max-bytes)
   (declare (xargs :guard (and (natp additional)
                               (fn-cbor-octet-listp tail)
                               (natp max-bytes))))
   (let ((argument (fn-cbor-decode-argument additional tail)))
+    (if (not (fn-cbor-result-okp argument))
+        (mv argument nil)
+      (let ((length (fn-cbor-result-value argument))
+            (content (fn-cbor-result-rest argument)))
+        (if (not (fn-cbor-canonical-argumentp additional length))
+            (mv (fn-cbor-error :noncanonical) nil)
+          ; This check precedes TAKE, so a declared length outside the caller's
+          ; profile cannot drive allocation.  The legacy entry point below
+          ; supplies *fn-cbor-max-bytes* and therefore keeps its exact domain.
+          (if (< max-bytes length)
+              (mv (fn-cbor-error :limit) nil)
+            (if (fn-cbor-at-leastp content length)
+                (mv (fn-cbor-ok (cons :bytes (take length content))
+                                (nthcdr length content)) length)
+              (mv (fn-cbor-error :truncated) nil))))))))
+
+(verify-guards fn-cbor-decode-bytes-sized-bounded)
+
+; Compatibility is the first result of the SAME parse. The second result
+; names the declared length used by TAKE, never a scan of its allocated value.
+(defun fn-cbor-decode-bytes-bounded (additional tail max-bytes)
+  (declare (xargs :guard (and (natp additional) (fn-cbor-octet-listp tail) (natp max-bytes)) :verify-guards nil))
+  (mbe :logic (let ((argument (fn-cbor-decode-argument additional tail)))
     (if (not (fn-cbor-result-okp argument))
         argument
       (let ((length (fn-cbor-result-value argument))
@@ -331,9 +354,43 @@
             (if (fn-cbor-at-leastp content length)
                 (fn-cbor-ok (cons :bytes (take length content))
                             (nthcdr length content))
-              (fn-cbor-error :truncated))))))))
-
+              (fn-cbor-error :truncated)))))))
+       :exec (mv-let (result size)
+                 (fn-cbor-decode-bytes-sized-bounded additional tail max-bytes)
+               (declare (ignore size)) result)))
 (verify-guards fn-cbor-decode-bytes-bounded)
+
+
+
+(local
+ (defthm fn-cbor-sized-len-take
+   (equal (len (take n xs)) (nfix n))
+   :hints (("Goal" :induct (take n xs) :in-theory (enable take)))))
+(local
+ (defthm fn-cbor-sized-argument-natural
+   (implies (and (natp additional) (fn-cbor-octet-listp tail)
+                 (fn-cbor-result-okp (fn-cbor-decode-argument additional tail)))
+            (natp (fn-cbor-result-value (fn-cbor-decode-argument additional tail))))
+   :hints (("Goal" :in-theory (enable fn-cbor-decode-argument
+                                     fn-cbor-u16-from fn-cbor-u32-from
+                                     fn-cbor-octet-listp fn-cbor-octetp)))))
+
+(defthm fn-cbor-byte-size-is-allocated-length
+  (implies (and (natp additional) (fn-cbor-octet-listp tail)
+                (fn-cbor-result-okp
+                 (mv-nth 0 (fn-cbor-decode-bytes-sized-bounded
+                            additional tail max-bytes))))
+           (and (natp (mv-nth 1 (fn-cbor-decode-bytes-sized-bounded
+                                additional tail max-bytes)))
+                (equal (mv-nth 1 (fn-cbor-decode-bytes-sized-bounded
+                                  additional tail max-bytes))
+                       (len (cdr (fn-cbor-result-value
+                                   (mv-nth 0 (fn-cbor-decode-bytes-sized-bounded
+                                              additional tail max-bytes))))))))
+  :hints (("Goal" :use fn-cbor-sized-argument-natural
+           :in-theory (e/d (fn-cbor-decode-bytes-sized-bounded)
+                           (fn-cbor-sized-argument-natural fn-cbor-decode-argument fn-cbor-at-leastp
+                            fn-cbor-canonical-argumentp take nthcdr)))))
 
 (defun fn-cbor-decode-bytes (additional tail)
   (declare (xargs :guard (and (natp additional)
@@ -344,10 +401,24 @@
 
 ; A one-item streaming decoder.  Its explicit input maximum gives a fixed
 ; bound on list traversal, decoded byte allocation, and returned remainder.
-(defun fn-cbor-decode-prechecked (octets item-budget)
+(defun fn-cbor-decode-sized-prechecked (octets item-budget)
   (declare (xargs :guard (and (fn-cbor-octet-listp octets)
                               (natp item-budget))))
   (if (not (consp octets))
+      (mv (fn-cbor-error :truncated) nil)
+    (let ((head (car octets)))
+      (if (< head 32)
+          (mv (fn-cbor-decode-unsigned head (cdr octets)) nil)
+        (if (and (< 63 head) (< head 96))
+            (fn-cbor-decode-bytes-sized-bounded (- head 64) (cdr octets)
+                                          item-budget)
+          (mv (fn-cbor-error :unsupported) nil))))))
+
+(verify-guards fn-cbor-decode-sized-prechecked)
+
+(defun fn-cbor-decode-prechecked (octets item-budget)
+  (declare (xargs :guard (and (fn-cbor-octet-listp octets) (natp item-budget)) :verify-guards nil))
+  (mbe :logic (if (not (consp octets))
       (fn-cbor-error :truncated)
     (let ((head (car octets)))
       (if (< head 32)
@@ -355,9 +426,61 @@
         (if (and (< 63 head) (< head 96))
             (fn-cbor-decode-bytes-bounded (- head 64) (cdr octets)
                                           item-budget)
-          (fn-cbor-error :unsupported))))))
-
+          (fn-cbor-error :unsupported)))))
+       :exec (mv-let (result size) (fn-cbor-decode-sized-prechecked octets item-budget) (declare (ignore size)) result)))
 (verify-guards fn-cbor-decode-prechecked)
+
+
+
+(local
+ (defthm fn-cbor-sized-bytes-tag-by-definition
+   (implies (fn-cbor-result-okp
+             (mv-nth 0 (fn-cbor-decode-bytes-sized-bounded additional tail max-bytes)))
+            (equal (car (fn-cbor-result-value
+                         (mv-nth 0 (fn-cbor-decode-bytes-sized-bounded
+                                    additional tail max-bytes)))) :bytes))
+   :hints (("Goal" :in-theory
+            (e/d (fn-cbor-decode-bytes-sized-bounded)
+                 (fn-cbor-decode-argument fn-cbor-at-leastp
+                  fn-cbor-canonical-argumentp take nthcdr))))))
+
+(defthm fn-cbor-sized-item-length-corresponds
+  (implies (and (fn-cbor-octet-listp octets)
+                (fn-cbor-result-okp
+                 (mv-nth 0 (fn-cbor-decode-sized-prechecked octets item-budget))))
+           (if (equal (car (fn-cbor-result-value
+                            (mv-nth 0 (fn-cbor-decode-sized-prechecked
+                                       octets item-budget)))) :bytes)
+               (and (natp (mv-nth 1 (fn-cbor-decode-sized-prechecked
+                                     octets item-budget)))
+                    (equal (mv-nth 1 (fn-cbor-decode-sized-prechecked
+                                       octets item-budget))
+                           (len (cdr (fn-cbor-result-value
+                                      (mv-nth 0 (fn-cbor-decode-sized-prechecked
+                                                 octets item-budget)))))))
+             (equal (mv-nth 1 (fn-cbor-decode-sized-prechecked
+                               octets item-budget)) nil)))
+  :hints (("Goal"
+           :use ((:instance fn-cbor-sized-bytes-tag-by-definition
+                            (additional (- (car octets) 64))
+                            (tail (cdr octets)) (max-bytes item-budget))
+                 (:instance fn-cbor-byte-size-is-allocated-length
+                            (additional (- (car octets) 64))
+                            (tail (cdr octets)) (max-bytes item-budget)))
+           :in-theory
+           (e/d (fn-cbor-decode-sized-prechecked fn-cbor-decode-unsigned)
+                (fn-cbor-sized-bytes-tag-by-definition
+                 fn-cbor-byte-size-is-allocated-length
+                 fn-cbor-decode-bytes-sized-bounded fn-cbor-decode-argument
+                 fn-cbor-canonical-argumentp)))))
+
+(defthm fn-cbor-sized-projection-by-definition
+  (equal (mv-nth 0 (fn-cbor-decode-sized-prechecked octets item-budget))
+         (fn-cbor-decode-prechecked octets item-budget))
+  :hints (("Goal" :in-theory (e/d (fn-cbor-decode-prechecked fn-cbor-decode-sized-prechecked
+                 fn-cbor-decode-bytes-bounded fn-cbor-decode-bytes-sized-bounded)
+                (fn-cbor-decode-argument fn-cbor-decode-unsigned
+                 fn-cbor-at-leastp fn-cbor-canonical-argumentp take nthcdr)))))
 
 (defun fn-cbor-decode-bounded (octets input-budget item-budget)
   (declare (xargs :guard (and (natp input-budget) (natp item-budget))))
@@ -540,6 +663,8 @@
     (:d fn-cbor-canonical-argumentp)
     (:d fn-cbor-encode-argument) (:d fn-cbor-encode-bounded) (:d fn-cbor-encode)
     (:d fn-cbor-decode-argument) (:d fn-cbor-decode-unsigned)
+    (:d fn-cbor-decode-bytes-sized-bounded)
+    (:d fn-cbor-decode-sized-prechecked)
     (:d fn-cbor-decode-bytes-bounded) (:d fn-cbor-decode-bytes)
     (:d fn-cbor-decode-prechecked) (:d fn-cbor-decode-bounded)
     (:d fn-cbor-decode) (:d fn-cbor-decode-exact)
@@ -571,3 +696,6 @@
 (in-theory (disable (:definition fn-cbor-decode)
                     (:definition fn-cbor-decode-bounded)
                     (:definition fn-cbor-decode-prechecked)))
+
+(in-theory (disable fn-cbor-decode-sized-prechecked
+                    fn-cbor-decode-bytes-sized-bounded))
