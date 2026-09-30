@@ -475,6 +475,31 @@
   :hints (("Goal" :in-theory (disable fn-pset-edit fn-cfg-peer-of-rows
                                       fn-cfg-peer-rows))))
 
+(local
+ (defthm fn-pset-peer-rows-without-adoption-receipts
+   (equal (fn-par-without-receipts (fn-cfg-peer-rows p))
+          (fn-cfg-peer-rows p))
+   :hints (("Goal" :in-theory
+            (union-theories
+             '(car-cons cdr-cons
+               fn-cfg-peer-rows fn-cfg-row-make fn-cfg-peer-trust-row
+               fn-par-without-receipts-of-append fn-par-without-receipts
+               fn-par-receipt-rowp fn-par-receipt-slotp fn-par-field)
+             (union-theories (theory 'minimal-theory)
+                            (executable-counterpart-theory :here)))))))
+
+(local
+ (defthm fn-pset-receipt-filter-commutes-with-key
+   (equal (fn-cfg-rows-with-key (fn-par-without-receipts rows) key)
+          (fn-par-without-receipts (fn-cfg-rows-with-key rows key)))
+   :hints (("Goal" :induct (fn-par-without-receipts rows)
+            :in-theory (enable fn-par-without-receipts fn-cfg-rows-with-key)))))
+(local
+ (defthm fn-pset-receipt-filter-is-a-true-list
+   (true-listp (fn-par-without-receipts rows))
+   :hints (("Goal" :induct (fn-par-without-receipts rows)
+            :in-theory (enable fn-par-without-receipts)))))
+
 ;  KEYSTONE (row S5).  An accepted `peer set' leaves the peer's row group
 ; exactly the edited record's rows followed by the extension rows the group
 ; held (pull, catch-up, carries, budget, feed pause, distributions), and the
@@ -483,8 +508,27 @@
 ; (fn-pset-edit-is-a-peer-record).  The subject is the delta the host
 ; applies: host/native-admin-host.lisp reaches it through
 ; books/native-admin.lisp `fn-native-admin-plan-deltas-over'.
-(defthm fn-pset-plan-sets-the-record-and-keeps-the-extensions
+(defthm fn-pset-plan-keeps-ordinary-extensions-and-invalidates-receipt
   (implies (equal (car (fn-pset-plan name opts peers)) :ok)
+           (equal (fn-cfg-rows-with-key
+                   (fn-cfg-peers (fn-cfg-apply-delta
+                                  v gen stamp
+                                  (car (cadr (fn-pset-plan name opts peers)))))
+                   name)
+                  (append (fn-cfg-peer-rows
+                           (cadr (fn-pset-edit (fn-cfg-peer-find name peers) opts)))
+                          (fn-par-without-receipts
+                           (fn-pset-extension-rows (fn-cfg-rows-with-key peers name))))))
+  :hints (("Goal" :in-theory (e/d (fn-cfg-apply-delta fn-cfg-set-peer
+                                   fn-cfg-peer-find)
+                                  (fn-pset-edit fn-cfg-peer-of-rows
+                                   fn-cfg-peer-rows)))))
+
+; The original equation holds only where no receipt extensions are present.
+(defthm fn-pset-plan-sets-the-record-and-keeps-the-extensions
+  (implies (and (equal (car (fn-pset-plan name opts peers)) :ok)
+                (fn-par-receipt-freep
+                 (fn-pset-extension-rows (fn-cfg-rows-with-key peers name))))
            (equal (fn-cfg-rows-with-key
                    (fn-cfg-peers (fn-cfg-apply-delta
                                   v gen stamp
@@ -494,10 +538,7 @@
                            (cadr (fn-pset-edit (fn-cfg-peer-find name peers) opts)))
                           (fn-pset-extension-rows
                            (fn-cfg-rows-with-key peers name)))))
-  :hints (("Goal" :in-theory (e/d (fn-cfg-apply-delta fn-cfg-set-peer
-                                   fn-cfg-peer-find)
-                                  (fn-pset-edit fn-cfg-peer-of-rows
-                                   fn-cfg-peer-rows)))))
+  :hints (("Goal" :in-theory (disable fn-cfg-apply-delta fn-cfg-set-peer fn-pset-plan))))
 
 ;; ---------------------------------------------------------------------------
 ;; The login file round trip

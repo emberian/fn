@@ -3015,3 +3015,18 @@ Transit additionally computes the versioned `relay-v1` legacy article subject
 Path/Xref routing variants share that subject while their stored-byte
 commitments remain distinct. This does not change duplicate/conflict
 binding semantics until the durable article-subject column lands.
+
+### Current-inviter crash retry (PKT497, PRF-1151, SCN-1055)
+
+Accepting an addressed invitation from an already current inviter atomically
+carries an internal adoption receipt in the configuration delta. The receipt
+binds the invitation authored-source ID, accepting store genesis node and
+history salt, peer-specific adoption generation and current inviter key
+generation. Repeating the same verified invitation with that exact current
+peer/key binding returns resume and creates no second configuration or
+enrollment. Unrelated configuration edits preserve the receipt; ordinary
+mutations of that peer invalidate it atomically, including copied extensions.
+The internal `:accept-peer` delta is not an external administrator verb.
+Source-ID equality is a digest comparison; equality of arbitrary signed source
+bytes requires the explicit A-CRYPTO collision premise. Source admission does
+not qualify disk persistence, real signatures or matching-image crash cuts.

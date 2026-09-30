@@ -671,6 +671,20 @@
                                   (fn-cfg-peer-rows fn-cfg-peerp
                                    fn-record-string-octets)))))
 
+ ; Ordinary peer constructors never manufacture internal adoption evidence.
+(local
+ (defthm fn-cfg-peer-rows-without-adoption-receipts
+   (equal (fn-par-without-receipts (fn-cfg-peer-rows p))
+          (fn-cfg-peer-rows p))
+   :hints (("Goal" :in-theory
+            (union-theories
+             '(car-cons cdr-cons
+               fn-cfg-peer-rows fn-cfg-row-make fn-cfg-peer-trust-row
+               fn-par-without-receipts-of-append fn-par-without-receipts
+               fn-par-receipt-rowp fn-par-receipt-slotp fn-par-field)
+             (union-theories (theory 'minimal-theory)
+                            (executable-counterpart-theory :here)))))))
+
 ; After (:set-peer p) the peers slot holds exactly p's rows under its name:
 ; the upsert replaced the old group and nothing else carries the key.
 (defthm fn-cfg-peer-rows-after-set-peer

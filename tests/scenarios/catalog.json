@@ -7026,6 +7026,34 @@
         "tests/native/page-window-lifecycle.lisp"
       ],
       "execution_scope": "Source model/adapter and staged raw wrapper only. Actual native observation, adequate native demand and served activation remain pending."
+    },
+    {
+      "id": "SCN-1055",
+      "title": "Same current-inviter invitation resumes after durable configuration cut",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-017"
+      ],
+      "steps": [
+        "Use source-matched scratch production and developer images; enroll inviter keys, receive an addressed verified invitation, die after configuration and before acceptance publication.",
+        "Restart, apply an unrelated configuration edit, retry the exact invitation, confirm the produced acceptance."
+      ],
+      "expected": [
+        "Retry returns accepted and publishes acceptance without another configuration or enrollment; exact durable configuration and key history are unchanged by retry.",
+        "Different invitation, accepting incarnation, current keys or affected peer mutation cannot reuse receipt."
+      ],
+      "evidence": [
+        "tests/test_native_peer_invite.py",
+        "tests/acl2/peer-invite-retry-tests.lisp"
+      ],
+      "implementation": {
+        "test": "tests.test_native_peer_invite",
+        "cases": [
+          "NativePeerInviteTests.test_current_inviter_accept_resumes_after_configuration_cut"
+        ],
+        "native": true
+      }
     }
   ]
 }

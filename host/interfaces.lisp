@@ -4880,3 +4880,7 @@
 
 (definterface fn-pvl-runtime-step :class ::common-lisp-compliant)
 (definterface fn-owner-payload-view-owned-p :class :program)
+
+(definterface fn-par-host-accept-record-plan
+  :class ::common-lisp-compliant
+  :delegates fn-par-accept-record-plan)

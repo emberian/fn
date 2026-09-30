@@ -406,3 +406,7 @@ anything a book does not already decide.
 - `pgs-dcs-`: proof-only complete page/byte digest cursor semantics and progress
   (`pagestore-digest-cursor-semantics.lisp`); source spans and potentials never
   execute on the served path.
+
+- `fn-par-`: peer adoption receipt filtering, authenticated retry decision and
+  affected-peer invalidation (`peer-adoption-receipt-rows`,
+  `peer-adoption-invalidation`, `peer-invite-retry`); peer-specific source scope.

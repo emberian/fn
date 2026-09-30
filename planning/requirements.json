@@ -2506,7 +2506,9 @@
         "books/config.lisp",
         "tests/acl2/peer-invite-tests.lisp",
         "host/native/peer-invite.lisp",
-        "planning/evidence/peer-invite-2026-09-25.md"
+        "planning/evidence/peer-invite-2026-09-25.md",
+        "books/peer-invite-retry.lisp",
+        "tests/acl2/peer-invite-retry-tests.lisp"
       ],
       "implementation_note": "A stronger fn guarantee over RFC 3977/5537, which say nothing about how peers agree: the spike's JSON invitation state is a configuration slot (delta kinds 13 and 14) with once-only consumption, and every decision is ACL2's. The peer record stays `peer add`; the owner's key-statement executor and succession-era invitations are other lanes' (PRF-098)."
     },

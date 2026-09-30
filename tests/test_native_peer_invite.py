@@ -22,6 +22,7 @@ import subprocess
 import unittest
 
 from tests import native_harness
+from tests.native_image_provenance import assert_same_published_source
 from tests.native_harness import EXIT_OK, EXIT_REFUSED, Node, native_image, run, scratch
 
 IMAGE = native_image("FN_NATIVE_HOST")
@@ -342,6 +343,50 @@ class NativePeerInviteTests(unittest.TestCase):
         self.assertIn("generation=2 state=active principal={}".format(pb), after)
         self.assertEqual(len(after), 2)
 
+    def test_current_inviter_accept_resumes_after_configuration_cut(self):
+        """PKT497: current keys survive the durable peer-record cut; retry
+        writes the acceptance without another peer record or enrollment."""
+        assert_same_published_source(self, IMAGE, self.developer())
+        a = InviteNode(self, self.root, "A-retry")
+        b = InviteNode(self, self.root, "B-retry", image=self.developer())
+        keys_a, principal = self.keys("retry-a", a)
+        keys_b, _ = self.keys("retry-b", b)
+        a.start()
+        b.start()
+        self.hybrid("hybrid-enroll-next", str(b.control),
+                    str(keys_a / "principal.bin"), str(keys_a / "ed-public.bin"),
+                    str(keys_a / "ml-public.pem"))
+        b.stop()
+        before = [line for line in b.key_history() if principal in line]
+        b.start(env={"FN_PEER_TEST_STOP_AFTER_CONFIGURE": "1"})
+        invitation = self.root / "inv-retry"
+        acceptance = self.root / "acc-retry"
+        self.run_ok(a, "peer", "invite", "retryB", "fn.*", "127.0.0.1",
+                    str(b.port), "retry.example", str(keys_a), str(invitation),
+                    "127.0.0.1", str(a.port))
+        died = b.operator("peer", "accept", str(invitation), str(keys_b),
+                          "acceptor.example", "-", str(acceptance))
+        self.assertNotEqual(died.returncode, EXIT_OK, out(died))
+        self.assertEqual(b.process.wait(timeout=60), 137)
+        b.process.finish()
+        self.assertFalse(acceptance.exists())
+        b.start()
+        self.run_ok(b, "group", "create", "fn.unrelated")
+        b.stop()
+        adopted_config = out(b.invoke("store", b.store_path, "config", expect=EXIT_OK))
+        b.start()
+        peers = out(b.operator("peer", "list"))
+        self.assertIn("retry.example", peers)
+        self.run_ok(b, "peer", "accept", str(invitation), str(keys_b),
+                    "acceptor.example", "-", str(acceptance))
+        self.assertTrue(acceptance.is_file())
+        self.assertEqual(out(b.operator("peer", "list")), peers)
+        self.run_ok(a, "peer", "confirm", str(acceptance), str(invitation))
+        a.stop()
+        b.stop()
+        self.assertEqual([line for line in b.key_history() if principal in line], before)
+        self.assertEqual(out(b.invoke("store", b.store_path, "config", expect=EXIT_OK)), adopted_config)
+
     def test_a_succeeded_inviter_known_here_is_accepted_by_name(self):
         """PKT-473 (PRF-184, SCN-113): A enrolled at B under its genesis keys
         and then succeeded (generation 2 at B and on A's own node).  A invites
@@ -350,8 +395,8 @@ class NativePeerInviteTests(unittest.TestCase):
         (`peer accept: the inviter's current keys; nothing to enrol`), and
         B's keyring-less CLI still writes the acceptance (it reads the words
         the owner's plan verified, never a `genesis` check of its own).  A
-        confirms it.  The same invitation again at B is refused
-        `already-enrolled` (a replay: the peer is configured, nothing to do)."""
+        confirms it.  The same invitation at B resumes its committed adoption
+        receipt without another configuration record or enrollment."""
         a, b = (InviteNode(self, self.root, n) for n in ("A5", "B5"))
         keys_a, pa = self.keys("a5", a)
         keys_b, pb = self.keys("b5", b)
@@ -376,14 +421,15 @@ class NativePeerInviteTests(unittest.TestCase):
         self.assertIn("a5.example path-identity=a5.example address=127.0.0.1 port={}"
                       .format(a.port), listed_b)
         self.assertIn(pa, listed_b)
-        self.refused(b, ("peer", "accept", str(inv), str(keys_b), "b5.example", "-",
-                         str(self.root / "acc-a5-again")), "already-enrolled")
+        self.run_ok(b, "peer", "accept", str(inv), str(keys_b), "b5.example", "-",
+                    str(self.root / "acc-a5-again"))
+        self.assertEqual(out(b.operator("peer", "list")), listed_b)
         self.run_ok(a, "peer", "confirm", str(acc), str(inv))
         self.assertIn("nodeB5", out(a.operator("peer", "list")))
         log_b = self.stop_with_log(b)
         a.stop()
         self.assertIn("peer accept: the inviter's current keys; nothing to enrol", log_b)
-        self.assertIn("peer accept refused: already-enrolled", log_b)
+        self.assertIn("peer accept: resumed committed inviter adoption", log_b)
         history = [line for line in b.key_history() if pa in line]
         print("NATIVE-PEER-INVITE B5 key history for A:", history)
         self.assertEqual(history, ["generation=2 state=active principal={}".format(pa),

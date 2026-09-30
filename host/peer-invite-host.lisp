@@ -2,6 +2,7 @@
 ; Every decision is the book's; these wrappers only name it for the image.
 (in-package "ACL2")
 (include-book "../books/peer-invite")
+(include-book "../books/peer-invite-retry")
 
 (defun fn-pinv-host-observation-subject (received)
   (declare (xargs :mode :program))
@@ -37,6 +38,12 @@
                                                  peers)
   (declare (xargs :mode :program))
   (fn-pinv-accept-record-plan received observed-ml ed ml snapshots peers))
+
+ ; PKT497: committed adoption receipt decides a crash retry in ACL2.
+(defun fn-par-host-accept-record-plan (received observed-ml ed ml snapshots
+                                             peers ident generation)
+  (declare (xargs :mode :logic :guard t))
+  (fn-par-accept-record-plan received observed-ml ed ml snapshots peers ident generation))
 
 (defun fn-pinv-host-acceptance-source (date-ms received observed-ml ed ml
                                                principal token keys path

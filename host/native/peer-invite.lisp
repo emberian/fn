@@ -127,13 +127,16 @@ fn-pinv-accept-record-plan); the enrolment follows it."
        (unless observed
          (return-from fnn-pinv-owner-accept
            (fnn-pinv-refused :accept '(:refused :carrier))))
-       (let ((plan (apply #'fnn-core 'fn-pinv-host-accept-record-plan received
-                          (append observed
-                                  (list (fnn-owner-core
-                                         'fn-owner-hybrid-snapshots)
-                                        (fnn-owner-core
-                                         'fn-pinv-host-owner-peers))))))
+       (let ((plan (fnn-core 'fn-par-host-accept-record-plan received
+                              (first observed) (second observed) (third observed)
+                              (fnn-owner-core 'fn-owner-hybrid-snapshots)
+                              (fnn-owner-core 'fn-pinv-host-owner-peers)
+                              (fnn-owner-core 'fn-store-genesis-ident)
+                              (fnn-owner-core 'fn-owner-config-generation))))
          (case (first plan)
+           (:resume
+            (fnn-err "peer accept: resumed committed inviter adoption; nothing to configure or enrol")
+            (return-from fnn-pinv-owner-accept :accepted))
            (:configure
             (let ((published
                     (fnn-owner-live-reconfigure-locked
@@ -208,7 +211,9 @@ the enrolment follows it."
                                         (fnn-owner-core
                                          'fn-owner-hybrid-snapshots)
                                         (fnn-owner-core
-                                         'fn-pinv-host-owner-peers))))))
+                                         'fn-pinv-host-owner-peers)
+                                        (fnn-owner-core 'fn-store-genesis-ident)
+                                        (fnn-owner-core 'fn-owner-config-generation))))))
          (case (first plan)
            (:configure
             (let ((published

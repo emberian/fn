@@ -32,6 +32,7 @@
 (include-book "rev-onto") ; the loop twins' step (PKT-877)
 (include-book "clock-unit")
 (include-book "defevent") ; the delta kinds' stable codes, one form
+(include-book "peer-adoption-receipt-rows")
 
 ; Nothing in this book opens the CBOR or record codec: every definition here
 ; is `:guard t', and the ground witnesses at the end are decided by
@@ -1041,7 +1042,8 @@
     :add-peer-rows :remove-peer-rows :set-group-description
     :set-group-status :account-access :set-group-moderation
     :consumer-bind
-    :set-default-subscriptions :withdraw-article :account-delete :set-group-authority))
+    :set-default-subscriptions :withdraw-article :account-delete :set-group-authority
+    :accept-peer))
 
 ;; The delta kinds' stable codes are one form (books/defevent.lisp): it
 ;; generates the encoder fn-cfg-kind-code and the decoder fn-cfg-code-kind as
@@ -1062,7 +1064,7 @@
           (:remove-peer-rows 19) (:set-group-description 20) (:set-group-status 21)
           (:account-access 22) (:set-group-moderation 23) (:consumer-bind 24)
           (:set-default-subscriptions 25) (:withdraw-article 26) (:account-delete 27)
-          (:set-group-authority 29))
+          (:set-group-authority 29) (:accept-peer 30))
   :otherwise 0
   :encode fn-cfg-kind-code
   :decode fn-cfg-code-kind
@@ -2559,6 +2561,27 @@
                          (fn-cfg-invitations v) (fn-cfg-accounts v)
                          (fn-cfg-descriptions v)))
 
+ ; Internal acceptance deltas carry one exact receipt tuple.  The public
+; parser cannot construct this kind; peer-invite-retry verifies its producer.
+(defun fn-cfg-accept-peer-receiptp (rows generation)
+  (declare (xargs :guard t))
+  (let* ((receipt (fn-par-only-receipts rows))
+         (source (fn-cfg-ag-car receipt))
+         (store (fn-cfg-ag-car (fn-cfg-ag-cdr receipt)))
+         (keys (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr receipt)))))
+    (and (equal (len receipt) 3)
+         (equal (fn-cfg-row-b source) "internal-invite-source")
+         (fn-cfg-source-id-hexp (fn-cfg-row-c source))
+         (equal (fn-cfg-row-n source) generation) (< 0 (nfix generation))
+         (equal (fn-cfg-row-b store) "internal-invite-store")
+         (fn-cfg-hex-textp (fn-cfg-row-c store) 64)
+         (fn-record-uint32p (fn-cfg-row-n store))
+         (equal (fn-cfg-row-b keys) "internal-invite-key-generation")
+         (equal (fn-cfg-row-c keys) "")
+         (fn-record-uint32p (fn-cfg-row-n keys))
+         (< 0 (fn-cfg-row-n keys))
+         (consp (fn-par-without-receipts rows)))))
+
 (defun fn-cfg-apply-delta (v gen stamp d)
   (declare (xargs :guard t))
   (let ((kind (fn-cfg-delta-kind d))
@@ -2612,7 +2635,7 @@
      ((equal kind :set-peers)
       (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
-                         (fn-cfg-listeners v) rows (fn-cfg-limits v)
+                         (fn-cfg-listeners v) (fn-par-without-receipts rows) (fn-cfg-limits v)
                          (fn-cfg-authorities v)
                          (fn-cfg-invitations v) (fn-cfg-accounts v)
                          (fn-cfg-descriptions v)))
@@ -2625,12 +2648,13 @@
                          (fn-cfg-authorities v)
                          (fn-cfg-invitations v) (fn-cfg-accounts v)
                          (fn-cfg-descriptions v)))
-     ((equal kind :set-peer)
+     ((member-equal kind '(:set-peer :accept-peer))
       (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v)
                          (append (fn-cfg-rows-without-key (fn-cfg-peers v) a)
-                                 rows)
+                                 (if (equal kind :accept-peer) rows
+                                   (fn-par-without-receipts rows)))
                          (fn-cfg-limits v) (fn-cfg-authorities v)
                          (fn-cfg-invitations v) (fn-cfg-accounts v)
                          (fn-cfg-descriptions v)))
@@ -2647,11 +2671,10 @@
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v)
                          (append (fn-cfg-rows-without-key (fn-cfg-peers v) a)
-                                 (append (fn-cfg-rows-without-members
-                                          (fn-cfg-rows-with-key
-                                           (fn-cfg-peers v) a)
-                                          rows)
-                                         rows))
+                                 (fn-par-without-receipts
+                                  (append (fn-cfg-rows-without-members
+                                           (fn-cfg-rows-with-key (fn-cfg-peers v) a) rows)
+                                          rows)))
                          (fn-cfg-limits v) (fn-cfg-authorities v)
                          (fn-cfg-invitations v) (fn-cfg-accounts v)
                          (fn-cfg-descriptions v)))
@@ -2660,9 +2683,9 @@
                          (fn-cfg-quotas v) (fn-cfg-policies v)
                          (fn-cfg-listeners v)
                          (append (fn-cfg-rows-without-key (fn-cfg-peers v) a)
-                                 (fn-cfg-rows-without-members
-                                  (fn-cfg-rows-with-key (fn-cfg-peers v) a)
-                                  rows))
+                                 (fn-par-without-receipts
+                                  (fn-cfg-rows-without-members
+                                   (fn-cfg-rows-with-key (fn-cfg-peers v) a) rows)))
                          (fn-cfg-limits v) (fn-cfg-authorities v)
                          (fn-cfg-invitations v) (fn-cfg-accounts v)
                          (fn-cfg-descriptions v)))
@@ -2840,7 +2863,8 @@
   (declare (xargs :guard t))
   (let ((kind (fn-cfg-delta-kind d))
         (a (fn-cfg-delta-a d))
-        (n (fn-cfg-delta-n d)))
+        (n (fn-cfg-delta-n d))
+        (rows (fn-cfg-delta-rows d)))
     (cond
      ((not (fn-cfg-deltap d)) :malformed-delta)
      ((equal kind :create-group)
@@ -2874,6 +2898,14 @@
      ; books/peer-config.lisp's fn-cfg-peer-set-admissiblep; the owner-side
      ; condition on :remove-peer (no outstanding feed entry) is the feed
      ; lane's and never enters a durable record, as for reader pins.
+     ((equal kind :accept-peer)
+      (cond ((not (equal n gen)) :adoption-generation)
+            ((not (< 0 n)) :adoption-generation)
+            ((not (consp rows)) :peer-rows-empty)
+            ((not (fn-cfg-rows-keyed-p rows a)) :peer-rows-unkeyed)
+            ((not (fn-cfg-accept-peer-receiptp rows gen)) :adoption-receipt-malformed)
+            ((consp (fn-cfg-rows-with-key (fn-cfg-peers v) a)) :peer-name-taken)
+            (t nil)))
      ((equal kind :set-peer)
       (cond ((not (consp (fn-cfg-delta-rows d))) :peer-rows-empty)
             ((not (fn-cfg-rows-keyed-p (fn-cfg-delta-rows d) a))

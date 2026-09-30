@@ -390,6 +390,12 @@
 ; The two peer arms (:set-peer, :remove-peer) rebuild the peers slot from a
 ; keyed selection and the delta's rows; both stay row lists.  Local: no
 ; `append'-backchaining rule leaves this book.
+(local (defthm fn-cfg-without-adoption-receipts-is-row-listp
+  (implies (fn-cfg-row-listp rows)
+           (fn-cfg-row-listp (fn-par-without-receipts rows)))
+  :hints (("Goal" :induct (fn-par-without-receipts rows)
+           :in-theory (enable fn-par-without-receipts fn-cfg-row-listp)))))
+
 (local (defthm fn-cfg-rows-without-key-is-row-listp
   (implies (fn-cfg-row-listp rows)
            (fn-cfg-row-listp (fn-cfg-rows-without-key rows a)))))

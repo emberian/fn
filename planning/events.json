@@ -32,7 +32,9 @@
         "consumer-bind": 24,
         "set-default-subscriptions": 25,
         "withdraw-article": 26,
-        "account-delete": 27
+        "account-delete": 27,
+        "set-group-authority": 29,
+        "accept-peer": 30
       },
       "reserved": {},
       "recorded": {},

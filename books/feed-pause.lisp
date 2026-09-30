@@ -279,6 +279,37 @@
 ; KEYSTONE: the deltas a pause or resume publishes leave NAME's feed paused
 ; exactly when PAUSEP, for a peer the table holds (applied as the live owner
 ; and the replay apply them, `fn-cfg-apply').
+(local
+ (defthm fn-fps-receipt-filter-commutes-with-key
+   (equal (fn-cfg-rows-with-key (fn-par-without-receipts rows) key)
+          (fn-par-without-receipts (fn-cfg-rows-with-key rows key)))
+   :hints (("Goal" :induct (fn-par-without-receipts rows)
+            :in-theory (enable fn-par-without-receipts fn-cfg-rows-with-key)))))
+(local
+ (defthm fn-fps-receipt-filter-preserves-pause
+   (equal (fn-fps-paused-in-rowsp (fn-par-without-receipts rows))
+          (fn-fps-paused-in-rowsp rows))
+   :hints (("Goal" :induct (fn-par-without-receipts rows)
+            :in-theory (enable fn-par-without-receipts fn-fps-paused-in-rowsp
+                               fn-fps-slot-rowp fn-par-receipt-rowp fn-par-receipt-slotp
+                               fn-par-field fn-cfg-row-b fn-cfg-ag-car fn-cfg-ag-cdr)))))
+(local
+ (defthm fn-fps-receipt-filter-commutes-with-removal
+   (equal (fn-cfg-rows-without-members (fn-par-without-receipts rows) d)
+          (fn-par-without-receipts (fn-cfg-rows-without-members rows d)))
+   :hints (("Goal" :induct (fn-par-without-receipts rows)
+            :in-theory (enable fn-par-without-receipts fn-cfg-rows-without-members)))))
+(local
+ (defthm fn-fps-pause-row-is-not-a-receipt
+   (not (fn-par-receipt-rowp (fn-fps-row name pausep)))
+   :hints (("Goal" :in-theory (enable fn-par-receipt-rowp fn-par-receipt-slotp
+                                    fn-par-field fn-fps-row fn-cfg-row-make)))))
+
+(local
+ (defthm fn-fps-receipt-field-of-config-row
+   (equal (fn-par-field 1 (fn-cfg-row-make a b c n)) b)
+   :hints (("Goal" :in-theory (enable fn-par-field fn-cfg-row-make)))))
+
 (defthm fn-fps-deltas-set-the-pause
   (implies (consp (fn-cfg-rows-with-key (fn-cfg-peers v) name))
            (equal (fn-fps-pausedp

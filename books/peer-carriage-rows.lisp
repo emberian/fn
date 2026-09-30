@@ -198,6 +198,27 @@
                   (fn-pcb-extend-rows existing new)))
   :hints (("Goal" :in-theory (enable fn-pcb-extend-rows)))))
 
+(local
+ (defthm fn-pcb-receipt-filter-commutes-with-peer-key
+   (equal (fn-cfg-rows-with-key (fn-par-without-receipts rows) key)
+          (fn-par-without-receipts (fn-cfg-rows-with-key rows key)))
+   :hints (("Goal" :induct (fn-par-without-receipts rows)
+            :in-theory (enable fn-par-without-receipts fn-cfg-rows-with-key)))))
+(local
+ (defthm fn-pcb-receipt-filter-preserves-ordinary-slot
+   (implies (not (fn-par-receipt-slotp slot))
+            (equal (fn-pcb-slot-natural slot (fn-par-without-receipts rows))
+                   (fn-pcb-slot-natural slot rows)))
+   :hints (("Goal" :induct (fn-par-without-receipts rows)
+            :in-theory (enable fn-par-without-receipts fn-par-receipt-rowp
+                               fn-par-receipt-slotp fn-par-field fn-pcb-slot-natural
+                               fn-cfg-row-b fn-cfg-ag-car fn-cfg-ag-cdr)))))
+(local
+ (defthm fn-pcb-receipt-filter-preserves-budget
+   (equal (fn-pcb-budget-of-rows (fn-par-without-receipts rows))
+          (fn-pcb-budget-of-rows rows))
+   :hints (("Goal" :in-theory (enable fn-pcb-budget-of-rows fn-par-receipt-slotp)))))
+
 ; KEYSTONE (over the configuration the owner publishes).  When the named
 ; boundary exists, applying the extension delta with the operator's budget
 ; rows leaves exactly that budget under the boundary's name.
@@ -364,6 +385,19 @@
 (local (defthm fn-pcb-true-listp-of-with-key
   (true-listp (fn-cfg-rows-with-key rows k))))
 
+(local
+ (defthm fn-pcb-receipt-filter-preserves-keyed-rows
+   (implies (fn-cfg-rows-keyed-p rows key)
+            (fn-cfg-rows-keyed-p (fn-par-without-receipts rows) key))
+   :hints (("Goal" :induct (fn-par-without-receipts rows)
+            :in-theory (enable fn-par-without-receipts fn-cfg-rows-keyed-p)))))
+(local
+ (defthm fn-pcb-without-members-after-receipt-filter
+   (equal (fn-cfg-rows-without-members (fn-par-without-receipts rows) d)
+          (fn-par-without-receipts (fn-cfg-rows-without-members rows d)))
+   :hints (("Goal" :induct (fn-par-without-receipts rows)
+            :in-theory (enable fn-par-without-receipts fn-cfg-rows-without-members)))))
+
 (local (defthm fn-pcb-extend-deltas-apply-when-extending
   (implies (and (true-listp new)
                 (fn-cfg-rows-keyed-p new name)
@@ -429,8 +463,37 @@
 ; the peer's group is its old group, less the rows the delta repeats,
 ; followed by the delta's rows: nothing bounds the group but the records
 ; that built it.
+(defthm fn-cfg-add-peer-rows-extends-the-filtered-group
+  (implies (fn-cfg-rows-keyed-p rows name)
+           (equal (fn-cfg-rows-with-key
+                   (fn-cfg-peers (fn-cfg-apply-delta
+                                  v gen stamp (fn-cfg-add-peer-rows name rows)))
+                   name)
+                  (fn-par-without-receipts
+                   (append (fn-cfg-rows-without-members
+                            (fn-cfg-rows-with-key (fn-cfg-peers v) name) rows)
+                           rows))))
+  :hints (("Goal" :in-theory (enable fn-cfg-apply-delta fn-cfg-add-peer-rows))))
+
+(local
+ (defthm fn-pcb-without-members-preserves-receipt-free
+   (implies (fn-par-receipt-freep rows)
+            (fn-par-receipt-freep (fn-cfg-rows-without-members rows d)))
+   :hints (("Goal" :induct (fn-cfg-rows-without-members rows d)
+            :in-theory (enable fn-cfg-rows-without-members fn-par-receipt-freep)))))
+(local
+ (defthm fn-pcb-receipt-free-append
+   (implies (and (fn-par-receipt-freep a) (fn-par-receipt-freep b))
+            (fn-par-receipt-freep (append a b)))
+   :hints (("Goal" :induct (append a b)
+            :in-theory (enable fn-par-receipt-freep)))))
+
+; Original public equation, now explicitly scoped to receipt-free states.
+; The unconditional substantive successor is the filtered-group theorem.
 (defthm fn-cfg-add-peer-rows-extends-the-group
-  (implies (and (true-listp rows) (fn-cfg-rows-keyed-p rows name))
+  (implies (and (true-listp rows) (fn-cfg-rows-keyed-p rows name)
+                (fn-par-receipt-freep rows)
+                (fn-par-receipt-freep (fn-cfg-rows-with-key (fn-cfg-peers v) name)))
            (equal (fn-cfg-rows-with-key
                    (fn-cfg-peers (fn-cfg-apply-delta
                                   v gen stamp (fn-cfg-add-peer-rows name rows)))
@@ -438,7 +501,7 @@
                   (append (fn-cfg-rows-without-members
                            (fn-cfg-rows-with-key (fn-cfg-peers v) name) rows)
                           rows)))
-  :hints (("Goal" :in-theory (enable fn-cfg-apply-delta fn-cfg-add-peer-rows))))
+  :hints (("Goal" :in-theory (disable fn-cfg-apply-delta fn-cfg-add-peer-rows))))
 
 (local (defthm fn-pcb-len-of-append
   (equal (len (append a b)) (+ (len a) (len b)))))
@@ -463,6 +526,13 @@
 ; configuration generations (`fn-cvec-config-publication-keeps-the-release-
 ; generation', books/store-capacity-config.lisp) that is the bound on the
 ; table; no constant bounds one peer's group.
+(local
+ (defthm fn-pcb-receipt-filter-does-not-grow
+   (<= (len (fn-par-without-receipts rows)) (len rows))
+   :rule-classes :linear
+   :hints (("Goal" :induct (fn-par-without-receipts rows)
+            :in-theory (enable fn-par-without-receipts)))))
+
 (defthm fn-cfg-apply-delta-adds-at-most-the-work-bound
   (implies (fn-cfg-deltap d)
            (<= (len (fn-cfg-peers (fn-cfg-apply-delta v gen stamp d)))
