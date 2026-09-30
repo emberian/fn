@@ -18180,6 +18180,27 @@
         "planning/evidence/selected-initializer-array-unit-2026-09-30/README.md"
       ],
       "progress_note": "Fresh protected proper source sria2 .04s/0steps; scalar guards, complete candidate outputs and fourteen model-only removals. No central inclusion/certification/runtime admission."
+    },
+    {
+      "id": "PRF-1173",
+      "title": "Conditional exact immediate arithmetic primary object unit",
+      "statement": "Named A-SELECTED-RUNTIME-IMMEDIATE-ARITHMETIC constrains captured generic add/subtract/multiply fitting-input/result and natural positive-divisor FLOOR1 primary objects to zero; source site mapping, caller/control/frame/GC/first-use/whole operation remain separate.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-013"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-SELECTED-RUNTIME-IMMEDIATE-ARITHMETIC"
+      ],
+      "status": "planned",
+      "evidence": [
+        "books/assumptions-selected-runtime-immediate-arithmetic.lisp",
+        "tests/acl2/selected-runtime-immediate-arithmetic-tests.lisp",
+        "specs/selected-runtime-immediate-arithmetic.md",
+        "planning/evidence/selected-immediate-arithmetic-2026-09-30/README.md"
+      ],
+      "progress_note": "Fresh protected proper srif1 .03s/233steps, scalar guards/four complete positives/six model-only clause removals; actual primitive capture in separate tagged stopped costprimitive1. No central inclusion or native admission."
     }
   ]
 }
