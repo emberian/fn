@@ -129,6 +129,17 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-account-carried \
 	books/consumer-account-candidate \
 	books/consumer-account-candidate-model \
+	books/consumer-account-input \
+	books/consumer-account-adoption-driver \
+	books/consumer-account-adoption-state \
+	books/consumer-account-binding-codec \
+	books/consumer-account-binding-codec-invariants \
+	books/consumer-account-config-marker \
+	books/consumer-account-config-marker-invariants \
+	books/identity-hex \
+	books/consumer-account-config-preparation \
+	books/consumer-account-config-commit \
+	books/consumer-account-transaction-driver \
 	books/consumer-account-initial \
 	books/consumer-account-relation \
 	books/consumer-account-relation-stage \
@@ -167,6 +178,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-authority-fold-tests \
 	tests/acl2/consumer-account-carried-tests \
 	tests/acl2/consumer-account-candidate-tests \
+	tests/acl2/consumer-account-input-tests \
+	tests/acl2/consumer-account-binding-codec-tests \
+	tests/acl2/consumer-account-config-marker-tests \
+	tests/acl2/consumer-account-config-preparation-tests \
+	tests/acl2/consumer-account-config-commit-tests \
+	tests/acl2/consumer-account-transaction-driver-tests \
 	tests/acl2/consumer-account-initial-tests \
 	tests/acl2/consumer-account-relation-tests \
 	tests/acl2/consumer-account-relation-stage-tests \

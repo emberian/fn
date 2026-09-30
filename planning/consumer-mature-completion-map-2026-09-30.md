@@ -46,11 +46,13 @@ shape/size does not establish account authority.
 
 ## Fixed acceptance dependency order
 
-The first executable gap is static/redeemed account adoption. Native
-`fnn-native-auth-install` and `fnn-native-auth-reload-config` still call
-`fn-owner-set-auth-config` directly; startup publishes login bindings
-separately. The account assembler is replacing those callers with a bounded
-ACL2 candidate preparation and durable stage/fence transaction. Static-first,
+The first executable gap is static/redeemed account adoption. Source callers
+`fnn-native-auth-install` and `fnn-native-auth-reload-config` now route through
+the paired candidate/typed C transaction and its named actual pooled allowance
+refusal before construction. Genuine source/turn and typed durable adapters
+remain missing; no separate credential/binding fallback is used. The source
+fixture executes paired E stages and the sole typed C commit, but is not a
+runtime acceptance/restart observation. Static-first,
 first-matching-credential precedence must survive sorting. The owner assembler
 has acknowledged the typed prepare/finish hook and the single saved proposal;
 the snapshot assembler has acknowledged the exact restart acceptance slice.
@@ -60,8 +62,9 @@ the snapshot assembler has acknowledged the exact restart acceptance slice.
    credentials are authorized during preparation or pending durable stages.
 2. Actual preallocation capture binds the selected CAC record, current Store
    coordinates/configuration/authority and the one saved full6 decision. The
-   durable finish installs CP7, metadata5, root/policy/trie and fence count
-   together. Startup/reload returns accepted only after that final fence.
+   durable finish consumes full7 E or full8 C and installs CP7, metadata5,
+   root/policy/trie, prepared configuration and fence count together.
+   Startup/reload returns accepted only after that final typed C commit.
 3. Actual paired cfg-first completion/replay retains full4 publication and
    metadata from the same decision. Checkpoint Rchild2 carries that root, and
    cold install preserves the same policy, login, credential and creation token

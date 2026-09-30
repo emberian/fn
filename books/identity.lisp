@@ -42,6 +42,7 @@
 
 (in-package "ACL2")
 (include-book "frame")
+(include-book "identity-hex")
 
 ; The derivations are built on the frame field grammar, so this book opens
 ; it locally; results stay opaque.
@@ -54,10 +55,6 @@
 ; -----------------------------------------------------------------------------
 ; Lowercase hexadecimal
 
-(defun fn-id-hex-digit (n)
-  (declare (xargs :guard (and (natp n) (< n 16))))
-  (if (< n 10) (+ 48 n) (+ 87 n)))
-
 (defun fn-id-hex-digitp (octet)
   (declare (xargs :guard t))
   (or (and (natp octet) (<= 48 octet) (<= octet 57))
@@ -66,14 +63,6 @@
 (defun fn-id-hex-value (octet)
   (declare (xargs :guard (fn-id-hex-digitp octet)))
   (if (<= octet 57) (- octet 48) (- octet 87)))
-
-(defun fn-id-hex-octets (octets)
-  (declare (xargs :guard (fn-cbor-octet-listp octets)))
-  (if (consp octets)
-      (cons (fn-id-hex-digit (floor (car octets) 16))
-            (cons (fn-id-hex-digit (mod (car octets) 16))
-                  (fn-id-hex-octets (cdr octets))))
-    nil))
 
 (defun fn-id-hex-listp (octets)
   (declare (xargs :guard t))
