@@ -82,3 +82,20 @@ words with zeros. This fact never licenses short physical reads; complete
 16KiB read validation remains a separate continuation obligation. The observed
 digest parameter is component vocabulary until the real digest cursor is
 composed; this component alone cannot authenticate a source page.
+
+The guarded `fn-hsr-io-*` continuation has nine cells: mode, root ticket, epoch,
+next serial, pending request, held discovery ID, capture, lease and cancel bit.
+It begins once per pinned capture and survives every logical seek/source pass.
+An issued request consumes a fresh monotone serial in ACL2; a completed read
+binds its physical discovery ID. IDs include zero, so only `nil` denotes no
+held buffer. `:observed` is not an authentication verdict. The mapping/auth
+controller alone may choose physical requests and expose verified contents.
+
+Cancellation retains both pending request and held buffer identity. Short or
+ambiguous completion becomes uncertain and cannot be downgraded by release or
+cancellation. `fn-hsr-io-joined-failure` is called only after native unwind/join
+has completed, cleared local aliases and settled its own unreturned token; an
+unresolved join retains the pending request and physical charge. Release in
+the logical continuation is an acknowledgement after physical settlement and
+alias clearance, never a refund operation. Every transition preserves captured
+root ticket, epoch and opaque capture/lease references.
