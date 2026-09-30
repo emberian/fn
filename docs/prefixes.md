@@ -365,3 +365,12 @@ anything a book does not already decide.
 
 | `fn-pct-` | `productive-transfer`, `tests/acl2/productive-transfer-tests` | Productive outbound NNTP offer and requested article effect; local journal and attempt, explicit quiet/refused outcomes; no remote acceptance claim (W6b) |
 | `fn-gat-`, `gat-` | `tests/acl2/group-authority-tests` | Explicit authority publication and replay teeth; distinct posting policy and principal bindings. |
+- `fn-osd-`: staged snapshot completion publication (`snapshot-publication.lisp`).
+
+- `fn-osl-`: snapshot capture lease (`snapshot-capture-lease.lisp`).
+
+- `fn-osp-`: resumable snapshot preparation (`snapshot-prepare.lisp`).
+
+- `pgs-dcs-`: proof-only complete page/byte digest cursor semantics and progress
+  (`pagestore-digest-cursor-semantics.lisp`); source spans and potentials never
+  execute on the served path.
