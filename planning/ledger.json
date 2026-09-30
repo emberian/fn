@@ -1739,7 +1739,7 @@
     "books": 1799,
     "books_in_root_closure": 1796,
     "roots": 1732,
-    "theorems": 28736,
+    "theorems": 28739,
     "functions": 18734,
     "assert_events": 23750,
     "must_fails": 2515,
@@ -29635,7 +29635,7 @@
       "book": "books/store-node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 83,
+      "theorems": 86,
       "functions": 73,
       "guards": {
         "verified": 39,
@@ -61990,7 +61990,7 @@
     {
       "theorem": "fn-sn-article-record-without-a-usable-clock-is-refused",
       "book": "books/store-node.lisp",
-      "line": 860,
+      "line": 884,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-article-record and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-sn-article-record and the conclusion is that branch's value"
@@ -61999,7 +61999,7 @@
     {
       "theorem": "fn-sn-capacity-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 388,
+      "line": 412,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62007,7 +62007,7 @@
     {
       "theorem": "fn-sn-capacity-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 347,
+      "line": 371,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62024,7 +62024,7 @@
     {
       "theorem": "fn-sn-config-history-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 421,
+      "line": 445,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62032,7 +62032,7 @@
     {
       "theorem": "fn-sn-config-history-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 378,
+      "line": 402,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62040,7 +62040,7 @@
     {
       "theorem": "fn-sn-files-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 390,
+      "line": 414,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62048,7 +62048,7 @@
     {
       "theorem": "fn-sn-files-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 350,
+      "line": 374,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62064,7 +62064,7 @@
     {
       "theorem": "fn-sn-files-of-fn-sn-update",
       "book": "books/store-node.lisp",
-      "line": 514,
+      "line": 538,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62088,7 +62088,7 @@
     {
       "theorem": "fn-sn-files-of-fn-sn-with-event-index",
       "book": "books/store-node.lisp",
-      "line": 828,
+      "line": 852,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62113,7 +62113,7 @@
     {
       "theorem": "fn-sn-groups-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 386,
+      "line": 410,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62121,7 +62121,7 @@
     {
       "theorem": "fn-sn-groups-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 344,
+      "line": 368,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62129,7 +62129,7 @@
     {
       "theorem": "fn-sn-identity-next-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 417,
+      "line": 441,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62137,7 +62137,7 @@
     {
       "theorem": "fn-sn-identity-next-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 374,
+      "line": 398,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62145,7 +62145,7 @@
     {
       "theorem": "fn-sn-identity-next-of-fn-sn-update",
       "book": "books/store-node.lisp",
-      "line": 521,
+      "line": 545,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62153,7 +62153,7 @@
     {
       "theorem": "fn-sn-identity-next-of-fn-sn-with-event-index",
       "book": "books/store-node.lisp",
-      "line": 760,
+      "line": 784,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62161,7 +62161,7 @@
     {
       "theorem": "fn-sn-index-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 396,
+      "line": 420,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62169,7 +62169,7 @@
     {
       "theorem": "fn-sn-index-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 359,
+      "line": 383,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62185,7 +62185,7 @@
     {
       "theorem": "fn-sn-keyring-generation-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 406,
+      "line": 430,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62193,7 +62193,7 @@
     {
       "theorem": "fn-sn-keyring-generation-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 362,
+      "line": 386,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62201,7 +62201,7 @@
     {
       "theorem": "fn-sn-keyring-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 394,
+      "line": 418,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62209,7 +62209,7 @@
     {
       "theorem": "fn-sn-keyring-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 356,
+      "line": 380,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62217,7 +62217,7 @@
     {
       "theorem": "fn-sn-keyring-snapshots-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 413,
+      "line": 437,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62225,7 +62225,7 @@
     {
       "theorem": "fn-sn-keyring-snapshots-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 370,
+      "line": 394,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62242,7 +62242,7 @@
     {
       "theorem": "fn-sn-node-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 392,
+      "line": 416,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62250,7 +62250,7 @@
     {
       "theorem": "fn-sn-node-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 353,
+      "line": 377,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62332,7 +62332,7 @@
     {
       "theorem": "fn-sn-state-fields-of-fn-sn-with-consumer",
       "book": "books/store-node.lisp",
-      "line": 647,
+      "line": 671,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62340,7 +62340,7 @@
     {
       "theorem": "fn-sn-state-fields-of-fn-sn-with-topic",
       "book": "books/store-node.lisp",
-      "line": 674,
+      "line": 698,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62372,7 +62372,7 @@
     {
       "theorem": "fn-sn-verdicts-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 410,
+      "line": 434,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62380,7 +62380,7 @@
     {
       "theorem": "fn-sn-verdicts-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 366,
+      "line": 390,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
