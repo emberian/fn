@@ -1050,3 +1050,11 @@ The newly allocated account row and credential carries have exact constructor
 boundaries and literal witnesses, including each retained row hypothesis. These
 are constructor prerequisites; they do not establish the complete maintained
 account/preparation metadata relation, cold establishment or admission funding.
+
+The assembled configuration completion routes its once-consumed approved
+result through one full-result owner collector. The core retains approved CP7
+and metadata literally; a configuration completion emits no newly adopted
+account root. Missing metadata cannot establish readiness. The new source
+publication unit and current owner collector still require matching admission,
+funding and recovery evidence; opaque routing observations establish only
+ordering and result retention.
