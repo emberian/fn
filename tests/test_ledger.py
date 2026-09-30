@@ -16,6 +16,7 @@ import re
 import sys
 import tempfile
 import unittest
+import weakref
 from unittest import mock
 
 SPEC = importlib.util.spec_from_file_location(
@@ -371,6 +372,28 @@ class SuspectTests(unittest.TestCase):
 
 
 class NormalizationBudgetTests(unittest.TestCase):
+    def test_unfold_keeps_temporary_inputs_alive_for_identity_memo(self):
+        tree = tree_from({"books/a.lisp":
+                         "(defun f (x) (list x 17)) (defun g (x) (list x 99))"})
+        original = ledger.beta_apply
+        references = []
+
+        class Temporary(list):
+            """A weak-referenceable list with unchanged term semantics."""
+
+        def observed_beta(*args):
+            # Every prior temporary is still an identity-keyed memo input.
+            # Its address must not become available for another expansion.
+            self.assertTrue(all(reference() is not None for reference in references))
+            term = Temporary(original(*args))
+            references.append(weakref.ref(term))
+            return term
+
+        with mock.patch.object(ledger, "beta_apply", observed_beta):
+            result = tree.unfold(ledger.read_forms("(equal (f x) (g x))")[0])
+        self.assertEqual(result, ledger.read_forms("(equal (list x 17) (list x 99))")[0])
+        self.assertEqual(len(references), 2)
+
     @staticmethod
     def doubling(depth, *, projected=True):
         bindings = " ".join(f"(v{i} (cons v{i-1} v{i-1}))" for i in range(1, depth + 1))
