@@ -1,0 +1,102 @@
+; Atomic indexed resource transitions over the ONE shared actual pool.
+; Internal admission/promotion operands still require operation-derived
+; adequacy/installed ownership; no D40 host admission vector is authorized.
+(in-package "ACL2")
+(logic)
+(include-book "index-backing-provider")
+(include-book "index-query-resources")
+(include-book "page-read-pool-state")
+
+(defun fn-ibp-query-resource-token (token capture context)
+  (declare (xargs :guard t))
+  (let ((payload (fn-omk-at 5 context)))
+    (list :query-grant (fn-omk-at 1 token) (fn-omk-at 2 token)
+          (fn-omk-at 3 token) (fn-omk-at 4 token)
+          (fn-ibp-capture-table-root-id capture) (fn-ibp-capture-row-root-id capture)
+          (fn-ibp-capture-count capture) (fn-ibp-capture-frontier capture)
+          (fn-omk-at 4 token) (fn-omk-at 4 payload) (fn-omk-at 5 payload))))
+
+(defun fn-ibp-query-slot-resource (token operation operand settlement ledger fn-ibp-query-segment)
+  (declare (xargs :stobjs fn-ibp-query-segment :guard t))
+  (if (not (fn-ibp-query-slot-livep token fn-ibp-query-segment))
+      (mv :stale nil ledger fn-ibp-query-segment)
+    (let* ((slot (nth 3 token))
+           (capture (fn-ibp-qs-capturesi slot fn-ibp-query-segment))
+           (context (fn-ibp-qs-inputsi slot fn-ibp-query-segment))
+           (claim (fn-ibp-query-resource-token token capture context))
+           (row (fn-ibp-qs-admissionsi slot fn-ibp-query-segment)))
+      (mv-let (status grant next-row next-ledger)
+        (case operation
+          (:admit (fn-iqr-admit ledger claim row operand))
+          (:cancel (mv-let (word next-row next-ledger) (fn-iqr-cancel claim row ledger)
+                     (mv word nil next-row next-ledger)))
+          (:release (mv-let (word next-row next-ledger) (fn-iqr-release claim row settlement ledger)
+                      (mv word nil next-row next-ledger)))
+          (:promote (if (not (fn-iqr-livep claim row))
+                        (mv :stale nil row ledger)
+                      (mv-let (word next-row next-ledger)
+                        (fn-iqr-promote-installed-capacity claim row operand ledger)
+                        (mv word nil next-row next-ledger))))
+          (otherwise (mv :recovery-required nil row ledger)))
+        (let ((fn-ibp-query-segment
+               (if (member-eq status '(:admitted :retained :released :promoted))
+                   (update-fn-ibp-qs-admissionsi slot next-row fn-ibp-query-segment)
+                 fn-ibp-query-segment)))
+          (mv status grant next-ledger fn-ibp-query-segment))))))
+
+(defun fn-ibp-node-resource (token operation operand settlement ledger fuel slot depth fn-ibp-node)
+  (declare (xargs :stobjs fn-ibp-node :measure (nfix depth)
+                  :guard (and (natp fuel) (natp slot) (natp depth)) :verify-guards nil))
+  (cond ((<= fuel depth) (mv :yield nil ledger fuel fn-ibp-node))
+        ((zp depth) (if (not (fn-ibp-node-children-boundp 'fn-ibp-query-segment fn-ibp-node))
+        (mv :unavailable nil ledger fuel fn-ibp-node)
+      (stobj-let ((fn-ibp-query-segment
+                   (fn-ibp-node-children-get 'fn-ibp-query-segment fn-ibp-node
+                                             (create-fn-ibp-query-segment))))
+        (status grant next-ledger fn-ibp-query-segment)
+        (fn-ibp-query-slot-resource token operation operand settlement ledger fn-ibp-query-segment)
+        (mv status grant next-ledger (- fuel 1) fn-ibp-node))))
+        ((equal (mod slot 2) 0) (if (not (fn-ibp-node-children-boundp 'fn-ibp-node-left fn-ibp-node))
+        (mv :unavailable nil ledger fuel fn-ibp-node)
+      (stobj-let ((fn-ibp-node-left
+                   (fn-ibp-node-children-get 'fn-ibp-node-left fn-ibp-node
+                                             (create-fn-ibp-node-left))))
+        (status grant next-ledger fuel-left fn-ibp-node-left)
+        (fn-ibp-node-resource token operation operand settlement ledger (- fuel 1) (floor slot 2) (- depth 1) fn-ibp-node-left)
+        (mv status grant next-ledger fuel-left fn-ibp-node))))
+        (t (if (not (fn-ibp-node-children-boundp 'fn-ibp-node-right fn-ibp-node))
+        (mv :unavailable nil ledger fuel fn-ibp-node)
+      (stobj-let ((fn-ibp-node-right
+                   (fn-ibp-node-children-get 'fn-ibp-node-right fn-ibp-node
+                                             (create-fn-ibp-node-right))))
+        (status grant next-ledger fuel-left fn-ibp-node-right)
+        (fn-ibp-node-resource token operation operand settlement ledger (- fuel 1) (floor slot 2) (- depth 1) fn-ibp-node-right)
+        (mv status grant next-ledger fuel-left fn-ibp-node))))))
+(verify-guards fn-ibp-node-resource)
+
+
+(defun fn-ibp-resource-transition (token operation operand settlement fuel fn-index-backing fn-page-read-pool)
+  (declare (xargs :stobjs (fn-index-backing fn-page-read-pool)
+                  :guard (natp fuel)))
+  (let ((capacity (fn-ibp-pool-capacity fn-index-backing))
+        (depth (fn-ibp-slot-depth fn-index-backing)))
+    (if (or (not (fn-ibp-query-tokenp token))
+            (>= (- (nth 2 token) 1) capacity))
+        (mv :stale nil fuel fn-index-backing fn-page-read-pool)
+      (stobj-let ((fn-ibp-node (fn-ibp-registry fn-index-backing)))
+        (status grant next-ledger fuel-left fn-ibp-node)
+        (fn-ibp-node-resource token operation operand settlement
+                             (fn-owner-page-read-ledger fn-page-read-pool)
+                             fuel (- (nth 2 token) 1) depth fn-ibp-node)
+        (let ((fn-page-read-pool
+               (if (member-eq status '(:admitted :retained :released :promoted))
+                   (fn-owner-page-read-keep-ledger next-ledger fn-page-read-pool)
+                 fn-page-read-pool)))
+          (mv status grant fuel-left fn-index-backing fn-page-read-pool))))))
+
+(defun fn-miq-resource-transition (token operation operand settlement fuel fn-mio$c fn-page-read-pool)
+  (declare (xargs :stobjs (fn-mio$c fn-page-read-pool) :guard (natp fuel)))
+  (stobj-let ((fn-index-backing (fn-mio$c-provider fn-mio$c)))
+    (status grant fuel-left fn-index-backing fn-page-read-pool)
+    (fn-ibp-resource-transition token operation operand settlement fuel fn-index-backing fn-page-read-pool)
+    (mv status grant fuel-left fn-mio$c fn-page-read-pool)))
