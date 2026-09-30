@@ -1101,6 +1101,13 @@ ACL2_BOOKS ?= books/defrecord \
 	books/over-byte-terminal-selected \
 	books/over-byte-full-parser-range \
 	tests/acl2/over-byte-full-parser-range-tests \
+	books/over-byte-seek-parser-range \
+	books/over-byte-cached-row-source \
+	books/over-range-all-step-source \
+	books/over-byte-full-seek-range \
+	tests/acl2/over-byte-seek-parser-range-tests \
+	tests/acl2/over-byte-cached-row-source-tests \
+	tests/acl2/over-byte-full-seek-range-tests \
 	tests/acl2/over-byte-range-relation-tests \
 	tests/acl2/served-selected-article-tests \
 	tests/acl2/over-byte-selected-row-relation-tests \

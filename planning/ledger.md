@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1919 |
-| Certification roots in the Makefile | 1843 |
-| Books inside the root closure | 1911 |
-| `defthm` and `defthmd` events | 29757 |
-| `defun` events | 19104 |
+| Books read | 1926 |
+| Certification roots in the Makefile | 1850 |
+| Books inside the root closure | 1918 |
+| `defthm` and `defthmd` events | 29808 |
+| `defun` events | 19110 |
 | Functions with verified guards | 3519 |
-| Functions declared `:verify-guards nil` and never verified | 2305 |
+| Functions declared `:verify-guards nil` and never verified | 2309 |
 | Functions left at the default with an explicit guard | 10428 |
-| Functions left at the default with no guard | 2852 |
+| Functions left at the default with no guard | 2854 |
 | `assert-event` checks | 24046 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
-| Theorems flagged SUSPECT by shape | 1253 |
+| Theorems flagged SUSPECT by shape | 1254 |
 | Export-hygiene warnings | 343 |
 | Enabled-projection warnings | 55 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2625 |
+| Include-hygiene warnings | 2638 |
 | Host-names warnings | 2189 |
 | Hand-written-record warnings | 18 |
 
@@ -679,16 +679,20 @@ that `make certify` requests.
 | `books/open-frontier-wire.lisp` | root | 6 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/open-frontier.lisp` | closure | 34 | 5 | 0/2/3/0 | 0 | 0 | 1 |
 | `books/outcome-class.lisp` | root | 8 | 6 | 0/0/6/0 | 0 | 0 | 0 |
+| `books/over-byte-cached-row-source.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/over-byte-cursor.lisp` | root | 23 | 12 | 4/0/8/0 | 0 | 0 | 1 |
 | `books/over-byte-full-parser-range.lisp` | root | 15 | 0 | 0/0/0/0 | 0 | 0 | 1 |
+| `books/over-byte-full-seek-range.lisp` | root | 15 | 1 | 0/1/0/0 | 0 | 0 | 1 |
 | `books/over-byte-invariants.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/over-byte-old-row-relation.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/over-byte-parser-relation.lisp` | root | 11 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/over-byte-range-relation.lisp` | root | 6 | 2 | 0/2/0/0 | 0 | 0 | 2 |
 | `books/over-byte-row-relation.lisp` | root | 16 | 0 | 0/0/0/0 | 0 | 0 | 1 |
+| `books/over-byte-seek-parser-range.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/over-byte-selected-row-relation.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/over-byte-terminal-selected.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/over-cursor-shape.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 1 |
+| `books/over-range-all-step-source.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/over-reply-row-frame.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/over-reply-source.lisp` | root | 0 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/over-row-pieces.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
@@ -1636,12 +1640,15 @@ that `make certify` requests.
 | `tests/acl2/open-frontier-wire-tests.lisp` | root | 0 | 2 | 0/1/0/1 | 3 | 2 | 0 |
 | `tests/acl2/open-one-pass-tests.lisp` | root | 0 | 8 | 0/6/0/2 | 56 | 1 | 0 |
 | `tests/acl2/outcome-class-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 37 | 7 | 0 |
+| `tests/acl2/over-byte-cached-row-source-tests.lisp` | root | 3 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `tests/acl2/over-byte-cursor-tests.lisp` | root | 1 | 6 | 0/5/0/1 | 11 | 0 | 0 |
 | `tests/acl2/over-byte-full-parser-range-tests.lisp` | root | 14 | 5 | 0/4/0/1 | 0 | 0 | 0 |
+| `tests/acl2/over-byte-full-seek-range-tests.lisp` | root | 11 | 2 | 0/1/0/1 | 0 | 0 | 0 |
 | `tests/acl2/over-byte-old-row-relation-tests.lisp` | root | 7 | 3 | 0/2/0/1 | 0 | 0 | 0 |
 | `tests/acl2/over-byte-parser-relation-tests.lisp` | root | 5 | 5 | 0/5/0/0 | 3 | 0 | 0 |
 | `tests/acl2/over-byte-range-relation-tests.lisp` | root | 7 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `tests/acl2/over-byte-row-relation-tests.lisp` | root | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `tests/acl2/over-byte-seek-parser-range-tests.lisp` | root | 7 | 2 | 0/1/0/1 | 0 | 0 | 0 |
 | `tests/acl2/over-byte-selected-row-relation-tests.lisp` | root | 10 | 3 | 0/2/0/1 | 0 | 0 | 0 |
 | `tests/acl2/over-window-tests.lisp` | root | 6 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/owner-ack-after-barrier-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 40 | 0 | 0 |
@@ -2476,6 +2483,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-obc-quantum-ready-stays-ready` | `books/over-byte-cursor.lisp` | 395 | arm-of-definition: the hypotheses select one IF/COND arm of fn-obc-quantum-one and the conclusion is that arm's value |
 | `fn-obcr-nil-span-value` | `books/over-byte-row-relation.lisp` | 54 | arm-of-definition: constant arguments select one IF/COND arm of fn-lpc-span-value and the conclusion is that arm's value |
 | `fn-obfp-row-id-is-record-id` | `books/over-byte-full-parser-range.lisp` | 18 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-obfs-row-id-is-record-id` | `books/over-byte-full-seek-range.lisp` | 10 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-obi-seal-range-is-seal-of-slice` | `books/catalog-load-index.lisp` | 38 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-obi-seal-range; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-obr-empty-piece-residual` | `books/over-byte-range-relation.lisp` | 27 | arm-of-definition: the hypotheses select one IF/COND arm of fn-npw-remaining and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-npw-remaining and the conclusion is that branch's value |
 | `fn-obr-empty-range-reply` | `books/over-byte-range-relation.lisp` | 33 | arm-of-definition: constant arguments select one IF/COND arm of fn-obc-old-range-reply and the conclusion is that arm's value |

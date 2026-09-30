@@ -1090,6 +1090,13 @@
     "books/over-byte-terminal-selected",
     "books/over-byte-full-parser-range",
     "tests/acl2/over-byte-full-parser-range-tests",
+    "books/over-byte-seek-parser-range",
+    "books/over-byte-cached-row-source",
+    "books/over-range-all-step-source",
+    "books/over-byte-full-seek-range",
+    "tests/acl2/over-byte-seek-parser-range-tests",
+    "tests/acl2/over-byte-cached-row-source-tests",
+    "tests/acl2/over-byte-full-seek-range-tests",
     "tests/acl2/over-byte-range-relation-tests",
     "tests/acl2/served-selected-article-tests",
     "tests/acl2/over-byte-selected-row-relation-tests",
@@ -1847,26 +1854,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1919,
-    "books_in_root_closure": 1911,
-    "roots": 1843,
-    "theorems": 29757,
-    "functions": 19104,
+    "books": 1926,
+    "books_in_root_closure": 1918,
+    "roots": 1850,
+    "theorems": 29808,
+    "functions": 19110,
     "assert_events": 24046,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
       "verified": 3519,
-      "declared-off": 2305,
+      "declared-off": 2309,
       "default-guarded": 10428,
-      "default-unguarded": 2852
+      "default-unguarded": 2854
     },
-    "suspect_theorems": 1253,
+    "suspect_theorems": 1254,
     "export_hygiene_warnings": 343,
     "enabled_projection_warnings": 55,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2625,
+    "include_hygiene_warnings": 2638,
     "host_names_warnings": 2189,
     "hand_written_record_warnings": 18
   },
@@ -19714,6 +19721,33 @@
       "read_error": null
     },
     {
+      "book": "books/over-byte-cached-row-source.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "nov-row-capture",
+        "over-byte-old-row-relation"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/over-byte-cursor.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -19774,6 +19808,38 @@
       "system_includes": [],
       "suspects": [
         "fn-obfp-row-id-is-record-id"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/over-byte-full-seek-range.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 15,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "over-byte-cached-row-source",
+        "over-byte-range-relation",
+        "over-byte-seek-parser-range",
+        "over-range-all-step-source",
+        "over-reply-row-frame"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-obfs-row-id-is-record-id"
       ],
       "read_error": null
     },
@@ -19924,6 +19990,33 @@
       "read_error": null
     },
     {
+      "book": "books/over-byte-seek-parser-range.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "over-byte-parser-relation",
+        "over-byte-range-relation"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/over-byte-selected-row-relation.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -20005,6 +20098,32 @@
       "suspects": [
         "fn-ovw-cursor-fields"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/over-range-all-step-source.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 9,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "served-range-source"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -47267,6 +47386,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/over-byte-cached-row-source-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/over-byte-cached-row-source"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/over-byte-cursor-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -47313,6 +47458,32 @@
       "encapsulates": 0,
       "includes": [
         "../../books/over-byte-full-parser-range"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/over-byte-full-seek-range-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 11,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/over-byte-full-seek-range"
       ],
       "system_includes": [],
       "suspects": [],
@@ -47418,6 +47589,32 @@
       "encapsulates": 0,
       "includes": [
         "../../books/over-byte-row-relation"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/over-byte-seek-parser-range-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/over-byte-seek-parser-range"
       ],
       "system_includes": [],
       "suspects": [],
@@ -61273,6 +61470,14 @@
       "theorem": "fn-obfp-row-id-is-record-id",
       "book": "books/over-byte-full-parser-range.lisp",
       "line": 18,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-obfs-row-id-is-record-id",
+      "book": "books/over-byte-full-seek-range.lisp",
+      "line": 10,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -77564,6 +77769,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/over-byte-cached-row-source.lisp",
+        "line": 4,
+        "include": "over-byte-old-row-relation",
+        "included": "books/over-byte-old-row-relation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-byte-cached-row-source.lisp",
+        "line": 5,
+        "include": "nov-row-capture",
+        "included": "books/nov-row-capture.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/over-byte-cursor.lisp",
         "line": 7,
         "include": "over-cursor-shape",
@@ -77624,6 +77843,41 @@
         "line": 7,
         "include": "over-byte-range-relation",
         "included": "books/over-byte-range-relation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-byte-full-seek-range.lisp",
+        "line": 4,
+        "include": "over-byte-cached-row-source",
+        "included": "books/over-byte-cached-row-source.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-byte-full-seek-range.lisp",
+        "line": 5,
+        "include": "over-range-all-step-source",
+        "included": "books/over-range-all-step-source.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-byte-full-seek-range.lisp",
+        "line": 6,
+        "include": "over-reply-row-frame",
+        "included": "books/over-reply-row-frame.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-byte-full-seek-range.lisp",
+        "line": 7,
+        "include": "over-byte-range-relation",
+        "included": "books/over-byte-range-relation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-byte-full-seek-range.lisp",
+        "line": 8,
+        "include": "over-byte-seek-parser-range",
+        "included": "books/over-byte-seek-parser-range.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -77732,6 +77986,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/over-byte-seek-parser-range.lisp",
+        "line": 4,
+        "include": "over-byte-parser-relation",
+        "included": "books/over-byte-parser-relation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-byte-seek-parser-range.lisp",
+        "line": 5,
+        "include": "over-byte-range-relation",
+        "included": "books/over-byte-range-relation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/over-byte-selected-row-relation.lisp",
         "line": 4,
         "include": "over-byte-old-row-relation",
@@ -77757,6 +78025,13 @@
         "line": 4,
         "include": "protocol-table",
         "included": "books/protocol-table.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-range-all-step-source.lisp",
+        "line": 4,
+        "include": "served-range-source",
+        "included": "books/served-range-source.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -85838,6 +86113,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/over-byte-cached-row-source-tests.lisp",
+        "line": 2,
+        "include": "../../books/over-byte-cached-row-source",
+        "included": "books/over-byte-cached-row-source.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/over-byte-cursor-tests.lisp",
         "line": 2,
         "include": "../../books/over-byte-invariants",
@@ -85849,6 +86131,13 @@
         "line": 2,
         "include": "../../books/over-byte-full-parser-range",
         "included": "books/over-byte-full-parser-range.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/over-byte-full-seek-range-tests.lisp",
+        "line": 2,
+        "include": "../../books/over-byte-full-seek-range",
+        "included": "books/over-byte-full-seek-range.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -85884,6 +86173,13 @@
         "line": 2,
         "include": "../../books/over-byte-row-relation",
         "included": "books/over-byte-row-relation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/over-byte-seek-parser-range-tests.lisp",
+        "line": 2,
+        "include": "../../books/over-byte-seek-parser-range",
+        "included": "books/over-byte-seek-parser-range.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
