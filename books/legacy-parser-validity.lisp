@@ -508,3 +508,92 @@
                             fn-nlv-physical-line-phase fn-nlv-new-field-is-name-tail
                             fn-nlv-run-phase-is-control-run-phase fn-nlv-physicalp
                             fn-article-fold-linep fn-article-line-okp fn-article-new-field)))))
+
+; Framing faults and the exact separator/body join.
+(defun fn-nlv-header-phasep (c)
+  (declare (xargs :guard t))
+  (member-eq (fn-lpc-at 0 c) '(:start :name :first :value :bad)))
+
+(defthm fn-nlv-physical-byte-preserves-header-phase
+  (implies (and (fn-nlv-header-phasep c)
+                (not (equal byte 13)) (not (equal byte 10)))
+           (fn-nlv-header-phasep (fn-nlv-control-byte c byte)))
+  :hints (("Goal" :in-theory (enable fn-nlv-header-phasep fn-nlv-control-byte
+                                     fn-nlv-value fn-nlv-phase fn-lpc-at))))
+
+(defthm fn-nlv-physical-run-preserves-header-phase
+  (implies (and (fn-nlv-header-phasep c) (fn-nlv-physicalp line))
+           (fn-nlv-header-phasep (fn-nlv-control-run line c)))
+  :hints (("Goal" :induct (fn-nlv-control-run line c)
+           :in-theory (e/d (fn-nlv-control-run fn-nlv-physicalp)
+                           (fn-nlv-header-phasep fn-nlv-control-byte)))))
+
+(defthm fn-nlv-unfinished-header-is-not-body
+  (implies (and (fn-nlv-header-phasep c) (fn-nlv-physicalp line))
+           (and (not (equal (fn-lpc-at 0 (fn-nlv-control-run line c)) :body))
+                (not (equal (fn-lpc-at 0 (fn-nlv-control-run (append line '(13)) c)) :body))))
+  :hints (("Goal" :use fn-nlv-physical-run-preserves-header-phase
+           :in-theory (e/d (fn-nlv-header-phasep fn-nlv-control-byte fn-nlv-phase fn-lpc-at)
+                           (fn-nlv-control-run fn-nlv-physical-run-preserves-header-phase fn-nlv-physicalp)))))
+
+(defthm fn-nlv-bare-lf-is-absorbing-error
+  (implies (and (fn-nlv-header-phasep c) (fn-nlv-physicalp line))
+           (equal (fn-lpc-at 0 (fn-nlv-control-run (append line (cons 10 suffix)) c)) :bad))
+  :hints (("Goal" :use fn-nlv-physical-run-preserves-header-phase
+           :in-theory (e/d (fn-nlv-header-phasep fn-nlv-control-byte fn-nlv-phase fn-lpc-at)
+                           (fn-nlv-control-run fn-nlv-physical-run-preserves-header-phase fn-nlv-physicalp)))))
+
+(defthm fn-nlv-actual-run-bad
+  (implies (equal (fn-lpc-at 0 s) :bad) (equal (fn-nlv-run bytes s pos h pin) s))
+  :hints (("Goal" :induct (fn-nlv-run bytes s pos h pin)
+           :in-theory (e/d (fn-nlv-run fn-lpc-header-byte)
+                           (fn-lpc-at fn-lpc-put fn-lpc-value-byte fn-lpc-close-fields)))))
+
+(defthm fn-nlv-actual-separator-body-exact
+  (implies (equal (fn-lpc-at 0 s) :start)
+           (equal (equal (fn-lpc-at 0 (fn-nlv-run (append '(13 10) body) s pos h pin)) :body)
+                  (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
+                       (fn-article-body-crlfp body))))
+  :hints (("Goal"
+           :expand ((fn-nlv-run (append '(13 10) body) s pos h pin))
+           :in-theory (e/d (fn-nlv-run fn-lpc-header-byte fn-lpc-header-bad fn-nlv-body-phasep)
+                           (fn-lpc-at fn-lpc-put fn-lpc-value-byte fn-lpc-close-fields
+                            fn-article-body-crlfp fn-nlv-run-append fn-nlv-run-phase-is-control-run-phase)))))
+
+(defthm fn-nlv-header-phasep-of-control
+  (equal (fn-nlv-header-phasep (fn-nlv-control s)) (fn-nlv-header-phasep s))
+  :hints (("Goal" :in-theory (enable fn-nlv-header-phasep fn-nlv-control fn-lpc-at))))
+
+(defthm fn-nlv-actual-unfinished-header-is-not-body
+  (implies (and (equal (fn-lpc-at 0 s) :start) (fn-nlv-physicalp line))
+           (and (not (equal (fn-lpc-at 0 (fn-nlv-run line s pos h pin)) :body))
+                (not (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13)) s pos h pin)) :body))))
+  :hints (("Goal" :use ((:instance fn-nlv-unfinished-header-is-not-body (c (fn-nlv-control s))))
+           :in-theory (e/d (fn-nlv-header-phasep)
+                           (fn-nlv-run fn-nlv-control-run fn-nlv-control fn-lpc-at
+                            fn-nlv-control-byte fn-nlv-control-run-append fn-nlv-control-run-cons-unfolds
+                            fn-nlv-unfinished-header-is-not-body fn-nlv-physicalp)))))
+
+(defthm fn-nlv-actual-bare-lf-is-absorbing-error
+  (implies (and (equal (fn-lpc-at 0 s) :start) (fn-nlv-physicalp line))
+           (equal (fn-lpc-at 0 (fn-nlv-run (append line (cons 10 suffix)) s pos h pin)) :bad))
+  :hints (("Goal" :use ((:instance fn-nlv-bare-lf-is-absorbing-error (c (fn-nlv-control s))))
+           :in-theory (e/d (fn-nlv-header-phasep)
+                           (fn-nlv-run fn-nlv-control-run fn-nlv-control fn-lpc-at
+                            fn-nlv-control-byte fn-nlv-control-run-append fn-nlv-control-run-cons-unfolds
+                            fn-nlv-bare-lf-is-absorbing-error fn-nlv-physicalp)))))
+
+
+(defthm fn-nlv-cr-nonlf-byte-is-always-bad
+  (implies (not (equal byte 10))
+    (equal (fn-lpc-at 0 (fn-lpc-header-byte (fn-lpc-header-byte s 13 pos h pin) byte (+ 1 pos) h pin)) :bad))
+  :hints (("Goal" :in-theory (e/d (fn-lpc-header-byte fn-lpc-header-bad)
+                                 (fn-lpc-at fn-lpc-put fn-lpc-value-byte fn-lpc-close-fields)))))
+
+(defthm fn-nlv-actual-cr-nonlf-always-rejects
+  (implies (not (equal byte 10))
+    (equal (fn-lpc-at 0 (fn-nlv-run (append prefix (cons 13 (cons byte suffix))) s pos h pin)) :bad))
+  :hints (("Goal" :induct (fn-nlv-run prefix s pos h pin)
+           :in-theory (e/d (fn-nlv-run)
+                           (fn-lpc-header-byte fn-lpc-at fn-nlv-run-phase-is-control-run-phase
+                            fn-nlv-run-append)))))

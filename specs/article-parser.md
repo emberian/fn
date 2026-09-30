@@ -166,6 +166,8 @@ visible value cannot make a whitespace-only continuation valid. The actual-byte 
 CRLF-free line, including invalid/missing colon, malformed ftext name, missing
 post-colon WSP, invalid header octets and lines over 998 octets. Its exact
 start/bad result uses the actual new-field and fold predicates; it does not
-assume the line is grammatical. Separator/truncation composition, widest
-parser-counter redundancy and complete source-span simulation remain open
+assume the line is grammatical. The actual-byte framing components also prove exact separator/body acceptance,
+unfinished header nonacceptance, bare-LF rejection and CR/non-LF rejection
+from every state and arbitrary prefix. Complete scanner/parser composition,
+widest parser-counter redundancy and complete source-span simulation remain open
 before claiming the cursor refines the actual parser.
