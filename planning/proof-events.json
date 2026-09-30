@@ -17837,6 +17837,21 @@
           "kind": "theorem",
           "name": "fn-bps-asb-step-preserves-cursor-spine",
           "pending_subject": "Actual ASB record representation component establishes/preserves fixed ordered cursor spine. Mutable field/grammar invariants, every-window reference refinement, immutable provider and actual BP host remain open. This ghost recognizer is not served per-step revalidation."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-start-establishes-grammar-control",
+          "pending_subject": "Actual ASB grammar-stage field invariant component. Exact spine and declared control set remain distinct from full field/grammar/window reference invariant. Ghost predicate never served; actual BP caller/provider remains open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-drive-preserves-grammar-control",
+          "pending_subject": "Actual ASB grammar-stage field invariant component. Exact spine and declared control set remain distinct from full field/grammar/window reference invariant. Ghost predicate never served; actual BP caller/provider remains open."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-step-preserves-grammar-control",
+          "pending_subject": "Actual ASB grammar-stage field invariant component. Exact spine and declared control set remain distinct from full field/grammar/window reference invariant. Ghost predicate never served; actual BP caller/provider remains open."
         }
       ]
     },

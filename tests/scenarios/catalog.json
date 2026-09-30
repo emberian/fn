@@ -7343,14 +7343,16 @@
         "Supply exact immutable backing slices one octet at a time, with quantum one so internal duplicate scans and reversals also resume.",
         "Compare the complete span abstraction and target/result order with the literal reference object; exercise zero quantum and temporary missing input.",
         "Split work quanta across actual metadata and nonempty result-body processing; compare complete cursor, consumed-prefix count and suffix with one combined quantum.",
-        "Check the exact ordered cursor spine through every exercised one-byte/quantum-one transition, including need-input, invalid-start refusal and wrong-window refusal."
+        "Check the exact ordered cursor spine through every exercised one-byte/quantum-one transition, including need-input, invalid-start refusal and wrong-window refusal.",
+        "Carry the finite grammar-stage control invariant through every exercised one-byte/quantum-one transition; mutate only the real stage field to unknown and affirmatively check missing-premise/output failures."
       ],
       "expected": [
         "Complete targets/results and exact source/result octets survive every exercised resume.",
         "No enclosing ASB array is emitted.",
         "Zero quantum yields unchanged; absent input is need-input, not truncated.",
         "Exact quantum cuts compose, including need-input, declared truncation and refused duplicate terminals. This is not a theorem about changing windows or provider bytes.",
-        "Start establishes the fixed34-field spine and actual drive/step preserve it. Dropping a real key invalidates both the antecedent and preservation conclusion; mutable-value/grammar/provider invariants remain separate."
+        "Start establishes the fixed34-field spine and actual drive/step preserve it. Dropping a real key invalidates both the antecedent and preservation conclusion; mutable-value/grammar/provider invariants remain separate.",
+        "Actual ASB start/drive/step keep control within the declared20 stages. No served invariant revalidation is added; full remaining mutable-field and provider/window refinement remain open."
       ],
       "evidence": [
         "tests/acl2/bpsec-asb-tests.lisp",
@@ -7360,7 +7362,10 @@
         "planning/evidence/bpsec-asb-quanta-source-2026-09-30.json",
         "books/bpsec-asb-spine.lisp",
         "tests/acl2/bpsec-asb-spine-tests.lisp",
-        "planning/evidence/bpsec-asb-spine-source-2026-09-30.json"
+        "planning/evidence/bpsec-asb-spine-source-2026-09-30.json",
+        "books/bpsec-asb-control.lisp",
+        "tests/acl2/bpsec-asb-control-tests.lisp",
+        "planning/evidence/bpsec-asb-control-source-2026-09-30.json"
       ],
       "execution_scope": "ACL2 literal source fixture only; full every-schedule theorem and operational provider/native execution remain open."
     },

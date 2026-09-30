@@ -1051,6 +1051,14 @@ refused starts and wrong windows. A corrupted missing-key cursor affirmatively
 fails both the omitted invariant and resulting conclusion. No whole-state
 revalidation is added to the implementation.
 
+`books/bpsec-asb-control.lisp` supplies the first mutable-field invariant:
+the actual ASB start/drive/step keep the grammar-control field within the
+declared twenty-stage set. This ghost predicate is never served revalidation.
+Tests carry its complete premise/conclusion across every exercised one-byte,
+quantum-one transition, then corrupt only the stage field and affirmatively
+check failure of both the omitted premise and drive/step conclusion. Other
+mutable fields, grammar semantics and window/provider refinement remain open.
+
 The logical target-graph reference in `books/bpsec-target.lisp` binds each
 ASB as `(block-number . ASB)`, checks actual block existence/type, unique
 service/target pairs, forbidden security targets and payload BCB flags. Every
