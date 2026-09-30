@@ -23,3 +23,24 @@
      (unless callback
        (fnn-fault "registered BP guarded callback is not installed"))
      (funcall callback ,@arguments (fnn-live-bp-controller-registry))))
+
+;;; Internal checkpoint algebra callbacks remain absent until exact operation
+;;; allowance, installed epoch role, guarded body and escape barrier qualify.
+(defvar *fnn-bp-checkpoint-reserve-callback* nil)
+(defvar *fnn-bp-checkpoint-fence-callback* nil)
+(defmacro fnn-core-bp-checkpoint-values (name &rest arguments)
+  (let ((callback
+          (cond ((eq name 'fn-owner-bp-checkpoint-reserve)
+                 (unless (= (length arguments) 3)
+                   (error "BP checkpoint reserve expects controller, demand and fuel"))
+                 '*fnn-bp-checkpoint-reserve-callback*)
+                ((eq name 'fn-owner-bp-checkpoint-fence-current)
+                 (unless (= (length arguments) 2)
+                   (error "BP checkpoint fence expects controller and fuel"))
+                 '*fnn-bp-checkpoint-fence-callback*)
+                (t (error "BP checkpoint dispatcher requires a literal core subject")))))
+    `(let ((callback ,callback))
+       (unless callback
+         (fnn-fault "registered BP checkpoint guarded callback is not installed"))
+       (funcall callback ,@arguments (fnn-live-bp-controller-registry)
+                (fnn-live-page-read-pool)))))
