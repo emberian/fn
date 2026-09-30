@@ -115,8 +115,10 @@ Quotas bound per-session staging and pending effects so one peer cannot monopoli
 the state owner merely by refusing to consume output.
 
 Q10d: each accepted NNTP socket's service-log connection line carries exactly
-one `client-address` field projected by ACL2 from the kernel's fixed-width
-family/address observation. IPv4 is dotted decimal; IPv6 is eight expanded
+one `client-address` field projected by ACL2 from the supplied fixed-width
+family/address observation. This is the kernel transport source on direct
+connections and the asserted source after trusted PROXY admission. The
+assertion confers no configured peer identity. IPv4 is dotted decimal; IPv6 is eight expanded
 lowercase hexadecimal groups. Invalid or absent observations are named
 `unobserved`, never substituted with a peer name. Rendering/validation inspect
 at most 4 or 16 input octets; every complete line contains no CR or LF.
@@ -404,7 +406,9 @@ Native peering now composes with that same public owner lifecycle in source.
 At accept, raw Lisp supplies only the kernel address family and fixed-width
 address octets. `fn-owner-peer-for-socket-address` owns their numeric IPv4 or
 IPv6-loopback projection and configured-peer lookup, and `fn-owner-open-peer` owns
-the session role. The lookup and open occur under the shared owner mutex. The
+the session role. The lookup and open occur under the shared owner mutex. Trusted PROXY
+connections skip this peer lookup: their asserted address is used for
+admission and logging, without granting a configured peer identity. The
 public operator installs the existing outbound feed's start, wake and close
 hooks on this owner; the developer-only low-level owner entry remains a
 separate diagnostic and does not acquire those hooks. A source-matched

@@ -652,7 +652,7 @@ refused `tls refused reason=proxy-malformed proxy=ADDRESS`, a late one
 budget when the connection arrives (give it its own rate, as above, or put
 it in `exposure-trusted`), and the original client's when the header names
 it; both count against the node's 16 in flight. A connection through a
-proxy is never recognized as a peer (peering stays on the kernel's address).
+proxy is never recognized as a peer (direct peering uses the kernel's address).
 
 Terminating TLS in the proxy is a different profile, and fn does not build
 it: the proxy then holds the TLS session, so SCRAM-PLUS's channel binding
@@ -964,6 +964,8 @@ Without a service it is on the screen, or in `log/fn.log` when `fn.toml`
 names a `[log] path`. A program that starts fn and keeps its error output
 in a file must show that file: the reason is there.
 Each accepted NNTP socket has one connection line with `client-address`,
+using the kernel source directly or the asserted source from an admitted
+trusted PROXY header. The asserted address grants no peer identity. The field is
 the observed source IP address (IPv6 is expanded lowercase hexadecimal).
 Malformed or unavailable observations read `unobserved`; this field is
 independent of the peer record's name.
