@@ -940,6 +940,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/legacy-parser-allocation \
 	tests/acl2/legacy-parser-catalog-tests \
 	tests/acl2/legacy-parser-allocation-tests \
+	books/legacy-parser-scalars \
+	tests/acl2/legacy-parser-scalars-tests \
+	books/legacy-parser-continuation \
+	tests/acl2/legacy-parser-continuation-tests \
 	books/nntp-article-pass \
 	books/nntp-responses \
 	books/nntp-article-block \
@@ -1599,6 +1603,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-scalar-cursor-tests \
 	books/history-record-cursor \
 	tests/acl2/history-record-cursor-tests \
+	books/history-decoded-record-cursor \
+	tests/acl2/history-decoded-record-cursor-tests \
 	books/history-decode-nodes \
 	books/history-symbol-normalize \
 	tests/acl2/history-symbol-normalize-tests \
@@ -1606,11 +1612,17 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-decode-stream \
 	books/history-decode-refinement \
 	tests/acl2/history-decode-refinement-tests \
+	books/history-decode-shape \
+	tests/acl2/history-decode-shape-tests \
 	tests/acl2/history-decode-cursor-tests \
 	books/pagestore-digest-cursor \
 	books/pagestore-digest-cursor-refinement \
 	books/pagestore-digest-byte-cursor \
 	books/pagestore-digest-byte-refinement \
+	books/pagestore-digest-cursor-domain \
+	tests/acl2/pagestore-digest-cursor-domain-tests \
+	books/pagestore-digest-byte-domain \
+	tests/acl2/pagestore-digest-byte-domain-tests \
 	tests/acl2/pagestore-digest-cursor-tests \
 	tests/acl2/pagestore-digest-cursor-refinement-tests \
 	tests/acl2/pagestore-digest-byte-cursor-tests \
