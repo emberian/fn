@@ -1,19 +1,7 @@
 ; Fixed reference capture into the mixed NOV formatter, PRF-1066 component.
 (in-package "ACL2")
 (include-book "nov-column-window")
-(include-book "nov-piece-window")
-
-(defun fn-npw-column-pieces (number facts octets)
-  (declare (xargs :guard t))
-  (let ((nov (fn-hf-nov facts)))
-    (list (fn-nntp-decimal-field number) '(9)
-          (fn-hnov-subject nov) '(9)
-          (fn-hnov-from nov) '(9)
-          (fn-hnov-date nov) '(9)
-          (fn-hnov-msgid nov) '(9)
-          (fn-hnov-references nov) '(9)
-          (list :decimal (nfix octets) nil) '(9)
-          (list :decimal (nfix (fn-hf-body-lines facts)) nil) '(13 10))))
+(include-book "nov-row-capture")
 
 (local
  (defthm fn-npw-nntp-string-octets-agree

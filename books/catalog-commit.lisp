@@ -72,6 +72,7 @@
 ; arms keep `fn-sn-finish' over the event (PKT-585).
 
 (in-package "ACL2")
+(include-book "catalog-handles")
 (include-book "catalog")
 (include-book "store-node")
 (include-book "store-node-resolution")
@@ -712,42 +713,3 @@
            (equal (fn-sn-keyring-generation (fn-sn-set-keyring s keyring contexts))
                   (1+ (fn-sn-keyring-generation s))))
   :hints (("Goal" :in-theory (e/d (fn-sn-set-keyring) (fn-sn-statep)))))
-
-; -----------------------------------------------------------------------------
-; Every row's handle is in the arena: every row of [0, n) names a sealed
-; payload.  The relation of step 6 carries it for every row; a delta's
-; re-decision (step 5) reads the bytes under it.
-(defun fn-cat-handles-inp (n fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (and (natp n) (<= n (fn-cat-count fn-cat)))
-                  :guard-hints (("Goal" :in-theory (e/d (fn-cat-p-is-rowsp) (fn-held-p))
-                                 :use ((:instance fn-cat-rowp-fields (h (nth (- n 1) fn-cat)))
-                                       (:instance fn-cat-rowp-of-nth-of-rowsp
-                                                  (xs fn-cat) (i (- n 1))))))))
-  (if (zp n)
-      t
-    (and (< (fn-record-payload (fn-cat-at (- n 1) fn-cat)) (fn-arena-count fn-arena))
-         (fn-cat-handles-inp (- n 1) fn-arena fn-cat))))
-
-(defthm fn-cat-handles-inp-at
-  (implies (and (fn-cat-handles-inp n fn-arena fn-cat) (natp n) (natp seq) (< seq n))
-           (< (fn-record-payload (fn-cat-at seq fn-cat)) (fn-arena-count fn-arena))))
-
-(defthm fn-cat-handles-inp-monotone
-  (implies (and (fn-cat-handles-inp n fn-arena fn-cat) (natp n) (natp m) (<= m n))
-           (fn-cat-handles-inp m fn-arena fn-cat)))
-
-; A row below the count is a held record: its handle is a natural.
-(defthm fn-cat-row-payload-natp
-  (implies (and (fn-cat-p fn-cat) (natp seq) (< seq (fn-cat-count fn-cat)))
-           (natp (fn-record-payload (fn-cat-at seq fn-cat))))
-  :rule-classes (:rewrite :type-prescription)
-  :hints (("Goal" :in-theory (e/d (fn-cat-p-is-rowsp) (fn-held-p))
-           :use ((:instance fn-cat-rowp-fields (h (nth seq fn-cat)))
-                 (:instance fn-cat-rowp-of-nth-of-rowsp (xs fn-cat) (i seq))))))
-
-; The count is a natural (the exports are kept opaque in the books above).
-(defthm fn-cat-count-natp
-  (natp (fn-cat-count fn-cat))
-  :rule-classes (:rewrite :type-prescription)
-  :hints (("Goal" :in-theory (enable fn-cat-count-is-len))))

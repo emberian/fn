@@ -40,6 +40,7 @@
 ; stated under archive = the view's articles.
 (in-package "ACL2")
 (include-book "catalog-number-index")
+(include-book "over-cursor-shape")
 ; A group's summary at a view below the count (lane scale-latency, PKT-870).
 (include-book "served-catalog-view")
 (include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
@@ -769,10 +770,6 @@
 ;;; itself; stating the equations symmetrically keeps them free of that
 ;;; structural fact about the whole pinned dispatcher.
 
-(defun fn-ovw-status (text)
-  (declare (xargs :guard t))
-  (fn-nntp-crlf (fn-nntp-string-octets text)))
-
 ; The lines of the numbers K..HI of GROUP in view V: the old reader's lines
 ; restricted to one window.
 (defun fn-ovw-lines (group k hi v fn-arena fn-cat)
@@ -781,29 +778,6 @@
   (fn-nov-lines-for-numbers-cat
    group (fn-scat-range-keep group (fn-cnx-range-aux group k hi v fn-cat) fn-cat)
    v fn-arena fn-cat))
-
-; (GROUP K TOP V LEGACYP OWEDP): the next number to probe, the range's last
-; number (clamped once, at the start), the pinned view, XOVER or OVER, and
-; whether the status line is still owed (no line sent yet).
-(defun fn-ovw-cursor (group k top v legacyp owedp)
-  (declare (xargs :guard t))
-  (list group k top v legacyp owedp))
-
-(defun fn-ovw-cursorp (cur)
-  (declare (xargs :guard t))
-  (and (true-listp cur) (natp (nth 3 cur))))
-
-(defthm fn-ovw-cursor-fields
-  (and (equal (nth 0 (fn-ovw-cursor group k top v legacyp owedp)) group)
-       (equal (nth 1 (fn-ovw-cursor group k top v legacyp owedp)) k)
-       (equal (nth 2 (fn-ovw-cursor group k top v legacyp owedp)) top)
-       (equal (nth 3 (fn-ovw-cursor group k top v legacyp owedp)) v)
-       (equal (nth 4 (fn-ovw-cursor group k top v legacyp owedp)) legacyp)
-       (equal (nth 5 (fn-ovw-cursor group k top v legacyp owedp)) owedp)))
-
-(defun fn-ovw-empty-text (legacyp)
-  (declare (xargs :guard t))
-  (if legacyp (fn-proto-text * :none-selected) (fn-proto-text * :empty-range)))
 
 ; The command's step: O(1), no number probed.
 (defun fn-ovw-start (session v token legacyp fn-cat)

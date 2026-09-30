@@ -162,6 +162,32 @@ projection retains phase, physical-line length, current-field presence,
 field-wide visibility and a separate physical-fold visibility mode. General
 new-field and continuation-line equations and an exact article-body grammar
 bridge are proved. The separation of visibility was necessary: a previous
-visible value cannot make a whitespace-only continuation valid. These pieces
-still require the general malformed-header rejection and complete source-span
-simulation before claiming the cursor refines the actual parser.
+visible value cannot make a whitespace-only continuation valid. The actual-byte physical-line theorem now covers every nonempty proper
+CRLF-free line, including invalid/missing colon, malformed ftext name, missing
+post-colon WSP, invalid header octets and lines over 998 octets. Its exact
+start/bad result uses the actual new-field and fold predicates; it does not
+assume the line is grammatical. The actual-byte framing components also prove exact separator/body acceptance,
+unfinished header nonacceptance, bare-LF rejection and CR/non-LF rejection
+from every state and arbitrary prefix. The widest parser counters are now proved redundant under its existing codec
+preflight: `fn-nlv-actual-parser-never-counter-error` unconditionally excludes
+header line/field/octet counter errors from `fn-article-parse`. This does not
+remove operator admission limits.
+
+`books/legacy-parser-composition.lisp` now proves the full grammar acceptance
+join: `fn-nlpc-actual-byte-machine-accepts-iff-article-parser` says that folding
+the actual `fn-lpc-header-byte` from `fn-lpc-header-begin` ends in `:body` iff
+`fn-article-parse` succeeds, for every octet source within the original codec
+preflight. Neither canonical input nor valid grammar is a premise. Arbitrary
+malformed scanner results, physical lines and body framing are covered.
+The scanner-failure theorem needs only header-start phase and actual scanner
+failure; the physical-length premise was proved redundant and removed.
+The intermediate byte-machine/counter-free grammar equation is unconditional;
+source consumption discharges the actual parser's three widest counters.
+SCN-1015 includes both final retained-hypothesis removals: the codec-ceiling
+counterexample is a proved finite symbolic body, without allocating billions
+of cons cells. These are logical source proofs, with no new served algorithm.
+
+The arena cursor's complete tick/EOF and actual NOV join is now a proved
+source component (`legacy-parser-catalog`); the assembler, formatter,
+pins/funding, actual host route and matching image evidence remain open
+before claiming complete productive OVER.

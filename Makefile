@@ -916,6 +916,14 @@ ACL2_BOOKS ?= books/defrecord \
 	books/legacy-parser-cursor \
 	books/legacy-parser-reference \
 	books/legacy-parser-header \
+	books/legacy-parser-value-run \
+	tests/acl2/legacy-parser-value-run-tests \
+	books/legacy-parser-composition \
+	tests/acl2/legacy-parser-composition-tests \
+	books/legacy-parser-columns \
+	tests/acl2/legacy-parser-columns-tests \
+	books/legacy-parser-catalog \
+	tests/acl2/legacy-parser-catalog-tests \
 	books/legacy-parser-validity \
 	tests/acl2/legacy-parser-cursor-tests \
 	tests/acl2/legacy-parser-header-tests \
@@ -1038,6 +1046,17 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nov-decimal-window-tests \
 	books/nov-byte-window \
 	tests/acl2/nov-byte-window-tests \
+	books/catalog-number-read \
+	books/over-cursor-shape \
+	books/nov-row-capture \
+	books/served-column-relation \
+	books/catalog-handles \
+	books/nov-row-facts-model \
+	books/response-plan-token \
+	tests/acl2/response-plan-token-tests \
+	books/over-byte-cursor \
+	books/over-byte-invariants \
+	tests/acl2/over-byte-cursor-tests \
 	books/nov-row-facts \
 	tests/acl2/nov-row-facts-tests \
 	books/nov-column-window \

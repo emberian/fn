@@ -1914,6 +1914,26 @@ still dormant. Actual row capture, parser refinement, selected profile and
 arithmetic cost, host cursor composition and matched measurements remain
 required before a complete served scheduling claim.
 
+The dormant `fn-obc-one` machine now preserves a selected row's cached,
+legacy-parse and mixed-piece emission continuations. Each atomic call reads
+at most one source octet and emits at most one output octet; a core-controlled
+quantum charges every returned call, including work that emits nothing.
+Finishing the last returned quantum yields exactly its saved output prefix
+and continuation. A later cold read must discard only its unfinished atomic
+attempt, then await off the owner lock and re-enter charged scheduling.
+
+Its maintained state-shape theorem requires the current state shape, a valid
+selected payload handle and a well-shaped selected cached NOV. A separate
+proof derives the last two premises from the carried catalog shape/handle
+relation and column relation F. No transition runs those whole-state
+recognizers. The response's actual ownership generation token is distinct
+from the catalog view and is retained through continuation. The machine and
+quantum entry guards are verified source components. They remain dormant:
+complete old-reply/residual refinement, actual plan and host composition,
+physical-window binding, funding and matching immutable-image observations
+remain open. Source proofs of scalar transitions do not measure allocator,
+bignum, disk or scheduler costs.
+
 ### Bounded legacy hydration source component (PRF-1094, SCN-1009)
 
 `fn-lpc-begin(handle, length, origin-pin)` captures immutable source identity;
@@ -1949,14 +1969,25 @@ unfolded value after the one-SP rule and `fn-nov-scrub`. The actual value and
 fold-byte transitions preserve it; a complete physical CRLF pair preserves
 the value, and the completed line endpoint identifies the normalized span.
 Normalization also commutes with the projection's first-hit update, keeping
-a present empty value distinct from an absent column. These component
-theorems do not yet establish whole-header correspondence.
+a present empty value distinct from an absent column. The complete successful
+header traversal now maintains all five source spans across arbitrary actual
+new-field and folded lines, first-field closure, the separator and body.
+`fn-lpv-complete-values-are-actual-overview-content` equates those normalized
+spans with the actual five `fn-nov-header-content` values; its only premise
+is success of the actual article parser. Literal removal witnesses distinguish
+invalid grammar, a missing current field, an overlong physical line and a
+corrupted source/span invariant. The catalog join now also proves complete
+actual arena-tick NOV equality with `fn-hnov-of`, including invalid grammar
+and the actual tombstone magic/89-byte threshold, under only the octet source
+domain. The actual parser and begin decide oversized sources alike, so the
+final equation assumes no codec-ceiling premise. A natural-handle premise
+was removed after proving the stronger logical arena abstraction.
 
-This component is not served yet. `fn-lpc-agreesp` states the full remaining
-comparison with actual `fn-hnov-of` and `fn-hf-body-lines-of`; it is a
-predicate, not a proved theorem. General header-verdict/field refinement,
-allocation accounting, actual cursor composition
-and matched runtime measurements remain open. The source stores fixed-size
+This component is not served yet. `fn-lpc-agrees-with-actual-catalog` proves
+the full `fn-lpc-agreesp` comparison with actual `fn-hnov-of` and
+`fn-hf-body-lines-of` under the octet source domain. The formal allocation
+accounting, actual served cursor/formatter composition and matched runtime
+measurements remain open. The source stores fixed-size
 records and source references and reports raw-byte work; that statement
 alone is not a physical allocation or latency qualification.
 

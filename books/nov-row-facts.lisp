@@ -1,35 +1,15 @@
 ; Read the already-selected OVER row's cached facts without searching its
 ; Message-ID history. PRF-1066 component; served cursor integration remains open.
 (in-package "ACL2")
+(include-book "nov-row-facts-model")
 (include-book "nov-column-window")
+(include-book "nov-row-capture")
 
-(defun fn-nrf-facts (seq fn-cat)
-  (declare (xargs :stobjs fn-cat :guard t))
-  (if (and (natp seq) (< seq (fn-cat-count fn-cat)))
-      (let* ((row (fn-cat-at seq fn-cat)) (facts (fn-held-facts row)))
-        (if (and (natp (fn-record-payload row)) (fn-hf-nov facts)) facts nil))
-    nil))
 
-(defthm fn-nrf-facts-handle
-  (implies (fn-nrf-facts seq fn-cat)
-           (natp (fn-record-payload (fn-cat-at seq fn-cat))))
-  :rule-classes :forward-chaining)
 
 ; The selection predicate is deliberately separate: a caller cannot infer
 ; visibility or group membership merely from the existence of these facts.
-(defthm fn-nrf-facts-are-row-bytes-facts
-  (implies (and (fn-scol-okp fn-arena fn-cat)
-                (fn-nrf-facts seq fn-cat))
-           (equal (fn-nrf-facts seq fn-cat)
-                  (fn-held-facts-of
-                   (fn-nntp-payload-bytes
-                    (fn-record-payload (fn-cat-at seq fn-cat)) fn-arena))))
-  :hints (("Goal"
-           :use ((:instance fn-scol-rows-okp-nth (rows fn-cat)))
-           :in-theory (e/d (fn-nrf-facts fn-scol-okp fn-scol-row-okp
-                            fn-cat-at-is-nth fn-cat-count-is-len)
-                           (fn-held-facts-of fn-scol-rows-okp
-                            fn-scol-rows-okp-nth fn-nntp-payload-bytes)))))
+
 
 (local
  (defthm fn-nrf-ok-has-facts
