@@ -1,7 +1,10 @@
 """Scripted raw observer teeth; no native/INN execution."""
 import base64
 import unittest
-from tools.resilience.adapters.inn_control import observe, subject
+import tempfile
+import json
+from pathlib import Path
+from tools.resilience.adapters.inn_control import observe, subject, Recorder
 
 EXPECTED = '<control@fn.invalid>'
 def article(identity=EXPECTED):
@@ -10,6 +13,17 @@ def exchange(**changed):
     return dict(article=article(), result='239 '+EXPECTED, block_complete=True, transfer_complete=True, **changed)
 
 class ControlCorpusTests(unittest.TestCase):
+    def test_selected_lab_callback_retains_each_trial_without_overwriting(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            recorder = Recorder(Path(temporary) / 'corpus')
+            recorder('inn-checkgroups-control', EXPECTED, exchange(), article())
+            recorder('inn-throttle-resumed', EXPECTED, None, None)
+            rows=sorted(recorder.directory.glob('*/disposition.json'))
+            self.assertEqual([json.loads(p.read_text())['status'] for p in rows], ['observed', 'unavailable'])
+            self.assertEqual(len(list(recorder.directory.glob('*/journal.jsonl'))), 2)
+            with self.assertRaises(ValueError):
+                recorder('invented-receipt', EXPECTED, exchange(), article())
+
     def test_exact_raw_subject_is_retained_without_whole_control_claim(self):
         journal, result = observe('control', EXPECTED, exchange(), article())
         self.assertEqual(result['status'], 'observed')
@@ -26,6 +40,15 @@ class ControlCorpusTests(unittest.TestCase):
                 data=exchange(); data[field]=value
                 _, result=observe('control', EXPECTED, data, article())
                 self.assertEqual(result['status'], 'unavailable')
+    def test_completed_prebody_refusal_requires_no_article_transfer(self):
+        data=dict(complete=True, offer='438 '+EXPECTED, result='', article=None,
+                  block_complete=False, transfer_complete=False)
+        _, result=observe('control', EXPECTED, data, None)
+        self.assertEqual(result['status'], 'refused')
+        data['complete']=False
+        _, result=observe('control', EXPECTED, data, None)
+        self.assertEqual(result['status'], 'unavailable')
+
     def test_refused_and_unknown_outcomes_are_distinct_from_observed(self):
         for reply, status in [('439 '+EXPECTED, 'refused'), ('', 'unavailable'), ('400 timeout', 'unavailable')]:
             data=exchange(); data['result']=reply
