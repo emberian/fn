@@ -55,26 +55,13 @@
 ; -----------------------------------------------------------------------------
 ; Words
 
-(defun fn-nls-text (text)
-  (declare (xargs :guard t))
-  (fn-record-string-octets text))
+(include-book "native-live-status-words")
 
 ; Every natural in decimal.  The renderer was `fn-nntp-decimal-field', the
 ; NNTP response renderer, which answers 0 past ten digits (RFC 3977 section
 ; 6 bounds what it renders); a status value is the operator's and has no
 ; such bound, so any value of 2^34 or more (eleven digits), the default
 ; max-history-octets 2^40 among them, printed 0 (PKT-156).
-(defun fn-nls-digits (n acc)
-  (declare (xargs :guard (natp n)
-                  :measure (nfix n)
-                  :hints (("Goal" :in-theory (disable floor mod)))))
-  (if (zp n)
-      acc
-    (fn-nls-digits (floor n 10) (cons (+ 48 (mod n 10)) acc))))
-
-(defun fn-nls-nat (n)
-  (declare (xargs :guard t))
-  (if (posp n) (fn-nls-digits n nil) '(48)))
 
 (defthm fn-nls-digits-true-listp
   (implies (true-listp acc) (true-listp (fn-nls-digits n acc)))
