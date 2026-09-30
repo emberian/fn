@@ -213,5 +213,11 @@
     "session_stopped": true,
     "logs": "build/proof-repl/bpck-publication-cancel",
     "scope": "Unactivated guarded source and actual native-function recording only. Running source cancellation leaves exact job/control unchanged; returned pre-replacement cancellation retains private stage and closes known FD in a later bounded turn; post-replacement cancellation retains uncertainty. Core failure retains FD and fences subsequent effects. No deletion/refund, registered controller grant, runtime/FS adequacy, native crash/restart or image claim. Initial fixture include was refused because send-range relative include resolves outside remote tree; subsequent #3-#29 literal forms passed against already loaded exact source root."
+  },
+  "typed_handoff_recovery": {
+    "manifest": "planning/evidence/bp-typed-handoff-recovery-20260930/manifest.json",
+    "scope": "Handoff-specific recovery acceptance tightening; no certificate, selected runtime funding, image, disk/hash realization, full held-symbol grammar or native interrupted-slice qualification.",
+    "source_base": "649d82f94",
+    "whole_disconnected_slice": "open"
   }
 }
