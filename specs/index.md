@@ -110,3 +110,39 @@ The live owner pins the trie with each archive and calls it for exact-ID
 ARTICLE, HEAD, BODY and STAT retrieval. Its maintained correspondence is not
 rechecked across the whole archive per command. Group buckets have a different
 key and LISTGROUP query contract; they do not replace the Message-ID trie.
+
+
+## Captured group/local-number source (PRF-1146, SCN-1052)
+
+The selected source uses the generic positive-natural trie extracted into
+`group-number-trie`; its get/set/get-of-set definitions are unchanged.
+`group-number-source` reads a retained group string through CHAR, one octet
+bit per action, then reads the selected number trie one integer bit per
+action. The logical leading-one base256 key is proof-only: served lookup
+never constructs it or an octet list. No fixed31-bit ceiling is added.
+Number values are explicit `(:ordinal n)` options; zero is valid. A value
+outside the captured catalog count is missing, not a row authorization.
+
+`group-number-source-update` retains untouched sibling roots in a zipper.
+One descent action retains one frame; one rebuild action copies one trie
+node (at most two trie conses). The core carries copied nodes, allocated
+trie conses and descent-frame counts. These counters do not constitute a
+funded admission or charge all control objects; caller funding includes
+retained original roots, zipper frames and fixed cursor/control lifetimes.
+
+The internal capture payload is fixed6
+`(:number-source selectedNumberRoot rowRootID CatalogC V rangeGrant)`.
+The actual registered provider must construct it from the same published
+table/row/number root association and exact query ticket/generation. Count
+alone is not identity and the pure lookup helper does not authorize this
+packet. OVER retains visibility decisions against the captured row and V.
+CatalogC advances per committed catalog article, separately from StoreF.
+
+Actual preparation consumes the exact assigned row before durable publish.
+The shared index publisher owns genuine root/revision issuance; the admission
+owner installs matching prepared roots and fn-sca-finish in the same
+serialized core transition. Stale prepublication preparation restarts or
+refuses; mismatch after durable completion requires recovery. Loading uses
+the same assigned-row insertion. Those publisher/owner hooks and full
+funding/refinement/native composition remain open; component source proofs
+and fixtures do not establish their completion.

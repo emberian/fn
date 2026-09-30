@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -7026,6 +7026,28 @@
         "tests/native/page-window-lifecycle.lisp"
       ],
       "execution_scope": "Source model/adapter and staged raw wrapper only. Actual native observation, adequate native demand and served activation remain pending."
+    },
+    {
+      "id": "SCN-1052",
+      "title": "Captured group-number roots across durable publication and old query retention",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [],
+      "steps": [
+        "Prepare exact assigned catalog article memberships with ordinal equal to precommit CatalogC; advance one string/number bit or copied node per action.",
+        "Publish matching table, row and number roots under the actual durable completion transition; mismatch after durable completion requires recovery.",
+        "Retain selected group number root with rowRootID/C/V and registered range query grant; enumerate local numbers through the resumable number cursor.",
+        "Exercise ordinal zero, holes, a number above2^31, prefix group names, old captured roots after later appends, withdrawals, stale prepare and exact query cleanup."
+      ],
+      "expected": [
+        "No per-request rebuild/history scan/MIDquery substitution.",
+        "No count-only identity binding or serving interval awaiting index catch-up.",
+        "Each action copies at most one trie node; funded old roots remain retained until their holders clear."
+      ],
+      "evidence": [
+        "tests/acl2/group-number-source-tests.lisp"
+      ],
+      "notes": "Current evidence exercises low-level persistent-root source only. Actual preparation/publication, OVER visibility and native lifecycle remain open."
     }
   ]
 }
