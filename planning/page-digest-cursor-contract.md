@@ -153,3 +153,14 @@ inclusive endpoint; the codec's actual u32 domain is narrower. These are
 representation sufficiency proofs, not stored-data implementation ceilings.
 The exact-byte wrapper's additional `8*pos <= byte-total` guard still requires
 its own carried invariant. Semantic trajectory and strict progress are open.
+
+### Exact-byte guard domain (source checkpoint)
+
+`pgs-dbd-domainp(limit, byte-total, state)` carries the page domain, captured
+natural B, total=ceil(B/8),8pos<=B and active frame right-start<total.
+`pgs-dbd-begin-establishes-domain` establishes it;
+`pgs-dbd-byte-step-preserves-domain` preserves it for actual `pgs-dcb-step`;
+`pgs-dbd-domain-implies-byte-step-guard` exports the complete actual guard;
+`pgs-dbd-byte-step-is-never-invalid` excludes malformed status under it.
+The predicate is proof-only. Semantic and progress proof consumes this leaf
+without changing executable state or requiring a served-path validation.
