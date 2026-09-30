@@ -11,6 +11,10 @@
   (fn-icr-test-setup t fn-index-backing fn-page-read-pool)
   (mv-let (old-ok old fn-index-backing fn-page-read-pool)
    (fn-icr-test-captured-holder t fn-index-backing fn-page-read-pool)
+   (mv-let (query-owned ignored-query left-query fn-index-backing)
+    (fn-ibp-generation-reference '(:index-generation 9 1 0)
+                                 :retain :query nil 1 fn-index-backing)
+    (declare (ignore ignored-query))
    (mv-let (new-ok new fn-index-backing fn-page-read-pool)
     (fn-icr-test-captured-holder nil fn-index-backing fn-page-read-pool)
     (let* ((prepared (fn-ibp-connection-pending fn-index-backing))
@@ -36,11 +40,13 @@
                               (null (fn-ibp-connection-pending fn-index-backing)))))
          (mv-let (repeat token2 left2 fn-index-backing fn-page-read-pool)
           (fn-irr-request-abort-prepared 19 0 fn-index-backing fn-page-read-pool)
-          (mv (list old-ok new-ok short-ok abort-ok
+          (mv (list (and old-ok (eq query-owned :retained) (natp left-query)) new-ok short-ok abort-ok
                     (and (eq repeat :aborted) (equal token2 new) (equal left2 0)
                          (equal after (fn-ibp-request-pending fn-index-backing))
-                         (equal after-ledger (fn-owner-page-read-ledger fn-page-read-pool))))
-              fn-index-backing fn-page-read-pool)))))))))))
+                         (equal after-ledger (fn-owner-page-read-ledger fn-page-read-pool))
+                         (equal (fn-icr-test-gen-refs '(:index-generation 9 1 0)
+                                                    fn-index-backing) '(1 1))))
+              fn-index-backing fn-page-read-pool))))))))))))
 (defun fn-irr-test-prepare-abort-exec ()
  (declare (xargs :guard t :verify-guards nil))
  (with-local-stobj fn-index-backing
