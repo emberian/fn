@@ -53,7 +53,9 @@
 
 (defun fn-crw-natural-ceiling (descriptor ticket)
   (declare (xargs :guard t))
-  (max (max (nfix ticket) (nfix (fn-crw-nth 0 descriptor)))
+  ; The ledger spends NEXT before constructing the returned lease. At a
+  ; digit boundary NEXT+1 can need more retained limbs than NEXT itself.
+  (max (max (+ 1 (nfix ticket)) (nfix (fn-crw-nth 0 descriptor)))
        (max (+ (nfix (fn-crw-nth 1 descriptor)) (nfix (fn-crw-nth 2 descriptor)) 32)
             (- (expt 2 257) 1))))
 
@@ -101,6 +103,10 @@
 (defthm fn-crw-demand-credits-by-definition
   (implies (fn-crw-job-demand descriptor ticket)
            (equal (cdr (fn-crw-job-demand descriptor ticket)) '(0 0 1 1)))
+  :rule-classes nil)
+
+(defthm fn-crw-natural-ceiling-covers-next-ticket-by-definition
+  (<= (+ 1 (nfix ticket)) (fn-crw-natural-ceiling descriptor ticket))
   :rule-classes nil)
 
 (in-theory (disable fn-crw-nth fn-crw-naturals fn-crw-supportedp

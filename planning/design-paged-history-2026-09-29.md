@@ -634,3 +634,9 @@ extent with the same identity widths; ELEN is never a vector capacity.
 inventory and remaining caller/arithmetic joins. This source component is
 unactivated; compressed backing storage is recorded separately and is not
 a complete compressed-job demand. No productive default claim changes.
+
+The raw source natural-width ceiling includes the ledger's spent ticket
+successor. A successor can need a larger object at a digit/alignment boundary;
+the old identity's width alone is insufficient. This correction does not
+close primitive arithmetic scratch, first-use native guard-cache baseline,
+actual admission integration or the full producer reserve.

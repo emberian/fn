@@ -13,6 +13,17 @@
 ; Process-local identities are naturals, not quietly truncated u64s.
 (assert! (< (car (fn-crw-job-demand *crw-small* 1))
              (car (fn-crw-job-demand *crw-small* (expt 2 4096)))))
+; Successor identity crosses a selected-layout limb/alignment boundary.
+; Mutation witness: charging only the old ticket's normalized object would
+; undercharge NEXT+1. The actual ceiling includes the spent successor.
+(assert!
+ (let ((ticket (- (expt 2 319) 1)))
+   (and (fn-crw-supportedp *crw-small* ticket)
+        (equal (fn-crl-natural-octets ticket) 48)
+        (equal (fn-crl-natural-octets (+ 1 ticket)) 64)
+        (< (fn-crl-natural-octets ticket) (fn-crl-natural-octets (+ 1 ticket)))
+        (<= (fn-crl-natural-octets (+ 1 ticket))
+            (fn-crl-natural-octets (fn-crw-natural-ceiling *crw-small* ticket))))))
 (assert! (not (fn-crw-job-demand '(1 0 100 90 20 0 0) 1)))
 (assert! (not (fn-crw-job-demand '(1 0 100 0 100 101 0) 1)))
 (assert! (not (fn-crw-job-demand '(1 0 100 0 100 0 0 . bad) 1)))
