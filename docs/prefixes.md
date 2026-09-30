@@ -369,3 +369,4 @@ anything a book does not already decide.
 | `fn-gat-`, `gat-` | `tests/acl2/group-authority-tests` | Explicit authority publication and replay teeth; distinct posting policy and principal bindings. |
 
 | `fn-novlp-` | `nov-line-projection` | Logical first-five normalized NOV projection of the actual article parser; component proof vocabulary, never a served scan |
+| `fn-nlv-` | `legacy-parser-validity` | Logical control projection and physical-line/body grammar proofs of the actual bounded legacy byte cursor; full malformed-header simulation remains open |
