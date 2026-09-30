@@ -179,6 +179,50 @@
 (assert-event (equal (car (in-arena-fn-own-read *sr-arena* *oer-reader-d* 4 *oer-hdr*))
                      (fn-oert-rhs *oer-reader-d* 4 *oer-prefix* *oer-lf*)))
 
+; PRF-168 fn-nntp-hdr-fn-enrollment-is-the-pinned-enrollment: the same
+; reached readers, at the dispatcher boundary. Assert all eight literal
+; hypotheses and the complete result (not only its rendered octets).
+(defun fn-oert-dispatcher-witness (o id prefix byte fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let* ((conn (fn-own-find-conn id (fn-own-conns o)))
+         (w1 (fn-wire-result-state (fn-wire-feed-proper (fn-own-conn-wire conn) prefix)))
+         (line (cadr (car (fn-wire-result-events (fn-wire-feed-byte w1 byte)))))
+         (tokens (fn-nntp-tokenize line))
+         (keyword (car tokens)) (args (cdr tokens))
+         (served (fn-octl-served-conn o conn))
+         (session (fn-post-session-base
+                   (fn-peer-session-base
+                    (fn-auth-session-base (fn-served-conn-session served)))))
+         (archive (fn-served-conn-archive served))
+         (index (fn-served-conn-pinned-index served))
+         (verdicts (fn-served-conn-verdicts served))
+         (env (fn-post-reader-env
+               (fn-auth-moderation-config (fn-served-conn-session served)
+                                          (fn-served-conn-config served))
+               (fn-served-conn-observation served)))
+         (msgid (fn-nntp-token-string (cadr args))))
+    (and (fn-nntp-keywordp keyword "HDR")
+         (consp args) (consp (cdr args)) (null (cddr args))
+         (fn-nntp-keywordp (car args) ":FN-ENROLLMENT")
+         (fn-nntp-message-id-tokenp (cadr args))
+         (fn-octet-listp (cadr args))
+         (consp (fn-midx-lookup msgid (fn-gidx-pin-trie index)))
+         (equal
+          (fn-nntp-archive-command-pinned
+           session archive index verdicts env keyword args fn-arena)
+          (fn-nntp-multi session (fn-nntp-hdr-initial nil)
+                         (list (fn-nntp-hdr-line
+                                (fn-nntp-decimal-field 0)
+                                (fn-enr-item (fn-stx-reader-lookup msgid verdicts)
+                                             (fn-gidx-pin-control index)))))))))
+(bpr-lift fn-oert-dispatcher-witness 4)
+(assert-event (in-arena-fn-oert-dispatcher-witness
+               *sr-arena* *ov-reader-b* 2 *oer-prefix* *oer-lf*))
+(assert-event (in-arena-fn-oert-dispatcher-witness
+               *sr-arena* *ov-reader-c* 3 *oer-prefix* *oer-lf*))
+(assert-event (in-arena-fn-oert-dispatcher-witness
+               *sr-arena* *oer-reader-d* 4 *oer-prefix* *oer-lf*))
+
 ; Without the article in the pinned trie (premise 15): a Message-ID reader D's
 ; view does not serve answers 430.  (Reader A, pinned before the publication,
 ; also answers 430 above, but it has no buckets either: premises 14 and 15.)
