@@ -510,6 +510,8 @@
     "books/store-capacity-vector",
     "tests/acl2/store-capacity-vector-tests",
     "books/store-capacity-config",
+    "books/store-config-generation",
+    "tests/acl2/store-config-generation-tests",
     "tests/acl2/store-capacity-config-tests",
     "books/config-carried-candidate",
     "tests/acl2/config-carried-candidate-tests",
@@ -810,6 +812,8 @@
     "tests/acl2/bp-receipt-records-tests",
     "books/bp-native-app",
     "tests/acl2/bp-native-app-tests",
+    "books/bp-native-app-replay-bridge",
+    "tests/acl2/bp-native-app-replay-bridge-tests",
     "books/bp-native-app-fast",
     "tests/acl2/bp-native-app-fast-tests",
     "books/bp-transit-join",
@@ -1634,26 +1638,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1697,
-    "books_in_root_closure": 1694,
-    "roots": 1630,
-    "theorems": 27804,
-    "functions": 18123,
-    "assert_events": 22976,
-    "must_fails": 2496,
+    "books": 1708,
+    "books_in_root_closure": 1698,
+    "roots": 1634,
+    "theorems": 27920,
+    "functions": 18134,
+    "assert_events": 22987,
+    "must_fails": 2501,
     "prover_refusals": 0,
     "encapsulates": 156,
     "guards": {
-      "verified": 3460,
-      "declared-off": 2084,
-      "default-guarded": 9845,
+      "verified": 3464,
+      "declared-off": 2090,
+      "default-guarded": 9846,
       "default-unguarded": 2734
     },
-    "suspect_theorems": 1227,
+    "suspect_theorems": 1231,
     "export_hygiene_warnings": 318,
     "enabled_projection_warnings": 52,
     "teeth_form_warnings": 272,
-    "include_hygiene_warnings": 2417,
+    "include_hygiene_warnings": 2428,
     "host_names_warnings": 2087,
     "hand_written_record_warnings": 18
   },
@@ -4537,6 +4541,33 @@
         "byte-store-scan",
         "history-columns-relation",
         "store-files-traces"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-native-app-replay-bridge.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 9,
+      "functions": 3,
+      "guards": {
+        "verified": 3,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 3,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-native-app",
+        "bp-receiver-state-invariants"
       ],
       "system_includes": [],
       "suspects": [],
@@ -19760,7 +19791,7 @@
       "book": "books/owner-refresh-indexed.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 9,
+      "theorems": 10,
       "functions": 9,
       "guards": {
         "verified": 0,
@@ -19784,7 +19815,9 @@
         "store-node-invariants-base"
       ],
       "system_includes": [],
-      "suspects": [],
+      "suspects": [
+        "fn-orix-records-count-is-length-by-definition"
+      ],
       "read_error": null
     },
     {
@@ -22559,6 +22592,92 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/productive-read-absent.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 22,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "productive-read-chain"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-pcr-tls-served-wire-by-definition"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/productive-read-chain.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 43,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "productive-read"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-pcr-counted-accessors-of-make-by-definition",
+        "fn-pcr-tls-served-wire-by-definition",
+        "fn-pcr-with-wire-overwrite-by-definition"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/productive-read-message-id.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 22,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "productive-read-chain"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-pcr-tls-served-wire-by-definition"
+      ],
       "read_error": null
     },
     {
@@ -26480,6 +26599,32 @@
         "fn-sct-event-index-of-capture",
         "fn-sct-records-of-capture"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/store-config-generation.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 1,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-capacity-config"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -33211,6 +33356,35 @@
         "must-fail-checked"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bp-native-app-replay-bridge-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 3,
+      "prover_refusals": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-native-app-replay-bridge",
+        "bp-native-app-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -45483,6 +45657,114 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/productive-read-absent-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 8,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/productive-read-absent",
+        "productive-read-chain-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/productive-read-chain-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 3,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 4,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 13,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-agent",
+        "../../books/productive-read-chain"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/productive-read-message-id-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 3,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/productive-read-message-id",
+        "productive-read-chain-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/productive-read-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "productive-read-absent-tests",
+        "productive-read-message-id-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/productive-transfer-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -47759,6 +48041,33 @@
         "../../books/owner-checkpoint-pipeline",
         "../../books/store-checkpoint-tables-reader",
         "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/store-config-generation-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 2,
+      "prover_refusals": 0,
+      "defconsts": 9,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-config-generation",
+        "store-capacity-config-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -55281,6 +55590,14 @@
       ]
     },
     {
+      "theorem": "fn-orix-records-count-is-length-by-definition",
+      "book": "books/owner-refresh-indexed.lisp",
+      "line": 163,
+      "reasons": [
+        "definition-restated: the conclusion is the body of fn-sf-records-count"
+      ]
+    },
+    {
       "theorem": "fn-orr-own-with-view-fields",
       "book": "books/owner-reader-read.lisp",
       "line": 234,
@@ -56353,6 +56670,30 @@
       "line": 806,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-pcb-transit-verdict and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-pcr-counted-accessors-of-make-by-definition",
+      "book": "books/productive-read-chain.lisp",
+      "line": 489,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-pcr-tls-served-wire-by-definition",
+      "book": "books/productive-read-absent.lisp",
+      "line": 608,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-pcr-with-wire-overwrite-by-definition",
+      "book": "books/productive-read-chain.lisp",
+      "line": 382,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
     },
     {
@@ -70949,15 +71290,29 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/productive-read-absent.lisp",
+        "line": 6,
+        "include": "productive-read-chain",
+        "included": "books/productive-read-chain.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/productive-read-message-id.lisp",
+        "line": 9,
+        "include": "productive-read-chain",
+        "included": "books/productive-read-chain.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/productive-read.lisp",
-        "line": 56,
+        "line": 57,
         "include": "owner-invariants-served",
         "included": "books/owner-invariants-served.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/productive-read.lisp",
-        "line": 57,
+        "line": 58,
         "include": "nntp-pinned-msgid",
         "included": "books/nntp-pinned-msgid.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -73137,6 +73492,13 @@
         "line": 18,
         "include": "arena-hist-lift",
         "included": "tests/acl2/arena-hist-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-native-app-replay-bridge-tests.lisp",
+        "line": 3,
+        "include": "bp-native-app-tests",
+        "included": "tests/acl2/bp-native-app-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -79580,6 +79942,48 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/productive-read-absent-tests.lisp",
+        "line": 5,
+        "include": "productive-read-chain-tests",
+        "included": "tests/acl2/productive-read-chain-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/productive-read-chain-tests.lisp",
+        "line": 7,
+        "include": "../../books/productive-read-chain",
+        "included": "books/productive-read-chain.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/productive-read-chain-tests.lisp",
+        "line": 9,
+        "include": "../../books/owner-agent",
+        "included": "books/owner-agent.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/productive-read-message-id-tests.lisp",
+        "line": 5,
+        "include": "productive-read-chain-tests",
+        "included": "tests/acl2/productive-read-chain-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/productive-read-tests.lisp",
+        "line": 4,
+        "include": "productive-read-message-id-tests",
+        "included": "tests/acl2/productive-read-message-id-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/productive-read-tests.lisp",
+        "line": 5,
+        "include": "productive-read-absent-tests",
+        "included": "tests/acl2/productive-read-absent-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/productive-transfer-tests.lisp",
         "line": 3,
         "include": "../../books/productive-transfer",
@@ -80641,6 +81045,20 @@
         "line": 19,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-config-generation-tests.lisp",
+        "line": 2,
+        "include": "../../books/store-config-generation",
+        "included": "books/store-config-generation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-config-generation-tests.lisp",
+        "line": 3,
+        "include": "store-capacity-config-tests",
+        "included": "tests/acl2/store-capacity-config-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
