@@ -1032,3 +1032,16 @@ wrong size readiness. The full maintained metadata boundary, profile quantum,
 byte/allocation/retirement funding and atomic owner publication remain open.
 Fixture exact-size observations after creation, rotation, deletion/recreation
 and multi-row merge are source observations, not a proof of every transition.
+
+Configuration authority preflight is saved as one process-local proposal. The
+core computes the next CP7 before any configuration write; the actual staging
+producer captures the approved result, exact staged record, scalar coordinates
+and current poststage process epoch. A durable completion consumes that result
+once before installing its CP7/carries; a mismatch requires recovery and never
+a normal postdurable refusal. Consume clears the proposal even on mismatch;
+unstage/reset must clear it too. Epoch/namespace/revision/coordinate checks
+bind an already established immutable staged-object relation: different
+payloads can share coordinates, so those checks alone prove no payload identity.
+The proposed host hunk currently supplies no carry metadata and establishes no
+canonical readiness; complete metadata/funding and actual owner/recovery hooks
+remain mandatory before activation.

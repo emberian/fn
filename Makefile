@@ -126,6 +126,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-account-adoption \
 	books/consumer-authority-fold \
 	books/consumer-account-carried \
+	books/consumer-config-authority \
+	books/owner-authority-proposal-state \
 	books/config-record-order \
 	books/control-visible-effect \
 	tests/acl2/consumer-account-index-tests \
@@ -133,6 +135,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-account-adoption-tests \
 	tests/acl2/consumer-authority-fold-tests \
 	tests/acl2/consumer-account-carried-tests \
+	tests/acl2/consumer-config-authority-tests \
 	tests/acl2/consumer-authority-store-tests \
 	tests/acl2/control-visible-effect-tests \
 	books/consumer-authority-revision \
