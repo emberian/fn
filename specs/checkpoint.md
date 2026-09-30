@@ -359,3 +359,25 @@ not a data-capacity limit. Buffer allocation needs its actual runtime charge,
 and reuse must wait for completion/join of every I/O owner. The proof-only
 prefix collector is excluded from the host path; serialization and complete
 image effect composition remain open.
+
+`books/history-image-census.lisp` and `books/history-image-header.lisp`
+(PRF-1096) connect scalar census to current-format header emission. A completed
+row contributes its exact resumable-codec byte count and its own pad8 bytes;
+a stale ordinal or u64 field overflow leaves census totals unchanged. The
+four scalar regions each occupy `8*count` used bytes. Two scalar capacity
+cursors suffice for those columns and the payload region; a tick doubles once,
+with no recursive capacity calculation. Their results produce the canonical
+five starts and page count. `fn-hch-tick` writes one word of the existing
+FNADTSN2 header into the fixed scratch and returns done only after that page is
+full. The named effect theorem connects the concrete prefix to `fn-hp-hdr2`;
+no header-sized list or zero vector is constructed by execution.
+
+These are component boundaries: the exact codec count is supplied by a
+separate resumable encoder, and capture/lease identities remain in its parent
+cursor and the scratch. Captured based histories require the new bounded
+current-format decoder, including borrowed string/symbol/octet spans; resident
+suffix rows remain borrowed references. Neither an eager `fn-sf-records`
+conversion nor terminal span materialization is permitted. Canonical body,
+table/directory emission, offset-domain checks, resource admission and complete
+publication refinement remain open. This source increment carries no served
+keystone or certification claim.
