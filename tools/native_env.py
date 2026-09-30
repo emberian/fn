@@ -58,7 +58,7 @@ FN_NATIVE_HOST names when --env gives one); `plan` refuses a module that
 reads one when no production image is built and none is given.
 
 Harness stores (lane membership-budget): `init` refuses a profile whose
-full store the machine's budget cannot hold unless FN_INIT_BUDGET_MB names a
+full store the machine's budget cannot hold unless `init --budget MB' names a
 target.  The fixtures, the power-loss and service-envelope harnesses and the
 pack-chain module make stores for hbox and run them directly; they take the
 target from `harness_store_env` here, HARNESS_INIT_BUDGET_MB (hbox's 96
@@ -199,17 +199,12 @@ DEVELOPER_IDENTITY = {
     "FN_NATIVE_DEVELOPER_LAUNCHER_SHA256": "SHA-256 of the developer image's launcher",
     "FN_NATIVE_DEVELOPER_CORE_SHA256": "SHA-256 of the developer image's core",
 }
-# The FN_INIT_BUDGET_MB a harness names for the stores it makes for hbox and
-# runs directly (hbox's 96 GiB): the one place it is written.
+# The budget a harness names at `operator CONFIG init' for the stores it
+# makes for hbox and runs directly (hbox's 96 GiB), as init's own grammar
+# words (row Q10b: `init --budget MB'; the FN_INIT_* variables are gone):
+# the one place the figure is written.
 HARNESS_INIT_BUDGET_MB = "98304"
-
-
-def harness_store_env(env: dict[str, str] | None = None) -> dict[str, str]:
-    """ENV (default os.environ) with the harness stores' init budget, unless set."""
-    import os
-    out = dict(os.environ if env is None else env)
-    out.setdefault("FN_INIT_BUDGET_MB", HARNESS_INIT_BUDGET_MB)
-    return out
+HARNESS_INIT_WORDS = ("--budget", HARNESS_INIT_BUDGET_MB)
 
 
 LAUNCHER_EXEC = re.compile(r'^exec "([^"]+)" ', re.M)

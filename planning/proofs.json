@@ -3817,7 +3817,8 @@
       "milestone": "M4",
       "requirements": [
         "HST-006",
-        "STO-001"
+        "STO-001",
+        "CNS-006"
       ],
       "depends_on": [],
       "assumptions": [
@@ -3845,7 +3846,7 @@
         "planning/evidence/manifests/certify-20260926T093542Z-1162878.json",
         "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
       ],
-      "progress_note": "Answering changes no state by signature (the host wrappers return one value and no state), not by a theorem. The multi-page join trusts the frame digest to name one report (A-CRYPTO): a report that changes between pages restarts the join, at most 8 times. The owner pages from a string buffer rendered once per request (fn-nls-page); the renderer and the FNLS frames are still octet lists (their D27 twin is open). The open= line names each process's own open, the offline orphan listing is the reader's own observation, and the checkpoint-file line is each answering process's lstat at the request. The words (the history-marker word, checkpoint-file, open-cost) are tests, not theorems; the live and offline reports share them through fn-nls-report.",
+      "progress_note": "Answering changes no state by signature (the host wrappers return one value and no state), not by a theorem. The multi-page join trusts the frame digest to name one report (A-CRYPTO): a report that changes between pages restarts the join, at most 8 times. The owner pages from a string buffer rendered once per request (fn-nls-page); the renderer and the FNLS frames are still octet lists (their D27 twin is open). The open= line names each process's own open, the offline orphan listing is the reader's own observation, and the checkpoint-file line is each answering process's lstat at the request. The words (the history-marker word, checkpoint-file, open-cost) are tests, not theorems; the live and offline reports share them through fn-nls-report. Q10c source continuation: consumer show selects the consumer-only report, with FNLS plain code 13. Clean scoped source roots passed native-live-status-tests 153/153 and control-evidence-tests 84/84, including the plan/report and any-request roundtrip teeth. Matching native consumer-identity module and committed certification remain runner-owned.",
       "events": [
         "fn-nls-live-report-is-the-offline-report",
         "fn-nls-client-step-of-owner-reply",
@@ -6584,7 +6585,7 @@
         "PRF-160"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-invite.lisp",
         "tests/acl2/peer-invite-tests.lisp",
@@ -8597,7 +8598,7 @@
     {
       "id": "PRF-234",
       "title": "A local consumer bound to an account is served only events of a group the account reads, only with the account's credential, and otherwise exactly as the consumer poll and ack; an unbound consumer is unchanged",
-      "statement": "books/consumer-bound.lisp. Subjects: fn-cbind-poll and fn-cbind-ack (host/owner-host.lisp fn-owner-consumer-local-bound-poll / -bound-ack, reached from host/native/owner.lisp fnn-owner-consumer-local-serialized for local-control codes 7 and 8), fn-cbind-plain-poll and fn-cbind-plain-ack (fn-owner-consumer-local-poll / -ack, codes 5 and 1). The binding is the accounts slot's mark-6 row (books/config.lisp fn-cfg-consumer-bind, delta code 24) of the latest configuration; the credential check is fn-auth-checkp over fn-auth-config-with-accounts (the table AUTHINFO reads); the rule is group-access's read pattern (fn-gac-pattern / fn-gac-readablep). KEYSTONES: fn-cbind-poll-delivers-only-readable-events (a bound poll that answers a page: the consumer is bound, the password checks, the answer is fn-col-poll-report's, and the selected event's article has a group readable under the account's rule); fn-cbind-poll-is-the-consumer-poll-or-a-refusal and fn-cbind-ack-is-the-consumer-ack-or-a-refusal (every bound answer is the unbound consumer's own or a refusal, which writes nothing, so PRF-116's page-is-a-read, forward-ack-in-scope and repeated-ack-no-op guarantees hold over the delivered subsequence; an ack that is not refused had the binding, the credential and a readable query); fn-cbind-plain-poll-of-an-unbound-consumer-is-the-consumer-poll and fn-cbind-plain-ack-of-an-unbound-consumer-is-the-consumer-ack (an unbound consumer's plain answer is today's; a bound consumer's is (:refused :bound)). Local policy; no RFC requirement. RECORDS FLIP (flip-bridge, 2026-09-27): the Store retains held rows and fn-col-poll-report refuses a held article row :report, so the polls read the payload through the arena: fn-cbind-poll-over and fn-cbind-plain-poll-over (books/consumer-bound.lisp) over books/history-fold-refinement.lisp fn-col-poll-report-over carry KEYSTONES 1, 2 and 4 (fn-cbind-poll-over-delivers-only-readable-events, fn-cbind-poll-over-is-the-consumer-poll-or-a-refusal, fn-cbind-plain-poll-over-of-an-unbound-consumer-is-the-consumer-poll) and equal the arena-free polls whenever the selected event is no held row (fn-cbind-poll-over-is-poll-unless-a-held-row). Host: host/owner-host.lisp fn-owner-consumer-local-poll and -bound-poll still call the arena-free forms (a REQUEST to the host lane to pass the live arena); until then a bound or plain poll that selects an article answers (:refused :report). The acks read no payload and are unchanged.",
+      "statement": "books/consumer-bound.lisp. Subjects: fn-cbind-poll and fn-cbind-ack (host/owner-host.lisp fn-owner-consumer-local-bound-poll / -bound-ack, reached from host/native/owner.lisp fnn-owner-consumer-local-serialized for local-control codes 7 and 8), fn-cbind-plain-poll and fn-cbind-plain-ack (fn-owner-consumer-local-poll / -ack, codes 5 and 1). The binding is the accounts slot's mark-6 row (books/config.lisp fn-cfg-consumer-bind, delta code 24) of the latest configuration; the credential check is fn-auth-checkp over fn-auth-config-with-accounts (the table AUTHINFO reads); the rule is group-access's read pattern (fn-gac-pattern / fn-gac-readablep). KEYSTONES: fn-cbind-poll-delivers-only-readable-events (a bound poll that answers a page: the consumer is bound, the password checks, the answer is fn-col-poll-report's, and the selected event's article has a group readable under the account's rule); fn-cbind-poll-is-the-consumer-poll-or-a-refusal and fn-cbind-ack-is-the-consumer-ack-or-a-refusal (every bound answer is the unbound consumer's own or a refusal, which writes nothing, so PRF-116's page-is-a-read, forward-ack-in-scope and repeated-ack-no-op guarantees hold over the delivered subsequence; an ack that is not refused had the binding, the credential and a readable query); fn-cbind-plain-poll-of-an-unbound-consumer-is-the-consumer-poll and fn-cbind-plain-ack-of-an-unbound-consumer-is-the-consumer-ack (an unbound consumer's plain answer is today's; a bound consumer's is (:refused :bound)). Local policy; no RFC requirement. RECORDS FLIP (flip-bridge, 2026-09-27): the Store retains held rows and fn-col-poll-report refuses a held article row :report, so the polls read the payload through the arena: fn-cbind-poll-over and fn-cbind-plain-poll-over (books/consumer-bound.lisp) over books/history-fold-refinement.lisp fn-col-poll-report-over carry KEYSTONES 1, 2 and 4 (fn-cbind-poll-over-delivers-only-readable-events, fn-cbind-poll-over-is-the-consumer-poll-or-a-refusal, fn-cbind-plain-poll-over-of-an-unbound-consumer-is-the-consumer-poll) and equal the arena-free polls whenever the selected event is no held row (fn-cbind-poll-over-is-poll-unless-a-held-row). Host: host/owner-host.lisp fn-owner-consumer-local-poll and -bound-poll still call the arena-free forms (a REQUEST to the host lane to pass the live arena); until then a bound or plain poll that selects an article answers (:refused :report). The acks read no payload and are unchanged. Q10c reporting extension: fn-acct-consumer-lines-are-the-list-lines-of-the-consumer-rows proves that consumer show prints exactly the account-list lines of mark-6 consumer rows, in order, omitting every other kind. The actual host-called fn-nls-report composition is fn-nls-report-of-query-kind-is-query-report (PRF-089), with the consumer plan selecting :consumers and the query rendering fn-acct-consumers-list-report. The plain FNLS report code is 13, following the shared evidence/query codes 8..12. Source proof and matching native validation remain distinct.",
       "milestone": "M4",
       "requirements": [
         "CNS-006"
@@ -8617,7 +8618,11 @@
         "tests/test_native_consumer_identity.py",
         "planning/evidence/consumer-identity-2026-09-27.md",
         "planning/evidence/manifests/certify-20260927T021857Z-190087.json",
-        "planning/evidence/manifests/certify-20260927T022825Z-256887.json"
+        "planning/evidence/manifests/certify-20260927T022825Z-256887.json",
+        "books/account-list.lisp",
+        "tests/acl2/account-list-tests.lisp",
+        "books/native-live-status.lisp",
+        "tests/acl2/native-live-status-tests.lisp"
       ],
       "events": [
         "fn-cbind-poll-delivers-only-readable-events",
@@ -8625,7 +8630,8 @@
         "fn-cbind-ack-is-the-consumer-ack-or-a-refusal",
         "fn-cbind-poll-over-delivers-only-readable-events",
         "fn-cbind-poll-over-is-the-consumer-poll-or-a-refusal",
-        "fn-cbind-poll-over-is-poll-unless-a-held-row"
+        "fn-cbind-poll-over-is-poll-unless-a-held-row",
+        "fn-acct-consumer-lines-are-the-list-lines-of-the-consumer-rows"
       ]
     },
     {
@@ -18270,6 +18276,80 @@
         "planning/history-page-cursor-contract.md"
       ],
       "progress_note": "Clean protected auto-selected persvati hpbt63 admitted source in proper encapsulate plus9testbodyforms,zero refusal,0.14ACL2seconds/12267steps. Tests cover nonempty exact prefix, stale physical word after reset, actual2048word full state, capacity removal and mutation; negative counter is a proved ground logical corrupted-state witness because the raw bounded field cannot physically hold it. No certificate/native/host claim."
+    },
+    {
+      "id": "PRF-1019",
+      "title": "`account delete LOGIN` removes exactly a login the credential file holds, keeps every binding, refuses a bound login by name, and hands a login the file does not hold to the configuration's `account delete` record; `account list` prints a code's expiry as an RFC 3339 UTC instant",
+      "statement": "books/native-auth-admin.lisp (row S6, operability review drag 8: one account system). Subject: fn-native-auth-admin-delete, called through host/native-auth-admin-host.lisp fn-native-auth-admin-host-delete by host/native/auth-admin.lisp fnn-native-auth-admin-execute-held (:delete), reached from books/native-operator.lisp fn-nop-parse-account (`account delete|set-password LOGIN` are the credential file's plans, `principal delete|set-password` the same). (1) fn-native-auth-admin-delete-decides-by-the-file (KEYSTONE): over a file the loader admits and a login name, the answer is :account (nothing written; the operator sends public-node-2's `account delete` administration record, books/config.lisp fn-cfg-account-delete-reason) exactly when the file holds no credential for the login; a held login bound to a signing principal is refused :login-bound; an accepted answer writes the serialization of the file's credentials without the login's, every binding kept. (2) fn-native-auth-admin-remove-takes-exactly-the-login: after the removal no credential answers the login and every other login's is the one it was. books/account-list.lisp fn-acct-expiry-text (called by fn-acct-list-fields in fn-acct-kinds-list-report, which books/native-live-status.lisp serves for `account list`) renders an admitted expiry through books/nntp-responses.lisp fn-nntp-dtn-civil as YYYY-MM-DDTHH:MM:SSZ (RFC 3339 section 5.6, Z offset), a non-expiry text or a year past 9999 as kept. Not covered: that the reloaded file's credential table is the one the owner serves (the reload is fnn-native-auth-reload-config's, PKT-221); a redeemed account's own verifier cannot be changed (set-password writes an auth.toml credential, which fn-auth-config-with-accounts-keeps-the-operators-credential makes win).",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-034"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/native-auth-admin.lisp",
+        "books/account-list.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/native-auth-admin-tests.lisp",
+        "tests/acl2/account-list-tests.lisp",
+        "tests/acl2/native-operator-tests.lisp"
+      ],
+      "progress_note": "Lane operability-6 (Claude Opus 5.5, 2026-09-29). REPL-admitted (persvati) in clean sessions over native-auth-admin-tests, account-list-tests and native-operator-tests; teeth in tests/acl2/native-auth-admin-tests.lisp: a positive witness asserting every hypothesis and the accepted conclusion on a two-login file (the reloaded file lacks the login, keeps the other), the bound refusal, the :account hand-off for a file without the login, two must-fail teeth for the removal, and a hypothesis failure (an unadmitted file refuses rather than hands off)."
+    },
+    {
+      "id": "PRF-1021",
+      "title": "Every operator verb reads fn.toml with its relative paths resolved under fn.toml's own directory: the octets it loads are exactly the resolved configuration",
+      "statement": "books/native-config-paths.lisp (row S8, operability review drag 10: moving a node). Subject: fn-ncpath-config-octets over fn-ncpath-base, called by books/native-operator.lisp fn-native-operator-run-at, which host/native-operator-host.lisp fn-native-operator-host-run-at exposes to host/native/operator.lisp fnn-operator-run-at (fnn-command-operator and host/native/heap.lisp fnn-heap-operator-profile), with the process's working directory and the fn.toml path as given. (1) fn-ncpath-config-octets-load-the-resolved-configuration (KEYSTONE): for a base and octets the loader admits, unless the answer is :bad (a resolved path past the 512-octet path bound, refused resolved-path-bounds), fn-native-config-load of the octets handed on is (:accepted (fn-ncpath-resolve-config C base)) where C is the loaded configuration: the store, TLS certificate and key, credential file, log and control paths resolved, every other field as written. (2) fn-ncpath-resolve-is-absolute: under a base every non-empty path resolves to an absolute path; fn-ncpath-resolve-keeps-an-absolute-path. (3) fn-ncpath-resolve-config-store. books/native-config-show.lisp fn-native-mission-config now writes the six paths relative (store, tls/cert.pem, tls/key.pem, store/auth.toml, log/fn.log, store/control.sock). Not covered: that the host's getcwd is the process's working directory; symbolic links are not resolved; [alerts] command stays absolute (refused at load when relative).",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/native-config-paths.lisp",
+        "books/native-config-show.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/native-config-paths-tests.lisp",
+        "tests/acl2/native-config-show-tests.lisp"
+      ],
+      "progress_note": "Lane operability-6 (Claude Opus 5.5, 2026-09-29). REPL-admitted (persvati) clean over native-config-paths-tests (native-config-paths loaded in one encapsulate) and native-config-show-tests; teeth: a positive witness asserting every hypothesis and the conclusion on a mission's fn.toml the resolution changes, the base and loader hypotheses each failing, a must-fail identity, the path-bound :bad; native case tests.test_native_operator_walk test_a_node_moved_by_copying_its_directory."
+    },
+    {
+      "id": "PRF-1029",
+      "title": "retire [--drain SECONDS]: the owner reads the window the operator decided, its drain never waits past the window nor stops while a feed still drains, and its report carries the obligations report word for word",
+      "statement": "books/native-retire.lisp and books/owner-retire.lisp (row S9, operability review drag 11; M1's drain before retiring). (1) fn-nret-request-of-request-argv (KEYSTONE): for every window fn-nret-plan accepts (a natural at most 86400), fn-nret-request of fn-nret-request-argv is (:begin SECONDS). Subject: fn-nret-request, called by host/native/admin.lisp fnn-owner-live-admin-serialized on every administrative vector before any plan; the vector is books/native-operator.lisp fn-native-operator-result-retire-argv's, sent by host/native/operator.lisp fnn-operator-execute-retire. fn-nret-request-needs-the-retire-word: a vector without the retire word is not a retire request; fn-nret-request-window-is-bounded. (2) fn-oret-drain-step-ends-by-the-window (KEYSTONE): an observation at or past SECONDS*1000 ms since the request's snapshot never answers :wait, whatever the feed table holds. Subject: fn-oret-drain-step through host/owner-host.lisp fn-owner-retire-step, called by host/native/owner.lisp fnn-owner-maybe-retire at each accept-loop tick (at least once a second). fn-oret-drain-step-waits-while-feeds-drain (KEYSTONE): before the window, with an entry still tried (not dropped at its retry bound), it answers :wait; fn-oret-drain-step-drained-means-nothing-pending. (3) fn-oret-report-carries-the-obligations-report (KEYSTONE): the report is the per-peer lines (undelivered = the feed queue's length, fn-feed-queue-length-is-undelivered; dropped), then fn-nls-report's :obligations answer on the same store, then the outcome line and, when anything stays, the release line naming carry drop WORK --abandon (PRF-950). Subject: fn-oret-report through host/owner-host.lisp fn-owner-retire-report. Not covered: that the host refuses every new connection while retiring (host/native/owner.lisp fnn-owner-launch-client, exercised natively); the final checkpoint and the stop are the existing compaction request and the SIGTERM path (PRF-357); the pull service's stop is host behaviour.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/native-retire.lisp",
+        "books/owner-retire.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/native-retire-tests.lisp",
+        "tests/acl2/native-operator-tests.lisp"
+      ],
+      "progress_note": "Lane operability-8 (Claude Opus 5.5, 2026-09-29). REPL-admitted (persvati) clean: native-retire-tests 45 forms, native-operator-tests 451; teeth: positive witnesses asserting antecedent and conclusion for each keystone, a refused window (86401) read back as nil, must-fail identities for the unconditioned request round trip and the unconditioned drain, reached scheduler snapshots, constructed feed tables (a silent peer and one dropped at its retry bound)."
+    },
+    {
+      "id": "PRF-1043",
+      "title": "A self-signed certificate made by fn: ACL2 decides the certificate body and frames the host's signature and both PEMs, so what the host signs and writes is exactly what ACL2 decided",
+      "statement": "books/tls-self-signed.lisp (row Q10a: `mission --tls-port/--tls-name` and `tls self-signed NAME... [--days N]`; RFC 5280 sections 4.1, 4.1.2.5 and 4.2.1.6; RFC 7468 for the PEM labels). (1) fn-ssc-tlv-read-of-tlv (KEYSTONE): for a tag octet and a content shorter than 2^24 octets, fn-ssc-tlv-read of (fn-ssc-tlv tag content) followed by any rest reads back (tag content rest) -- the DER framing ACL2 writes is the framing it reads. (2) fn-ssc-plan-body-is-one-sequence (KEYSTONE): whenever fn-ssc-plan accepts (names, days, clock reading, 16 host-random serial octets, the host's P-256 SubjectPublicKeyInfo), its TBSCertificate is one DER SEQUENCE that reframes to itself. Subject: fn-ssc-plan through host/native-operator-host.lisp fn-tls-self-signed-host-plan, called by host/native/tls.lisp fnn-tls-self-signed-write. (3) fn-ssc-certificate-carries-the-body (KEYSTONE) and fn-ssc-certificate-pem-carries-the-body (KEYSTONE): an accepted certificate (and the PEM that carries it, decoded) has exactly the decided TBS as its first element, whatever signature octets the host supplies -- the host's signature wrap cannot alter what ACL2 decided. Subject: fn-ssc-certificate-pem through fn-tls-self-signed-host-certificate-pem, called by fnn-tls-self-signed-write. (4) fn-ssc-key-pem-carries-the-key (KEYSTONE): the EC PRIVATE KEY PEM decodes to exactly the DER the host handed ACL2. Subject: fn-ssc-key-pem through fn-tls-self-signed-host-key-pem. Refusals by name (no names, a bad name, 0.0.0.0 and ::, a common name over 64 octets, days, the SPKI shape, the signature, too long). Not covered: that the host's key generation, random octets and ECDSA signature are sound (OpenSSL, the trust boundary); that the clock reading is true; the O_EXCL writes and the 0600 key mode are host behaviour, exercised natively (tests.test_native_operator_walk).",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/tls-self-signed.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/tls-self-signed-tests.lisp",
+        "tests/acl2/native-operator-tests.lisp"
+      ],
+      "progress_note": "Lanes operability-10/-11 (Claude Opus 5.5, 2026-09-29). REPL-admitted (persvati) clean: tls-self-signed-tests 46 forms with teeth (positive witnesses on an accepted plan, a 2^24-octet content refused, must-fail identities without the length bound, refusals by name); an ACL2 body signed by openssl dgst -sha256 -sign verifies under OpenSSL 3 verify -x509_strict."
     }
   ]
 }

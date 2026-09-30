@@ -35,13 +35,12 @@ small-community means logins over TLS, and the groups
 local.general, local.test and control.cancel. For tin, add
 tls_port = 563 under [listener].
 
-*A certificate:* Copy yours to tls/cert.pem and tls/key.pem, or:
+*A certificate:* Copy yours to tls/cert.pem and tls/key.pem, or
+let fn make a self-signed one (no openssl program needed):
 
-    openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 \
-        -nodes -days 3650 -subj /CN=news.example.org \
-        -addext subjectAltName=DNS:news.example.org,IP:203.0.113.7 \
-        -keyout tls/key.pem -out tls/cert.pem
-    chmod 600 tls/key.pem
+    fn operator CONFIG tls self-signed news.example.org 203.0.113.7  # docs-check: skip (no tls_cert in the grammar book configuration)
+
+(mission ... --tls-name NAME makes it when it writes fn.toml.)
 
 *The store, its name, a login:* CONFIG is /var/lib/fn/fn.toml.
 

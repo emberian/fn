@@ -9,9 +9,12 @@
 (in-package "ACL2")
 (include-book "native-config")
 (include-book "native-config-show")
+(include-book "native-config-paths")
 (include-book "native-admin")
 (include-book "accounts")
 (include-book "native-auth-admin")
+(include-book "native-retire")
+(include-book "tls-self-signed")
 (include-book "byte-store-frame")
 (include-book "outcome-class")
 ; PKT-209: `control log' and `control evidence MESSAGE-ID'.
@@ -353,16 +356,171 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
            (fn-nop-group-names-within (cdr names) n))
     t))
 
+; Row Q10b (PKT-596/690/691): `init''s sizing words, grammar words where
+; the FN_INIT_* environment variables were.
+; `--budget MB' names the memory budget, in MiB, init sizes the store for (a
+; store made for the service's memory limit, or for another machine);
+; `--largest' asks for the largest preset the budget holds instead of the
+; conservative rung (books/heap-reservation.lisp fn-heap-init-decide decides
+; both).  They stand among the profile flags, each at most once; MB is a
+; decimal naming at least 1.  (BUDGET LARGEST REST): BUDGET the MiB or NIL,
+; LARGEST T or NIL, REST the other words in order; :bad for a repeated word
+; or a budget that is not a positive decimal.  Every other flag carries one
+; value (the profile grammar), so a flag's value is never read as a word here.
+(defun fn-nop-parse-init-sizing (words budget largest)
+  (declare (xargs :guard t :measure (len words)))
+  (cond ((atom words) (list budget largest nil))
+        ((equal (car words) "--budget")
+         (let ((mb (if (consp (cdr words)) (fn-nop-profile-decimal (cadr words)) nil)))
+           (if (or budget (not (posp mb)))
+               :bad
+             (fn-nop-parse-init-sizing (cddr words) mb largest))))
+        ((equal (car words) "--largest")
+         (if largest :bad (fn-nop-parse-init-sizing (cdr words) budget t)))
+        ((and (fn-nop-flag-wordp (car words)) (consp (cdr words)))
+         (let ((r (fn-nop-parse-init-sizing (cddr words) budget largest)))
+           (if (equal r :bad)
+               :bad
+             (list (car r) (cadr r)
+                   (list* (car words) (cadr words) (caddr r))))))
+        (t (list budget largest (true-list-fix words)))))
+
+; The capacity fields (T, H and R): a request naming one over no named preset
+; is sized from the development preset, not D27's defaults (row Q10b; the
+; review's walk: `init --max-transactions 100000' took H = 1 TiB and asked a
+; 10,493,234 MB reservation, PKT-582).  `--profile default' still names D27's.
+(defun fn-nop-names-capacityp (overrides)
+  (declare (xargs :guard t))
+  (if (consp overrides)
+      (or (and (consp (car overrides))
+               (member-equal (caar overrides)
+                             (list *fn-bs-pf-max-transactions*
+                                   *fn-bs-pf-max-history-octets*
+                                   *fn-bs-pf-max-record-octets*)))
+          (fn-nop-names-capacityp (cdr overrides)))
+    nil))
+
+; The request `init' parses from its profile words: (REQUEST REST) or :bad,
+; the base the preset named, else development when a capacity field is
+; named, else D27's defaults (a capacity-free request heap-reservation sizes).
+(defun fn-nop-parse-init-request (words)
+  (declare (xargs :guard t))
+  (let ((parsed (fn-nop-parse-profile-flags words nil nil nil)))
+    (if (consp parsed)
+        (let* ((request (car parsed))
+               (base (fn-ncfg-first request))
+               (overrides (fn-ncfg-second request)))
+          (list (list (cond (base base)
+                            ((fn-nop-names-capacityp overrides) :development)
+                            (t :default))
+                      overrides)
+                (fn-ncfg-second parsed)))
+      :bad)))
+
+; The profile values REQUEST resolves to before its relations are judged:
+; `fn-bs-profile-resolve''s own values (fn-nop-init-profile-values-resolve
+; below), so the refusal can name the numbers the relation compared.
+(defun fn-nop-init-profile-values (request)
+  (declare (xargs :guard t))
+  (if (not (fn-bs-profile-requestp request))
+      :bad
+    (let* ((base (fn-bs-config-for-profile (car request)))
+           (values (if (null base) :bad
+                     (fn-bs-profile-set-fields base (cadr request)))))
+      (if (or (equal values :bad)
+              (assoc-equal *fn-bs-pf-max-open-suffix* (cadr request)))
+          values
+        (fn-bs-profile-put
+         *fn-bs-pf-max-open-suffix*
+         (min (fn-bs-pf *fn-bs-pf-max-open-suffix* values)
+              (fn-bs-pf *fn-bs-pf-max-transactions* values))
+         values)))))
+
+(defthm fn-nop-init-profile-values-resolve
+  (equal (fn-bs-profile-resolve request nil)
+         (let ((values (fn-nop-init-profile-values request)))
+           (cond ((equal values :bad) (list :invalid :request))
+                 ((fn-bs-profile-invalid-reason values)
+                  (list :invalid (fn-bs-profile-invalid-reason values)))
+                 (t values))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-bs-profile-invalid-reason
+                                      fn-bs-profile-set-fields fn-bs-profile-put
+                                      fn-bs-pf fn-bs-config-for-profile))))
+
+(in-theory (disable fn-nop-parse-init-sizing fn-nop-parse-init-request
+                    fn-nop-init-profile-values fn-nop-names-capacityp))
+
+(defun fn-nop-init-field-text (name i values)
+  (declare (xargs :guard (and (stringp name) (natp i))))
+  (concatenate 'string name " " (fn-acct-decimal-text (fn-bs-pf i values))))
+
+(defthm fn-nop-init-field-text-stringp
+  (stringp (fn-nop-init-field-text name i values))
+  :rule-classes :type-prescription)
+
+(defthm fn-nop-acct-decimal-text-stringp
+  (stringp (fn-acct-decimal-text n))
+  :rule-classes :type-prescription)
+
+(in-theory (disable fn-nop-init-field-text))
+
+; Row Q10b: a refused init profile names its numbers (the review's walk:
+; `refused init max-history-octets-below-max-record-octets' named none) and,
+; for the two relations an operator meets by raising one field, the value
+; to pass.  WORDS are the refused init's words; NIL when they parse to no
+; values (the usage line answers those).
+(defun fn-nop-init-refusal-numbers (reason words)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory
+                                 (disable fn-nop-init-profile-values
+                                          fn-nop-parse-init-request
+                                          fn-nop-parse-init-sizing
+                                          fn-bs-profile-invalid-reason
+                                          fn-bs-pf fn-acct-decimal-text
+                                          fn-record-encoded-octets-ceiling)))))
+  (let* ((split (fn-nop-parse-init-sizing words nil nil))
+         (parsed (if (consp split) (fn-nop-parse-init-request (caddr split)) :bad))
+         (values (if (consp parsed) (fn-nop-init-profile-values (car parsed)) :bad)))
+    (if (or (not (consp values))
+            (not (fn-bs-profile-invalid-reason values)))
+        nil
+      (let ((tx (fn-nop-init-field-text "max-transactions" *fn-bs-pf-max-transactions* values))
+            (h (fn-nop-init-field-text "max-history-octets" *fn-bs-pf-max-history-octets* values))
+            (r (fn-nop-init-field-text "max-record-octets" *fn-bs-pf-max-record-octets* values))
+            (a (fn-nop-init-field-text "max-article-octets" *fn-bs-pf-max-article-octets* values))
+            (g (fn-nop-init-field-text "max-groups-per-article" *fn-bs-pf-max-groups-per-article* values))
+            (k (fn-nop-init-field-text "max-open-suffix" *fn-bs-pf-max-open-suffix* values)))
+        (cond ((equal reason :max-history-octets-below-max-record-octets)
+               (concatenate 'string "init: " h " is below " r
+                            "; pass --max-history-octets "
+                            (fn-acct-decimal-text (fn-bs-pf *fn-bs-pf-max-record-octets* values))
+                            " or more, or a smaller --max-record-octets"))
+              ((equal reason :max-record-octets-below-the-article-record)
+               (let ((need (fn-acct-decimal-text
+                            (fn-record-encoded-octets-ceiling
+                             (nfix (fn-bs-pf *fn-bs-pf-max-article-octets* values))
+                             (nfix (fn-bs-pf *fn-bs-pf-max-groups-per-article* values))))))
+                 (concatenate 'string "init: " r " is below " need
+                              ", the record of one article at " a " in " g
+                              " groups; pass --max-record-octets " need
+                              " (and --max-history-octets at least that), or a smaller --max-article-octets or --max-groups-per-article")))
+              (t (concatenate 'string "init: the profile refused: " tx ", " h ", " r
+                              ", " a ", " g ", " k)))))))
+
 (defun fn-nop-parse-init-plain (words config)
   (declare (xargs :guard t))
-  (let* ((parsed (fn-nop-parse-profile-flags words :default nil nil))
+  (let* ((split (fn-nop-parse-init-sizing words nil nil))
+         (parsed (if (consp split) (fn-nop-parse-init-request (caddr split)) :bad))
          (request (if (consp parsed) (car parsed) nil))
          (names (if (consp parsed) (fn-ncfg-second parsed) nil))
          ; The profile init will write, resolved over no store, or
          ; (:invalid REASON); the frame itself is encoded at the store.
          (profile (if (consp parsed) (fn-bs-profile-resolve request nil) nil))
          (groups (fn-nop-parse-init-groups names nil)))
-    (cond ((not (consp parsed))
+    (cond ((not (consp split))
+           (fn-nop-usage :invalid-init-budget "init" config words))
+          ((not (consp parsed))
            (fn-nop-usage :invalid-init-profile "init" config words))
           ((equal groups :bad)
            (fn-nop-usage :invalid-init-groups "init" config words))
@@ -382,7 +540,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                  groups (fn-bs-profile-max-group-name-octets profile)))
            (fn-nop-refused :max-group-name-octets "init" config words))
           (t (fn-nop-result :accepted :plan "init" config
-                            (list :init groups request))))))
+                            (list :init groups request
+                                  (list (car split) (if (cadr split) :largest nil))))))))
 
 ;  KEYSTONE (PRF-171).  An accepted `init' plan creates no group whose name is
 ; longer than the max-group-name-octets of the profile it will write.  Host:
@@ -428,11 +587,18 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
   (declare (xargs :guard t))
   (let ((mission (fn-native-config-ops-mission config)))
     (if (and mission (fn-native-mission-request mission))
-        (let ((groups (fn-nop-parse-init-groups
-                       (fn-nop-with-cancel-group
-                        (if (consp words) words (fn-native-mission-default-groups mission)))
-                       nil)))
-          (cond ((fn-nop-some-flag-wordp words)
+        (let* ((split (fn-nop-parse-init-sizing words nil nil))
+               (names (if (consp split) (caddr split) nil))
+               (groups (fn-nop-parse-init-groups
+                        (fn-nop-with-cancel-group
+                         (if (consp names) names (fn-native-mission-default-groups mission)))
+                        nil)))
+          ; Row Q10b: `--budget MB' names the machine, not the profile, so a
+          ; mission's init takes it; `--largest' and every profile word are
+          ; the mission's to fix.
+          (cond ((not (consp split))
+                 (fn-nop-usage :invalid-init-budget "init" config words))
+                ((or (cadr split) (fn-nop-some-flag-wordp names))
                  (fn-nop-usage :mission-fixes-profile "init" config words))
                 ((equal groups :bad)
                  (fn-nop-usage :invalid-init-groups "init" config words))
@@ -440,7 +606,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                  (fn-nop-refused :reserved-group-name "init" config words))
                 (t (fn-nop-result :accepted :plan "init" config
                                   (list :init groups
-                                        (fn-native-mission-request mission))))))
+                                        (fn-native-mission-request mission)
+                                        (list (car split) nil))))))
       (fn-nop-parse-init-plain words config))))
 
 ;; The groups the parse answers are the words, in order.
@@ -658,18 +825,18 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "tls" "retention" "account" "motd" "moderation" "article" "consumer" "carry")))
+  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "tls" "retention" "account" "motd" "moderation" "article" "consumer" "carry" "retire")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
   (declare (xargs :guard t))
   (cond ((equal subject "init")
-         "usage: fn operator CONFIG init [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]; under [ops] mission: init [GROUP...] only (the mission fixes the profile; raise max-transactions, max-history-octets or max-article-octets later with policy set, on the running node)")
+         "usage: fn operator CONFIG init [--budget MB] [--largest] [--profile development|scale|default] [--max-transactions N] [--max-history-octets N] [--max-record-octets N] [--max-article-octets N] [--max-groups-per-article N] [--max-group-name-octets N] [--max-open-suffix N] [--max-consumers N] [--max-bp-rows N] [--max-config-generations N] [--max-credentials N] [--max-policy-members N] GROUP [GROUP...]; under [ops] mission: init [--budget MB] [GROUP...] only (the mission fixes the profile; raise max-transactions, max-history-octets or max-article-octets later with policy set, on the running node)")
         ((equal subject "run") "usage: fn operator CONFIG run [--once]")
         ((equal subject "show")
          "usage: fn operator CONFIG show [TABLE KEY] (the normalized configuration as fn.toml, or one key's value)")
         ((equal subject "mission")
-         "usage: fn operator NODE/fn.toml mission small-community|relay|archive [--host H] [--port P] (writes a new fn.toml; then init)")
+         "usage: fn operator NODE/fn.toml mission small-community|relay|archive [--host H] [--port P] [--tls-port P] [--tls-name NAME ...] (writes a new fn.toml; then init; with --tls-port or --tls-name the image makes a self-signed certificate and its key in NODE/tls/ naming each NAME, a DNS name or an IP address, default the --host address, valid 365 days; with --tls-port the node also serves NNTP over TLS on that port, STARTTLS always)")
         ((equal subject "post")
          "usage: fn operator CONFIG post --message-id ID --payload PATH --group GROUP [--group GROUP]")
         ((equal subject "status")
@@ -704,19 +871,21 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "policy")
          "usage: fn operator CONFIG policy set KEY VALUE, KEY one of: path-identity IDENTITY | posting-policy bound-logins|open | complaints-to ADDR | anonymous none|open | exposure-connections N | exposure-per-address N | exposure-steps-per-second N | exposure-idle-seconds N | exposure-first-seconds N | exposure-auth-failures N | exposure-posts-per-minute N | exposure-trusted CIDR[,CIDR...]|none | relay-date-skew SECONDS | refused-offer-capacity N | relay-require-path 0|1 | log-batch-records N | log-batch-octets N | barrier-deadline-ms N | barrier-stall-ms N | clock-event-ms N | compress-min-octets N | disk-reserve-octets N | max-transactions N | max-history-octets N | max-article-octets N (each applies to a running node at once, the three store limits as their answer says: now, at the next start, or refused by name)")
         ((equal subject "principal")
-         "usage: fn operator CONFIG principal {list | set-password NAME [--principal HEX] [--posting|--no-posting] | bind NAME HEX | unbind NAME} (set-password reads the password twice from the terminal or two lines of stdin; its last word says when it applies: applied (the running node took it), effective-at-next-start (no node running) or restart-required (fn.toml names no [control] path); bind and unbind apply to a running node at once)")
+         "usage: fn operator CONFIG principal {list | set-password NAME [--principal HEX] [--posting|--no-posting] | delete NAME | bind NAME HEX | unbind NAME} (the same logins as account set-password and account delete; set-password reads the password twice from the terminal or two lines of stdin; its last word says when it applies: applied (the running node took it), effective-at-next-start (no node running) or restart-required (fn.toml names no [control] path); bind and unbind apply to a running node at once)")
         ((equal subject "consumer")
          "usage: fn operator CONFIG consumer {bind NAME --account LOGIN | unbind NAME | show} (bind confines local consumer NAME to the groups LOGIN may read: its poll and ack then need LOGIN's password and serve only the events of a group LOGIN's access rule admits; unbind returns it to the operator's unrestricted consumer; show is the account list report; apply to a running node at once; spec consumer-progress Bound consumers)")
         ((equal subject "account")
-         "usage: fn operator CONFIG account {invite [--expires SECONDS] | list | access {LOGIN|--anonymous} --read WILDMAT --post WILDMAT | access show | delete LOGIN} (invite prints one code, once, for a friend's XREDEEM; the node keeps only its digest; SECONDS defaults to 604800; list shows logins and principals, never codes, digests or verifiers, and each access rule; access sets the groups a login sees and may post to; delete ends LOGIN's account: new logins as LOGIN are refused, its posts stay, and the login is never given out again; refused while a signing binding, a moderator role or a consumer binding names LOGIN; spec nntp Invitation-code accounts, Group access)")
+         "usage: fn operator CONFIG account {invite [--expires SECONDS] | list | set-password LOGIN [--principal HEX] [--posting|--no-posting] | access {LOGIN|--anonymous} --read WILDMAT --post WILDMAT | access show | delete LOGIN} (invite prints one code, once, for a friend's XREDEEM; the node keeps only its digest; SECONDS defaults to 604800; list shows logins and principals, never codes, digests or verifiers, each access rule, and a code's expiry as a UTC time; set-password asks the password twice and writes LOGIN into auth.toml, which a redeemed account's own password then yields to; access sets the groups a login sees and may post to; delete removes a login auth.toml holds, else ends LOGIN's redeemed account: new logins as LOGIN are refused, its posts stay, and a redeemed login is never given out again; refused while a signing binding, a moderator role or a consumer binding names LOGIN; set-password and delete apply to a running node at once; spec nntp Invitation-code accounts, Group access)")
         ((equal subject "keys")
          "usage: fn operator CONFIG keys redecide MSGID (re-decide a stored key statement under the grants in force now; the running owner decides it over the control socket; refused when MSGID is no stored key statement or its change is already made; spec peering 7.4)")
         ((equal subject "tls")
-         "usage: fn operator CONFIG tls reload (the running owner re-reads its tls_cert and tls_key and serves them to new connections; sessions already open keep theirs; refused by name, the old certificate still served, when the files do not load, the key does not match, the certificate is not valid now, or it drops a name the served one has)")
+         "usage: fn operator CONFIG tls reload | tls self-signed NAME [NAME ...] [--days N] (self-signed: the image makes a P-256 key and a certificate naming each NAME, a DNS name or an IP address, the first its subject, valid from an hour ago for N days, default 365, and writes them at tls_cert and tls_key; refused when either file exists; then run, or tls reload on a running node. reload: the running owner re-reads its tls_cert and tls_key and serves them to new connections; sessions already open keep theirs; refused by name, the old certificate still served, when the files do not load, the key does not match, the certificate is not valid now, or it drops a name the served one has)")
         ((equal subject "carry")
          "usage: fn operator CONFIG carry JOURNAL {list | inspect WORK | pause WORK|* | resume WORK|* | drop WORK [--abandon] REASON...} (the BP carry obligations in the FNWF workflow journal at the absolute path JOURNAL: list and inspect print each work's message, peer, status, Store pin, hold and last attempt; pause stops the requests for WORK (* every work) until resume; drop stops carrying WORK for REASON, final; the Store pin stays until the receipt releases it, or, with --abandon, the operator waives the obligation: the waiver (your uid, REASON) is durable and the Store pin is released now, refused unless the pin is held; the store must not be served)")
+        ((equal subject "retire")
+         "usage: fn operator CONFIG retire [--drain SECONDS] (the running node refuses new connections, stops pulling, lets its feeds drain for at most SECONDS (0 without --drain; at most 86400), prints per peer what stays undelivered and the obligation ledger, takes a final checkpoint and stops; what stays is released only by carry drop WORK --abandon on the stopped store)")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|tls|account|motd|consumer|carry} (fn operator CONFIG help COMMAND for one command's words; fn --version for the release and its source revision)")))
+        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|tls|account|motd|consumer|carry|retire} (fn operator CONFIG help COMMAND for one command's words; fn --version for the release and its source revision)")))
 
 ;; PRF-097: the peering verbs (specs/peering.md section 9).  Their words are
 ;; values and absolute paths; what the documents say, and whether they are
@@ -785,12 +954,47 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 ; PRF-212: `tls reload'.  Whether the owner takes the new files is the
 ; owner's (books/tls-reload.lisp fn-tlsr-decide, asked by
 ; host/native/tls-reload.lisp over the control socket).
+; Row Q10a: a name list books/tls-self-signed.lisp refuses, by the word the
+; operator reads (mission and tls self-signed alike).
+(defun fn-nop-self-signed-refusal-word (reason)
+  (declare (xargs :guard t))
+  (if (equal reason :common-name-length) :tls-common-name-length :tls-name))
+
+; Row Q10a: `tls self-signed NAME [NAME ...] [--days N]' (NAMES-REV newest
+; first; DAYS NIL until given).
+(defun fn-nop-self-signed-words (words names-rev days)
+  (declare (xargs :guard t :measure (len words)))
+  (cond ((atom words) (list (fn-ncfg-reverse names-rev) days))
+        ((equal (car words) "--days")
+         (if (and (consp (cdr words)) (null days) (fn-nop-profile-decimal (cadr words)))
+             (fn-nop-self-signed-words (cddr words) names-rev
+                                       (fn-nop-profile-decimal (cadr words)))
+           :bad))
+        ((stringp (car words))
+         (fn-nop-self-signed-words (cdr words) (cons (car words) names-rev) days))
+        (t :bad)))
+
 (defun fn-nop-parse-tls (words config)
   (declare (xargs :guard t))
-  (if (and (equal (fn-ncfg-first words) "reload")
-           (null (fn-ncfg-rest words)))
-      (fn-nop-result :accepted :plan "tls" config (list :tls "reload"))
-    (fn-nop-usage :invalid-tls-command "tls" config words)))
+  (cond ((and (equal (fn-ncfg-first words) "reload")
+              (null (fn-ncfg-rest words)))
+         (fn-nop-result :accepted :plan "tls" config (list :tls "reload")))
+        ((equal (fn-ncfg-first words) "self-signed")
+         (let ((parsed (fn-nop-self-signed-words (fn-ncfg-rest words) nil nil)))
+           (if (or (equal parsed :bad) (atom (fn-ncfg-first parsed)))
+               (fn-nop-usage :invalid-tls-command "tls" config words)
+             (let* ((names (fn-ncfg-first parsed))
+                    (days (or (fn-ncfg-second parsed) *fn-ssc-default-days*))
+                    (names-refusal (fn-ssc-names-refusal names)))
+               (cond (names-refusal
+                      (fn-nop-refused (fn-nop-self-signed-refusal-word names-refusal)
+                                      "tls" config words))
+                     ((not (and (stringp (fn-native-config-tls-cert config))
+                                (stringp (fn-native-config-tls-key config))))
+                      (fn-nop-refused :no-tls-files "tls" config words))
+                     (t (fn-nop-result :accepted :plan "tls" config
+                                       (list :tls-self-signed names days))))))))
+        (t (fn-nop-usage :invalid-tls-command "tls" config words))))
 
 ; PKT-869: `carry JOURNAL {list | inspect WORK | pause WORK|* | resume WORK|*
 ; | drop WORK REASON...}' over the FNWF workflow journal at the absolute path
@@ -886,7 +1090,10 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                              ; PRF-388 (PKT-560): for `bind|unbind', the
                              ; `account bind|unbind' plan the host runs when
                              ; the credential file does not hold the login.
-                             (if (equal (fn-native-auth-admin-action-kind plan) :bind)
+                             ; Row S6: for `delete', the `account delete'
+                             ; plan, the same way.
+                             (if (member-equal (fn-native-auth-admin-action-kind plan)
+                                               '(:bind :delete))
                                  (fn-nop-parse-administration
                                   "account"
                                   (cons (fn-record-string-octets "account")
@@ -921,9 +1128,14 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ;; --read WILDMAT --post WILDMAT' (books/native-admin.lisp).
         ((equal (fn-ncfg-first words) "access")
          (fn-nop-parse-administration "account" argv config))
-        ;; public-node-2: `account delete LOGIN' (books/native-admin.lisp).
-        ((equal (fn-ncfg-first words) "delete")
-         (fn-nop-parse-administration "account" argv config))
+        ;; Row S6 (one account system): `account set-password LOGIN' and
+        ;; `account delete LOGIN' are the credential file's plans
+        ;; (books/native-auth-admin.lisp); a login the file does not hold
+        ;; is deleted by public-node-2's `account delete' record
+        ;; (books/native-admin.lisp), the plan's second argument.
+        ((or (equal (fn-ncfg-first words) "set-password")
+             (equal (fn-ncfg-first words) "delete"))
+         (fn-nop-parse-principal argv config))
         ;; PKT-597: `account hash LOGIN' prints the posting-account value an
         ;; article posted under LOGIN carries (books/injection-info-policy.lisp
         ;; fn-ipp-account-hash): the host reads the node secret, ACL2
@@ -981,6 +1193,23 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
              (if (null rest)
                  (fn-nop-result :accepted :plan "health" config (list :health))
                (fn-nop-usage :unexpected-arguments "health" config rest)))
+            ; Row S9: `retire [--drain SECONDS]' (books/native-retire.lisp
+            ; decides the window; a value past its bound is refused by name).
+            ((equal command "retire")
+             (cond ((or (null rest)
+                        (and (equal (fn-ncfg-first rest) "--drain")
+                             (consp (cdr rest)) (null (cddr rest))))
+                    (let ((plan (fn-nret-plan
+                                 (if (null rest)
+                                     0
+                                   (let ((n (fn-nop-profile-decimal (fn-ncfg-second rest))))
+                                     (if (natp n) n :not-a-number))))))
+                      (if (equal (fn-ncfg-first plan) :accepted)
+                          (fn-nop-result :accepted :plan "retire" config
+                                         (list :retire (fn-ncfg-second plan)))
+                        (fn-nop-refused (list :retire (fn-ncfg-second plan))
+                                        "retire" config rest))))
+                   (t (fn-nop-usage :unexpected-arguments "retire" config rest))))
             ((or (equal command "pins") (equal command "obligations"))
              (if (null rest)
                  (fn-nop-result :accepted :plan command config
@@ -1080,15 +1309,39 @@ so malformed argv and help syntax remain ACL2-owned before any host file I/O."
 ; PKT-097: `mission NAME [--host H] [--port P]' writes the mission's fn.toml
 ; at the configuration path, which does not exist yet.  PATH is that path's
 ; octets; the node directory is everything before its last `/'.
-(defun fn-nop-mission-options (words host port)
+; Row Q10a: `--tls-port P' and each `--tls-name NAME' (NAMES-REV, newest
+; first).
+(defun fn-nop-mission-options (words host port tls-port names-rev)
   (declare (xargs :guard t :measure (len words)))
-  (cond ((atom words) (list host port))
+  (cond ((atom words) (list host port tls-port (fn-ncfg-reverse names-rev)))
         ((and (equal (car words) "--host") (consp (cdr words)) (stringp (cadr words)))
-         (fn-nop-mission-options (cddr words) (cadr words) port))
+         (fn-nop-mission-options (cddr words) (cadr words) port tls-port names-rev))
         ((and (equal (car words) "--port") (consp (cdr words))
               (fn-nop-profile-decimal (cadr words)))
-         (fn-nop-mission-options (cddr words) host (fn-nop-profile-decimal (cadr words))))
+         (fn-nop-mission-options (cddr words) host (fn-nop-profile-decimal (cadr words))
+                                 tls-port names-rev))
+        ((and (equal (car words) "--tls-port") (consp (cdr words))
+              (fn-nop-profile-decimal (cadr words)))
+         (fn-nop-mission-options (cddr words) host port (fn-nop-profile-decimal (cadr words))
+                                 names-rev))
+        ((and (equal (car words) "--tls-name") (consp (cdr words)) (stringp (cadr words)))
+         (fn-nop-mission-options (cddr words) host port tls-port
+                                 (cons (cadr words) names-rev)))
         (t :bad)))
+
+; The request for the pair a mission makes: NIL without --tls-port or
+; --tls-name (a mission without TLS words makes no pair; `tls self-signed'
+; makes one later), else
+; (NAMES DAYS CERT-PATH KEY-PATH), the paths the absolute octets of the files
+; the configuration names (tls/cert.pem and tls/key.pem beside fn.toml).
+(defun fn-nop-mission-self-signed (node host tls-port names)
+  (declare (xargs :guard t))
+  (and (or tls-port (consp names))
+       (list (if (consp names) names (list host))
+             *fn-ssc-default-days*
+             (fn-record-string-octets (fn-ncfg-join-path node "/tls/cert.pem"))
+             (fn-record-string-octets (fn-ncfg-join-path node "/tls/key.pem")))))
+
 
 (defun fn-nop-dirname-rev (rev)
   ; REV is a path reversed: drop through the last `/'.
@@ -1109,20 +1362,31 @@ so malformed argv and help syntax remain ACL2-owned before any host file I/O."
         (fn-nop-usage :invalid-mission "mission" nil nil)
       (let ((options (fn-nop-mission-options (fn-ncfg-rest (fn-ncfg-rest words))
                                              *fn-ncfg-default-listener-host*
-                                             *fn-ncfg-default-listener-port*))
+                                             *fn-ncfg-default-listener-port*
+                                             nil nil))
             (node (fn-record-octets-string
                    (fn-ncfg-reverse (fn-nop-dirname-rev (fn-ncfg-reverse path-octets)))))
             (name (fn-ncfg-second words)))
         (if (equal options :bad)
             (fn-nop-usage :invalid-mission-options "mission" nil (fn-ncfg-rest words))
-          (let ((plan (fn-native-mission-plan name node (fn-ncfg-first options)
-                                              (fn-ncfg-second options))))
-            (if (equal (fn-ncfg-first plan) :accepted)
-                (fn-nop-result :accepted :plan "mission" nil
-                               (list :mission name
-                                     (fn-ncfg-third plan)
-                                     (fn-native-mission-directories node)))
-              (fn-nop-refused (fn-ncfg-second plan) "mission" nil (fn-ncfg-rest words)))))))))
+          (let* ((self-signed (fn-nop-mission-self-signed node (fn-ncfg-first options)
+                                                          (fn-ncfg-third options)
+                                                          (fn-ncfg-nth 3 options)))
+                 (names-refusal (and self-signed
+                                     (fn-ssc-names-refusal (fn-ncfg-first self-signed))))
+                 (plan (fn-native-mission-plan name node (fn-ncfg-first options)
+                                               (fn-ncfg-second options)
+                                               (fn-ncfg-third options))))
+            (cond ((not (equal (fn-ncfg-first plan) :accepted))
+                   (fn-nop-refused (fn-ncfg-second plan) "mission" nil (fn-ncfg-rest words)))
+                  (names-refusal
+                   (fn-nop-refused (fn-nop-self-signed-refusal-word names-refusal)
+                                   "mission" nil (fn-ncfg-rest words)))
+                  (t (fn-nop-result :accepted :plan "mission" nil
+                                    (list :mission name
+                                          (fn-ncfg-third plan)
+                                          (fn-native-mission-directories node)
+                                          self-signed))))))))))
 
 ; The host's lstat of the configuration path: an existing file is refused;
 ; a mission writes a new node only.
@@ -1170,6 +1434,21 @@ is installed into the owner for both served and control submission."
                     parsed))))))))))
 
 (in-theory (disable fn-native-operator-run))
+
+;; Row S8: the operator entry the host calls.  CWD is the host's working
+;; directory and CONFIG-PATH the fn.toml path as given (octet lists); the
+;; configuration's relative paths are resolved under fn.toml's directory
+;; (books/native-config-paths.lisp, KEYSTONE
+;; fn-ncpath-config-octets-load-the-resolved-configuration) before the
+;; command is planned, and a resolved path past the path bound is refused by
+;; name.
+(defun fn-native-operator-run-at (cwd config-path config-octets argv-octets)
+  (declare (xargs :guard t))
+  (let ((octets (fn-ncpath-config-octets config-octets
+                                         (fn-ncpath-base cwd config-path))))
+    (if (equal octets :bad)
+        (fn-nop-usage (list :configuration :resolved-path-bounds) nil nil nil)
+      (fn-native-operator-run octets argv-octets))))
 
 (defun fn-native-operator-result-run-planp (result)
   (declare (xargs :guard t))
@@ -1464,6 +1743,24 @@ writes, else nil."
       (let ((profile (fn-ncfg-second
                       (fn-ncfg-rest (fn-native-operator-result-arguments result)))))
         (if (fn-bs-profile-requestp profile) profile nil))
+    nil))
+
+; Row Q10b: the sizing words an accepted init plan carries, for the host to
+; hand fn-heap-init-decide: the budget `--budget MB' named (MiB) or NIL, and
+; :largest for `--largest' or NIL (conservative).
+(defun fn-native-operator-result-init-budget (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-init-planp result)
+      (let ((mb (fn-ncfg-first (fn-ncfg-nth 3 (fn-native-operator-result-arguments result)))))
+        (if (posp mb) mb nil))
+    nil))
+
+(defun fn-native-operator-result-init-sizing (result)
+  (declare (xargs :guard t))
+  (if (and (fn-native-operator-result-init-planp result)
+           (equal (fn-ncfg-second (fn-ncfg-nth 3 (fn-native-operator-result-arguments result)))
+                  :largest))
+      :largest
     nil))
 
 (defun fn-nop-store-plan-word (result)
@@ -1842,6 +2139,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
           ((equal (fn-native-operator-result-command result) "pins") :status)
           ((equal (fn-native-operator-result-command result) "health") :health)
           ((equal (fn-native-operator-result-command result) "obligations") :status)
+          ((equal (fn-native-operator-result-command result) "retire") :retire)
           ((and (member-equal (fn-native-operator-result-command result)
                               '("control" "moderation"))
                 (fn-cevg-kindp (fn-ncfg-first
@@ -1917,6 +2215,10 @@ when that store already exists is `fn-native-operator-init-outcome'."
           ((equal (fn-native-operator-result-command result) "principal") :principal)
           ((equal (fn-native-operator-result-command result) "keys") :keys)
           ((equal (fn-native-operator-result-command result) "carry") :carry)
+          ((and (equal (fn-native-operator-result-command result) "tls")
+                (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                       :tls-self-signed))
+           :tls-self-signed)
           ((equal (fn-native-operator-result-command result) "tls") :tls)
           ((equal (fn-native-operator-result-command result) "show") :show)
           ((equal (fn-native-operator-result-command result) "mission") :mission)
@@ -2013,8 +2315,9 @@ when that store already exists is `fn-native-operator-init-outcome'."
 (local
  (defthm fn-nop-parse-principal-command
    (equal (fn-native-operator-result-command (fn-nop-parse-principal a c)) "principal")
+   ; The account plan is an argument, never opened: 2.8M steps opened, 740 closed.
    :hints (("Goal" :in-theory (e/d (fn-nop-parse-principal fn-nop-usage fn-nop-refused)
-                                   (fn-nop-result fn-native-operator-result-command fn-native-auth-admin-parse-argv fn-native-auth-admin-plan-status fn-native-auth-admin-plan-reason))))))
+                                   (fn-nop-result fn-native-operator-result-command fn-native-auth-admin-parse-argv fn-native-auth-admin-plan-status fn-native-auth-admin-plan-reason fn-nop-parse-administration fn-native-auth-admin-action-kind))))))
 
 (local
  (defthm fn-nop-parse-administration-command
@@ -2655,6 +2958,28 @@ when that store already exists is `fn-native-operator-init-outcome'."
        (fn-native-config-control-path (fn-native-operator-result-config result)))
     nil))
 
+;; Row S9: `retire' is a request to the running owner, sent as
+;; books/native-retire.lisp's vector over the control socket.
+(defun fn-native-operator-result-retire-planp (result)
+  (declare (xargs :guard t))
+  (and (equal (fn-native-operator-result-status result) :accepted)
+       (equal (fn-native-operator-result-command result) "retire")
+       (equal (fn-ncfg-first (fn-native-operator-result-arguments result)) :retire)
+       t))
+
+(defun fn-native-operator-result-retire-argv (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-retire-planp result)
+      (fn-nret-request-argv (fn-ncfg-second (fn-native-operator-result-arguments result)))
+    nil))
+
+(defun fn-native-operator-result-retire-control-path-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-retire-planp result)
+      (fn-record-string-octets
+       (fn-native-config-control-path (fn-native-operator-result-config result)))
+    nil))
+
 ;; Q16 (lane online-reclaim): `store reclaim' on a running owner is a
 ;; request for the owner's reclaim pass (books/owner-reclaim.lisp), sent as
 ;; the administrative vector below over the same route as the compaction
@@ -2732,6 +3057,44 @@ when that store already exists is `fn-native-operator-init-outcome'."
       (fn-native-operator-post-group-octets
        (fn-ncfg-nth 3 (fn-native-operator-result-arguments result)))
     nil))
+
+; Row Q10a: the self-signed pair an accepted `mission --tls-port' or `tls
+; self-signed' asks the image to make: (NAMES DAYS CERT-PATH KEY-PATH), the
+; paths as octets, or NIL.
+(defun fn-native-operator-result-self-signed (result)
+  (declare (xargs :guard t))
+  (cond ((not (equal (fn-native-operator-result-status result) :accepted)) nil)
+        ((equal (fn-native-operator-result-command result) "mission")
+         (fn-ncfg-nth 4 (fn-native-operator-result-arguments result)))
+        ((and (equal (fn-native-operator-result-command result) "tls")
+              (equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                     :tls-self-signed))
+         (let ((config (fn-native-operator-result-config result)))
+           (list (fn-ncfg-second (fn-native-operator-result-arguments result))
+                 (fn-ncfg-third (fn-native-operator-result-arguments result))
+                 (fn-record-string-octets (fn-native-config-tls-cert config))
+                 (fn-record-string-octets (fn-native-config-tls-key config)))))
+        (t nil)))
+
+; The host's lstat of the two files: an existing one is refused by name
+; (`exists'); the image never overwrites a certificate or a key.
+(defun fn-native-operator-self-signed-outcome (result cert-exists key-exists)
+  (declare (xargs :guard t))
+  (if (and (fn-native-operator-result-self-signed result) (or cert-exists key-exists))
+      (fn-nop-refused :exists (fn-native-operator-result-command result)
+                      (fn-native-operator-result-config result) nil)
+    result))
+
+;   The refusal the image's pair answered with (a fn-ssc-plan word such as
+;   :clock, or :spki / :signature / :key from the host's octets), by name.
+(defun fn-native-operator-self-signed-refused (result reason)
+  (declare (xargs :guard t))
+  (fn-nop-refused (if (member-equal reason '(:no-names :name :common-name-length :clock :days
+                                             :serial :spki :too-long :body :signature :key))
+                      reason
+                    :self-signed)
+                  (fn-native-operator-result-command result)
+                  (fn-native-operator-result-config result) nil))
 
 (defun fn-native-operator-result-show-octets (result)
   (declare (xargs :guard t))
@@ -2909,6 +3272,14 @@ control path no supported platform binds whole."
            "no store at the configured [store] path: this node was never initialized; run: fn operator CONFIG init GROUP... (a mission's fn.toml: init with no group)")
           ((and (equal status :usage) (equal reason :mission-fixes-profile))
            "under [ops] mission, init takes GROUP words only (none: the mission's default groups); the mission fixes the store profile. To raise a bound later: fn operator CONFIG policy set max-transactions|max-history-octets|max-article-octets N; or delete the mission line from fn.toml to choose a profile at init")
+          ; Row Q10b: init's budget word, and a refused profile's numbers.
+          ((and (equal status :usage) (equal reason :invalid-init-budget))
+           "init: --budget takes the memory budget in MiB (a decimal, at least 1) and --largest takes no value; each at most once (fn operator CONFIG init [--budget MB] [--largest] ...)")
+          ((and (equal status :refused) (equal command "init")
+                (fn-nop-init-refusal-numbers
+                 reason (fn-native-operator-result-arguments result)))
+           (fn-nop-init-refusal-numbers
+            reason (fn-native-operator-result-arguments result)))
           ((and (equal status :usage) (fn-nop-help-subjectp command))
            (fn-nop-help-text command))
           (t nil))))

@@ -56,6 +56,7 @@
 (include-book "../books/owner-reclaim-carry")
 ; Q16 (b): online disk release of dropped files (fn-xrt-).
 (include-book "../books/extent-retire")
+(include-book "../books/owner-retire") ; row S9: retire (fn-owner-retire-step, -report)
 ; The publication through the octet buffer, decided before it is encoded
 ; (fn-ock-publication-stream, fn-ock-capture-budget, fn-ock-publication-blockedp;
 ; PKT-492, PKT-315).
@@ -1583,6 +1584,17 @@
 ;; (`policy set barrier-deadline-ms|barrier-stall-ms|clock-event-ms N'); the
 ;; barrier's :issue event normalizes them (fn-otm-limits: defaults for
 ;; absent rows, H at least D).
+;; Row S9 (retire, books/owner-retire.lisp): the drain's step over the
+;; owner's feed table, and the report the owner writes when the drain ends.
+(defun fn-owner-retire-step (s0 s seconds state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-oret-drain-step s0 s seconds
+                             (fn-own-feeds (fn-ocfg-owner (fn-owner-ocfg state))))))
+
+(defun fn-owner-retire-report (step state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-oret-report step (fn-owner-ocfg state))))
+
 (defun fn-owner-barrier-limits (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (let ((v (fn-cfg-value (fn-owner-config state))))

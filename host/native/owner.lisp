@@ -118,6 +118,10 @@
   ;; read under the owner mutex (fnn-owner-refresh-read-octets) and read
   ;; here, without the mutex, by the I/O loops (host/native/mux.lisp).
   (read-octets nil)
+  ;; Row S9: NIL, or (S0 SECONDS) from the retire request on: the snapshot
+  ;; the drain window starts at and its length (books/owner-retire.lisp).
+  ;; Set once under the roster mutex; read without it by the accept loops.
+  (retire nil)
   (batching nil) (committer nil) (queued 0)
   ;; SYNCED: the syncer thread returned (lane log-2; fnn-owner-start-syncer).
   (synced nil)
@@ -4115,8 +4119,108 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
 ;;; the worker did, in its order and under its handlers, is the loop's
 ;;; connection record now.
 (defun fnn-owner-launch-client (service socket &optional implicit-tls)
-  "Register the socket with a loop before it can enter the owner core."
-  (fnn-mux-adopt service socket implicit-tls))
+  "Register the socket with a loop before it can enter the owner core; while
+the node retires (row S9), refuse it by name instead."
+  (if (fnn-owner-service-retire service)
+      (fnn-owner-retire-refuse socket implicit-tls)
+    (fnn-mux-adopt service socket implicit-tls)))
+
+;;; Row S9: while the node retires every new connection is refused by name
+;;; (books/native-retire.lisp): on a plain listener RFC 3977's 502 greeting,
+;;; written under a one-second deadline, then the close; on an implicit-TLS
+;;; listener the close alone (no plaintext into a TLS port).  The log names
+;;; each refusal.  A client gone before the line is written changes nothing.
+(defun fnn-owner-retire-refuse (socket implicit-tls)
+  (unwind-protect
+       (unless implicit-tls
+         (handler-case
+             (fnn-send-all (fnn-socket-fd socket) (fnn-core 'fn-nret-refusal-line) 1)
+           (error () nil)))
+    (handler-case (sb-bsd-sockets:socket-close socket) (error () nil)))
+  (fnn-log-line (fnn-core 'fn-nret-refused-log-line (and implicit-tls t))))
+
+;;; Row S9: `retire [--drain SECONDS]' on the running owner.  The request
+;;; (books/native-retire.lisp fn-nret-request) starts the retire: from then
+;;; on new connections are refused by name (host/native/owner.lisp
+;;; fnn-owner-launch-client), the pull service stops, and at each accept-loop
+;;; tick ACL2 decides from a scheduler snapshot and the owner's feed table
+;;; whether the drain goes on (books/owner-retire.lisp fn-oret-drain-step,
+;;; which never waits past the window).  When it ends the owner takes its
+;;; final checkpoint, writes ACL2's report to STORE/retire-report.txt (fenced
+;;; before the stop, so the operator reads it from the stopped node) and
+;;; stops as a SIGTERM stops it: the POSTs in flight answered first
+;;; (fnn-owner-drain-service), then the fence.
+(defun fnn-owner-retire-report-path (service)
+  (fnn-join (fnn-store-root (fnn-owner-service-store service))
+            (fnn-octets-string (fnn-octets (fnn-core 'fn-nret-report-file-name)))))
+
+(defun fnn-owner-retire-begin (service seconds)
+  (let* ((s0 (progn (fnn-owner-space-preobserve service t)
+                    (fnn-owner-sched-snapshot service)))
+         (answer
+           (fnn-with-roster (service)
+             (let ((a (fnn-core 'fn-nret-begin-answer
+                                (and (fnn-owner-service-retire service) t))))
+               (when (eq (first a) :accepted)
+                 (setf (fnn-owner-service-retire service) (list s0 seconds)))
+               a))))
+    (unless (and (consp answer) (member (first answer) '(:accepted :refused)))
+      (fnn-fault "owner returned a malformed retire answer ~a" answer))
+    (when (eq (first answer) :accepted)
+      ;; A report an earlier retire left (the node was started again) is
+      ;; not this retire's.
+      (handler-case (sb-posix:unlink (fnn-owner-retire-report-path service))
+        (sb-posix:syscall-error () nil))
+      ;; NEWNEWS pulling is an optional runtime extension: the DTN image
+      ;; does not load pull-service.lisp. Stop its I/O only when that
+      ;; extension is present; ACL2's retire decision is the same in both.
+      (when (fboundp 'fnn-pull-service-wake)
+        (funcall (symbol-function 'fnn-pull-service-wake) service))
+      (fnn-log-line (fnn-core 'fn-nret-begin-log-line seconds)))
+    (list :reason (first answer) (second answer))))
+
+(defun fnn-owner-retire-write-report (service report)
+  "Write REPORT (ACL2's octets) as STORE/retire-report.txt: staged, fenced,
+renamed into place, the directory fenced."
+  (unless (fnn-octet-list-p report)
+    (fnn-fault "owner returned a malformed retire report"))
+  (let* ((store (fnn-owner-service-store service))
+         (final (fnn-owner-retire-report-path service))
+         (stage (fnn-join (fnn-staging store)
+                          (format nil ".retire-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
+         (fd (fnn-open stage (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl) #o600)))
+    (unwind-protect (progn (fnn-write-all fd (fnn-octets report))
+                           (fnn-fsync-file fd))
+      (fnn-close fd))
+    (fnn-replace stage final)
+    (fnn-fsync-dir (fnn-store-root store))))
+
+(defun fnn-owner-maybe-retire (service)
+  "One drain decision of a retiring owner (row S9), at an accept-loop tick."
+  (let ((retire (fnn-owner-service-retire service)))
+    (when (and retire (not *fnn-sigterm-requested*)
+               (not (fnn-owner-service-stopping service)))
+      (destructuring-bind (s0 seconds) retire
+        (let* ((s (progn (fnn-owner-space-preobserve service t)
+                         (fnn-owner-sched-snapshot service)))
+               (step (fnn-owner-serialized
+                      service nil
+                      (lambda () (fnn-owner-core 'fn-owner-retire-step s0 s seconds))
+                      :inspect)))
+          (unless (member step '(:wait :drained :deadline))
+            (fnn-fault "owner returned a malformed retire step ~a" step))
+          (unless (eq step :wait)
+            ;; The final checkpoint, as `store checkpoint' asks it.
+            (fnn-owner-compaction-request service)
+            (let ((report (fnn-owner-serialized
+                           service nil
+                           (lambda () (fnn-owner-core 'fn-owner-retire-report step))
+                           :inspect)))
+              (fnn-owner-retire-write-report service report)
+              (fnn-log-line (fnn-core 'fn-nret-end-log-line step)))
+            ;; The stop a SIGTERM takes (host/native/owner.lisp): the accept
+            ;; loop returns, the POSTs in flight are answered, the fence.
+            (setf *fnn-sigterm-requested* t)))))))
 
 (defun fnn-owner-wait-workers (service)
   "Join client workers before closing any shared journal or Store object."
@@ -5218,7 +5322,9 @@ thread is a worker, so the stop joins it with the clients."
           ;; and a log reopen a SIGHUP asked for (PKT-101).
           (fnn-owner-cold-reap service)
           (fnn-owner-maybe-publish service)
-          (fnn-owner-maybe-reopen-log service))
+          (fnn-owner-maybe-reopen-log service)
+          ;; Row S9: a retiring node's drain step (host/native/admin.lisp).
+          (fnn-owner-maybe-retire service))
       (sb-bsd-sockets:socket-error (condition)
         (unless (or *fnn-sigterm-requested*
                     (fnn-owner-service-stopping service))

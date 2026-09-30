@@ -8241,6 +8241,11 @@
         {
           "kind": "theorem",
           "name": "fn-cbind-poll-over-is-poll-unless-a-held-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-acct-consumer-lines-are-the-list-lines-of-the-consumer-rows",
+          "note": "Q10c exact consumer-only row filter; nonempty mixed invitation/binding literal witness in account-list-tests. Composed host report bridge is PRF-089 fn-nls-report-of-query-kind-is-query-report."
         }
       ]
     },
