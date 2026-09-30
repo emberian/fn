@@ -80,3 +80,11 @@ content-addressed store does not make private object enumeration harmless.
 D04 selects shared community groups first and defers private encrypted groups
 beyond the initial release, while preserving explicit privacy boundaries. End-to-end
 encryption would require an explicit metadata-leakage and key-rotation design.
+
+The ordered BP fragment transfer loop has the source refinement PRF-1135
+([BP node contract](bp-node-machine.md#ordered-fragment-transfer-observations-prf-1135)).
+After an accepted prefix, the host-called fragment outcome equals the
+reported observation trace: a failed later transfer is uncertain, and only
+a failed first transfer is failed. The hypothesis is about reported transport
+observations; matching certification/native validation and remote durable
+receipt remain separate.

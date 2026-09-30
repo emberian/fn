@@ -4672,7 +4672,7 @@
         "PRF-046"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-fragment-send.lisp",
         "tests/acl2/bp-fragment-send-tests.lisp",
@@ -18901,6 +18901,51 @@
         "fn-fc-temporary-mode-refusal-closes-without-stopping"
       ],
       "progress_note": "Clean protected source admission and full positive/hypothesis-removal witnesses passed; certification and matching-image native observation pending."
+    },
+    {
+      "id": "PRF-1135",
+      "title": "Fragment outcome refines the ordered transfer observation loop",
+      "statement": "The host-called fn-bpfs-fragment-outcome (host/native/bp-service.lisp fnn-bps-send-effect) equals fn-bpfs-send-observations of an accepted prefix followed by the current transfer outcome, under fn-bpfs-accepted-prefixp of that prefix (fn-bpfs-fragment-outcome-refines-ordered-send). The logical observation loop stops at the first nonaccepted transfer. Starting at a one-based index, it answers :failed exactly when index=1 and the first observation is :failed (fn-bpfs-send-observations-failed-only-at-first-transfer); a failed transfer after earlier accepted fragments answers :uncertain. This is fn's local transport-outcome policy, distinct from RFC9171 section5.8 fragmentation and RFC9174 section5.4.1 Transfer MRU. It proves neither durable acceptance nor remote receipt, and excludes the host's outer exception handler and unobserved physical effects.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-114"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/bp-fragment-send.lisp",
+        "tests/acl2/bp-fragment-send-tests.lisp"
+      ],
+      "progress_note": "Clean protected source root on persvati: 60 forms, zero refusals, 2.23 ACL2 seconds, 605792 prover steps; changed bp-fragment-send source encapsulated over 13 matching cached dependencies. Exact certification is pending the shared runner; no image/native qualification claim.",
+      "events": [
+        "fn-bpfs-fragment-outcome-refines-ordered-send",
+        "fn-bpfs-send-observations-failed-only-at-first-transfer"
+      ]
+    },
+    {
+      "id": "PRF-1136",
+      "title": "Checkpoint recovery establishes the historical reader relation",
+      "statement": "The actual host-called fn-ock-recover-extended (host/owner-host.lisp fn-owner-recover-extended) establishes fn-ocri-relation after recovering the complete captured prefix plus suffix whenever its result is not :fault. The proof uses named equality to full recovery and the existing live-owner relation establishment. It assumes no reader relation before recovery. The test fixture has nonempty retention history and configuration records; held article and future schema union coverage remain separate.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-296"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-reader-establishment.lisp",
+        "tests/acl2/owner-reader-establishment-tests.lisp"
+      ],
+      "events": [
+        "fn-orri-recover-installs-historical-reader-relation"
+      ],
+      "progress_note": "Clean protected source root:13 forms,zero refusals,0.14 ACL2 seconds,20451 prover steps over291 matching cached dependencies. Shared certification pending; no image/native qualification."
     }
   ]
 }
