@@ -110,3 +110,32 @@ The live owner pins the trie with each archive and calls it for exact-ID
 ARTICLE, HEAD, BODY and STAT retrieval. Its maintained correspondence is not
 rechecked across the whole archive per command. Group buckets have a different
 key and LISTGROUP query contract; they do not replace the Message-ID trie.
+
+## Actual writer operation demand (PRF-1181)
+
+The concrete writer issues generation and page reservations through the shared
+resource pool, dispatches one maintained builder continuation per step, and
+publishes the completed generation. Its internal census is
+`fn-iwd-census(op, pc, builder, pending, slotdepth, capacity)` in
+`books/index-writer-operation-demand.lisp`: the six selectors are
+`:generation-reserve`, `:generation-register`, `:page-reserve`,
+`:page-register`, `:writer-step`, and `:publish`. Index owns projection of
+those arguments from actual STATE/backing; they are not native row setters.
+The census names the exact dispatcher entry and retains fixed metadata,
+chunk/recursion/scalar domains and old/new/shared source references. Tuple
+widths and array capacities are logical slots, never runtime byte tariffs.
+The fresh registration census refuses an unjoined recycled-page path.
+
+The fixed15 installed runtime family has six ordered request5 streams for
+primary, caller, first-use, collector, external and control costs, resolved
+through the SAME installed role/BODY table. These streams describe allocation
+geometry and do not directly populate PRS resident/disk/descriptor/worker/identity
+coordinates. The actual reserve contributes one spent identity; these metadata
+actions issue no disk I/O, descriptor registration or worker creation. Resident
+allowance still needs the selected compiled closure, retained overlap,
+collector and affine lifetime qualification. The installed source-domain and
+allowance lowering are absent: `fn-iwd-demand` returns
+`:runtime-operation-unavailable` and NIL even for a shaped family/table.
+The helper locality theorem and literal census checks are a component of
+SCN-212; the host-called demand/caller, funding and native publication boundary
+remains planned, with no composed proof events claimed.

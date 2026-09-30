@@ -1,0 +1,4 @@
+; Public additive BPSec grammar surface. RFC 9172/9173.
+; No operational security gate or cryptographic realization is claimed.
+(in-package "ACL2")
+(include-book "bpsec-asb")

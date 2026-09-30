@@ -6112,7 +6112,8 @@
         "ARTICLE by number and by Message-ID through the indexed view of a reader pinned after the restart.",
         "Two independent holds on the article (a local archive pin and a forwarding obligation); discharge the first.",
         "Compaction (store-reclaim-pack) with the second hold outstanding; discharge the second; reclaim the payload.",
-        "Retry the original POST with the same Message-ID."
+        "Retry the original POST with the same Message-ID.",
+        "Component prerequisite PRF-1181: exercise all actual writer census selectors/dispatcher branches and fixed-projection removal witnesses in tests/acl2/index-writer-operation-demand-tests.lisp, then supply shaped family/table without installed lowering."
       ],
       "expected": [
         "Prefix 1: 240 and the record in the durable history (PRF-1001); the wire octets are *fn-pcx-240-line* (PRF-1003).",
@@ -6120,7 +6121,8 @@
         "Prefix 3: the reopened store holds the record; the article's number and Message-ID are those issued (PRF-903 fn-ndur-, the store's replay theorems).",
         "Prefix 4: 220 with the article's octets from the indexed view (open: specs/productive-contract.md section 5).",
         "Prefixes 5 to 6: retained while any hold is outstanding; the tombstone after reclaim keeps identity, numbering and obligation fields (store-reclaim-pack; the future-observation equivalence is lane reclaim-equivalence's).",
-        "Prefix 7: 441 duplicate by name, no second allocation (fn-pidx- PRF-191); after reclaim, still a duplicate (open: store-lineage / reclaim-equivalence)."
+        "Prefix 7: 441 duplicate by name, no second allocation (fn-pidx- PRF-191); after reclaim, still a duplicate (open: store-lineage / reclaim-equivalence).",
+        "PRF-1181 component returns runtime-operation-unavailable with no PRS vector until actual installed allowance/resource lowering exists; this does not qualify the native publication trajectory."
       ],
       "execution_scope": "Specified for row W6 (lane productive-contract, 2026-09-29): prefixes 1 and 2 proved (PRF-1001, PRF-1002, PRF-1003) and exercised in tests/acl2/productive-contract-tests.lisp; the others carry the coverage named in specs/lifecycle.md 'The warranted lifecycle'; a native case owed at convergence."
     },
@@ -7329,6 +7331,55 @@
         "planning/evidence/peering-inn-advisory-source-2026-09-30.json"
       ],
       "execution_scope": "Source-present original S4 CHECK advisory observation. Scripted observer fixtures only; actual INN/native NOT RUN, no new proof or matching executable claim. All eight original Q12 anchors remain OPEN."
+    },
+    {
+      "id": "SCN-1065",
+      "title": "BPSec ASB resumes across one-byte windows and quantum-one metadata scans",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-017"
+      ],
+      "steps": [
+        "Encode a two-target BIB sequence with distinct per-target result bytes.",
+        "Supply exact immutable backing slices one octet at a time, with quantum one so internal duplicate scans and reversals also resume.",
+        "Compare the complete span abstraction and target/result order with the literal reference object; exercise zero quantum and temporary missing input."
+      ],
+      "expected": [
+        "Complete targets/results and exact source/result octets survive every exercised resume.",
+        "No enclosing ASB array is emitted.",
+        "Zero quantum yields unchanged; absent input is need-input, not truncated."
+      ],
+      "evidence": [
+        "tests/acl2/bpsec-asb-tests.lisp",
+        "planning/evidence/bpsec-asb-source-2026-09-30.json"
+      ],
+      "execution_scope": "ACL2 literal source fixture only; full every-schedule theorem and operational provider/native execution remain open."
+    },
+    {
+      "id": "SCN-1066",
+      "title": "BPSec malformed, unknown and ciphertext-tail ASBs keep distinct results",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-017"
+      ],
+      "steps": [
+        "Refuse empty/duplicate targets, trailing data, declared truncated byte strings and explicitly empty parameters.",
+        "Retain reserved read flags and mark an unknown security context unsupported with original wire.",
+        "Decode context2 with explicit twelve-byte IV and empty per-target result array without inventing a tag field.",
+        "Reject a mismatched input backing and keep uncertain outside the primitive result enum."
+      ],
+      "expected": [
+        "Malformed known grammar refuses; unsupported never verifies.",
+        "Reserved flags do not change the accepted source object; encoder clears them.",
+        "Ciphertext-tail tag extraction requires later exact target binding and is not performed by ASB parsing."
+      ],
+      "evidence": [
+        "tests/acl2/bpsec-asb-tests.lisp",
+        "planning/evidence/bpsec-asb-source-2026-09-30.json"
+      ],
+      "execution_scope": "ACL2 source grammar tests only; no AES/HMAC execution, key grant, target plan, crypto gate or native receipt."
     }
   ]
 }

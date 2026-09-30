@@ -14,6 +14,39 @@ FN_CERTIFY_JOBS ?= 1
 # its slot: the brief's three-minute rule, with a minute of slack.
 FN_LD_TIMEOUT_SECONDS ?= 240
 ACL2_BOOKS ?= books/defrecord \
+	books/post-identity-source-cursor \
+	books/post-identity-source-cursor-agent \
+	books/post-identity-source-cursor-agent-terminal \
+	books/post-identity-source-cursor-block \
+	books/post-identity-source-cursor-info \
+	books/post-identity-source-cursor-invariants \
+	books/post-identity-source-cursor-msgid \
+	books/post-identity-source-cursor-refinement \
+	books/post-identity-source-cursor-skip \
+	books/post-identity-source-cursor-source-after-path \
+	books/post-identity-source-cursor-source-after-stamp \
+	books/post-identity-source-cursor-source-context \
+	books/post-identity-source-cursor-source-date \
+	books/post-identity-source-cursor-source-info \
+	books/post-identity-source-cursor-source-invariants \
+	books/post-identity-source-cursor-source-metadata \
+	books/post-identity-source-cursor-source-path \
+	books/post-identity-source-cursor-source-stamp \
+	tests/acl2/post-identity-source-cursor-agent-tests \
+	tests/acl2/post-identity-source-cursor-block-tests \
+	tests/acl2/post-identity-source-cursor-info-tests \
+	tests/acl2/post-identity-source-cursor-list-shape-tests \
+	tests/acl2/post-identity-source-cursor-msgid-tests \
+	tests/acl2/post-identity-source-cursor-skip-tests \
+	tests/acl2/post-identity-source-cursor-source-after-path-tests \
+	tests/acl2/post-identity-source-cursor-source-after-stamp-tests \
+	tests/acl2/post-identity-source-cursor-source-date-tests \
+	tests/acl2/post-identity-source-cursor-source-info-tests \
+	tests/acl2/post-identity-source-cursor-source-path-tests \
+	tests/acl2/post-identity-source-cursor-source-stamp-tests \
+	tests/acl2/post-identity-source-cursor-tests \
+	books/index-writer-operation-demand \
+	tests/acl2/index-writer-operation-demand-tests \
 	books/defkeystone \
 	books/definterface \
 	books/defevent \
@@ -561,6 +594,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-primary \
 	books/bp-primary-invariants \
 	tests/acl2/bp-primary-tests \
+	books/bpsec \
+	tests/acl2/bpsec-asb-tests \
 	books/bp-status-report \
 	books/bp-status-report-invariants \
 	tests/acl2/bp-status-report-tests \
