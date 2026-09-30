@@ -99,3 +99,21 @@
           (equal (fn-orcb-at 1 appended) source)
           (equal (fn-orcb-at 2 appended) 2)
           (fn-scs-correspondsp (fn-orcb-at 5 appended) (fn-orcb-at 4 appended))))))))
+; A same-prefix producer may seed at sequence1 and replay only sequence1.
+; The full capture cursor's next row has ordinal1, not ordinal0.
+(assert-event
+ (mv-let (phase initial) (fn-orcb-begin *orcb-source* 1)
+  (mv-let (first prefix) (fn-orcb-step initial *orcb-source* *orcb-row* (fn-scs-summary *orcb-row*))
+   (let ((source '(2 (3 2) 0 0))
+         (row (fn-stxk-make 1 2 2 1 '(1) '(9 10))))
+    (mv-let (seed s) (fn-orcb-seed source 2 1 (fn-orcb-at 4 prefix) (fn-orcb-at 5 prefix))
+     (mv-let (next n) (fn-orcb-step s '(2 (3 2) 0 1) row (fn-scs-summary row))
+      (and (eq phase :replaying) (eq first :ready) (eq seed :replaying)
+           (fn-orcb-statep s) (equal (fn-orcb-at 3 s) 1)
+           (equal (fn-orcb-row-source s) '(2 (3 2) 0 1))
+           (equal (fn-stxk-context-next (fn-orcb-at 4 s)) 1)
+           (fn-scs-correspondsp (fn-orcb-at 5 s) (fn-orcb-at 4 s))
+           (eq next :ready) (equal (fn-orcb-at 3 n) 2)
+           (equal (fn-orcb-at 4 n)
+                  (fn-replay-identity-step (fn-orcb-at 4 prefix) row))
+           (fn-scs-correspondsp (fn-orcb-at 5 n) (fn-orcb-at 4 n)))))))))

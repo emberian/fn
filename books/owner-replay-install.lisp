@@ -111,3 +111,21 @@
  :rule-classes nil
  :hints (("Goal" :in-theory (enable fn-owner-orcb-complete fn-owner-orcb-install-complete
                  fn-owner-canonical-install fn-owner-orcb-pending))))
+
+; Prefix identity is an authenticated producer obligation, not this bounded
+; counter check. Actual source still names the full captured history cursor.
+(defun fn-owner-orcb-supply-prefix (source consumed ctx fields state)
+ (declare (xargs :stobjs state :guard t))
+ (let ((p (fn-owner-orcb-pending state)))
+  (if (not (and (fn-omk-widthp p 3) (natp (fn-omk-at 0 p))
+                (equal (fn-omk-at 0 p) (fn-owner-canonical-epoch state))
+                (fn-orcb-statep (fn-omk-at 2 p)) (fn-omk-tokenp source)
+                (fn-omk-token-matchp source (fn-omk-at 1 p))
+                (natp consumed) (<= consumed (fn-orcb-at 2 (fn-omk-at 2 p)))
+                (fn-omk-widthp ctx 6) (fn-ics-contextp ctx) (fn-ics-carriesp fields)))
+   (mv :refused state)
+   (mv-let (phase bootstrap)
+           (fn-orcb-seed source (fn-orcb-at 2 (fn-omk-at 2 p)) consumed ctx fields)
+    (let ((state (f-put-global 'fn-owner-canonical-pending
+                   (list (fn-omk-at 0 p) (fn-omk-at 1 p) bootstrap) state)))
+     (mv phase state))))))

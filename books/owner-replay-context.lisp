@@ -192,3 +192,17 @@
                    fn-omk-widthp fn-ics-contextp fn-ris-step fn-ics-fields fn-ics-carriesp fn-scs-fixed-carriesp)
                  (fn-replay-identity-effects fn-ics-scalar fn-scs-cons fn-ics-field fn-omk-token-matchp)))))
 
+
+; A validated prefix summary seeds the original accumulator at its actual
+; sequence. The producer separately establishes that this is the SAME prefix
+; of the captured Store. Numeric sequence/frontier equality is insufficient.
+; A full-history cursor must advance past CONSUMED prefix rows before STEP;
+; a suffix-only cursor needs an explicit ordinal-offset correspondence.
+(defun fn-orcb-seed (source total consumed ctx carries)
+ (declare (xargs :guard (and (fn-omk-tokenp source) (natp total) (natp consumed)
+                             (<= consumed total) (fn-ics-contextp ctx)
+                             (fn-ics-carriesp carries))))
+ (let ((phase (if (and (eq (fn-stxk-context-kind ctx) :ok)
+                       (equal (fn-stxk-context-next ctx) consumed))
+                  (if (equal consumed total) :ready :replaying) :refused)))
+  (mv phase (fn-orcb-state phase source total consumed ctx carries))))
