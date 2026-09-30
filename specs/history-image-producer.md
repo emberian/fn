@@ -352,3 +352,31 @@ and digest frames are compared. Fresh same-world source evidence is
 Full source/pool residual, page ACK/reset/padding, private stage/spool/digest
 fidelity, whole-image progress, producer/FD authority, INITIAL and native
 qualification remain open; PRF-1144 remains planned with no cited events.
+
+The conditional column page/reset join now reaches actual `fn-hpi-tick` in
+`fn-hpi-written-page-preserves-full-canonical-column-carry`. Its four literal
+premises are the exact pending column ACK context, the complete original
+four-column canonical carry, a full 2048-word selected buffer, and actual
+`:written`. It preserves all four next canonical suffixes, resumes `:body`,
+retains the entire row cursor and frozen salt, and frames the complete pool,
+ledger and digest. The structural companion separately proves exactly one
+buffer reset/page and generation advance; all other full buffers are unchanged.
+A full prefix's length establishes the empty next suffix after reset.
+
+Four constructed supported full-page phases use real maintenance admission,
+begin/growth, actual outer write issuance, exact core observation and ACK.
+They compare every literal conclusion, including all backing words and all
+digest fields. These are phase witnesses, not full large-image trajectories.
+For each column, labelled resume and untouched-column corruption and uncertain
+write outcomes remove one premise while affirmatively retaining the others and
+failing the complete conclusion. A separately labelled corrupted pending
+partial-page fixture retains the other three premises and demonstrates why
+used2048 is necessary; its internal reference issuance is explicitly not an
+actual outer issuance of a non-full page. The structural law continues to hold
+for the canonical/partial mutations because it asserts reset ownership rather
+than canonicality. All twenty assertions and a fresh source body replay are in
+`planning/evidence/history-image-column-pages-source-2026-09-30.json`.
+Actual column issuance/page-payload and padding, full source/pool residual,
+private stage/spool/digest/root fidelity, whole-image progress, producer/FD
+source authority, INITIAL and native qualification remain open. Runtime is
+unchanged; PRF-1144 remains planned with no cited completion events.
