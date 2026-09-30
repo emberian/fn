@@ -18139,6 +18139,26 @@
         "planning/evidence/selected-octets-resize-runtime-2026-09-30/README.md"
       ],
       "progress_note": "Fresh proper source sror2 passed0.02s/139steps with scalar guards/refusal tests; no central inclusion or runtime adequacy."
+    },
+    {
+      "id": "PRF-1166",
+      "title": "Conditional exact initializer register setter primary object unit",
+      "statement": "Named A-SELECTED-RUNTIME-INITIALIZER-REGISTER constrains primary objects of the qualified standalone actual register setter to zero for initializer-derived arguments; full caller/frame/GC/memoization/first-use/lifetime remain separate.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-013"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-SELECTED-RUNTIME-INITIALIZER-REGISTER"
+      ],
+      "status": "planned",
+      "evidence": [
+        "books/assumptions-selected-runtime-initializer-register.lisp",
+        "tests/acl2/selected-runtime-initializer-register-tests.lisp",
+        "planning/evidence/selected-initializer-register-unit-2026-09-30/README.md"
+      ],
+      "progress_note": "Fresh proper srir3 .01s/0steps; scalar guards/local consistency models and actual direct setter value fixture. No central inclusion/runtime admission claim."
     }
   ]
 }
