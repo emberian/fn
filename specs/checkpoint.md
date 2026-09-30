@@ -322,8 +322,11 @@ actual configured recovery. Its positive witness has ordinary ARTICLE rows on
 both sides of a statement-key rotation; a linked but unfinished ARTICLE shows
 why readiness remains material to that equality.
 
-Full producer readiness still requires preservation of this full carry by every
-actual transition, the canonical writer/load payload alpha boundary, and owner
+Actual durable CONFIG publication also preserves this full carry without
+revalidating the history: its semantic fields and completed prefix remain
+unchanged while the configured node and configuration history advance.
+Full producer readiness still requires preservation across the other actual
+transitions, the canonical writer/load payload alpha boundary, and owner
 node-secret installation. The owner secret is
 separate from the Store statement keytable. Canonical row handles and paused
 checkpoint summaries do not become identical to live fields by assertion.
