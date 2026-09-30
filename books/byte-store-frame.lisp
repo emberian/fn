@@ -809,7 +809,9 @@
                                        (cons *fn-bs-meta-frontier-kind*
                                              (append (fn-cbor-u32-bytes (len p))
                                                      p))))))
-            :in-theory (enable fn-frame-protected fn-frame-header)))))
+            :in-theory
+            (e/d (fn-frame-protected fn-frame-header fn-cbor-octet-listp)
+                 (fn-oct-octet-listp-of-append))))))
 
 (local
  (defthm fn-bs-frontier-payload-seal-facts
