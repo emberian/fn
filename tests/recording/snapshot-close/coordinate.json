@@ -1,0 +1,9 @@
+{
+  "source": "host/native/io.lisp",
+  "source_sha256": "be9bbfe58aba5c021f854882a6d6b40e34ab05ccc4a059a676505b463541df07",
+  "functions": {
+    "fnn-log-discard-spare": "f151d86e786e1ea63166810635a200713f9ca0025abe56e332754a60794f34df",
+    "fnn-store-close": "50996176bc52fc4d93609cdf55f40c7f02b1ba9d82bdbba1332f9056dc977fa7"
+  },
+  "scope": "Literal native close functions; recording structures and filesystem calls. No image, physical-close, disk, or ACL2 proof claim."
+}

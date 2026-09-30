@@ -1,0 +1,5 @@
+PASS close failure 503 retains recovery authority
+PASS close failure 501 retains recovery authority
+PASS close failure 502 retains recovery authority
+PASS close failure :UNLOCK retains recovery authority
+PASS definite closes clear aliases after observed return
