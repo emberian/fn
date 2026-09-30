@@ -1,5 +1,53 @@
 # Completing whole slices
 
+## Continuity correction from the morning transcript review
+
+The review of all 88 final reports, 316 commentaries and 32 compactions found
+that the single 05:54 UTC status question was answered again after each of
+the next 20 compactions. That question is answered. The current human request
+is the 18:44 UTC cumulative orientation and convergence correction. A goal
+continuation or compaction is not a new status request. Resume the recorded
+operation; report a delta when evidence changes instead of renewing a rolling
+two-to-three-cycle forecast.
+
+The authoritative live snapshot is
+`build/coordinator/CONVERGENCE-STATE.json`, referenced first by GPT61-STATE.
+Historical lane names and ownership in older sections do not establish a live
+worker. Both `sol_owner_union` and `sol_snapshot_open` were pending at review;
+both have now explicitly resumed and acknowledged their actual worktrees.
+Session turn-context metadata verifies both as GPT-6.1 Sol.
+
+The fixed acceptance boundaries remain admission, checkpoint/restart/read,
+publication/productive reads, and disconnected delivery. No boundary closes
+because a component is pushed. Each assembler owns the real callable harness,
+source manifest, missing implementation joins and matching evidence. Recording
+doubles and synthetic resource grants remain component evidence. Missing
+constructors, installation and caller wiring are implementation tasks, not
+merely deferred tests. Helpers retain their existing evidence and work against
+the first actual failure of the owning assembly.
+
+Current admission first failure is the missing operation-derived runtime
+installer. Snapshot has no complete genuine checkpoint/publication/restart
+harness. Publication reaches `:constructor-required` and has uninstalled
+context10 custody and nonarticle delta dispatch. BP reaches
+`:integrity-required` without a charged registered digest workspace. These
+concrete obligations replace the repeated claim that only final integration
+remains. Account startup/reload also still bypasses staged atomic adoption;
+its product owner must connect the actual account transaction and restart.
+
+The runner keeps independent public-compatible source landings separate from
+the frozen 370-file callback cohort and later native/allocation schemas. After
+the current held-domain repair, remaining affected roots use one normal
+continuation, reusing the paid prefix; avoid relaunching a classifier and
+runner for every dependency layer. Source landing after applicable fast
+checks does not assert completed proof or activation. No image campaign is
+a prerequisite for an unrelated coherent source packet.
+
+The frozen callback scope does not silently absorb every later component.
+Changes to an acceptance obligation are recorded against that same contract,
+with their cause and owner. Full original finite scope, later pillars,
+explicit exclusions and external/user actions remain as already agreed.
+
 ## Batch captures retain publication backing before connections exist
 
 The actual `fn-ocv-capture` protocol retains at most two reader views, D and
@@ -48,7 +96,7 @@ Ember's 2026-09-30 correction changes the execution practice: identify the obstr
 | Slice | Integration owner | Acceptance path and helper roles |
 | --- | --- | --- |
 | Durable admission, identity and authority | `sol_owner_union` | Actual POST and received/BP acceptance with canonical charge, purpose grant, first-accepted binding and account/config authority; lost response, restart and reconciliation preserve the outcome. Binding, size, consumer/account and BP owners supply the actual compatible APIs. The first executable refuter is the real owner prepare path, not a private proposed wrapper. |
-| Checkpoint, restart and cold read | `architecture_reorientation`; reader lead `sol_reader_join` | Checkpoint real accepted history, retain an old reader, publish, restart/open, read through the cold path and OVER, cancel/join and account for every retained resource. Snapshot, encoder/decoder, streaming, physical and reply owners join this path. |
+| Checkpoint, restart and cold read | `sol_snapshot_open`; producer/interface support `architecture_reorientation`; reader lead `sol_reader_join` | Checkpoint real accepted history, retain an old reader, publish, restart/open, read through the cold path and OVER, cancel/join and account for every retained resource. Snapshot, encoder/decoder, streaming, physical and reply owners join this path. |
 | Disconnected delivery and retirement | `sol_bp_dispatch` | Accept, queue, send, interrupt persistence/job execution, restart, resume and establish exact durable acceptance/receipt and release. Peering and operator owners integrate actual retry, reconfiguration, drain/deadline and bounded reporting. |
 
 Each owner keeps one coherent assembly and drives its first actual failure. Available source components are imported under exact leases and tested together early; unavailable definitions, incompatible APIs, failed proofs and resource-lifetime gaps remain distinct. Helpers work on the specific failure the assembly exposes. Private assembly can be NOTREADY; source publication remains the runner's responsibility and final claims still require matching evidence.
