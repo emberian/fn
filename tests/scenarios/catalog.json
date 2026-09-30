@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6340,6 +6340,33 @@
         "planning/evidence/resilience-bp-control-2026-09-29.md"
       ],
       "execution_scope": "Source adapter and BP live-control source0238f266f integrated for schedule-receipt-observed-reorder. A matching runner image/native run remains pending; adapter unit tests do not establish native activation or receipt ordering."
+    },
+    {
+      "id": "SCN-1008",
+      "title": "BP restart rejects oversized fragment ADU from saved rows and selected checkpoint",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-008",
+        "STO-015"
+      ],
+      "steps": [
+        "Raise the BP profile ADU bound and receive one small nonzero-offset fragment whose total ADU exceeds the default ADU bound.",
+        "Stop the node; in the checkpoint case run the actual checkpoint verb before changing the profile fixture.",
+        "Remove the profile file to simulate a mismatched restore; attempt actual bp-node dispatch/open.",
+        "Restore the saved profile and open again."
+      ],
+      "expected": [
+        "Open reports the named ADU-BEYOND-PROFILE uncertainty before replay can use the fragment to reassemble or install held state.",
+        "The row case identifies replay profile refusal and the checkpoint case identifies checkpoint profile refusal.",
+        "Restoring the original profile recovers exactly one held fragment, with no article committed."
+      ],
+      "evidence": [
+        "tests/test_bp_fragment_node_native.py",
+        "tests/acl2/bp-recovery-profile-tests.lisp",
+        "planning/evidence/bp-recovery-profile-2026-09-30.md"
+      ],
+      "execution_scope": "Native cases staged, NOT RUN at current source; runner supplies matching image evidence. ACL2 teeth also cover nonfragment payload, later-deleted row, member/readiness hypothesis removals and invalid profile."
     }
   ]
 }

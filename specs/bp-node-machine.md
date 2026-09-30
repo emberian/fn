@@ -4947,3 +4947,32 @@ credits and session pins while retaining durable target provenance. Production
 images refuse the selector before opening Store/socket state. Narrow proofs
 (PRF-1075/1076), qualified images and these native outcomes are separate
 coordinates; pending native cases are not claimed executed.
+
+
+### Recovery admission of ADU bounds (PKT-311a; PRF-1090)
+
+fn additionally rechecks the current operator profile during actual native
+recovery; this is a local admission policy, stronger than the BP wire grammar.
+`fnn-bps-open` checks the selected checkpoint with
+`fn-bprpf-selection-admit` before replay; `fnn-bps-read-received-rows` checks
+each saved frame with `fn-bprpf-row-admit` before retaining it for the fold.
+This includes receptions that a later row deletes. The ADU reading is the
+receive boundary's `fn-bpnpf-bundle-adu-length`: a fragment's total ADU length
+(RFC 9171 section 4.3.1), otherwise the payload length. No new ceiling is
+introduced. Saved wire also must fit the current profile's bundle bound.
+
+The final `fn-bprpf-admit-recovery` consumes the exact
+`fn-bphp-recover-auto-event` result before installation. Every held member of
+a ready admitted result fits the current ADU bound. A mismatched profile
+produces `:adu-beyond-profile` (or `:profile` for unsupported profile), fences
+the open with uncertainty, and leaves durable data intact. An existing replay
+fault stays a fault. These checks apply equally to checkpoint-seeded held
+rows and suffix receptions and run at open, never per served request.
+
+The input work bounds are separate: `fn-bpnf-stored-frame-limit` bounds each
+raw FNBS read before decode; `fn-bpnr-read-bound` and `fn-bpnr-depth-budget`
+bound checkpoint input under the profile. ADU admission does not prove those
+limits or make the full open resumable. Profile repair after a mismatched
+restore and codec/runtime profile widening remain PKT-311b/c. SCN-1008 names
+the actual row and checkpoint restart cases; matching native execution is
+pending, so this source increment is not a qualified recovery claim.

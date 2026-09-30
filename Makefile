@@ -675,6 +675,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-rotation-buffer \
 	tests/acl2/bp-node-rotation-buffer-tests \
 	books/bp-held-projection \
+	books/bp-recovery-profile \
+	tests/acl2/bp-recovery-profile-tests \
 	tests/acl2/bp-held-projection-tests \
 	books/bp-handoff-report \
 	tests/acl2/bp-handoff-report-tests \

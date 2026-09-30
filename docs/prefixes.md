@@ -366,3 +366,5 @@ anything a book does not already decide.
 
 | `fn-pct-` | `productive-transfer`, `tests/acl2/productive-transfer-tests` | Productive outbound NNTP offer and requested article effect; local journal and attempt, explicit quiet/refused outcomes; no remote acceptance claim (W6b) |
 | `fn-gat-`, `gat-` | `tests/acl2/group-authority-tests` | Explicit authority publication and replay teeth; distinct posting policy and principal bindings. |
+
+| `fn-bprpf-`, `bprpft-` | `bp-recovery-profile`, `tests/acl2/bp-recovery-profile-tests` | Current profile admission of checkpoint seeds, saved rows, and actual recovered held data before installation. |
