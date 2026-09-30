@@ -325,8 +325,16 @@ why readiness remains material to that equality.
 Actual durable CONFIG publication also preserves this full carry without
 revalidating the history: its semantic fields and completed prefix remain
 unchanged while the configured node and configuration history advance.
-Full producer readiness still requires preservation across the other actual
-transitions, the canonical writer/load payload alpha boundary, and owner
+Actual durable `fn-sn-finish` also preserves the entire carry: its ordinary
+and composite verdict publication and frozen row delta advance the same
+completed history prefix, while current keyring resolution and the retired
+field remain carried. No historical payload is reparsed by this publication.
+The proof-only retained view preserves all additional fields plus the
+completed history prefix across actual prepare/refuse/abort and I/O transitions.
+Composing that view with the existing configured-owner transition relation
+yields the complete carry; the raw components do not replace owner-side
+served-record and staged-candidate obligations.
+Full producer readiness still requires that owner-context composition, the canonical writer/load payload alpha boundary, and owner
 node-secret installation. The owner secret is
 separate from the Store statement keytable. Canonical row handles and paused
 checkpoint summaries do not become identical to live fields by assertion.
@@ -419,3 +427,97 @@ conversion nor terminal span materialization is permitted. Canonical body,
 table/directory emission, offset-domain checks, resource admission and complete
 publication refinement remain open. This source increment carries no served
 keystone or certification claim.
+
+`books/history-page-metadata.lisp` (PRF-1104) emits the existing six-word
+address/transaction/digest entry into the same scratch. `fn-hpm-tick` carries
+ordinal, component and remaining run words; each stored word advances once.
+Page-full, done and address/ordinal refusal preserve cursor and scratch. The
+ordinal/component survives scratch consumption/reset, since a directory entry
+may straddle physical pages. Named entry, run-position and concrete effect
+refinements use `pgs-entry-words` and `pgs-encode-run`; a table is the single-page
+case, with its341entries and two final zeros. Digest source attribution remains
+an explicit premise: the spool reader must return the exact captured/staged
+digest at that ordinal. The emitter retains only one256-bit digest and scalar
+state. It preserves concrete scratch representation and epoch/lease identity.
+Complete spool admission, authenticated reads, final root binding and served
+composition remain open; no host caller or certification claim is added.
+
+The scalar layout component also exposes `fn-hpi-region/page` in
+`books/history-page-io.lisp`: positional whole-file requests use the unchanged
+FNSI base plus the physical page offset. Accepted ranges fit the image region
+and admitted runtime/profile extent, and different pages do not overlap. The
+extent is an admission input, not a hard-coded storage ceiling. This is the
+ACL2 addressing seam for eliminating the native by-address hash. Registered
+reader extents already include the FNSI base; their relative requests must not
+add it again. The physical/controller layer still owns matching request tokens,
+short/ambiguous I/O verdicts and cancellation/pin lifetime.
+
+### Bounded borrowed history decoding (planned, PRF-1102 / SCN-1014)
+
+The captured history source is decoded incrementally using the unchanged tree
+codec. `books/history-decode-stream.lisp` consumes one verified byte per active
+step and retains source epoch and lease; raw string, symbol and octet payloads
+remain borrowed spans in `books/history-decode-nodes.lisp`. Its non-executable
+abstraction denotes the existing logical row. Numeric decoding refines the
+current little-endian reader, including accepted nonminimal spellings. The
+canonical encoder must classify pair-shaped octet lists incrementally and
+canonicalize empty octet spans to NIL rather than copy old instruction bytes.
+
+The full requirement remains open: captured-root directory/table/data
+validation, exact row semantic inverse, padding and MKEY validation, carried
+source-token binding, funded node/stack allocation, guard-verified host
+composition and matching native evidence. Neither a source parser nor a
+fixed page buffer alone establishes that boundary. See
+[the concrete contract](../planning/history-decode-contract.md).
+
+
+## S7 private image digest continuation (PRF-1087; planned boundary)
+
+The preparation census knows the final data/table page counts and directory run
+before emission. Each data or table page hashes256 64-octet blocks; a directory
+of M pages hashes256*M blocks. The current directory count is format u32, so
+this stream's complete size is representable without an extra store-size policy.
+A prepared digest is never durable publication or acceptance.
+
+The library `pgs-dc-begin(sel, base, nb, capture, lease, pgs-digest)` records this
+block count and exact captured source/lease names. `pgs-dc-step(block, pgs-digest)`
+receives one fixed sixteen-u32 block when `pgs-dc-needs-block` is true; the next
+word offset is `pgs-dc-next-word-offset`. Each step returns `:continue`, `:done`
+or `:invalid` with its continuation. Split search advances one doubling per
+tick, chunk processing does at most one compression, and parent/root processing
+also yields separately. `pgs-dc-result` is the terminal big-endian natural.
+The optional `pgs-dc-tick(pgs-mem, pgs-digest)` reads at most eight captured u64
+words and calls the same core. The disk-backed builder may instead supply its
+one bounded emission buffer. Neither client builds a whole `fn-octets-pg`.
+
+The `pgs-digest` stobj has64 fixed frame slots plus scalar fields and fixed
+current CV/output values. Constructor allocation belongs to admission; begin
+resets scalars without zeroing its frame array. Source pinning, buffer ownership
+and lease release remain the controller's responsibility. Supported profile,
+codec/runtime address representability and stack-depth sufficiency must agree;
+the64slots are a representation choice, never an operator data limit.
+
+Current evidence is clean guard admission and literal evaluation across empty,
+block, chunk and uneven tree boundaries including the actual previous word-digest
+entry. The proof-only refinement now preserves complete active-frame denotation
+in every phase and conditionally connects a root step to the actual previous
+word digest through `pgs-x-words-digest-is-blake3`. Its captured-source semantic
+carry is still a hypothesis. PRF-1087 remains planned: maintained trajectory
+and representation invariants, strict progress, supported-domain stack
+sufficiency, concrete allocation demand and actual controller composition
+remain open. Ground BLAKE3 agreement establishes neither standard conformance
+nor real cryptographic assumptions. Full S7/P12/D33 completion is unchanged.
+
+The reusable byte extension `pgs-dcb-begin(sel, base, byte-total, capture, lease,
+pgs-digest)` handles exact byte lengths including empty and partial blocks.
+Its caller retains the captured byte-total unchanged. `pgs-dcb-step(byte-total,
+block, pgs-digest)` delegates to the page core except the final rightmost chunk,
+which records the exact byte count. The caller feeds sixteen u32 words with
+zero padding beyond `pgs-dcb-read-demand`, bounded by64 bytes, and consumes
+source only when that demand is nonzero. `pgs-dcb-next-byte-offset` is the
+requested byte coordinate. `pgs-dcb-result-octets` exposes the32 digest octets
+with one separately funded bounded ROOT compression. Exact partial-tail
+refinement and a conditional terminal correspondence to concrete `fn-blake3`
+are source-admitted. This does not equate the constrained `fn-frame-digest`
+with its realizer; streamed protected extents still need the existing joint
+attachment/refinement pattern at their actual consumer boundary.

@@ -1132,8 +1132,9 @@ this way. `[alerts] command` must start with `/`.
 ### Store settings
 
 A store's size limits are set by `init`. A store admits
-one transaction fewer than `--max-transactions`: the last one is kept so
-the store can always record a maintenance release, even when full. A
+one transaction fewer than `--max-transactions`: the last record slot is
+reserved for a maintenance release. This reserves record capacity; other
+resource limits and the finite transaction-identity range still apply. A
 store made with `--max-transactions 128` takes 127 posts and other
 changes; `status`'s `maintenance-reserve ... held` line shows the kept one.
 Under a `mission`, `init` takes group names only and picks the limits for
