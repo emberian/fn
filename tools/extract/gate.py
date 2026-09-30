@@ -206,7 +206,7 @@ class Gate:
         (k / "fn-core").unlink(missing_ok=True)
         log = self.c / "core-build.log"
         self.need("core.sh", self.t.core, stdout=log, stderr="stdout", log=log)
-        for name in ("core.json", "defs.lisp", "packages.lisp", "core-world.lisp", "host-block.lisp", "inventory.json"):
+        for name in ("core.json", "defs.lisp", "packages.lisp", "core-world.lisp", "host-block.lisp", "inventory.json", "fn-core.core"):
             self.nonempty(k / name, "core")
         exe = k / "fn-core"
         if not (exe.is_file() and os.access(exe, os.X_OK)):
@@ -511,6 +511,7 @@ class Gate:
         if not getattr(self, "core_exe", None):
             return None
         return {"executable": str(self.core_exe), "sha256": sha256_file(self.core_exe),
+                "saved_core_sha256": sha256_file(k / "fn-core.core"),
                 "ir_sha256": sha256_file(k / "core.json"), "defs_sha256": sha256_file(k / "defs.lisp"),
                 "compiler": "SBCL compile-file under ACL2's policy (speed 3) (space 1) (safety 0) "
                             "(acl2.lisp *acl2-optimize-form*), each raw definition with the type "
