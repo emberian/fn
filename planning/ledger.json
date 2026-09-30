@@ -1642,9 +1642,9 @@
     "prover_refusals": 0,
     "encapsulates": 156,
     "guards": {
-      "verified": 3474,
+      "verified": 3490,
       "declared-off": 2084,
-      "default-guarded": 9854,
+      "default-guarded": 9838,
       "default-unguarded": 2733
     },
     "suspect_theorems": 1217,
@@ -3343,12 +3343,12 @@
       "theorems": 0,
       "functions": 7,
       "guards": {
-        "verified": 3,
+        "verified": 6,
         "declared-off": 0,
-        "default-guarded": 4,
+        "default-guarded": 1,
         "default-unguarded": 0
       },
-      "verify_guards_events": 3,
+      "verify_guards_events": 6,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -3563,12 +3563,12 @@
       "theorems": 0,
       "functions": 6,
       "guards": {
-        "verified": 3,
+        "verified": 6,
         "declared-off": 0,
-        "default-guarded": 3,
+        "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 3,
+      "verify_guards_events": 6,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -3701,12 +3701,12 @@
       "theorems": 1,
       "functions": 5,
       "guards": {
-        "verified": 0,
+        "verified": 2,
         "declared-off": 0,
-        "default-guarded": 5,
+        "default-guarded": 3,
         "default-unguarded": 0
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 2,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -3732,12 +3732,12 @@
       "theorems": 0,
       "functions": 14,
       "guards": {
-        "verified": 9,
+        "verified": 14,
         "declared-off": 0,
-        "default-guarded": 5,
+        "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 9,
+      "verify_guards_events": 14,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -3915,12 +3915,12 @@
       "theorems": 1,
       "functions": 6,
       "guards": {
-        "verified": 0,
+        "verified": 2,
         "declared-off": 0,
-        "default-guarded": 6,
+        "default-guarded": 4,
         "default-unguarded": 0
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 2,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -5053,12 +5053,12 @@
       "theorems": 3,
       "functions": 7,
       "guards": {
-        "verified": 0,
+        "verified": 1,
         "declared-off": 2,
-        "default-guarded": 5,
+        "default-guarded": 4,
         "default-unguarded": 0
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 1,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
