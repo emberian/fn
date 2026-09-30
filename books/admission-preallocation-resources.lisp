@@ -4,6 +4,7 @@
 (in-package "ACL2")
 (include-book "page-read-ledger")
 (include-book "index-query-resources")
+(include-book "state-globals")
 
 (local (defthm fn-apr-natural-vector-true-listp
  (implies (fn-prs-nats-p x) (true-listp x))
@@ -155,3 +156,33 @@
   (equal (mv-nth 2 (fn-apr-release token joined current ledger)) ledger)))
 (in-theory (disable fn-apr-identityp fn-apr-token fn-apr-livep fn-apr-issue
                     fn-apr-produced fn-apr-uncertain fn-apr-release))
+
+; Fixed SAME decision payload held in CURRENT row NEXT slot. EVENT is borrowed
+; from the actual candidate before dir-result clears it. The constructor is
+; internal: the actual issuer/caller establishes its source/current relation.
+(defun fn-apr-operation-packet (event checked fields status effect child sizes
+                               next-ready prefix-node next-prefix-node)
+ (declare (xargs :guard t))
+ (list event checked fields status effect child sizes next-ready prefix-node next-prefix-node))
+(defun fn-apr-operation-packetp (packet)
+ (declare (xargs :guard t))
+ (and (fn-apr-widthp 10 packet)
+      (member-eq (fn-prl-nth 3 packet) '(:carried :unavailable))))
+(defun fn-apr-current-operation-packet (current)
+ (declare (xargs :guard t))
+ (and (fn-apr-livep (fn-prl-nth 0 current) current)
+      (member-eq (fn-prl-nth 2 current) '(:produced :promoted :uncertain))
+      (fn-apr-operation-packetp (fn-prl-nth 4 current))
+      (fn-prl-nth 4 current)))
+(in-theory (disable fn-apr-operation-packet fn-apr-operation-packetp
+                    fn-apr-current-operation-packet))
+
+; Exact CURRENT slot-only readout. No caller row or token selects a past packet.
+(defun fn-apr-owner-current (state)
+ (declare (xargs :stobjs state :guard t))
+ (and (boundp-global 'fn-owner-canonical-admission-pending state)
+      (f-get-global 'fn-owner-canonical-admission-pending state)))
+(defun fn-apr-owner-produced-capture (state)
+ (declare (xargs :stobjs state :guard t))
+ (fn-apr-current-operation-packet (fn-apr-owner-current state)))
+(in-theory (disable fn-apr-owner-current fn-apr-owner-produced-capture))
