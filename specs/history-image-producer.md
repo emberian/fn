@@ -474,3 +474,28 @@ source/fixture evidence is in
 Full source/pool/private stage/spool/digest/root fidelity, finite progress,
 actual retained FD/source authority, INITIAL and native qualification remain
 open. Runtime is unchanged; PRF-1144 stays planned with no cited events.
+
+The actual executor byte boundary is now joined to the original padded page
+in `fn-hie-padding-page-byte-is-original-canonical-octet`. Its two premises
+are the complete original canonical padding-ready carry before the actual
+`fn-hpi-tick`, and the complete executor byte context after that step. The
+conclusion is the entire `fn-hie-page-byte` output: `:octet` and the selected
+byte of the original `fn-hp-wpad` region page. The proof reuses the existing
+retained-page serialization boundary. Actual issuance selects the retained
+region and preserves all five page buffers. An explicit write-status
+premise was proved implied by the retained two premises and removed.
+
+Fifteen complete literal assertions drive actual decoded-source trajectories
+through prior writes and ACKs to all five regions. Each positive compares
+all 16384 actual executor bytes and complete byte context with the original
+canonical page. Selected-word corruption removes canonical carry while
+retaining executor context; stale stage removes executor context while
+retaining canonical carry. Both fail the complete byte output. The matching
+source coordinate is
+`planning/evidence/history-image-canonical-payload-source-2026-09-30.json`.
+This establishes issued canonical padding payloads, not private-file truth.
+Actual stable FD/role association and named positional write/read/frame
+trace coupling, complete source/pool/image/digest/root trajectory, finite
+progress, installed source authority, INITIAL and native qualification
+remain open. Runtime is unchanged; PRF-1144 remains planned with no cited
+completion events.
