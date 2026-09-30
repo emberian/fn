@@ -160,7 +160,7 @@
         (result (mv-list 3 (iprct-terminal-one steps backing))))
   (list (fn-ibrc-assignment-carryp (mv-nth 1 result) prefix)
         (eq (mv-nth 0 result) :numbers)
-        (fn-ibrc-row-domainp (fn-omk-at 5 (fn-omk-at 8 (fn-ibp-builder (mv-nth 2 result)))) prefix)))))
+        (fn-ibrc-row-domainp (fn-omk-at 5 (fn-omk-at 8 (fn-ibp-builder (mv-nth 2 result)))) prefix))))
 (defthm iprct-one-positive
  (equal (iprct-one *iprct-wire* 64) '(t t t)) :rule-classes nil)
 (defthm iprct-one-domain-removal
