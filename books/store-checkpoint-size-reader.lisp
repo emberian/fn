@@ -3,34 +3,8 @@
 ; the temporary annotation graph. Those are explicit producer obligations.
 (in-package "ACL2")
 (include-book "store-checkpoint-tables-reader")
-(include-book "store-tree-size")
+(include-book "store-tree-size-info")
 (local (include-book "arithmetic/top" :dir :system))
-
-(defun fn-scsr-car (x)
-  (declare (xargs :guard t))
-  (if (consp x) (car x) nil))
-(defun fn-scsr-cdr (x)
-  (declare (xargs :guard t))
-  (if (consp x) (cdr x) nil))
-
-(defun fn-scsr-info-root (info)
-  (declare (xargs :guard t))
-  (if (consp info) (car info) nil))
-(defun fn-scsr-info-leaf (carry)
-  (declare (xargs :guard t))
-  (list carry))
-(defun fn-scsr-info-pair (a d)
-  (declare (xargs :guard (and (fn-scs-carryp (fn-scsr-info-root a))
-                              (fn-scs-carryp (fn-scsr-info-root d)))))
-  (cons (fn-scs-cons (fn-scsr-info-root a) (fn-scsr-info-root d))
-        (cons a d)))
-
-(defun fn-scsr-pair-info (a d)
-  (declare (xargs :guard t))
-  (if (and (fn-scs-carryp (fn-scsr-info-root a))
-           (fn-scs-carryp (fn-scsr-info-root d)))
-      (fn-scsr-info-pair a d)
-    nil))
 
 ; STEP constructs the actual retained value exactly once. The octet payload
 ; length comes from its successful consumed boundary minus its original
@@ -131,20 +105,6 @@
                             fn-scc-le-value fn-scc-intern fn-scs-octets
                             fn-scs-summary fn-oct-slice-list-is-take-nthcdr)))))
 
-(defun fn-scsr-info-provenancep (info x)
- (declare (xargs :measure (acl2-count x) :verify-guards nil))
- (if (not (fn-scs-carryp (fn-scsr-info-root info))) t
-   (and (equal (fn-scsr-info-root info) (fn-scs-summary x))
-        (if (consp (fn-scsr-cdr info))
-            (let ((a (fn-scsr-car (fn-scsr-cdr info)))
-                  (d (fn-scsr-cdr (fn-scsr-cdr info))))
-              (and (consp x)
-                   (fn-scs-carryp (fn-scsr-info-root a))
-                   (fn-scs-carryp (fn-scsr-info-root d))
-                   (fn-scsr-info-provenancep a (car x))
-                   (fn-scsr-info-provenancep d (cdr x))))
-          t))))
-
 (defun fn-scsr-stack-provenancep (infos stack)
  (declare (xargs :verify-guards nil))
  (if (consp stack)
@@ -206,13 +166,7 @@
 ; The original reference lookup projects an article/composite payload from
 ; the raw P row. Its annotation must follow that same fixed field selection.
 ; Walk at most the literal field index (4 or 6), never the selected payload.
-(defun fn-scsr-info-field (n info)
- (declare (xargs :guard (natp n) :measure (nfix n)))
- (if (and (fn-scs-carryp (fn-scsr-info-root info))
-          (consp (fn-scsr-cdr info)))
-     (if (zp n) (fn-scsr-car (fn-scsr-cdr info))
-       (fn-scsr-info-field (1- n) (fn-scsr-cdr (fn-scsr-cdr info))))
-   nil))
+
 (defun fn-scsr-payload-info (value info)
  (declare (xargs :guard t))
  (cond ((not (consp value)) nil)
@@ -407,14 +361,6 @@
                            fn-scsr-select-fields-preserves-provenance
                            fn-scsr-provenance-valid-root fn-scs-correspondsp
                            fn-scs-summary fn-scs-carryp fn-scsr-info-root)))))
-
-(defthm fn-scsr-info-field-preserves-provenance
- (implies (and (natp n) (fn-scsr-info-provenancep info x))
-          (fn-scsr-info-provenancep (fn-scsr-info-field n info) (nth n x)))
- :hints (("Goal" :induct (fn-scsr-select-provenance-ind n info x)
-          :in-theory (e/d (fn-scsr-info-field fn-scsr-info-provenancep
-                           fn-scsr-info-root fn-scsr-car fn-scsr-cdr nth)
-                          (fn-scs-summary fn-scs-carryp fn-scs-atom)))))
 
 (local (defthm fn-sctsr-step-infos-true-listp
  (implies (true-listp infos)
