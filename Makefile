@@ -595,6 +595,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/page-read-ledger \
 	books/page-discovery-ledger \
 	books/cold-read-layout \
+	books/cold-read-window \
+	tests/acl2/cold-read-window-tests \
 	books/cold-runtime-bound \
 	books/assumptions-cold-runtime \
 	books/page-maintenance-lease \

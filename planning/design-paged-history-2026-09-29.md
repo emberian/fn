@@ -620,3 +620,16 @@ The current cold-only budget has disk0. This API deliberately cannot create
 staging disk credit; explicit startup maintenance disk funding must be joined.
 Incremental safe-attempt growth is independent of full R>=W, whose canonical
 accepted-obligation size carry and old/new/cleanup envelope remain open.
+
+### Raw window source demand
+
+`cold-read-window.lisp` now records the fixed raw window representation,
+retained digest frame highwater, source transient cons inventory and actual
+natural widths. The descriptor gate checks the full protected end plus the
+32-byte trailer against the selected signed off_t ABI before a native call.
+The source-model demand is unchanged between a4096-byte and a1-TiB protected
+extent with the same identity widths; ELEN is never a vector capacity.
+`evidence/paged-resource-pool/window-source-2026-09-30.md` states the exact
+inventory and remaining caller/arithmetic joins. This source component is
+unactivated; compressed backing storage is recorded separately and is not
+a complete compressed-job demand. No productive default claim changes.
