@@ -18057,6 +18057,26 @@
         "planning/evidence/legacy-parser-composition-source.md"
       ],
       "progress_note": "Protected clean persvati nlp2 admitted 23 source forms including source dependencies: 5.55 ACL2 seconds / 2239851 prover steps. General parser projection 51441 steps. Fifteen test forms passed. Source admission only; no committed certification manifest, host/image or native claim. Byte-side clean protected persvati nlvfinal admitted31forms,9.83s/5824331steps including source dependencies;22testforms passed. This is source evidence, not certification or full header simulation. Clean protected persvati nlvmalclean admitted50forms including source dependencies,16.18ACL2seconds/6671239steps;41testforms passed with19new literal actual-machine witnesses including every retained-hypothesis removal. No certification or host/image claim. Clean nlvframeclean admitted62forms12.02seconds/6774172steps including source dependencies; framing witnesses include every retained-hypothesis removal. The CR/non-LF theorem dropped both state and physical-prefix assumptions after proving its stronger statement. Clean nlvcounterclean74forms16.25seconds/6810623steps including source dependencies; counter component36451steps. General counter theorem has only three inequalities; final actual-parser theorem has no hypotheses. Astra acceptance composition clean protected nlpcclean admitted35forms including source dependencies,7.44ACL2seconds/5036807steps. Final actual acceptance theorem has exactly original codec preflight and octet-list hypotheses; malformed sources are not excluded. Both removals are witnessed, the codec-ceiling removal by a proved finite symbolic witness with no enormous allocation. No certification, image or host completion claim. Clean final test-root nlpctfinal admitted37forms and all source dependencies,7.11ACL2seconds/5038228steps;29assertions plus proved symbolic codec-ceiling removal. Scoped teeth0findings, ledger0suspects, theory0."
+    },
+    {
+      "id": "PRF-1150",
+      "title": "Conditional distinct-backing RX array copy and quarantine boundary",
+      "statement": "A-RX-ARRAY-COPY constrains a stable UB8 source and distinct registered destination with core-issued prefix endpoints. Definite success preserves backing identities, capacity, source, association and bytes outside the prefix, copies the exact prefix and publishes end as fill. Uncertain completion permits partial destination bytes/fill and requires quarantine without rollback/refund. The executable local witness establishes consistency only; actual fnn-owner-receiver-fill binding, installed association and core failure fence remain open, separately from allocation/frame/GC funding.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-013"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-RX-ARRAY-COPY"
+      ],
+      "status": "planned",
+      "evidence": [
+        "books/assumptions-rx-array-copy.lisp",
+        "tests/acl2/assumptions-rx-array-copy-tests.lisp",
+        "planning/evidence/rx-array-copy-2026-09-30/README.md"
+      ],
+      "progress_note": "Fresh protected untagged proper source replay rxacsource: one dependency and six root forms, 0.05 seconds/4061 steps. Conditional model and literal hypothesis-removal teeth only; no certification, CL primitive correctness, native host binding, activation or full runtime adequacy claim."
     }
   ]
 }

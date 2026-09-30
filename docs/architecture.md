@@ -102,6 +102,13 @@ and of the books it includes, which are every assumption book there is:
   durable extent and its compressed realizer, a part of its own so that the
   payload arena (and every book above it) depends on these two and not on the
   byte store's crash model.
+- `books/assumptions-rx-array-copy.lisp`: A-RX-ARRAY-COPY, a conditional
+  semantic model for a stable UB8 source and a distinct registered RX backing.
+  Definite success preserves identities, capacity, source and destination
+  bytes outside the core-issued prefix and publishes its exact fill.
+  Uncertain completion permits partial bytes/fill and requires quarantine,
+  with no rollback or refund. Binding the actual native caller and core fence
+  remains open; compiler, allocation, frames and GC are separate obligations.
 
 Including `books/assumptions.lisp` reaches all of them.
 
