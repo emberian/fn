@@ -61,10 +61,6 @@
 (in-package "ACL2")
 (include-book "store-checkpoint-open")
 (include-book "store-checkpoint-codec")
-
-; This book's tuple lemmas use fixed NTH projections. Keep that vocabulary
-; stable when a composed caller enables CAR/CDR normalization rules.
-(local (in-theory (disable adt-nth-0 adt-nth-1+)))
 (local (include-book "arithmetic/top" :dir :system))
 
 ;; Rules withdrawn at their source that this book's proofs use
@@ -881,8 +877,6 @@
 (defun fn-sct-run-decode (segs s)
   (declare (xargs :guard (fn-scc-segment-listp segs)
                   :guard-hints (("Goal" :expand ((fn-scc-segment-listp segs))
-                                 :use ((:instance fn-sct-parse-header-count-natp
-                                                  (seg (car segs))))
                                  :in-theory (disable fn-scc-parse-header fn-scc-join
                                                      fn-scc-segment-listp)))))
   (let ((h (and (consp segs) (fn-scc-parse-header (car segs)))))
@@ -910,19 +904,6 @@
            :in-theory (e/d (fn-sct-run-decode)
                            (fn-scc-parse-header fn-scc-join fn-scc-join-octets
                             fn-scc-segment-listp)))))
-
- ; Keep the same result fact available after fixed NTH projections simplify
-; to CAR/CDR in a larger composed world.
-(local
- (defthm fn-sct-run-decode-ok-cdr-shape
-   (implies (and (fn-scc-segment-listp segs)
-                 (eq (car (fn-sct-run-decode segs s)) :ok))
-            (and (fn-scc-octet-listp (cadr (fn-sct-run-decode segs s)))
-                 (fn-scc-segment-listp (caddr (fn-sct-run-decode segs s)))))
-   :hints (("Goal" :use fn-sct-run-decode-ok-shape
-            :in-theory (e/d (nth adt-nth-0 adt-nth-1+)
-                            (fn-sct-run-decode fn-sct-run-decode-ok-shape
-                             fn-scc-octet-listp fn-scc-segment-listp))))))
 
 ; The file: (:ok TABLES) or (:refused REASON), S read from the first header.
 (defun fn-sct-decode-file (segs)
@@ -1060,8 +1041,7 @@
                           (list :refused :close)
                         tables)))))
   :hints (("Goal" :do-not-induct t
-           :use (fn-sct-len-4-shape
-                 (:instance fn-sct-run-decode-of-run-segments (prog (nth 0 progs))
+           :use ((:instance fn-sct-run-decode-of-run-segments (prog (nth 0 progs))
                             (rest (append (fn-sct-run-segments (nth 1 progs) seg s)
                                           (fn-sct-run-segments (nth 2 progs) seg s)
                                           (fn-sct-run-segments (nth 3 progs) seg s))))
