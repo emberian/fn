@@ -39,7 +39,7 @@ def validate(steps):
 
 def initial():
     return dict(live="initial", worker_request="initial", phase=":RUNNING",
-                charged=320, workers=1, worker_id=0)
+                charged=320, workers=1, worker_id=0, binding_worker=0)
 
 
 def transition(state, step):
@@ -54,12 +54,12 @@ def transition(state, step):
             answer = ":ADMITTED"
         else:
             answer = ":READ-RESOURCES-UNAVAILABLE"
-    elif step.selector == "exact" and step.request == state["live"]:
+    elif step.selector in ("exact", "wrong-worker") and step.request == state["live"]:
         phase = state["phase"]
         if step.action == "acquire" and phase == ":IDLE":
-            state.update(worker_request=step.request, phase=":RUNNING")
+            state.update(worker_request=step.request, phase=":RUNNING", binding_worker=state["worker_id"])
             answer = ":ASSIGNED"
-        elif step.request == state["worker_request"] and state["worker_id"] == 0:
+        elif step.request == state["worker_request"] and state["worker_id"] == state["binding_worker"]:
             if step.action == "cancel" and phase in (":RUNNING", ":RETURNED", ":CANCELLED-RUNNING", ":CANCELLED-RETURNED"):
                 state["phase"] = ":CANCELLED-RUNNING" if phase in (":RUNNING", ":CANCELLED-RUNNING") else ":CANCELLED-RETURNED"
                 answer = ":CANCELLED"
@@ -68,7 +68,7 @@ def transition(state, step):
                 answer = ":RETURNED"
             elif ((step.action == "release" and phase == ":RETURNED") or
                   (step.action == "settle" and phase == ":CANCELLED-RETURNED")):
-                state.update(live=None, worker_request=None, phase=":IDLE", charged=64, workers=0)
+                state.update(live=None, worker_request=None, phase=":IDLE", charged=64, workers=0, binding_worker=None)
                 answer = ":RELEASED"
     return state, dict(answer=answer, phase=state["phase"], charged_bytes=state["charged"],
                        workers=state["workers"], close=":CLOSABLE" if state["live"] is None else ":READ-FILE-HELD")

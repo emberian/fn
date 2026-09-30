@@ -83,3 +83,10 @@ class TypedWindowModelTests(unittest.TestCase):
         journal = observe("FN_W7_TYPED trial=0 step=0 answer=:CANCELLED phase=:CANCELLED-RUNNING bytes=320 workers=1 close=:READ-FILE-HELD", 0)
         journal.records[0]["workers"] = True
         self.assertEqual(judge([Step("cancel", "cancel")], journal, 0).kind, "harness-failure")
+
+    def test_supplied_idle_worker_is_bound_by_acquire(self):
+        steps = [Step("return", "return"), Step("release", "release"), Step("new", "admit", "next"),
+                 Step("worker1", "acquire", "next", "wrong-worker"),
+                 Step("returned", "return", "next"), Step("released", "release", "next")]
+        self.assertEqual([v["answer"] for v in expectations(steps)],
+                         [":RETURNED", ":RELEASED", ":ADMITTED", ":ASSIGNED", ":RETURNED", ":RELEASED"])

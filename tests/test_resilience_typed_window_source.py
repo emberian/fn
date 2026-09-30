@@ -41,3 +41,10 @@ class TypedSourceBackendTests(unittest.TestCase):
         for session, host in [("bad;name", "hbox"), ("valid", "other-host")]:
             with self.assertRaises(ValueError):
                 SourceBackend(ROOT / "build/unit-unused", session, host)
+
+    def test_retained_actual_alternate_idle_worker_binding(self):
+        directory = EVIDENCE.parent / "worker-binding/trial-0000"
+        scenario = Scenario.load(directory / "scenario.json")
+        verdict = judge_scenario(scenario, observe((directory / "log").read_text(), 0), 0)
+        self.assertEqual(verdict.kind, "consistent")
+        self.assertIn("typed-window-settled", verdict.witnesses_observed)
