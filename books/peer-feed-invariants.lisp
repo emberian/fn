@@ -684,6 +684,25 @@
                         (posp next))))
    :hints (("Goal" :in-theory (enable fn-feedp)))))
 
+; Derived S9 counts do not change the base queue/state recognizer; their
+; separate carried relation is proved in peer-feed-counts.
+(local
+ (defthm fn-feed-feedp-of-counted-make-with-queue-and-attempt
+   (implies (and (fn-feedp f) (equal peer (fn-feed-peer f)))
+            (equal (fn-feedp
+                    (fn-feed-make-counted peer (fn-feed-limits-of f)
+                                           queue (fn-feed-contact f)
+                                           (fn-feed-backoff-until f)
+                                           (fn-feed-conn f) next u d))
+                   (and (fn-feed-entry-listp queue)
+                        (fn-feed-distinctp queue)
+                        (<= (len queue)
+                            (fn-feed-max-queue (fn-feed-limits-of f)))
+                        (<= (fn-feed-inflight-count queue) 1)
+                        (fn-feed-attempts-belowp queue next)
+                        (posp next))))
+   :hints (("Goal" :in-theory (enable fn-feedp)))))
+
 ;; The queue under the field updates, for the proofs that keep them closed.
 (local
  (defthm fn-feed-queue-of-with-fields

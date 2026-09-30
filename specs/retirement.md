@@ -31,7 +31,15 @@ offer/sent transitions and refused mutations preserve those quantities.
 Peer addition/removal/reconfiguration and every native feed-port installation
 must compose exact aggregate deltas. Cold/open/rebuild/journal replay must
 establish the carried relation with bounded work, never a whole-table fold
-in a served installer. These are implementation obligations, not yet claims.
+in a served installer. Source support now exists in `peer-feed-counts.lisp` and
+`owner-feed-counts.lisp` (HST-041 / PRF-1138 / SCN-1047). The in-memory
+constructor has nine slots; the two derived fields are rebuilt by actual
+replay transitions, while durable journal encodings retain their semantic
+fields. Counted target enqueue returns the original table and the updated
+aggregate from one fold. FNFD peer port results carry the exact signed
+aggregate delta. Protected source admissions and model fixtures do not
+establish publication/recovery, guarded served entry or final drain. These
+remain implementation obligations, not yet completion claims.
 
 A scalar zero alone cannot authorize final drained success. Intake first
 stops, then a real producer fence settles/joins outstanding accept/commit
@@ -88,7 +96,21 @@ Activation requires all of the following, which remain open:
   persistence failure is recovery/uncertainty, not refusal or success.
   Every newly introduced process-death cut needs a model crash point.
 
-The current full-table scan/report remains explicitly open until those
-contracts are implemented and their host-called boundaries are proved with
-literal teeth, then exercised on a matching image. This source contract
-does not close S9, R16 work debt, physical funding or native qualification.
+The source prototypes now carry nine-slot feed counts through live/replay
+mutations, one guarded target enqueue fold, all durable outcome variants and
+the existing configuration retire/install/scope reconstruction. Their source
+refinements preserve complete prior results and exact aggregate/count relations;
+no certification or matching-image result is implied. Intake refuses new mux,
+bound-control and BP submissions once retirement is published. A clock-only
+precheck runs before the semantic owner mutex, and final report observation
+moves after joins and close hooks. The actual producer-settled observation is
+still deliberately NIL, so zero cannot authorize `drained` yet. The deadline
+path remains available.
+
+Frozen report rendering is still a whole-buffer source path. The unactivated
+`owner-retire-stream` proposal shares existing tails after joins, but its
+single-line scratch tariff and staged output disk/lifetime funding are open;
+it has no admission or host-call claim. Final checkpoint and all crash cuts,
+installed composite preservation, scalar-width/coexistence funding and the
+matching native whole-slice scenario remain required. This progress does not
+close S9, R16 work debt, physical funding or native qualification.

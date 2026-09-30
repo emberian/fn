@@ -5786,6 +5786,37 @@
         "tests/acl2/history-page-io-tests.lisp"
       ],
       "implementation_note": "The full S7 producer remains planned. Landed components are the live snapshot inverse and bounded descriptor/scalar page-layout libraries; these have no new producer host caller. Capture/controller, bounded history preparation, physical admission, full retained-projection recovery, I/O effects and marker-last publication are still required. Unmerged producer prototypes and their separate proof targets are not cited as landed evidence."
+    },
+    {
+      "id": "HST-041",
+      "title": "Exact maintained feed pending counts and producer-fenced retirement",
+      "specification": "specs/retirement.md#selected-served-successor-maintained-scalars",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-1138"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "integration"
+      ],
+      "evidence": [
+        "books/peer-feed-counts.lisp",
+        "books/owner-feed-counts.lisp",
+        "tests/acl2/peer-feed-counts-tests.lisp",
+        "tests/acl2/owner-feed-counts-tests.lisp",
+        "books/feed-live-carried.lisp",
+        "books/owner-feed-live-carried.lisp",
+        "books/owner-outcome-counted.lisp",
+        "books/owner-feed-reconfigure-counted.lisp",
+        "books/owner-retire-counted.lisp",
+        "tests/acl2/owner-feed-live-carried-tests.lisp",
+        "tests/acl2/owner-outcome-counted-tests.lisp",
+        "tests/acl2/owner-feed-reconfigure-counted-tests.lisp",
+        "tests/acl2/owner-retire-counted-tests.lisp"
+      ],
+      "implementation_note": "Counted feed constructors and live/replay deltas, guarded live/durable target fold and same-pass outcome/configuration aggregate hooks are source prototypes. Intake refusal, independent clock precheck and post-join report ordering are wired in source; producer-settled observation remains NIL, so drained success is conservatively unavailable. Frozen report still requires bounded rendering/stage funding and final checkpoint; all native/lifecycle qualification remains open."
     }
   ]
 }

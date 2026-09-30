@@ -1281,6 +1281,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/scheduler-tests \
 	books/peer-feed \
 	books/peer-feed-invariants \
+	books/peer-feed-counts \
+	tests/acl2/peer-feed-counts-tests \
 	books/feed-events \
 	books/feed-correspondence \
 	books/feed-port-replay \
@@ -1291,6 +1293,17 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/feed-port-replay-tests \
 	books/owner-feed \
 	books/owner-feed-port \
+	books/owner-feed-counts \
+	books/owner-feed-reconfigure-counted \
+	tests/acl2/owner-feed-reconfigure-counted-tests \
+	books/feed-live-carried \
+	books/owner-feed-live-carried \
+	books/owner-outcome-counted \
+	tests/acl2/owner-outcome-counted-tests \
+	tests/acl2/owner-feed-live-carried-tests \
+	books/owner-retire-counted \
+	tests/acl2/owner-retire-counted-tests \
+	tests/acl2/owner-feed-counts-tests \
 	tests/acl2/owner-feed-port-tests \
 	tests/acl2/owner-feed-tests \
 	books/owner \

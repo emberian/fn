@@ -3282,6 +3282,12 @@ answers a refusal whose completion word was D25's :conflict as the control
 status :conflict (books/native-control.lisp
 fn-native-control-completion-status, PKT-246); the BP application keeps its
 own result vocabulary."
+  ;; The caller holds the owner mutex. A callback queued before retirement
+  ;; cannot introduce a new submission after the intake fence is published.
+  (when (eq (fnn-core 'fn-ort-intake-action
+                      (and (fnn-owner-service-retire service) t)) :refused)
+    (return-from fnn-owner-complete-bound-submission
+      (fnn-owner-action 'fn-owner-retire-intake-refused)))
   (fnn-owner-commit-queued-locked service)
   (let ((submitted (funcall submit-callback)))
     (unless (member submitted '(:submitted :busy :refused))
@@ -3347,6 +3353,12 @@ own result vocabulary."
     (service submit-callback msgid raw stored groups evidence
              generation txid planned-id planned-subject)
   "Complete a BP-origin peer transit through the one owner writer and Store."
+  ;; The caller holds the owner mutex. A callback queued before retirement
+  ;; cannot introduce a new submission after the intake fence is published.
+  (when (eq (fnn-core 'fn-ort-intake-action
+                      (and (fnn-owner-service-retire service) t)) :refused)
+    (return-from fnn-owner-complete-bp-transit-submission
+      (fnn-owner-action 'fn-owner-retire-intake-refused)))
   (fnn-owner-commit-queued-locked service)
   (let ((submitted (funcall submit-callback)))
     (unless (member submitted '(:submitted :busy :refused))
@@ -3970,6 +3982,14 @@ EPIPE and the client saw a bare close)."
   (fnn-owner-serialized
    service cid
    (lambda ()
+     ;; Check inside the same semantic mutex as the read. A mux quantum
+     ;; already waiting at the scheduler cannot inject after retirement.
+     (when (eq (fnn-core 'fn-ort-intake-action
+                         (and (fnn-owner-service-retire service) t)) :refused)
+       (return-from fnn-owner-handle-chunk-read
+         (values (fnn-core 'fn-splan-of-effects nil) t nil
+                 (fnn-core 'fn-ort-fenced-input-consumed (length incoming))
+                 nil nil)))
      (let ((admit :admit) (sched nil))
      (block step
        ;; One reading per read, before the transition that decides under it.
@@ -4253,24 +4273,30 @@ renamed into place, the directory fenced."
       (destructuring-bind (s0 seconds) retire
         (let* ((s (progn (fnn-owner-space-preobserve service t)
                          (fnn-owner-sched-snapshot service)))
-               (step (fnn-owner-serialized
-                      service nil
-                      (lambda () (fnn-owner-core 'fn-owner-retire-step s0 s seconds))
-                      :inspect)))
+               (window-step (fnn-core 'fn-ort-window-step s0 s seconds))
+               (step (if (eq window-step :deadline)
+                         window-step
+                       (fnn-owner-serialized
+                        service nil
+                        (lambda () (fnn-owner-core 'fn-owner-retire-step s0 s seconds))
+                        :inspect))))
           (unless (member step '(:wait :drained :deadline))
             (fnn-fault "owner returned a malformed retire step ~a" step))
           (unless (eq step :wait)
-            ;; The final checkpoint, as `store checkpoint' asks it.
-            (fnn-owner-compaction-request service)
-            (let ((report (fnn-owner-serialized
-                           service nil
-                           (lambda () (fnn-owner-core 'fn-owner-retire-report step))
-                           :inspect)))
-              (fnn-owner-retire-write-report service report)
-              (fnn-log-line (fnn-core 'fn-nret-end-log-line step)))
-            ;; The stop a SIGTERM takes (host/native/owner.lisp): the accept
-            ;; loop returns, the POSTs in flight are answered, the fence.
+            ;; Record the ACL2 decision, then begin stop immediately. Rendering
+            ;; is deferred until the accepted producers and workers are joined.
+            (setf (fnn-owner-service-retire service) (list s0 seconds step))
             (setf *fnn-sigterm-requested* t)))))))
+
+(defun fnn-owner-retire-final-report (service)
+  "All producer joins and close hooks precede this frozen observation."
+  (let ((step (third (fnn-owner-service-retire service))))
+    (when step
+      ;; No concurrent owner mutation remains. This direct core call avoids
+      ;; reentering the stopped service's scheduling gate.
+      (let ((report (fnn-owner-core 'fn-owner-retire-report step)))
+        (fnn-owner-retire-write-report service report)
+        (fnn-log-line (fnn-core 'fn-nret-end-log-line step))))))
 
 (defun fnn-owner-wait-workers (service)
   "Join client workers before closing any shared journal or Store object."
@@ -5672,6 +5698,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                     (dolist (hook (fnn-owner-service-close-hooks service))
                       (ignore-errors (funcall hook service)))
                     (fnn-owner-feed-close-all service)
+                    (fnn-owner-retire-final-report service)
                     (fnn-store-close (fnn-owner-service-store service)))
                (setq *fnn-sigterm-wakeup-fd* nil)
                (dolist (extra more-listeners) (fnn-socket-shut extra))

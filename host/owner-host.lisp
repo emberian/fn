@@ -111,6 +111,9 @@
 (include-book "../books/owner-commit-ocl")
 (include-book "../books/owner-served-invariants")
 (include-book "../books/owner-feed-port")
+(include-book "../books/owner-feed-live-carried")
+(include-book "../books/owner-feed-reconfigure-counted")
+(include-book "../books/owner-outcome-counted")
 ; Defect M3: host/native/feed-service.lisp fnn-feed-drop-link asks
 ; fn-flb-lost for the redial delay and logs fn-flb-drop-line for every drop.
 (include-book "../books/feed-link-backoff")
@@ -248,6 +251,7 @@
 (include-book "../books/tls-handshake-budget")
 (include-book "../books/owner-number-bound")
 (include-book "../books/owner-outcome-pinned")
+(include-book "../books/owner-retire-counted")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -440,6 +444,7 @@
              ; incremental fold, never a whole-journal rescan on a
              ; served event.
              (state (f-put-global 'fn-owner-feed-intents nil state))
+             (state (f-put-global 'fn-owner-feed-pending 0 state))
              ; The persisted profile is handed back by
              ; fn-owner-install-profile after every recovery; until
              ; then the budget is 0 and every publication is
@@ -1606,10 +1611,17 @@
 ;; absent rows, H at least D).
 ;; Row S9 (retire, books/owner-retire.lisp): the drain's step over the
 ;; owner's feed table, and the report the owner writes when the drain ends.
+(defun fn-owner-feed-pending (state)
+  (declare (xargs :stobjs state :mode :program))
+  ; Cold installation establishes this scalar; no served fallback census.
+  (f-get-global 'fn-owner-feed-pending state))
+
 (defun fn-owner-retire-step (s0 s seconds state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-oret-drain-step s0 s seconds
-                             (fn-own-feeds (fn-ocfg-owner (fn-owner-ocfg state))))))
+  ;; The native accepted-producer/barrier settlement observation is still
+  ;; OPEN. Until its lifecycle relation lands, zero cannot authorize drained.
+  (value (fn-ort-drain-step-counted
+          s0 s seconds (fn-owner-feed-pending state) t nil)))
 
 (defun fn-owner-retire-report (step state)
   (declare (xargs :stobjs state :mode :program))
@@ -2904,6 +2916,12 @@
   (declare (xargs :guard t))
   (fn-ores-feed-publication word nil nil nil command :ok log-line))
 
+(defun fn-owner-retire-intake-refused (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((state (f-put-global 'fn-owner-control-reason :retiring state))
+         (state (f-put-global 'fn-owner-app-refusal-reason :retiring state)))
+    (value :refused)))
+
 ; The only host projection of a bounded feed step.  The ACL2 subject has
 ; already selected the next table, journal records and effects together.  A
 ; refusal publishes no records and no command and deliberately does not
@@ -2912,9 +2930,12 @@
 (defun fn-owner-feed-install-port-result (owner result word-of log-line state)
   (declare (xargs :stobjs state :mode :program))
   (if (equal (fn-own-feed-port-status result) :accepted)
-      (let ((state (fn-owner-replace-core
-                    (fn-own-with-feeds owner
-                                       (fn-own-feed-port-table result)) state)))
+      (let* ((pending (fn-own-feed-port-pending-after
+                       (fn-owner-feed-pending state) result))
+             (state (fn-owner-replace-core
+                     (fn-own-with-feeds owner
+                                        (fn-own-feed-port-table result)) state))
+             (state (f-put-global 'fn-owner-feed-pending pending state)))
         (mv :accepted
             (fn-ores-feed-port-publication
              (cdr (assoc-eq :accepted word-of))
@@ -3006,8 +3027,20 @@
 ; Applies the record fn-owner-feed-reconcile-next published: the same
 ; function of the same intents and the same owner (the host only appended
 ; frames in between), so no result crosses a mailbox.
+(defun fn-owner-feed-replay-counted (peer entries state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((owner (fn-owner-core state))
+         (result (fn-own-feed-port-replay-peer peer (fn-own-feeds owner) entries)))
+    (if (equal (fn-own-feed-port-status result) :accepted)
+        (let* ((pending (fn-own-feed-port-pending-after
+                         (fn-owner-feed-pending state) result))
+               (state (fn-owner-replace-core
+                       (fn-own-with-feeds owner (fn-own-feed-port-table result)) state)))
+          (f-put-global 'fn-owner-feed-pending pending state))
+      state)))
+
 (defun fn-owner-feed-reconcile-apply (fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (ignore fn-arena) (xargs :stobjs (state fn-arena) :mode :program))
   (let ((record (fn-owner-feed-reconcile-record state)))
     (if (or (null record)
             (not (member-equal (fn-feed-journal-kind record)
@@ -3015,7 +3048,7 @@
         (value :invalid)
       (let* ((peer (fn-record-octets-string
                     (fn-feed-record-peer (fn-feed-journal-values record))))
-             (state (fn-owner-step (list :feed-replay peer (list record)) fn-arena state))
+             (state (fn-owner-feed-replay-counted peer (list record) state))
              (state (f-put-global
                      'fn-owner-feed-intents
                      (fn-own-feed-intent-apply
@@ -3056,7 +3089,10 @@
 ; books/owner-host-relation.lisp fn-ohr-transit-outcome-preserves-carried-relation).
 (defun fn-owner-transit-outcome (id kind reason word state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((result (fn-oop-transit-outcome (fn-owner-ocfg state) id kind reason word))
+  (let* ((counted (fn-oct-transit (fn-owner-ocfg state) id kind reason word
+                                  (fn-owner-feed-pending state)))
+         (result (car counted))
+         (state (f-put-global 'fn-owner-feed-pending (cdr counted) state))
          (state (fn-owner-install-ocfg (cdr result) state))
          (state (fn-owner-install-effects (car result) state)))
     (value :fed)))
@@ -3148,9 +3184,12 @@
          ; fn-owner-replace-core kept the pin the connection was opened
          ; under (books/owner-host-relation.lisp
          ; fn-ohr-outcome-preserves-carried-relation).
-         (result (fn-oop-outcome (fn-owner-ocfg state) id word
-                                 (fn-owner-intent-carry state)
-                                 (fn-owner-parse-carry state)))
+         (counted (fn-oct-outcome (fn-owner-ocfg state) id word
+                                  (fn-owner-intent-carry state)
+                                  (fn-owner-parse-carry state)
+                                  (fn-owner-feed-pending state)))
+         (result (car counted))
+         (state (f-put-global 'fn-owner-feed-pending (cdr counted) state))
          (state (fn-owner-install-ocfg (cdr result) state))
          (state (fn-owner-install-effects (car result) state))
          (state (f-put-global 'fn-owner-shared-resolution-id nil state)))
@@ -3185,8 +3224,9 @@
 ; connection re-pinning are absent because the control request has no NNTP
 ; connection.
 (defun fn-owner-control-outcome (word fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (ignore fn-arena) (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((owner (fn-owner-core state))
+         (counted (fn-oct-control owner word (fn-owner-feed-pending state)))
          (result (fn-own-control-outcome-result owner word))
          ; Row S10: the line names the Store's word when the completion
          ; refused (books/owner-control-post-reason.lisp), and the word is
@@ -3195,7 +3235,8 @@
                               (fn-ocpr-log-line owner word) state))
          (state (f-put-global 'fn-owner-control-reason
                               (fn-ocpr-reason result word) state))
-         (state (fn-owner-step (list :control-outcome word) fn-arena state)))
+         (state (fn-owner-replace-core (car counted) state))
+         (state (f-put-global 'fn-owner-feed-pending (cdr counted) state)))
     (value result)))
 
 ; Row S10: the reason the last control completion kept (nil when it was not
@@ -3208,10 +3249,12 @@
            nil)))
 
 (defun fn-owner-bp-transit-outcome (word fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (ignore fn-arena) (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((owner (fn-owner-core state))
+         (counted (fn-oct-bp-transit owner word (fn-owner-feed-pending state)))
          (result (fn-own-bp-transit-outcome-result owner word))
-         (state (fn-owner-step (list :bp-transit-outcome word) fn-arena state)))
+         (state (fn-owner-replace-core (car counted) state))
+         (state (f-put-global 'fn-owner-feed-pending (cdr counted) state)))
     (value result)))
 
 ; The allocation domain the owner's live node carries (every name ever
@@ -4404,10 +4447,17 @@
 (defun fn-owner-feed-configure (fn-arena state)
   ; Rebuild the feed table from the live configuration: at open and after
   ; every :set-peer / :remove-peer delta.
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (ignore fn-arena) (xargs :stobjs (state fn-arena) :mode :program))
   ; Answers the peer names, a list of strings (the native host checks
-  ; string-listp once and splits nothing).
-  (let ((state (fn-owner-step (list :feeds (fn-owner-config state)) fn-arena state)))
+  ; string-listp once and splits nothing). The existing retirement fold
+  ; subtracts each removed feed's cached pending; install/scope preserve it.
+  (let* ((owner (fn-owner-core state))
+         (counted (fn-own-feed-reconfigure-counted
+                   (fn-own-feeds owner)
+                   (fn-cfg-peers (fn-cfg-value (fn-owner-config state)))
+                   (fn-owner-feed-pending state)))
+         (state (fn-owner-replace-core (fn-own-with-feeds owner (car counted)) state))
+         (state (f-put-global 'fn-owner-feed-pending (cdr counted) state)))
     (value (fn-own-feed-names (fn-own-feeds (fn-owner-core state))))))
 
 ; The peers the outbound feed worker links (host/native/feed-service.lisp
@@ -4644,8 +4694,8 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
         (value (fn-owner-feed-word-publication nil nil nil))
       (let* ((owner (fn-owner-core state))
              (obs (fn-clock-observation monotonic 0 0 nil))
-             (result (fn-own-feed-port-tick-peer
-                      peer (fn-own-feeds owner) obs)))
+             (result (fn-own-feed-port-peer-carried
+                      peer (fn-own-feeds owner) (list :tick obs))))
         (mv-let (status publication state)
           (fn-owner-feed-install-port-result
            owner result
@@ -4673,8 +4723,8 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
              (response (fn-own-feed-parse-response line msgid)))
         (if (null response)
             (value (fn-ores-feed-port-publication :quiet nil nil nil nil))
-          (let ((result (fn-own-feed-port-observe-peer
-                         peer (fn-own-feeds owner) response
+          (let ((result (fn-own-feed-port-peer-carried
+                         peer (fn-own-feeds owner) (list :reply response
                          ; The record's bytes by Message-ID: its handle
                          ; through the history stobj (R holds: the entry
                          ; fn-owner-feed-reply-chunk refreshed it)
@@ -4684,7 +4734,7 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
                          ; article-over-alpha).  Since the records flip the
                          ; row holds a handle; handing it to the port sent
                          ; an empty command (lane feed-fault).
-                         (fn-ofa-feed-article owner msgid fn-arena fn-hist) obs)))
+                         (fn-ofa-feed-article owner msgid fn-arena fn-hist) obs))))
             ; The sender's one line for this reply (nil for a 335/238),
             ; books/owner-log.lisp fn-olog-feed-reply-line, is the
             ; publication's log line.
@@ -4823,8 +4873,8 @@ existing port only after fn-fc has made this connection ready."
       (let* ((inputs (f-get-global 'fn-owner-feed-inputs state))
              (owner (fn-owner-core state))
              (obs (fn-clock-observation monotonic 0 0 nil))
-             (result (fn-own-feed-port-lost-peer
-                      peer (fn-own-feeds owner) obs)))
+             (result (fn-own-feed-port-peer-carried
+                      peer (fn-own-feeds owner) (list :lost obs))))
         ;; Removal is the other carried-table transition; a lost peer has no
         ;; reason to revalidate unrelated live connections or suffixes.
         (mv-let (status publication state)
@@ -4844,7 +4894,7 @@ existing port only after fn-fc has made this connection ready."
 ; One bounded read from the physical journal. The scanner owns acceptance,
 ; the exact safe offset and the entry fed to the existing replay transition.
 (defun fn-owner-feed-journal-scan (peer-octets prefix frame fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program
+  (declare (ignore fn-arena) (xargs :stobjs (state fn-arena) :mode :program
                   :guard (and (fn-cbor-octet-listp frame)
                               (fn-cbor-octet-listp peer-octets))))
   (let* ((peer (fn-store-octets->string peer-octets))
@@ -4854,8 +4904,7 @@ existing port only after fn-fc has made this connection ready."
         (value :invalid)
       (if (equal (car result) :next)
           (let* ((entry (nth 2 result))
-                 (state (fn-owner-step
-                         (list :feed-replay peer (list entry)) fn-arena state))
+                 (state (fn-owner-feed-replay-counted peer (list entry) state))
                  (state (f-put-global
                          'fn-owner-feed-intents
                          (fn-own-feed-intent-apply

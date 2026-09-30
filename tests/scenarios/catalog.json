@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -7059,6 +7059,32 @@
         ],
         "native": false
       }
+    },
+    {
+      "id": "SCN-1047",
+      "title": "Durable acceptance, interrupted feed delivery and restart precede fenced retirement or independent deadline",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-041"
+      ],
+      "steps": [
+        "Durably accept an article with actual feed targets and preserve an unrelated BP obligation. Interrupt queued/offered/sent delivery, replay the journal, retry and apply final receipt or retry-bound give-up.",
+        "Stop intake and settle/join or account every outstanding accept/commit producer before a final zero; let remaining delivery run until drain or independent deadline; final-join and stream the frozen obligation report."
+      ],
+      "expected": [
+        "Counters equal original pending semantics at every durable installation; only retry-bound dropped entries are excluded. Repeated/refused events do not alter counts.",
+        "Drained requires exact zero after a producer fence; a deadline remains timeout. The report preserves unrelated BP custody and all retained obligations."
+      ],
+      "evidence": [
+        "tests/acl2/peer-feed-counts-tests.lisp",
+        "tests/acl2/owner-feed-counts-tests.lisp",
+        "tests/acl2/owner-feed-live-carried-tests.lisp",
+        "tests/acl2/owner-outcome-counted-tests.lisp",
+        "tests/acl2/owner-feed-reconfigure-counted-tests.lisp",
+        "tests/acl2/owner-retire-counted-tests.lisp"
+      ],
+      "scope_note": "Count/live/replay/configuration fixtures execute in protected source REPLs. Constructed control completion checks exact one-fold aggregate and no duplicate enqueue; it is not a persisted acceptance claim. Actual intake/final-join source hooks are prototypes, not a matching native qualification. Complete SCN-1046/1047 slice, producer settlement and funded frozen streaming report remain open."
     }
   ]
 }

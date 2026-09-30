@@ -29,9 +29,11 @@
 (defthm fn-feed-restart-forgets-the-previous-clock-domain
   (implies (and (fn-feedp f) (natp b))
            (and (equal (fn-feed-restart
-                        (fn-feed-make (fn-feed-peer f) (fn-feed-limits-of f) (fn-feed-queue f)
+                        (fn-feed-make-counted (fn-feed-peer f) (fn-feed-limits-of f) (fn-feed-queue f)
                                       (fn-feed-contact f) b (fn-feed-conn f)
-                                      (fn-feed-next-attempt f)))
+                                      (fn-feed-next-attempt f)
+                                      (fn-feed-undelivered f)
+                                      (fn-feed-retry-dropped f)))
                        (fn-feed-restart f))
                 (equal (fn-feed-backoff-until (fn-feed-restart f)) 0)
                 (<= (nfix (fn-feed-backoff-until (fn-feed-restart f)))
@@ -39,4 +41,5 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-feed-restart fn-feedp fn-feed-shapep
                                      fn-feed-without-backoff fn-feed-with-conn
-                                     fn-feed-with-queue))))
+                                     fn-feed-with-queue-preserving-counts
+                                     fn-feed-with-queue-counted))))

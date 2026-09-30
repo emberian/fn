@@ -2029,7 +2029,7 @@
         "PRF-035"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-feed-journal-next-is-bounded-progress",
         "fn-feed-journal-uncertainty-survives-all-later-observations"
@@ -13919,7 +13919,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/peer-feed.lisp",
         "books/feed-restart-domain.lisp",
@@ -18901,6 +18901,34 @@
         "fn-fc-temporary-mode-refusal-closes-without-stopping"
       ],
       "progress_note": "Clean protected source admission and full positive/hypothesis-removal witnesses passed; certification and matching-image native observation pending."
+    },
+    {
+      "id": "PRF-1138",
+      "title": "Maintained feed counts refine original pending semantics and actual aggregate deltas",
+      "statement": "Nine-slot feed relation equates cached undelivered to queue length and cached retry-bound-dropped to only exact (:dropped :retry-bound) entries. Actual enqueue/done/first give-up and live/replay steps preserve the relation; other dropped reasons still contribute to pending. Same-pass target enqueue preserves original table projection and exact aggregate; actual FNFD peer port returns the exact signed table pending delta. These model statements do not yet close guarded served invariant carriage, installation/recovery, funding or retirement producer fencing.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-041"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/peer-feed-counts.lisp",
+        "books/owner-feed-counts.lisp",
+        "tests/acl2/peer-feed-counts-tests.lisp",
+        "tests/acl2/owner-feed-counts-tests.lisp",
+        "books/feed-live-carried.lisp",
+        "books/owner-feed-live-carried.lisp",
+        "books/owner-outcome-counted.lisp",
+        "books/owner-feed-reconfigure-counted.lisp",
+        "books/owner-retire-counted.lisp",
+        "tests/acl2/owner-feed-live-carried-tests.lisp",
+        "tests/acl2/owner-outcome-counted-tests.lisp",
+        "tests/acl2/owner-feed-reconfigure-counted-tests.lisp",
+        "tests/acl2/owner-retire-counted-tests.lisp"
+      ],
+      "progress_note": "Protected source admissions: exact count/live/replay relations; guarded full-result live and target-fold refinements; same-pass durable outcome/configuration projections and aggregate/count relation preservation. Literal live, corrupted-count and aggregate witnesses pass. No committed certification manifest or native qualification. Installed composite carriage, funding and producer/barrier settlement remain open."
     }
   ]
 }

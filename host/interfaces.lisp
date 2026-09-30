@@ -4745,6 +4745,24 @@
   :keystones (fn-nret-request-of-request-argv
               fn-nret-request-window-is-bounded))
 
+(definterface fn-ort-window-step
+  :class :common-lisp-compliant
+  :keystones (fn-ort-window-step-never-drained
+              fn-ort-window-step-deadline-is-counted-deadline))
+
+(definterface fn-ort-intake-action
+  :class :common-lisp-compliant)
+
+(definterface fn-ort-fenced-input-consumed
+  :class :common-lisp-compliant)
+
+(definterface fn-owner-retire-intake-refused
+  :class :program)
+
+(definterface fn-splan-of-effects
+  :class :common-lisp-compliant
+  :keystones (fn-splan-of-effects-remaining))
+
 (definterface fn-owner-retire-report
   :class ::program
   :keystones ((fn-oret-report-carries-the-obligations-report :via fn-oret-report)))
