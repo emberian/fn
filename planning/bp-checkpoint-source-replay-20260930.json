@@ -173,5 +173,26 @@
     "scope": "Source start/step refinement under exact frozen-prefix canonical block observations; ready-source derived from exact emission history and codec/profile carry. Start/step positive and hypothesis-removal/corrupted-capture witnesses admitted. Write-history carry has complete literal positive; independent per-field mutation teeth remain pending before any keystone registry claim. No native pread/private-file incarnation effect proof, scheduler/funding/publication/restart/certification/image qualification.",
     "logs": "build/proof-repl/bpck-trajectory2",
     "session_stopped": true
+  },
+  "bounded_publication_increment": {
+    "source_hashes": {
+      "books/bp-node-checkpoint-publication.lisp": "5466ad9af0c8bffc75d78555dfb30395c74801114dccf1a06d234ea93860e712",
+      "host/native/bp-checkpoint-publication.lisp": "2f216c7cca006a18bb5624d0c3620b8e314a64ab3408c3178d87d6982930a6b1",
+      "tests/acl2/bp-node-checkpoint-publication-tests.lisp": "6d3288fc5814aa8f216cf37fc8a320621a8e1c69389585b06ff09f012b3362f1",
+      "tests/bp_checkpoint_publication_host_refuter.lisp": "8416d41dd9524b6d592e017a0a823dc54d161a1e0d10aac4b5d27d9f049fe27a"
+    },
+    "session": "bpck-publication4",
+    "root_forms": 10,
+    "acl2_seconds": 7.17,
+    "prover_steps": 6242047,
+    "literal_assertions": 13,
+    "literal_definition_steps": 241,
+    "host_called_subject": "fn-bpck-publication-observe",
+    "host_caller": "fnn-bps-checkpoint-publication-observe",
+    "recording_refuter": "/opt/homebrew/bin/sbcl --script tests/bp_checkpoint_publication_host_refuter.lisp",
+    "recording_status": "passed",
+    "scope": "Unactivated actual native function recording plus guarded source admission. Explicit retained directory FD open/barrier/close turns; one primitive per turn, ambiguous close detached and never retried, known FD closes on uncertain barrier without publication retry. Same job token/epoch/generation/capture preserved at successful final close. No disk/native execution, registered-controller epoch fence, actual indexed grant, initial runtime envelope, installed disk promotion or restart qualification.",
+    "session_stopped": true,
+    "logs": "build/proof-repl/bpck-publication4"
   }
 }
