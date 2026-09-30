@@ -149,5 +149,29 @@
     "scope": "Conditional terminal source boundary; literal actual source turns stop before abstract terminal result evaluation. Actual stage-file read-effect/trajectory invariant preservation and native scheduling/funding/publication/restart remain open.",
     "session_stopped": true,
     "logs": "build/proof-repl/bpck-digest-join"
+  },
+  "source_trajectory_increment": {
+    "source_hashes": {
+      "books/bp-node-checkpoint-trajectory.lisp": "ddd0b2ea7ca7988078f069c4455a3e561b1fe3dabc0612e8b39b81d76215bc26",
+      "tests/acl2/bp-node-checkpoint-trajectory-tests.lisp": "9e51af1233808abe749cfc05c7023d2209aa7a813edba76eb71ab0d405106ecf"
+    },
+    "session": "bpck-trajectory2",
+    "root_forms": 10,
+    "acl2_seconds": 33.45,
+    "prover_steps": 10527231,
+    "subjects": [
+      "fn-bpck-digest-start",
+      "fn-bpck-digest-step"
+    ],
+    "theorems": [
+      "fn-bpck-digest-start-establishes-exact-source-invariant",
+      "fn-bpck-digest-step-preserves-exact-source-invariant",
+      "fn-bpck-exact-write-history-establishes-ready-source"
+    ],
+    "literal_teeth": 6,
+    "literal_prover_steps": 4081,
+    "scope": "Source start/step refinement under exact frozen-prefix canonical block observations; ready-source derived from exact emission history and codec/profile carry. Start/step positive and hypothesis-removal/corrupted-capture witnesses admitted. Write-history carry has complete literal positive; independent per-field mutation teeth remain pending before any keystone registry claim. No native pread/private-file incarnation effect proof, scheduler/funding/publication/restart/certification/image qualification.",
+    "logs": "build/proof-repl/bpck-trajectory2",
+    "session_stopped": true
   }
 }
