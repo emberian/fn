@@ -1,6 +1,22 @@
 ; Literal current-state algebra, not an installed raw object/funding claim.
 (in-package "ACL2")
 (include-book "../../books/receiver-turn-controller")
+(defthm fn-rxt-remainder-positive-literal
+ (and (natp 7) (natp 20) (natp 5) (<= 7 20) (<= 20 4096)
+      (<= 5 (- 20 7))
+      (equal (fn-rxt-consumed-range 7 20 5) (mv :receiver-remainder 12 20)))
+ :rule-classes nil)
+(defthm fn-rxt-exhausted-positive-literal
+ (and (natp 7) (natp 20) (natp 13) (<= 7 20) (<= 20 4096)
+      (<= 13 (- 20 7))
+      (equal (fn-rxt-consumed-range 7 20 13) (mv :receiver-exhausted 20 20)))
+ :rule-classes nil)
+(defthm fn-rxt-overconsumption-corrupted-state-literal
+ (and (natp 7) (natp 20) (natp 14) (<= 7 20) (<= 20 4096)
+      (not (<= 14 (- 20 7)))
+      (equal (fn-rxt-consumed-range 7 20 14)
+             (mv :invalid-receiver-consumption 7 20)))
+ :rule-classes nil)
 (defconst *fn-rxt-model-provider* '(nil ((:rx-capacity 0 0 4096) 0 4096)))
 (defconst *fn-rxt-model-control* '(nil nil :idle nil nil (:receiver-install (:rx-capacity 0 0 4096) 0)))
 (defconst *fn-rxt-model-pool*

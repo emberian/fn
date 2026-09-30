@@ -204,6 +204,34 @@
  (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
  (if (fn-owner-rx-turn-consumablep ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)
      (fn-rxt-source fn-receiver-turn) nil))
+(defun fn-owner-rx-turn-consumer-range
+ (ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)
+ (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
+ (if (fn-owner-rx-turn-consumablep ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)
+     (let ((pending (fn-rxt-job fn-receiver-turn)))
+      (mv :receiver-readable (cadr pending) (caddr pending)))
+   (mv :receiver-unavailable 0 0)))
+; Internal arithmetic for the forthcoming registered-receipt bridge. The
+; consumed scalar must be derived there from the actual committed served-step,
+; never supplied by a native return flag. This does not settle or resume a turn.
+(defun fn-rxt-consumed-range (start end consumed)
+ (declare (xargs :guard t))
+ (if (not (and (natp start) (natp end) (natp consumed)
+               (<= start end) (<= end 4096) (<= consumed (- end start))))
+     (mv :invalid-receiver-consumption start end)
+   (let ((next (+ start consumed)))
+    (mv (if (equal next end) :receiver-exhausted :receiver-remainder) next end))))
+(defthm fn-rxt-consumed-range-keeps-bounded-remainder
+ (implies
+  (not (equal (mv-nth 0 (fn-rxt-consumed-range start end consumed))
+              :invalid-receiver-consumption))
+  (and (natp (mv-nth 1 (fn-rxt-consumed-range start end consumed)))
+       (<= start (mv-nth 1 (fn-rxt-consumed-range start end consumed)))
+       (<= (mv-nth 1 (fn-rxt-consumed-range start end consumed)) end)
+       (<= end 4096)
+       (equal (mv-nth 2 (fn-rxt-consumed-range start end consumed)) end)))
+ :hints (("Goal" :in-theory (enable fn-rxt-consumed-range)))
+ :rule-classes nil)
 (defthm fn-owner-rx-turn-begin-uses-actual-pool-nonce
  (implies
   (equal (mv-nth 0 (fn-owner-rx-turn-begin receiver-token demand fn-rx-provider
