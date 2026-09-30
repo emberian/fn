@@ -19365,9 +19365,13 @@
         "planning/evidence/manifests/certify-20260930T213317Z-2600819.json",
         "books/ninep-version.lisp",
         "tests/acl2/ninep-version-tests.lisp",
-        "planning/evidence/manifests/certify-20260930T214200Z-2737234.json"
+        "planning/evidence/manifests/certify-20260930T214200Z-2737234.json",
+        "books/ninep-group-directory-source.lisp",
+        "tests/acl2/ninep-group-directory-source-tests.lisp",
+        "planning/evidence/manifests/certify-20260930T215516Z-3461367.json",
+        "planning/evidence/manifests/certify-20260930T215611Z-3476093.json"
       ],
-      "progress_note": "Normal 213247 certifies the actual guarded bounded field step, carried-ready preservation and six literal wire fixtures; normal 213317 certifies the actual host dispatch and unchanged STATE bridge. Matching dependencies install from cache; their uncited status is explicit in the manifests. Full literal parser refinement, fids, genuine committed mount issuer, native/runtime funding and source lifetime remain open. No activation, image or deployment claim. Normal 214200 certifies core-owned version negotiation, literal octet selector refinement, reply-size/msize bounds, actual version host bridge and complete literal reply/refusal/hypothesis-removal fixtures. Mounted-holder/pin issuer and group enumeration are absent, not inferred from current publication readout."
+      "progress_note": "Normal 213247 certifies the actual guarded bounded field step, carried-ready preservation and six literal wire fixtures; normal 213317 certifies the actual host dispatch and unchanged STATE bridge. Matching dependencies install from cache; their uncited status is explicit in the manifests. Full literal parser refinement, fids, genuine committed mount issuer, native/runtime funding and source lifetime remain open. No activation, image or deployment claim. Normal 214200 certifies core-owned version negotiation, literal octet selector refinement, reply-size/msize bounds, actual version host bridge and complete literal reply/refusal/hypothesis-removal fixtures. Mounted-holder/pin issuer and group enumeration are absent, not inferred from current publication readout. Normal 215611 certifies the exact borrowed-trie directory step/conservation and complete literal/quantum/refusal fixtures; normal 215516 certifies its actual host bridge and STATE frame. Results borrow persistent bit paths and actual group values, not rendered names or supplied catalogs. Entry formatting/profile scalar widths/constructor and graph lifetime remain open."
     },
     {
       "id": "PRF-1182",

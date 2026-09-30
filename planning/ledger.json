@@ -1942,30 +1942,40 @@
     "tests/acl2/bpsec-operation-tests",
     "tests/acl2/bpsec-target-cursor-tests",
     "tests/acl2/bpsec-target-tests",
-    "tests/acl2/post-identity-source-cursor-source-complete-tests"
+    "tests/acl2/post-identity-source-cursor-source-complete-tests",
+    "books/allocation-epoch",
+    "books/allocation-epoch-collection-request",
+    "books/allocation-epoch-domain",
+    "books/allocation-epoch-observation",
+    "books/allocation-epoch-pool",
+    "books/group-number-source",
+    "books/group-number-source-assignment",
+    "books/ninep-group-directory-source",
+    "tests/acl2/allocation-dual-ceiling-tests",
+    "tests/acl2/ninep-group-directory-source-tests"
   ],
   "totals": {
-    "books": 2125,
-    "books_in_root_closure": 2049,
-    "roots": 1941,
-    "theorems": 32182,
-    "functions": 20387,
-    "assert_events": 24359,
+    "books": 2135,
+    "books_in_root_closure": 2059,
+    "roots": 1951,
+    "theorems": 32235,
+    "functions": 20451,
+    "assert_events": 24363,
     "must_fails": 2519,
     "prover_refusals": 0,
-    "encapsulates": 158,
+    "encapsulates": 160,
     "guards": {
       "verified": 3696,
       "declared-off": 2506,
-      "default-guarded": 11201,
-      "default-unguarded": 2984
+      "default-guarded": 11260,
+      "default-unguarded": 2989
     },
-    "suspect_theorems": 1284,
+    "suspect_theorems": 1287,
     "export_hygiene_warnings": 381,
     "enabled_projection_warnings": 67,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2747,
-    "host_names_warnings": 2345,
+    "include_hygiene_warnings": 2756,
+    "host_names_warnings": 2357,
     "hand_written_record_warnings": 19
   },
   "books": [
@@ -2284,6 +2294,141 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/allocation-epoch-collection-request.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "allocation-epoch-observation"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/allocation-epoch-domain.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/allocation-epoch-observation.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 1,
+      "includes": [
+        "allocation-epoch-pool"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/allocation-epoch-pool.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 6,
+      "functions": 9,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 7,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "allocation-epoch",
+        "page-read-pool-state"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/allocation-epoch.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 11,
+      "functions": 15,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 15,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 1,
+      "includes": [
+        "allocation-epoch-domain"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [
+        "fn-aec-collection-issue-preserves-state"
+      ],
       "read_error": null
     },
     {
@@ -14012,6 +14157,62 @@
       "read_error": null
     },
     {
+      "book": "books/group-number-source-assignment.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 12,
+      "functions": 12,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 12,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "group-number-source"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/group-number-source.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 8,
+      "functions": 11,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 11,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "group-number-trie"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/group-number-trie.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -19989,6 +20190,37 @@
         "arithmetic/top"
       ],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/ninep-group-directory-source.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 4,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "group-number-source-assignment"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [
+        "fn-9p-ge-tree-of-atom",
+        "fn-9p-ge-tree-unfolds"
+      ],
       "read_error": null
     },
     {
@@ -39237,6 +39469,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/allocation-dual-ceiling-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/allocation-epoch"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/anchor-replace-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -50739,6 +50997,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/ninep-group-directory-source-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/ninep-group-directory-source"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/ninep-header-tests.lisp",
       "in_root_closure": false,
       "is_root": false,
@@ -50768,13 +51052,13 @@
       "book": "tests/acl2/ninep-protocol-host-tests.lisp",
       "in_root_closure": false,
       "is_root": false,
-      "theorems": 2,
-      "functions": 2,
+      "theorems": 3,
+      "functions": 3,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 2
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -63216,11 +63500,37 @@
       ]
     },
     {
+      "theorem": "fn-9p-ge-tree-of-atom",
+      "book": "books/ninep-group-directory-source.lisp",
+      "line": 78,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-9p-ge-tree and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis negates a branch test of fn-9p-ge-tree and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-9p-ge-tree-unfolds",
+      "book": "books/ninep-group-directory-source.lisp",
+      "line": 68,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-9p-ge-tree and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis is a branch test of fn-9p-ge-tree and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-acct-redeem-bounded-plan-is-the-plan-unless-it-redeems",
       "book": "books/accounts.lisp",
       "line": 762,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-acct-redeem-bounded-plan and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-aec-collection-issue-preserves-state",
+      "book": "books/allocation-epoch.lisp",
+      "line": 271,
+      "reasons": [
+        "preserves-no-subject-call: the statement never calls fn-aec-collection-issue or a fn-aec-collection-issue- transition"
       ]
     },
     {
@@ -78471,6 +78781,41 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/allocation-epoch-collection-request.lisp",
+        "line": 4,
+        "include": "allocation-epoch-observation",
+        "included": "books/allocation-epoch-observation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/allocation-epoch-observation.lisp",
+        "line": 5,
+        "include": "allocation-epoch-pool",
+        "included": "books/allocation-epoch-pool.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/allocation-epoch-pool.lisp",
+        "line": 5,
+        "include": "allocation-epoch",
+        "included": "books/allocation-epoch.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/allocation-epoch-pool.lisp",
+        "line": 6,
+        "include": "page-read-pool-state",
+        "included": "books/page-read-pool-state.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/allocation-epoch.lisp",
+        "line": 6,
+        "include": "allocation-epoch-domain",
+        "included": "books/allocation-epoch-domain.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/app-journal.lisp",
         "line": 9,
         "include": "byte-store-txn-name",
@@ -80309,6 +80654,13 @@
         "line": 3,
         "include": "group-bucket-cursor-invariants",
         "included": "books/group-bucket-cursor-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/group-number-source-assignment.lisp",
+        "line": 4,
+        "include": "group-number-source",
+        "included": "books/group-number-source.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -83889,6 +84241,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/ninep-group-directory-source.lisp",
+        "line": 5,
+        "include": "group-number-source-assignment",
+        "included": "books/group-number-source-assignment.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/ninep-version.lisp",
         "line": 3,
         "include": "ninep-fields",
@@ -86630,6 +86989,13 @@
         "line": 60,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/allocation-dual-ceiling-tests.lisp",
+        "line": 2,
+        "include": "../../books/allocation-epoch",
+        "included": "books/allocation-epoch.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -92146,6 +92512,13 @@
         "line": 2,
         "include": "../../books/ninep-fields",
         "included": "books/ninep-fields.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/ninep-group-directory-source-tests.lisp",
+        "line": 2,
+        "include": "../../books/ninep-group-directory-source",
+        "included": "books/ninep-group-directory-source.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -97698,6 +98071,90 @@
         "host": "host/account-preparation-admission-host.lisp",
         "line": 27,
         "name": "disable",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/allocation-epoch-host.lisp",
+        "line": 8,
+        "name": "defthm",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/allocation-epoch-host.lisp",
+        "line": 8,
+        "name": "implies",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/allocation-epoch-host.lisp",
+        "line": 8,
+        "name": "disable",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/allocation-epoch-host.lisp",
+        "line": 18,
+        "name": "fn-prp-alloc-mode",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/allocation-epoch-host.lisp",
+        "line": 25,
+        "name": "mv-nth",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/allocation-epoch-host.lisp",
+        "line": 91,
+        "name": "fn-prp-alloc-installation",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/allocation-epoch-host.lisp",
+        "line": 91,
+        "name": "fn-prp-alloc-epoch",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/allocation-epoch-host.lisp",
+        "line": 91,
+        "name": "fn-prp-alloc-occupied",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/allocation-epoch-host.lisp",
+        "line": 91,
+        "name": "fn-prp-alloc-active-turns",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/allocation-epoch-host.lisp",
+        "line": 91,
+        "name": "fn-prp-mode",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/allocation-epoch-host.lisp",
+        "line": 91,
+        "name": "fn-prp-incoming-slot",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/allocation-epoch-host.lisp",
+        "line": 103,
+        "name": "fn-prp-data",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },

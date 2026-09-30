@@ -1953,7 +1953,17 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/bpsec-operation-tests \
     tests/acl2/bpsec-target-cursor-tests \
     tests/acl2/bpsec-target-tests \
-    tests/acl2/post-identity-source-cursor-source-complete-tests
+    tests/acl2/post-identity-source-cursor-source-complete-tests \
+    books/allocation-epoch \
+    books/allocation-epoch-collection-request \
+    books/allocation-epoch-domain \
+    books/allocation-epoch-observation \
+    books/allocation-epoch-pool \
+    books/group-number-source \
+    books/group-number-source-assignment \
+    books/ninep-group-directory-source \
+    tests/acl2/allocation-dual-ceiling-tests \
+    tests/acl2/ninep-group-directory-source-tests
 
 .PHONY: host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
