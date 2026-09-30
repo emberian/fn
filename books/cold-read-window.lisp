@@ -112,8 +112,8 @@
 
 ; Per-job resident model has collector coexistence; shared descriptors,
 ; native idle workers and removal scratch remain in permanent baseline.
-; Not yet consumed by the physical admit entry: native activation and
-; arithmetic transient inventory are explicitly still owed.
+; The staged physical admission entry consumes this sourced demand.
+; Selected-runtime adequacy and funded startup/default activation remain owed.
 (defun fn-crw-job-demand (descriptor ticket)
   (declare (xargs :guard t))
   (and (fn-crw-supportedp descriptor ticket)
