@@ -2,10 +2,10 @@
 ; Prefix `fn-zfr-'.
 ;
 ; From a state whose ring position is its output count (below 32 KiB) or
-; within the ring (past it), the payload decoder (fn-zin-loop-ahead) writes
+; within the ring (past it), the payload decoder (fn-zin-loop) writes
 ; only ring cells below min(TOUT, 32 KiB) and never the preset half: the
 ; window's cells from that bound on are what they were
-; (KEYSTONE `fn-zfr-loop-ahead-frame').  So a pooled window need only
+; (KEYSTONE `fn-zfr-loop-frame').  So a pooled window need only
 ; re-zero the cells the last payload dirtied.
 
 (in-package "ACL2")
@@ -380,3 +380,48 @@
            (equal (nthcdr (fn-zfr-dirty (fn-zin-tout (mv-nth 3 r))) (mv-nth 4 r))
                   (nthcdr (fn-zfr-dirty (fn-zin-tout (mv-nth 3 r))) fn-zin-win)))))
   :hints (("Goal" :in-theory (disable fn-zin-loop-ahead))))
+
+; The resumable stored decoder has the same window frame.
+(local
+ (defthm fn-zfr-loop-pos
+   (implies (fn-zfr-posp (fn-zin-fld 5 fn-zin-st) (fn-zin-fld 6 fn-zin-st))
+            (let ((r (fn-zin-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab
+                                        fn-zin-out)))
+              (and (fn-zfr-posp (fn-zin-fld 5 (mv-nth 3 r)) (fn-zin-fld 6 (mv-nth 3 r)))
+                   (<= (fn-zin-fld 6 fn-zin-st) (fn-zin-fld 6 (mv-nth 3 r))))))
+   :hints (("Goal" :induct (fn-zin-loop b ip end lim fn-zin-st fn-octets fn-zin-win
+                                              fn-zin-tab fn-zin-out)
+            :in-theory (e/d (fn-zin-loop) (fn-zin-pull fn-zin-step-counts fn-zin-loop-counts))))))
+
+(local
+ (defthm fn-zfr-loop-tout
+   (implies (fn-zfr-posp (fn-zin-fld 5 fn-zin-st) (fn-zin-fld 6 fn-zin-st))
+            (<= (fn-zin-fld 6 fn-zin-st)
+                (fn-zin-fld 6 (mv-nth 3 (fn-zin-loop b ip end lim fn-zin-st fn-octets
+                                                           fn-zin-win fn-zin-tab fn-zin-out)))))
+   :hints (("Goal" :use fn-zfr-loop-pos :in-theory (theory 'minimal-theory)))
+   :rule-classes :linear))
+
+(local
+ (defthm fn-zfr-loop-frame-kk
+   (implies (and (fn-zfr-posp (fn-zin-fld 5 fn-zin-st) (fn-zin-fld 6 fn-zin-st)) (natp kk)
+                 (<= (fn-zfr-dirty (fn-zin-fld 6 (mv-nth 3 (fn-zin-loop b ip end lim fn-zin-st
+                                                                              fn-octets fn-zin-win
+                                                                              fn-zin-tab fn-zin-out))))
+                     kk))
+            (equal (nthcdr kk (mv-nth 4 (fn-zin-loop b ip end lim fn-zin-st fn-octets fn-zin-win
+                                                           fn-zin-tab fn-zin-out)))
+                   (nthcdr kk fn-zin-win)))
+   :hints (("Goal" :induct (fn-zin-loop b ip end lim fn-zin-st fn-octets fn-zin-win
+                                              fn-zin-tab fn-zin-out)
+            :in-theory (e/d (fn-zin-loop) (fn-zin-pull fn-zin-step-counts fn-zin-loop-counts))))))
+
+; KEYSTONE (the window frame).
+(defthm fn-zfr-loop-frame
+  (implies (fn-zfr-posp (fn-zin-wpos fn-zin-st) (fn-zin-tout fn-zin-st))
+    (let ((r (fn-zin-loop b ip end lim fn-zin-st fn-octets fn-zin-win fn-zin-tab fn-zin-out)))
+      (and (fn-zfr-posp (fn-zin-wpos (mv-nth 3 r)) (fn-zin-tout (mv-nth 3 r)))
+           (<= (fn-zin-tout fn-zin-st) (fn-zin-tout (mv-nth 3 r)))
+           (equal (nthcdr (fn-zfr-dirty (fn-zin-tout (mv-nth 3 r))) (mv-nth 4 r))
+                  (nthcdr (fn-zfr-dirty (fn-zin-tout (mv-nth 3 r))) fn-zin-win)))))
+  :hints (("Goal" :in-theory (disable fn-zin-loop fn-zin-loop-counts))))

@@ -14896,7 +14896,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-zfr-loop-ahead-frame"
+          "name": "fn-zfr-loop-frame"
         }
       ]
     },

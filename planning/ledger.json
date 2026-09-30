@@ -471,6 +471,8 @@
     "tests/acl2/owner-log-route-tests",
     "books/deflate-inflate",
     "books/payload-deflate",
+    "books/payload-window",
+    "tests/acl2/payload-window-tests",
     "books/payload-lz-dict-1",
     "books/payload-lz-dicts",
     "books/payload-lz-value",
@@ -1635,26 +1637,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1701,
-    "books_in_root_closure": 1698,
-    "roots": 1631,
-    "theorems": 27829,
-    "functions": 18165,
-    "assert_events": 23079,
+    "books": 1704,
+    "books_in_root_closure": 1701,
+    "roots": 1633,
+    "theorems": 27860,
+    "functions": 18183,
+    "assert_events": 23096,
     "must_fails": 2501,
     "prover_refusals": 0,
     "encapsulates": 156,
     "guards": {
       "verified": 3460,
       "declared-off": 2084,
-      "default-guarded": 9884,
-      "default-unguarded": 2737
+      "default-guarded": 9899,
+      "default-unguarded": 2740
     },
     "suspect_theorems": 1229,
     "export_hygiene_warnings": 318,
     "enabled_projection_warnings": 52,
     "teeth_form_warnings": 272,
-    "include_hygiene_warnings": 2426,
+    "include_hygiene_warnings": 2430,
     "host_names_warnings": 2087,
     "hand_written_record_warnings": 18
   },
@@ -10788,7 +10790,7 @@
       "book": "books/deflate-frame.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 37,
+      "theorems": 41,
       "functions": 3,
       "guards": {
         "verified": 0,
@@ -10815,11 +10817,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 171,
-      "functions": 81,
+      "functions": 85,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 70,
+        "default-guarded": 74,
         "default-unguarded": 11
       },
       "verify_guards_events": 0,
@@ -10846,7 +10848,7 @@
       "book": "books/deflate-pool-check.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 13,
+      "theorems": 17,
       "functions": 5,
       "guards": {
         "verified": 0,
@@ -10874,7 +10876,7 @@
       "book": "books/deflate-pool.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 35,
+      "theorems": 37,
       "functions": 12,
       "guards": {
         "verified": 0,
@@ -10891,7 +10893,7 @@
       "encapsulates": 0,
       "includes": [
         "deflate-frame",
-        "payload-lz-record"
+        "payload-lz-value"
       ],
       "system_includes": [],
       "suspects": [],
@@ -21427,6 +21429,32 @@
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "payload-deflate"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/payload-window.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 16,
+      "functions": 11,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 11,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -38029,7 +38057,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 21,
+      "assert_events": 22,
       "must_fails": 4,
       "prover_refusals": 0,
       "defconsts": 4,
@@ -38090,7 +38118,7 @@
       "includes": [
         "../../books/deflate-pool-check",
         "must-fail-checked",
-        "payload-lz-record-tests"
+        "payload-deflate-vectors"
       ],
       "system_includes": [],
       "suspects": [],
@@ -44792,6 +44820,30 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/payload-deflate-vectors.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/payload-extent-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -44888,13 +44940,42 @@
       "assert_events": 14,
       "must_fails": 10,
       "prover_refusals": 0,
-      "defconsts": 15,
+      "defconsts": 11,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/payload-lz-replay",
         "../../books/records-attach",
-        "must-fail-checked"
+        "must-fail-checked",
+        "payload-deflate-vectors"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/payload-window-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 16,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/payload-window",
+        "deflate-inflate-vectors",
+        "payload-deflate-vectors"
       ],
       "system_includes": [],
       "suspects": [],
@@ -61198,7 +61279,7 @@
     {
       "theorem": "fn-zpl-c-zeros-of-zp",
       "book": "books/deflate-pool-check.lisp",
-      "line": 84,
+      "line": 92,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-zpl-zeros and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-zpl-zeros and the conclusion is that branch's value"
@@ -61800,7 +61881,7 @@
       {
         "theorem": "fn-zpl-ready-window-is-list",
         "book": "books/deflate-pool-check.lisp",
-        "line": 100,
+        "line": 108,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -64932,19 +65013,19 @@
       {
         "check": "plr-reseat-lz-no-value",
         "book": "tests/acl2/payload-lz-record-tests.lisp",
-        "line": 570,
+        "line": 349,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "plr-intern-step-no-faithful",
         "book": "tests/acl2/payload-lz-record-tests.lisp",
-        "line": 602,
+        "line": 381,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "plr-commit-reseats-no-faithful",
         "book": "tests/acl2/payload-lz-record-tests.lisp",
-        "line": 624,
+        "line": 403,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -76251,8 +76332,8 @@
       {
         "book": "tests/acl2/deflate-pool-tests.lisp",
         "line": 7,
-        "include": "payload-lz-record-tests",
-        "included": "tests/acl2/payload-lz-record-tests.lisp",
+        "include": "payload-deflate-vectors",
+        "included": "tests/acl2/payload-deflate-vectors.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -79424,6 +79505,34 @@
         "line": 13,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/payload-lz-record-tests.lisp",
+        "line": 16,
+        "include": "payload-deflate-vectors",
+        "included": "tests/acl2/payload-deflate-vectors.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/payload-window-tests.lisp",
+        "line": 3,
+        "include": "../../books/payload-window",
+        "included": "books/payload-window.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/payload-window-tests.lisp",
+        "line": 4,
+        "include": "deflate-inflate-vectors",
+        "included": "tests/acl2/deflate-inflate-vectors.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/payload-window-tests.lisp",
+        "line": 5,
+        "include": "payload-deflate-vectors",
+        "included": "tests/acl2/payload-deflate-vectors.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

@@ -482,6 +482,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-log-route-tests \
 	books/deflate-inflate \
 	books/payload-deflate \
+	books/payload-window \
+	tests/acl2/payload-window-tests \
 	books/payload-lz-dict-1 \
 	books/payload-lz-dicts \
 	books/payload-lz-value \

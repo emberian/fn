@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6301,6 +6301,32 @@
         "tests/acl2/page-read-ownership-tests.lisp"
       ],
       "execution_scope": "Pending matching union image; ownership only, no funded worker/buffer admission claim."
+    },
+    {
+      "id": "SCN-1020",
+      "title": "Stored compressed requested-window policy and terminal boundaries",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-037"
+      ],
+      "steps": [
+        "Decode the literal108-byte highratio stream at q7, retaining a late17-byte window; compare whole stored success and unchanged network bomb refusal.",
+        "Decode dictionary and total-input-domain vectors across q3/q7 splits; check exactN and scratch<=64.",
+        "Reject incomplete LEN/NLEN and a nonempty block that only resembles a flush suffix; retain valid syncflush, final block and permitted trailing bytes.",
+        "Check actual terminal-establishment theorem positive and literal hypothesis-removal witnesses."
+      ],
+      "expected": [
+        "Exact requested bytes remain private until complete extent authentication and physical settlement.",
+        "No whole allocation occurs in the component; host integration and physical runtime funding remain open.",
+        "Malformed terminal states refuse; no unconditional old/new refusal-domain equality is claimed."
+      ],
+      "evidence": [
+        "tests/acl2/payload-window-tests.lisp",
+        "specs/payload-window.md",
+        "planning/evidence/payload-window-2026-09-30.md"
+      ],
+      "execution_scope": "Protected source REPL component evidence only; composed served path and matching natives pending."
     }
   ]
 }

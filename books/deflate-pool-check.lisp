@@ -50,6 +50,12 @@
 (local (defun fn-zpl-c-ind (m n) (if (zp n) m (fn-zpl-c-ind (1+ m) (1- n)))))
 
 (local (defthm fn-zpl-c-true-listp-zeros (true-listp (fn-zpl-zeros n))))
+(local (defthm fn-zpl-c-true-listp-append
+  (equal (true-listp (append x y)) (true-listp y))))
+(local (defthm fn-zpl-c-true-listp-nthcdr
+  (implies (true-listp x) (true-listp (nthcdr n x)))))
+(local (defthm fn-zpl-c-append-nil
+  (implies (true-listp x) (equal (append x nil) x))))
 (local (defthm fn-zpl-c-len-zeros (equal (len (fn-zpl-zeros n)) (nfix n))))
 
 (local (defun fn-zpl-c-ind2 (i n) (if (or (zp n) (zp i)) (list i n) (fn-zpl-c-ind2 (1- i) (1- n)))))
@@ -68,6 +74,8 @@
 
 (local (defthm fn-zpl-c-zeros-append-0
   (equal (append (fn-zpl-zeros m) (list 0)) (fn-zpl-zeros (+ 1 (nfix m))))))
+(local (defthm fn-zpl-c-append-associative
+  (equal (append (append x y) z) (append x (append y z)))))
 (local (defthm fn-zpl-c-snoc-zero
   (equal (append (append ys (fn-zpl-zeros m)) (list 0))
          (append ys (fn-zpl-zeros (+ 1 (nfix m)))))
@@ -102,7 +110,7 @@
            (equal (fn-zpl-ready-window dict) (fn-zpl-ready-window-list dict)))
   :hints (("Goal" :do-not-induct t
            :in-theory (set-difference-theories
-                       (enable fn-zin-payload-ready fn-zpl-ready-window)
+                       (enable fn-zin-payload-ready fn-zpl-ready-window fn-oct-snoc-is-append)
                        '(fn-zpl-zeros (:e fn-zpl-zeros) (:e fn-oct-back-copy)
                          (:e fn-oct-snoc) (:e fn-octets$a-append-back) (:e fn-oct-cat)
                          (:e fn-zin-win-append-back) (:e fn-zin-tab-append-back))))))

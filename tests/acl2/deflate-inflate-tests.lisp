@@ -447,15 +447,25 @@
     t))
 (assert-event
  (dzt-same-decoders (list *dzv-session-z* *dzv-prose-z* *dzv-stored-z* *dzv-final-z*
-                          *dzv-bomb-z* *dzv-bad-type* *dzv-bad-stored* *dzv-bad-counts*
+                          *dzv-bad-type* *dzv-bad-stored* *dzv-bad-counts*
                           *dzv-bad-clcode* *dzv-too-far* *dzv-bad-length* *dzv-bad-distance*
                           *dzv-bad-repeat* *dzv-bad-code*)))
 (assert-event
  (let ((r (fn-zin-payload-with 100000 *dzv-dict* *dzv-dict-z* 100000)))
    (and (equal (car r) :more)
         (equal (cadr r) *dzv-dict-article*))))
-; Teeth: the fast path is what decodes the prose: its whole-symbol run
-; spends far fewer actions than the machine's one-octet steps.
+; Stored decoding now uses the resumable machine, so its action budget
+; counts the same actions as the wire. The old 800-action ahead-path
+; performance claim is retired; the payload's actual budget is exercised
+; by payload-window-tests, including quantum splits.
 (assert-event
- (and (equal (cadr (fn-zin-payload-with 800 nil *dzv-prose-z* 100000)) *dzv-prose*)
+ (and (equal (car (fn-zin-payload-with 800 nil *dzv-prose-z* 100000)) :yield)
       (equal (car (fn-zin-inflate-with 800 nil *dzv-prose-z* 100000)) :yield)))
+
+; Different explicit policies: wire prefix bound, stored declared-total bound.
+(assert-event
+ (let* ((w (fn-zin-inflate-with 1000000 nil *dzv-bomb-z* 1000000))
+        (p (fn-zin-payload-with 1000000 nil *dzv-bomb-z* 1000000)))
+   (and (equal (car w) '(:refused :bomb))
+        (equal (car p) '(:refused :bomb))
+        (equal (len (cadr p)) (+ 1 (fn-zin-stored-allowance (len *dzv-bomb-z*)))))))
