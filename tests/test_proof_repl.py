@@ -53,6 +53,10 @@ for line in lines:
         print("***** ABORTING from raw Lisp *****")
         print("Error:  Control stack exhausted")
         next(lines, None)  # ACL2 discards the pending input
+        print("ACL2 !>")  # genuine recovery, unlike an SBCL debugger's 0]
+    elif text == "(raw-debugger)":
+        print("debugger invoked on a SIMPLE-CONDITION")
+        print("0]")
     elif "FN-PROBE-AT" in text:
         print("FN-PROBE-AT %d" % world)
     elif text.startswith("(ubu! '"):
@@ -1054,6 +1058,118 @@ class CacheStartupTests(unittest.TestCase):
 
 
 class ProcessLifetimeTests(unittest.TestCase):
+    def test_debugger_invalidation_is_persisted_and_endpoint_closes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary)
+            fake = base / "fake-acl2"
+            fake.write_text(FAKE_ACL2)
+            fake.chmod(0o755)
+            scratch = ROOT / "build" / ("proof-repl-debugger-" + str(os.getpid()))
+            scratch.mkdir(parents=True, exist_ok=True)
+            (scratch / "tiny.lisp").write_text('(in-package "ACL2")\n')
+            name = "debugger-test-" + str(os.getpid())
+            env = {**os.environ, "FN_ACL2": str(fake),
+                   "FN_ACL2_SLOT_DIR": str(base / "slots"), "FN_ACL2_SLOTS": "1"}
+
+            def cli(*words):
+                return subprocess.run([sys.executable, str(ROOT / "tools" / "proof_repl.py"),
+                                       *words], cwd=ROOT, env=env, capture_output=True,
+                                      text=True, timeout=15)
+
+            try:
+                started = cli("start", name, str((scratch / "tiny").relative_to(ROOT)))
+                self.assertEqual(started.returncode, 0, started.stdout + started.stderr)
+                failed = cli("send", name, "(raw-debugger)")
+                self.assertEqual(failed.returncode, 1, failed.stdout + failed.stderr)
+                self.assertIn("session invalidated", failed.stdout)
+                directory = proof_repl.session_dir(name)
+                deadline = time.monotonic() + 5
+                while (directory / "sock").exists() and time.monotonic() < deadline:
+                    time.sleep(.01)
+                state = json.loads((directory / "state.json").read_text())
+                self.assertFalse(state["ready"])
+                self.assertEqual(state["ended"], "invalidated ACL2 protocol")
+                self.assertIn("session invalidated", state["error"])
+                self.assertFalse((directory / "sock").exists())
+                refused = cli("send", name, "(defthm later t)")
+                self.assertNotEqual(refused.returncode, 0)
+                self.assertNotIn("(defthm later t)", (directory / "log").read_text())
+            finally:
+                cli("stop", name)
+                shutil.rmtree(proof_repl.session_dir(name), ignore_errors=True)
+                shutil.rmtree(scratch, ignore_errors=True)
+
+    def raw_session(self, base, output):
+        fake = base / "raw-acl2"
+        fake.write_text("#!" + sys.executable + "\nimport sys\n"
+                        "for line in sys.stdin:\n"
+                        " if 'FN-REPL-DONE ' in line:\n"
+                        "  print('FN-REPL-DONE ' + line.split('FN-REPL-DONE ')[1].split('~%')[0], flush=True)\n"
+                        " else:\n"
+                        "  print(" + repr(output) + ", flush=True)\n")
+        fake.chmod(0o755)
+        return fake
+
+    def test_raw_debugger_cannot_accept_sentinel_or_later_forms(self):
+        # Reproduce cat-context: raw Lisp can print NIL and the cw marker,
+        # which does not imply that an ACL2 event was admitted.
+        for output in ("debugger invoked on a SIMPLE-CONDITION\n0]",
+                       "0]\nNIL", "  12] NIL"):
+            with self.subTest(output=output), tempfile.TemporaryDirectory() as temporary:
+                base = pathlib.Path(temporary)
+                fake = self.raw_session(base, output)
+                with mock.patch.dict(os.environ, {"FN_ACL2": str(fake),
+                        "FN_ACL2_SLOT_DIR": str(base / "slots"), "FN_ACL2_SLOTS": "1"}):
+                    session = proof_repl.Acl2("raw-debugger-test", base / "log")
+                    try:
+                        answer, timed_out = session.send("(defthm false nil)", 10)
+                        self.assertFalse(timed_out)
+                        self.assertTrue(proof_repl.errored(answer), answer)
+                        self.assertIn("session invalidated", answer)
+                        self.assertNotIn(proof_repl.RECOVERED_NOTE, answer)
+                        self.assertFalse(session.alive())
+                        before = (base / "log").read_text()
+                        later, timed_out = session.send("(defthm later t)", 10)
+                        self.assertFalse(timed_out)
+                        self.assertTrue(proof_repl.errored(later))
+                        self.assertEqual((base / "log").read_text(), before)
+                    finally:
+                        session.kill()
+
+    def test_raw_abort_marker_without_acl2_prompt_invalidates_session(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary)
+            fake = self.raw_session(base, "***** ABORTING from raw Lisp *****\nNIL")
+            with mock.patch.dict(os.environ, {"FN_ACL2": str(fake),
+                    "FN_ACL2_SLOT_DIR": str(base / "slots"), "FN_ACL2_SLOTS": "1"}):
+                session = proof_repl.Acl2("raw-marker-test", base / "log")
+                try:
+                    answer, timed_out = session.send("(bad-form)", 10)
+                    self.assertFalse(timed_out)
+                    self.assertTrue(proof_repl.errored(answer))
+                    self.assertIn("did not return to an ACL2 prompt", answer)
+                    self.assertFalse(session.alive())
+                finally:
+                    session.kill()
+
+    def test_unexpected_eof_cannot_count_as_success(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary)
+            fake = base / "exits-acl2"
+            fake.write_text("#!" + sys.executable + "\nimport sys\n"
+                            "sys.stdin.readline()\nprint('NIL', flush=True)\n")
+            fake.chmod(0o755)
+            with mock.patch.dict(os.environ, {"FN_ACL2": str(fake),
+                    "FN_ACL2_SLOT_DIR": str(base / "slots"), "FN_ACL2_SLOTS": "1"}):
+                session = proof_repl.Acl2("raw-eof-test", base / "log")
+                try:
+                    answer, timed_out = session.send("(defthm later t)", 10)
+                    self.assertFalse(timed_out)
+                    self.assertTrue(proof_repl.errored(answer))
+                    self.assertIn("exited before the completion marker", answer)
+                finally:
+                    session.kill()
+
     def test_start_preserves_an_old_live_json_server(self):
         with tempfile.TemporaryDirectory() as temporary:
             sessions = pathlib.Path(temporary)
@@ -1368,6 +1484,26 @@ class SessionTests(unittest.TestCase):
 
 @unittest.skipUnless(shutil.which(os.environ.get("FN_ACL2", "acl2")), "no ACL2 on PATH")
 class RealAcl2Tests(unittest.TestCase):
+    def test_hons_debugger_refuses_form_and_invalidates_owned_session(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            session = proof_repl.Acl2("real-hons-debugger-test",
+                                      pathlib.Path(temporary) / "log")
+            try:
+                configured, timed_out = session.send("(set-slow-alist-action :break)", 20)
+                self.assertFalse(timed_out)
+                self.assertFalse(proof_repl.errored(configured), configured)
+                answer, timed_out = session.send("(hons-get 'key '((key . value)))", 20)
+                self.assertFalse(timed_out)
+                self.assertTrue(proof_repl.errored(answer), answer)
+                self.assertIn("raw Lisp debugger", answer)
+                self.assertIn("session invalidated", answer)
+                self.assertNotIn(proof_repl.RECOVERED_NOTE, answer)
+                self.assertFalse(session.alive())
+                later, _ = session.send("(defthm marker-does-not-prove t)", 20)
+                self.assertTrue(proof_repl.errored(later))
+            finally:
+                session.kill()
+
     def test_source_siblings_preserve_local_name_scope_in_declared_order(self):
         scratch = ROOT / "build" / "proof-repl-real-siblings"
         scratch.mkdir(parents=True, exist_ok=True)
