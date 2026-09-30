@@ -436,3 +436,12 @@ unused tails refute that full relation rather than demonstrating that every
 standalone write needs a global type premise. This source argument boundary
 does not price setter macros, compiled callers, memoization, frames, GC or
 retained old/new lifetimes and supplies no INITIAL admission.
+
+The actual21-register source roster joins the separately named standalone
+initializer-register primary-object family at its explicit exact body,
+compiler, genuine vector20 and installed HONS-NIL coordinate. Its conditional
+assumed primary-object sum is zero, with the full actual returned tuple and
+effects retained. Comparing a coordinate does not install those runtime
+facts. This component excludes source value arithmetic, initializer inlining,
+callbacks, frames, collector/first-use and alias lifetimes; full INITIAL
+admission and central assumptions integration remain open.

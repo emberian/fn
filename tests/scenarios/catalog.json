@@ -6359,7 +6359,8 @@
         "Assert complete actual initializer resize-payload/refinement and retained-capacity conclusion for fresh, preallocated and mixed buffers. Affirm all retained hypotheses in each typed-array removal; distinguish payload request69094 from physical header-bearing objects69152 and refute discarded larger capacities.",
         "Assert actual resize request/old-capacity source roster in output/history/table order, full initializer refinement and conditional primary-object bound for fresh/preallocated/mixed states. Check all three full typed-array removals, explicit unqualified component refusal, and separate source-order/domain/primary-charge mutations.",
         "Assert the full actual initializer tuple/effect and exact register/digest setter argument domains for empty/shipped presets. Remove selected native offset profile and affirm full conclusion failure at logical ELEN2^80. Check literal index/value/mode/capture mutants and actual B2049 digest temporary264 versus final257 override.",
-        "Assert the complete actual fresh/preallocated/mixed six-output initializer write-domain boundary, each typed-array removal via malformed retained tail, and labelled out-of-capacity byte/fill and non-UB8 value mutations."
+        "Assert the complete actual fresh/preallocated/mixed six-output initializer write-domain boundary, each typed-array removal via malformed retained tail, and labelled out-of-capacity byte/fill and non-UB8 value mutations.",
+        "Assert complete actual empty/shipped register roster, tuple/effect and conditional standalone zero-primary-object sum; check qualified candidate versus shape-only unavailable, index/value/count mutations."
       ],
       "expected": [
         "Bit buffer remains at most39bits and exact length-relative Huffman carry is preserved only on non-error exits; every walker exit remains within the stated fixed scalar bounds.",
@@ -6381,7 +6382,8 @@
         "Source resize payload is precisely conditional65536/3494/64; source final capacity is bounded by retained old plus actual requested payload. Physical old/new coexistence, headers, GC and full admission remain separate.",
         "Actual resize argument roster satisfies literal64/65536/3494 growing-capacity domains. Qualified success primary-object component is conditional80/65552/3520, fresh69152bytes, excluding all caller/error/memoization/GC/first-use/lifetime and whole admission obligations.",
         "All21 decoder register inputs and17 frozen16-field digest scalar/reference setter inputs are source-produced; numeric values have stated selected-profile bounds and exact captured aliases. This does not price setter macros, raw callers, frames, memoization, GC or whole INITIAL admission.",
-        "Actual byte/fill source arguments fit current capacity and the fixed65536 scratch extent. The complete representation boundary retains three typed-array hypotheses; no setter tariff, compiled lifecycle demand or INITIAL grant follows."
+        "Actual byte/fill source arguments fit current capacity and the fixed65536 scratch extent. The complete representation boundary retains three typed-array hypotheses; no setter tariff, compiled lifecycle demand or INITIAL grant follows.",
+        "The separately named exact standalone setter object family prices the actual21 source register operands conditionally. Literal coordinate comparison neither installs genuine backing/HONS/caller facts nor supplies a complete INITIAL demand."
       ],
       "evidence": [
         "tests/acl2/payload-window-width-tests.lisp",
@@ -6451,7 +6453,9 @@
         "tests/test_decoded_window_buffer_trace.py",
         "planning/evidence/decoded-window-initial-array-roster-2026-09-30/README.md",
         "tests/acl2/decoded-window-initial-array-write-domains-tests.lisp",
-        "planning/evidence/decoded-window-initial-array-write-domains-2026-09-30/README.md"
+        "planning/evidence/decoded-window-initial-array-write-domains-2026-09-30/README.md",
+        "tests/acl2/decoded-window-initial-register-objects-tests.lisp",
+        "planning/evidence/decoded-window-initial-register-objects-2026-09-30/README.md"
       ],
       "execution_scope": "Protected source replay only; the codec/runtime/controller/host composition remains open."
     },

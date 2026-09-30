@@ -505,6 +505,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/decoded-window-initial-source-counts \
 	books/decoded-window-initial-array-write-domains \
 	tests/acl2/decoded-window-initial-array-write-domains-tests \
+	books/decoded-window-initial-register-objects \
+	tests/acl2/decoded-window-initial-register-objects-tests \
 	books/decoded-window-initial-write-domains \
 	tests/acl2/decoded-window-initial-write-domains-tests \
 	books/decoded-window-initial-retained-state \
