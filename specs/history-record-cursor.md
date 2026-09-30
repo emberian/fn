@@ -325,6 +325,31 @@ an enormous pool-length premise and has no practical removal fixture;
 auxiliary wire/domain teeth remain open. This is still a source library,
 with no full cold-tree encoder, host producer, funding or qualification claim.
 
+## Bounded decoded octet classifier
+
+`history-decoded-octet-scan` now supplies guarded seven-field
+`fn-hrcur-dos-begin/tick/supply`. It advances one byte-headed borrowed pair,
+uses an opcode6 tail's captured length, or delegates one three-byte NIL probe
+action. Successful classification reports the exact nonempty octet-list length;
+rejection carries the exact scanned prefix depth for subsequent postfix pair
+expansion. No source conversion, pool read or suffix validation runs in a tick.
+
+The carried proof-only invariant connects both outcomes through
+`fn-hdc-abstract` to the current codec's opaque-list decision. Begin establishes
+it, tick and attributed byte supply preserve it, and productive actions strictly
+decrease a logical work measure. A demand leaves the entire cursor unchanged.
+Capture/lease references survive every branch. The scanner does not authenticate
+its supplied byte; the outer reader must fence the source context and physical
+pin before supply.
+
+Begin/replacement states allocate seven cons cells; delegated NIL child states,
+old/new cursors, returned demand, original borrowed tree and pin coexist and
+require outer funding. No physical pool or reclamation refund is assumed.
+Thirty literal test forms pass in fresh standalone and cached-row source worlds,
+including all five supply and seven supply-progress removals. The initial
+abstract-length u64 premise has no practical enormous-data removal fixture.
+Full cold encoder residual/invariant/progress and actual producer remain open.
+
 ## Remaining union obligations
 
 The resident byte stream and exact byte census are admitted library components.
