@@ -1623,6 +1623,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-pool-emitter-tests \
 	tests/acl2/history-image-columns-tests \
 	tests/acl2/history-pool-columns-tests \
+	tests/acl2/store-tree-size-tests \
+	tests/acl2/history-decode-size-tests \
+	tests/acl2/history-decode-completion-tests \
 	tests/acl2/history-image-census-tests \
 	tests/acl2/history-image-header-tests \
 	tests/acl2/history-page-metadata-tests \
