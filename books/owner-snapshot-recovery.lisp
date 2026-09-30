@@ -5,6 +5,7 @@
 (include-book "config-store-steps")
 (include-book "topic-history-store-invariants")
 (include-book "owner-commit-ocl")
+(include-book "statement-keyring-publication")
 
 (local (in-theory (disable (tau-system))))
 
@@ -520,6 +521,8 @@
   :hints (("Goal"
            :use (fn-osr-enabled-completion-is-next-event
                  fn-osr-enabled-identity-step-ok
+                 (:instance fn-osr-neutral-retained-event-is-not-wire-composite
+                            (event (fn-sn-completion-record s)))
                  (:instance fn-osr-neutral-step-is-advance
                             (ctx (fn-sn-identity-context s))
                             (event (fn-sn-completion-record s))))
@@ -536,7 +539,8 @@
                  fn-store-retention-event-p fn-stxe-p fn-stxk-p fn-stxa-p
                  fn-hstxa-p fn-cpe-eventp fn-th-topic-eventp
                  fn-osr-enabled-completion-is-next-event
-                 fn-osr-enabled-identity-step-ok)))))
+                 fn-osr-enabled-identity-step-ok
+                 fn-osr-neutral-retained-event-is-not-wire-composite)))))
 
 (defthm fn-osr-step-kind-congruence
   (implies (equal (fn-osr-context-view a) (fn-osr-context-view b))
@@ -704,6 +708,63 @@
                                fn-stx-make-verdict fn-stx-verdict-token
                                fn-stx-verdict-generation fn-stxe-tokenp
                                fn-stxe-p fn-record-msgidp fn-record-uint32p)))))
+
+(local (defthm fn-osr-verdict-listp-of-single
+ (equal (fn-sn-verdict-listp (list pair))
+        (and (consp pair) (stringp (car pair))
+             (member-equal (fn-stx-verdict-token (cdr pair)) *fn-stx-verdicts*)
+             (natp (fn-stx-verdict-generation (cdr pair)))))
+ :hints (("Goal" :in-theory (enable fn-sn-verdict-listp)))))
+
+(local (defthm fn-osr-held-msgid-is-string
+ (implies (fn-held-p row) (stringp (fn-record-msgid row)))
+ :hints (("Goal" :in-theory
+  (union-theories (theory 'minimal-theory)
+   '(fn-held-p fn-record-msgidp fn-record-ascii-stringp
+     fn-held-accessors-are-the-wire-accessors))))))
+
+(local (defthm fn-osr-event-verdict-pair-is-valid
+ (implies (fn-stxe-p e)
+          (fn-sn-verdict-listp (list (fn-replay-verdict-pair e))))
+ :hints (("Goal" :in-theory
+  (union-theories (theory 'minimal-theory)
+   '(fn-osr-verdict-listp-of-single fn-stxe-p fn-record-msgidp
+     fn-record-ascii-stringp fn-stxe-tokenp fn-record-uint32p natp
+     fn-replay-verdict-pair fn-stx-make-verdict fn-stx-verdict-token
+     fn-stx-verdict-generation car-cons cdr-cons))))))
+
+(local (defthm fn-osr-row-verdict-pair-is-valid
+ (fn-sn-verdict-listp (if (fn-sn-row-verdict-pair row)
+                          (list (fn-sn-row-verdict-pair row)) nil))
+ :hints (("Goal" :cases ((fn-held-p row)) :in-theory
+  (union-theories (theory 'minimal-theory)
+   '(car-cons cdr-cons
+     (:executable-counterpart fn-sn-verdict-listp)
+     fn-sn-row-verdict-pair fn-osr-verdict-listp-of-single
+     fn-osr-held-msgid-is-string fn-held-p-fields fn-hc-p-fields
+     fn-osr-event-verdict-pair-is-valid))))))
+(local (defthm fn-osr-row-verdict-pair-fields
+ (implies (fn-sn-row-verdict-pair row)
+  (and (consp (fn-sn-row-verdict-pair row))
+       (stringp (car (fn-sn-row-verdict-pair row)))
+       (member-equal (fn-stx-verdict-token (cdr (fn-sn-row-verdict-pair row))) *fn-stx-verdicts*)
+       (natp (fn-stx-verdict-generation (cdr (fn-sn-row-verdict-pair row))))))
+ :hints (("Goal" :use fn-osr-row-verdict-pair-is-valid
+  :in-theory (e/d (fn-sn-verdict-listp)
+                 (fn-sn-row-verdict-pair fn-osr-row-verdict-pair-is-valid))))))
+(local (defthm fn-osr-row-verdicts-fold-is-valid
+ (implies (fn-sn-verdict-listp verdicts)
+          (fn-sn-verdict-listp (fn-sn-row-verdicts-fold rows verdicts)))
+ :hints (("Goal" :induct (fn-sn-row-verdicts-fold rows verdicts)
+                 :in-theory (e/d (fn-sn-row-verdicts-fold fn-sn-verdict-listp)
+                                 (fn-sn-row-verdict-pair))))))
+(local (defthm fn-osr-row-verdicts-is-valid
+ (fn-sn-verdict-listp (fn-sn-row-verdicts rows))
+ :hints (("Goal" :in-theory (enable fn-sn-row-verdicts fn-sn-verdict-listp)))))
+
+(local (defthm fn-osr-snapshot-generation-is-natural
+  (natp (fn-ssk-generation snapshots))
+  :hints (("Goal" :in-theory (enable fn-ssk-generation)))))
 
 (local
  (defthm fn-osr-statep-of-v6-fields
@@ -1193,3 +1254,197 @@
                  fn-stx-index-empty fn-replay-verdict-pairs fn-csi-livep
                  fn-sti-completed-prefixp)))))
 
+
+; These are maintained proof predicates, never scans at live capture.
+(defun fn-osr-verdict-prefixp (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (equal (fn-sn-verdicts s)
+         (fn-sn-row-verdicts
+          (take (fn-sn-identity-next s) (fn-sf-records (fn-sn-files s))))))
+
+(defun fn-osr-frozen-index-prefixp (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (equal (fn-sn-index s)
+         (fn-sn-index-of-rows
+          (take (fn-sn-identity-next s) (fn-sf-records (fn-sn-files s))))))
+
+(defun fn-osr-retainedp (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-osr-livep s) (fn-skp-resolvedp s)
+       (fn-osr-verdict-prefixp s) (fn-osr-frozen-index-prefixp s)
+       (equal (fn-sn-event-index s) nil)))
+
+(defthm fn-osr-with-configuration-keeps-retained-fields
+  (let ((b (fn-sn-with-configuration s groups capacity node configs)))
+    (and (equal (fn-sn-keyring b) (fn-sn-keyring s))
+         (equal (fn-sn-keyring-generation b) (fn-sn-keyring-generation s))
+         (equal (fn-sn-verdicts b) (fn-sn-verdicts s))
+         (equal (fn-sn-index b) (fn-sn-index s))
+         (equal (fn-sn-event-index b) (fn-sn-event-index s))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-sn-with-configuration fn-sn-keyring fn-sn-keyring-generation
+                 fn-sn-verdicts fn-sn-index fn-sn-event-index fn-store-event-nth)
+                (fn-sn-make-v6)))))
+
+(defthm fn-osr-open-success-retained-fields
+  (implies (fn-sn-open-okp (fn-cpo-open-observed configs frontier records))
+           (let* ((s (fn-sn-open-state (fn-cpo-open-observed configs frontier records)))
+                  (snapshots (fn-stxk-context-snapshots (fn-replay-identity records))))
+             (and (equal (fn-sn-keyring s) (fn-ssk-keyring-of-snapshots snapshots))
+                  (equal (fn-sn-keyring-generation s) (fn-ssk-generation snapshots))
+                  (equal (fn-sn-verdicts s) (fn-sn-row-verdicts records))
+                  (equal (fn-sn-index s) (fn-sn-index-of-rows records))
+                  (equal (fn-sn-event-index s) nil))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-cpo-open-observed fn-sn-open-okp fn-cpo-install
+                 fn-sn-update-replayed fn-sn-with-consumer fn-sn-with-topic
+                 fn-sn-with-event-index fn-sn-open-ok fn-sn-open-shapep
+                 fn-sn-open-state fn-sn-open-kind fn-store-event-nth)
+                (fn-cpr-replay fn-replay-identity fn-cnode-statep fn-sn-event-index
+                 fn-sn-statep fn-sn-observed-seed fn-sn-with-configuration
+                 fn-replay-advance-txid fn-sn-make-v6 fn-sn-row-verdicts
+                 fn-sn-index-of-rows fn-ssk-keyring-of-snapshots fn-ssk-generation
+                 fn-cpe-projection-replay fn-th-prefix-project)))))
+
+(local (defthm fn-osr-config-first-implies-consp
+  (implies (fn-cpr-config-firstp configs events) (consp configs))
+  :hints (("Goal" :in-theory
+           (union-theories (theory 'minimal-theory) '(fn-cpr-config-firstp))))))
+(local (defthm fn-osr-cpr-loop-success-has-proper-configs
+  (implies (equal (fn-replay-result-kind
+                   (fn-cpr-loop cn configs events config-sequence event-sequence)) :ok)
+           (true-listp configs))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-cpr-loop cn configs events config-sequence event-sequence)
+           :in-theory
+           (union-theories (theory 'minimal-theory)
+            '(fn-cpr-loop true-listp fn-replay-result-kind fn-replay-ok fn-replay-fault
+              fn-replay-ok-shapep fn-replay-fault-shapep car-cons cdr-cons len
+              fn-osr-config-first-implies-consp
+              (:executable-counterpart equal) (:executable-counterpart true-listp)))))))
+(local (defthm fn-osr-cpr-success-has-proper-configs
+  (implies (equal (fn-replay-result-kind (fn-cpr-replay configs records)) :ok)
+           (true-listp configs))
+  :hints (("Goal"
+           :use ((:instance fn-osr-cpr-loop-success-has-proper-configs
+                            (cn (fn-cnode-initial (fn-cfg-initial)))
+                            (events records) (config-sequence 0) (event-sequence 0)))
+           :in-theory
+           (union-theories (theory 'minimal-theory) '(fn-cpr-replay))))))
+(local (defthm fn-osr-open-success-has-proper-configs
+  (implies (fn-sn-open-okp (fn-cpo-open-observed configs frontier records))
+           (true-listp configs))
+  :hints (("Goal" :use fn-osr-cpr-success-has-proper-configs
+           :in-theory
+           (union-theories (theory 'minimal-theory)
+            '(fn-cpo-open-observed fn-sn-open-okp fn-sn-open-shapep fn-sn-open-kind
+              fn-sn-open-error fn-sn-open-ok car-cons cdr-cons len
+              (:executable-counterpart equal) (:executable-counterpart true-listp)))))))
+
+(defthm fn-osr-open-establishes-full-retained-carry
+  (implies (fn-sn-open-okp (fn-cpo-open-observed configs frontier records))
+           (fn-osr-retainedp
+            (fn-sn-open-state (fn-cpo-open-observed configs frontier records))))
+  :hints (("Goal" :use (fn-osr-open-success-has-proper-configs
+                        fn-osr-open-success-retained-fields
+                        fn-osr-open-success-independent-projections
+                        (:instance fn-cpo-open-success-exact-image (events records))
+                        (:instance fn-replay-identity-ok-next-is-record-count)
+                        (:instance fn-sf-record-listp-is-true-list (sequence 0) (lower 0))
+                        (:instance fn-cbor-take-whole-list (xs records)))
+           :in-theory
+           (e/d (fn-osr-retainedp fn-skp-resolvedp fn-osr-verdict-prefixp
+                 fn-osr-frozen-index-prefixp fn-sn-observed-historyp)
+                (fn-osr-livep fn-cpo-open-observed fn-sn-open-state fn-sn-open-okp
+                 fn-sn-files fn-sf-records fn-sf-frontier
+                 fn-sn-keyring fn-sn-keyring-generation fn-sn-keyring-snapshots
+                 fn-sn-identity-next fn-sn-verdicts fn-sn-index fn-sn-event-index
+                 fn-replay-identity fn-sn-row-verdicts fn-sn-index-of-rows
+                 fn-ssk-keyring-of-snapshots fn-ssk-generation
+                 fn-replay-identity-ok-next-is-record-count)))))
+
+(defthm fn-osr-ready-capture-keeps-retained-fields
+  (implies (and (fn-osr-retainedp s)
+                (equal (fn-sf-phase (fn-sn-files s)) :ready))
+           (let ((target
+                  (fn-sn-open-state
+                   (fn-cpo-open-observed
+                    (fn-sn-config-history (fn-osr-capture s))
+                    (fn-sf-frontier (fn-sn-files (fn-osr-capture s)))
+                    (fn-sf-records (fn-sn-files (fn-osr-capture s)))))))
+             (and (equal (fn-sn-keyring target) (fn-sn-keyring s))
+                  (equal (fn-sn-keyring-generation target) (fn-sn-keyring-generation s))
+                  (equal (fn-sn-verdicts target) (fn-sn-verdicts s))
+                  (equal (fn-sn-index target) (fn-sn-index s))
+                  (equal (fn-sn-event-index target) (fn-sn-event-index s)))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-osr-ready-capture-keeps-established-projections
+                 fn-osr-live-ready-capture-opens
+                 fn-osr-configured-relation-implies-config-proper
+                 (:instance fn-osr-open-establishes-full-retained-carry
+                            (configs (fn-sn-config-history s))
+                            (frontier (fn-sf-frontier (fn-sn-files s)))
+                            (records (fn-sf-records (fn-sn-files s))))
+                 (:instance fn-sf-state-records-are-true-list
+                            (s (fn-sn-files s)))
+                 (:instance fn-cbor-take-whole-list
+                            (xs (fn-sf-records (fn-sn-files s)))))
+           :in-theory
+           (e/d (fn-osr-retainedp fn-skp-resolvedp fn-osr-verdict-prefixp
+                 fn-osr-frozen-index-prefixp fn-osr-livep fn-sti-livep
+                 fn-csi-livep fn-sn-identity-sequencep fn-sf-completion-phasep
+                 fn-osr-capture)
+                (fn-cpo-open-observed fn-sn-open-state fn-sn-open-okp
+                 fn-osr-live-ready-capture-opens
+                 fn-osr-open-establishes-full-retained-carry
+                 fn-osr-configured-relation-implies-config-proper
+                 fn-sn-files fn-sf-records fn-sf-frontier
+                 fn-sn-keyring fn-sn-keyring-generation fn-sn-keyring-snapshots
+                 fn-sn-identity-next fn-sn-verdicts fn-sn-index fn-sn-event-index
+                 fn-sn-statep fn-sf-statep fn-sn-row-verdicts fn-sn-index-of-rows
+                 fn-ssk-keyring-of-snapshots fn-ssk-generation)))))
+
+(local (defthm fn-osr-with-configuration-keeps-retained-snapshots
+  (equal (fn-sn-keyring-snapshots
+           (fn-sn-with-configuration s groups capacity node configs))
+         (fn-sn-keyring-snapshots s))
+  :hints (("Goal" :in-theory
+           (e/d (fn-sn-with-configuration fn-sn-keyring-snapshots fn-store-event-nth)
+                (fn-sn-make-v6))))))
+
+(defthm fn-osr-configure-durable-keeps-retained-fields
+  (let ((b (fn-cpo-configure-durable s record)))
+    (and (equal (fn-sn-keyring b) (fn-sn-keyring s))
+         (equal (fn-sn-keyring-generation b) (fn-sn-keyring-generation s))
+         (equal (fn-sn-keyring-snapshots b) (fn-sn-keyring-snapshots s))
+         (equal (fn-sn-verdicts b) (fn-sn-verdicts s))
+         (equal (fn-sn-index b) (fn-sn-index s))
+         (equal (fn-sn-event-index b) (fn-sn-event-index s))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-cpo-configure-durable fn-cpo-install)
+                (fn-cpo-history-relation fn-cpr-replay fn-sn-statep
+                 fn-sn-with-configuration fn-cnode-statep
+                 fn-replay-advance-okp fn-replay-advance-txid
+                 fn-sn-keyring fn-sn-keyring-generation fn-sn-keyring-snapshots
+                 fn-sn-verdicts fn-sn-index fn-sn-event-index)))))
+
+(defthm fn-osr-configure-durable-preserves-full-retained-carry
+  (implies (fn-osr-retainedp s)
+           (fn-osr-retainedp (fn-cpo-configure-durable s record)))
+  :hints (("Goal" :use (fn-osr-configure-durable-keeps-retained-fields
+                        fn-osr-configure-durable-keeps-projections
+                        fn-osr-configure-durable-preserves-live-carry)
+           :in-theory
+           (e/d (fn-osr-retainedp fn-skp-resolvedp fn-osr-verdict-prefixp
+                 fn-osr-frozen-index-prefixp)
+                (fn-cpo-configure-durable fn-osr-livep
+                 fn-sn-keyring fn-sn-keyring-generation fn-sn-keyring-snapshots
+                 fn-sn-verdicts fn-sn-index fn-sn-event-index
+                 fn-sn-identity-next fn-sn-files fn-sf-records
+                 fn-sn-row-verdicts fn-sn-index-of-rows
+                 fn-ssk-keyring-of-snapshots fn-ssk-generation
+                 fn-osr-configure-durable-keeps-retained-fields
+                 fn-osr-configure-durable-keeps-projections
+                 fn-osr-configure-durable-preserves-live-carry)))))

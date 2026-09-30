@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from types import SimpleNamespace
 from pathlib import Path
 
@@ -210,6 +211,109 @@ class SubjectRuleTests(unittest.TestCase):
         for unhosted, other, form in cases:
             bridges = reach_check.equality_bridges(graph, {"t": ("f", form)})
             self.assertNotIn(other, [o for o, _ in bridges.get(unhosted, [])], form)
+
+
+class ResultProjectionBridgeTests(unittest.TestCase):
+    """A complete named output abstraction, not an arbitrary composition."""
+
+    PROJECTION = """(defun result (answer)
+      (declare (xargs :guard t))
+      (let ((joined (if (and (consp answer) (consp (cdr answer)))
+                        (cadr answer) nil)))
+        (list (if (consp answer) (car answer) nil)
+              (if (consp joined) (car joined) nil))))"""
+    BRIDGE = """(defthm receiver-refines
+      (implies (receiver-only records)
+        (equal (result (concrete store records arena))
+               (model store records arena))))"""
+
+    def graph(self, projection=None):
+        return SimpleNamespace(book_defs={
+            "result": ("books/bridge.lisp", projection or self.PROJECTION),
+            "concrete": ("books/bridge.lisp", "(defun concrete (s r a) nil)"),
+            "model": ("books/model.lisp", "(defun model (s r a) nil)"),
+            "receiver-only": ("books/bridge.lisp", "(defun receiver-only (r) t)"),
+        }, reachable={"concrete"})
+
+    def test_full_result_projection_ties_only_model_to_concrete(self):
+        graph = self.graph()
+        for form in (self.BRIDGE,
+                     "(defthm reversed (equal (model store records arena) "
+                     "(result (concrete store records arena))))"):
+            bridges = reach_check.equality_bridges(graph, {"bridge": ("b", form)})
+            self.assertIn(("concrete", "bridge"), bridges["model"])
+            self.assertNotIn(("model", "bridge"), bridges.get("concrete", []))
+        self.assertEqual(graph.reachable, {"concrete"}, "a bridge does not host model code")
+
+    def test_audit_records_named_bridge_without_mutating_reachability(self):
+        graph = self.graph()
+        graph.books = []
+        graph.stobj_names, graph.export_of = set(), {}
+        graph.unfold = lambda term: None
+        model_form = "(defthm model-property (equal (car (model store records arena)) :ok))"
+        theorems = {"receiver-refines": ("b", self.BRIDGE),
+                    "model-property": ("m", model_form)}
+        rows = [{"id": "PRF-1", "events": ["model-property"]}]
+        with patch.object(reach_check, "theorem_forms", return_value=theorems), \
+                patch.object(reach_check, "load_rows", return_value=rows):
+            findings, hosted, unresolved = reach_check.audit(graph)
+        self.assertEqual((findings, hosted, unresolved), ([], 1, []))
+        self.assertEqual(graph.bridged, [("PRF-1", "model-property", "model",
+                                         "concrete", "receiver-refines")])
+        self.assertEqual(graph.reachable, {"concrete"})
+
+        # With only an equality over changed input, the model stays orphaned.
+        theorems["receiver-refines"] = ("b", self.BRIDGE.replace(
+            "(model store records arena)", "(model other records arena)"))
+        with patch.object(reach_check, "theorem_forms", return_value=theorems), \
+                patch.object(reach_check, "load_rows", return_value=rows):
+            findings, hosted, unresolved = reach_check.audit(graph)
+        self.assertEqual(hosted, 0)
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(graph.bridged, [])
+
+    def test_identity_and_plain_field_selection_are_projections(self):
+        for body in ("answer", "(car answer)", "(cons (car answer) (cdr answer))",
+                     "(let* ((state (cadr answer)) (receiver (car state))) "
+                     "(list (car answer) receiver))"):
+            graph = self.graph(f"(defun result (answer) {body})")
+            self.assertTrue(reach_check.structural_result_projection(graph, "result"), body)
+
+    def test_nonprojections_cannot_host_the_model(self):
+        bodies = (
+            "nil", "(list nil nil)", "(car (cons nil answer))",
+            "(let ((x (cons nil answer))) (car x))",
+            "(+ 1 (car answer))", "(model answer)",
+            "(if (equal (car answer) :ok) (cdr answer) nil)",
+            "(if (consp answer) nil (car answer))",
+            "(if (and (consp answer) (not (consp answer))) (car answer) nil)",
+            "(list :ok (cdr answer))", "(quote (answer))",
+        )
+        for body in bodies:
+            graph = self.graph(f"(defun result (answer) {body})")
+            bridges = reach_check.equality_bridges(graph, {"bridge": ("b", self.BRIDGE)})
+            self.assertNotIn(("concrete", "bridge"), bridges.get("model", []), body)
+        for definition in ("(defmacro result (answer) `(car ,answer))",
+                           "(defun result (answer other) (car answer))"):
+            self.assertFalse(reach_check.structural_result_projection(
+                self.graph(definition), "result"), definition)
+
+    def test_changed_or_computed_inputs_and_unrelated_equalities_do_not_bridge(self):
+        cases = (
+            "(equal (result (concrete store records arena)) (model store other arena))",
+            "(equal (result (concrete store records arena)) (model records store arena))",
+            "(equal (result (concrete (model store records arena))) (model store records arena))",
+            "(equal (result (concrete (cdr store) records arena)) (model (cdr store) records arena))",
+            "(equal (result (concrete store records arena)) (model store records (concrete arena)))",
+            "(equal (result (model store records arena)) (model store records arena))",
+            "(equal (result (concrete store records arena)) (concrete store records arena))",
+            "(equal (result (concrete)) (model))",
+            "(equal (list (concrete store records arena)) (model store records arena))",
+        )
+        graph = self.graph()
+        for conclusion in cases:
+            bridges = reach_check.equality_bridges(graph, {"bridge": ("b", f"(defthm x {conclusion})")})
+            self.assertNotIn(("concrete", "bridge"), bridges.get("model", []), conclusion)
 
 
 class SharedGraphTests(unittest.TestCase):

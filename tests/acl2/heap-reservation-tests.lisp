@@ -185,9 +185,9 @@
 ;; -----------------------------------------------------------------------------
 ; `init' (PKT-582 in gpt-6's wave-5 shape): the budget is the least of the
 ; physical memory less the OS's reserve (a quarter, at least 512 MiB), each
-; limit and FN_INIT_BUDGET_MB; a capacity-free request takes the largest
+; limit and init --budget; a capacity-free request takes the largest
 ; friend rung the budget holds, else small (conservative, PKT-707), or scale, development,
-; small under FN_INIT_SIZING=largest; any other request is written as named,
+; small under init --largest; any other request is written as named,
 ; the line saying whether the budget holds it.  hbox (123 GiB): development,
 ; budget 94,464 MB; largest: scale.  Under MemoryMax=2G: small.  A 2 GiB
 ; machine: small within 1,536 MB.  The default mission (1 MiB articles, 8
@@ -199,7 +199,7 @@
 (defconst *hrt-mission* '(:default ((4 . 1048576) (5 . 8))))
 (defconst *hrt-gib* (* 1024 *fn-heap-mib*))
 (defconst *hrt-hbox* (* 123 *hrt-gib*))
-(defconst *hrt-largest* '(108 97 114 103 101 115 116))
+(defconst *hrt-largest* :largest)
 (defconst *hrt-2g* (list (* 2048 *fn-heap-mib*)))
 (defconst *hrt-1g* (list (* 1024 *fn-heap-mib*)))
 (defmacro hrt-init (request physical limits &optional budget sizing)
@@ -213,7 +213,7 @@
 (assert! (equal (fn-heap-friend-candidate *hrt-bare* 67108864) *hrt-top*))
 (assert! (equal (hrt-init *hrt-bare* *hrt-hbox* nil)
                 (list :init *hrt-top* "custom" 3189 94464 :conservative t)))
-; FN_INIT_SIZING=largest: the largest preset whose FULL store the budget
+; init --largest: the largest preset whose FULL store the budget
 ; holds -- scale since lane membership-budget: its memberships are charged
 ; to its 768 MiB history (at most H / 320 of them), so its full store's run
 ; is 10,914 MB where 4,096 records of up to 65,535 memberships each made
@@ -234,10 +234,10 @@
 (assert! (equal (hrt-init *hrt-bare* (* 3 *hrt-gib*) nil)
                 (list :init (fn-heap-friend-candidate *hrt-bare* 33554432) "custom" 1962 2304
                       :conservative t)))
-; FN_INIT_BUDGET_MB=4096 on hbox: development, within 4,096 MB.
-(assert! (equal (nth 4 (hrt-init *hrt-bare* *hrt-hbox* nil '(52 48 57 54))) 4096))
-(assert! (equal (car (hrt-init *hrt-bare* *hrt-hbox* nil '(120))) :refused))
-(assert! (equal (car (hrt-init *hrt-bare* *hrt-hbox* nil nil '(120))) :refused))
+; init --budget 4096 on hbox: development, within 4,096 MB.
+(assert! (equal (nth 4 (hrt-init *hrt-bare* *hrt-hbox* nil 4096)) 4096))
+(assert! (equal (car (hrt-init *hrt-bare* *hrt-hbox* nil 0)) :refused))
+(assert! (equal (car (hrt-init *hrt-bare* *hrt-hbox* nil nil :x)) :refused))
 ; The mission's fields are kept: development with them on hbox, the small
 ; capacity with them under 2 GiB, refused under 1 GiB, never a lower article
 ; bound.
@@ -265,11 +265,11 @@
 ; An operator's request is written as named when the budget holds it; past
 ; the budget it is REFUSED by name with both numbers (ember, 2026-09-27
 ; 17:30Z; lane membership-budget), unless the operator names a target
-; budget that holds it (FN_INIT_BUDGET_MB: a store made for another
+; budget that holds it (init --budget: a store made for another
 ; machine), when it is written with within-budget=no and the target; an
 ; invalid one is refused.
-(defconst *hrt-target-16g* '(49 54 51 56 52))   ; FN_INIT_BUDGET_MB=16384
-(defconst *hrt-target-4g* '(52 48 57 54))       ; FN_INIT_BUDGET_MB=4096
+(defconst *hrt-target-16g* 16384)   ; init --budget 16384
+(defconst *hrt-target-4g* 4096)       ; init --budget 4096
 (assert! (equal (hrt-init '(:scale nil) *hrt-hbox* *hrt-2g*)
                 '(:refused :init-budget-cannot-hold-profile
            16183 2048 "scale" :requested)))
@@ -312,14 +312,14 @@
 ; public-node rehearsal): init writes the store sized for the named budget
 ; and the host prints ACL2's warning naming both figures.  The rehearsal's
 ; case was init outside the unit's MemoryMax=1536M on hbox's figures with
-; FN_INIT_BUDGET_MB=1536 named, and under MemoryMax=2G with 1500; since lane
+; init --budget 1536 named, and under MemoryMax=2G with 1500; since lane
 ; heap-bounds the small floor's first run is 1,906 MB, so a named 1,536 or
 ; 1,500 holds no candidate and init refuses (no note): the witnesses name
 ; 2,048 and 2,000.
-(defconst *hrt-named-1536* '(49 53 51 54))    ; FN_INIT_BUDGET_MB=1536
-(defconst *hrt-named-2048* '(50 48 52 56))    ; FN_INIT_BUDGET_MB=2048
-(defconst *hrt-named-2000* '(50 48 48 48))    ; FN_INIT_BUDGET_MB=2000
-(defconst *hrt-named-500* '(53 48 48))        ; FN_INIT_BUDGET_MB=500
+(defconst *hrt-named-1536* 1536)    ; init --budget 1536
+(defconst *hrt-named-2048* 2048)    ; init --budget 2048
+(defconst *hrt-named-2000* 2000)    ; init --budget 2000
+(defconst *hrt-named-500* 500)        ; init --budget 500
 (defconst *hrt-1536m* (list (* 1536 *fn-heap-mib*)))
 (defmacro hrt-note (request physical limits budget)
   `(fn-heap-init-budget-note (hrt-init ,request ,physical ,limits ,budget)
@@ -330,7 +330,7 @@
                 '(:named-budget-below-machine 2000 2048)))
 (assert! (equal (fn-heap-init-budget-note-line
                  (hrt-note *hrt-bare* *hrt-hbox* nil *hrt-named-2048*))
-                "warning init-budget-below-machine named-budget=2048 MB machine-budget=94464 MB: the store is sized for FN_INIT_BUDGET_MB, not this machine; run init under the service's memory limit, and give the service at least 2048 MB"))
+                "warning init-budget-below-machine named-budget=2048 MB machine-budget=94464 MB: the store is sized for init --budget, not this machine; run init under the service's memory limit, and give the service at least 2048 MB"))
 ; (A named 1,536 MB is accepted again since lane heap-pool: the 16 MiB rung.)
 (assert! (equal (hrt-note *hrt-bare* *hrt-hbox* nil *hrt-named-1536*)
                 '(:named-budget-below-machine 1536 94464)))
@@ -339,23 +339,23 @@
 ; the host prints no line for NIL).
 (assert! (null (hrt-note *hrt-bare* *hrt-hbox* nil nil)))
 (assert! (null (hrt-note *hrt-bare* *hrt-hbox* *hrt-1536m* *hrt-named-1536*)))
-(assert! (null (hrt-note *hrt-bare* *hrt-hbox* nil '(57 56 51 48 52))))
+(assert! (null (hrt-note *hrt-bare* *hrt-hbox* nil 98304)))
 (assert! (null (hrt-note *hrt-mission* *hrt-hbox* nil *hrt-named-500*)))
 (assert! (null (fn-heap-init-budget-note-line nil)))
 
 ; The keystone's teeth.  Hypotheses: the decision accepts, a budget is named,
 ; and it is below the machine init observes.
-(defun hrt-note-conclusion (d physical limits budget-octets)
+(defun hrt-note-conclusion (d physical limits budget-mb)
   (declare (xargs :mode :program))
-  (let ((note (fn-heap-init-budget-note d physical limits budget-octets))
+  (let ((note (fn-heap-init-budget-note d physical limits budget-mb))
         (machine-mb (floor (fn-heap-init-machine-octets physical limits) *fn-heap-mib*)))
     (and (equal (car note) :named-budget-below-machine)
          (equal (nth 1 note) (nth 4 d))
          (equal (nth 2 note) machine-mb)
          (< (nth 4 d) machine-mb))))
-(defun hrt-note-hyps (d physical limits budget-octets)
+(defun hrt-note-hyps (d physical limits budget-mb)
   (declare (xargs :mode :program))
-  (let ((named (fn-heap-init-explicit-budget budget-octets)))
+  (let ((named (fn-heap-init-explicit-budget budget-mb)))
     (list (equal (car d) :init)
           (posp named)
           ; (nfix: the logic's floor of NIL is 0; program mode would fault)
@@ -372,7 +372,7 @@
 (assert! (let ((d (hrt-init *hrt-mission* *hrt-hbox* nil *hrt-named-500*)))
            (and (equal (hrt-note-hyps d *hrt-hbox* nil *hrt-named-500*) '(nil t t))
                 (not (hrt-note-conclusion d *hrt-hbox* nil *hrt-named-500*)))))
-; Without "named": the bare init under 2 GiB with FN_INIT_BUDGET_MB unset
+; Without "named": the bare init under 2 GiB with no --budget
 ; (the nil budget's 0 is below the machine): as before, no note.
 (assert! (let ((d (hrt-init *hrt-bare* *hrt-hbox* *hrt-2g* nil)))
            (and (equal (hrt-note-hyps d *hrt-hbox* *hrt-2g* nil) '(t nil t))
@@ -387,11 +387,11 @@
   `(must-fail-checked
     (defthm hrt-note-without-a-hypothesis
       (let* ((d (fn-heap-init-decide request core nursery physical limits
-                                     budget-octets sizing-octets))
-             (named (fn-heap-init-explicit-budget budget-octets))
+                                     budget-mb sizing-word))
+             (named (fn-heap-init-explicit-budget budget-mb))
              (machine-mb (floor (fn-heap-init-machine-octets physical limits)
                                 *fn-heap-mib*))
-             (note (fn-heap-init-budget-note d physical limits budget-octets)))
+             (note (fn-heap-init-budget-note d physical limits budget-mb)))
         (declare (ignorable named machine-mb))
         (implies (and ,@hyps)
                  (and (equal (car note) :named-budget-below-machine)
@@ -413,12 +413,12 @@
                 64534855546714))
 
 ; The keystone's teeth.  Hypotheses: the decision accepts, and says held.
-(defun hrt-init-conclusion (d core nursery physical limits budget-octets)
+(defun hrt-init-conclusion (d core nursery physical limits budget-mb)
   (declare (xargs :mode :program))
   (let ((p (fn-bs-profile-resolve (fn-heap-init-decision-request d) nil))
         (budget (fn-heap-machine-octets
                  (fn-heap-init-observations
-                  physical limits (fn-heap-init-explicit-budget budget-octets)))))
+                  physical limits (fn-heap-init-explicit-budget budget-mb)))))
     (and (fn-bs-profile-admittedp p)
          (<= (fn-heap-init-reservation-octets p core nursery) budget)
          (or (not (posp (fn-heap-machine-octets (cons physical limits))))
@@ -438,14 +438,14 @@
 (must-fail-checked
  (defthm hrt-init-fits-without-acceptance
    (let* ((d (fn-heap-init-decide request core nursery physical limits
-                                  budget-octets sizing-octets))
+                                  budget-mb sizing-word))
           (p (fn-bs-profile-resolve (fn-heap-init-decision-request d) nil)))
      (implies (nth 6 d)
               (and (fn-bs-profile-admittedp p)
                    (<= (fn-heap-init-reservation-octets p core nursery)
                        (fn-heap-machine-octets
                         (fn-heap-init-observations
-                         physical limits (fn-heap-init-explicit-budget budget-octets)))))))
+                         physical limits (fn-heap-init-explicit-budget budget-mb)))))))
    :hints (("Goal" :do-not-induct t
             :in-theory (disable fn-heap-init-decide fn-bs-profile-resolve
                                 fn-bs-profile-admittedp
@@ -461,13 +461,13 @@
 (must-fail-checked
  (defthm hrt-init-fits-without-held
    (let* ((d (fn-heap-init-decide request core nursery physical limits
-                                  budget-octets sizing-octets))
+                                  budget-mb sizing-word))
           (p (fn-bs-profile-resolve (fn-heap-init-decision-request d) nil)))
      (implies (equal (car d) :init)
               (<= (fn-heap-init-reservation-octets p core nursery)
                   (fn-heap-machine-octets
                    (fn-heap-init-observations
-                    physical limits (fn-heap-init-explicit-budget budget-octets))))))
+                    physical limits (fn-heap-init-explicit-budget budget-mb))))))
    :hints (("Goal" :do-not-induct t
             :in-theory (disable fn-heap-init-decide fn-bs-profile-resolve
                                 fn-bs-profile-admittedp
@@ -478,13 +478,13 @@
 ; (above, held) and '(:scale nil) under 2 GiB (not held, still written).
 ; Per hypothesis, a counterexample with the others holding:
 ;   machine-sized: the bare request under 2 GiB is written as small, not bare;
-;   budget well-formed: FN_INIT_BUDGET_MB=x refuses the scale request;
-;   sizing well-formed: FN_INIT_SIZING=x refuses it;
+;   budget well-formed: a budget that is not a positive natural refuses the scale request;
+;   sizing well-formed: a sizing word not :largest refuses it;
 ;   valid profile: H = 4096 under the default preset is refused.
 (assert! (not (equal (fn-heap-init-decision-request (hrt-init *hrt-bare* *hrt-hbox* *hrt-2g*))
                      *hrt-bare*)))
-(assert! (equal (car (hrt-init '(:scale nil) *hrt-hbox* nil '(120))) :refused))
-(assert! (equal (car (hrt-init '(:scale nil) *hrt-hbox* nil nil '(120))) :refused))
+(assert! (equal (car (hrt-init '(:scale nil) *hrt-hbox* nil 0)) :refused))
+(assert! (equal (car (hrt-init '(:scale nil) *hrt-hbox* nil nil :x)) :refused))
 (assert! (not (fn-heap-machine-sized-requestp '(:default ((2 . 4096))))))
 (assert! (equal (car (fn-bs-profile-resolve '(:default ((2 . 4096))) nil)) :invalid))
 (assert! (equal (car (hrt-init '(:default ((2 . 4096))) *hrt-hbox* nil)) :refused))
@@ -493,7 +493,7 @@
     (defthm hrt-honors-without-a-hypothesis
       (implies (and ,@hyps)
                (let ((d (fn-heap-init-decide request core nursery physical
-                                             limits budget-octets sizing-octets)))
+                                             limits budget-mb sizing-word)))
                  (and (equal (car d) :init)
                       (equal (fn-heap-init-decision-request d) request))))
       :hints (("Goal" :do-not-induct t
@@ -504,18 +504,18 @@
                                 fn-heap-init-observations fn-heap-init-explicit-budget
                                 fn-heap-profile-word fn-heap-mb-of
                                    fn-heap-machine-sized-requestp))))))
-(hrt-honors-without (not (equal (fn-heap-init-explicit-budget budget-octets) :bad))
-                    (not (equal (fn-heap-init-sizing sizing-octets) :bad))
+(hrt-honors-without (not (equal (fn-heap-init-explicit-budget budget-mb) :bad))
+                    (not (equal (fn-heap-init-sizing sizing-word) :bad))
                     (not (equal (car (fn-bs-profile-resolve request nil)) :invalid)))
 (hrt-honors-without (not (fn-heap-machine-sized-requestp request))
-                    (not (equal (fn-heap-init-sizing sizing-octets) :bad))
+                    (not (equal (fn-heap-init-sizing sizing-word) :bad))
                     (not (equal (car (fn-bs-profile-resolve request nil)) :invalid)))
 (hrt-honors-without (not (fn-heap-machine-sized-requestp request))
-                    (not (equal (fn-heap-init-explicit-budget budget-octets) :bad))
+                    (not (equal (fn-heap-init-explicit-budget budget-mb) :bad))
                     (not (equal (car (fn-bs-profile-resolve request nil)) :invalid)))
 (hrt-honors-without (not (fn-heap-machine-sized-requestp request))
-                    (not (equal (fn-heap-init-explicit-budget budget-octets) :bad))
-                    (not (equal (fn-heap-init-sizing sizing-octets) :bad)))
+                    (not (equal (fn-heap-init-explicit-budget budget-mb) :bad))
+                    (not (equal (fn-heap-init-sizing sizing-word) :bad)))
 
 ; sized-init-is-held: reachable with the bare request under 2 GiB (held).
 ; Without machine-sized: scale requested under 2 GiB is written, not held.
@@ -527,7 +527,7 @@
     (defthm hrt-held-without-a-hypothesis
       (implies (and ,@hyps)
                (nth 6 (fn-heap-init-decide request core nursery physical
-                                           limits budget-octets sizing-octets)))
+                                           limits budget-mb sizing-word)))
       :hints (("Goal" :do-not-induct t
                :in-theory (disable fn-heap-reserve-acceptsp fn-bs-profile-resolve
                                    fn-heap-init-sizing fn-heap-init-chosen
@@ -536,11 +536,11 @@
                                 fn-heap-profile-word fn-heap-mb-of
                                    fn-heap-machine-sized-requestp))))))
 (hrt-held-without (equal (car (fn-heap-init-decide request core nursery physical
-                                                   limits budget-octets sizing-octets))
+                                                   limits budget-mb sizing-word))
                          :init))
 (hrt-held-without (fn-heap-machine-sized-requestp request))
 
-; conservative-is-a-friend-rung: with FN_INIT_SIZING=largest on hbox the
+; conservative-is-a-friend-rung: with init --largest on hbox the
 ; request is scale, which is no rung: the sizing hypothesis (NIL) is what
 ; excludes it.
 (assert! (not (member-equal (fn-heap-init-decision-request
@@ -549,7 +549,7 @@
 (must-fail-checked
  (defthm hrt-conservative-without-the-sizing
    (let ((d (fn-heap-init-decide request core nursery physical limits
-                                 budget-octets sizing-octets)))
+                                 budget-mb sizing-word)))
      (implies (and (fn-heap-machine-sized-requestp request)
                    (equal (car d) :init))
               (member-equal (fn-heap-init-decision-request d)
@@ -573,11 +573,11 @@
 (must-fail-checked
  (defthm hrt-largest-without-scale-fitting
    (implies (and (fn-heap-machine-sized-requestp request)
-                 (not (equal (fn-heap-init-explicit-budget budget-octets) :bad)))
+                 (not (equal (fn-heap-init-explicit-budget budget-mb) :bad)))
             (equal (fn-heap-init-decision-request
                     (fn-heap-init-decide request core nursery physical limits
-                                         budget-octets
-                                         '(108 97 114 103 101 115 116)))
+                                         budget-mb
+                                         :largest))
                    (fn-heap-preset-candidate :scale request)))
    :hints (("Goal" :do-not-induct t
             :in-theory (disable fn-heap-reserve-acceptsp fn-heap-preset-candidate
@@ -742,7 +742,7 @@
 (must-fail-checked
  (defthm hrt-rung-without-machine-sized
    (let ((d (fn-heap-init-decide request core nursery physical limits
-                                 budget-octets nil)))
+                                 budget-mb nil)))
      (implies (equal (car d) :init)
               (member-equal (fn-heap-init-decision-request d)
                             (fn-heap-friend-ladder request *fn-heap-friend-rungs*))))
@@ -776,7 +776,7 @@
 (must-fail-checked
  (defthm hrt-floor-without-machine-sized
    (let ((d (fn-heap-init-decide request core nursery physical limits
-                                 budget-octets nil)))
+                                 budget-mb nil)))
      (implies (equal (car d) :init)
               (<= 16384 (fn-heap-request-transactions
                          (fn-heap-init-decision-request d)))))
@@ -795,7 +795,7 @@
 (must-fail-checked
  (defthm hrt-floor-without-init
    (let ((d (fn-heap-init-decide request core nursery physical limits
-                                 budget-octets nil)))
+                                 budget-mb nil)))
      (implies (fn-heap-machine-sized-requestp request)
               (<= 16384 (fn-heap-request-transactions
                          (fn-heap-init-decision-request d)))))
@@ -814,10 +814,10 @@
 (must-fail-checked
  (defthm hrt-top-without-fit
    (implies (and (fn-heap-machine-sized-requestp request)
-                 (not (equal (fn-heap-init-explicit-budget budget-octets) :bad)))
+                 (not (equal (fn-heap-init-explicit-budget budget-mb) :bad)))
             (equal (fn-heap-init-decision-request
                     (fn-heap-init-decide request core nursery physical limits
-                                         budget-octets nil))
+                                         budget-mb nil))
                    (fn-heap-friend-candidate request 67108864)))
    :hints (("Goal" :do-not-induct t
             :in-theory (disable fn-heap-reserve-acceptsp fn-bs-profile-resolve
@@ -835,10 +835,10 @@
                  (fn-heap-reserve-acceptsp
                   (fn-heap-friend-candidate request 67108864) core nursery
                   (fn-heap-init-observations physical limits
-                                             (fn-heap-init-explicit-budget budget-octets))))
+                                             (fn-heap-init-explicit-budget budget-mb))))
             (equal (fn-heap-init-decision-request
                     (fn-heap-init-decide request core nursery physical limits
-                                         budget-octets nil))
+                                         budget-mb nil))
                    (fn-heap-friend-candidate request 67108864)))
    :hints (("Goal" :do-not-induct t
             :in-theory (disable fn-heap-reserve-acceptsp fn-bs-profile-resolve
@@ -851,14 +851,14 @@
 ;; Without the machine-sized request: the operator's own is written.
 (must-fail-checked
  (defthm hrt-top-without-machine-sized
-   (implies (and (not (equal (fn-heap-init-explicit-budget budget-octets) :bad))
+   (implies (and (not (equal (fn-heap-init-explicit-budget budget-mb) :bad))
                  (fn-heap-reserve-acceptsp
                   (fn-heap-friend-candidate request 67108864) core nursery
                   (fn-heap-init-observations physical limits
-                                             (fn-heap-init-explicit-budget budget-octets))))
+                                             (fn-heap-init-explicit-budget budget-mb))))
             (equal (fn-heap-init-decision-request
                     (fn-heap-init-decide request core nursery physical limits
-                                         budget-octets nil))
+                                         budget-mb nil))
                    (fn-heap-friend-candidate request 67108864)))
    :hints (("Goal" :do-not-induct t
             :in-theory (disable fn-heap-reserve-acceptsp fn-bs-profile-resolve
@@ -999,7 +999,7 @@
 
 ; fn-heap-init-decide-largest-takes-scale-when-it-fits: the reachable
 ; witness (every hypothesis and the conclusion).  On a 512 GiB machine the
-; scale preset's first run fits, and FN_INIT_SIZING=largest writes it.
+; scale preset's first run fits, and init --largest writes it.
 (defconst *hrt-512g* (* 512 *hrt-gib*))
 (assert! (fn-heap-machine-sized-requestp *hrt-bare*))
 (assert! (not (equal (fn-heap-init-explicit-budget nil) :bad)))
@@ -1023,7 +1023,7 @@
 (assert! (not (equal (fn-heap-init-decision-request
                       (hrt-init '(:development nil) *hrt-512g* nil nil *hrt-largest*))
                      (fn-heap-preset-candidate :scale '(:development nil)))))
-; Without the budget hypothesis: FN_INIT_BUDGET_MB=x is :bad; the request is
+; Without the budget hypothesis: a budget that is not a positive natural is :bad; the request is
 ; machine-sized and the candidate still fits the observations, but init
 ; refuses the budget by name and writes no scale request.
 (assert! (equal (fn-heap-init-explicit-budget '(120)) :bad))
@@ -1370,11 +1370,11 @@
 ; 1. A capacity-free request (bare init on hbox under 2 GiB: a friend rung).
 (assert! (equal (hrt-refuse-hyps *hrt-bare* *hrt-hbox* *hrt-2g* nil nil) '(nil t t t t t t)))
 (assert! (not (hrt-refuse-conclusion *hrt-bare* *hrt-hbox* *hrt-2g* nil nil)))
-; 2. A malformed FN_INIT_BUDGET_MB: refused, but as invalid-init-budget.
+; 2. A malformed init --budget: refused, but as invalid-init-budget.
 (assert! (equal (hrt-refuse-hyps '(:scale nil) *hrt-hbox* *hrt-2g* '(120) nil)
                 '(t nil t t t t t)))
 (assert! (not (hrt-refuse-conclusion '(:scale nil) *hrt-hbox* *hrt-2g* '(120) nil)))
-; 3. A malformed FN_INIT_SIZING: invalid-init-sizing.
+; 3. A malformed sizing word: invalid-init-sizing.
 (assert! (equal (hrt-refuse-hyps '(:scale nil) *hrt-hbox* *hrt-2g* nil '(120))
                 '(t t nil t t t t)))
 (assert! (not (hrt-refuse-conclusion '(:scale nil) *hrt-hbox* *hrt-2g* nil '(120))))
@@ -1396,11 +1396,11 @@
 (defmacro hrt-refuse-must-fail (name &rest hyps)
   `(must-fail-checked
     (defthm ,name
-      (let* ((explicit (fn-heap-init-explicit-budget budget-octets))
+      (let* ((explicit (fn-heap-init-explicit-budget budget-mb))
              (obs (fn-heap-init-observations physical limits explicit))
              (p (fn-bs-profile-resolve request nil))
              (d (fn-heap-init-decide request core nursery physical
-                                     limits budget-octets sizing-octets)))
+                                     limits budget-mb sizing-word)))
         (implies (and ,@hyps)
                  (and (equal (car d) :refused)
                       (equal (nth 1 d) :init-budget-cannot-hold-profile))))
@@ -1417,13 +1417,13 @@
                                           fn-heap-profile-word
                                           fn-heap-machine-sized-requestp))))))
 (hrt-refuse-must-fail hrt-refuse-without-operators-request
-  (not (equal explicit :bad)) (not (equal (fn-heap-init-sizing sizing-octets) :bad))
+  (not (equal explicit :bad)) (not (equal (fn-heap-init-sizing sizing-word) :bad))
   (not (equal (car p) :invalid)) (posp (fn-heap-machine-octets obs))
   (not (fn-heap-reserve-acceptsp request core nursery obs))
   (not (fn-heap-init-target-holdsp p core nursery explicit)))
 (hrt-refuse-must-fail hrt-refuse-without-budget-wellformed
   (not (fn-heap-machine-sized-requestp request))
-  (not (equal (fn-heap-init-sizing sizing-octets) :bad))
+  (not (equal (fn-heap-init-sizing sizing-word) :bad))
   (not (equal (car p) :invalid)) (posp (fn-heap-machine-octets obs))
   (not (fn-heap-reserve-acceptsp request core nursery obs))
   (not (fn-heap-init-target-holdsp p core nursery explicit)))
@@ -1434,23 +1434,23 @@
   (not (fn-heap-init-target-holdsp p core nursery explicit)))
 (hrt-refuse-must-fail hrt-refuse-without-valid-profile
   (not (fn-heap-machine-sized-requestp request)) (not (equal explicit :bad))
-  (not (equal (fn-heap-init-sizing sizing-octets) :bad))
+  (not (equal (fn-heap-init-sizing sizing-word) :bad))
   (posp (fn-heap-machine-octets obs))
   (not (fn-heap-reserve-acceptsp request core nursery obs))
   (not (fn-heap-init-target-holdsp p core nursery explicit)))
 (hrt-refuse-must-fail hrt-refuse-without-observed-machine
   (not (fn-heap-machine-sized-requestp request)) (not (equal explicit :bad))
-  (not (equal (fn-heap-init-sizing sizing-octets) :bad))
+  (not (equal (fn-heap-init-sizing sizing-word) :bad))
   (not (equal (car p) :invalid))
   (not (fn-heap-reserve-acceptsp request core nursery obs))
   (not (fn-heap-init-target-holdsp p core nursery explicit)))
 (hrt-refuse-must-fail hrt-refuse-without-budget-refusal
   (not (fn-heap-machine-sized-requestp request)) (not (equal explicit :bad))
-  (not (equal (fn-heap-init-sizing sizing-octets) :bad))
+  (not (equal (fn-heap-init-sizing sizing-word) :bad))
   (not (equal (car p) :invalid)) (posp (fn-heap-machine-octets obs))
   (not (fn-heap-init-target-holdsp p core nursery explicit)))
 (hrt-refuse-must-fail hrt-refuse-without-target-refusal
   (not (fn-heap-machine-sized-requestp request)) (not (equal explicit :bad))
-  (not (equal (fn-heap-init-sizing sizing-octets) :bad))
+  (not (equal (fn-heap-init-sizing sizing-word) :bad))
   (not (equal (car p) :invalid)) (posp (fn-heap-machine-octets obs))
   (not (fn-heap-reserve-acceptsp request core nursery obs)))

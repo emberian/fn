@@ -193,6 +193,8 @@ class NativeConsumerIdentityTests(unittest.TestCase):
         shown = text(self.ok(node, "consumer", "show"))
         self.assertIn("consumer bob-pub account bob", shown)
         self.assertIn("consumer alice-priv account alice", shown)
+        self.assertNotIn("pending", shown)
+        self.assertNotIn("redeemed", shown)
 
         self.post_all(node)
 
