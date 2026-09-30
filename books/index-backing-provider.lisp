@@ -548,7 +548,7 @@
     (mv status candidate fuel-left fn-mio$c)))
 
 ; Terminal read selects only the registered completed minimum from captured rows.
-(defun fn-ibp-node-selected-row (query ordinal fuel slot depth id incarnation fn-ibp-node)
+(defun fn-ibp-node-row-read (ordinal fuel slot depth id incarnation fn-ibp-node)
   (declare (xargs :stobjs fn-ibp-node :measure (nfix depth)
                   :guard (and (natp ordinal)
                               (natp fuel) (<= fuel *fn-mpr-slot-quantum*)
@@ -566,14 +566,7 @@
         (if (and (equal (fn-ibp-row-id fn-ibp-row-page) id)
                  (equal (fn-ibp-row-incarnation fn-ibp-row-page) incarnation)
                  (equal (fn-ibp-row-sealed fn-ibp-row-page) 1))
-            (let ((held (fn-ibp-row (mod ordinal 256) fn-ibp-row-page)))
-              (if (and (natp (fn-miq-count query)) (< ordinal (fn-miq-count query))
-                       (natp (fn-miq-frontier query))
-                       (natp (fn-record-sequence held))
-                       (< (fn-record-sequence held) (fn-miq-frontier query))
-                       (equal (fn-record-msgid held) (fn-miq-msgid query)))
-                  (mv :selected held)
-                (mv :recovery-required nil)))
+            (mv :row (fn-ibp-row (mod ordinal 256) fn-ibp-row-page))
           (mv :recovery-required nil))
         (mv status held (- fuel 1)))))
    ((equal (mod slot 2) 0)
@@ -583,7 +576,7 @@
                    (fn-ibp-node-children-get 'fn-ibp-node-left fn-ibp-node
                                              (create-fn-ibp-node-left))))
         (status held fuel-left)
-        (fn-ibp-node-selected-row query ordinal (- fuel 1) (floor slot 2) (- depth 1)
+        (fn-ibp-node-row-read ordinal (- fuel 1) (floor slot 2) (- depth 1)
                                    id incarnation fn-ibp-node-left)
         (mv status held fuel-left))))
    (t
@@ -593,13 +586,27 @@
                    (fn-ibp-node-children-get 'fn-ibp-node-right fn-ibp-node
                                              (create-fn-ibp-node-right))))
         (status held fuel-left)
-        (fn-ibp-node-selected-row query ordinal (- fuel 1) (floor slot 2) (- depth 1)
+        (fn-ibp-node-row-read ordinal (- fuel 1) (floor slot 2) (- depth 1)
                                    id incarnation fn-ibp-node-right)
         (mv status held fuel-left))))))
-(verify-guards fn-ibp-node-selected-row
+(verify-guards fn-ibp-node-row-read
   :hints (("Goal" :use ((:instance mod-bounded-by-modulus (x ordinal) (y 256)))
                   :in-theory (disable mod fn-ibp-row-pagep))))
 
+
+(defun fn-ibp-node-selected-row (query ordinal fuel slot depth id incarnation fn-ibp-node)
+  (declare (xargs :stobjs fn-ibp-node
+                  :guard (and (natp ordinal) (natp fuel) (<= fuel *fn-mpr-slot-quantum*)
+                              (natp slot) (natp depth) (posp id) (natp incarnation))))
+  (mv-let (status held fuel-left)
+    (fn-ibp-node-row-read ordinal fuel slot depth id incarnation fn-ibp-node)
+    (if (not (eq status :row)) (mv status nil fuel-left)
+      (if (and (natp (fn-miq-count query)) (< ordinal (fn-miq-count query))
+               (natp (fn-miq-frontier query)) (natp (fn-record-sequence held))
+               (< (fn-record-sequence held) (fn-miq-frontier query))
+               (equal (fn-record-msgid held) (fn-miq-msgid query)))
+          (mv :selected held fuel-left)
+        (mv :recovery-required nil fuel-left)))))
 
 (defun fn-miq-selected-token (token ordinal root-id)
   (declare (xargs :guard t))

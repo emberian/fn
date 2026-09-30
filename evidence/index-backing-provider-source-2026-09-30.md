@@ -49,3 +49,16 @@ release. It does not establish writer publication, funding adequacy or actual
 arena lifecycle correspondence. The actual capture must install/update the
 indexed current claim atomically with the shared pool; no host row snapshot is
 an authority, and this readout has no such input.
+
+The range-consumer join shares internal `fn-ibp-node-row-read`, one bounded
+sealed-row registry traversal. MID selection delegates this primitive and
+adds its own exact Message-ID/C/F confirmation; OVER must register a distinct
+range cursor and prove captured group-number/visibility semantics. Physical
+slot/page identity arguments remain internal, derived from the registered
+captured directory, never caller-provided source authority.
+
+The complete changed provider replay now has all qpg dependencies before the
+provider: protected mib loaded62 own forms with zero refusals, 24.46seconds
+including source prerequisites, 3,052,547steps. All10 representation/control
+fixture forms passed615steps. This is source guard admission, not certification,
+funded publication or served-path qualification.
