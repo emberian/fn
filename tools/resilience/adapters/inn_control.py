@@ -5,6 +5,9 @@ The peering owner's parser must supply literal transfer/block completeness.
 """
 import base64
 import re
+import json
+import threading
+from pathlib import Path
 from ..journal import Journal
 
 
@@ -43,7 +46,11 @@ def observe(scenario_id, expected, exchange, served):
     journal.environment("inn-control-raw-subject", expected=expected, arrived_octets=raw(arrived),
                         served_octets=raw(served), exchange={k: v for k, v in (exchange or {}).items()
                                                             if k != "article"})
-    if not isinstance(exchange, dict) or exchange.get("block_complete") is not True or exchange.get("transfer_complete") is not True:
+    if (isinstance(exchange, dict) and exchange.get("complete") is True
+            and not exchange.get("result") and isinstance(exchange.get("offer"), str)
+            and exchange["offer"][:3] in ("435", "438")):
+        result = dict(status="refused", cause="inn-control-offer-refused")
+    elif not isinstance(exchange, dict) or exchange.get("block_complete") is not True or exchange.get("transfer_complete") is not True:
         result = dict(status="unavailable", cause="inn-control-transfer-completeness-unobserved")
     elif isinstance(exchange.get("result"), str) and exchange["result"][:3] in ("437", "439"):
         result = dict(status="refused", cause="inn-control-transfer-refused")
@@ -60,3 +67,27 @@ def observe(scenario_id, expected, exchange, served):
     journal.environment("inn-control-subject-disposition", **result,
                         scope="external subject observation; no native/INN completion or group-authority claim")
     return journal, result
+
+
+class Recorder:
+    """Default-off lab callback retaining each actual supplied raw observation.
+
+    A directory is exclusively owned; no record makes a qualification claim.
+    """
+    def __init__(self, directory):
+        self.directory = Path(directory)
+        self.directory.mkdir(parents=True, exist_ok=False)
+        self.count = 0
+        self.lock = threading.Lock()
+
+    def __call__(self, key, expected, exchange, served):
+        if key not in ("inn-checkgroups-control", "inn-throttle-resumed"):
+            raise ValueError("selected actual corpus callpoint required")
+        with self.lock:
+            journal, result = observe(key, expected, exchange, served)
+            trial = self.directory / f"{self.count:04d}-{key}"
+            trial.mkdir()
+            journal.write(trial / "journal.jsonl")
+            (trial / "disposition.json").write_text(json.dumps(result, indent=2) + "\n")
+            self.count += 1
+            return result
