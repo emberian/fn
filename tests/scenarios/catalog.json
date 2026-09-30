@@ -7029,6 +7029,32 @@
         "docs/interop-inn.md"
       ],
       "execution_scope": "Source-present W3 unsigned checkgroups traffic/filing fixture. Fifteen scoped scripted-peer/harness assertions do not establish a real INN/native run. INN controlchan and authenticated discharge are not claimed; newgroup/rmgroup execution remains D29 deferred. Distribution/cancel/expiry/streaming and broader Q12/W3 criteria remain open."
+    },
+    {
+      "id": "SCN-1041",
+      "title": "Native fn and pinned INN transfer fresh articles through both actual feeds by subject-matched CHECK/TAKETHIS and unchanged receiver readback",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-045"
+      ],
+      "steps": [
+        "Select --inn-streaming in the scratch native fn/pinned INN lab. Preserve baseline IHAVE observations; upsert the fn INN peer through the actual operator with streaming true.",
+        "POST a fresh article to native fn and read its injected source back; observe its actual outbound feed CHECK/TAKETHIS into innd, then read the same Message-ID through nnrpd.",
+        "Send a second fresh subject into innd with MODE STREAM, CHECK and TAKETHIS; flush its innfeed, observe INN actual outbound CHECK/TAKETHIS into fn and read that Message-ID through native fn."
+      ],
+      "expected": [
+        "Each actual feed trace has CHECK then TAKETHIS with 238 and239 naming the exact fresh Message-ID, and a complete nonempty transferred article. IHAVE fallback does not satisfy this selected streaming observation.",
+        "Both the source-to-feed and feed-to-receiver content comparisons permit only Path/Xref changes; changed bodies or other headers fail. Receiver ARTICLE is220 and its Message-ID matches exactly.",
+        "Refused streaming peer configuration prevents submissions and fails both selected direction rows. This phase precedes the protected-feed fixture that pauses the clear feed."
+      ],
+      "evidence": [
+        "tools/inn_lab.py",
+        "tests/test_inn_lab.py",
+        "docs/interop-inn.md",
+        "planning/evidence/peering-inn-streaming-source-2026-09-30.md"
+      ],
+      "execution_scope": "Source-present Q12 streaming observation harness. Scripted socket/accounting and fake baseline lab tests do not establish real INN/native image behavior. Matching runner-owned actual INN execution remains open, as do Distribution/cancel/expiry, authentication/control authority, window/soak and broader Q12/W3 obligations."
     }
   ]
 }

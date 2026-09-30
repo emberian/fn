@@ -3085,3 +3085,7 @@ Transit additionally computes the versioned `relay-v1` legacy article subject
 Path/Xref routing variants share that subject while their stored-byte
 commitments remain distinct. This does not change duplicate/conflict
 binding semantics until the durable article-subject column lands.
+
+### Q12 bidirectional streaming observation (SCN-1041)
+
+The optional `tools/inn_lab.py --inn-streaming` fixture preserves baseline IHAVE observations and separately requires each actual outbound implementation, native fn and pinned INN innfeed, to complete a fresh CHECK/TAKETHIS transfer (RFC4644 sections2.4–2.5). Every238/239 must name the offered subject; both source-to-feed and feed-to-reader content comparisons allow only Path/Xref changes. The fresh native POST is read back before feeding, so its legitimate injection additions are the source coordinate rather than an unprocessed proto-article. Real INN/matching-image observation is pending; source harness validation is not a served implementation or conformance claim. Distribution/cancel/expiry and the remaining Q12/W3 obligations remain open.

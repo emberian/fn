@@ -143,9 +143,11 @@ INN_CHECKGROUPS_ID = "<inn-lab-checkgroups-{tag}@example.invalid>"
 FN_PROTECTED_ID = "<inn-lab-fn-protected-{tag}@example.invalid>"
 FN_FROM_ID = "<inn-lab-fn-from-{tag}@example.invalid>"
 FN_PATH_ID = "<inn-lab-fn-path-{tag}@example.invalid>"
+FN_STREAM_ID = "<inn-lab-fn-stream-{tag}@example.invalid>"
+INN_STREAM_ID = "<inn-lab-inn-stream-{tag}@example.invalid>"
 ABSENT_ID = "<inn-lab-absent-{tag}@example.invalid>"
 ID_TEMPLATES = ("FED_ID", "LOOP_ID", "LOOP2_ID", "FN_POST_ID", "FN_OPERATOR_ID",
-                "FN_LOOP_ID", "FN_FROM_ID", "FN_PATH_ID", "FN_PROTECTED_ID", "INN_CHECKGROUPS_ID", "ABSENT_ID")
+                "FN_LOOP_ID", "FN_FROM_ID", "FN_PATH_ID", "FN_PROTECTED_ID", "INN_CHECKGROUPS_ID", "FN_STREAM_ID", "INN_STREAM_ID", "ABSENT_ID")
 
 
 def message_ids(tag: str) -> dict:
@@ -368,6 +370,17 @@ def header_value(octets: bytes, name: str) -> str:
         if one.lower() == name.lower():
             return value.strip().decode("utf-8", "replace")
     return ""
+
+
+def streaming_transfer_completed(exchange, msgid):
+    """Require both streaming replies to name this exact article, not IHAVE."""
+    if not exchange or exchange.get("verbs") != ["CHECK", "TAKETHIS"]:
+        return False
+    offer = str(exchange.get("offer", "")).split()
+    result = str(exchange.get("result", "")).split()
+    return (len(offer) >= 2 and offer[:2] == ["238", msgid]
+            and len(result) >= 2 and result[:2] == ["239", msgid]
+            and bool(exchange.get("article")))
 
 
 # --------------------------------------------------------------------------
@@ -632,6 +645,25 @@ def offer(args):
     return out
 
 
+def stream(args):
+    """Complete a fresh MODE/CHECK/TAKETHIS transfer; never substitute IHAVE."""
+    wire = Wire(args.port)
+    try:
+        out = {"greeting": wire.greeting, "mode_stream": wire.cmd("MODE STREAM")}
+        out["offer"], out["result"] = "", ""
+        if out["mode_stream"].startswith("203"):
+            out["offer"] = wire.cmd("CHECK " + args.msgid)
+            if out["offer"].split()[:2] == ["238", args.msgid]:
+                wire.sock.sendall(("TAKETHIS " + args.msgid + "\r\n").encode())
+                wire.send_block(octets(args.file))
+                out["result"] = wire.line()
+        out["ok"] = (out["offer"].split()[:2] == ["238", args.msgid]
+                     and out["result"].split()[:2] == ["239", args.msgid])
+        return out
+    finally:
+        wire.close()
+
+
 def post(args):
     """POST (RFC 3977 section 6.3.1), then the article read back by Message-ID."""
     wire = Wire(args.port)
@@ -749,7 +781,7 @@ def control_view(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="phase", required=True)
-    for name in ("read", "ihave", "offer", "post", "fetch", "caps", "protected-read", "control-view"):
+    for name in ("read", "ihave", "offer", "stream", "post", "fetch", "caps", "protected-read", "control-view"):
         one = sub.add_parser(name)
         one.add_argument("--port", type=int, required=True)
         one.add_argument("--group", default="fn.letters")
@@ -769,7 +801,7 @@ def main():
     args = parser.parse_args()
     handler = {"read": read, "ihave": ihave, "offer": offer, "post": post,
                "fetch": fetch, "caps": caps, "protected-read": protected_read,
-               "control-view": control_view}[args.phase]
+               "control-view": control_view, "stream": stream}[args.phase]
     try:
         result = handler(args)
     except Exception as error:
@@ -924,6 +956,10 @@ class InnLab(deploy_gate.DeployGate):
         "innfeed-feeds-fn": (
             "INN's innfeed offered an article to fn and fn took it (238/239 or "
             "335/235)", ("",)),
+        "bidirectional-streaming": (
+            "fresh native fn and INN articles crossed their respective actual "
+            "outbound feeds by CHECK/TAKETHIS with subject-matched 238/239 "
+            "and receiver readback changed only in Path/Xref", ("fn-to-inn", "inn-to-fn")),
         "fn-serves-inn-article": (
             "fn serves the article innfeed transferred with every octet but Path and "
             "Xref as it arrived (RFC 5537 3.7: a serving agent alters nothing else)",
@@ -989,7 +1025,8 @@ class InnLab(deploy_gate.DeployGate):
                  nnrpd_port, fn_port, tap_out_port, tap_in_port,
                  lab_root=DEFAULT_LAB_ROOT, native_openssl_prefix=None,
                  extra_overlays=(), feed_wait=90, inn_security=False,
-                 inn_security_port=INN_SECURITY_PORT, inn_security_feed=False, inn_controls=False, **kwargs):
+                 inn_security_port=INN_SECURITY_PORT, inn_security_feed=False, inn_controls=False,
+                 inn_streaming=False, **kwargs):
         super().__init__(*args, **kwargs)
         if not native_image:
             raise GateError("the fn side is the native image or the lab does not run "
@@ -1001,6 +1038,10 @@ class InnLab(deploy_gate.DeployGate):
         self.inn_security = inn_security
         self.inn_security_port = inn_security_port
         self.inn_controls = inn_controls
+        self.inn_streaming = inn_streaming
+        if not inn_streaming:
+            self.ASSERTIONS = {name: value for name, value in self.ASSERTIONS.items()
+                               if name != "bidirectional-streaming"}
         if not inn_controls:
             self.ASSERTIONS = {name: value for name, value in self.ASSERTIONS.items()
                                if name != "inn-checkgroups-control"}
@@ -2191,6 +2232,62 @@ rm -f {p}/run/innd.pid {p}/run/control.ctl
         written.write_text(text.replace(marker, section + "\n" + marker, 1))
         return written
 
+    def scenario_bidirectional_streaming(self):
+        """SCN-1041: each actual feed transfers a fresh subject and it reads back."""
+        added = self.sh("enable fn's INN streaming peer", self.cd(self.operator(
+            "peer", "add", FN_PEER_NAME, INN_PATH_IDENTITY, "127.0.0.1",
+            str(self.tap_out_port), "'fn.*'", "'fn.*'", "127.0.0.1", "true")),
+            timeout=600, expect=None)
+        if added.rc != 0:
+            for direction in ("fn-to-inn", "inn-to-fn"):
+                self.check("bidirectional-streaming", False,
+                           "native operator refused the streaming peer record",
+                           instance=direction, observed=added.first_line)
+            return
+        for direction, ident, port, pair in (
+                ("fn-to-inn", "FN_STREAM_ID", self.nnrpd_port,
+                 (self.tap_out_port, self.inn_port)),
+                ("inn-to-fn", "INN_STREAM_ID", self.fn_port,
+                 (self.tap_in_port, self.fn_port))):
+            msgid = self.ids[ident]
+            payload = article(msgid, "bidirectional streaming " + direction, self.date,
+                              path=LAB_PATH_IDENTITY + "!not-for-mail"
+                              if direction == "inn-to-fn" else None)
+            path = self.put_article("stream-" + direction, payload)
+            phase = "post" if direction == "fn-to-inn" else "stream"
+            entry = self.payload(self.drive_inn(phase,
+                "--port {} --msgid '{}' --file {}".format(
+                    self.fn_port if phase == "post" else self.inn_port, msgid, path),
+                name="submit fresh streaming " + direction))
+            if direction == "inn-to-fn":
+                self.sh("flush fresh INN streaming article", "{} -t 10 flush fn 2>&1 || true"
+                        .format(self.bin("ctlinnd")), expect=None)
+            found = self.wait_tap(pair, msgid, "streaming " + direction)
+            back = self.payload(self.drive_inn("fetch",
+                "--port {} --msgid '{}'".format(port, msgid),
+                name="read back streaming " + direction))
+            served = self.octets_of(back)
+            transferred = (found or {}).get("article") or b""
+            source = self.octets_of(entry) if direction == "fn-to-inn" else payload
+            feed_comparison = header_differences(source, transferred)
+            comparison = header_differences(transferred, served)
+            ok = (bool(entry.get("ok")) and streaming_transfer_completed(found, msgid)
+                  and str(back.get("article", "")).startswith("220")
+                  and bool(source) and header_value(source, "Message-ID") == msgid
+                  and header_value(served, "Message-ID") == msgid
+                  and header_value(transferred, "Message-ID") == msgid
+                  and relay_changes_permitted(feed_comparison)
+                  and relay_changes_permitted(comparison))
+            self.check("bidirectional-streaming", ok,
+                       "{} lacked a completed subject-matched streaming transfer or "
+                       "unchanged receiver content: {}; {}".format(
+                           direction, self.reply_summary(found), describe_differences(comparison)),
+                       instance=direction,
+                       observed="{}; ARTICLE {}; source-to-feed {}; feed-to-reader {}".format(
+                           self.reply_summary(found), back.get("article"),
+                           describe_differences(feed_comparison),
+                           describe_differences(comparison)))
+
     # -- the whole lab ----------------------------------------------------
     def execute(self):
         self.preflight()
@@ -2220,6 +2317,8 @@ rm -f {p}/run/innd.pid {p}/run/control.ctl
         self.scenario_duplicates_and_loop()
         if self.inn_controls:
             self.scenario_checkgroups_control()
+        if self.inn_streaming:
+            self.scenario_bidirectional_streaming()
         if self.inn_security_feed:
             self.scenario_protected_feed()
         self.scenario_fn_term()
@@ -2286,6 +2385,9 @@ def main(argv=None) -> int:
     parser.add_argument("--inn-controls", action="store_true",
                         help="actual unsigned Control: checkgroups via INN innfeed, "
                              "control-group filing and no automatic group creation")
+    parser.add_argument("--inn-streaming", action="store_true",
+                        help="complete both actual feed directions by CHECK/TAKETHIS "
+                             "with fresh articles and receiver readback")
     parser.add_argument("--inn-security-feed", action="store_true",
                         help="also run native fn STARTTLS/USER-PASS IHAVE into nnrpd's "
                              "injection endpoint; requires --inn-security")
@@ -2336,7 +2438,8 @@ def main(argv=None) -> int:
                  tap_out_port=args.tap_out_port, tap_in_port=args.tap_in_port,
                  feed_wait=args.feed_wait, extra_overlays=overlays[1:],
                  inn_security=args.inn_security, inn_security_port=args.inn_security_port,
-                 inn_security_feed=args.inn_security_feed, inn_controls=args.inn_controls)
+                 inn_security_feed=args.inn_security_feed, inn_controls=args.inn_controls,
+                 inn_streaming=args.inn_streaming)
     started = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     clock = time.monotonic()
     failure = None

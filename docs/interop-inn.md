@@ -410,3 +410,11 @@ Repeated in every evidence file, and here once:
 - A `SIGKILL` is not a power loss, and killing one server is not a partition.
 - The native image is consumed as named; nothing here re-establishes which
   source or which certificates it was built from.
+
+### Complete streaming observation (Q12, SCN-1041)
+
+`--inn-streaming` selects two additional scratch-lab rows, after the original IHAVE exchanges and before the protected-injection fixture pauses the clear feed. It configures the native fn peer through `operator peer add ... true`, then uses a fresh POST for fn-to-INN. The actual native outbound feed must issue CHECK/TAKETHIS and receive 238/239 naming that exact Message-ID; nnrpd must serve it back. A separate fresh article enters innd through a complete MODE STREAM/CHECK/TAKETHIS exchange, and INN's actual innfeed must then perform CHECK/TAKETHIS into fn, followed by native receiver readback. A hand-driven inbound probe alone cannot satisfy either outbound-feed row.
+
+Both source-to-feed and feed-to-reader comparisons permit changes only in Path and Xref, with unchanged bodies and all other headers. An IHAVE fallback, a reply naming another subject, missing transfer, refused configuration or changed receiver content fails the selected observation. The optional flag adds no assertion to an unselected run and preserves the original baseline IHAVE scenarios.
+
+This fixture is source-present. Its scripted-peer tests and fake baseline lab are harness validation; real pinned-INN/matching-native execution remains with the runner. It does not discharge Distribution/cancel/expiry, authenticated control authority, soak/window or other Q12 criteria. RFC4644 sections2.3–2.5 define the protocol exchanges; the complete content checks are the lab's stronger observation, not a new wire requirement.

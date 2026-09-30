@@ -480,12 +480,12 @@ class ProtectedReaderDriverTests(unittest.TestCase):
 class ProtectedReaderFixtureTests(unittest.TestCase):
     """The optional row is isolated and fails on authentication or article changes."""
 
-    def lab(self, security=True):
+    def lab(self, security=True, streaming=False):
         return inn_lab.InnLab(inn_lab.LocalHost(Path("/tmp/unused-inn-fixture")),
             ROOT, "a" * 40, "abc1234", "dev", native_image="/opt/fn/fn-host",
             inn_prefix="/isolated/test-inn", inn_version="2.7.4", inn_port=1,
             nnrpd_port=2, fn_port=3, tap_out_port=4, tap_in_port=5,
-            inn_security=security, inn_security_port=6)
+            inn_security=security, inn_security_port=6, inn_streaming=streaming)
 
     def test_requires_an_explicit_prefix_and_distinct_security_port(self):
         for extra in (["--inn-security"],
@@ -588,6 +588,88 @@ class ProtectedInjectionFixtureTests(unittest.TestCase):
         self.assertNotIn("fn-protected-injection", ProtectedReaderFixtureTests().lab().ASSERTIONS)
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             inn_lab.main(["HEAD", "--native-image", "/opt/fn/fn-host", "--inn-security-feed"])
+
+
+class StreamingFixtureTests(unittest.TestCase):
+    """Harness accounting only: native/INN observations are still pending."""
+
+    def test_completed_streaming_requires_matching_replies_and_article(self):
+        good = dict(verbs=["CHECK", "TAKETHIS"], offer="238 <new@x> wanted",
+                    result="239 <new@x> taken", article=b"article")
+        self.assertTrue(inn_lab.streaming_transfer_completed(good, "<new@x>"))
+        for field, bad in (("verbs", ["IHAVE"]), ("offer", "238 <old@x>"),
+                ("result", "239 <old@x>"), ("offer", "431 <new@x>"),
+                ("result", "439 <new@x>"), ("article", b"")):
+            with self.subTest(field=field, bad=bad):
+                self.assertFalse(inn_lab.streaming_transfer_completed(
+                    dict(good, **{field: bad}), "<new@x>"))
+
+    def test_wire_sends_takethis_only_after_same_subject_check_and_always_closes(self):
+        for mode, check, final, expected in (("203 ready", "238 <new@x>", "239 <new@x>", True),
+                ("500 no mode", "238 <new@x>", "239 <new@x>", False),
+                ("203 ready", "238 <old@x>", "239 <new@x>", False),
+                ("203 ready", "238 <new@x>", "239 <old@x>", False)):
+            ns = {"__name__": "inn_driver_test"}
+            exec(compile(inn_lab.INN_DRIVER, "inn-driver", "exec"), ns)
+            events = []
+            class Peer:
+                greeting = "200 ready"
+                def __init__(self, port): self.sock = SimpleNamespace(sendall=events.append)
+                def cmd(self, text):
+                    events.append(text)
+                    return mode if text == "MODE STREAM" else check
+                def send_block(self, data): events.append(data)
+                def line(self): return final
+                def close(self): events.append("closed")
+            ns["Wire"], ns["octets"] = Peer, lambda path: b"complete fixture\r\n"
+            got = ns["stream"](SimpleNamespace(port=1, msgid="<new@x>", file="fixture"))
+            self.assertEqual(got["ok"], expected)
+            self.assertEqual(events[-1], "closed")
+            self.assertEqual(b"TAKETHIS <new@x>\r\n" in events,
+                             mode.startswith("203") and check == "238 <new@x>")
+
+    def test_both_actual_feed_directions_require_receiver_content_and_streaming(self):
+        for mutation in (None, "ihave", "body", "feed-body", "subject", "submission"):
+            lab = ProtectedReaderFixtureTests().lab(False)
+            captured, commands, checks = {}, [], []
+            lab.sh = lambda name, command, **kwargs: inn_lab.Step(name, command, 0, "accepted", 0)
+            def put(name, octets): captured[name] = octets; return "/scratch/" + name
+            lab.put_article = put
+            def drive(phase, extra, name):
+                commands.append((phase, extra))
+                direction = "fn-to-inn" if "fn-to-inn" in name else "inn-to-fn"
+                payload = captured["stream-" + direction]
+                if phase == "fetch":
+                    if mutation == "body": payload = payload.replace(b"From the fn INN interop lab.", b"EDIT")
+                    if mutation == "subject": payload = payload.replace(b"Message-ID:", b"X-Wrong-ID:")
+                    result = dict(article="220 article", octets=base64.b64encode(payload).decode())
+                else: result = dict(ok=mutation != "submission",
+                                    octets=base64.b64encode(payload).decode())
+                return inn_lab.Step(name, extra, 0, json.dumps(result), 0)
+            lab.drive_inn = drive
+            def tap(pair, msgid, name):
+                direction = "fn-to-inn" if "fn-to-inn" in name else "inn-to-fn"
+                data = captured["stream-" + direction]
+                if mutation == "feed-body": data = data.replace(b"From the fn INN interop lab.", b"EDIT")
+                return dict(verbs=["IHAVE"] if mutation == "ihave" else ["CHECK", "TAKETHIS"],
+                    offer="238 " + msgid, result="239 " + msgid,
+                    article=data)
+            lab.wait_tap = tap
+            lab.check = lambda name, ok, *args, **kwargs: checks.append((kwargs["instance"], ok))
+            lab.scenario_bidirectional_streaming()
+            self.assertEqual(checks, [("fn-to-inn", mutation is None), ("inn-to-fn", mutation is None)])
+            self.assertEqual([phase for phase, _ in commands], ["post", "fetch", "stream", "fetch"])
+
+    def test_peer_refusal_starts_no_submission_and_option_is_unselected_by_default(self):
+        lab = ProtectedReaderFixtureTests().lab(False)
+        self.assertNotIn("bidirectional-streaming", lab.ASSERTIONS)
+        self.assertIn("bidirectional-streaming", ProtectedReaderFixtureTests().lab(False, streaming=True).ASSERTIONS)
+        lab.sh = lambda name, command, **kwargs: inn_lab.Step(name, command, 1, "refused", 0)
+        lab.drive_inn = lambda *args, **kwargs: self.fail("submission after config refusal")
+        checks = []
+        lab.check = lambda name, ok, *args, **kwargs: checks.append((kwargs["instance"], ok))
+        lab.scenario_bidirectional_streaming()
+        self.assertEqual(checks, [("fn-to-inn", False), ("inn-to-fn", False)])
 
 
 class CheckgroupsDriverTests(unittest.TestCase):
