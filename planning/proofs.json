@@ -17982,6 +17982,27 @@
         "fn-bpnc-open-run-live-iff-both-completions-succeed",
         "fn-bpnc-retirement-stops-the-control-listener"
       ]
+    },
+    {
+      "id": "PRF-1094",
+      "title": "Bounded legacy hydration cursor and exact catalog refinement (header simulation open)",
+      "statement": "Q5c/J1 source component: fn-lpc-begin captures an immutable arena handle, known length and origin pin. Guard-verified fn-lpc-tick consumes at most fuel source bytes, returns consumed/work <= fuel, preserves source/pin and its scalar ready guard, and makes progress with positive fuel before EOF. Fields are five handle/start/length/pin spans; no terminal parse, reverse, coerce or flatten is executed. fn-lpc-tick-is-source-list-tick connects the concrete arena accessor to the exact source scan. fn-lpc-tick-full-body-lines unconditionally equates the completed tick body count with actual fn-hf-body-lines-of, including invalid headers; redundant arena/handle/true-list hypotheses were removed after proving the stronger statement. General equality of final verdict and materialized five spans with actual fn-hnov-of remains OPEN, as do maintained span bounds, allocator cost and actual served composition. The full grammar is implemented and checked against actual fn-hnov-of, but examples are not its missing general proof.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-1066"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": [
+        "books/legacy-parser-cursor.lisp",
+        "books/legacy-parser-reference.lisp",
+        "tests/acl2/legacy-parser-cursor-tests.lisp"
+      ],
+      "progress_note": "Source component only; no host call, qualified image, certification manifest or completed Q5c/J1 claim. Runtime work counts raw byte transitions; constant-size record allocation is explicit in source, while a proved allocation accounting bound and physical measurement remain open. Clean protected REPL evidence is recorded in LANEDUMP.md. fn-lpc-agreesp states the full outstanding catalog equality and is not a theorem."
     }
   ]
 }
