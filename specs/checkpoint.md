@@ -383,3 +383,14 @@ landed library continuations do not install a producer host call, allocate
 its resources, replace whole history build/flush, or establish full retained
 projection and byte-effect refinement. The unmerged producer prototype's
 other proof roots are not imported by these leaf components.
+
+`books/history-page-buffer.lisp` (PRF-1093) supplies the concrete scratch page:
+a fixed 2048-u64 array, a bounded written-prefix counter, and capture/lease
+references. Begin resets only the counter and identities. Put writes one word;
+the accessor refuses unwritten offsets even when an old physical word remains
+there. The prefix refinement equates each successful put with one logical word
+append; full-page refusal leaves the state unchanged. This is one format page,
+not a data-capacity limit. Buffer allocation needs its actual runtime charge,
+and reuse must wait for completion/join of every I/O owner. The proof-only
+prefix collector is excluded from the host path; serialization and complete
+image effect composition remain open.

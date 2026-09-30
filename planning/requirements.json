@@ -5730,7 +5730,8 @@
       "proof_targets": [
         "PRF-1068",
         "PRF-1086",
-        "PRF-1092"
+        "PRF-1092",
+        "PRF-1093"
       ],
       "verification": [
         "proof",
@@ -5744,7 +5745,9 @@
         "tests/acl2/history-page-cursor-tests.lisp",
         "books/history-page-layout.lisp",
         "tests/acl2/history-page-layout-tests.lisp",
-        "planning/history-page-cursor-contract.md"
+        "planning/history-page-cursor-contract.md",
+        "books/history-page-buffer.lisp",
+        "tests/acl2/history-page-buffer-tests.lisp"
       ],
       "implementation_note": "The full S7 producer remains planned. Landed components are the live snapshot inverse and bounded descriptor/scalar page-layout libraries; these have no new producer host caller. Capture/controller, bounded history preparation, physical admission, full retained-projection recovery, I/O effects and marker-last publication are still required. Unmerged producer prototypes and their separate proof targets are not cited as landed evidence."
     }

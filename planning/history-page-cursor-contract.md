@@ -151,3 +151,26 @@ startup their actual retained capacity belongs to startup baseline, with an
 exclusive transfer lease during snapshot; if allocated per attempt the attempt
 funds them before allocation. This distinction never excuses served vector
 growth. Empty cancellation cannot release a worker's buffer before join.
+
+## Folded concrete page scratch API
+
+PRF-1093, `books/history-page-buffer.lisp`: `fn-hpb` has exactly a fixed
+2048-u64 array, scalar `used` in [0,2048], epoch reference and lease reference.
+`fn-hpb-begin(epoch,lease,fn-hpb)` resets used and identities only;
+`fn-hpb-put(word,fn-hpb)` returns `:stored` or `:full` and the updated scratch;
+`fn-hpb-word(index,fn-hpb)` returns `(:word,value)` or `(:unwritten,0)`;
+`fn-hpb-ready` means all2048words are written. The old physical word is never
+exposed through the word API after reset. Format padding is supplied explicitly
+as zero words; begin does not clear an entire old page.
+
+The concrete prefix append and representation preservation theorems are folded;
+`fn-hpb-prefix` is a logical abstraction, never a host serialization API.
+Runtime recognizers are at most this single fixed page, not whole image state.
+The constructor owns16384payload octets plus measured runtime object overhead.
+A native conversion vector adds16384payload octets; collecting a transient
+word list additionally owns2048cons cells and actual boxed-u64 representation.
+These coexistence terms must be funded if the adapter uses them. A direct
+array I/O primitive needs its own named effect bridge before removing them
+from the demand. Neither begin nor a timeout releases the physical owner's
+lease: the controller may reuse scratch only after synchronous completion or
+observed worker death and join.

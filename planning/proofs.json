@@ -18251,6 +18251,25 @@
         "planning/evidence/store-invariants-replay-2026-09-29.md"
       ],
       "progress_note": "PKT-413 source bridges: actual caller host/bp-receipt-journal-host.lisp fn-bprj-install; fn-bpaj-receiver-result projects flag and receiver. Full replay requires receiver-only-recordsp, excluding both transit kinds. Suffix replay additionally requires the exact context-first joined shape, with no redundant receiver-state recognizer hypothesis. All three new definitions are guard verified. Fresh protected REPL si5 loaded the complete book and six witness assertions plus three expected must-fail removals without refusal (27 root forms; 110.18 ACL2 seconds including source dependencies). Both events pass strict host reach. No matching certification manifest or new native/image qualification is claimed. Existing receiver replay baseline entries remain pending valid output-projection bridge support in the checker."
+    },
+    {
+      "id": "PRF-1093",
+      "title": "Fixed private page scratch preserves the exact written prefix",
+      "statement": "Library fn-hpb is a fixed 2048-u64 concrete page scratch with used counter and borrowed capture/lease identities. Guardverified begin resets the prefix without clearing/copying the backing array; put stores one word or leaves a full page unchanged; word refuses unwritten offsets with no stale-word exposure. fn-hpb-put-refines-prefix relates concrete writes to logical prefix append under natural counter and available-capacity hypotheses. begin/put preserve the concrete representation invariant and capture/lease values as stated. Each raw recognizer is bounded by one format page, never total stored data. Resource funding, exclusion while an I/O worker owns the buffer, serialization and joined image effects belong to the pending producer composition; no host caller or served completion claim.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-040"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": [
+        "books/history-page-buffer.lisp",
+        "tests/acl2/history-page-buffer-tests.lisp",
+        "planning/history-page-cursor-contract.md"
+      ],
+      "progress_note": "Clean protected auto-selected persvati hpbt63 admitted source in proper encapsulate plus9testbodyforms,zero refusal,0.14ACL2seconds/12267steps. Tests cover nonempty exact prefix, stale physical word after reset, actual2048word full state, capacity removal and mutation; negative counter is a proved ground logical corrupted-state witness because the raw bounded field cannot physically hold it. No certificate/native/host claim."
     }
   ]
 }
