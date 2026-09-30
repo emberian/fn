@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1893 |
-| Certification roots in the Makefile | 1814 |
-| Books inside the root closure | 1885 |
+| Books read | 1894 |
+| Certification roots in the Makefile | 1815 |
+| Books inside the root closure | 1886 |
 | `defthm` and `defthmd` events | 29780 |
-| `defun` events | 19041 |
+| `defun` events | 19044 |
 | Functions with verified guards | 3513 |
-| Functions declared `:verify-guards nil` and never verified | 2269 |
+| Functions declared `:verify-guards nil` and never verified | 2272 |
 | Functions left at the default with an explicit guard | 10403 |
 | Functions left at the default with no guard | 2856 |
-| `assert-event` checks | 23989 |
+| `assert-event` checks | 23990 |
 | `must-fail` checks | 2516 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 169 |
@@ -1418,6 +1418,7 @@ that `make certify` requests.
 | `tests/acl2/decoded-window-descriptor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 0 | 0 |
 | `tests/acl2/decoded-window-executor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/decoded-window-lease-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
+| `tests/acl2/decoded-window-publication-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 1 | 0 | 0 |
 | `tests/acl2/decoded-window-read-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 1 | 0 | 0 |
 | `tests/acl2/defevent-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 19 | 1 | 0 |
 | `tests/acl2/definterface-tests.lisp` | root | 8 | 9 | 0/0/6/3 | 39 | 23 | 1 |

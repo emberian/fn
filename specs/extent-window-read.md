@@ -237,3 +237,11 @@ does not install a decoded native worker/buffer holder: the native dispatcher
 explicitly refuses decoded execution until exact object/view binding and
 matched compressed runtime funding are supplied. See the source coordinate
 in planning/evidence/decoded-window-shared-join-source-2026-09-30.md.
+
+The typed publication source fixture now executes the actual issuer, shared
+worker acquisition, typed initializer, authenticated bounded decoder, return
+and scalar read on the carried buffer. Its final251-A octet agrees with the
+existing whole decoder; stale ownership, mismatched request, cancellation
+and release remain distinct. This fixture does not replace the general
+decoder trajectory or native object/view binding obligations. See
+planning/evidence/decoded-window-publication-source-2026-09-30.md.

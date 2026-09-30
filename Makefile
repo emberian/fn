@@ -1156,6 +1156,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/decoded-window-descriptor-tests \
 	tests/acl2/decoded-window-lease-tests \
 	tests/acl2/decoded-window-executor-tests \
+	tests/acl2/decoded-window-publication-tests \
 	tests/acl2/decoded-window-begin-tests \
 	tests/acl2/decoded-window-read-tests \
 	tests/acl2/decoded-window-copy-trajectory-tests \

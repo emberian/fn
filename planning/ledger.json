@@ -1145,6 +1145,7 @@
     "tests/acl2/decoded-window-descriptor-tests",
     "tests/acl2/decoded-window-lease-tests",
     "tests/acl2/decoded-window-executor-tests",
+    "tests/acl2/decoded-window-publication-tests",
     "tests/acl2/decoded-window-begin-tests",
     "tests/acl2/decoded-window-read-tests",
     "tests/acl2/decoded-window-copy-trajectory-tests",
@@ -1818,18 +1819,18 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1893,
-    "books_in_root_closure": 1885,
-    "roots": 1814,
+    "books": 1894,
+    "books_in_root_closure": 1886,
+    "roots": 1815,
     "theorems": 29780,
-    "functions": 19041,
-    "assert_events": 23989,
+    "functions": 19044,
+    "assert_events": 23990,
     "must_fails": 2516,
     "prover_refusals": 0,
     "encapsulates": 169,
     "guards": {
       "verified": 3513,
-      "declared-off": 2269,
+      "declared-off": 2272,
       "default-guarded": 10403,
       "default-unguarded": 2856
     },
@@ -41219,6 +41220,33 @@
       "encapsulates": 0,
       "includes": [
         "../../books/decoded-window-lease"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/decoded-window-publication-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/decoded-window-lease",
+        "../../books/decoded-window-read"
       ],
       "system_includes": [],
       "suspects": [],
