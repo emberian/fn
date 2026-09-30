@@ -64,7 +64,7 @@
           (append (revappend prefix nil) out)))
   :hints (("Goal" :induct (revappend out prefix)))))
 
-; Actual host adapter subject: FINISH of every returned quantum retains
+; Concrete quantum adapter subject: FINISH of every returned quantum retains
 ; exactly the accumulated prefix plus the complete old reply continuation.
 (defthm fn-obc-quantum-one-carried-complete-old-reply
  (implies (and (fn-obc-semantic-ready-p (nth 0 q) fn-arena fn-cat)
