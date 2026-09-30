@@ -60,7 +60,8 @@
 (defun fn-owner-index-connection-start
  (kind family address peer fn-mio$c fn-page-read-pool state)
  (declare (xargs :stobjs (fn-mio$c fn-page-read-pool state)
-  :guard (boundp-global 'fn-owner state) :verify-guards nil))
+  :guard (and (boundp-global 'fn-owner state)
+              (fn-aec-pool-statep fn-page-read-pool)) :verify-guards nil))
  (let* ((ticket (fn-owner-connection-operation-ticket state))
         (installation (fn-owner-connection-operation-installation state))
         (quantum (nfix (fn-omk-at 14 ticket))))
@@ -182,6 +183,45 @@
            fn-owner-connection-operation-installation fn-owner-core fn-omk-at)))
  :rule-classes nil)
 
+(local (defthm fn-cops-entry-frame-for-prepare
+ (mv-let (word nonce next-fn-allocation-turn-slots next-fn-page-read-pool) (fn-ats-enter-internal slot role fn-allocation-turn-slots fn-page-read-pool)
+  (declare (ignore word nonce))
+  (and (equal (fn-ats-association next-fn-allocation-turn-slots) (fn-ats-association fn-allocation-turn-slots))
+       (equal (fn-ats-count next-fn-allocation-turn-slots) (fn-ats-count fn-allocation-turn-slots))
+       (equal (nth 2 next-fn-allocation-turn-slots) (nth 2 fn-allocation-turn-slots))
+       (equal (fn-prp-alloc-installation next-fn-page-read-pool) (fn-prp-alloc-installation fn-page-read-pool))
+       (equal (fn-prp-alloc-epoch next-fn-page-read-pool) (fn-prp-alloc-epoch fn-page-read-pool))
+       (equal (fn-prp-alloc-occupied next-fn-page-read-pool) (fn-prp-alloc-occupied fn-page-read-pool))
+       (equal (fn-prp-mode next-fn-page-read-pool) (fn-prp-mode fn-page-read-pool))
+       (equal (fn-prp-incoming-slot next-fn-page-read-pool) (fn-prp-incoming-slot fn-page-read-pool))))
+ :hints (("Goal" :in-theory (disable fn-ats-enter-internal) :use fn-atsh-entry-preserves-installed-roots))))
+
+(local (defthm fn-cops-finish-frame-for-prepare
+ (mv-let (word next-fn-allocation-turn-slots next-fn-page-read-pool) (fn-ats-finish-owned slot nonce fn-allocation-turn-slots fn-page-read-pool)
+  (declare (ignore word))
+  (and (equal (fn-ats-association next-fn-allocation-turn-slots) (fn-ats-association fn-allocation-turn-slots))
+       (equal (fn-ats-count next-fn-allocation-turn-slots) (fn-ats-count fn-allocation-turn-slots))
+       (equal (nth 2 next-fn-allocation-turn-slots) (nth 2 fn-allocation-turn-slots))
+       (equal (nth 3 next-fn-allocation-turn-slots) (nth 3 fn-allocation-turn-slots))
+       (equal (fn-prp-data next-fn-page-read-pool) (fn-prp-data fn-page-read-pool))
+       (equal (fn-prp-alloc-installation next-fn-page-read-pool) (fn-prp-alloc-installation fn-page-read-pool))
+       (equal (fn-prp-alloc-epoch next-fn-page-read-pool) (fn-prp-alloc-epoch fn-page-read-pool))
+       (equal (fn-prp-alloc-occupied next-fn-page-read-pool) (fn-prp-alloc-occupied fn-page-read-pool))
+       (equal (fn-prp-mode next-fn-page-read-pool) (fn-prp-mode fn-page-read-pool))
+       (equal (fn-prp-incoming-slot next-fn-page-read-pool) (fn-prp-incoming-slot fn-page-read-pool))))
+ :hints (("Goal" :in-theory (disable fn-ats-finish-owned) :use fn-atsh-finish-preserves-installed-roots))))
+
+(local
+ (defthm fn-cops-body-frame-for-prepare
+  (let ((next (fn-ats-prepay-body-internal slot nonce body fn-allocation-turn-slots fn-page-read-pool)))
+   (and (equal (fn-prp-alloc-installation (mv-nth 2 next)) (fn-prp-alloc-installation fn-page-read-pool))
+        (equal (fn-prp-alloc-epoch (mv-nth 2 next)) (fn-prp-alloc-epoch fn-page-read-pool))
+        (equal (fn-prp-alloc-occupied (mv-nth 2 next)) (fn-prp-alloc-occupied fn-page-read-pool))
+        (equal (fn-ats-association (mv-nth 1 next)) (fn-ats-association fn-allocation-turn-slots))
+        (equal (fn-ats-count (mv-nth 1 next)) (fn-ats-count fn-allocation-turn-slots))
+        (equal (nth 2 (mv-nth 1 next)) (nth 2 fn-allocation-turn-slots))))
+  :hints (("Goal" :in-theory (disable nth update-nth fn-aec-body)))))
+
 (defthm fn-owner-index-connection-prepare-retains-installed-roots
  (let ((next (fn-owner-index-connection-prepare kind family address peer slot fn-allocation-turn-slots fn-mio$c fn-page-read-pool state)))
   (and (equal (mv-nth 4 next) fn-mio$c)
@@ -191,8 +231,91 @@
        (equal (fn-ats-association (mv-nth 3 next)) (fn-ats-association fn-allocation-turn-slots))
        (equal (fn-ats-count (mv-nth 3 next)) (fn-ats-count fn-allocation-turn-slots))
        (equal (nth 2 (mv-nth 3 next)) (nth 2 fn-allocation-turn-slots))))
+ :hints (("Goal" :in-theory (disable nth update-nth fn-ats-enter-internal fn-ats-prepay-body-internal fn-ats-finish-owned fn-prp-alloc-installation fn-prp-alloc-epoch fn-prp-alloc-occupied fn-ats-association fn-ats-count fn-cop-evaluate fn-owner-connection-operation-ticket fn-owner-connection-operation-installation fn-owner-core fn-omk-at fn-omk-widthp)))
+ :rule-classes nil)
+
+
+(local
+ (defthm fn-cops-keep-ledger-pool-state
+  (equal (fn-aec-pool-statep (fn-owner-page-read-keep-ledger ledger pool)) (fn-aec-pool-statep pool))
+  :hints (("Goal" :in-theory (disable fn-aec-pool-statep fn-owner-page-read-keep-ledger)
+   :use fn-aec-keep-ledger-preserves-installed-state))))
+
+(local
+ (defthm fn-cops-reserve-pool-state
+  (equal (fn-aec-pool-statep (mv-nth 3 (fn-icr-reserve id demand backing pool))) (fn-aec-pool-statep pool))
+  :hints (("Goal" :in-theory
+   (disable fn-aec-pool-statep fn-owner-page-read-keep-ledger fn-prs-issue fn-prs-vectorp fn-icr-candidate
+            fn-owner-page-read-ledger fn-prl-nth fn-prl-build fn-omk-at)))))
+
+(local
+ (defthm fn-cops-settle-pool-state
+  (equal (fn-aec-pool-statep (mv-nth 3 (fn-icr-settle token fuel backing pool))) (fn-aec-pool-statep pool))
+  :hints (("Goal" :in-theory
+   (disable fn-aec-pool-statep fn-owner-page-read-keep-ledger fn-ibp-connection-read fn-ibp-connection-release
+            fn-ich-row-release-ready fn-prs-vectorp fn-prs-below fn-ich-tokenp fn-owner-page-read-ledger
+            fn-prl-nth fn-prl-build fn-omk-at)))))
+
+(local
+ (defthm fn-cops-abort-pool-state
+  (equal (fn-aec-pool-statep (mv-nth 3 (fn-icr-abort token fuel backing pool))) (fn-aec-pool-statep pool))
+  :hints (("Goal" :in-theory
+   (disable fn-aec-pool-statep fn-owner-page-read-keep-ledger fn-icr-settle fn-ibp-connection-event
+            fn-prs-vectorp fn-prs-below fn-ich-tokenp fn-owner-page-read-ledger fn-prl-nth fn-prl-build fn-omk-at fn-omk-widthp)))))
+
+(local
+ (defthm fn-cops-reserve-register-pool-state
+  (equal (fn-aec-pool-statep (mv-nth 4 (fn-ics-reserve-register id demand fuel backing pool))) (fn-aec-pool-statep pool))
+  :hints (("Goal" :in-theory
+   (disable fn-aec-pool-statep fn-icr-reserve fn-icr-register fn-icr-abort fn-omk-at floor)))))
+
+(defthm fn-owner-index-connection-start-preserves-carried-pool
+ (implies (fn-aec-pool-statep fn-page-read-pool)
+  (fn-aec-pool-statep
+   (mv-nth 5 (fn-owner-index-connection-start kind family address peer fn-mio$c fn-page-read-pool state))))
  :hints (("Goal" :in-theory
-  (disable nth update-nth fn-aec-enter fn-aec-body fn-aec-leave-owned fn-aec-collection-issue
-           fn-cop-evaluate fn-owner-connection-operation-ticket fn-owner-connection-operation-installation
-           fn-owner-core fn-omk-at fn-omk-widthp)))
+   (disable fn-aec-pool-statep fn-ics-reserve-register fn-cop-issuer-domainp fn-owner-core
+            fn-owner-connection-operation-ticket fn-owner-connection-operation-installation fn-cop-octets-match)))
+ :rule-classes nil)
+
+(local
+ (defthm fn-cops-keep-ledger-pool-rest
+  (equal (cdr (fn-owner-page-read-keep-ledger ledger pool)) (cdr pool))
+  :hints (("Goal" :in-theory (enable fn-owner-page-read-keep-ledger update-fn-prp-data)))))
+
+(local
+ (defthm fn-cops-reserve-pool-rest
+  (equal (cdr (mv-nth 3 (fn-icr-reserve id demand backing pool))) (cdr pool))
+  :hints (("Goal" :in-theory
+   (disable fn-aec-pool-statep fn-owner-page-read-keep-ledger fn-prs-issue fn-prs-vectorp fn-icr-candidate
+            fn-owner-page-read-ledger fn-prl-nth fn-prl-build fn-omk-at)))))
+
+(local
+ (defthm fn-cops-settle-pool-rest
+  (equal (cdr (mv-nth 3 (fn-icr-settle token fuel backing pool))) (cdr pool))
+  :hints (("Goal" :in-theory
+   (disable fn-aec-pool-statep fn-owner-page-read-keep-ledger fn-ibp-connection-read fn-ibp-connection-release
+            fn-ich-row-release-ready fn-prs-vectorp fn-prs-below fn-ich-tokenp fn-owner-page-read-ledger
+            fn-prl-nth fn-prl-build fn-omk-at)))))
+
+(local
+ (defthm fn-cops-abort-pool-rest
+  (equal (cdr (mv-nth 3 (fn-icr-abort token fuel backing pool))) (cdr pool))
+  :hints (("Goal" :in-theory
+   (disable fn-aec-pool-statep fn-owner-page-read-keep-ledger fn-icr-settle fn-ibp-connection-event
+            fn-prs-vectorp fn-prs-below fn-ich-tokenp fn-owner-page-read-ledger fn-prl-nth fn-prl-build fn-omk-at fn-omk-widthp)))))
+
+(local
+ (defthm fn-cops-reserve-register-pool-rest
+  (equal (cdr (mv-nth 4 (fn-ics-reserve-register id demand fuel backing pool))) (cdr pool))
+  :hints (("Goal" :in-theory
+   (disable fn-aec-pool-statep fn-icr-reserve fn-icr-register fn-icr-abort fn-omk-at floor)))))
+
+(defthm fn-owner-index-connection-start-retains-allocation-frame
+ (equal
+  (cdr (mv-nth 5 (fn-owner-index-connection-start kind family address peer fn-mio$c fn-page-read-pool state)))
+  (cdr fn-page-read-pool))
+ :hints (("Goal" :in-theory
+   (disable fn-aec-pool-statep fn-ics-reserve-register fn-cop-issuer-domainp fn-owner-core
+            fn-owner-connection-operation-ticket fn-owner-connection-operation-installation fn-cop-octets-match)))
  :rule-classes nil)

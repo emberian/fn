@@ -8,4 +8,6 @@
             fn-owner-index-connection-prepare-retains-installed-roots))
 
 (definterface fn-owner-index-connection-start :class :common-lisp-compliant
+ :raw-with (fn-owner-index-connection-start-preserves-carried-pool
+            fn-owner-index-connection-start-retains-allocation-frame)
  :keystones (fn-owner-index-connection-reserved-has-registered-receipt))

@@ -18048,9 +18048,10 @@
         "specs/connection-operation.md",
         "planning/evidence/connection-start-join-2026-09-30",
         "books/connection-operation-start.lisp",
-        "tests/acl2/connection-operation-start-tests.lisp"
+        "tests/acl2/connection-operation-start-tests.lisp",
+        "planning/evidence/connection-start-native-source-2026-09-30"
       ],
-      "progress_note": "Actual prepare/start guards, public receipt theorem and raw PREPARE preservation/frame declarations admitted; six transaction cases, literal positive/removal teeth and declaration checks pass. Frame proof cost optimization and genuine full operation installer/native start join remain open."
+      "progress_note": "Actual prepare/start guards, public receipt theorem and both raw callback preservation/frame declarations admitted in isolated matching source world. START carries the genuine pool invariant established by PREPARE; its mutations preserve the allocation frame. Six transaction cases, literal positive/removal teeth and declaration checks pass. PREPARE frame proof reduced to 0.38s/238329 steps including local lemmas; genuine full operation installer/runtime allowance and native closure qualification remain open."
     },
     {
       "id": "PRF-1162",

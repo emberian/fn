@@ -161,8 +161,8 @@
 (assert-event
  (and (not (fn-di-raw-with-problem 'fn-owner-index-connection-prepare
        (cdr (assoc-eq 'fn-owner-index-connection-prepare (table-alist 'fn-interfaces (w state)))) (w state)))
-      (not (fn-di-get :raw-with
-       (cdr (assoc-eq 'fn-owner-index-connection-start (table-alist 'fn-interfaces (w state))))))))
+      (not (fn-di-raw-with-problem 'fn-owner-index-connection-start
+       (cdr (assoc-eq 'fn-owner-index-connection-start (table-alist 'fn-interfaces (w state)))) (w state)))))
 
 (assert-event
  (fn-di-raw-with-problem 'fn-owner-index-connection-prepare
