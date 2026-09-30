@@ -311,6 +311,8 @@
     "tests/acl2/byte-store-state-checkpoint-program-tests",
     "books/store-node-resolution",
     "books/refusal-effect",
+    "books/refusal-headroom",
+    "tests/acl2/refusal-headroom-tests",
     "books/closure-open",
     "books/store-identity-sequence-invariants",
     "tests/acl2/store-identity-sequence-invariants-tests",
@@ -1547,6 +1549,19 @@
     "books/history-decode-cursor",
     "books/history-decode-stream",
     "tests/acl2/history-decode-cursor-tests",
+    "books/pagestore-digest-cursor",
+    "books/pagestore-digest-cursor-refinement",
+    "books/pagestore-digest-byte-cursor",
+    "books/pagestore-digest-byte-refinement",
+    "tests/acl2/pagestore-digest-cursor-tests",
+    "tests/acl2/pagestore-digest-cursor-refinement-tests",
+    "tests/acl2/pagestore-digest-byte-cursor-tests",
+    "tests/acl2/pagestore-digest-cursor-union-tests",
+    "tests/acl2/history-reader-digest-union-tests",
+    "books/history-page-reader",
+    "books/history-page-reader-verdict",
+    "tests/acl2/history-page-reader-tests",
+    "tests/acl2/history-page-reader-verdict-tests",
     "tests/acl2/history-page-cursor-tests",
     "tests/acl2/history-page-layout-tests",
     "tests/acl2/history-page-buffer-tests",
@@ -1712,26 +1727,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1775,
-    "books_in_root_closure": 1772,
-    "roots": 1708,
-    "theorems": 28484,
-    "functions": 18605,
-    "assert_events": 23512,
+    "books": 1790,
+    "books_in_root_closure": 1787,
+    "roots": 1723,
+    "theorems": 28676,
+    "functions": 18668,
+    "assert_events": 23594,
     "must_fails": 2506,
     "prover_refusals": 0,
-    "encapsulates": 157,
+    "encapsulates": 158,
     "guards": {
-      "verified": 3489,
-      "declared-off": 2168,
-      "default-guarded": 10174,
-      "default-unguarded": 2774
+      "verified": 3491,
+      "declared-off": 2191,
+      "default-guarded": 10201,
+      "default-unguarded": 2785
     },
     "suspect_theorems": 1233,
-    "export_hygiene_warnings": 331,
+    "export_hygiene_warnings": 335,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2471,
+    "include_hygiene_warnings": 2478,
     "host_names_warnings": 2137,
     "hand_written_record_warnings": 18
   },
@@ -12903,6 +12918,63 @@
       "read_error": null
     },
     {
+      "book": "books/history-page-reader-verdict.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 14,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-page-reader"
+      ],
+      "system_includes": [
+        "arithmetic/top",
+        "ihs/quotient-remainder-lemmas"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/history-page-reader.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 19,
+      "functions": 14,
+      "guards": {
+        "verified": 0,
+        "declared-off": 4,
+        "default-guarded": 10,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "pagestore-exec"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/history-pages-append-grown.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -15528,12 +15600,12 @@
       "book": "books/legacy-parser-validity.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 19,
-      "functions": 11,
+      "theorems": 59,
+      "functions": 14,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 9,
+        "default-guarded": 12,
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
@@ -21720,6 +21792,116 @@
       "read_error": null
     },
     {
+      "book": "books/pagestore-digest-byte-cursor.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 6,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "pagestore-digest-cursor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/pagestore-digest-byte-refinement.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 16,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 1,
+      "includes": [
+        "pagestore-digest-byte-cursor",
+        "pagestore-digest-cursor-refinement"
+      ],
+      "system_includes": [
+        "arithmetic-5/top",
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/pagestore-digest-cursor-refinement.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 52,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "pagestore-digest-cursor"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/pagestore-digest-cursor.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 10,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "pagestore-words-blake3"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/pagestore-exec.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -24654,6 +24836,32 @@
         "fn-rfx-unaffordable-prepare-is-unchanged-by-definition",
         "fn-rfx-unserved-prepare-is-unchanged-by-definition"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/refusal-headroom.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 15,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "refusal-effect"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -40788,6 +40996,58 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/history-page-reader-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 5,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 28,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-page-reader"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/history-page-reader-verdict-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 11,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-page-reader-verdict"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/history-pages-digest-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -41079,6 +41339,34 @@
       "includes": [
         "../../books/history-pages-write-keys",
         "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/history-reader-digest-union-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-page-reader-tests",
+        "history-page-reader-verdict-tests",
+        "pagestore-digest-cursor-union-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -41756,7 +42044,7 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 15,
+      "assert_events": 53,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 6,
@@ -46622,6 +46910,112 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/pagestore-digest-byte-cursor-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 9,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/pagestore-digest-byte-refinement"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/pagestore-digest-cursor-refinement-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 6,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/pagestore-digest-cursor-refinement"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/pagestore-digest-cursor-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 11,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/pagestore-digest-cursor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/pagestore-digest-cursor-union-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/pagestore-digest-byte-refinement",
+        "../../books/pagestore-exec",
+        "pagestore-digest-byte-cursor-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/pagestore-refine-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -48235,6 +48629,33 @@
         "../../books/refusal-effect",
         "owner-config-tests",
         "owner-prepare-served-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/refusal-headroom-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 5,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 7,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/refusal-headroom",
+        "../../books/store-observed"
       ],
       "system_includes": [],
       "suspects": [],
@@ -64694,6 +65115,30 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "pgs-dbr-span-length",
+        "book": "books/pagestore-digest-byte-refinement.lisp",
+        "line": 7,
+        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
+      },
+      {
+        "theorem": "pgs-dbr-byte-initial-root-is-blake3",
+        "book": "books/pagestore-digest-byte-refinement.lisp",
+        "line": 137,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "pgs-dcr-span-length",
+        "book": "books/pagestore-digest-cursor-refinement.lisp",
+        "line": 10,
+        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
+      },
+      {
+        "theorem": "pgs-dcr-root-result-is-denotation-root",
+        "book": "books/pagestore-digest-cursor-refinement.lisp",
+        "line": 291,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "pgs-g-physes-of-decode-tables",
         "book": "books/pagestore-gc.lisp",
         "line": 540,
@@ -65648,12 +66093,13 @@
           "books/article-public-bound.lisp",
           "books/article-public-work.lisp",
           "books/article-work-scanners.lisp",
+          "books/legacy-parser-validity.lisp",
           "books/reclaim-admission.lisp",
           "books/source-projection-bridge.lisp",
           "tests/acl2/article-buffer-tests.lisp",
           "tests/acl2/article-tests.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 11 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 12 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-line-rest",
@@ -65665,9 +66111,10 @@
           "books/article-invariants.lisp",
           "books/article-properties.lisp",
           "books/article-public-bound.lisp",
-          "books/article-work-scanners.lisp"
+          "books/article-work-scanners.lisp",
+          "books/legacy-parser-validity.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 6 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 7 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-bpf-offset",
@@ -73652,6 +74099,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/refusal-headroom.lisp",
+        "line": 5,
+        "include": "refusal-effect",
+        "included": "books/refusal-effect.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/refused-offers.lisp",
         "line": 28,
         "include": "rev-onto",
@@ -79343,6 +79797,27 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/history-reader-digest-union-tests.lisp",
+        "line": 4,
+        "include": "pagestore-digest-cursor-union-tests",
+        "included": "tests/acl2/pagestore-digest-cursor-union-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/history-reader-digest-union-tests.lisp",
+        "line": 5,
+        "include": "history-page-reader-tests",
+        "included": "tests/acl2/history-page-reader-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/history-reader-digest-union-tests.lisp",
+        "line": 6,
+        "include": "history-page-reader-verdict-tests",
+        "included": "tests/acl2/history-page-reader-verdict-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/history-records-disk-tests.lisp",
         "line": 16,
         "include": "must-fail-checked",
@@ -81881,6 +82356,27 @@
         "line": 16,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/pagestore-digest-byte-cursor-tests.lisp",
+        "line": 2,
+        "include": "../../books/pagestore-digest-byte-refinement",
+        "included": "books/pagestore-digest-byte-refinement.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/pagestore-digest-cursor-union-tests.lisp",
+        "line": 4,
+        "include": "../../books/pagestore-digest-byte-refinement",
+        "included": "books/pagestore-digest-byte-refinement.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/pagestore-digest-cursor-union-tests.lisp",
+        "line": 5,
+        "include": "pagestore-digest-byte-cursor-tests",
+        "included": "tests/acl2/pagestore-digest-byte-cursor-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

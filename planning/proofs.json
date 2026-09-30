@@ -18704,7 +18704,6 @@
       "depends_on": [],
       "assumptions": [],
       "status": "planned",
-      "events": [],
       "evidence": [
         "books/pagestore-digest-cursor.lisp",
         "tests/acl2/pagestore-digest-cursor-tests.lisp",
@@ -18749,7 +18748,6 @@
       "depends_on": [],
       "assumptions": [],
       "status": "planned",
-      "events": [],
       "evidence": [
         "books/history-page-reader.lisp",
         "tests/acl2/history-page-reader-tests.lisp",
