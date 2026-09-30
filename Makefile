@@ -1322,6 +1322,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-bound-tests \
 	books/consumer-remote-position \
 	tests/acl2/consumer-remote-position-tests \
+	tests/acl2/consumer-authority-carry-tests \
 	books/consumer-remote-codec \
 	tests/acl2/consumer-remote-codec-tests \
 	books/consumer-wait-codec \

@@ -15,7 +15,7 @@
   :hints (("Goal" :in-theory
            (e/d (fn-cp-remote-register fn-cp-register-within fn-cp-register
                  fn-cp-apply fn-cp-event-entry fn-cp-find fn-cp-entry
-                 fn-cp-state fn-cp-nth)
+                 fn-cp-state fn-cp-state-carry fn-cp-nth)
                 (fn-cp-idp fn-cp-remote-metadatap fn-cp-remove)))))
 
 (defthm fn-cp-remote-rebase-installs-exact-definition
@@ -29,7 +29,7 @@
   :rule-classes nil
   :hints (("Goal" :in-theory
            (e/d (fn-cp-remote-rebase fn-cp-rebase fn-cp-apply fn-cp-event-entry
-                 fn-cp-find fn-cp-entry fn-cp-state fn-cp-nth)
+                 fn-cp-find fn-cp-entry fn-cp-state fn-cp-state-carry fn-cp-nth)
                 (fn-cp-idp fn-cp-remote-metadatap fn-cp-remove)))))
 
 (defthm fn-cp-remote-ack-preserves-exact-definition
@@ -44,5 +44,5 @@
   :rule-classes nil
   :hints (("Goal" :in-theory
            (e/d (fn-cp-ack fn-cp-apply fn-cp-entry-with-ack fn-cp-scope-matchp
-                 fn-cp-find fn-cp-entry fn-cp-state fn-cp-nth)
+                 fn-cp-find fn-cp-entry fn-cp-state fn-cp-state-carry fn-cp-nth)
                 (fn-cp-idp fn-cp-cursorp fn-cp-remove)))))

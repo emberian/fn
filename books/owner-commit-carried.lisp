@@ -248,8 +248,9 @@
           (if (equal (fn-cp-nth 1 op) (fn-cp-nth 2 s))
               (list :refused :same-incarnation)
             (list :ok
-                  (fn-cp-state (fn-cp-nth 1 s) (fn-cp-nth 1 op)
-                               (1+ expected) (fn-cp-nth 4 s) nil))))
+                  (fn-cp-state-carry (fn-cp-nth 1 s) (fn-cp-nth 1 op)
+                               (1+ expected) (fn-cp-nth 4 s) nil
+                               (fn-cp-nth 6 s)))))
          ((equal (fn-cpe-projection-decision s op) (list :write op))
           (list :ok (fn-cpe-projection-advance (fn-cp-apply s op)
                                                  (1+ expected))))

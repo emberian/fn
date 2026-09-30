@@ -136,9 +136,9 @@ current-format schema extension, not a migration fallback. Before doing so:
   event. The current `fn-cpe-encode` grammar only has fixed IDs and integers.
 - A durable view identity must account for applicable visibility/control
   publications as well as configuration changes. A current configuration
-  generation alone is not evidence of that property. The CP state is exactly
-  six fields today; any added carried view scalar requires establishment and
-  preservation through its projection and owner transitions.
+  generation alone is not evidence of that property. The inherited CP state was exactly
+  six fields; its new CP7 trailing authority requires establishment and
+  preservation through every projection and owner transition.
 - Snapshot recovery must retain exact extended fields, while article binding
   remains the other owner's mandatory record12/held16 schema. Consumers must
   use the common article/group/report accessors and preserve that binding.
@@ -155,8 +155,8 @@ guards, state preservation and the capacity theorem (local OR remote admitted
 registration) have been source-admitted. Exact-definition/ACK proofs and
 literal teeth are in the new remote-position book/tests. Durable CPE encoding,
 reservation/profile/canonical carries and the remote host remain pending; the
-existing durable codec still rejects these new tags. The generic CP state
-retains its six fields. The size-carry owner has the exact proposed schema and
+existing durable codec still rejects these new tags. The following authority component extends the generic CP state
+to seven fields while retaining Store14 and local8/remote10. The size-carry owner has the exact proposed schema and
 requires constructor child carries for the variable group tree, not a later
 whole-tree size walk.
 
@@ -169,3 +169,26 @@ source edits and unresolved architectural choices are recorded in
 These components do not make a durable remote event reachable. Do not connect
 the listener or allow CPE remote tags until actual charge admission and current
 account/view authority have a complete carried-state contract.
+
+## CP7 authority representation source component
+
+The root selected CP7 rather than wrapping the raw Store consumer accessor:
+a wrapper would require every Store reconstruction to preserve a separate
+raw value and invalidate the existing frame relations. CP7 instead extends
+all CP constructors and transitions, leaving the Store14 field contract
+unchanged. Its exact authority6/account5/pending9 schema and conservative
+global revision contract are specified in consumer-progress.md.
+
+Clean source checks establish preservation of the authority slot through
+consumer progress and append advance, typed adopted/tombstone rows, and
+staged candidate separation. They do not establish a served account lookup,
+bounded stream merge, digest, final fence, complete writer coverage, joint
+cfg-first recovery, canonical carry installation, or authenticated endpoint.
+The durable CPE codec still refuses remote/adoption operation tags.
+
+The configuration and Store histories must share one cfg-first authority
+fold using fn-cpr-config-firstp: configuration at the same txid precedes the
+Store event. Live fn-oclc-configure and fn-cpo-open-observed must establish
+the same seed relation; bootstrap must retain any prior accumulated
+authority rather than reset its revision. This producer is the next source
+increment, with the exact live/cold seams leased from the owner assembler.

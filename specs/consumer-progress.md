@@ -833,3 +833,42 @@ proves exact installation and ACK preservation, and the kernel state/capacity
 invariants cover the extended shape. These proposals are not yet accepted by
 the durable CPE event codec, so the remote path remains unreachable in the
 served composition; authentication and persistence are still unimplemented.
+
+The consumer projection now has seven fields, with durable authority in
+trailing slot6 while the Store remains14 fields. The authority tuple is
+`(:authority revision next-creation adopted-candidate accounts pending)`.
+The initial constructor explicitly supplies an empty authority; recovery
+does not accept a six-field projection or infer missing authority. Ordinary
+consumer progress, append-frontier advance and incarnation rollover preserve
+the entire authority value. This representation component does not yet make
+authority adoption or remote requests reachable in the served machine.
+
+The implementation uses one conservative global visibility revision. A
+durably adopted change that cannot be proved to preserve visibility must
+advance it, including changes outside a particular consumer's groups. Such
+cross-scope invalidation requires explicit rebase. Ordinary article append
+and consumer progress do not themselves advance it. Revision and creation
+identities are nonwrapping supported-codec integers; exhaustion must refuse
+before durable publication and must never reuse an account incarnation.
+
+Adopted account rows are
+`(:account login-octets creation activep exact-adopted-descriptor-octets)`.
+Committed deletion leaves a tombstone; a later committed recreation receives
+a fresh creation identity. Unchanged adopted accounts keep theirs across
+restart and credential-table adoption. Both static and redeemed credentials
+belong to this authority contract. Editing and reverting a file without a
+committed adoption does not represent two authority changes.
+
+A candidate table larger than one supported record is built with bounded
+staged rows, preserving unchanged identities and deletion tombstones by a
+stream merge. Its pending tuple names the candidate, expected base revision,
+maintained row count, prospective next creation, candidate rows, last login,
+digest commitment and ready status. Pending rows and provisional identities
+never authorize requests. A small final durable fence switches the complete
+configuration and authority together; it uses established carries and digest
+finalization, never a full-table scan. Failure or crash before the fence
+retains the prior admitted authority. Each stage funds actual event bytes,
+retained old/new-map coexistence and release debt before frontier allocation.
+Concurrent static and redeemed changes serialize or reject/rebase against
+the exact authority base. These producer, replay and funding obligations
+remain open; the representation recognizers are proof/recovery predicates.

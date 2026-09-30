@@ -346,5 +346,5 @@
                                   caller qver view cursor))
                   :no-op))
   :hints (("Goal" :in-theory (e/d (fn-cp-ack fn-cp-apply fn-cp-scope-matchp
-                                   fn-cp-entry fn-cp-state)
+                                   fn-cp-entry fn-cp-state fn-cp-state-carry)
                                   (fn-cp-cursorp fn-cp-remove)))))
