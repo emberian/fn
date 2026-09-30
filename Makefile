@@ -14,6 +14,8 @@ FN_CERTIFY_JOBS ?= 1
 # its slot: the brief's three-minute rule, with a minute of slack.
 FN_LD_TIMEOUT_SECONDS ?= 240
 ACL2_BOOKS ?= books/defrecord \
+	books/history-image-preparation \
+	tests/acl2/history-image-preparation-tests \
 	books/history-image-action-observation \
 	tests/acl2/history-image-action-observation-tests \
 	books/snapshot-initial-request \

@@ -4616,3 +4616,4 @@
 (definterface fn-owner-osn-prepared-run :class :program)
 
 (definterface fn-hpi-effect-observation-disposition :class :common-lisp-compliant)
+(definterface fn-hpip-tick :class :common-lisp-compliant)

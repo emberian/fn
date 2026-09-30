@@ -49,3 +49,14 @@ INITIAL, stage or publication authority and never retries an issued effect."
     (values word effect
             (when (member word '(:write :io))
               (fnn-hpi-execute-effect writer stage effect)))))
+
+(defun fnn-hpi-preparation-step (writer)
+  "Advance the actual core-installed preparation once. The caller retains
+the workspace and source under its action lock. No host capacity arithmetic,
+file creation, growth or source restart occurs here. Only :prepared replaces
+the preparation with the actual FnHPIBegin continuation."
+  (destructuring-bind (word preparation cursor)
+      (fnn-call 'fn-hpip-tick (fnn-hpi-writer-cursor writer))
+    (setf (fnn-hpi-writer-cursor writer)
+          (if (eq word :prepared) cursor preparation))
+    word))
