@@ -47,9 +47,13 @@
       (values word outcome))))
 (defun fnn-runtime-bootstrap-startup ()
   "Earliest saved-image entry; only accepted may return to facility startup."
-  (multiple-value-bind (word outcome) (fnn-runtime-bootstrap-entry)
-    (declare (ignore word))
+  (let ((outcome :fenced))
+    (handler-case
+        (multiple-value-bind (word class) (fnn-runtime-bootstrap-entry)
+          (declare (ignore word))
+          (setq outcome class))
+      ; Do not render the condition or enter general startup cleanup.
+      (serious-condition () (setq outcome :fenced)))
     (unless (eq outcome :accepted)
-      ; Direct exit avoids general stream flushing and condition rendering.
       (sb-ext:exit :code (fnn-core 'fn-outcome-code outcome) :abort t))
     :accepted))
