@@ -21,7 +21,7 @@ class SliceObserverTests(unittest.TestCase):
     def test_missing_or_reordered_event_refuses(self):
         observer = SliceObserver()
         with self.assertRaises(ValueError):
-            observer(EVENTS[1])
+            observer("fixture")
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):
                 observer.finish(Path(tmp) / "journal.jsonl")
@@ -38,3 +38,68 @@ class SliceObserverTests(unittest.TestCase):
             observer.finish(Path(tmp) / "journal.jsonl")
         with self.assertRaises(ValueError):
             observer("fixture", source="a" * 40)
+
+
+class SliceSemanticTests(unittest.TestCase):
+    """Synthetic oracle teeth; these do not execute the native fixture."""
+
+    def journal(self):
+        observer = SliceObserver()
+        records = [
+            ("post-observed", dict(message_id=b"<target>", submitted_octets=b"submitted", prompt=b"340 send\r\n", reply=b"240 accepted\r\n")),
+            ("post-observed", dict(message_id=b"<unrelated>", submitted_octets=b"other", prompt=b"340 send\r\n", reply=b"240 accepted\r\n")),
+            ("fixture", dict(source="a" * 40, msgid=b"<target>", accepted_octets=b"stored", status=b"status pinned=yes\n", exit_code=0)),
+            ("decision-cut-readback", dict(octets=b"stored")),
+            ("application-replay", dict(exit_code=0)),
+            ("outbox-process-death", dict(exit_code=-9)),
+            ("receipt-contact-uncertain", dict(exit_code=0)),
+            ("checkpoint-stage-cut", dict(exit_code=-9)),
+            ("receipt-contact-resumed", dict(exit_code=0, attempted_work=[b"job1"], forwarded_work=[b"job1"])),
+            ("receipt-obligation-settlement", dict(matching=b"pinned=no\n", unrelated=b"pinned=yes\n")),
+            ("checkpoint-complete-readback", dict(exit_code=0, octets=b"stored")),
+            ("retirement-frozen-report", dict(exit_code=0, report=b"obligation id=forward-unrelated kind=forward\n", stdout=b"obligation id=forward-unrelated kind=forward\n")),
+        ]
+        for event, fields in records:
+            observer(event, **fields)
+        observer.journal.environment("fixture-observations-complete", semantic_verdict="pending")
+        return observer.journal
+
+    def check(self, journal):
+        from tools.resilience.checker import check_bp_slice_observations
+        return check_bp_slice_observations(journal, expected_source="a" * 40)
+
+    def test_exact_relationships_pass_with_explicit_pending_composition(self):
+        verdict = self.check(self.journal())
+        self.assertEqual(verdict.kind, "consistent")
+        self.assertTrue(verdict.verify())
+        self.assertIn("bp-slice-whole-composition", verdict.pending_rules)
+
+    def test_relationship_corruptions_are_named_violations(self):
+        from tools.resilience.adapters.bp_slice_observer import encode
+        cases = [("decision-cut-readback", "octets", b"changed", "accepted-bytes-preserved"),
+                 ("receipt-obligation-settlement", "unrelated", b"pinned=no\n", "matching-obligation-only"),
+                 ("receipt-contact-resumed", "forwarded_work", [], "receipt-reoffered"),
+                 ("retirement-frozen-report", "report", b"empty\n", "retirement-debt-preserved"),
+                 ("post-observed", "reply", b"441 refused\r\n", "post-accepted")]
+        for event, field, value, cause in cases:
+            with self.subTest(cause=cause):
+                journal = self.journal()
+                next(r for r in journal.records if r.get("event") == event)[field] = encode(value)
+                verdict = self.check(journal)
+                self.assertEqual((verdict.kind, verdict.cause), ("violation", cause))
+
+    def test_missing_binding_and_ambiguous_status_fail_closed(self):
+        journal = self.journal()
+        journal.records[0].pop("reply")
+        self.assertEqual(self.check(journal).kind, "harness-failure")
+        journal = self.journal()
+        journal.records[2]["status"] = {"octets_hex": b"pinned=yes pinned=no".hex()}
+        self.assertEqual(self.check(journal).kind, "harness-failure")
+
+    def test_source_mismatch_and_missing_completion_refuse(self):
+        journal = self.journal()
+        journal.records[2]["source"] = "b" * 40
+        self.assertEqual(self.check(journal).cause, "fixture-source-mismatch")
+        journal = self.journal()
+        journal.records.pop()
+        self.assertEqual(self.check(journal).cause, "fixture-not-complete")

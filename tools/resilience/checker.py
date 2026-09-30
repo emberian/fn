@@ -482,3 +482,51 @@ def independent_per_membership(scenario: Scenario, journal: Journal) -> bool:
             if set(r["members"]) - declared:
                 return False
     return True
+
+
+def check_bp_slice_observations(journal, *, expected_source, budget=None):
+    """Judge SCN1046's observed relationships without promoting log promises.
+
+    This is the fixed composed fixture's observation checker. Scenario-driven
+    fault scheduling, physical lifetime and whole composition remain pending.
+    A source label is compared with the fixture's validated published image
+    pair; the runner separately verifies its immutable artifact set.
+    """
+    import re
+    from . import bp_slice_contract
+    from .adapters.bp_slice_observer import EVENTS
+    budget = budget or Budget()
+    base = dict(scenario_id=journal.scenario_id, journal_digest=journal.digest(),
+                budget=asdict(budget),
+                pending_rules=["bp-slice-whole-composition", "bp-slice-fault-observation"])
+    if len(journal.records) > budget.max_records:
+        return Verdict("inconclusive", cause="record-budget", **base).sign()
+    if (journal.scenario_id != "bp-disconnected-delivery-recovery" or
+            not isinstance(expected_source, str) or
+            not re.fullmatch(r"[0-9a-f]{40}", expected_source)):
+        return Verdict("harness-failure", cause="fixture-source-coordinate", **base).sign()
+    observations = journal.of_kind("internal")
+    if tuple(r.get("event") for r in observations) != EVENTS:
+        return Verdict("harness-failure", cause="missing-or-reordered-slice-observation", **base).sign()
+    complete = [r for r in journal.of_kind("environment")
+                if r.get("event") == "fixture-observations-complete"]
+    if len(complete) != 1 or complete[0].get("semantic_verdict") != "pending":
+        return Verdict("harness-failure", cause="fixture-not-complete", **base).sign()
+    events = {r["event"]: r for r in observations if r["event"] != "post-observed"}
+    events["post-observed"] = [r for r in observations if r["event"] == "post-observed"]
+    if events["fixture"].get("source") != expected_source:
+        return Verdict("harness-failure", cause="fixture-source-mismatch", **base).sign()
+    try:
+        violation = bp_slice_contract.obligations(events)
+    except (KeyError, bp_slice_contract.MissingObservation) as error:
+        return Verdict("harness-failure", cause="missing-slice-fact:" + str(error), **base).sign()
+    if violation:
+        rule, reason = violation
+        return Verdict("violation", cause=rule,
+                       explanation={"rule": rule, "reason": reason}, surviving=0, **base).sign()
+    return Verdict("consistent", surviving=1,
+                   witnesses_observed=["post-accepted", "accepted-readback",
+                                       "receipt-reoffered", "matching-obligation-only",
+                                       "retirement-debt-preserved"],
+                   diagnostics=["Fixed-fixture relationships only; scheduling and full native composition remain open."],
+                   **base).sign()

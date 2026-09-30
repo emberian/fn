@@ -7,10 +7,11 @@ marker is promoted to a client acceptance promise.
 from ..journal import Journal
 
 EVENTS = (
-    "fixture", "decision-cut-readback", "application-replay",
+    "post-observed", "post-observed", "fixture", "decision-cut-readback", "application-replay",
     "outbox-process-death", "receipt-contact-uncertain",
     "checkpoint-stage-cut", "receipt-contact-resumed",
     "receipt-obligation-settlement", "checkpoint-complete-readback",
+    "retirement-frozen-report",
 )
 
 
@@ -93,9 +94,26 @@ def run_fixture(output):
     return observer.finish(target)
 
 
+def judge_file(path, source, output):
+    """Re-read the sealed observations and retain the separate checker verdict."""
+    import json
+    from pathlib import Path
+    from ..checker import check_bp_slice_observations
+    journal = Journal.read(path)
+    verdict = check_bp_slice_observations(journal, expected_source=source)
+    Path(output).write_text(json.dumps(verdict.to_json(), indent=2) + "\n")
+    return verdict
+
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", required=True)
+    parser.add_argument("--journal", help="judge an existing sealed trace instead of executing")
+    parser.add_argument("--source", required=True, help="expected immutable image source commit")
+    parser.add_argument("--verdict", required=True)
     args = parser.parse_args()
-    run_fixture(args.out)
+    journal = args.journal or run_fixture(args.out)
+    result = judge_file(journal, args.source, args.verdict)
+    print(result.kind + ": " + str(result.cause))
+    raise SystemExit(0 if result.kind == "consistent" else 1)

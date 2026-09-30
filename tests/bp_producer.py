@@ -3,7 +3,7 @@
 from tests.native_harness import EXIT, Node
 
 
-def post_articles(case, image, store, articles):
+def post_articles(case, image, store, articles, *, observer=None):
     """Inject pairs, capture ARTICLE, and return the core's stored source bytes.
 
     The caller supplies the matching DEFAULT production image. The tracked
@@ -24,6 +24,9 @@ def post_articles(case, image, store, articles):
                 case.assertTrue(first.startswith(b"340"), first)
                 case.assertIsNotNone(final, "NNTP POST must return a durable reply")
                 case.assertTrue(final.startswith(b"240"), final)
+                if observer is not None:
+                    observer("post-observed", message_id=message_id,
+                             submitted_octets=payload, prompt=first, reply=final)
                 article = client.article(message_id)
             case.assertIsNotNone(article, "producer owner must serve its durable post")
             (producer.root / ("article-{}.nntp".format(len(message_ids)))).write_bytes(article)
