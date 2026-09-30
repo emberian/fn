@@ -200,3 +200,10 @@ The new lease admission accounts a supplied vector and holds the file.
 Selected-runtime compressed demand adequacy, complete decoder trajectory,
 shared lifecycle/publication and native activation remain open. This source
 stage adds no served compressed or matching image claim.
+
+The actual typed initializer establishes the complete captured token/plan
+join. The staged scalar callback checks the full descriptor and original
+index in ACL2 before private buffer supply. Its decoded-ready branch is
+unreachable-in-composition under the current raw-only physical predicate;
+the shared OR-kind lifecycle and full decoded/dictionary trajectory must
+land before activation. The initializer join is not that semantic proof.
