@@ -1617,3 +1617,15 @@ complete allowance, worker-receipt ownership or served activation. Repeated
 non-quiescent requests need their own prepaid control suffix; they precede
 Qcollect debit. The native files remain outside the served load sequence
 until those producer and runtime obligations are joined.
+
+The internal `host/native/connection-turn.lisp` companion binds an installed
+worker slot and SAME pool to the operation-specific prepare, finish and fault
+callbacks. Its outer-turn macro preserves all body results and consumes the
+ticket only after the body's allocating epilogue. An escaping body retains
+the ticket and fences; prepare/finish escapes fence before releasing extent
+exclusion. The outer unwind also covers interruption before finish entry, so
+the prepaid failure suffix includes up to two idempotent fault callbacks.
+Owner exclusion must already be held before extent exclusion is acquired.
+The [native transport component](../planning/evidence/connection-turn-native-2026-09-30/README.md)
+uses recording core callbacks; it does not establish actual operation
+admission, an installed allowance, or complete served caller placement.
