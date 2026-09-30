@@ -148,9 +148,9 @@
        (natp (nth 4 plan))))
 
 (defun fn-bpnf-mixed-legacy-names (plan)
-  (declare (xargs :guard t)) (nth 1 plan))
+  (declare (xargs :guard (true-listp plan))) (nth 1 plan))
 (defun fn-bpnf-mixed-received-names (plan)
-  (declare (xargs :guard t)) (nth 2 plan))
+  (declare (xargs :guard (true-listp plan))) (nth 2 plan))
 (defun fn-bpnf-mixed-hidden-stages (plan)
   (declare (xargs :guard t)) (nth 3 plan))
 (defun fn-bpnf-mixed-legacy-observed (plan)
@@ -161,3 +161,9 @@
                            (ec-call (fn-bpnf-mixed-hidden-stages plan)))))
 
 (verify-guards fn-bpnf-mixed-legacy-observed)
+
+;; The *1* class (Q4a item 2, bp-remainder-5): the host-called entries (the two
+;; plan readers under the kind guard the host entry guard checks).
+(verify-guards fn-bpnf-namespace-max-entries)
+(verify-guards fn-bpnf-mixed-legacy-names)
+(verify-guards fn-bpnf-mixed-received-names)

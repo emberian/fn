@@ -743,6 +743,315 @@
                             fn-cat-view-articles fn-cnx-freshp fn-nntp-parse-range
                             fn-nntp-multi fn-nntp-single)))))
 
+;;; -----------------------------------------------------------------------------
+;;; OVER/XOVER of a range answered in bounded windows (D27; PRF-1020; lanes
+;;; join-f2-10 and join-f2-12).
+;;;
+;;; fn-nntp-over-range-cat above probes every number of the clamped range and
+;;; builds every NOV line in one served step: the step's work grows with the
+;;; range.  The served arm fn-nntp-over-range-ovw (the OVER/XOVER range arm
+;;; of fn-nntp-archive-command-cat) answers the range with a CURSOR instead:
+;;; fn-ovw-start parses and clamps the range once, no number probed, and the
+;;; step's effects carry (:over-cursor CUR), which the host drains one window
+;;; of at most W numbers per quantum (books/over-window.lisp fn-ovw-step; the
+;;; owner's continuation entry is the host's).  A cursor effect MEANS the
+;;; complete reply of its range (fn-ovw-cursor-octets: the lines K..TOP of
+;;; GROUP in the pinned view V, the status line owed); fn-ovw-expand replaces
+;;; every cursor effect of an effects list by that reply and touches nothing
+;;; else.  KEYSTONE fn-nntp-over-range-ovw-expands-to-over-range-cat: the
+;;; expanded arm is the unbounded reader's reply and the session is unchanged.
+;;; books/over-window.lisp fn-ovw-cursor-effect-expands-to-run adds that the
+;;; windowed run of the arm's cursor is that reply for every W.  From
+;;; fn-nntp-archive-command-cat-is-pinned up books/served-catalog-chain.lisp
+;;; every -cat = pinned equation is stated on the results' components with the
+;;; effects of BOTH sides expanded: the pinned reference carries no cursor
+;;; (fn-ovw-cursor-effect is built by this arm alone), so its expansion is
+;;; itself; stating the equations symmetrically keeps them free of that
+;;; structural fact about the whole pinned dispatcher.
+
+(defun fn-ovw-status (text)
+  (declare (xargs :guard t))
+  (fn-nntp-crlf (fn-nntp-string-octets text)))
+
+; The lines of the numbers K..HI of GROUP in view V: the old reader's lines
+; restricted to one window.
+(defun fn-ovw-lines (group k hi v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (and (natp k) (natp hi) (fn-scat-guard))))
+  (fn-nov-lines-for-numbers-cat
+   group (fn-scat-range-keep group (fn-cnx-range-aux group k hi v fn-cat) fn-cat)
+   v fn-arena fn-cat))
+
+; (GROUP K TOP V LEGACYP OWEDP): the next number to probe, the range's last
+; number (clamped once, at the start), the pinned view, XOVER or OVER, and
+; whether the status line is still owed (no line sent yet).
+(defun fn-ovw-cursor (group k top v legacyp owedp)
+  (declare (xargs :guard t))
+  (list group k top v legacyp owedp))
+
+(defun fn-ovw-cursorp (cur)
+  (declare (xargs :guard t))
+  (and (true-listp cur) (natp (nth 3 cur))))
+
+(defthm fn-ovw-cursor-fields
+  (and (equal (nth 0 (fn-ovw-cursor group k top v legacyp owedp)) group)
+       (equal (nth 1 (fn-ovw-cursor group k top v legacyp owedp)) k)
+       (equal (nth 2 (fn-ovw-cursor group k top v legacyp owedp)) top)
+       (equal (nth 3 (fn-ovw-cursor group k top v legacyp owedp)) v)
+       (equal (nth 4 (fn-ovw-cursor group k top v legacyp owedp)) legacyp)
+       (equal (nth 5 (fn-ovw-cursor group k top v legacyp owedp)) owedp)))
+
+(defun fn-ovw-empty-text (legacyp)
+  (declare (xargs :guard t))
+  (if legacyp (fn-proto-text * :none-selected) (fn-proto-text * :empty-range)))
+
+; The command's step: O(1), no number probed.
+(defun fn-ovw-start (session v token legacyp fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (natp v)))
+  (let ((group (fn-nntp-session-group session))
+        (range (fn-nntp-parse-range token)))
+    (if (null group)
+        (mv (fn-ovw-status (fn-proto-text * :no-group-selected)) nil)
+      (mv nil
+          (fn-ovw-cursor group (nfix (fn-nntp-range-low range))
+                         (min (nfix (fn-nntp-range-high range))
+                              (nfix (- (fn-cat-group-next group fn-cat) 1)))
+                         v legacyp t)))))
+
+(defthm fn-ovw-start-cursorp
+  (implies (and (natp v)
+                (mv-nth 1 (fn-ovw-start session v token legacyp fn-cat)))
+           (fn-ovw-cursorp (mv-nth 1 (fn-ovw-start session v token legacyp fn-cat)))))
+
+; The reply of LINES: the status line when it is owed, the stuffed lines,
+; the dot -- or the empty-range status when the owed status line has no line.
+(defun fn-ovw-reply (lines legacyp owedp)
+  (declare (xargs :guard t :verify-guards nil))
+  (if owedp
+      (if (consp lines)
+          (append (fn-ovw-status (fn-proto-text * :overview))
+                  (fn-nntp-stuff-lines lines)
+                  '(46 13 10))
+        (fn-ovw-status (fn-ovw-empty-text legacyp)))
+    (append (fn-nntp-stuff-lines lines) '(46 13 10))))
+
+; The cursor effect.  Built here and nowhere else (tools/callers.py
+; fn-ovw-cursor-effect): the pinned reference's effects never carry one.
+(defun fn-ovw-cursor-effect (cur)
+  (declare (xargs :guard t))
+  (list :over-cursor cur))
+
+(defun fn-ovw-cursor-effectp (effect)
+  (declare (xargs :guard t))
+  (and (consp effect) (equal (car effect) :over-cursor) (consp (cdr effect))))
+
+; The served arm: the start's cursor as the step's one effect, or the 412
+; reply when no group is selected.
+(defun fn-nntp-over-range-ovw (session v token legacyp fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (natp v)))
+  (mv-let (octets cur)
+    (fn-ovw-start session v token legacyp fn-cat)
+    (fn-nntp-make-result
+     session
+     (list (if cur (fn-ovw-cursor-effect cur) (fn-nntp-reply-effect octets))))))
+
+; What a cursor effect stands for: the reply of the numbers K..TOP of GROUP
+; in view V with the status line owed (the cursor a served step emits is
+; fn-ovw-start's, whose status line is unsent).
+(defun fn-ovw-cursor-octets (cur fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (fn-ovw-reply (fn-ovw-lines (nth 0 cur) (nfix (nth 1 cur)) (nfix (nth 2 cur)) (nth 3 cur)
+                              fn-arena fn-cat)
+                (nth 4 cur) t))
+
+; The expansion: every cursor effect becomes the reply it stands for; every
+; other element, and the list's final cdr, is kept.
+(defun fn-ovw-expand (effects fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (if (consp effects)
+      (cons (if (fn-ovw-cursor-effectp (car effects))
+                (fn-nntp-reply-effect
+                 (fn-ovw-cursor-octets (car (cdr (car effects))) fn-arena fn-cat))
+              (car effects))
+            (fn-ovw-expand (cdr effects) fn-arena fn-cat))
+    effects))
+
+(in-theory (disable fn-ovw-cursor fn-ovw-status fn-ovw-lines fn-ovw-reply fn-ovw-empty-text
+                    fn-ovw-cursor-effect fn-ovw-cursor-effectp fn-ovw-cursor-octets fn-ovw-expand))
+
+(defthm fn-ovw-expand-of-append
+  (equal (fn-ovw-expand (append a b) fn-arena fn-cat)
+         (append (fn-ovw-expand a fn-arena fn-cat) (fn-ovw-expand b fn-arena fn-cat)))
+  :hints (("Goal" :induct (fn-ovw-expand a fn-arena fn-cat)
+           :in-theory (enable fn-ovw-expand))))
+
+(defthm fn-ovw-expand-of-nil
+  (equal (fn-ovw-expand nil fn-arena fn-cat) nil)
+  :hints (("Goal" :in-theory (enable fn-ovw-expand))))
+
+(defthm fn-ovw-expand-of-reply-cons
+  (equal (fn-ovw-expand (cons (fn-nntp-reply-effect octets) rest) fn-arena fn-cat)
+         (cons (fn-nntp-reply-effect octets) (fn-ovw-expand rest fn-arena fn-cat)))
+  :hints (("Goal" :in-theory (enable fn-ovw-expand fn-ovw-cursor-effectp fn-nntp-reply-effect))))
+
+(defthm fn-ovw-expand-of-single-effects
+  (equal (fn-ovw-expand (cdr (fn-nntp-single session text)) fn-arena fn-cat)
+         (cdr (fn-nntp-single session text)))
+  :hints (("Goal" :in-theory (enable fn-nntp-single fn-nntp-make-result))))
+
+(defthm fn-ovw-expand-of-multi-effects
+  (equal (fn-ovw-expand (cdr (fn-nntp-multi session initial lines)) fn-arena fn-cat)
+         (cdr (fn-nntp-multi session initial lines)))
+  :hints (("Goal" :in-theory (enable fn-nntp-multi fn-nntp-make-result))))
+
+(defthm fn-ovw-expand-of-multi-octets-effects
+  (equal (fn-ovw-expand (cdr (fn-nntp-multi-octets session initial lines)) fn-arena fn-cat)
+         (cdr (fn-nntp-multi-octets session initial lines)))
+  :hints (("Goal" :in-theory (enable fn-nntp-multi-octets fn-nntp-make-result))))
+
+; The reply constructors' session, for the arms' proofs with the
+; constructors closed.
+(defthm fn-ovw-session-of-single
+  (equal (car (fn-nntp-single session text)) session)
+  :hints (("Goal" :in-theory (enable fn-nntp-single fn-nntp-make-result))))
+
+(defthm fn-ovw-session-of-multi
+  (equal (car (fn-nntp-multi session initial lines)) session)
+  :hints (("Goal" :in-theory (enable fn-nntp-multi fn-nntp-make-result))))
+
+(defthm fn-ovw-session-of-multi-octets
+  (equal (car (fn-nntp-multi-octets session initial lines)) session)
+  :hints (("Goal" :in-theory (enable fn-nntp-multi-octets fn-nntp-make-result))))
+
+; The reference readers of a range (books/nntp-responses.lisp), whose
+; results the pinned OVER/XOVER arm answers: session kept, no cursor.
+(defthm fn-ovw-over-range-session
+  (equal (car (fn-nntp-over-range session archive token fn-arena)) session)
+  :hints (("Goal" :in-theory (e/d (fn-nntp-over-range)
+                                  (fn-nntp-single fn-nntp-multi fn-nntp-parse-range
+                                   fn-nntp-group-range-numbers fn-nov-lines-for-numbers)))))
+
+(defthm fn-ovw-xover-range-session
+  (equal (car (fn-nntp-xover-range session archive token fn-arena)) session)
+  :hints (("Goal" :in-theory (e/d (fn-nntp-xover-range)
+                                  (fn-nntp-single fn-nntp-multi fn-nntp-parse-range
+                                   fn-nntp-group-range-numbers fn-nov-lines-for-numbers)))))
+
+(defthm fn-ovw-expand-of-over-range-effects
+  (equal (fn-ovw-expand (cdr (fn-nntp-over-range session archive token fn-arena)) fn-arena fn-cat)
+         (cdr (fn-nntp-over-range session archive token fn-arena)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-over-range)
+                                  (fn-nntp-single fn-nntp-multi fn-nntp-parse-range
+                                   fn-nntp-group-range-numbers fn-nov-lines-for-numbers)))))
+
+(defthm fn-ovw-expand-of-xover-range-effects
+  (equal (fn-ovw-expand (cdr (fn-nntp-xover-range session archive token fn-arena)) fn-arena fn-cat)
+         (cdr (fn-nntp-xover-range session archive token fn-arena)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-xover-range)
+                                  (fn-nntp-single fn-nntp-multi fn-nntp-parse-range
+                                   fn-nntp-group-range-numbers fn-nov-lines-for-numbers)))))
+
+(defthm fn-ovw-expand-of-close-list
+  (equal (fn-ovw-expand (list (fn-nntp-close-effect)) fn-arena fn-cat)
+         (list (fn-nntp-close-effect)))
+  :hints (("Goal" :in-theory (enable fn-ovw-expand fn-ovw-cursor-effectp fn-nntp-close-effect))))
+
+(defthm fn-ovw-expand-of-submit-list
+  (equal (fn-ovw-expand (list (fn-served-submit-effect decision login account)) fn-arena fn-cat)
+         (list (fn-served-submit-effect decision login account)))
+  :hints (("Goal" :in-theory (enable fn-ovw-expand fn-ovw-cursor-effectp fn-served-submit-effect))))
+
+(defthm fn-ovw-offeredp-of-expand
+  (equal (fn-post-offeredp (fn-ovw-expand effects fn-arena fn-cat))
+         (fn-post-offeredp effects))
+  :hints (("Goal" :induct (fn-ovw-expand effects fn-arena fn-cat)
+           :in-theory (enable fn-ovw-expand fn-ovw-cursor-effectp fn-post-offeredp
+                              fn-nntp-begin-article-effect fn-nntp-reply-effect))))
+
+(defthm fn-ovw-submission-of-expand
+  (equal (fn-served-submission (fn-ovw-expand effects fn-arena fn-cat))
+         (fn-served-submission effects))
+  :hints (("Goal" :induct (fn-ovw-expand effects fn-arena fn-cat)
+           :in-theory (enable fn-ovw-expand fn-ovw-cursor-effectp fn-served-submission
+                              fn-nntp-reply-effect))))
+
+(defthm fn-ovw-submission-login-of-expand
+  (equal (fn-served-submission-login (fn-ovw-expand effects fn-arena fn-cat))
+         (fn-served-submission-login effects))
+  :hints (("Goal" :induct (fn-ovw-expand effects fn-arena fn-cat)
+           :in-theory (enable fn-ovw-expand fn-ovw-cursor-effectp fn-served-submission-login
+                              fn-nntp-reply-effect))))
+
+(defthm fn-ovw-submission-account-of-expand
+  (equal (fn-served-submission-account (fn-ovw-expand effects fn-arena fn-cat))
+         (fn-served-submission-account effects))
+  :hints (("Goal" :induct (fn-ovw-expand effects fn-arena fn-cat)
+           :in-theory (enable fn-ovw-expand fn-ovw-cursor-effectp fn-served-submission-account
+                              fn-nntp-reply-effect))))
+
+(local
+ (defthm fn-ovw-cursor-octets-status-first
+   (let ((octets (fn-ovw-cursor-octets cur fn-arena fn-cat)))
+     (not (and (consp octets) (equal (car octets) 50)
+               (consp (cdr octets)) (equal (car (cdr octets)) 49))))
+   :hints (("Goal" :in-theory (e/d (fn-ovw-cursor-octets fn-ovw-reply fn-ovw-empty-text fn-ovw-status)
+                                   (fn-ovw-lines fn-nntp-stuff-lines))))))
+
+(defthm fn-ovw-selectedp-of-expand
+  (equal (fn-served-selectedp (fn-ovw-expand effects fn-arena fn-cat))
+         (fn-served-selectedp effects))
+  :hints (("Goal" :do-not-induct t
+           :expand ((fn-ovw-expand effects fn-arena fn-cat))
+           :in-theory (e/d (fn-served-selectedp fn-ovw-cursor-effectp fn-nntp-reply-effect)
+                           (fn-ovw-cursor-octets))
+           :use ((:instance fn-ovw-cursor-octets-status-first (cur (car (cdr (car effects)))))))))
+
+(defun fn-ovw-spec (session v token legacyp fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (let ((group (fn-nntp-session-group session))
+        (range (fn-nntp-parse-range token)))
+    (if (null group)
+        (fn-ovw-status (fn-proto-text * :no-group-selected))
+      (fn-ovw-reply (fn-ovw-lines group (nfix (fn-nntp-range-low range))
+                                  (min (nfix (fn-nntp-range-high range))
+                                       (nfix (- (fn-cat-group-next group fn-cat) 1)))
+                                  v fn-arena fn-cat)
+                    legacyp t))))
+
+(local
+ (defthm fn-ovw-status-is-crlf
+   (equal (fn-nntp-crlf (fn-nntp-string-octets text)) (fn-ovw-status text))
+   :hints (("Goal" :in-theory (enable fn-ovw-status)))))
+
+(defthm fn-ovw-over-range-cat-is-spec
+  (and (equal (car (fn-nntp-over-range-cat session v token legacyp fn-arena fn-cat))
+              session)
+       (equal (cdr (fn-nntp-over-range-cat session v token legacyp fn-arena fn-cat))
+              (list (fn-nntp-reply-effect (fn-ovw-spec session v token legacyp fn-arena fn-cat)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-over-range-cat fn-scat-range-numbers fn-cnx-view-range
+                            fn-ovw-spec fn-ovw-reply fn-ovw-lines
+                            fn-nntp-single fn-nntp-multi fn-nntp-make-result fn-nntp-reply-effect
+                            fn-ovw-empty-text)
+                           (fn-cat-group-next-is-high fn-cat-group-next fn-cnx-range-aux
+                            fn-scat-range-keep fn-nov-lines-for-numbers-cat fn-nntp-stuff-lines
+                            fn-nntp-parse-range fn-ovw-status fn-nntp-crlf fn-nntp-string-octets)))))
+
+(in-theory (disable fn-ovw-spec))
+
+(defthm fn-nntp-over-range-ovw-expands-to-over-range-cat
+  (and (equal (car (fn-nntp-over-range-ovw session v token legacyp fn-cat))
+              session)
+       (equal (fn-ovw-expand (cdr (fn-nntp-over-range-ovw session v token legacyp fn-cat))
+                             fn-arena fn-cat)
+              (cdr (fn-nntp-over-range-cat session v token legacyp fn-arena fn-cat))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-over-range-ovw fn-ovw-start fn-ovw-cursor-effect
+                            fn-ovw-cursor-effectp fn-ovw-cursor-octets fn-ovw-expand fn-ovw-spec
+                            fn-nntp-make-result fn-nntp-reply-effect fn-ovw-over-range-cat-is-spec)
+                           (fn-ovw-lines fn-ovw-reply fn-ovw-status fn-nntp-parse-range
+                            fn-cat-group-next fn-nntp-over-range-cat)))))
+
 ;;; GROUP / LISTGROUP / LIST COUNTS: count, low and high are the length,
 ;;; first and last of the group's numbers (the served fold's
 ;;; fn-nntp-group-count / -low / -high, one pass each over every article).
@@ -2812,8 +3121,8 @@
              (fn-gidx-pinp index)
              (consp args) (null (cdr args))
              (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
-        (fn-nntp-over-range-cat session v (car args) (fn-nntp-keywordp keyword "XOVER")
-                                fn-arena fn-cat))
+        (fn-nntp-over-range-ovw session v (car args) (fn-nntp-keywordp keyword "XOVER")
+                                fn-cat))
        ((and (fn-nntp-keywordp keyword "HDR")
              (consp args)
              (fn-nntp-keywordp (car args) ":FN-VERIFIED"))
@@ -2950,7 +3259,17 @@
             (fn-article-listp (fn-state-groups archive) (fn-state-articles archive)))
    :hints (("Goal" :in-theory (enable fn-statep)))))
 
-(defthm fn-nntp-archive-command-cat-is-pinned
+; The dispatcher agrees with the pinned reference modulo the OVER cursor:
+; the results' sessions are equal and their effects are equal once both are
+; expanded (fn-ovw-expand; the OVER/XOVER range arm is the one place the two
+; differ, by fn-nntp-over-range-ovw-expands-to-over-range-cat).  Proved once
+; as the equality of the expanded results, then read component by component.
+(defun fn-ovw-expand-result (result fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
+  (cons (car result) (fn-ovw-expand (cdr result) fn-arena fn-cat)))
+
+(local
+ (defthm fn-nntp-archive-command-cat-is-pinned-expanded
   (implies (and (equal (fn-state-articles archive)
                        (fn-cat-view-articles v fn-arena fn-cat))
                 (fn-statep archive)
@@ -2959,12 +3278,17 @@
                                          (fn-state-articles archive))
                 (fn-cnx-freshp fn-cat)
                 (fn-scol-okp fn-arena fn-cat))
-           (equal (fn-nntp-archive-command-cat
-                   session archive index verdicts env keyword args v fn-arena fn-cat)
-                  (fn-nntp-archive-command-pinned
-                   session archive index verdicts env keyword args fn-arena)))
+           (equal (fn-ovw-expand-result
+                   (fn-nntp-archive-command-cat
+                    session archive index verdicts env keyword args v fn-arena fn-cat)
+                   fn-arena fn-cat)
+                  (fn-ovw-expand-result
+                   (fn-nntp-archive-command-pinned
+                    session archive index verdicts env keyword args fn-arena)
+                   fn-arena fn-cat)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-nntp-archive-command-cat fn-nntp-archive-command-pinned
+                            fn-ovw-expand-result fn-nntp-over-range-ovw-expands-to-over-range-cat
                             fn-nntp-archive-command fn-nntp-list-command
                             fn-nntp-hdr-response fn-nntp-xhdr-response
                             fn-nntp-over-response fn-nntp-xover-response
@@ -3001,14 +3325,49 @@
                             fn-nntp-over-range-indexed-is-walk
                             fn-nntp-xref-reply-cat fn-nntp-msgid-withdrawn-p-cat
                             fn-nntp-xref-reply-cat-is-col fn-nntp-msgid-withdrawn-p-cat-is-trie
-                            fn-nntp-control-hdr-response-cat fn-nntp-enrollment-hdr-response-cat))
+                            fn-nntp-control-hdr-response-cat fn-nntp-enrollment-hdr-response-cat
+                            fn-nntp-over-range-ovw fn-ovw-expand fn-ovw-start fn-ovw-cursor-effect
+                            fn-nntp-multi fn-nntp-multi-octets fn-nntp-reply-effect
+                            fn-nntp-make-result))
            :use ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
                  (:instance fn-nntp-control-hdr-response-cat-is-pinned)
                  (:instance fn-nntp-enrollment-hdr-response-cat-is-pinned)
                  (:instance fn-scat-statep-article-listp)
                  (:instance fn-scat-pin-trie-is-built)
-                 (:instance fn-scat-pin-buckets-are-built)))))
+                 (:instance fn-scat-pin-buckets-are-built))))))
+
+(defthm fn-nntp-archive-command-cat-is-pinned
+  (implies (and (equal (fn-state-articles archive)
+                       (fn-cat-view-articles v fn-arena fn-cat))
+                (fn-statep archive)
+                (fn-gidx-pin-correspondencep index archive)
+                (fn-midx-correspondencep (fn-gidx-pin-trie index)
+                                         (fn-state-articles archive))
+                (fn-cnx-freshp fn-cat)
+                (fn-scol-okp fn-arena fn-cat))
+           (and (equal (fn-nntp-result-session
+                        (fn-nntp-archive-command-cat
+                         session archive index verdicts env keyword args v fn-arena fn-cat))
+                       (fn-nntp-result-session
+                        (fn-nntp-archive-command-pinned
+                         session archive index verdicts env keyword args fn-arena)))
+                (equal (fn-ovw-expand
+                        (fn-nntp-result-effects
+                         (fn-nntp-archive-command-cat
+                          session archive index verdicts env keyword args v fn-arena fn-cat))
+                        fn-arena fn-cat)
+                       (fn-ovw-expand
+                        (fn-nntp-result-effects
+                         (fn-nntp-archive-command-pinned
+                          session archive index verdicts env keyword args fn-arena))
+                        fn-arena fn-cat))))
+  :hints (("Goal" :use ((:instance fn-nntp-archive-command-cat-is-pinned-expanded))
+           :in-theory (union-theories '(fn-ovw-expand-result fn-nntp-result-session
+                                        fn-nntp-result-effects cons-equal)
+                                      (theory 'minimal-theory)))))
+
+(in-theory (disable fn-ovw-expand-result))
 
 ; Guards of the arms the lift executes (books/served-catalog-chain.lisp
 ; fn-scr-command calls the dispatcher): the whole -cat path is guard-verified.

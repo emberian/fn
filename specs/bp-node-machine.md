@@ -4823,3 +4823,63 @@ dispatch, durable receipt handoff, or returned receipt release. Those are A3
 composition obligations; a TCPCL transfer ACK proves none of them. The
 namespace planner's current ACL2 behavior is certified, while its guard
 verification remains open through the inherited lifecycle helper chain.
+
+
+### Native job-offer guard boundary (2026-09-29)
+
+`host/native/bp-service.lisp`'s `fnn-bps-foundation-step` calls
+`fn-bpnj-step`. `books/bp-node-job-offer-guards.lisp` verifies that entry
+and its start/contact/result chain under the existing machine-shape,
+session-list, held-list and host-event guards. The host-event recognizer is
+verified after the progress guard closure, rather than before that closure
+is available. The contact proof carries the opened contact list's shape;
+the result proof derives a typed key from a found job and matching attempt
+token. Neither strengthens the existing executable entry's guard nor adds a
+whole-state check to its body. The existing job-offer keystones and their
+reachable/mutation witnesses remain in `bp-node-job-offer-tests`.
+
+The kind-10 and kind-18 codecs' constructors, and the forwarding record
+constructors, are guard-verified in the books where those constructors are
+defined. A verification available only in a later umbrella cannot discharge
+a codec book's independent certification. This is an execution-domain
+boundary, not a claim about physical persistence or transport success.
+
+### Serialized live route control (2026-09-29, Q4e first increment)
+
+`bp-node serve ... --control-config CONFIG` opts this run into local control.
+CONFIG is read under the existing native-config octet bound. ACL2's
+`fn-bpnc-startup` parses it, requires its actual `[store].path` octets to equal
+the Store argument, and derives its control socket path, adjacent lease path
+and command-frame bound. A mismatch is refused before a control listener is
+installed. The protected live node is not part of this test surface.
+
+The same-owner socket observation and the existing FNCT concrete-buffer
+refinement are reused. `fn-bpnc-turn-plan` grants exactly the parsed accepted
+`bp-route add` or `bp-route remove` plan, rejecting other request and admin
+kinds. `fnn-bpnc-execute` uses the ordinary owner scheduler's control class and
+`fnn-owner-live-reconfigure-locked`: acceptance follows durable configuration
+publication and installation. There is no direct Store fallback after a live
+transport ambiguity. The operator's actual CONFIG selects the same path.
+
+No control worker mutates the ACL2 image. One synchronous request is serviced
+between BP sessions and at the transfer progress boundary; it is read under
+one absolute ten-second I/O deadline and the ACL2 command-frame bound, then
+answered under the existing ten-second send deadline, and its descriptor is
+closed on every exit. At most one request is consumed per pump. The developer
+receipt hold also pumps these turns; the existing production selector gate
+still refuses that hold in a production image. A fenced or faulted owner
+cannot resume BP semantic mutation after its answer.
+
+The host follows `fn-bpnc-socket-action` and records observed bind, install and
+retire outcomes through `fn-bpnc-socket-step`. Both successful completions are
+necessary and sufficient for the open run to reach live; stop requests retire
+before closing. Cleanup removes only this run's installed socket inode while
+retaining the adjacent lease, then releases it. SIGKILL is handled by the
+existing stale-socket liveness protocol at a later operator/startup.
+PRF-1063 covers exact startup binding and route-only authority. PRF-1064 covers
+the complete socket effect/outcome protocol. The ACL2 teeth exercise actual
+parsed config/admin vectors, both open failures, retirement success/failure
+and a corrupt-phase hypothesis removal. Matching native route mutation and
+receipt ordering are SCN-218; until its image/run is recorded they are pending.
+BP boundary mutation, listener rebinding and listener generation refresh
+remain Q4e work; this increment exposes only routes.

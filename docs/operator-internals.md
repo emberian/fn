@@ -2918,3 +2918,13 @@ names a group this node does not carry is refused `UNKNOWN-GROUP` (exit
   (PKT-431).
 - One credential slot per peer serves both directions, so a credentialed
   pull needs outbound groups too (PKT-431).
+
+
+`store bless-snapshot DIR` is S7a's read-only checker of an existing copy
+(`specs/host.md`, HST-039). `host/native/io.lisp`
+`fnn-command-store-bless-snapshot` supplies the marker, open and key
+observations to `fn-osn-bless-word`; ACL2 selects the first failure and
+renders the line. No source store is opened and no file is repaired.
+The running snapshot producer, including bounded capture and key/config
+ownership, is a separate unfinished S7 increment. The native checker
+fixtures are stopped copies with an explicit completion observation.

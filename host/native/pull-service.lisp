@@ -281,11 +281,16 @@ waits its milliseconds and is fed the same octets."
             (sleep (/ (min (second results) 1000) 1000))
           (destructuring-bind (plan close starttls consumed &rest more) results
             (declare (ignore starttls more))
-            (loop
-              (multiple-value-bind (octets rest donep) (fnn-owner-render-next plan)
-                (setq reply (concatenate 'fnn-octets reply octets))
-                (when donep (return))
-                (setq plan rest)))
+            (unwind-protect
+                 (loop
+                   (multiple-value-bind (octets rest donep yieldedp)
+                       (fnn-owner-render-next-quantum service cid plan :transit)
+                     (setq reply (concatenate 'fnn-octets reply octets))
+                     (when donep (return))
+                     (setq plan rest)
+                     (when yieldedp
+                       (sleep (/ (fnn-core 'fn-splan-cursor-resume-ms) 1000)))))
+              (fnn-owner-response-unpin service cid))
             (setq closing close)
             (when (and (zerop consumed) (not close))
               (fnn-fault "owner consumed no octets of a pull transit write"))
@@ -391,6 +396,7 @@ waits its milliseconds and is fed the same octets."
                     (when cid
                       (let ((old cid))
                         (setq cid nil)
+                        (fnn-owner-response-unpin service old)
                         (fnn-owner-transit-serialized service nil
                                               (lambda () (fnn-owner-action 'fn-owner-close old)))))
                     (multiple-value-bind (opened greeting)
@@ -443,6 +449,7 @@ waits its milliseconds and is fed the same octets."
         (sb-thread:with-mutex ((fnn-pull-runtime-lock runtime))
           (setf (fnn-pull-runtime-socket runtime) nil))
         (when cid
+          (fnn-owner-response-unpin service cid)
           (ignore-errors
            (fnn-owner-transit-serialized service nil
                                  (lambda () (fnn-owner-action 'fn-owner-close cid)))))

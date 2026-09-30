@@ -581,6 +581,13 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
               (fn-nop-archive-pathp (cadr words)))
          (fn-nop-result :accepted :plan "store" config
                         (list :export (cadr words))))
+        ; S7a: read-only blessing of an already captured snapshot.  This
+        ; action opens DIR, not the configured store, and never requests a copy.
+        ((and (consp words) (equal (car words) "bless-snapshot")
+              (consp (cdr words)) (null (cddr words))
+              (fn-nop-archive-pathp (cadr words)))
+         (fn-nop-result :accepted :plan "store" config
+                        (list :bless-snapshot (cadr words))))
         ((and (consp words) (equal (car words) "import")
               (consp (cdr words))
               (fn-nop-archive-pathp (cadr words)))
@@ -675,8 +682,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG obligations (the retention ledger's held obligations)")
         ((equal subject "recover") "usage: fn operator CONFIG recover [--repair truncate SEGMENT:OFFSET] (the repair only as a log-damaged refusal names it: the damaged segment is kept under quarantine/, then the log is truncated before the damage)")
         ((equal subject "store")
-         "usage: fn operator CONFIG store {export ARCHIVE-DIR | export --status | import ARCHIVE-DIR [--FIELD N ...] | compact | checkpoint | reclaim [--dry-run | --recorded] | inspect MESSAGE-ID | inspect --group GROUP | rebind-filesystem [--storage-require-durable on|off]} (import and rebind-filesystem offline, refused while an owner runs; export, compact, checkpoint, reclaim and inspect answer on the running owner too; rebind-filesystem records the filesystem the store is on now, after a deliberate move or a restore; import makes a new store: the configured store must not exist, and the archive's profile, with any field raised, is the new store's)")
-        ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME | group describe NAME [TEXT ...] (LIST NEWSGROUPS shows TEXT; no TEXT clears it) | group policy NAME y|n | group moderate NAME --moderators LOGIN[,LOGIN...] [--queue QUEUE] [--submission ADDRESS] | group moderate NAME --off | group subscribe-default [NAME ...] (LIST SUBSCRIPTIONS recommends the NAMEs in order; none clears it)")
+         "usage: fn operator CONFIG store {export ARCHIVE-DIR | export --status | bless-snapshot SNAPSHOT-DIR | import ARCHIVE-DIR [--FIELD N ...] | compact | checkpoint | reclaim [--dry-run | --recorded] | inspect MESSAGE-ID | inspect --group GROUP | rebind-filesystem [--storage-require-durable on|off]} (import and rebind-filesystem offline, refused while an owner runs; export, compact, checkpoint, reclaim and inspect answer on the running owner too; rebind-filesystem records the filesystem the store is on now, after a deliberate move or a restore; import makes a new store: the configured store must not exist, and the archive's profile, with any field raised, is the new store's)")
+        ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME | group describe NAME [TEXT ...] (LIST NEWSGROUPS shows TEXT; no TEXT clears it) | group policy NAME y|n | group authority NAME HEX|ungoverned | group moderate NAME --moderators LOGIN[,LOGIN...] [--queue QUEUE] [--submission ADDRESS] | group moderate NAME --off | group subscribe-default [NAME ...] (LIST SUBSCRIPTIONS recommends the NAMEs in order; none clears it)")
         ((equal subject "motd")
          "usage: fn operator CONFIG motd {set LINE [LINE ...] | clear} (LIST MOTD shows one LINE per argument, each at most 256 octets)")
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
@@ -1476,7 +1483,7 @@ writes, else nil."
   "The archive directory an accepted `store export' or `store import' plan
 names, as octets, else nil."
   (declare (xargs :guard t))
-  (if (and (member-equal (fn-nop-store-plan-word result) '(:export :import))
+  (if (and (member-equal (fn-nop-store-plan-word result) '(:export :import :bless-snapshot))
            (stringp (fn-ncfg-second (fn-native-operator-result-arguments result))))
       (fn-record-string-octets
        (fn-ncfg-second (fn-native-operator-result-arguments result)))
@@ -1874,6 +1881,9 @@ when that store already exists is `fn-native-operator-init-outcome'."
                  ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                          :export-status)
                   :export-status)
+                 ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                         :bless-snapshot)
+                  :bless-snapshot)
                  ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                          :import)
                   :import)

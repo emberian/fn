@@ -381,6 +381,20 @@
                      5))
 (assert-event (equal (fn-native-operator-exit-code (fn-nop-t-store "export" "/")) 5))
 
+ ; S7a opens the named copy even when the configured source store is absent.
+(defconst *fn-nop-bless* (fn-nop-t-store "bless-snapshot" "/tmp/snapshot"))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-bless*) :accepted))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-bless*)
+                     :bless-snapshot))
+(assert-event (equal (fn-native-operator-result-archive-path-octets *fn-nop-bless*)
+                     (fn-record-string-octets "/tmp/snapshot")))
+(assert-event (not (fn-native-operator-result-needs-storep *fn-nop-bless*)))
+(assert-event (equal (fn-native-operator-store-outcome *fn-nop-bless* nil) *fn-nop-bless*))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-nop-t-store "bless-snapshot" "relative")) :usage))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-nop-t-store "bless-snapshot" "/tmp/a" "/tmp/b")) :usage))
+
 (defconst *fn-nop-import*
   (fn-nop-t-store "import" "/tmp/a" "--max-transactions" "1000"))
 (assert-event (equal (fn-native-operator-result-status *fn-nop-import*) :accepted))
@@ -448,7 +462,7 @@
 (assert-event (equal (fn-native-operator-result-archive-path-octets *fn-nop-init*) nil))
 (assert-event (equal (fn-native-operator-result-import-request *fn-nop-init*) nil))
 ; The store help names the two verbs and none of the retired ones.
-(assert-event (search "export ARCHIVE-DIR | export --status | import ARCHIVE-DIR [--FIELD N ...]"
+(assert-event (search "export ARCHIVE-DIR | export --status | bless-snapshot SNAPSHOT-DIR | import ARCHIVE-DIR [--FIELD N ...]"
                       (fn-nop-help-text "store")))
 (assert-event (not (search "upgrade" (fn-nop-help-text "store"))))
 

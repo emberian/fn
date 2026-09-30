@@ -14,7 +14,10 @@
 
 (defun fn-bpnp-forward-publication-authorize
   (st epoch op record lock-owned final-absent)
-  (declare (xargs :guard t))
+  ;; The *1* class (Q4a item 2): host-called; the guard names the kinds the
+  ;; host passes (the entry guard checks them by name) and the wrapper runs raw.
+  (declare (xargs :guard (and (fn-frame-natp epoch) (fn-frame-natp op))
+                  :verify-guards nil))
   (let* ((issued (fn-bpnf-issued st))
          (kind (fn-bpn-nth 3 issued)))
     (if (and (fn-bpnf-operationp issued)
@@ -59,6 +62,13 @@
   (declare (xargs :guard t)) (fn-bpn-nth 5 operation))
 (defun fn-bpnp-forward-publication-publisher (operation)
   (declare (xargs :guard t)) (fn-bpn-nth 6 operation))
+
+(verify-guards fn-bpnp-forward-publication-frame)
+(verify-guards fn-bpnp-forward-publication-authorize)
+(verify-guards fn-bpnp-forward-publication-operationp)
+(verify-guards fn-bpnp-forward-publication-name)
+(verify-guards fn-bpnp-forward-publication-octets)
+(verify-guards fn-bpnp-forward-publication-publisher)
 
 ; fn-bpn-nth on a cons (the operation is built by list; the recognizer reads
 ; it with fn-bpn-nth).

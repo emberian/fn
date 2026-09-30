@@ -75,7 +75,7 @@ it; "open" is owed and nobody's yet.
 | 3 | restart | the store reopens on the fenced prefix; no reply | the history replayed exactly (`fn-snrt-mixed-trace-ready-node-is-exact-replay`); numbers kept (`fn-ndur-` PRF-903) | the same identity binding after replay | the same charges after replay | proved (store); the configured open `fn-cpo-open-observed` is the host's subject; lane **store-lineage** (a fork of the same store after an empty suffix) |
 | 4 | reconcile the original operation (the client retries the same Message-ID) | 441 duplicate by name; no second number | the binding that decides the duplicate (`fn-pidx-` PRF-191) | unchanged | no new charge; the refused submission may consume an allocator identity (a refusal's footprint, GPT-6 section 6) | proved: `fn-pidx-existing-action`, PRF-191; the operation identity across a restart: **open** (an idempotency token is not carried; the Message-ID is the reconciliation key) |
 | 5 | read through the indexed view (ARTICLE by number, by Message-ID) | 220 and the article's octets | the pinned view's version; the catalog join (`fn-mpxt-` PRF-969/970) | reader pinned at a version at or after 1 | the pin holds the version below the reclaim floor (`fn-own-min-pinned`) | lane **paged-history-3** (the catalog equality, the writer's preservation); the productive read: **open** (productive-contract.md section 5) |
-| 6 | two independent holds (local pin and forwarding obligation) | none | two retention pins with their evidence | the article held twice; neither discharge releases the other | the retained bytes charged once, the obligations twice | proved for the retention pins (`fn-retain-`, specs/retention.md); independent contributions to one aggregate: lane **incremental-finalize-3** (the finalize's resume, PRF-968) |
+| 6 | two independent holds (local pin and forwarding obligation) | none | two retention pins with their evidence | the article held twice; neither discharge releases the other | the retained bytes charged once, the obligations twice | proved for the retention pins (`fn-retain-`, specs/retention.md); independent contributions to one aggregate: lane **incremental-finalize-3** (the finalize's resume, PRF-968); outbound local offer/send core progress PRF-1055/1062 with PRF-1056 quiet/refusal, union certification/native evidence pending |
 | 7 | discharge one | none (a release event) | the release evidence, the surviving pin | held once | the released obligation's charge freed; bytes still charged | proved: release events (`fn-replay-apply-retention-event`, bp-release-tests); wrong-subject/old-incarnation receipts do not release (specs/bp-receipt.md) |
 | 8 | compaction with the second hold outstanding | none; every reader's answer unchanged | the surviving pin, the record kept (a held article is never tombstoned) | held once | bytes still charged | store-reclaim-pack: well-formed and idempotent; the FUTURE-OBSERVATION equivalence (every continuation observes the same): lane **reclaim-equivalence** (W8) |
 | 9 | discharge the other | none | the release evidence; the record now reclaimable | held by no one | obligations freed; bytes still charged until reclaim | proved (release); reclaimable-by-decision `fn-lgr-decide` is a construction theorem, not an execution one (GPT-6 section 1): **open** — the checkpoint written, installed, crash, reopen |
@@ -91,7 +91,10 @@ the host recovers, never finishes; `specs/store-node.md`) and by
 PRF-1002's named causes.
 
 The gap list, in one line each: (a) the productive read and the productive
-peer transfer (section 5 of the contract) are stated, unproved; (b)
+inbound durable peer transfer (section 5 of the contract) remain open;
+outbound local offer/requested-send core theorems PRF-1055/1056/1062 are
+REPL-admitted with complete teeth, with union certification and matching native
+evidence pending; (b)
 operation reconciliation across a restart rests on the Message-ID, not an
 operation identity; (c) the execution theorem for a reclaim decision
 (checkpoint written, installed, crash, reopen) does not exist; (d) the

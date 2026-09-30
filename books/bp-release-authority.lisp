@@ -679,3 +679,8 @@
                                         (fn-bpn-nth 4 view)))
                             (generation (fn-bpn-nth 5 (fn-bpn-nth 4 view)))
                             (source (fn-bpn-nth 6 view)))))))
+
+;; The *1* class (Q4a item 2, bp-remainder-5): host-called entries and their callees.
+(verify-guards fn-bpsr-signed-preimage)
+(verify-guards fn-bpsr-host-preimage)
+(verify-guards fn-bpsr-host-encode)
