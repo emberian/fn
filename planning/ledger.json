@@ -416,6 +416,10 @@
     "books/owner-obligation-recovery",
     "books/owner-obligation-completion",
     "tests/acl2/owner-obligation-completion-tests",
+    "books/obligation-view-growth",
+    "tests/acl2/obligation-view-growth-tests",
+    "books/obligation-configured-bounds",
+    "tests/acl2/obligation-configured-bounds-tests",
     "books/retention-obligation-view-bounds",
     "tests/acl2/retention-obligation-view-bounds-tests",
     "tests/acl2/owner-obligation-recovery-tests",
@@ -1721,26 +1725,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1786,
-    "books_in_root_closure": 1783,
-    "roots": 1717,
-    "theorems": 28447,
-    "functions": 18616,
-    "assert_events": 23474,
+    "books": 1790,
+    "books_in_root_closure": 1787,
+    "roots": 1721,
+    "theorems": 28460,
+    "functions": 18617,
+    "assert_events": 23479,
     "must_fails": 2507,
     "prover_refusals": 0,
     "encapsulates": 157,
     "guards": {
       "verified": 3489,
       "declared-off": 2151,
-      "default-guarded": 10189,
+      "default-guarded": 10190,
       "default-unguarded": 2787
     },
-    "suspect_theorems": 1243,
+    "suspect_theorems": 1244,
     "export_hygiene_warnings": 336,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2476,
+    "include_hygiene_warnings": 2479,
     "host_names_warnings": 2137,
     "hand_written_record_warnings": 18
   },
@@ -18144,6 +18148,37 @@
       "read_error": null
     },
     {
+      "book": "books/obligation-configured-bounds.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 9,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-store-traces",
+        "retention-obligation-view-bounds"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-rov-initial-node-capacity-by-definition"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/obligation-subject-grammar.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -18219,6 +18254,35 @@
       "encapsulates": 0,
       "includes": [
         "records-shape"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/obligation-view-growth.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "retention-obligation-view",
+        "view-delta-space"
       ],
       "system_includes": [
         "arithmetic/top"
@@ -29517,7 +29581,7 @@
       "book": "books/store-node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 84,
+      "theorems": 83,
       "functions": 73,
       "guards": {
         "verified": 39,
@@ -43926,6 +43990,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/obligation-configured-bounds-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 10,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/obligation-configured-bounds"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/obligation-subject-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -43975,6 +44065,32 @@
       "encapsulates": 0,
       "includes": [
         "../../books/obligation-view-budget"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/obligation-view-growth-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 5,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/obligation-view-growth"
       ],
       "system_includes": [],
       "suspects": [],
@@ -59993,6 +60109,14 @@
       ]
     },
     {
+      "theorem": "fn-rov-initial-node-capacity-by-definition",
+      "book": "books/obligation-configured-bounds.lisp",
+      "line": 62,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
       "theorem": "fn-rov-node-of-make-v6",
       "book": "books/owner-obligation-completion.lisp",
       "line": 76,
@@ -61720,7 +61844,7 @@
     {
       "theorem": "fn-sn-article-record-without-a-usable-clock-is-refused",
       "book": "books/store-node.lisp",
-      "line": 862,
+      "line": 860,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-article-record and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-sn-article-record and the conclusion is that branch's value"
@@ -61729,7 +61853,7 @@
     {
       "theorem": "fn-sn-capacity-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 390,
+      "line": 388,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61737,7 +61861,7 @@
     {
       "theorem": "fn-sn-capacity-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 349,
+      "line": 347,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61754,7 +61878,7 @@
     {
       "theorem": "fn-sn-config-history-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 423,
+      "line": 421,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61762,7 +61886,7 @@
     {
       "theorem": "fn-sn-config-history-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 380,
+      "line": 378,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61770,7 +61894,7 @@
     {
       "theorem": "fn-sn-files-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 392,
+      "line": 390,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61778,7 +61902,7 @@
     {
       "theorem": "fn-sn-files-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 352,
+      "line": 350,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61794,7 +61918,7 @@
     {
       "theorem": "fn-sn-files-of-fn-sn-update",
       "book": "books/store-node.lisp",
-      "line": 516,
+      "line": 514,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61818,7 +61942,7 @@
     {
       "theorem": "fn-sn-files-of-fn-sn-with-event-index",
       "book": "books/store-node.lisp",
-      "line": 830,
+      "line": 828,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61843,7 +61967,7 @@
     {
       "theorem": "fn-sn-groups-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 388,
+      "line": 386,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61851,7 +61975,7 @@
     {
       "theorem": "fn-sn-groups-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 346,
+      "line": 344,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61859,7 +61983,7 @@
     {
       "theorem": "fn-sn-identity-next-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 419,
+      "line": 417,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61867,7 +61991,7 @@
     {
       "theorem": "fn-sn-identity-next-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 376,
+      "line": 374,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61875,7 +61999,7 @@
     {
       "theorem": "fn-sn-identity-next-of-fn-sn-update",
       "book": "books/store-node.lisp",
-      "line": 523,
+      "line": 521,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61883,7 +62007,7 @@
     {
       "theorem": "fn-sn-identity-next-of-fn-sn-with-event-index",
       "book": "books/store-node.lisp",
-      "line": 762,
+      "line": 760,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61891,7 +62015,7 @@
     {
       "theorem": "fn-sn-index-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 398,
+      "line": 396,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61899,7 +62023,7 @@
     {
       "theorem": "fn-sn-index-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 361,
+      "line": 359,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61915,7 +62039,7 @@
     {
       "theorem": "fn-sn-keyring-generation-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 408,
+      "line": 406,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61923,7 +62047,7 @@
     {
       "theorem": "fn-sn-keyring-generation-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 364,
+      "line": 362,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61931,7 +62055,7 @@
     {
       "theorem": "fn-sn-keyring-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 396,
+      "line": 394,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61939,7 +62063,7 @@
     {
       "theorem": "fn-sn-keyring-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 358,
+      "line": 356,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61947,7 +62071,7 @@
     {
       "theorem": "fn-sn-keyring-snapshots-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 415,
+      "line": 413,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61955,7 +62079,7 @@
     {
       "theorem": "fn-sn-keyring-snapshots-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 372,
+      "line": 370,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61972,7 +62096,7 @@
     {
       "theorem": "fn-sn-node-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 394,
+      "line": 392,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61980,7 +62104,7 @@
     {
       "theorem": "fn-sn-node-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 355,
+      "line": 353,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62062,7 +62186,7 @@
     {
       "theorem": "fn-sn-state-fields-of-fn-sn-with-consumer",
       "book": "books/store-node.lisp",
-      "line": 649,
+      "line": 647,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62070,7 +62194,7 @@
     {
       "theorem": "fn-sn-state-fields-of-fn-sn-with-topic",
       "book": "books/store-node.lisp",
-      "line": 676,
+      "line": 674,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62102,7 +62226,7 @@
     {
       "theorem": "fn-sn-verdicts-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 412,
+      "line": 410,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62110,7 +62234,7 @@
     {
       "theorem": "fn-sn-verdicts-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 368,
+      "line": 366,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -73347,6 +73471,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/obligation-configured-bounds.lisp",
+        "line": 5,
+        "include": "retention-obligation-view-bounds",
+        "included": "books/retention-obligation-view-bounds.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/octet-text.lisp",
         "line": 48,
         "include": "rev-onto",
@@ -80942,10 +81073,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/obligation-configured-bounds-tests.lisp",
+        "line": 2,
+        "include": "../../books/obligation-configured-bounds",
+        "included": "books/obligation-configured-bounds.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/obligation-subject-tests.lisp",
         "line": 6,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/obligation-view-growth-tests.lisp",
+        "line": 2,
+        "include": "../../books/obligation-view-growth",
+        "included": "books/obligation-view-growth.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
