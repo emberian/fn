@@ -1,0 +1,17 @@
+# Completing whole slices
+
+Ember's 2026-09-30 correction changes the execution practice: identify the obstruction to a complete capability, remove it confidently, and close its associated original work together. This does not change the finite scope, completion criteria, evidence standards or model policy (Sol execution, Astra only architectural synthesis).
+
+| Slice | Integration owner | Acceptance path and helper roles |
+| --- | --- | --- |
+| Durable admission, identity and authority | `sol_owner_union` | Actual POST and received/BP acceptance with canonical charge, purpose grant, first-accepted binding and account/config authority; lost response, restart and reconciliation preserve the outcome. Binding, size, consumer/account and BP owners supply the actual compatible APIs. The first executable refuter is the real owner prepare path, not a private proposed wrapper. |
+| Checkpoint, restart and cold read | `architecture_reorientation`; reader lead `sol_reader_join` | Checkpoint real accepted history, retain an old reader, publish, restart/open, read through the cold path and OVER, cancel/join and account for every retained resource. Snapshot, encoder/decoder, streaming, physical and reply owners join this path. |
+| Disconnected delivery and retirement | `sol_bp_dispatch` | Accept, queue, send, interrupt persistence/job execution, restart, resume and establish exact durable acceptance/receipt and release. Peering and operator owners integrate actual retry, reconfiguration, drain/deadline and bounded reporting. |
+
+Each owner keeps one coherent assembly and drives its first actual failure. Available source components are imported under exact leases and tested together early; unavailable definitions, incompatible APIs, failed proofs and resource-lifetime gaps remain distinct. Helpers work on the specific failure the assembly exposes. Private assembly can be NOTREADY; source publication remains the runner's responsibility and final claims still require matching evidence.
+
+The shared P2 obstruction is assigned to `sol_index_integration` and `sol_physical`: preserve the rows-only catalog abstraction, add an operational source abstraction that carries the actual keyed layout and generation, and capture a separate iterator whose logical schedule can correspond exactly to concrete yields/candidates. Concrete backing uses funded fixed-size chunks and a bounded persistent directory/root, copy-on-write for leased generations, incremental unpublished growth/reinsertion and atomic publication. Old backing remains charged until its final query release. An eager flat resize or generation ID around mutable backing does not satisfy this contract. Query confirmation and minimum selection are shared with peering; binding projects article and binding from the same selected row.
+
+Healthy owners checkpoint in place. The earlier automatic roughly-150-tool handoff is superseded; a real ownership/context handoff still preserves full NEXT, stops or explicitly transfers jobs, and maintains one worktree owner. This avoids synchronized restart/reorientation cycles while retaining cold-resume safety.
+
+No new broad audit or isolated generalization is required. Existing source and evidence are inputs to completing these paths. Intermediate image construction is not the pacing step. Original requirements and terminal units remain intact; a complete slice may discharge many of them only when its evidence actually covers them.
