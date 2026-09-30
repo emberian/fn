@@ -18084,7 +18084,7 @@
         "tests/acl2/history-record-cursor-tests.lisp",
         "specs/history-record-cursor.md"
       ],
-      "progress_note": "First opaque-leaf component clean-source admitted (21 forms, 0.35 ACL2 s /114986 steps), guarded executable begin/tick; twelve test forms admitted through protected persvati REPL. Existing store-tree-codec included from matching cache. No certification/native/image claim. Full target remains planned; initial size-hypothesis removal witness and general tree/word/census/controller composition remain open. Source library events are named in the specification rather than cited as a completed production keystone."
+      "progress_note": "Opaque-leaf and scalar word-accumulator library components clean-source admitted (34 forms, 1.03 ACL2 s /125042 steps); executable begin/tick/push/finish guards verified. All33 testbody forms pass (4026 proof steps), including reachable full/partial/aligned words and literal removal teeth for every word-boundary hypothesis. Word push eighth-byte and final-pad emissions equal existing fn-hp-pack8; redundant true-listp premises removed after weakened proofs. Existing dependency closure acquired from matching cache. No certification/native/image claim. Full target remains planned; initial leaf size-hypothesis witness, general tree/scalar streaming and composed word/census/controller remain open. Library events are named in the specification rather than cited as a completed production keystone."
     }
   ]
 }
