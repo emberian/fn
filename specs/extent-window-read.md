@@ -153,3 +153,33 @@ transitions. Corrupted-state READ and scan-HASH removals check failure of
 the sole carry hypothesis and of the conclusion. The codec theorem has no
 hypotheses to remove. This is numerical output carry, not whole-decoder
 fidelity, total scheduling completeness or a runtime allocation claim.
+
+### Actual captured-source authentication trajectory
+
+The proof-only `extent-window-stream-semantics` boundary connects the
+concrete word assembly in actual `fn-ews-read` to the canonical block
+required by the digest trajectory. The captured immutable source is an
+octet-list proof parameter, not an allocated execution buffer. An honest
+read completion supplies exactly `fn-shr-win(POS,demand,source)`; fixed
+concrete `fn-b3x-words` then equals the first sixteen words of the digest's
+truncating logical span. This handles short final blocks and distinguishes
+TAKE padding from source truncation. No host-provided digest or word-list
+assumption replaces that byte boundary.
+
+Actual BEGIN establishes the imported semantic/domain/counter invariant
+under natural depth<=63, source octets of length ELEN and
+ceil(ELEN/8)<=128*2^depth. READ preserves it with carried evidence and the
+exact source slice when in scan; refused and stale reads do not require an
+honest slice. TICK preserves it with only carried evidence. A newly
+published READ proves that its actual trailer equals fn-blake3(source)
+and its retained descriptor commitment is that digest's packed value.
+No whole-source or whole-state recognizer is run on the served path.
+
+Literal witnesses assert complete antecedents and conclusions, including
+each necessary initializer/read/tick/publication/canonical removal;
+corrupted private states are labelled separately. The canonical theorem's
+redundant scan-mode hypothesis was removed after proving the weaker result.
+This authentication safety trajectory leaves positional tree-frontier
+scheduling completeness, physical honest-source realization, full decoded
+trajectory and runtime allocation/funding open. It adds no native or
+image qualification claim.

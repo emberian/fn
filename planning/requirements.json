@@ -3000,7 +3000,11 @@
         "tests/test_native_capacity_vector.py",
         "planning/evidence/capacity-vector-2026-09-26.md",
         "books/store-carried-folds.lisp",
-        "tests/acl2/store-carried-folds-tests.lisp"
+        "tests/acl2/store-carried-folds-tests.lisp",
+        "books/extent-window-source-words.lisp",
+        "books/extent-window-stream-semantics.lisp",
+        "tests/acl2/extent-window-stream-semantics-tests.lisp",
+        "planning/evidence/extent-window-raw-semantics-source-2026-09-30.md"
       ],
       "implementation_note": "The served gates keep a release record for every open forward undertaking and one for the maintenance release (fn-cvec-verdict-at, fn-cvec-article-budget-for, fn-cvec-article-verdict-at); configuration records other than `retention set` leave the last generation to it (fn-cvec-config-generations); `status` prints `maintenance-reserve octets=R transactions=N debt=D held|short`. P12 partial (paged-history-5): exact token cold-pool admission and settlement library plus stobj adapter (PRF-1065, SCN-1002); supplied demand only. Full actual allocation/profile funding, persistent table capacity, checkpoint/recovery old/new reserve and suffix rescue remain unimplemented; the existing one-release reserve is not the full resource-vector proof. PRF-1082 adds a host-called numerical launcher extension for explicit cold resources, with no productive supported policy claim until the measured allocator/initialization consumer is integrated. PRF-1106 adds exact checkpoint-file retention pins and fixed page-buffer leases as source components; its descriptor/retention reservation bounds file-pin rows jointly with registered incarnations. Producer activation and logical/page authentication remain separate."
     },

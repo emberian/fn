@@ -18521,7 +18521,7 @@
     {
       "id": "PRF-1109",
       "title": "Protected extent authentication realizes bounded requested windows with exact effects",
-      "statement": "The actual served requested-window reader must stream every protected ELEN byte and compare the exact descriptor trailer before publishing only the requested payload window. Concrete fixed window copy has an all-output/all-effects refinement; schedule proofs alone do not establish streaming hash, compressed decode, physical lifetime or full served refinement. Complete fn-frame-digest and fn-lzr-lz-value bridges remain required.",
+      "statement": "The actual served requested-window reader must stream every protected ELEN byte and compare the exact descriptor trailer before publishing only the requested payload window. Concrete fixed window copy has an all-output/all-effects refinement; schedule proofs alone do not establish streaming hash, compressed decode, physical lifetime or full served refinement. Complete fn-frame-digest and fn-lzr-lz-value bridges remain required. Actual fn-ews begin/read/tick now source-prove digest trajectory from carried supported domain and exact captured-source slices; the actual concrete fn-b3x-words block is canonical, and a newly published trailer equals fn-blake3 of that source with the matching descriptor commitment. Positional/tree-frontier progress, physical source realization, compressed whole-decoding fidelity and runtime funding remain open.",
       "milestone": "M5",
       "requirements": [
         "STO-020"
@@ -18549,9 +18549,13 @@
         "tests/acl2/extent-window-stream-tests.lisp",
         "books/extent-window-stream-refinement.lisp",
         "tests/acl2/extent-window-stream-refinement-tests.lisp",
-        "tests/acl2/extent-window-stream-union-tests.lisp"
+        "tests/acl2/extent-window-stream-union-tests.lisp",
+        "books/extent-window-source-words.lisp",
+        "books/extent-window-stream-semantics.lisp",
+        "tests/acl2/extent-window-stream-semantics-tests.lisp",
+        "planning/evidence/extent-window-raw-semantics-source-2026-09-30.md"
       ],
-      "progress_note": "Actual core read/tick composition source-admitted with guarded fixed-buffer execution, exact output/effects and core-cursor publication theorem. Clean actual tests cover empty/partial/tree/window boundaries and corruption, commitment, short/stale reads. General digest trajectory/domain, compressed composition, native admission/lifetime and served caller remain open; no certificate/image/native/P12 completion claim."
+      "progress_note": "Actual core read/tick composition source-admitted with guarded fixed-buffer execution, exact output/effects and core-cursor publication theorem. Clean actual tests cover empty/partial/tree/window boundaries and corruption, commitment, short/stale reads. General digest trajectory/domain, compressed composition, native admission/lifetime and served caller remain open; no certificate/image/native/P12 completion claim. Raw source join: proper sol-ewsst1 replay16core+2testbooks45.32ACL2s/13,997,587steps,zero refusals and18literal positives/removals. Actual begin/read/tick maintain source denotation; new publication authenticates fn-blake3(source), canonical concrete words proved from byte slices. Source only; raw positional frontier/progress and actual funding/native joins remain open."
     },
     {
       "id": "PRF-1087",

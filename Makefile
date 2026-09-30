@@ -1126,6 +1126,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/extent-window-stream-tests \
 	tests/acl2/extent-window-stream-refinement-tests \
 	tests/acl2/extent-window-stream-union-tests \
+	books/extent-window-source-words \
+	books/extent-window-stream-semantics \
+	tests/acl2/extent-window-stream-semantics-tests \
 	tests/acl2/extent-window-compressed-tests \
 	tests/acl2/extent-window-compressed-refinement-tests \
 	books/payload-window-width \

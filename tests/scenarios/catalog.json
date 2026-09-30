@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6495,7 +6495,8 @@
         "Read a requested window crossing two bounded blocks inside a protected extent containing many records.",
         "Keep the requested bytes private while the rest of the prefix and trailer are still being verified; exercise short reads, wrong descriptor commitment, changed prefix digest and stale physical incarnation.",
         "Read a requested decoded window from a compressed stored payload with fixed scratch, then validate complete stream acceptance and exact decoded length.",
-        "Cancel while a worker or output borrower remains live; retain the actual file and scratch leases until relinquishment."
+        "Cancel while a worker or output borrower remains live; retain the actual file and scratch leases until relinquishment.",
+        "Affirm actual fn-ews begin/read/tick semantic carry from exact captured source slices and newly published trailer equality to fn-blake3(source); remove each retained initializer/read/tick/publication/canonical hypothesis with full literal checks, labelling corrupted states separately."
       ],
       "expected": [
         "Read effects are ACL2-selected exact offsets/counts; per-step input is at most64 bytes and output storage at most16KiB, independent of ELEN.",
@@ -6512,7 +6513,9 @@
         "tests/acl2/extent-window-stream-tests.lisp",
         "books/extent-window-stream-refinement.lisp",
         "tests/acl2/extent-window-stream-refinement-tests.lisp",
-        "tests/acl2/extent-window-stream-union-tests.lisp"
+        "tests/acl2/extent-window-stream-union-tests.lisp",
+        "books/extent-window-stream-semantics.lisp",
+        "tests/acl2/extent-window-stream-semantics-tests.lisp"
       ],
       "execution_scope": "Actual concrete core read/tick/window execution and source safety/output proofs. General digest trajectory and supported-domain proof, changed stored codec acceptance/composition, native lifetime/funding and matching full-path execution remain open."
     },
