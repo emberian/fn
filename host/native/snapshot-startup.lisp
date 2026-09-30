@@ -6,6 +6,13 @@
 (defstruct (fnn-snapshot-initial-workspace
              (:constructor %make-fnn-snapshot-initial-workspace))
   writer scratch receipt)
+(define-condition fnn-snapshot-startup-retained (fnn-snapshot-capture-uncertain)
+  ((workspace :initarg :workspace :reader fnn-snapshot-startup-retained-workspace)
+   (source :initarg :source :initform nil :reader fnn-snapshot-startup-retained-source)
+   (maintenance :initarg :maintenance :initform nil :reader fnn-snapshot-startup-retained-maintenance)
+   (root :initarg :root :initform nil :reader fnn-snapshot-startup-retained-root)
+   (view :initarg :view :initform nil :reader fnn-snapshot-startup-retained-view)
+   (cause :initarg :cause :initform nil :reader fnn-snapshot-startup-retained-cause)))
 
 (defun %fnn-snapshot-initial-workspace-create (receipt)
   "Private allocation cut after actual INITIAL admission. No global default
@@ -35,7 +42,7 @@ canonical readiness or a publication capability."
   (let* ((store (fnn-owner-service-store service))
          (token (fnn-store-recovery-source store))
          (maintenance nil) (root nil) (view nil) (job nil) (workspace nil))
-    (unwind-protect
+    (handler-case
          (sb-thread:with-mutex ((fnn-owner-service-lock service))
            (destructuring-bind (erp admission read-pool state)
                (fnn-call 'fn-owner-recovery-initial-admit token
@@ -80,25 +87,18 @@ canonical readiness or a publication capability."
                          (fnn-snapshot-initial-workspace-writer workspace))
                    (values job workspace))
                (error (condition)
-                 (error 'fnn-snapshot-capture-uncertain :job job
+                 (error 'fnn-snapshot-startup-retained :job job :workspace workspace
                         :message (format nil "startup workspace did not complete: ~a"
                                          condition))))))
-      ; Once JOB exists, it owns the root/view/maintenance. Preserve it on
-      ; later allocation errors for actual joined cleanup, never refund on
-      ; the strength of an exception. Before JOB, no worker has been issued.
-      (unless job
-        (when view
-          (sb-thread:with-mutex ((fnn-owner-service-lock service))
-            (let ((word (fnn-snapshot-recovery-payload-view-release view)))
-              (unless (eq (first word) :released)
-                (fnn-fault "startup view cleanup retained: ~a" word)))))
-        (when root
-          (fnn-snapshot-recovery-root-release service root maintenance token))
-        ; INITIAL remains owned even after role returns. Ordinary maintenance
-        ; release cannot settle its constructor/runtime custody. The genuine
-        ; same-row settlement boundary is still being joined.
-        (when maintenance
-          (fnn-fault "startup INITIAL custody retained awaiting actual settlement"))))))
+      (error (condition)
+        ; Actual constructor custody stays held on every partial creator.
+        ; Preserve all obtained holders and the original failure. Cleanup
+        ; cannot invent the missing runtime epilogue or hide a retained pin.
+        (if maintenance
+            (error 'fnn-snapshot-startup-retained :job job :workspace workspace
+                   :source token :maintenance maintenance :root root :view view
+                   :cause condition :message "startup INITIAL retains partial construction")
+          (error condition))))))
 
 (defun fnn-snapshot-startup-measure (service)
   "Drive the actual retained OSM/HCT collector in the exclusive startup cut.
@@ -108,12 +108,17 @@ internal seal/install must consume them before startup clears its source."
   (multiple-value-bind (job workspace) (fnn-snapshot-startup-open service)
     (handler-case
         (loop
+          (sb-thread:with-mutex ((fnn-owner-service-lock service))
+            (unless (fnn-snapshot-recovery-payload-view-live-p
+                     (fnn-snapshot-job-payload-view job))
+              (error 'fnn-snapshot-startup-retained :job job :workspace workspace
+                     :message "startup recovery view is no longer current")))
           (let ((answer (fnn-snapshot-recovery-census-step job)))
             (when (and (consp answer) (eq (first answer) :measured))
               (return (values answer job workspace)))
             (when (and (consp answer)
                        (member (first answer) '(:unavailable :refused :uncertain :stale)))
-              (error 'fnn-snapshot-capture-uncertain :job job
+              (error 'fnn-snapshot-startup-retained :job job :workspace workspace
                      :message (format nil "startup census retained ownership: ~a" answer)))
             (fnn-checkpoint-yield
              "startup-canonical-census"
@@ -121,5 +126,5 @@ internal seal/install must consume them before startup clears its source."
             (sb-thread:thread-yield)))
       (fnn-snapshot-capture-uncertain (condition) (error condition))
       (error (condition)
-        (error 'fnn-snapshot-capture-uncertain :job job
+        (error 'fnn-snapshot-startup-retained :job job :workspace workspace
                :message (format nil "startup census did not complete: ~a" condition))))))

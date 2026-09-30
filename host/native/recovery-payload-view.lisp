@@ -16,6 +16,13 @@
         (if (eq (first answer) :acquired)
             (values :acquired (fnn-make-snapshot-payload-view (second answer) arena))
           (values :retained answer))))))
+(defun fnn-snapshot-recovery-payload-view-live-p (holder)
+  (sb-thread:with-mutex (*fnn-payload-lifecycle-lock*)
+    (and (eq *fnn-payload-lifecycle-phase* :recovering)
+         (eq (fnn-snapshot-payload-view-arena holder) *fnn-payload-lifecycle-arena*)
+         (fnn-core 'fn-owner-recovery-payload-view-livep
+                   (fnn-snapshot-payload-view-token holder)
+                   (fnn-live-page-read-pool) *the-live-state*))))
 (defun fnn-snapshot-recovery-payload-view-release (holder)
   ; Caller holds owner mutex. Role return derives actual child custody in the
   ; same pool; this API deliberately has no caller-supplied joined parameter.
