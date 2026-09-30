@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -1521,23 +1521,27 @@
       "milestone": "M5",
       "status": "specified",
       "requirements": [
-        "STO-014"
+        "STO-014",
+        "OBJ-008"
       ],
       "steps": [
         "On a store of N=5,000 articles in one group, run `admin retention set released-by-all-holders`; hold article 100 by a reader pin, articles above 2,000 by a consumer cursor at 2,000, and articles 3,000 to 3,100 by an undelivered feed to a live peer.",
         "Run `store reclaim --dry-run`, then `store reclaim`; record the disk use of the store before and after.",
         "Re-post the Message-ID of a reclaimed article with its original bytes, and with changed bytes; ARTICLE it by Message-ID and by number; STAT and ARTICLE a held one.",
-        "Kill `store reclaim` at each cut of its program (SIGKILL and EIO) and reopen after each."
+        "Kill `store reclaim` at each cut of its program (SIGKILL and EIO) and reopen after each.",
+        "Inspect the rewritten event through the current FN-RCL2 codec: preserve the typed relay-v1 commitment and original byte-content commitment; change the magic to the retired RCL1 value and truncate below 145 bytes to confirm neither is recognized."
       ],
       "expected": [
         "The dry run names every article with its verdict; exactly articles 1 to 2,000 except 100 are reclaimable, and 100 is held-reader-pin, 2,001 to 5,000 held-consumer-cursor.",
         "After the run the same numbers are tombstones (verified by number), the others are byte-identical, and disk use falls by the reclaimed payload octets less the tombstones.",
         "The original bytes are refused as a duplicate, the changed bytes as a conflict; ARTICLE answers 430 and 423 article reclaimed; the held article is served unchanged.",
-        "Every reopen replays to a state whose Message-IDs, numbers and group bindings equal the state before; each article is either its original payload or its tombstone."
+        "Every reopen replays to a state whose Message-IDs, numbers and group bindings equal the state before; each article is either its original payload or its tombstone.",
+        "The host per-event rewriter retains fn-asj-subject of the original payload exactly; permitted Path/Xref variants share that commitment. This is commitment preservation, not digest injectivity or a claim that the duplicate decision already uses it."
       ],
       "evidence": [
         "tests/acl2/store-reclaim-tests.lisp",
-        "planning/evidence/reclaim-d13-2026-09-25.md"
+        "planning/evidence/reclaim-d13-2026-09-25.md",
+        "tests/acl2/reclaim-article-subject-tests.lisp"
       ]
     },
     {
@@ -4600,7 +4604,7 @@
         "Drain bob-pub, alice-priv (bound) and operator (plain); bound-poll bob-priv; `account access bob --read '*' --post '*'`; drain bob-priv; `consumer unbind bob-pub`; bound-poll and plain poll of bob-pub."
       ],
       "expected": [
-        "The malformed binding exits non-zero; `consumer show` prints `consumer bob-pub account bob` and `consumer alice-priv account alice`.",
+        "The malformed binding exits non-zero; `consumer show` prints `consumer bob-pub account bob` and `consumer alice-priv account alice`. It contains no pending invitation or redeemed-account line.",
         "Every refusal in step 4 exits 1 and writes no cursor.",
         "bob-pub is served pub1; the wrong-password and plain acks exit 1, the bound ack 0.",
         "After the restart: bob-pub pub2, cross; alice-priv secret1 (re-served), secret2, cross; operator secret1, secret2, cross; bob-priv refused, then after the widened rule secret1, secret2, cross (nothing skipped); unbound bob-pub: bound-poll exits 1, plain poll an empty page."
@@ -6367,6 +6371,103 @@
         "planning/evidence/bp-recovery-profile-2026-09-30.md"
       ],
       "execution_scope": "Native cases staged, NOT RUN at current source; runner supplies matching image evidence. ACL2 teeth also cover nonfragment payload, later-deleted row, member/readiness hypothesis removals and invalid profile. The recovery guard increment additionally checks the actual fn-bphp-recover-auto-event world class and direct refinement subject in tests/acl2/bp-held-projection-tests.lisp; it does not replace these native cases."
+    },
+    {
+      "id": "SCN-1007",
+      "title": "History image write descriptors resume through all phases",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-040"
+      ],
+      "steps": [
+        "Capture a nonempty existing plan with two data pages, a table page and a two-page directory.",
+        "Tick through data, table, directory and terminal phases, checking the literal residual theorem and identity preservation each time.",
+        "Corrupt the directory counter; separately mutate an emitted selector.",
+        "Compute a nonempty scalar layout and compare its directory/data/table allocation with the actual fresh allocator; exercise each range/type hypothesis independently.",
+        "Write a nonempty scratch prefix, reset while physical words remain, then fill a whole2048word page and attempt another put."
+      ],
+      "expected": [
+        "Each valid tick emits one exact original descriptor or yields without losing remaining writes.",
+        "The captured lease and source epoch are unchanged.",
+        "Invalid counter fails both the invariant and theorem conclusion; selector mutation fails exact plan equality.",
+        "Scalar addresses equal indexed fresh allocation without building an allocation list in execution; representation overflow refuses before allocation.",
+        "Each stored word extends exactly the logical prefix; reset prevents stale-word exposure; full page refuses further writes without changing prefix or identities."
+      ],
+      "implementation": {
+        "test": "tests/acl2/history-page-cursor-tests.lisp",
+        "native": false
+      },
+      "evidence": [
+        "tests/acl2/history-page-cursor-tests.lisp",
+        "tests/acl2/history-page-layout-tests.lisp",
+        "tests/acl2/history-page-buffer-tests.lisp"
+      ],
+      "execution_scope": "Library component only; no actual host or funded producer completion claim."
+    },
+    {
+      "id": "SCN-1002",
+      "title": "Cold resource credits survive timeout until private result relinquishment, eviction and incarnation close",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "At launch, extend the previous ACL2 reservation by explicit cold_heap_octets and persistent cold_workers stack/runtime; exercise accepted and machine-too-small decisions. Missing or unsupported policy cannot silently enable unfunded cold reads.",
+        "Install a supported, launcher-funded resource profile including persistent peak table capacity; open and charge a file incarnation before issuing served cold reads.",
+        "Stall a real pread, issue until admission refuses, cancel/timeout clients repeatedly while original workers remain live.",
+        "Release the stall, observe thread death and join, publish one verified buffer in cache; replay the old token, then evict it and physically close its file.",
+        "Exercise failed completion, ambiguous close, startup/recovery direct cache population and checkpoint old/new incarnation overlap under the same funded profile.",
+        "Reject an unfunded permanent baseline without installing the pool; install a nonzero funded baseline, admit and settle a cached read, evict and close, and verify baseline remains charged after every transition.",
+        "Enter served mode before a funded recovery; an uninitialized or served-but-unfunded context cannot issue a file identity. Explicit offline open is distinguishable and cannot silently replace served mode.",
+        "Admit a typed unverified discovery lease, retain the file against close while its protected vector is borrowed, reject verified-cache settlement, release once after relinquishing the buffer, and reject replay or mutated identity.",
+        "Release the stall, observe the private job return, publish one verified buffer in cache and settle its exact token; replay the old token, then evict it and physically close its file. Unexpected worker death requires a real join first.",
+        "Admit a typed unverified discovery lease before allocation; fnn-extent-entry-fresh returns vector and lease. fnn-owner-release-extents retains the lease through publication-buffer reseating, clears the buffer alias, then releases. Hold the file against close, reject verified-cache settlement, and reject replay or mutated identity."
+      ],
+      "expected": [
+        "Refused issue creates no buffer, thread, descriptor or identity and returns the ACL2 resource-unavailable reply without borrowing rescue.",
+        "Timeout/cancel gives no resource refund; one monotone core-issued token identifies both ownership and exact charge.",
+        "Job execution credit releases only after private result relinquishment and exact settlement; the persistent worker baseline remains charged until shutdown. Cached buffer memory remains charged until physical eviction. Duplicate or mutated token is stale with unchanged state.",
+        "Incarnation credit lasts until physical close; retained hash capacity stays baseline-funded; faults fence when their persistence/close outcome is ambiguous."
+      ],
+      "evidence": [
+        "tests/acl2/page-read-ledger-tests.lisp",
+        "tests/acl2/page-read-host-tests.lisp",
+        "books/cold-read-reservation.lisp",
+        "tests/acl2/cold-read-reservation-tests.lisp",
+        "tests/acl2/native-operator-tests.lisp",
+        "tests/acl2/page-discovery-ledger-tests.lisp",
+        "host/native/extent.lisp",
+        "host/native/owner.lisp"
+      ],
+      "execution_scope": "Model/adapter source REPL and native source-load checks only; native scenario and actual allocator/profile refinement pending. Discovery vector lifetime is wired, but synchronous verified reads, decoded representations and checkpoint/suffix rescue remain open."
+    },
+    {
+      "id": "SCN-1004",
+      "title": "Fixed funded executor jobs remain owned through cancel, stale reuse and startup failure",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Install explicit operator worker/descriptor/read/file budgets, baseline-fund and preallocate fixed executors and tables before owner recovery.",
+        "Hold actual pread on every admitted worker and cancel clients repeatedly; issue another read while the pool is full.",
+        "Release one worker result, verify owner settlement then reuse that worker for a newer exact token; deliver its older token again.",
+        "Fail executor startup partway, exercise process death with queued/running/returned jobs, and restart without publishing old results."
+      ],
+      "expected": [
+        "Admission refuses before new buffer/thread/job allocation when all slots remain charged. Cancellation neither releases the slot nor closes the held file.",
+        "One admitted token owns one executor slot. Returned result stays charged until matching settled I/O and physical publication/discard.",
+        "Old token cannot return or free a reused worker; cached buffer remains charged until actual eviction. Permanent executor/table storage remains baseline-funded through shutdown.",
+        "Partial startup tears down only resources actually created, joins created workers and fences ambiguous close; restart derives fresh process-local identity state."
+      ],
+      "evidence": [
+        "books/page-read-executor.lisp",
+        "tests/acl2/page-read-executor-tests.lisp"
+      ],
+      "execution_scope": "Pure executor model source REPL and folded literal teeth only. Native executor/refinement, real process-death cuts and supported funding/profile consumer pending; not a full P12 claim."
     }
   ]
 }

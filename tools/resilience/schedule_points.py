@@ -58,23 +58,8 @@ def _pending_page_read() -> Scenario:
 
 
 def _pending_reclaim() -> Scenario:
-    return Scenario(
-        id="schedule-reclaim-candidate-selected",
-        title="a reclaim candidate selected: a new independent hold is acquired before the "
-              "destructive action; the held article is still read whole, eligible content "
-              "is freed",
-        requirements=["STO-002"], contract="local-commit-log",
-        initial={"recipe": "served-node", "groups": [GROUP], "prior": [PRIOR]},
-        actors=adapter.ACTORS,
-        operations=[Operation("reclaim-1", "client", "reclaim"),
-                    Operation("hold", "nemesis", "acquire-hold", {"article": "post-prior"}),
-                    Operation("read-prior", "nemesis", "read", {"article": "post-prior"}),
-                    Operation("release", "nemesis", "release-hold", {"article": "post-prior"})],
-        faults=[Fault("reclaim-1", "reclaim-candidate-selected", "interleave",
-                      "contract-admissible", "performed", "store-post",
-                      ("hold", "read-prior"))],
-        healing=["release"], witnesses=["reclaim-freed", "read-during-competing-work"],
-        healing_bound=adapter.healing_bound())
+    from .adapters import reclaim_hold
+    return reclaim_hold.example()
 
 
 def _receipt(variant: str) -> Scenario:

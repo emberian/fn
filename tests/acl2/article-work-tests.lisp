@@ -96,3 +96,29 @@
  (equal (+ 3 (* 2 32768)
            (fn-aw-budget (1+ *fn-article-max-header-lines*) 32768 0))
         69261680676))
+
+; Literal bound tooth: establishing visibility on a WSP-only open field
+; charges only the new physical line, independent of the retained prefix.
+(defthm fn-aw-visible-fold-cost-positive-witness
+  (let* ((cur '(((88 58 32 9)) (120) (9 32) nil))
+         (line '(32 9 32 120))
+         (r (fn-aw-add-fold-open cur line)))
+    (and (fn-article-open-fieldp cur)
+         (<= (fn-aw-c r) (+ 3 (* 2 (len line))))
+         (equal (fn-aw-v r) (fn-article-add-fold-open cur line))
+         (fn-article-open-fieldp (fn-aw-v r))
+         (fn-article-open-field-closedp (fn-aw-v r))))
+  :rule-classes nil)
+
+; Mutation: reusing the forward append fold copies the old accumulated value
+; and exceeds the new line-only bound on this otherwise valid large prefix.
+(defthm fn-aw-visible-fold-forward-copy-mutation-witness
+  (let* ((cur (fn-article-open-field
+              (fn-article-make-field '((88 58 32 120)) '(120)
+                                     (fn-aw-test-repeat 40 32))))
+         (line '(32 120)))
+    (and (fn-article-open-fieldp cur)
+         (<= (fn-aw-c (fn-aw-add-fold-open cur line)) (+ 3 (* 2 (len line))))
+         (< (+ 3 (* 2 (len line)))
+            (fn-aw-c (fn-aw-add-fold (fn-article-close-field cur) line)))))
+  :rule-classes nil)

@@ -66,7 +66,11 @@ is the function the host calls"):
   (store-log-kernel-concrete's fn-lgc-*-refines), or the square read with
   the abstraction the other way, `(equal (A .. (C ..) ..) (L .. (A ..) ..))'
   (A of what the hosted C leaves is L of A of the state before; the page
-  store's pgs-x-commit-refines-commit).  `--explain' names it.
+  store's pgs-x-commit-refines-commit), or a structural output projection
+  `(equal (A (C x ..)) (L x ..))' over identical plain inputs: A only selects
+  and reconstructs fields of C's answer (PKT-413's receiver result).
+  `--explain' names it.  This last bridge covers the projected result, not
+  the rest of C's output or effects.
 
 WHAT IT CANNOT SEE.  A function reached only through a macro this reader
 does not expand, or named in a Python string it does not recognize as a
@@ -894,6 +898,84 @@ class Subject:
         return hosted_call(self.term, {}, graph, set(self.functions))
 
 
+def structural_result_projection(graph: "Graph", name: str) -> bool:
+    """Does unary NAME only select/reconstruct its answer's fields?
+
+    A one-sided abstraction needs this check: `(equal (constant (C x))
+    (L x))' does not connect L to C's result.  This deliberately small
+    grammar admits car/cdr selectors, nil fallbacks guarded by shape tests,
+    list/cons reconstruction and local bindings.  It rejects payload
+    transformations, arbitrary calls, constant-only results and macros.
+    It recognizes an output observation, not equality of the whole machine.
+    """
+    entry = graph.book_defs.get(name)
+    if not isinstance(entry, tuple) or len(entry) != 2:
+        return False
+    form = entry[1]
+    tree = read_sexp(form) if isinstance(form, str) else _as_tree(form)
+    if (not isinstance(tree, list) or len(tree) < 4
+            or tree[0] not in ("defun", "defund", "defun-nx", "defun-inline")
+            or not isinstance(tree[2], list) or len(tree[2]) != 1
+            or not isinstance(tree[2][0], str) or tree[2][0] in ("nil", "t")):
+        return False
+    argument = tree[2][0]
+
+    def shape(term, env):
+        if not isinstance(term, list) or not term:
+            return False
+        head = term[0]
+        if not isinstance(head, str):
+            return False
+        if head == "consp" and len(term) == 2:
+            valid, retained, path = value(term[1], env)
+            return valid and retained and path
+        if head == "and" and len(term) > 1:
+            return all(shape(arg, env) for arg in term[1:])
+        return False
+
+    def value(term, env):
+        # (valid value, retains input, is a selector path rather than a
+        # reconstructed result).  Selecting a constructed list could hide
+        # a constant result, e.g. (car (cons nil answer)).
+        if isinstance(term, str):
+            if term in env:
+                return env[term]
+            return (True, True, True) if term == argument else (term == "nil", False, True)
+        if not isinstance(term, list) or not term:
+            return False, False, False
+        head = term[0]
+        if not isinstance(head, str):
+            return False, False, False
+        if term == ["quote", "nil"] or term == ["quote", []]:
+            return True, False, True
+        if re.fullmatch(r"c[ad]+r", head) and len(term) == 2:
+            child = value(term[1], env)
+            return child if child[2] else (False, False, False)
+        if (head == "if" and len(term) == 4 and shape(term[1], env)
+                and (term[3] == "nil" or term[3] == ["quote", "nil"]
+                     or term[3] == ["quote", []])):
+            yes, no = value(term[2], env), value(term[3], env)
+            return yes[0] and no[0], yes[1] or no[1], yes[2] and no[2]
+        if head == "list" or (head == "cons" and len(term) == 3):
+            parts = [value(arg, env) for arg in term[1:]]
+            return all(p[0] for p in parts), any(p[1] for p in parts), False
+        if head in ("let", "let*") and len(term) == 3 and isinstance(term[1], list):
+            inner = dict(env)
+            for binding in term[1]:
+                if (not isinstance(binding, list) or len(binding) != 2
+                        or not isinstance(binding[0], str)):
+                    return False, False, False
+                bound = value(binding[1], inner if head == "let*" else env)
+                if not bound[0]:
+                    return False, False, False
+                inner[binding[0]] = bound
+            return value(term[2], inner)
+        return False, False, False
+
+    valid, retained, _ = value(tree[-1], {})
+    return valid and retained
+
+
 def equality_bridges(graph: "Graph", theorems: dict) -> dict[str, list]:
     """function -> [(other, theorem)] for every `(equal (F ...) (G ...))'
     theorem conclusion in books/: a NAMED equality that ties an unhosted
@@ -905,6 +987,22 @@ def equality_bridges(graph: "Graph", theorems: dict) -> dict[str, list]:
         heads = equality_heads(conclusion)
         if not heads:
             continue
+        # Output-only refinement over unchanged inputs.  Unlike the
+        # two-sided squares below, A need not occur on the input side, so
+        # verify it really is a structural projection of the result.
+        for observed, logical in ((conclusion[1], conclusion[2]),
+                                  (conclusion[2], conclusion[1])):
+            if len(observed) != 2 or not isinstance(observed[1], list) or not observed[1]:
+                continue
+            concrete = observed[1]
+            a, c, l = observed[0], concrete[0], logical[0]
+            if (all(isinstance(n, str) and n in graph.book_defs for n in (a, c, l))
+                    and len({a, c, l}) == 3 and len(concrete) > 1
+                    and concrete[1:] == logical[1:]
+                    and all(not isinstance(arg, list) or (len(arg) == 2 and arg[0] == "quote")
+                            for arg in concrete[1:])
+                    and structural_result_projection(graph, a)):
+                bridges[l].append((c, tname))
         # A refinement square `(equal (C .. (A x) ..) (A (L x ..)))': the
         # concrete C the host calls, over the abstraction A of a logical
         # state, is A of the logical step L (store-log-kernel-concrete's

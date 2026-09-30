@@ -101,7 +101,7 @@ class Image:
 
     def env(self, **extra):
         env = {k: v for k, v in os.environ.items()
-               if not k.startswith(("FN_NATIVE_", "FN_WORLD_DEPS", "FN_INIT_", "SBCL_"))}
+               if not k.startswith(("FN_NATIVE_", "FN_WORLD_DEPS", "SBCL_"))}
         if self.home:
             env["SBCL_HOME"] = self.home
         if self.checked:
@@ -361,10 +361,9 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
         def act(image, cfg, store, port):
             fresh = Path(str(store) + "-fresh")
             fcfg = config(Path(str(store) + "-fresh.toml"), fresh, free_port())
-            refused = image.run(["operator", fcfg, "init", "--profile", "scale", "local.test"],
-                                FN_INIT_BUDGET_MB="1000")
-            made = image.run(["operator", fcfg, "init", "local.test"],
-                             FN_INIT_BUDGET_MB="4000")
+            refused = image.run(["operator", fcfg, "init", "--budget", "1000",
+                                 "--profile", "scale", "local.test"])
+            made = image.run(["operator", fcfg, "init", "--budget", "4000", "local.test"])
             status = self.status(image, fcfg)
             files = sorted(tree(fresh))
             shutil.rmtree(fresh, True)

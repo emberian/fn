@@ -134,6 +134,8 @@ def check(scenario: Scenario, journal: Journal, budget: Budget | None = None,
         return check_acceptance_model(scenario, journal, budget, healing, overran)
     if scenario.contract == "page-io-ownership":
         return check_page_io(scenario, journal, budget, healing, overran)
+    if scenario.contract == "reclaim-response-hold":
+        return check_reclaim_hold(scenario, journal, budget, healing, overran)
     narrowing = journal.narrowing()
     if len(narrowing) > budget.max_records:
         return Verdict("inconclusive", scenario.id, journal.digest(),
@@ -186,6 +188,98 @@ def check(scenario: Scenario, journal: Journal, budget: Budget | None = None,
     return Verdict(kind, scenario.id, journal.digest(),
                    cause=("missing:" + ",".join(missing)) if missing else None,
                    **common).sign()
+
+
+def check_reclaim_hold(scenario, journal, budget, healing, overran):
+    """PRF-1059 response ownership plus fn-orcp-swap-word's readers refusal.
+
+    Requires capture FIRST, then an independent actual acquired response,
+    deferral while held, named settlement and productive reclaim afterward.
+    Full native composition and physical sector release remain pending.
+    """
+    if len(journal.records) > budget.max_records or budget.max_histories < 1:
+        return Verdict("inconclusive", scenario.id, journal.digest(),
+                       cause="budget:response-hold", budget=asdict(budget)).sign()
+    rows = [r for r in journal.of_kind("environment") if r.get("event") == "response-reclaim"]
+    held = [r for r in rows if r.get("phase") == "held"]
+    if len(held) != 1 or type(held[0].get("cid")) is not int or held[0]["cid"] < 0:
+        return harness_failure(scenario, journal, "independent-response-identity-unobserved")
+    cid = held[0]["cid"]
+    captured = acquired = deferred = settled = installed = False
+
+    def violation(row, rule):
+        return Verdict("violation", scenario.id, journal.digest(), surviving=0,
+                       explanation=dict(record=row, rule=rule),
+                       pending_rules=["reclaim-response-native-composition"]).sign()
+
+    for row in rows:
+        phase = row.get("phase")
+        if phase == "captured":
+            captured = True
+        elif phase == "held":
+            if not captured or installed:
+                return violation(row, "new-independent-hold-after-capture")
+            acquired = True
+        elif phase == "deferred":
+            if not acquired or settled or row.get("reason") != "readers":
+                return violation(row, "live-response-excludes-swap")
+            deferred = True
+        elif phase == "settled" and row.get("cid") == cid:
+            if not deferred or settled or row.get("status") != "released":
+                return violation(row, "named-response-settles-once-after-deferral")
+            settled = True
+        elif phase == "installed":
+            if not settled or installed:
+                return violation(row, "destructive-work-waits-for-new-hold")
+            if row.get("reclaimed", 0) <= 0:
+                return violation(row, "productive-reclaim-not-empty")
+            installed = True
+    activation = [r for r in journal.of_kind("environment") if r.get("event") == "fault-fired"]
+    terminal = [r for r in journal.of_kind("environment") if r.get("event") == "response-terminal"]
+    if (len(activation) != 1 or activation[0].get("cid") != cid
+            or len(terminal) != 1 or terminal[0].get("cid") != cid):
+        return harness_failure(scenario, journal, "independent-response-coordinate-unobserved")
+    client_rows = journal.of_kind("client")
+    clients = {r.get("operation"): r for r in client_rows}
+    expected = {"reclaim-1", "hold", "read-prior", "release", "reclaim-heal", "read-retained"}
+    if len(client_rows) != len(expected) or set(clients) != expected:
+        return harness_failure(scenario, journal, "capture-first-operation-unobserved")
+    if clients["hold"].get("cid") != cid or clients["release"].get("cid") != cid:
+        return violation(clients["hold"], "response-operation-identity")
+    if not str(clients["hold"].get("group", "")).startswith("211 5 "):
+        return violation(clients["hold"], "productive-five-article-group")
+    if clients["reclaim-1"].get("installed") or clients["reclaim-1"].get("returncode") != 0:
+        return violation(clients["reclaim-1"], "deferred-request-is-distinct")
+    if (clients["reclaim-heal"].get("returncode") != 0
+            or not clients["reclaim-heal"].get("installed")):
+        return violation(clients["reclaim-heal"], "released-reclaim-makes-progress")
+    if (not str(clients["release"].get("status", "")).startswith("224 ")
+            or clients["release"].get("numbers") != [1, 2, 3, 4, 5]):
+        return violation(clients["release"], "captured-response-drains-old-complete-view")
+    observed = set()
+    if acquired and deferred:
+        observed.add("independent-response-held")
+    if settled:
+        observed.add("response-hold-settled")
+    if installed and str(clients["read-retained"].get("expired_status", "")).startswith("430 article reclaimed"):
+        observed.add("reclaim-freed")
+    if (clients["read-prior"].get("result") == "match"
+            and clients["read-prior"].get("during_competing_work")):
+        observed.add("read-during-competing-work")
+    if clients["read-retained"].get("result") == "match":
+        observed.add("read-completed")
+    missing = sorted(set(scenario.witnesses) - observed)
+    kind = ("healing-overran" if overran and healing["bound"]["kind"] == "seconds"
+            else "no-witness" if missing else "consistent")
+    diagnostics = ["reclaim-freed names logical retirement and observed install; physical sectors unclaimed"]
+    if overran and healing["bound"]["kind"] == "experimental":
+        diagnostics.append("experimental healing budget exceeded: {:.1f}s>{}s".format(
+            healing["elapsed"], healing["bound"]["value"]))
+    return Verdict(kind, scenario.id, journal.digest(), surviving=1,
+                   witnesses_observed=sorted(observed), witnesses_missing=missing,
+                   pending_rules=["reclaim-response-native-composition"], healing=healing,
+                   diagnostics=diagnostics,
+                   budget=asdict(budget)).sign()
 
 
 def check_page_io(scenario, journal, budget, healing, overran):

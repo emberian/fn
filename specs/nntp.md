@@ -1830,10 +1830,30 @@ catalog swap while a cursor still refers to the captured catalog; retirement
 retains its pages until that generation is settled. Web and pull consumers
 settle after rendering because their resulting byte vectors own the bytes.
 
+Each cursor quantum yields back to the connection scheduler before the
+next one, including an empty sparse-range quantum. The mux retains the
+exact plan, pending after-response action and reader hold, then resumes the
+plan after ACL2's positive `fn-splan-cursor-resume-ms` delay. It neither
+steps new input nor applies idle-close while this plan is outstanding.
+Web and pull worker threads yield after empty progress too. This bounds
+cursor chaining per I/O event; it preserves the existing complete-residual
+contract and introduces no new bytes into a response.
+
 The current quantum bounds numbers probed and overview rows formatted.
 It still parses a complete article and formats a complete overview row;
 byte-budgeted long-row continuation remains an identified Q5c/J1 obligation.
 This ownership increment does not complete that resource claim.
+
+PRF-1066 supplies an implementation component for that remaining claim:
+`fn-nbw-step` retains immutable cached strings plus an offset and emits at
+most its fuel in octets. Piece-end transitions consume fuel as well, so an
+empty field makes strict progress under a positive budget. The exact
+produced prefix plus remaining pieces is the original row; the cached-row
+abstraction connects those pieces to the article's complete NOV row under
+the maintained column relation. These functions are not yet the served
+cursor implementation. Integration, legacy rows without a decided NOV,
+the maintained codec bound on numeric setup and matched runtime cost
+measurement remain open; no complete long-row scheduling claim is made.
 
 ## Public exposure (NNT-031)
 

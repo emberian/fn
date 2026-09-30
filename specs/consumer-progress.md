@@ -293,6 +293,12 @@ Carriage over BP through the relay network is not part of CNS-004 yet
 
 ## Bound consumers
 
+`consumer show` is a read-only report of the current configuration's mark-6
+consumer bindings, in row order. Each line is `consumer NAME account LOGIN`;
+other account row kinds produce no line. The running owner and offline path
+use the same renderer. Its plain FNLS request uses code 13, after the
+evidence/query codes 8 through 12.
+
 The local consumer runs over the owner's 0600 control socket as the one
 local principal, so an unbound consumer reads every group: the operator's
 power. The operator may bind a consumer to an account (decided by ember,

@@ -259,3 +259,15 @@
 (assert-event (equal (fn-cev-any-request-decode
                       (fn-cev-any-request-encode '(:inspect-group . "fn.test") 4096))
                      '(:live-status (:inspect-group . "fn.test") 4096)))
+
+; Q10c: the any-request host boundary accepts the new plain report kind.
+; Evidence codes 8..12 stay allocated separately from consumer code 13.
+(assert-event
+ (and (member-equal :consumers *fn-nls-kinds*)
+      (fn-record-uint32p 17)
+      (equal (fn-cev-any-request-decode
+              (fn-cev-any-request-encode :consumers 17))
+             '(:live-status :consumers 17))))
+(assert-event
+ (equal (fn-cev-request-decode (fn-cev-any-request-encode :consumers 17))
+        '(:refused :frame)))
