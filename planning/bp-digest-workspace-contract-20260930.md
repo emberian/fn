@@ -44,8 +44,8 @@ The allocator ABI frozen by physical is:
 `fn-bpck-control-source-incarnation` extracts the existing exact digest capture
 `(:bp-checkpoint-stage actualJobToken generation)` only from a private completed
 prefix job, exact digest-start/pending I/O control and no pending action.
-Actual revisioned prefix-end observation preservation is still owed; a native
-phase snapshot never establishes that authority. Controller-derived readonly
+The registered prefix-end source turn now persists digest-start/pending before
+this projection (c89720bc4). A native phase snapshot never establishes authority. Controller-derived readonly
 pending-job capture is also a physical source prerequisite: current workspace
 read validates a supplied job token against the retained directory rather
 than deriving that token.
@@ -56,3 +56,20 @@ release→DEFAULT same-Store retirement with unrelated debt retained. Charged
 workspace installation, exact trailer/decoder/recovered carry, source schema
 assembly and native qualification are all still open. No historical image,
 whole-checkpoint decode or supplied demand is a fallback.
+
+Physical subsequently froze the core-only readonly stored-plan projection
+`fn-owner-bp-digest-install-plan(controller,workspaceToken,fuel,registry)`:
+word,plan,left,registry; it has no native declaration. Internal install-step
+uses that actual stored plan, persists constructing, then invokes the lazy
+factory in one serialized core invocation. Physical also owns readonly
+`fn-bpcc-pending-capture(controller,fuel,registry)`, deriving actual job token.
+
+BP's digest-binding field is fixed intent6:
+`(:bp-digest-install-intent workspaceToken phase sourceIncarnation actualClaim selectedAllowance)`.
+The exact SAMEPRS-issued resource vector and genuine installed family receipt
+are retained by reference. No scalar receipt-shape recognition grants authority
+and no turn compares the whole allowance graph. Phase reserved→constructing
+precedes every creator; unknown outcomes fence while retaining claim/source.
+The immutable source is captured once; later stored-plan revision is read from
+the actual pending continuation. Bounded factory progress belongs in the
+separate pending-action control, retaining the same intent6 and source.

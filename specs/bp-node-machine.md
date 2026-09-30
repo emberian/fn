@@ -5245,3 +5245,14 @@ and unknown write, retaining frozen CURRENT and the exact resource claim.
 Evidence: `planning/evidence/bp-checkpoint-prefix-registered-20260930/manifest.json`.
 This internal source composition remains unhooked until actual operation/stage
 allowances and native callback installation are qualified.
+
+### Digest installation intent storage
+
+The registered checkpoint digest-binding field retains intent6: workspace token,
+phase, immutable source incarnation, exact actual claim and opaque selected
+allowance. The storage update preserves job, I/O control and pending action.
+Fixed identifier matching refuses a foreign controller/job or extra token tail;
+it does not interpret claim or allowance shape as permission. Physical derives
+these references from the same pool and actual installed family; the current
+public begin remains unavailable before creators. Source storage evidence is
+`planning/evidence/bp-digest-install-intent-20260930/manifest.json`.
