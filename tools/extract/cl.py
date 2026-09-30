@@ -324,7 +324,10 @@ class CL(Backend):
             self.counter = 0
             call = self.emit(f["body"], {}, self.nout(name), "star1")
         else:
-            call = "(%s %s)" % (sym(name), formals)
+            # Mapped primitives have no emitted ACL2 definition. Their host
+            # counterpart uses the same raw target as a compiled call, after
+            # the original guard above has been checked.
+            call = "(%s %s)" % (RAW.get(name, sym(name)), formals)
         if test:
             call = "(if %s %s (|ACL2|::|XL-GUARD-VIOLATION| '%s (list %s)))" % (test, call, sym(name), formals)
         return "(defun %s (%s) (declare (ignorable %s)) %s)" % (star1(name), formals, formals, call)
