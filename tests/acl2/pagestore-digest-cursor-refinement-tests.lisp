@@ -2,7 +2,7 @@
 (include-book "../../books/pagestore-digest-cursor-refinement")
 
 (defun-nx pgs-dcrt-left-entry ()
-  (let ((cursor (pgs-dc-begin 0 0 17 :capture-17 :lease-23 (create-pgs-digest))))
+  (let ((cursor (pgs-dc-begin 0 0 17 :capture-17 :lease-23 (create-pgs-digest-state))))
     (mv-nth 1 (pgs-dc-step nil (mv-nth 1 (pgs-dc-step nil cursor))))))
 
 (defthm pgs-dcrt-node-positive
@@ -49,7 +49,7 @@
 ;; every retained antecedent affirmed, omitted antecedent and conclusion fail.
 (defthm pgs-dcrt-chunk-block-removal
   (let* ((cursor (mv-nth 1 (pgs-dc-step nil
-                   (pgs-dc-begin 0 0 1 :capture-17 :lease-23 (create-pgs-digest)))))
+                   (pgs-dc-begin 0 0 1 :capture-17 :lease-23 (create-pgs-digest-state)))))
          (msg (pgs-words-le-octets (make-list 8 :initial-element 1)))
          (block nil))
     (and (equal (pgs-dc-mode cursor) :chunk)
@@ -68,16 +68,16 @@
   :rule-classes nil)
 
 ;; Ground test driver only; no served path loops or materializes MSG.
-(defun-nx pgs-dcrt-until (mode fuel msg pgs-digest)
-  (declare (xargs :stobjs pgs-digest :measure (nfix fuel)
+(defun-nx pgs-dcrt-until (mode fuel msg pgs-digest-state)
+  (declare (xargs :stobjs pgs-digest-state :measure (nfix fuel)
                   :verify-guards nil))
-  (if (or (zp fuel) (eq mode (pgs-dc-mode pgs-digest))) pgs-digest
-    (mv-let (status pgs-digest)
+  (if (or (zp fuel) (eq mode (pgs-dc-mode pgs-digest-state))) pgs-digest-state
+    (mv-let (status pgs-digest-state)
       (pgs-dc-step
-         (fn-b3-words 16 (pgs-dcr-span (pgs-dc-pos pgs-digest) (pgs-dc-end pgs-digest) msg))
-         pgs-digest)
+         (fn-b3-words 16 (pgs-dcr-span (pgs-dc-pos pgs-digest-state) (pgs-dc-end pgs-digest-state) msg))
+         pgs-digest-state)
       (declare (ignore status))
-      (pgs-dcrt-until mode (1- fuel) msg pgs-digest))))
+      (pgs-dcrt-until mode (1- fuel) msg pgs-digest-state))))
 
 (defthm pgs-dcrt-terminal-positive
   (let* ((base 0) (nb 1)
@@ -85,7 +85,7 @@
          (mem (update-nth *pgs-wi* words (create-pgs-mem)))
          (msg (pgs-words-le-octets (take (* 8 nb) (nthcdr base (pgs-x-arr 0 mem)))))
          (cursor (pgs-dcrt-until :root 8 msg
-                   (pgs-dc-begin 0 base nb :capture-17 :lease-23 (create-pgs-digest)))))
+                   (pgs-dc-begin 0 base nb :capture-17 :lease-23 (create-pgs-digest-state)))))
     (and (natp base) (natp nb)
          (equal (pgs-dc-mode cursor) :root) (equal (pgs-dc-depth cursor) 0)
          (equal (pgs-dcr-denote msg cursor)
@@ -105,7 +105,7 @@
          (mem (update-nth *pgs-wi* (make-list 8 :initial-element 2) (create-pgs-mem)))
          (msg (pgs-words-le-octets (take (* 8 nb) (nthcdr base (pgs-x-arr 0 mem)))))
          (cursor (pgs-dcrt-until :root 8 (pgs-words-le-octets words)
-                   (pgs-dc-begin 0 base nb :capture-17 :lease-23 (create-pgs-digest)))))
+                   (pgs-dc-begin 0 base nb :capture-17 :lease-23 (create-pgs-digest-state)))))
     (and (natp base) (natp nb)
          (equal (pgs-dc-mode cursor) :root) (equal (pgs-dc-depth cursor) 0)
          (not (equal (pgs-dcr-denote msg cursor)
@@ -123,7 +123,7 @@
          (mem (update-nth *pgs-wi* (make-list 8 :initial-element 1) (create-pgs-mem)))
          (msg (pgs-words-le-octets (take (* 8 nb) (nthcdr base (pgs-x-arr 0 mem)))))
          (good (pgs-dcrt-until :root 8 msg
-                 (pgs-dc-begin 0 base nb :capture-17 :lease-23 (create-pgs-digest))))
+                 (pgs-dc-begin 0 base nb :capture-17 :lease-23 (create-pgs-digest-state))))
          (cursor (update-pgs-dc-output nil good)))
     (and (natp base) (natp nb)
          (equal (pgs-dc-mode cursor) :root) (equal (pgs-dc-depth cursor) 0)

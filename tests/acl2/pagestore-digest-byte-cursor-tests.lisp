@@ -2,19 +2,19 @@
 (include-book "../../books/pagestore-digest-byte-refinement")
 
 ;; Test-only fuel driver, not a served stream function.
-(defun pgs-dcbt-run (fuel byte-total msg pgs-digest)
-  (declare (xargs :stobjs pgs-digest :measure (nfix fuel) :verify-guards nil))
-  (if (or (zp fuel) (eq (pgs-dc-mode pgs-digest) :done)) pgs-digest
-    (mv-let (status pgs-digest)
+(defun pgs-dcbt-run (fuel byte-total msg pgs-digest-state)
+  (declare (xargs :stobjs pgs-digest-state :measure (nfix fuel) :verify-guards nil))
+  (if (or (zp fuel) (eq (pgs-dc-mode pgs-digest-state) :done)) pgs-digest-state
+    (mv-let (status pgs-digest-state)
       (pgs-dcb-step byte-total
-        (fn-b3-words 16 (fn-b3-nthcdrx (pgs-dcb-next-byte-offset pgs-digest) msg))
-        pgs-digest)
+        (fn-b3-words 16 (fn-b3-nthcdrx (pgs-dcb-next-byte-offset pgs-digest-state) msg))
+        pgs-digest-state)
       (declare (ignore status))
-      (pgs-dcbt-run (1- fuel) byte-total msg pgs-digest))))
+      (pgs-dcbt-run (1- fuel) byte-total msg pgs-digest-state))))
 
 (defun-nx pgs-dcbt-example (msg)
   (let* ((byte-total (len msg))
-         (cursor (pgs-dcb-begin 0 0 byte-total :capture-17 :lease-23 (create-pgs-digest)))
+         (cursor (pgs-dcb-begin 0 0 byte-total :capture-17 :lease-23 (create-pgs-digest-state)))
          (next (pgs-dcbt-run 128 byte-total msg cursor)))
     (list (pgs-dc-mode next) (pgs-dcb-result-octets next)
           (pgs-dc-capture next) (pgs-dc-lease next))))
@@ -50,7 +50,7 @@
 (defthm pgs-dcbt-tail-positive
   (let* ((byte-total 3) (msg '(1 2 3))
          (cursor (mv-nth 1 (pgs-dcb-step byte-total nil
-                   (pgs-dcb-begin 0 0 byte-total :capture-17 :lease-23 (create-pgs-digest)))))
+                   (pgs-dcb-begin 0 0 byte-total :capture-17 :lease-23 (create-pgs-digest-state)))))
          (block (fn-b3-words 16 msg)))
     (and (equal (pgs-dc-mode cursor) :chunk)
          (natp byte-total) (equal (len msg) byte-total)
@@ -73,7 +73,7 @@
 (defthm pgs-dcbt-tail-block-removal
   (let* ((byte-total 3) (msg '(1 2 3))
          (cursor (mv-nth 1 (pgs-dcb-step byte-total nil
-                   (pgs-dcb-begin 0 0 byte-total :capture-17 :lease-23 (create-pgs-digest)))))
+                   (pgs-dcb-begin 0 0 byte-total :capture-17 :lease-23 (create-pgs-digest-state)))))
          (block nil))
     (and (equal (pgs-dc-mode cursor) :chunk)
          (natp byte-total) (equal (len msg) byte-total)
@@ -96,7 +96,7 @@
 (defthm pgs-dcbt-tail-padding-mutation
   (let* ((msg '(1 2 3)) (byte-total 3)
          (cursor (mv-nth 1 (pgs-dcb-step byte-total nil
-                   (pgs-dcb-begin 0 0 byte-total :capture-17 :lease-23 (create-pgs-digest)))))
+                   (pgs-dcb-begin 0 0 byte-total :capture-17 :lease-23 (create-pgs-digest-state)))))
          (good (mv-nth 1 (pgs-dcb-step byte-total (fn-b3-words 16 msg) cursor)))
          (bad (mv-nth 1 (pgs-dcb-step byte-total (fn-b3-words 16 '(1 2 3 9)) cursor))))
     (and (equal (pgs-dc-mode good) :return) (equal (pgs-dc-mode bad) :return)
@@ -104,7 +104,7 @@
   :rule-classes nil)
 
 (defun-nx pgs-dcbt-small-root ()
-  (let* ((cursor (pgs-dcb-begin 0 0 3 :capture-17 :lease-23 (create-pgs-digest)))
+  (let* ((cursor (pgs-dcb-begin 0 0 3 :capture-17 :lease-23 (create-pgs-digest-state)))
          (cursor (mv-nth 1 (pgs-dcb-step 3 nil cursor)))
          (cursor (mv-nth 1 (pgs-dcb-step 3 (fn-b3-words 16 '(1 2 3)) cursor))))
     (mv-nth 1 (pgs-dcb-step 3 nil cursor))))
@@ -137,7 +137,7 @@
 
 (defthm pgs-dcbt-demand-positive
   (let ((cursor (mv-nth 1 (pgs-dcb-step 65 nil
-                  (pgs-dcb-begin 0 0 65 :capture-17 :lease-23 (create-pgs-digest))))))
+                  (pgs-dcb-begin 0 0 65 :capture-17 :lease-23 (create-pgs-digest-state))))))
     (and (equal (pgs-dc-mode cursor) :chunk)
          (natp (pgs-dcb-read-demand 65 cursor))
          (<= (pgs-dcb-read-demand 65 cursor) 64)

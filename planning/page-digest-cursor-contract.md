@@ -5,13 +5,13 @@ This is a library boundary until the preparation controller calls it. It makes
 no standard-conformance, collision-resistance, producer, admission or publication
 claim.
 
-`pgs-dc-begin(sel, base, nb, capture, lease, pgs-digest)` captures scalar names
-and exact known 64-byte blockcount. `pgs-dc-step(block16-u32, pgs-digest)` is the
+`pgs-dc-begin(sel, base, nb, capture, lease, pgs-digest-state)` captures scalar names
+and exact known 64-byte blockcount. `pgs-dc-step(block16-u32, pgs-digest-state)` is the
 streaming core. When `pgs-dc-needs-block` is true the producer supplies exactly
 one fixed block at `pgs-dc-next-word-offset`. Other phases take no input.
 `pgs-dc-read-demand` bounds the optional word-reader request by eight.
-`pgs-dc-tick(pgs-mem, pgs-digest)` is that optional captured-array reader client.
-Both return `(mv status pgs-digest)`; `pgs-dc-result` returns the terminal digest
+`pgs-dc-tick(pgs-mem, pgs-digest-state)` is that optional captured-array reader client.
+Both return `(mv status pgs-digest-state)`; `pgs-dc-result` returns the terminal digest
 natural. Source arrays never change; there is no whole-input `fn-octets-pg`.
 
 The disk-backed two-pass builder's census knows final N data pages, T table
@@ -28,7 +28,7 @@ a parent descriptor concatenates two fixed eight-word CVs. The root tick does
 one ROOT compression. Split/return/root phases may yield without reading input.
 Final block descriptors retain inputs for the required final ROOT compression.
 
-The private `pgs-digest` stobj has fixed scalar fields, one fixed current CV and
+The private `pgs-digest-state` stobj has fixed scalar fields, one fixed current CV and
 one fixed output descriptor, and 64 fixed stack cells. The depth follows the
 u64 word-address representation (at most 57 chunk-tree levels for an addressable
 u64 word span), rather than an article/store-size policy. Admission must establish
