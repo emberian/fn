@@ -41,7 +41,7 @@
           (equal (nth 0 row) (fn-prl-nth 2 ledger))
           (< (nth 0 row)
              (fn-prl-nth 2 (mv-nth 2 (fn-prl-admit ledger cid file eoff elen trailer demand native-demand)))))))
-  :hints (("Goal" :in-theory (enable fn-prl-admit fn-prs-issue fn-prl-token fn-prl-nth)))
+  :hints (("Goal" :in-theory (enable fn-prl-admit fn-prs-issue fn-prl-token fn-prl-nth fn-prl-build)))
   :rule-classes nil)
 
 (defun fn-pio-cancel (r token)

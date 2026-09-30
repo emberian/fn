@@ -1543,8 +1543,12 @@ Its ACL2 adapter admits only a funded
 charge and binds the whole read token to it. Refusal is unchanged; timeout
 or cancellation cannot refund. Native settlement must follow observed
 worker death and join. Cached vectors retain their charge until eviction,
-and incarnations retain FD credit until physical close. Hash arrays that
-retain capacity after removal need baseline funding. This implementation
+and incarnations retain FD credit until physical close. The persistent installation entry reserves a supplied permanent baseline
+before native allocation, and every ledger transition preserves it. Job
+settlement refunds only the execution lease; idle worker storage remains
+charged until process shutdown. Hash arrays that retain capacity after
+removal belong to that baseline. Its measured sizing and actual native
+installation are still required. This implementation
 is partial: supplied charges are not an allocator refinement, and the
 performed checkpoint/recovery demand, old/new coexistence, productive
 supported profile and suffix rescue admission still need implementation.

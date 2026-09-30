@@ -106,3 +106,30 @@
 (assert-event
  (and (eq (symbol-class 'fn-owner-page-file-issue (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-owner-page-read-register-path (w state)) :common-lisp-compliant)))
+
+(defun prh-baseline-run (fn-page-read-pool)
+  (declare (xargs :mode :program :stobjs fn-page-read-pool))
+  (mv-let (bad fn-page-read-pool)
+    (fn-owner-page-read-install-baseline '(10000 0 2 1 10) '(10001 0 0 0 0) 8 4 100 fn-page-read-pool)
+    (let ((absent (not (fn-prp-data fn-page-read-pool))))
+      (mv-let (installed fn-page-read-pool)
+        (fn-owner-page-read-install-baseline '(10000 0 2 1 10) '(3000 0 0 0 0) 8 4 100 fn-page-read-pool)
+        (mv-let (registered fn-page-read-pool)
+          (fn-owner-page-read-register 11 fn-page-read-pool)
+          (mv-let (admitted token fn-page-read-pool)
+            (fn-owner-page-read-admit 7 11 200 64 999 fn-page-read-pool)
+            (mv-let (settled fn-page-read-pool)
+              (fn-owner-page-read-settle token t fn-page-read-pool)
+              (mv (list bad absent installed registered admitted settled
+                        (fn-prl-baseline (fn-owner-page-read-ledger fn-page-read-pool))
+                        (fn-prl-nth 1 (fn-owner-page-read-ledger fn-page-read-pool)))
+                  fn-page-read-pool))))))))
+(defun prh-baseline-exec ()
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-page-read-pool
+    (mv-let (result fn-page-read-pool) (prh-baseline-run fn-page-read-pool) result)))
+(assert!
+ (equal (prh-baseline-exec)
+        '(:invalid-resource-profile t :installed :registered :admitted :settled
+          (3000 0 0 0 0) (216 0 1 0 1))))
+(assert-event (eq (symbol-class 'fn-owner-page-read-install-baseline (w state)) :common-lisp-compliant))
