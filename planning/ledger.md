@@ -13,12 +13,12 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1904 |
 | Certification roots in the Makefile | 1808 |
 | Books inside the root closure | 1875 |
-| `defthm` and `defthmd` events | 29725 |
-| `defun` events | 19100 |
+| `defthm` and `defthmd` events | 29729 |
+| `defun` events | 19104 |
 | Functions with verified guards | 3566 |
 | Functions declared `:verify-guards nil` and never verified | 2251 |
-| Functions left at the default with an explicit guard | 10431 |
-| Functions left at the default with no guard | 2852 |
+| Functions left at the default with an explicit guard | 10433 |
+| Functions left at the default with no guard | 2854 |
 | `assert-event` checks | 23983 |
 | `must-fail` checks | 2516 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
@@ -28,7 +28,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 64 |
 | Teeth-form warnings | 275 |
 | Include-hygiene warnings | 2616 |
-| Host-names warnings | 2178 |
+| Host-names warnings | 2176 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -545,7 +545,7 @@ that `make certify` requests.
 | `books/incoming-octet-holder.lisp` | - | 3 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/incoming-setup-ranges.lisp` | - | 8 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/index-incoming-input-source.lisp` | - | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/index-incoming-request.lisp` | - | 3 | 14 | 2/0/12/0 | 0 | 0 | 0 |
+| `books/index-incoming-request.lisp` | - | 5 | 16 | 2/0/14/0 | 0 | 0 | 0 |
 | `books/index.lisp` | root | 35 | 26 | 24/0/2/0 | 0 | 0 | 3 |
 | `books/injection-info-params-invariants.lisp` | root | 82 | 4 | 0/0/4/0 | 0 | 0 | 2 |
 | `books/injection-info-params.lisp` | root | 1 | 11 | 0/0/11/0 | 0 | 0 | 0 |
@@ -1524,7 +1524,7 @@ that `make certify` requests.
 | `tests/acl2/identity-retain-carried-tests.lisp` | root | 0 | 5 | 0/3/0/2 | 39 | 0 | 0 |
 | `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 0 | 0 |
 | `tests/acl2/index-incoming-input-source-tests.lisp` | - | 2 | 4 | 0/0/0/4 | 0 | 0 | 0 |
-| `tests/acl2/index-incoming-request-tests.lisp` | - | 7 | 7 | 0/0/0/7 | 0 | 0 | 0 |
+| `tests/acl2/index-incoming-request-tests.lisp` | - | 9 | 9 | 0/0/0/9 | 0 | 0 | 0 |
 | `tests/acl2/index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/injection-info-params-tests.lisp` | root | 0 | 5 | 0/0/3/2 | 48 | 14 | 0 |
 | `tests/acl2/injection-tests.lisp` | root | 0 | 11 | 0/0/0/11 | 156 | 10 | 0 |

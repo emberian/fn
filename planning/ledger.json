@@ -1815,8 +1815,8 @@
     "books": 1904,
     "books_in_root_closure": 1875,
     "roots": 1808,
-    "theorems": 29725,
-    "functions": 19100,
+    "theorems": 29729,
+    "functions": 19104,
     "assert_events": 23983,
     "must_fails": 2516,
     "prover_refusals": 0,
@@ -1824,15 +1824,15 @@
     "guards": {
       "verified": 3566,
       "declared-off": 2251,
-      "default-guarded": 10431,
-      "default-unguarded": 2852
+      "default-guarded": 10433,
+      "default-unguarded": 2854
     },
     "suspect_theorems": 1258,
     "export_hygiene_warnings": 363,
     "enabled_projection_warnings": 64,
     "teeth_form_warnings": 275,
     "include_hygiene_warnings": 2616,
-    "host_names_warnings": 2178,
+    "host_names_warnings": 2176,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -15764,12 +15764,12 @@
       "book": "books/index-incoming-request.lisp",
       "in_root_closure": false,
       "is_root": false,
-      "theorems": 3,
-      "functions": 14,
+      "theorems": 5,
+      "functions": 16,
       "guards": {
         "verified": 2,
         "declared-off": 0,
-        "default-guarded": 12,
+        "default-guarded": 14,
         "default-unguarded": 0
       },
       "verify_guards_events": 2,
@@ -44167,19 +44167,19 @@
       "book": "tests/acl2/index-incoming-request-tests.lisp",
       "in_root_closure": false,
       "is_root": false,
-      "theorems": 7,
-      "functions": 7,
+      "theorems": 9,
+      "functions": 9,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 7
+        "default-unguarded": 9
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 4,
+      "defconsts": 5,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -91196,133 +91196,119 @@
       },
       {
         "host": "host/index-incoming-request-host.lisp",
-        "line": 47,
-        "name": "fn-ibp-request-pending",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/index-incoming-request-host.lisp",
-        "line": 47,
+        "line": 37,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/index-incoming-request-host.lisp",
-        "line": 47,
-        "name": "update-fn-ibp-request-pending",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/index-incoming-request-host.lisp",
-        "line": 68,
+        "line": 37,
         "name": "stobj-let",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/index-incoming-request-host.lisp",
-        "line": 68,
+        "line": 37,
         "name": "fn-index-backing",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/index-incoming-request-host.lisp",
-        "line": 68,
+        "line": 37,
         "name": "fn-mio$c-provider",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/index-incoming-request-host.lisp",
-        "line": 68,
+        "line": 37,
         "name": "word",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/index-incoming-request-host.lisp",
-        "line": 68,
+        "line": 37,
         "name": "attempted",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/index-incoming-request-host.lisp",
-        "line": 68,
+        "line": 37,
         "name": "keep-word",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/index-incoming-request-host.lisp",
-        "line": 68,
+        "line": 37,
         "name": "fn-ibp-query-tokenp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/index-incoming-request-host.lisp",
-        "line": 130,
+        "line": 99,
         "name": "fn-mio-current-publication-read",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/index-incoming-request-host.lisp",
-        "line": 130,
+        "line": 99,
         "name": "fn-ibp-current-publication",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/index-incoming-request-host.lisp",
-        "line": 130,
+        "line": 99,
         "name": "fn-omk-at",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/index-incoming-request-host.lisp",
-        "line": 159,
+        "line": 128,
         "name": "verify-guards",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/index-incoming-request-host.lisp",
-        "line": 159,
+        "line": 128,
         "name": "disable",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/index-incoming-request-host.lisp",
-        "line": 166,
+        "line": 135,
         "name": "defthm",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/index-incoming-request-host.lisp",
-        "line": 166,
+        "line": 135,
         "name": "implies",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/index-incoming-request-host.lisp",
-        "line": 166,
+        "line": 135,
         "name": "mv-nth",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/index-incoming-request-host.lisp",
-        "line": 166,
+        "line": 135,
         "name": "e/d",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"

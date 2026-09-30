@@ -7135,7 +7135,8 @@
         "OLDNEXT stays spent; query nonce is OLDNEXT+1 including zero-first identity. Reader/incoming share pending exclusivity and free/highwater.",
         "Address advance and pending clear follow actual child/debt adoption only; attachment preserves fields2\u201310 and stores the exact returned captured token.",
         "Changed authority never silently releases/replaces old custody. Missing genuine runtime/constructor/scratch receipt remains unavailable. Constructed source fixtures are not activation or persisted-state evidence.",
-        "Actual source helper retains original holder/descriptor/completed view without imposing4096 payload ceiling. Logical copied observations do not establish native copy or installed issuance."
+        "Actual source helper retains original holder/descriptor/completed view without imposing4096 payload ceiling. Logical copied observations do not establish native copy or installed issuance.",
+        "Existing source metadata is never replaced on resume; changed lineage returns recovery with unchanged pending, and wrong source tag refuses before mutation. Frame fixtures do not establish actual source authority."
       ],
       "evidence": [
         "tests/acl2/index-incoming-request-tests.lisp",

@@ -32,37 +32,6 @@
 
 (include-book "../books/index-incoming-input-source")
 
-(defun fn-iiq-input-source= (x y)
- (declare (xargs :guard t))
- (and (eq (fn-cp-nth 0 x) :incoming-input-source)
-      (eq (fn-cp-nth 0 y) :incoming-input-source)
-      (fn-iaf-holder= (fn-cp-nth 1 x) (fn-cp-nth 1 y))
-      (equal (fn-cp-nth 1 (fn-cp-nth 2 x)) (fn-cp-nth 1 (fn-cp-nth 2 y)))
-      (equal (fn-cp-nth 2 (fn-cp-nth 2 x)) (fn-cp-nth 2 (fn-cp-nth 2 y)))
-      (equal (fn-cp-nth 3 x) (fn-cp-nth 3 y))
-      (equal (fn-cp-nth 4 x) (fn-cp-nth 4 y))))
-
-; Internal reconstruction only: SOURCE is the immediately preceding actual
-; producer result. An already retained source is never replaced by a resume.
-(defun fn-iiq-keep-input-source (source fn-index-backing)
- (declare (xargs :stobjs fn-index-backing :guard t))
- (let* ((receipt (fn-ibp-request-pending fn-index-backing))
-        (request (fn-iiq-receipt-request receipt))
-        (old (fn-cp-nth 9 request)))
-  (cond (old (mv (if (fn-iiq-input-source= old source) :source-kept :recovery-required)
-                 fn-index-backing))
-   (t
-    (let ((request (list (fn-cp-nth 0 request) (fn-cp-nth 1 request)
-                  (fn-cp-nth 2 request) (fn-cp-nth 3 request) (fn-cp-nth 4 request)
-                  (fn-cp-nth 5 request) (fn-cp-nth 6 request) (fn-cp-nth 7 request)
-                  (fn-cp-nth 8 request) source)))
-     (mv :source-kept
-      (update-fn-ibp-request-pending
-       (list (fn-cp-nth 0 receipt) (fn-cp-nth 1 receipt) (fn-cp-nth 2 receipt)
-             (fn-cp-nth 3 receipt) (fn-cp-nth 4 receipt) (fn-cp-nth 5 receipt)
-             request (fn-cp-nth 7 receipt) (fn-cp-nth 8 receipt) (fn-cp-nth 9 receipt))
-       fn-index-backing)))))))
-
 ; Internal suffix ONLY after the actual operation issuer returns demand and
 ; scratch. Its vector arguments are not a native/public admission interface.
 (defun fn-owner-index-incoming-begin-issued

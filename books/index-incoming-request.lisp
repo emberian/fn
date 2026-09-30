@@ -349,3 +349,62 @@
  :rule-classes nil
  :hints (("Goal" :in-theory (e/d (fn-iiq-adopt-pending)
                                 (fn-iiq-attempted-token fn-ibp-node-adopt-receipt)))))
+
+(defun fn-iiq-input-source= (x y)
+ (declare (xargs :guard t))
+ (and (eq (fn-omk-at 0 x) :incoming-input-source)
+      (eq (fn-omk-at 0 y) :incoming-input-source)
+      (fn-iaf-holder= (fn-omk-at 1 x) (fn-omk-at 1 y))
+      (equal (fn-omk-at 1 (fn-omk-at 2 x)) (fn-omk-at 1 (fn-omk-at 2 y)))
+      (equal (fn-omk-at 2 (fn-omk-at 2 x)) (fn-omk-at 2 (fn-omk-at 2 y)))
+      (equal (fn-omk-at 3 x) (fn-omk-at 3 y))
+      (equal (fn-omk-at 4 x) (fn-omk-at 4 y))))
+
+; Internal reconstruction only: SOURCE is the immediately preceding actual
+; producer result. An already retained source is never replaced by a resume.
+(defun fn-iiq-keep-input-source (source fn-index-backing)
+ (declare (xargs :stobjs fn-index-backing :guard t))
+ (let* ((receipt (fn-ibp-request-pending fn-index-backing))
+        (request (fn-iiq-receipt-request receipt))
+        (old (fn-omk-at 9 request)))
+  (cond ((not (and (fn-iiq-receipt-p receipt)
+                   (eq (fn-omk-at 0 source) :incoming-input-source)))
+         (mv :source-unavailable fn-index-backing))
+   (old (mv (if (fn-iiq-input-source= old source) :source-kept :recovery-required)
+                 fn-index-backing))
+   (t
+    (let ((request (list (fn-omk-at 0 request) (fn-omk-at 1 request)
+                  (fn-omk-at 2 request) (fn-omk-at 3 request) (fn-omk-at 4 request)
+                  (fn-omk-at 5 request) (fn-omk-at 6 request) (fn-omk-at 7 request)
+                  (fn-omk-at 8 request) source)))
+     (let ((fn-index-backing
+      (update-fn-ibp-request-pending
+       (list (fn-omk-at 0 receipt) (fn-omk-at 1 receipt) (fn-omk-at 2 receipt)
+             (fn-omk-at 3 receipt) (fn-omk-at 4 receipt) (fn-omk-at 5 receipt)
+             request (fn-omk-at 7 receipt) (fn-omk-at 8 receipt) (fn-omk-at 9 receipt))
+       fn-index-backing)))
+      (mv :source-kept fn-index-backing)))))))
+
+
+(defthm fn-iiq-retained-input-source-is-never-replaced
+ (implies (fn-omk-at 9 (fn-iiq-receipt-request
+                       (fn-ibp-request-pending fn-index-backing)))
+  (equal (mv-nth 1 (fn-iiq-keep-input-source source fn-index-backing))
+         fn-index-backing))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+          (e/d (fn-iiq-keep-input-source)
+               (fn-iiq-input-source= fn-iiq-receipt-p fn-iiq-receipt-request
+                fn-ibp-request-pending fn-omk-at)))))
+
+(defthm fn-iiq-invalid-source-retains-pending-custody
+ (implies (not (eq (fn-omk-at 0 source) :incoming-input-source))
+  (and (equal (mv-nth 0 (fn-iiq-keep-input-source source fn-index-backing))
+              :source-unavailable)
+       (equal (mv-nth 1 (fn-iiq-keep-input-source source fn-index-backing))
+              fn-index-backing)))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+          (e/d (fn-iiq-keep-input-source)
+               (fn-iiq-input-source= fn-iiq-receipt-p fn-iiq-receipt-request
+                fn-ibp-request-pending fn-omk-at)))))

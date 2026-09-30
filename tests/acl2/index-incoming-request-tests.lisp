@@ -134,3 +134,48 @@
        (not (equal (nth 1 answer) :recovery-required)))))
 (defthm iiq-completed-observation-not-interrupted-tooth
  (iiq-completed-observation-not-interrupted) :rule-classes nil)
+
+; Synthetic source metadata only. This fixture establishes the retention frame,
+; not completed-input provenance, which has its own actual producer fixture.
+(defconst *iiq-source-frame-fixture*
+ '(:incoming-input-source (:incoming 17) (:input-backing 97 16384)
+   8193 16384 ((:incoming 17) 8193 16384 4096 8193 nil :complete)))
+(defun-nx iiq-source-retention-frame-teeth ()
+ (let* ((backing (update-fn-ibp-pool-capacity 1 (create-fn-index-backing)))
+        (pool (fn-owner-page-read-keep-ledger
+               (fn-prl-make '(1024 8 8 8 16)) (create-fn-page-read-pool)))
+        (reserved (mv-list 4 (fn-iiq-reserve-request *iiq-test-context*
+                    *iiq-test-publication* *iiq-test-generation* *iiq-test-demand* backing pool)))
+        (before (nth 2 reserved))
+        (first (mv-list 2 (fn-iiq-keep-input-source *iiq-source-frame-fixture* before)))
+        (kept (nth 1 first))
+        (same (mv-list 2 (fn-iiq-keep-input-source *iiq-source-frame-fixture* kept)))
+        (changed-source (update-nth 3 8194 *iiq-source-frame-fixture*))
+        (changed (mv-list 2 (fn-iiq-keep-input-source changed-source kept))))
+  (and (equal (nth 0 reserved) :reserved)
+       (not (fn-omk-at 9 (fn-iiq-receipt-request (fn-ibp-request-pending before))))
+       (equal (nth 0 first) :source-kept) (not (equal kept before))
+       (fn-omk-at 9 (fn-iiq-receipt-request (fn-ibp-request-pending kept)))
+       (equal (nth 0 same) :source-kept) (equal (nth 1 same) kept)
+       (equal (nth 0 changed) :recovery-required) (equal (nth 1 changed) kept))))
+(defthm iiq-source-retention-complete-positive-and-removal
+ (iiq-source-retention-frame-teeth) :rule-classes nil)
+
+(defun-nx iiq-source-tag-refusal-teeth ()
+ (let* ((backing (update-fn-ibp-pool-capacity 1 (create-fn-index-backing)))
+        (pool (fn-owner-page-read-keep-ledger
+               (fn-prl-make '(1024 8 8 8 16)) (create-fn-page-read-pool)))
+        (reserved (mv-list 4 (fn-iiq-reserve-request *iiq-test-context*
+                    *iiq-test-publication* *iiq-test-generation* *iiq-test-demand* backing pool)))
+        (before (nth 2 reserved))
+        (bad (update-nth 0 :wrong-source *iiq-source-frame-fixture*))
+        (refused (mv-list 2 (fn-iiq-keep-input-source bad before)))
+        (good (mv-list 2 (fn-iiq-keep-input-source *iiq-source-frame-fixture* before))))
+  (and (equal (nth 0 reserved) :reserved)
+       (not (eq (fn-omk-at 0 bad) :incoming-input-source))
+       (equal (nth 0 refused) :source-unavailable) (equal (nth 1 refused) before)
+       (eq (fn-omk-at 0 *iiq-source-frame-fixture*) :incoming-input-source)
+       (not (equal (nth 0 good) :source-unavailable))
+       (not (equal (nth 1 good) before)))))
+(defthm iiq-source-tag-refusal-complete-positive-and-removal
+ (iiq-source-tag-refusal-teeth) :rule-classes nil)
