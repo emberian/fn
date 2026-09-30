@@ -5802,9 +5802,12 @@
       "evidence": [
         "specs/retention.md",
         "books/refusal-headroom.lisp",
-        "tests/acl2/refusal-headroom-tests.lisp"
+        "tests/acl2/refusal-headroom-tests.lisp",
+        "books/store-identity-reserve.lisp",
+        "tests/acl2/store-identity-reserve-tests.lisp",
+        "tests/test_native_identity_reserve.py"
       ],
-      "implementation_note": "OPEN: existing ordinary post-reservation refusals can consume all remaining persistent identities. No-wrap and memory headroom do not implement protected identity grants. Exact operation-derived producer read census, allocator purpose binding, grants, host writer, profile/codec/runtime validation and durable recovery/snapshot integration remain required."
+      "implementation_note": "Persistent source draft implements operation-derived one-ID release grants, ordinary carried-forward-debt protection, new-undertaking prepayment and exact single-use owner binding. Source tests pass near the actual uint32 ceiling through open/recovery and reserve/refuse. OPEN: matching host/runtime refinement, stale-callback/incarnation isolation and existing logged-prefix recovery joins (PRF269 permits cross-crash reuse of neverlogged speculative metadata), actual local producer census/grants, current profile/codec/runtime joins and full W8."
     }
   ]
 }

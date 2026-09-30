@@ -219,6 +219,7 @@
 (include-book "../../books/history-image-snapshot")
 (include-book "../../books/owner-snapshot-request")
 (include-book "../../books/store-capacity-vector")
+(include-book "../../books/store-identity-reserve")
 (include-book "../../books/store-carried-folds")
 (include-book "../../books/retention-figures")
 (include-book "../../books/store-capacity-config")

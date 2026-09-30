@@ -451,6 +451,9 @@ the owner's keyword check, not the Store's."
 (defun fnn-owner-observe (operation result)
   (fnn-owner-action 'fn-owner-io operation result))
 
+(defun fnn-owner-identity-reservation (operation)
+  (fnn-owner-core 'fn-owner-identity-reservation operation))
+
 ;;; The clock the owner decides under (books/clock.lisp; decision D10-a).
 ;;;
 ;;; Reading the two clocks is I/O and is this file's job.  What a reading is
@@ -1653,6 +1656,7 @@ follows is justified only by this line."
             (:duplicate (return-from fnn-owner-attempt :duplicate))
             (:conflict (return-from fnn-owner-attempt :conflict)))
           (let ((*fnn-observe-callback* #'fnn-owner-observe)
+                (*fnn-identity-reservation-callback* #'fnn-owner-identity-reservation)
                 (*fnn-finish-callback* #'fnn-owner-finish-submission))
             (fnn-advance-frontier store
                                   (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
@@ -2076,9 +2080,10 @@ reason before any Store call.  An ordinary article's groups are unchanged."
   (let ((store (fnn-owner-service-store service)))
     (fnn-owner-preflight-publication service (first event))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
+                (*fnn-identity-reservation-callback* #'fnn-owner-identity-reservation)
           (*fnn-finish-callback* #'fnn-owner-finish))
       (fnn-advance-frontier store
-                            (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
+                            (fnn-nat (fnn-owner-core 'fn-owner-next-txid)) event)
       (let ((prepared
              (fnn-owner-action
               'fn-owner-prepare-retention (first event)
@@ -2103,6 +2108,7 @@ reason before any Store call.  An ordinary article's groups are unchanged."
       (fnn-refuse "Store transaction budget refuses ~(~a~) transaction"
                   (fnn-core 'fn-wire-event-kind event)))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
+                (*fnn-identity-reservation-callback* #'fnn-owner-identity-reservation)
           (*fnn-finish-callback* #'fnn-owner-finish))
       (fnn-advance-frontier store
                             (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
@@ -2139,6 +2145,7 @@ reason before any Store call.  An ordinary article's groups are unchanged."
   (let ((store (fnn-owner-service-store service)))
     (fnn-owner-preflight-publication service :consumer)
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
+                (*fnn-identity-reservation-callback* #'fnn-owner-identity-reservation)
           (*fnn-finish-callback* #'fnn-owner-finish))
       (fnn-advance-frontier store
                             (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
@@ -2155,6 +2162,7 @@ reason before any Store call.  An ordinary article's groups are unchanged."
     (fnn-owner-preflight-publication service
                                      (fnn-core 'fn-store-event-kind event))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
+                (*fnn-identity-reservation-callback* #'fnn-owner-identity-reservation)
           (*fnn-finish-callback* #'fnn-owner-finish))
       (fnn-advance-frontier store
                             (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))

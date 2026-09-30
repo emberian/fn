@@ -22,6 +22,7 @@
 ; S7a offline snapshot validation verdicts, called from native/io.lisp.
 (include-book "../books/owner-snapshot-request")
 (include-book "../books/store-capacity-vector")
+(include-book "../books/store-identity-reserve")
 (include-book "../books/store-carried-folds")
 ; PKT-220: the retention figures `operator CONFIG obligations' opens with.
 (include-book "../books/retention-figures")
@@ -1525,6 +1526,14 @@ reopen predicate, writer-lock observation and observed final namespace."
   (value (fn-state-next-txid
           (fn-node-acceptance
            (fn-sn-node (f-get-global 'fn-store-sn state))))))
+
+; The standalone writer has no maintenance bypass: all its reservations
+; preserve the exact carried forward-release debt.
+(defun fn-store-sn-identity-reservation (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((s (f-get-global 'fn-store-sn state)))
+    (mv-let (debt state) (fn-store-sn-record-debt s state)
+      (value (fn-idr-reservation s debt nil)))))
 
 (defun fn-store-sn-existing-action (msgid-octets payload group-codes fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program

@@ -92,6 +92,7 @@
 (include-book "history-image-snapshot")
 (include-book "owner-snapshot-request")
 (include-book "store-capacity-vector")
+(include-book "store-identity-reserve")
 (include-book "store-carried-folds")
 (include-book "retention-figures")
 (include-book "store-capacity-config")

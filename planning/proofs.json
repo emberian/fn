@@ -14408,7 +14408,7 @@
         "PRF-918"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-reclaim.lisp",
         "tests/acl2/owner-reclaim-tests.lisp",
@@ -17775,7 +17775,7 @@
         "HST-001"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-reclaim-carry.lisp",
         "tests/acl2/owner-reclaim-carry-tests.lisp"
@@ -18902,7 +18902,7 @@
     {
       "id": "PRF-1134",
       "title": "Actual operation-bound maintenance identities survive ordinary refusals",
-      "statement": "Prove actual purpose-aware persistent and local identity reservation against finite selected codec/runtime domains. ACL2 derives maintenance purpose and bounded trace demand from the admitted operation; ordinary reservations preserve protected quota. Each live grant owns a disjoint nonrecycled interval, accounted alongside other resources; issued/uncertain/canceled/stale identities never roll back. Bridge the actual host writer, replay/snapshot representation and continuation alpha(L,R), naming finite exhaustion. A per-selection read bound is not a full producer census. No implementation or proof is currently claimed.",
+      "statement": "Prove actual purpose-aware persistent and local identity reservation against finite selected codec/runtime domains. ACL2 derives maintenance purpose and bounded trace demand from the admitted operation; ordinary reservations preserve protected quota. Each live grant owns a disjoint nonrecycled interval, accounted alongside other resources; live consumed identities never roll back within an owner lifetime; logged/fenced identities retain durable issuance, while neverlogged FNFD correlation metadata follows PRF-269 reconciliation. Bridge the actual host writer, replay/snapshot representation and continuation alpha(L,R), naming finite exhaustion. A per-selection read bound is not a full producer census. Persistent source component: fn-idr-reservation, called by fn-owner-identity-reservation and fn-store-sn-identity-reservation, protects the actual carried forward-release debt before every native fnn-log-reserve. fn-idr-purpose derives :undertake/:release from the current canonical retention candidate, replay and consumer eligibility. A new undertaking reserves its own release too; an admitted release issues one ID and retains the other promises. Owner preflight checks the existing resource-vector verdict and stores an exact event/frontier single-use grant, consumed on every prepare attempt. No unbounded-failure eventual-success promise. OPEN: complete host/runtime/crash/recovery no-reuse refinement, local full producer census/grants and full W8 continuation.",
       "milestone": "M5",
       "requirements": [
         "RET-002",
@@ -18916,9 +18916,13 @@
       "assumptions": [],
       "status": "planned",
       "evidence": [
-        "specs/retention.md"
+        "specs/retention.md",
+        "books/store-identity-reserve.lisp",
+        "tests/acl2/store-identity-reserve-tests.lisp",
+        "tests/test_native_identity_reserve.py",
+        "planning/evidence/identity-reserve-2026-09-30/README.md"
       ],
-      "progress_note": "Root assigned allocator implementation to W8. Claim announced before writing. Current source fnn-log-reserve has no operation-bound grant; local fn-prl-admit/fn-pmn-admit share an unprotected finite next counter. Producer request census and current-format/profile joins remain open. No proposed theorem is admitted or certified."
+      "progress_note": "Clean protected pinned idr6 source admission evaluates all 13 literal assertions (33 fixture forms), 1.89 ACL2 seconds / 6,918 steps. Gate definitions guard-verified; ordinary/undertake/release headroom and exact successor theorems admitted, not certified. Actual native ordinary gate/refusal and owner exact-grant consumption pass 2/2 hybrid runtime tests, 0 skips, on historical published 6462 image with exact changed definitions loaded. Whole native bare load 47/47 has zero findings; this is not a matching certified-world/current-image claim. Reinstall and rewritten-owner swap explicitly clear ephemeral grant. Root preserves PRF269/number-durability: logged/fenced IDs are issued; neverlogged FNFD correlation metadata may reuse a speculative number across crash after complete reconciliation. OPEN: composed host/crash/refinement, stale callback/incarnation and existing-prefix recovery joins, local read census/grants, selected profile/codec width agreement, and full alpha(L,R) continuation."
     }
   ]
 }

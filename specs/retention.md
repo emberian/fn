@@ -19,7 +19,7 @@ eventual refusal under unlimited input; do not hide that tradeoff in GC.
 
 ## Finite identities for maintenance
 
-RET-010 (fn guarantee, implementation open): persistent transaction IDs and
+RET-010 (fn guarantee, full implementation open): persistent transaction IDs and
 process-local read IDs are separate finite resources in R of alpha=(L,R).
 Capacity admission and no-wrap arithmetic alone do not establish maintenance
 headroom. ACL2 derives maintenance purpose from the actual admitted operation
@@ -33,14 +33,15 @@ flag, memory margin, object count, or guessed multiple of a page count is not
 an authority or a request census. Current compact/reclaim publication writes a
 checkpoint and consumes no Store journal transaction ID; an authorized Store
 release writes one. Current forward-undertaking debt names required releases,
-but connecting that carried debt to allocator reservation remains open.
+and the persistent source gate below connects that debt to live reservation.
 The authenticated reader's per-selection request bound is not yet a complete
 producer trace bound across source passes, staged digest and cache dispatch.
 
 Each grant owns its exact identities. Concurrent grants cannot double-spend or
-steal each other's interval. Issued or possibly escaped identities never roll
-back or recycle after refusal, cancellation, uncertain persistence or a stale
-callback. Persistent grants require replay and snapshot representation when
+steal each other's interval. Live consumed identities never roll back or recycle within their owner
+lifetime after refusal, cancellation, uncertain persistence or a stale callback.
+Logged/fenced Store identities retain the existing durable issuance guarantee;
+neverlogged FNFD correlation metadata follows the reconciliation rule below. Persistent grants require replay and snapshot representation when
 they cross a durable boundary. Profile validation, current format and runtime
 representation must agree; no old-format inference supplies a missing grant.
 
@@ -52,6 +53,37 @@ SCN-1040 track the actual allocator, host writer, continuation, crash and
 recovery obligations. Existing PRF-1110 proves saturation of the current
 unprotected allocator and supplies the motivating counterexample, not this
 new guarantee.
+
+The persistent source component `books/store-identity-reserve.lisp` now gates
+the native log reservation through the owner or standalone Store entry. It
+protects exactly one release ID per carried open forward undertaking. New
+undertaking admission prepays its own release; ordinary requests stop before
+spending the protected demand, including a later semantic refusal. A retention
+publication's purpose comes from its canonical event and current replay and
+consumer eligibility. The owner also applies its existing publication resource
+verdict. Its exact event/frontier grant is consumed on the first prepare attempt,
+including failure; a changed operation or another reservation cannot steal it.
+Checkpoint publication consumes zero journal IDs. No guessed extra identity is
+assigned to the byte/count vector's separate maintenance-record reserve.
+
+The existing issuance definition remains in force (`number-durability.lisp`,
+PRF-269): a Store transaction identity is issued when its record is logged and
+fenced. An unlogged speculative number in a durable FNFD intent is correlation
+metadata, not an issued transaction identity. The intent's complete key is
+peer, Message-ID, content obligation identity, evidence, generation, txid and
+tick; every pending intent is reconciled before serving, and reconciliation
+does not decide from its txid. Such a speculative number may be reused after
+crash. This change adds no durable allocator frontier, format field or floor
+at the feed journals' metadata. Live consumed grants and speculative numbers
+never roll back within the owner lifetime. The grant must be cleared at owner
+reinstallation; stale callbacks cannot claim a later grant. Complete joins to
+that isolation and the existing logged-prefix recovery proof remain open.
+
+If a release reservation fails before durable publication, its debt stays open
+while its live ID is spent; another grant requires enough remaining identities
+and other resources. Finite one-ID-per-release funding cannot promise eventual
+success under arbitrarily many post-reservation failures. Local producer read
+census, protected read grants and full W8 continuation equivalence remain open.
 
 ## Receipts and release
 

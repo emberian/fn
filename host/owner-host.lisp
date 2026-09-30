@@ -128,6 +128,7 @@
 ; PKT-169: the maintenance reservation (the served gates below).
 (include-book "../books/store-maintenance-reserve")
 (include-book "../books/store-capacity-vector")
+(include-book "../books/store-identity-reserve")
 ; PRF-284: the profile's admission decided once at open and carried
 ; (fn-pvc-make; fn-pvc-article-budget-carried, fn-pvc-verdict-carried,
 ; fn-pvc-post-boundary-carried).
@@ -425,7 +426,8 @@
    ((not (fn-onb-open-okp (fn-ocfg-owner oc)))
     (mv nil :article-numbers-damaged fn-arena fn-cat fn-hist state))
    (t
-      (let* ((state (fn-owner-install-ocfg oc state))
+      (let* ((state (f-put-global 'fn-owner-identity-grant nil state))
+             (state (fn-owner-install-ocfg oc state))
              ; PRF-289: the carried obligation-id trie for the ledger the
              ; owner opens with (books/post-retain-carried.lisp
              ; fn-prc-refresh of nil; fn-prc-carryp-of-refresh), so the
@@ -1257,6 +1259,27 @@
                      (fn-oii-publication-group-count event) debt)
                 fn-hist state)))))))
 
+; One imminent reservation, checked under the native owner's serialization.
+; OPERATION is the canonical retention publication or NIL for ordinary work.
+; The purpose is derived from current replay/consumer eligibility in ACL2.
+(defun fn-owner-identity-reservation (operation fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (mv-let (debt fn-hist state) (fn-owner-record-debt fn-hist state)
+    (let* ((s (fn-owner-store state))
+           (purpose (fn-idr-purpose s operation))
+           (next (fn-idr-reservation s debt operation)))
+      (if (and operation (natp next))
+          (mv-let (erp verdict fn-hist state)
+            (fn-owner-publication-verdict purpose fn-hist state)
+            (declare (ignore erp))
+            (let ((state (f-put-global 'fn-owner-identity-grant
+                           (if (eq verdict :admissible)
+                               (fn-idr-grant s operation) nil) state)))
+              (mv nil (if (eq verdict :admissible) next :unaffordable)
+                  fn-hist state)))
+        (let ((state (f-put-global 'fn-owner-identity-grant nil state)))
+          (mv nil next fn-hist state))))))
+
 (defun fn-owner-node (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (fn-sn-node (fn-owner-store state)))
@@ -1941,7 +1964,12 @@
                               (fn-cbor-octet-listp subject-octets)
                               (fn-cbor-octet-listp evidence-octets))))
   (let* ((s (fn-owner-store state))
-         (node (fn-sn-node s)))
+         (node (fn-sn-node s))
+         (grant (if (boundp-global 'fn-owner-identity-grant state)
+                    (f-get-global 'fn-owner-identity-grant state) nil))
+         ; Consume this capability even when preparation refuses.  A retry
+         ; must acquire another fresh ID; no callback can reuse the grant.
+         (state (f-put-global 'fn-owner-identity-grant nil state)))
     ; books/post-fields.lisp fn-pfld-retention-inputsp.
     (if (not (fn-pfld-retention-inputsp kind id-octets subject-octets
                                         evidence-octets charge))
@@ -1954,10 +1982,13 @@
                      (fn-store-octets->string evidence-octets) charge)))
         ; fn-pout-prepare-retention: (:store (:prepare-retention E)) and its
         ; word (KEYSTONE fn-pout-prepare-retention-answers-the-store-change).
-        (mv-let (word next)
-          (fn-pout-prepare-retention (fn-owner-ocfg state) event fn-arena)
-          (let ((state (fn-owner-install-ocfg next state)))
-            (value word)))))))
+        (mv-let (allowed remaining) (fn-idr-consume-grant s event grant)
+          (let ((state (f-put-global 'fn-owner-identity-grant remaining state)))
+            (if (not allowed) (value :refused)
+              (mv-let (word next)
+                (fn-pout-prepare-retention (fn-owner-ocfg state) event fn-arena)
+                (let ((state (fn-owner-install-ocfg next state)))
+                  (value word))))))))))
 
 ; The caller supplies an ACL2-constructed kind-3 or kind-4 event.  This
 ; boundary deliberately accepts no separate profile, key, article, or verdict
@@ -5019,6 +5050,7 @@ existing port only after fn-fc has made this connection ready."
          (oc (nth 1 rebuilt))
          (next (fn-orcp-swapped-ocfg (fn-owner-ocfg state) oc))
          (swapped (fn-ocfg-owner next))
+         (state (f-put-global 'fn-owner-identity-grant nil state))
          (state (fn-owner-install-ocfg next state))
          (count (fn-sf-records-count (fn-sn-files (fn-own-store swapped))))
          (state (fn-owner-retain-carry-put (nth 2 rebuilt) state))

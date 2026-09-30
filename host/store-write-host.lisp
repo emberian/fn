@@ -1199,8 +1199,15 @@
    ((not (eql current (fn-xw-get store :frontier)))
     (mv (fn-xw-fault "ACL2 allocator and the log's frontier disagree") (fn-xw-put store :fenced t) state))
    (t
-    (let ((next (fn-store-metadata-frontier-next current)))
+    (mv-let (erp next state) (fn-store-sn-identity-reservation state)
+      (declare (ignore erp))
       (cond
+       ((eq next :identity-exhausted)
+        (mv (fn-xw-refuse "finite transaction-ID domain exhausted") store state))
+       ((eq next :identity-reserve)
+        (mv (fn-xw-refuse "transaction identities reserved for promised releases") store state))
+       ((eq next :operation-refused)
+        (mv (fn-xw-refuse "retention operation has no current identity grant") store state))
        ((not (or (null next) (and (integerp next) (<= 0 next))))
         (mv (fn-xw-fault "ACL2 returned malformed allocation frontier successor") store state))
        ((null next) (mv (fn-xw-refuse "finite transaction-ID domain exhausted") store state))
@@ -1898,4 +1905,3 @@
                               (nthcdr 4 rest) fn-octets-lg fn-arena state)))
        (t (mv (list :usage (concatenate 'string "extract: store " command " is not in this program"))
               fn-octets-lg fn-arena state)))))))
-

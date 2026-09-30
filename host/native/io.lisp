@@ -1693,6 +1693,13 @@ the payload to seal as (:seal OCTETS); the host seals exactly those octets
 ;; it reuses the exact file/barrier program without calling the store-node
 ;; completion subject a second time.
 (defvar *fnn-observe-callback* #'fnn-bridge-io)
+
+(defun fnn-bridge-identity-reservation (operation)
+  (when operation
+    (fnn-fault "standalone writer has no retention identity grant"))
+  (fnn-core-state 'fn-store-sn-identity-reservation))
+
+(defvar *fnn-identity-reservation-callback* #'fnn-bridge-identity-reservation)
 (defvar *fnn-finish-callback* #'fnn-bridge-finish)
 ; Developer fault cut, dynamically scoped to one canonical Store publication.
 ; NIL in normal operation.  The cut runs after the final link and before its
@@ -3435,12 +3442,12 @@ recovery sweep owns."
                            (fnn-fsync-file fd))
       (fnn-close fd))))
 
-(defun fnn-advance-frontier (store current-txid)
+(defun fnn-advance-frontier (store current-txid &optional operation)
   "The allocator's reservation: the record log's (fnn-log-reserve; the
 frontier is derived from the log, design 2026-09-27 section 3.3)."
   (unless (fnn-store-logp store)
     (fnn-fault "a store that is not on the record log opened"))
-  (fnn-log-reserve store current-txid))
+  (fnn-log-reserve store current-txid operation))
 
 (defun fnn-publish (store sequence record)
   "The record's publication: the record log's P-BATCH (fnn-log-publish)."
@@ -7639,7 +7646,7 @@ does, and records how the log holds the history (fnn-store-log-history) for
     (setf (fnn-store-fenced store) nil)
     count))
 
-(defun fnn-log-reserve (store current-txid)
+(defun fnn-log-reserve (store current-txid &optional operation)
   "The member's reservation on the log route (fn-olr-ocfg-reserve through
 the observe callback): the frontier is the log's derived one."
   (fnn-require-writer store)
@@ -7647,10 +7654,15 @@ the observe callback): the frontier is the log's derived one."
   (unless (eql current-txid (fnn-store-frontier store))
     (setf (fnn-store-fenced store) t)
     (fnn-fault "ACL2 allocator and the log's frontier disagree"))
-  (let ((next (fnn-metadata-frontier-next current-txid))
+  (let ((next (funcall *fnn-identity-reservation-callback* operation))
         (log (fnn-store-log store)))
-    (when (null next)
-      (fnn-refuse "finite transaction-ID domain exhausted"))
+    (case next
+      (:identity-exhausted (fnn-refuse "finite transaction-ID domain exhausted"))
+      (:identity-reserve (fnn-refuse "transaction identities reserved for promised releases"))
+      (:operation-refused (fnn-refuse "retention operation has no current identity grant"))
+      (:unaffordable (fnn-refuse "retention operation cannot fund its other resources")))
+    (unless (and (integerp next) (<= 0 next))
+      (fnn-fault "ACL2 returned malformed identity reservation"))
     (fnn-log-with-kernel (log)
       (setf (fnn-log-kernel log)
             (fnn-core 'fn-lgc-consume-to (fnn-log-kernel log) current-txid)

@@ -1146,6 +1146,9 @@
 (definterface fn-store-sn-next-txid
   :class ::program)
 
+(definterface fn-store-sn-identity-reservation
+  :class ::program)
+
 (definterface fn-store-sn-pending-octets
   :class ::program)
 
@@ -1637,6 +1640,9 @@
 
 (definterface fn-owner-next-txid
   :class :common-lisp-compliant)
+
+(definterface fn-owner-identity-reservation
+  :class ::program)
 
 (definterface fn-owner-observe
   :class :common-lisp-compliant)

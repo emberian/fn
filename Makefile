@@ -323,6 +323,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-node-resolution \
 	books/refusal-effect \
 	books/refusal-headroom \
+	books/store-identity-reserve \
+	tests/acl2/store-identity-reserve-tests \
 	tests/acl2/refusal-headroom-tests \
 	books/closure-open \
 	books/store-identity-sequence-invariants \
