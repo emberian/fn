@@ -10443,7 +10443,7 @@
       "applied_directly_in": []
     },
     {
-      "name": "fn-cu-session-log-line",
+      "name": "fn-cu-session-log-line-detail",
       "subsystem": "peer/feed",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
@@ -10460,7 +10460,7 @@
       "applied_directly_in": []
     },
     {
-      "name": "fn-cu-session-step-pair",
+      "name": "fn-cu-session-step-triple",
       "subsystem": "peer/feed",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",

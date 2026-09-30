@@ -1409,6 +1409,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-catchup-serve \
 	books/peer-catchup-effects \
 	books/peer-catchup \
+	books/peer-catchup-diagnostics \
+	tests/acl2/peer-catchup-diagnostics-tests \
 	tests/acl2/peer-catchup-tests \
 	books/protocol-table \
 	books/protocol-builders \

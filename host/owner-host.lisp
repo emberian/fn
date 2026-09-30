@@ -173,6 +173,7 @@
 (include-book "../books/peer-pull-session")
 ; PRF-325: catching up from a peer (the XFNCATCHUP requester).
 (include-book "../books/peer-catchup")
+(include-book "../books/peer-catchup-diagnostics")
 (include-book "../books/consumer-owner-local")
 (include-book "../books/consumer-bound")
 (include-book "../books/consumer-wait")

@@ -2007,10 +2007,10 @@
 (definterface fn-cu-session-begin-pair
   :class ::common-lisp-compliant)
 
-(definterface fn-cu-session-log-line
+(definterface fn-cu-session-log-line-detail
   :class ::common-lisp-compliant)
 
-(definterface fn-cu-session-step-pair
+(definterface fn-cu-session-step-triple
   :class ::common-lisp-compliant)
 
 (definterface fn-feed-filename-host-component

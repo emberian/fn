@@ -415,9 +415,7 @@ waits its milliseconds and is fed the same octets."
                    (t (fnn-fault "unknown pull effect ~s" (car effect))))))
              (advance (event)
                (let ((triple (if catch-up
-                                 ;; the catch-up session names no failure reason
-                                 (let ((pair (fnn-core 'fn-cu-session-step-pair session event)))
-                                   (list (first pair) (second pair) nil))
+                                 (fnn-core 'fn-cu-session-step-triple session event)
                                (fnn-core 'fn-pull-session-step-triple session event))))
                  (setq session (first triple))
                  (unless why (setq why (third triple)))
@@ -460,7 +458,7 @@ waits its milliseconds and is fed the same octets."
                            'fn-pull-session-close-effects)
                          session))
       (fnn-log-line (if catch-up
-                        (fnn-core 'fn-cu-session-log-line session)
+                        (fnn-core 'fn-cu-session-log-line-detail session why)
                       (fnn-core 'fn-pull-session-log-line-why session why)))
       (fnn-core (if catch-up 'fn-cu-session-close 'fn-pull-session-close) session))))
 

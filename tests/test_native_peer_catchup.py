@@ -30,6 +30,8 @@ from pathlib import Path
 import re
 import shutil
 import signal
+import socket
+import threading
 import time
 import unittest
 
@@ -239,6 +241,42 @@ class NativePeerCatchupTests(unittest.TestCase):
         print("NATIVE-CATCHUP-WITNESS " + json.dumps(data, sort_keys=True), flush=True)
 
     # ------------------------------------------------------------ cases
+
+    def test_catch_up_retains_eof_loss_diagnostic(self):
+        """A real socket EOF is retained by the ACL2 diagnostic projection."""
+        listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.addCleanup(listener.close)
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        listener.settimeout(30)
+        accepted = threading.Event()
+        errors = []
+
+        def close_at_greeting():
+            try:
+                connection, _ = listener.accept()
+                with connection:
+                    accepted.set()
+                    connection.shutdown(socket.SHUT_WR)
+            except OSError as error:
+                errors.append(str(error))
+
+        peer = threading.Thread(target=close_at_greeting, daemon=True)
+        b = self.initialize("B", "b.catchup.example.invalid")
+        self.catch_up_from(b, "A", "a.catchup.example.invalid", listener.getsockname()[1])
+        peer.start()
+        self.start(b)
+        failed = self.await_log(b, r"round=failed .* loss=lost-eof loss-phase=preamble", timeout=30)
+        self.assertTrue(accepted.is_set(), errors)
+        self.assertIn("position=0 end=0 imported=0 duplicate=0 refused=0", failed)
+        self.assertIn("reason=lost", failed)
+        self.assertNotIn("round=done", failed)
+        self.stop(b)
+        peer.join(timeout=1)
+        self.assertFalse(peer.is_alive())
+        self.assertFalse(errors)
+        self.witness("catch-up-eof-diagnostic", {"failed_line": failed,
+                                                "lines": self.log_lines(b)}, [b])
 
     def test_catch_up_imports_every_article(self):
         a = self.populated_a()

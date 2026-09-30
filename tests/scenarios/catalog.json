@@ -5389,27 +5389,33 @@
       ],
       "steps": [
         "A holds 1,000 articles in fn.test (about 2 KiB each, several 256 KiB batches). B, new, adds peer A (inbound fn.*, outbound none) and `peer catch-up A 2`.",
-        "A second B is started on the developer image with FN_CATCHUP_TEST_KILL=before-write:3 and dies by SIGKILL after committing the third batch's records and before journaling its cursor; it is restarted."
+        "A second B is started on the developer image with FN_CATCHUP_TEST_KILL=before-write:3 and dies by SIGKILL after committing the third batch's records and before journaling its cursor; it is restarted.",
+        "A scripted peer accepts the receiver socket and closes its write side before its greeting, producing a real EOF without a long catch-up campaign."
       ],
       "expected": [
         "B logs a done round at position 1000 whose digest is the chain over A's stored articles; B holds exactly A's Message-IDs in A's order, each article's octets A's apart from Path and Xref.",
-        "The restarted B resumes from the second batch's cursor: the third batch is offered again and drawn 435 (duplicate > 0), and B ends with exactly A's articles, none twice, and the same digest."
+        "The restarted B resumes from the second batch's cursor: the third batch is offered again and drawn 435 (duplicate > 0), and B ends with exactly A's articles, none twice, and the same digest.",
+        "The failed round retains position 0, no imported records, reason=lost and loss=lost-eof loss-phase=preamble. Source tests separately retain all seven observed loss causes, preserve exact prior state/effects and suppress invented or overwritten transport causes."
       ],
       "evidence": [
         "tests/test_native_peer_catchup.py",
         "planning/evidence/peer-catchup-2026-09-27.md",
-        "planning/evidence/peer-catchup-2026-09-27/native-n2.log"
+        "planning/evidence/peer-catchup-2026-09-27/native-n2.log",
+        "tests/acl2/peer-catchup-diagnostics-tests.lisp",
+        "planning/evidence/catchup-loss-diagnostics-2026-09-30.md"
       ],
       "implementation": {
         "test": "tests.test_native_peer_catchup",
         "cases": [
           "test_catch_up_imports_every_article",
-          "test_kill_mid_catch_up_resumes"
+          "test_kill_mid_catch_up_resumes",
+          "test_catch_up_retains_eof_loss_diagnostic"
         ],
         "native": true,
         "record": "planning/evidence/peer-catchup-2026-09-27.md",
         "log": "planning/evidence/peer-catchup-2026-09-27/native-n2.log"
-      }
+      },
+      "execution_scope": "The new EOF diagnostic selector is source-prepared only; historical 1000-article qualification does not cover its current source bytes. Matching native execution remains pending."
     },
     {
       "id": "SCN-186",

@@ -418,7 +418,16 @@ host/native/pull-service.lisp on the pull worker):
   answered 435, so none is skipped and none installed twice.
 - The owner log line: `catch-up peer=NAME round=done|failed position=P
   end=E imported=I duplicate=D refused=R digest=HEX [reason=...]
-  transport=clear|tls`.
+  transport=clear|tls [loss=lost-dial|lost-tls|lost-send|lost-timeout|lost-read|lost-eof|lost-local loss-phase=PHASE]`.
+  The loss fields retain the first transport loss observation that actually
+  failed an active round. ACL2 projects them through
+  `fn-cu-session-step-triple` and `fn-cu-session-log-line-detail`; the first
+  two triple fields equal the existing `fn-cu-session-step-pair`, so state,
+  effects and retry timing are unchanged. The round's protocol refusal
+  remains `reason=`. A protocol refusal does not invent a socket loss, and
+  a later observation cannot replace a terminal round's first cause. These
+  diagnostics do not identify the historical 888/1000 failure without a
+  matching observation from that run.
 
 **Not in slice 1.** The digest the peer claims is a function of the chain
 the requester presents; an absolute claim (the peer's own chain over its

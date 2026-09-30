@@ -189,6 +189,7 @@
 (include-book "peer-pull")
 (include-book "peer-pull-session")
 (include-book "peer-catchup")
+(include-book "peer-catchup-diagnostics")
 (include-book "consumer-owner-local")
 (include-book "consumer-bound")
 (include-book "consumer-wait")
