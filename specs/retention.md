@@ -299,3 +299,14 @@ and room within the existing read quantum. Matching source admission establishes
 these boundaries; the changed pool layout still needs its own startup baseline
 and qualified image, and incoming capture requires actual incremental resident
 constructor/retention demand above the retained packed/open connection charge.
+
+The concrete input reserve census relates `fn-octets$c-reserve`, called by
+native fill, to max(requested capacity, old physical capacity). Keep old backing
+and conditional replacement backing charged simultaneously until definite
+replacement and retired alias joins; source-vector retention is a separate
+component. The native pending job retains the sampled old backing before fill
+can throw. Scalar layout components require actual operational provenance and
+selected-runtime constructor/frame evidence before admission authority. Whole
+reserve/allocation and whole REPLACE remain D27 obstructions until bounded setup
+or funded profile-backed preallocation is joined; a holder alone does not make
+those operations bounded.

@@ -328,6 +328,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-identity-prepare \
 	books/page-read-pool-state \
 	books/incoming-octet-holder \
+	books/incoming-backing-census \
+	tests/acl2/incoming-backing-census-tests \
 	tests/acl2/incoming-pool-holder-tests \
 	tests/acl2/incoming-octet-holder-tests \
 	books/receive-octet-buffer \
