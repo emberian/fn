@@ -7075,13 +7075,15 @@
         "Each actual feed trace has CHECK then TAKETHIS with 238 and239 naming the exact fresh Message-ID, and a complete nonempty transferred article. IHAVE fallback does not satisfy this selected streaming observation.",
         "Both the source-to-feed and feed-to-receiver content comparisons permit only Path/Xref changes; changed bodies or other headers fail. Receiver ARTICLE is220 and its Message-ID matches exactly.",
         "Refused streaming peer configuration prevents submissions and fails both selected directions. The baseline IHAVE observations remain unchanged.",
-        "Duplicate retries must answer438 naming the exact subject, send no TAKETHIS, and preserve exact receiver bytes. CHECK and TAKETHIS from different connections never form one success."
+        "Duplicate retries must answer438 naming the exact subject, send no TAKETHIS, and preserve exact receiver bytes. CHECK and TAKETHIS from different connections never form one success.",
+        "Relay records preserve block_complete and transfer_complete; every accepted IHAVE/TAKETHIS observation needs a fully observed dot terminator and final reply. Truncated article plus239 never qualifies complete delivery."
       ],
       "evidence": [
         "tools/inn_lab.py",
         "tests/test_inn_lab.py",
         "docs/interop-inn.md",
-        "planning/evidence/peering-inn-streaming-retry-source-2026-09-30.json"
+        "planning/evidence/peering-inn-streaming-retry-source-2026-09-30.json",
+        "planning/evidence/peering-inn-framing-source-2026-09-30.json"
       ],
       "execution_scope": "Source-present Q12 streaming observation harness. Scripted socket/accounting and fake baseline lab tests do not establish real INN/native image behavior. Matching runner-owned actual INN execution remains open, as do Distribution/cancel/expiry, authentication/control authority, window/soak and broader Q12/W3 obligations."
     },

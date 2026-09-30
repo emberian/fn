@@ -242,14 +242,17 @@ def exchanges(client: bytes, server: bytes) -> dict:
         command = sent[index].decode("utf-8", "replace")
         index += 1
         verb = command.split(" ")[0].upper() if command else ""
-        entry = {"command": command, "reply": "", "article": None, "result": ""}
+        entry = {"command": command, "reply": "", "article": None, "result": "",
+                 "block_complete": False, "transfer_complete": False}
         if verb == "TAKETHIS":
-            entry["article"], index, _ = _take_block(sent, index)
+            entry["article"], index, entry["block_complete"] = _take_block(sent, index)
         entry["reply"] = said.pop(0) if said else ""
         if ((verb == "IHAVE" and entry["reply"].startswith("335"))
                 or (verb == "POST" and entry["reply"].startswith("340"))):
-            entry["article"], index, _ = _take_block(sent, index)
+            entry["article"], index, entry["block_complete"] = _take_block(sent, index)
             entry["result"] = said.pop(0) if said else ""
+        final = entry["reply"] if verb == "TAKETHIS" else entry["result"]
+        entry["transfer_complete"] = entry["block_complete"] and bool(final)
         out.append(entry)
     return {"greeting": greeting, "exchanges": out}
 
@@ -277,7 +280,8 @@ def find_exchange(text: str, pair: str, msgid: str) -> dict | None:
 
     A streaming peer sends CHECK and then TAKETHIS; a non-streaming one sends
     IHAVE.  What is returned says which, with each reply verbatim, and whether
-    the exchange is complete (a transfer has its final reply)."""
+    the exchange is complete (a transfer has its dot terminator and final reply).
+    A refusal before transfer needs no article block."""
     found = None
     for stream in tap_connections(text, pair):
         parsed = exchanges(stream["client"], stream["server"])
@@ -291,22 +295,27 @@ def find_exchange(text: str, pair: str, msgid: str) -> dict | None:
                 continue
             if not connection_found or verb == "CHECK":
                 found = {"greeting": parsed["greeting"], "verbs": [], "offer": "",
-                         "result": "", "article": None}
+                         "result": "", "article": None,
+                         "block_complete": False, "transfer_complete": False}
             connection_found = True
             found["verbs"].append(verb)
             if verb == "IHAVE":
                 found["offer"], found["result"] = entry["reply"], entry["result"]
                 found["article"] = entry["article"]
+                found["block_complete"] = entry["block_complete"]
+                found["transfer_complete"] = entry["transfer_complete"]
             elif verb == "CHECK":
                 found["offer"] = entry["reply"]
             else:
                 found["result"] = entry["reply"]
                 found["article"] = entry["article"]
+                found["block_complete"] = entry["block_complete"]
+                found["transfer_complete"] = entry["transfer_complete"]
     if found is not None:
         code = found["offer"][:3]
         # Done when the offer was declined, or the transfer was answered.
-        found["complete"] = bool(found["result"]) or (
-            bool(code) and code not in ("335", "238"))
+        found["complete"] = (found["transfer_complete"] if found["article"] is not None
+                             else bool(code) and code not in ("335", "238"))
     return found
 
 
@@ -394,7 +403,7 @@ def streaming_transfer_completed(exchange, msgid):
     result = str(exchange.get("result", "")).split()
     return (len(offer) >= 2 and offer[:2] == ["238", msgid]
             and len(result) >= 2 and result[:2] == ["239", msgid]
-            and bool(exchange.get("article")))
+            and bool(exchange.get("article")) and exchange.get("transfer_complete") is True)
 
 
 # --------------------------------------------------------------------------
@@ -1691,7 +1700,7 @@ kill -0 $pid 2>/dev/null && echo INNFEED-ALIVE || echo INNFEED-GONE
         found = self.wait_tap((self.tap_in_port, self.fn_port), msgid, "actual checkgroups control")
         transferred = bool(found and (streaming_transfer_completed(found, msgid)
             or (found["verbs"] == ["IHAVE"] and found["offer"].startswith("335")
-                and found["result"].startswith("235"))))
+                and (found["result"].startswith("235") and found.get("transfer_complete") is True))))
         observed = self.drive_inn("control-view", "--port {} --group control.checkgroups "
             "--other-group {} --msgid {}".format(self.fn_port, GROUP, shlex.quote(msgid)),
             "read actual control filing and unchanged group authority")
@@ -1843,7 +1852,7 @@ kill -0 $pid 2>/dev/null && echo INNFEED-ALIVE || echo INNFEED-GONE
                     header_differences(served, fed)))) if fed and served else "")
         ok = bool(found and found["verbs"] == ["IHAVE"]
                   and found["offer"].startswith("335")
-                  and found["result"].startswith("235"))
+                  and (found["result"].startswith("235") and found.get("transfer_complete") is True))
         self.check("fn-feeds-inn", ok,
                    "fn's feed to innd did not end IHAVE/335/235 for {}: {}".format(
                        msgid, self.reply_summary(found)),
@@ -1911,7 +1920,7 @@ kill -0 $pid 2>/dev/null && echo INNFEED-ALIVE || echo INNFEED-GONE
             ", ".join("{}={}".format(k, "yes" if v else "no") for k, v in want.items()),
             ", ".join("{}={}".format(k, "yes" if v else "no") for k, v in present.items()))
         ok = bool(found and found["offer"][:3] in ("335", "238")
-                  and found["result"][:3] in ("235", "239")
+                  and found["result"][:3] in ("235", "239") and found.get("transfer_complete") is True
                   and present == want
                   and FN_PATH_IDENTITY in path_header.split("!")[:-1])
         self.check("operator-post-feeds-inn", ok,
@@ -2031,8 +2040,8 @@ kill -0 $pid 2>/dev/null && echo INNFEED-ALIVE || echo INNFEED-GONE
                               "innfeed offers {} to fn".format(msgid))
         self.facts["innfeed to fn"] = self.reply_summary(found)
         ok = bool(found and (
-            (found["offer"].startswith("238") and found["result"].startswith("239"))
-            or (found["offer"].startswith("335") and found["result"].startswith("235"))))
+            streaming_transfer_completed(found, msgid)
+            or (found["offer"].startswith("335") and (found["result"].startswith("235") and found.get("transfer_complete") is True))))
         self.check("innfeed-feeds-fn", ok,
                    "innfeed's offer of {} to fn did not end 238/239 or 335/235: {}".format(
                        msgid, self.reply_summary(found)),
@@ -2447,7 +2456,7 @@ rm -f {p}/run/innd.pid {p}/run/control.ctl
             fed, received = (found or {}).get("article") or b"", self.octets_of(back)
             transfer_ok = (bool(found) and (
                 (found["verbs"] == ["IHAVE"] and found["offer"].startswith("335")
-                 and found["result"].startswith("235"))
+                 and (found["result"].startswith("235") and found.get("transfer_complete") is True))
                 or streaming_transfer_completed(found, msgid)))
             ok = (source_ok and transfer_ok and bool(fed) and bool(received)
                   and str(back.get("article", "")).startswith("220")
@@ -2496,7 +2505,7 @@ rm -f {p}/run/innd.pid {p}/run/control.ctl
             "--port {} --msgid '{}'".format(self.fn_port, msgid), name="fn reads " + name))
         arrived, served = (found or {}).get("article") or b"", self.octets_of(reader)
         transfer_ok = bool(found and (
-            (found["verbs"] == ["IHAVE"] and found["offer"].startswith("335") and found["result"].startswith("235"))
+            (found["verbs"] == ["IHAVE"] and found["offer"].startswith("335") and (found["result"].startswith("235") and found.get("transfer_complete") is True))
             or streaming_transfer_completed(found, msgid)))
         ok = (str(entry.get("offer", "")).startswith("335")
               and str(entry.get("transfer", "")).startswith("235") and transfer_ok
@@ -2577,7 +2586,7 @@ rm -f {p}/run/innd.pid {p}/run/control.ctl
         ok = (str(entry.get("result", "")).startswith("240") and bool(stored)
               and header_value(stored, "Message-ID") == msgid
               and bool(found) and ((found["verbs"] == ["IHAVE"] and found["offer"].startswith("335")
-                  and found["result"].startswith("235")) or streaming_transfer_completed(found, msgid))
+                  and (found["result"].startswith("235") and found.get("transfer_complete") is True)) or streaming_transfer_completed(found, msgid))
               and bool(transferred) and str(before.get("article", "")).startswith("220")
               and header_value(transferred, "Message-ID") == msgid
               and header_value(self.octets_of(before), "Message-ID") == msgid
@@ -2737,7 +2746,7 @@ printf '{group}\\n' | "$P/bin/expireover" -f - -Z {run}/expiry.lowmark
             self.nnrpd_port, msgid), name="INN source after go"))
         fed, received = (found or {}).get("article") or b"", self.octets_of(back)
         transfer_ok = bool(found and ((found["verbs"] == ["IHAVE"]
-            and found["offer"].startswith("335") and found["result"].startswith("235"))
+            and found["offer"].startswith("335") and (found["result"].startswith("235") and found.get("transfer_complete") is True))
             or streaming_transfer_completed(found, msgid)))
         ok = (transfer_ok and bool(fed) and bool(received)
               and str(back.get("article", "")).startswith("220")
