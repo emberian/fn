@@ -116,3 +116,16 @@ refusals, lost PREPARE acknowledgment and escape after registration. The last
 two retain their actual ticket, shared identity and cumulative debit in recovery.
 The supplied installation and numeric allowances are synthetic test inputs,
 not evidence that the production installer or complete served caller is ready.
+
+`fnn-with-connection-operation` is the native outer transport for that complete
+span. Its caller holds owner exclusion; the macro retains extent exclusion
+from before PREPARE through body cleanup and FINISH. It installs its unwind
+before PREPARE, so an escape between preparation and body entry cannot strand
+an unfenced receipt. Only `:prepared` enters the body. Other returned words
+preserve the core's status and MIO without invoking ordinary FINISH. A prepared
+body preserves all its return values; its allocating cleanup must be inside the
+body. PREPARE/FINISH can fence internally, and the outer unwind fences once,
+so each exceptional path uses at most two fault callbacks. The macro does not
+nest the older prepaid-only wrapper, which would add a third callback on a
+FINISH failure. This transport does not cover work outside its body, establish
+an operation tariff, or install itself in served owner callers.

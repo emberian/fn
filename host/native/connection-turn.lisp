@@ -99,3 +99,35 @@ retain the core ticket/receipt in recovery; they never run ordinary finish."
          ;; belong to the prepaid epilogue. Never retry ordinary completion.
          (unless ,returned
            (fnn-connection-turn-fault ,b))))))
+
+(defmacro fnn-with-connection-operation
+    (((nonce current-mio) binding kind family address peer mio) &body body)
+  "Prepare and complete one connection operation under continuous exclusion.
+The caller already holds owner exclusion. BODY runs only after :prepared,
+with the returned NONCE and CURRENT-MIO, and includes all allocating cleanup.
+Its complete multiple-value result is preserved. Definite nonprepared outcomes
+return (values WORD NIL CURRENT-MIO) without running BODY or ordinary FINISH.
+This transport does not establish the installer's resource allowance."
+  (let ((b (gensym "BINDING")) (word (gensym "WORD"))
+        (returned (gensym "RETURNED")))
+    `(let ((,b ,binding))
+       (sb-thread:with-recursive-lock (*fnn-extent-lock*)
+         ;; Establish this unwind before PREPARE: even the interval after its
+         ;; acknowledgment and before BODY belongs to the retained operation.
+         (let ((,returned nil))
+           (unwind-protect
+               (multiple-value-prog1
+                   (multiple-value-bind (,word ,nonce ,current-mio)
+                       (fnn-connection-turn-prepare
+                        ,b ,kind ,family ,address ,peer ,mio)
+                     (if (eq ,word :prepared)
+                         (multiple-value-prog1 (progn ,@body)
+                           (fnn-connection-turn-finish ,b ,nonce))
+                       (values ,word nil ,current-mio)))
+                 (setf ,returned t))
+             ;; Do not nest the prepaid-only macro: PREPARE/FINISH already
+             ;; fence their own failures, making this at most the second
+             ;; fault callback. Neither raw escape nor refusal consumes a
+             ;; ticket here. Fault remains inside the continuous extent span.
+             (unless ,returned
+               (fnn-connection-turn-fault-locked ,b))))))))
