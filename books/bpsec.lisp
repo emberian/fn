@@ -8,3 +8,4 @@
 (include-book "bpsec-operation")
 (include-book "bpsec-asb-quanta")
 (include-book "bpsec-asb-spine")
+(include-book "bpsec-target-spine")

@@ -17852,6 +17852,21 @@
           "kind": "theorem",
           "name": "fn-bps-target-drive-composes-quanta",
           "pending_subject": "Additive metadata cursor scheduling component. No BP host installs fn-bps-target-step; full reference equivalence/state preservation and carried immutable provider/data-binding relation remain open. Source admission only, not normal certificate or actual-bundle authority."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-target-start-establishes-fixed-spine",
+          "pending_subject": "Target cursor exact ordered record representation component. Actual BP host/provider and full mutable-field/reference graph invariant remain open. Ghost spine recognizer is never served revalidation."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-target-drive-preserves-cursor-spine",
+          "pending_subject": "Target cursor exact ordered record representation component. Actual BP host/provider and full mutable-field/reference graph invariant remain open. Ghost spine recognizer is never served revalidation."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-target-step-preserves-cursor-spine",
+          "pending_subject": "Target cursor exact ordered record representation component. Actual BP host/provider and full mutable-field/reference graph invariant remain open. Ghost spine recognizer is never served revalidation."
         }
       ]
     },

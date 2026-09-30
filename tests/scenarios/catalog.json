@@ -7381,7 +7381,8 @@
         "Derive opaque BIB numbers from parsed BCB targets; leave a second BCB unparsed and require unsupported before pending.",
         "Run the metadata cursor at quanta1/17 and compare complete selected reference outcomes.",
         "Split quantum10 into3+7 across count/lookup transitions; compare complete cursor and exact work.",
-        "Hold backing ID/offset fixed while substituting window bytes; refuse the logical provider relation."
+        "Hold backing ID/offset fixed while substituting window bytes; refuse the logical provider relation.",
+        "Carry exact22-field target cursor spine through all exercised quantum-one count, block lookup, membership and coverage transitions; separately drop its actual status key."
       ],
       "expected": [
         "Malformed known grammar refuses; unsupported never verifies.",
@@ -7390,7 +7391,8 @@
         "Stale same-number/type ASB fails exact-data match even if supplied metadata alone is structurally valid.",
         "Encrypted BIB data remains opaque; complete supported coverage may be pending-plaintext, incomplete coverage is unsupported.",
         "Metadata lookup/member probes resume one cell per scheduling unit; zero quantum returns unchanged.",
-        "Split quanta preserve the actual complete cursor and work; this is separate from graph-specification refinement."
+        "Split quanta preserve the actual complete cursor and work; this is separate from graph-specification refinement.",
+        "Actual target start/drive/step preserve record shape for valid/pending/unsupported/refused outcomes; missing-key corruption fails the sole carried invariant and its output conclusion. Full mutable/reference/provider graph invariants remain open."
       ],
       "evidence": [
         "tests/acl2/bpsec-asb-tests.lisp",
@@ -7399,7 +7401,10 @@
         "planning/evidence/bpsec-target-source-2026-09-30.json",
         "tests/acl2/bpsec-target-cursor-tests.lisp",
         "books/bpsec-provider-model.lisp",
-        "planning/evidence/bpsec-target-cursor-source-2026-09-30.json"
+        "planning/evidence/bpsec-target-cursor-source-2026-09-30.json",
+        "books/bpsec-target-spine.lisp",
+        "tests/acl2/bpsec-target-spine-tests.lisp",
+        "planning/evidence/bpsec-target-spine-source-2026-09-30.json"
       ],
       "execution_scope": "ACL2 source grammar tests only; no AES/HMAC execution, key grant, target plan, crypto gate or native receipt."
     },

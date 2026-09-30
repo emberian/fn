@@ -1077,6 +1077,14 @@ Component theorems bound work by the quantum and show that split quanta
 preserve the complete cursor and exact work. Whole graph equivalence and
 state preservation remain PRF-1179 work, with no actual host installation.
 
+`books/bpsec-target-spine.lisp` establishes and preserves the actual target
+cursor's exact ordered 22-field record through start, drive and step. It uses
+the ghost spine predicate, never a served whole-bundle or whole-state check.
+Literal valid, pending-plaintext, incomplete-coverage and refused opaque-set
+cases carry the full representation antecedent/conclusion through every
+exercised quantum-one transition; dropping a real key defeats both. Complete
+mutable-field/reference graph invariants and the actual provider remain open.
+
 `books/bpsec-provider-model.lisp` names the logical unique-backing relation
 and `fn-bps-window-backing-matchp`. A same-ID/same-offset byte substitution
 fails this relation. The predicate specifies the required provider premise;
