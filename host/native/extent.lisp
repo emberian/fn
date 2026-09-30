@@ -148,6 +148,15 @@ file stays readable after a later checkpoint replaces its name."
       (setf (gethash id *fnn-extent-bases*) base))
     id))
 
+(defun fnn-extent-page-pread (fd octets offset count)
+  "One syscall with core-provided page coordinates/count; return its observation."
+  (sb-sys:with-pinned-objects (octets)
+    (sb-alien:alien-funcall
+      (sb-alien:extern-alien "pread"
+        (function sb-alien:long sb-alien:int sb-alien:system-area-pointer
+                  sb-alien:unsigned-long sb-alien:long))
+      fd (sb-sys:vector-sap octets) count offset)))
+
 (defun fnn-extent-pread (fd octets offset)
   "Fill OCTETS from OFFSET of FD; the count read (short at end of file)."
   ;; Developer image only (lane composed-owner-3, row A4): a stalled read

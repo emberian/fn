@@ -6,7 +6,9 @@
 
 (defstruct (fnn-snapshot-job (:constructor %make-fnn-snapshot-job))
   service capture root maintenance payload-view source reader provider
-  observation completion (phase :source) outcome)
+  observation completion (phase :source) outcome
+  (action-lock (sb-thread:make-mutex :name "snapshot action"))
+  (returned :returned) (stage :none))
 
 (defun fnn-snapshot-job-open (service captured root maintenance payload-view)
   "The caller holds the owner mutex and has admitted maintenance, acquired
@@ -16,7 +18,7 @@ that immutable source; no records accessor or history materializer is used."
    :service service :capture captured :root root :maintenance maintenance
    :payload-view payload-view :source (fnn-snapshot-source-begin captured)))
 
-(defun fnn-snapshot-job-source-step (job)
+(defun %fnn-snapshot-job-source-step (job)
   "One source/provider/auth-reader action. A row is offered once, with its
 current source identity and parser-size completion; an opaque Store is never
 compared or traversed to decide whether a completion belongs to this job."
@@ -38,7 +40,10 @@ compared or traversed to decide whether a completion belongs to this job."
                 (multiple-value-bind (word reader)
                     (fnn-hsr-source-begin
                      (fnn-core 'fn-hrs-h-rec handle) token
-                     (fnn-core 'fn-osrc-at 1 (fnn-snapshot-job-root job))
+                     (sb-thread:with-mutex
+                         ((fnn-owner-service-lock (fnn-snapshot-job-service job)))
+                       (fnn-snapshot-source-root-ticket
+                        (fnn-snapshot-job-service job) (fnn-snapshot-job-root job)))
                      (fnn-snapshot-job-maintenance job))
                   (unless (eq word :idle)
                     (fnn-refuse-io "snapshot source reader refused: ~a" word))
@@ -79,19 +84,79 @@ compared or traversed to decide whether a completion belongs to this job."
       (:source-done '(:done))
       (otherwise '(:refused :source-phase)))))
 
+(defun fnn-snapshot-job-source-step (job)
+  "The action mutex covers the actual synchronous I/O return. Cleanup
+cannot observe a timeout as a join or race a still-executing source step."
+  (sb-thread:with-mutex ((fnn-snapshot-job-action-lock job))
+    (setf (fnn-snapshot-job-returned job) :running)
+    (unwind-protect
+         (handler-case (%fnn-snapshot-job-source-step job)
+           (fnn-snapshot-read-not-issued (condition)
+             (setf (fnn-snapshot-job-outcome job) :refused)
+             (error condition))
+           (error (condition)
+             (setf (fnn-snapshot-job-outcome job) :uncertain)
+             (error condition)))
+      (setf (fnn-snapshot-job-returned job) :returned))))
+
 (defun fnn-snapshot-job-release-source (job)
   "Only after the executing source action has actually returned/joined.
 Release every reader alias first, then its exact root-file incarnation.
 An exception leaves the job's remaining leases for recovery/definite cleanup."
   (let ((reader (fnn-snapshot-job-reader job)))
     (when reader
-      (fnn-hsr-source-release-buffer reader)
+      ; This is cancellation/terminal joined cleanup, not ordinary page
+      ; replacement. The reader first fences the current digest/byte phase.
+      (let ((settled (fnn-hsr-source-cancel-returned
+                      reader (fnn-snapshot-job-outcome job))))
+        (unless (member settled '(:released :closed))
+          (fnn-fault "snapshot reader cleanup retains ownership: ~a" settled)))
       (setf (fnn-snapshot-job-reader job) nil)))
   (when (fnn-snapshot-job-root job)
     (fnn-snapshot-source-root-release (fnn-snapshot-job-service job)
                                       (fnn-snapshot-job-root job))
     (setf (fnn-snapshot-job-root job) nil))
   :source-released)
+
+(defun fnn-snapshot-job-cleanup (job)
+  "Settle a returned source job in ownership order. Staged effects, when
+present, must already have a definite deleted/published core observation.
+Every field is cleared only after its actual release succeeds; failures
+retain the rest of the job for retry or recovery."
+  (sb-thread:with-mutex ((fnn-snapshot-job-action-lock job))
+    (let ((word (fnn-core 'fn-osj-cleanup-word
+                          (fnn-snapshot-job-returned job)
+                          (fnn-snapshot-job-stage job))))
+      (unless (eq (first word) :release)
+        (return-from fnn-snapshot-job-cleanup word))
+      (fnn-snapshot-job-release-source job)
+      (let ((service (fnn-snapshot-job-service job)))
+        (sb-thread:with-mutex ((fnn-owner-service-lock service))
+          (when (fnn-snapshot-job-payload-view job)
+            (let ((released (fnn-snapshot-payload-view-release
+                             (fnn-snapshot-job-payload-view job) :joined)))
+              (unless (eq (first released) :released)
+                (return-from fnn-snapshot-job-cleanup released)))
+            (setf (fnn-snapshot-job-payload-view job) nil))
+          (when (fnn-snapshot-job-capture job)
+            (let ((released (fnn-core-state
+                             'fn-owner-osn-release
+                             (fnn-core 'fn-osj-capture-ticket (fnn-snapshot-job-capture job)))))
+              (unless (eq (first released) :released)
+                (return-from fnn-snapshot-job-cleanup released)))
+            (setf (fnn-snapshot-job-capture job) nil))))
+      (when (fnn-snapshot-job-maintenance job)
+        (let ((settled (fnn-core-page-read-pool
+                        'fn-owner-maintenance-release (fnn-snapshot-job-maintenance job))))
+          (unless (eq (first settled) :released)
+            (return-from fnn-snapshot-job-cleanup settled))
+          (setf (fnn-snapshot-job-maintenance job) nil)))
+      (setf (fnn-snapshot-job-source job) nil
+            (fnn-snapshot-job-provider job) nil
+            (fnn-snapshot-job-observation job) nil
+            (fnn-snapshot-job-completion job) nil
+            (fnn-snapshot-job-phase job) :released)
+      '(:released))))
 
 (defun fnn-owner-snapshot-capture (service maintenance)
   "MAINTENANCE is an already admitted, operation-derived demand. Recheck

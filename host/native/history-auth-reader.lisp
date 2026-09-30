@@ -15,18 +15,36 @@
       (values verdict nil))))
 
 (defun fnn-hsr-source-release-buffer (reader)
-  "The caller has consumed the returned scalar and retains no vector alias."
-  (let ((token (fnn-hsr-source-token reader))
-        (id (fnn-hsr-source-buffer-id reader)))
-    (setf (fnn-hsr-source-buffer reader) nil)
-    (when token
-      (fnn-snapshot-source-page-release token)
-      (setf (fnn-hsr-source-token reader) nil
-            (fnn-hsr-source-buffer-id reader) nil)
-      (destructuring-bind (verdict cursor)
-          (fnn-call 'fn-hsr-auth-release id (fnn-hsr-source-cursor reader))
-        (setf (fnn-hsr-source-cursor reader) cursor)
-        verdict))))
+  "Normal page boundary. All consumer vector aliases have been cleared."
+  (let* ((token (fnn-hsr-source-token reader))
+         (id (fnn-hsr-source-buffer-id reader))
+         (plan (fnn-core 'fn-hsr-source-settle-demand id (fnn-hsr-source-cursor reader))))
+    (case (first plan)
+      (:settle
+       (unless token (fnn-fault "source borrow has no physical token"))
+       (setf (fnn-hsr-source-buffer reader) nil)
+       (fnn-snapshot-source-page-release token)
+       (setf (fnn-hsr-source-token reader) nil (fnn-hsr-source-buffer-id reader) nil)
+       (destructuring-bind (verdict cursor)
+           (fnn-call 'fn-hsr-auth-release (second plan) (fnn-hsr-source-cursor reader))
+         (unless (eq verdict :released) (fnn-fault "settled source borrow rejected release ACK"))
+         (setf (fnn-hsr-source-cursor reader) cursor)
+         verdict))
+      (:closed
+       (when (or token (fnn-hsr-source-buffer reader))
+         (fnn-fault "closed source retains a physical alias"))
+       :closed)
+      (otherwise plan))))
+
+(defun fnn-hsr-source-cancel-returned (reader outcome)
+  "Called after the action has definitely returned/joined. Cancel before any
+physical settlement. OUTCOME is observed :refused or :uncertain for an exact
+pending request; it never manufactures a worker completion."
+  (destructuring-bind (verdict cursor)
+      (fnn-call 'fn-hsr-source-cancel-returned outcome (fnn-hsr-source-cursor reader))
+    (declare (ignore verdict))
+    (setf (fnn-hsr-source-cursor reader) cursor)
+    (fnn-hsr-source-release-buffer reader)))
 
 (defun fnn-hsr-source-step (service root-pin maintenance reader current-source demand)
   "One actual reader action; controller scheduling decides when to resume.
@@ -53,7 +71,7 @@ No page vector escapes. A READY result contains only one copied octet."
                  (setf (fnn-hsr-source-buffer reader) buffer
                        (fnn-hsr-source-token reader) token (fnn-hsr-source-buffer-id reader) id)
                  (destructuring-bind (completed next)
-                     (fnn-call 'fn-hsr-auth-complete returned-request id count status cursor)
+                     (fnn-call 'fn-hsr-auth-complete returned-request id count status (fnn-hsr-source-cursor reader))
                    (setf (fnn-hsr-source-cursor reader) next)
                    completed))
              verdict)))

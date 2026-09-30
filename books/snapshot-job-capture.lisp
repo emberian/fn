@@ -22,4 +22,27 @@
 (defun fn-osj-capture-ticket (capture)
   (declare (xargs :guard t))
   (fn-omk-at 0 (fn-omk-at 1 capture)))
-(in-theory (disable fn-osj-resource-word fn-osj-capture-ticket))
+; These are observations of actual returned actions and staged-file effects,
+; never a timeout or a promise to join.  A private/uncertain stage continues
+; to own the grant until definite deletion or publication is observed.
+(defun fn-osj-stage-observation (stage observation)
+  (declare (xargs :guard t))
+  (cond ((and (equal stage :none) (equal observation :created)) :private)
+        ((and (member-eq stage '(:private :uncertain))
+              (equal observation :deleted)) :deleted)
+        ((and (equal stage :private) (equal observation :published)) :published)
+        ((and (equal stage :private) (equal observation :ambiguous)) :uncertain)
+        (t stage)))
+(defun fn-osj-cleanup-word (returned stage)
+  (declare (xargs :guard t))
+  (cond ((not (equal returned :returned)) '(:refused :action-not-joined))
+        ((not (member-eq stage '(:none :deleted :published)))
+         '(:uncertain :stage-not-settled))
+        (t '(:release :source :payload-view :capture :maintenance))))
+(defthm fn-osj-cleanup-needs-return-and-settled-stage
+  (iff (equal (car (fn-osj-cleanup-word returned stage)) :release)
+       (and (equal returned :returned)
+            (member-equal stage '(:none :deleted :published))))
+  :hints (("Goal" :in-theory (enable fn-osj-cleanup-word))))
+(in-theory (disable fn-osj-resource-word fn-osj-capture-ticket
+                    fn-osj-stage-observation fn-osj-cleanup-word))
