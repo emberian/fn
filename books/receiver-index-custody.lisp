@@ -70,7 +70,12 @@
        (if (eq range-word :invalid-receiver-consumption)
            (mv range-word fn-rx-provider fn-receiver-turn fn-page-read-pool)
         (mv-let (fenced fn-rx-provider)
-          (fn-rxp-fence (fn-rxp-token fn-rx-provider) fn-rx-provider)
+          ; Parser finish keeps response capacity revoked. The exact
+          ; current parser/source/claim checks above authorize retaining
+          ; that same fenced object; this creates no reset or readiness.
+          (if (null (fn-rxp-capacity fn-rx-provider))
+              (mv :receiver-fenced fn-rx-provider)
+            (fn-rxp-fence (fn-rxp-token fn-rx-provider) fn-rx-provider))
           (if (not (eq fenced :receiver-fenced))
               (mv :receiver-unavailable fn-rx-provider fn-receiver-turn fn-page-read-pool)
            (let* ((job (list :receiver-recipient recipient
