@@ -371,3 +371,18 @@ refinement and a conditional terminal correspondence to concrete `fn-blake3`
 are source-admitted. This does not equate the constrained `fn-frame-digest`
 with its realizer; streamed protected extents still need the existing joint
 attachment/refinement pattern at their actual consumer boundary.
+
+The page-core representation domain is now source-admitted: scalar ordering,
+CV shape, split power budget and active-frame child-span bounds establish at
+begin, survive every actual step and exclude invalid status. At most2^64 u64
+words uses depth budget57; the current directory u32 page-count domain uses
+budget36, within the64-slot array. The proof-only predicate is carried logically,
+never revalidated on the served path. Exact-byte guard and semantic/progress
+composition remain open (PRF-1087).
+
+The exact-byte guard domain is also source-admitted. It carries natural B,
+total=ceil(B/8),8pos<=B and every active frame right-start<total, establishes
+at byte begin, and survives each actual byte step. The restored right-child
+position therefore remains within B even for partial final bytes. Complete
+actual guards and never-invalid status follow without executing this proof-only
+predicate on a served tick. Semantic trajectory/progress and funding remain open.
