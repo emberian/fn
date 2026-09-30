@@ -234,6 +234,16 @@ exposure admission decides (the id, or NIL when it refused)."
                       (fnn-web-respond face fd channel code fields
                                        (fnn-web-slice out 0 (fnn-web-len out)) bodyp))
                     (return))
+                   (:health
+                    (fnn-owner-space-preobserve service t)
+                    (setq flow (second action)
+                          event (list :health-observation
+                                      (fnn-owner-serialized
+                                       service nil
+                                       (lambda ()
+                                         (fnn-owner-core 'fn-web-host-health-observe
+                                                         (fnn-owner-sched-snapshot service)))
+                                       :reader))))
                    (:open
                     (destructuring-bind (fam addr protected next) (rest action)
                       (setq flow next

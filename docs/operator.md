@@ -576,7 +576,7 @@ In order, these set:
 
 A TLS handshake costs the node work and memory before anyone has logged in.
 fn decides every handshake, on 563 and after STARTTLS alike, before it
-starts one (books/tls-handshake-budget.lisp):
+starts one (books/tls-handshake-decision.lisp):
 
 ```
 fn operator /etc/fn/fn.toml policy set tls-handshakes-per-source-per-minute 30
@@ -604,18 +604,60 @@ What this proves (PRF-986): whatever is offered, the node starts at most 16
 handshakes in any second and holds at most 16, and one source is admitted at
 most 30 + 30 x (seconds / 60) handshakes over any interval.
 
+Each handshake in progress holds up to 128 KiB of the TLS library's memory,
+so with TLS configured the node's memory check at start counts 16 x 128 KiB
+(2 MiB) beside its threads (the `fixed=` part of a
+`connections-exceed-memory` refusal). Raising `tls-handshakes-in-flight`
+live is checked against the same machine: a raise the machine cannot hold
+beside the connection capacity is refused `handshakes-exceed-memory`, and a
+lowered value keeps the higher charge until the next restart (handshakes
+admitted before may still be running).
+
 What it cannot do: from one shared address the node cannot tell many
 people from one attacker. Everyone behind one carrier-grade NAT, one office
-router or one proxy shares one budget; raise it for that address with the
-policy above if your readers arrive that way, and the node's own bound still
-holds. A flood from many addresses is held by the node's bound, so honest
-readers then wait their turn too.
+router or one proxy shares one budget. If your readers arrive that way,
+give that address (or IPv6 /64) its own rate, leaving everyone else's alone:
+
+```
+fn operator /etc/fn/fn.toml policy set tls-handshake-source-overrides 100.64.0.1=600,2001:db8:1:2::/64=120
+fn operator /etc/fn/fn.toml policy set tls-handshake-source-overrides none
+```
+
+Each entry is `ADDRESS=N` or `ADDRESS/64=N`, N handshakes a minute; `none`
+clears the list. It applies live. The list holds at most 64 entries (the
+profile's `tls-handshake-source-overrides`); one more is refused
+`overrides-full`, and an entry that does not parse is refused
+`override-address`; a refused list changes nothing. The node's own bound still
+holds for every source. A flood from many addresses is held by the node's
+bound, so honest readers then wait their turn too.
 
 You do not need a proxy to be safe. A TCP proxy in front of fn adds nothing
-here and costs the per-address limits (fn sees the proxy's address); fn does
-not read PROXY headers. A proxy that terminates TLS is a different profile
-again: it holds the TLS session, so channel binding (SCRAM-PLUS's
-`tls-exporter` under TLS 1.3) cannot reach fn through it.
+here, and by default it costs the per-address limits: fn sees the proxy's
+address. If you run one that passes TLS through untouched (HAProxy
+`mode tcp`, nginx `stream`) and sends the PROXY protocol header (version 1
+or 2), name it, and fn reads the original client's address from it:
+
+```
+fn operator /etc/fn/fn.toml policy set tls-proxy-trusted-peers 10.0.0.5/32
+fn operator /etc/fn/fn.toml policy set tls-handshake-source-overrides 10.0.0.5=6000
+```
+
+Only a connection from an address in `tls-proxy-trusted-peers` (CIDR
+ranges, `none` clears) is read for a header, on the TLS port, and such a
+connection must send one; nothing any other client sends is ever taken as a
+header. The header is read in bounded pieces (at most 528 octets, never into
+the TLS octets after it) within `tls-handshake-ms`; a malformed one is
+refused `tls refused reason=proxy-malformed proxy=ADDRESS`, a late one
+`reason=proxy-timeout`. Both addresses pay: the proxy's own per-source
+budget when the connection arrives (give it its own rate, as above, or put
+it in `exposure-trusted`), and the original client's when the header names
+it; both count against the node's 16 in flight. A connection through a
+proxy is never recognized as a peer (direct peering uses the kernel's address).
+
+Terminating TLS in the proxy is a different profile, and fn does not build
+it: the proxy then holds the TLS session, so SCRAM-PLUS's channel binding
+(`tls-exporter` under TLS 1.3, RFC 9266) binds the client to the proxy, not
+to fn, and cannot reach fn through it. Pass TLS through instead.
 
 ## 8. Peers
 
@@ -921,6 +963,12 @@ journalctl -u fn -n 20
 Without a service it is on the screen, or in `log/fn.log` when `fn.toml`
 names a `[log] path`. A program that starts fn and keeps its error output
 in a file must show that file: the reason is there.
+Each accepted NNTP socket has one connection line with `client-address`,
+using the kernel source directly or the asserted source from an admitted
+trusted PROXY header. The asserted address grants no peer identity. The field is
+the observed source IP address (IPv6 is expanded lowercase hexadecimal).
+Malformed or unavailable observations read `unobserved`; this field is
+independent of the peer record's name.
 
 `health` and `status` say so too. When nothing runs where the node should
 (its control socket does not answer and nothing holds the store), `health`
@@ -1132,8 +1180,9 @@ this way. `[alerts] command` must start with `/`.
 ### Store settings
 
 A store's size limits are set by `init`. A store admits
-one transaction fewer than `--max-transactions`: the last one is kept so
-the store can always record a maintenance release, even when full. A
+one transaction fewer than `--max-transactions`: the last record slot is
+reserved for a maintenance release. This reserves record capacity; other
+resource limits and the finite transaction-identity range still apply. A
 store made with `--max-transactions 128` takes 127 posts and other
 changes; `status`'s `maintenance-reserve ... held` line shows the kept one.
 Under a `mission`, `init` takes group names only and picks the limits for

@@ -93,9 +93,14 @@ class SnapshotBlessTests(scp.StateCheckpointFixture):
         config = copied.store_path / "config.json"
         config.write_bytes(b"not a store profile")
         malformed = self.bless(copied.store_path)
-        self.assertEqual(malformed.returncode, EXIT.REFUSED,
+        # Durable config corruption is the existing store-profile decoder's
+        # FAULT, distinct from a sealed foreign-format/open refusal. Blessing
+        # never catches arbitrary core faults as refused open observations.
+        self.assertEqual(malformed.returncode, EXIT.FAULT,
                          malformed.stdout + malformed.stderr)
-        self.assertIn(b"reason=open-refused", malformed.stdout)
+        self.assertIn(b"ACL2 rejected durable configuration frame", malformed.stderr)
+        self.assertNotIn(b"reason=open-refused", malformed.stdout)
+        self.assertNotIn(b"blessed snapshot=", malformed.stdout)
         # No marker means no open, even when the copied profile is malformed.
         marker.unlink()
         incomplete = self.bless(copied.store_path)

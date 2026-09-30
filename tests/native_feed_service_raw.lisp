@@ -430,4 +430,47 @@
           (symbol-function 'fnn-feed-lost) old-lost
           (symbol-function 'fnn-tls-read) old-read)))
 
+;; PKT-599(b): TLS completion must use the arena-aware owner boundary.
+;; The source/native witness separately checks the actual owner's feed table;
+;; this adapter test checks the dispatch, all pending words, and fault handling.
+(let* ((link (%make-fnn-feed-link :peer "tls-ready" :peer-octets '(116) :fd 29))
+       (calls nil)
+       (old-scalar (and (fboundp 'fnn-owner-feed-step)
+                        (symbol-function 'fnn-owner-feed-step)))
+       (old-arena (symbol-function 'fnn-owner-feed-arena-step)))
+  (unwind-protect
+       (progn
+         (dolist (word '(:ready :need-input :mode :auth-user))
+           (setf (symbol-function 'fnn-owner-feed-arena-step)
+                 (lambda (name &rest args)
+                   (push (cons name args) calls)
+                   word)
+                 (symbol-function 'fnn-owner-feed-step)
+                 (lambda (name &rest args)
+                   (push (list :missing-arena name args) calls)
+                   word))
+           (multiple-value-bind (answer command)
+               (fnn-feed-tls-established-core :tls-ready-test link)
+             (unless (and (eq answer word)
+                          (equalp command (if (member word '(:mode :auth-user))
+                                              #(9 10) #())))
+               (error "TLS completion changed pending/ready publication: ~s ~s" answer command))))
+         (unless (equal calls
+                        '((fn-owner-feed-tls-established (116))
+                          (fn-owner-feed-tls-established (116))
+                          (fn-owner-feed-tls-established (116))
+                          (fn-owner-feed-tls-established (116))))
+           (error "TLS completion did not use arena entry: ~s" calls))
+         (dolist (word '(:fault :invalid))
+           (setf (symbol-function 'fnn-owner-feed-arena-step)
+                 (lambda (&rest args) (declare (ignore args)) word))
+           (unless (handler-case
+                       (progn (fnn-feed-tls-established-core :tls-ready-test link) nil)
+                     (error () t))
+             (error "TLS completion accepted ~s" word))))
+    (setf (symbol-function 'fnn-owner-feed-arena-step) old-arena)
+    (if old-scalar
+        (setf (symbol-function 'fnn-owner-feed-step) old-scalar)
+      (fmakunbound 'fnn-owner-feed-step))))
+
 (format t "native feed raw phase/sequencing test passed~%")

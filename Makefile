@@ -613,9 +613,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/page-read-ownership-tests \
 	host/page-read-host \
 	books/page-read-resources \
+	books/page-file-lease \
+	tests/acl2/page-file-lease-tests \
 	books/page-read-executor \
 	tests/acl2/page-read-executor-tests \
 	host/page-executor-host \
+	host/page-file-lease-host \
 	tests/acl2/page-read-ledger-tests \
 	tests/acl2/page-read-host-tests \
 	tests/acl2/store-profile-carried-tests \
@@ -705,6 +708,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-rotation-buffer \
 	tests/acl2/bp-node-rotation-buffer-tests \
 	books/bp-held-projection \
+	books/bp-recovery-guards \
 	books/bp-recovery-profile \
 	tests/acl2/bp-recovery-profile-tests \
 	tests/acl2/bp-held-projection-tests \
@@ -921,9 +925,19 @@ ACL2_BOOKS ?= books/defrecord \
 	books/legacy-parser-reference \
 	books/legacy-parser-header \
 	books/legacy-parser-validity \
+	books/legacy-parser-composition \
+	tests/acl2/legacy-parser-composition-tests \
 	tests/acl2/legacy-parser-cursor-tests \
 	tests/acl2/legacy-parser-header-tests \
 	tests/acl2/legacy-parser-validity-tests \
+	books/legacy-parser-values \
+	tests/acl2/legacy-parser-values-tests \
+	books/legacy-parser-value-run \
+	tests/acl2/legacy-parser-value-run-tests \
+	books/legacy-parser-columns \
+	tests/acl2/legacy-parser-columns-tests \
+	books/legacy-parser-catalog \
+	tests/acl2/legacy-parser-catalog-tests \
 	books/nntp-article-pass \
 	books/nntp-responses \
 	books/nntp-article-block \
@@ -1029,8 +1043,16 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-view \
 	books/served-columns \
 	tests/acl2/served-columns-tests \
+	books/nov-piece-window \
+	tests/acl2/nov-piece-window-tests \
+	books/nov-span-window \
+	tests/acl2/nov-span-window-tests \
+	books/nov-decimal-window \
+	tests/acl2/nov-decimal-window-tests \
 	books/nov-byte-window \
 	tests/acl2/nov-byte-window-tests \
+	books/nov-row-facts \
+	tests/acl2/nov-row-facts-tests \
 	books/nov-column-window \
 	tests/acl2/nov-column-window-tests \
 	books/served-catalog \
@@ -1491,6 +1513,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-time-bars \
 	tests/acl2/owner-time-bars-tests \
 	tests/acl2/tls-handshake-budget-tests \
+	tests/acl2/tls-proxy-tests \
 	tests/acl2/owner-cold-line-tests \
 	books/owner-resource-line \
 	tests/acl2/owner-resource-line-tests \
@@ -1500,6 +1523,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/response-plan-pins-tests \
 	books/page-read-ownership \
 	tests/acl2/page-read-ownership-tests \
+	books/page-file-lease \
+	tests/acl2/page-file-lease-tests \
 	books/page-read-executor \
 	tests/acl2/page-read-executor-tests \
 	books/feed-restart-domain \
@@ -1510,6 +1535,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/web-render \
 	books/web-render-keystones \
 	tests/acl2/web-render-tests \
+	books/web-health \
+	tests/acl2/web-health-tests \
 	books/web-session \
 	books/web-session-keystones \
 	tests/acl2/web-session-tests \
@@ -1548,11 +1575,34 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-scalar-cursor-tests \
 	books/history-record-cursor \
 	tests/acl2/history-record-cursor-tests \
+	books/history-decode-nodes \
+	books/history-symbol-normalize \
+	tests/acl2/history-symbol-normalize-tests \
+	books/history-decode-cursor \
+	books/history-decode-stream \
+	books/history-decode-refinement \
+	tests/acl2/history-decode-refinement-tests \
+	tests/acl2/history-decode-cursor-tests \
+	books/pagestore-digest-cursor \
+	books/pagestore-digest-cursor-refinement \
+	books/pagestore-digest-byte-cursor \
+	books/pagestore-digest-byte-refinement \
+	tests/acl2/pagestore-digest-cursor-tests \
+	tests/acl2/pagestore-digest-cursor-refinement-tests \
+	tests/acl2/pagestore-digest-byte-cursor-tests \
+	tests/acl2/pagestore-digest-cursor-union-tests \
+	tests/acl2/history-reader-digest-union-tests \
+	books/history-page-reader \
+	books/history-page-reader-verdict \
+	tests/acl2/history-page-reader-tests \
+	tests/acl2/history-page-reader-verdict-tests \
 	tests/acl2/history-page-cursor-tests \
 	tests/acl2/history-page-layout-tests \
 	tests/acl2/history-page-buffer-tests \
 	tests/acl2/history-image-census-tests \
 	tests/acl2/history-image-header-tests \
+	tests/acl2/history-page-metadata-tests \
+	tests/acl2/history-page-io-tests \
 	tests/acl2/owner-snapshot-request-tests \
 	books/owner-snapshot-recovery \
 	tests/acl2/owner-snapshot-recovery-tests \

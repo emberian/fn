@@ -540,3 +540,34 @@
                :refused)
         (equal (fn-olog-line-word line) (olt-text "refused"))
         (fn-olog-no-breakp line))))
+
+; Q10d: reached owner and the fixed-width kernel observations. The literal
+; keystone has no hypotheses; malformed and mutation cases are separate.
+(defconst *olt-socket-line*
+  (fn-olog-socket-connection-line *olt-served* 2 nil :inet '(127 0 0 1)))
+(assert-event
+ (and (equal *olt-socket-line*
+             (olt-text "accepted reader connection=2 time=2026-09-18T00:00:00Z client-address=127.0.0.1"))
+      (fn-olog-no-breakp *olt-socket-line*)))
+(assert-event
+ (equal (fn-olog-socket-address :inet6 '(32 1 13 184 0 0 0 0 0 0 0 0 0 0 0 1))
+        (olt-text "2001:0db8:0000:0000:0000:0000:0000:0001")))
+(assert-event
+ (equal (fn-olog-socket-address :inet6 '(0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1))
+        (olt-text "0000:0000:0000:0000:0000:0000:0000:0001")))
+; Corrupted observation: no partial address or invented loopback.
+(assert-event
+ (and (equal (fn-olog-socket-address :inet '(127 0 0 1 13 10)) (olt-text "unobserved"))
+      (equal (fn-olog-socket-address :inet '(127 0 0 256)) (olt-text "unobserved"))
+      (equal (fn-olog-socket-address :inet '(127 0 0 . 1)) (olt-text "unobserved"))
+      (equal (fn-olog-socket-address :inet6 '(13 10)) (olt-text "unobserved"))
+      (fn-olog-no-breakp
+       (fn-olog-socket-connection-line *olt-served* 2 *olt-hostile* :inet '(13 10)))))
+; Mutation witness: adding one unsanitized CRLF produces two lines, unlike
+; the exact production subject. No hypothesis-removal claim (none exist).
+(assert-event
+ (and (fn-olog-no-breakp *olt-socket-line*)
+      (not (fn-olog-no-breakp (append *olt-socket-line* '(13 10))))))
+(must-fail-checked
+ (defthm olt-unsanitized-socket-log-is-one-line
+   (fn-olog-no-breakp (append *olt-socket-line* '(13 10)))))

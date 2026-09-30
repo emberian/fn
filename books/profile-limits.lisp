@@ -71,11 +71,13 @@
     (:exposure-posts-per-minute 60 "per minute"
      "submissions per authenticated principal per minute on a public listener")
     (:tls-handshakes-per-source-per-minute 30 "handshakes per minute"
-     "TLS handshakes one source (an IPv4 address, an IPv6 /64) may start per minute: a burst of that many, refilled continuously (books/tls-handshake-budget.lisp)")
+     "TLS handshakes one source (an IPv4 address, an IPv6 /64) may start per minute: a burst of that many, refilled continuously (books/tls-handshake-decision.lisp)")
     (:tls-handshakes-in-flight 16 "handshakes"
      "TLS handshakes in progress at once on the node, and the most it starts in one second")
     (:tls-handshake-ms 5000 "milliseconds"
-     "a TLS handshake's deadline, and a socket's wait for a handshake slot (the time model's D)")))
+     "a TLS handshake's deadline, and a socket's wait for a handshake slot (the time model's D)")
+    (:tls-handshake-source-overrides 64 "entries"
+     "the most per-source handshake allowances (an address or an IPv6 /64 with its own handshakes per minute, for a known shared address such as a carrier NAT) the operator may list; one more is refused by name (books/tls-handshake-decision.lisp)")))
 
 ; The row's VALUE, at macroexpansion: (fn-profile-limit :stack-kib) is the
 ; literal 1024 wherever it appears, and an unknown KEY is refused there.
