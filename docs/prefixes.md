@@ -397,6 +397,7 @@ anything a book does not already decide.
 | `fn-hdc-` | `history-decode-nodes`, `history-decode-cursor`, `history-decode-stream` | Borrowed current-format history decode nodes, byte feed, and component proof vocabulary. |
 
 | `fn-cr-` | `consumer-remote-codec` | Distinct FNCR request grammar for authenticated remote consumers; profile-funded group definitions and protected-channel preflight. Component only; account authentication and served dispatch are separate obligations. |
+| `fn-cpc-` | `consumer-publication-charge` | Scalar actual consumer publication charge and retained release vector; constructor correspondence, profile adapter and durable host integration remain separate obligations. |
 | `pgs-dc-`, `pgs-dcr-`, `pgs-dcb-`, `pgs-dbr-` | `pagestore-digest-cursor`, `pagestore-digest-cursor-refinement`, `pagestore-digest-byte-cursor`, `pagestore-digest-byte-refinement` | Bounded page and byte digest continuation; conditional phase/terminal proof vocabulary, full maintained trajectory remains open. |
 | `fn-hsr-` | `history-page-reader`, `history-page-reader-verdict` | Selected page-entry scanner and canonical word verdict components; authentication/controller composition remains open. |
 | `fn-rfh-` | `refusal-headroom` | Reference iteration over actual reserve/refuse subjects; exact finite identity consumption, without rescue preservation claim. |

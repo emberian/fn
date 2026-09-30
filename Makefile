@@ -112,6 +112,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-retention-codec-invariants-tests \
 	books/consumer-position \
 	tests/acl2/consumer-position-tests \
+	books/consumer-publication-charge \
+	tests/acl2/consumer-publication-charge-tests \
 	books/consumer-store-events \
 	tests/acl2/consumer-store-events-tests \
 	books/consumer-store-projection \

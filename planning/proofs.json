@@ -18712,7 +18712,10 @@
         "planning/consumer-remote-implementation.md",
         "books/consumer-remote-position.lisp",
         "tests/acl2/consumer-remote-position-tests.lisp",
-        "planning/evidence/consumer-remote-components-2026-09-30.md"
+        "planning/evidence/consumer-remote-components-2026-09-30.md",
+        "books/consumer-publication-charge.lisp",
+        "tests/acl2/consumer-publication-charge-tests.lisp",
+        "planning/evidence/consumer-actual-charge-source-2026-09-30.md"
       ],
       "progress_note": "Clean protected source REPL consumer-remote-clean: guards and all 18 book forms admitted; 29 test forms / 22 assertions passed. Four dependency books loaded from matching source inside encapsulates. No certification, native endpoint, image or deployment claim. The CP kernel now admits remote10 entries and remote register/rebase proposals, preserves metadata across ACK, and generalizes its state/capacity preservation to those operations. Exact definition installation and ACK preservation were source-admitted with literal positive/removal witnesses. The durable CPE codec still refuses remote operation tags; no remote host path is reachable."
     },
