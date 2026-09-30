@@ -18500,7 +18500,6 @@
       "depends_on": [],
       "assumptions": [],
       "status": "planned",
-      "events": [],
       "evidence": [
         "books/history-scalar-cursor.lisp",
         "tests/acl2/history-scalar-cursor-tests.lisp",
@@ -18520,7 +18519,6 @@
       "depends_on": [],
       "assumptions": [],
       "status": "planned",
-      "events": [],
       "evidence": [
         "books/nov-line-projection.lisp",
         "tests/acl2/nov-line-projection-tests.lisp",
@@ -18544,7 +18542,6 @@
       ],
       "assumptions": [],
       "status": "planned",
-      "events": [],
       "evidence": [
         "books/history-image-census.lisp",
         "books/history-image-header.lisp",
@@ -18610,7 +18607,6 @@
       "depends_on": [],
       "assumptions": [],
       "status": "planned",
-      "events": [],
       "evidence": [
         "books/history-record-cursor.lisp",
         "tests/acl2/history-record-cursor-tests.lisp",
@@ -18631,7 +18627,6 @@
       ],
       "assumptions": [],
       "status": "planned",
-      "events": [],
       "evidence": [
         "books/legacy-parser-cursor.lisp",
         "books/legacy-parser-reference.lisp",
