@@ -1987,3 +1987,18 @@ from ACL2. The final release clears its retained result before refund. The
 native trajectory correspondence, complete selected-runtime demand, served
 seven-field descriptor/admission join, productive reclamation/rescue and default
 activation remain open. These are source components, not qualified execution.
+
+
+The staged PRF-1128 payload-coordinate seam passes the arena's original
+payload-relative index unchanged. `fn-pwr-byte-at` checks the six original
+physical/payload coordinates and subtracts the requested offset only in ACL2;
+no host coordinate arithmetic chooses a byte. Its core terminal outcome keeps
+ready, stale ownership and read/commitment/digest/state/bounds failures distinct.
+An actual failed authenticated scan is not a cold miss and cannot trigger an
+indefinite rescan. The native thread-dynamic worker/token references are a
+staged owner-quantum seam, not a second window cache; the default durable
+realizer remains unchanged. Root contract963b327f3 additionally requires the
+producer's source-authorized logical lease bound to the actual arena instance,
+current physical placement acquisition under owner-to-extent locks, staged
+buffer ownership and inner cleanup before logical release. Those joins,
+cancellation publication rights and full allocator/native evidence remain open.
