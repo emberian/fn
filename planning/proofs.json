@@ -18001,6 +18001,34 @@
         "tests/acl2/nov-column-window-tests.lisp"
       ],
       "progress_note": "Clean persvati REPL: gpt61-nbw4 25/25 forms (21 same +2 macro named forms), gpt61-nbwt4 12/12 (11 named exact), gpt61-nbwc2 10/10 (6 named exact), gpt61-nbwct3 16/16 including actual intern/commit/lookup positive and literal hypothesis removal for F, exact facts and ok. All stopped. Source-dependency loads are not certificates. No host call, qualified image, allocator measurement or completed Q5c/J1 claim. Work/fuel models loop iterations and output length, not measured physical resources. Numeric setup still requires maintained codec/profile premise. Legacy parse/cache hydration remains owned open. The two named library theorems are retained as component evidence, not cited registry events: no served keystone is claimed until the actual host-called byte cursor composes them."
+    },
+    {
+      "id": "PRF-1091",
+      "title": "Native receipt replay receiver projection",
+      "statement": "For a journal with no request-transit-intent or request-transit-context record, the success flag and receiver state produced by fn-bpaj-replay (called by fn-bprj-install) equal fn-bprr-replay, including the accepted prefix retained on refusal.",
+      "milestone": "M4",
+      "requirements": [
+        "RET-003",
+        "RET-004",
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-001",
+        "PRF-007",
+        "PRF-012"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-bpaj-replay-receiver-is-receiver-replay"
+      ],
+      "evidence": [
+        "books/bp-native-app-replay-bridge.lisp",
+        "tests/acl2/bp-native-app-replay-bridge-tests.lisp",
+        "specs/bp-receiver-proofs.md",
+        "planning/evidence/store-invariants-replay-2026-09-29.md"
+      ],
+      "progress_note": "PKT-413 source bridge: actual caller host/bp-receipt-journal-host.lisp fn-bprj-install; fn-bpaj-receiver-result projects the complete replay result. Sole hypothesis fn-bpaj-receiver-only-recordsp excludes both transit record kinds. The domain predicate and result abstraction are guard verified. Main equation admitted in protected REPL si2; fresh protected REPL si3 loaded the complete book and all teeth without refusal (118.88 ACL2 seconds including source dependencies). No matching certification manifest or new native/image qualification is claimed. Existing receiver replay baseline entries remain until the real bridge is covered by strict host reach analysis."
     }
   ]
 }
