@@ -1781,19 +1781,19 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1846,
+    "books": 1847,
     "books_in_root_closure": 1841,
     "roots": 1777,
-    "theorems": 29379,
-    "functions": 18902,
+    "theorems": 29380,
+    "functions": 18907,
     "assert_events": 23886,
     "must_fails": 2516,
     "prover_refusals": 0,
     "encapsulates": 160,
     "guards": {
-      "verified": 3508,
+      "verified": 3510,
       "declared-off": 2249,
-      "default-guarded": 10311,
+      "default-guarded": 10314,
       "default-unguarded": 2834
     },
     "suspect_theorems": 1248,
@@ -16666,6 +16666,32 @@
       "encapsulates": 1,
       "includes": [
         "history-columns"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/msgid-probe-cursor.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 1,
+      "functions": 5,
+      "guards": {
+        "verified": 2,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 2,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "msgid-pages-exec"
       ],
       "system_includes": [],
       "suspects": [],
@@ -58164,7 +58190,7 @@
     {
       "theorem": "fn-lg-last-trailer-unfolds",
       "book": "books/store-log.lisp",
-      "line": 1309,
+      "line": 1312,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-lg-last-trailer and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-lg-last-trailer and the conclusion is that branch's value"
@@ -58173,7 +58199,7 @@
     {
       "theorem": "fn-lg-log-unfolds",
       "book": "books/store-log.lisp",
-      "line": 1298,
+      "line": 1301,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-lg-log and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-lg-log and the conclusion is that branch's value"
