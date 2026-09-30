@@ -17,6 +17,8 @@ from tests.native_harness import (
     EXIT, Node, acl2_nat, acl2_octets, acl2_result, environment, free_port, native_image,
     requires, run, scratch, start)
 from tests.test_bp_contact_relay_native import ByteRelay
+from tests.bp_producer import post_articles
+from tests.native_image_provenance import assert_same_published_source
 
 # specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a
 # connection lost after it existed is EXIT.INTERRUPTED (connection-local:
@@ -35,11 +37,15 @@ IMAGE = native_image("FN_NATIVE_BP_NODE_HOST", DEVELOPER)
 # The DTN image omits the NNTP surface; a Store's groups are read back through
 # the reader port of an image that has it (the default developer image).
 READER_IMAGE = native_image("FN_NATIVE_READER_HOST", DEVELOPER)
+PRODUCER = native_image("FN_NATIVE_HOST")
 
 
-@requires(IMAGE)
+@requires(IMAGE, PRODUCER)
 class NativeBpNodeTests(unittest.TestCase):
     def setUp(self):
+        if self._testMethodName == (
+                "test_disconnected_delivery_restarts_and_releases_only_matching_obligation"):
+            self.image_source = assert_same_published_source(self, PRODUCER, IMAGE)
         self.tmp = scratch(self, "fn-bp-node-a3-")
         self.relay = ByteRelay()
         self.addCleanup(self.relay.close)
@@ -63,8 +69,8 @@ class NativeBpNodeTests(unittest.TestCase):
         for store in (self.receiver_store, self.sender_store):
             initialized = self.invoke("store", store, "init", "fn.test")
             self.assertEqual(initialized.returncode, EXIT.OK, initialized.stderr)
-        self.author_request()
         self.prepare_sender_obligation()
+        self.author_request()
 
     def invoke(self, *args, env=None, timeout=120):
         return run([IMAGE, "--fn", *args], cwd=ROOT, env=environment(env), timeout=timeout)
@@ -79,13 +85,15 @@ class NativeBpNodeTests(unittest.TestCase):
             self.request_path.write_bytes(bridge.bp_request(fields, self.article))
 
     def prepare_sender_obligation(self):
-        article_path = self.tmp / "sender-article"
-        article_path.write_bytes(self.article)
-        posted = self.invoke(
-            "store", self.sender_store, "post", self.msgid.decode(),
-            article_path, "-", "-", "fn.test",
-        )
-        self.assertEqual(posted.returncode, EXIT.OK, posted.stderr)
+        unrelated_id = b"<bp-node-unrelated@example.invalid>"
+        injected = post_articles(self, PRODUCER, self.sender_store,
+                                 [(self.msgid, self.article),
+                                  (unrelated_id, self.article.replace(self.msgid, unrelated_id))],
+                                 observer=(getattr(self, "resilience_observer", None)
+                                           if self._testMethodName ==
+                                           "test_disconnected_delivery_restarts_and_releases_only_matching_obligation"
+                                           else None))
+        self.article = injected[self.msgid]
         for args in (
             ("app-journal", "workflow-init", self.sender_store,
              self.sender_workflow, "dtn://sender/", "dtn://receiver/",
@@ -100,13 +108,7 @@ class NativeBpNodeTests(unittest.TestCase):
         ):
             result = self.invoke(*args)
             self.assertEqual(result.returncode, EXIT.OK, result.stderr)
-        unrelated_id = b"<bp-node-unrelated@example.invalid>"
-        unrelated_article = self.article.replace(self.msgid, unrelated_id)
-        unrelated_path = self.tmp / "unrelated-article"
-        unrelated_path.write_bytes(unrelated_article)
         for args in (
-            ("store", self.sender_store, "post", unrelated_id.decode(),
-             unrelated_path, "-", "-", "fn.test"),
             ("app-journal", "workflow-enqueue", self.sender_store,
              self.sender_workflow, 2, 0, "work-unrelated",
              unrelated_id.decode(), "forward-unrelated", "dtn://receiver/",
@@ -301,7 +303,7 @@ class NativeBpNodeTests(unittest.TestCase):
             "dtn://sender/", "dtn://receiver/", 0, 65536, 1048576, 0,
         )
 
-    def rotate_receiver(self, stop=None):
+    def rotate_receiver(self, stop=None, observer=None):
         """`bp-node checkpoint` on the stopped receiver; with STOP, the
         developer cut stops it at that point of the publication program and
         the test kills it there with SIGKILL."""
@@ -317,6 +319,9 @@ class NativeBpNodeTests(unittest.TestCase):
         process.kill()
         process.wait(timeout=15)
         process.finish()
+        if observer is not None:
+            observer(exit_code=process.returncode, held_stdout=seen,
+                     selector="FN_BP_ROTATION_TEST_STOP", value=stop)
         return None, seen, b""
 
     def recovered_held(self):
@@ -1072,6 +1077,147 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(unrelated.returncode, EXIT.OK, unrelated.stderr)
         self.assertIn(b"pinned=yes", unrelated.stdout)
 
+    def test_disconnected_delivery_restarts_and_releases_only_matching_obligation(self):
+        """One real POST survives application, job and checkpoint death cuts.
+
+        The source owner has already stopped after the durable NNTP POST in
+        setUp. A transport result cannot release either sender obligation.
+        """
+        observer = getattr(self, "resilience_observer", None)
+
+        def observe(event, **values):
+            if observer is not None:
+                observer(event, **values)
+
+        pinned = self.sender_status()
+        self.assertIn(b"pinned=yes", pinned.stdout)
+        observe("fixture", source=self.image_source, msgid=self.msgid,
+                accepted_octets=self.article, status=pinned.stdout,
+                exit_code=pinned.returncode)
+        decision_fault = {}
+        self.kill_at_durable_cut(
+            "FN_BP_APP_TEST_PAUSE_AFTER_DECISION", b"BP APP DECISION DURABLE",
+            observer=lambda **fields: decision_fault.update(fields))
+        accepted_octets = self.receiver_article(self.msgid)
+        observe("decision-cut-readback", octets=accepted_octets, fault=decision_fault)
+        replayed = self.dispatch_receiver()
+        self.assertEqual(replayed.returncode, EXIT.OK, replayed.stdout + replayed.stderr)
+        self.assertIn(b"BP application handoff durable", replayed.stdout)
+        self.assertIn(b"BP node receipt queued", replayed.stdout)
+        observe("application-replay", exit_code=replayed.returncode,
+                stdout=replayed.stdout, stderr=replayed.stderr)
+        self.assertIn(b"pinned=yes", self.sender_status().stdout)
+
+        # A second carrier reaches the durable outbox. Reconfigure the live
+        # node there, then kill the receipt job before its contact runs.
+        receiver, port = self.start_node(
+            True, control=True,
+            extra_env={"FN_BP_NODE_TEST_PAUSE_AFTER_OUTBOX": "1"})
+        retry = self.send_request(port, "slice-retry")
+        self.assertEqual(retry.returncode, EXIT.OK, retry.stdout + retry.stderr)
+        outbox_held = self.wait_for_output(receiver, b"BP NODE OUTBOX DURABLE", timeout=120)
+        config = self.tmp / "receiver-fn.toml"
+        for action in ("remove", "add"):
+            changed = self.invoke("operator", config, "bp-route", action,
+                                  "dtn://sender/*", "sender-boundary")
+            self.assertEqual(changed.returncode, EXIT.OK,
+                             changed.stdout + changed.stderr)
+        receiver.kill()
+        receiver.wait(timeout=15)
+        self.assertEqual(self.receiver_articles(), 1)
+        self.assertIn(b"pinned=yes", self.sender_status().stdout)
+
+        observe("outbox-process-death", exit_code=receiver.returncode,
+                retry_exit_code=retry.returncode, retry_stdout=retry.stdout,
+                retry_stderr=retry.stderr, held_stdout=outbox_held,
+                selector="FN_BP_NODE_TEST_PAUSE_AFTER_OUTBOX", value="1")
+
+        sender, sender_port = self.start_node(False, once=False)
+        relay_faults = []
+        relay_cut_completed = self.relay.route(sender_port, cut_after=80,
+                         observer=lambda **fields: relay_faults.append(fields))
+        interrupted = self.dispatch_receiver()
+        self.assertEqual(interrupted.returncode, EXIT.OK,
+                         interrupted.stdout + interrupted.stderr)
+        self.assertIn(b"BP node receipt transfer uncertain", interrupted.stdout)
+        attempted = [line for line in interrupted.stdout.splitlines()
+                     if line.startswith(b"BP transport work=") and
+                     b"status=attempted" in line]
+        self.assertTrue(attempted, interrupted.stdout)
+        self.assertTrue(self.relay.drain(relay_cut_completed, 10),
+                        "actual relay cut callback did not complete; fault observation missing")
+        observe("receipt-contact-uncertain", exit_code=interrupted.returncode,
+                stdout=interrupted.stdout, stderr=interrupted.stderr,
+                attempted=attempted, relay_faults=list(relay_faults))
+        sender.stop(grace=5)
+        self.assertIn(b"pinned=yes", self.sender_status().stdout)
+        self.assertIn(b"pinned=yes", self.unrelated_status().stdout)
+
+        # Checkpoint publication dies before selection. Recovery must retain
+        # the same owed receipt jobs and the accepted article.
+        checkpoint_fault = {}
+        cut_code, cut_out, cut_err = self.rotate_receiver(
+            "stage", observer=lambda **fields: checkpoint_fault.update(fields))
+        observe("checkpoint-stage-cut", exit_code=cut_code,
+                stdout=cut_out, stderr=cut_err, fault=checkpoint_fault)
+        sender, sender_port = self.start_node(False, once=False)
+        self.relay.route(sender_port)
+        resumed = self.dispatch_receiver()
+        self.assertEqual(resumed.returncode, EXIT.OK, resumed.stdout + resumed.stderr)
+        forwarded = [line for line in resumed.stdout.splitlines()
+                     if line.startswith(b"BP transport work=") and
+                     b"status=forwarded" in line]
+        attempted_work = {line.split(b"work=")[1].split()[0] for line in attempted}
+        forwarded_work = {line.split(b"work=")[1].split()[0] for line in forwarded}
+        self.assertTrue(attempted_work <= forwarded_work, resumed.stdout)
+        observe("receipt-contact-resumed", exit_code=resumed.returncode,
+                stdout=resumed.stdout, stderr=resumed.stderr,
+                attempted_work=sorted(attempted_work),
+                forwarded_work=sorted(forwarded_work))
+        self.wait_for_output(sender, b"BP node delivery receipt-accepted", timeout=120)
+        sender.stop(grace=5)
+        self.assertEqual(self.receiver_articles(), 1)
+        self.assertEqual(self.receiver_article(self.msgid), accepted_octets)
+        matching = self.sender_status()
+        unrelated = self.unrelated_status()
+        self.assertIn(b"pinned=no", matching.stdout)
+        self.assertIn(b"pinned=yes", unrelated.stdout)
+        observe("receipt-obligation-settlement", matching=matching.stdout,
+                unrelated=unrelated.stdout, matching_exit=matching.returncode,
+                unrelated_exit=unrelated.returncode)
+        code, out, err = self.rotate_receiver()
+        self.assertEqual(code, EXIT.OK, out + err)
+        self.assertEqual(self.receiver_articles(), 1)
+        final_octets = self.receiver_article(self.msgid)
+        self.assertEqual(final_octets, accepted_octets)
+        observe("checkpoint-complete-readback", exit_code=code,
+                stdout=out, stderr=err, octets=final_octets)
+
+        # Both standalone sender processes have been reaped before the
+        # production owner acquires this Store. Its recovery must preserve
+        # the remaining BP obligation even with no outbound NNTP feed debt.
+        self.assertIsNotNone(sender.poll())
+        retiring = Node(self, PRODUCER, root=self.tmp / "sender-retirement")
+        retiring.store_path = self.sender_store
+        retiring.write_config()
+        retiring.start()
+        before = retiring.operator("obligations", expect=EXIT.OK)
+        unrelated_line = b"obligation id=forward-unrelated kind=forward"
+        matching_line = b"obligation id=forward-bp-node kind=forward"
+        self.assertIn(unrelated_line, before.stdout)
+        self.assertNotIn(matching_line, before.stdout)
+        retired = retiring.operator("retire", "--drain", "4", timeout=240,
+                                    expect=EXIT.OK)
+        retiring.exited(EXIT.OK, timeout=120)
+        report = (self.sender_store / "retire-report.txt").read_bytes()
+        self.assertIn(report, retired.stdout)
+        self.assertIn(unrelated_line, report)
+        self.assertNotIn(matching_line, report)
+        self.assertIn(b"pinned=yes", self.unrelated_status().stdout)
+        self.assertIn(b"pinned=no", self.sender_status().stdout)
+        observe("retirement-frozen-report", exit_code=retired.returncode,
+                stdout=retired.stdout, stderr=retired.stderr, report=report)
+
     def test_dropped_receipt_contact_is_reoffered_by_the_next_pass(self):
         """Spec 4.3.2: an uncertain receipt transfer is connection-local.
 
@@ -1225,14 +1371,17 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertIn(b"conflicting durable bytes", restarted.stderr)
         self.assertEqual(self.receiver_articles(), 1)
 
-    def kill_at_durable_cut(self, selector, marker):
+    def kill_at_durable_cut(self, selector, marker, observer=None):
         receiver, port = self.start_node(True, extra_env={selector: "1"})
         sent = self.send_request(port, "cut-request")
         self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
-        self.wait_for_output(receiver, marker, timeout=120)
+        held = self.wait_for_output(receiver, marker, timeout=120)
         receiver.kill()
         receiver.wait(timeout=15)
         self.assertEqual(self.receiver_articles(), 1)
+        if observer is not None:
+            observer(exit_code=receiver.returncode, held_stdout=held,
+                     selector=selector, value="1", marker=marker)
 
     def test_death_after_fnrj_receipt_decision_replays_one_article(self):
         self.kill_at_durable_cut(

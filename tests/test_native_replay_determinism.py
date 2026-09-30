@@ -433,6 +433,11 @@ class NativeReplayDeterminismTests(unittest.TestCase):
         one octet changed is refused by name (genesis-damaged), and a genesis
         swapped from the other store opens but its trailer is not the chain
         segment 1 names (the open refuses, never replays)."""
+        observer = getattr(self, "resilience_observer", None)
+        def observe(event, **fields):
+            if observer is not None:
+                observer(event, **fields)
+
         d = self.base / "gen"
         d.mkdir(exist_ok=True)
         archive = d / "archive"
@@ -449,6 +454,11 @@ class NativeReplayDeterminismTests(unittest.TestCase):
         self.assertNotEqual(gen(da), gen(db), "the two imports drew the same genesis")
         self.assertNotEqual((a / "journal" / "000000.log").read_bytes(),
                             (b / "journal" / "000000.log").read_bytes())
+        original = (a / "journal" / "000000.log").read_bytes()
+        alternate = (b / "journal" / "000000.log").read_bytes()
+        observe("genesis-valid-pair", original=original, alternate=alternate,
+                original_digest=da, alternate_digest=db,
+                validation="both prior native digest commands succeeded")
         # Teeth 1: a damaged genesis is refused by name at the open.
         damaged = self.copy(a, "gen-damaged")
         path = damaged / "journal" / "000000.log"
@@ -458,6 +468,9 @@ class NativeReplayDeterminismTests(unittest.TestCase):
         refused = self.run_native("store", damaged, "digest", expected=None)
         self.assertEqual(refused.returncode, 1, refused.stderr)
         self.assertIn(b"reason=genesis-damaged", refused.stderr + refused.stdout)
+        observe("checksum-breaking-refusal", original=original, mutated=bytes(octets),
+                offset=40, xor=1, exit_code=refused.returncode,
+                stdout=refused.stdout, stderr=refused.stderr)
         # Teeth 2: b's genesis under a's log: it opens (same profile and
         # schema), but segment 1 chains from a's trailer, so the open refuses.
         swapped = self.copy(a, "gen-swapped")
@@ -466,6 +479,8 @@ class NativeReplayDeterminismTests(unittest.TestCase):
         chained = self.run_native("store", swapped, "digest", expected=None)
         self.assertNotEqual(chained.returncode, 0, chained.stdout)
         self.assertNotIn(b"digest state ", chained.stdout)
+        observe("intact-alternate-chain-refusal", replacement=alternate,
+                exit_code=chained.returncode, stdout=chained.stdout, stderr=chained.stderr)
 
     def operator(self, store, name, *words, expected=0):
         node = node_at(self, store, self.base / (name + "-node"))

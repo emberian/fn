@@ -132,6 +132,8 @@ def check(scenario: Scenario, journal: Journal, budget: Budget | None = None,
         return harness_failure(scenario, journal, unmeasured)
     if scenario.contract == "acceptance-model":
         return check_acceptance_model(scenario, journal, budget, healing, overran)
+    if scenario.contract == "response-holds-model":
+        return check_response_holds_model(scenario, journal, budget, healing, overran)
     if scenario.contract == "page-io-ownership":
         return check_page_io(scenario, journal, budget, healing, overran)
     if scenario.contract == "reclaim-response-hold":
@@ -377,6 +379,49 @@ def check_page_io(scenario, journal, budget, healing, overran):
                    budget=asdict(budget)).sign()
 
 
+def check_response_holds_model(scenario, journal, budget, healing, overran):
+    rows = [r for r in journal.of_kind("client") if r.get("event") == "response-model-step"]
+    oracles = [r for r in journal.of_kind("internal") if r.get("event") == "response-model-oracle"]
+    if len(rows) > budget.max_records or budget.max_histories < 1:
+        return Verdict("inconclusive", scenario.id, journal.digest(),
+                       cause="budget:response-model", budget=asdict(budget)).sign()
+    if ([r.get("operation") for r in rows] != [o.id for o in scenario.operations]
+            or [r.get("operation") for r in oracles] != [o.id for o in scenario.operations]):
+        return harness_failure(scenario, journal, "response-model-schedule-incomplete")
+    state = dict(generation=0, owners={}, pending=[], released=0, answer="-")
+    expected = contract.response_holds_model_view(state)
+    observed = set()
+    for operation, row, oracle in zip(scenario.operations, rows, oracles):
+        state = contract.response_holds_model_step(state, operation)
+        expected = contract.response_holds_model_view(state)
+        if any(row.get(k) != v or oracle.get(k) != v for k, v in expected.items()):
+            return Verdict("violation", scenario.id, journal.digest(),
+                explanation=dict(record=row, oracle=oracle, expected=expected, rule="response-model-step"),
+                pending_rules=["response-holds-model-composition"]).sign()
+        if len(state["owners"]) == 2:
+            observed.add("two-model-holds")
+        if operation.op == "reclaim" and len(state["owners"]) == 1 and state["pending"]:
+            observed.add("one-model-hold-blocks")
+        if state["released"]:
+            observed.add("model-retirement-released")
+        for fault in scenario.faults:
+            if fault.operation == operation.id and row["a"] != ":ABSENT":
+                return harness_failure(scenario, journal, "response-model-fault-not-activated")
+    terminal = [r for r in journal.of_kind("environment") if r.get("event") == "response-model-terminal"]
+    if len(terminal) != 1 or any(terminal[0].get(k) != v for k, v in expected.items()):
+        return harness_failure(scenario, journal, "response-model-terminal-unobserved")
+    if not state["owners"] and not state["pending"]:
+        observed.add("model-settled")
+    missing = sorted(set(scenario.witnesses) - observed)
+    kind = "healing-overran" if overran and healing["bound"]["kind"] == "seconds" else (
+        "no-witness" if missing else "consistent")
+    return Verdict(kind, scenario.id, journal.digest(), surviving=1,
+        witnesses_observed=sorted(observed), witnesses_missing=missing,
+        pending_rules=["response-holds-model-composition"], healing=healing,
+        diagnostics=["Logical response holds and retirement only; no native I/O or sectors."],
+        budget=asdict(budget)).sign()
+
+
 def check_acceptance_model(scenario, journal, budget, healing, overran):
     """Every model observation must fit one independent sequential fixture.
     Model observations never stand in for native socket or disk evidence.
@@ -437,3 +482,73 @@ def independent_per_membership(scenario: Scenario, journal: Journal) -> bool:
             if set(r["members"]) - declared:
                 return False
     return True
+
+
+def check_bp_slice_observations(journal, *, expected_source, budget=None):
+    """Judge SCN1046's observed relationships without promoting log promises.
+
+    This is the fixed composed fixture's observation checker. Scenario-driven
+    fault scheduling, physical lifetime and whole composition remain pending.
+    A source label is compared with the fixture's validated published image
+    pair; the runner separately verifies its immutable artifact set.
+    """
+    import re
+    from . import bp_slice_contract
+    from .adapters.bp_slice_observer import EVENTS, OBSERVATION_KINDS
+    budget = budget or Budget()
+    base = dict(scenario_id=journal.scenario_id, journal_digest=journal.digest(),
+                budget=asdict(budget),
+                pending_rules=["bp-slice-whole-composition", "bp-slice-fault-observation"])
+    if len(journal.records) > budget.max_records:
+        return Verdict("inconclusive", cause="record-budget", **base).sign()
+    if (journal.scenario_id != "bp-disconnected-delivery-recovery" or
+            not isinstance(expected_source, str) or
+            not re.fullmatch(r"[0-9a-f]{40}", expected_source)):
+        return Verdict("harness-failure", cause="fixture-source-coordinate", **base).sign()
+    artifacts = [r for r in journal.of_kind("environment")
+                 if r.get("event") == "image-artifact-coordinate"]
+    if len(artifacts) != 1:
+        return Verdict("harness-failure", cause="image-artifact-coordinate-missing", **base).sign()
+    images = artifacts[0].get("images")
+    if (not isinstance(images, list) or len(images) != 2 or
+            any(not isinstance(row, dict) or row.get("source") != expected_source or
+                not isinstance(row.get("manifest_sha256"), str) or
+                not re.fullmatch(r"[0-9a-f]{64}", row["manifest_sha256"]) or
+                not row.get("launcher") or not row.get("manifest") for row in images)):
+        return Verdict("harness-failure", cause="image-artifact-coordinate-invalid", **base).sign()
+    observations = [r for r in journal.records if r.get("event") in OBSERVATION_KINDS]
+    if (tuple(r.get("event") for r in observations) != EVENTS or
+            any(r["kind"] != OBSERVATION_KINDS[r["event"]] for r in observations)):
+        return Verdict("harness-failure", cause="missing-or-reordered-slice-observation", **base).sign()
+    complete = [r for r in journal.of_kind("environment")
+                if r.get("event") == "fixture-observations-complete"]
+    if len(complete) != 1 or complete[0].get("semantic_verdict") != "pending":
+        return Verdict("harness-failure", cause="fixture-not-complete", **base).sign()
+    events = {r["event"]: r for r in observations if r["event"] != "post-observed"}
+    events["post-observed"] = [r for r in observations if r["event"] == "post-observed"]
+    if events["fixture"].get("source") != expected_source:
+        return Verdict("harness-failure", cause="fixture-source-mismatch", **base).sign()
+    environment_faults = [r for r in journal.of_kind("environment") if r.get("event") == "slice-fault-fact"]
+    expected_faults = {
+        "decision-cut-readback": events["decision-cut-readback"].get("fault"),
+        "outbox-process-death": {key: events["outbox-process-death"][key] for key in ("exit_code", "held_stdout", "selector", "value") if key in events["outbox-process-death"]},
+        "receipt-contact-uncertain": events["receipt-contact-uncertain"].get("relay_faults"),
+        "checkpoint-stage-cut": events["checkpoint-stage-cut"].get("fault"),
+    }
+    if (len(environment_faults) != 4 or
+            {r.get("operation"): r.get("facts") for r in environment_faults} != expected_faults):
+        return Verdict("harness-failure", cause="slice-environment-fault-facts-missing-or-inconsistent", **base).sign()
+    try:
+        violation = bp_slice_contract.obligations(events) or bp_slice_contract.fault_observations(events)
+    except (KeyError, bp_slice_contract.MissingObservation) as error:
+        return Verdict("harness-failure", cause="missing-slice-fact:" + str(error), **base).sign()
+    if violation:
+        rule, reason = violation
+        return Verdict("violation", cause=rule,
+                       explanation={"rule": rule, "reason": reason}, surviving=0, **base).sign()
+    return Verdict("consistent", surviving=1,
+                   witnesses_observed=["post-accepted", "accepted-readback",
+                                       "receipt-reoffered", "matching-obligation-only",
+                                       "retirement-debt-preserved"],
+                   diagnostics=["Fixed-fixture relationships only; scheduling and full native composition remain open."],
+                   **base).sign()
