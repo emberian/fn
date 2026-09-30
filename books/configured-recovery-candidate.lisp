@@ -10,7 +10,8 @@
                  :guard (and (fn-ssr-statep acc) (fn-lzr-dictsp dicts))))
  ; The registered producer must be issued before any actual intern allocation.
  ; NIL is unavailable, never an implicit issuer or current-token refresh.
- (if (not producer-token)
+ (if (not (and producer-token
+                (fn-hep-offer-currentp producer-token fn-history-backing)))
      (mv :unavailable acc fields fn-arena fn-history-backing)
   (mv-let (next-acc next-fields status effect child sizes row fn-arena)
    (fn-ssrp-intern-row acc fields wire raw position mode dicts snapshot-carry fn-arena)
