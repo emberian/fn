@@ -262,7 +262,8 @@ class FakeRepository:
                 slots: int = 16, extra: list[str] | None = None,
                 quiet_fail: str = "", edit_after: str = "",
                 convert_fail: str = "", no_fasl: str = "",
-                hard_text: str = "") -> tuple[int, dict]:
+                hard_text: str = "",
+                environment_overrides: dict[str, str | None] | None = None) -> tuple[int, dict]:
         extra = extra or []
         self.runs += 1
         self.events.write_text("")
@@ -284,6 +285,11 @@ class FakeRepository:
             "FN_ACL2_SLOT_DIR": str(self.root / "slots"),
             "FN_CERT_CACHE": str(self.cache),
         }
+        for name, value in (environment_overrides or {}).items():
+            if value is None:
+                environment.pop(name, None)
+            else:
+                environment[name] = value
         argv = ["certify_books.py", "--jobs", str(jobs), *extra, *books]
         with mock.patch.object(runner, "ROOT", self.root), \
                 mock.patch.object(runner.ledger, "ROOT", self.root), \
@@ -696,6 +702,53 @@ class AffectedByTests(unittest.TestCase):
             with self.assertRaises(SystemExit) as refused:
                 repository.dry_run(ParallelScheduleTests.ORDER, ["books/typo"])
             self.assertEqual(refused.exception.code, 2)
+
+
+class LauncherSelectionTests(unittest.TestCase):
+    """Certification uses the same machine launcher policy as the REPL."""
+
+    def test_machine_launcher_precedes_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, {"books/base": []})
+            config = repository.root / "acl2-config"
+            config.write_text(str(repository.acl2) + "\n")
+            path_bin = repository.root / "path-bin"
+            path_bin.mkdir()
+            wrong = path_bin / "acl2"
+            wrong.write_text("#!/bin/sh\nexit 39\n")
+            wrong.chmod(0o755)
+            with mock.patch("socket.gethostname", return_value="certify-test-laptop"):
+                code, manifest = repository.certify(["books/base"], jobs=1,
+                    environment_overrides={"FN_ACL2": None, "FN_ACL2_FILE": str(config),
+                        "PATH": str(path_bin) + os.pathsep + os.environ.get("PATH", "/bin")})
+            self.assertEqual((code, manifest["status"]), (0, "passed"))
+            self.assertEqual(manifest["command"], [str(repository.acl2)])
+            self.assertEqual(manifest["acl2_executable"], str(repository.acl2))
+
+    def test_explicit_launcher_precedes_machine_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, {"books/base": []})
+            config = repository.root / "acl2-config"
+            config.write_text(str(repository.root / "unavailable-launcher") + "\n")
+            code, manifest = repository.certify(["books/base"], jobs=1,
+                environment_overrides={"FN_ACL2_FILE": str(config)})
+            self.assertEqual((code, manifest["status"]), (0, "passed"))
+            self.assertEqual(manifest["command"], [str(repository.acl2)])
+
+    def test_missing_machine_file_uses_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, {"books/base": []})
+            path_bin = repository.root / "path-bin"
+            path_bin.mkdir()
+            (path_bin / "acl2").symlink_to(repository.acl2)
+            with mock.patch("socket.gethostname", return_value="certify-test-laptop"):
+                code, manifest = repository.certify(["books/base"], jobs=1,
+                    environment_overrides={"FN_ACL2": None,
+                        "FN_ACL2_FILE": str(repository.root / "missing-config"),
+                        "PATH": str(path_bin) + os.pathsep + os.environ.get("PATH", "/bin")})
+            self.assertEqual((code, manifest["status"]), (0, "passed"))
+            self.assertEqual(manifest["command"], ["acl2"])
+            self.assertEqual(manifest["acl2_executable"], str(repository.acl2))
 
 
 class MakefileRootsTests(unittest.TestCase):

@@ -1111,7 +1111,9 @@ def main() -> int:
         return 0
     effective_jobs = max(1, min(args.jobs, len(args.books)))
 
-    configured = os.environ.get("FN_ACL2", "acl2")
+    # Match tools/acl2 and proof_repl: the machine's pinned launcher file
+    # takes precedence over PATH when FN_ACL2 is not explicitly supplied.
+    configured = acl2_slots.configured_acl2()
     acl2 = resolve_executable(configured)
     stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     run_dir = BUILD_ROOT / f"certify-{stamp}-{os.getpid()}"
