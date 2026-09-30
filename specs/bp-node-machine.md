@@ -5256,3 +5256,18 @@ it does not interpret claim or allowance shape as permission. Physical derives
 these references from the same pool and actual installed family; the current
 public begin remains unavailable before creators. Source storage evidence is
 `planning/evidence/bp-digest-install-intent-20260930/manifest.json`.
+
+### Token-only registered checkpoint caller
+
+The dormant native prefix caller obtains prepared actions from the guarded
+`fn-owner-bp-checkpoint-prefix-next` composition, which derives the initial
+revision from the registered pending row internally. Its persistent I/O record
+holds controller identity, exact core action and primitive outcome, descriptor
+and failure evidence; it holds no authoritative CURRENT/job/digest snapshot.
+A turn prepares and performs one primitive outside the semantic lock, or joins
+a previously retained observation under the lock. An observation failure fences
+the record and cannot repeat that primitive. Missing callbacks refuse before
+record construction or registry lookup. The actual recording refuter exercises
+open, write failure, failed core observation and non-repetition; it is not a
+native or installed authority verdict. Evidence is
+`planning/evidence/bp-checkpoint-registered-caller-20260930/manifest.json`.

@@ -73,3 +73,12 @@ precedes every creator; unknown outcomes fence while retaining claim/source.
 The immutable source is captured once; later stored-plan revision is read from
 the actual pending continuation. Bounded factory progress belongs in the
 separate pending-action control, retaining the same intent6 and source.
+
+The dormant actual native prefix caller now retains only controller/action and
+I/O lifecycle evidence. Its guarded token-only next subject derives revision
+internally, so startup does not require a native revision snapshot. Per turn
+it prepares+performs one primitive or joins one prior observation; a failed
+join retains action/outcome and fences without repeating I/O. Callbacks have
+no setter/install and default NIL. Missing installation refuses before record
+construction. This does not discharge actual callback/BODY/stage installation,
+digest factory or cleanup/close qualification.
