@@ -1,0 +1,11 @@
+; Retentive cancellation for attached core continuations. Caller owns locks.
+(in-package "ACL2")
+(include-book "../books/bp-controller-checkpoint-payload-directory")
+(include-book "../books/page-read-pool-state")
+(defun fn-owner-bp-checkpoint-payload-fence-current (controller fuel fn-bp-controller-registry fn-page-read-pool)
+  (declare (xargs :stobjs (fn-bp-controller-registry fn-page-read-pool) :guard (natp fuel)))
+  (mv-let (word current claim payload phase revision left fn-bp-controller-registry)
+    (fn-bpcc-directory-payload controller nil :fence-current nil nil nil nil fuel fn-bp-controller-registry)
+    (declare (ignore current claim payload phase revision))
+    (mv word left fn-bp-controller-registry fn-page-read-pool)))
+(verify-guards fn-owner-bp-checkpoint-payload-fence-current)
