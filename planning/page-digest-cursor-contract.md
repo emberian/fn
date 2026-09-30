@@ -119,3 +119,20 @@ supported stack domain and allocation. Clean source evidence and literal teeth
 are in `planning/evidence/page-digest-cursor-refinement-2026-09-30.md`.
 Root requested a subsequent compatible arbitrary-byte extension for protected
 extents; these page-scoped equations and evidence remain tied to their bytes.
+
+## Exact-byte reusable extension
+
+The NEW byte book leaves the page core/stobj and page-scoped equations unchanged.
+`pgs-dcb-begin(sel,base,B,capture,lease,cursor)` sets word end/total to ceil(B/8).
+`pgs-dcb-step(B,block16,cursor)` delegates except final rightmost chunk; its
+output descriptor records B-8*pos exact bytes. B is the controller's captured
+immutable length, not inferred from scratch or stored in an unrelated field.
+`pgs-dcb-read-demand(B,cursor)` is0..64 bytes and `pgs-dcb-next-byte-offset` is8*pos.
+The caller supplies canonical u32 words little-endian with zero padding beyond
+demand; it advances source only when the step consumes a block. Internal phases
+are independent yields. `pgs-dcb-result-octets` provides exact32 digest octets,
+performing an additional bounded ROOT compression/fixed output allocation that
+must be funded. Source proof/refinement covers exact partial tails and a
+conditional terminal fn-blake3 correspondence; full trajectory/resource and
+constrained frame-digest joint attachment are explicit residuals. Evidence:
+planning/evidence/page-digest-byte-source-2026-09-30.md.
