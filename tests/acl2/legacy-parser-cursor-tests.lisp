@@ -200,3 +200,16 @@
                    (lpct-chunked-exec *lpct-body-nul* 1)
                    (lpct-chunked-exec *lpct-orphan-fold* 1)
                    (lpct-chunked-exec *lpct-all-fields* 3)))
+
+
+; Regression: every fold needs its own VCHAR, independently of earlier
+; visible content in the current field. Mutation: inheriting field-visible
+; would accept the first case incorrectly.
+(defconst *lpct-empty-fold* '(83 117 98 106 101 99 116 58 32 120 13 10 32 9 13 10 13 10))
+(assert-event
+ (let* ((b *lpct-empty-fold*) (s (fn-lpc-feed b (fn-lpc-begin 0 (len b) :pin))))
+   (and (fn-lpc-agreesp b :pin) (eq (fn-lpc-verdict s) :invalid)
+        (not (fn-article-result-okp (fn-article-parse b)))
+        (lpct-chunked-exec b 1))))
+(assert-event
+ (fn-lpc-agreesp '(83 117 98 106 101 99 116 58 13 10 32 9 13 10 32 120 13 10 13 10) :pin))

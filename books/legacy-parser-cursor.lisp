@@ -53,11 +53,13 @@
 
 ; Header record: phase, physical-line-length, current?, visible?, value
 ; start, last-line-end, selected-key, name candidates, five completed
-; fields, first-unfolded-byte-seen?. All data-dependent information is
+; fields, first-unfolded-byte-seen?, physical-fold-mode. The last is
+; :plain, :fold-empty or :fold-visible, distinct from current-field visible.
+; All data-dependent information is
 ; scalar or an immutable reference; its shape is fixed.
 (defun fn-lpc-header-begin ()
   (declare (xargs :guard t))
-  (list :start 0 nil nil 0 0 nil *fn-lpc-names* '(nil nil nil nil nil) nil))
+  (list :start 0 nil nil 0 0 nil *fn-lpc-names* '(nil nil nil nil nil) nil :plain))
 
 (defun fn-lpc-header-bad (s)
   (declare (xargs :guard t))
@@ -84,7 +86,10 @@
           (if (fn-lpc-at 9 s) (fn-lpc-at 4 s)
             (if (equal byte 32) (+ 1 pos) pos))
           (fn-lpc-at 5 s) (fn-lpc-at 6 s) (fn-lpc-at 7 s)
-          (fn-lpc-at 8 s) t)))
+          (fn-lpc-at 8 s) t
+          (if (and (eq (fn-lpc-at 10 s) :fold-empty)
+                   (fn-article-vcharp byte))
+              :fold-visible (fn-lpc-at 10 s)))))
 
 (defun fn-lpc-header-byte (s byte pos h pin)
   (declare (xargs :guard (natp pos)))
@@ -109,20 +114,23 @@
      ((equal byte 13)
       (cond ((eq phase :start) (fn-lpc-put 0 :cr-start s))
             ((or (eq phase :first) (eq phase :value))
-             (fn-lpc-put 5 pos (fn-lpc-put 0 :cr-line s)))
+             (if (eq (fn-lpc-at 10 s) :fold-empty)
+                 (fn-lpc-header-bad s)
+               (fn-lpc-put 5 pos (fn-lpc-put 0 :cr-line s))))
             (t (fn-lpc-header-bad s))))
      ((or (equal byte 10)
           (<= *fn-article-max-line-octets* (nfix (fn-lpc-at 1 s))))
       (fn-lpc-header-bad s))
      ((eq phase :start)
       (if (fn-article-wspp byte)
-          (if (fn-lpc-at 2 s) (fn-lpc-value-byte s byte pos)
+          (if (fn-lpc-at 2 s)
+              (fn-lpc-value-byte (fn-lpc-put 10 :fold-empty s) byte pos)
             (fn-lpc-header-bad s))
         (if (and (fn-article-ftextp byte)
                  (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s)))
             (list :name 1 t nil 0 0 nil
                   (fn-lpc-name-step *fn-lpc-names* byte)
-                  (fn-lpc-close-fields s h pin) nil)
+                  (fn-lpc-close-fields s h pin) nil :plain)
           (fn-lpc-header-bad s))))
      ((eq phase :name)
       (cond ((equal byte 58)
