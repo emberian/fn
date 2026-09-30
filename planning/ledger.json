@@ -406,6 +406,8 @@
     "books/store-reclaim-pack",
     "tests/acl2/store-reclaim-pack-tests",
     "books/history-knowledge",
+    "books/history-resource-refinement",
+    "tests/acl2/history-resource-refinement-tests",
     "tests/acl2/history-knowledge-tests",
     "books/store-reclaim-stream",
     "tests/acl2/store-reclaim-stream-tests",
@@ -1634,26 +1636,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1697,
-    "books_in_root_closure": 1694,
-    "roots": 1630,
-    "theorems": 27804,
-    "functions": 18123,
-    "assert_events": 22976,
+    "books": 1699,
+    "books_in_root_closure": 1696,
+    "roots": 1632,
+    "theorems": 27816,
+    "functions": 18131,
+    "assert_events": 22987,
     "must_fails": 2496,
     "prover_refusals": 0,
     "encapsulates": 156,
     "guards": {
       "verified": 3460,
       "declared-off": 2084,
-      "default-guarded": 9845,
+      "default-guarded": 9853,
       "default-unguarded": 2734
     },
-    "suspect_theorems": 1227,
+    "suspect_theorems": 1228,
     "export_hygiene_warnings": 318,
     "enabled_projection_warnings": 52,
     "teeth_form_warnings": 272,
-    "include_hygiene_warnings": 2417,
+    "include_hygiene_warnings": 2419,
     "host_names_warnings": 2087,
     "hand_written_record_warnings": 18
   },
@@ -13117,6 +13119,34 @@
         "arithmetic/top"
       ],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/history-resource-refinement.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 12,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 8,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-knowledge"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-hrf-reduce-pin-keeps-logical-by-definition"
+      ],
       "read_error": null
     },
     {
@@ -39557,6 +39587,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/history-resource-refinement-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 11,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-resource-refinement"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/hmac-sha256-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -53611,6 +53667,14 @@
       ]
     },
     {
+      "theorem": "fn-hrf-reduce-pin-keeps-logical-by-definition",
+      "book": "books/history-resource-refinement.lisp",
+      "line": 76,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
       "theorem": "fn-hrt-event-is-intern-event-by-definition",
       "book": "tests/acl2/held-rows-intern-tests.lisp",
       "line": 9,
@@ -67183,6 +67247,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/history-resource-refinement.lisp",
+        "line": 5,
+        "include": "history-knowledge",
+        "included": "books/history-knowledge.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/hybrid-carrier.lisp",
         "line": 10,
         "include": "rev-onto",
@@ -76728,6 +76799,13 @@
         "line": 4,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/history-resource-refinement-tests.lisp",
+        "line": 5,
+        "include": "../../books/history-resource-refinement",
+        "included": "books/history-resource-refinement.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
