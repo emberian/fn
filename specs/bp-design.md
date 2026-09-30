@@ -1040,6 +1040,17 @@ BIB/body and malformed-state witnesses. It is a scheduling property, separate
 from grammar invariant preservation and equivalence across changing immutable
 windows. No physical provider or native caller is established by this event.
 
+`books/bpsec-asb-spine.lisp` establishes and preserves the exact ordered
+34-field cursor spine through the actual start, drive and step functions.
+The ghost predicate inspects keys only and is never called on the served
+step. It supplies the carried fixed-record basis for bounded metadata access;
+it is separate from all mutable-field types, grammar progression, span bounds
+and physical provider facts. Literal tests carry the complete spine antecedent
+and conclusion through every exercised one-byte/quantum-one transition,
+refused starts and wrong windows. A corrupted missing-key cursor affirmatively
+fails both the omitted invariant and resulting conclusion. No whole-state
+revalidation is added to the implementation.
+
 The logical target-graph reference in `books/bpsec-target.lisp` binds each
 ASB as `(block-number . ASB)`, checks actual block existence/type, unique
 service/target pairs, forbidden security targets and payload BCB flags. Every

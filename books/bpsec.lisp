@@ -7,3 +7,4 @@
 (include-book "bpsec-provider-model")
 (include-book "bpsec-operation")
 (include-book "bpsec-asb-quanta")
+(include-book "bpsec-asb-spine")

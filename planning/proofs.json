@@ -19095,9 +19095,12 @@
         "planning/evidence/bpsec-asb-source-2026-09-30.json",
         "books/bpsec-asb-quanta.lisp",
         "tests/acl2/bpsec-asb-quanta-tests.lisp",
-        "planning/evidence/bpsec-asb-quanta-source-2026-09-30.json"
+        "planning/evidence/bpsec-asb-quanta-source-2026-09-30.json",
+        "books/bpsec-asb-spine.lisp",
+        "tests/acl2/bpsec-asb-spine-tests.lisp",
+        "planning/evidence/bpsec-asb-spine-source-2026-09-30.json"
       ],
-      "progress_note": "Source-only proper-local admission at exact w28 fced dependency coordinate; six component bounds/suffix events admitted after a repaired corrupted-cursor guard failure and proof hints. No normal manifest, immutable runtime provider, full refinement or native security gate. Added actual ASB complete cursor/consumed-prefix/suffix quantum-composition source; fresh proper-local14fixtureforms23.40s7930504steps (includes four new source dependencies), all literal outcomes and guard-world audit pass. Full window/provider/grammar refinement remains open."
+      "progress_note": "Source-only proper-local admission at exact w28 fced dependency coordinate; six component bounds/suffix events admitted after a repaired corrupted-cursor guard failure and proof hints. No normal manifest, immutable runtime provider, full refinement or native security gate. Added actual ASB complete cursor/consumed-prefix/suffix quantum-composition source; fresh proper-local14fixtureforms23.40s7930504steps (includes four new source dependencies), all literal outcomes and guard-world audit pass. Full window/provider/grammar refinement remains open. Fixed exact34-field cursor spine established/preserved by actual start/drive/step; final fresh12fixtureforms23.33s6971684steps includes4proper-local dependencies, guard-world+five literal scenarios pass. Ghost predicate never served; mutable grammar/span/provider invariants remain open."
     },
     {
       "id": "PRF-1179",
