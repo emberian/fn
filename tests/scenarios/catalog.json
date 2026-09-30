@@ -6628,12 +6628,14 @@
         "Check the literal actual value-transition invariant and remove its value correspondence, phase, line-budget and valid-byte hypotheses individually while affirming all retained hypotheses; verify folded completed source spans and absent-versus-empty first hits.",
         "Check literal arbitrary-line theorem instances for actual new-field/fold runs, completed source spans, selected name and preserved earlier columns; remove source-value correspondence and fold-local visibility independently.",
         "Assert complete literal new-field/fold/header traversal premises and conclusions; remove every retained line-step premise and both traversal premises separately, including corrupted source-span state and malformed physical continuations.",
-        "Assert the literal full actual arena-tick NOV equation on octet sources, including five first/repeated/folded fields, invalid folds, opaque body NUL and tombstones. Remove the sole octet-domain premise with non-octet opaque body input; affirm negative-handle equality after removing that redundant premise. Check complete tombstone prefix antecedents and remove natural position and sufficient bytes independently."
+        "Assert the literal full actual arena-tick NOV equation on octet sources, including five first/repeated/folded fields, invalid folds, opaque body NUL and tombstones. Remove the sole octet-domain premise with non-octet opaque body input; affirm negative-handle equality after removing that redundant premise. Check complete tombstone prefix antecedents and remove natural position and sufficient bytes independently.",
+        "Check full literal actual tick scalar/source-width and returned quantum-width conclusions; remove every retained carried-state, ready, source-bound and quantum premise individually. Separate corrupted carried state from malformed grammar and run the actual stobj tick at quanta 1, 3 and complete length."
       ],
       "expected": [
         "Each tick consumes and reports at most its fuel, preserves handle and pin and makes bounded progress. No final tick walks or copies the full source or field.",
         "The body count equals the actual catalog function even for a rejected header parse.",
-        "For every successful actual parser result, the complete byte traversal's five spans normalize to the exact first-header NOV content. The full actual arena-tick NOV record equals fn-hnov-of under the sole octet source premise, including invalid parses and tombstones."
+        "For every successful actual parser result, the complete byte traversal's five spans normalize to the exact first-header NOV content. The full actual arena-tick NOV record equals fn-hnov-of under the sole octet source premise, including invalid parses and tombstones.",
+        "Source-dominated numeric scalars and returned consumed/work remain within their parameterized source/quantum widths. Selected runtime primitive, callstack and allocation correspondence remains open."
       ],
       "evidence": [
         "books/legacy-parser-cursor.lisp",
@@ -6653,7 +6655,10 @@
         "planning/evidence/legacy-parser-catalog-source.md",
         "books/legacy-parser-allocation.lisp",
         "tests/acl2/legacy-parser-allocation-tests.lisp",
-        "planning/evidence/legacy-parser-allocation-source.md"
+        "planning/evidence/legacy-parser-allocation-source.md",
+        "books/legacy-parser-scalars.lisp",
+        "tests/acl2/legacy-parser-scalars-tests.lisp",
+        "planning/evidence/legacy-parser-scalars-source.md"
       ]
     },
     {
