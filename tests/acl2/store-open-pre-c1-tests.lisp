@@ -1,15 +1,18 @@
 ; Teeth for books/store-open-pre-c1.lisp (PKT-444 (1), PRF-170).
 ;
-; The witness is the store the pre-C1 developer image f358dbac wrote on hbox
-; (control-across-peers, /tank/fn/scratch/control-across-peers/replay-work/store,
-; prec1-replay-control.log 1c7b10de...): transaction 0 the keyring snapshot,
-; 1 a signed target in fn.test, 2 a signed cancel of it that the pre-C1
-; image filed under its Newsgroups (fn.test); config 00000001.cfg serves
-; fn.test and control.cancel.  The files' octets are below as constants
-; (SHA-256: txn0 b3f85a14..., txn1 3a256c3b..., txn2 1439ea7b...,
-; cfg e0a9413d...).  They are data: decoded by the ACL2 codecs the host
-; calls (fn-frame-store-decode, fn-store-event-decode-exact,
-; fn-cfg-decode-exact), never read by the Lisp reader as program.
+; Current-format fixture with the pre-C1 filing defect (PKT-444, PRF-170).
+; Its keyring, signed source, carrier/signature bytes, metadata and chronology
+; come from the store written by image f358dbac on hbox, recorded in
+; planning/evidence/control-across-peers-2026-09-26.md.  This is a reconstructed
+; BLAKE3 fixture, not those historical store bytes or a migration reader.
+; ACL2 rebuilt each received-content subject, authored-source identity,
+; obligation ID, encoded record and frame trailer with the current codecs.
+; Recipe and generation log: planning/evidence/frame-fixture-2026-09-29/.
+; Transaction 0 enrolls the keyring, 1 is the ordinary target in fn.test,
+; and 2 carries the signed cancel intentionally misfiled in fn.test rather
+; than control.cancel.  The malformed filing is the only semantic defect.
+; Every octet below is data decoded by the codecs the host calls; no external
+; input is read as a Lisp program.  Crypto assumptions/signatures are unchanged.
 
 (in-package "ACL2")
 (include-book "../../books/store-open-pre-c1")
@@ -18,37 +21,6 @@
 (include-book "../../books/crypto-attach")
 (include-book "std/testing/assert-equal" :dir :system)
 (include-book "must-fail-checked")
-(include-book "../../books/sha256")
-
-; The witness is a pre-C1 store: its content identities and chain were made
-; under the SHA-256 realiser (store formats up to 9).  The identity fold
-; recomputes a record's content subject through `fn-frame-digest', so this
-; book evaluates the witness under the realiser it was written with: SHA-256
-; (books/sha256.lisp, kept for RFC 8315) attached again here, as
-; books/crypto-attach.lisp's comment says a test book may re-attach.  Every
-; claim below is about the fold, not about a digest; under BLAKE3 (the
-; served attachment since format 10) the witness's own identities would not
-; bind, which is what format 10's refusal of an older store is for.
-; The identity container's algorithm octet is a constant of the logic, not
-; an attachment, so the witness's identities were rewritten (lane
-; blake3-digest, 2026-09-28) from algorithm 1 to 2 in place (the raw
-; 48-octet identities and their hex texts), the two obligation ids
-; recomputed under this book's attachment, and the three store frames
-; resealed with SHA-256 over their new prefixes; nothing else moved.  The
-; SHA-256 lines in the header comment are the ORIGINAL files'.
-(local
- (defthm sopc-sha256-octets-are-cbor-octets
-   (implies (fn-sha256-octet-listp x) (fn-cbor-octet-listp x))
-   :hints (("Goal" :in-theory (enable fn-sha256-octet-listp fn-cbor-octet-listp
-                                      fn-cbor-octetp)))))
-(local
- (defthm sopc-sha256-is-a-frame-digest
-   (and (fn-cbor-octet-listp (fn-sha256 x))
-        (equal (len (fn-sha256 x)) 32))
-   :hints (("Goal" :use ((:instance fn-sha256-shape (m x)))
-            :in-theory (disable fn-sha256-shape)))))
-(defattach fn-frame-digest fn-sha256)
-
 (defconst *sopc-txn0*
   '(70 78 83 84 1 1 0 0 8 4 68 102 110 45 101 0 3 0 0 0 1 76 102 110
     45 104 121 98 114 105 100 45 118 49 89 7 233 88 32 85 85 85 85 85 85 85 85 85
@@ -135,16 +107,16 @@
     18 153 168 212 93 70 4 119 28 82 93 5 22 233 22 104 127 241 173 128 172 186 19 21
     168 249 164 175 149 99 119 52 249 188 60 31 4 198 213 171 59 54 95 36 224 142 59 68
     93 51 183 46 225 200 75 143 230 205 110 187 40 36 182 100 147 131 171 221 155 99 184 195
-    57 227 82 57 127 253 230 111 161 194 163 7 240 14 153 255 183 222 255 5 81 84 71 208
-    150 5 127 9 27 16 169 150 81 50 15 162 106 179 50 94 110 59 136 169 181 45 73 151
-    126 76 242 128 208 85))
+    57 227 82 57 127 253 230 111 161 194 163 7 240 14 153 255 183 222 255 5 81 84 129 92
+    248 214 121 212 49 226 121 169 215 214 157 196 198 38 89 172 29 173 197 204 52 31 151 172
+    47 248 63 251 3 100))
 (defconst *sopc-txn1*
   '(70 78 83 84 1 1 0 0 33 51 68 102 110 45 101 1 4 1 1 1 1 76 102 110
     45 104 121 98 114 105 100 45 118 49 88 96 54 54 54 101 50 102 55 51 55 53 54 50
-    54 97 54 53 54 51 55 52 50 102 55 54 51 49 48 48 48 49 48 50 52 99 56 54
-    100 51 50 99 52 57 51 100 55 49 49 54 53 102 52 52 48 97 49 49 102 102 51 50
-    53 98 57 49 53 55 51 54 102 48 55 54 51 99 50 52 51 49 57 48 52 102 100 98
-    100 48 49 99 99 102 56 97 100 54 101 57 89 31 127 68 102 110 45 114 1 1 1 1
+    54 97 54 53 54 51 55 52 50 102 55 54 51 49 48 48 48 49 48 50 51 50 97 53
+    50 51 102 56 48 55 48 99 51 56 55 53 101 52 99 101 53 49 50 49 56 54 49 99
+    100 101 53 53 54 52 100 51 101 52 100 49 101 98 102 54 100 99 50 54 100 52 52 53
+    101 55 55 56 51 101 52 54 54 98 51 48 89 31 127 68 102 110 45 114 1 1 1 1
     88 30 60 112 114 101 99 49 45 116 97 114 103 101 116 64 101 120 97 109 112 108 101 46
     105 110 118 97 108 105 100 62 89 30 86 80 97 116 104 58 32 102 110 46 101 120 97 109
     112 108 101 46 105 110 118 97 108 105 100 33 110 111 116 45 102 111 114 45 109 97 105 108
@@ -472,13 +444,13 @@
     120 97 109 112 108 101 46 105 110 118 97 108 105 100 62 13 10 13 10 98 111 100 121 13
     10 1 71 102 110 46 116 101 115 116 88 102 54 54 54 101 50 102 54 102 54 50 54 99
     54 57 54 55 54 49 55 52 54 57 54 102 54 101 50 102 55 54 51 49 48 48 48 49
-    48 50 97 48 100 101 100 100 48 51 56 55 50 55 102 49 98 100 55 52 56 53 54 57
-    98 55 56 51 97 99 97 101 55 51 51 57 48 49 57 50 48 50 101 57 100 100 97 54
-    51 99 102 57 54 57 51 53 54 51 52 101 51 53 98 56 54 49 88 96 54 54 54 101
+    48 50 51 49 50 50 102 48 53 102 100 48 102 99 49 98 48 97 53 48 51 55 97 53
+    54 100 55 49 99 57 98 97 98 57 57 48 54 56 97 101 54 56 50 55 48 102 97 101
+    99 100 101 54 55 51 99 100 50 97 101 54 97 50 51 55 50 49 88 96 54 54 54 101
     50 102 55 51 55 53 54 50 54 97 54 53 54 51 55 52 50 102 55 54 51 49 48 48
-    48 49 48 50 52 99 56 54 100 51 50 99 52 57 51 100 55 49 49 54 53 102 52 52
-    48 97 49 49 102 102 51 50 53 98 57 49 53 55 51 54 102 48 55 54 51 99 50 52
-    51 49 57 48 52 102 100 98 100 48 49 99 99 102 56 97 100 54 101 57 88 34 102 110
+    48 49 48 50 51 50 97 53 50 51 102 56 48 55 48 99 51 56 55 53 101 52 99 101
+    53 49 50 49 56 54 49 99 100 101 53 53 54 52 100 51 101 52 100 49 101 98 102 54
+    100 99 50 54 100 52 52 53 101 55 55 56 51 101 52 54 54 98 51 48 88 34 102 110
     112 114 111 118 49 58 48 48 48 49 52 53 54 99 54 102 54 51 54 49 54 99 52 48
     52 48 48 49 48 48 48 48 3 26 50 74 91 72 88 91 68 102 110 45 101 0 2 1
     1 1 88 30 60 112 114 101 99 49 45 116 97 114 103 101 116 64 101 120 97 109 112 108
@@ -492,16 +464,16 @@
     43 48 48 48 48 13 10 77 101 115 115 97 103 101 45 73 68 58 32 60 112 114 101 99
     49 45 116 97 114 103 101 116 64 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100
     62 13 10 13 10 98 111 100 121 13 10 88 48 102 110 47 115 117 98 106 101 99 116 47
-    118 49 0 1 2 176 161 173 65 121 139 254 220 5 17 25 194 34 169 244 167 101 15 6
-    89 142 154 90 84 86 71 79 153 232 139 202 171 165 3 115 120 106 104 238 103 247 106 244
-    163 186 190 192 111 187 55 44 40 83 199 24 201 156 70 0 162 0 56 251 160))
+    118 49 0 1 2 126 34 233 135 162 166 150 29 27 243 41 98 254 189 89 119 113 96 138
+    123 194 46 93 30 132 131 56 76 122 37 147 85 228 185 169 118 78 79 103 35 110 5 116
+    166 71 111 255 25 62 61 90 250 71 187 42 38 194 252 207 67 134 140 25 151))
 (defconst *sopc-txn2*
   '(70 78 83 84 1 1 0 0 33 147 68 102 110 45 101 1 4 2 2 2 1 76 102 110
     45 104 121 98 114 105 100 45 118 49 88 96 54 54 54 101 50 102 55 51 55 53 54 50
-    54 97 54 53 54 51 55 52 50 102 55 54 51 49 48 48 48 49 48 50 52 57 51 48
-    56 101 98 56 98 53 54 97 101 48 102 51 99 49 49 97 97 97 49 52 53 54 99 53
-    48 101 52 53 49 53 98 98 48 99 54 53 50 54 99 55 52 53 48 99 54 52 53 57
-    50 48 50 97 98 56 51 53 102 50 48 48 89 31 175 68 102 110 45 114 1 2 2 2
+    54 97 54 53 54 51 55 52 50 102 55 54 51 49 48 48 48 49 48 50 98 51 55 102
+    57 57 52 102 56 102 101 57 53 99 56 102 54 57 51 48 99 56 53 50 56 53 52 97
+    52 97 102 52 48 99 100 48 52 102 53 56 50 54 97 102 57 50 57 101 101 55 98 50
+    55 50 57 57 53 101 51 55 50 101 101 57 89 31 175 68 102 110 45 114 1 2 2 2
     88 30 60 112 114 101 99 49 45 99 97 110 99 101 108 64 101 120 97 109 112 108 101 46
     105 110 118 97 108 105 100 62 89 30 134 80 97 116 104 58 32 102 110 46 101 120 97 109
     112 108 101 46 105 110 118 97 108 105 100 33 110 111 116 45 102 111 114 45 109 97 105 108
@@ -831,13 +803,13 @@
     120 97 109 112 108 101 46 105 110 118 97 108 105 100 62 13 10 13 10 98 111 100 121 13
     10 1 71 102 110 46 116 101 115 116 88 102 54 54 54 101 50 102 54 102 54 50 54 99
     54 57 54 55 54 49 55 52 54 57 54 102 54 101 50 102 55 54 51 49 48 48 48 49
-    48 50 48 50 55 54 55 51 102 53 57 55 53 57 49 100 50 55 57 53 54 49 97 98
-    101 102 53 102 54 57 57 54 101 52 101 51 49 101 98 53 102 51 56 52 100 49 54 100
-    56 100 50 53 49 54 48 100 55 50 99 54 100 100 48 97 52 49 88 96 54 54 54 101
+    48 50 56 98 53 53 100 49 54 99 55 49 57 57 52 52 99 53 54 98 52 50 51 101
+    97 98 100 98 53 49 53 101 50 56 56 51 49 49 51 50 56 55 97 101 51 102 101 98
+    49 49 54 55 51 49 99 55 56 57 54 53 101 48 54 54 55 52 88 96 54 54 54 101
     50 102 55 51 55 53 54 50 54 97 54 53 54 51 55 52 50 102 55 54 51 49 48 48
-    48 49 48 50 52 57 51 48 56 101 98 56 98 53 54 97 101 48 102 51 99 49 49 97
-    97 97 49 52 53 54 99 53 48 101 52 53 49 53 98 98 48 99 54 53 50 54 99 55
-    52 53 48 99 54 52 53 57 50 48 50 97 98 56 51 53 102 50 48 48 88 34 102 110
+    48 49 48 50 98 51 55 102 57 57 52 102 56 102 101 57 53 99 56 102 54 57 51 48
+    99 56 53 50 56 53 52 97 52 97 102 52 48 99 100 48 52 102 53 56 50 54 97 102
+    57 50 57 101 101 55 98 50 55 50 57 57 53 101 51 55 50 101 101 57 88 34 102 110
     112 114 111 118 49 58 48 48 48 49 52 53 54 99 54 102 54 51 54 49 54 99 52 48
     52 48 48 49 48 48 48 48 3 26 50 74 91 73 88 91 68 102 110 45 101 0 2 2
     2 2 88 30 60 112 114 101 99 49 45 99 97 110 99 101 108 64 101 120 97 109 112 108
@@ -853,9 +825,9 @@
     62 13 10 67 111 110 116 114 111 108 58 32 99 97 110 99 101 108 32 60 112 114 101 99
     49 45 116 97 114 103 101 116 64 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100
     62 13 10 13 10 98 111 100 121 13 10 88 48 102 110 47 115 117 98 106 101 99 116 47
-    118 49 0 1 2 236 204 8 26 95 82 41 112 142 146 195 138 31 88 177 251 36 203 214
-    127 114 218 224 173 63 193 231 238 201 248 247 32 226 185 236 41 75 9 227 226 187 5 217
-    168 176 169 160 190 217 31 18 80 184 56 49 93 144 188 13 193 243 187 153 230))
+    118 49 0 1 2 95 173 173 25 35 196 229 39 151 182 90 108 35 222 115 84 49 157 1
+    86 110 215 197 166 99 111 40 225 253 2 89 55 84 244 108 169 67 242 62 27 40 234 200
+    140 48 89 192 159 149 234 161 176 21 152 129 56 140 83 143 205 182 222 183 170))
 (defconst *sopc-cfg1*
   '(70 102 110 45 99 102 103 0 24 28 0 0 1 0 0 0 0 4 1 71 102 110 46 116
     101 115 116 83 102 110 45 112 111 108 105 99 121 45 100 101 102 97 117 108 116 45 49 0
@@ -863,15 +835,15 @@
     105 99 121 45 100 101 102 97 117 108 116 45 49 0 0 3 64 64 26 0 16 0 0 0
     8 75 109 97 120 45 112 97 121 108 111 97 100 64 25 128 0 0))
 
-; The frame's trailer is its digest (the host compares SHA-256 of the
-; protected prefix with it; here the stored trailer is passed as observed).
-(defun sopc-last32 (xs)
+; Recompute the protected-prefix digest as the served path does; passing the
+; stored trailer as the observation would leave integrity unchecked.
+(defun sopc-observed-digest (xs)
   (declare (xargs :mode :program))
-  (nthcdr (- (len xs) 32) xs))
+  (fn-frame-digest (take (- (len xs) 32) xs)))
 
 (defun sopc-rec (txn)
   (declare (xargs :mode :program))
-  (let* ((frame (fn-frame-store-decode txn (sopc-last32 txn)))
+  (let* ((frame (fn-frame-store-decode txn (sopc-observed-digest txn)))
          (decoded (fn-store-event-decode-exact (fn-frame-result-payload frame))))
     (if (and (fn-frame-result-okp frame) (consp decoded) (eq (car decoded) :ok))
         (cadr decoded)
@@ -924,6 +896,26 @@
 
 (defconst *sopc-refusal*
   '(:refused :pre-c1-control-record 2 "<prec1-cancel@example.invalid>"))
+
+; Corrupted-frame mutations: changing one protected payload octet or one
+; trailer octet must fail before the record decoder/replay sees a record.
+(assert-event
+ (and (equal (sopc-rec (update-nth 100 (logxor 1 (nth 100 *sopc-txn1*))
+                                  *sopc-txn1*)) :bad)
+      (equal (sopc-rec (update-nth (1- (len *sopc-txn2*))
+                                  (logxor 1 (car (last *sopc-txn2*)))
+                                  *sopc-txn2*)) :bad)))
+
+; Both composites have current digest identities.  The cancel's bad filing
+; alone prevents the snapshot binding; changing only its filing repairs it.
+(assert-event
+ (and (fn-hsig-article-event-snapshot-bindsp (fn-hw-composite (sopc-r1)) (sopc-r0))
+      (not (fn-hsig-article-event-snapshot-bindsp (fn-hw-composite (sopc-r2)) (sopc-r0)))
+      (fn-hsig-article-event-snapshot-bindsp
+       (fn-hw-composite (sopc-regroup (sopc-r2) '("control.cancel"))) (sopc-r0))))
+
+; Nonempty positive anchor for the free-history predicate used below.
+(assert-event (fn-sopc-free-p (list (sopc-r0) (sopc-r1))))
 
 ; The witness decodes: three Store events, the cancel a pre-C1 control
 ; record (schema 1, groups ("fn.test"), filing group ("control.cancel")),
