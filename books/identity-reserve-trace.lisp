@@ -75,4 +75,59 @@
   :hints (("Goal" :induct (fn-idrt-run n s debt)
            :in-theory (e/d (fn-idrt-run) (fn-idrt-step fn-rfh-step)))))
 
-(in-theory (disable fn-idrt-step fn-idrt-run))
+
+; Exact immutable Store field frame, not a new full W8 abstraction. Payload
+; handles are unchanged on this refusal path. No arena relocation is claimed.
+; The two spent identity coordinates (file frontier and node next-txid) and
+; transient physical file phases belong to the separate resource effect.
+(defun fn-idrt-node-frame (node)
+  (declare (xargs :guard t))
+  (let ((a (fn-node-acceptance node)))
+    (list (fn-state-groups a) (fn-state-nexts a) (fn-state-articles a)
+          (fn-state-pending a) (fn-state-fenced a)
+          (fn-node-retention node) (fn-node-stage node) (fn-node-bindings node))))
+(defun fn-idrt-store-metadata (s)
+  (declare (xargs :guard t))
+  (list (fn-idrt-node-frame (fn-sn-node s))
+        (fn-sn-groups s) (fn-sn-capacity s) (fn-sn-config-history s)
+        (fn-sn-identity-next s) (fn-sn-keyring-snapshots s)
+        (fn-sn-keyring s) (fn-sn-keyring-generation s)
+        (fn-sn-verdicts s) (fn-sn-index s) (fn-sn-event-index s)
+        (fn-sn-consumer s) (fn-sn-topic s)))
+
+(defun fn-idrt-store-frame (s)
+  (declare (xargs :guard t))
+  (list (fn-sf-records (fn-sn-files s)) (fn-idrt-store-metadata s)))
+
+(local
+ (defthm fn-idrt-node-frame-of-advance
+   (equal (fn-idrt-node-frame (fn-replay-advance-txid node txid))
+          (fn-idrt-node-frame node))
+   :hints (("Goal" :in-theory
+            (e/d (fn-idrt-node-frame fn-replay-advance-txid)
+                 (fn-node-statep))))))
+
+(local
+ (defthm fn-idrt-step-keeps-store-metadata
+   (equal (fn-idrt-store-metadata (fn-idrt-step s debt))
+          (fn-idrt-store-metadata s))
+   :hints (("Goal" :in-theory
+            (e/d (fn-idrt-step fn-idrt-store-metadata fn-rfh-step
+                  fn-sn-refuse-reservation fn-olr-sn-reserve fn-sn-io fn-sn-update)
+                 (fn-idrt-node-frame fn-replay-advance-txid
+                  fn-sn-refuse-reservation-enabledp fn-sn-statep))))))
+(local
+ (defthm fn-idrt-step-keeps-full-store-frame
+   (equal (fn-idrt-store-frame (fn-idrt-step s debt))
+          (fn-idrt-store-frame s))
+   :hints (("Goal" :in-theory (e/d (fn-idrt-store-frame)
+                                 (fn-idrt-step fn-idrt-store-metadata))))))
+
+(defthm fn-idrt-protected-refusals-keep-full-store-frame
+  (equal (fn-idrt-store-frame (fn-idrt-run n s debt))
+         (fn-idrt-store-frame s))
+  :hints (("Goal" :induct (fn-idrt-run n s debt)
+           :in-theory (e/d (fn-idrt-run)
+                           (fn-idrt-step fn-idrt-store-frame)))))
+
+(in-theory (disable fn-idrt-step fn-idrt-run fn-idrt-node-frame fn-idrt-store-frame))

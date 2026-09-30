@@ -313,6 +313,8 @@
     "books/refusal-effect",
     "books/refusal-headroom",
     "books/store-identity-reserve",
+    "books/identity-reserve-trace",
+    "tests/acl2/identity-reserve-trace-tests",
     "tests/acl2/store-identity-reserve-tests",
     "tests/acl2/refusal-headroom-tests",
     "books/closure-open",
@@ -1756,18 +1758,18 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1820,
-    "books_in_root_closure": 1817,
-    "roots": 1752,
-    "theorems": 29086,
-    "functions": 18809,
-    "assert_events": 23851,
+    "books": 1822,
+    "books_in_root_closure": 1819,
+    "roots": 1754,
+    "theorems": 29092,
+    "functions": 18811,
+    "assert_events": 23855,
     "must_fails": 2516,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
       "verified": 3510,
-      "declared-off": 2207,
+      "declared-off": 2209,
       "default-guarded": 10263,
       "default-unguarded": 2829
     },
@@ -1775,7 +1777,7 @@
     "export_hygiene_warnings": 337,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2522,
+    "include_hygiene_warnings": 2523,
     "host_names_warnings": 2156,
     "hand_written_record_warnings": 18
   },
@@ -14279,6 +14281,33 @@
       "system_includes": [
         "arithmetic/top"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/identity-reserve-trace.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 6,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "refusal-headroom",
+        "store-identity-reserve"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -42300,6 +42329,33 @@
       "system_includes": [
         "std/testing/assert-equal"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/identity-reserve-trace-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/identity-reserve-trace",
+        "store-identity-reserve-tests"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -81114,6 +81170,13 @@
         "line": 6,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/identity-reserve-trace-tests.lisp",
+        "line": 3,
+        "include": "store-identity-reserve-tests",
+        "included": "tests/acl2/store-identity-reserve-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

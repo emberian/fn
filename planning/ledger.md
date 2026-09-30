@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1820 |
-| Certification roots in the Makefile | 1752 |
-| Books inside the root closure | 1817 |
-| `defthm` and `defthmd` events | 29086 |
-| `defun` events | 18809 |
+| Books read | 1822 |
+| Certification roots in the Makefile | 1754 |
+| Books inside the root closure | 1819 |
+| `defthm` and `defthmd` events | 29092 |
+| `defun` events | 18811 |
 | Functions with verified guards | 3510 |
-| Functions declared `:verify-guards nil` and never verified | 2207 |
+| Functions declared `:verify-guards nil` and never verified | 2209 |
 | Functions left at the default with an explicit guard | 10263 |
 | Functions left at the default with no guard | 2829 |
-| `assert-event` checks | 23851 |
+| `assert-event` checks | 23855 |
 | `must-fail` checks | 2516 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 337 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2522 |
+| Include-hygiene warnings | 2523 |
 | Host-names warnings | 2156 |
 | Hand-written-record warnings | 18 |
 
@@ -526,6 +526,7 @@ that `make certify` requests.
 | `books/hybrid-store.lisp` | closure | 23 | 25 | 2/0/23/0 | 0 | 0 | 1 |
 | `books/ideal.lisp` | root | 9 | 16 | 0/2/14/0 | 0 | 0 | 7 |
 | `books/identity-invariants.lisp` | root | 43 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/identity-reserve-trace.lisp` | root | 6 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/identity-retain-carried.lisp` | root | 15 | 14 | 12/0/2/0 | 0 | 0 | 1 |
 | `books/identity.lisp` | root | 2 | 22 | 4/0/18/0 | 0 | 0 | 0 |
 | `books/image-world-dtn.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -1460,6 +1461,7 @@ that `make certify` requests.
 | `tests/acl2/hybrid-signature-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 14 | 0 |
 | `tests/acl2/hybrid-signature-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 16 | 4 | 0 |
 | `tests/acl2/hybrid-store-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 4 | 8 | 0 |
+| `tests/acl2/identity-reserve-trace-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/identity-retain-carried-tests.lisp` | root | 0 | 5 | 0/3/0/2 | 39 | 0 | 0 |
 | `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 0 | 0 |
 | `tests/acl2/index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |

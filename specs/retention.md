@@ -273,3 +273,10 @@ Initially retain duplicate-history entries as well; D13 must settle their later
 pruning policy. Until reclamation is implemented and justified, released objects
 may remain physically stored. Keeping extra bytes does not license accepting
 unaccounted new obligations.
+
+The protected ordinary-refusal reference trace also preserves a named complete
+immutable Store-field frame, including acceptance, full retention and bindings,
+consumer/topic, configuration, keyring evidence and indexes. Its spent file
+frontier and node next-txid remain resource effects outside that frame. This
+partial frame does not establish full reclaim/recovery alpha(L,R), stale host
+callback exclusion, arena relocation or retirement-debt discharge.

@@ -53,3 +53,24 @@
              (fn-sn-groups *idr-near*))
       (equal (fn-sn-capacity (fn-idrt-run 20 *idr-near* *idr-debt*))
              (fn-sn-capacity *idr-near*))))
+
+; Complete immutable field frame, while the spent resource identity is
+; deliberately different: refusing after reserve is not an effect-free event.
+(defconst *idrt-framed* (fn-idrt-run 20 *idr-near* *idr-debt*))
+(assert-event
+ (and (equal (fn-idrt-store-frame *idrt-framed*)
+             (fn-idrt-store-frame *idr-near*))
+      (equal (fn-sf-frontier (fn-sn-files *idrt-framed*))
+             (+ 1 (fn-sf-frontier (fn-sn-files *idr-near*))))
+      (not (equal (fn-state-next-txid (fn-node-acceptance (fn-sn-node *idrt-framed*)))
+                  (fn-state-next-txid (fn-node-acceptance (fn-sn-node *idr-near*)))))))
+
+; Labelled corrupted-output mutations: complete consumer/topic values are
+; retained coordinates even when a fixture's initial values are empty.
+(assert-event
+ (and (not (equal (fn-idrt-store-frame
+                    (fn-sn-with-consumer *idrt-framed* '(:corrupted-consumer)))
+                  (fn-idrt-store-frame *idr-near*)))
+      (not (equal (fn-idrt-store-frame
+                    (fn-sn-with-topic *idrt-framed* '(:corrupted-topic)))
+                  (fn-idrt-store-frame *idr-near*)))))
