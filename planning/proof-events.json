@@ -17739,6 +17739,27 @@
           "name": "fn-fc-temporary-mode-refusal-closes-without-stopping"
         }
       ]
+    },
+    {
+      "id": "PRF-1116",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-forward-result-proposal-preserves-waits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-forward-publication-refusal-preserves-waits-and-class"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-progress-dispatch-preserves-pruned-waits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-dispatch-known-publication-preserves-waits"
+        }
+      ]
     }
   ]
 }
