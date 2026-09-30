@@ -406,3 +406,13 @@ requested payload. Fresh, preallocated and mixed complete witnesses and all
 three typed-array removals accompany that boundary. This counts requested
 payload and retained logical capacity, excluding physical headers, alias
 lifetimes, GC and full INITIAL admission. Larger old buffers remain retained.
+
+The actual resize source roster is ordered output64, history65536, then
+table3494, with each actual old capacity strictly below its request. This
+joins the named generated UB8 success primary-object family at the explicit
+qualified body/backing/compiler/HONS-NIL coordinate. The conditional fresh
+primary-object bound is69152 bytes (80+65552+3520), and larger old buffers
+remove their corresponding requests. This bound excludes callers, errors,
+memoization, collector/first-use and old/new alias lifetimes; it neither
+qualifies a final image nor supplies a complete INITIAL admission. Central
+assumptions inclusion remains required at convergence.
