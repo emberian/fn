@@ -1466,7 +1466,8 @@
 
 (definterface fn-owner-exposure-open
   :class ::program
-  :kinds ((peer-octets fn-cbor-octet-listp)))
+  :kinds ((peer-octets fn-cbor-octet-listp))
+  :keystones ((fn-olog-socket-connection-line-is-one-line :via fn-olog-socket-connection-line)))
 
 (definterface fn-owner-exposure-release
   :class ::program)
@@ -1532,6 +1533,10 @@
   :kinds ((peer-octets fn-cbor-octet-listp) (octets fn-cbor-octet-listp)))
 
 (definterface fn-owner-feed-security
+  :class ::program
+  :kinds ((peer-octets fn-cbor-octet-listp)))
+
+(definterface fn-owner-feed-tls-established
   :class ::program
   :kinds ((peer-octets fn-cbor-octet-listp)))
 
@@ -3185,7 +3190,8 @@
   :class ::program)
 
 (definterface fn-web-host-step
-  :class ::program)
+  :class ::program
+  :keystones ((fn-web-health-step-preserves-sessions-and-bounds-body :via fn-web-step)))
 
 (definterface fn-web-req-clen
   :class ::common-lisp-compliant)
@@ -4456,6 +4462,22 @@
 (definterface fn-owner-handshake-leave
   :class :program)
 
+; host/native/mux.lisp dispatches it (lane tls-handshake-budget-3).
+(definterface fn-owner-proxy-begin
+  :class :program)
+
+; host/native/mux.lisp dispatches it (lane tls-handshake-budget-3).
+(definterface fn-owner-proxy-step
+  :class :program)
+
+; host/native/mux.lisp dispatches it (lane tls-handshake-budget-3).
+(definterface fn-owner-proxy-timeout-line
+  :class :program)
+
+; host/native/mux.lisp dispatches it (lane tls-handshake-budget-3).
+(definterface fn-owner-proxy-handover
+  :class :program)
+
 ; host/native/admin.lisp dispatches it (lane limits-live).
 (definterface fn-owner-limit-use
   :class ::program)
@@ -4788,3 +4810,18 @@
 ; Source: books/stx-keyring-records.lisp, guard T.
 (definterface fn-stxk-initial-context
   :class :common-lisp-compliant)
+; Q10d bounded observation for the owner's web readiness route.
+(definterface fn-web-host-health-observe
+  :class :program
+  :keystones ((fn-whl-success-requires-observed-clear-owner :via fn-whl-observe)))
+(definterface fn-owner-page-read-settle :class :common-lisp-compliant
+  :keystones ((fn-prl-completion-refunds-at-most-once :via fn-prl-settle)))
+
+(definterface fn-owner-page-file-pin :class :common-lisp-compliant
+  :keystones ((fn-prf-acquire-preserves-pool-funding :via fn-prf-acquire)
+              (fn-prf-acquired-file-is-held :via fn-prf-acquire)))
+(definterface fn-owner-page-file-unpin :class :common-lisp-compliant)
+(definterface fn-hrs-h-file :class :common-lisp-compliant)
+(definterface fn-owner-page-file-pin-file :class :common-lisp-compliant)
+(definterface fn-owner-page-file-pin-read :class :common-lisp-compliant
+  :keystones ((fn-prd-admit-preserves-pool-funding :via fn-prd-admit)))

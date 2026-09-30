@@ -2632,7 +2632,7 @@
     {
       "id": "PRF-054",
       "title": "The native service log says what the reply says, one line per event",
-      "statement": "fn-olog-served-post-line-says-accepted-iff-durable: the line host/owner-host.lisp fn-owner-outcome renders for a served submission begins with the word accepted exactly when fn-own-outcome-completion of the host's word is :durable, the completion fn-own-outcome renders into the 240; a host word alone never makes it say accepted. fn-olog-control-post-line-says-the-control-result: the control line's first word is the word of fn-own-control-outcome-result, the value the control reply carries. fn-olog-served-post-line-is-one-line, fn-olog-control-post-line-is-one-line and fn-olog-connection-line-is-one-line: no line contains CR or LF, whatever octets the Message-ID, agent or peer name held. fn-olog-staging-cleanup-line-is-one-line: the line host/native/io.lisp fnn-log-staging-cleanup renders for an error fnn-publish's best-effort staging cleanup swallowed after the record is durable contains no CR or LF, whatever the stage path or the OS error text held; that the host writes it exactly once per swallowed error is measured by the NNTP probe's record-stage-unlinked EIO row, not proved. Covered scope: the rendered octets; that host/native/owner.lisp fnn-owner-log writes them and one LF to the file run opened append-only is measured by tests/test_native_profile.py, not proved. bp-app-refusal-line-says-refused-iff-refused: the BP application receiver's line for a transfer it did not accept (host/native/bp-app.lisp fnn-bpapp-deliver, through host/bp-native-app-host.lisp fn-owner-app-refusal-log) begins with refused exactly when the receiver answered :refused or :clock-unusable, so a busy owner reads deferred and an unknown word uncertain; fn-olog-bp-app-refusal-line-is-one-line: that line holds no CR or LF, and it carries the application planner's reason field. Covered scope: the rendered octets; that host/native/owner.lisp fnn-owner-log writes them and one LF to the file run opened append-only is measured by tests/test_native_profile.py, not proved.",
+      "statement": "fn-olog-served-post-line-says-accepted-iff-durable: the line host/owner-host.lisp fn-owner-outcome renders for a served submission begins with the word accepted exactly when fn-own-outcome-completion of the host's word is :durable, the completion fn-own-outcome renders into the 240; a host word alone never makes it say accepted. fn-olog-control-post-line-says-the-control-result: the control line's first word is the word of fn-own-control-outcome-result, the value the control reply carries. fn-olog-served-post-line-is-one-line, fn-olog-control-post-line-is-one-line and fn-olog-connection-line-is-one-line: no line contains CR or LF, whatever octets the Message-ID, agent or peer name held. fn-olog-staging-cleanup-line-is-one-line: the line host/native/io.lisp fnn-log-staging-cleanup renders for an error fnn-publish's best-effort staging cleanup swallowed after the record is durable contains no CR or LF, whatever the stage path or the OS error text held; that the host writes it exactly once per swallowed error is measured by the NNTP probe's record-stage-unlinked EIO row, not proved. Covered scope: the rendered octets; that host/native/owner.lisp fnn-owner-log writes them and one LF to the file run opened append-only is measured by tests/test_native_profile.py, not proved. bp-app-refusal-line-says-refused-iff-refused: the BP application receiver's line for a transfer it did not accept (host/native/bp-app.lisp fnn-bpapp-deliver, through host/bp-native-app-host.lisp fn-owner-app-refusal-log) begins with refused exactly when the receiver answered :refused or :clock-unusable, so a busy owner reads deferred and an unknown word uncertain; fn-olog-bp-app-refusal-line-is-one-line: that line holds no CR or LF, and it carries the application planner's reason field. Covered scope: the rendered octets; that host/native/owner.lisp fnn-owner-log writes them and one LF to the file run opened append-only is measured by tests/test_native_profile.py, not proved. Q10d: fn-olog-socket-connection-line-is-one-line covers the actual accepted socket line called by fn-owner-exposure-open (host/native/mux.lisp fnn-mux-admit). The client-address field is ACL2-projected from the supplied fixed-width family/address observation: the kernel transport source directly, or the asserted source after trusted PROXY admission; the latter grants no configured peer identity. Validation/rendering inspect at most 4/16 octets. IPv4 dotted decimal and IPv6 eight expanded lowercase groups, malformed/absent unobserved. The socket observer truth and physical log writes remain measured, not proved.",
       "milestone": "M3",
       "requirements": [
         "HST-002"
@@ -2648,13 +2648,14 @@
         "planning/evidence/manifests/certify-20260926T092407Z-1115236.json",
         "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
       ],
-      "progress_note": "Lane t6b-profile, 2026-09-22: the keystones have no hypotheses; tests/acl2/owner-log-tests.lisp evaluates each renderer on a real injected decision and a real control decision, and its must-fails name the weaker statements a host-word log would satisfy (the line echoes the host word; the control line uses the served classification) with the refuting owner evaluated beside each.",
+      "progress_note": "Lane t6b-profile, 2026-09-22: the keystones have no hypotheses; tests/acl2/owner-log-tests.lisp evaluates each renderer on a real injected decision and a real control decision, and its must-fails name the weaker statements a host-word log would satisfy (the line echoes the host word; the control line uses the served classification) with the refuting owner evaluated beside each. Q10d clean hbox oa61-socket-log-h3 admitted 134/134 owner-log-tests forms, 36/36 named events exact, owner-log in one local encapsulate, 13.00 seconds/4,116,600 prover steps; stopped. Source interface/read/books/bare default 46/46 zero findings; ledger/current and strict reach green. These are source checks, not certification. Matching test_native_profile remains runner-owned.",
       "events": [
         "fn-olog-served-post-line-says-accepted-iff-durable",
         "fn-olog-control-post-line-says-the-control-result",
         "fn-olog-served-post-line-is-one-line",
         "fn-olog-control-post-line-is-one-line",
-        "fn-olog-connection-line-is-one-line"
+        "fn-olog-connection-line-is-one-line",
+        "fn-olog-socket-connection-line-is-one-line"
       ]
     },
     {
@@ -5208,7 +5209,7 @@
     {
       "id": "PRF-130",
       "title": "The operator walk: no store is a refusal (exit 6) before any open, a MODE STREAM refusal stops the dial, and a snapshot rollback's loss is counted",
-      "statement": "Over fn-native-operator-store-outcome (books/native-operator.lisp), which host/native/operator.lisp fnn-operator-store-outcome calls through fn-native-operator-host-store-outcome on every accepted plan before fnn-operator-dispatch-plan executes it: fn-native-operator-absent-store-is-refused, an accepted plan whose native action opens a store (fn-native-operator-result-needs-storep), over an observation that found none of *fn-nop-store-markers* beside the configured root, is refused with reason :no-store, exit code 6 (*fn-nop-no-store-exit*) and native action :none, so no open is attempted and the outcome is never the fault code 4; fn-native-operator-store-outcome-passes-a-present-store, with any marker observed or a plan that needs no store the plan passes unchanged. Over fn-fc-step, fn-fc-streaming-refusal-p and fn-fc-dial-allowedp (books/feed-connection.lisp), which host/owner-host.lisp fn-owner-feed-reply-chunk and fn-owner-feed-has-queued call (host/native/feed-service.lisp fnn-feed-reply-step, fnn-feed-dial-plan): fn-fc-mode-stream-refusal-stops-the-dial, a complete peer line other than 203, 500 or 501 in the :mode phase (RFC 4644 section 2.3; since PRF-207, 500 and 501 are the IHAVE fallback, the old form a must-fail in tests/acl2/feed-connection-tests.lisp) is a refusal that closes the connection, is classified as a streaming refusal, and once the owner records the peer with :mode-stream-refused the dial is not allowed for that peer whatever it has queued; fn-fc-dial-allowedp-of-put-other, other peers keep their dial. Over fn-native-operator-snapshot-loss: fn-native-operator-snapshot-loss-counts-the-suffix, :loses exactly when the first list is an element-wise prefix of the second, and the count is the number of elements after it. Until 2026-09-26 the host handed it (sequence . file length) descriptors, which is not a history comparison (gpt-6's answers section 7); the verb's history claim is PRF-141, over exact committed records, and this lemma is the list-level function PRF-141's fold equals.",
+      "statement": "Over fn-native-operator-store-outcome (books/native-operator.lisp), which host/native/operator.lisp fnn-operator-store-outcome calls through fn-native-operator-host-store-outcome on every accepted plan before fnn-operator-dispatch-plan executes it: fn-native-operator-absent-store-is-refused, an accepted plan whose native action opens a store (fn-native-operator-result-needs-storep), over an observation that found none of *fn-nop-store-markers* beside the configured root, is refused with reason :no-store, exit code 6 (*fn-nop-no-store-exit*) and native action :none, so no open is attempted and the outcome is never the fault code 4; fn-native-operator-store-outcome-passes-a-present-store, with any marker observed or a plan that needs no store the plan passes unchanged. Over fn-fc-step, fn-fc-streaming-refusal-p and fn-fc-dial-allowedp (books/feed-connection.lisp), which host/owner-host.lisp fn-owner-feed-reply-chunk and fn-owner-feed-has-queued call (host/native/feed-service.lisp fnn-feed-reply-step, fnn-feed-dial-plan): fn-fc-mode-stream-refusal-stops-the-dial, a complete peer line other than 203, 400, 500 or 501 in the :mode phase (RFC 4644 section 2.3; since PRF-1122, 400 closes temporarily and leaves the peer eligible for a backed-off retry; since PRF-207, 500 and 501 are the IHAVE fallback, the old form a must-fail in tests/acl2/feed-connection-tests.lisp) is a refusal that closes the connection, is classified as a streaming refusal, and once the owner records the peer with :mode-stream-refused the dial is not allowed for that peer whatever it has queued; fn-fc-dial-allowedp-of-put-other, other peers keep their dial. Over fn-native-operator-snapshot-loss: fn-native-operator-snapshot-loss-counts-the-suffix, :loses exactly when the first list is an element-wise prefix of the second, and the count is the number of elements after it. Until 2026-09-26 the host handed it (sequence . file length) descriptors, which is not a history comparison (gpt-6's answers section 7); the verb's history claim is PRF-141, over exact committed records, and this lemma is the list-level function PRF-141's fold equals.",
       "milestone": "M4",
       "requirements": [
         "HST-008"
@@ -8455,7 +8456,7 @@
     {
       "id": "PRF-223",
       "title": "A served connection's memory is named and a node refuses, by name, at start and at every live change, a connection capacity the machine cannot hold beside the store's heap figure, the core and the fixed threads; every connection fn-exp-open admits under an accepted capacity, trusted sources included, fits the machine",
-      "statement": "books/connection-budget.lisp. The subjects are fn-cbud-run-decide, which host/owner-host.lisp fn-owner-connection-budget calls once per run after recovery and before listen (host/native/mux.lisp fnn-mux-budget-install, from host/native/owner.lisp fnn-owner-run), and fn-cbud-deltas-refusal, which host/owner-host.lisp fn-owner-reconfigure-deltas calls before any live reconfiguration is staged (native-admin, peer-invite and auth all reach it), over the host's observations (the machine: heap-figure's fn-heap-machine-octets; the core's length; the fixed threads, 12 + 2 I/O loops + the control clients; the thread control stack) and the store's profile (heap-figure's fn-heap-figure-octets is the base's heap; the profile's largest article A sizes the connection). The per-connection figure is fn-cbud-conn-octets: a heap part (the connection record, its input of two reads of the largest size a served step may read (fn-cbud-step-read-octets, called by host/owner-host.lisp fn-owner-read-octets from host/native/owner.lisp fnn-owner-refresh-read-octets under the owner mutex after the exposure install and after every served step; host/native/mux.lisp reads into one buffer per I/O loop of that size: 512 octets under a step rate, fn-cbud-step-read-octets-under-a-rate-by-definition, so exposure-steps-per-second keeps its meaning in octets; 4 KiB without one (the measured trade between steps and the owner mutex hold: planning/evidence/input-loop-2-2026-09-27.md), fn-cbud-step-read-octets-is-bounded; the figure holds two, fn-cbud-read-covers-the-step; lane input-loop-2), the one reply of the STATED WORKLOAD -- the largest article rendered, 2A + 1,024 -- and the parser's command line as an octet list, 32 octets per octet; the body of an article in flight is PRF-377's pool) and a native part (kernel socket buffers; the TLS session when a context is loaded); the record, kernel and TLS constants are measurements (tests/test_native_mux.py pins the resident cost). fn-cbud-bound-holds-its-connections: when the base (the store's heap figure, the core, the threads with their stacks and 4 MiB of runtime each) fits the machine, the base plus n connections at the whole per-connection figure fits for every n up to fn-cbud-bound; fn-cbud-bound-is-the-most: one more does not. The resident heap is at most the process's dynamic space, so fn-cbud-resident-octets of n connections is min(dynamic, figure + n x heap part) + the rest of the base + n x native part, and fn-cbud-limit is the larger of fn-cbud-bound and the dynamic space's bound (the whole dynamic space plus each connection's native part). KEYSTONE fn-cbud-limit-holds-its-connections: when either way holds the base (fn-cbud-base-fitsp), the resident figure of every n up to the limit is within the machine; fn-cbud-limit-is-the-most: of limit + 1 it is not. KEYSTONE fn-cbud-run-decide-holds-the-capacity: an accepted run (:hold L) has capacity <= L, L the limit, and the resident figure of capacity connections within the machine; fn-cbud-run-decide-refuses-exactly-past-the-limit: it refuses exactly when the capacity passes the limit or the base does not fit. KEYSTONE fn-cbud-admitted-connections-fit-the-machine: under PRF-211's hypotheses, when the live capacity is within the limit and the base fits, an admission (fn-exp-admit-decision = (:admit)) with nconns held leaves the resident figure of nconns + 1 within the machine; the trusted range exempts no connection from the capacity (fn-exp-open-refuses-exactly-at-the-capacity). fn-cbud-deltas-refusal-keeps-the-capacity-held: a delta list the refusal passes leaves the capacity of the applied configuration within the limit, so the maintained relation 'capacity <= held limit' (established by the run's decision) survives every live change. Lane zero-copy-commit (2026-09-28): fn-cbud-launch-decide and its theorem are gone (no caller since lane reservation-figure); the body of an article in flight left the per-connection heap part (the parser term is the command line only) for the store figure's pool of article credits, admitted by the served read (PRF-377). Not claimed: replies larger than the stated workload's (range OVER/LISTGROUP) until replies are rendered in windows (PKT-644); the measured constants as theorems; that the probe sees the live capacity (it cannot: PKT-644).",
+      "statement": "books/connection-budget.lisp. The subjects are fn-cbud-run-decide, which host/owner-host.lisp fn-owner-connection-budget calls once per run after recovery and before listen (host/native/mux.lisp fnn-mux-budget-install, from host/native/owner.lisp fnn-owner-run), and fn-cbud-deltas-refusal, which host/owner-host.lisp fn-owner-reconfigure-deltas calls before any live reconfiguration is staged (native-admin, peer-invite and auth all reach it), over the host's observations (the machine: heap-figure's fn-heap-machine-octets; the core's length; the fixed threads, 12 + 2 I/O loops + the control clients; the thread control stack) and the store's profile (heap-figure's fn-heap-figure-octets is the base's heap; the profile's largest article A sizes the connection). The per-connection figure is fn-cbud-conn-octets: a heap part (the connection record, its input of two reads of the largest size a served step may read (fn-cbud-step-read-octets, called by host/owner-host.lisp fn-owner-read-octets from host/native/owner.lisp fnn-owner-refresh-read-octets under the owner mutex after the exposure install and after every served step; host/native/mux.lisp reads into one buffer per I/O loop of that size: 512 octets under a step rate, fn-cbud-step-read-octets-under-a-rate-by-definition, so exposure-steps-per-second keeps its meaning in octets; 4 KiB without one (the measured trade between steps and the owner mutex hold: planning/evidence/input-loop-2-2026-09-27.md), fn-cbud-step-read-octets-is-bounded; the figure holds two, fn-cbud-read-covers-the-step; lane input-loop-2), the one reply of the STATED WORKLOAD -- the largest article rendered, 2A + 1,024 -- and the parser's command line as an octet list, 32 octets per octet; the body of an article in flight is PRF-377's pool) and a native part (kernel socket buffers; the TLS session when a context is loaded); the record, kernel and TLS constants are measurements (tests/test_native_mux.py pins the resident cost). fn-cbud-bound-holds-its-connections: when the base (the store's heap figure, the core, the threads with their stacks and 4 MiB of runtime each) fits the machine, the base plus n connections at the whole per-connection figure fits for every n up to fn-cbud-bound; fn-cbud-bound-is-the-most: one more does not. The resident heap is at most the process's dynamic space, so fn-cbud-resident-octets of n connections is min(dynamic, figure + n x heap part) + the rest of the base + n x native part, and fn-cbud-limit is the larger of fn-cbud-bound and the dynamic space's bound (the whole dynamic space plus each connection's native part). KEYSTONE fn-cbud-limit-holds-its-connections: when either way holds the base (fn-cbud-base-fitsp), the resident figure of every n up to the limit is within the machine; fn-cbud-limit-is-the-most: of limit + 1 it is not. KEYSTONE fn-cbud-run-decide-holds-the-capacity: an accepted run (:hold L) has capacity <= L, L the limit, and the resident figure of capacity connections within the machine; fn-cbud-run-decide-refuses-exactly-past-the-limit: it refuses exactly when the capacity passes the limit or the base does not fit. KEYSTONE fn-cbud-admitted-connections-fit-the-machine: under PRF-211's hypotheses, when the live capacity is within the limit and the base fits, an admission (fn-exp-admit-decision = (:admit)) with nconns held leaves the resident figure of nconns + 1 within the machine; the trusted range exempts no connection from the capacity (fn-exp-open-refuses-exactly-at-the-capacity). KEYSTONE fn-cbud-deltas-refusal-keeps-the-machine-held (lane tls-handshake-budget-2, with PRF-986's term): the run holds its observations and the handshake slots it charged (fn-cbud-run-held); a delta list the refusal passes is the run's decision re-made on those observations with the applied configuration's capacity and the larger of the held slots and its own tls-handshakes-in-flight, so the resident figure of the new capacity, with L x *fn-cbud-handshake-scratch-octets* of handshake scratch in the base's rest (native memory, outside the dynamic space; fn-cbud-handshake-octets when a TLS context is loaded), is within the machine; lowering L never lowers the charge while the run lives; refused by name, :handshakes-exceed-memory when the capacity alone holds under the held slots, :connections-exceed-memory otherwise. Lane zero-copy-commit (2026-09-28): fn-cbud-launch-decide and its theorem are gone (no caller since lane reservation-figure); the body of an article in flight left the per-connection heap part (the parser term is the command line only) for the store figure's pool of article credits, admitted by the served read (PRF-377). Not claimed: replies larger than the stated workload's (range OVER/LISTGROUP) until replies are rendered in windows (PKT-644); the measured constants as theorems; that the probe sees the live capacity (it cannot: PKT-644).",
       "milestone": "M6",
       "requirements": [
         "HST-024"
@@ -8488,7 +8489,7 @@
         "fn-cbud-run-decide-holds-the-capacity",
         "fn-cbud-run-decide-refuses-exactly-past-the-limit",
         "fn-cbud-admitted-connections-fit-the-machine",
-        "fn-cbud-deltas-refusal-keeps-the-capacity-held",
+        "fn-cbud-deltas-refusal-keeps-the-machine-held",
         "fn-cbud-step-read-octets-is-bounded",
         "fn-cbud-read-covers-the-step"
       ]
@@ -12447,7 +12448,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/web-request.lisp",
         "tests/acl2/web-request-tests.lisp",
@@ -12480,7 +12481,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/web-render.lisp",
         "books/web-render-keystones.lisp",
@@ -12511,7 +12512,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/web-session.lisp",
         "books/web-session-keystones.lisp",
@@ -15905,7 +15906,7 @@
     {
       "id": "PRF-986",
       "title": "The TLS handshake is an admission ACL2 decides before SSL_accept: a per-source token bucket, a node-wide in-flight and per-second bound (PKT-639, W2a)",
-      "statement": "books/tls-handshake-budget.lisp (fn-hsb-). fn-hsb-admit s hl trustedp address now queuedp decides :admit ID, :wait or :refuse (:handshake-budget or :busy) for a source (an IPv4 address or an IPv6 /64) under the operator's rows tls-handshakes-per-source-per-minute (N), tls-handshakes-in-flight (L), tls-handshake-ms (D). KEYSTONE fn-hsb-steps-keep-the-bound: from fn-hsb-okp (at most L in flight, at most L started in the tick, at most 32L waiting) every admit, done and leave keeps it. KEYSTONE fn-hsb-admits-per-tick-are-bounded: over any event sequence from any state, the admissions in one one-second tick are at most the largest L they were decided under. KEYSTONE fn-hsb-source-admits-are-bounded: from any state, over events with nondecreasing times in [T0,T1] decided at rate N, one untrusted source is admitted at most N + N(T1-T0)/60000 handshakes. fn-hsb-scratch-within-the-reservation: in-flight native scratch at most L x *fn-hsb-scratch-octets* (stated, not yet charged to books/connection-budget.lisp's figure). Host subjects: host/owner-host.lisp fn-owner-handshake-admit, fn-owner-handshake-done, fn-owner-handshake-leave (called by host/native/mux.lisp fnn-mux-begin, fnn-mux-request-handshake, fnn-mux-start-waiting-handshake, fnn-mux-finish).",
+      "statement": "books/tls-handshake-decision.lisp and books/tls-handshake-budget.lisp (fn-hsb-). fn-hsb-admit s hl trustedp address now queuedp decides :admit ID, :wait or :refuse (:handshake-budget or :busy) for a source (an IPv4 address or an IPv6 /64) under the operator's rows tls-handshakes-per-source-per-minute (N), tls-handshakes-in-flight (L), tls-handshake-ms (D). KEYSTONE fn-hsb-steps-keep-the-bound: from fn-hsb-okp (at most L in flight, at most L started in the tick, at most 32L waiting) every admit, done and leave keeps it. KEYSTONE fn-hsb-admits-per-tick-are-bounded: over any event sequence from any state, the admissions in one one-second tick are at most the largest L they were decided under. KEYSTONE fn-hsb-source-admits-are-bounded: from any state, over events with nondecreasing times in [T0,T1] decided at source KEY's own rate N (fn-hsb-source-rate: the operator's override for KEY, else the row), one untrusted source is admitted at most N + N(T1-T0)/60000 handshakes. KEYSTONE fn-hsb-buckets-are-bounded: over any events decided under limits whose L is at most LMAX, the per-source accounting table holds at most max(its start, 64 x LMAX) rows (a new source past 64 x L after the prune is refused :sources-full; no row is evicted). fn-hsb-mapped-address-is-one-source: an IPv4-mapped IPv6 address (::ffff:a.b.c.d) is its IPv4 source. The CGNAT overrides: the policy row tls-handshake-source-overrides (ADDRESS=N or ADDRESS/64=N, comma-separated, or none) is parsed by fn-hsb-overrides-of-word (books/tls-handshake-source.lisp), admitted by the administrative plan (books/native-admin.lisp fn-native-admin-plan, `policy set tls-handshake-source-overrides WORD`) exactly when that parse lists it, else refused :override-address or :overrides-full; fn-hsb-overrides-of-word-is-bounded: every admitted list holds at most the profile's tls-handshake-source-overrides (64) entries. fn-hsb-scratch-within-the-machine-term: the handshakes in flight under the host's limits hold at most L x *fn-cbud-handshake-scratch-octets* (128 KiB, stated) of native scratch, exactly the term books/connection-budget.lisp charges to the machine's base (fn-cbud-handshake-octets; PRF-223's run decision and live reconfiguration, fn-cbud-deltas-refusal-keeps-the-machine-held), and at most the scratch of any held slots at least L; fn-hsb-lim-in-flight-is-the-charged-slots: the L the host's limits resolve is the L the run charges. THE PROXY HEADER on a trusted path (books/tls-proxy.lisp, item 4): KEYSTONE fn-pxy-direct-unless-trusted: fn-pxy-begin answers (:direct) -- nothing is read for a header -- exactly when the transport peer is in none of the policy row tls-proxy-trusted-peers' ranges, and otherwise (:read 6 WHY) with WHY a listed range matching the peer. KEYSTONE fn-pxy-step-reads-within-the-bound: fn-pxy-step, over any octets read so far, asks for at least one and at most 528 - read more (so the header is never over-read and at most 528 octets are read for it), answers a header only as exactly the octets read, and otherwise refuses by name (:proxy-malformed, :proxy-oversize, :proxy-unsupported). KEYSTONE fn-pxy-handover-keeps-the-bound: fn-pxy-handover (the proxy's handshake done, the asserted source's admitted, charging its own per-source budget) keeps fn-hsb-okp; it is two events of the event language (fn-pxy-handover-is-two-events-by-definition), so every bound over any event sequence covers both charges. Books: books/tls-handshake-source.lisp (the source key and the override list, split by lane tls-handshake-budget-3 so native-admin admits the row without the decision's closure), books/tls-handshake-decision.lisp (the decision, the step bound, the scratch term) and books/tls-handshake-budget.lisp (the bounds over any event sequence), split by lane tls-handshake-budget-2. Host subjects: host/owner-host.lisp fn-owner-proxy-begin, fn-owner-proxy-step, fn-owner-proxy-handover (called by host/native/mux.lisp fnn-mux-proxy-or-admit, fnn-mux-proxy-readable, fnn-mux-proxy-handover), fn-owner-handshake-limits (reads the override row), fn-owner-handshake-admit, fn-owner-handshake-done, fn-owner-handshake-leave (called by host/native/mux.lisp fnn-mux-begin, fnn-mux-request-handshake, fnn-mux-start-waiting-handshake, fnn-mux-finish). The captured PROXY deadline is computed by fn-pxy-deadline from monotonic clock ticks, the admitted handshake milliseconds and the clock frequency. Host fn-owner-proxy-step and fn-owner-proxy-timeout-line call fn-pxy-observe before/after reads and at timer observations. KEYSTONE fn-pxy-observe-keeps-the-read-bound preserves the framing bound and permits a header only on natural clock observations strictly before its captured deadline; a complete header at or after it refuses :proxy-timeout, invalid observations refuse :proxy-clock. Byte progress never refreshes the header deadline. Clock fidelity and scheduling remain host assumptions; this is not a hard real-time wall-clock guarantee.",
       "milestone": "M5",
       "requirements": [],
       "depends_on": [
@@ -15914,15 +15915,27 @@
       "assumptions": [],
       "status": "uncertified-at-current-digest",
       "evidence": [
+        "books/tls-handshake-source.lisp",
+        "books/tls-handshake-decision.lisp",
         "books/tls-handshake-budget.lisp",
-        "tests/acl2/tls-handshake-budget-tests.lisp"
+        "tests/acl2/tls-handshake-budget-tests.lisp",
+        "tests/acl2/native-admin-tests.lisp",
+        "books/tls-proxy.lisp",
+        "tests/acl2/tls-proxy-tests.lisp"
       ],
-      "progress_note": "Lane tls-handshake-budget (Claude Opus 5.5, 2026-09-29; row W2a, PKT-639). REPL-admitted on hbox; teeth book loads green; host_check --load 42/42 at 178c7fcf8. Not yet certified; natives not yet run.",
+      "progress_note": "Lanes tls-handshake-budget, -2, -3 (Claude Opus 5.5, 2026-09-29; row W2a, PKT-639). REPL-admitted in clean sessions (tls-handshake-source, tls-handshake-decision, tls-handshake-budget, native-admin and their teeth); host_check --load 42/42; natives tests.test_native_tls_handshake_budget and tests.test_native_mux OK at 3a8457340. Certification: the tree's background cite. 2026-09-30 resumed lane: clean source replay at merged dev019; original proxy59, handshake101 and connection-budget109 test forms pass. Timed read bound and 14 deadline witnesses admitted; exact current native/image evidence remains pending runner convergence. Scratch128KiB is a stated constant, not a measurement.",
       "events": [
         "fn-hsb-steps-keep-the-bound",
         "fn-hsb-admits-per-tick-are-bounded",
         "fn-hsb-source-admits-are-bounded",
-        "fn-hsb-scratch-within-the-reservation"
+        "fn-hsb-scratch-within-the-machine-term",
+        "fn-hsb-buckets-are-bounded",
+        "fn-hsb-mapped-address-is-one-source",
+        "fn-hsb-overrides-of-word-is-bounded",
+        "fn-pxy-direct-unless-trusted",
+        "fn-pxy-step-reads-within-the-bound",
+        "fn-pxy-handover-keeps-the-bound",
+        "fn-pxy-observe-keeps-the-read-bound"
       ]
     },
     {
@@ -17689,7 +17702,7 @@
     {
       "id": "PRF-1050",
       "title": "Snapshot blessing is accepted exactly when the completion marker, read-only open and node-secret observations hold; every failure names its first missing observation",
-      "statement": "Host-called fn-osn-bless-word in host/native/io.lisp fnn-command-store-bless-snapshot. KEYSTONE fn-osn-bless-word-blessed-exactly-when: blessed iff markerp and open=:ok and keysp; missing marker answers :snapshot-incomplete, otherwise non-ok open answers :open-refused, otherwise missing key answers :no-node-secret. fn-osn-absent-marker-never-opens makes the absent-marker result independent of an open observation; host checks fn-osn-bless-open-needed before opening. This proves the decision over supplied observations, not the snapshot producer's capture, freshness, or the disk/key implementations.",
+      "statement": "Host-called fn-osn-bless-word in host/native/io.lisp fnn-command-store-bless-snapshot. KEYSTONE fn-osn-bless-word-blessed-exactly-when: blessed iff markerp and open=:ok and keysp; missing marker answers :snapshot-incomplete, otherwise non-ok open answers :open-refused, otherwise missing key answers :no-node-secret. fn-osn-absent-marker-never-opens makes the absent-marker result independent of an open observation; host checks fn-osn-bless-open-needed before opening. This proves the decision over supplied observations, not the snapshot producer's capture, freshness, or the disk/key implementations. Scope excludes arbitrary core/store faults and uncertain I/O during observation: rejected durable metadata is the store-profile decoder fault, not an open-refused observation.",
       "milestone": "M5",
       "requirements": [
         "HST-039"
@@ -17701,7 +17714,7 @@
         "books/owner-snapshot-request.lisp",
         "tests/acl2/owner-snapshot-request-tests.lisp"
       ],
-      "progress_note": "Claim inherited from operability-12. S7a host wiring completed by gpt61-operability; native observation pending union image. No running snapshot producer claim."
+      "progress_note": "Claim inherited from operability-12. S7a host wiring completed by gpt61-operability; native observation pending union image. No running snapshot producer claim. E739 matching historical native module executed 2 with one passing and one stale malformed-config refusal expectation. Runtime decoder distinction retained; source fixture/spec corrected, matching execution still pending."
     },
     {
       "id": "PRF-1026",
@@ -18416,7 +18429,7 @@
         "host/native/extent.lisp",
         "host/native/owner.lisp"
       ],
-      "progress_note": "Clean source sessions: baseline27/pureteeth48/adapter18; selected layout p12layout16forms; discovery p12discovery6forms and p12discoveryteeth16forms; final lifecycle/discovery adapter p12modehostclean26forms, all zero refused. Native configuration/startup and lifetime call sites are separate physical-owner integration; no matching image/native verdict or full Store rescue claim. Native discovery source now reserves before allocation in fnn-extent-entry-fresh and retains its exact lease through the final fn-octets-pub borrow in fnn-owner-release-extents. This covers the protected vector lifetime only; no productive startup or decoded-output funding claim.",
+      "progress_note": "Clean source sessions: baseline27/pureteeth48/adapter18; selected layout p12layout16forms; discovery p12discovery6forms and p12discoveryteeth16forms; final lifecycle/discovery adapter p12modehostclean26forms, all zero refused. Native configuration/startup and lifetime call sites are separate physical-owner integration; no matching image/native verdict or full Store rescue claim. Native discovery source now reserves before allocation in fnn-extent-entry-fresh and retains its exact lease through the final fn-octets-pub borrow in fnn-owner-release-extents. This covers the protected vector lifetime only; no productive startup or decoded-output funding claim. Synchronous verified misses now admit before allocation, hold a local exact I/O row until private read/verifier return, transfer to charged cache, then settle. The existing completion/refund claims apply; full allocator and productive startup obligations remain.",
       "events": [
         "fn-prl-admit-preserves-pool-funding",
         "fn-prl-completion-refunds-at-most-once",
@@ -18475,7 +18488,7 @@
     {
       "id": "PRF-1080",
       "title": "A persistent cold executor owns one fresh charged job until returned exact I/O settlement",
-      "statement": "Subjects fn-pxe-acquire, fn-pxe-return and fn-pxe-commit in books/page-read-executor.lisp, reached by native fnn-extent-executor-acquire, fnn-extent-executor-loop and fnn-extent-executor-commit. The stobj adapter answers and effects are equated by fn-owner-page-executor-acquire-refines-pxe-by-definition and fn-owner-page-executor-commit-refines-pxe-by-definition. Assignment requires an idle worker and a newer read ID, binds each charged token to one executor slot, and preserves permanent baseline. Stale completion cannot return a reused worker. Commit requires returned worker, exact settled I/O and matching ledger slot before refund. Native workers retain stack/runtime allowance; their job activation returns before private result relinquishment is observable, and shutdown joins before shared close. Startup policy/fixed-map demand, direct and compressed reads, and full maintenance rescue remain open; no allocator or full P12 funding claim.",
+      "statement": "Subjects fn-pxe-acquire, fn-pxe-return and fn-pxe-commit in books/page-read-executor.lisp, reached by native fnn-extent-executor-acquire, fnn-extent-executor-loop and fnn-extent-executor-commit. The stobj adapter answers and effects are equated by fn-owner-page-executor-acquire-refines-pxe-by-definition and fn-owner-page-executor-commit-refines-pxe-by-definition. Assignment requires an idle worker and a newer read ID, binds each charged token to one executor slot, and preserves permanent baseline. Stale completion cannot return a reused worker. Commit requires returned worker, exact settled I/O and matching ledger slot before refund. Native workers retain stack/runtime allowance; their job activation returns before private result relinquishment is observable. The private owner transfer activation also returns before refund; readiness exposes no result alias. Shutdown joins before shared close. Startup policy/fixed-map demand, direct and compressed reads, and full maintenance rescue remain open; no allocator or full P12 funding claim.",
       "milestone": "M5",
       "requirements": [
         "STO-020"
@@ -18759,6 +18772,88 @@
         "planning/evidence/history-page-reader-verdict-source-2026-09-30.json"
       ],
       "progress_note": "First scanner component: clean protected persvati hsread2 source-dependency replay, proper local scope; 41 test forms loaded, 28 literal assertions passed; static teeth and narrow theory checks green. Runtime scanner functions guard verified. No full authentication, certificate, host or native claim. Canonical-verdict increment: clean proper-local hsrcanon2, 17 test forms / 11 assertions, 4.89 ACL2 seconds / 1,676,570 steps. Redundant stream length premise proved removable; short I/O is a separate continuation obligation."
+    },
+    {
+      "id": "PRF-1100",
+      "title": "Bounded network readiness from the running owner",
+      "statement": "The actual host-called fn-web-step health observation branch preserves its sessions, responds with 200 or 503 and at most 23 body octets. fn-whl-answer composed with fn-whl-observe succeeds only when current scheduler space is observed, existing operator disk health is clear, and checkpoint publication is not deferred. Malformed/unobserved values remain 503, not fabricated ready. Fixed disk/checkpoint observations and a constant vocabulary replace full report walks. Source guards and literal reached scheduler/parsed HTTP positive and hypothesis-removal witnesses; physical statvfs truth and host process behavior remain measured, not proved. Named host callers: host/web-host.lisp fn-web-host-step and fn-web-host-health-observe, from host/native/web-host.lisp fnn-web-request under owner serialization. This is local readiness, not all ten operator health states.",
+      "milestone": "M6",
+      "requirements": [
+        "WEB-005"
+      ],
+      "depends_on": [
+        "PRF-339",
+        "PRF-358",
+        "PRF-359"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-whl-success-requires-observed-clear-owner",
+        "fn-whl-answer-body-is-bounded",
+        "fn-web-health-step-preserves-sessions-and-bounds-body"
+      ],
+      "evidence": [
+        "books/web-health.lisp",
+        "books/web-session.lisp",
+        "books/web-session-keystones.lisp",
+        "tests/acl2/web-health-tests.lisp",
+        "tests/acl2/web-session-tests.lisp",
+        "host/web-host.lisp",
+        "host/native/web-host.lisp",
+        "tests/test_native_web.py"
+      ],
+      "progress_note": "Clean persvati source roots: oa61-health web-health-tests 25/25; oa61-web-health-ready web-session-tests 125/125 forms, including parsed GET/HEAD/POST, reached unavailable states and literal composed hypothesis-removal teeth; 60/60 named events match the file. Full dependencies loaded in local encapsulates; 18.09 s and 9,881,238 prover steps. Both sessions stopped. Source admission is not committed certification. Matching plain/TLS native web tests remain runner-owned; no lane image/native campaign."
+    },
+    {
+      "id": "PRF-1106",
+      "title": "Exact checkpoint file leases separate physical retention from logical scans",
+      "statement": "Subjects fn-prf-acquire and fn-prf-release in books/page-file-lease.lisp, called by fn-owner-page-file-pin/unpin and native fnn-snapshot-source-root-acquire/release. An admitted exact (:file-pin id file) keeps its registered file incarnation nonclosable and preserves installed pool funding. It consumes one descriptor/retention credit and no execution worker, bounding retained pin rows jointly with registered files. Its permanent baseline survives release; page discovery leases independently hold their file through actual I/O and final buffer borrowing. The root pin names physical retention only: logical view invariants, root/directory/table/data authentication, relocation correspondence and producer activation remain separate. Physical page placement checks the active exact pin/ticket, region-relative fixed page offset and selected signed64 pread representation; it makes no page-content claim. The native bridge is unreachable-in-composition until the producer calls its capture/read/cleanup entries.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020"
+      ],
+      "depends_on": [
+        "PRF-1065"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-prf-acquire-preserves-pool-funding",
+        "fn-prf-acquired-file-is-held"
+      ],
+      "evidence": [
+        "books/page-file-lease.lisp",
+        "host/page-file-lease-host.lisp",
+        "host/native/owner.lisp",
+        "tests/acl2/page-file-lease-tests.lisp"
+      ],
+      "progress_note": "Source library and physical bridge only; no startup activation, native/image execution, bounded page authentication, or full P12 claim. Clean source gates recorded in persistent-cold-executor evidence."
+    },
+    {
+      "id": "PRF-1122",
+      "title": "Temporary MODE STREAM unavailability closes this link without stopping the peer",
+      "statement": "Over host-called fn-fc-step and fn-fc-streaming-refusal-p in books/feed-connection.lisp, called by host/owner-host.lisp fn-owner-feed-reply-chunk-synced: fn-fc-temporary-mode-refusal-closes-without-stopping. A well-formed connection in mode phase whose framer decodes response 400 yields kind closed, phase closed, the same connection descriptor and no streaming-refusal stop. Complete-line and bounded-chunk premises follow from decoding 400 and are proved in a local lemma, not redundant keystone hypotheses. Existing owner/native closed handling drops the link and applies existing link backoff; that host composition is observed separately by SCN-1028, not proved by this theorem.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-035",
+        "NNT-045"
+      ],
+      "depends_on": [
+        "PRF-130",
+        "PRF-376"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/feed-connection.lisp",
+        "tests/acl2/feed-connection-tests.lisp",
+        "tests/test_native_feed_temporary.py"
+      ],
+      "events": [
+        "fn-fc-temporary-mode-refusal-closes-without-stopping"
+      ],
+      "progress_note": "Clean protected source admission and full positive/hypothesis-removal witnesses passed; certification and matching-image native observation pending."
     }
   ]
 }
