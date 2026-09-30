@@ -19012,6 +19012,32 @@
         "fn-pwx-release-requires-exact-returned-window-and-slot",
         "fn-pwx-other-request-cannot-return-or-release"
       ]
+    },
+    {
+      "id": "PRF-1153",
+      "title": "Exact native connection constructor owned-object subtotal retains live and retiring custody",
+      "statement": "The callable pure fn-srnc-connection-owned-request selects only exact source/runtime native rows and otherwise returns unavailable with NIL. Under the named A-SELECTED-RUNTIME-NATIVE-CONSTRUCTORS assumption and all four exact unit coordinates, the retained service, mux, two live/retiring nodes and fixed fault owned-object requests sum to at most 1280 octets. The service row includes its seven fresh default children. This is an owned-object subtotal, not allocator reservation, first-use, caller/error frames, core token construction, socket/TLS/input allocation or operation admission. The helper is unreachable-in-composition until the operation-derived builder consumes an installed family association.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-SELECTED-RUNTIME-NATIVE-CONSTRUCTORS"
+      ],
+      "status": "certified",
+      "events": [
+        "fn-srnc-repin-native-owned-object-request-bound"
+      ],
+      "evidence": [
+        "books/assumptions-selected-runtime-native-constructors.lisp",
+        "tests/acl2/selected-runtime-native-constructor-tests.lisp",
+        "tests/test_native_connection_constructor_family.py",
+        "specs/selected-runtime-native-constructors.md",
+        "planning/evidence/native-connection-constructors-2026-09-30/coordinate.json",
+        "planning/evidence/manifests/certify-20260930T145915Z-51305.json"
+      ],
+      "progress_note": "Two exact source roots normal certified with no installed dependencies; conditional consistency/subtotal only. Fresh SBCL2.6.8 Linux X86-64 native fixture measures exact current objects and retention/fault effects; ARM64 mismatch kept as refuter. No installed unit-family receipt, complete physical operation bound, current served activation or image qualification."
     }
   ]
 }

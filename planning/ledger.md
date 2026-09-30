@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1878 |
-| Certification roots in the Makefile | 1793 |
-| Books inside the root closure | 1861 |
-| `defthm` and `defthmd` events | 29682 |
-| `defun` events | 19016 |
+| Books read | 1882 |
+| Certification roots in the Makefile | 1797 |
+| Books inside the root closure | 1865 |
+| `defthm` and `defthmd` events | 29687 |
+| `defun` events | 19036 |
 | Functions with verified guards | 3510 |
 | Functions declared `:verify-guards nil` and never verified | 2275 |
-| Functions left at the default with an explicit guard | 10386 |
-| Functions left at the default with no guard | 2845 |
-| `assert-event` checks | 24009 |
-| `must-fail` checks | 2519 |
+| Functions left at the default with an explicit guard | 10399 |
+| Functions left at the default with no guard | 2852 |
+| `assert-event` checks | 24015 |
+| `must-fail` checks | 2531 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 158 |
+| `encapsulate` events | 159 |
 | Theorems flagged SUSPECT by shape | 1249 |
 | Export-hygiene warnings | 343 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2551 |
-| Host-names warnings | 2189 |
+| Include-hygiene warnings | 2553 |
+| Host-names warnings | 2198 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -119,6 +119,7 @@ that `make certify` requests.
 | `books/article.lisp` | root | 38 | 61 | 50/0/11/0 | 0 | 0 | 1 |
 | `books/assumptions-durable.lisp` | closure | 7 | 6 | 0/0/0/6 | 0 | 0 | 0 |
 | `books/assumptions-publication.lisp` | root | 4 | 3 | 0/0/0/3 | 0 | 0 | 0 |
+| `books/assumptions-selected-runtime-native-constructors.lisp` | root | 4 | 9 | 0/0/8/1 | 0 | 0 | 0 |
 | `books/assumptions-stored.lisp` | closure | 1 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/assumptions.lisp` | root | 20 | 16 | 0/1/0/15 | 0 | 0 | 0 |
 | `books/auth-secret.lisp` | root | 21 | 14 | 0/0/14/0 | 0 | 0 | 0 |
@@ -415,7 +416,7 @@ that `make certify` requests.
 | `books/crypto-attach.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/crypto-seam.lisp` | root | 19 | 14 | 0/0/10/4 | 0 | 0 | 0 |
 | `books/defevent.lisp` | root | 0 | 14 | 0/0/0/14 | 0 | 0 | 0 |
-| `books/definterface.lisp` | root | 0 | 42 | 0/0/0/42 | 0 | 0 | 0 |
+| `books/definterface.lisp` | root | 0 | 46 | 0/0/0/46 | 0 | 0 | 0 |
 | `books/defkeystone.lisp` | root | 0 | 28 | 0/0/0/28 | 0 | 0 | 0 |
 | `books/deflate-frame.lisp` | closure | 37 | 3 | 0/0/2/1 | 0 | 0 | 0 |
 | `books/deflate-inflate.lisp` | root | 171 | 81 | 0/0/70/11 | 0 | 0 | 0 |
@@ -1410,6 +1411,7 @@ that `make certify` requests.
 | `tests/acl2/control-visible-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 22 | 9 | 0 |
 | `tests/acl2/crypto-seam-tests.lisp` | root | 11 | 7 | 0/0/7/0 | 18 | 0 | 0 |
 | `tests/acl2/defevent-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 19 | 1 | 0 |
+| `tests/acl2/definterface-recognizer-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/definterface-tests.lisp` | root | 8 | 9 | 0/0/6/3 | 39 | 23 | 1 |
 | `tests/acl2/defkeystone-tests.lisp` | root | 2 | 1 | 0/0/1/0 | 17 | 6 | 0 |
 | `tests/acl2/deflate-inflate-tests.lisp` | root | 6 | 9 | 0/5/4/0 | 21 | 4 | 0 |
@@ -1762,6 +1764,7 @@ that `make certify` requests.
 | `tests/acl2/provenance-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 103 | 0 | 0 |
 | `tests/acl2/public-exposure-reply-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 13 | 2 | 0 |
 | `tests/acl2/public-exposure-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 121 | 15 | 0 |
+| `tests/acl2/raw-guarded-interface-tests.lisp` | root | 0 | 7 | 0/0/5/2 | 0 | 12 | 0 |
 | `tests/acl2/reader-open-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 0 | 0 |
 | `tests/acl2/reclaim-admission-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 4 | 0 |
 | `tests/acl2/reclaim-article-subject-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
@@ -1785,6 +1788,7 @@ that `make certify` requests.
 | `tests/acl2/scheduler-peers-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/scheduler-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 103 | 0 | 0 |
 | `tests/acl2/scram-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 27 | 0 | 0 |
+| `tests/acl2/selected-runtime-native-constructor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/serve-depth-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 35 | 0 | 0 |
 | `tests/acl2/served-catalog-chain-tests.lisp` | root | 6 | 5 | 0/2/0/3 | 4 | 7 | 0 |
 | `tests/acl2/served-catalog-join-entry-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 27 | 0 | 0 |
