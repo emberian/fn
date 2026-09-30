@@ -923,6 +923,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/legacy-parser-reference \
 	books/legacy-parser-header \
 	books/legacy-parser-validity \
+	books/legacy-parser-composition \
+	tests/acl2/legacy-parser-composition-tests \
 	tests/acl2/legacy-parser-cursor-tests \
 	tests/acl2/legacy-parser-header-tests \
 	tests/acl2/legacy-parser-validity-tests \
@@ -1566,6 +1568,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-record-cursor \
 	tests/acl2/history-record-cursor-tests \
 	books/history-decode-nodes \
+	books/history-symbol-normalize \
+	tests/acl2/history-symbol-normalize-tests \
 	books/history-decode-cursor \
 	books/history-decode-stream \
 	tests/acl2/history-decode-cursor-tests \
