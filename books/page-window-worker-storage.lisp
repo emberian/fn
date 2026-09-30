@@ -18,6 +18,11 @@
   (fn-pww-storage-receipt :initially nil)
   (fn-pww-borrow-phase :initially :none)
   (fn-pww-input-capacity :type (integer 0 *) :initially 0)
+  (fn-pww-controller :initially nil)
+  (fn-pww-source-incarnation :initially nil)
+  (fn-pww-observation :initially nil)
+  (fn-pww-pending-action :initially nil)
+  (fn-pww-action-revision :type (integer 0 *) :initially 0)
   :inline t)
 
 ; Fixed keys: left/right/carry/input/digest/window. Logical missing-child
