@@ -516,3 +516,5 @@
     (equal (fn-pgs-fill-realize file addr) (fn-pgs-page-words file addr))))
 
 (include-book "assumptions-selected-runtime-allocation-geometry") ; PRF-1155 conditional ordinary allocator unit
+
+(include-book "assumptions-selected-runtime-rx-copy-cost") ; PRF-1160 conditional successful component cost
