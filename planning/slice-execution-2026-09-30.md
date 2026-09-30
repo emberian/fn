@@ -127,3 +127,46 @@ advance twice. Tests include mixed event kinds and a handle-width change.
 The original row remains available for the outer P wire projection, while the
 remapped row supplies the new history image. Complete metadata tails, including
 the mandatory binding field, survive both resident and borrowed remapping.
+
+## Registered query settlement
+
+The row-taking `fn-iqr-*` functions are internal resource algebra. An old active
+row can be replayed against a later ledger and release another query's charge;
+the coordinator's two-query diagnostic evaluated that case in the actual ACL2
+source world. This is not a reachable-provider counterexample: the public
+provider boundary is still being implemented. Its token-only operations fetch
+the current registered row and update that row and the shared pool in one
+owner-serialized core call. Promotion to retained baseline follows the same
+rule. Duplicate completion and stale tokens after slot reuse preserve every
+other live query's debt. The shared pool type is extracted without creating a
+second authority; its new incoming-holder field changes the runtime layout and
+requires matching evidence.
+
+## Captured group-number source
+
+Message-ID minimum selection is not OVER range enumeration. The shared provider
+supplies a sealed row read by ordinal; OVER separately maintains the mapping
+from a group's local article number to its catalog row ordinal. Ordinal zero is
+valid. The selected implementation uses persistent group and number bit tries,
+with resumable descent and path-copy rebuilding. It reuses generic trie algebra,
+not the older materialized entry index. Runtime group lookup consumes string
+bits directly rather than constructing an unbounded integer key or octet list.
+Numeric domains follow supported profiles and codecs, with no added fixed
+31-bit ceiling. Group lookup, updates, old captured roots and cleanup all have
+explicit funding; no full-history scan or per-request index rebuild substitutes
+for this source.
+
+The actual admission owner prepares the staged roots from the exact assigned
+catalog row and captured revision before durable publication. Yield retains
+that staging state and its credit. A changed revision is reconciled before the
+irreversible publication. At `fn-owner-finish-submission-synced`, the matching
+completion installs the staged roots with the catalog's `fn-sca-finish` effect
+under the same serialized core transition. A mismatch after durable completion
+requires recovery; it cannot become a refusal, rollback or serving interval
+with an index awaiting catch-up. Loading uses the same assigned-row insertion.
+Capture retains the selected group's exact number root, row root, count, view
+and arena grant. Visibility, holes, withdrawals, later appends and reset or
+incarnation changes remain explicit refinement and lifecycle obligations.
+`sol_over_served` owns this source and controller; `sol_owner_union` owns its
+actual admission/publication hooks, and `sol_index_integration` supplies the
+common row traversal. This is an implementation contract, not completion.
