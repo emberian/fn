@@ -1021,6 +1021,7 @@
     "books/catalog-record",
     "books/catalog",
     "books/catalog-commit",
+    "books/catalog-context-recovery",
     "books/catalog-delta",
     "books/catalog-relation",
     "books/catalog-view",
@@ -1102,6 +1103,7 @@
     "tests/acl2/catalog-record-tests",
     "tests/acl2/catalog-tests",
     "tests/acl2/catalog-commit-tests",
+    "tests/acl2/catalog-context-recovery-tests",
     "tests/acl2/catalog-delta-tests",
     "tests/acl2/catalog-relation-tests",
     "tests/acl2/catalog-view-tests",
@@ -1748,26 +1750,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1811,
-    "books_in_root_closure": 1808,
-    "roots": 1744,
-    "theorems": 29046,
-    "functions": 18785,
-    "assert_events": 23805,
+    "books": 1813,
+    "books_in_root_closure": 1810,
+    "roots": 1746,
+    "theorems": 29057,
+    "functions": 18786,
+    "assert_events": 23816,
     "must_fails": 2515,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
       "verified": 3507,
       "declared-off": 2205,
-      "default-guarded": 10252,
+      "default-guarded": 10253,
       "default-unguarded": 2821
     },
-    "suspect_theorems": 1240,
+    "suspect_theorems": 1242,
     "export_hygiene_warnings": 337,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2509,
+    "include_hygiene_warnings": 2511,
     "host_names_warnings": 2156,
     "hand_written_record_warnings": 18
   },
@@ -8691,12 +8693,12 @@
       "book": "books/catalog-commit.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 59,
-      "functions": 33,
+      "theorems": 65,
+      "functions": 34,
       "guards": {
         "verified": 15,
         "declared-off": 0,
-        "default-guarded": 18,
+        "default-guarded": 19,
         "default-unguarded": 0
       },
       "verify_guards_events": 15,
@@ -8717,8 +8719,37 @@
         "fn-cat-abandon-stale-refused",
         "fn-cat-complete-expected-mismatch-refused",
         "fn-cat-complete-stale-refused",
-        "fn-cat-prepare-refused-when-pending"
+        "fn-cat-prepare-refused-when-pending",
+        "fn-snh-ctx-recover",
+        "fn-snh-keyring-of-updates"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/catalog-context-recovery.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 4,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "catalog-commit",
+        "owner-snapshot-recovery"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -20965,7 +20996,7 @@
       "book": "books/owner-reclaim.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 14,
+      "theorems": 15,
       "functions": 9,
       "guards": {
         "verified": 1,
@@ -37816,17 +37847,46 @@
         "default-unguarded": 8
       },
       "verify_guards_events": 0,
-      "assert_events": 6,
+      "assert_events": 11,
       "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 12,
+      "defconsts": 14,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/catalog-commit",
+        "../../books/crypto-attach",
         "held-rows-tests",
         "must-fail-checked",
         "store-node-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/catalog-context-recovery-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/catalog-context-recovery",
+        "../../books/codec-attach",
+        "../../books/crypto-attach"
       ],
       "system_includes": [],
       "suspects": [],
@@ -55779,7 +55839,7 @@
     {
       "theorem": "fn-cat-abandon-stale-refused",
       "book": "books/catalog-commit.lisp",
-      "line": 299,
+      "line": 293,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-cat-abandon and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-cat-abandon and the conclusion is that branch's value"
@@ -55804,7 +55864,7 @@
     {
       "theorem": "fn-cat-complete-expected-mismatch-refused",
       "book": "books/catalog-commit.lisp",
-      "line": 289,
+      "line": 283,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-cat-complete and the conclusion is that branch's value"
       ]
@@ -55812,7 +55872,7 @@
     {
       "theorem": "fn-cat-complete-stale-refused",
       "book": "books/catalog-commit.lisp",
-      "line": 284,
+      "line": 278,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-cat-complete and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-cat-complete and the conclusion is that branch's value"
@@ -55821,7 +55881,7 @@
     {
       "theorem": "fn-cat-prepare-refused-when-pending",
       "book": "books/catalog-commit.lisp",
-      "line": 229,
+      "line": 223,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-cat-prepare and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-cat-prepare and the conclusion is that branch's value"
@@ -58586,7 +58646,7 @@
     {
       "theorem": "fn-orc-one-pass-in-flight-by-definition",
       "book": "books/owner-reclaim.lisp",
-      "line": 263,
+      "line": 282,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-orc-request-word and the conclusion is that arm's value"
       ]
@@ -62824,6 +62884,22 @@
       ]
     },
     {
+      "theorem": "fn-snh-ctx-recover",
+      "book": "books/catalog-commit.lisp",
+      "line": 712,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-recover and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-snh-keyring-of-updates",
+      "book": "books/catalog-commit.lisp",
+      "line": 585,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
       "theorem": "fn-sni-replaying-has-no-indexed-rows",
       "book": "books/store-node-invariants.lisp",
       "line": 992,
@@ -64911,7 +64987,7 @@
       {
         "theorem": "fn-sn-set-keyring-advances-the-generation",
         "book": "books/catalog-commit.lisp",
-        "line": 706,
+        "line": 774,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -67171,6 +67247,7 @@
         "book": "books/stx-keyring-records.lisp",
         "line": 132,
         "stated_in": [
+          "books/catalog-commit.lisp",
           "books/hybrid-lifecycle-store-invariants.lisp",
           "books/owner-signed-post.lisp",
           "books/owner-snapshot-recovery.lisp",
@@ -67178,7 +67255,7 @@
           "books/store-finalize-incremental.lisp",
           "books/store-node.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 6 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 7 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-stxk-context-verdicts",
@@ -67199,9 +67276,10 @@
         "book": "books/stx-keyring-records.lisp",
         "line": 142,
         "stated_in": [
+          "books/catalog-commit.lisp",
           "books/statement-keyring-publication.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-transfer-work-value",
@@ -78973,6 +79051,20 @@
         "line": 28,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/catalog-context-recovery-tests.lisp",
+        "line": 4,
+        "include": "../../books/catalog-context-recovery",
+        "included": "books/catalog-context-recovery.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/catalog-context-recovery-tests.lisp",
+        "line": 5,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

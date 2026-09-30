@@ -67,8 +67,27 @@
             (fn-orc-rows-octets (cdr rows) fn-arena))
     nil))
 
+; A guard dependency of the actual rewrite: expose the decision's payload
+; profile conjunct without expanding the row's wire encoding or its bytes.
+(local
+ (defthm fn-orc-rewrite-payload-profile-by-definition
+   (implies (fn-rclp-rewrites-p octets ctx)
+            (fn-rcl-payload-profilep
+             (fn-record-payload
+              (fn-record-result-record (fn-record-decode-exact octets)))))
+   :rule-classes nil
+   :hints (("Goal"
+            :in-theory (union-theories '(fn-rclp-rewrites-p)
+                                       (theory 'minimal-theory))))))
+
 (defun fn-orc-rewrite-row (row ctx fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t))
+  (declare
+   (xargs :stobjs fn-arena :guard t
+          :guard-hints
+          (("Goal"
+            :use ((:instance fn-orc-rewrite-payload-profile-by-definition
+                             (octets (fn-orc-row-octets row fn-arena))))
+            :in-theory (theory 'minimal-theory)))))
   (let ((o (fn-orc-row-octets row fn-arena)))
     (if (fn-rclp-rewrites-p o ctx)
         (fn-rclp-tombstoned (fn-record-result-record (fn-record-decode-exact o)))
