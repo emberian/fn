@@ -1921,6 +1921,17 @@ integer buffers, stack, first-use state or native call wrappers. A selected
 runtime refinement and actual funding/served composition remain open.
 
 
+`fn-lps-scalars-p` is a carried logical invariant, established by begin and
+preserved by the actual byte transition and tick. Header line count and body
+count are natural and bounded by consumed source position; value start, last
+end and spans retain the existing source bounds. Under this invariant, the
+cheap ready guard and a supported source-length bound, the actual tick's
+position, header count/start/end and body count fit that bound. Its returned
+consumed/work fit the supported quantum bound. These parameterized source
+results add no admission ceiling and do not select a machine fixnum width or
+establish compiler, primitive workspace, stack or allocation correspondence.
+
+
 ## Public exposure (NNT-031)
 
 NNT-031: A reader port facing strangers admits, paces and closes connections within operator limits ACL2 decides, and an unauthenticated session under the none policy reaches no reader or posting command
