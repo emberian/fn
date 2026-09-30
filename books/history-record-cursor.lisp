@@ -160,7 +160,7 @@
                          (fn-scc-octetp (mv-nth 1 (fn-hrcur-leaf-tick c))))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-hrcur-leaf-invariantp fn-hrcur-shapep
-                             fn-hrcur-leaf-tick fn-scc-octetp
+                             fn-hrcur-leaf-tick fn-scc-octetp fn-scc-octet-listp
                              fn-scc-nat-octets)
                             (fn-scc-le-digits)))))
 
