@@ -1105,6 +1105,98 @@ class CacheStartupTests(unittest.TestCase):
             self.assertFalse((target / "books/mid.cert").exists())
 
 
+class OutputPumpTests(unittest.TestCase):
+    def fake(self, base):
+        fake = base / "byte-acl2"
+        fake.write_text("#!" + sys.executable + "\nimport sys\n"
+                        "for line in sys.stdin:\n"
+                        " if 'FN-REPL-DONE ' in line:\n"
+                        "  print('FN-REPL-DONE ' + line.split('FN-REPL-DONE ')[1].split('~%')[0], flush=True)\n"
+                        " else:\n"
+                        "  sys.stdout.buffer.write(" + repr(bytes([255]) + " valid UTF8: ÿ\n".encode()) + ")\n"
+                        "  sys.stdout.buffer.flush()\n")
+        fake.chmod(0o755)
+        return fake
+
+    def test_invalid_utf8_is_escaped_and_real_completion_marker_survives(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary)
+            fake = self.fake(base)
+            with mock.patch.dict(os.environ, {"FN_ACL2": str(fake),
+                    "FN_ACL2_SLOT_DIR": str(base / "slots"), "FN_ACL2_SLOTS": "1"}):
+                session = proof_repl.Acl2("invalid-byte-test", base / "log")
+                try:
+                    output, timed_out = session.send('(defthm f t)', 5)
+                    self.assertFalse(timed_out)
+                    self.assertFalse(proof_repl.errored(output), output)
+                    self.assertIn(r"\xff", output)
+                    self.assertIn("ÿ", output)
+                    self.assertTrue(session.alive())
+                    self.assertIsNone(session.protocol_error)
+                    self.assertIn(r"\xff", (base / "log").read_text())
+                finally:
+                    session.kill()
+
+    def test_unexpected_pump_failure_refuses_load_and_kills_child(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary)
+            fake = self.fake(base)
+            book = base / "queued.lisp"
+            book.write_text('(defthm first t)\n(defthm later t)\n')
+            state = {"name": None, "loaded": [], "ld_loaded": {}}
+            with mock.patch.dict(os.environ, {"FN_ACL2": str(fake),
+                    "FN_ACL2_SLOT_DIR": str(base / "slots"), "FN_ACL2_SLOTS": "1"}):
+                session = proof_repl.Acl2("failed-pump-test", base / "log")
+                try:
+                    with mock.patch.object(session.log, "flush", side_effect=OSError("injected sink failure")):
+                        self.assertFalse(proof_repl.load_book(
+                            session, str(book.with_suffix("")), state, 5, set()))
+                    self.assertEqual(state["loaded"], [])
+                    self.assertIn("output pump failed: OSError", state["error"])
+                    self.assertFalse(session.alive())
+                    self.assertIsNotNone(session.process.returncode)
+                    output, timed_out = session.send('(defthm later t)', 5)
+                    self.assertFalse(timed_out)
+                    self.assertTrue(proof_repl.errored(output))
+                finally:
+                    session.kill()
+
+    def test_pump_failure_persists_not_ready_and_closes_endpoint(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary)
+            fake = self.fake(base)
+            (base / "queued.lisp").write_text('(defthm first t)\n(defthm later t)\n')
+            real_acl2 = proof_repl.Acl2
+            children = []
+
+            def broken_sink(label, log_path):
+                child = real_acl2(label, log_path)
+                children.append(child)
+                child.log.flush = mock.Mock(side_effect=OSError("injected sink failure"))
+                return child
+
+            handler = signal.getsignal(signal.SIGTERM)
+            lock_fd = os.open(base / "lock", os.O_CREAT | os.O_RDWR, 0o600)
+            try:
+                with mock.patch.dict(os.environ, {"FN_ACL2": str(fake),
+                        "FN_ACL2_SLOT_DIR": str(base / "slots"), "FN_ACL2_SLOTS": "1"}), \
+                     mock.patch.object(proof_repl, "SESSIONS", base / "sessions"), \
+                     mock.patch.object(proof_repl, "Acl2", broken_sink):
+                    proof_repl.serve("pump-failure", str(base / "queued"), None, None, 5, 5, lock_fd)
+            finally:
+                signal.signal(signal.SIGTERM, handler)
+                for child in children:
+                    child.kill()
+            directory = base / "sessions/pump-failure"
+            state = json.loads((directory / "state.json").read_text())
+            self.assertFalse(state["ready"])
+            self.assertEqual(state["loaded"], [])
+            self.assertIn("output pump failed: OSError", state["error"])
+            self.assertEqual(state["ended"], "invalidated ACL2 protocol")
+            self.assertFalse((directory / "sock").exists())
+            self.assertIsNotNone(children[0].process.returncode)
+
+
 class ProcessLifetimeTests(unittest.TestCase):
     def test_debugger_invalidation_is_persisted_and_endpoint_closes(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -2769,6 +2861,94 @@ class ChangedDependencyTests(unittest.TestCase):
                     book="tests/acl2/mid-tests", ld=[], no_sync=False, acl2=None, **args),
                     ["start", "s82", "tests/acl2/mid-tests", "--host", "hbox"])
             self.assertNotIn("--ld books/base", seen[-1][-1], extra)
+
+
+
+class AttachmentOrderTests(unittest.TestCase):
+    def test_event_detection_preserves_code_data_and_signatures(self):
+        for text in ('(attach-stobj generic concrete)',
+                     '(progn (attach-stobj generic concrete))',
+                     '(encapsulate () (local (attach-stobj generic concrete)))',
+                     '(with-prover-time-limit 1 (attach-stobj generic concrete))'):
+            self.assertTrue(proof_repl.attachment_events(text), text)
+        for text in ('(defun f () \'(attach-stobj generic concrete))',
+                     '(defthm f t :hints (("Goal" :use (attach-stobj generic concrete))))',
+                     '(encapsulate (((attach-stobj *) => *)) (defthm f t))',
+                     '(value-triple \'(attach-stobj generic concrete))'):
+            self.assertFalse(proof_repl.attachment_events(text), text)
+
+    def test_dfs_source_replay_refuses_attachment_closure(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            (root / 'attach.lisp').write_text(
+                '(include-book "extent")\n(attach-stobj generic extent)\n'
+                '(include-book "generic")\n(include-book "catalog")\n')
+            for name in ('extent', 'generic', 'catalog', 'fixture'):
+                (root / (name + '.lisp')).write_text('(defthm ordinary t)\n')
+            graph = {'fixture': ['attach'], 'attach': ['extent', 'generic', 'catalog'],
+                     'extent': [], 'generic': [], 'catalog': ['generic']}
+            order = proof_repl.dependency_order(graph, {'extent', 'generic', 'attach'}, 'fixture')
+            self.assertLess(order.index('generic'), order.index('attach'))
+            with mock.patch.object(proof_repl, 'ROOT', root):
+                message = proof_repl.attachment_source_refusal(graph, order)
+                self.assertIn('refusing source dependency replay across attach-stobj in attach', message)
+                self.assertIn('compatible certified attachment', message)
+                self.assertIsNone(proof_repl.attachment_source_refusal(graph, []))
+                self.assertIsNone(proof_repl.attachment_source_refusal({'extent': []}, ['extent']))
+
+    def test_named_attachment_source_refuses_before_cache_probe_or_child(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            (root / 'fixture.lisp').write_text('(include-book "attach")\n')
+            (root / 'attach.lisp').write_text(
+                '(include-book "extent")\n(attach-stobj generic extent)\n'
+                '(include-book "generic")\n')
+            for name in ('extent', 'generic'):
+                (root / (name + '.lisp')).write_text('(defthm ordinary t)\n')
+            with mock.patch.object(proof_repl, 'ROOT', root), \
+                 mock.patch.dict(os.environ, {'FN_ACL2': '/not-launched/acl2'}), \
+                 mock.patch.object(proof_repl.acl2_toolchain, 'fingerprint') as fingerprint, \
+                 mock.patch.object(proof_repl.certs, 'install_artifact_set') as install:
+                ok, detail, order = proof_repl.install_closure('fixture', ['attach'])
+            self.assertFalse(ok)
+            self.assertEqual(order, [])
+            self.assertIn('refusing source dependency replay', detail)
+            fingerprint.assert_not_called()
+            install.assert_not_called()
+
+    def test_encapsulated_attachment_refuses_before_sending_any_form(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            (root / 'attach.lisp').write_text(
+                '(include-book "extent")\n(attach-stobj generic extent)\n'
+                '(include-book "generic")\n')
+            for encapsulate, skip in ((True, set()), (False, {'generic'})):
+                acl2 = mock.Mock()
+                state = {'loaded': [], 'ld_loaded': {}}
+                with mock.patch.object(proof_repl, 'ROOT', root):
+                    self.assertFalse(proof_repl.load_book(
+                        acl2, 'attach', state, 1, skip, encapsulate=encapsulate))
+                acl2.send.assert_not_called()
+                self.assertEqual(state['loaded'], [])
+                self.assertEqual(state['ld_loaded'], {})
+                self.assertIn('source-order preflight', state['stopped_at'])
+
+    def test_supported_certified_include_is_sent_in_declared_order(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            (root / 'fixture.lisp').write_text(
+                '(in-package "ACL2")\n(include-book "attach")\n'
+                '(include-book "consumer")\n(defthm observation t)\n')
+            acl2 = mock.Mock()
+            acl2.send.return_value = ('', False)
+            state = {'loaded': [], 'ld_loaded': {}}
+            with mock.patch.object(proof_repl, 'ROOT', root):
+                self.assertTrue(proof_repl.load_book(acl2, 'fixture', state, 1, set()))
+            sent = [call.args[0] for call in acl2.send.call_args_list]
+            self.assertLess(sent.index('(include-book "attach")'),
+                            sent.index('(include-book "consumer")'))
+            self.assertLess(sent.index('(include-book "consumer")'),
+                            sent.index('(defthm observation t)'))
 
 
 if __name__ == "__main__":

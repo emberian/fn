@@ -504,6 +504,55 @@ def book_path(book: str) -> Path:
     raise SystemExit(f"proof-repl: no book or file {book!r}")
 
 
+def attachment_events(text: str) -> bool:
+    """Find attach-stobj only at literal embedded-event positions.
+
+    Definitions, hints, quoted data and event generators are not traversed.
+    Unknown generated events remain governed by the existing loader contract.
+    """
+    def event(form: str) -> bool:
+        stripped = form.strip()
+        if not (stripped.startswith("(") and stripped.endswith(")")):
+            return False
+        inner = stripped[1:-1]
+        children = spans(inner)
+        if not children:
+            return False
+        head = inner[slice(*children[0])].lower()
+        if head == "attach-stobj":
+            return True
+        if head == "encapsulate":
+            start = 2  # signatures are data
+        elif head in ("local", "progn", "progn!"):
+            start = 1
+        elif head == "with-prover-time-limit":
+            start = 2
+        else:
+            return False
+        return any(event(inner[begin:end]) for begin, end in children[start:])
+    return any(event(form) for form in forms(text))
+
+
+def attachment_source_refusal(graph: dict[str, list[str]], order: list[str]) -> str | None:
+    """DFS source replay cannot preserve an interspersed attachment boundary."""
+    if not order:
+        return None
+    try:
+        attached = [name for name in graph
+                    if attachment_events((ROOT / f"{name}.lisp").read_text(encoding="utf-8"))]
+    except (OSError, UnicodeError) as error:
+        return f"proof-repl: cannot check attachment source order: {error}"
+
+    if not attached:
+        return None
+    return ("proof-repl: refusing source dependency replay across attach-stobj in "
+            + ", ".join(sorted(attached))
+            + "; dependency DFS and include hoisting can introduce the generic "
+              "before its attachment. Use the exact compatible certified attachment "
+              "book in the fixture's declared include order, without --source-deps, "
+              "--ld or --ld-missing. No ACL2 source world was launched.")
+
+
 # --- a book's local include graph ------------------------------------------------
 
 def include_graph(root: Path, book: str) -> dict[str, list[str]]:
@@ -580,7 +629,8 @@ class Acl2:
         self.process = subprocess.Popen(
             [sys.executable, str(ROOT / "tools" / "acl2"), "--label", label],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, bufsize=1, cwd=ROOT, start_new_session=True)
+            text=True, encoding="utf-8", errors="backslashreplace",
+            bufsize=1, cwd=ROOT, start_new_session=True)
         # Do not reap this group leader until shutdown has signalled the
         # group. Its unreaped PID cannot be reused for an unrelated group.
         self.pgid = self.process.pid
@@ -592,21 +642,31 @@ class Acl2:
         self.reader.start()
 
     def _pump(self) -> None:
-        assert self.process.stdout is not None
-        for line in self.process.stdout:
-            self.log.write(line)
-            self.log.flush()
-            self.lines.put(line)
-        self.lines.put(None)
+        try:
+            assert self.process.stdout is not None
+            for line in self.process.stdout:
+                self.log.write(line)
+                self.log.flush()
+                self.lines.put(line)
+        except Exception as error:
+            # A broken reader must never leave queued markers looking like
+            # successful admissions. The sending/server thread owns cleanup.
+            self.protocol_error = (PROTOCOL_ERROR + "output pump failed: "
+                                   + type(error).__name__ + ": " + str(error)
+                                   + "; session invalidated; start fresh")
+        finally:
+            self.lines.put(None)
 
     def alive(self) -> bool:
-        return self.process.returncode is None and self.reader.is_alive()
+        return (self.protocol_error is None and self.process.returncode is None
+                and self.reader.is_alive())
 
     def invalidate(self, collected: list[str], reason: str) -> tuple[str, bool]:
         """A raw debugger can evaluate the sentinel without admitting ACL2 events."""
         self.protocol_error = PROTOCOL_ERROR + reason + "; session invalidated; start fresh"
-        self.log.write(self.protocol_error + "\n")
-        self.log.flush()
+        with contextlib.suppress(OSError, ValueError):
+            self.log.write(self.protocol_error + "\n")
+            self.log.flush()
         collected.append(self.protocol_error + "\n")
         self.kill()
         return "".join(collected), False
@@ -624,6 +684,7 @@ class Acl2:
         swallowed after all shows up later as a stale marker and is dropped.
         """
         if self.protocol_error:
+            self.kill()
             return self.protocol_error + "\n", False
         assert self.process.stdin is not None
         self.counter += 1
@@ -646,6 +707,9 @@ class Acl2:
             try:
                 line = self.lines.get(timeout=min(remaining, 0.5))
             except queue.Empty:
+                if self.protocol_error:
+                    self.kill()
+                    return "".join(collected) + self.protocol_error + "\n", False
                 if not self.alive():
                     return self.invalidate(collected, "ACL2 exited before the completion marker")
                 if (suspect and not resent and time.monotonic() - last_line >= quiet):
@@ -655,6 +719,10 @@ class Acl2:
                         self.process.stdin.write(sentinel)
                         self.process.stdin.flush()
                 continue
+            if self.protocol_error:
+                collected.append(self.protocol_error + "\n")
+                self.kill()
+                return "".join(collected), False
             if line is None:
                 return self.invalidate(collected, "ACL2 exited before the completion marker")
             last_line = time.monotonic()
@@ -692,7 +760,10 @@ class Acl2:
         if self.reader.is_alive():
             raise RuntimeError("proof-repl: output remains open after session termination")
         self._terminated = True
-        self.log.close()
+        # A failed output sink may fail again on close; process and pipe
+        # cleanup must still finish and let the server persist invalidation.
+        with contextlib.suppress(OSError):
+            self.log.close()
         if self.process.stdin is not None:
             # A graceful good-bye may leave a buffered sentinel whose reader
             # has already exited. Closing that pipe is still successful cleanup.
@@ -1189,6 +1260,12 @@ def load_book(acl2: Acl2, book: str, state: dict, load_timeout: float,
     source = ROOT / f"{book}.lisp"
     text = source.read_text(encoding="utf-8")
     where = "" if record else f"{book}: "
+    if attachment_events(text) and (encapsulate or skip):
+        state["stopped_at"] = where + "attach-stobj source-order preflight"
+        state["error"] = ("refusing source attachment replay with include hoisting or "
+                          "preloaded source dependencies; use a compatible certified "
+                          "attachment include in declared order")
+        return False
     hard = max(load_timeout, (limit or 0) * 1.5 + 30)
     output, timed_out = acl2.send(f'(set-cbd "{source.parent}/")', load_timeout)
     if timed_out or errored(output):
@@ -1332,14 +1409,16 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
             return 1
         bound = True
         server.listen(4)
-        if idle_seconds > 0:
-            server.settimeout(min(30.0, max(0.05, idle_seconds / 4)))
+        # Poll child/reader health even when automatic idle expiry is off.
+        # An unsolicited pump failure must close a previously ready endpoint.
+        server.settimeout(min(0.5, max(0.05, idle_seconds / 4))
+                          if idle_seconds > 0 else 0.5)
         while acl2.alive():
             try:
                 connection, _ = server.accept()
             except socket.timeout:
                 idle = time.time() - state["last_active"]
-                if idle >= idle_seconds:
+                if idle_seconds > 0 and idle >= idle_seconds:
                     state["ended"] = f"idle {int(idle)} s (deadline {idle_seconds:g} s)"
                     write_stop_note(directory, "idle", idle, idle_seconds, "its own idle timeout")
                     break
@@ -1667,6 +1746,9 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
                 acl2=acl2), required
 
     from_source = dependents_of(graph, wanted) - {book}
+    refusal = attachment_source_refusal(graph, dependency_order(graph, from_source, book))
+    if refusal:
+        return False, refusal, []
     try:
         report, required = attempt(from_source, purge=False)
         if report is not None and report.artifact_set is None:
@@ -1699,6 +1781,10 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
         if (report is not None and report.artifact_set is None
                 and report.action != "install-partial" and auto == "ld"):
             from_source |= dependents_of(graph, report.uncached) - {book}
+            refusal = attachment_source_refusal(
+                graph, dependency_order(graph, from_source, book))
+            if refusal:
+                return False, "\n".join(printed + [refusal]), []
             printed.append("proof-repl: loading from source (proofs run in the session): "
                            + ", ".join(dependency_order(graph, from_source, book)))
             report, required = attempt(from_source, purge=False)
@@ -1718,6 +1804,9 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
     except (OSError, subprocess.TimeoutExpired) as error:
         return False, f"proof-repl: certificate acquisition failed: {error}", []
     order = dependency_order(graph, from_source, book)
+    refusal = attachment_source_refusal(graph, order)
+    if refusal:
+        return False, "\n".join(printed + [refusal]), []
     if report is None:
         printed.append("no dependencies to install")
     else:
