@@ -121,23 +121,23 @@
 (local
  (defthm fn-crsm-state-fields
   (and
-   (equal (fn-cp-nth 0 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm)) :remote-scope)
-   (equal (fn-cp-nth 1 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm)) key)
-   (equal (fn-cp-nth 2 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm)) login)
-   (equal (fn-cp-nth 3 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm)) phase)
-   (equal (fn-cp-nth 4 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm)) access)
-   (equal (fn-cp-nth 5 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm)) read)
-   (equal (fn-cp-nth 6 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm)) groups)
-   (equal (fn-cp-nth 7 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm)) served)
-   (equal (fn-cp-nth 8 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm)) closed)
-   (equal (fn-cp-nth 9 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm)) scan)
-   (equal (fn-cp-nth 10 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm)) mods)
-   (equal (fn-cp-nth 11 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm)) prev)
-   (equal (fn-cp-nth 12 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm)) n)
-   (equal (fn-cp-nth 13 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm)) rev)
-   (equal (fn-cp-nth 14 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm)) rm)
-   (equal (fn-cp-nth 15 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm)) built)
-   (equal (fn-cp-nth 16 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm)) bm)
+   (equal (fn-cp-nth 0 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm wire)) :remote-scope)
+   (equal (fn-cp-nth 1 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm wire)) key)
+   (equal (fn-cp-nth 2 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm wire)) login)
+   (equal (fn-cp-nth 3 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm wire)) phase)
+   (equal (fn-cp-nth 4 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm wire)) access)
+   (equal (fn-cp-nth 5 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm wire)) read)
+   (equal (fn-cp-nth 6 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm wire)) groups)
+   (equal (fn-cp-nth 7 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm wire)) served)
+   (equal (fn-cp-nth 8 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm wire)) closed)
+   (equal (fn-cp-nth 9 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm wire)) scan)
+   (equal (fn-cp-nth 10 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm wire)) mods)
+   (equal (fn-cp-nth 11 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm wire)) prev)
+   (equal (fn-cp-nth 12 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm wire)) n)
+   (equal (fn-cp-nth 13 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm wire)) rev)
+   (equal (fn-cp-nth 14 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm wire)) rm)
+   (equal (fn-cp-nth 15 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm wire)) built)
+   (equal (fn-cp-nth 16 (fn-crs-state key login phase access read groups served closed scan mods prev n rev rm built bm wire)) bm)
 )
   :hints (("Goal" :in-theory (enable fn-cp-nth fn-crs-state)))))
 
@@ -174,13 +174,24 @@
           :in-theory (disable fn-cp-nth)))))
 
 (local
+ (defthm fn-crsm-valid-row-spine
+  (implies (equal (fn-cp-nth 3 row) 3) (consp (cdddr row)))
+  :hints (("Goal" :in-theory (enable fn-cp-nth)))))
+
+(local
+ (defthm fn-crsm-access-row-fields
+  (and (equal (fn-cp-nth 3 (car rows)) (if (consp (cdddr (car rows))) (cadddr (car rows)) nil))
+       (equal (fn-cp-nth 1 (car rows)) (if (consp (cdr (car rows))) (cadr (car rows)) nil)))
+  :hints (("Goal" :in-theory (enable fn-cp-nth)))))
+
+(local
  (defthm fn-crsm-tick-access
   (implies (and (fn-crsm-domainp s) (equal key (fn-cp-nth 1 s)) (equal (fn-cp-nth 3 s) :access))
    (equal (fn-crsm-answer (fn-crs-tick s key g) g) (fn-crsm-observe s g)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
    :use ((:instance fn-crsm-first-rule-unfolds (table (fn-cp-nth 4 s)) (login (fn-cp-nth 2 s))))
-   :in-theory (e/d (fn-crs-tick fn-crsm-answer fn-crsm-domainp fn-crsm-observe fn-crsm-after-current fn-crsm-pattern fn-gac-pattern fn-crsm-groups-of-atom fn-inj-cdr fn-inj-car fn-crsm-reverse-one-cell fn-cp-nth) (fn-crs-state fn-mod-queue-hiddenp member-equal fn-gac-rule revappend revappend-removal fn-crsm-groups fn-gac-text-octets fn-gac-readablep fn-crs-namep fn-nntp-octets-chars fn-caac-list-cons fn-scs-octets))))))
+   :in-theory (e/d (fn-crs-tick fn-crsm-answer fn-crsm-domainp fn-crsm-observe fn-crsm-after-current fn-crsm-pattern fn-gac-pattern fn-crsm-groups-of-atom fn-inj-cdr fn-inj-car fn-crsm-reverse-one-cell) (fn-cp-nth fn-crs-state fn-mod-queue-hiddenp member-equal fn-gac-rule revappend revappend-removal fn-crsm-groups fn-gac-text-octets fn-gac-readablep fn-crs-namep fn-nntp-octets-chars fn-caac-list-cons fn-scs-octets))))))
 
 (local
  (defthm fn-crsm-tick-groups
@@ -255,6 +266,6 @@
           (equal (fn-crsm-answer (fn-crs-tick s key g) g) (fn-crsm-observe s g)))
  :rule-classes nil
  :hints (("Goal" :use (fn-crsm-tick-access fn-crsm-tick-groups fn-crsm-tick-served fn-crsm-tick-closed fn-crsm-tick-moderators fn-crsm-tick-accept fn-crsm-tick-reverse fn-crsm-tick-ready fn-crsm-tick-other)
-          :in-theory (enable member-equal))))
+          :in-theory (e/d (member-equal) (fn-cp-nth fn-crs-tick fn-crsm-answer fn-crsm-observe fn-crsm-domainp fn-crsm-groups fn-crsm-after-current fn-crsm-pattern fn-gac-pattern fn-crsm-access-row-fields fn-crsm-nth-cons fn-crsm-nth-zero)))))
 
 (in-theory (disable fn-crsm-pattern fn-crsm-groups fn-crsm-after-current fn-crsm-observe fn-crsm-domainp fn-crsm-answer))

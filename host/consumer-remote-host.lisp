@@ -1,7 +1,8 @@
 ; Additive remote caller wrappers, loaded after host/owner-host.lisp.
 ; Actual current configured owner/account publication is read in one span.
 (in-package "ACL2")
-(include-book "../books/consumer-remote-scope")
+(include-book "../books/consumer-remote-dispatch")
+(include-book "../books/consumer-account-carries-state")
 (include-book "../books/consumer-account-state")
 (include-book "../books/owner-canonical-epoch")
 
@@ -49,3 +50,88 @@
               (fn-crs-tick cursor (fn-crs-key ingress
                                    (fn-cfg-generation (fn-owner-config state))) g)
             ingress)))))
+
+; Selected entry preparation borrows the sole maintained metadata5. This
+; capture coordinate is semantic data, never the actual runtime source token.
+(defun fn-owner-remote-selection-begin (request protectedp g state)
+ (declare (xargs :stobjs state :mode :program))
+ (if (not (boundp-global 'fn-owner state)) (value '(:unavailable :owner))
+  (let* ((store (fn-owner-store state)) (cp (fn-sn-consumer store))
+         (count (fn-sf-records-count (fn-sn-files store)))
+         (generation (fn-cfg-generation (fn-owner-config state)))
+         (ingress (fn-cre-ingress request protectedp g cp (fn-owner-canonical-epoch state)
+                                  count (fn-owner-account-root-state state))))
+   (value (if (eq (fn-cp-nth 0 ingress) :authenticated)
+      (list :selection (fn-crx-coordinate ingress cp generation count) ingress cp generation
+        (fn-cep-begin cp (list :remote-select (fn-cp-nth 4 request))
+                          (fn-owner-account-carries-read state))) ingress)))))
+
+; Every prepared entry step authenticates the explicit current account again
+; and rejects a changed semantic capture before touching any borrowed cell.
+; The actual owner entry additionally owes retained source/custody validation.
+(defun fn-owner-remote-selection-tick (request protectedp g captured cursor state)
+ (declare (xargs :stobjs state :mode :program))
+ (if (not (boundp-global 'fn-owner state)) (value '(:unavailable :owner))
+  (let* ((store (fn-owner-store state)) (cp (fn-sn-consumer store))
+         (count (fn-sf-records-count (fn-sn-files store)))
+         (generation (fn-cfg-generation (fn-owner-config state)))
+         (ingress (fn-cre-ingress request protectedp g cp (fn-owner-canonical-epoch state)
+                                  count (fn-owner-account-root-state state))))
+   (value (cond ((not (eq (fn-cp-nth 0 ingress) :authenticated)) ingress)
+                ((not (equal captured (fn-crx-coordinate ingress cp generation count)))
+                 '(:refused :consumer-source-changed))
+                (t (fn-cep-tick cursor)))))))
+
+(defun fn-owner-remote-selected-plan (request protectedp g captured cep definition state)
+ (declare (xargs :stobjs state :mode :program))
+ (if (not (boundp-global 'fn-owner state)) (value '(:unavailable :owner))
+  (let* ((store (fn-owner-store state)) (cp (fn-sn-consumer store))
+         (count (fn-sf-records-count (fn-sn-files store)))
+         (generation (fn-cfg-generation (fn-owner-config state)))
+         (ingress (fn-cre-ingress request protectedp g cp (fn-owner-canonical-epoch state)
+                                  count (fn-owner-account-root-state state))))
+   (value (cond ((not (eq (fn-cp-nth 0 ingress) :authenticated)) ingress)
+                ((not (equal captured (fn-crx-coordinate ingress cp generation count)))
+                 '(:refused :consumer-source-changed))
+                (t (fn-crx-selected-plan cp ingress cep definition generation)))))))
+
+(defun fn-owner-remote-decision-begin (request protectedp g captured cep definition state)
+ (declare (xargs :stobjs state :mode :program))
+ (if (not (boundp-global 'fn-owner state)) (value '(:unavailable :owner))
+  (let* ((store (fn-owner-store state)) (cp (fn-sn-consumer store))
+         (count (fn-sf-records-count (fn-sn-files store)))
+         (generation (fn-cfg-generation (fn-owner-config state)))
+         (ingress (fn-cre-ingress request protectedp g cp (fn-owner-canonical-epoch state)
+                                  count (fn-owner-account-root-state state)))
+         (profile (fn-owner-store-profile state)))
+   (value (cond ((not (eq (fn-cp-nth 0 ingress) :authenticated)) ingress)
+                ((not profile) '(:unavailable :profile))
+                ((not (equal captured (fn-crx-coordinate ingress cp generation count)))
+                 '(:refused :consumer-source-changed))
+                (t (fn-crd-begin captured ingress cp cep definition
+                           (fn-store-profile-max-consumers profile) generation)))))))
+
+(defun fn-owner-remote-decision-tick (request protectedp g cursor state)
+ (declare (xargs :stobjs state :mode :program))
+ (if (not (boundp-global 'fn-owner state)) (value '(:unavailable :owner))
+  (let* ((store (fn-owner-store state)) (cp (fn-sn-consumer store))
+         (count (fn-sf-records-count (fn-sn-files store)))
+         (generation (fn-cfg-generation (fn-owner-config state)))
+         (ingress (fn-cre-ingress request protectedp g cp (fn-owner-canonical-epoch state)
+                                  count (fn-owner-account-root-state state))))
+   (value (if (eq (fn-cp-nth 0 ingress) :authenticated)
+               (fn-crd-tick cursor (fn-crx-coordinate ingress cp generation count)) ingress)))))
+
+; Saved selected proposal and exact new CP/carries only. This has no frontier
+; allocation, persistence, Store publication or durable ACK side effect.
+(defun fn-owner-remote-decision-finish (request protectedp g cursor state)
+ (declare (xargs :stobjs state :mode :program))
+ (if (not (boundp-global 'fn-owner state)) (value '(:unavailable :owner))
+  (let* ((store (fn-owner-store state)) (cp (fn-sn-consumer store))
+         (count (fn-sf-records-count (fn-sn-files store)))
+         (generation (fn-cfg-generation (fn-owner-config state)))
+         (ingress (fn-cre-ingress request protectedp g cp (fn-owner-canonical-epoch state)
+                                  count (fn-owner-account-root-state state))))
+   (value (if (eq (fn-cp-nth 0 ingress) :authenticated)
+               (fn-crd-finish cursor (fn-crx-coordinate ingress cp generation count)
+                              (fn-owner-account-carries-read state)) ingress)))))

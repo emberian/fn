@@ -106,6 +106,6 @@
  (let* ((key '(:remote-source 3 nil 1 nil 7))
         (closed '((:moderated (97) (113) (nil))))
         (s (fn-crs-state key nil :closed nil nil '((113)) '((113)) closed
-                        closed nil nil 0 nil nil nil nil)))
+                        closed nil nil 0 nil nil nil nil 0)))
   (and (equal key (fn-cp-nth 1 s)) (not (fn-crsm-domainp s))
        (not (equal (fn-crsm-answer (fn-crs-tick s key 3) 3) (fn-crsm-observe s 3))))))

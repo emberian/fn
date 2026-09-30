@@ -1240,3 +1240,23 @@ on this producer. A truncated stream is refused rather than silently shortened.
 These are source components of CNS-011. The actual digest/parser refinement,
 installed transport admission/custody, durable variable CPE publication and full
 native endpoint/scenarios remain open.
+
+The selected source registration cursor compares one stored/request group cell
+per tick; new-registration capacity counts the borrowed CP table one cell per
+tick. A retry with the exact current durable account creation and ordered query
+keeps its old query version, registration epoch and position. A changed register
+refuses with rebase-required. Explicit new/rebased definitions use consumerID as
+the opaque queryID and the maintained fresh CP registration epoch as qver. The
+current authority revision and account creation remain separate scope fields.
+
+The source definition cursor carries its exact uint16-name wire octet sum and
+query count during the existing accept/reverse pass. FNCE version4, codes6/7,
+represents remote-register/remote-rebase independently of local FNCE1, account
+adoption FNCE2 and signing binding FNCE3. Its bounded producer emits one fixed
+header or one <=256-octet name chunk per step, and refuses changed source keys or
+mismatched remaining count/charge. Chunk residual and measure correspondence
+are source theorems; the full logical decoder is a recovery reference. It is
+not called on the served path. Concrete buffer/replay refinement, exact carried
+Store budget/atomic finish and installed source custody remain open. A consumer
+query profile cardinality must be independently configured/validated; it cannot
+be inferred from per-article groups or a historical 65535 codec ceiling.
