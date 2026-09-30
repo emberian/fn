@@ -48,6 +48,15 @@ Changes to an acceptance obligation are recorded against that same contract,
 with their cause and owner. Full original finite scope, later pillars,
 explicit exclusions and external/user actions remain as already agreed.
 
+Narrow protected source admission is already authorized work. An expired
+REPL, an unavailable loan or a planned normal-certification request is not an
+approval gate. The source owner may start a bounded replacement cohort using
+exact compatible cached dependencies and recorded source hashes, respecting
+the machine slots and edit leases. Prefer a shared matching prefix; do not
+silently broaden into historical whole-owner bootstraps. Normal certification,
+image campaigns and public dev integration remain runner-coordinated. Name a
+live handle before treating a requested run as an active execution lock.
+
 ## Batch captures retain publication backing before connections exist
 
 The actual `fn-ocv-capture` protocol retains at most two reader views, D and
