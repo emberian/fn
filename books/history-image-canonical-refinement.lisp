@@ -18,7 +18,8 @@
  (let ((cache (fn-omk-at 21 c)) (ordinal (fn-hpic-meta-field 1 c)))
   (implies (and (fn-omk-widthp cache 3) (eq (fn-omk-at 0 cache) :digest)
                 (equal (fn-omk-at 1 cache) ordinal)
-                (unsigned-byte-p 256 (fn-omk-at 2 cache)))
+                (unsigned-byte-p 256 (fn-omk-at 2 cache))
+                (< ordinal (len digests)))
    (equal (fn-omk-at 2 cache) (nth ordinal digests)))))
 
 ; The full directory run may cross a physical page in the middle of an
@@ -100,7 +101,8 @@
   :in-theory (e/d (fn-hpm-tick) (mv-nth fn-hpb-put fn-hpm-word fn-hpb-ready fn-hpb-used))))))
 
 (local (defthm fn-hpic-cached-value-is-canonical-unfolds
- (implies (and (fn-hpic-cached-digest-agreesp c digests) (fn-hpic-current-cachep c))
+ (implies (and (fn-hpic-cached-digest-agreesp c digests) (fn-hpic-current-cachep c)
+               (< (fn-hpic-meta-field 1 c) (len digests)))
   (equal (fn-omk-at 2 (fn-omk-at 21 c)) (nth (fn-hpic-meta-field 1 c) digests)))
  :hints (("Goal" :in-theory (e/d (fn-hpic-cached-digest-agreesp fn-hpic-current-cachep)
                                 (fn-hpic-meta-field fn-omk-at unsigned-byte-p))))))
@@ -153,7 +155,9 @@
  (let ((r (fn-hpi-tick c observation ledger fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb pgs-digest-state)))
   (implies (and (fn-omk-widthp c 25) (equal (fn-omk-at 0 c) :metadata)
                 (equal (car r) :continue))
-   (and (equal (fn-hpb-prefix (mv-nth 8 r))
+   (and (equal (mv-nth 2 r) (mv-nth 2 (fn-hpi-metadata-step c fn-hpb)))
+        (equal (mv-nth 8 r) (mv-nth 3 (fn-hpi-metadata-step c fn-hpb)))
+        (equal (fn-hpb-prefix (mv-nth 8 r))
                (fn-hpb-prefix (mv-nth 3 (fn-hpi-metadata-step c fn-hpb))))
         (equal (mv-nth 3 r) ledger)
         (equal (mv-nth 4 r) fn-hpq0) (equal (mv-nth 5 r) fn-hpq1)
@@ -219,3 +223,179 @@
      fn-hpb-prefix fn-hpb-used mv-nth fn-hpic-directory-model fn-hpic-meta-field
      fn-hpic-cached-digest-agreesp fn-hpi-grant-matchesp fn-hpi-stream-step take nth nthcdr
      fn-hpic-take-next fn-hpic-nth-nthcdr)))))
+
+
+(local (defun fn-hpic-field-ind (j k c)
+ (if (or (zp j) (zp k)) (list j k c)
+  (fn-hpic-field-ind (1- j) (1- k) (if (consp c) (cdr c) nil)))))
+(local (defthm fn-hpic-set-field
+ (implies (and (natp k) (< k 25) (natp j) (< j 25))
+  (equal (fn-omk-at j (fn-hpi-set k value c))
+         (if (equal j k) value (fn-omk-at j c))))
+ :hints (("Goal" :induct (fn-hpic-field-ind j k c)
+  :expand ((fn-hpi-set k value c) (fn-omk-at j c)
+           (fn-omk-at j (fn-hpi-set k value c))
+           (:free (a d) (fn-omk-at j (cons a d))))
+  :in-theory (e/d (fn-omk-at fn-hpi-set) (fn-hpi-set-is-update-by-definition))))))
+(local (defthm fn-hpic-update-keeps-width
+ (implies (and (natp n) (<= n 25) (natp k) (< k n) (fn-omk-widthp c n))
+  (fn-omk-widthp (fn-hpi-set k value c) n))
+ :hints (("Goal" :induct (fn-hpic-field-ind n k c)
+  :expand ((fn-hpi-set k value c) (fn-omk-widthp c n)
+           (fn-omk-widthp (fn-hpi-set k value c) n))
+  :in-theory (e/d (fn-omk-widthp fn-hpi-set) (fn-hpi-set-is-update-by-definition))))))
+
+(local (defthm fn-hpic-metadata-continue-state-unfolds
+ (let* ((meta (fn-omk-at 19 c))
+        (step (fn-hpm-tick (fn-omk-at 1 meta) (fn-omk-at 2 meta) (fn-omk-at 3 meta)
+                          (fn-omk-at 4 meta) (fn-omk-at 5 meta)
+                          (if (fn-hpic-current-cachep c) (fn-omk-at 2 (fn-omk-at 21 c)) 0) fn-hpb)))
+  (implies (equal (car (fn-hpi-metadata-step c fn-hpb)) :continue)
+   (equal (mv-nth 2 (fn-hpi-metadata-step c fn-hpb))
+          (fn-hpi-set 19 (list (fn-omk-at 0 meta) (mv-nth 1 step) (mv-nth 2 step)
+                              (mv-nth 3 step) (fn-omk-at 4 meta) (fn-omk-at 5 meta)
+                              (fn-omk-at 6 meta)) c))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :in-theory (e/d (fn-hpi-metadata-step fn-hpic-current-cachep fn-hpic-meta-field)
+    (mv-nth fn-omk-at fn-hpi-set fn-hpi-set-is-update-by-definition fn-hpi-issue-io fn-hpi-await-page
+     fn-hpb-ready fn-hpb-used fn-hpb-prefix fn-hpm-tick fn-hpm-tick-nonstored-unchanged))))))
+
+(local (defthm fn-hpic-buffer-used-after-update-unfolds
+ (equal (fn-hpb-used (update-fn-hpb-used value fn-hpb)) value)
+ :hints (("Goal" :in-theory (enable fn-hpb-used update-fn-hpb-used)))))
+
+(local (defthm fn-hpic-stored-pointer-values-unfolds
+ (implies (equal (car (fn-hpm-tick ordinal component remaining entries base digest fn-hpb)) :stored)
+  (and (equal (mv-nth 1 (fn-hpm-tick ordinal component remaining entries base digest fn-hpb))
+              (if (equal component 5) (+ 1 ordinal) ordinal))
+       (equal (mv-nth 2 (fn-hpm-tick ordinal component remaining entries base digest fn-hpb))
+              (if (equal component 5) 0 (+ 1 component)))
+       (equal (mv-nth 3 (fn-hpm-tick ordinal component remaining entries base digest fn-hpb))
+              (1- remaining))
+       (equal (fn-hpb-used (mv-nth 4 (fn-hpm-tick ordinal component remaining entries base digest fn-hpb)))
+              (+ 1 (fn-hpb-used fn-hpb)))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :in-theory (e/d (fn-hpm-tick fn-hpb-put)
+    (mv-nth fn-hpm-tick-progress fn-hpm-tick-nonstored-unchanged fn-hpm-word fn-hpb-used
+     update-fn-hpb-wi update-fn-hpb-used fn-hpb-wi))))))
+
+(local (defthm fn-hpic-seven-fields-unfolds
+ (and (equal (fn-omk-at 0 (list a b d e f g h)) a)
+      (equal (fn-omk-at 1 (list a b d e f g h)) b)
+      (equal (fn-omk-at 2 (list a b d e f g h)) d)
+      (equal (fn-omk-at 3 (list a b d e f g h)) e)
+      (equal (fn-omk-at 4 (list a b d e f g h)) f)
+      (equal (fn-omk-at 5 (list a b d e f g h)) g)
+      (equal (fn-omk-at 6 (list a b d e f g h)) h))
+ :hints (("Goal" :in-theory (enable fn-omk-at)))))
+
+(local (defthm fn-hpic-next-cache-agreement-unfolds
+ (let* ((ordinal (fn-hpic-meta-field 1 c))
+        (component (fn-hpic-meta-field 2 c))
+        (next (fn-hpi-set 19
+         (list (fn-hpic-meta-field 0 c)
+               (if (equal component 5) (+ 1 ordinal) ordinal)
+               (if (equal component 5) 0 (+ 1 component))
+               remaining (fn-hpic-meta-field 4 c) (fn-hpic-meta-field 5 c)
+               (fn-hpic-meta-field 6 c)) c)))
+  (implies (and (natp ordinal) (fn-hpic-cached-digest-agreesp c digests)
+                (implies (< ordinal (len digests)) (fn-hpic-current-cachep c)))
+   (fn-hpic-cached-digest-agreesp next digests)))
+ :hints (("Goal" :do-not-induct t
+  :in-theory (e/d (fn-hpic-cached-digest-agreesp fn-hpic-current-cachep fn-hpic-meta-field)
+   (fn-hpi-set fn-hpi-set-is-update-by-definition fn-omk-at fn-omk-widthp unsigned-byte-p nth))))))
+
+(local (defthm fn-hpic-continue-metadata-complete-state-unfolds
+ (let* ((ordinal (fn-hpic-meta-field 1 c)) (component (fn-hpic-meta-field 2 c))
+        (next (fn-hpi-set 19
+         (list (fn-hpic-meta-field 0 c)
+               (if (equal component 5) (+ 1 ordinal) ordinal)
+               (if (equal component 5) 0 (+ 1 component))
+               (1- (fn-hpic-meta-field 3 c)) (fn-hpic-meta-field 4 c)
+               (fn-hpic-meta-field 5 c) (fn-hpic-meta-field 6 c)) c)))
+  (implies (equal (car (fn-hpi-metadata-step c fn-hpb)) :continue)
+   (and (equal (mv-nth 2 (fn-hpi-metadata-step c fn-hpb)) next)
+        (equal (fn-hpb-used (mv-nth 3 (fn-hpi-metadata-step c fn-hpb)))
+               (+ 1 (fn-hpb-used fn-hpb)))
+        (posp (fn-hpic-meta-field 3 c)) (< (fn-hpb-used fn-hpb) 2048)
+        (implies (< ordinal (fn-hpic-meta-field 4 c)) (fn-hpic-current-cachep c)))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use (fn-hpic-metadata-continue-is-stored-unfolds
+        fn-hpic-metadata-continue-state-unfolds
+        (:instance fn-hpic-stored-step-has-word-room-unfolds
+         (ordinal (fn-hpic-meta-field 1 c)) (component (fn-hpic-meta-field 2 c))
+         (remaining (fn-hpic-meta-field 3 c)) (entries (fn-hpic-meta-field 4 c))
+         (base (fn-hpic-meta-field 5 c))
+         (digest (if (fn-hpic-current-cachep c) (fn-omk-at 2 (fn-omk-at 21 c)) 0)))
+        (:instance fn-hpic-stored-pointer-values-unfolds
+         (ordinal (fn-hpic-meta-field 1 c)) (component (fn-hpic-meta-field 2 c))
+         (remaining (fn-hpic-meta-field 3 c)) (entries (fn-hpic-meta-field 4 c))
+         (base (fn-hpic-meta-field 5 c))
+         (digest (if (fn-hpic-current-cachep c) (fn-omk-at 2 (fn-omk-at 21 c)) 0))))
+  :in-theory (e/d (fn-hpic-meta-field)
+   (fn-hpic-current-cachep fn-hpi-metadata-step fn-hpi-set fn-hpi-set-is-update-by-definition
+    fn-omk-at fn-hpb-used mv-nth fn-hpm-tick fn-hpic-stored-step-has-word-room-unfolds
+    fn-hpm-tick-progress fn-hpm-tick-refines-emission-effect fn-hpm-tick-nonstored-unchanged))))))
+
+(local (defthm fn-hpic-continue-state-projection-unfolds
+ (implies (equal (car (fn-hpi-metadata-step c fn-hpb)) :continue)
+  (equal (mv-nth 2 (fn-hpi-metadata-step c fn-hpb))
+   (fn-hpi-set 19
+    (list (fn-hpic-meta-field 0 c)
+          (if (equal (fn-hpic-meta-field 2 c) 5) (+ 1 (fn-hpic-meta-field 1 c)) (fn-hpic-meta-field 1 c))
+          (if (equal (fn-hpic-meta-field 2 c) 5) 0 (+ 1 (fn-hpic-meta-field 2 c)))
+          (1- (fn-hpic-meta-field 3 c)) (fn-hpic-meta-field 4 c)
+          (fn-hpic-meta-field 5 c) (fn-hpic-meta-field 6 c)) c)))
+ :hints (("Goal" :use fn-hpic-continue-metadata-complete-state-unfolds
+  :in-theory (disable fn-hpi-metadata-step fn-hpi-set fn-hpi-set-is-update-by-definition
+                       fn-hpic-meta-field fn-omk-at fn-hpb-used mv-nth fn-hpic-current-cachep)))))
+(local (defthm fn-hpic-continue-used-projection-unfolds
+ (implies (equal (car (fn-hpi-metadata-step c fn-hpb)) :continue)
+  (equal (fn-hpb-used (mv-nth 3 (fn-hpi-metadata-step c fn-hpb))) (+ 1 (fn-hpb-used fn-hpb))))
+ :hints (("Goal" :use fn-hpic-continue-metadata-complete-state-unfolds
+  :in-theory (disable fn-hpi-metadata-step fn-hpi-set fn-hpi-set-is-update-by-definition
+                       fn-hpic-meta-field fn-omk-at fn-hpb-used mv-nth fn-hpic-current-cachep)))))
+
+(local (defthm fn-hpic-metadata-continue-preserves-directory-invariant
+ (implies (and (fn-hpic-directory-invariantp c digests fn-hpb)
+               (equal (car (fn-hpi-metadata-step c fn-hpb)) :continue))
+  (fn-hpic-directory-invariantp
+   (mv-nth 2 (fn-hpi-metadata-step c fn-hpb)) digests
+   (mv-nth 3 (fn-hpi-metadata-step c fn-hpb))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use (fn-hpic-continue-metadata-complete-state-unfolds
+        (:instance fn-hpic-next-cache-agreement-unfolds (remaining (1- (fn-hpic-meta-field 3 c))))
+        fn-hpi-metadata-step-appends-current-directory-word
+        (:instance fn-hpic-take-next (n (fn-hpb-used fn-hpb))
+         (xs (nthcdr (* 2048 (fn-hpic-meta-field 6 c)) (fn-hpic-directory-model c digests))))
+        (:instance fn-hpic-nth-nthcdr (n (fn-hpb-used fn-hpb))
+         (a (* 2048 (fn-hpic-meta-field 6 c))) (xs (fn-hpic-directory-model c digests))))
+  :in-theory (e/d (fn-hpic-directory-invariantp fn-hpic-meta-field
+                  fn-hpic-directory-model)
+   (fn-hpic-stored-step-has-word-room-unfolds fn-hpic-stored-active-address-unfolds
+    fn-hpic-cached-digest-agreesp fn-hpic-current-cachep
+    fn-hpm-tick-progress fn-hpm-tick-refines-emission-effect fn-hpm-directory-padding-is-zero
+    associativity-of-+ commutativity-of-+ commutativity-2-of-+
+    fn-hpi-metadata-step fn-hpi-set fn-hpi-set-is-update-by-definition fn-omk-at fn-omk-widthp
+    mv-nth fn-hpb-prefix fn-hpb-used fn-hpm-tick fn-hpm-tick-nonstored-unchanged
+    pgs-encode-run fn-hpm-model-entries take nth nthcdr unsigned-byte-p
+    fn-hpic-take-next fn-hpic-nth-nthcdr))))))
+
+; Continuing the actual funded host-called controller preserves the whole
+; carried directory phase state, including its concrete scratch prefix.
+(defthm fn-hpi-tick-preserves-current-directory-invariant
+ (let ((r (fn-hpi-tick c observation ledger fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb pgs-digest-state)))
+  (implies (and (fn-hpic-directory-invariantp c digests fn-hpb)
+                (equal (car r) :continue))
+   (fn-hpic-directory-invariantp (mv-nth 2 r) digests (mv-nth 8 r))))
+ :rule-classes nil
+ :hints (("Goal" :use (fn-hpic-tick-metadata-prefix-and-frame-unfolds
+                       fn-hpic-metadata-continue-preserves-directory-invariant)
+  :in-theory (e/d (fn-hpic-directory-invariantp)
+   (fn-hpi-tick fn-hpi-metadata-step fn-hpi-set fn-hpi-set-is-update-by-definition fn-omk-at
+    fn-hpb-prefix fn-hpb-used mv-nth fn-hpic-directory-model fn-hpic-meta-field
+    fn-hpic-cached-digest-agreesp fn-hpi-grant-matchesp fn-hpi-stream-step take nth nthcdr)))))

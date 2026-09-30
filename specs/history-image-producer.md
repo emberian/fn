@@ -178,8 +178,26 @@ decoded-row/page/spool trajectory reaches the positive; current-cache
 corruption and missing-cache IO demand separately falsify the two literal
 premises and complete results.
 
-This is a continuing directory-word phase law. Preservation of the entire
-carried invariant, page handoff/reset, table packing with 341 entries and two trailing zero words,
-whole pool/data/digest/root fidelity and strict productive progress remain
-open. No initial/native/qualification scope is transferred. Exact source
+The earlier coordinate is a continuing directory-word phase law. At that
+coordinate, full invariant preservation, page handoff/reset and table packing
+with 341 entries and two trailing zero words, whole pool/data/digest/root
+fidelity and strict productive progress remained open. No initial/native/
+qualification scope is transferred. Exact source
 evidence is `planning/evidence/history-image-directory-phase-source-2026-09-30.json`.
+
+
+The actual continuing `fn-hpi-tick` now also preserves the complete carried
+directory invariant, including its concrete canonical prefix. Digest/cache
+agreement applies only while the ordinal names an active entry; padding is
+zero regardless of an irrelevant cached value. The weakened invariant is
+proved preserved. A labelled padding-cache mutation reaches padding by four
+actual steps and checks both complete antecedents and conclusions, including
+the failure of the former unnecessarily strong cache agreement. The reachable
+positive and both literal premise removals also check the full next invariant.
+
+This completes the continuing directory state join, while page handoff/reset,
+table packing, whole writer phase/progress, actual effect/FD association and
+INIT/native qualification remain open. Runtime bytes are unchanged. Exact
+source evidence is
+`planning/evidence/history-image-directory-invariant-source-2026-09-30.json`;
+PRF-1144 remains planned with no completion events.
