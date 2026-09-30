@@ -1112,7 +1112,7 @@
         "PRF-020"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
       "note": "`tests/acl2/stx-transit-tests` CERTIFIES since w10/substrate-2, so the S3-1 witnesses have now RUN; before that they were written and unexecuted. 2026-09-29 (lane stx-model, PKT-892): the keystone now lives in books/stx-node-lace.lisp over the node lace read through the arena; until then it was satisfied by the EMPTY lace over every node the machine produces (planning/evidence/stx-vacuity-2026-09-29.md); the transit tests witness it with a non-empty lace over handle nodes.",
@@ -1135,7 +1135,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
       "note": "`tests/acl2/stx-transit-tests` CERTIFIES since w10/substrate-2, so the S3-2 fork witnesses have now RUN. 2026-09-29 (lane stx-model, PKT-892): the keystone now lives in books/stx-node-lace.lisp over the node lace read through the arena; until then it was satisfied by the EMPTY lace over every node the machine produces (planning/evidence/stx-vacuity-2026-09-29.md); the transit tests witness it with a non-empty lace over handle nodes.",
@@ -1213,7 +1213,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
       ],
@@ -3387,7 +3387,7 @@
         "PRF-012"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-request-plan.lisp",
         "tests/acl2/bp-request-plan-tests.lisp",
@@ -14156,7 +14156,7 @@
         "PRF-290"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-number-bound.lisp",
         "books/store-number-projection.lisp",
@@ -16323,7 +16323,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/owner-inspect-group.lisp",
         "tests/acl2/owner-inspect-group-tests.lisp",
@@ -17663,7 +17663,7 @@
     {
       "id": "PRF-1079",
       "title": "Physical sequential statement recovery refines resident recovery",
-      "statement": "Extent and compressed modes of host-called fn-ssr-intern-step produce the exact resident worker result and arena under fn-arena-p and fn-arx-faithful-p of the record/placement lists. This includes historical statement epochs. These source events are admitted; full literal physical-hypothesis teeth and native image evidence remain pending.",
+      "statement": "Host-called fn-ssr-intern-step in host/native/io.lisp produces the exact resident worker result and arena in extent and compressed modes under fn-arx-faithful-p of the record/placement lists. Rows preserve historical statement epochs. The arena-validity hypothesis is redundant and removed by unconditional seal/row refinement. Finite constraint-checked disk realizations exercise enrollment, a real extent/compressed article, rotation and a later article; an unfaithful placement falsifies the complete result equality for each mode.",
       "milestone": "M4",
       "requirements": [
         "SUB-007"
@@ -17671,14 +17671,23 @@
       "depends_on": [
         "PRF-1061"
       ],
-      "assumptions": [],
-      "status": "planned",
+      "assumptions": [
+        "A-DURABLE-EXTENT",
+        "A-DURABLE-LZ"
+      ],
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/statement-recover-stream.lisp",
         "tests/test_native_group_authority.py",
-        "specs/substrate-transport.md"
+        "specs/substrate-transport.md",
+        "tests/acl2/statement-physical-tests.lisp",
+        "host/native/io.lisp"
       ],
-      "progress_note": "Implementation/proof-source input only. Candidate events fn-ssr-extent-step-refines-resident and fn-ssr-lz-step-refines-resident are not cited as completed keystones until complete literal teeth. Runner owns image coordinate."
+      "progress_note": "Clean protected source REPL admits both strengthened keystones and literal physical positive/faithful-placement removal witnesses. Named test abstraction proves the enumerated arena payloads are the complete logical arena, not a selected observation. Matching native image remains runner-owned.",
+      "events": [
+        "fn-ssr-extent-step-refines-resident",
+        "fn-ssr-lz-step-refines-resident"
+      ]
     },
     {
       "id": "PRF-1050",

@@ -467,6 +467,10 @@
   :recognizer (fn-arena-p :logic fn-arena$ap :exec fn-arena$lp)
   :creator (create-fn-arena :logic create-fn-arena$a :exec create-fn-arena$l)
   :corr-fn fn-arena$lcorr
+  ; The nonlocal correspondence has no durable-function supporters. This
+  ; protects its actual dependencies while allowing constraint-checked
+  ; finite durable interpretations in physical refinement witnesses.
+  :corr-fn-exists t
   :exports ((fn-arena-count :logic fn-arena$a-count :exec fn-arena$l-count)
             (fn-arena-payload-len :logic fn-arena$a-payload-len :exec fn-arena$l-payload-len)
             (fn-arena-get :logic fn-arena$a-get :exec fn-arena$l-get)

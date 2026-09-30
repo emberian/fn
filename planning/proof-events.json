@@ -17202,7 +17202,16 @@
     },
     {
       "id": "PRF-1079",
-      "events": []
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ssr-extent-step-refines-resident"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ssr-lz-step-refines-resident"
+        }
+      ]
     },
     {
       "id": "PRF-1008",

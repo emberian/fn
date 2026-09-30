@@ -405,6 +405,7 @@
     "tests/acl2/peer-set-tests",
     "books/store-reclaim-pack",
     "tests/acl2/store-reclaim-pack-tests",
+    "tests/acl2/reclaim-article-subject-tests",
     "books/history-knowledge",
     "tests/acl2/history-knowledge-tests",
     "books/store-reclaim-stream",
@@ -1558,6 +1559,7 @@
     "books/native-statement-material",
     "tests/acl2/statement-keyring-publication-tests",
     "tests/acl2/statement-recover-stream-tests",
+    "tests/acl2/statement-physical-tests",
     "books/article-subject",
     "tests/acl2/article-subject-tests",
     "tests/acl2/group-authority-tests",
@@ -1640,26 +1642,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1704,
-    "books_in_root_closure": 1700,
-    "roots": 1636,
-    "theorems": 27840,
-    "functions": 18151,
-    "assert_events": 22988,
+    "books": 1705,
+    "books_in_root_closure": 1702,
+    "roots": 1638,
+    "theorems": 27853,
+    "functions": 18159,
+    "assert_events": 22992,
     "must_fails": 2496,
     "prover_refusals": 0,
     "encapsulates": 156,
     "guards": {
       "verified": 3462,
-      "declared-off": 2087,
-      "default-guarded": 9866,
+      "declared-off": 2090,
+      "default-guarded": 9871,
       "default-unguarded": 2736
     },
-    "suspect_theorems": 1228,
+    "suspect_theorems": 1229,
     "export_hygiene_warnings": 320,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 272,
-    "include_hygiene_warnings": 2426,
+    "include_hygiene_warnings": 2427,
     "host_names_warnings": 2087,
     "hand_written_record_warnings": 18
   },
@@ -16886,7 +16888,7 @@
       "book": "books/nntp-session.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 13,
+      "theorems": 14,
       "functions": 40,
       "guards": {
         "verified": 35,
@@ -25914,7 +25916,7 @@
       "book": "books/statement-recover-stream.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 8,
+      "theorems": 16,
       "functions": 7,
       "guards": {
         "verified": 0,
@@ -25935,7 +25937,9 @@
         "store-recover-stream"
       ],
       "system_includes": [],
-      "suspects": [],
+      "suspects": [
+        "fn-ssr-resident-record"
+      ],
       "read_error": null
     },
     {
@@ -45990,8 +45994,8 @@
     },
     {
       "book": "tests/acl2/reclaim-article-subject-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 0,
       "guards": {
@@ -47564,6 +47568,32 @@
         "../../books/codec-attach",
         "../../books/crypto-attach",
         "../../books/statement-keyring-publication"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/statement-physical-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 4,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 12,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "statement-recover-stream-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -59875,6 +59905,14 @@
       ]
     },
     {
+      "theorem": "fn-ssr-resident-record",
+      "book": "books/statement-recover-stream.lisp",
+      "line": 115,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-intern-event and the conclusion is that arm's value"
+      ]
+    },
+    {
       "theorem": "fn-sti-prepare-article-unreserved-no-op-by-definition",
       "book": "books/topic-history-store-invariants.lisp",
       "line": 280,
@@ -62293,7 +62331,7 @@
       {
         "theorem": "fn-nntp-stuff-lines-iter-is-stuff-lines",
         "book": "books/nntp-session.lisp",
-        "line": 201,
+        "line": 204,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -80714,6 +80752,13 @@
         "line": 5,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/statement-physical-tests.lisp",
+        "line": 4,
+        "include": "statement-recover-stream-tests",
+        "included": "tests/acl2/statement-recover-stream-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

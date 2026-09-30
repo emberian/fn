@@ -107,10 +107,74 @@
                                     fn-record-p fn-record-payloadp)
                                    (fn-intern-event fn-stxa-p fn-replay-composite-record))))))
 
+; The physical seals and resident seals agree without an arena premise.
+; The row equality therefore does not need to revalidate the arena.
+(local (defthm fn-ssr-record-payload-octets
+ (implies (fn-record-p w) (fn-cbor-octet-listp (fn-record-payload w)))
+ :hints (("Goal" :in-theory (enable fn-record-p fn-record-payloadp)))))
+(local (defthm fn-ssr-resident-record
+ (implies (fn-record-p w)
+  (equal (fn-intern-event w keyring generation fn-arena)
+         (fn-cat-intern-list w keyring generation fn-arena)))
+ :hints (("Goal" :in-theory (e/d (fn-intern-event)
+   (fn-cat-intern-list fn-record-p fn-stxa-p fn-replay-composite-record
+    fn-cat-intern-list-is-row-at-count))))))
+(local (defthm fn-ssr-extent-seal-is-list
+ (equal (fn-arena-seal-extent file eoff elen poff plen trailer fn-arena)
+        (fn-arena-seal-list (fn-durable-octets file poff plen) fn-arena))
+ :hints (("Goal" :in-theory (enable fn-arena-seal-extent fn-arena-seal-list
+                          fn-arena$a-seal-extent fn-arena$a-seal-list)))))
+
+(local (defthm fn-ssr-lz-seal-is-list
+ (equal (fn-arena-seal-lz-extent file eoff elen poff plen trailer n dict fn-arena)
+        (fn-arena-seal-list (fn-lzr-lz-value dict (fn-durable-octets file poff plen) n) fn-arena))
+ :hints (("Goal" :in-theory (enable fn-arena-seal-lz-extent fn-arena-seal-list
+                          fn-arena$a-seal-lz-extent fn-arena$a-seal-list)))))
+
+(local (defthm fn-ssr-extent-row-refines
+ (implies (equal (fn-durable-octets (nth 0 x) (nth 3 x) (nth 4 x)) (fn-record-payload w))
+  (equal (fn-arx-cat-intern-extent w x keyring generation fn-arena)
+         (fn-cat-intern-list w keyring generation fn-arena)))
+ :hints (("Goal" :in-theory (e/d (fn-arx-cat-intern-extent fn-cat-intern-list)
+                   (fn-record-p fn-held-facts-of fn-held-context-of))))))
+
+(local (defthm fn-ssr-extent-event-refines
+ (implies (equal (fn-durable-octets (nfix file) (nfix (nth 2 position)) (len r)) r)
+  (equal (fn-arx-intern-event w r position file keyring generation fn-arena)
+         (fn-intern-event w keyring generation fn-arena)))
+ :hints (("Goal" :in-theory (e/d (fn-arx-intern-event fn-intern-event)
+              (fn-arx-cat-intern-extent fn-cat-intern-list fn-arx-extent-of
+               fn-stxa-p fn-replay-composite-record fn-cat-intern-list-is-row-at-count))
+           :do-not-induct t
+           :use ((:instance fn-arx-extent-of-denotes-payload)
+                 (:instance fn-ssr-extent-row-refines (x (fn-arx-extent-of file position r w))))))))
+
+(local (defthm fn-ssr-lz-row-refines
+ (implies (equal (fn-lzr-lz-value dict (fn-durable-octets (nth 0 x) (nth 3 x) (nth 4 x))
+                                (nth 6 x)) (fn-record-payload w))
+  (equal (fn-lzr-cat-intern-lz w x dict keyring generation fn-arena)
+         (fn-cat-intern-list w keyring generation fn-arena)))
+ :hints (("Goal" :in-theory (e/d (fn-lzr-cat-intern-lz fn-cat-intern-list)
+                   (fn-record-p fn-held-facts-of fn-held-context-of))))))
+
+(local (defthm fn-ssr-lz-event-refines
+ (implies (equal (fn-durable-octets (nfix file) (nfix (nth 2 position)) (len z)) z)
+  (equal (fn-lzr-intern-event w z position file dicts keyring generation fn-arena)
+         (fn-intern-event w keyring generation fn-arena)))
+ :hints (("Goal"
+      :in-theory '(fn-lzr-intern-event fn-ssr-resident-record fn-cbor-octet-listp-implies-true-listp)
+      :do-not-induct t
+      :use ((:instance fn-lzr-extent-of-lz-value (payload (fn-record-payload w)))
+            (:instance fn-ssr-extent-event-refines (r z))
+            (:instance fn-ssr-lz-row-refines
+              (x (fn-lzr-extent-of file position z (fn-record-payload w) dicts))
+              (dict (cdr (assoc-equal (nth 7 (fn-lzr-extent-of file position z
+                         (fn-record-payload w) dicts)) dicts)))))))))
+
 ; Physical replay modes refine the very same sequential statement-context
 ; worker: keys, generations, verdict contexts, rows and arena effects agree.
 (defthm fn-ssr-extent-step-refines-resident
- (implies (and (fn-arena-p fn-arena) (fn-arx-faithful-p rs ps))
+ (implies (fn-arx-faithful-p rs ps)
   (equal (fn-ssr-intern-step acc ws rs ps :extent dicts fn-arena)
          (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena)))
  :hints (("Goal" :induct (fn-ssr-intern-step acc ws rs ps :extent dicts fn-arena)
@@ -118,9 +182,9 @@
   :in-theory (e/d (fn-ssr-intern-step fn-arx-faithful-p)
                  (fn-intern-event fn-arx-intern-event fn-lzr-intern-event fn-ssr-at
                   fn-replay-identity-step fn-ssr-publish fn-intern-event-arena fn-stxk-context-kind
-                  fn-ssr-resident-ignores-places)))))
+                  fn-ssr-resident-ignores-places fn-ssr-resident-record)))))
 (defthm fn-ssr-lz-step-refines-resident
- (implies (and (fn-arena-p fn-arena) (fn-arx-faithful-p rs ps))
+ (implies (fn-arx-faithful-p rs ps)
   (equal (fn-ssr-intern-step acc ws rs ps :lz dicts fn-arena)
          (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena)))
  :hints (("Goal" :induct (fn-ssr-intern-step acc ws rs ps :lz dicts fn-arena)
@@ -128,7 +192,7 @@
   :in-theory (e/d (fn-ssr-intern-step fn-arx-faithful-p)
                  (fn-intern-event fn-arx-intern-event fn-lzr-intern-event fn-ssr-at
                   fn-replay-identity-step fn-ssr-publish fn-intern-event-arena fn-stxk-context-kind
-                  fn-ssr-resident-ignores-places)))))
+                  fn-ssr-resident-ignores-places fn-ssr-resident-record)))))
 
 (defun fn-ssr-rows (acc)
  (declare (xargs :guard t))

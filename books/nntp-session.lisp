@@ -181,6 +181,9 @@
 (local (defthm fn-nntp-rev-onto-is-revappend
          (equal (fn-ag-rev-onto x acc) (revappend x acc))))
 
+(local (defthm fn-nntp-append-assoc
+         (equal (append (append a b) c) (append a b c))))
+
 (local (defthm fn-nntp-revappend-of-append
          (equal (revappend (append a b) acc)
                 (revappend b (revappend a acc)))))

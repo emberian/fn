@@ -651,7 +651,8 @@
         "SUB-003",
         "SUB-004",
         "SUB-005",
-        "SUB-006"
+        "SUB-006",
+        "SUB-007"
       ],
       "steps": [
         "Give node A and node B separate keyrings, both holding agent A's public key, and configure one relay between them that knows nothing about FN-Statement.",
@@ -662,7 +663,8 @@
         "Repeat with the article's body altered by one octet in transit, with an article whose creator node B does not know, and with an article carrying no FN-Statement.",
         "Offer node B a policy statement for a group the offering peer does not govern, then the genuine authority's policy statement, comparing the policy in force before and after each batch.",
         "Have agent A reissue one (incarnation, sequence) slot with two different payloads, deliver one fork to each node, then peer the two nodes both ways.",
-        "Partition two sites, remove a different member at each, reconnect, and merge the reconnected peer's commits."
+        "Partition two sites, remove a different member at each, reconnect, and merge the reconnected peer's commits.",
+        "At the logical recovery boundary, replay enrollment, an article, key rotation and a later article through resident, actual extent and actual compressed-extent modes using a constraint-checked finite disk; repeat with the first placement naming different durable bytes."
       ],
       "expected": [
         "The FN-Statement field arrives at node B byte-identical; only Path and Xref differ across the hops.",
@@ -672,9 +674,12 @@
         "The offering peer's policy statement leaves the policy in force equal before and after; the genuine authority's changes it, and the changing statement is named.",
         "Both nodes end holding both forks and report the creator as an equivocator, with the durable equivocation record agreeing with the lace.",
         "After the reconnection merge every earlier admit/refuse/hold decision is unchanged and the fork is exposed with both removals present.",
-        "No run here is proof evidence: it exercises the design's acceptance criteria against books that do not exist at this revision."
+        "The two-node acceptance criteria remain scenario scope; the separately identified PRF-1079 logical recovery fixture has source proof evidence and does not qualify a native image.",
+        "PRF-1079 source fixture: faithful physical placement preserves the complete sequential worker result and logical arena; the sole-hypothesis-removal placement changes that complete result in both physical modes. This does not claim a matching native-image run."
       ],
-      "evidence": []
+      "evidence": [
+        "tests/acl2/statement-physical-tests.lisp"
+      ]
     },
     {
       "id": "SCN-020",

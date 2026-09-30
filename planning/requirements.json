@@ -5683,9 +5683,10 @@
         "books/statement-keyring-publication.lisp",
         "books/native-statement-material.lisp",
         "tests/acl2/statement-keyring-publication-tests.lisp",
-        "tests/acl2/statement-recover-stream-tests.lisp"
+        "tests/acl2/statement-recover-stream-tests.lisp",
+        "tests/acl2/statement-physical-tests.lisp"
       ],
-      "note": "Explicit configuration and durable snapshot/legacy-statement bridge are source implementation input with clean narrow REPL checks. Active policy is reverified under active keys; frozen history and plain held verdicts are restored. Productive native enrollment/admission/restart/rotation/fork fixture awaits matching new immutable image; physical hypothesis-removal teeth and full inverse/startup composition remain open."
+      "note": "Explicit configuration and durable snapshot/legacy-statement bridge are source implementation input with clean narrow REPL checks. Active policy is reverified under active keys; frozen history and plain held verdicts are restored. Productive native enrollment/admission/restart/rotation/fork fixture awaits matching new immutable image; physical refinement and faithful-placement removal teeth are source-admitted; full inverse/startup composition remains open."
     },
     {
       "id": "HST-039",

@@ -1178,7 +1178,15 @@ under the keyring and generation active immediately before that event.
 After a new enrollment/revocation the next event receives the new epoch.
 The same sequential worker handles resident, extent and compressed records;
 its refinement theorems compare the complete worker result and arena effects
-under their named arena/placement hypotheses. Full replay clears any selected
+under `fn-arx-faithful-p` of the physical record/placement lists (PRF-1079).
+The arena-validity premise was proved redundant and removed: each physical
+seal equals the resident seal of its durable payload for every logical arena.
+The finite disk fixture in `tests/acl2/statement-physical-tests.lisp` discharges
+A-DURABLE-EXTENT/A-DURABLE-LZ attachment constraints and exercises actual
+extent and compressed paths across a key rotation. Each mode has a positive
+complete-result witness and an unfaithful-placement counterexample. A named
+observation theorem equates the fixture's arena enumeration to the complete
+logical arena. This is source proof evidence, not a native-image qualification. Full replay clears any selected
 checkpoint and starts at the initial epoch. Checkpoint suffix replay starts
 at the selected checkpoint's captured identity context and arena, rather
 than the current running owner's keyring. Canonical open retains the frozen
