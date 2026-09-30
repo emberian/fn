@@ -352,3 +352,14 @@ The reference-only list fill records complete bytes/carry/fuel effects for the
 native primitive refinement target. It does not qualify REPLACE/set-fill.
 Native object association, full boundary teeth, constructor/frame/allocator/GC
 and startup funding remain open; this adapter is not activated.
+
+On uncertain RX copy, `fn-rxp-fence` is core-authorized by the exact current
+token and clears only capacity. Issued token/instance, bytes and physical object
+remain; the shared pool U charge is untouched. Repeated fencing is idempotent,
+a foreign token cannot affect the current instance, and later range/consumer
+readiness must refuse. The native `fnn-owner-receiver-fill` handler must fence
+before extent unlock or any consumer after partial/unknown primitive failure.
+This actual ordering and primitive behavior remain runtime/native obligations.
+A controlled same-object reset belongs to the installed pool bridge and requires
+definite alias/turn joins; no host Boolean, refund, constructor or reallocation
+can re-enable the fenced instance.

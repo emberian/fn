@@ -339,6 +339,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/receiver-provider-capacity \
 	tests/acl2/receiver-provider-capacity-tests \
 	tests/acl2/receiver-provider-range-tests \
+	tests/acl2/receiver-provider-fence-tests \
 	tests/acl2/incoming-copy-runtime-domain-tests \
 	tests/acl2/incoming-setup-ranges-tests \
 	tests/acl2/incoming-copy-stobj-tests \

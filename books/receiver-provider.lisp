@@ -123,3 +123,44 @@
                  fn-rx-provider))))
  :hints (("Goal" :in-theory (enable fn-rxp-fill-reference fn-rxp-fill-range
                                   fn-octets$a-from-list))))
+
+; Native uncertain-copy exit must fence before any consumer can observe RX.
+; Preserve issued identity/object/retained U; this is not reset or refund.
+(defun fn-rxc-fence (token fn-rx-carry)
+ (declare (xargs :stobjs fn-rx-carry))
+ (if (not (fn-rxc-currentp token fn-rx-carry))
+     (mv :receiver-unavailable fn-rx-carry)
+   (let ((fn-rx-carry (update-fn-rxc-capacity nil fn-rx-carry)))
+     (mv :receiver-fenced fn-rx-carry))))
+(defun fn-rxp-fence (token fn-rx-provider)
+ (declare (xargs :stobjs fn-rx-provider))
+ (stobj-let ((fn-rx-carry (fn-rxp-carry fn-rx-provider)))
+            (word fn-rx-carry)
+            (fn-rxc-fence token fn-rx-carry)
+            (mv word fn-rx-provider)))
+(defun fn-rxp-currentp (token fn-rx-provider)
+ (declare (xargs :stobjs fn-rx-provider))
+ (stobj-let ((fn-rx-carry (fn-rxp-carry fn-rx-provider)))
+            (current) (fn-rxc-currentp token fn-rx-carry) current))
+(defthm fn-rxc-second-field-by-definition
+ (equal (nth 1 x) (cadr x))
+ :hints (("Goal" :expand ((nth 1 x)))))
+(defthm fn-rxp-fence-preserves-issued-identity
+ (let ((next (mv-nth 1 (fn-rxp-fence token fn-rx-provider))))
+  (and (equal (fn-rxp-token next) (fn-rxp-token fn-rx-provider))
+       (equal (fn-rxp-instance next) (fn-rxp-instance fn-rx-provider))
+       (equal (nth 0 next) (nth 0 fn-rx-provider))))
+ :hints (("Goal" :in-theory (e/d (fn-rxp-fence fn-rxc-fence fn-rxp-token
+                                  fn-rxp-instance update-nth)
+                                 (fn-rxc-currentp fn-bca-tokenp fn-bca-fieldsp))
+                 :expand ((update-nth 2 nil (nth 1 fn-rx-provider))
+                          (update-nth 1 nil (cdr (nth 1 fn-rx-provider)))))))
+(defthm fn-rxp-fence-revokes-readiness
+ (not (fn-rxp-currentp token (mv-nth 1 (fn-rxp-fence token fn-rx-provider))))
+ :hints (("Goal" :in-theory (enable fn-rxp-currentp fn-rxp-fence
+                                  fn-rxc-fence fn-rxc-currentp))))
+(defthm fn-rxp-fence-is-idempotent
+ (equal (mv-nth 1 (fn-rxp-fence token
+                        (mv-nth 1 (fn-rxp-fence token fn-rx-provider))))
+        (mv-nth 1 (fn-rxp-fence token fn-rx-provider)))
+ :hints (("Goal" :in-theory (enable fn-rxp-fence fn-rxc-fence fn-rxc-currentp))))
