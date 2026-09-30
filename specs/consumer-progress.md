@@ -1173,3 +1173,24 @@ Process epoch alone cannot authorize a resumed mutation: all CP-changing
 writers must establish the agreed actual source rule and final validation must
 share a nonyielding owner span with frontier allocation. No schema shape,
 source proof or ready cursor silently supplies that missing lifecycle.
+
+The paired account/config source producer now retains six fields:
+`(:ok CP7 newlyPublishedRootOrNil fenceEventCountOrNil metadata5 rootCarryOrNil)`.
+The actual account decision runs once, and its complete metadata and final-root
+carry survive this result literally; a config decision likewise runs once and
+publishes no replacement account root. The guarded low producer and an actual
+create/delete/tombstone/recreate execution are source-admitted. These result
+packing facts are corollaries of the existing whole metadata boundary, not new
+keystones establishing atomic owner publication or recovery association.
+
+The canonical authority6 layout is
+`(:authority revision creationWatermark namespace40 adoptedRows pending)`.
+The sole owner account publication layout is
+`(:ready processEpoch namespace40 revision fenceEventCount root4)`.
+An actual account-fence/config fixture checks that the forty-octet namespace
+stays literal, the scalar revision advances, the previous publication becomes
+unavailable, and swapped namespace/revision slots fail. This exercises the
+actual bounded availability accessor, not the host STATE collector or disk I/O.
+The high Store callback, attributed same-load cfg-first CP metadata production,
+all-writer source revalidation, funds and atomic installation remain open;
+no nonempty restart metadata may be invented from a current STATE getter.
