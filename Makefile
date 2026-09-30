@@ -416,6 +416,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-obligation-state \
 	books/owner-obligation-writers \
 	books/owner-obligation-recovery \
+	books/owner-obligation-completion \
+	tests/acl2/owner-obligation-completion-tests \
+	books/retention-obligation-view-bounds \
+	tests/acl2/retention-obligation-view-bounds-tests \
 	tests/acl2/owner-obligation-recovery-tests \
 	tests/acl2/owner-obligation-writers-tests \
 	books/retention-obligation-view-node \
