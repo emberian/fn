@@ -87,6 +87,7 @@ Return the live job for the cold-span continuation; no authority is refunded."
                                   (fnn-snapshot-job-cold-mapping job)
                                   (fnn-snapshot-job-writer job)
                                   (fnn-snapshot-job-key-cursor job)
+                                  (fnn-snapshot-job-remapper job)
                                   (fnn-snapshot-job-canonical job))))
                  (return (reverse rows))))
              (when (and (consp answer) (member (first answer) '(:refused :uncertain :done)))
