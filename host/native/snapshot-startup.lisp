@@ -5,7 +5,7 @@
 
 (defstruct (fnn-snapshot-initial-workspace
              (:constructor %make-fnn-snapshot-initial-workspace))
-  writer scratch receipt)
+  writer scratch receipt q0 q1 q2 q3 pool digest)
 (define-condition fnn-snapshot-startup-retained (fnn-snapshot-capture-uncertain)
   ((workspace :initarg :workspace :reader fnn-snapshot-startup-retained-workspace)
    (source :initarg :source :initform nil :reader fnn-snapshot-startup-retained-source)
@@ -20,17 +20,29 @@ page state is borrowed. The outer stage transfers SCRATCH and the writer
 retains these exact five page states through publication or joined cleanup.
 RECEIPT is retained custody; this constructor does not issue or validate it.
 The authenticated reader separately acquires its charged physical buffers."
-  (let* ((q0 (create-fn-hpq0))
-         (q1 (create-fn-hpq1))
-         (q2 (create-fn-hpq2))
-         (q3 (create-fn-hpq3))
-         (pool (create-fn-hpb))
-         (digest (create-pgs-digest-state))
-         (scratch (make-array 16384 :element-type '(unsigned-byte 8)
-                                   :initial-element 0))
-         (writer (fnn-hpi-retain nil q0 q1 q2 q3 pool digest)))
-    (%make-fnn-snapshot-initial-workspace
-     :writer writer :scratch scratch :receipt receipt)))
+  (let ((workspace (%make-fnn-snapshot-initial-workspace :receipt receipt)))
+    (handler-case
+        (progn
+          (setf (fnn-snapshot-initial-workspace-q0 workspace) (create-fn-hpq0))
+          (setf (fnn-snapshot-initial-workspace-q1 workspace) (create-fn-hpq1))
+          (setf (fnn-snapshot-initial-workspace-q2 workspace) (create-fn-hpq2))
+          (setf (fnn-snapshot-initial-workspace-q3 workspace) (create-fn-hpq3))
+          (setf (fnn-snapshot-initial-workspace-pool workspace) (create-fn-hpb))
+          (setf (fnn-snapshot-initial-workspace-digest workspace) (create-pgs-digest-state))
+          (setf (fnn-snapshot-initial-workspace-scratch workspace)
+                (make-array 16384 :element-type '(unsigned-byte 8) :initial-element 0))
+          (setf (fnn-snapshot-initial-workspace-writer workspace)
+                (fnn-hpi-retain nil
+                 (fnn-snapshot-initial-workspace-q0 workspace)
+                 (fnn-snapshot-initial-workspace-q1 workspace)
+                 (fnn-snapshot-initial-workspace-q2 workspace)
+                 (fnn-snapshot-initial-workspace-q3 workspace)
+                 (fnn-snapshot-initial-workspace-pool workspace)
+                 (fnn-snapshot-initial-workspace-digest workspace)))
+          workspace)
+      (error (condition)
+        (error 'fnn-snapshot-startup-retained :job nil :workspace workspace
+               :cause condition :message "startup private backing is retained")))))
 
 (defun fnn-snapshot-startup-open (service)
   "Startup-only caller, before feed/key mutation, SCO clear and prefix release.
@@ -86,6 +98,9 @@ canonical readiness or a publication capability."
                    (setf (fnn-snapshot-job-writer job)
                          (fnn-snapshot-initial-workspace-writer workspace))
                    (values job workspace))
+               (fnn-snapshot-startup-retained (condition)
+                 (setq workspace (fnn-snapshot-startup-retained-workspace condition))
+                 (error condition))
                (error (condition)
                  (error 'fnn-snapshot-startup-retained :job job :workspace workspace
                         :message (format nil "startup workspace did not complete: ~a"
