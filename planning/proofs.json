@@ -18077,6 +18077,26 @@
         "planning/evidence/rx-array-copy-2026-09-30/README.md"
       ],
       "progress_note": "Fresh protected untagged proper source replay rxacsource: one dependency and six root forms, 0.05 seconds/4061 steps. Conditional model and literal hypothesis-removal teeth only; no certification, CL primitive correctness, native host binding, activation or full runtime adequacy claim."
+    },
+    {
+      "id": "PRF-1155",
+      "title": "Conditional selected ordinary allocator prefix geometry",
+      "statement": "A-SELECTED-RUNTIME-ALLOCATION-GEOMETRY bounds qualified ordinary request prefix growth and composes source-derived request octets/counts. Native allocator qualification, collector and frame units, installed association and operation admission remain open.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-013"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-SELECTED-RUNTIME-ALLOCATION-GEOMETRY"
+      ],
+      "status": "planned",
+      "evidence": [
+        "books/assumptions-selected-runtime-allocation-geometry.lisp",
+        "tests/acl2/selected-runtime-allocation-geometry-tests.lisp",
+        "planning/evidence/selected-runtime-allocation-geometry-2026-09-30/README.md"
+      ],
+      "progress_note": "Fresh protected proper source srag2 passed 0.12 seconds /13502 steps; seven model-only teeth. No certification/image/native adequacy claim."
     }
   ]
 }
