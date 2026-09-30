@@ -538,7 +538,11 @@
                   (equal (nth 3 next) (nth 3 fn-arena$c))
                   (equal (nth 4 next) (1+ (nth 4 fn-arena$c)))
                   (<= (nth 4 next) (len (nth 0 next)))
-                  (equal (nth (nth 4 fn-arena$c) (nth 0 next)) o)))))
+                  (equal (nth (nth 4 fn-arena$c) (nth 0 next)) o))))
+  :hints (("Goal" :in-theory (enable fn-arena$cp
+                                      fn-oct-bufp-of-update-nth
+                                      fn-oct-bufp-of-resize-list
+                                      unsigned-byte-p))))
 
 ; The same room fact in the form the rewriter meets it once the fill has
 ; been rewritten to its successor: a linear rule.
