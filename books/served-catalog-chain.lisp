@@ -2340,6 +2340,89 @@
           fn-scrs-source-loop-natural-from-consumed fn-scrs-source-stop-natural
           natp nfix posp)))))))))
 
+(local
+ (defthm fn-scrs-prepare-positive-is-result
+  (implies (posp consumed)
+   (equal (car (fn-scr-source-prepare-span-loop conn i end live trie lver arts cache
+                 fn-octets fn-arena fn-cat consumed acc)) :source-result))
+  :hints (("Goal" :induct
+    (fn-scr-source-prepare-span-loop conn i end live trie lver arts cache
+                 fn-octets fn-arena fn-cat consumed acc)
+    :in-theory (union-theories (theory 'minimal-theory)
+     '(fn-scr-source-prepare-span-loop fn-wire-scan-next-bounds fn-wire-scan-next-natp
+       natp posp nfix zp car-cons cdr-cons))))))
+(local
+ (defthm fn-scrs-prepared-result-is-source-loop
+  (implies (and (natp consumed) (true-listp acc))
+   (let ((p (fn-scr-source-prepare-span-loop conn i end live trie lver arts cache
+              fn-octets fn-arena fn-cat consumed acc)))
+    (implies (equal (car p) :source-result)
+     (equal (nth 1 p) (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+              fn-octets fn-arena fn-cat consumed acc)))))
+  :rule-classes nil
+  :hints (("Goal" :induct
+    (fn-scr-source-prepare-span-loop conn i end live trie lver arts cache
+              fn-octets fn-arena fn-cat consumed acc)
+    :in-theory (union-theories (theory 'minimal-theory)
+     '(fn-scr-source-prepare-span-loop fn-scr-source-scan-span-loop
+       fn-wire-scan-next-bounds fn-wire-scan-next-natp fn-ag-rev-onto-true-listp
+       fn-scrs-wire-advance-natural natp posp nfix zp true-listp nth car-cons cdr-cons))))))
+(local
+ (defthm fn-scrs-prepared-boundary-is-first
+  (implies (natp consumed)
+   (let ((p (fn-scr-source-prepare-span-loop conn i end live trie lver arts cache
+              fn-octets fn-arena fn-cat consumed acc)))
+    (implies (equal (car p) :source-boundary)
+     (and (equal consumed 0) (not (consp acc)) (natp i) (natp end) (< i end)
+          (not (fn-served-closed-wirep (fn-served-conn-wire conn)))
+          (not (fn-served-haltedp conn))
+          (fn-scr-source-change-eventsp (fn-wsp-events
+            (fn-wire-scan (fn-served-conn-wire conn) i end fn-octets)))
+          (equal p (list :source-boundary conn i end
+            (fn-wire-scan (fn-served-conn-wire conn) i end fn-octets)
+            consumed acc :source-change))))))
+  :rule-classes nil
+  :hints (("Goal" :induct
+    (fn-scr-source-prepare-span-loop conn i end live trie lver arts cache
+              fn-octets fn-arena fn-cat consumed acc)
+    :in-theory (union-theories (theory 'minimal-theory)
+     '(fn-scr-source-prepare-span-loop fn-scrs-prepare-positive-is-result
+       fn-wire-scan-next-bounds fn-wire-scan-next-natp fn-scrs-wire-advance-natural
+       natp posp nfix zp car-cons cdr-cons))))))
+
+(local
+ (defthm fn-scrs-dispatch-result-is-its-parts
+  (equal (fn-served-make-result
+           (fn-served-result-conn (fn-scr-dispatch-events conn events live trie lver arts cache fn-arena fn-cat))
+           (fn-served-result-effects (fn-scr-dispatch-events conn events live trie lver arts cache fn-arena fn-cat)))
+         (fn-scr-dispatch-events conn events live trie lver arts cache fn-arena fn-cat))
+  :hints (("Goal" :expand ((fn-scr-dispatch-events conn events live trie lver arts cache fn-arena fn-cat))
+   :in-theory (union-theories (theory 'minimal-theory)
+    '(fn-served-result-conn-of-fn-served-make-result
+      fn-served-result-effects-of-fn-served-make-result))))))
+
+(defthm fn-scr-source-prepare-span-is-source-scan
+ (let* ((p (fn-scr-source-prepare-span conn i end live trie lver arts cache
+                                    fn-octets fn-arena fn-cat))
+        (r (fn-scr-source-scan-span conn i end live trie lver arts cache
+                                    fn-octets fn-arena fn-cat)))
+  (and (implies (equal (car p) :source-result) (equal (nth 1 p) r))
+       (implies (equal (car p) :source-boundary)
+        (and (equal (mv-nth 0 (fn-scr-source-boundary-dispatch p live trie lver arts cache
+                                fn-arena fn-cat)) :dispatched)
+             (equal (mv-nth 1 (fn-scr-source-boundary-dispatch p live trie lver arts cache
+                                fn-arena fn-cat)) r)))))
+ :rule-classes nil
+ :hints (("Goal"
+  :use ((:instance fn-scrs-prepared-result-is-source-loop (consumed 0) (acc nil))
+        (:instance fn-scrs-prepared-boundary-is-first (consumed 0) (acc nil)))
+  :in-theory (union-theories (theory 'minimal-theory)
+   '(fn-scr-source-prepare-span fn-scr-source-scan-span
+     fn-scr-source-boundary-dispatch fn-scr-source-scan-span-loop
+     fn-wire-scan-next-bounds fn-wire-scan-next-natp
+     fn-scrs-dispatch-result-is-its-parts fn-served-counted-make
+     unicity-of-0 fix natp posp nfix zp nth mv-nth len true-listp car-cons cdr-cons fn-ag-rev-onto)))))
+
 (defthm fn-scr-source-scan-span-is-scan-of-consumed-prefix
  (let ((r (fn-scr-source-scan-span conn i end live trie lver arts cache
                                   fn-octets fn-arena fn-cat)))
