@@ -17,6 +17,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/defkeystone \
 	books/definterface \
 	host/allocation-epoch-host \
+	host/connection-operation-ticket-host \
 	books/allocation-epoch-collection-request \
 	books/connection-operation-cost \
 	books/index-connection-start \

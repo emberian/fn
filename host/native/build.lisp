@@ -184,6 +184,7 @@
 (include-book "books/native-operator")
 ;; Internal collector dispatch proofs; no installer or runtime activation.
 (include-book "host/allocation-epoch-host")
+(include-book "host/connection-operation-ticket-host")
 ; The process heap from the store profile (PKT-016): host/native/heap.lisp.
 (include-book "books/heap-figure")
 ;; Lane f1-bisect: host/native/io.lisp fnn-open-nursery calls

@@ -8,8 +8,11 @@ outer closure remain required producers; a well-shaped descriptor is insufficien
 mio, pool, STATE)` returns seven values: error, word, shared turn nonce, slots,
 mio, pool, STATE. It enters the actual `:connection-start` worker slot, evaluates
 the operation under prepaid Qgate, prepays its allocation-account BODY, and then
-constructs a ticket. Success is `:prepared`. A gate-owned refusal still needs its
-once-only no-effect return. Draining grants no new body allowance.
+constructs a ticket. Success is `:prepared`. A definite post-entry evaluator
+refusal or body yield consumes its gate receipt inside prepare and returns NIL
+nonce only after actual ATS `:left`. Native never infers receipt liveness from
+nonce presence. Ambiguous failures retain the receipt and return recovery.
+Draining grants no new body allowance.
 
 The sole immutable `fn-owner-connection-operation-installation` global contains
 ten fields: tag `:connection-operation-installation`, installation serial,
@@ -70,7 +73,15 @@ the exact pool charge, spent identity and pending root. Cost tests include liter
 and hypothesis-removal witnesses, malformed/oversized input and immediate overflow.
 These use explicit synthetic descriptors and physical-child fixtures.
 
-Current coordinate: the two core leaves and their stated tests are source-admitted;
-the host ticket composition is authored with guards explicitly unverified pending
-the actual owner/ATS source-world join. No complete selected-runtime operation
+The completion callbacks, getters and internal refusal settlement are factored
+into `host/connection-operation-ticket-host.lisp`, with no owner/MIO dependency.
+Finish/fault guards and actual `:raw-with` preservation/frame declarations are
+admitted. PRF-1163 proves that successful finish consumes one active turn without
+refunding A and repeated fault has the exact same full result. Actual STATE/ATS
+fixtures cover nonce zero, successful finish/replay, definite refusal cleanup,
+retained start intent and double fault; declaration-removal cases fail as required.
+
+Current coordinate: the two core leaves and narrow completion leaf and their
+stated tests are source-admitted; prepare/start guards remain explicitly unverified
+pending the actual owner source-world join. No complete selected-runtime operation
 allowance, genuine installation, native activation or certification is claimed.

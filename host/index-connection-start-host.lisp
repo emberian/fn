@@ -6,17 +6,7 @@
 (include-book "owner-host")
 (include-book "../books/index-connection-start")
 (include-book "../books/connection-operation-cost")
-(include-book "../books/allocation-turn-slots")
-
-(defun fn-owner-connection-operation-ticket (state)
- (declare (xargs :stobjs state :guard t))
- (if (f-boundp-global 'fn-owner-connection-operation-ticket state)
-     (f-get-global 'fn-owner-connection-operation-ticket state) nil))
-
-(defun fn-owner-connection-operation-installation (state)
- (declare (xargs :stobjs state :guard t))
- (if (f-boundp-global 'fn-owner-connection-operation-installation state)
-     (f-get-global 'fn-owner-connection-operation-installation state) nil))
+(include-book "connection-operation-ticket-host")
 
 ; Ticket16: tag phase kind family address peer owner-id slot nonce epoch
 ; installation-serial descriptor-reference holdergrant fuel input-quantum token.
@@ -45,12 +35,20 @@
                         (fn-ibp-slot-depth fn-index-backing))
        (mv word demand fuel body quantum))
       (if (not (eq word :derived))
-          (mv nil word nonce fn-allocation-turn-slots fn-mio$c fn-page-read-pool state)
+          (mv-let (erp refused retained fn-allocation-turn-slots fn-page-read-pool state)
+           (fn-owner-index-connection-refuse-internal slot nonce word
+             fn-allocation-turn-slots fn-page-read-pool state)
+           (mv erp refused retained fn-allocation-turn-slots fn-mio$c fn-page-read-pool state))
        (mv-let (paid fn-allocation-turn-slots fn-page-read-pool)
         (fn-ats-prepay-body-internal slot nonce (nfix body)
                                      fn-allocation-turn-slots fn-page-read-pool)
         (if (not (eq paid :prepaid))
-            (mv nil paid nonce fn-allocation-turn-slots fn-mio$c fn-page-read-pool state)
+            (if (eq paid :yield)
+                (mv-let (erp refused retained fn-allocation-turn-slots fn-page-read-pool state)
+                 (fn-owner-index-connection-refuse-internal slot nonce :yield
+                   fn-allocation-turn-slots fn-page-read-pool state)
+                 (mv erp refused retained fn-allocation-turn-slots fn-mio$c fn-page-read-pool state))
+              (mv nil :recovery-required nonce fn-allocation-turn-slots fn-mio$c fn-page-read-pool state))
          (let ((state (f-put-global 'fn-owner-connection-operation-ticket
                        (list :connection-operation-ticket :prepaid kind family address peer
                              (fn-own-next-id (fn-owner-core state)) slot nonce
@@ -98,37 +96,3 @@
                                           ((or token (eq word :recovery-required)) :start-intent)
                                           (t :refused)) ticket)) state)))
         (mv nil word token left fn-mio$c fn-page-read-pool state)))))))))
-
-; Only the actual outer closure calls this, AFTER custody/open/definite abort
-; and the entire prepaid epilogue. Logical holder release is unrelated.
-(defun fn-owner-index-connection-finish
- (slot nonce fn-allocation-turn-slots fn-page-read-pool state)
- (declare (xargs :stobjs (fn-allocation-turn-slots fn-page-read-pool state)
-  :guard (fn-aec-pool-statep fn-page-read-pool) :verify-guards nil))
- (let ((ticket (fn-owner-connection-operation-ticket state)))
-  (if (and ticket
-           (not (and (equal slot (fn-omk-at 7 ticket))
-                     (equal nonce (fn-omk-at 8 ticket))
-                     (member-eq (fn-omk-at 1 ticket) '(:prepaid :started :refused)))))
-      (mv nil :recovery-required fn-allocation-turn-slots fn-page-read-pool state)
-   (let ((state (if ticket
-                   (f-put-global 'fn-owner-connection-operation-ticket
-                                  (update-nth 1 :finish-intent ticket) state) state)))
-    (mv-let (word fn-allocation-turn-slots fn-page-read-pool)
-     (fn-ats-finish-owned slot nonce fn-allocation-turn-slots fn-page-read-pool)
-     ; Keep completed roots across a raw escape between core return and native
-     ; receipt. A later gate may retire them; fault never clears them.
-     (let ((state (if (and ticket (eq word :left))
-                     (f-put-global 'fn-owner-connection-operation-ticket
-                                    (update-nth 1 :finished ticket) state) state)))
-      (mv nil word fn-allocation-turn-slots fn-page-read-pool state)))))))
-
-(defun fn-owner-index-connection-fault
- (fn-allocation-turn-slots fn-page-read-pool state)
- (declare (xargs :stobjs (fn-allocation-turn-slots fn-page-read-pool state)
-  :guard (and (fn-aec-pool-statep fn-page-read-pool)
-              (not (eq (fn-prp-alloc-mode fn-page-read-pool) :uninstalled)))
-  :verify-guards nil))
- (mv-let (word fn-allocation-turn-slots fn-page-read-pool)
-  (fn-ats-uncertain-internal fn-allocation-turn-slots fn-page-read-pool)
-  (mv nil word fn-allocation-turn-slots fn-page-read-pool state)))

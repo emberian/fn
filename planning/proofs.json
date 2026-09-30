@@ -18073,6 +18073,31 @@
         "planning/evidence/connection-start-join-2026-09-30"
       ],
       "progress_note": "Exact core source guards and theorem admission; synthetic positive/removal fixtures. Host ticket guard verification, genuine full closure installation and native activation open."
+    },
+    {
+      "id": "PRF-1163",
+      "title": "Actual connection ticket finish consumes one allocating turn and repeated fault retains the complete result",
+      "statement": "For actual fn-owner-index-connection-finish, :left implies active turns decreases by exactly one and cumulative allocation A is unchanged. Actual fn-owner-index-connection-fault is idempotent as a full multiple-value result; ticket STATE, scheduling slots, allocation and identities are retained while mode fences to recovery. Guarded raw dispatch preserves carried pool state; genuine installation and prepare/start integration remain separate.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-10001"
+      ],
+      "depends_on": [
+        "PRF-1154"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-owner-index-connection-finish-consumes-one",
+        "fn-owner-index-connection-fault-is-idempotent"
+      ],
+      "evidence": [
+        "host/connection-operation-ticket-host.lisp",
+        "tests/acl2/connection-operation-ticket-tests.lisp",
+        "specs/connection-operation.md",
+        "planning/evidence/connection-ticket-dispatch-2026-09-30"
+      ],
+      "progress_note": "Fresh protected narrow source replay and actual STATE/ATS fixtures; no selected runtime activation or native composition claim."
     }
   ]
 }
