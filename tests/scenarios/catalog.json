@@ -6339,16 +6339,20 @@
         "Parse a nonempty article with repeated Subject, folded values, TAB-first From, whitespace-only first References line and binary CRLF body.",
         "Assert the literal general parser projection and five-column composition conclusions and independently expected output.",
         "Exercise bare empty field, orphan fold, NUL header, bare LF, missing separator, body framing error and empty first line followed by a fold.",
-        "Mutate expected first-match selection and initial TAB normalization; assert inequality."
+        "Mutate expected first-match selection and initial TAB normalization; assert inequality.",
+        "Exercise literal byte-control commutation, exact body acceptance and new-field/fold physical-line conclusions; remove each retained hypothesis with all other hypotheses checked."
       ],
       "expected": [
         "Exactly the first matching fields, one initial SP removed, folding CRLF removed and TAB scrubbed to SP.",
         "All invalid/error classifications match the actual parser; binary NUL body remains valid.",
-        "Both component keystones are unconditional after redundant accumulator typing was proved unnecessary."
+        "Both component keystones are unconditional after redundant accumulator typing was proved unnecessary.",
+        "Whitespace-only continuation after an already visible field is rejected independently of field-wide visibility."
       ],
       "evidence": [
         "tests/acl2/nov-line-projection-tests.lisp",
-        "planning/evidence/nov-line-projection-source.md"
+        "planning/evidence/nov-line-projection-source.md",
+        "tests/acl2/legacy-parser-validity-tests.lisp",
+        "planning/evidence/legacy-parser-validity-source.md"
       ],
       "execution_scope": "Clean source REPL only; no served cursor or native completion claim."
     }
