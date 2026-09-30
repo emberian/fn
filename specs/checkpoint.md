@@ -338,3 +338,13 @@ source-token binding, funded node/stack allocation, guard-verified host
 composition and matching native evidence. Neither a source parser nor a
 fixed page buffer alone establishes that boundary. See
 [the concrete contract](../planning/history-decode-contract.md).
+
+
+The planned bounded source-row decoder also normalizes symbol package aliases
+accepted by the current postfix codec. `books/history-symbol-normalize.lisp`
+scans the actual fixed ACL2 import table one candidate or borrowed source byte
+per scheduling step. It preserves arbitrary name spans, canonicalizes imported
+COMMON-LISP names and NIL, and requires the authenticated provider's matching
+source-byte and capture/pass lifetime premise. Its cursor and semantic proofs
+are component source evidence under PRF-1102; full row decoding, metadata checks,
+resource funding and host composition remain open.

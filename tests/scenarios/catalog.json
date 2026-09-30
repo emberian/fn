@@ -6312,6 +6312,7 @@
         "Feed nonempty little-endian digits one at a time, including a nonminimal leading-zero spelling, and compare the existing numeric codec.",
         "Decode nonempty strings, opaque symbol spans, fixed HSTXA, paired values and empty opcode6; cut and resume within payload.",
         "Remove each residual hypothesis literally; check malformed package, truncated number/string and stack underflow refusal.",
+        "Normalize accepted ACL2/COMMON-LISP import and NIL spellings by resumable static-candidate scan; preserve arbitrary name spans, reject stale read coordinates and measure productive progress.",
         "Compose authenticated captured root pages, exact source tokens, padding/MKEY checks, borrowed row remap and canonical reencoding."
       ],
       "expected": [
@@ -6325,9 +6326,10 @@
       },
       "evidence": [
         "tests/acl2/history-decode-cursor-tests.lisp",
-        "planning/history-decode-contract.md"
+        "planning/history-decode-contract.md",
+        "tests/acl2/history-symbol-normalize-tests.lisp"
       ],
-      "execution_scope": "Source component tests only. General stream inverse, page-source authentication, integrated native caller and full producer remain open."
+      "execution_scope": "Source component tests only. General stream inverse, page-source authentication, integrated native caller and full producer remain open. Symbol normalization source tests and ground semantic witnesses cover aliases, NIL/T, case-sensitive arbitrary names, duplicate replies, corruption, yield/resume and measured table cost."
     }
   ]
 }
