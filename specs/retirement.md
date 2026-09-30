@@ -259,3 +259,10 @@ error or directory-barrier error preserves the installed retirement intent,
 fences the service and answers uncertainty; the CLI cannot then treat a stale
 prior report as this retirement's report. Repeated requests still refuse as
 already-retiring. This does not establish definite producer settlement.
+
+An additive reader operates on one borrowed, already opened binary descriptor
+through validation and rewind/copy; it does not reopen the pathname between
+passes. Linux/SBCL witnesses use actual native rename/unlink/fstat at that
+boundary and preserve original inode/output. A nonseekable descriptor refuses
+at rewind with no output. Public selection still needs the supported-platform
+descriptor immutability, primitive/buffer/effect and lifetime relation.

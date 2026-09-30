@@ -9,4 +9,7 @@ PASS input=603 valid=NIL output=0 exit=4 reader-explicit-vector-allocations=0
 PASS input=604 valid=NIL output=0 exit=4 reader-explicit-vector-allocations=0
 PASS input=603 valid=NIL output=0 exit=4 reader-explicit-vector-allocations=0
 PASS input=601 valid=NIL output=0 exit=4 reader-explicit-vector-allocations=0
+PASS real descriptor :REPLACE at rewind: original inode/bytes retained, exit0
+PASS real descriptor :UNLINK at rewind: original inode/bytes retained, exit0
+PASS actual nonseekable binary descriptor: validated, rewind refused, output0 exit4
 PASS actual bounded host consumer / real binary streams; extracted ACL2 bodies and recording dispatcher, no activation/funding claim

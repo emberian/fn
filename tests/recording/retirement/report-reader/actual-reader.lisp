@@ -1,3 +1,4 @@
+(require :sb-posix)
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
 (defmacro mv (&rest xs) `(values ,@xs))
@@ -7,10 +8,13 @@
 (defun assoc-equal (x xs) (assoc x xs :test #'equal))
 (defvar *allocations* nil)
 (defvar *actions* nil)
+(defvar *rewind-hook* nil)
 (defun fnn-call (name &rest args) (multiple-value-list (apply (symbol-function name) args)))
 (defun fnn-core (name &rest args)
  (let ((value (first (apply #'fnn-call name args))))
-  (when (eq name 'fn-oru-reader-action) (push value *actions*)) value))
+  (when (eq name 'fn-oru-reader-action)
+   (push value *actions*)
+   (when (and (eq value :rewind) *rewind-hook*) (funcall *rewind-hook*))) value))
 
 (defparameter *fn-outcome-codes*
   '((:accepted . 0) (:refused . 1) (:fenced . 3) (:fault . 4)
@@ -222,6 +226,24 @@ whose own failure would raise a new condition here."
   (sb-ext:string-to-octets string :external-format :utf-8))
 (defun fnn-octets-string (octets)
   (sb-ext:octets-to-string (fnn-octets octets) :external-format :utf-8))
+(define-condition fnn-os-error (error)
+  ((errno :initarg :errno :reader fnn-os-errno)
+   (path :initarg :path :initform nil :reader fnn-os-path))
+  (:report (lambda (c s)
+             (format s "[Errno ~d] ~a~@[: '~a'~]"
+                     (fnn-os-errno c) (sb-int:strerror (fnn-os-errno c))
+                     (fnn-os-path c)))))
+(defun fnn-os-fail (errno &optional path)
+  (error 'fnn-os-error :errno errno :path path))
+(defmacro fnn-posix ((&optional path) &body body)
+  "Run BODY; translate an sb-posix syscall-error into fnn-os-error."
+  `(handler-case (progn ,@body)
+     (sb-posix:syscall-error (e)
+       (fnn-os-fail (sb-posix:syscall-errno e) ,path))))
+(defun fnn-replace (old new) (fnn-posix (new) (sb-posix:rename old new)))
+(defun fnn-unlink (path) (fnn-posix (path) (sb-posix:unlink path)))
+(defun fnn-fstat (fd)
+  (fnn-posix () (sb-posix:fstat fd)))
 (defun fnn-operator-read-retire-report-bounded (in out)
   (let ((cursor (fnn-core 'fn-oru-start)) (phase :validate))
     (loop
@@ -289,4 +311,64 @@ whose own failure would raise a new condition here."
 (dolist (bad '((192 128) (224 128 128) (237 160 128) (244 144 128 128)
                (240 144 128) (255)))
  (test-case (append (make-list 600 :initial-element 65) bad) nil))
+
+(defun descriptor-test (mode)
+ (let ((input #p"descriptor-input.bin") (stage #p"descriptor-stage.bin")
+       (output #p"descriptor-output.bin")
+       (old '(65 194 128 224 160 128 244 143 191 191))
+       (new '(78 69 87)) (result nil) (fired nil))
+  (unwind-protect
+   (progn
+    (dolist (item (list (cons input old) (cons stage new)))
+     (with-open-file (s (car item) :direction :output :if-exists :supersede
+                        :element-type '(unsigned-byte 8))
+      (write-sequence (fnn-octets (cdr item)) s)))
+    (with-open-file (in input :element-type '(unsigned-byte 8))
+     (with-open-file (out output :direction :output :if-exists :supersede
+                          :element-type '(unsigned-byte 8))
+      (let* ((fd (sb-sys:fd-stream-fd in))
+             (inode (sb-posix:stat-ino (fnn-fstat fd)))
+             (*rewind-hook*
+               (lambda ()
+                (assert (not fired)) (setf fired t)
+                (assert (= (file-position out) 0))
+                (ecase mode
+                 (:replace (fnn-replace (namestring stage) (namestring input))
+                           (assert (/= inode (sb-posix:stat-ino
+                                              (sb-posix:stat (namestring input))))))
+                 (:unlink (fnn-unlink (namestring input))
+                          (assert (not (probe-file input)))))
+                (assert (= inode (sb-posix:stat-ino (fnn-fstat fd)))))))
+       (assert (= (fnn-operator-read-retire-report-bounded in out)
+                  (fn-outcome-code :accepted)))
+       (assert fired))))
+    (with-open-file (s output :element-type '(unsigned-byte 8))
+     (loop for byte = (read-byte s nil nil) while byte do (push byte result)))
+    (assert (equal (reverse result) old))
+    (format t "PASS real descriptor ~s at rewind: original inode/bytes retained, exit0~%" mode))
+   (dolist (path (list input stage output)) (ignore-errors (delete-file path))))))
+(defun nonseekable-test ()
+ (multiple-value-bind (read-fd write-fd) (sb-posix:pipe)
+  (let ((output #p"descriptor-pipe-output.bin") (status nil) (*actions* nil))
+   (unwind-protect
+    (progn
+     (with-open-stream (write-stream (sb-sys:make-fd-stream write-fd :output t
+                                      :element-type '(unsigned-byte 8) :buffering :none))
+      (write-sequence (fnn-octets '(65 194 128)) write-stream))
+     (with-open-stream (in (sb-sys:make-fd-stream read-fd :input t
+                              :element-type '(unsigned-byte 8) :buffering :none))
+      (with-open-file (out output :direction :output :if-exists :supersede
+                           :element-type '(unsigned-byte 8))
+       (handler-case (setf status (fnn-operator-read-retire-report-bounded in out))
+        (error (condition) (setf status (fnn-exit-code-for condition))))
+       (assert (= (file-position out) 0))))
+     (assert (= status (fn-outcome-code :fault)))
+     (assert (member :rewind *actions*))
+     (assert (not (member :read-copy *actions*)))
+     (format t "PASS actual nonseekable binary descriptor: validated, rewind refused, output0 exit4~%"))
+    (ignore-errors (delete-file output))))))
+(descriptor-test :replace)
+(descriptor-test :unlink)
+(nonseekable-test)
+
 (format t "PASS actual bounded host consumer / real binary streams; extracted ACL2 bodies and recording dispatcher, no activation/funding claim~%")
