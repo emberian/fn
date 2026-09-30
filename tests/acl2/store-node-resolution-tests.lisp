@@ -104,12 +104,13 @@
 ; -----------------------------------------------------------------------------
 ; PRF-299 keystones (keystone-audit 2026-09-27: the antecedents were not
 ; asserted and no hypothesis had a removal witness).
-; fn-sn-known-abort-preserves-relation / -preserves-state, reachable
-; positive witness: the host's prepared store (a held row staged) is related
-; and a state; the abort is related and a state.
+; fn-sn-known-abort-preserves-relation, reachable positive: the host's
+; prepared store (a held row staged) is related and the abort is related.
 (assert-event (and (fn-snt-relation *snr-abort-prepared*)
-                   (fn-sn-statep *snr-abort-prepared*)
-                   (fn-snt-relation *snr-aborted*)
+                   (fn-snt-relation *snr-aborted*)))
+; fn-sn-known-abort-preserves-state, reachable positive: the same prepared
+; store is a state, and its nontrivial abort is a state.
+(assert-event (and (fn-sn-statep *snr-abort-prepared*)
                    (fn-sn-statep *snr-aborted*)
                    (not (equal *snr-aborted* *snr-abort-prepared*))))
 ; Hypothesis removal (CORRUPTED state, labelled: no transition builds it): a
