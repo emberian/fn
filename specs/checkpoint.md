@@ -325,6 +325,10 @@ why readiness remains material to that equality.
 Actual durable CONFIG publication also preserves this full carry without
 revalidating the history: its semantic fields and completed prefix remain
 unchanged while the configured node and configuration history advance.
+Actual durable `fn-sn-finish` also preserves the entire carry: its ordinary
+and composite verdict publication and frozen row delta advance the same
+completed history prefix, while current keyring resolution and the retired
+field remain carried. No historical payload is reparsed by this publication.
 Full producer readiness still requires preservation across the other actual
 transitions, the canonical writer/load payload alpha boundary, and owner
 node-secret installation. The owner secret is
