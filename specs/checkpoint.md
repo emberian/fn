@@ -357,3 +357,17 @@ and representation invariants, strict progress, supported-domain stack
 sufficiency, concrete allocation demand and actual controller composition
 remain open. Ground BLAKE3 agreement establishes neither standard conformance
 nor real cryptographic assumptions. Full S7/P12/D33 completion is unchanged.
+
+The reusable byte extension `pgs-dcb-begin(sel, base, byte-total, capture, lease,
+pgs-digest)` handles exact byte lengths including empty and partial blocks.
+Its caller retains the captured byte-total unchanged. `pgs-dcb-step(byte-total,
+block, pgs-digest)` delegates to the page core except the final rightmost chunk,
+which records the exact byte count. The caller feeds sixteen u32 words with
+zero padding beyond `pgs-dcb-read-demand`, bounded by64 bytes, and consumes
+source only when that demand is nonzero. `pgs-dcb-next-byte-offset` is the
+requested byte coordinate. `pgs-dcb-result-octets` exposes the32 digest octets
+with one separately funded bounded ROOT compression. Exact partial-tail
+refinement and a conditional terminal correspondence to concrete `fn-blake3`
+are source-admitted. This does not equate the constrained `fn-frame-digest`
+with its realizer; streamed protected extents still need the existing joint
+attachment/refinement pattern at their actual consumer boundary.
