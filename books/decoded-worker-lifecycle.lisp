@@ -29,6 +29,10 @@
   ((not (and (fn-pwz-tokenp token)
              (equal token (fn-pww-token fn-pww-carry))))
    (mv :stale-decoded-worker fn-pww-carry))
+  ((eq (fn-pww-phase fn-pww-carry) :initializing)
+   ; Return from failed/escaped initialization does not publish a decoder.
+   (let ((fn-pww-carry (update-fn-pww-phase :fenced fn-pww-carry)))
+    (mv :initialization-returned-fenced fn-pww-carry)))
   ((eq (fn-pww-phase fn-pww-carry) :running)
    (let ((fn-pww-carry (update-fn-pww-phase :returned fn-pww-carry)))
     (mv :activation-returned fn-pww-carry)))

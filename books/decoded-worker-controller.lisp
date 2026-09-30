@@ -131,3 +131,16 @@
     (word fn-pww-carry pgs-digest-state fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
     (fn-dwc-begin token fn-pww-carry pgs-digest-state fn-zin-st fn-zin-win fn-zin-tab fn-zin-out)
     (mv word fn-pww-node))))
+
+(defun fn-dwc-node-read-observation (token revision io-status fn-pww-node)
+ (declare (xargs :stobjs fn-pww-node :guard t :verify-guards nil))
+ (if (not (fn-dwc-boundp fn-pww-node))
+     (mv :decoded-worker-storage-unavailable fn-pww-node)
+   (stobj-let
+    ((fn-pww-carry (fn-pww-children-get 'fn-pww-carry fn-pww-node (create-fn-pww-carry)))
+     (fn-octets (fn-pww-children-get 'fn-octets fn-pww-node (create-fn-octets)))
+     (pgs-digest-state (fn-pww-children-get 'pgs-digest-state fn-pww-node (create-pgs-digest-state)))
+     (fn-ew-buffer (fn-pww-children-get 'fn-ew-buffer fn-pww-node (create-fn-ew-buffer))))
+    (word fn-pww-carry fn-octets pgs-digest-state fn-ew-buffer)
+    (fn-dwc-read-observation token revision io-status fn-pww-carry fn-octets pgs-digest-state fn-ew-buffer)
+    (mv word fn-pww-node))))
