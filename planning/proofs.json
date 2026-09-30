@@ -18387,9 +18387,11 @@
         "books/page-discovery-ledger.lisp",
         "books/cold-read-layout.lisp",
         "tests/acl2/page-discovery-ledger-tests.lisp",
-        "tests/acl2/cold-read-layout-tests.lisp"
+        "tests/acl2/cold-read-layout-tests.lisp",
+        "host/native/extent.lisp",
+        "host/native/owner.lisp"
       ],
-      "progress_note": "Clean source sessions: baseline27/pureteeth48/adapter18; selected layout p12layout16forms; discovery p12discovery6forms and p12discoveryteeth16forms; final lifecycle/discovery adapter p12modehostclean26forms, all zero refused. Native configuration/startup and lifetime call sites are separate physical-owner integration; no matching image/native verdict or full Store rescue claim.",
+      "progress_note": "Clean source sessions: baseline27/pureteeth48/adapter18; selected layout p12layout16forms; discovery p12discovery6forms and p12discoveryteeth16forms; final lifecycle/discovery adapter p12modehostclean26forms, all zero refused. Native configuration/startup and lifetime call sites are separate physical-owner integration; no matching image/native verdict or full Store rescue claim. Native discovery source now reserves before allocation in fnn-extent-entry-fresh and retains its exact lease through the final fn-octets-pub borrow in fnn-owner-release-extents. This covers the protected vector lifetime only; no productive startup or decoded-output funding claim.",
       "events": [
         "fn-prl-admit-preserves-pool-funding",
         "fn-prl-completion-refunds-at-most-once",
