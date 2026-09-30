@@ -207,6 +207,7 @@
 (include-book "../host/page-read-host")
 (include-book "page-read-executor")
 (include-book "page-file-lease")
+(include-book "page-window-lease")
 (include-book "history-columns-relation")
 (include-book "open-frontier")
 (include-book "poster-bytes")

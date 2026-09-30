@@ -19020,6 +19020,31 @@
         "fn-fc-temporary-mode-refusal-closes-without-stopping"
       ],
       "progress_note": "Clean protected source admission and full positive/hypothesis-removal witnesses passed; certification and matching-image native observation pending."
+    },
+    {
+      "id": "PRF-1119",
+      "title": "An exact private window lease holds its file and charges through worker return and output borrowing",
+      "statement": "Subjects fn-prw-admit, fn-prw-return and fn-prw-release in books/page-window-lease.lisp, reached by host/page-window-lease-host stobj wrappers with named complete answer/effect equations. Admission binds a fresh typed ticket to the complete physical descriptor and requested payload offset and preserves supplied pool funding. Its exact file stays nonclosable. Physical return retains all charges; release refuses until that return and the host must relinquish every output alias before invoking release. Worker credit is conservatively retained through the borrow. This source component is unreachable-in-composition until the authenticated window reader/native executor invokes it; supplied demand is not an allocator refinement or an integrity result.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020"
+      ],
+      "depends_on": [
+        "PRF-1065"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/page-window-lease.lisp",
+        "host/page-window-lease-host.lisp",
+        "tests/acl2/page-window-lease-tests.lisp",
+        "planning/evidence/persistent-cold-executor-2026-09-29.md"
+      ],
+      "progress_note": "Library/adapter source only. Fixed runtime demand, actual hash/decoder composition, persistent executor window dispatch and native activation remain open; no image or certificate claim.",
+      "events": [
+        "fn-prw-admit-preserves-pool-funding",
+        "fn-prw-admitted-window-holds-file"
+      ]
     }
   ]
 }

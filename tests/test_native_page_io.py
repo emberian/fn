@@ -104,7 +104,7 @@ class PageIOTests(unittest.TestCase):
 
     def test_a_late_short_or_error_is_settled_and_fences_the_store(self):
         base = self.filled()
-        for mode in ("short", "error"):
+        for mode in ("short", "error", "runtime-error"):
             with self.subTest(observation=mode):
                 node = self.copy_of(base, "fault-" + mode)
                 owner, old, release, _file = self.held(node, mode)
@@ -115,6 +115,8 @@ class PageIOTests(unittest.TestCase):
                 node.exited(EXIT.FAULT, timeout=120, process=owner)
                 text = owner.stderr.since(0)
                 self.assertIn(b"arena-extent-read", text)
+                if mode == "runtime-error":
+                    self.assertIn(b"cold executor runtime failure", text)
                 self.assertNotIn(b"answer=:PUBLISH", text)
                 self.assertNotIn(b"outcome uncertain", text)
 
