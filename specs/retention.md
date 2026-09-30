@@ -310,3 +310,29 @@ selected-runtime constructor/frame evidence before admission authority. Whole
 reserve/allocation and whole REPLACE remain D27 obstructions until bounded setup
 or funded profile-backed preallocation is joined; a holder alone does not make
 those operations bounded.
+
+The selected incoming setup controller carries a fixed token, total, installed
+capacity, existing connection quantum, offset, pending flag/range and phase.
+The operational capacity descriptor remains in the shared pool's third-field
+carrier and survives holder release. A NIL descriptor is uninitialized, never
+an inferred zero capacity. Installation promotes its current reserved claim
+C to retained U atomically; uncertain installation retains the old descriptor
+and all overlap/debt. Supplied source fixtures do not establish the actual
+constructor charge or the raw backing/descriptor observation relation.
+
+The paired start/next/ack/stop boundary associates one fixed controller with
+the current pool row and protected token. Next returns scalar word/start/count/end;
+repeated next before acknowledgement repeats the same range. A matching copied
+acknowledgement advances the fixed offset. Ambiguous copying cancels and retains
+charge and aliases. Completion seals the row, and settlement requires exact
+joins and cleared aliases. The logical list-plan cursor remains a diagnostic
+reference, not the selected served implementation. Native callbacks must use
+the guarded compiled scalar-MV entries directly, bypassing list dispatchers.
+
+Source admission of this controller does not authorize activation. Remaining
+joins include full paired output/effect refinement teeth, exact raw source and
+backing identity across all yield intervals, operational vector-domain carry,
+constructor/frame/allocator/GC/startup funding, and immutable core context
+registration/clear ordering. Ordinary command traffic uses a separately funded
+congruent RX backing; it may not overwrite the held incoming backing. RX bulk
+fill needs its own core-issued bounded range and complete effect boundary.

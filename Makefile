@@ -329,6 +329,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/page-read-pool-state \
 	books/incoming-octet-holder \
 	books/incoming-backing-census \
+	books/incoming-setup-ranges \
+	books/incoming-buffer-carrier-shape \
+	books/incoming-buffer-carrier \
+	books/incoming-copy-stobj \
+	tests/acl2/incoming-setup-ranges-tests \
+	tests/acl2/incoming-copy-stobj-tests \
 	tests/acl2/incoming-backing-census-tests \
 	tests/acl2/incoming-pool-holder-tests \
 	tests/acl2/incoming-octet-holder-tests \

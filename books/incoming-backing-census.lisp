@@ -30,7 +30,7 @@
                                     fn-octets$c-buf-length
                                     fn-ibc-next-capacity))))
 
-(defthm fn-ibc-retained-old-backing-independent-of-request
+(defthm fn-ibc-retained-old-backing-independent-of-request-by-definition
   (equal (car (fn-ibc-backing-components requested old-capacity source-capacity))
          (* 2 (fn-crl-array-octets (nfix old-capacity) 1)))
   :hints (("Goal" :in-theory (enable fn-ibc-backing-components))))
