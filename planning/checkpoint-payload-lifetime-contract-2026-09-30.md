@@ -148,3 +148,10 @@ The old eleven-field observation is historical runtime geometry only, not
 current authority. These additive core guards/registered tests are unadmitted
 while the combined-source proof replay is pending. Raw recording holders
 remain explicitly unfunded.
+
+Definite source return also includes the retained cancelled-result core callback.
+The actual native caller marks it running under the same holder mutex and
+publishes return via unwind-protect only after that callback returns. A real
+SBCL held-callback recording refuter fails the exact354 preimage (it advertised
+returned while the borrow remained active) and passes the repair. Descriptor
+and stage debt remain owned. This is recording custody, not a grant or release.

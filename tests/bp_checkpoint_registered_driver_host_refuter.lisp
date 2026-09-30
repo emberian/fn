@@ -235,3 +235,32 @@
   (assert (= (fnn-bpck-registered-io-fd record) 123))
   (assert (eq (fnn-bpck-registered-io-close-result record) :open))))
 (format t "registered checkpoint cancelled held-primitive refuter PASS~%")
+; Definite source return includes the retained core result callback, not just
+; the earlier filesystem primitive. This callback may still own aliases.
+(let* ((entered (sb-thread:make-semaphore :count 0))
+       (release (sb-thread:make-semaphore :count 0))
+       (record (%make-fnn-bpck-registered-io :controller :controller :job-token :job
+                :stage "unused" :fd 123 :close-result :open
+                :action '(:bp-checkpoint-io-action :job 12 :emit 17 (1 2 3))
+                :outcome :unknown))
+       (callback
+        (lambda (controller token revision outcome fuel registry)
+         (declare (ignore controller token revision outcome))
+         (sb-thread:signal-semaphore entered)
+         (unless (sb-thread:wait-on-semaphore release :timeout 2)
+          (error "recording cancelled callback release timed out"))
+         (values :cancelled-uncertain fuel registry)))
+       (worker (sb-thread:make-thread
+                (lambda ()
+                 (let ((*fnn-bpck-cancelled-observe-callback* callback))
+                  (fnn-bps-registered-checkpoint-cancelled-result-turn record 6))))))
+ (assert (sb-thread:wait-on-semaphore entered :timeout 2))
+ (assert (eq (fnn-bpck-registered-io-source-result record) :running))
+ (assert (fnn-bpck-registered-io-action record))
+ (assert (= (fnn-bpck-registered-io-fd record) 123))
+ (sb-thread:signal-semaphore release)
+ (sb-thread:join-thread worker :timeout 2)
+ (assert (eq (fnn-bpck-registered-io-source-result record) :returned))
+ (assert (null (fnn-bpck-registered-io-action record)))
+ (assert (= (fnn-bpck-registered-io-fd record) 123)))
+(format t "registered cancelled callback source-return refuter PASS~%")

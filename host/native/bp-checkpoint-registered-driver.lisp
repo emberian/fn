@@ -120,24 +120,29 @@ No native CURRENT, checkpoint job or digest stobj is authoritative here."
   (sb-thread:with-mutex ((fnn-bpck-registered-io-action-lock record) :wait-p nil)
    (let ((action (fnn-bpck-registered-io-action record)))
     (when action
-     (handler-case
-      (sb-thread:with-mutex (*fnn-extent-lock*)
-       (multiple-value-bind (word left registry)
-        (funcall *fnn-bpck-cancelled-observe-callback*
-         (fnn-bpck-registered-io-controller record) (second action) (third action)
-         (fnn-bpck-registered-io-outcome record) fuel
-         (fnn-live-bp-controller-registry))
-        (declare (ignore left registry))
-        (setf (fnn-bpck-registered-io-status record) word)
-        (case word
-         ((:cancelled-observed :cancelled-uncertain)
-          ;; Only the exact registered settlement can retire this result.
-          ;; No descriptor, stage, or ledger debt is inferred released.
-          (setf (fnn-bpck-registered-io-action record) nil
-                (fnn-bpck-registered-io-outcome record) :idle
-                (fnn-bpck-registered-io-core-failure record) nil))
-         (:yield nil)
-         (otherwise (setf (fnn-bpck-registered-io-core-failure record) word)))))
-      (error (condition)
-       (setf (fnn-bpck-registered-io-core-failure record) condition))))))
+     ;; The retained core result callback is also a source/alias action. Do not
+     ;; advertise definite return while that callback still owns its borrow.
+     (setf (fnn-bpck-registered-io-source-result record) :running)
+     (unwind-protect
+      (handler-case
+       (sb-thread:with-mutex (*fnn-extent-lock*)
+        (multiple-value-bind (word left registry)
+         (funcall *fnn-bpck-cancelled-observe-callback*
+          (fnn-bpck-registered-io-controller record) (second action) (third action)
+          (fnn-bpck-registered-io-outcome record) fuel
+          (fnn-live-bp-controller-registry))
+         (declare (ignore left registry))
+         (setf (fnn-bpck-registered-io-status record) word)
+         (case word
+          ((:cancelled-observed :cancelled-uncertain)
+           ;; Only the exact registered settlement can retire this result.
+           ;; No descriptor, stage, or ledger debt is inferred released.
+           (setf (fnn-bpck-registered-io-action record) nil
+                 (fnn-bpck-registered-io-outcome record) :idle
+                 (fnn-bpck-registered-io-core-failure record) nil))
+          (:yield nil)
+          (otherwise (setf (fnn-bpck-registered-io-core-failure record) word)))))
+       (error (condition)
+        (setf (fnn-bpck-registered-io-core-failure record) condition)))
+      (setf (fnn-bpck-registered-io-source-result record) :returned)))))
   record)
