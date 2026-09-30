@@ -1315,10 +1315,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-report-words \
 	books/owner-retire-report-model \
 	books/owner-retire-stream \
+	books/owner-retire-stream-reference \
 	tests/acl2/operator-report-fields-tests \
 	tests/acl2/operator-report-fields-native-reference-tests \
 	tests/acl2/operator-report-descriptors-tests \
 	tests/acl2/owner-retire-stream-tests \
+	tests/acl2/owner-retire-stream-reference-tests \
 	books/owner-maintenance-admission \
 	books/owner-retire-counted \
 	tests/acl2/owner-retire-counted-tests \

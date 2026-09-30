@@ -1304,10 +1304,12 @@
     "books/owner-report-words",
     "books/owner-retire-report-model",
     "books/owner-retire-stream",
+    "books/owner-retire-stream-reference",
     "tests/acl2/operator-report-fields-tests",
     "tests/acl2/operator-report-fields-native-reference-tests",
     "tests/acl2/operator-report-descriptors-tests",
     "tests/acl2/owner-retire-stream-tests",
+    "tests/acl2/owner-retire-stream-reference-tests",
     "books/owner-maintenance-admission",
     "books/owner-retire-counted",
     "tests/acl2/owner-retire-counted-tests",
@@ -1802,26 +1804,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1865,
-    "books_in_root_closure": 1862,
-    "roots": 1798,
-    "theorems": 29583,
-    "functions": 18973,
-    "assert_events": 23942,
+    "books": 1867,
+    "books_in_root_closure": 1864,
+    "roots": 1800,
+    "theorems": 29596,
+    "functions": 18983,
+    "assert_events": 23946,
     "must_fails": 2516,
     "prover_refusals": 0,
     "encapsulates": 159,
     "guards": {
-      "verified": 3552,
+      "verified": 3557,
       "declared-off": 2250,
-      "default-guarded": 10342,
+      "default-guarded": 10347,
       "default-unguarded": 2829
     },
     "suspect_theorems": 1255,
-    "export_hygiene_warnings": 358,
+    "export_hygiene_warnings": 363,
     "enabled_projection_warnings": 62,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2580,
+    "include_hygiene_warnings": 2581,
     "host_names_warnings": 2155,
     "hand_written_record_warnings": 18
   },
@@ -21985,6 +21987,32 @@
       "includes": [
         "owner-report-drop-count",
         "owner-report-words"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-retire-stream-reference.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 13,
+      "functions": 9,
+      "guards": {
+        "verified": 5,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 5,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner-retire-stream"
       ],
       "system_includes": [],
       "suspects": [],
@@ -48183,6 +48211,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/owner-retire-stream-reference-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-retire-stream-reference"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/owner-retire-stream-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -67479,6 +67533,36 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-orr-emitter-start-reference",
+        "book": "books/owner-retire-stream-reference.lisp",
+        "line": 68,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-orr-run-is-complete-denotation",
+        "book": "books/owner-retire-stream-reference.lisp",
+        "line": 112,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-orr-peer-output-is-actual-reference",
+        "book": "books/owner-retire-stream-reference.lisp",
+        "line": 131,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-orr-cached-total-is-actual-reference",
+        "book": "books/owner-retire-stream-reference.lisp",
+        "line": 139,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-orr-obligation-output-is-actual-reference",
+        "book": "books/owner-retire-stream-reference.lisp",
+        "line": 146,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-orr-peer-line-is-reference",
         "book": "books/owner-retire-stream.lisp",
         "line": 276,
@@ -85847,6 +85931,13 @@
         "line": 26,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-retire-stream-reference-tests.lisp",
+        "line": 2,
+        "include": "../../books/owner-retire-stream-reference",
+        "included": "books/owner-retire-stream-reference.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

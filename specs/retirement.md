@@ -143,13 +143,16 @@ path remains available.
 
 Frozen report rendering is still a whole-buffer source path. The unactivated
 `owner-retire-stream` proposal shares existing tails after joins, but its
-full report byte conservation and staged output disk/lifetime funding are open.
+full report byte conservation now has a narrow source admission under maintained
+feed counts, pin string/natural fields and natural reserved. Staged output
+disk/runtime/lifetime funding and installed invariant-to-domain carriage are open.
 The current proposal schedules fixed descriptor spines and uses the guarded
 field emitter to emit NIL or one octet per turn; it renders no whole line.
 Its guard, start/preservation invariant and output quantum have narrow source
 admissions. Literal getter/reference extraction preserves original definition
-forms and record layouts. These admissions have no full report, host activation
-or native qualification claim. Final checkpoint and all crash cuts,
+forms and record layouts. The additive reference leaf proves actual cursor STEP conservation and complete
+RUN equality to literal fn-oret-report under those explicit data hypotheses.
+These admissions have no host activation or native qualification claim. Final checkpoint and all crash cuts,
 installed composite preservation, scalar-width/coexistence funding and the
 matching native whole-slice scenario remain required. This progress does not
 close S9, R16 work debt, physical funding or native qualification.
