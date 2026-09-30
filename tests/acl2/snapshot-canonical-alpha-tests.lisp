@@ -4,6 +4,7 @@
 (include-book "../../books/snapshot-canonical-alpha")
 (include-book "../../books/codec-attach")
 (include-book "snapshot-node-alpha-tests")
+(include-book "statement-recover-stream-tests")
 (defconst *osac-one*
   (fn-record-make 0 0 0 "<one@example>" '(1 2 3) '("fn.test")
                   "one" "c1" "r1" 1 841000000))
@@ -99,3 +100,92 @@
      (and (not (fn-orm-rowsp rows)) (natp 0)
           (not (equal (fn-cpe-projection-replay nil (fn-orm-capture rows 0) 0)
                        (fn-cpe-projection-replay nil rows 0)))))))
+
+; Full topic replay keeps the committed administrator and accepted statement,
+; not only the journal coordinate. The composite's held payload relocates.
+(defconst *osac-topic-admin*
+  (list :topic-admin-install 0 0 0 1000 (make-list 32 :initial-element 7)))
+(defconst *osac-topic-rows*
+  (list *osac-topic-admin* (nth 1 *osac-rows*) (nth 2 *osac-rows*)))
+(assert-event
+ (let* ((canonical (fn-orm-capture *osac-topic-rows* 0))
+        (original (fn-th-prefix-project *osac-topic-rows*)))
+   (and (fn-orm-rowsp *osac-topic-rows*) (natp 0)
+        (not (equal canonical *osac-topic-rows*))
+        (equal (fn-th-at 0 original) :ok)
+        (consp (fn-th-at 3 original))
+        (equal (fn-th-at 5 original) *osac-topic-admin*)
+        (equal (fn-th-prefix-project canonical) original))))
+; Logical hypothesis removal: negative target handle invalidates the row.
+(assert-event
+ (with-guard-checking :none
+  (and (fn-orm-rowsp *osac-topic-rows*) (not (natp -1))
+       (not (equal (fn-th-prefix-project (fn-orm-capture *osac-topic-rows* -1))
+                    (fn-th-prefix-project *osac-topic-rows*))))))
+; Corrupted-state row-validity removal: remap repairs a negative source handle.
+(assert-event
+ (with-guard-checking :none
+  (let ((rows (list (update-nth 4 -1 (car *osac-rows*)))))
+   (and (not (fn-orm-rowsp rows)) (natp 0)
+        (not (equal (fn-th-prefix-project (fn-orm-capture rows 0))
+                     (fn-th-prefix-project rows)))))))
+
+; The actual sequential recovery/intern worker produces valid configured
+; history with two key generations. A prior unreferenced arena payload makes
+; canonical handles differ, as happens after a discarded physical allocation.
+(defun osac-identity-in (fn-arena)
+ (declare (xargs :stobjs fn-arena :verify-guards nil))
+ (let* ((fn-arena (fn-arena-seal-list '(99) fn-arena))
+        (seed (fn-ssr-seed (fn-stxk-initial-context 0))))
+  (mv-let (acc fn-arena)
+   (fn-ssr-intern-step seed (append *ssrt-a* *ssrt-b*) nil nil :resident nil fn-arena)
+   (mv (fn-ssr-rows acc) fn-arena))))
+(defun osac-identity-rows ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn-arena
+  (mv-let (rows fn-arena) (osac-identity-in fn-arena) rows)))
+(make-event `(defconst *osac-id-rows* ',(osac-identity-rows)))
+(defconst *osac-id-configs*
+ (list *fn-cfg-default-record*
+       (fn-cfg-record-make 1 0 2
+          (list (fn-cfg-create-group "example" *fn-cfg-default-policy-id*))
+          *fn-cfg-default-stamp*)))
+(make-event `(defconst *osac-id-open*
+ ',(fn-cpo-open-observed *osac-id-configs* 4 *osac-id-rows*)))
+(make-event `(defconst *osac-id-ready*
+ ',(fn-snrt-run (fn-sn-open-state *osac-id-open*)
+     '((:io :recovery-barrier :ok) (:io :recovery-barrier :ok)
+       (:io :recovery-barrier :ok)))))
+(assert-event
+ (let ((original (fn-replay-identity *osac-id-rows*)))
+  (and (fn-orm-rowsp *osac-id-rows*) (natp 0)
+       (fn-sn-open-okp *osac-id-open*)
+       (fn-osr-retainedp *osac-id-ready*)
+       (equal (fn-sf-phase (fn-sn-files *osac-id-ready*)) :ready)
+       (equal (fn-sf-records (fn-sn-files (fn-osr-capture *osac-id-ready*)))
+              *osac-id-rows*)
+       (not (equal (fn-orm-capture *osac-id-rows* 0) *osac-id-rows*))
+       (equal (fn-stxk-context-kind original) :ok)
+       (equal (len (fn-stxk-context-snapshots original)) 2)
+       (equal (fn-stxk-context-current-generation original) 2)
+       (equal (fn-replay-identity (fn-orm-capture *osac-id-rows* 0)) original))))
+; Complete topic result also survives this actual ready captured history.
+(assert-event
+ (and (fn-orm-rowsp *osac-id-rows*) (natp 0)
+      (fn-osr-retainedp *osac-id-ready*)
+      (equal (fn-sf-phase (fn-sn-files *osac-id-ready*)) :ready)
+      (equal (fn-th-prefix-project (fn-orm-capture *osac-id-rows* 0))
+             (fn-th-prefix-project *osac-id-rows*))))
+; Logical natural-handle removal, retaining valid actual source rows.
+(assert-event
+ (with-guard-checking :none
+  (and (fn-orm-rowsp *osac-id-rows*) (not (natp -1))
+       (not (equal (fn-replay-identity (fn-orm-capture *osac-id-rows* -1))
+                    (fn-replay-identity *osac-id-rows*))))))
+; Corrupted-state row-validity removal: remap repairs the invalid source handle.
+(assert-event
+ (with-guard-checking :none
+  (let ((rows (list (update-nth 4 -1 (car *osac-rows*)))))
+   (and (not (fn-orm-rowsp rows)) (natp 0)
+        (not (equal (fn-replay-identity (fn-orm-capture rows 0))
+                     (fn-replay-identity rows)))))))

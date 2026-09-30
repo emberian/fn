@@ -17494,6 +17494,22 @@
         {
           "kind": "theorem",
           "name": "fn-osa-canonical-history-keeps-complete-consumer-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osa-remap-keeps-topic-prefix-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osa-canonical-history-keeps-complete-topic-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osa-remap-keeps-identity-replay-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osa-canonical-history-keeps-complete-identity-replay"
         }
       ],
       "pending_subject": "Full actual canonical configured recovery and owner/controller composition remain open. Cited events are proved component boundaries over actual fn-node-prepare, fn-node-complete and fn-orm-capture, not a host-level completion claim."

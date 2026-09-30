@@ -193,3 +193,97 @@
                 (fn-osa-row-on-valid-input-by-definition
                  fn-orm-row fn-orm-sealsp fn-store-event-p
                  fn-cpe-projection-step)))))
+
+(defthm fn-osa-remap-keeps-topic-prefix-step
+  (implies (and (fn-store-event-p row) (natp handle))
+           (equal (fn-th-prefix-step projection (fn-orm-row row handle))
+                  (fn-th-prefix-step projection row)))
+  :hints (("Goal" :do-not-induct t
+           :cases ((fn-held-p row) (fn-hstxa-p row))
+           :use (fn-osa-remap-preserves-row-discriminants-and-coordinate
+                 fn-orm-row-retains-the-complete-payload-independent-projection
+                 (:instance fn-held-p-forward-shape (x row))
+                 (:instance fn-hstxa-p-forward-shape (x row)))
+           :in-theory
+           (e/d (fn-th-prefix-step fn-th-local-admin-eventp fn-orm-held
+                 fn-held-is-no-wire-event fn-hstxa-is-no-wire-event
+                 fn-hstxa-is-not-held)
+                (fn-orm-row fn-store-event-p fn-store-event-sequence
+                 fn-held-p fn-hstxa-p fn-held-make fn-hstxa-make
+                 fn-hstxa-held fn-hstxa-stxa fn-th-topic-eventp fn-stxk-p
+                 fn-th-at fn-th-prefix-state fn-th-prefix-find-ref
+                 fn-th-local-admin-commit fn-th-commit-anchor-installed-v2
+                 fn-th-commit-report fn-osa-remap-preserves-row-discriminants-and-coordinate)))))
+
+(local
+ (defun fn-osa-topic-induct (rows handle projection)
+   (if (atom rows) (list handle projection)
+     (fn-osa-topic-induct
+      (cdr rows) (if (fn-orm-sealsp (car rows)) (+ 1 handle) handle)
+      (fn-th-prefix-step projection (car rows))))))
+
+(local
+ (defthm fn-osa-canonical-history-keeps-topic-prefix-loop
+   (implies (and (fn-orm-rowsp rows) (natp handle))
+            (equal (fn-th-prefix-loop projection (fn-orm-capture rows handle))
+                   (fn-th-prefix-loop projection rows)))
+   :hints (("Goal" :induct (fn-osa-topic-induct rows handle projection)
+            :in-theory
+            (e/d (fn-orm-capture fn-orm-rowsp fn-th-prefix-loop)
+                 (fn-osa-row-on-valid-input-by-definition
+                  fn-orm-row fn-orm-sealsp fn-store-event-p fn-th-prefix-step
+                  fn-th-prefix-state fn-th-at))))))
+
+(defthm fn-osa-canonical-history-keeps-complete-topic-replay
+  (implies (and (fn-orm-rowsp rows) (natp handle))
+           (equal (fn-th-prefix-project (fn-orm-capture rows handle))
+                  (fn-th-prefix-project rows)))
+  :hints (("Goal" :in-theory (enable fn-th-prefix-project))))
+
+(defthm fn-osa-remap-keeps-identity-replay-step
+  (implies (and (fn-store-event-p row) (natp handle))
+           (equal (fn-replay-identity-step context (fn-orm-row row handle))
+                  (fn-replay-identity-step context row)))
+  :hints (("Goal" :do-not-induct t
+           :cases ((fn-held-p row) (fn-hstxa-p row))
+           :use (fn-osa-remap-preserves-row-discriminants-and-coordinate
+                 fn-orm-row-retains-the-complete-payload-independent-projection)
+           :in-theory
+           (e/d (fn-replay-identity-step fn-replay-identity-wire fn-orm-held
+                 fn-hsig-article-event-carried-bindsp
+                 fn-hsig-article-event-revoked-bindsp
+                 fn-held-is-no-wire-event fn-hstxa-is-no-wire-event
+                 fn-hstxa-is-not-held)
+                (fn-orm-row fn-store-event-p fn-store-event-sequence
+                 fn-held-p fn-hstxa-p fn-held-make fn-hstxa-make
+                 fn-hstxa-held fn-hstxa-stxa fn-stxk-p fn-stxe-p fn-stxa-p
+                 fn-stxk-context-kind fn-stxk-context-next fn-stxk-fault
+                 fn-replay-identity-advance fn-stxk-apply-snapshot
+                 fn-stxk-apply-verdict fn-stxk-context fn-stxk-find
+                 fn-stxa-bindsp fn-hsig-article-event-snapshot-bindsp
+                 fn-osa-remap-preserves-row-discriminants-and-coordinate)))))
+
+(local
+ (defun fn-osa-identity-induct (rows handle context)
+   (if (atom rows) (list handle context)
+     (fn-osa-identity-induct
+      (cdr rows) (if (fn-orm-sealsp (car rows)) (+ 1 handle) handle)
+      (fn-replay-identity-step context (car rows))))))
+
+(local
+ (defthm fn-osa-canonical-history-keeps-identity-replay-loop
+   (implies (and (fn-orm-rowsp rows) (natp handle))
+            (equal (fn-replay-identity-loop (fn-orm-capture rows handle) context)
+                   (fn-replay-identity-loop rows context)))
+   :hints (("Goal" :induct (fn-osa-identity-induct rows handle context)
+            :in-theory
+            (e/d (fn-orm-capture fn-orm-rowsp fn-replay-identity-loop)
+                 (fn-osa-row-on-valid-input-by-definition
+                  fn-orm-row fn-orm-sealsp fn-store-event-p
+                  fn-replay-identity-step fn-stxk-fault))))))
+
+(defthm fn-osa-canonical-history-keeps-complete-identity-replay
+  (implies (and (fn-orm-rowsp rows) (natp handle))
+           (equal (fn-replay-identity (fn-orm-capture rows handle))
+                  (fn-replay-identity rows)))
+  :hints (("Goal" :in-theory (enable fn-replay-identity))))

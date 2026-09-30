@@ -366,5 +366,20 @@ away. A mixed bootstrap/register/composite ARTICLE/ACK witness has a nonempty
 account and scope and a changed payload handle. Negative target handles and
 corrupted source row validity refute the two hypotheses in the logical model.
 The mandatory coherent CP7/record12/held16/stage8 migration must retain this
-whole-result property; full identity/topic, configured open, physical bytes
-and owner/controller composition remain open.
+whole-result property; configured open, physical bytes and owner/controller
+composition remain open.
+
+Complete topic and identity folds are also congruent under canonical remapping:
+`fn-osa-canonical-history-keeps-complete-topic-replay` preserves the entire
+topic prefix result, and `fn-osa-canonical-history-keeps-complete-identity-replay`
+preserves the entire identity replay context. Their step boundaries work for
+any starting projection or context. The topic result retains administrator,
+accepted-statement, anchor, installation and fault fields; identity retains
+next coordinate, snapshots, verdicts and current generation. An actual
+sequential recovery/intern worker, including an unused arena allocation,
+provides a configured full-retained ready captured Store with two key
+generations and different canonical handles. Both hypothesis-removal witnesses
+compare complete results. These component equalities leave configured node
+replay, remapped opening success, physical writer/load correspondence and
+owner/controller composition open, together with the mandatory coherent
+schema migration.
