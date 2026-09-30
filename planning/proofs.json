@@ -18062,6 +18062,27 @@
         "planning/evidence/payload-window-profile-width-2026-09-30.md"
       ],
       "progress_note": "Protected source-only component proof and literal teeth checkpoint. No new served keystone/certificate/image/native claim; source proof coordinates and remaining funding obligations are recorded in the evidence file."
+    },
+    {
+      "id": "PRF-1142",
+      "title": "Operation-derived snapshot maintenance admission and backing growth",
+      "statement": "Actual snapshot whole-operation initial demand must derive fixed and variable resident/disk/descriptor/worker/identity credit from the captured source and selected runtime. Implemented source component fn-osj-grow calls actual maintenance ledger growth for exact census stage end and data/table digest spools, binds immutable source4, issued maintenance ID as stage and full token, requires three reserved private descriptors, preserves funding and establishes a live exact grant bound into the maintenance row. Actual guard-verified fn-owner-snapshot-growth refines this through the global funded-pool stobj; complete receipt matching rejects changed source pass or layout. Initial size/runtime adequacy, host activation and joined definite cleanup correspondence remain open.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-026"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/snapshot-maintenance-demand.lisp",
+        "tests/acl2/snapshot-maintenance-demand-tests.lisp",
+        "specs/snapshot-maintenance-demand.md",
+        "planning/evidence/snapshot-maintenance-growth-2026-09-30.md",
+        "host/snapshot-maintenance-host.lisp",
+        "tests/acl2/snapshot-maintenance-host-tests.lisp"
+      ],
+      "progress_note": "Source-only backing-growth component; complete original operation-derived demand/admission/release and selected-runtime adequacy remain open. No served/certificate/image claim."
     }
   ]
 }

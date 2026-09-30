@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6363,6 +6363,34 @@
         "planning/evidence/payload-window-profile-width-2026-09-30.md"
       ],
       "execution_scope": "Protected source replay only; the codec/runtime/controller/host composition remains open."
+    },
+    {
+      "id": "SCN-1048",
+      "title": "Actual snapshot backing growth and retained ledger authority",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-026"
+      ],
+      "steps": [
+        "Admit an actual maintenance row, submit exact census request and assert every literal matching/funding/live-grant conclusion.",
+        "Remove actual-success antecedent separately for every theorem and negate the corresponding conclusion, distinguishing malformed prior state.",
+        "Mutate stage ID, spool size and descriptor credit; affirm refusal and exact unchanged ledger.",
+        "Release the actual maintenance row after logical joined cleanup and assert stale grant refusal and spent identity retention.",
+        "Call the actual funded-pool stobj growth entry; affirm named representation equality and remove its funded-mode premise.",
+        "Mutate receipt source pass/layout after actual growth and assert it does not match retained row."
+      ],
+      "expected": [
+        "Disk credit includes exact stage-end and both digest spools; no guessed zero disk.",
+        "Whole initial runtime/source adequacy and actual physical cleanup correspondence stay open."
+      ],
+      "evidence": [
+        "tests/acl2/snapshot-maintenance-demand-tests.lisp",
+        "specs/snapshot-maintenance-demand.md",
+        "planning/evidence/snapshot-maintenance-growth-2026-09-30.md",
+        "tests/acl2/snapshot-maintenance-host-tests.lisp"
+      ],
+      "execution_scope": "Protected proper-local source proof and literal teeth only; no served activation."
     }
   ]
 }
