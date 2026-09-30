@@ -71,6 +71,20 @@ class ReclaimHoldObserverTests(unittest.TestCase):
             self.assertTrue(manifest["image_present"])
             self.assertFalse(journal.of_kind("client"))
 
+    def test_real_unittest_cleanup_false_cannot_claim_cleaned(self):
+        fixture = reclaim_hold.Fixture()
+        def fail():
+            raise OSError("retained owned-process cleanup failure")
+        fixture.addCleanup(fail)
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary) / "trial"
+            with patch.object(reclaim_hold, "Fixture", return_value=fixture):
+                _, verdict = reclaim_hold.run_scenario(reclaim_hold.example(),
+                                                       Path(temporary) / "absent", work)
+            self.assertIn("reclaim-cleanup-incomplete", verdict.cause)
+            primary = json.loads((work / "primary-outcome.json").read_text())
+            self.assertEqual(primary["cleanup_errors"][0]["action"], "fixture-cleanups")
+
     def test_actual_absent_image_stops_before_store_bootstrap_and_seals(self):
         with tempfile.TemporaryDirectory() as temporary:
             work = Path(temporary) / "trial"
