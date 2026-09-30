@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1884 |
-| Certification roots in the Makefile | 1799 |
-| Books inside the root closure | 1867 |
-| `defthm` and `defthmd` events | 29732 |
+| Books read | 1885 |
+| Certification roots in the Makefile | 1800 |
+| Books inside the root closure | 1868 |
+| `defthm` and `defthmd` events | 29733 |
 | `defun` events | 19044 |
 | Functions with verified guards | 3516 |
 | Functions declared `:verify-guards nil` and never verified | 2275 |
 | Functions left at the default with an explicit guard | 10408 |
 | Functions left at the default with no guard | 2845 |
-| `assert-event` checks | 24015 |
+| `assert-event` checks | 24018 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
@@ -1414,6 +1414,7 @@ that `make certify` requests.
 | `tests/acl2/control-visible-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 22 | 9 | 0 |
 | `tests/acl2/crypto-seam-tests.lisp` | root | 11 | 7 | 0/0/7/0 | 18 | 0 | 0 |
 | `tests/acl2/defevent-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 19 | 1 | 0 |
+| `tests/acl2/definterface-recognizer-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 3 | 0 | 0 |
 | `tests/acl2/definterface-tests.lisp` | root | 8 | 9 | 0/0/6/3 | 39 | 23 | 1 |
 | `tests/acl2/defkeystone-tests.lisp` | root | 2 | 1 | 0/0/1/0 | 17 | 6 | 0 |
 | `tests/acl2/deflate-inflate-tests.lisp` | root | 6 | 9 | 0/5/4/0 | 21 | 4 | 0 |
