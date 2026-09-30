@@ -931,6 +931,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/legacy-parser-values \
 	tests/acl2/legacy-parser-values-tests \
 	books/nntp-article-pass \
+	books/nov-render-line \
 	books/nntp-responses \
 	books/nntp-article-block \
 	books/nntp-reader-compat \
@@ -1054,6 +1055,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nov-row-facts-model \
 	books/response-plan-token \
 	tests/acl2/response-plan-token-tests \
+	books/over-row-pieces \
+	books/over-byte-row-relation \
+	tests/acl2/over-byte-row-relation-tests \
 	books/over-byte-cursor \
 	books/over-byte-invariants \
 	books/legacy-parser-continuation \

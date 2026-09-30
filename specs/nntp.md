@@ -2269,3 +2269,27 @@ that correspondence the returned parser equals complete source feed and
 its actual NOV/body-line facts. These observers are proof/test vocabulary
 only; ONE and the host never call them. Full original reply and piece/catalog
 composition, full literal final-tick removals and served activation remain open.
+
+### Actual legacy OVER row rendering source join (PRF-1066)
+
+`fn-obc-parser-pieces` retains the five source spans and resumable decimal
+references. Under a natural source start for each present field, its complete
+logical residual equals the original `fn-nov-line` over the returned parser's
+NOV string columns, followed by CRLF. The metadata is the declared source
+octet count and the parser's body-line count; connecting those values to the
+actual selected source uses the terminal parser bridge.
+
+The span bridge needs only a natural start when a span is present. Handle
+and length natural premises were removed after proving the weakened theorem.
+The string/octet roundtrip applies to the normalized span value, which always
+contains octets. Exact runtime piece constructors and original line renderer
+definitions and guard verifications are moved into narrow books; their names
+and definitions are unchanged. No logical residual runs on the served path.
+
+`over-byte-row-relation-tests` checks a real complete legacy feed and the
+whole row equation. Five corrupted-state fixtures remove one literal field
+start premise apiece, affirm every retained premise, and affirm failure of
+the row equation. Separate fixtures check the span bridge and its sole
+hypothesis removal. These source components do not establish selected-range
+visibility, complete old reply equality, funded host scheduling, physical
+window ownership or a qualified served activation.

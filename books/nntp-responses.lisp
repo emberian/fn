@@ -10,6 +10,7 @@
 ; D13: a reclaimed article's payload is a tombstone (STO-014).
 (include-book "reclaim-tombstone")
 (include-book "nov-fields")
+(include-book "nov-render-line")
 ; The served retrieval's one pass (PRF-334): fn-nntp-article-response runs it.
 (include-book "nntp-article-pass")
 
@@ -1363,45 +1364,6 @@
               (fn-nntp-article-length article fn-arena)
               (fn-nov-body-line-count payload))))))
 
-(defun fn-nov-okp (x)
-  (mbe :logic (equal (car x) :ok) :exec (equal (fn-ag-car x) :ok)))
-(defun fn-nov-subject (x)
-  (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
-(defun fn-nov-from (x)
-  (mbe :logic (car (cdr (cdr x))) :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
-(defun fn-nov-date (x)
-  (mbe :logic (car (cdr (cdr (cdr x))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
-(defun fn-nov-msgid (x)
-  (mbe :logic (car (cdr (cdr (cdr (cdr x)))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
-(defun fn-nov-references (x)
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr x))))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
-                                                          (fn-ag-cdr x))))))))
-(defun fn-nov-bytes (x)
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr x)))))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
-                                                          (fn-ag-cdr (fn-ag-cdr x)))))))))
-(defun fn-nov-lines (x)
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr x))))))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
-                                                          (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))) 
-
-; The eight mandatory fields of RFC 3977 section 8.3.2, TAB separated, in
-; order.  No ninth field is emitted: this profile holds no Xref or other
-; overview metadata, and section 8.3.2 makes subsequent fields optional.
-(defun fn-nov-line (number over)
-  (fn-nntp-append-pieces
-   (list (fn-nntp-decimal-field number) '(9)
-         (fn-nov-subject over) '(9)
-         (fn-nov-from over) '(9)
-         (fn-nov-date over) '(9)
-         (fn-nov-msgid over) '(9)
-         (fn-nov-references over) '(9)
-         (fn-nntp-decimal (fn-nov-bytes over)) '(9)
-         (fn-nntp-decimal (fn-nov-lines over)))))
-
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
@@ -1806,23 +1768,14 @@
   :hints (("Goal" :in-theory (disable fn-article-get-headers
                                       fn-article-syntax-p))))
 
-(verify-guards fn-nov-okp)
 
-(verify-guards fn-nov-subject)
 
-(verify-guards fn-nov-from)
 
-(verify-guards fn-nov-date)
 
-(verify-guards fn-nov-msgid)
 
-(verify-guards fn-nov-references)
 
-(verify-guards fn-nov-bytes)
 
-(verify-guards fn-nov-lines)
 
-(verify-guards fn-nov-line)
 
 (verify-guards fn-nov-lines-for-numbers-loop)
 

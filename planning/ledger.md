@@ -10,10 +10,10 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1803 |
-| Certification roots in the Makefile | 1736 |
-| Books inside the root closure | 1800 |
-| `defthm` and `defthmd` events | 28774 |
+| Books read | 1807 |
+| Certification roots in the Makefile | 1740 |
+| Books inside the root closure | 1804 |
+| `defthm` and `defthmd` events | 28798 |
 | `defun` events | 18673 |
 | Functions with verified guards | 3496 |
 | Functions declared `:verify-guards nil` and never verified | 2195 |
@@ -23,11 +23,11 @@ stale. Counts describe artifacts, not coverage; see
 | `must-fail` checks | 2506 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 157 |
-| Theorems flagged SUSPECT by shape | 1238 |
+| Theorems flagged SUSPECT by shape | 1239 |
 | Export-hygiene warnings | 333 |
-| Enabled-projection warnings | 53 |
+| Enabled-projection warnings | 55 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2512 |
+| Include-hygiene warnings | 2521 |
 | Host-names warnings | 2137 |
 | Hand-written-record warnings | 18 |
 
@@ -617,7 +617,7 @@ that `make certify` requests.
 | `books/nntp-range-indexed.lisp` | root | 4 | 5 | 2/0/3/0 | 0 | 0 | 0 |
 | `books/nntp-reader-compat.lisp` | root | 33 | 28 | 21/2/5/0 | 0 | 0 | 7 |
 | `books/nntp-reclaimed.lisp` | root | 13 | 1 | 0/1/0/0 | 0 | 0 | 0 |
-| `books/nntp-responses.lisp` | root | 32 | 188 | 176/0/12/0 | 0 | 0 | 0 |
+| `books/nntp-responses.lisp` | root | 32 | 179 | 167/0/12/0 | 0 | 0 | 0 |
 | `books/nntp-search-scope.lisp` | root | 12 | 1 | 0/1/0/0 | 0 | 0 | 1 |
 | `books/nntp-session.lisp` | root | 14 | 40 | 35/0/5/0 | 0 | 0 | 3 |
 | `books/nntp-syntax.lisp` | root | 9 | 48 | 43/0/5/0 | 0 | 0 | 0 |
@@ -641,6 +641,7 @@ that `make certify` requests.
 | `books/nov-fields.lisp` | root | 3 | 5 | 5/0/0/0 | 0 | 0 | 0 |
 | `books/nov-line-projection.lisp` | root | 13 | 8 | 0/8/0/0 | 0 | 0 | 0 |
 | `books/nov-piece-window.lisp` | root | 32 | 9 | 2/2/3/2 | 0 | 0 | 0 |
+| `books/nov-render-line.lisp` | root | 0 | 9 | 9/0/0/0 | 0 | 0 | 0 |
 | `books/nov-row-capture.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/nov-row-facts-model.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/nov-row-facts.lisp` | root | 2 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -653,10 +654,12 @@ that `make certify` requests.
 | `books/open-frontier-wire.lisp` | root | 6 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/open-frontier.lisp` | closure | 34 | 5 | 0/2/3/0 | 0 | 0 | 1 |
 | `books/outcome-class.lisp` | root | 8 | 6 | 0/0/6/0 | 0 | 0 | 0 |
-| `books/over-byte-cursor.lisp` | root | 23 | 14 | 4/0/10/0 | 0 | 0 | 1 |
+| `books/over-byte-cursor.lisp` | root | 23 | 12 | 4/0/8/0 | 0 | 0 | 1 |
 | `books/over-byte-invariants.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/over-byte-parser-relation.lisp` | root | 6 | 2 | 0/2/0/0 | 0 | 0 | 0 |
+| `books/over-byte-row-relation.lisp` | root | 16 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/over-cursor-shape.lisp` | root | 1 | 4 | 0/0/4/0 | 0 | 0 | 1 |
+| `books/over-row-pieces.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/over-window.lisp` | root | 30 | 6 | 1/3/2/0 | 0 | 0 | 0 |
 | `books/owner-ack-after-barrier.lisp` | root | 34 | 27 | 0/1/26/0 | 0 | 0 | 3 |
 | `books/owner-advance-carried.lisp` | root | 33 | 7 | 0/2/5/0 | 0 | 0 | 0 |
@@ -1551,6 +1554,7 @@ that `make certify` requests.
 | `tests/acl2/outcome-class-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 37 | 7 | 0 |
 | `tests/acl2/over-byte-cursor-tests.lisp` | root | 1 | 6 | 0/5/0/1 | 11 | 0 | 0 |
 | `tests/acl2/over-byte-parser-relation-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 3 | 0 | 0 |
+| `tests/acl2/over-byte-row-relation-tests.lisp` | root | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/over-window-tests.lisp` | root | 6 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/owner-ack-after-barrier-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 40 | 0 | 0 |
 | `tests/acl2/owner-advance-carried-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 64 | 16 | 0 |
@@ -2353,7 +2357,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-oas-queue-of-set-conns` | `books/owner-article-slots.lisp` | 391 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-oas-read-span-when-held-unfolds` | `books/owner-article-slots.lisp` | 285 | arm-of-definition: the hypotheses select one IF/COND arm of fn-oas-read-span and the conclusion is that arm's value |
 | `fn-oas-refusal-line-follows-the-disk-unfolds` | `books/owner-article-slots.lisp` | 277 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-oas-refusal-line |
-| `fn-obc-quantum-ready-stays-ready` | `books/over-byte-cursor.lisp` | 414 | arm-of-definition: the hypotheses select one IF/COND arm of fn-obc-quantum-one and the conclusion is that arm's value |
+| `fn-obc-quantum-ready-stays-ready` | `books/over-byte-cursor.lisp` | 395 | arm-of-definition: the hypotheses select one IF/COND arm of fn-obc-quantum-one and the conclusion is that arm's value |
+| `fn-obcr-nil-span-value` | `books/over-byte-row-relation.lisp` | 54 | arm-of-definition: constant arguments select one IF/COND arm of fn-lpc-span-value and the conclusion is that arm's value |
 | `fn-obi-seal-range-is-seal-of-slice` | `books/catalog-load-index.lisp` | 38 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-obi-seal-range; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-ocfg-config-of-fn-ocfg-make` | `books/owner-config.lisp` | 86 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-ocfg-fault-is-own-fault` | `books/owner-served-invariants.lisp` | 486 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

@@ -9,6 +9,7 @@
 (include-book "response-plan-token")
 (include-book "nov-row-capture")
 (include-book "legacy-parser-header")
+(include-book "over-row-pieces")
 
 ; (range origin-pin phase parser pieces string-position). The six original
 ; range fields keep their meanings; the pin is a separate coordinate.
@@ -24,26 +25,6 @@
   (declare (xargs :guard (true-listp range)))
   (fn-ovw-cursor (nth 0 range) (+ 1 (nfix (nth 1 range)))
                  (nth 2 range) (nth 3 range) (nth 4 range) owed))
-
-; A span contains (handle at length origin-pin). Absent fields denote the
-; empty string. Capturing references never reads or flattens field bytes.
-(defun fn-obc-span-piece (span)
-  (declare (xargs :guard t))
-  (if span
-      (list :span (fn-lpc-at 0 span) (fn-lpc-at 1 span)
-            (fn-lpc-at 2 span) nil (fn-lpc-at 3 span))
-    ""))
-
-(defun fn-obc-parser-pieces (number parser)
-  (declare (xargs :guard t))
-  (list (fn-nntp-decimal-field number) '(9)
-        (fn-obc-span-piece (fn-lpc-field parser 0)) '(9)
-        (fn-obc-span-piece (fn-lpc-field parser 1)) '(9)
-        (fn-obc-span-piece (fn-lpc-field parser 2)) '(9)
-        (fn-obc-span-piece (fn-lpc-field parser 3)) '(9)
-        (fn-obc-span-piece (fn-lpc-field parser 4)) '(9)
-        (list :decimal (nfix (fn-lpc-at 1 parser)) nil) '(9)
-        (list :decimal (fn-lpc-body-lines parser) nil) '(13 10)))
 
 (defun fn-obc-row-ready (range pin pieces)
   (declare (xargs :guard (true-listp range)))
