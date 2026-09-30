@@ -91,9 +91,11 @@
  (let ((first (mv-list 5 (fn-snir-begin *snirt-live* *snirt-source* *snirt-maintenance*
                                      *snirt-page-source* *snirt-ticket*))))
   (and (equal (mv-nth 0 first) :reader)
+       (not (fn-snir-sourcep (mv-nth 4 first) *snirt-source* *snirt-maintenance*
+                            *snirt-page-source* *snirt-ticket*))
        (equal (fn-snir-begin (mv-nth 4 first) *snirt-source* *snirt-maintenance*
                             *snirt-page-source* *snirt-ticket*)
-              (mv '(:retained :unavailable) nil nil nil (mv-nth 4 first))))) :rule-classes nil)
+              (mv '(:retained :initial-reader-source) nil nil nil (mv-nth 4 first))))) :rule-classes nil)
 
 ; Mutation: a genuinely admitted pin to a DIFFERENT incarnation is not
 ; custody of the retained source handle, even with the same live INITIAL.

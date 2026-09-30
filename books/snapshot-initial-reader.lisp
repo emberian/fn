@@ -19,6 +19,7 @@
         (root-token (fn-prl-nth 2 held-root))
         (root-row (cdr (fn-prl-binding root-token (fn-prl-nth 3 ledger))))
         (turn (fn-sni-role-entry :allocation-turn roles))
+        (reader (fn-sni-role-entry :reader roles))
         (pair (fn-prl-nth 1 page-source)))
   (and (fn-sni-livep ledger source maintenance)
        (fn-omk-tokenp page-source)
@@ -34,7 +35,11 @@
        (equal (fn-prl-nth 1 root-row) :file-pin)
        (equal (fn-prl-nth 2 root-token) (fn-hrs-h-file (fn-prl-nth 5 context)))
        (equal (fn-prl-nth 1 turn) :held)
-       (equal (fn-prl-nth 2 turn) (list :initial-constructor maintenance source)))))
+       (equal (fn-prl-nth 2 turn) (list :initial-constructor maintenance source))
+       ; A constructor is issued once per attempt. Refuse re-entry before
+       ; invoking the actual reader constructor, not after its cursor and
+       ; binding have already been allocated and a role claim then fails.
+       (equal (fn-prl-nth 1 reader) :reserved))))
 
 (defun fn-snir-begin (ledger source maintenance page-source root-ticket)
  (declare (xargs :guard t))

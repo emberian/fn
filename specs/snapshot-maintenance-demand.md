@@ -124,7 +124,8 @@ It checks actual current INITIAL ownership and invokes guard-verified
 `fn-snir-begin`. That core derives the F root from the captured based handle,
 requires the held SAME-ledger source-root pin's file and ticket, captured
 frontier/(cold-ticket,total-count) and in-base ordinal, and held constructor
-turn. It calls actual `fn-hsr-source-begin` and claims the reader role before
+turn and the exact reserved reader role. Re-entry after that role is held or
+returned refuses before calling the actual reader constructor. It calls actual `fn-hsr-source-begin` and claims the reader role before
 a native digest/reader creator may escape. Its five core returned values are
 related to that actual call, the exact ACL2-issued lifetime token, source
 custody and unchanged charge/budget/identity/baseline. The PROGRAM caller
