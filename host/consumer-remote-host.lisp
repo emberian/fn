@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "../books/consumer-remote-dispatch")
 (include-book "../books/consumer-remote-query-profile")
+(include-book "../books/consumer-remote-operation-source")
 (include-book "../books/consumer-account-carries-state")
 (include-book "../books/consumer-account-state")
 (include-book "../books/owner-canonical-epoch")

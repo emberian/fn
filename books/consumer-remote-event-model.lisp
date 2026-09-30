@@ -13,6 +13,13 @@
       (equal (fn-cp-nth 3 s) (len (fn-cp-nth 2 s)))
       (equal (fn-cp-nth 4 s) (fn-crw-groups-charge (fn-cp-nth 2 s)))))
 
+(local
+ (defthm fn-crevm-append-ignores-improper-prefix-tail
+  (equal (append xs ys) (append (true-list-fix xs) ys))
+  :rule-classes nil
+  :hints (("Goal" :induct (true-list-fix xs)
+                   :in-theory (enable true-list-fix binary-append)))))
+
 (defthm fn-crev-chunk-is-exact-residual-encoding
  (implies (eq (fn-cp-nth 0 (fn-crev-tick s key)) :chunk)
   (equal (append (fn-cp-nth 1 (fn-crev-tick s key))
@@ -20,6 +27,8 @@
          (fn-crevm-residual s)))
  :rule-classes nil
  :hints (("Goal" :do-not-induct t
+          :use ((:instance fn-crevm-append-ignores-improper-prefix-tail
+                   (xs (fn-cp-nth 6 s)) (ys (fn-crev-groups-encode (fn-cp-nth 2 s)))))
           :in-theory (e/d (fn-crev-tick fn-crev-state fn-crevm-residual
                           fn-crev-groups-encode fn-crs-namep fn-cp-nth)
                          (fn-cbor-u16-bytes fn-record-group-name-octetsp lexorder len floor mod)))))

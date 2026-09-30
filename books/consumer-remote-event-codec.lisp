@@ -25,6 +25,23 @@
        (fn-cp-uintp (fn-cp-nth 6 op)) (posp (fn-cp-nth 6 op))
        (fn-cp-idp (fn-cp-nth 8 op)))))
 
+; Complete logical/recovery recognizer. It walks the query only off the
+; served path; a bounded served constructor establishes this same shape.
+(defun fn-crev-groupsp (groups previous)
+ (declare (xargs :guard t))
+ (if (consp groups)
+     (and (fn-crs-namep (car groups))
+          (or (not previous)
+              (and (lexorder previous (car groups)) (not (equal previous (car groups)))))
+          (fn-crev-groupsp (cdr groups) (car groups)))
+   (null groups)))
+
+(defun fn-crev-eventp (event)
+ (declare (xargs :guard t))
+ (let ((groups (fn-cp-nth 7 (fn-cp-nth 4 event))))
+  (and (fn-crev-headp event) (consp groups)
+       (fn-cp-uintp (len groups)) (fn-crev-groupsp groups nil))))
+
 (defun fn-crev-id (value)
  (declare (xargs :guard t))
  (if (true-listp value) (cons (len value) value) nil))
@@ -56,7 +73,8 @@
 (defun fn-crev-encode-reference (event)
  (declare (xargs :guard t))
  (let ((groups (fn-cp-nth 7 (fn-cp-nth 4 event))))
-  (append (fn-crev-header event (len groups)) (fn-crev-groups-encode groups))))
+  (if (fn-crev-eventp event)
+      (append (fn-crev-header event (len groups)) (fn-crev-groups-encode groups)) nil)))
 
 (defun fn-crev-header-charge (event count)
  (declare (xargs :guard t))
@@ -173,9 +191,23 @@
                           (fn-cp-nth 3 f) (fn-cp-nth 4 f) (fn-cp-nth 5 f)
                           (fn-cp-nth 1 groups) (fn-cp-nth 6 f)))))
        (if (and (posp count) (eq (fn-cp-nth 0 groups) :ok) (null (fn-cp-nth 2 groups))
-                (fn-crev-headp event)) (list :ok event) '(:error :remote-event)))))))))
+                (fn-crev-eventp event)) (list :ok event) '(:error :remote-event)))))))))
 
-(in-theory (disable fn-crev-code fn-crev-headp fn-crev-id fn-crev-header
+(defun fn-crev-result-okp (result)
+ (declare (xargs :guard t))
+ (and (true-listp result) (equal (len result) 2) (eq (car result) :ok)
+      (fn-crev-eventp (fn-cp-nth 1 result))))
+
+; Result-shape corollary, not a claimed codec inverse or host keystone.
+(defthm fn-crev-decode-success-is-valid-remote-event-by-definition
+ (implies (eq (fn-cp-nth 0 (fn-crev-decode-exact bytes)) :ok)
+          (fn-crev-result-okp (fn-crev-decode-exact bytes)))
+ :hints (("Goal" :in-theory
+          (e/d (fn-crev-decode-exact fn-crev-result-okp fn-cp-nth)
+               (fn-crev-eventp fn-crev-headp fn-crev-read-groups fn-cp-read-fields
+                fn-crev-kind take nthcdr)))))
+
+(in-theory (disable fn-crev-groupsp fn-crev-eventp fn-crev-result-okp fn-crev-code fn-crev-headp fn-crev-id fn-crev-header
                     fn-crev-groups-encode fn-crev-encode-reference
                     fn-crev-header-charge fn-crev-state fn-crev-begin fn-crev-tick
                     fn-crev-kind fn-crev-read-groups fn-crev-decode-exact))
