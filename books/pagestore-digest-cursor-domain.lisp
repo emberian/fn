@@ -17,7 +17,12 @@
   (implies (and (natp limit) (pgs-dcd-powerp power limit))
            (and (posp power) (<= power (expt 2 limit))))
   :hints (("Goal" :in-theory (enable pgs-dcd-powerp)))
-  :rule-classes (:rewrite
+  ; POSP POWER is deliberately not an automatic rewrite: its free LIMIT
+  ; can bind to an unrelated numeric bound and eagerly compute 2^LIMIT.
+  ; Consumers that need positivity explicitly use this unchanged theorem.
+  :rule-classes ((:rewrite :corollary
+                   (implies (and (natp limit) (pgs-dcd-powerp power limit))
+                            (<= power (expt 2 limit))))
                  (:linear :corollary
                    (implies (and (natp limit) (pgs-dcd-powerp power limit))
                             (<= power (expt 2 limit))))))
