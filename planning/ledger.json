@@ -905,6 +905,14 @@
     "books/legacy-parser-cursor",
     "books/legacy-parser-reference",
     "books/legacy-parser-header",
+    "books/legacy-parser-value-run",
+    "tests/acl2/legacy-parser-value-run-tests",
+    "books/legacy-parser-composition",
+    "tests/acl2/legacy-parser-composition-tests",
+    "books/legacy-parser-columns",
+    "tests/acl2/legacy-parser-columns-tests",
+    "books/legacy-parser-catalog",
+    "tests/acl2/legacy-parser-catalog-tests",
     "books/legacy-parser-validity",
     "tests/acl2/legacy-parser-cursor-tests",
     "tests/acl2/legacy-parser-header-tests",
@@ -1027,6 +1035,17 @@
     "tests/acl2/nov-decimal-window-tests",
     "books/nov-byte-window",
     "tests/acl2/nov-byte-window-tests",
+    "books/catalog-number-read",
+    "books/over-cursor-shape",
+    "books/nov-row-capture",
+    "books/served-column-relation",
+    "books/catalog-handles",
+    "books/nov-row-facts-model",
+    "books/response-plan-token",
+    "tests/acl2/response-plan-token-tests",
+    "books/over-byte-cursor",
+    "books/over-byte-invariants",
+    "tests/acl2/over-byte-cursor-tests",
     "books/nov-row-facts",
     "tests/acl2/nov-row-facts-tests",
     "books/nov-column-window",
@@ -1715,26 +1734,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1778,
-    "books_in_root_closure": 1775,
-    "roots": 1711,
-    "theorems": 28485,
-    "functions": 18605,
-    "assert_events": 23509,
+    "books": 1797,
+    "books_in_root_closure": 1794,
+    "roots": 1730,
+    "theorems": 28743,
+    "functions": 18649,
+    "assert_events": 23595,
     "must_fails": 2506,
     "prover_refusals": 0,
     "encapsulates": 157,
     "guards": {
-      "verified": 3489,
-      "declared-off": 2167,
-      "default-guarded": 10175,
-      "default-unguarded": 2774
+      "verified": 3493,
+      "declared-off": 2182,
+      "default-guarded": 10193,
+      "default-unguarded": 2781
     },
-    "suspect_theorems": 1233,
-    "export_hygiene_warnings": 331,
+    "suspect_theorems": 1238,
+    "export_hygiene_warnings": 333,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2474,
+    "include_hygiene_warnings": 2503,
     "host_names_warnings": 2137,
     "hand_written_record_warnings": 18
   },
@@ -8630,12 +8649,12 @@
       "book": "books/catalog-commit.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 59,
-      "functions": 33,
+      "theorems": 55,
+      "functions": 32,
       "guards": {
         "verified": 15,
         "declared-off": 0,
-        "default-guarded": 18,
+        "default-guarded": 17,
         "default-unguarded": 0
       },
       "verify_guards_events": 15,
@@ -8647,6 +8666,7 @@
       "encapsulates": 0,
       "includes": [
         "catalog",
+        "catalog-handles",
         "store-events-carried",
         "store-node",
         "store-node-resolution"
@@ -8723,6 +8743,32 @@
       "read_error": null
     },
     {
+      "book": "books/catalog-handles.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 4,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "catalog"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/catalog-load-index.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -8756,11 +8802,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 46,
-      "functions": 10,
+      "functions": 9,
       "guards": {
         "verified": 3,
         "declared-off": 0,
-        "default-guarded": 6,
+        "default-guarded": 5,
         "default-unguarded": 1
       },
       "verify_guards_events": 3,
@@ -8771,12 +8817,39 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "catalog-number-read",
         "catalog-view"
       ],
       "system_includes": [],
       "suspects": [
         "fn-cnx-numbers-of-with"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/catalog-number-read.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "catalog"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -15447,6 +15520,92 @@
       "read_error": null
     },
     {
+      "book": "books/legacy-parser-catalog.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 28,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "article-properties",
+        "legacy-parser-columns"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-lpv-nil-span-value-by-definition"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/legacy-parser-columns.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 46,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 6,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "legacy-parser-composition",
+        "legacy-parser-reference",
+        "legacy-parser-value-run"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-lpv-add-fold-value-by-definition",
+        "fn-lpv-make-field-value-by-definition"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/legacy-parser-composition.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 30,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 1,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "legacy-parser-validity"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/legacy-parser-cursor.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -15531,12 +15690,12 @@
       "book": "books/legacy-parser-validity.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 19,
-      "functions": 11,
+      "theorems": 59,
+      "functions": 14,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 9,
+        "default-guarded": 12,
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
@@ -15552,6 +15711,35 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/legacy-parser-value-run.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 37,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "legacy-parser-validity",
+        "legacy-parser-values"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-lpv-run-atom"
+      ],
       "read_error": null
     },
     {
@@ -17680,7 +17868,7 @@
       "book": "books/nntp-session.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 13,
+      "theorems": 14,
       "functions": 40,
       "guards": {
         "verified": 35,
@@ -18148,11 +18336,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 6,
-      "functions": 1,
+      "functions": 0,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 1,
+        "default-guarded": 0,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -18164,7 +18352,7 @@
       "encapsulates": 0,
       "includes": [
         "nov-column-window",
-        "nov-piece-window"
+        "nov-row-capture"
       ],
       "system_includes": [],
       "suspects": [],
@@ -18308,15 +18496,15 @@
       "read_error": null
     },
     {
-      "book": "books/nov-row-facts.lisp",
+      "book": "books/nov-row-capture.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 4,
-      "functions": 1,
+      "theorems": 0,
+      "functions": 2,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 1,
+        "default-guarded": 2,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -18327,7 +18515,63 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "nov-column-window"
+        "catalog",
+        "nov-piece-window"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/nov-row-facts-model.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "nov-row-capture",
+        "served-column-relation"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/nov-row-facts.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "nov-column-window",
+        "nov-row-capture",
+        "nov-row-facts-model"
       ],
       "system_includes": [],
       "suspects": [],
@@ -18584,6 +18828,95 @@
       "includes": [],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/over-byte-cursor.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 23,
+      "functions": 14,
+      "guards": {
+        "verified": 4,
+        "declared-off": 0,
+        "default-guarded": 10,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 4,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "catalog-number-read",
+        "legacy-parser-header",
+        "nov-row-capture",
+        "over-cursor-shape",
+        "response-plan-token"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-obc-quantum-ready-stays-ready"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/over-byte-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 4,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "catalog-handles",
+        "nov-row-facts-model",
+        "over-byte-cursor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/over-cursor-shape.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "nntp-session",
+        "protocol-table"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-ovw-cursor-fields"
+      ],
       "read_error": null
     },
     {
@@ -25027,6 +25360,32 @@
       "read_error": null
     },
     {
+      "book": "books/response-plan-token.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "response-plan-pins"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/retention-figures.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -26284,12 +26643,12 @@
       "book": "books/served-catalog.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 173,
-      "functions": 76,
+      "theorems": 172,
+      "functions": 72,
       "guards": {
         "verified": 27,
         "declared-off": 6,
-        "default-guarded": 42,
+        "default-guarded": 38,
         "default-unguarded": 1
       },
       "verify_guards_events": 27,
@@ -26304,13 +26663,13 @@
         "nntp",
         "nntp-list-counts",
         "nntp-range-indexed-invariants",
+        "over-cursor-shape",
         "protocol-table",
         "served-catalog-view",
         "served-columns"
       ],
       "system_includes": [],
       "suspects": [
-        "fn-ovw-cursor-fields",
         "fn-ovw-session-of-multi",
         "fn-ovw-session-of-multi-octets",
         "fn-ovw-session-of-single",
@@ -26355,16 +26714,43 @@
       "read_error": null
     },
     {
+      "book": "books/served-column-relation.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "catalog-record",
+        "nntp-session"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/served-columns.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 50,
-      "functions": 19,
+      "theorems": 49,
+      "functions": 16,
       "guards": {
         "verified": 2,
-        "declared-off": 2,
+        "declared-off": 0,
         "default-guarded": 14,
-        "default-unguarded": 1
+        "default-unguarded": 0
       },
       "verify_guards_events": 2,
       "assert_events": 0,
@@ -26376,7 +26762,8 @@
       "includes": [
         "catalog",
         "catalog-record",
-        "nntp-xref"
+        "nntp-xref",
+        "served-column-relation"
       ],
       "system_includes": [],
       "suspects": [],
@@ -41724,6 +42111,84 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/legacy-parser-catalog-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 16,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 3,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/legacy-parser-catalog"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/legacy-parser-columns-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 20,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 10,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/legacy-parser-columns"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/legacy-parser-composition-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 29,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/legacy-parser-composition"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/legacy-parser-cursor-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -41788,7 +42253,7 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 15,
+      "assert_events": 53,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 6,
@@ -41796,6 +42261,32 @@
       "encapsulates": 0,
       "includes": [
         "../../books/legacy-parser-validity"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/legacy-parser-value-run-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/legacy-parser-value-run"
       ],
       "system_includes": [],
       "suspects": [],
@@ -44134,6 +44625,32 @@
         "../../books/native-operator",
         "../../books/topic-history-local-control",
         "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/over-byte-cursor-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 5,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 11,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/over-byte-invariants"
       ],
       "system_includes": [],
       "suspects": [],
@@ -48485,6 +49002,32 @@
       "encapsulates": 0,
       "includes": [
         "../../books/response-plan-pins"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/response-plan-token-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 5,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/response-plan-token"
       ],
       "system_includes": [],
       "suspects": [],
@@ -54835,7 +55378,7 @@
     {
       "theorem": "fn-cat-abandon-stale-refused",
       "book": "books/catalog-commit.lisp",
-      "line": 299,
+      "line": 300,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-cat-abandon and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-cat-abandon and the conclusion is that branch's value"
@@ -54860,7 +55403,7 @@
     {
       "theorem": "fn-cat-complete-expected-mismatch-refused",
       "book": "books/catalog-commit.lisp",
-      "line": 289,
+      "line": 290,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-cat-complete and the conclusion is that branch's value"
       ]
@@ -54868,7 +55411,7 @@
     {
       "theorem": "fn-cat-complete-stale-refused",
       "book": "books/catalog-commit.lisp",
-      "line": 284,
+      "line": 285,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-cat-complete and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-cat-complete and the conclusion is that branch's value"
@@ -54877,7 +55420,7 @@
     {
       "theorem": "fn-cat-prepare-refused-when-pending",
       "book": "books/catalog-commit.lisp",
-      "line": 229,
+      "line": 230,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-cat-prepare and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-cat-prepare and the conclusion is that branch's value"
@@ -55171,7 +55714,7 @@
     {
       "theorem": "fn-cnx-numbers-of-with",
       "book": "books/catalog-number-index.lisp",
-      "line": 296,
+      "line": 297,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -56368,6 +56911,14 @@
       ]
     },
     {
+      "theorem": "fn-lpv-add-fold-value-by-definition",
+      "book": "books/legacy-parser-columns.lisp",
+      "line": 270,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
       "theorem": "fn-lpv-header-first-is-value-byte-by-definition",
       "book": "books/legacy-parser-values.lisp",
       "line": 360,
@@ -56381,6 +56932,31 @@
       "line": 370,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-lpc-header-byte and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-lpv-make-field-value-by-definition",
+      "book": "books/legacy-parser-columns.lisp",
+      "line": 411,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-lpv-nil-span-value-by-definition",
+      "book": "books/legacy-parser-catalog.lisp",
+      "line": 148,
+      "reasons": [
+        "arm-of-definition: constant arguments select one IF/COND arm of fn-lpc-span-value and the conclusion is that arm's value"
+      ]
+    },
+    {
+      "theorem": "fn-lpv-run-atom",
+      "book": "books/legacy-parser-value-run.lisp",
+      "line": 39,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-nlv-run and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis negates a branch test of fn-nlv-run and the conclusion is that branch's value"
       ]
     },
     {
@@ -57195,6 +57771,14 @@
       ]
     },
     {
+      "theorem": "fn-obc-quantum-ready-stays-ready",
+      "book": "books/over-byte-cursor.lisp",
+      "line": 414,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-obc-quantum-one and the conclusion is that arm's value"
+      ]
+    },
+    {
       "theorem": "fn-obi-seal-range-is-seal-of-slice",
       "book": "books/catalog-load-index.lisp",
       "line": 38,
@@ -57901,8 +58485,8 @@
     },
     {
       "theorem": "fn-ovw-cursor-fields",
-      "book": "books/served-catalog.lisp",
-      "line": 796,
+      "book": "books/over-cursor-shape.lisp",
+      "line": 21,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -57910,7 +58494,7 @@
     {
       "theorem": "fn-ovw-session-of-multi",
       "book": "books/served-catalog.lisp",
-      "line": 918,
+      "line": 892,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -57918,7 +58502,7 @@
     {
       "theorem": "fn-ovw-session-of-multi-octets",
       "book": "books/served-catalog.lisp",
-      "line": 922,
+      "line": 896,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -57926,7 +58510,7 @@
     {
       "theorem": "fn-ovw-session-of-single",
       "book": "books/served-catalog.lisp",
-      "line": 914,
+      "line": 888,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -57934,7 +58518,7 @@
     {
       "theorem": "fn-ovw-status-is-crlf",
       "book": "books/served-catalog.lisp",
-      "line": 1021,
+      "line": 995,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "definition-restated: the conclusion is the body of fn-ovw-status"
@@ -59797,7 +60381,7 @@
     {
       "theorem": "fn-scat-article-idp-is-msgid-idp",
       "book": "books/served-catalog.lisp",
-      "line": 535,
+      "line": 536,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -59805,7 +60389,7 @@
     {
       "theorem": "fn-scat-built-trie-corresponds",
       "book": "books/served-catalog.lisp",
-      "line": 3194,
+      "line": 3168,
       "reasons": [
         "reflexive-conclusion: a conjunct is (equal X X)"
       ]
@@ -59813,7 +60397,7 @@
     {
       "theorem": "fn-scat-pin-trie-is-built",
       "book": "books/served-catalog.lisp",
-      "line": 3187,
+      "line": 3161,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-midx-correspondencep"
       ]
@@ -63910,7 +64494,7 @@
       {
         "theorem": "fn-sn-set-keyring-advances-the-generation",
         "book": "books/catalog-commit.lisp",
-        "line": 706,
+        "line": 707,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -64292,6 +64876,18 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-lpv-complete-feed-tombstone-is-actual",
+        "book": "books/legacy-parser-catalog.lisp",
+        "line": 122,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-lpv-actual-parser-catalog-verdict",
+        "book": "books/legacy-parser-catalog.lisp",
+        "line": 222,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-lpc-search-count-is-body-lines-of",
         "book": "books/legacy-parser-reference.lisp",
         "line": 142,
@@ -64504,7 +65100,7 @@
       {
         "theorem": "fn-nntp-stuff-lines-iter-is-stuff-lines",
         "book": "books/nntp-session.lisp",
-        "line": 201,
+        "line": 204,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -64996,13 +65592,13 @@
       {
         "theorem": "fn-scol-body-lines-of-held-facts-of",
         "book": "books/served-columns.lisp",
-        "line": 221,
+        "line": 207,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-scol-intern-list-facts",
         "book": "books/served-columns.lisp",
-        "line": 783,
+        "line": 769,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -65693,11 +66289,13 @@
         "stated_in": [
           "books/article-work.lisp",
           "books/injection-invariants.lisp",
+          "books/legacy-parser-columns.lisp",
+          "books/legacy-parser-composition.lisp",
           "books/nov-line-projection.lisp",
           "books/topic-history-metadata-invariants.lisp",
           "tests/acl2/article-tests.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 5 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 7 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-result-article",
@@ -65708,6 +66306,8 @@
           "books/article-invariants.lisp",
           "books/article-properties.lisp",
           "books/injection-invariants.lisp",
+          "books/legacy-parser-catalog.lisp",
+          "books/legacy-parser-columns.lisp",
           "books/nntp-legacy.lisp",
           "books/nntp-post.lisp",
           "books/peer-authored-accept.lisp",
@@ -65716,9 +66316,10 @@
           "books/relay-source.lisp",
           "books/source-projection-bridge.lisp",
           "books/topic-history-metadata-invariants.lisp",
-          "tests/acl2/article-tests.lisp"
+          "tests/acl2/article-tests.lisp",
+          "tests/acl2/legacy-parser-columns-tests.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 13 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 16 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-line-value",
@@ -65732,12 +66333,15 @@
           "books/article-public-bound.lisp",
           "books/article-public-work.lisp",
           "books/article-work-scanners.lisp",
+          "books/legacy-parser-columns.lisp",
+          "books/legacy-parser-composition.lisp",
+          "books/legacy-parser-validity.lisp",
           "books/reclaim-admission.lisp",
           "books/source-projection-bridge.lisp",
           "tests/acl2/article-buffer-tests.lisp",
           "tests/acl2/article-tests.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 11 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 14 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-article-line-rest",
@@ -65749,9 +66353,11 @@
           "books/article-invariants.lisp",
           "books/article-properties.lisp",
           "books/article-public-bound.lisp",
-          "books/article-work-scanners.lisp"
+          "books/article-work-scanners.lisp",
+          "books/legacy-parser-composition.lisp",
+          "books/legacy-parser-validity.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 6 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 8 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-bpf-offset",
@@ -69143,6 +69749,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/catalog-commit.lisp",
+        "line": 75,
+        "include": "catalog-handles",
+        "included": "books/catalog-handles.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/catalog-entries.lisp",
         "line": 118,
         "include": "catalog-relation",
@@ -69168,6 +69781,13 @@
         "line": 28,
         "include": "catalog-relation",
         "included": "books/catalog-relation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/catalog-number-index.lisp",
+        "line": 39,
+        "include": "catalog-number-read",
+        "included": "books/catalog-number-read.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -72454,6 +73074,41 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/legacy-parser-catalog.lisp",
+        "line": 3,
+        "include": "legacy-parser-columns",
+        "included": "books/legacy-parser-columns.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/legacy-parser-columns.lisp",
+        "line": 3,
+        "include": "legacy-parser-value-run",
+        "included": "books/legacy-parser-value-run.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/legacy-parser-columns.lisp",
+        "line": 4,
+        "include": "legacy-parser-reference",
+        "included": "books/legacy-parser-reference.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/legacy-parser-columns.lisp",
+        "line": 5,
+        "include": "legacy-parser-composition",
+        "included": "books/legacy-parser-composition.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/legacy-parser-composition.lisp",
+        "line": 4,
+        "include": "legacy-parser-validity",
+        "included": "books/legacy-parser-validity.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/legacy-parser-cursor.lisp",
         "line": 4,
         "include": "nov-fields",
@@ -72486,6 +73141,20 @@
         "line": 5,
         "include": "nov-line-projection",
         "included": "books/nov-line-projection.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/legacy-parser-value-run.lisp",
+        "line": 3,
+        "include": "legacy-parser-values",
+        "included": "books/legacy-parser-values.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/legacy-parser-value-run.lisp",
+        "line": 4,
+        "include": "legacy-parser-validity",
+        "included": "books/legacy-parser-validity.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -72967,8 +73636,8 @@
       {
         "book": "books/nov-column-pieces.lisp",
         "line": 4,
-        "include": "nov-piece-window",
-        "included": "books/nov-piece-window.lisp",
+        "include": "nov-row-capture",
+        "included": "books/nov-row-capture.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -73014,10 +73683,45 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/nov-row-capture.lisp",
+        "line": 5,
+        "include": "nov-piece-window",
+        "included": "books/nov-piece-window.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/nov-row-facts-model.lisp",
+        "line": 3,
+        "include": "nov-row-capture",
+        "included": "books/nov-row-capture.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/nov-row-facts-model.lisp",
+        "line": 4,
+        "include": "served-column-relation",
+        "included": "books/served-column-relation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/nov-row-facts.lisp",
         "line": 4,
+        "include": "nov-row-facts-model",
+        "included": "books/nov-row-facts-model.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/nov-row-facts.lisp",
+        "line": 5,
         "include": "nov-column-window",
         "included": "books/nov-column-window.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/nov-row-facts.lisp",
+        "line": 6,
+        "include": "nov-row-capture",
+        "included": "books/nov-row-capture.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -73046,6 +73750,62 @@
         "line": 48,
         "include": "rev-onto",
         "included": "books/rev-onto.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-byte-cursor.lisp",
+        "line": 7,
+        "include": "over-cursor-shape",
+        "included": "books/over-cursor-shape.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-byte-cursor.lisp",
+        "line": 8,
+        "include": "catalog-number-read",
+        "included": "books/catalog-number-read.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-byte-cursor.lisp",
+        "line": 10,
+        "include": "nov-row-capture",
+        "included": "books/nov-row-capture.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-byte-cursor.lisp",
+        "line": 11,
+        "include": "legacy-parser-header",
+        "included": "books/legacy-parser-header.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-byte-invariants.lisp",
+        "line": 5,
+        "include": "over-byte-cursor",
+        "included": "books/over-byte-cursor.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-byte-invariants.lisp",
+        "line": 6,
+        "include": "nov-row-facts-model",
+        "included": "books/nov-row-facts-model.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-byte-invariants.lisp",
+        "line": 7,
+        "include": "catalog-handles",
+        "included": "books/catalog-handles.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-cursor-shape.lisp",
+        "line": 4,
+        "include": "protocol-table",
+        "included": "books/protocol-table.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -74079,23 +74839,37 @@
       },
       {
         "book": "books/served-catalog.lisp",
-        "line": 45,
+        "line": 43,
+        "include": "over-cursor-shape",
+        "included": "books/over-cursor-shape.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/served-catalog.lisp",
+        "line": 46,
         "include": "protocol-table",
         "included": "books/protocol-table.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/served-catalog.lisp",
-        "line": 47,
+        "line": 48,
         "include": "nntp-range-indexed-invariants",
         "included": "books/nntp-range-indexed-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/served-catalog.lisp",
-        "line": 48,
+        "line": 49,
         "include": "nntp-list-counts",
         "included": "books/nntp-list-counts.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/served-columns.lisp",
+        "line": 45,
+        "include": "served-column-relation",
+        "included": "books/served-column-relation.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -79650,6 +80424,27 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/legacy-parser-catalog-tests.lisp",
+        "line": 3,
+        "include": "../../books/legacy-parser-catalog",
+        "included": "books/legacy-parser-catalog.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/legacy-parser-columns-tests.lisp",
+        "line": 2,
+        "include": "../../books/legacy-parser-columns",
+        "included": "books/legacy-parser-columns.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/legacy-parser-composition-tests.lisp",
+        "line": 2,
+        "include": "../../books/legacy-parser-composition",
+        "included": "books/legacy-parser-composition.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/legacy-parser-cursor-tests.lisp",
         "line": 4,
         "include": "../../books/legacy-parser-reference",
@@ -79668,6 +80463,13 @@
         "line": 2,
         "include": "../../books/legacy-parser-validity",
         "included": "books/legacy-parser-validity.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/legacy-parser-value-run-tests.lisp",
+        "line": 2,
+        "include": "../../books/legacy-parser-value-run",
+        "included": "books/legacy-parser-value-run.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -80704,6 +81506,13 @@
         "line": 11,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/over-byte-cursor-tests.lisp",
+        "line": 2,
+        "include": "../../books/over-byte-invariants",
+        "included": "books/over-byte-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
