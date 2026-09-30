@@ -74,10 +74,8 @@
                    (if (member kind '(:publish :configure))
                        (let ((word
                               (if (eq kind :configure)
-                                  (fnn-owner-account-configuration-publication-locked
-                                   service (fnn-core 'fn-cad-action-value step))
-                                (fnn-owner-account-publication-locked
-                                 service (fnn-core 'fn-cad-action-value step)))))
+                                  (fnn-owner-account-configuration-publication-locked service)
+                                (fnn-owner-account-publication-locked service))))
                          ;; Only an actual durable completion advances the
                          ;; candidate cursor; a transport answer never does.
                          (if (eq word :durable)

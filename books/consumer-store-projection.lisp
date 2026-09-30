@@ -31,7 +31,7 @@
 ; sequence is checked here as well as by Store files.  A replay that drops a
 ; nonarticle record therefore cannot silently renumber an issued cursor.
 (defun fn-cpe-projection-step (s event expected)
-  (if (fn-cac-eventp event)
+  (if (fn-cae-eventp event)
       (list :refused :authority-interpreter-required)
     (if (or (not (fn-store-event-p event))
           (not (fn-cp-uintp expected))
