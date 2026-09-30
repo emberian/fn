@@ -81,7 +81,7 @@
 (in-package "ACL2")
 
 (defconst *fn-di-keys* '(:class :kinds :exempt :keystones :root :direct :delegates
-                         :raw-with))
+                         :raw-with :raw-guarded))
 
 (defconst *fn-di-classes* '(:common-lisp-compliant :ideal :program))
 
@@ -139,6 +139,13 @@
   ; (THM ...): a non-empty list of theorem names
   (and (consp x) (symbol-listp x) (not (member-eq nil x))))
 
+(defun fn-di-raw-guarded-formp (x)
+  (declare (xargs :mode :program))
+  ; Exact ABI: (input-arity stobjs-in stobjs-out).
+  (and (true-listp x) (equal (len x) 3) (natp (car x))
+       (symbol-listp (cadr x)) (equal (len (cadr x)) (car x))
+       (consp (caddr x)) (symbol-listp (caddr x))))
+
 (defun fn-di-refusal (name kvs)
   (declare (xargs :mode :program))
   ; nil when the form is well-formed; else (REASON . DETAILS)
@@ -169,6 +176,11 @@
    ((and (assoc-keyword :raw-with kvs)
          (not (fn-di-raw-with-formp (fn-di-get :raw-with kvs))))
     (list :bad-raw-with (fn-di-get :raw-with kvs)))
+   ((and (assoc-keyword :raw-guarded kvs)
+         (not (fn-di-raw-guarded-formp (fn-di-get :raw-guarded kvs))))
+    (list :bad-raw-guarded (fn-di-get :raw-guarded kvs)))
+   ((and (assoc-keyword :raw-guarded kvs) (assoc-keyword :raw-with kvs))
+    (list :dual-raw-routes))
    (t nil)))
 
 ; -----------------------------------------------------------------------------
@@ -500,6 +512,36 @@
                (fn-di-related-fnnames heads thms w)))
          (t nil))))))
 
+(defun fn-di-raw-guarded-conjunctsp (conjuncts formals slots w)
+  (declare (xargs :mode :program))
+  (if (atom conjuncts) (null conjuncts)
+    (and (or (equal (car conjuncts) '(quote t))
+             (fn-di-stobj-recognizer-conjunctp (car conjuncts) formals slots w))
+         (fn-di-raw-guarded-conjunctsp (cdr conjuncts) formals slots w))))
+
+(defun fn-di-raw-guarded-problem (name kvs w)
+  (declare (xargs :mode :program))
+  ; Distinct from raw-with: this route skips NO invariant/kind guard.
+  ; Host ownership must supply the genuine instances named by the slots.
+  (if (not (assoc-keyword :raw-guarded kvs)) nil
+    (let ((spec (fn-di-get :raw-guarded kvs))
+          (formals (getpropc name 'formals :none w)))
+      (cond
+       ((assoc-keyword :raw-with kvs) (msg "~x0 declares incompatible raw routes" name))
+       ((not (fn-di-raw-guarded-formp spec)) (msg "~x0 has malformed raw-guarded ABI ~x1" name spec))
+       ((not (and (eq (fn-di-get :class kvs) :common-lisp-compliant)
+                  (eq (symbol-class name w) :common-lisp-compliant)))
+        (msg "~x0 is not declared and verified for raw-guarded execution" name))
+       ((eq formals :none) (msg "~x0 has no validated formals" name))
+       ((not (equal (car spec) (len formals))) (msg "~x0 raw-guarded arity disagrees with its world" name))
+       ((not (equal (cadr spec) (stobjs-in name w))) (msg "~x0 raw-guarded input slots disagree with its world" name))
+       ((not (equal (caddr spec) (stobjs-out name w))) (msg "~x0 raw-guarded output slots disagree with its world" name))
+       ((not (fn-di-raw-guarded-conjunctsp
+               (fn-di-conjuncts (guard name nil w))
+               formals (stobjs-in name w) w))
+        (msg "~x0 raw-guarded guard contains a kind, invariant, or relation beyond supplied stobj recognition" name))
+       (t nil)))))
+
 (defun fn-di-problem (name kvs w)
   (declare (xargs :mode :program))
   ; nil, or a msg naming the first check the world refutes
@@ -517,6 +559,7 @@
      ((fn-di-keystones-problem name (fn-di-get :keystones kvs) w))
      ((fn-di-delegates-problem name (fn-di-get :delegates kvs) w))
      ((fn-di-raw-with-problem name kvs w))
+     ((fn-di-raw-guarded-problem name kvs w))
      (t nil))))
 
 (defun fn-di-refusal-text (reason)
@@ -527,6 +570,8 @@
                            (cdr reason) *fn-di-keys*))
     (:bad-root (msg ":root ~x0 is not :extract or :extract-extra." (cadr reason)))
     (:bad-delegates (msg ":delegates ~x0 is not a function name." (cadr reason)))
+    (:bad-raw-guarded (msg ":raw-guarded ~x0 is not an exact (arity input-slots output-slots) ABI." (cadr reason)))
+    (:dual-raw-routes (msg ":raw-with and :raw-guarded are incompatible."))
     (:bad-raw-with (msg ":raw-with ~x0 is not a non-empty list of theorem names."
                         (cadr reason)))
     (otherwise (msg "malformed form: ~x0." reason))))

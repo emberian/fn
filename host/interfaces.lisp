@@ -4885,16 +4885,27 @@
 ; name the selected guard-verified source; startup/capacity/lifetime joins
 ; remain required before native activation. Logical test views are excluded.
 (definterface create-fn-input-copy
-  :class :common-lisp-compliant :root :extract)
+  :class :common-lisp-compliant :root :extract
+  :raw-guarded (0 () (fn-input-copy)))
 (definterface create-fn-page-read-pool
-  :class :common-lisp-compliant :root :extract)
+  :class :common-lisp-compliant :root :extract
+  :raw-guarded (0 () (fn-page-read-pool)))
 (definterface fn-owner-incoming-copy-start
-  :class :common-lisp-compliant :root :extract)
+  :class :common-lisp-compliant :root :extract
+  :raw-guarded (5 (nil nil nil fn-input-copy fn-page-read-pool) (nil fn-input-copy fn-page-read-pool)))
 (definterface fn-owner-incoming-copy-next
-  :class :common-lisp-compliant :root :extract)
+  :class :common-lisp-compliant :root :extract
+  :raw-guarded (3 (nil fn-input-copy fn-page-read-pool) (nil nil nil nil fn-input-copy fn-page-read-pool)))
 (definterface fn-owner-incoming-copy-ack
-  :class :common-lisp-compliant :root :extract)
+  :class :common-lisp-compliant :root :extract
+  :raw-guarded (7 (nil nil nil nil nil fn-input-copy fn-page-read-pool) (nil fn-input-copy fn-page-read-pool)))
 (definterface fn-owner-incoming-copy-stop
-  :class :common-lisp-compliant :root :extract)
+  :class :common-lisp-compliant :root :extract
+  :raw-guarded (5 (nil nil nil fn-input-copy fn-page-read-pool) (nil fn-input-copy fn-page-read-pool)))
 (definterface fn-owner-incoming-mutation-allowedp
-  :class :common-lisp-compliant :root :extract)
+  :class :common-lisp-compliant :root :extract
+  :raw-guarded (2 (nil fn-page-read-pool) (nil)))
+
+(definterface fn-di-raw-guarded-problem
+ :class :program
+ :direct "Startup declaration validator over the loaded world; no per-request decision")

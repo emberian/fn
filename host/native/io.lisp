@@ -1189,16 +1189,22 @@ offered to the writer while the owner runs (PKT-508), else written here."
 
 (defun fnn-install-raw-dispatch ()
   "Fill *fnn-raw-dispatch* from the fn-interfaces table of the loaded world:
-the :raw-with entries, each checked against the world; the count."
+the :raw-with and :raw-guarded entries, checked against the world; the count."
   (let ((wrld (w *the-live-state*)))
     (clrhash *fnn-raw-dispatch*)
     (dolist (entry (table-alist 'fn-interfaces wrld))
       (let ((name (car entry))
-            (theorems (cadr (assoc-keyword :raw-with (cdr entry)))))
-        (when theorems
+            (theorems (cadr (assoc-keyword :raw-with (cdr entry))))
+            (guarded (assoc-keyword :raw-guarded (cdr entry))))
+        (when (or theorems guarded)
+          (when guarded
+            (let ((problem (fn-di-raw-guarded-problem name (cdr entry) wrld)))
+              (when problem
+                (error "fnn-install-raw-dispatch: ~a has a refused guarded declaration: ~s"
+                       name problem))))
           ;; Recheck the loaded table at the dispatch installation boundary,
           ;; rather than assuming every table entry came from definterface.
-          (let ((problem (fn-di-raw-with-problem name (cdr entry) wrld)))
+          (let ((problem (and theorems (fn-di-raw-with-problem name (cdr entry) wrld))))
             (when problem
               (error "fnn-install-raw-dispatch: ~a has a refused declaration: ~s"
                      name problem)))
@@ -1208,11 +1214,13 @@ the :raw-with entries, each checked against the world; the count."
             (unless (eq (symbol-class name wrld) :common-lisp-compliant)
               (error "fnn-install-raw-dispatch: ~a is declared :raw-with but is ~a, not guard-verified"
                      name (symbol-class name wrld)))
+            (when (and guarded (not (compiled-function-p (symbol-function raw))))
+              (error "fnn-install-raw-dispatch: ~a has no compiled guarded callback" name))
             (setf (gethash name *fnn-raw-dispatch*) raw)
             (format t "~&FN_RAW_DISPATCH ~(~a~) ~(~a~) invariant-risk=~a with=~(~a~)~%"
                     name (symbol-class name wrld)
                     (if (getpropc name 'invariant-risk nil wrld) "t" "nil")
-                    theorems)))))
+                    (if guarded (cadr guarded) theorems))))))
     (hash-table-count *fnn-raw-dispatch*)))
 
 (defun fnn-dispatch-function (name)

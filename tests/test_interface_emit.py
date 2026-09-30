@@ -78,6 +78,20 @@ class DeclarationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             interface_emit.declarations(tree('(definterface fn-a :class :program :guard t)\n'))
 
+    def test_raw_guarded_abi_is_preserved_in_selected_declarations(self):
+        text = "(definterface fn-copy :class :common-lisp-compliant :raw-guarded (2 (nil fn-copy-state) (nil fn-copy-state)))"
+        rows = interface_emit.declarations(tree(text))
+        self.assertEqual(rows[0]["raw_guarded"], [2, ["nil", "fn-copy-state"], ["nil", "fn-copy-state"]])
+        self.assertIn(":raw-guarded (2 (nil fn-copy-state) (nil fn-copy-state))", interface_emit.render_raw_declarations(rows))
+
+    def test_raw_guarded_malformed_and_dual_data_are_not_filtered(self):
+        text = "(definterface fn-copy :class :common-lisp-compliant :raw-guarded nil :raw-with (fn-copy-thm))"
+        rendered = interface_emit.render_raw_declarations(interface_emit.declarations(tree(text)))
+        self.assertIn(":raw-guarded nil", rendered)
+        self.assertIn(":raw-with (fn-copy-thm)", rendered)
+        text = '(definterface fn-copy :class :common-lisp-compliant :raw-guarded (0 () ("fn-copy-state")))'
+        self.assertIn('("fn-copy-state")', interface_emit.render_raw_declarations(interface_emit.declarations(tree(text))))
+
     def test_raw_with_parses(self):
         decls = interface_emit.declarations(tree(
             '(definterface fn-a :class :common-lisp-compliant :raw-with (fn-a-open fn-a-statep))\n'))
