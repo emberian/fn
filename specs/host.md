@@ -1783,3 +1783,5 @@ conses are additional funded source scratch. Once the bounded preparation
 finishes, `fn-osrc-restart` reuses its immutable ordered suffix pointer in
 constant work for further passes; a premature restart refuses. Provider row correctness and
 complete source refinement remain required before producer completion.
+
+The low fixed-prefix held remap now preserves mandatory held16 binding in the borrowed suffix. Exact source-only evidence is `planning/evidence/snapshot-held16-tail-source-2026-09-30/coordinate.json`; the full resident/decoded row dispatcher migration and Store/physical alpha composition remain open. The actual unconditional wire-projection statement was preserved.

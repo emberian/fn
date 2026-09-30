@@ -1,8 +1,10 @@
 (in-package "ACL2")
 (include-book "../../books/snapshot-held-remap")
+(defconst *ohrt-binding*
+ (fn-ab-make :native-source (append *fn-ab-subject-head* (make-list 32 :initial-element 0))))
 (defconst *ohrt-wire*
   (fn-record-make 0 0 0 "<one@example>" '(1 2 3) '("fn.test")
-                  "p" "c" "r" 1 841000000))
+                  "p" "c" "r" 1 841000000 *ohrt-binding*))
 (defconst *ohrt-valid* (fn-held-plain *ohrt-wire* 3))
 ; Complete actual held-shape preservation antecedent and conclusion.
 (assert-event
@@ -47,7 +49,17 @@
         (equal (fn-held-facts new) (fn-held-facts *ohrt-row*))
         (equal (fn-held-context new) (fn-held-context *ohrt-row*))
         (equal (fn-held-numbers new) (fn-held-numbers *ohrt-row*))
-        (equal (fn-held-withdrawn new) (fn-held-withdrawn *ohrt-row*)))))
+        (equal (fn-held-withdrawn new) (fn-held-withdrawn *ohrt-row*))
+        (equal (fn-held-binding new) (fn-held-binding *ohrt-row*)))))
 (assert-event
  (equal (fn-held-wire (fn-orm-held *ohrt-row* 7) '(1 2 3))
         (fn-held-wire *ohrt-row* '(1 2 3))))
+
+; Actual current held16 descriptor survives the remap, including when the
+; natural handle crosses its canonical encoded-width boundary.
+(assert-event
+ (let ((new (fn-orm-held *ohrt-valid* 256)))
+  (and (fn-held-p *ohrt-valid*) (natp 256) (fn-held-p new)
+       (equal (fn-held-binding new) *ohrt-binding*)
+       (equal (fn-orm-metadata new) (fn-orm-metadata *ohrt-valid*))
+       (equal (fn-held-wire new '(1 2 3)) (fn-held-wire *ohrt-valid* '(1 2 3))))))

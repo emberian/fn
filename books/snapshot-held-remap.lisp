@@ -1,7 +1,7 @@
 ; PRF-1081: actual held payload-slot update, with the complete tail borrowed.
 ; Isolated from Store recovery so this concrete boundary has a narrow gate.
 (in-package "ACL2")
-(include-book "held-record")
+(include-book "held-record-shape")
 (defun fn-orm-tail (n row)
   (declare (xargs :guard (natp n) :measure (nfix n)))
   (if (zp n) row
@@ -47,17 +47,32 @@
          (equal (fn-held-facts new) (fn-held-facts row))
          (equal (fn-held-context new) (fn-held-context row))
          (equal (fn-held-numbers new) (fn-held-numbers row))
-         (equal (fn-held-withdrawn new) (fn-held-withdrawn row))))
+         (equal (fn-held-withdrawn new) (fn-held-withdrawn row))
+         (equal (fn-held-binding new) (fn-held-binding row))))
   :hints (("Goal" :in-theory (enable fn-orm-held fn-held-internals fn-record-internals))))
 (defthm fn-orm-held-preserves-the-held-shape
   (implies (and (fn-held-p row) (natp handle))
            (fn-held-p (fn-orm-held row handle)))
   :hints (("Goal" :in-theory (enable fn-orm-held fn-held-p fn-held-internals fn-record-internals))))
+(local
+ (defthm fn-orm-nonempty-tail-carries-the-original-spine
+  (implies (and (natp n) (consp (fn-orm-tail n row)))
+           (and (equal (true-listp row) (true-listp (fn-orm-tail n row)))
+                (equal (len row) (+ n (len (fn-orm-tail n row))))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-orm-tail n row)
+           :in-theory (e/d (fn-orm-tail true-listp len)
+                           (fn-orm-tail-is-nthcdr-by-definition))))))
 (defthm fn-orm-held-has-the-same-wire-projection-at-the-same-bytes
   (equal (fn-held-wire (fn-orm-held row handle) bytes)
          (fn-held-wire row bytes))
-  :hints (("Goal" :in-theory (enable fn-orm-held fn-held-wire
-                                     fn-held-internals fn-record-internals))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-orm-nonempty-tail-carries-the-original-spine (n 5)))
+           :cases ((consp row) (consp (cdr row)) (consp (cddr row))
+                   (consp (cdddr row)) (consp (cddddr row)))
+           :in-theory (enable fn-orm-held fn-orm-tail fn-held-wire fn-row-binding
+                              fn-held-shapep fn-record-shapep
+                              fn-held-internals fn-record-internals))))
 (defun fn-orm-metadata (row)
   (declare (xargs :guard t))
   ; Only the payload slot is removed. The complete retained tail is shared.
