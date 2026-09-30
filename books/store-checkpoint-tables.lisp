@@ -907,6 +907,19 @@
                            (fn-scc-parse-header fn-scc-join fn-scc-join-octets
                             fn-scc-segment-listp)))))
 
+ ; Keep the same result fact available after fixed NTH projections simplify
+; to CAR/CDR in a larger composed world.
+(local
+ (defthm fn-sct-run-decode-ok-cdr-shape
+   (implies (and (fn-scc-segment-listp segs)
+                 (eq (car (fn-sct-run-decode segs s)) :ok))
+            (and (fn-scc-octet-listp (cadr (fn-sct-run-decode segs s)))
+                 (fn-scc-segment-listp (caddr (fn-sct-run-decode segs s)))))
+   :hints (("Goal" :use fn-sct-run-decode-ok-shape
+            :in-theory (e/d (nth adt-nth-0 adt-nth-1+)
+                            (fn-sct-run-decode fn-sct-run-decode-ok-shape
+                             fn-scc-octet-listp fn-scc-segment-listp))))))
+
 ; The file: (:ok TABLES) or (:refused REASON), S read from the first header.
 (defun fn-sct-decode-file (segs)
   (declare (xargs :guard (fn-scc-segment-listp segs)
