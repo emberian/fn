@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1719 |
-| Certification roots in the Makefile | 1634 |
-| Books inside the root closure | 1712 |
-| `defthm` and `defthmd` events | 27756 |
-| `defun` events | 18250 |
-| Functions with verified guards | 3462 |
-| Functions declared `:verify-guards nil` and never verified | 2091 |
-| Functions left at the default with an explicit guard | 9962 |
+| Books read | 1721 |
+| Certification roots in the Makefile | 1636 |
+| Books inside the root closure | 1714 |
+| `defthm` and `defthmd` events | 27806 |
+| `defun` events | 18271 |
+| Functions with verified guards | 3465 |
+| Functions declared `:verify-guards nil` and never verified | 2094 |
+| Functions left at the default with an explicit guard | 9977 |
 | Functions left at the default with no guard | 2735 |
-| `assert-event` checks | 23053 |
+| `assert-event` checks | 23081 |
 | `must-fail` checks | 2496 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
 | Theorems flagged SUSPECT by shape | 1228 |
-| Export-hygiene warnings | 317 |
+| Export-hygiene warnings | 318 |
 | Enabled-projection warnings | 52 |
 | Teeth-form warnings | 272 |
-| Include-hygiene warnings | 2430 |
+| Include-hygiene warnings | 2434 |
 | Host-names warnings | 2134 |
 | Hand-written-record warnings | 18 |
 
@@ -100,6 +100,7 @@ that `make certify` requests.
 | `books/allocation-epoch.lisp` | closure | 11 | 14 | 0/0/14/0 | 0 | 0 | 1 |
 | `books/allocation-turn-raw-bridge.lisp` | root | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/allocation-turn-slots.lisp` | closure | 17 | 13 | 0/0/12/1 | 0 | 0 | 2 |
+| `books/allocation-turn-source-cost.lisp` | root | 44 | 16 | 3/0/13/0 | 0 | 0 | 0 |
 | `books/anchor-invariants.lisp` | root | 31 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/anchor-record.lisp` | root | 5 | 4 | 4/0/0/0 | 0 | 0 | 0 |
 | `books/anchor-replace.lisp` | root | 7 | 10 | 0/0/10/0 | 0 | 0 | 0 |
@@ -1085,6 +1086,7 @@ that `make certify` requests.
 | `tests/acl2/allocation-epoch-pool-tests.lisp` | - | 0 | 1 | 0/1/0/0 | 1 | 0 | 0 |
 | `tests/acl2/allocation-epoch-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 27 | 0 | 0 |
 | `tests/acl2/allocation-turn-slots-tests.lisp` | root | 1 | 10 | 0/10/0/0 | 22 | 0 | 0 |
+| `tests/acl2/allocation-turn-source-cost-tests.lisp` | root | 6 | 5 | 0/3/2/0 | 28 | 0 | 0 |
 | `tests/acl2/anchor-replace-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/anchor-server-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/anchor-teeth-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 57 | 0 | 0 |

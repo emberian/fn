@@ -61,3 +61,19 @@ proofs. Source declaration admission is not native execution or image qualificat
 Still open: genuine profile/constructor baseline installation; actual source allowance
 composition; all concurrent executor/native outer-return joins; full-GC barrier and
 qualified return suffix; immutable-image/native allocation measurements and deployment.
+
+PRF-1164 supplies the proof-only executable source observers `fn-atsc-enter`
+(word, nonce, slots, pool, cells, ordered operands, source sites) and
+`fn-atsc-finish` (word, slots, pool, cells, ordered operands, source sites). Named
+complete-result correspondence connects each to the actual internal callback.
+Every entry branch, including failed issuer disposition, is bounded by 40 explicit
+source CONS cells and 50 material arithmetic operations; successful current and
+legacy reconstruction has 40 and 39 cells respectively and exactly 50 operations.
+Finish has zero explicit source CONS and records the actual count subtraction
+only when consumed. All five PRS coordinates and actual arithmetic operands are
+retained. These counts are not installed tariffs: fixed reader/recognizer and
+comparison lowering, concrete stores, native MV/frame/first-use/outer-return
+closure and selected request/octet conversion must be assembled separately.
+The final ordinary standalone test root proves its fixture view decodes the
+complete state and checks actual complete results across reachable positive and
+premise-removal branches, with raw/corrupted/mutation cases labeled separately.

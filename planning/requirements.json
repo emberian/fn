@@ -5730,7 +5730,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-1156",
-        "PRF-1157"
+        "PRF-1157",
+        "PRF-1164"
       ],
       "verification": [
         "proof",
@@ -5741,7 +5742,13 @@
         "books/allocation-turn-raw-bridge.lisp",
         "host/allocation-turn-host.lisp",
         "tests/acl2/allocation-turn-slots-tests.lisp",
-        "planning/evidence/manifests/certify-20260930T154935Z-91174.json"
+        "planning/evidence/manifests/certify-20260930T154935Z-91174.json",
+        "books/allocation-turn-source-cost.lisp",
+        "tests/acl2/allocation-turn-source-cost-tests.lisp",
+        "planning/evidence/manifests/certify-20260930T171255Z-54307.json",
+        "planning/evidence/manifests/certify-20260930T170410Z-47967.json",
+        "planning/evidence/manifests/certify-20260930T172909Z-66675.json",
+        "planning/evidence/allocation-turn-source-cost-2026-09-30/README.md"
       ],
       "implementation_note": "Certified internal concrete registry and exact SAMEpool receipt joins; raw dispatch declarations admitted. Actual operation allowance composition, constructor baseline installation, process-wide executor join, immutable image qualification and activation remain separate."
     }

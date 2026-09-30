@@ -17461,6 +17461,31 @@
           "pending_subject": "Certified internal component subject; actual selected-runtime/source installation and native operation ticket/outer-return composition are not activated in this packet."
         }
       ]
+    },
+    {
+      "id": "PRF-1164",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-atsc-enter-observes-complete-actual-result",
+          "pending_subject": "Actual ATS entry/finish source refinement and constructor/operand census; selected compiler primitive/request/frame closure and installed Qgate authority remain separate."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-atsc-finish-observes-complete-actual-result",
+          "pending_subject": "Actual ATS entry/finish source refinement and constructor/operand census; selected compiler primitive/request/frame closure and installed Qgate authority remain separate."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-atsc-enter-owned-source-census",
+          "pending_subject": "Actual ATS entry/finish source refinement and constructor/operand census; selected compiler primitive/request/frame closure and installed Qgate authority remain separate."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-atsc-all-entry-paths-source-census-bound",
+          "pending_subject": "Actual ATS entry/finish source refinement and constructor/operand census; selected compiler primitive/request/frame closure and installed Qgate authority remain separate."
+        }
+      ]
     }
   ]
 }

@@ -18079,6 +18079,38 @@
         "fn-ats-body-preserves-slot-count-correspondence",
         "fn-ats-finish-preserves-slot-count-correspondence"
       ]
+    },
+    {
+      "id": "PRF-1164",
+      "title": "Actual allocating-turn entry and finish source census preserves complete results",
+      "statement": "The executable proof-only fn-atsc-enter and fn-atsc-finish observers equal the complete four- and three-value results of the actual fn-ats-enter-internal and fn-ats-finish-owned subjects. Every entry branch has at most 40 explicit source CONS cells and 50 recorded material arithmetic operations, including definite failed-entry disposition. Successful entry has 39/40 cells according to the actual legacy/baseline ledger constructor and exactly 50 material operations, with ordered operands retained. Fixed reader/recognizer arithmetic, comparisons, concrete stores, compiler frames and result-MV lowering remain explicit separate native closure obligations; source counts alone establish no physical Qgate allowance.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-042"
+      ],
+      "depends_on": [
+        "PRF-1156",
+        "PRF-1157",
+        "PRF-1159"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/allocation-turn-source-cost.lisp",
+        "books/page-read-issue-source-cost.lisp",
+        "tests/acl2/allocation-turn-source-cost-tests.lisp",
+        "planning/evidence/manifests/certify-20260930T171255Z-54307.json",
+        "planning/evidence/manifests/certify-20260930T170410Z-47967.json",
+        "planning/evidence/manifests/certify-20260930T172909Z-66675.json",
+        "planning/evidence/allocation-turn-source-cost-2026-09-30/README.md"
+      ],
+      "progress_note": "Certified source census and full-result refinement; literal concrete result witnesses and premise-removal cases. Actual selected compiler request/octet conversion, all reader/recognizer/MV/frame closures and genuine physical allowance installation remain open.",
+      "events": [
+        "fn-atsc-enter-observes-complete-actual-result",
+        "fn-atsc-finish-observes-complete-actual-result",
+        "fn-atsc-enter-owned-source-census",
+        "fn-atsc-all-entry-paths-source-census-bound"
+      ]
     }
   ]
 }
