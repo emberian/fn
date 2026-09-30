@@ -503,6 +503,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/decoded-window-initial-funding-domain \
 	books/decoded-window-initial-source-trace \
 	books/decoded-window-initial-source-counts \
+	books/decoded-window-initial-write-domains \
+	tests/acl2/decoded-window-initial-write-domains-tests \
 	books/decoded-window-initial-retained-state \
 	books/decoded-window-initial-buffer-capacity \
 	books/decoded-window-initial-buffer-exec \

@@ -416,3 +416,13 @@ remove their corresponding requests. This bound excludes callers, errors,
 memoization, collector/first-use and old/new alias lifetimes; it neither
 qualifies a final image nor supplies a complete INITIAL admission. Central
 assumptions inclusion remains required at convergence.
+
+The actual initializer source updater boundary now preserves the complete
+host tuple/effects and identifies all21 register writes: indices0..17 to0,
+19 to0,11 to1,18 to the bounded preset length. The frozen16-field digest
+has17 scalar/reference setter calls, including temporary total/end
+8*ceil(B/64) and final overridesceil(B/8). Its numeric values are at most
+2^60 under the selected native offset profile; source capture is the exact
+12-reference tuple and lease is the original token. Mode/IV/output are
+exact and no frame-array write occurs. These source operand facts do not
+price setter macros/callers/memoization/frames/GC/lifetime or grant INITIAL.
