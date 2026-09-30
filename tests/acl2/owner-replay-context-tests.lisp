@@ -1,0 +1,101 @@
+; Bootstrap complete antecedents and actual source/count refusal boundaries.
+(in-package "ACL2")
+(include-book "../../books/owner-replay-context")
+(defun orcbt-effects (ctx row)
+ (mv-list 3 (fn-replay-identity-effects ctx row)))
+(defconst *orcb-source* '(1 (2 1) 0 0))
+(defconst *orcb-row* (fn-stxk-make 0 1 1 0 '(1) '(7 8)))
+(assert-event
+ (mv-let (phase s) (fn-orcb-begin *orcb-source* 1)
+  (mv-let (next n) (fn-orcb-step s *orcb-source* *orcb-row* (fn-scs-summary *orcb-row*))
+   (and (eq phase :replaying) (fn-orcb-statep s)
+        (fn-scs-correspondsp (fn-orcb-at 5 s) (fn-orcb-at 4 s))
+        (fn-omk-token-matchp *orcb-source* (fn-orcb-row-source s))
+        (equal (nth 1 (orcbt-effects (fn-orcb-at 4 s) *orcb-row*)) :snapshot)
+        (equal (fn-scs-summary *orcb-row*)
+               (fn-scs-summary (nth 2 (orcbt-effects (fn-orcb-at 4 s) *orcb-row*))))
+        (< (fn-orcb-at 3 s) (fn-orcb-at 2 s))
+        (eq next :ready) (fn-orcb-statep n)
+        (equal (fn-orcb-at 4 n) (fn-replay-identity-step (fn-orcb-at 4 s) *orcb-row*))
+        (fn-scs-correspondsp (fn-orcb-at 5 n) (fn-orcb-at 4 n))
+        (equal (fn-orcb-at 2 n) 1) (equal (fn-orcb-at 3 n) 1)
+        (equal (fn-orcb-install n *orcb-source*)
+         (list :ready (fn-orcb-at 4 n) (fn-scs-spine (fn-orcb-at 5 n))
+               (fn-orcb-at 5 n) *orcb-source* 1))))))
+; Correct phase/count/carries with a stale provider source refuses unchanged.
+(assert-event
+ (mv-let (phase s) (fn-orcb-begin *orcb-source* 1)
+  (mv-let (next n) (fn-orcb-step s '(2 (2 1) 0 0) *orcb-row* (fn-scs-summary *orcb-row*))
+   (and (eq phase :replaying) (fn-orcb-statep s)
+        (< (fn-orcb-at 3 s) (fn-orcb-at 2 s))
+        (not (fn-omk-token-matchp '(2 (2 1) 0 0) (fn-orcb-row-source s)))
+        (eq next :refused) (equal (fn-orcb-at 4 n) (fn-orcb-at 4 s))
+        (equal (fn-orcb-at 3 n) 0)
+        (equal (fn-orcb-install n *orcb-source*) '(:refused nil nil nil nil nil))))))
+; A valid initial accumulator cannot be installed before every event is consumed.
+(assert-event
+ (mv-let (phase s) (fn-orcb-begin *orcb-source* 1)
+  (and (eq phase :replaying) (fn-orcb-statep s)
+       (fn-omk-token-matchp *orcb-source* (fn-orcb-at 1 s))
+       (eq (fn-stxk-context-kind (fn-orcb-at 4 s)) :ok)
+       (not (equal (fn-orcb-at 3 s) (fn-orcb-at 2 s)))
+       (equal (fn-orcb-install s *orcb-source*) '(:refused nil nil nil nil nil)))))
+; Independent old-carry hypothesis removal; state shape and exact changed
+; child are retained. This is corruption evidence, not a reachable producer.
+(assert-event
+ (mv-let (phase initial) (fn-orcb-begin *orcb-source* 1)
+  (let* ((fields (update-nth 2 '(999 nil nil) (fn-orcb-at 5 initial)))
+         (s (update-nth 5 fields initial)))
+   (mv-let (next n) (fn-orcb-step s *orcb-source* *orcb-row* (fn-scs-summary *orcb-row*))
+    (and (eq phase :replaying) (fn-orcb-statep s)
+         (not (fn-scs-correspondsp fields (fn-orcb-at 4 s)))
+         (equal (nth 1 (orcbt-effects (fn-orcb-at 4 s) *orcb-row*)) :snapshot)
+         (equal (fn-scs-summary *orcb-row*)
+                (fn-scs-summary (nth 2 (orcbt-effects (fn-orcb-at 4 s) *orcb-row*))))
+         (eq next :ready)
+         (not (fn-scs-correspondsp (fn-orcb-at 5 n) (fn-orcb-at 4 n))))))))
+; Independent changed-child carry removal; complete old correspondence and
+; bootstrap shape are retained.
+(assert-event
+ (mv-let (phase s) (fn-orcb-begin *orcb-source* 1)
+  (mv-let (next n) (fn-orcb-step s *orcb-source* *orcb-row* '(999 nil nil))
+   (and (eq phase :replaying) (fn-orcb-statep s)
+        (fn-scs-correspondsp (fn-orcb-at 5 s) (fn-orcb-at 4 s))
+        (equal (nth 1 (orcbt-effects (fn-orcb-at 4 s) *orcb-row*)) :snapshot)
+        (not (equal '(999 nil nil)
+          (fn-scs-summary (nth 2 (orcbt-effects (fn-orcb-at 4 s) *orcb-row*)))))
+        (eq next :ready)
+        (not (fn-scs-correspondsp (fn-orcb-at 5 n) (fn-orcb-at 4 n)))))))
+; Corrupted-state removal: seven context fields are outside the executable
+; six-field guard, with exact old correspondence and no changed child.
+(assert-event (with-guard-checking :none
+ (let* ((ctx '(:fault 0 nil nil nil :damaged :extra))
+        (fields (list (fn-scs-summary :fault) (fn-scs-summary 0)
+                      (fn-scs-summary nil) (fn-scs-summary nil)
+                      (fn-scs-summary nil) (fn-scs-summary :damaged)
+                      (fn-scs-summary :extra)))
+        (s (fn-orcb-state :replaying *orcb-source* 1 0 ctx fields)))
+  (mv-let (next n) (fn-orcb-step s *orcb-source* *orcb-row* '(999 nil nil))
+   (and (not (fn-orcb-statep s)) (fn-scs-correspondsp fields ctx)
+        (equal (nth 1 (orcbt-effects ctx *orcb-row*)) :none)
+        (eq next :refused)
+        (not (fn-scs-correspondsp (fn-orcb-at 5 n) (fn-orcb-at 4 n))))))))
+; Source scalar0 is the captured Store frontier, not process incarnation.
+; A subsequent authorized live operation can have a changed frontier. The
+; owner wrapper establishes that authority; this leaf retains actual replay.
+(assert-event
+ (mv-let (phase s) (fn-orcb-begin *orcb-source* 1)
+  (mv-let (first ready) (fn-orcb-step s *orcb-source* *orcb-row* (fn-scs-summary *orcb-row*))
+   (let ((source '(2 (3 2) 0 0))
+         (row (fn-stxk-make 1 2 2 1 '(1) '(9 10))))
+    (mv-let (next appended) (fn-orcb-append ready source row (fn-scs-summary row))
+     (and (eq phase :replaying) (eq first :ready) (fn-orcb-statep ready)
+          (fn-omk-tokenp source)
+          (not (equal (fn-omk-at 0 source) (fn-omk-at 0 *orcb-source*)))
+          (equal (fn-orcb-at 2 ready) (fn-orcb-at 3 ready))
+          (eq next :ready) (fn-orcb-statep appended)
+          (equal (fn-orcb-at 4 appended)
+                 (fn-replay-identity-step (fn-orcb-at 4 ready) row))
+          (equal (fn-orcb-at 1 appended) source)
+          (equal (fn-orcb-at 2 appended) 2)
+          (fn-scs-correspondsp (fn-orcb-at 5 appended) (fn-orcb-at 4 appended))))))))
