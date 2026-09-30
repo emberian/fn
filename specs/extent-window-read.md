@@ -39,8 +39,9 @@ composition boundary, not an integrity assertion supplied by the host.
 The integrated entry must drive the concrete byte digest over precisely
 the consumed bytes before invoking finish; the current component is not
 an authenticated reader by itself. Digest tail handling, allocation/stack
-domain, source pinning, progress and the existing frame-digest attachment
-must be proved at that boundary. A-CRYPTO's pessimistic collision work is
+domain, source pinning and progress must be proved at that boundary. The
+frame function now has a concrete BLAKE3 definition; the streamed terminal
+result still requires the actual refinement to that function. A-CRYPTO's pessimistic collision work is
 2^128 for BLAKE3; digest equality does not prove source byte equality.
 
 Compressed reads reuse the existing DEFLATE inflater with bounded input,

@@ -1072,6 +1072,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/payload-extent-tests \
 	tests/acl2/payload-commit-extent-tests \
 	tests/acl2/frame-digest-buffer-tests \
+	tests/acl2/frame-digest-concrete-tests \
 	tests/acl2/records-freeze-tests \
 	tests/acl2/catalog-record-tests \
 	tests/acl2/catalog-tests \
