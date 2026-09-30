@@ -1673,6 +1673,10 @@
     "tests/acl2/stx-transit-tests",
     "tests/acl2/stx-evidence-records-tests",
     "tests/acl2/stx-keyring-records-tests",
+    "tests/acl2/store-tree-size-tests",
+    "tests/acl2/held-record-size-tests",
+    "tests/acl2/identity-context-size-tests",
+    "tests/acl2/history-decode-size-tests",
     "tests/acl2/stx-accept-records-tests",
     "tests/acl2/store-node-index-tests",
     "tests/acl2/store-node-correspondence-tests",
@@ -1742,26 +1746,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1810,
-    "books_in_root_closure": 1807,
-    "roots": 1738,
-    "theorems": 28705,
-    "functions": 18689,
-    "assert_events": 23543,
+    "books": 1822,
+    "books_in_root_closure": 1815,
+    "roots": 1742,
+    "theorems": 28883,
+    "functions": 18769,
+    "assert_events": 23643,
     "must_fails": 2507,
     "prover_refusals": 0,
     "encapsulates": 157,
     "guards": {
-      "verified": 3495,
-      "declared-off": 2176,
-      "default-guarded": 10226,
-      "default-unguarded": 2792
+      "verified": 3498,
+      "declared-off": 2183,
+      "default-guarded": 10263,
+      "default-unguarded": 2825
     },
-    "suspect_theorems": 1246,
-    "export_hygiene_warnings": 338,
+    "suspect_theorems": 1247,
+    "export_hygiene_warnings": 341,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2494,
+    "include_hygiene_warnings": 2499,
     "host_names_warnings": 2137,
     "hand_written_record_warnings": 18
   },
@@ -12389,6 +12393,33 @@
       "read_error": null
     },
     {
+      "book": "books/held-record-size.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 11,
+      "functions": 4,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "held-record",
+        "store-tree-size"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/held-record.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -12568,15 +12599,72 @@
       "read_error": null
     },
     {
+      "book": "books/history-decode-refinement.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 63,
+      "functions": 15,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 15
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-decode-stream"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-hdc-begin-coordinates-unfolds"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/history-decode-size.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 14,
+      "functions": 13,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 11,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-decode-stream",
+        "store-tree-size"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/history-decode-stream.lisp",
       "in_root_closure": true,
       "is_root": true,
       "theorems": 12,
-      "functions": 9,
+      "functions": 10,
       "guards": {
         "verified": 1,
         "declared-off": 0,
-        "default-guarded": 8,
+        "default-guarded": 9,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -13720,6 +13808,34 @@
       "read_error": null
     },
     {
+      "book": "books/history-symbol-normalize.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 33,
+      "functions": 13,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 8,
+        "default-unguarded": 5
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-tree-codec"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/history-wire.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -14065,6 +14181,35 @@
         "fn-ideal-result-effects-of-fn-ideal-make-result",
         "fn-ideal-result-state-of-fn-ideal-make-result"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/identity-context-size.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 20,
+      "functions": 8,
+      "guards": {
+        "verified": 2,
+        "declared-off": 0,
+        "default-guarded": 6,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 2,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-tree-size",
+        "stx-keyring-records"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -30741,6 +30886,35 @@
       "read_error": null
     },
     {
+      "book": "books/store-tree-size.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 12,
+      "functions": 11,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 9,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-tree-codec"
+      ],
+      "system_includes": [
+        "arithmetic/top",
+        "ihs/quotient-remainder-lemmas"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/stx-accept-records.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -40984,6 +41158,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/held-record-size-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 12,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/held-record-size"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/held-rows-intern-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -41146,6 +41346,58 @@
       "encapsulates": 0,
       "includes": [
         "../../books/history-decode-stream"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/history-decode-refinement-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 20,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-decode-refinement"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/history-decode-size-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 39,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 7,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-decode-size"
       ],
       "system_includes": [],
       "suspects": [],
@@ -41876,6 +42128,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/history-symbol-normalize-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 4,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 19,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-symbol-normalize"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/hmac-sha256-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -42099,6 +42377,34 @@
       "system_includes": [
         "std/testing/assert-equal"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/identity-context-size-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 12,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/identity-context-size",
+        "held-record-size-tests",
+        "store-tree-size-tests"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -53170,6 +53476,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-tree-size-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 14,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-tree-size"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/stx-accept-records-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -56667,6 +56999,14 @@
       "theorem": "fn-hc-error-preserves-original",
       "book": "books/hybrid-carrier.lisp",
       "line": 461,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-hdc-begin-coordinates-unfolds",
+      "book": "books/history-decode-refinement.lisp",
+      "line": 781,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -66379,6 +66719,24 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-scs-atom-establishes-summary",
+        "book": "books/store-tree-size.lisp",
+        "line": 72,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-scs-spine-preserves-canonical-size",
+        "book": "books/store-tree-size.lisp",
+        "line": 123,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-scs-octets-establishes-canonical-size",
+        "book": "books/store-tree-size.lisp",
+        "line": 137,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-stx-b64-decode-exact-ok-shape",
         "book": "books/stx-carrier.lisp",
         "line": 428,
@@ -67192,6 +67550,7 @@
         "line": 124,
         "stated_in": [
           "books/hybrid-lifecycle-store-invariants.lisp",
+          "books/identity-context-size.lisp",
           "books/owner-prepare-served-ocl.lisp",
           "books/owner-signed-post.lisp",
           "books/owner-snapshot-recovery.lisp",
@@ -67200,7 +67559,7 @@
           "books/store-identity-sequence-invariants.lisp",
           "books/store-open-pre-c1.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 8 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 9 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-stxk-context-next",
@@ -67222,13 +67581,14 @@
         "line": 132,
         "stated_in": [
           "books/hybrid-lifecycle-store-invariants.lisp",
+          "books/identity-context-size.lisp",
           "books/owner-signed-post.lisp",
           "books/owner-snapshot-recovery.lisp",
           "books/statement-keyring-publication.lisp",
           "books/store-finalize-incremental.lisp",
           "books/store-node.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 6 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 7 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-stxk-context-verdicts",
@@ -67236,22 +67596,24 @@
         "line": 137,
         "stated_in": [
           "books/hybrid-lifecycle-store-invariants.lisp",
+          "books/identity-context-size.lisp",
           "books/owner-signed-post.lisp",
           "books/owner-snapshot-recovery.lisp",
           "books/served-catalog-join-frame.lisp",
           "books/served-catalog-join-host-identity-finish.lisp",
           "books/store-finalize-incremental.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 6 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 7 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-stxk-context-current-generation",
         "book": "books/stx-keyring-records.lisp",
         "line": 142,
         "stated_in": [
+          "books/identity-context-size.lisp",
           "books/statement-keyring-publication.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-transfer-work-value",
@@ -70845,6 +71207,13 @@
       {
         "book": "books/history-scalar-cursor.lisp",
         "line": 3,
+        "include": "store-tree-codec",
+        "included": "books/store-tree-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/history-symbol-normalize.lisp",
+        "line": 5,
         "include": "store-tree-codec",
         "included": "books/store-tree-codec.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -75708,6 +76077,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/store-tree-size.lisp",
+        "line": 4,
+        "include": "store-tree-codec",
+        "included": "books/store-tree-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/stx-carrier.lisp",
         "line": 47,
         "include": "rev-onto",
@@ -80405,6 +80781,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/history-decode-refinement-tests.lisp",
+        "line": 2,
+        "include": "../../books/history-decode-refinement",
+        "included": "books/history-decode-refinement.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/history-fold-refinement-tests.lisp",
         "line": 8,
         "include": "../../books/history-fold-refinement",
@@ -80717,6 +81100,20 @@
         "line": 6,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/identity-context-size-tests.lisp",
+        "line": 4,
+        "include": "store-tree-size-tests",
+        "included": "tests/acl2/store-tree-size-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/identity-context-size-tests.lisp",
+        "line": 5,
+        "include": "held-record-size-tests",
+        "included": "tests/acl2/held-record-size-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
