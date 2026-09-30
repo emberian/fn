@@ -5120,3 +5120,20 @@ legitimate received producers. The source constructor's redundant octet premise
 was removed only after proving the weaker statement using the actual bundle
 encoder octet theorem. Exact proper source admission and complete witnesses:
 `planning/evidence/bp-held-family-source-20260930/manifest.json`.
+
+### Strict checkpoint value domain (source only)
+
+A typed CK7 with actual received-source and auxiliary held carries and typed
+handoffs contains only naturals, NIL and the explicit finite keyword vocabulary
+proved in `bp-checkpoint-value-domain`. The proof covers actual primary/canonical
+blocks, bundle identifiers, ingress, lineage, forwarding/deletion auxiliaries,
+handoffs and the seven checkpoint fields. Complete literal producer positives
+and each hypothesis removal accompany the boundary. Strings, characters,
+foreign-package symbols, unknown keywords and negative integers are excluded
+from this grammar. This is not all-input equivalence with the legacy decoder.
+
+Recovery remains unchanged until the full transition/replay carry and explicit
+malformed disposition join. A bounded decoder may then reject unsupported leaf
+families without INTERN; its refinement, resource envelope and actual native
+reopening are still open. Source admission manifest:
+`planning/evidence/bp-checkpoint-value-domain-20260930/manifest.json`.
