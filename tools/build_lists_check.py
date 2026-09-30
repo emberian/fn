@@ -41,7 +41,7 @@ the difference explicit instead:
               books/octets-stobj and books/poster-bytes-buffer for
               host/owner-host.lisp's fn-owner-prepare-buffer and
               build-dtn.lisp did not, so the DTN image failed to build.
-              A host file's own `ld`s count before its uses.
+              Host-file includes and nested `ld`s count only for subsequent uses.
 
 Static, no ACL2.  It does not follow the books an omitted host file includes,
 and it cannot see a counterpart name computed at run time.  `included` reads
@@ -320,46 +320,52 @@ def include_findings(root: Path, dtn_text: str, index: BookIndex | None = None,
     out: list[str] = []
     seen: dict[str, None] = {}  # host files `ld`ed so far, in load order
 
-    def visit(text: str, base: str) -> None:
-        for kind, target, rest in ORDER.findall(strip_code_keep_strings(text)):
+    host_defined: set[str] = set()
+
+    def visit(text: str, base: str, path: str | None = None) -> None:
+        # Check each stretch before advancing the world at its next load.
+        # A later include (including one reached through a nested ld) cannot
+        # justify an earlier use in this file.
+        code = strip_code_keep_strings(text)
+        local = {n.lower() for n in DEF.findall(strip_comments(text))}
+
+        def check_uses(segment: str) -> None:
+            if path is None:
+                return
+            defined = set().union(*(index.defs(b) for b in available
+                                    if (root / b).exists()))
+            for name in sorted(host_uses(segment) - local - host_defined - defined):
+                books = index.owner.get(name)
+                if books:
+                    finding = (f"included: {path} uses {name}, defined in "
+                               f"{', '.join(sorted(books))}, which {loader} has not "
+                               f"included when it loads {path}")
+                    if finding not in out:
+                        out.append(finding)
+
+        offset = 0
+        for match in ORDER.finditer(code):
+            check_uses(code[offset:match.start()])
+            offset = match.end()
+            kind, target, rest = match.groups()
             if kind.lower() == "include-book":
-                # The image's umbrella (tools/extract/world.py) is the union
-                # of the script's and its host files' includes, loaded first
-                # so each compiled file loads once; counting it would make
-                # this order rule vacuous.  The rule reads the declared
-                # includes, in order, as before the umbrella.
+                # The generated umbrella loads the union first; counting it
+                # would make the declared-order rule vacuous.
                 if os.path.normpath(os.path.join(base, target)).startswith("books/image-world"):
                     continue
                 if ":dir" not in rest.lower():
                     index.close(available, [os.path.normpath(os.path.join(base, target))
                                             + ".lisp"])
                 continue
-            path = os.path.normpath(os.path.join(base, target))
-            if path in seen:
+            nested = os.path.normpath(os.path.join(base, target))
+            if nested in seen:
                 continue
-            seen[path] = None
-            host_text = (root / path).read_text(encoding="utf-8")
-            host_dir = os.path.dirname(path)
-            index.close(available, [os.path.normpath(os.path.join(host_dir, t)) + ".lisp"
-                                    for t, r in INCLUDE.findall(
-                                        LOCAL_INCLUDE.sub("", strip_code_keep_strings(host_text)))
-                                    if ":dir" not in r.lower()])
-            # The host files this one `ld`s serve it too, and their books:
-            # host/store-node-host.lisp loads host/store-host.lisp (and so
-            # books/store-config) before its own definitions.
-            before = len(seen)
-            visit(host_text, host_dir)
-            local = {n.lower() for n in DEF.findall(strip_comments(host_text))}
-            for nested in list(seen)[before:]:
-                local |= {n.lower() for n in DEF.findall(
-                    strip_comments((root / nested).read_text(encoding="utf-8")))}
-            defined_so_far = set().union(*(index.defs(b) for b in available if (root / b).exists()))
-            for name in sorted(host_uses(host_text) - local - defined_so_far):
-                books = index.owner.get(name)
-                if books:
-                    out.append(f"included: {path} uses {name}, defined in "
-                               f"{', '.join(sorted(books))}, which {loader} has not "
-                               f"included when it loads {path}")
+            seen[nested] = None
+            visit((root / nested).read_text(encoding="utf-8"),
+                  os.path.dirname(nested), nested)
+        check_uses(code[offset:])
+        if path is not None:
+            host_defined.update(local)
 
     visit(dtn_text, ".")
     return out

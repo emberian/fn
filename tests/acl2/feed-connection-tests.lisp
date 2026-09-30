@@ -47,10 +47,10 @@
 (assert-event (equal (fn-fc-kind (fn-fc-step *fc-stream* '(50 48 50 13 10)))
                      :refused))
 ; (PRF-207: 500 and 501 to MODE STREAM are the IHAVE fallback, below; the
-; tooth is a 400, which still refuses.)
+; tooth is a 400, which closes temporarily without authorizing an offer.)
 (assert-event (equal (fn-fc-kind
                       (fn-fc-step (fn-fc-next-state *fc-mode*) '(52 48 48 13 10)))
-                     :refused))
+                     :closed))
 (defconst *fc-lost* (fn-fc-lost (fn-fc-next-state *fc-coalesced*)))
 (assert-event (equal (fn-fc-phase *fc-lost*) :closed))
 (assert-event (equal (fn-fc-kind (fn-fc-step *fc-lost* nil))
@@ -100,7 +100,7 @@
         :auth-user))
 
 ; PRF-130 (the walk, finding c), restated by PRF-207: a peer answering MODE
-; STREAM with a code other than 203, 500 or 501 (here 502) is a streaming
+; STREAM with a code other than 203, 400, 500 or 501 (here 502) is a streaming
 ; refusal; recorded, the peer is not dialled again.
 (defconst *fc-mode-state* (fn-fc-next-state *fc-mode*))
 (assert-event (equal (fn-fc-phase *fc-mode-state*) :mode))
@@ -242,3 +242,78 @@
 (assert-event (not (fn-fc-streaming-refusal-p *fc-mode-state* *fc-partial*)))
 ; Nothing queued: no dial even without a stop.
 (assert-event (not (fn-fc-dial-allowedp nil "hub" nil)))
+
+; PRF-1122: reachable positive witness and each necessary hypothesis.
+(defconst *fc-temporary-line* '(52 48 48 32 116 101 109 112 111 114 97 114 121 13 10))
+(defun fc-temporary-code (st octets)
+  (fn-own-feed-response-code (fn-fwi-line (fn-fwi-step (fn-fc-input st) octets))))
+(defun fc-temporary-antecedent (st octets)
+  (and (fn-fc-statep st) (equal (fn-fc-phase st) :mode)
+       (equal (fc-temporary-code st octets) 400)))
+(defun fc-temporary-conclusion (st octets)
+  (let ((step (fn-fc-step st octets)))
+    (and (equal (fn-fc-kind step) :closed)
+         (equal (fn-fc-phase (fn-fc-next-state step)) :closed)
+         (equal (fn-fc-conn (fn-fc-next-state step)) (fn-fc-conn st))
+         (not (fn-fc-streaming-refusal-p st step)))))
+(assert-event (and (fc-temporary-antecedent *fc-mode-state* *fc-temporary-line*)
+                   (fc-temporary-conclusion *fc-mode-state* *fc-temporary-line*)))
+; The last fragment is an actual residual line from a previous :need-input.
+(defconst *fc-temporary-partial* (fn-fc-step *fc-mode-state* '(52 48)))
+(assert-event (equal (fn-fc-kind *fc-temporary-partial*) :need-input))
+(assert-event
+ (and (fc-temporary-antecedent (fn-fc-next-state *fc-temporary-partial*) '(48 13 10))
+      (fc-temporary-conclusion (fn-fc-next-state *fc-temporary-partial*) '(48 13 10))))
+; Corrupted-state hypothesis-removal witness: valid parser, invalid streaming bit.
+(defconst *fc-temporary-corrupt*
+  (fn-fc-make-state (fn-fwi-initial-state) :not-boolean :mode 7 :clear))
+(assert-event
+ (and (not (fn-fc-statep *fc-temporary-corrupt*))
+      (equal (fn-fc-phase *fc-temporary-corrupt*) :mode)
+      (equal (fc-temporary-code *fc-temporary-corrupt* *fc-temporary-line*) 400)
+      (not (fc-temporary-conclusion *fc-temporary-corrupt* *fc-temporary-line*))))
+; Without :mode: a greeting 400 follows the ordinary greeting refusal branch.
+(assert-event
+ (and (fn-fc-statep *fc-greet-state*)
+      (not (equal (fn-fc-phase *fc-greet-state*) :mode))
+      (equal (fc-temporary-code *fc-greet-state* *fc-temporary-line*) 400)
+      (not (fc-temporary-conclusion *fc-greet-state* *fc-temporary-line*))))
+; Without code400: 502 is permanent, still a process stop.
+(assert-event
+ (and (fn-fc-statep *fc-mode-state*) (equal (fn-fc-phase *fc-mode-state*) :mode)
+      (not (equal (fc-temporary-code *fc-mode-state* '(53 48 50 13 10)) 400))
+      (not (fc-temporary-conclusion *fc-mode-state* '(53 48 50 13 10)))))
+; PRF-130's newly necessary not400 premise: every retained hypothesis holds,
+; the omitted hypothesis and the old conclusion both fail.
+(assert-event
+ (and (fn-fc-statep *fc-mode-state*) (equal (fn-fc-phase *fc-mode-state*) :mode)
+      (fn-fwi-chunkp *fc-temporary-line*)
+      (equal (fn-fwi-kind (fn-fwi-step (fn-fc-input *fc-mode-state*) *fc-temporary-line*)) :line)
+      (not (equal (fc-temporary-code *fc-mode-state* *fc-temporary-line*) 203))
+      (not (fn-fc-mode-unsupportedp
+             (fn-fwi-line (fn-fwi-step (fn-fc-input *fc-mode-state*) *fc-temporary-line*))))
+      (equal (fc-temporary-code *fc-mode-state* *fc-temporary-line*) 400)
+      (not (fn-fc-streaming-refusal-p *fc-mode-state*
+              (fn-fc-step *fc-mode-state* *fc-temporary-line*)))))
+
+(defun fc-permanent-conclusion (st octets queued peer stopped)
+  (let ((step (fn-fc-step st octets)))
+    (and (equal (fn-fc-kind step) :refused)
+         (equal (fn-fc-phase (fn-fc-next-state step)) :closed)
+         (fn-fc-streaming-refusal-p st step)
+         (not (fn-fc-dial-allowedp queued peer
+                 (fn-fc-stopped-put peer *fn-fc-stop-mode-stream-refused* stopped))))))
+(defun fc-permanent-retained-hypotheses (st octets)
+  (and (fn-fc-statep st) (equal (fn-fc-phase st) :mode)
+       (fn-fwi-chunkp octets)
+       (equal (fn-fwi-kind (fn-fwi-step (fn-fc-input st) octets)) :line)
+       (not (equal (fc-temporary-code st octets) 203))
+       (not (fn-fc-mode-unsupportedp (fn-fwi-line (fn-fwi-step (fn-fc-input st) octets))))))
+(assert-event
+ (and (fc-permanent-retained-hypotheses *fc-mode-state* '(53 48 50 13 10))
+      (not (equal (fc-temporary-code *fc-mode-state* '(53 48 50 13 10)) 400))
+      (fc-permanent-conclusion *fc-mode-state* '(53 48 50 13 10) t "hub" nil)))
+(assert-event
+ (and (fc-permanent-retained-hypotheses *fc-mode-state* *fc-temporary-line*)
+      (equal (fc-temporary-code *fc-mode-state* *fc-temporary-line*) 400)
+      (not (fc-permanent-conclusion *fc-mode-state* *fc-temporary-line* t "hub" nil))))

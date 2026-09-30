@@ -196,8 +196,14 @@ fn-bpnp-step admits it or fences (spec bp-node-machine 11.1 N07)."
         (rows nil))
     (dolist (name names (nreverse rows))
       (let* ((path (fnn-join (fnn-bps-lifecycle service) name))
-             (raw (fnn-read-regular-bounded path limit)))
-        (push (list name (fnn-octet-list raw)) rows)))))
+             (raw (fnn-read-regular-bounded path limit))
+             (octets (fnn-octet-list raw))
+             (admission (fnn-core 'fn-bprpf-row-admit octets
+                                   (fnn-bps-profile service))))
+        (unless (eq (first admission) :ready)
+          (fnn-indeterminate "bp-service: replay profile refusal ~a: ~a"
+                             name (second admission)))
+        (push (list name octets) rows)))))
 
 (defun fnn-bps-sequence-ready (service has-records)
   (let* ((dir (fnn-join (fnn-bps-root service) "sequence"))
@@ -1020,7 +1026,7 @@ scheduling step, whatever the family holds.")
   ;; with an offset-zero source and reassembles nothing; the host starts that
   ;; family's reassembly job (fn-bpfj-start), steps it a bounded quantum at a
   ;; time (fn-bpfj-step) until fn-bpfj-finishedp, and offers the finished job
-  ;; with the profile's bundle octets to the :family step.  Its plan reads
+  ;; with the profile's held octets to the :family step.  Its plan reads
   ;; the image out of the job and refuses an image past the limit by name
   ;; (fn-bpfj-plan-refuses-past-the-limit-by-name); a stale job plans as
   ;; (:stale :job), which issues nothing.  A family whose proposal issues
@@ -1030,7 +1036,7 @@ scheduling step, whatever the family holds.")
   ;; refusal/uncertainty does not loop.  The job the proposal read is left
   ;; in the service for its kind-18 :persist-result.
   (let ((tried nil)
-        (limit (fnn-core 'fn-bpnpf-bundle-octets (fnn-bps-profile service))))
+        (limit (fnn-core 'fn-bpnpf-held-octets (fnn-bps-profile service))))
     (loop
       (let* ((tally (fnn-bps-tally service))
              (observation (fnn-bp-observation
@@ -1201,7 +1207,14 @@ again and releases neither on a failure (HELD's owner does)."
                            (unless held (fnn-tcl-spool-release spool-lock))
                            (error e))))
          (profile (fnn-core 'fn-bpnpf-node-profile-base node-profile))
-         (plan (handler-case (fnn-bps-selection-plan root profile)
+         (plan (handler-case
+                   (let* ((selected (fnn-bps-selection-plan root profile))
+                          (admission (fnn-core 'fn-bprpf-selection-admit
+                                               selected profile)))
+                     (unless (eq (first admission) :ready)
+                       (fnn-indeterminate "bp-service: checkpoint profile refusal: ~a"
+                                          (second admission)))
+                     selected)
                  (error (e)
                    (unless held (fnn-tcl-spool-release spool-lock))
                    (error e))))
@@ -1282,9 +1295,11 @@ again and releases neither on a failure (HELD's owner does)."
                              ;; re-summed per row; equal to
                              ;; fn-bpnr-recover-auto-event by
                              ;; fn-bphp-recover-auto-event-is-bpnr.
-                             (fnn-core 'fn-bphp-recover-auto-event
-                                       (fnn-bps-state service) records
-                                       sequence rows (fnn-bps-plan service))
+                             (fnn-core 'fn-bprpf-admit-recovery
+                               (fnn-core 'fn-bphp-recover-auto-event
+                                         (fnn-bps-state service) records
+                                         sequence rows (fnn-bps-plan service))
+                               profile)
                              (list domain))))
                 (setf (fnn-bps-recovery-event service) event)
                 (setf (fnn-bps-stages service)

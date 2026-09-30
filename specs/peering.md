@@ -2339,9 +2339,9 @@ What differs from the design above, and why:
   (`:no-such-peer` otherwise), as reader pins never enter a durable record.
 - **Signatures.** `fn-peer-decide-transfer` and `fn-peer-transfer` take the
   obligation id and subject strings (and `fn-peer-transfer` the transaction
-  generation) as arguments: `fn-frame-digest` is constrained and unattached,
-  so ACL2 cannot evaluate `fn-id-obligation-of`; the host computes them as it
-  does for POST. `fn-peer-injection-arguments` bundles them; the `cfg-gen`
+  generation) as explicit arguments. They must be derived by ACL2; the
+  current frame digest has a concrete executable BLAKE3 definition.
+  `fn-peer-injection-arguments` bundles the supplied values; the `cfg-gen`
   leading argument waits for the owner's `fn-cnode-prepare` port.
 - **Offer decisions read the live node; the peer record stays pinned.**
   `fn-served-open-peer` pins both under their recognizers at `:open`, and
@@ -2901,6 +2901,25 @@ independent durable anchor. The scanner retains existing
 `fn-feed-apply-record` semantics for valid records; it does not retroactively
 enforce `fn-feed-drivenp` against configuration changes or historical no-ops.
 
+## Temporary MODE STREAM unavailability
+
+RFC 3977 section 3.2.1 permits a 400 response to terminate a connection and
+recommends increasing delays before retry. On a complete MODE STREAM 400,
+`fn-fc-step` closes the current connection without classifying it as a
+permanent streaming refusal (PKT-599(d), PRF-1122). The owner therefore does
+not enter this peer in its process stop table. The native `:closed` path
+uses the existing loss and exponential link-backoff handling; a later dial
+may negotiate streaming again. A 500/501 still falls back to IHAVE on the
+same connection; other refusals, including 502, retain the process stop.
+
+The keystone proves the closed result/phase, preserved connection descriptor
+and absence of a streaming stop under a valid MODE-phase state and a decoded
+400. Decoding 400 itself implies a complete bounded framer observation; a
+local lemma removes those redundant hypotheses. SCN-1028 observes the
+composed retry delays and eventual transfer on a scratch native owner; its
+matching-image execution remains pending. This theorem alone does not prove
+the host scheduler's elapsed-time behavior.
+
 ## Outbound authenticated TLS transport (2026-09-21)
 
 An NNTP transport is versioned as `(:nntp 1 host port security)`.  `security`
@@ -2918,6 +2937,19 @@ handshake-owed phase before a greeting is consumed.  A refusal, certificate
 failure, name mismatch, interrupted handshake, or protected I/O failure closes
 that peer-local connection and reaches the existing durable `fn-feed-lost`
 requeue path; it never retries cleartext.
+
+The owner installs ACL2's selected feed connection and form before publishing
+`:ready` from TLS completion (`fn-owner-feed-tls-established`, PKT-599(b),
+SCN-1022). This immediate branch is reachable after STARTTLS when neither
+AUTHINFO nor MODE STREAM is configured. Implicit TLS still waits for the
+protected greeting; login and streaming still wait for their replies, whose
+existing ready branch installs the connection. Pending and invalid TLS reports
+do not install a feed. The native adapter supplies the live payload arena to
+this entry through `fnn-owner-feed-arena-step`, using the entry's actual trailing
+stobjs; it does not decide the connection or its article form. The host-source
+fixture checks the installed owner as well as the publication. The scratch
+native scenario observes an IHAVE and the transferred article on that same TLS
+connection; matching-image execution remains a qualification obligation.
 
 This authenticates the destination of an outbound connection.  It does not
 authenticate an inbound connection as the configured named peer, repair the

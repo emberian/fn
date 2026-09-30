@@ -36,6 +36,9 @@
                                              max-credentials)
   (fn-native-auth-admin-bind octets presentp name signing-text max-credentials))
 
+(defun fn-native-auth-admin-host-delete (octets presentp name max-credentials)
+  (fn-native-auth-admin-delete octets presentp name max-credentials))
+
 (defun fn-native-auth-admin-host-set-password
   (octets presentp name secret confirmation salt
           principal-text principal-presentp postingp max-credentials)

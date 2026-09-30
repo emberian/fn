@@ -6,27 +6,30 @@
 ; stamp, obligation identity, charge and content subject; only its payload
 ; octets are replaced by this fixed-shape block:
 ;
-;   offset  0  8 octets  magic: NUL "FN-RCL1"
+;   offset  0  8 octets  magic: NUL "FN-RCL2"
 ;           8  1 octet   1 when a source digest follows the octets digest
-;           9 32 octets  SHA-256 of the removed payload
-;          41 32 octets  SHA-256 of its D25 source (zeros when flag is 0)
+;           9 32 octets  BLAKE3 of the removed payload
+;          41 32 octets  BLAKE3 of its D25 source (zeros when flag is 0)
 ;          73  8 octets  length of the removed payload, big-endian
 ;          81  8 octets  length A of the injecting agent, big-endian
-;          89  A octets  the agent the payload's own Path line names
+;          89 56 octets  typed relay-v1 article subject (label, version, algorithm, digest)
+;         145  A octets  the agent the payload's own Path line names
 ;
 ; The leading NUL is what no stored article begins with: an article opens
 ; with a header field name, and RFC 5322 field names are printable.  The
 ; recognizer below reads at most `*fn-rcl-tombstone-fixed*' conses of any
 ; payload, however large, so the served path that asks "is this reclaimed?"
-; never walks an article.  No field is capped: the lengths are 64-bit (D27,
-; bound work, never data).
+; never walks an article. Length fields are 64-bit; the selected subject
+; preimage uses the current record profile's uint32 width, checked by the
+; constructor caller. These are codec widths, not admission policy (D27).
 ;
 ; This book includes nothing: books/nntp-responses includes it for the
 ; served projection and books/store-reclaim for the decision.
 (in-package "ACL2")
 
-(defconst *fn-rcl-magic* '(0 70 78 45 82 67 76 49))   ; NUL "FN-RCL1"
-(defconst *fn-rcl-tombstone-fixed* 89)
+(defconst *fn-rcl-magic* '(0 70 78 45 82 67 76 50))   ; NUL "FN-RCL2"
+(defconst *fn-rcl-tombstone-fixed* 145)
+(defconst *fn-rcl-article-subject-size* 56)
 
 (defun fn-rcl-prefixp (prefix xs)
   (declare (xargs :guard (true-listp prefix)))
@@ -82,12 +85,15 @@
 (defun fn-rcl-tomb-source-digest (tomb)
   (declare (xargs :guard t))
   (fn-rcl-take 32 (fn-rcl-drop 41 tomb)))
+(defun fn-rcl-tomb-article-subject (tomb)
+  (declare (xargs :guard t))
+  (fn-rcl-take *fn-rcl-article-subject-size* (fn-rcl-drop 89 tomb)))
 (defun fn-rcl-tomb-length (tomb)
   (declare (xargs :guard t))
   (fn-rcl-octets-value (fn-rcl-take 8 (fn-rcl-drop 73 tomb)) 0))
 (defun fn-rcl-tomb-agent (tomb)
   (declare (xargs :guard t))
-  (fn-rcl-drop 89 tomb))
+  (fn-rcl-drop *fn-rcl-tombstone-fixed* tomb))
 
 ;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
 ;; Each is tried in includers' proofs and pays for its frames in

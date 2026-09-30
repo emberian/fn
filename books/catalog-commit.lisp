@@ -41,22 +41,16 @@
 ; store's and refuses a stale context by name, so the finish never commits
 ; a verdict decided under a keyring the store no longer holds.
 ;
-; THE CONTEXT THEOREM, chosen form.  The design offered two: the phase gate
-; (no admitted transition changes the keyring while a prepare is pending)
-; or the finish re-deciding.  The phase gate is NOT a theorem of this
-; machine: `fn-sn-set-keyring' has no phase check.  (No native host line
-; calls it: host/store-node-host.lisp `fn-store-sn-set-keyring' is reached
-; from tools/run_store.py only, the retired Python host; the native node's
-; keyring is fixed at open.)  So the re-decide form is taken, in its exact
-; shape: `fn-sn-context-fixed-between-prepare-and-finish' says the keyring
-; GENERATION NAMES the keyring along every transition -- each transition
-; the host applies leaves both, and `fn-sn-set-keyring', the one writer,
-; advances the generation whenever it changes the keyring -- so a context
-; whose generation is the store's was decided under the store's keyring,
-; which is what `fn-snh-enabledp' checks in O(1) and what
-; `fn-sn-finish-held-is-finish' assumes.  A context whose generation is not
-; the store's is refused (`fn-sn-finish-held-refuses-a-stale-context'), and
-; the host re-decides it from the arena (step 8; PKT-585).
+; THE CONTEXT FRAME is the live ARTICLE interval. Prepare, I/O, refusal,
+; abort, held completion and configuration changes preserve the key table and
+; generation. Ordinary finish preserves them when its completing record is an
+; ARTICLE. Durable key-snapshot completion and recovery are writers: the former
+; publishes a newly accepted snapshot, the latter resolves retained snapshots.
+; Neither writer supports an unconditional old-keyring frame. The full retained
+; recovery relation in owner-snapshot-recovery supplies source/reopen coherence.
+; Generation comparison alone is not a proof that arbitrary supplied contexts
+; were computed under the same table; the held-finish refinement retains its
+; actual context hypothesis.
 ;
 ; KEYSTONE fn-cat-complete-by-token (PRF-203): with the pending's token and
 ; EXPECTED the count, the completed row is (fn-cat-at expected C') = the
@@ -582,11 +576,9 @@
 (in-theory (disable fn-sn-finish-held fn-snh-enabledp fn-snh-bindsp))
 
 ; -----------------------------------------------------------------------------
-; The context theorem: the keyring generation names the keyring.  Every
-; transition the host applies leaves the keyring and its generation;
-; `fn-sn-set-keyring', the one writer, advances the generation whenever it
-; changes the keyring.  So a context whose generation is the store's was
-; decided under the store's keyring.
+; Context frames and the two actual publication sites. Recovery and a durable
+; key snapshot can change the active table. The live ARTICLE theorem below
+; therefore names its phase and completion-kind frame explicitly.
 
 ; The state constructors every transition rebuilds through leave the two
 ; fields (fn-sn-make-v6 with the store's own keyring and generation).
@@ -597,8 +589,6 @@
         (equal (fn-sn-keyring-generation (fn-sn-update-indexed s f n i)) (fn-sn-keyring-generation s))
         (equal (fn-sn-keyring (fn-sn-update-accepted s f n i m v)) (fn-sn-keyring s))
         (equal (fn-sn-keyring-generation (fn-sn-update-accepted s f n i m v)) (fn-sn-keyring-generation s))
-        (equal (fn-sn-keyring (fn-sn-update-replayed s f n i c)) (fn-sn-keyring s))
-        (equal (fn-sn-keyring-generation (fn-sn-update-replayed s f n i c)) (fn-sn-keyring-generation s))
         (equal (fn-sn-keyring (fn-sn-with-consumer s c)) (fn-sn-keyring s))
         (equal (fn-sn-keyring-generation (fn-sn-with-consumer s c)) (fn-sn-keyring-generation s))
         (equal (fn-sn-keyring (fn-sn-with-topic s tp)) (fn-sn-keyring s))
@@ -606,15 +596,71 @@
         (equal (fn-sn-keyring (fn-sn-with-event-index s e)) (fn-sn-keyring s))
         (equal (fn-sn-keyring-generation (fn-sn-with-event-index s e)) (fn-sn-keyring-generation s))
         (equal (fn-sn-keyring (fn-sn-advance-identity-next s)) (fn-sn-keyring s))
-        (equal (fn-sn-keyring-generation (fn-sn-advance-identity-next s)) (fn-sn-keyring-generation s))
-        (equal (fn-sn-keyring (fn-sn-finish-identity s f r n)) (fn-sn-keyring s))
-        (equal (fn-sn-keyring-generation (fn-sn-finish-identity s f r n)) (fn-sn-keyring-generation s)))
+        (equal (fn-sn-keyring-generation (fn-sn-advance-identity-next s)) (fn-sn-keyring-generation s)))
    :hints (("Goal" :in-theory (e/d (fn-sn-update fn-sn-update-indexed fn-sn-update-accepted
                                     fn-sn-update-replayed fn-sn-with-consumer fn-sn-with-topic
                                     fn-sn-with-event-index fn-sn-advance-identity-next
                                     fn-sn-finish-identity)
                                    (fn-replay-identity-step fn-stx-index-add
                                     fn-sn-composite-delta fn-replay-verdict-pairs))))))
+
+; The replay writer installs the supplied replay context, never an unrelated
+; old keyring. This is a constructor equation, not an invariant theorem.
+(defthm fn-sn-update-replayed-context-by-definition
+  (and (equal (fn-sn-keyring (fn-sn-update-replayed s f n i c))
+              (fn-ssk-keyring-of-snapshots (fn-stxk-context-snapshots c)))
+       (equal (fn-sn-keyring-generation (fn-sn-update-replayed s f n i c))
+              (fn-ssk-generation (fn-stxk-context-snapshots c))))
+  :hints (("Goal" :in-theory (e/d (fn-sn-update-replayed)
+                                (fn-ssk-keyring-of-snapshots fn-ssk-generation)))))
+
+; The live writer's exact effect. A repeated historical snapshot does not
+; publish a new generation; a newly accepted snapshot does.
+(defthm fn-sn-finish-identity-context-by-definition
+  (let* ((old (fn-sn-identity-context s))
+         (next (fn-replay-identity-step old record))
+         (publish (and (fn-stxk-p record)
+                       (not (equal (fn-stxk-context-current-generation next)
+                                   (fn-stxk-context-current-generation old))))))
+    (and (equal (fn-sn-keyring (fn-sn-finish-identity s files record node))
+                (if publish (fn-ssk-apply-snapshot record (fn-sn-keyring s))
+                  (fn-sn-keyring s)))
+         (equal (fn-sn-keyring-generation (fn-sn-finish-identity s files record node))
+                (if publish (nfix (fn-stxk-keyring-generation record))
+                  (fn-sn-keyring-generation s)))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-sn-finish-identity)
+                (fn-stxk-p fn-replay-identity-step fn-sn-identity-context
+                 fn-ssk-apply-snapshot fn-replay-verdict-pairs
+                 fn-sn-composite-delta fn-stx-index-add)))))
+
+; Proof-only coherence: the carried public context resolves the retained
+; snapshots, and those snapshots are precisely the durable history's replay.
+; It does not assume equality between the source and recovered keyrings.
+(defun fn-snh-recovery-context-coherentp (s)
+  (declare (xargs :guard t))
+  (and (equal (fn-sn-keyring s)
+              (fn-ssk-keyring-of-snapshots (fn-sn-keyring-snapshots s)))
+       (equal (fn-sn-keyring-generation s)
+              (fn-ssk-generation (fn-sn-keyring-snapshots s)))
+       (equal (fn-sn-keyring-snapshots s)
+              (fn-stxk-context-snapshots
+               (fn-replay-identity (fn-sf-records (fn-sn-files s)))))))
+
+(defthm fn-sn-recover-keeps-coherent-context
+  (implies (fn-snh-recovery-context-coherentp s)
+           (and (equal (fn-sn-keyring (fn-sn-recover s)) (fn-sn-keyring s))
+                (equal (fn-sn-keyring-generation (fn-sn-recover s))
+                       (fn-sn-keyring-generation s))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-sn-recover fn-snh-recovery-context-coherentp)
+                (fn-sn-statep fn-sf-recover fn-sn-update fn-sn-update-replayed
+                 fn-sn-with-topic fn-sn-with-consumer fn-sn-with-event-index
+                 fn-ssk-keyring-of-snapshots fn-ssk-generation
+                 fn-replay-identity fn-sn-keyring fn-sn-keyring-generation
+                 fn-sn-keyring-snapshots fn-stxk-context-snapshots
+                 fn-sf-records fn-sn-files fn-sf-phase)))))
+(in-theory (disable fn-snh-recovery-context-coherentp))
 
 ; The two readers as slots (4 and 6), for the configuration update, which
 ; writes slots 0, 1, 3 and 10 (fn-sn-with-configuration-preserves-unselected-slot).
@@ -649,23 +695,43 @@
 
 (fn-snh-ctx-lemma fn-snh-ctx-prepare (fn-sn-prepare s r) fn-sn-prepare)
 (fn-snh-ctx-lemma fn-snh-ctx-io (fn-sn-io s op res) fn-sn-io)
-(fn-snh-ctx-lemma fn-snh-ctx-finish (fn-sn-finish s) fn-sn-finish)
+(local (defthm fn-snh-ctx-finish
+  (implies (not (fn-stxk-p (fn-sn-completion-record s)))
+           (and (equal (fn-sn-keyring (fn-sn-finish s)) (fn-sn-keyring s))
+                (equal (fn-sn-keyring-generation (fn-sn-finish s))
+                       (fn-sn-keyring-generation s))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-sn-finish fn-sn-finish-identity)
+                (fn-sn-completion-enabledp fn-sn-completion-record
+                 fn-stxk-p fn-stxe-p fn-hstxa-p fn-store-retention-event-p
+                 fn-cpe-eventp fn-th-topic-eventp fn-replay-identity-step
+                 fn-sn-identity-context fn-replay-verdict-pairs
+                 fn-sn-composite-delta fn-stx-index-add))))))
 (fn-snh-ctx-lemma fn-snh-ctx-finish-held (fn-sn-finish-held s h ctx) fn-sn-finish-held)
 (fn-snh-ctx-lemma fn-snh-ctx-crash (fn-sn-crash s fc rc) fn-sn-crash)
-(fn-snh-ctx-lemma fn-snh-ctx-recover (fn-sn-recover s) fn-sn-recover)
+(local (defthm fn-snh-ctx-recover
+  (implies (not (equal (fn-sf-phase (fn-sn-files s)) :replaying))
+           (equal (fn-sn-recover s) s))
+  :hints (("Goal" :in-theory (enable fn-sn-recover)))))
 (fn-snh-ctx-lemma fn-snh-ctx-refuse (fn-sn-refuse-reservation s txid) fn-sn-refuse-reservation)
 (fn-snh-ctx-lemma fn-snh-ctx-abort (fn-sn-known-abort s) fn-sn-known-abort)
 (fn-snh-ctx-lemma fn-snh-ctx-prepare-retention (fn-sn-prepare-retention s e) fn-sn-prepare-retention)
 (fn-snh-ctx-lemma fn-snh-ctx-prepare-identity (fn-sn-prepare-identity s e) fn-sn-prepare-identity)
 (fn-snh-ctx-lemma fn-snh-ctx-prepare-consumer (fn-sn-prepare-consumer s e) fn-sn-prepare-consumer)
 (fn-snh-ctx-lemma fn-snh-ctx-prepare-topic (fn-sn-prepare-topic s e) fn-sn-prepare-topic)
-(fn-snh-ctx-lemma fn-snh-ctx-snt-step (fn-snt-step s event) fn-snt-step
-                  fn-snh-ctx-prepare fn-snh-ctx-io fn-snh-ctx-finish fn-snh-ctx-crash
-                  fn-snh-ctx-recover)
-(fn-snh-ctx-lemma fn-snh-ctx-snrt-step (fn-snrt-step s event) fn-snrt-step
-                  fn-snh-ctx-refuse fn-snh-ctx-abort fn-snh-ctx-prepare-retention
-                  fn-snh-ctx-prepare-identity fn-snh-ctx-prepare-consumer
-                  fn-snh-ctx-prepare-topic fn-snh-ctx-snt-step)
+(local (defthm fn-snh-ctx-snrt-step
+  (implies (and (not (equal (fn-sf-phase (fn-sn-files s)) :replaying))
+                (not (fn-stxk-p (fn-sn-completion-record s))))
+           (and (equal (fn-sn-keyring (fn-snrt-step s event)) (fn-sn-keyring s))
+                (equal (fn-sn-keyring-generation (fn-snrt-step s event))
+                       (fn-sn-keyring-generation s))))
+  :hints (("Goal" :in-theory (union-theories
+           '(fn-snrt-step fn-snt-step fn-snh-ctx-prepare fn-snh-ctx-io
+             fn-snh-ctx-finish fn-snh-ctx-crash fn-snh-ctx-recover
+             fn-snh-ctx-refuse fn-snh-ctx-abort fn-snh-ctx-prepare-retention
+             fn-snh-ctx-prepare-identity fn-snh-ctx-prepare-consumer
+             fn-snh-ctx-prepare-topic)
+           (theory 'minimal-theory))))))
 
 ; The writer: the generation moves whenever the keyring does.
 (local (defthm fn-snh-ctx-set-keyring
@@ -676,6 +742,8 @@
                                    (fn-sn-statep fn-prin-keyringp fn-stx-index-of-store))))))
 
 (defthm fn-sn-context-fixed-between-prepare-and-finish
+  (implies (and (not (equal (fn-sf-phase (fn-sn-files s)) :replaying))
+                (not (fn-stxk-p (fn-sn-completion-record s))))
   (and (equal (fn-sn-keyring (fn-snrt-step s event)) (fn-sn-keyring s))
        (equal (fn-sn-keyring-generation (fn-snrt-step s event))
               (fn-sn-keyring-generation s))
@@ -693,7 +761,7 @@
               (fn-sn-keyring-generation s))
        (implies (equal (fn-sn-keyring-generation (fn-sn-set-keyring s keyring contexts))
                        (fn-sn-keyring-generation s))
-                (equal (fn-sn-keyring (fn-sn-set-keyring s keyring contexts)) (fn-sn-keyring s))))
+                (equal (fn-sn-keyring (fn-sn-set-keyring s keyring contexts)) (fn-sn-keyring s)))))
   :hints (("Goal" :in-theory (union-theories '(fn-snh-ctx-snrt-step fn-snh-ctx-io fn-snh-ctx-finish
                                                 fn-snh-ctx-finish-held fn-snh-keyring-of-with-configuration
                                                 fn-snh-ctx-set-keyring)

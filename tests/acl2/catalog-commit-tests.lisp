@@ -11,9 +11,9 @@
 ; finish over the completing record's held view and the context of its bytes
 ; is `fn-sn-finish', on store-node-tests' store at :completing; a stale
 ; context is refused by name.  `fn-sn-context-fixed-between-prepare-and-
-; finish': the transitions leave the keyring and its generation, and the one
-; writer advances the generation (the negative of the design's phase gate,
-; labelled unreachable-in-composition: no native host line calls it).
+; finish': the ARTICLE context frame preserves the keyring and generation;
+; durable snapshots and recovery are real writers. Literal frame hypotheses,
+; their reachable removal witnesses and recovery coherence appear below.
 ;
 ; Corrupted-state witnesses are labelled: the expected-mismatch refusal, and
 ; the store whose pending bytes differ from the completing record's, where
@@ -26,6 +26,7 @@
 (include-book "store-node-tests")
 (include-book "held-rows-tests")
 (include-book "must-fail-checked")
+(include-book "../../books/crypto-attach")
 
 ; -----------------------------------------------------------------------------
 ; The host runs compiled code.
@@ -364,8 +365,8 @@
    :rule-classes nil))
 
 ; -----------------------------------------------------------------------------
-; The context theorem on the ground store: the transitions the host applies
-; leave the keyring and its generation; the writer advances the generation
+; The context theorem on an ordinary ARTICLE: these transitions preserve its
+; keyring and generation; the explicit legacy writer advances the generation
 ; (unreachable-in-composition: no native host line calls fn-sn-set-keyring).
 
 (defthm cct-w-context-fixed
@@ -387,3 +388,82 @@
                                   (list (fn-held-context-of *cct-bytes* nil 1))))
               1))
   :rule-classes nil)
+
+; Literal nonempty ARTICLE instance: both frame hypotheses and every conjunct
+; of fn-sn-context-fixed-between-prepare-and-finish are asserted.
+(assert-event
+ (let* ((s *cct-s*) (event '(:finish)) (operation :record-directory) (result :ok)
+        (h *cct-h*) (ctx *cct-ctx*) (groups (fn-sn-groups s))
+        (capacity (fn-sn-capacity s)) (node (fn-sn-node s))
+        (history (fn-sn-config-history s)) (keyring nil) (contexts nil))
+   (and (consp (fn-sf-records (fn-sn-files s)))
+        (fn-held-p (fn-sn-completion-record s))
+        (fn-sn-completion-enabledp s)
+        (not (equal (fn-sf-phase (fn-sn-files s)) :replaying))
+        (not (fn-stxk-p (fn-sn-completion-record s)))
+        (equal (fn-sn-keyring (fn-snrt-step s event)) (fn-sn-keyring s))
+        (equal (fn-sn-keyring-generation (fn-snrt-step s event)) (fn-sn-keyring-generation s))
+        (equal (fn-sn-keyring (fn-sn-io s operation result)) (fn-sn-keyring s))
+        (equal (fn-sn-keyring-generation (fn-sn-io s operation result)) (fn-sn-keyring-generation s))
+        (equal (fn-sn-keyring (fn-sn-finish s)) (fn-sn-keyring s))
+        (equal (fn-sn-keyring-generation (fn-sn-finish s)) (fn-sn-keyring-generation s))
+        (equal (fn-sn-keyring (fn-sn-finish-held s h ctx)) (fn-sn-keyring s))
+        (equal (fn-sn-keyring-generation (fn-sn-finish-held s h ctx)) (fn-sn-keyring-generation s))
+        (equal (fn-sn-keyring (fn-sn-with-configuration s groups capacity node history)) (fn-sn-keyring s))
+        (equal (fn-sn-keyring-generation (fn-sn-with-configuration s groups capacity node history)) (fn-sn-keyring-generation s))
+        (implies (equal (fn-sn-keyring-generation (fn-sn-set-keyring s keyring contexts))
+                        (fn-sn-keyring-generation s))
+                 (equal (fn-sn-keyring (fn-sn-set-keyring s keyring contexts)) (fn-sn-keyring s))))))
+
+(defconst *ccx-principal* (make-list 32 :initial-element 7))
+(defconst *ccx-keys* (list (cons :ed25519 (make-list 32 :initial-element 11))
+                         (cons :ml-dsa-65 (make-list 1952 :initial-element 13))))
+(make-event `(defconst *ccx-enroll*
+ ',(fn-hl-enroll-event 0 0 0 1 *ccx-principal* *ccx-keys* nil)))
+(make-event `(defconst *ccx-completing*
+ ',(fn-sn-test-publish
+    (fn-sn-prepare-identity
+     (fn-sn-test-reserve (fn-sn-initial '("example") 32)) *ccx-enroll*))))
+(make-event `(defconst *ccx-finished* ',(fn-sn-finish *ccx-completing*)))
+; Hypothesis removal, reachable durable snapshot: retained non-replay premise
+; holds, excluded completion kind fails, and the actual :finish changes both.
+(assert-event
+ (let ((s *ccx-completing*))
+   (and (fn-sn-statep s) (fn-sn-completion-enabledp s)
+        (not (equal (fn-sf-phase (fn-sn-files s)) :replaying))
+        (fn-stxk-p (fn-sn-completion-record s))
+        (not (equal (fn-sn-keyring (fn-snrt-step s '(:finish))) (fn-sn-keyring s)))
+        (not (equal (fn-sn-keyring-generation (fn-sn-finish s))
+                    (fn-sn-keyring-generation s))))))
+(make-event `(defconst *ccx-published-crash*
+ ',(fn-sn-crash *ccx-completing* :old :absent)))
+; Hypothesis removal, reachable crash after snapshot publication but before
+; live completion: non-snapshot completion premise holds, phase premise fails,
+; and actual recovery installs the durable keyring, unlike the old live view.
+(assert-event
+ (let ((s *ccx-published-crash*))
+   (and (fn-sn-statep s)
+        (equal (fn-sf-phase (fn-sn-files s)) :replaying)
+        (not (fn-stxk-p (fn-sn-completion-record s)))
+        (not (equal (fn-sn-keyring (fn-snrt-step s '(:recover))) (fn-sn-keyring s)))
+        (not (equal (fn-sn-keyring-generation (fn-sn-recover s))
+                    (fn-sn-keyring-generation s))))))
+(make-event `(defconst *ccx-finished-crash* ',(fn-sn-crash *ccx-finished* :old :absent)))
+; Literal coherent-recovery witness: nonempty snapshot history and actual
+; recovery branch, the complete premise and both field conclusions.
+(assert-event
+ (let ((s *ccx-finished-crash*))
+   (and (fn-sn-statep s) (consp (fn-sn-keyring-snapshots s))
+        (equal (fn-sf-phase (fn-sn-files s)) :replaying)
+        (fn-snh-recovery-context-coherentp s)
+        (equal (fn-sf-phase (fn-sn-files (fn-sn-recover s))) :recovering)
+        (equal (fn-sn-keyring (fn-sn-recover s)) (fn-sn-keyring s))
+        (equal (fn-sn-keyring-generation (fn-sn-recover s)) (fn-sn-keyring-generation s)))))
+; Corrupted-state removal of coherence. Generation equality alone cannot
+; identify an arbitrary supplied keyring: recovery corrects the corrupted table.
+(assert-event
+ (let ((s (update-nth 4 nil *ccx-finished-crash*)))
+   (and (fn-sn-statep s)
+        (not (fn-snh-recovery-context-coherentp s))
+        (equal (fn-sn-keyring-generation (fn-sn-recover s)) (fn-sn-keyring-generation s))
+        (not (equal (fn-sn-keyring (fn-sn-recover s)) (fn-sn-keyring s))))))

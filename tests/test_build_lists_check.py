@@ -333,6 +333,47 @@ class BuildListsCheckTests(unittest.TestCase):
             self.assertEqual(len(check.include_findings(
                 root, '(ld "host/bare.lisp" :ld-error-action :error)\n')), 1)
 
+    def test_later_host_include_cannot_justify_earlier_use(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "books").mkdir()
+            (root / "host").mkdir()
+            (root / "books/a.lisp").write_text('(defun fn-a (x) x)\n')
+            (root / "host/inner.lisp").write_text('(include-book "../books/a")\n')
+            early = '(defun fn-before (x) (fn-a x))\n'
+            late = '(defun fn-after (x) (fn-a x))\n'
+            for directive in ('(include-book "../books/a")\n',
+                              '(ld "inner.lisp" :ld-error-action :error)\n'):
+                with self.subTest(directive=directive):
+                    outer = root / "host/outer.lisp"
+                    outer.write_text(early + directive + late)
+                    found = check.include_findings(root, '(ld "host/outer.lisp")\n')
+                    self.assertEqual(len(found), 1, found)
+                    self.assertIn('host/outer.lisp uses fn-a', found[0])
+                    outer.write_text(directive + early + late)
+                    self.assertEqual(check.include_findings(
+                        root, '(ld "host/outer.lisp")\n'), [])
+
+    def test_nested_child_order_and_earlier_sibling_include(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "books").mkdir()
+            (root / "host").mkdir()
+            (root / "books/a.lisp").write_text('(defun fn-a (x) x)\n')
+            child = root / "host/child.lisp"
+            child.write_text('(defun fn-child (x) (fn-a x))\n'
+                             '(include-book "../books/a")\n')
+            (root / "host/outer.lisp").write_text('(ld "child.lisp")\n')
+            found = check.include_findings(root, '(ld "host/outer.lisp")\n')
+            self.assertEqual(len(found), 1, found)
+            self.assertIn('host/child.lisp uses fn-a', found[0])
+            (root / "host/first.lisp").write_text('(include-book "../books/a")\n')
+            child.write_text('(defun fn-child (x) (fn-a x))\n')
+            (root / "host/outer.lisp").write_text(
+                '(ld "first.lisp")\n(ld "child.lisp")\n')
+            self.assertEqual(check.include_findings(
+                root, '(ld "host/outer.lisp")\n'), [])
+
     def test_default_build_satisfies_the_include_rule(self):
         # The same rule over build.lisp: the default image already builds.
         default = (ROOT / check.DEFAULT_BUILD).read_text()

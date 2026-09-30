@@ -27,6 +27,16 @@
                   (fn-owner-retain-carry state)))
   :hints (("Goal" :in-theory (enable fn-owner-retain-carry))))
 
+; A caller may open put-global before the getter frame can match. The
+; actual fn-owner-finish guard reaches this exact normalized update after
+; fn-host-hist-sync clears its unrelated reload flag.
+(defthm fn-owner-retain-carry-of-other-global-update-by-definition
+  (implies (not (equal key 'fn-owner-retain-carry))
+           (equal (fn-owner-retain-carry
+                   (update-nth 2 (add-pair key value (nth 2 state)) state))
+                  (fn-owner-retain-carry state)))
+  :hints (("Goal" :in-theory (enable fn-owner-retain-carry))))
+
 ; Actual host guard checkpoints have already opened boundp/get-global to
 ; the global table. Preserve the complete association, hence both binding
 ; and stored owner value, without reopening the carry writer.

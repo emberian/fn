@@ -214,3 +214,61 @@
 (assert-event (equal (fn-bpfs-fragment-outcome 2 :failed) :uncertain))
 (assert-event (equal (fn-bpfs-fragment-outcome 3 :refused) :refused))
 (must-fail-checked (assert-event (equal (fn-bpfs-fragment-outcome 2 :failed) :failed)))
+
+; PRF-1135: the complete accepted-prefix hypothesis and conclusion of the
+; host subject's ordered-loop refinement, with a nonempty reached prefix.
+(assert-event
+ (let ((prefix '(:accepted :accepted)) (outcome :failed))
+   (and (fn-bpfs-accepted-prefixp prefix)
+        (equal (fn-bpfs-fragment-outcome (+ 1 (len prefix)) outcome)
+               (fn-bpfs-send-observations (append prefix (list outcome)) 1))
+        (equal (fn-bpfs-send-observations (append prefix (list outcome)) 1)
+               :uncertain))))
+; Hypothesis removal: a prefix containing a failed first transfer is not
+; an accepted prefix. The real loop stops there; indexing past it is wrong.
+(assert-event
+ (let ((prefix '(:failed)) (outcome :accepted))
+   (and (not (fn-bpfs-accepted-prefixp prefix))
+        (not (equal (fn-bpfs-fragment-outcome (+ 1 (len prefix)) outcome)
+                    (fn-bpfs-send-observations (append prefix (list outcome)) 1))))))
+(must-fail-checked
+ (assert-event
+  (equal (fn-bpfs-fragment-outcome 2 :accepted)
+         (fn-bpfs-send-observations '(:failed :accepted) 1))))
+
+; Complete positive witnesses of the loop's first-failure theorem: first
+; failure, and a later failure after two accepted transfers.
+(assert-event
+ (let ((index 1) (outcomes '(:failed :accepted)))
+   (and (<= 1 index)
+        (equal (equal (fn-bpfs-send-observations outcomes index) :failed)
+               (and (equal index 1) (consp outcomes)
+                    (equal (car outcomes) :failed)))
+        (equal (fn-bpfs-send-observations outcomes index) :failed))))
+(assert-event
+ (let ((index 1) (outcomes '(:accepted :accepted :failed :refused)))
+   (and (<= 1 index)
+        (equal (equal (fn-bpfs-send-observations outcomes index) :failed)
+               (and (equal index 1) (consp outcomes)
+                    (equal (car outcomes) :failed)))
+        (equal (fn-bpfs-send-observations outcomes index) :uncertain))))
+; Hypothesis removal: index zero is outside the host's one-based loop.
+(assert-event
+ (let ((index 0) (outcomes '(:failed)))
+   (and (not (<= 1 index))
+        (not (equal (equal (fn-bpfs-send-observations outcomes index) :failed)
+                    (and (equal index 1) (consp outcomes)
+                         (equal (car outcomes) :failed)))))))
+(must-fail-checked
+ (assert-event
+  (equal (equal (fn-bpfs-send-observations '(:failed) 0) :failed)
+         (and (equal 0 1) (consp '(:failed))
+              (equal (car '(:failed)) :failed)))))
+; Refusal, uncertainty and acceptance remain different, and suffix outcomes
+; after a nonaccepted observation cannot change the answer.
+(assert-event (equal (fn-bpfs-send-observations '(:accepted :refused :failed) 1)
+                     :refused))
+(assert-event (equal (fn-bpfs-send-observations '(:accepted :uncertain :failed) 1)
+                     :uncertain))
+(assert-event (equal (fn-bpfs-send-observations '(:accepted :accepted) 1)
+                     :accepted))
