@@ -6064,7 +6064,7 @@
         "PRF-102"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/consumer-position.lisp",
         "books/consumer-owner-local.lisp",
@@ -18941,7 +18941,7 @@
     {
       "id": "PRF-1168",
       "title": "Actual held16 producers and physical row prefixes preserve the reader row domain",
-      "statement": "Actual list/buffer intern establishes mandatory binding, withdrawal, optional NOV and payload-prefix domains; actual bounded assignment carries the held pointer into assigned8 field5, and actual physical write/copy/seal/read preserves and exposes the typed filled prefix. Full recursive provider/publisher and same retained arena/source correspondence remain explicit composition obligations.",
+      "statement": "Actual held16 intern and prepare establish binding, withdrawal, optional NOV and same-result payload-prefix domains. Actual shared-pool generation reserve/register retain the prepared commit and actual assignment publishes typed assigned8 field5. Physical prefix preservation supports an actual recursive node-row-read conditional boundary. Maintained copy/share/publication/captured arena-incarnation and complete durable event coverage remain open.",
       "milestone": "M5",
       "requirements": [
         "REP-013",
@@ -18961,15 +18961,26 @@
         "fn-ibrc-row-set-appends-domain",
         "fn-ibrc-row-seal-preserves-domain",
         "fn-ibrc-row-copy-owned-prefix",
-        "fn-ibrc-physical-row-read-domain"
+        "fn-ibrc-physical-row-read-domain",
+        "fn-iprc-prepare-establishes-row-domain",
+        "fn-iprc-reserve-attaches-actual-prepared-row",
+        "fn-iprc-register-preserves-prepared-row",
+        "fn-iprc-assignment-begin-attaches-prepared-row",
+        "fn-iprc-assignment-one-publishes-typed-assigned",
+        "fn-iprc-actual-node-read-row-domain",
+        "fn-iprc-context-update-preserves-row-domain"
       ],
       "evidence": [
         "books/index-backing-row-carry.lisp",
         "tests/acl2/index-backing-row-carry-tests.lisp",
         "specs/index-row-carry.md",
-        "planning/evidence/index-row-carry-2026-09-30"
+        "planning/evidence/index-row-carry-2026-09-30",
+        "books/catalog-prepare.lisp",
+        "books/index-backing-publication-row-carry.lisp",
+        "tests/acl2/index-backing-publication-row-carry-tests.lisp",
+        "planning/evidence/index-publication-row-carry-2026-09-30"
       ],
-      "progress_note": "Modern held16 exact protected source/guard/theorem and literal positive/removal fixtures pass. No historical held15 transfer, served validator, whole publication invariant, installed runtime or native activation claim. Normal certificate remains coordinator-owned."
+      "progress_note": "Protected exact modern source proofs and literal producer/register/assignment/recursive-read positive and removal fixtures pass. Actual prepare function mechanically extracted from canonical745 with unchanged body/guard. No whole publisher, current Store/F/V, retained arena incarnation, installed runtime or native activation claim. Normal qualification remains coordinator-owned."
     }
   ]
 }
