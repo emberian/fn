@@ -45,11 +45,11 @@
  (declare (xargs :stobjs (fn-allocation-turn-slots fn-page-read-pool state)
   :guard (fn-aec-pool-statep fn-page-read-pool) :verify-guards nil))
  (let ((ticket (fn-owner-connection-operation-ticket state)))
-  (if (and ticket
-           (not (and (fn-omk-widthp ticket 16)
+  (if (not (and ticket (fn-omk-widthp ticket 16)
+                     (eq (fn-omk-at 0 ticket) :connection-operation-ticket)
                      (equal slot (fn-omk-at 7 ticket))
                      (equal nonce (fn-omk-at 8 ticket))
-                     (member-eq (fn-omk-at 1 ticket) '(:prepaid :started :refused)))))
+                     (member-eq (fn-omk-at 1 ticket) '(:prepaid :started :refused))))
       (mv nil :recovery-required fn-allocation-turn-slots fn-page-read-pool state)
    (let ((state (if ticket
                    (f-put-global 'fn-owner-connection-operation-ticket

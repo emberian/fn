@@ -64,6 +64,10 @@ successfully prepaid gate retires them, covering a raw escape between core mutat
 and native result receipt. `fn-owner-index-connection-fault(slots, pool, STATE)`
 has the same five results. It fences idempotently without clearing the ticket,
 association, nonce, A, or count. No unconditional unwind finish is allowed.
+Public operation finish requires a present, well-shaped matching operation
+ticket. A live ATS receipt alone cannot bypass this requirement; no-ticket,
+malformed or wrong-phase calls retain the receipt and return recovery. Definite
+pre-ticket refusals use only the separate internal settlement helper.
 
 PRF-1161 tracks the registered receipt boundary; PRF-1162 tracks exact bounded
 input comparison and checked allowance arithmetic. Concrete issuer tests cover

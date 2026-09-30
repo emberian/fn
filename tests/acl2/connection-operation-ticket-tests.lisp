@@ -23,7 +23,7 @@
   (fn-cott-setup fn-allocation-turn-slots fn-page-read-pool)
   (mv-let (entered nonce fn-allocation-turn-slots fn-page-read-pool)
    (fn-ats-enter-internal 0 :connection-start fn-allocation-turn-slots fn-page-read-pool)
-   (let* ((ticket (and (not (eq kind :refuse))
+   (let* ((ticket (and (not (member-eq kind '(:refuse :no-ticket)))
                    (list :connection-operation-ticket
                          (if (eq kind :intent) :start-intent :started)
                          :reader nil nil nil 42 0 nonce 0 9 :descriptor '(40 0 0 0 1) 8 20 :token)))
@@ -68,7 +68,7 @@
       (mv-let (erp word fn-allocation-turn-slots fn-page-read-pool state)
        (fn-owner-index-connection-finish 0 nonce fn-allocation-turn-slots fn-page-read-pool state)
        (let ((ok (and initial (not erp)
-                   (if (eq kind :intent)
+                   (if (member-eq kind '(:intent :no-ticket))
                        (and (eq word :recovery-required)
                             (equal ticket (fn-owner-connection-operation-ticket state))
                             (equal (fn-prp-alloc-active-turns fn-page-read-pool) 1))
@@ -81,7 +81,8 @@
         (mv-let (erp2 word2 fn-allocation-turn-slots fn-page-read-pool state)
          (fn-owner-index-connection-finish 0 nonce fn-allocation-turn-slots fn-page-read-pool state)
          (mv (and ok (not erp2) (eq word2 :recovery-required)
-                  (equal (fn-prp-alloc-active-turns fn-page-read-pool) (if (eq kind :intent) 1 0)))
+                  (equal (fn-prp-alloc-active-turns fn-page-read-pool)
+                         (if (member-eq kind '(:intent :no-ticket)) 1 0)))
              fn-allocation-turn-slots fn-page-read-pool state))))))))))
 
 (defun fn-cott-local (kind state)
@@ -102,6 +103,8 @@
  (if ok (value '(value-triple :passed-intent)) (er soft 'ticket "intent failed"))))
 (make-event (mv-let (ok state) (fn-cott-local :fault state)
  (if ok (value '(value-triple :passed-fault)) (er soft 'ticket "fault failed"))))
+(make-event (mv-let (ok state) (fn-cott-local :no-ticket state)
+ (if ok (value '(value-triple :passed-no-ticket)) (er soft 'ticket "no-ticket failed"))))
 
 (assert-event
  (and (eq (getpropc 'fn-owner-index-connection-finish 'symbol-class nil (w state)) :common-lisp-compliant)
