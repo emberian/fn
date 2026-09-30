@@ -429,7 +429,7 @@ shrinking preserves prerequisites (a retry never survives its post's
 removal); separate randomness streams; the minimized scenario reproduces
 under the same backend. AFTER THE CUT.
 
-W7h **semantic coverage + structure-aware storage mutation**. PLANNED: the
+W7h **semantic coverage + structure-aware storage mutation**. IN PROGRESS: the
 logical-model coverage projection is implemented in
 `tools/resilience/semantic_coverage.py`: it counts observed abstract situations
 from sealed journals, distinguishing unresolved outcomes, pending proposals,
