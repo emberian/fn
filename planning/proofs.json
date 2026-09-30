@@ -2633,7 +2633,7 @@
         "planning/evidence/manifests/certify-20260926T092407Z-1115236.json",
         "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
       ],
-      "progress_note": "Lane t6b-profile, 2026-09-22: the keystones have no hypotheses; tests/acl2/owner-log-tests.lisp evaluates each renderer on a real injected decision and a real control decision, and its must-fails name the weaker statements a host-word log would satisfy (the line echoes the host word; the control line uses the served classification) with the refuting owner evaluated beside each. Q10d clean hbox oa61-socket-log-h3 admitted134/134 owner-log-tests forms,36/36 named events exact,owner-log in one local encapsulate,13.00seconds/4,116,600prover steps; stopped. Source interface/read/books/bare default46/46 zero findings; ledger/current and strictreach green. These are source checks, not certification. Matching test_native_profile remains runner-owned.",
+      "progress_note": "Lane t6b-profile, 2026-09-22: the keystones have no hypotheses; tests/acl2/owner-log-tests.lisp evaluates each renderer on a real injected decision and a real control decision, and its must-fails name the weaker statements a host-word log would satisfy (the line echoes the host word; the control line uses the served classification) with the refuting owner evaluated beside each. Q10d clean hbox oa61-socket-log-h3 admitted 134/134 owner-log-tests forms, 36/36 named events exact, owner-log in one local encapsulate, 13.00 seconds/4,116,600 prover steps; stopped. Source interface/read/books/bare default 46/46 zero findings; ledger/current and strict reach green. These are source checks, not certification. Matching test_native_profile remains runner-owned.",
       "events": [
         "fn-olog-served-post-line-says-accepted-iff-durable",
         "fn-olog-control-post-line-says-the-control-result",
@@ -17615,7 +17615,7 @@
     {
       "id": "PRF-1050",
       "title": "Snapshot blessing is accepted exactly when the completion marker, read-only open and node-secret observations hold; every failure names its first missing observation",
-      "statement": "Host-called fn-osn-bless-word in host/native/io.lisp fnn-command-store-bless-snapshot. KEYSTONE fn-osn-bless-word-blessed-exactly-when: blessed iff markerp and open=:ok and keysp; missing marker answers :snapshot-incomplete, otherwise non-ok open answers :open-refused, otherwise missing key answers :no-node-secret. fn-osn-absent-marker-never-opens makes the absent-marker result independent of an open observation; host checks fn-osn-bless-open-needed before opening. This proves the decision over supplied observations, not the snapshot producer's capture, freshness, or the disk/key implementations.",
+      "statement": "Host-called fn-osn-bless-word in host/native/io.lisp fnn-command-store-bless-snapshot. KEYSTONE fn-osn-bless-word-blessed-exactly-when: blessed iff markerp and open=:ok and keysp; missing marker answers :snapshot-incomplete, otherwise non-ok open answers :open-refused, otherwise missing key answers :no-node-secret. fn-osn-absent-marker-never-opens makes the absent-marker result independent of an open observation; host checks fn-osn-bless-open-needed before opening. This proves the decision over supplied observations, not the snapshot producer's capture, freshness, or the disk/key implementations. Scope excludes arbitrary core/store faults and uncertain I/O during observation: rejected durable metadata is the store-profile decoder fault, not an open-refused observation.",
       "milestone": "M5",
       "requirements": [
         "HST-039"
@@ -17627,7 +17627,7 @@
         "books/owner-snapshot-request.lisp",
         "tests/acl2/owner-snapshot-request-tests.lisp"
       ],
-      "progress_note": "Claim inherited from operability-12. S7a host wiring completed by gpt61-operability; native observation pending union image. No running snapshot producer claim."
+      "progress_note": "Claim inherited from operability-12. S7a host wiring completed by gpt61-operability; native observation pending union image. No running snapshot producer claim. E739 matching historical native module executed 2 with one passing and one stale malformed-config refusal expectation. Runtime decoder distinction retained; source fixture/spec corrected, matching execution still pending."
     },
     {
       "id": "PRF-1044",

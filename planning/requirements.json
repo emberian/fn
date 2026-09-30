@@ -5659,7 +5659,8 @@
         "host/native/io.lisp",
         "tests/test_native_snapshot_bless.py"
       ],
-      "implementation_note": "S7a checker implemented; native evidence pending matching union image. S7 running producer remains separate, unfinished."
+      "implementation_note": "S7a checker implemented; native evidence pending matching union image. S7 running producer remains separate, unfinished.",
+      "note": " The three normal blessing refusal observations do not exhaust runtime failures. Rejected/corrupted durable metadata remains a fault (exit 4); sealed foreign-format/lineage open refusals stay distinct, and uncertain I/O is not flattened into refusal."
     },
     {
       "id": "OBJ-008",

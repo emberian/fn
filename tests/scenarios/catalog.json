@@ -6246,10 +6246,10 @@
         "HST-039"
       ],
       "steps": [
-        "Copy a stopped three-article store; explicitly supply the producer completion observation marker; bless, start the copy and retrieve each article. Remove marker or key, corrupt the key or profile; preserve first-failure refusal. Diverge copied stores and install a foreign checkpoint; blessing refuses its lineage."
+        "Copy a stopped three-article store; explicitly supply the producer completion observation marker; bless, start the copy and retrieve each article. Remove marker or key, corrupt the key or profile; preserve first-failure refusal for known missing/open observations and durable corruption as fault. Diverge copied stores and install a foreign checkpoint; blessing refuses its lineage."
       ],
       "expected": [
-        "Blessed iff the marker, own read-only open and node-secret observations hold; accepted exit 0, named refusal exit 1. Missing marker omits open even with malformed profile. A complete older own-lineage copy remains accepted (no freshness guarantee)."
+        "Blessed iff the marker, own read-only open and node-secret observations hold; accepted exit 0, named refusal exit 1. Missing marker omits open even with malformed profile. A complete older own-lineage copy remains accepted (no freshness guarantee). Rejected durable config.json remains fault exit 4 with the decoder message, never open-refused; known sealed format/lineage open refusals stay exit 1."
       ],
       "implementation": {
         "test": "tests.test_native_snapshot_bless",
@@ -6260,9 +6260,10 @@
         "native": true
       },
       "evidence": [
-        "tests/test_native_snapshot_bless.py"
+        "tests/test_native_snapshot_bless.py",
+        "planning/evidence/operator-snapshot-e739-harvest-2026-09-29.md"
       ],
-      "scope_note": "Stopped-copy fixtures explicitly supply SNAPSHOT. No running snapshot producer or atomic-capture claim."
+      "scope_note": "Stopped-copy fixtures explicitly supply SNAPSHOT. No running snapshot producer or atomic-capture claim. E739 historical module executed 2, one pass/one fixture mismatch: malformed config expected REFUSED 1 but actual existing decoder FAULT 4. Fixture corrected to authoritative store-profile boundary; matching execution pending."
     },
     {
       "id": "SCN-216",

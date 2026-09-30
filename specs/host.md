@@ -1598,6 +1598,14 @@ transactions=N`; the exit code follows ACL2's status. PRF-1050 states the
 three-observation blessing predicate, with teeth in
 `tests/acl2/owner-snapshot-request-tests.lisp`; SCN-217 exercises the host.
 
+These observation verdicts cover ordinary known open refusals. They do not
+turn a malformed durable profile, an arbitrary core fault or uncertain I/O
+into a refused observation. The existing store-profile boundary
+`fn-spo-config-open` distinguishes a sealed foreign-format refusal (exit 1)
+from rejected/corrupted durable metadata (fault, exit 4). Blessing preserves
+that distinction; an absent completion marker still prevents any open,
+including an open that would discover corrupt metadata.
+
 The marker is the producer's completion observation, not authentication of
 a snapshot producer or proof of atomic capture. Its fields are provenance.
 A complete older copy may open; blessing does not determine freshness or
