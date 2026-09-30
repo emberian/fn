@@ -17761,6 +17761,20 @@
           "name": "fn-orri-recover-installs-historical-reader-relation"
         }
       ]
+    },
+    {
+      "id": "PRF-1119",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-prw-admit-preserves-pool-funding"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prw-admitted-window-holds-file"
+        }
+      ],
+      "pending_subject": "Stobj adapters have named complete answer/effect equations. Native window invocation remains unreachable-in-composition until authenticated stream, fixed allocator demand and executor dispatch are joined."
     }
   ]
 }

@@ -6482,13 +6482,15 @@
         "Install explicit operator worker/descriptor/read/file budgets, baseline-fund and preallocate fixed executors and tables before owner recovery.",
         "Hold actual pread on every admitted worker and cancel clients repeatedly; issue another read while the pool is full.",
         "Release one worker result, verify owner settlement then reuse that worker for a newer exact token; deliver its older token again.",
-        "Fail executor startup partway, exercise process death with queued/running/returned jobs, and restart without publishing old results."
+        "Fail executor startup partway, exercise process death with queued/running/returned jobs, and restart without publishing old results.",
+        "Inject an unexpected runtime error whose datum is the private array; preserve the store fault while handing off only a fixed diagnostic."
       ],
       "expected": [
         "Admission refuses before new buffer/thread/job allocation when all slots remain charged. Cancellation neither releases the slot nor closes the held file.",
         "One admitted token owns one executor slot. Returned result stays charged until matching settled I/O and physical publication/discard; both worker and owner result-transfer activations have returned before refund, and readiness never lends the private result.",
         "Old token cannot return or free a reused worker; cached buffer remains charged until actual eviction. Permanent executor/table storage remains baseline-funded through shutdown.",
-        "Partial startup tears down only resources actually created, joins created workers and fences ambiguous close; restart derives fresh process-local identity state."
+        "Partial startup tears down only resources actually created, joins created workers and fences ambiguous close; restart derives fresh process-local identity state.",
+        "Unexpected condition arguments do not escape in the private result; known extent fault messages are preserved."
       ],
       "evidence": [
         "books/page-read-executor.lisp",
@@ -6963,6 +6965,33 @@
         ],
         "native": true
       }
+    },
+    {
+      "id": "SCN-1025",
+      "title": "Window range identity and physical return fence final resource release",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Register one physical incarnation and admit a supplied fixed window demand for an extent much larger than the requested output.",
+        "Attempt release before actual return and return a token with another requested offset.",
+        "Observe actual return while the consumer retains the output, then relinquish all aliases and release.",
+        "Admit the same descriptor again and deliver the old completion token."
+      ],
+      "expected": [
+        "Admission preserves funding and the file cannot close while the exact window token is live.",
+        "Cancellation or stale range cannot release a running job; ordinary whole-extent cache settlement rejects the typed window token.",
+        "Return keeps all credits and file retention. Final release refunds reusable credits once and preserves permanent baseline and spent identity.",
+        "Fresh ticket prevents an earlier completion from settling a later scan even when descriptors are identical."
+      ],
+      "evidence": [
+        "books/page-window-lease.lisp",
+        "host/page-window-lease-host.lisp",
+        "tests/acl2/page-window-lease-tests.lisp"
+      ],
+      "execution_scope": "Source model and adapter only; runtime demand adequacy, actual worker/window wiring, integrity and native behavior remain pending."
     }
   ]
 }

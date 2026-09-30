@@ -615,11 +615,14 @@ ACL2_BOOKS ?= books/defrecord \
 	host/page-read-host \
 	books/page-read-resources \
 	books/page-file-lease \
+	books/page-window-lease \
+	tests/acl2/page-window-lease-tests \
 	tests/acl2/page-file-lease-tests \
 	books/page-read-executor \
 	tests/acl2/page-read-executor-tests \
 	host/page-executor-host \
 	host/page-file-lease-host \
+	host/page-window-lease-host \
 	tests/acl2/page-read-ledger-tests \
 	tests/acl2/page-read-host-tests \
 	tests/acl2/store-profile-carried-tests \
@@ -1536,6 +1539,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/page-read-ownership \
 	tests/acl2/page-read-ownership-tests \
 	books/page-file-lease \
+	books/page-window-lease \
+	tests/acl2/page-window-lease-tests \
 	tests/acl2/page-file-lease-tests \
 	books/page-read-executor \
 	tests/acl2/page-read-executor-tests \
