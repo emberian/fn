@@ -1870,26 +1870,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1969,
+    "books": 1971,
     "books_in_root_closure": 1938,
     "roots": 1866,
-    "theorems": 30178,
-    "functions": 19253,
+    "theorems": 30194,
+    "functions": 19261,
     "assert_events": 24064,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
-      "verified": 3544,
-      "declared-off": 2337,
-      "default-guarded": 10514,
+      "verified": 3545,
+      "declared-off": 2341,
+      "default-guarded": 10517,
       "default-unguarded": 2858
     },
     "suspect_theorems": 1266,
     "export_hygiene_warnings": 348,
     "enabled_projection_warnings": 55,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2702,
+    "include_hygiene_warnings": 2705,
     "host_names_warnings": 2193,
     "hand_written_record_warnings": 18
   },
@@ -20795,6 +20795,33 @@
       "encapsulates": 0,
       "includes": [
         "over-cursor-shape"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/over-selected-held-cell.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 7,
+      "functions": 4,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "held-message-id-cursor",
+        "over-held-row-establishment"
       ],
       "system_includes": [],
       "suspects": [],
@@ -48684,6 +48711,32 @@
       "encapsulates": 0,
       "includes": [
         "../../books/over-held-row"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/over-selected-held-cell-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 9,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 4,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/over-selected-held-cell"
       ],
       "system_includes": [],
       "suspects": [],
@@ -79655,6 +79708,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/over-selected-held-cell.lisp",
+        "line": 5,
+        "include": "held-message-id-cursor",
+        "included": "books/held-message-id-cursor.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-selected-held-cell.lisp",
+        "line": 6,
+        "include": "over-held-row-establishment",
+        "included": "books/over-held-row-establishment.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/over-window.lisp",
         "line": 37,
         "include": "catalog-number-window",
@@ -87891,6 +87958,13 @@
         "line": 2,
         "include": "../../books/over-held-row",
         "included": "books/over-held-row.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/over-selected-held-cell-tests.lisp",
+        "line": 2,
+        "include": "../../books/over-selected-held-cell",
+        "included": "books/over-selected-held-cell.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

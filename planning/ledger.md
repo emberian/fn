@@ -10,14 +10,14 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1969 |
+| Books read | 1971 |
 | Certification roots in the Makefile | 1866 |
 | Books inside the root closure | 1938 |
-| `defthm` and `defthmd` events | 30178 |
-| `defun` events | 19253 |
-| Functions with verified guards | 3544 |
-| Functions declared `:verify-guards nil` and never verified | 2337 |
-| Functions left at the default with an explicit guard | 10514 |
+| `defthm` and `defthmd` events | 30194 |
+| `defun` events | 19261 |
+| Functions with verified guards | 3545 |
+| Functions declared `:verify-guards nil` and never verified | 2341 |
+| Functions left at the default with an explicit guard | 10517 |
 | Functions left at the default with no guard | 2858 |
 | `assert-event` checks | 24064 |
 | `must-fail` checks | 2519 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 348 |
 | Enabled-projection warnings | 55 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2702 |
+| Include-hygiene warnings | 2705 |
 | Host-names warnings | 2193 |
 | Hand-written-record warnings | 18 |
 
@@ -716,6 +716,7 @@ that `make certify` requests.
 | `books/over-row-piece-shape.lisp` | closure | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/over-row-pieces.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/over-row-state.lisp` | closure | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/over-selected-held-cell.lisp` | - | 7 | 4 | 1/0/3/0 | 0 | 0 | 0 |
 | `books/over-window.lisp` | root | 30 | 6 | 1/3/2/0 | 0 | 0 | 0 |
 | `books/owner-ack-after-barrier.lisp` | root | 34 | 27 | 0/1/26/0 | 0 | 0 | 3 |
 | `books/owner-advance-carried.lisp` | root | 33 | 7 | 0/2/5/0 | 0 | 0 | 0 |
@@ -1687,6 +1688,7 @@ that `make certify` requests.
 | `tests/acl2/over-held-row-carry-tests.lisp` | - | 3 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `tests/acl2/over-held-row-establishment-tests.lisp` | - | 6 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `tests/acl2/over-held-row-tests.lisp` | - | 6 | 2 | 0/1/1/0 | 0 | 0 | 0 |
+| `tests/acl2/over-selected-held-cell-tests.lisp` | - | 9 | 4 | 0/4/0/0 | 0 | 0 | 0 |
 | `tests/acl2/over-window-tests.lisp` | root | 6 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/owner-ack-after-barrier-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 40 | 0 | 0 |
 | `tests/acl2/owner-advance-carried-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 64 | 16 | 0 |
