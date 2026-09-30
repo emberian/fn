@@ -521,3 +521,4 @@
 (include-book "assumptions-selected-runtime-octets-resize")
 (include-book "assumptions-selected-runtime-initializer-register") ; PRF-1166 primary store only
 (include-book "assumptions-selected-runtime-initializer-array") ; PRF-1169 primary stores only
+(include-book "assumptions-selected-runtime-immediate-arithmetic") ; PRF-1173 fitting result objects only

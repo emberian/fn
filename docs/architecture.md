@@ -110,6 +110,14 @@ and of the books it includes, which are every assumption book there is:
   with no rollback or refund. Binding the actual native caller and core fence
   remains open; compiler, allocation, frames and GC are separate obligations.
 
+- `books/assumptions-selected-runtime-immediate-arithmetic.lisp`:
+  A-SELECTED-RUNTIME-IMMEDIATE-ARITHMETIC conditionally assigns zero primary
+  result objects to the exact selected add, subtract, multiply and positive
+  floor paths when both inputs and the mathematical result fit the immediate
+  representation. Source operand proofs and actual primitive qualification
+  remain required. This excludes validation, comparisons, callers, frames,
+  first-use, faults, collector work and whole-operation admission.
+
 Including `books/assumptions.lisp` reaches all of them.
 
 **The digest left that boundary on 2026-09-20.** `books/blake3.lisp` defines
