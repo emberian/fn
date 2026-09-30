@@ -18163,7 +18163,11 @@
         "fn-coptc-finish-observes-complete-actual-result",
         "fn-coptc-actual-left-ticket-source-census",
         "fn-coptc-all-finish-paths-ticket-source-bound",
-        "fn-coptc-fault-observes-complete-actual-result"
+        "fn-coptc-fault-observes-complete-actual-result",
+        "fn-icrc-reserve-observes-complete-actual-result",
+        "fn-icrc-register-observes-complete-actual-result",
+        "fn-icsc-reserve-register-observes-complete-actual-result",
+        "fn-icrc-reserved-source-census"
       ],
       "evidence": [
         "planning/evidence/manifests/certify-20260930T183523Z-3265040.json",
@@ -18171,9 +18175,11 @@
         "planning/evidence/manifests/certify-20260930T190204Z-3575633.json",
         "planning/evidence/manifests/certify-20260930T172436Z-2276732.json",
         "planning/evidence/connection-source-census-2026-09-30/README.md",
-        "tests/acl2/connection-operation-source-cost-tests.lisp"
+        "tests/acl2/connection-operation-source-cost-tests.lisp",
+        "books/connection-reserve-source-cost.lisp",
+        "planning/evidence/manifests/certify-20260930T192841Z-3902429.json"
       ],
-      "progress_note": "Normal exact source leaves passed. Source-only component; no genuine physical allowance installation, whole request/frame tariff, or served activation claim. Literal primitive/domain teeth shipped; complete composed-state witness and nested callee accounting are still open."
+      "progress_note": "Normal exact source leaves passed. Source-only component; no genuine physical allowance installation, whole request/frame tariff, or served activation claim. Literal primitive/domain teeth shipped; complete composed-state witness and nested callee accounting are still open. Normal192841 adds actual reserve/register complete-results and ICS join with existing PRS observer, including52 source cells and36/35 material operations on fresh/recycled reserved branches. Nested registry event and abort/settle source internals and complete literal-state teeth remain open."
     }
   ]
 }

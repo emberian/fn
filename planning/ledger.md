@@ -10,14 +10,14 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1749 |
-| Certification roots in the Makefile | 1642 |
-| Books inside the root closure | 1741 |
-| `defthm` and `defthmd` events | 28061 |
-| `defun` events | 18516 |
-| Functions with verified guards | 3557 |
+| Books read | 1750 |
+| Certification roots in the Makefile | 1643 |
+| Books inside the root closure | 1742 |
+| `defthm` and `defthmd` events | 28081 |
+| `defun` events | 18520 |
+| Functions with verified guards | 3559 |
 | Functions declared `:verify-guards nil` and never verified | 2103 |
-| Functions left at the default with an explicit guard | 10121 |
+| Functions left at the default with an explicit guard | 10123 |
 | Functions left at the default with no guard | 2735 |
 | `assert-event` checks | 23114 |
 | `must-fail` checks | 2496 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 322 |
 | Enabled-projection warnings | 55 |
 | Teeth-form warnings | 272 |
-| Include-hygiene warnings | 2467 |
+| Include-hygiene warnings | 2468 |
 | Host-names warnings | 2129 |
 | Hand-written-record warnings | 18 |
 
@@ -391,6 +391,7 @@ that `make certify` requests.
 | `books/connection-operation-start.lisp` | closure | 24 | 2 | 2/0/0/0 | 0 | 0 | 0 |
 | `books/connection-operation-ticket.lisp` | closure | 11 | 5 | 3/0/2/0 | 0 | 0 | 2 |
 | `books/connection-prepare-source-cost.lisp` | root | 15 | 5 | 2/0/3/0 | 0 | 0 | 0 |
+| `books/connection-reserve-source-cost.lisp` | root | 20 | 4 | 2/0/2/0 | 0 | 0 | 0 |
 | `books/connection-start-source-cost.lisp` | root | 5 | 2 | 1/0/1/0 | 0 | 0 | 0 |
 | `books/connection-ticket-source-cost.lisp` | root | 12 | 3 | 1/0/2/0 | 0 | 0 | 0 |
 | `books/consumer-artifact-retry.lisp` | root | 21 | 3 | 0/0/2/1 | 0 | 0 | 0 |

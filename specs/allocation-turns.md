@@ -99,3 +99,11 @@ by those counts. The observers' own records are proof scaffolding, never served
 allocations. Full composed-state literal teeth, nested callee accounting and the
 complete source/native installation contract remain in progress. No source
 count supplies an installed tariff or prices native scheduler cleanup.
+
+The PRF-1171 reserve successor reuses the existing actual PRS observer inside
+`fn-icrc-reserve`. An actual successful reservation has52 explicit source CONS
+cells and36/35 material operators for fresh/recycled candidates, including the
+capacity multiplication and token FLOOR/MOD/+1 operations. Guarded complete
+result refinements also cover actual registration and its ICS preflight join.
+Nested registry event and abort/settle internal census remains named and open;
+its absence is not a zero cost assumption.
