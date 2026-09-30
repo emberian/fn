@@ -227,8 +227,11 @@
 (defthm fn-prin-resolve-preserves-statep
   (implies (fn-prin-statep st)
            (fn-prin-statep (fn-prin-resolve st stmts)))
-  :hints (("Goal" :in-theory (disable fn-prin-apply-succession
-                                      fn-prin-statep))))
+  :hints (("Goal" :induct (fn-prin-resolve st stmts)
+           :in-theory (union-theories
+                       '(fn-prin-resolve
+                         fn-prin-apply-succession-preserves-statep)
+                       (theory 'minimal-theory)))))
 
 (defthm fn-prin-trail-is-valid-chain
   (fn-prin-chain-validp st (fn-prin-trail st stmts))
