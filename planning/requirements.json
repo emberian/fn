@@ -5689,7 +5689,9 @@
         "books/history-page-io.lisp",
         "tests/acl2/history-page-io-tests.lisp",
         "books/history-key-cursor.lisp",
-        "tests/acl2/history-key-cursor-tests.lisp"
+        "tests/acl2/history-key-cursor-tests.lisp",
+        "books/history-image-columns.lisp",
+        "tests/acl2/history-image-columns-tests.lisp"
       ],
       "implementation_note": "S7 producer in development on codex/operability-producer; grammar and bounded copy cursor only. Full maintained-projection recovery and resource lifetime funding remain required, no producer completion claim."
     }

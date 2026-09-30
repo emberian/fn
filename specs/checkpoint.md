@@ -414,3 +414,11 @@ Cold string spans supply one authenticated source byte to the same core,
 without whole-string construction. Capture/root/source-position authority
 belongs to the surrounding source cursor. Absent Message-IDs keep the existing
 zero key; a present string returns one plus its FNV result. No format changes.
+
+After capacity computation, `fn-hcl-admit` also checks that the entire canonical
+image, `16384*(1+4*column-cap+pool-cap)`, fits the current u64 image-byte domain.
+Valid individual region lengths do not imply this after power-of-two rounding.
+This final check precedes emission and is separate from physical layout and
+runtime/profile file-extent admission. The same component emits one of the four
+scalar-column words via `fn-hcl-put`; its effect is exactly the corresponding
+`fn-hp-cells-of` entry, with per-row pad8 and overflow refusal preserved.
