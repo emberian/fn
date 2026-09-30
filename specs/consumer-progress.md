@@ -1138,3 +1138,12 @@ or runtime activation claim in this packet. Actual initial/cold establishment of
 the combined semantic/trie/size relation, the shared live/cfg-first carried caller,
 funded operation census and scheduling quantum, retirement lifetime, and atomic
 owner publication remain mandatory before the TLS FNCR account endpoint serves.
+
+Actual saved configuration preflight consumes the same metadata4 installed by
+the owner publication collector. Its source boundary preserves exact full
+metadata while advancing the comparison revision and discarding pending
+preparation; adopted rows stay literal. Exhausted revision refuses before
+staging/durable write. The readonly getter neither rebuilds metadata nor
+establishes correspondence: every actual CP writer, reset and cold replay must
+maintain or explicitly invalidate the joint relation. The selected host join
+is source assembly only, with canonical/funding/activation still unavailable.
