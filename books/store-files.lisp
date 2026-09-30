@@ -81,10 +81,7 @@
 (defun fn-sf-phase (s)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr s)) :exec (fn-ag-car (fn-ag-cdr s))))
-(defun fn-sf-frontier (s)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr s)))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr s)))))
+(include-book "owner-report-owner-accessors")
 (defun fn-sf-frontier-candidate (s)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr (cdr (cdr s))))
@@ -140,7 +137,7 @@
                      barriers))
 
 (verify-guards fn-sf-phase)
-(verify-guards fn-sf-frontier)
+
 (verify-guards fn-sf-frontier-candidate)
 (verify-guards fn-sf-records-field)
 (verify-guards fn-sf-records)

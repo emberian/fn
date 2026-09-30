@@ -53,6 +53,8 @@
 ; Obligation: (identity immutable-subject kind required-evidence charge).
 ; A positive charge includes at least one permanent history unit; the remaining
 ; charge is active content/evidence retained while the obligation is pinned.
+(include-book "owner-report-generated-accessors")
+
 (fn-defrecord fn-retain-obligation
   :constructor (fn-retain-make-obligation id subject kind evidence charge)
   :fields ((fn-retain-obligation-id stringp)

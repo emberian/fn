@@ -47,16 +47,12 @@
        :exec (fn-ag-car (fn-ag-cdr s))))
 
 (verify-guards fn-sn-capacity)
-(defun fn-sn-files (s) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (caddr s)
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr s)))))
+(include-book "owner-report-owner-accessors")
 
-(verify-guards fn-sn-files)
-(defun fn-sn-node (s) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (cadddr s)
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s))))))
 
-(verify-guards fn-sn-node)
+(include-book "owner-report-owner-accessors")
+
+
 
 ; The byte-identity decision for an already held Message-ID, over an
 ; OCTET-MODEL article list (each payload the article's bytes).  Since the

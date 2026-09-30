@@ -164,9 +164,7 @@
 (defun fn-feed-entry-msgid (x)
   (declare (xargs :guard t))
   (fn-bp-nth 0 x))
-(defun fn-feed-entry-state (x)
-  (declare (xargs :guard t))
-  (fn-bp-nth 1 x))
+(include-book "owner-report-feed-model")
 (defun fn-feed-entry-attempts (x)
   (declare (xargs :guard t))
   (fn-bp-nth 2 x))
@@ -759,16 +757,9 @@
 ; The feed, an opaque record
 
 ; S9 derived counts. These folds are reference/cold vocabulary only.
-(defun fn-fct-retry-drop-bit (st)
-  (declare (xargs :guard t))
-  (if (equal st '(:dropped :retry-bound)) 1 0))
+(include-book "owner-report-feed-model")
 
-(defun fn-fct-retry-drops-model (queue)
-  (declare (xargs :guard t))
-  (if (consp queue)
-      (+ (fn-fct-retry-drop-bit (fn-feed-entry-state (car queue)))
-         (fn-fct-retry-drops-model (cdr queue)))
-    0))
+(include-book "owner-report-feed-model")
 
 (defun fn-fct-pending-model (queue)
   (declare (xargs :guard t))
@@ -797,9 +788,7 @@
 (defun fn-feed-limits-of (x)
   (declare (xargs :guard t))
   (fn-bp-nth 1 x))
-(defun fn-feed-queue (x)
-  (declare (xargs :guard t))
-  (fn-bp-nth 2 x))
+(include-book "owner-report-feed-accessors")
 (defun fn-feed-contact (x)
   (declare (xargs :guard t))
   (fn-bp-nth 3 x))
@@ -813,18 +802,10 @@
   (declare (xargs :guard t))
   (fn-bp-nth 6 x))
 
-(defun fn-feed-undelivered (x)
-  (declare (xargs :guard t))
-  (fn-bp-nth 7 x))
-(defun fn-feed-retry-dropped (x)
-  (declare (xargs :guard t))
-  (fn-bp-nth 8 x))
+(include-book "owner-report-feed-accessors")
+(include-book "owner-report-feed-accessors")
 
-(defun fn-feed-count-relationp (f)
-  (declare (xargs :guard t))
-  (and (equal (fn-feed-undelivered f) (len (fn-feed-queue f)))
-       (equal (fn-feed-retry-dropped f)
-              (fn-fct-retry-drops-model (fn-feed-queue f)))))
+(include-book "owner-report-feed-model")
 
 (defthm fn-feed-shapep-of-counted-make
   (fn-feed-shapep (fn-feed-make-counted p l q c b n a u d)))

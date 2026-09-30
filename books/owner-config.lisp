@@ -61,9 +61,7 @@
 ; of the record lemmas that translate through them, and none of the eight
 ; theorems above the definitions.  The `:logic' bodies are unchanged, so
 ; every statement in the book keeps its meaning.
-(defun fn-ocfg-owner (x)
-  (declare (xargs :guard t))
-  (mbe :logic (car x) :exec (fn-ag-car x)))
+(include-book "owner-report-owner-accessors")
 (defun fn-ocfg-config (x)
   (declare (xargs :guard t))
   (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))

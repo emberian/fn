@@ -78,15 +78,11 @@
 (defun fn-own-feed-entry (name record f)
   (declare (xargs :guard t))
   (list name record f))
-(defun fn-own-feed-entry-name (e)
-  (declare (xargs :guard t))
-  (fn-frame-item 0 e))
+(include-book "owner-report-feed-accessors")
 (defun fn-own-feed-entry-record (e)
   (declare (xargs :guard t))
   (fn-frame-item 1 e))
-(defun fn-own-feed-entry-feed (e)
-  (declare (xargs :guard t))
-  (fn-frame-item 2 e))
+(include-book "owner-report-feed-accessors")
 
 (defthm fn-own-feed-entry-name-of-entry
   (equal (fn-own-feed-entry-name (fn-own-feed-entry name record f)) name))

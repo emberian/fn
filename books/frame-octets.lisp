@@ -124,11 +124,7 @@
 ; A total positional accessor.  Every result record below is read through it,
 ; so no guard obligation anywhere depends on the shape of a value that failed
 ; to parse.
-(defun fn-frame-item (n xs)
-  (declare (xargs :guard (natp n)))
-  (if (consp xs)
-      (if (zp n) (car xs) (fn-frame-item (- n 1) (cdr xs)))
-    nil))
+(include-book "owner-report-selectors")
 
 ; -----------------------------------------------------------------------------
 ; Structural facts about the splitter.  These are the shape lemmas every guard

@@ -1301,6 +1301,24 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-outcome-counted \
 	tests/acl2/owner-outcome-counted-tests \
 	tests/acl2/owner-feed-live-carried-tests \
+	books/native-live-status-words \
+	books/operator-report-fields \
+	books/operator-report-fields-text \
+	books/operator-report-fields-native-reference \
+	books/operator-report-descriptors \
+	books/owner-report-owner-accessors \
+	books/owner-report-selectors \
+	books/owner-report-feed-accessors \
+	books/owner-report-generated-accessors \
+	books/owner-report-feed-model \
+	books/owner-report-drop-count \
+	books/owner-report-words \
+	books/owner-retire-report-model \
+	books/owner-retire-stream \
+	tests/acl2/operator-report-fields-tests \
+	tests/acl2/operator-report-fields-native-reference-tests \
+	tests/acl2/operator-report-descriptors-tests \
+	tests/acl2/owner-retire-stream-tests \
 	books/owner-maintenance-admission \
 	books/owner-retire-counted \
 	tests/acl2/owner-retire-counted-tests \

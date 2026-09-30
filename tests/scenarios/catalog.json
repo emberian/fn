@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -7082,9 +7082,11 @@
         "tests/acl2/owner-feed-live-carried-tests.lisp",
         "tests/acl2/owner-outcome-counted-tests.lisp",
         "tests/acl2/owner-feed-reconfigure-counted-tests.lisp",
-        "tests/acl2/owner-retire-counted-tests.lisp"
+        "tests/acl2/owner-retire-counted-tests.lisp",
+        "tests/acl2/operator-report-descriptors-tests.lisp",
+        "tests/acl2/owner-retire-stream-tests.lisp"
       ],
-      "scope_note": "Count/live/replay/configuration fixtures execute in protected source REPLs. Constructed control completion checks exact one-fold aggregate and no duplicate enqueue; it is not a persisted acceptance claim. Actual intake/final-join source hooks include explicit log join/timeout disposition; held writers retain journal authority, suppress report and return uncertain; the outer operator caller also skips stopped-line direct I/O and log descriptor close while writer authority remains held. These are prototypes, not a matching native qualification. Actual-function recording regression packets are retained under tests/recording/retirement with their limited recording I/O/core and SBCL synchronization scope. Complete SCN-1046/1047 slice, existing maintenance/independent deadline scheduling, producer settlement and funded frozen streaming report remain open."
+      "scope_note": "Count/live/replay/configuration fixtures execute in protected source REPLs. Constructed control completion checks exact one-fold aggregate and no duplicate enqueue; it is not a persisted acceptance claim. Actual intake/final-join source hooks include explicit log join/timeout disposition; held writers retain journal authority, suppress report and return uncertain; the outer operator caller also skips stopped-line direct I/O and log descriptor close while writer authority remains held. These are prototypes, not a matching native qualification. Actual-function recording regression packets are retained under tests/recording/retirement with their limited recording I/O/core and SBCL synchronization scope. Complete SCN-1046/1047 slice, existing maintenance/independent deadline scheduling, producer settlement and funded frozen streaming report remain open. Fixed report descriptors have complete byte fixtures for peer/header/forward-unrelated/archive/drained/deadline/release; these are source fixtures, not full frozen report or native custody qualification. Fresh thin source world also admits composed cursor decreasing ordinal rank, guard-verified proof-only complete interpreter, and literal peer/obligation descriptor bridges. Complete cursor fixtures retain an unrelated forward pin and distinguish retry-bound from other dropped entries; empty drained and affirmative invariant-removal octet corruption teeth pass. Complete arbitrary-report byte conservation, installed host consumer and runtime/output-stage/lifetime funding remain open."
     }
   ]
 }

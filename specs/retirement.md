@@ -143,8 +143,13 @@ path remains available.
 
 Frozen report rendering is still a whole-buffer source path. The unactivated
 `owner-retire-stream` proposal shares existing tails after joins, but its
-single-line scratch tariff and staged output disk/lifetime funding are open;
-it has no admission or host-call claim. Final checkpoint and all crash cuts,
+full report byte conservation and staged output disk/lifetime funding are open.
+The current proposal schedules fixed descriptor spines and uses the guarded
+field emitter to emit NIL or one octet per turn; it renders no whole line.
+Its guard, start/preservation invariant and output quantum have narrow source
+admissions. Literal getter/reference extraction preserves original definition
+forms and record layouts. These admissions have no full report, host activation
+or native qualification claim. Final checkpoint and all crash cuts,
 installed composite preservation, scalar-width/coexistence funding and the
 matching native whole-slice scenario remain required. This progress does not
 close S9, R16 work debt, physical funding or native qualification.

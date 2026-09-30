@@ -314,6 +314,8 @@
 ; each cross-field conjunct rides with the last field it reads, so the
 ; carried invariant ACL2 admits is the same term as before.
 
+(include-book "owner-report-generated-accessors")
+
 (fn-defrecord fn-node-state
   :constructor (fn-node-make-state acceptance retention stage bindings)
   :fields ((fn-node-acceptance (fn-statep (fn-node-acceptance x)))
