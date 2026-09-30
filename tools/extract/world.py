@@ -218,7 +218,7 @@ def included_books(root, rel):
 
 def digest(root, acl2=None, variant="default"):
     """The world's cache key (world_image.sh): SHA-256 over the two world
-    files, every host file they load (lds followed), and the certificate and
+    files selected by VARIANT, every host file they load (lds followed), and the certificate and
     compiled file of every book in their include closure, with the ACL2 the
     image is saved under.  A changed book, certificate or host file is a new
     key.  A missing certificate is keyed as missing (the load then fails)."""

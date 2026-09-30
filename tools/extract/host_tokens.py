@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """tools/extract/host_tokens.py TREE OUT.lsp -- every word of the host files
-the image loads raw (host/native/build.lisp's progn! block), upcased, as an
+the selected native build loads raw (its progn! block), upcased, as an
 ACL2 list of strings: the candidates for the Common Lisp product's roots
 (tools/extract/core-export.lisp keeps those that name a world function or
-defconst).  Comments and strings are skipped."""
+defconst). Comments and strings are skipped. Optional third argument BUILD
+selects the native build script; default host/native/build.lisp."""
 import re
 import sys
 from pathlib import Path
