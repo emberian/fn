@@ -338,6 +338,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/receiver-provider \
 	books/receiver-provider-capacity \
 	books/receiver-provider-refinement \
+	books/receiver-array-copy-join \
+	tests/acl2/receiver-array-copy-join-tests \
 	tests/acl2/receiver-provider-refinement-tests \
 	tests/acl2/receiver-provider-capacity-tests \
 	tests/acl2/receiver-provider-range-tests \

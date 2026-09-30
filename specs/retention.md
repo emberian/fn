@@ -372,3 +372,15 @@ supplied physical child or establish a raw pointer association. The actual
 `fnn-owner-receiver-fill` uses the sanctioned SAME-provider projection and the
 central selected array-copy semantic contract; concrete object association,
 primitive failure and the composed outer service recovery fence remain required.
+
+The RX array semantic join is conditional on A-RX-ARRAY-COPY. The actual
+subject is `fnn-owner-receiver-fill`; the named core theorem
+`fn-rxp-assumed-array-copy-refines-reference` connects a successful primitive
+observation at the completed core-issued range to the registered concrete
+child abstraction and complete provider reference result. Literal model
+witnesses do not qualify Common Lisp REPLACE. Raw immutable issued identity
+association, installed backing/pool authority, and an effective provider or
+whole-service quarantine on every primitive/callback escape remain separate
+requirements. Controlled same-object reset is unavailable until the actual
+receiver turn and all escaped aliases have definitely joined; capacity NIL
+or a supplied joined flag cannot authorize it. Permanent U remains charged.
