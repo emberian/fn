@@ -504,3 +504,131 @@
                  fn-hsr-auth-byte-demand fn-hsr-auth-verified-byte-demand fn-hsr-field)
                 (fn-hsr-io-shapep fn-hsr-put fn-hsr-rootp fn-hsr-prefixp
                  fn-hsr-widthp fn-hsr-tagp fn-hrcur-wordp fn-hsr-scan-shapep)))))
+
+; Fixed selected root, root ticket, epoch and opaque source/lease projection.
+(defun fn-hsr-auth-identities (c)
+  (declare (xargs :guard t))
+  (list (fn-hsr-field 2 c) (fn-hsr-io-identities (fn-hsr-field 1 c))))
+
+(local
+ (encapsulate ()
+(defthm fn-hsr-auth-open-phase-preserves-identities
+  (equal (fn-hsr-auth-identities
+          (mv-nth 1 (fn-hsr-auth-open-phase phase physical total count selected expected c pgs-digest-state)))
+         (fn-hsr-auth-identities c))
+  :hints (("Goal" :in-theory
+           (e/d (fn-hsr-auth-identities fn-hsr-auth-open-phase)
+                (fn-hsr-put fn-hsr-field fn-hsr-auth-shapep pgs-dc-begin fn-hsr-io-identities)))))
+
+(defthm fn-hsr-auth-refuse-preserves-identities
+  (equal (fn-hsr-auth-identities (mv-nth 1 (fn-hsr-auth-refuse reason c)))
+         (fn-hsr-auth-identities c))
+  :hints (("Goal" :in-theory (e/d (fn-hsr-auth-identities fn-hsr-auth-refuse)
+                                  (fn-hsr-put fn-hsr-field fn-hsr-io-identities)))))
+(defthm fn-hsr-auth-select-page-preserves-identities
+  (equal (fn-hsr-auth-identities (mv-nth 1 (fn-hsr-auth-select-page logical c pgs-digest-state)))
+         (fn-hsr-auth-identities c))
+  :hints (("Goal" :in-theory
+           (e/d (fn-hsr-auth-select-page fn-hsr-auth-identities)
+                (fn-hsr-put fn-hsr-field fn-hsr-auth-shapep fn-hsr-io-identities
+                 fn-hsr-auth-open-phase fn-hsr-auth-refuse fn-hsr-io-request
+                 fn-hsr-io-complete fn-hsr-io-release fn-hsr-io-cancel fn-hsr-io-joined-failure
+                 fn-hsr-scan-word fn-hrcur-word-push)))))
+
+(defthm fn-hsr-auth-request-preserves-identities
+  (equal (fn-hsr-auth-identities (mv-nth 2 (fn-hsr-auth-request c)))
+         (fn-hsr-auth-identities c))
+  :hints (("Goal" :in-theory
+           (e/d (fn-hsr-auth-request fn-hsr-auth-identities)
+                (fn-hsr-put fn-hsr-field fn-hsr-auth-shapep fn-hsr-io-identities
+                 fn-hsr-auth-open-phase fn-hsr-auth-refuse fn-hsr-io-request
+                 fn-hsr-io-complete fn-hsr-io-release fn-hsr-io-cancel fn-hsr-io-joined-failure
+                 fn-hsr-scan-word fn-hrcur-word-push)))))
+
+(defthm fn-hsr-auth-complete-preserves-identities
+  (equal (fn-hsr-auth-identities (mv-nth 1 (fn-hsr-auth-complete request discovery-id count status c)))
+         (fn-hsr-auth-identities c))
+  :hints (("Goal" :in-theory
+           (e/d (fn-hsr-auth-complete fn-hsr-auth-identities)
+                (fn-hsr-put fn-hsr-field fn-hsr-auth-shapep fn-hsr-io-identities
+                 fn-hsr-auth-open-phase fn-hsr-auth-refuse fn-hsr-io-request
+                 fn-hsr-io-complete fn-hsr-io-release fn-hsr-io-cancel fn-hsr-io-joined-failure
+                 fn-hsr-scan-word fn-hrcur-word-push)))))
+
+(defthm fn-hsr-auth-feed-byte-preserves-identities
+  (equal (fn-hsr-auth-identities (mv-nth 1 (fn-hsr-auth-feed-byte discovery-id offset byte c)))
+         (fn-hsr-auth-identities c))
+  :hints (("Goal" :in-theory
+           (e/d (fn-hsr-auth-feed-byte fn-hsr-auth-identities)
+                (fn-hsr-put fn-hsr-field fn-hsr-auth-shapep fn-hsr-io-identities
+                 fn-hsr-auth-open-phase fn-hsr-auth-refuse fn-hsr-io-request
+                 fn-hsr-io-complete fn-hsr-io-release fn-hsr-io-cancel fn-hsr-io-joined-failure
+                 fn-hsr-scan-word fn-hrcur-word-push)))))
+
+(defthm fn-hsr-auth-release-preserves-identities
+  (equal (fn-hsr-auth-identities (mv-nth 1 (fn-hsr-auth-release discovery-id c)))
+         (fn-hsr-auth-identities c))
+  :hints (("Goal" :in-theory
+           (e/d (fn-hsr-auth-release fn-hsr-auth-identities)
+                (fn-hsr-put fn-hsr-field fn-hsr-auth-shapep fn-hsr-io-identities
+                 fn-hsr-auth-open-phase fn-hsr-auth-refuse fn-hsr-io-request
+                 fn-hsr-io-complete fn-hsr-io-release fn-hsr-io-cancel fn-hsr-io-joined-failure
+                 fn-hsr-scan-word fn-hrcur-word-push)))))
+
+(defthm fn-hsr-auth-cancel-preserves-identities
+  (equal (fn-hsr-auth-identities (mv-nth 1 (fn-hsr-auth-cancel c)))
+         (fn-hsr-auth-identities c))
+  :hints (("Goal" :in-theory
+           (e/d (fn-hsr-auth-cancel fn-hsr-auth-identities)
+                (fn-hsr-put fn-hsr-field fn-hsr-auth-shapep fn-hsr-io-identities
+                 fn-hsr-auth-open-phase fn-hsr-auth-refuse fn-hsr-io-request
+                 fn-hsr-io-complete fn-hsr-io-release fn-hsr-io-cancel fn-hsr-io-joined-failure
+                 fn-hsr-scan-word fn-hrcur-word-push)))))
+
+(defthm fn-hsr-auth-joined-failure-preserves-identities
+  (equal (fn-hsr-auth-identities (mv-nth 1 (fn-hsr-auth-joined-failure request outcome c)))
+         (fn-hsr-auth-identities c))
+  :hints (("Goal" :in-theory
+           (e/d (fn-hsr-auth-joined-failure fn-hsr-auth-identities)
+                (fn-hsr-put fn-hsr-field fn-hsr-auth-shapep fn-hsr-io-identities
+                 fn-hsr-auth-open-phase fn-hsr-auth-refuse fn-hsr-io-request
+                 fn-hsr-io-complete fn-hsr-io-release fn-hsr-io-cancel fn-hsr-io-joined-failure
+                 fn-hsr-scan-word fn-hrcur-word-push)))))
+
+(defthm fn-hsr-auth-finish-phase-preserves-identities
+  (equal (fn-hsr-auth-identities (mv-nth 1 (fn-hsr-auth-finish-phase c pgs-digest-state)))
+         (fn-hsr-auth-identities c))
+  :hints (("Goal" :in-theory
+           (e/d (fn-hsr-auth-finish-phase fn-hsr-auth-identities)
+                (fn-hsr-put fn-hsr-field fn-hsr-auth-shapep fn-hsr-io-identities
+                 fn-hsr-auth-open-phase fn-hsr-auth-refuse fn-hsr-scan-entry
+                 fn-hsr-page-verdict pgs-dc-result)))))
+
+(defthm fn-hsr-auth-digest-tick-preserves-identities
+  (equal (fn-hsr-auth-identities (mv-nth 1 (fn-hsr-auth-digest-tick c pgs-digest-state)))
+         (fn-hsr-auth-identities c))
+  :hints (("Goal" :in-theory
+           (e/d (fn-hsr-auth-digest-tick fn-hsr-auth-identities)
+                (fn-hsr-put fn-hsr-field fn-hsr-auth-shapep fn-hsr-io-identities
+                 fn-hsr-auth-finish-phase fn-hsr-auth-refuse pgs-dc-step
+                 pgs-dc-needs-block pgs-dc-next-word-offset pgs-dc-read-demand)))))
+))
+
+(defthm fn-hsr-auth-transitions-preserve-identities-by-definition
+  (and (equal (fn-hsr-auth-identities (mv-nth 1 (fn-hsr-auth-select-page logical c pgs-digest-state)))
+                (fn-hsr-auth-identities c))
+       (equal (fn-hsr-auth-identities (mv-nth 2 (fn-hsr-auth-request c)))
+                (fn-hsr-auth-identities c))
+       (equal (fn-hsr-auth-identities (mv-nth 1 (fn-hsr-auth-complete request discovery-id count status c)))
+                (fn-hsr-auth-identities c))
+       (equal (fn-hsr-auth-identities (mv-nth 1 (fn-hsr-auth-feed-byte discovery-id offset byte c)))
+                (fn-hsr-auth-identities c))
+       (equal (fn-hsr-auth-identities (mv-nth 1 (fn-hsr-auth-digest-tick c pgs-digest-state)))
+                (fn-hsr-auth-identities c))
+       (equal (fn-hsr-auth-identities (mv-nth 1 (fn-hsr-auth-release discovery-id c)))
+                (fn-hsr-auth-identities c))
+       (equal (fn-hsr-auth-identities (mv-nth 1 (fn-hsr-auth-cancel c)))
+                (fn-hsr-auth-identities c))
+       (equal (fn-hsr-auth-identities (mv-nth 1 (fn-hsr-auth-joined-failure request outcome c)))
+                (fn-hsr-auth-identities c)))
+  :hints (("Goal" :in-theory (disable fn-hsr-auth-identities fn-hsr-auth-select-page fn-hsr-auth-request fn-hsr-auth-complete fn-hsr-auth-feed-byte fn-hsr-auth-digest-tick fn-hsr-auth-release fn-hsr-auth-cancel fn-hsr-auth-joined-failure))))

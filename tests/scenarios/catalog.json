@@ -6361,9 +6361,10 @@
         "tests/acl2/history-page-reader-io-tests.lisp",
         "tests/acl2/history-auth-reader-tests.lisp",
         "planning/evidence/history-auth-reader-source-2026-09-30.json",
-        "planning/evidence/history-auth-reader-lifetime-source-2026-09-30.json"
+        "planning/evidence/history-auth-reader-lifetime-source-2026-09-30.json",
+        "planning/evidence/history-auth-reader-identities-source-2026-09-30.json"
       ],
-      "execution_scope": "Exact auth/digest-domain library source:19 literal witnesses and I/O-only carried lifetime preservation; select/feed/digest trajectory, universal mapping/authentication/refinement/progress and host integration remain open."
+      "execution_scope": "Exact auth/digest-domain library source:20 literal witnesses, I/O lifetime subset and coordinate conservation; full trajectory/mapping/authentication/refinement/progress and host integration remain open."
     },
     {
       "id": "SCN-1006",

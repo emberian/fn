@@ -337,3 +337,17 @@
          (equal (mv-nth 0 join) '(:refused :join-state))
          (equal (mv-nth 1 join) c)))
   :rule-classes nil)
+
+(defthm fn-hsr-auth-whole-chain-identities-positive
+  (let* ((initial (second (fn-hsr-auth-test-waiting)))
+         (read (fn-hsr-auth-test-example 1 0 *fn-hsr-auth-directory-digest*
+                                       *fn-hsr-auth-pages* 60000))
+         (verified (second read))
+         (repeated (fn-hsr-auth-test-repeat-select)))
+    (and (equal (first read) '(:verified-page 0 41 0 304 2))
+         (equal (third read) '(17 91 304))
+         (equal (fn-hsr-auth-identities verified) (fn-hsr-auth-identities initial))
+         (equal (fn-hsr-auth-identities (fourth repeated)) (fn-hsr-auth-identities initial))
+         (equal (second (fn-hsr-auth-identities verified))
+                '(0 41 (:captured 7) (:lease 8 2)))))
+  :rule-classes nil)

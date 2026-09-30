@@ -123,3 +123,10 @@ and joined failure require both the outer and nested modes to be waiting;
 a deliberately corrupted mismatch refuses unchanged. This is the I/O subset
 of trajectory preservation. Selection, byte packing and digest phase transitions
 still require the combined stream/scanner/digest invariant.
+
+The fixed coordinate projection `fn-hsr-auth-identities` carries the exact
+selected root and nested I/O ticket, epoch and opaque capture/lease. All eight
+public transitions conserve it. The exported grouped projection equality is
+named `-by-definition` and supplies no authentication keystone or cryptographic
+conclusion. It does not conserve discovery IDs, which intentionally change
+with physical borrows, or request serials, which intentionally advance.
