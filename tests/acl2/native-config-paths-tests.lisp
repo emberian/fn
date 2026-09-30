@@ -25,6 +25,12 @@
 (assert-event (equal (fn-ncpath-resolve "/srv/fn-public" "/var/lib/fn") "/srv/fn-public"))
 (assert-event (equal (fn-ncpath-resolve "store" nil) "store"))
 (assert-event (equal (fn-ncpath-resolve nil "/var/lib/fn") nil))
+; Complete positive for fn-ncpath-resolve-is-absolute.
+(assert-event
+ (and (fn-ncpath-basep "/var/lib/fn")
+      (stringp "store") (< 0 (length "store"))
+      (fn-ncfg-absolutep (fn-ncpath-resolve "store" "/var/lib/fn"))))
+
 ; Teeth for fn-ncpath-resolve-is-absolute: without a base the result is not
 ; absolute; without the path's being a non-empty string neither.
 (assert-event (not (fn-ncfg-absolutep (fn-ncpath-resolve "store" "relative"))))

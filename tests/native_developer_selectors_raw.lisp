@@ -70,7 +70,7 @@
   (harness-stub-reached 'fnn-control-live-status-answer "host/native/control.lisp"))
 (defun fnn-control-peer-is-owner-p (socket)
   (declare (ignorable socket))
-  (harness-stub-reached 'fnn-control-peer-is-owner-p "host/native/control.lisp"))
+  (harness-stub-reached 'fnn-control-peer-is-owner-p "host/native/control-transport.lisp"))
 (defun fnn-core-state (name &rest args)
   (declare (ignorable name args))
   (harness-stub-reached 'fnn-core-state "host/native/io.lisp"))
