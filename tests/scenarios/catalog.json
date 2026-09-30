@@ -6284,7 +6284,8 @@
         "Feed the complete resident byte stream through bounded word push/finish and compare packed zero-padded output with the current pack8 oracle.",
         "Census the identical captured row without retaining encoded bytes; interrupt/resume, compare the terminal exact count with codec length and explicitly refuse a corrupted census total at the u64 edge.",
         "Stream borrowed string/octet payloads using one absolute-byte request/supply per action; interrupt/resume and compare complete current codec bytes, including empty octet span canonical NIL.",
-        "Refuse a wrong or replayed payload position unchanged; affirm complete supply/tick hypotheses and residual/invariant conclusions, then literal removal witnesses for all five supply-refinement premises and nine initial-span premises."
+        "Refuse a wrong or replayed payload position unchanged; affirm complete supply/tick hypotheses and residual/invariant conclusions, then literal removal witnesses for all five supply-refinement premises and nine initial-span premises.",
+        "Recognize decoded package1/2 NIL spans with at most three authenticated byte supplies; interrupt/resume, preserve identities, refuse replayed positions, and prove actual decoded octet-list tail canonicalization with full positive and literal supply/progress removals."
       ],
       "expected": [
         "No source-list copy or whole-row encoding occurs at begin or tick.",
@@ -6299,7 +6300,7 @@
         "tests/acl2/history-record-cursor-tests.lisp",
         "specs/history-record-cursor.md"
       ],
-      "execution_scope": "Resident byte/census/word libraries and raw borrowed span string/octet boundaries only. Decoded-tree opaque-collapse, symbol normalizer/authority composition, general tree progress, remaining semantic/supply-progress teeth, initial u64-size witnesses, padded placement/producer/profile funding and native qualification remain open."
+      "execution_scope": "Resident byte/census/word libraries and raw borrowed span string/octet boundaries only. Decoded-tree opaque-collapse, symbol normalizer/authority composition, general tree progress, remaining semantic/supply-progress teeth, initial u64-size witnesses, padded placement/producer/profile funding and native qualification remain open. Decoded NIL-tail probe is a proper-local source-library checkpoint only; general cold tree/normalizer/controller and full literal semantic-domain teeth remain open."
     },
     {
       "id": "SCN-1010",
