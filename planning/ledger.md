@@ -13,22 +13,22 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1736 |
 | Certification roots in the Makefile | 1673 |
 | Books inside the root closure | 1733 |
-| `defthm` and `defthmd` events | 28054 |
+| `defthm` and `defthmd` events | 28058 |
 | `defun` events | 18400 |
 | Functions with verified guards | 3481 |
 | Functions declared `:verify-guards nil` and never verified | 2101 |
 | Functions left at the default with an explicit guard | 10053 |
 | Functions left at the default with no guard | 2765 |
-| `assert-event` checks | 23297 |
+| `assert-event` checks | 23300 |
 | `must-fail` checks | 2504 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 157 |
-| Theorems flagged SUSPECT by shape | 1229 |
+| Theorems flagged SUSPECT by shape | 1230 |
 | Export-hygiene warnings | 324 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
 | Include-hygiene warnings | 2436 |
-| Host-names warnings | 2136 |
+| Host-names warnings | 2137 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -192,7 +192,7 @@ that `make certify` requests.
 | `books/bp-native-app.lisp` | root | 5 | 48 | 3/0/45/0 | 0 | 0 | 0 |
 | `books/bp-node-busy-delivery.lisp` | root | 19 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/bp-node-contact-driver.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 1 |
-| `books/bp-node-control.lisp` | root | 4 | 9 | 0/0/9/0 | 0 | 0 | 0 |
+| `books/bp-node-control.lisp` | root | 5 | 9 | 0/0/9/0 | 0 | 0 | 1 |
 | `books/bp-node-debt-cache-invariants.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-node-debt.lisp` | root | 5 | 20 | 6/0/14/0 | 0 | 0 | 0 |
 | `books/bp-node-dispatch.lisp` | root | 1 | 5 | 0/1/4/0 | 0 | 0 | 0 |
@@ -707,7 +707,7 @@ that `make certify` requests.
 | `books/owner-served-carried.lisp` | root | 12 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/owner-served-invariants.lisp` | root | 22 | 6 | 0/0/6/0 | 0 | 0 | 1 |
 | `books/owner-signed-post.lisp` | root | 30 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/owner-snapshot-recovery.lisp` | root | 99 | 10 | 0/6/3/1 | 0 | 0 | 11 |
+| `books/owner-snapshot-recovery.lisp` | root | 102 | 10 | 0/6/3/1 | 0 | 0 | 11 |
 | `books/owner-snapshot-request.lisp` | root | 8 | 15 | 0/0/15/0 | 0 | 0 | 0 |
 | `books/owner-stop-drain.lisp` | root | 8 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/owner-store-budget.lisp` | root | 3 | 3 | 0/0/3/0 | 0 | 0 | 0 |
@@ -1163,7 +1163,7 @@ that `make certify` requests.
 | `tests/acl2/bp-native-app-replay-bridge-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 3 | 0 |
 | `tests/acl2/bp-native-app-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 19 | 0 | 0 |
 | `tests/acl2/bp-node-contact-driver-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 26 | 8 | 0 |
-| `tests/acl2/bp-node-control-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 11 | 0 | 0 |
+| `tests/acl2/bp-node-control-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 12 | 0 | 0 |
 | `tests/acl2/bp-node-counterexamples-tests.lisp` | root | 0 | 44 | 0/12/1/31 | 59 | 58 | 0 |
 | `tests/acl2/bp-node-debt-cache-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 2 | 0 |
 | `tests/acl2/bp-node-debt-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 6 | 4 | 0 |
@@ -1559,7 +1559,7 @@ that `make certify` requests.
 | `tests/acl2/owner-served-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 2 | 0 |
 | `tests/acl2/owner-served-invariants-tests.lisp` | root | 0 | 18 | 0/7/0/11 | 88 | 12 | 0 |
 | `tests/acl2/owner-signed-post-tests.lisp` | root | 0 | 14 | 0/3/0/11 | 70 | 27 | 0 |
-| `tests/acl2/owner-snapshot-recovery-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 23 | 0 | 0 |
+| `tests/acl2/owner-snapshot-recovery-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 25 | 0 | 0 |
 | `tests/acl2/owner-snapshot-request-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 47 | 0 | 0 |
 | `tests/acl2/owner-stop-drain-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 49 | 5 | 0 |
 | `tests/acl2/owner-store-budget-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 11 | 4 | 0 |
@@ -1935,6 +1935,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bpn-sf-host-reserve-is-core-reserve` | `books/bp-sequence-fidelity.lisp` | 278 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-bpn-sf-host-reserve; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-bpn-state-with-accessors` | `books/bp-node-machine-invariants.lisp` | 20 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bpn-step-emits-no-release` | `books/bp-node-machine.lisp` | 1166 | instance-corollary: the statement is fn-bpn-effect-listp-excludes-release instantiated, discharging nothing |
+| `fn-bpnc-socket-open-run-by-definition` | `books/bp-node-control.lisp` | 125 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-bpnc-socket-open-run |
 | `fn-bpnf-clock-domain-different-boot-fences` | `books/bp-clock-domain.lisp` | 340 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpnf-clock-domain-plan and the conclusion is that arm's value |
 | `fn-bpnf-clock-domain-legacy-without-marker-fences` | `books/bp-clock-domain.lisp` | 354 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpnf-clock-domain-plan and the conclusion is that arm's value |
 | `fn-bpnf-reassemble-is-not-ready` | `books/bp-node-fragment-plan.lisp` | 102 | instance-corollary: the statement is fn-bpfw-spec-is-never-ready instantiated, discharging nothing |

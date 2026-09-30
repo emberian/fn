@@ -46,7 +46,9 @@
         "fn-scar-ocfg-read-keeps-store",
         "fn-ccar-own-finish-preserves-sn-statep",
         "fn-ocmt-post-commit-preserves-ocl-relation",
-        "fn-ocmt-sn-finish-preserves-cst-relation"
+        "fn-ocmt-sn-finish-preserves-cst-relation",
+        "fn-bpaj-replay-receiver-is-receiver-replay",
+        "fn-bpaj-replay-rest-receiver-is-receiver-replay-rest"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -424,7 +426,9 @@
         "fn-sn-open-observed-success-has-live-history-relation-of-host-open",
         "fn-sn-open-observed-success-exact-history-node-of-host-open",
         "fn-sn-open-observed-success-configured-node-of-host-open",
-        "fn-bpr-live-receipt-regenerated-after-restart-of-host-open"
+        "fn-bpr-live-receipt-regenerated-after-restart-of-host-open",
+        "fn-bpaj-replay-receiver-is-receiver-replay",
+        "fn-bpaj-replay-rest-receiver-is-receiver-replay-rest"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -667,7 +671,9 @@
         "fn-bprv-evolving-output-is-history-grounded",
         "fn-bprv-evolving-output-is-node-grounded-when-idle",
         "fn-bprv-apply-record-agrees-at-ready-extension",
-        "fn-bpr-live-state-is-replay-of-journal"
+        "fn-bpr-live-state-is-replay-of-journal",
+        "fn-bpaj-replay-receiver-is-receiver-replay",
+        "fn-bpaj-replay-rest-receiver-is-receiver-replay-rest"
       ],
       "evidence": [
         "books/bp-workflow.lisp",
@@ -18237,14 +18243,18 @@
         "PRF-012"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-native-app-replay-bridge.lisp",
         "tests/acl2/bp-native-app-replay-bridge-tests.lisp",
         "specs/bp-receiver-proofs.md",
         "planning/evidence/store-invariants-replay-2026-09-29.md"
       ],
-      "progress_note": "PKT-413 source bridges: actual caller host/bp-receipt-journal-host.lisp fn-bprj-install; fn-bpaj-receiver-result projects flag and receiver. Full replay requires receiver-only-recordsp, excluding both transit kinds. Suffix replay additionally requires the exact context-first joined shape, with no redundant receiver-state recognizer hypothesis. All three new definitions are guard verified. Fresh protected REPL si5 loaded the complete book and six witness assertions plus three expected must-fail removals without refusal (27 root forms; 110.18 ACL2 seconds including source dependencies). Both events pass strict host reach. No matching certification manifest or new native/image qualification is claimed. Checker result-projection support now justifies removing the three full successful-replay exceptions (PRF-001/007/012). Both originally targeted finite-rest exceptions remain pending input-state projection support; combined strict reach with bridge plus model books passes with no new orphan."
+      "progress_note": "PKT-413 source bridges: actual caller host/bp-receipt-journal-host.lisp fn-bprj-install; fn-bpaj-receiver-result projects flag and receiver. Full replay requires receiver-only-recordsp, excluding both transit kinds. Suffix replay additionally requires the exact context-first joined shape, with no redundant receiver-state recognizer hypothesis. All three new definitions are guard verified. Fresh protected REPL si5 loaded the complete book and six witness assertions plus three expected must-fail removals without refusal (27 root forms; 110.18 ACL2 seconds including source dependencies). Both events pass strict host reach. No matching certification manifest or new native/image qualification is claimed. Checker result-projection support now justifies removing the three full successful-replay exceptions (PRF-001/007/012). Both originally targeted finite-rest exceptions remain pending input-state projection support; combined strict reach with bridge plus model books passes with no new orphan.",
+      "events": [
+        "fn-bpaj-replay-receiver-is-receiver-replay",
+        "fn-bpaj-replay-rest-receiver-is-receiver-replay-rest"
+      ]
     },
     {
       "id": "PRF-1093",

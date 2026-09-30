@@ -282,9 +282,7 @@
   :class ::common-lisp-compliant
   :keystones (fn-arx-commit-reseats-keep-the-arena))
 
-(definterface fn-arx-intern-step
-  :class ::common-lisp-compliant
-  :keystones (fn-arx-intern-step-refines))
+
 
 (definterface fn-arx-list-places
   :class ::common-lisp-compliant
@@ -592,9 +590,7 @@
 (definterface fn-lzr-dicts-initial
   :class ::common-lisp-compliant)
 
-(definterface fn-lzr-intern-step
-  :class ::common-lisp-compliant
-  :keystones (fn-lzr-intern-step-refines))
+
 
 (definterface fn-lzr-read-refusal-text
   :class ::common-lisp-compliant
@@ -855,14 +851,9 @@
 (definterface fn-smid-unrecorded-warning
   :class ::common-lisp-compliant)
 
-(definterface fn-srs-intern-step
-  :class ::common-lisp-compliant
-  :keystones (fn-srs-checked-step-is-the-step
-              fn-lzr-intern-step-refines
-              fn-arx-intern-step-refines))
 
-(definterface fn-srs-rows
-  :class ::common-lisp-compliant)
+
+
 
 (definterface fn-store-cfg-generation
   :class ::program)
@@ -4679,8 +4670,7 @@
 
 (definterface fn-pio-worker-death-step :class :common-lisp-compliant
   :kinds ((deadp booleanp)))
-(definterface fn-pio-file-issue :class :common-lisp-compliant
-  :keystones ((fn-pio-successive-file-issues-have-distinct-identities :via fn-pio-file-issue)))
+
 
 
 (definterface fn-native-operator-host-result-init-budget
@@ -4772,3 +4762,29 @@
 (definterface fn-owner-page-read-discovery-admit :class :common-lisp-compliant
   :keystones ((fn-prd-admit-preserves-pool-funding :via fn-prd-admit)))
 (definterface fn-owner-page-read-discovery-release :class :common-lisp-compliant)
+
+; Actual statement streaming and material dispatch declarations.
+; Source: books/native-statement-material.lisp, all three guards T.
+(definterface fn-nsm-plan
+  :class :common-lisp-compliant)
+(definterface fn-nsm-render
+  :class :common-lisp-compliant)
+(definterface fn-nsm-check-rendered
+  :class :common-lisp-compliant)
+; Source: books/statement-recover-stream.lisp. The worker's state/dictionary
+; predicates are not recognized host kind predicates; no raw-dispatch claim.
+(definterface fn-ssr-intern-step
+  :class :common-lisp-compliant
+  :keystones (fn-ssr-resident-step-of-append
+              fn-ssr-extent-step-refines-resident
+              fn-ssr-lz-step-refines-resident))
+(definterface fn-ssr-rows
+  :class :common-lisp-compliant)
+(definterface fn-ssr-seed
+  :class :common-lisp-compliant)
+; Source: host/store-node-host.lisp, program mode over STATE.
+(definterface fn-store-statement-replay-seed
+  :class :program)
+; Source: books/stx-keyring-records.lisp, guard T.
+(definterface fn-stxk-initial-context
+  :class :common-lisp-compliant)
