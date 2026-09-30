@@ -62,3 +62,19 @@ provider: protected mib loaded62 own forms with zero refusals, 24.46seconds
 including source prerequisites, 3,052,547steps. All10 representation/control
 fixture forms passed615steps. This is source guard admission, not certification,
 funded publication or served-path qualification.
+
+Common slot registration is now kind-neutral: ticket/generation bind the
+registered capture rather than a fabricated MID control. Internal
+`fn-ibp-slot-register(token,kind,control,capture,context,segment)` and
+`fn-ibp-slot-update(token,kind,control,borrow,segment)` accept genuine :mid
+(:fn-miq) and :range (:fn-ibr) headers with ticket/generation fields1/2.
+MID capture matching explicitly requires its kind; cross-kind updates refuse.
+The range controller owns its distinct captured group-number/visibility
+semantics and must derive its capture from SAME published association.
+
+`fn-mio-payload-owned-p` projects the actual nested provider aggregate, readonly;
+actual funded capture/release still must maintain that aggregate and install
+the actual provider object before lifecycle activation. Changed source resync
+passed53forms1,434,760steps/6.13seconds; all12 representation/control fixture
+forms passed795steps including genuine range registration and cross-kind
+rejection. No new authority or maintained aggregate theorem follows yet.

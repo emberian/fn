@@ -130,24 +130,37 @@
        (equal (nth 2 token) (fn-ibp-qs-id fn-ibp-query-segment))
        (equal (nth 1 token) (fn-ibp-qs-ticketsi (nth 3 token) fn-ibp-query-segment))
        (equal (nth 4 token)
-              (fn-miq-generation (fn-ibp-qs-controlsi (nth 3 token) fn-ibp-query-segment)))))
+              (fn-omk-at 1 (fn-ibp-qs-capturesi (nth 3 token) fn-ibp-query-segment)))))
 
 ; Registration is internal to funded capture. The immutable CAPTURE contains
 ; both roots plus C/F/key, and the query was produced from exactly that O.
-(defun fn-ibp-query-slot-register (token query capture fn-ibp-query-segment)
+(defun fn-ibp-control-kindp (kind control)
+  (declare (xargs :guard t))
+  (case kind (:mid (eq (fn-omk-at 0 control) :fn-miq))
+             (:range (eq (fn-omk-at 0 control) :fn-ibr))
+             (otherwise nil)))
+
+(defun fn-ibp-slot-register (token kind query capture context fn-ibp-query-segment)
   (declare (xargs :stobjs fn-ibp-query-segment :guard (fn-ibp-query-tokenp token)))
   (let ((slot (nth 3 token)))
     (if (or (not (equal (nth 2 token) (fn-ibp-qs-id fn-ibp-query-segment)))
             (not (equal (fn-ibp-qs-ticketsi slot fn-ibp-query-segment) 0))
             (not (< (fn-ibp-qs-active fn-ibp-query-segment) 64))
-            (not (equal (fn-miq-ticket query) (nth 1 token)))
-            (not (equal (fn-miq-generation query) (nth 4 token))))
+            (not (fn-ibp-control-kindp kind query))
+            (not (equal (fn-omk-at 1 query) (nth 1 token)))
+            (not (equal (fn-omk-at 2 query) (nth 4 token)))
+            (not (equal (fn-omk-at 1 capture) (nth 4 token))))
         (mv :unavailable fn-ibp-query-segment)
       (let* ((fn-ibp-query-segment (update-fn-ibp-qs-controlsi slot query fn-ibp-query-segment))
              (fn-ibp-query-segment (update-fn-ibp-qs-capturesi slot capture fn-ibp-query-segment))
+             (fn-ibp-query-segment (update-fn-ibp-qs-inputsi slot context fn-ibp-query-segment))
              (fn-ibp-query-segment (update-fn-ibp-qs-ticketsi slot (nth 1 token) fn-ibp-query-segment))
              (fn-ibp-query-segment (update-fn-ibp-qs-active (+ 1 (fn-ibp-qs-active fn-ibp-query-segment)) fn-ibp-query-segment)))
         (mv :captured fn-ibp-query-segment)))))
+
+(defun fn-ibp-query-slot-register (token query capture fn-ibp-query-segment)
+  (declare (xargs :stobjs fn-ibp-query-segment :guard (fn-ibp-query-tokenp token)))
+  (fn-ibp-slot-register token :mid query capture nil fn-ibp-query-segment))
 
 (defstobj fn-index-backing
   (fn-ibp-registry :type fn-ibp-node)
@@ -211,7 +224,8 @@
 
 (defun fn-ibp-query-capture-matchesp (query capture)
   (declare (xargs :guard t))
-  (and (equal (fn-miq-generation query) (fn-ibp-capture-generation capture))
+  (and (fn-ibp-control-kindp :mid query)
+       (equal (fn-miq-generation query) (fn-ibp-capture-generation capture))
        (equal (fn-miq-key query) (fn-ibp-capture-key capture))
        (equal (fn-miq-pages query) (fn-ibp-capture-pages capture))
        (equal (fn-miq-count query) (fn-ibp-capture-count capture))
@@ -340,6 +354,19 @@
         (mv status query capture borrow fuel-left))))))
 (verify-guards fn-ibp-node-query-read)
 
+(defun fn-ibp-slot-update (token kind control borrow fn-ibp-query-segment)
+  (declare (xargs :stobjs fn-ibp-query-segment :guard t))
+  (if (not (fn-ibp-query-slot-livep token fn-ibp-query-segment))
+      (mv :stale fn-ibp-query-segment)
+    (let* ((slot (nth 3 token)) (old (fn-ibp-qs-controlsi slot fn-ibp-query-segment)))
+      (if (not (and (fn-ibp-control-kindp kind old) (fn-ibp-control-kindp kind control)
+                    (equal (fn-omk-at 1 control) (nth 1 token))
+                    (equal (fn-omk-at 2 control) (nth 4 token))))
+          (mv :recovery-required fn-ibp-query-segment)
+        (let* ((fn-ibp-query-segment (update-fn-ibp-qs-controlsi slot control fn-ibp-query-segment))
+               (fn-ibp-query-segment (update-fn-ibp-qs-borrowsi slot borrow fn-ibp-query-segment)))
+          (mv :updated fn-ibp-query-segment))))))
+
 (defun fn-ibp-query-slot-update (token next-query borrow fn-ibp-query-segment)
   (declare (xargs :stobjs fn-ibp-query-segment :guard t))
   (if (not (fn-ibp-query-slot-livep token fn-ibp-query-segment))
@@ -352,11 +379,7 @@
                     (equal (fn-miq-msgid next-query) (fn-miq-msgid old))
                     (equal (fn-miq-tag next-query) (fn-miq-tag old))))
           (mv :recovery-required fn-ibp-query-segment)
-        (let* ((fn-ibp-query-segment
-                (update-fn-ibp-qs-controlsi slot next-query fn-ibp-query-segment))
-               (fn-ibp-query-segment
-                (update-fn-ibp-qs-borrowsi slot borrow fn-ibp-query-segment)))
-          (mv :updated fn-ibp-query-segment))))))
+        (fn-ibp-slot-update token :mid next-query borrow fn-ibp-query-segment)))))
 
 (defun fn-ibp-node-query-update (token query borrow fuel slot depth fn-ibp-node)
   (declare (xargs :stobjs fn-ibp-node :measure (nfix depth)
@@ -875,3 +898,10 @@
             (mv status held payload-token fuel-left)))))
     (mv status held payload-token fuel-left)))
 (verify-guards fn-miq-selected-read)
+
+(defun fn-mio-payload-owned-p (fn-mio$c)
+  (declare (xargs :stobjs fn-mio$c :guard t))
+  (stobj-let ((fn-index-backing (fn-mio$c-provider fn-mio$c)))
+    (owned)
+    (fn-ibp-payload-owned-p fn-index-backing)
+    owned))
