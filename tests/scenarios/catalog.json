@@ -6691,6 +6691,35 @@
         "planning/evidence/history-decode-refinement-source-2026-09-30.json"
       ],
       "execution_scope": "Clean source component replay only. General stream inverse, recursive node span bounds, lifetime and fuel partition source proofs pass with literal witnesses; page-source authentication, canonical reencoding, integrated native caller, funded storage and full producer remain open. No certificate or image claim."
+    },
+    {
+      "id": "SCN-1042",
+      "title": "Byte-fed canonical size annotations and fixed completion carries",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Decode accepted symbol NIL aliases, nonminimal scalars and nonempty six-field snapshot/verdict shapes through actual fn-hds-begin/feed.",
+        "Affirm every literal antecedent/conclusion and independently remove each retained stream, arbitrary-fuel, partition, exposure and complete-codec hypothesis; label corrupted-state and mutation cases.",
+        "Partition actual feed calls across arbitrary natural quanta and expose root or six/seven selected field carries with original epoch and opaque lease."
+      ],
+      "expected": [
+        "Annotation roots equal exact normalized current-codec canonical sizes when usable; no host reconstruction, whole-tree completion validation or guessed reserve.",
+        "Refused, unavailable and pending stay distinct; original epoch/opaque lease pass through unchanged for the controller completion fence.",
+        "Source component only: no installed full identity accumulator, all-writer lifecycle relation, funded heap/rescue guarantee or native qualification."
+      ],
+      "implementation": {
+        "test": "tests/acl2/history-decode-size-refinement-tests.lisp",
+        "native": false
+      },
+      "evidence": [
+        "books/history-decode-size-refinement.lisp",
+        "tests/acl2/history-decode-size-refinement-tests.lisp",
+        "planning/evidence/canonical-size-result-source-2026-09-30.md"
+      ],
+      "execution_scope": "Fresh protected source admission only; no certification manifest, host composition, image or deployment claim."
     }
   ]
 }

@@ -81,15 +81,34 @@ correspondence. Length/list-shape premises were removed after proving the
 stronger selection theorem. Literal leaf, NIL-matcher, constructor and field
 selection witnesses are source-admitted in a fresh protected session.
 
-The separate source book `history-decode-size-refinement` now admits the actual
+The separate source book `history-decode-size-refinement` admits the actual
 byte-fed annotation-stack transition under parser coherence, an octet source
 pool with the parser end in bounds, exact agreement of the supplied byte with
 the source position, prefix coherence, prior annotation correspondence and a
-usable output. It also admits prefix preservation and the completed symbol
-matcher relation to actual NIL normalization. These are source admissions;
-literal stream-theorem witnesses, an induction through arbitrary scheduler
-partitions, completed-row extraction and bootstrap of the actual checkpoint
-identity accumulator remain open. This prototype is not host installed.
+usable output. Literal reachable positive and independent corrupted-state or
+source-mutation removals affirm each retained premise. Prefix preservation,
+normalized span size and final-symbol NIL matching have corresponding literal
+teeth; redundant premises were removed only after proving weakened statements.
+
+A proof-only fuel runner invokes the actual additive feed API and preserves the
+size invariant whenever its final output is usable. Its partition theorem
+preserves the complete four-value continuation across arbitrary natural quanta.
+Unusability is permanent. `fn-hds-result(n, parser, infos, usable)` is a
+guard-verified fixed-metadata completion boundary: `n=0` exposes a row root,
+`n=6` the full identity field carries, and `n=7` the consumer checkpoint fields.
+It returns six values: status, original borrowed descriptor, root carry, selected
+field carries, original epoch and opaque lease. Pending, refused and unavailable
+remain distinct. The controller must bind the returned lifetime tokens to its
+exact completion token; the decoder does not reinterpret the opaque lease.
+Successful root exposure agrees with the actual decoder result and canonical
+size; selected fields correspond to that exposed value. The complete-source
+bridge reuses the existing current-codec refinement, including accepted
+nonminimal spellings. Ground witnesses exercise all retained hypotheses.
+
+These are source admissions, with no host installation or certificate implied.
+Bootstrap and maintenance of the actual full replay identity accumulator,
+consumer/topic constructors, every owner writer, pending publication and
+reset/crash/recovery lifetime joins remain open.
 Accepted NIL symbol aliases and zero-length byte spans use their normalized
 canonical sizes; arbitrary nonminimal integer spelling uses the decoded value.
 Each annotation leaf allocates four cons cells, each annotation pair five,

@@ -263,3 +263,30 @@
                               fn-hds-at fn-scs-correspondsp))))
 
 (in-theory (disable fn-hds-info-correspondsp))
+
+
+ ; Completion boundary for row census (N=0), full identity accumulator (N=6),
+; and consumer checkpoint (N=7). This never abstracts a borrowed payload.
+; Epoch and opaque lease are returned unchanged for the controller's exact
+; fixed completion-token check. No scalar epoch can authorize a source alone.
+(defun fn-hds-result (n s infos usable)
+  (declare (xargs :guard (and (natp n) (<= n 7) (fn-hdc-statep s))))
+  (mv-let (status node root fields)
+    (cond ((eq (nth 0 s) :refused) (mv :refused nil nil nil))
+          ((not usable) (mv :unavailable nil nil nil))
+          ((not (eq (nth 0 s) :done)) (mv :pending nil nil nil))
+          ((not (and (consp (nth 9 s)) (null (cdr (nth 9 s)))
+                     (consp infos) (null (cdr infos))
+                     (fn-scs-carryp (fn-hds-info-root (car infos)))))
+           (mv :unavailable nil nil nil))
+          ((zp n) (mv :ok (car (nth 9 s)) (fn-hds-info-root (car infos)) nil))
+          (t (mv-let (fields selected) (fn-hds-select-fields n (car infos))
+               (if selected
+                   (mv :ok (car (nth 9 s)) (fn-hds-info-root (car infos)) fields)
+                 (mv :unavailable nil nil nil)))))
+    (mv status node root fields (nth 10 s) (nth 11 s))))
+
+(defthm fn-hds-result-preserves-lifetime-by-definition
+  (and (equal (mv-nth 4 (fn-hds-result n s infos usable)) (nth 10 s))
+       (equal (mv-nth 5 (fn-hds-result n s infos usable)) (nth 11 s))))
+(in-theory (disable fn-hds-result))

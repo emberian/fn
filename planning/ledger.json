@@ -1746,26 +1746,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1822,
+    "books": 1824,
     "books_in_root_closure": 1815,
     "roots": 1742,
-    "theorems": 28883,
-    "functions": 18769,
-    "assert_events": 23643,
+    "theorems": 28969,
+    "functions": 18774,
+    "assert_events": 23645,
     "must_fails": 2507,
     "prover_refusals": 0,
     "encapsulates": 157,
     "guards": {
       "verified": 3498,
       "declared-off": 2183,
-      "default-guarded": 10263,
-      "default-unguarded": 2825
+      "default-guarded": 10264,
+      "default-unguarded": 2829
     },
-    "suspect_theorems": 1247,
+    "suspect_theorems": 1248,
     "export_hygiene_warnings": 341,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2499,
+    "include_hygiene_warnings": 2500,
     "host_names_warnings": 2137,
     "hand_written_record_warnings": 18
   },
@@ -12629,15 +12629,47 @@
       "read_error": null
     },
     {
-      "book": "books/history-decode-size.lisp",
-      "in_root_closure": true,
+      "book": "books/history-decode-size-refinement.lisp",
+      "in_root_closure": false,
       "is_root": false,
-      "theorems": 14,
-      "functions": 13,
+      "theorems": 38,
+      "functions": 3,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 11,
+        "default-guarded": 0,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "history-decode-refinement",
+        "history-decode-size",
+        "history-symbol-normalize"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-hds-chars-consp"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/history-decode-size.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 15,
+      "functions": 14,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 12,
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
@@ -41378,6 +41410,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/history-decode-size-refinement-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 47,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 2,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/history-decode-size-refinement"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/history-decode-size-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -57012,6 +57070,14 @@
       ]
     },
     {
+      "theorem": "fn-hds-chars-consp",
+      "book": "books/history-decode-size-refinement.lisp",
+      "line": 172,
+      "reasons": [
+        "iff-of-definition-test: fn-scc-octets-chars is (if TEST non-nil nil) and the statement is its truth iff TEST"
+      ]
+    },
+    {
       "theorem": "fn-heap-reserve-decide-keeps-heap-figures-refusals",
       "book": "books/heap-reservation.lisp",
       "line": 219,
@@ -71013,6 +71079,13 @@
         "line": 5,
         "include": "store-tree-codec",
         "included": "books/store-tree-codec.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/history-decode-size-refinement.lisp",
+        "line": 5,
+        "include": "history-decode-refinement",
+        "included": "books/history-decode-refinement.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

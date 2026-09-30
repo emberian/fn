@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1822 |
+| Books read | 1824 |
 | Certification roots in the Makefile | 1742 |
 | Books inside the root closure | 1815 |
-| `defthm` and `defthmd` events | 28883 |
-| `defun` events | 18769 |
+| `defthm` and `defthmd` events | 28969 |
+| `defun` events | 18774 |
 | Functions with verified guards | 3498 |
 | Functions declared `:verify-guards nil` and never verified | 2183 |
-| Functions left at the default with an explicit guard | 10263 |
-| Functions left at the default with no guard | 2825 |
-| `assert-event` checks | 23643 |
+| Functions left at the default with an explicit guard | 10264 |
+| Functions left at the default with no guard | 2829 |
+| `assert-event` checks | 23645 |
 | `must-fail` checks | 2507 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 157 |
-| Theorems flagged SUSPECT by shape | 1247 |
+| Theorems flagged SUSPECT by shape | 1248 |
 | Export-hygiene warnings | 341 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2499 |
+| Include-hygiene warnings | 2500 |
 | Host-names warnings | 2137 |
 | Hand-written-record warnings | 18 |
 
@@ -469,7 +469,8 @@ that `make certify` requests.
 | `books/history-decode-cursor.lisp` | root | 7 | 5 | 1/0/4/0 | 0 | 0 | 0 |
 | `books/history-decode-nodes.lisp` | root | 4 | 6 | 0/0/5/1 | 0 | 0 | 0 |
 | `books/history-decode-refinement.lisp` | - | 63 | 15 | 0/0/0/15 | 0 | 0 | 1 |
-| `books/history-decode-size.lisp` | closure | 14 | 13 | 0/0/11/2 | 0 | 0 | 0 |
+| `books/history-decode-size-refinement.lisp` | - | 38 | 3 | 0/0/0/3 | 0 | 0 | 1 |
+| `books/history-decode-size.lisp` | closure | 15 | 14 | 0/0/12/2 | 0 | 0 | 0 |
 | `books/history-decode-stream.lisp` | root | 12 | 10 | 1/0/9/0 | 0 | 0 | 0 |
 | `books/history-fold-refinement.lisp` | closure | 29 | 4 | 1/0/3/0 | 0 | 0 | 3 |
 | `books/history-image-binding.lisp` | root | 99 | 39 | 0/3/25/11 | 0 | 0 | 0 |
@@ -1425,6 +1426,7 @@ that `make certify` requests.
 | `tests/acl2/history-columns-tests.lisp` | root | 10 | 9 | 0/0/7/2 | 14 | 4 | 0 |
 | `tests/acl2/history-decode-cursor-tests.lisp` | root | 1 | 2 | 0/2/0/0 | 15 | 0 | 0 |
 | `tests/acl2/history-decode-refinement-tests.lisp` | - | 20 | 1 | 0/1/0/0 | 4 | 0 | 0 |
+| `tests/acl2/history-decode-size-refinement-tests.lisp` | - | 47 | 1 | 0/0/0/1 | 2 | 0 | 0 |
 | `tests/acl2/history-decode-size-tests.lisp` | root | 1 | 5 | 0/1/0/4 | 39 | 0 | 0 |
 | `tests/acl2/history-fold-refinement-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 30 | 1 | 0 |
 | `tests/acl2/history-image-binding-tests.lisp` | root | 1 | 31 | 0/24/1/6 | 37 | 0 | 0 |
@@ -2190,6 +2192,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-gacc-restrict-articles-of-consp` | `books/group-access-cache.lisp` | 236 | branch-of-definition: the hypothesis is a branch test of fn-gac-restrict-articles and the conclusion is that branch's value |
 | `fn-hc-error-preserves-original` | `books/hybrid-carrier.lisp` | 461 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-hdc-begin-coordinates-unfolds` | `books/history-decode-refinement.lisp` | 781 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-hds-chars-consp` | `books/history-decode-size-refinement.lisp` | 172 | iff-of-definition-test: fn-scc-octets-chars is (if TEST non-nil nil) and the statement is its truth iff TEST |
 | `fn-heap-reserve-decide-keeps-heap-figures-refusals` | `books/heap-reservation.lisp` | 219 | arm-of-definition: the hypotheses select one IF/COND arm of fn-heap-reserve-decide and the conclusion is that arm's value |
 | `fn-held-accessors-are-the-wire-accessors` | `books/held-record.lisp` | 165 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-held-wire-of-with-context` | `books/catalog-relation.lisp` | 142 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

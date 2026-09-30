@@ -18505,7 +18505,7 @@
     {
       "id": "PRF-1113",
       "title": "Compositional canonical Store tree sizes and held handle remapping",
-      "statement": "The size carry contains exact canonical encoded octets, octet-list length or nil, and scalar octet membership. Cons construction preserves this correspondence from both child correspondences, including compact octet-list collapse. A new fixed held-record spine composes supplied field carries; payload handle remapping changes its scalar width and reconstructs the exact canonical size. Subjects fn-scs-cons, fn-scs-spine, fn-scs-octets, fn-hsz-make fn-hsz-remap and fn-hsz-remap-root are constructor/decoder dependencies, currently unreachable-in-composition from the host: no live maintained-size admission or funded checkpoint claim. Root-only remapping preserves the exact old root size plus the new-minus-old scalar width when the suffix after the payload is not an octet list; it retains arbitrary trailing fields without per-field retained metadata. Temporary decoder annotation pair construction additionally preserves exact canonical root/child correspondence. The fixed-field selector returns exact field carries when annotation correspondence and its usable result hold; no whole child value is scanned. This is a constructor/selection component, not the open full fn-hds-feed stream invariant or installed owner bootstrap.",
+      "statement": "The size carry contains exact canonical encoded octets, octet-list length or nil, and scalar octet membership. Cons construction preserves this correspondence from both child correspondences, including compact octet-list collapse. A new fixed held-record spine composes supplied field carries; payload handle remapping changes its scalar width and reconstructs the exact canonical size. Subjects fn-scs-cons, fn-scs-spine, fn-scs-octets, fn-hsz-make fn-hsz-remap and fn-hsz-remap-root are constructor/decoder dependencies, currently unreachable-in-composition from the host: no live maintained-size admission or funded checkpoint claim. Root-only remapping preserves the exact old root size plus the new-minus-old scalar width when the suffix after the payload is not an octet list; it retains arbitrary trailing fields without per-field retained metadata. Temporary decoder annotation pair construction additionally preserves exact canonical root/child correspondence. The fixed-field selector returns exact field carries when annotation correspondence and its usable result hold; no whole child value is scanned. The actual additive fn-hds-feed annotation-stack invariant, arbitrary-fuel continuation/partition, and fixed-metadata fn-hds-result root/selected-field boundary are now source-admitted with literal positive and independent removal witnesses. The completed-source bridge reuses the actual current-codec refinement. These remain unreachable-in-composition; the full checkpoint identity accumulator and every owner writer/reset/epoch/publication/funding join are still open.",
       "milestone": "M5",
       "requirements": [
         "STO-020"
@@ -18531,9 +18531,12 @@
         "specs/store-size-carry.md",
         "books/history-decode-size.lisp",
         "tests/acl2/history-decode-size-tests.lisp",
-        "planning/evidence/canonical-decode-selection-source-2026-09-30.md"
+        "planning/evidence/canonical-decode-selection-source-2026-09-30.md",
+        "books/history-decode-size-refinement.lisp",
+        "tests/acl2/history-decode-size-refinement-tests.lisp",
+        "planning/evidence/canonical-size-result-source-2026-09-30.md"
       ],
-      "progress_note": "Clean source-only REPL admission and literal positive/hypothesis-removal teeth. No certification manifest, host caller, matching image, native cost or supported-profile representability evidence. Pending binding field changes the held constructor arity and must update this companion."
+      "progress_note": "Fresh protected stream/result test root: 57 forms, zero refusals, source admission only; exact logs/digests and operational stopped observation committed. All new boundaries have literal reachable positive and independent retained-premise/removal witnesses. No certification manifest, host caller, native image, heap funding or full accumulator/owner lifecycle claim."
     },
     {
       "id": "PRF-1120",
