@@ -292,6 +292,39 @@ removal retains a pool of at least2^64 octets and has no practical fixture.
 The abstraction bridge's literal domain removals remain partial. This is a
 source-library checkpoint, not a completed cold-tree encoder or producer.
 
+## Normalized symbol to borrowed span
+
+`books/history-normalized-span.lisp` connects the normalizer's canonical
+`(opcode package)` descriptor to the existing guarded span emitter through
+`fn-hrcur-ns-begin(descriptor,offset,count,capture,lease)`. It checks the fixed
+descriptor and source-format scalar operands, then starts the actual span
+child. NIL selects target count zero, retaining the original source descriptor
+outside the child; other symbols retain their original name payload span.
+No runtime name conversion, interning or source traversal occurs here.
+
+`fn-hrcur-ns-begin-refines-abstract-codec` proves the initialized child
+invariant and exact residual equals the current `fn-scc-encode` of the actual
+`fn-hdc-abstract` symbol. Its canonical-descriptor premise is established by
+the normalizer's named done/denotation boundary, not by shape alone. A wrongly
+supplied package descriptor can have a valid child invariant and wrong codec
+bytes; its literal removal witness demonstrates that obligation. Capture and
+lease references persist unconditionally through valid and refused begins.
+Existing span tick/supply refinements then apply to this initialized child.
+
+The wrapper retains no new cursor frame beyond the span child's seven cells
+and bounded canonical header. Old normalizer, source descriptor, old/new child,
+request/return objects and source pin coexist until the outer owner relinquishes
+them and require funding; no reclaim refund is assumed.
+
+Protected proper-local source replay admits ten body forms with guards and
+all refinements. Tests cover imported CAR, both NIL versus keyword-NIL
+interpretations, unmatched ACL2 names, an actual child yield/resume stream,
+NIL without payload reads, and capture/lease identity. All six practically
+executable initializer hypothesis removals pass. The u64 sum premise retains
+an enormous pool-length premise and has no practical removal fixture;
+auxiliary wire/domain teeth remain open. This is still a source library,
+with no full cold-tree encoder, host producer, funding or qualification claim.
+
 ## Remaining union obligations
 
 The resident byte stream and exact byte census are admitted library components.
