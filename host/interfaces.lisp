@@ -4456,6 +4456,22 @@
 (definterface fn-owner-handshake-leave
   :class :program)
 
+; host/native/mux.lisp dispatches it (lane tls-handshake-budget-3).
+(definterface fn-owner-proxy-begin
+  :class :program)
+
+; host/native/mux.lisp dispatches it (lane tls-handshake-budget-3).
+(definterface fn-owner-proxy-step
+  :class :program)
+
+; host/native/mux.lisp dispatches it (lane tls-handshake-budget-3).
+(definterface fn-owner-proxy-timeout-line
+  :class :program)
+
+; host/native/mux.lisp dispatches it (lane tls-handshake-budget-3).
+(definterface fn-owner-proxy-handover
+  :class :program)
+
 ; host/native/admin.lisp dispatches it (lane limits-live).
 (definterface fn-owner-limit-use
   :class ::program)

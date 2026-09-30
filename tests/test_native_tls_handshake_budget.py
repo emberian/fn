@@ -13,6 +13,9 @@ loopback source addresses (127.0.0.0/8 routes to lo on Linux).
   (2,000 ms here): a legitimate client that arrives behind them waits its
   turn, unadmitted, and completes once the deadline frees a slot; the log
   names `reason=timeout'.
+- A source listed in `policy set tls-handshake-source-overrides' (a carrier
+  NAT's address) is admitted at its own rate while another source stays at
+  the row's; a list that does not parse is refused; `none' clears it live.
 
 Run on hbox: tools/hbox_native.sh . tests.test_native_tls_handshake_budget
 """
@@ -103,6 +106,28 @@ class NativeTlsHandshakeBudgetTests(unittest.TestCase):
         # only as its bucket refills (not reset), so a new source proves the row.
         self.policy("tls-handshakes-per-source-per-minute", 60)
         self.assertTrue(self.handshake("127.0.0.4"))
+        self.assertIsNone(self.node.process.poll(), "the owner exited")
+
+    def test_a_listed_source_has_its_own_rate_and_the_others_keep_theirs(self):
+        # A carrier NAT's address (here 127.0.0.5) is listed at 20 a minute;
+        # the row's 3 still holds for every other source.
+        self.policy("tls-handshakes-per-source-per-minute", 3)
+        self.policy("tls-handshake-source-overrides", "127.0.0.5=20,127.0.0.8=20")
+        # A list that does not parse is refused by the administrative plan and
+        # changes nothing (the owner reads the list above).
+        self.node.operator("policy", "set", "tls-handshake-source-overrides", "127.0.0.300=20",
+                           expect=EXIT.USAGE)
+        self.start()
+        listed = [self.handshake("127.0.0.5") for _ in range(8)]
+        self.assertEqual(listed, [True] * 8, listed)
+        other = [self.handshake("127.0.0.6") for _ in range(5)]
+        self.assertEqual(other, [True, True, True, False, False], other)
+        self.log_text("tls refused reason=handshake-budget source=127.0.0.6")
+        # Live: `none' clears the list; 127.0.0.8, listed until now and not
+        # yet seen, is at the row's 3.
+        self.policy("tls-handshake-source-overrides", "none")
+        cleared = [self.handshake("127.0.0.8") for _ in range(5)]
+        self.assertEqual(cleared, [True, True, True, False, False], cleared)
         self.assertIsNone(self.node.process.poll(), "the owner exited")
 
     def test_slow_handshakes_hold_at_most_the_in_flight_slots_for_the_deadline(self):

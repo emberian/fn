@@ -8086,7 +8086,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cbud-deltas-refusal-keeps-the-capacity-held"
+          "name": "fn-cbud-deltas-refusal-keeps-the-machine-held"
         },
         {
           "kind": "theorem",
@@ -15221,7 +15221,35 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-hsb-scratch-within-the-reservation"
+          "name": "fn-hsb-scratch-within-the-machine-term"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsb-buckets-are-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsb-mapped-address-is-one-source"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsb-overrides-of-word-is-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pxy-direct-unless-trusted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pxy-step-reads-within-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pxy-handover-keeps-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pxy-observe-keeps-the-read-bound"
         }
       ]
     },

@@ -181,6 +181,43 @@
       *fn-cbud-compress-heap-octets*)
   :rule-classes nil)
 
+;; THE HANDSHAKES (PRF-986, books/tls-handshake-budget.lisp; lane
+;; tls-handshake-budget-2).  A TLS handshake in progress holds native memory
+;; beyond its connection's established session (*fn-cbud-tls-octets*):
+;; OpenSSL's or LibreSSL's two record buffers (16,709 octets each at their
+;; defaults) and the handshake's transcript, key exchange and certificate
+;; chain, *fn-cbud-handshake-scratch-octets* (stated, not measured: measure
+;; at convergence, the TLS native module's flood against L).  It is the
+;; library's malloc, outside the dynamic space, so it is charged HERE, to the
+;; machine, and not to the credit ledger (books/memory-credits: dynamic-space
+;; credits).  The handshake budget admits at most L at once
+;; (`tls-handshakes-in-flight', fn-hsb-steps-keep-the-bound), so the term is
+;; L x the scratch whenever a TLS context is loaded, a fixed part of the
+;; base like the threads.
+(defconst *fn-cbud-handshake-scratch-octets* 131072)
+
+;; L: the live row, the profile's default when the row is absent (the same
+;; resolution as books/tls-handshake-budget.lisp fn-hsb-lim-in-flight,
+;; `fn-hsb-lim-in-flight-is-the-charged-slots').
+(defun fn-cbud-handshake-slots (tlsp inflight)
+  (declare (xargs :guard t))
+  (if tlsp
+      (if (posp inflight) inflight (fn-profile-limit :tls-handshakes-in-flight))
+    0))
+
+(defun fn-cbud-handshake-octets (tlsp inflight)
+  (declare (xargs :guard t))
+  (* (nfix (fn-cbud-handshake-slots tlsp inflight)) *fn-cbud-handshake-scratch-octets*))
+
+;; The configuration's row (the host's call: fn-owner-connection-budget).
+(defun fn-cbud-config-handshake-slots (v tlsp)
+  (declare (xargs :guard t))
+  (fn-cbud-handshake-slots tlsp (fn-cfg-limit v "tls-handshakes-in-flight")))
+
+(defthm fn-cbud-handshake-octets-natp
+  (natp (fn-cbud-handshake-octets tlsp inflight))
+  :rule-classes :type-prescription)
+
 (defun fn-cbud-conn-heap-octets (article)
   (declare (xargs :guard t))
   (+ *fn-cbud-record-octets*
@@ -210,16 +247,19 @@
 
 ; The process without connections: the store's heap figure, the core's
 ; mappings outside the dynamic space, and the fixed threads.
-(defun fn-cbud-base-octets (hneed core threads stack)
+(defun fn-cbud-base-octets (hneed core threads stack hs)
   (declare (xargs :guard t))
   (+ (nfix hneed) (nfix core)
-     (* (nfix threads) (+ (nfix stack) *fn-cbud-thread-runtime-octets*))))
+     (* (nfix threads) (+ (nfix stack) *fn-cbud-thread-runtime-octets*))
+     (nfix hs)))
 
-; The rest of the base: the core outside the dynamic space and the threads.
-(defun fn-cbud-rest-octets (core threads stack)
+; The rest of the base: the core outside the dynamic space, the threads and
+; the handshakes' scratch HS (fn-cbud-handshake-octets).
+(defun fn-cbud-rest-octets (core threads stack hs)
   (declare (xargs :guard t))
   (+ (nfix core)
-     (* (nfix threads) (+ (nfix stack) *fn-cbud-thread-runtime-octets*))))
+     (* (nfix threads) (+ (nfix stack) *fn-cbud-thread-runtime-octets*))
+     (nfix hs)))
 
 (defun fn-cbud-conn-octets (article tlsp)
   (declare (xargs :guard t))
@@ -279,9 +319,9 @@
 ; part of every connection is memory of the machine (the heap part also
 ; lives in the dynamic space: see the header on what the figure holds).
 
-(defun fn-cbud-machine-room (machine hneed core threads stack)
+(defun fn-cbud-machine-room (machine hneed core threads stack hs)
   (declare (xargs :guard t))
-  (nfix (- (nfix machine) (fn-cbud-base-octets hneed core threads stack))))
+  (nfix (- (nfix machine) (fn-cbud-base-octets hneed core threads stack hs))))
 
 (defun fn-cbud-div (room per)
   (declare (xargs :guard t))
@@ -305,13 +345,13 @@
 
 (in-theory (disable fn-cbud-div))
 
-(defun fn-cbud-bound (machine hneed core threads stack article tlsp)
+(defun fn-cbud-bound (machine hneed core threads stack hs article tlsp)
   (declare (xargs :guard t))
-  (fn-cbud-div (fn-cbud-machine-room machine hneed core threads stack)
+  (fn-cbud-div (fn-cbud-machine-room machine hneed core threads stack hs)
                (fn-cbud-conn-octets article tlsp)))
 
 (defthm fn-cbud-bound-natp
-  (natp (fn-cbud-bound machine hneed core threads stack article tlsp))
+  (natp (fn-cbud-bound machine hneed core threads stack hs article tlsp))
   :rule-classes :type-prescription)
 
 ; KEYSTONE (PRF-223).  Every count of connections up to the bound fits: the
@@ -319,9 +359,9 @@
 ; connections at the per-connection figure are within the machine.
 (defthm fn-cbud-bound-holds-its-connections
   (implies (and (<= (nfix n)
-                    (fn-cbud-bound machine hneed core threads stack article tlsp))
-                (<= (fn-cbud-base-octets hneed core threads stack) (nfix machine)))
-           (<= (+ (fn-cbud-base-octets hneed core threads stack)
+                    (fn-cbud-bound machine hneed core threads stack hs article tlsp))
+                (<= (fn-cbud-base-octets hneed core threads stack hs) (nfix machine)))
+           (<= (+ (fn-cbud-base-octets hneed core threads stack hs)
                   (* (nfix n) (fn-cbud-conn-octets article tlsp)))
                (nfix machine)))
   :hints (("Goal"
@@ -329,21 +369,21 @@
                            (fn-cbud-conn-octets fn-cbud-base-octets))
            :use ((:instance fn-cbud-div-fits
                             (n (nfix n))
-                            (room (fn-cbud-machine-room machine hneed core threads stack))
+                            (room (fn-cbud-machine-room machine hneed core threads stack hs))
                             (per (fn-cbud-conn-octets article tlsp)))))))
 
 ; The bound is the most: one connection past it does not fit.
 (defthm fn-cbud-bound-is-the-most
   (< (nfix machine)
-     (+ (fn-cbud-base-octets hneed core threads stack)
-        (* (+ 1 (fn-cbud-bound machine hneed core threads stack article tlsp))
+     (+ (fn-cbud-base-octets hneed core threads stack hs)
+        (* (+ 1 (fn-cbud-bound machine hneed core threads stack hs article tlsp))
            (fn-cbud-conn-octets article tlsp))))
   :hints (("Goal"
            :in-theory (e/d (fn-cbud-machine-room)
                            (fn-cbud-conn-octets fn-cbud-base-octets))
-           :cases ((<= (fn-cbud-base-octets hneed core threads stack) (nfix machine)))
+           :cases ((<= (fn-cbud-base-octets hneed core threads stack hs) (nfix machine)))
            :use ((:instance fn-cbud-div-is-the-most
-                            (room (fn-cbud-machine-room machine hneed core threads stack))
+                            (room (fn-cbud-machine-room machine hneed core threads stack hs))
                             (per (fn-cbud-conn-octets article tlsp))))))
   :rule-classes nil)
 
@@ -356,45 +396,45 @@
 ; heap parts; past DYNAMIC the process meets heap exhaustion (a fault, exit
 ; 4), never the machine.  The resident figure of n connections:
 
-(defun fn-cbud-resident-octets (dynamic hneed core threads stack article tlsp n)
+(defun fn-cbud-resident-octets (dynamic hneed core threads stack hs article tlsp n)
   (declare (xargs :guard t))
   (+ (min (nfix dynamic)
           (+ (nfix hneed) (* (nfix n) (fn-cbud-conn-heap-octets article))))
-     (fn-cbud-rest-octets core threads stack)
+     (fn-cbud-rest-octets core threads stack hs)
      (* (nfix n) (fn-cbud-conn-native-octets tlsp))))
 
 ; Two ways the machine holds n connections: the store's figure and every
 ; part of each (the bound above: the launcher's case, where DYNAMIC is the
 ; figure plus room), or the whole dynamic space and each one's native part
 ; (a dynamic space below the machine that the store's worst case exceeds).
-(defun fn-cbud-fits-figure (machine hneed core threads stack)
+(defun fn-cbud-fits-figure (machine hneed core threads stack hs)
   (declare (xargs :guard t))
-  (<= (fn-cbud-base-octets hneed core threads stack) (nfix machine)))
+  (<= (fn-cbud-base-octets hneed core threads stack hs) (nfix machine)))
 
-(defun fn-cbud-fits-dynamic (machine dynamic core threads stack)
+(defun fn-cbud-fits-dynamic (machine dynamic core threads stack hs)
   (declare (xargs :guard t))
-  (<= (+ (nfix dynamic) (fn-cbud-rest-octets core threads stack)) (nfix machine)))
+  (<= (+ (nfix dynamic) (fn-cbud-rest-octets core threads stack hs)) (nfix machine)))
 
-(defun fn-cbud-capped-bound (machine dynamic core threads stack tlsp)
+(defun fn-cbud-capped-bound (machine dynamic core threads stack hs tlsp)
   (declare (xargs :guard t))
   (fn-cbud-div (nfix (- (nfix machine)
-                        (+ (nfix dynamic) (fn-cbud-rest-octets core threads stack))))
+                        (+ (nfix dynamic) (fn-cbud-rest-octets core threads stack hs))))
                (fn-cbud-conn-native-octets tlsp)))
 
 ; The most connections the process holds within the machine.
-(defun fn-cbud-limit (machine dynamic hneed core threads stack article tlsp)
+(defun fn-cbud-limit (machine dynamic hneed core threads stack hs article tlsp)
   (declare (xargs :guard t))
-  (max (if (fn-cbud-fits-figure machine hneed core threads stack)
-           (fn-cbud-bound machine hneed core threads stack article tlsp)
+  (max (if (fn-cbud-fits-figure machine hneed core threads stack hs)
+           (fn-cbud-bound machine hneed core threads stack hs article tlsp)
          0)
-       (if (fn-cbud-fits-dynamic machine dynamic core threads stack)
-           (fn-cbud-capped-bound machine dynamic core threads stack tlsp)
+       (if (fn-cbud-fits-dynamic machine dynamic core threads stack hs)
+           (fn-cbud-capped-bound machine dynamic core threads stack hs tlsp)
          0)))
 
-(defun fn-cbud-base-fitsp (machine dynamic hneed core threads stack)
+(defun fn-cbud-base-fitsp (machine dynamic hneed core threads stack hs)
   (declare (xargs :guard t))
-  (or (fn-cbud-fits-figure machine hneed core threads stack)
-      (fn-cbud-fits-dynamic machine dynamic core threads stack)))
+  (or (fn-cbud-fits-figure machine hneed core threads stack hs)
+      (fn-cbud-fits-dynamic machine dynamic core threads stack hs)))
 
 ; The run's refusal as the owner prints it (host/owner-host.lisp
 ; fn-owner-connection-budget).  When the base itself does not fit (holds=0
@@ -412,7 +452,7 @@
   (natp (fn-cbud-mb-up octets))
   :rule-classes :type-prescription)
 
-(defun fn-cbud-base-line (dynamic hneed core threads stack)
+(defun fn-cbud-base-line (dynamic hneed core threads stack hs)
   (declare (xargs :guard t
                   :guard-hints (("Goal" :in-theory (disable fn-cbud-mb-up
                                                             fn-cbud-rest-octets)))))
@@ -420,32 +460,32 @@
                " base-exceeds-machine heap-figure=" (fn-heap-decimal (fn-cbud-mb-up hneed))
                " MB dynamic=" (fn-heap-decimal (fn-cbud-mb-up dynamic))
                " MB fixed=" (fn-heap-decimal
-                             (fn-cbud-mb-up (fn-cbud-rest-octets core threads stack)))
+                             (fn-cbud-mb-up (fn-cbud-rest-octets core threads stack hs)))
                " MB"))
 
 (defun fn-cbud-run-refusal-line (decision article tlsp machine dynamic hneed core
-                                          threads stack)
+                                          threads stack hs)
   (declare (xargs :guard t
                   :guard-hints (("Goal" :in-theory (disable fn-cbud-base-fitsp
                                                             fn-cbud-refusal-line
                                                             fn-cbud-base-line)))))
-  (if (fn-cbud-base-fitsp machine dynamic hneed core threads stack)
+  (if (fn-cbud-base-fitsp machine dynamic hneed core threads stack hs)
       (fn-cbud-refusal-line decision article tlsp machine)
     (concatenate 'string
                  (fn-cbud-refusal-line decision article tlsp machine)
-                 (fn-cbud-base-line dynamic hneed core threads stack))))
+                 (fn-cbud-base-line dynamic hneed core threads stack hs))))
 
 (defthm fn-cbud-limit-natp
-  (natp (fn-cbud-limit machine dynamic hneed core threads stack article tlsp))
+  (natp (fn-cbud-limit machine dynamic hneed core threads stack hs article tlsp))
   :rule-classes :type-prescription)
 
 (defthm fn-cbud-rest-octets-natp
-  (natp (fn-cbud-rest-octets core threads stack))
+  (natp (fn-cbud-rest-octets core threads stack hs))
   :rule-classes :type-prescription)
 
 (defthm fn-cbud-base-is-the-figure-and-the-rest
-  (equal (fn-cbud-base-octets hneed core threads stack)
-         (+ (nfix hneed) (fn-cbud-rest-octets core threads stack))))
+  (equal (fn-cbud-base-octets hneed core threads stack hs)
+         (+ (nfix hneed) (fn-cbud-rest-octets core threads stack hs))))
 
 (defthm fn-cbud-conn-octets-is-the-parts
   (equal (fn-cbud-conn-octets article tlsp)
@@ -456,24 +496,24 @@
 
 (local
  (defthm fn-cbud-resident-within-the-figure
-   (<= (fn-cbud-resident-octets dynamic hneed core threads stack article tlsp n)
-       (+ (fn-cbud-base-octets hneed core threads stack)
+   (<= (fn-cbud-resident-octets dynamic hneed core threads stack hs article tlsp n)
+       (+ (fn-cbud-base-octets hneed core threads stack hs)
           (* (nfix n) (fn-cbud-conn-octets article tlsp))))))
 
 (local
  (defthm fn-cbud-resident-within-the-dynamic-space
-   (<= (fn-cbud-resident-octets dynamic hneed core threads stack article tlsp n)
-       (+ (nfix dynamic) (fn-cbud-rest-octets core threads stack)
+   (<= (fn-cbud-resident-octets dynamic hneed core threads stack hs article tlsp n)
+       (+ (nfix dynamic) (fn-cbud-rest-octets core threads stack hs)
           (* (nfix n) (fn-cbud-conn-native-octets tlsp))))))
 
 (in-theory (disable fn-cbud-resident-octets))
 
 (local
  (defthm fn-cbud-held-by-the-figure
-   (implies (and (fn-cbud-fits-figure machine hneed core threads stack)
-                 (<= (nfix n) (fn-cbud-bound machine hneed core threads stack
+   (implies (and (fn-cbud-fits-figure machine hneed core threads stack hs)
+                 (<= (nfix n) (fn-cbud-bound machine hneed core threads stack hs
                                              article tlsp)))
-            (<= (fn-cbud-resident-octets dynamic hneed core threads stack article tlsp n)
+            (<= (fn-cbud-resident-octets dynamic hneed core threads stack hs article tlsp n)
                 (nfix machine)))
    :hints (("Goal" :in-theory (disable fn-cbud-resident-within-the-figure)
             :use ((:instance fn-cbud-resident-within-the-figure)
@@ -481,10 +521,10 @@
 
 (local
  (defthm fn-cbud-held-by-the-dynamic-space
-   (implies (and (fn-cbud-fits-dynamic machine dynamic core threads stack)
+   (implies (and (fn-cbud-fits-dynamic machine dynamic core threads stack hs)
                  (<= (nfix n) (fn-cbud-capped-bound machine dynamic core threads
-                                                    stack tlsp)))
-            (<= (fn-cbud-resident-octets dynamic hneed core threads stack article tlsp n)
+                                                    stack hs tlsp)))
+            (<= (fn-cbud-resident-octets dynamic hneed core threads stack hs article tlsp n)
                 (nfix machine)))
    :hints (("Goal" :in-theory (disable fn-cbud-resident-within-the-dynamic-space)
             :use ((:instance fn-cbud-resident-within-the-dynamic-space)
@@ -492,16 +532,16 @@
                              (n (nfix n))
                              (room (nfix (- (nfix machine)
                                             (+ (nfix dynamic)
-                                               (fn-cbud-rest-octets core threads stack)))))
+                                               (fn-cbud-rest-octets core threads stack hs)))))
                              (per (fn-cbud-conn-native-octets tlsp))))))))
 
 ; KEYSTONE (PRF-223).  Every count of connections up to the limit is held:
 ; the resident figure of that many is within the machine.
 (defthm fn-cbud-limit-holds-its-connections
   (implies (and (<= (nfix n)
-                    (fn-cbud-limit machine dynamic hneed core threads stack article tlsp))
-                (fn-cbud-base-fitsp machine dynamic hneed core threads stack))
-           (<= (fn-cbud-resident-octets dynamic hneed core threads stack article tlsp n)
+                    (fn-cbud-limit machine dynamic hneed core threads stack hs article tlsp))
+                (fn-cbud-base-fitsp machine dynamic hneed core threads stack hs))
+           (<= (fn-cbud-resident-octets dynamic hneed core threads stack hs article tlsp n)
                (nfix machine)))
   :hints (("Goal" :in-theory (e/d (fn-cbud-limit)
                                   (fn-cbud-fits-figure fn-cbud-fits-dynamic
@@ -516,13 +556,13 @@
 (local
  (defthm fn-cbud-resident-above-when-both-exceed
    (implies (and (< (nfix machine)
-                    (+ (fn-cbud-base-octets hneed core threads stack)
+                    (+ (fn-cbud-base-octets hneed core threads stack hs)
                        (* (nfix n) (fn-cbud-conn-octets article tlsp))))
                  (< (nfix machine)
-                    (+ (nfix dynamic) (fn-cbud-rest-octets core threads stack)
+                    (+ (nfix dynamic) (fn-cbud-rest-octets core threads stack hs)
                        (* (nfix n) (fn-cbud-conn-native-octets tlsp)))))
             (< (nfix machine)
-               (fn-cbud-resident-octets dynamic hneed core threads stack article tlsp n)))
+               (fn-cbud-resident-octets dynamic hneed core threads stack hs article tlsp n)))
    :hints (("Goal" :in-theory (enable fn-cbud-resident-octets)))))
 
 (local
@@ -534,76 +574,76 @@
 
 (local
  (defthm fn-cbud-limit-at-least-the-figure-bound
-   (implies (fn-cbud-fits-figure machine hneed core threads stack)
-            (<= (fn-cbud-bound machine hneed core threads stack article tlsp)
-                (fn-cbud-limit machine dynamic hneed core threads stack article tlsp)))
+   (implies (fn-cbud-fits-figure machine hneed core threads stack hs)
+            (<= (fn-cbud-bound machine hneed core threads stack hs article tlsp)
+                (fn-cbud-limit machine dynamic hneed core threads stack hs article tlsp)))
    :hints (("Goal" :in-theory (e/d (fn-cbud-limit)
                                    (fn-cbud-bound fn-cbud-capped-bound
                                     fn-cbud-fits-figure fn-cbud-fits-dynamic))))))
 
 (local
  (defthm fn-cbud-limit-at-least-the-capped-bound
-   (implies (fn-cbud-fits-dynamic machine dynamic core threads stack)
-            (<= (fn-cbud-capped-bound machine dynamic core threads stack tlsp)
-                (fn-cbud-limit machine dynamic hneed core threads stack article tlsp)))
+   (implies (fn-cbud-fits-dynamic machine dynamic core threads stack hs)
+            (<= (fn-cbud-capped-bound machine dynamic core threads stack hs tlsp)
+                (fn-cbud-limit machine dynamic hneed core threads stack hs article tlsp)))
    :hints (("Goal" :in-theory (e/d (fn-cbud-limit)
                                    (fn-cbud-bound fn-cbud-capped-bound
                                     fn-cbud-fits-figure fn-cbud-fits-dynamic))))))
 
 (local
  (defthm fn-cbud-past-the-limit-exceeds-the-figure
-   (let ((l (fn-cbud-limit machine dynamic hneed core threads stack article tlsp)))
+   (let ((l (fn-cbud-limit machine dynamic hneed core threads stack hs article tlsp)))
      (< (nfix machine)
-        (+ (fn-cbud-base-octets hneed core threads stack)
+        (+ (fn-cbud-base-octets hneed core threads stack hs)
            (* (+ 1 l) (fn-cbud-conn-octets article tlsp)))))
    :hints (("Goal"
             :in-theory (e/d (fn-cbud-fits-figure)
                             (fn-cbud-more-still-exceeds
                              fn-cbud-limit-at-least-the-figure-bound))
-            :cases ((fn-cbud-fits-figure machine hneed core threads stack))
+            :cases ((fn-cbud-fits-figure machine hneed core threads stack hs))
             :use ((:instance fn-cbud-bound-is-the-most)
                   (:instance fn-cbud-limit-at-least-the-figure-bound)
                   (:instance fn-cbud-more-still-exceeds
                              (m (nfix machine))
-                             (a (fn-cbud-base-octets hneed core threads stack))
+                             (a (fn-cbud-base-octets hneed core threads stack hs))
                              (f (fn-cbud-conn-octets article tlsp))
-                             (k (+ 1 (fn-cbud-bound machine hneed core threads stack
+                             (k (+ 1 (fn-cbud-bound machine hneed core threads stack hs
                                                     article tlsp)))
                              (j (+ 1 (fn-cbud-limit machine dynamic hneed core threads
-                                                    stack article tlsp)))))))))
+                                                    stack hs article tlsp)))))))))
 
 (local
  (defthm fn-cbud-past-the-limit-exceeds-the-dynamic-space
-   (let ((l (fn-cbud-limit machine dynamic hneed core threads stack article tlsp)))
+   (let ((l (fn-cbud-limit machine dynamic hneed core threads stack hs article tlsp)))
      (< (nfix machine)
-        (+ (nfix dynamic) (fn-cbud-rest-octets core threads stack)
+        (+ (nfix dynamic) (fn-cbud-rest-octets core threads stack hs)
            (* (+ 1 l) (fn-cbud-conn-native-octets tlsp)))))
    :hints (("Goal"
             :in-theory (e/d (fn-cbud-fits-dynamic fn-cbud-capped-bound)
                             (fn-cbud-more-still-exceeds
                              fn-cbud-limit-at-least-the-capped-bound))
-            :cases ((fn-cbud-fits-dynamic machine dynamic core threads stack))
+            :cases ((fn-cbud-fits-dynamic machine dynamic core threads stack hs))
             :use ((:instance fn-cbud-div-is-the-most
                              (room (nfix (- (nfix machine)
                                             (+ (nfix dynamic)
-                                               (fn-cbud-rest-octets core threads stack)))))
+                                               (fn-cbud-rest-octets core threads stack hs)))))
                              (per (fn-cbud-conn-native-octets tlsp)))
                   (:instance fn-cbud-limit-at-least-the-capped-bound)
                   (:instance fn-cbud-more-still-exceeds
                              (m (nfix machine))
-                             (a (+ (nfix dynamic) (fn-cbud-rest-octets core threads stack)))
+                             (a (+ (nfix dynamic) (fn-cbud-rest-octets core threads stack hs)))
                              (f (fn-cbud-conn-native-octets tlsp))
                              (k (+ 1 (fn-cbud-capped-bound machine dynamic core threads
-                                                           stack tlsp)))
+                                                           stack hs tlsp)))
                              (j (+ 1 (fn-cbud-limit machine dynamic hneed core threads
-                                                    stack article tlsp)))))))))
+                                                    stack hs article tlsp)))))))))
 
 ; The limit is the most: one connection past it is not held.
 (defthm fn-cbud-limit-is-the-most
   (< (nfix machine)
-     (fn-cbud-resident-octets dynamic hneed core threads stack article tlsp
+     (fn-cbud-resident-octets dynamic hneed core threads stack hs article tlsp
                               (+ 1 (fn-cbud-limit machine dynamic hneed core threads
-                                                  stack article tlsp))))
+                                                  stack hs article tlsp))))
   :hints (("Goal"
            :in-theory (disable fn-cbud-resident-above-when-both-exceed
                                fn-cbud-past-the-limit-exceeds-the-figure
@@ -612,7 +652,7 @@
                                fn-cbud-rest-octets)
            :use ((:instance fn-cbud-resident-above-when-both-exceed
                             (n (+ 1 (fn-cbud-limit machine dynamic hneed core threads
-                                                   stack article tlsp))))
+                                                   stack hs article tlsp))))
                  (:instance fn-cbud-past-the-limit-exceeds-the-figure)
                  (:instance fn-cbud-past-the-limit-exceeds-the-dynamic-space))))
   :rule-classes nil)
@@ -634,11 +674,11 @@
 ; store's profile.  Answers (:hold B) or (:refused :connections-exceed-memory
 ; CAPACITY B).
 
-(defun fn-cbud-run-decide (capacity machine dynamic hneed core threads stack article tlsp)
+(defun fn-cbud-run-decide (capacity machine dynamic hneed core threads stack hs article tlsp)
   (declare (xargs :guard t))
-  (let ((b (fn-cbud-limit machine dynamic hneed core threads stack article tlsp)))
+  (let ((b (fn-cbud-limit machine dynamic hneed core threads stack hs article tlsp)))
     (if (and (<= (nfix capacity) b)
-             (fn-cbud-base-fitsp machine dynamic hneed core threads stack))
+             (fn-cbud-base-fitsp machine dynamic hneed core threads stack hs))
         (list :hold b)
       (list :refused :connections-exceed-memory (nfix capacity) b))))
 
@@ -646,14 +686,14 @@
 ; within the limit, and the resident figure of that many connections is
 ; within the machine.
 (defthm fn-cbud-run-decide-holds-the-capacity
-  (let ((d (fn-cbud-run-decide capacity machine dynamic hneed core threads stack
+  (let ((d (fn-cbud-run-decide capacity machine dynamic hneed core threads stack hs
                                article tlsp)))
     (implies (equal (car d) :hold)
              (and (<= (nfix capacity) (fn-cbud-held-bound d))
                   (equal (fn-cbud-held-bound d)
-                         (fn-cbud-limit machine dynamic hneed core threads stack
+                         (fn-cbud-limit machine dynamic hneed core threads stack hs
                                         article tlsp))
-                  (<= (fn-cbud-resident-octets dynamic hneed core threads stack article
+                  (<= (fn-cbud-resident-octets dynamic hneed core threads stack hs article
                                                tlsp capacity)
                       (nfix machine)))))
   :hints (("Goal" :in-theory (disable fn-cbud-base-fitsp)
@@ -662,11 +702,11 @@
 
 (defthm fn-cbud-run-decide-refuses-exactly-past-the-limit
   (equal (equal (car (fn-cbud-run-decide capacity machine dynamic hneed core threads
-                                         stack article tlsp))
+                                         stack hs article tlsp))
                 :refused)
-         (or (< (fn-cbud-limit machine dynamic hneed core threads stack article tlsp)
+         (or (< (fn-cbud-limit machine dynamic hneed core threads stack hs article tlsp)
                 (nfix capacity))
-             (not (fn-cbud-base-fitsp machine dynamic hneed core threads stack))))
+             (not (fn-cbud-base-fitsp machine dynamic hneed core threads stack hs))))
   :hints (("Goal" :in-theory (disable fn-cbud-base-fitsp))))
 
 ; -----------------------------------------------------------------------------
@@ -685,9 +725,9 @@
                   (equal (fn-exp-admit-decision xs lim nconns address now)
                          (list :admit))
                   (<= (fn-exp-connections-capacity v)
-                      (fn-cbud-limit machine dynamic hneed core threads stack article tlsp))
-                  (fn-cbud-base-fitsp machine dynamic hneed core threads stack))
-             (<= (fn-cbud-resident-octets dynamic hneed core threads stack article tlsp
+                      (fn-cbud-limit machine dynamic hneed core threads stack hs article tlsp))
+                  (fn-cbud-base-fitsp machine dynamic hneed core threads stack hs))
+             (<= (fn-cbud-resident-octets dynamic hneed core threads stack hs article tlsp
                                           (+ 1 (nfix nconns)))
                  (nfix machine))))
   :hints (("Goal" :in-theory (disable fn-cbud-base-fitsp
@@ -701,26 +741,119 @@
                             (n (+ 1 (nfix nconns))))))))
 
 ; -----------------------------------------------------------------------------
-; A live reconfiguration.  BOUND is the bound the run installed, or NIL for
-; an owner no run installed one in (the ACL2 test entries; every served run
-; installs it before LISTENING, host/native/owner.lisp fnn-owner-run).  The
-; capacity of the configuration the deltas make, past the bound, is refused
-; by name.
+; A live reconfiguration.  HELD is what the run's accepted decision held
+; (fn-cbud-run-held: its observations and the handshake slots it charged),
+; or NIL for an owner no run installed one in (the ACL2 test entries; every
+; served run installs it before LISTENING, host/native/owner.lisp
+; fnn-owner-run).  The configuration the deltas make is decided again, on
+; the run's observations: its capacity, and the handshake slots the larger
+; of the held ones and its own `tls-handshakes-in-flight' (lowering L never
+; frees the charge while the run lives: the handshakes admitted under the
+; old L may still be in flight).  Past the machine it is refused by name:
+; :handshakes-exceed-memory when the capacity alone holds under the held
+; slots, :connections-exceed-memory otherwise.
+
+(defun fn-cbud-slots-octets (slots)
+  (declare (xargs :guard t))
+  (* (nfix slots) *fn-cbud-handshake-scratch-octets*))
+
+(defthm fn-cbud-handshake-octets-is-the-slots
+  (equal (fn-cbud-handshake-octets tlsp inflight)
+         (fn-cbud-slots-octets (fn-cbud-handshake-slots tlsp inflight))))
+
+(defun fn-cbud-run-held (machine dynamic hneed core threads stack article tlsp slots)
+  (declare (xargs :guard t))
+  (list machine dynamic hneed core threads stack article tlsp (nfix slots)))
+
+(defun fn-cbud-held-at (i held)
+  (declare (xargs :guard t))
+  (if (natp i) (nth i (true-list-fix held)) nil))
 
 (defun fn-cbud-deltas-capacity (v gen stamp deltas)
   (declare (xargs :guard t))
   (fn-exp-connections-capacity (fn-cfg-apply v gen stamp deltas)))
 
-(defun fn-cbud-deltas-refusal (v gen stamp deltas bound)
+(defun fn-cbud-deltas-slots (v gen stamp deltas held)
   (declare (xargs :guard t))
-  (if (and (natp bound)
-           (< bound (fn-cbud-deltas-capacity v gen stamp deltas)))
-      :connections-exceed-memory
-    nil))
+  (max (nfix (fn-cbud-held-at 8 held))
+       (nfix (fn-cbud-config-handshake-slots (fn-cfg-apply v gen stamp deltas)
+                                             (fn-cbud-held-at 7 held)))))
 
-(defthm fn-cbud-deltas-refusal-keeps-the-capacity-held
-  (implies (and (natp bound)
-                (not (fn-cbud-deltas-refusal v gen stamp deltas bound)))
-           (<= (fn-exp-connections-capacity (fn-cfg-apply v gen stamp deltas))
-               bound)))
+(defun fn-cbud-held-decide (capacity slots held)
+  (declare (xargs :guard t))
+  (fn-cbud-run-decide capacity
+                      (fn-cbud-held-at 0 held) (fn-cbud-held-at 1 held)
+                      (fn-cbud-held-at 2 held) (fn-cbud-held-at 3 held)
+                      (fn-cbud-held-at 4 held) (fn-cbud-held-at 5 held)
+                      (fn-cbud-slots-octets slots)
+                      (fn-cbud-held-at 6 held) (fn-cbud-held-at 7 held)))
 
+(defun fn-cbud-deltas-refusal (v gen stamp deltas held)
+  (declare (xargs :guard t))
+  (let ((capacity (fn-cbud-deltas-capacity v gen stamp deltas)))
+    (cond ((not (consp held)) nil)
+          ((equal (car (fn-cbud-held-decide
+                        capacity (fn-cbud-deltas-slots v gen stamp deltas held) held))
+                  :hold)
+           nil)
+          ((equal (car (fn-cbud-held-decide
+                        capacity (nfix (fn-cbud-held-at 8 held)) held))
+                  :hold)
+           :handshakes-exceed-memory)
+          (t :connections-exceed-memory))))
+
+; What the owner holds after a delta list it did not refuse: the slots the
+; new configuration was decided with.  (Taken at the check, before the
+; staging's durable write: a staging that then fails leaves a charge at
+; most larger than needed, never smaller.)
+(defun fn-cbud-deltas-held (v gen stamp deltas held)
+  (declare (xargs :guard t))
+  (if (consp held)
+      (fn-cbud-run-held (fn-cbud-held-at 0 held) (fn-cbud-held-at 1 held)
+                        (fn-cbud-held-at 2 held) (fn-cbud-held-at 3 held)
+                        (fn-cbud-held-at 4 held) (fn-cbud-held-at 5 held)
+                        (fn-cbud-held-at 6 held) (fn-cbud-held-at 7 held)
+                        (fn-cbud-deltas-slots v gen stamp deltas held))
+    held))
+
+; KEYSTONE (PRF-223, with PRF-986's term).  A live reconfiguration the owner
+; stages keeps the process within the machine: the new configuration's
+; capacity of connections, with the handshake scratch of the slots it
+; holds, is within the run's machine, on the run's observations.
+(defthm fn-cbud-deltas-refusal-keeps-the-machine-held
+  (let ((held2 (fn-cbud-deltas-held v gen stamp deltas held)))
+    (implies (and (consp held)
+                  (not (fn-cbud-deltas-refusal v gen stamp deltas held)))
+             (and (<= (fn-exp-connections-capacity (fn-cfg-apply v gen stamp deltas))
+                      (fn-cbud-limit (fn-cbud-held-at 0 held2) (fn-cbud-held-at 1 held2)
+                                     (fn-cbud-held-at 2 held2) (fn-cbud-held-at 3 held2)
+                                     (fn-cbud-held-at 4 held2) (fn-cbud-held-at 5 held2)
+                                     (fn-cbud-slots-octets (fn-cbud-held-at 8 held2))
+                                     (fn-cbud-held-at 6 held2) (fn-cbud-held-at 7 held2)))
+                  (<= (fn-cbud-resident-octets
+                       (fn-cbud-held-at 1 held2) (fn-cbud-held-at 2 held2)
+                       (fn-cbud-held-at 3 held2) (fn-cbud-held-at 4 held2)
+                       (fn-cbud-held-at 5 held2)
+                       (fn-cbud-slots-octets (fn-cbud-held-at 8 held2))
+                       (fn-cbud-held-at 6 held2) (fn-cbud-held-at 7 held2)
+                       (fn-exp-connections-capacity (fn-cfg-apply v gen stamp deltas)))
+                      (nfix (fn-cbud-held-at 0 held2)))
+                  (<= (nfix (fn-cbud-config-handshake-slots (fn-cfg-apply v gen stamp deltas)
+                                                            (fn-cbud-held-at 7 held2)))
+                      (fn-cbud-held-at 8 held2))
+                  (<= (nfix (fn-cbud-held-at 8 held)) (fn-cbud-held-at 8 held2)))))
+  :hints (("Goal" :in-theory (disable fn-cbud-run-decide fn-cbud-limit
+                                      fn-cbud-resident-octets fn-cbud-config-handshake-slots
+                                      fn-exp-connections-capacity fn-cfg-apply)
+           :use ((:instance fn-cbud-run-decide-holds-the-capacity
+                            (capacity (fn-cbud-deltas-capacity v gen stamp deltas))
+                            (machine (fn-cbud-held-at 0 held))
+                            (dynamic (fn-cbud-held-at 1 held))
+                            (hneed (fn-cbud-held-at 2 held))
+                            (core (fn-cbud-held-at 3 held))
+                            (threads (fn-cbud-held-at 4 held))
+                            (stack (fn-cbud-held-at 5 held))
+                            (hs (fn-cbud-slots-octets
+                                 (fn-cbud-deltas-slots v gen stamp deltas held)))
+                            (article (fn-cbud-held-at 6 held))
+                            (tlsp (fn-cbud-held-at 7 held)))))))

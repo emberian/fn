@@ -18,7 +18,8 @@ current bytes by the day's union cites, while in the registry's own sense
 all but one of them (PRF-257) are uncertified at the current digest (see
 "The coordinates" below); the
 time rows guarantee classification only, never latency; the stack row is a
-lint with a counted debt, not a proof; TLS has no bound of its own; disk has
+lint with a counted debt, not a proof; TLS's bound is the handshake's
+admission and stated constants (the library itself is trusted); disk has
 no growth theorem; and the "Not bounded" list at the end is not empty.
 
 ## The coordinates
@@ -278,6 +279,40 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
   presents as **M1**'s fault.
 - Not bounded: the library's allocations past the constant (**T1**).
 
+**M7b** — the TLS handshakes' scratch, charged to the machine.
+- Bounded: the native memory the handshakes in progress hold beyond their
+  connections' sessions: at most L (`tls-handshakes-in-flight`, default 16)
+  at once, each `*fn-cbud-handshake-scratch-octets*` (128 KiB), so L x 128
+  KiB (2 MiB at the default) is a fixed term of the base's rest beside the
+  threads whenever a TLS context is loaded. It is the library's malloc,
+  outside the dynamic space, so it is **M7**'s machine term, not **M6**'s
+  credit ledger (dynamic-space credits).
+- Mechanism: the run's decision (`fn-cbud-run-decide`, host subject
+  `fn-owner-connection-budget`) charges `fn-cbud-config-handshake-slots`
+  of the live configuration (times the scratch, `fn-cbud-slots-octets`) and holds its observations with the slots it
+  charged (`fn-cbud-run-held`); every live reconfiguration
+  (`fn-cbud-deltas-refusal`, host subject `fn-owner-reconfigure-deltas`)
+  re-makes that decision with the new capacity and the larger of the held
+  and the new L (lowering L never frees the charge while the run lives:
+  handshakes admitted under the old L may still be in flight). The
+  handshake admission (`fn-hsb-admit`, host subject
+  `fn-owner-handshake-admit`) admits at most L at once.
+- Evidence: THEOREM over a STATED constant (PRF-986, PRF-223):
+  `fn-hsb-steps-keep-the-bound` (at most L in flight),
+  `fn-hsb-scratch-within-the-machine-term` (in flight x the scratch <= the
+  charged term, and <= any held slots' scratch at least L),
+  `fn-cbud-deltas-refusal-keeps-the-machine-held` (a staged reconfiguration's
+  capacity with its held slots' scratch is within the run's machine). The
+  128 KiB is stated (two 16,709-octet record buffers, the transcript, the
+  key exchange and the chain), not measured: measure at convergence (the
+  TLS native module's flood, RSS against L).
+- Exceeded: at start `refused connections-exceed-memory` (the term is in
+  the `fixed=` part of the base line), exit 1; a live raise of L the
+  machine cannot hold is refused `:handshakes-exceed-memory`, of the
+  capacity `:connections-exceed-memory`; at run time an under-statement
+  presents as **M1**'s fault.
+- Not bounded: the library's allocations past the stated constant (**T1**).
+
 **M8** — the F8 split.
 - Bounded: three measures, adopted 2026-09-28 (f8-reservation record):
   *virtual address space* (reported, never a bar; **M1**'s figure plus the
@@ -496,23 +531,43 @@ decision; the LZ4 block codec of `payload-lz` is retired).
 
 ## TLS
 
-**T1** — TLS has no bound of its own.
-- Bounded: only the plaintext prefix a read consumes before STARTTLS
-  (consumed <= the octets given; PRF-213) and the memory constant per
-  connection (**M7**). The brief's `tools/tls_check.py` does not exist; the
+**T1** — TLS: the handshake is admitted by ACL2; the library is trusted.
+- Bounded: the plaintext prefix a read consumes before STARTTLS
+  (consumed <= the octets given; PRF-213), the memory constant per
+  connection (**M7**), the handshakes' admission (PRF-986) and their
+  scratch (**M7b**). The brief's `tools/tls_check.py` does not exist; the
   "25% build gate" is `tools/throughput_gate.py`, whose baseline is
   plaintext (no TLS metric; its only TLS call is `fnn-tls-initialize` before
   the allocation probe); `tls64k` in the toolchain name is SBCL's
   `--tls-limit` (thread-local storage symbols, `:tls-limit` in
   `books/profile-limits.lisp`), not Transport Layer Security.
 - Mechanism: the system libssl/libcrypto (OpenSSL 3.0+ or LibreSSL 3+)
-  through SBCL's FFI (`host/native/tls.lisp`); handshakes are bounded by
-  host constants, not theorems: a 10 s handshake deadline, at most 8
-  handshakes per loop, a queue of at most 256 waiting at most 10 s, then
-  `busy` or `timeout`, and "TLS never waits inside OpenSSL"
-  (specs/host.md). The refusal line `tls refused reason={handshake|timeout|
+  through SBCL's FFI (`host/native/tls.lisp`); every handshake, on 563 and after STARTTLS, is
+  ACL2's admission before SSL_accept (PRF-986, `fn-hsb-admit`, host subject
+  `fn-owner-handshake-admit`): per source (an IPv4 address, an IPv6 /64) at
+  most N a minute (`tls-handshakes-per-source-per-minute`, a token bucket;
+  a listed source at its own rate, the policy row
+  `tls-handshake-source-overrides`, at most the profile's 64 entries,
+  `fn-hsb-overrides-of-word-is-bounded`), the accounting table at most
+  64 x L rows (a new source past it refused `sources-full`, no row evicted;
+  `fn-hsb-buckets-are-bounded`), an IPv4-mapped IPv6 peer its IPv4 source,
+  a trusted proxy's PROXY header (`tls-proxy-trusted-peers`,
+  books/tls-proxy.lisp) read in pieces ACL2 sizes, at most 528 octets
+  (`fn-pxy-step-reads-within-the-bound`), only from a listed transport peer
+  (`fn-pxy-direct-unless-trusted`), the slot handed to the asserted source
+  under the same bound (`fn-pxy-handover-keeps-the-bound`),
+  node-wide at most L in flight and L started a second
+  (`tls-handshakes-in-flight`), each within D (`tls-handshake-ms`), at most
+  32 x L sockets waiting unadmitted; refused by name `tls refused
+  reason=handshake-budget|busy source=...` to the service log; the scratch
+  in flight is **M7b**. The refusal line `tls refused reason={handshake|timeout|
   closed|refused|busy|other}` is `fn-cbud-tls-refusal-line` (PKT-640).
-- Evidence: THEOREM for the prefix (PRF-213); MEASURED for the memory
+- Evidence: THEOREM for the prefix (PRF-213) and the handshake admission
+  (PRF-986: `fn-hsb-steps-keep-the-bound`, `fn-hsb-admits-per-tick-are-bounded`,
+  `fn-hsb-source-admits-are-bounded`, `fn-hsb-buckets-are-bounded`,
+  `fn-hsb-overrides-of-word-is-bounded`, `fn-pxy-direct-unless-trusted`,
+  `fn-pxy-step-reads-within-the-bound`, `fn-pxy-handover-keeps-the-bound`);
+  MEASURED for the memory
   (`*fn-cbud-tls-octets*`, 128 KiB, connection-multiplexing record, hbox,
   OpenSSL 3.3.1); the library itself is TRUSTED, stated in
   `host/native/tls.lisp` and HST-016 (specs/host.md), and it has no `A-*`
@@ -781,7 +836,9 @@ The list, and what each would take. Nothing here is accepted; it is stated.
 6. **Stack recursion the lint does not see** (**S1**): builtins, macro
    shapes, raw Lisp on this tree, function values. Takes: lane depth-debt's
    raw lint landing, and a builtin-recursion class in the baseline.
-7. **The TLS library** (**T1**): CPU, allocation past 128 KiB, the
+7. **The TLS library** (**T1**): CPU per handshake (the number of handshakes
+   is admitted, PRF-986; the work of one is the library's), allocation past
+   128 KiB a session and 128 KiB a handshake (**M7b**), the
    certificate and chain checks, LibreSSL. Takes: an `A-*` row with its
    qualification, and a measurement of the library's allocation under the
    connection capacity.
