@@ -1870,26 +1870,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1973,
+    "books": 1975,
     "books_in_root_closure": 1938,
     "roots": 1866,
-    "theorems": 30223,
-    "functions": 19270,
+    "theorems": 30232,
+    "functions": 19280,
     "assert_events": 24064,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
-      "verified": 3545,
-      "declared-off": 2344,
-      "default-guarded": 10521,
-      "default-unguarded": 2860
+      "verified": 3547,
+      "declared-off": 2347,
+      "default-guarded": 10524,
+      "default-unguarded": 2862
     },
     "suspect_theorems": 1266,
     "export_hygiene_warnings": 348,
     "enabled_projection_warnings": 55,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2707,
+    "include_hygiene_warnings": 2710,
     "host_names_warnings": 2193,
     "hand_written_record_warnings": 18
   },
@@ -16126,6 +16126,33 @@
       "encapsulates": 0,
       "includes": [
         "served-render-holder"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/index-range-held-row-controller.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 3,
+      "functions": 5,
+      "guards": {
+        "verified": 2,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 2,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "index-range-number-controller",
+        "over-selected-source-carry"
       ],
       "system_includes": [],
       "suspects": [],
@@ -45502,6 +45529,32 @@
       "encapsulates": 0,
       "includes": [
         "../../books/index-range-controller"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/index-range-held-row-controller-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 6,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/index-range-held-row-controller"
       ],
       "system_includes": [],
       "suspects": [],
@@ -78535,6 +78588,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/index-range-held-row-controller.lisp",
+        "line": 5,
+        "include": "index-range-number-controller",
+        "included": "books/index-range-number-controller.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/index-range-held-row-controller.lisp",
+        "line": 6,
+        "include": "over-selected-source-carry",
+        "included": "books/over-selected-source-carry.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/index-range-number-controller.lisp",
         "line": 4,
         "include": "index-range-controller",
@@ -86715,6 +86782,13 @@
         "line": 2,
         "include": "../../books/index-range-controller",
         "included": "books/index-range-controller.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/index-range-held-row-controller-tests.lisp",
+        "line": 2,
+        "include": "../../books/index-range-held-row-controller",
+        "included": "books/index-range-held-row-controller.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

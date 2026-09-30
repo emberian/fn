@@ -10,15 +10,15 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1973 |
+| Books read | 1975 |
 | Certification roots in the Makefile | 1866 |
 | Books inside the root closure | 1938 |
-| `defthm` and `defthmd` events | 30223 |
-| `defun` events | 19270 |
-| Functions with verified guards | 3545 |
-| Functions declared `:verify-guards nil` and never verified | 2344 |
-| Functions left at the default with an explicit guard | 10521 |
-| Functions left at the default with no guard | 2860 |
+| `defthm` and `defthmd` events | 30232 |
+| `defun` events | 19280 |
+| Functions with verified guards | 3547 |
+| Functions declared `:verify-guards nil` and never verified | 2347 |
+| Functions left at the default with an explicit guard | 10524 |
+| Functions left at the default with no guard | 2862 |
 | `assert-event` checks | 24064 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 348 |
 | Enabled-projection warnings | 55 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2707 |
+| Include-hygiene warnings | 2710 |
 | Host-names warnings | 2193 |
 | Hand-written-record warnings | 18 |
 
@@ -556,6 +556,7 @@ that `make certify` requests.
 | `books/image-world.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/index-publication-shape.lisp` | - | 23 | 20 | 18/0/2/0 | 0 | 0 | 0 |
 | `books/index-range-controller.lisp` | root | 4 | 6 | 0/0/6/0 | 0 | 0 | 0 |
+| `books/index-range-held-row-controller.lisp` | - | 3 | 5 | 2/0/3/0 | 0 | 0 | 0 |
 | `books/index-range-number-controller.lisp` | - | 3 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/index.lisp` | root | 35 | 26 | 24/0/2/0 | 0 | 0 | 3 |
 | `books/injection-info-params-invariants.lisp` | root | 82 | 4 | 0/0/4/0 | 0 | 0 | 2 |
@@ -1571,6 +1572,7 @@ that `make certify` requests.
 | `tests/acl2/identity-retain-carried-tests.lisp` | root | 0 | 5 | 0/3/0/2 | 39 | 0 | 0 |
 | `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 0 | 0 |
 | `tests/acl2/index-range-controller-tests.lisp` | root | 10 | 2 | 0/2/0/0 | 0 | 0 | 0 |
+| `tests/acl2/index-range-held-row-controller-tests.lisp` | - | 6 | 5 | 0/3/0/2 | 0 | 0 | 0 |
 | `tests/acl2/index-range-number-controller-tests.lisp` | - | 4 | 6 | 0/4/2/0 | 0 | 0 | 0 |
 | `tests/acl2/index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/injection-info-params-tests.lisp` | root | 0 | 5 | 0/0/3/2 | 48 | 14 | 0 |
