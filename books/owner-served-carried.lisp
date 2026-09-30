@@ -69,7 +69,8 @@
                      o2 (fn-own-sub-make-author
                          id (fn-own-conn-version conn) nil decision
                          (fn-served-submission-login effects)
-                         (fn-served-submission-account effects)))
+                         (fn-served-submission-account effects)
+                         (fn-own-served-source-context decision)))
                   o2))
             (fn-own-set-conns o (fn-own-remove-conn id (fn-own-conns o)))))))
 

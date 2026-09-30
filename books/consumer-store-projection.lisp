@@ -7,8 +7,8 @@
 ; state's frontier is the next dense Store journal sequence, including every
 ; article and nonarticle record after bootstrap.
 (defun fn-cpe-projection-advance (s next)
-  (fn-cp-state (fn-cp-nth 1 s) (fn-cp-nth 2 s) next
-               (fn-cp-nth 4 s) (fn-cp-nth 5 s)))
+  (fn-cp-state-carry (fn-cp-nth 1 s) (fn-cp-nth 2 s) next
+                     (fn-cp-nth 4 s) (fn-cp-nth 5 s) (fn-cp-nth 6 s)))
 
 (defun fn-cpe-projection-decision (s op)
   (case (fn-cp-nth 0 op)
@@ -31,7 +31,9 @@
 ; sequence is checked here as well as by Store files.  A replay that drops a
 ; nonarticle record therefore cannot silently renumber an issued cursor.
 (defun fn-cpe-projection-step (s event expected)
-  (if (or (not (fn-store-event-p event))
+  (if (fn-cac-eventp event)
+      (list :refused :authority-interpreter-required)
+    (if (or (not (fn-store-event-p event))
           (not (fn-cp-uintp expected))
           (equal expected *fn-cbor-max-uint*)
           (not (equal (fn-store-event-sequence event) expected)))
@@ -56,12 +58,13 @@
           (if (equal (fn-cp-nth 1 op) (fn-cp-nth 2 s))
               (list :refused :same-incarnation)
             (list :ok
-                  (fn-cp-state (fn-cp-nth 1 s) (fn-cp-nth 1 op)
-                               (1+ expected) (fn-cp-nth 4 s) nil))))
+                  (fn-cp-state-carry (fn-cp-nth 1 s) (fn-cp-nth 1 op)
+                               (1+ expected) (fn-cp-nth 4 s) nil
+                               (fn-cp-nth 6 s)))))
          ((equal (fn-cpe-projection-decision s op) (list :write op))
           (list :ok (fn-cpe-projection-advance (fn-cp-apply s op)
                                                  (1+ expected))))
-         (t (list :refused :operation)))))))
+         (t (list :refused :operation))))))))
 
 (defun fn-cpe-projection-replay (s records expected)
   (declare (xargs :measure (len records)))

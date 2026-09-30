@@ -32,82 +32,7 @@
 (include-book "history-columns-relation")
 (include-book "store-node-invariants-base")
 
-; The same readers over the kernel state FILES instead of its history list:
-; the history is held as a snoc-list (books/store-files.lisp), so reading
-; (fn-sf-records files) conses it back; each -fx is its -ix with RECORDS =
-; (fn-sf-records files) (its logic, by definition), and executes that read
-; only on the arms that walk the history (a Message-ID the index does not
-; answer, the recovery arm).  The POST's refresh reads none.
-(defun fn-ctl-row-event-fx (m files fn-hist)
-  (declare (xargs :stobjs fn-hist :guard t
-                  :guard-hints (("Goal" :in-theory (e/d (fn-ctl-row-event-ix)
-                                                        (fn-cei-msgid-records fn-cei-get fn-ctl-row-event fn-ctl-event-row fn-held-facts fn-hf-control fn-ctl-withdrawal-plan fn-ctl-w-with-tlocks fn-ctl-control-locks fn-ctl-lookup-verdict fn-ctl-config-at fn-ctl-articles-withdrawals fn-ctl-set-tlocks fn-ctl-targets-p fn-ctl-prepend fn-sf-records fn-ctl-control-target fn-ctl-control-keys fn-store-event-txid fn-article-msgid fn-ctl-withdrawalp))))))
-  (mbe :logic (fn-ctl-row-event-ix m (fn-sf-records files) fn-hist)
-       :exec (if (stringp m)
-                 (let ((rs (fn-hist-msgid-records m fn-hist)))
-                   (if (consp rs)
-                       (let* ((r (car rs))
-                              (k (fn-record-sequence r))
-                              (e (if (and (natp k) (< k (fn-hist-count fn-hist)))
-                                     (fn-hist-at k fn-hist)
-                                   nil)))
-                         (if (and e
-                                  (equal (fn-ctl-event-row e) r)
-                                  (not (member-equal r (cdr rs))))
-                             e
-                           (fn-ctl-row-event m (fn-sf-records files))))
-                     nil))
-               (fn-ctl-row-event m (fn-sf-records files)))))
-
-(defun fn-ctl-row-control-fx (msgid files fn-hist)
-  (declare (xargs :stobjs fn-hist :guard t
-                  :guard-hints (("Goal" :in-theory (e/d (fn-ctl-row-control-ix)
-                                                        (fn-cei-msgid-records fn-cei-get fn-ctl-row-event fn-ctl-event-row fn-held-facts fn-hf-control fn-ctl-withdrawal-plan fn-ctl-w-with-tlocks fn-ctl-control-locks fn-ctl-lookup-verdict fn-ctl-config-at fn-ctl-articles-withdrawals fn-ctl-set-tlocks fn-ctl-targets-p fn-ctl-prepend fn-sf-records fn-ctl-control-target fn-ctl-control-keys fn-store-event-txid fn-article-msgid fn-ctl-withdrawalp))))))
-  (mbe :logic (fn-ctl-row-control-ix msgid (fn-sf-records files) fn-hist)
-       :exec (let ((e (fn-ctl-row-event-fx msgid files fn-hist)))
-               (if e (fn-hf-control (fn-held-facts (fn-ctl-event-row e))) nil))))
-
-(defun fn-ctl-article-plan-fx (a verdicts files fn-hist configs)
-  (declare (xargs :stobjs fn-hist :guard t
-                  :guard-hints (("Goal" :in-theory (e/d (fn-ctl-article-plan-ix)
-                                                        (fn-cei-msgid-records fn-cei-get fn-ctl-row-event fn-ctl-event-row fn-held-facts fn-hf-control fn-ctl-withdrawal-plan fn-ctl-w-with-tlocks fn-ctl-control-locks fn-ctl-lookup-verdict fn-ctl-config-at fn-ctl-articles-withdrawals fn-ctl-set-tlocks fn-ctl-targets-p fn-ctl-prepend fn-sf-records fn-ctl-control-target fn-ctl-control-keys fn-store-event-txid fn-article-msgid fn-ctl-withdrawalp))))))
-  (mbe :logic (fn-ctl-article-plan-ix a verdicts (fn-sf-records files) fn-hist configs)
-       :exec (if (consp a)
-                 (let* ((m (fn-article-msgid a))
-                        (e (fn-ctl-row-event-fx m files fn-hist))
-                        (control (if e (fn-hf-control (fn-held-facts (fn-ctl-event-row e))) nil))
-                        (target (fn-ctl-control-target control)))
-                   (if target
-                       (fn-ctl-w-with-tlocks
-                        (fn-ctl-withdrawal-plan
-                         m (fn-ctl-lookup-verdict m verdicts) target
-                         (fn-ctl-control-keys control)
-                         (fn-ctl-config-at (fn-store-event-txid e) configs))
-                        (fn-ctl-control-locks (fn-ctl-row-control-fx target files fn-hist)))
-                     nil))
-               nil)))
-
-(defun fn-ctl-refresh-withdrawals-fx (new old ws verdicts files fn-hist configs)
-  (declare (xargs :stobjs fn-hist :guard t
-                  :guard-hints (("Goal" :in-theory (e/d (fn-ctl-refresh-withdrawals-ix fn-ctl-article-withdrawals-ix fn-ctl-resolve-tlocks-ix)
-                                                        (fn-cei-msgid-records fn-cei-get fn-ctl-row-event fn-ctl-event-row fn-held-facts fn-hf-control fn-ctl-withdrawal-plan fn-ctl-w-with-tlocks fn-ctl-control-locks fn-ctl-lookup-verdict fn-ctl-config-at fn-ctl-articles-withdrawals fn-ctl-set-tlocks fn-ctl-targets-p fn-ctl-prepend fn-sf-records fn-ctl-control-target fn-ctl-control-keys fn-store-event-txid fn-article-msgid fn-ctl-withdrawalp))))))
-  (mbe :logic (fn-ctl-refresh-withdrawals-ix new old ws verdicts (fn-sf-records files)
-                                             fn-hist configs)
-       :exec (cond ((equal new old) ws)
-                   ((and (consp new) (equal (cdr new) old))
-                    (fn-ctl-prepend
-                     (let ((plan (fn-ctl-article-plan-fx (car new) verdicts files
-                                                         fn-hist configs)))
-                       (if (fn-ctl-withdrawalp plan) (list plan) nil))
-                     (if (consp (car new))
-                         (let ((m (fn-article-msgid (car new))))
-                           (if (fn-ctl-targets-p ws m)
-                               (fn-ctl-set-tlocks ws m (fn-ctl-control-locks
-                                                        (fn-ctl-row-control-fx m files fn-hist)))
-                             ws))
-                       ws)))
-                   (t (fn-ctl-articles-withdrawals new verdicts (fn-sf-records files)
-                                                   configs)))))
+(include-book "control-visible-effect")
 
 (defun fn-own-refresh-ix (o fn-hist)
   (declare (xargs :stobjs fn-hist :guard t))
@@ -166,7 +91,7 @@
            (equal (fn-own-refresh-ix o fn-hist) (fn-own-refresh o)))
   :hints (("Goal" :use ((:instance fn-orix-store-rows-agree (s (fn-own-store o))))
            :in-theory (e/d (fn-own-refresh-ix fn-own-refresh
-                            fn-ctl-refresh-withdrawals-fx fn-sf-records-count)
+                            fn-ctl-refresh-withdrawals-fx fn-sf-records-count fn-sbud-used)
                            (fn-sn-statep
                             fn-ctl-rows-okp
                             fn-orix-store-rows-agree

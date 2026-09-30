@@ -364,7 +364,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-record-schema1-golden-octets-are-the-encoding"
+          "name": "fn-record-schema3-golden-octets-are-the-encoding"
         },
         {
           "kind": "theorem",

@@ -133,7 +133,7 @@
 
 (defthm fn-snb-node-prepare-nexts
   (equal (fn-state-nexts (fn-node-acceptance
-                          (fn-node-prepare s generation msgid payload groups id subject evidence charge stamp)))
+                          (fn-node-prepare s generation msgid payload groups id subject evidence charge stamp binding)))
          (fn-state-nexts (fn-node-acceptance s)))
   :hints (("Goal" :in-theory (e/d (fn-node-prepare)
                                   (fn-node-statep fn-accept-prepare fn-retain-admissiblep fn-retain-admit)))))
@@ -141,11 +141,11 @@
 (defthm fn-snb-node-prepare-pending-groups
   (implies (and (not (consp (fn-node-stage s)))
                 (consp (fn-node-stage (fn-node-prepare s generation msgid payload groups id subject
-                                                       evidence charge stamp))))
+                                                       evidence charge stamp binding))))
            (equal (fn-pending-groups
                    (fn-state-pending (fn-node-acceptance
                                       (fn-node-prepare s generation msgid payload groups id subject
-                                                       evidence charge stamp))))
+                                                       evidence charge stamp binding))))
                   groups))
   :hints (("Goal" :in-theory (e/d (fn-node-prepare)
                                   (fn-node-statep fn-accept-prepare fn-retain-admissiblep fn-retain-admit)))))

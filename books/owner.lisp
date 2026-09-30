@@ -101,6 +101,8 @@
 (include-book "msgid-index")
 (include-book "control-visible")
 (include-book "packed-submission")
+(include-book "owner-submission-record")
+(include-book "peer-authored-accept")
 
 ; store's idle-phase predicate has no explicit guard; it is guard t and its
 ; body is one member-equal over a constant, so verify it here so that
@@ -406,142 +408,26 @@
                     (:d fn-own-conn-make-indexed) (:d fn-own-conn-make-pinned)
                     (:d fn-own-conn-make)))
 
-; -----------------------------------------------------------------------------
-; The submission record: (id version mark decision).  A served read of
-; connection `id`, pinned at `version`, injected `decision` (an
-; fn-inj-injectedp decision record: the article's octets, Message-ID and
-; groups, books/injection.lisp).  `mark` is nil in the queue and the length
-; of the ledger at the moment fn-own-take-submission moved it into the durable path.
+; Typed ingress boundary: absence is legacy; a parsed native carrier is
+; native-source, independently of current verification/authority. Malformed
+; or unclassifiable received data retains nil context; preparation refuses it.
+(defun fn-own-received-source-context (received)
+  (declare (xargs :guard t))
+  (let ((form (fn-pa-carrier-form received)))
+    (cond ((equal form :absent) :relay-v1)
+          ((and (consp form) (equal (car form) :ok)) :native-source)
+          (t nil))))
 
-(defun fn-own-sub-shapep (x)
+; Called only at the served submission constructor, whose non-peer arm is
+; the actual POST injection decision, never an already-authored control.
+(defun fn-own-served-source-context (decision)
   (declare (xargs :guard t))
-  (and (true-listp x) (or (equal (len x) 4) (equal (len x) 6))))
-(defun fn-own-sub-id (x)
-  (declare (xargs :guard t))
-  (mbe :logic (car x) :exec (fn-ag-car x)))
-(defun fn-own-sub-version (x)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
-(defun fn-own-sub-mark (x)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr (cdr x))) :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
-(defun fn-own-sub-decision (x)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr (cdr (cdr x))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
-(defun fn-own-sub-make (id version mark decision)
-  (declare (xargs :guard t))
-  (list id version mark decision))
+  (if (fn-peer-submissionp decision)
+      (fn-own-received-source-context (fn-peer-submission-octets decision))
+    (if (fn-inj-injectedp decision) :post-d25 nil)))
 
-(defthm fn-own-sub-shapep-of-fn-own-sub-make
-  (fn-own-sub-shapep (fn-own-sub-make id version mark decision)))
-(defthm fn-own-sub-id-of-fn-own-sub-make
-  (equal (fn-own-sub-id (fn-own-sub-make id version mark decision)) id))
-(defthm fn-own-sub-version-of-fn-own-sub-make
-  (equal (fn-own-sub-version (fn-own-sub-make id version mark decision)) version))
-(defthm fn-own-sub-mark-of-fn-own-sub-make
-  (equal (fn-own-sub-mark (fn-own-sub-make id version mark decision)) mark))
-(defthm fn-own-sub-decision-of-fn-own-sub-make
-  (equal (fn-own-sub-decision (fn-own-sub-make id version mark decision)) decision))
-(defthm fn-own-sub-shapep-forward-shape
-  (implies (fn-own-sub-shapep x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining)
-(defthm fn-own-sub-make-is-consp
-  (consp (fn-own-sub-make id version mark decision))
-  :rule-classes (:rewrite :type-prescription))
 
-; The author of a served submission (SEC-006, PRF-210): the AUTHINFO USER
-; name (LOGIN) and the principal id (ACCOUNT, books/nntp-auth.lisp
-; fn-auth-session-subject) the connection had authenticated as BEFORE the
-; read that completed the article (the session fn-own-finish-read is
-; handed, not the one the read leaves: an AUTHINFO later in the same read
-; never claims an article posted before it), recorded when it is enqueued.
-; The account keys the RFC 8315 Cancel-Lock the stored octets carry, even
-; when the connection is gone by the time the writer takes it; the login
-; is what the posting-policy gate reads (books/login-binding.lisp
-; fn-lb-inflight-login, PKT-619).  A submission without an author
-; (control, BP, transit, an unauthenticated POST) keeps the four-element
-; shape it always had: fn-own-sub-make-author with a nil login IS
-; fn-own-sub-make.
-(defun fn-own-sub-login (x)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr (cdr (cdr (cdr x)))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
-(defun fn-own-sub-account (x)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr x))))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))))
-(defun fn-own-sub-make-author (id version mark decision login account)
-  (declare (xargs :guard t))
-  (if login
-      (list id version mark decision login account)
-    (fn-own-sub-make id version mark decision)))
-
-(defthm fn-own-sub-make-author-of-no-login-by-definition
-  (equal (fn-own-sub-make-author id version mark decision nil account)
-         (fn-own-sub-make id version mark decision)))
-(defthm fn-own-sub-login-of-fn-own-sub-make
-  (equal (fn-own-sub-login (fn-own-sub-make id version mark decision)) nil))
-(defthm fn-own-sub-account-of-fn-own-sub-make
-  (equal (fn-own-sub-account (fn-own-sub-make id version mark decision)) nil))
-(defthm fn-own-sub-shapep-of-fn-own-sub-make-author
-  (fn-own-sub-shapep (fn-own-sub-make-author id version mark decision login account)))
-(defthm fn-own-sub-id-of-fn-own-sub-make-author
-  (equal (fn-own-sub-id (fn-own-sub-make-author id version mark decision login account)) id))
-(defthm fn-own-sub-version-of-fn-own-sub-make-author
-  (equal (fn-own-sub-version (fn-own-sub-make-author id version mark decision login account))
-         version))
-(defthm fn-own-sub-mark-of-fn-own-sub-make-author
-  (equal (fn-own-sub-mark (fn-own-sub-make-author id version mark decision login account)) mark))
-(defthm fn-own-sub-decision-of-fn-own-sub-make-author
-  (equal (fn-own-sub-decision (fn-own-sub-make-author id version mark decision login account))
-         decision))
-(defthm fn-own-sub-login-of-fn-own-sub-make-author
-  (equal (fn-own-sub-login (fn-own-sub-make-author id version mark decision login account))
-         login))
-(defthm fn-own-sub-account-of-fn-own-sub-make-author
-  (equal (fn-own-sub-account (fn-own-sub-make-author id version mark decision login account))
-         (if login account nil)))
-(defthm fn-own-sub-make-author-is-consp
-  (consp (fn-own-sub-make-author id version mark decision login account))
-  :rule-classes (:rewrite :type-prescription))
-
-(in-theory (disable (:d fn-own-sub-shapep) (:d fn-own-sub-id) (:d fn-own-sub-version)
-                    (:d fn-own-sub-mark) (:d fn-own-sub-decision) (:d fn-own-sub-make)
-                    (:d fn-own-sub-login) (:d fn-own-sub-account)
-                    (:d fn-own-sub-make-author)))
-
-; The queued (packed) submission's fields (lane chunked-body-2, B6b;
-; fn-own-enqueue packs, fn-own-take-submission unpacks): the packing touches
-; only the decision's octets and an injection's groups.
-(defthm fn-own-sub-fields-of-pack
-  (and (equal (fn-own-sub-id (fn-psub-pack-sub x)) (fn-own-sub-id x))
-       (equal (fn-own-sub-version (fn-psub-pack-sub x)) (fn-own-sub-version x))
-       (equal (fn-own-sub-mark (fn-psub-pack-sub x)) (fn-own-sub-mark x))
-       (equal (fn-own-sub-login (fn-psub-pack-sub x)) (fn-own-sub-login x))
-       (equal (fn-own-sub-account (fn-psub-pack-sub x)) (fn-own-sub-account x))
-       (equal (fn-own-sub-decision (fn-psub-pack-sub x))
-              (fn-psub-pack-decision (fn-own-sub-decision x)))
-       (equal (fn-own-sub-shapep (fn-psub-pack-sub x)) (fn-own-sub-shapep x))
-       (equal (consp (fn-psub-pack-sub x)) (consp x)))
-  :hints (("Goal" :in-theory (enable fn-own-sub-id fn-own-sub-version fn-own-sub-mark
-                                     fn-own-sub-login fn-own-sub-account
-                                     fn-own-sub-decision fn-own-sub-shapep
-                                     fn-psub-pack-sub fn-psub-pack-decision))))
-
-(defthm fn-own-sub-fields-of-unpack
-  (and (equal (fn-own-sub-id (fn-psub-unpack-sub x)) (fn-own-sub-id x))
-       (equal (fn-own-sub-version (fn-psub-unpack-sub x)) (fn-own-sub-version x))
-       (equal (fn-own-sub-mark (fn-psub-unpack-sub x)) (fn-own-sub-mark x))
-       (equal (fn-own-sub-login (fn-psub-unpack-sub x)) (fn-own-sub-login x))
-       (equal (fn-own-sub-account (fn-psub-unpack-sub x)) (fn-own-sub-account x))
-       (equal (fn-own-sub-decision (fn-psub-unpack-sub x))
-              (fn-psub-unpack-decision (fn-own-sub-decision x)))
-       (equal (consp (fn-psub-unpack-sub x)) (consp x)))
-  :hints (("Goal" :in-theory (enable fn-own-sub-id fn-own-sub-version fn-own-sub-mark
-                                     fn-own-sub-login fn-own-sub-account
-                                     fn-own-sub-decision
-                                     fn-psub-unpack-sub fn-psub-unpack-decision))))
+(in-theory (disable fn-own-received-source-context fn-own-served-source-context))
 
 ; The decision's fields the queue's readers use, packed.
 (defthm fn-own-decision-heads-of-pack
@@ -1753,7 +1639,18 @@
        o (fn-own-sub-make *fn-own-control-id*
                           (fn-own-view-version (fn-own-view o)) nil
                           (fn-own-control-decision (fn-own-config o)
-                                                   msgid groups octets)))
+                                                   msgid groups octets) :native-source))
+    o))
+
+; The exact legacy BP/control boundary, explicitly distinct from native authorship.
+(defun fn-own-legacy-control-submit (o msgid groups octets)
+  (declare (xargs :guard t))
+  (if (equal (fn-own-control-submit-result o msgid groups octets) :submitted)
+      (fn-own-enqueue
+       o (fn-own-sub-make *fn-own-control-id*
+                          (fn-own-view-version (fn-own-view o)) nil
+                          (fn-own-control-decision (fn-own-config o)
+                                                   msgid groups octets) :relay-v1))
     o))
 
 (defun fn-own-control-submissionp (sub)
@@ -1792,7 +1689,8 @@
        o (fn-own-sub-make *fn-own-control-id*
                           (fn-own-view-version (fn-own-view o)) nil
                           (fn-peer-make-submission peer :takethis
-                                                   msgid octets)))
+                                                   msgid octets)
+                          (fn-own-received-source-context octets)))
     o))
 (verify-guards fn-own-bp-transit-submit)
 
@@ -1889,7 +1787,7 @@
       (fn-own-enqueue
        o (fn-own-sub-make *fn-own-control-id*
                           (fn-own-view-version (fn-own-view o)) nil
-                          (fn-own-operator-decision-of o msgid groups octets stored)))
+                          (fn-own-operator-decision-of o msgid groups octets stored) :post-d25))
     o))
 
 ; The node a peer connection's OFFER decision reads.
@@ -2000,7 +1898,8 @@
                      o2 (fn-own-sub-make-author
                          id (fn-own-conn-version conn) nil decision
                          (fn-served-submission-login effects)
-                         (fn-served-submission-account effects)))
+                         (fn-served-submission-account effects)
+                         (fn-own-served-source-context decision)))
                   o2))
             (fn-own-set-conns o (fn-own-remove-conn id (fn-own-conns o)))))))
 
@@ -2707,11 +2606,12 @@
 (defun fn-own-feed-with-streaming (f streamingp)
   (declare (xargs :guard t))
   (let ((l (fn-feed-limits-of f)))
-    (fn-feed-make (fn-feed-peer f)
+    (fn-feed-make-counted (fn-feed-peer f)
                   (fn-feed-limits (fn-feed-max-queue l) (fn-feed-backoff-base l)
                                   (fn-feed-retry-bound l) streamingp)
                   (fn-feed-queue f) (fn-feed-contact f) (fn-feed-backoff-until f)
-                  (fn-feed-conn f) (fn-feed-next-attempt f))))
+                  (fn-feed-conn f) (fn-feed-next-attempt f)
+                  (fn-feed-undelivered f) (fn-feed-retry-dropped f))))
 
 (defun fn-own-feed-connect (o peer conn form)
   (declare (xargs :guard t))
@@ -2853,7 +2753,7 @@
                                                   :exec (fn-own-ledger-count o))
                                              (fn-own-sub-decision sub)
                                              (fn-own-sub-login sub)
-                                             (fn-own-sub-account sub))
+                                             (fn-own-sub-account sub) (fn-own-sub-source-context sub))
                      (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))
     o))
 
@@ -3238,6 +3138,8 @@
     (:take (fn-own-take-submission o))
     (:control-submit (fn-own-control-submit o (cadr event) (caddr event)
                                             (cadddr event)))
+    (:legacy-control-submit (fn-own-legacy-control-submit
+                             o (cadr event) (caddr event) (cadddr event)))
     (:bp-transit-submit
      (fn-own-bp-transit-submit o (cadr event) (caddr event)
                                (cadddr event) (car (cddddr event))

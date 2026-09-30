@@ -230,7 +230,7 @@
       },
       "profile": "default",
       "latest": "a resend at a later second is answered duplicate where the image before D25 answered conflict ([d25-dup-conflict](evidence/d25-dup-conflict-2026-09-24.md)).",
-      "obstruction": "no two-node matrix or operator campaign on an image with D25; a poster Date equal to fn's rendering of the injection second is outside the invariance theorems; D25's provenance question (review §D25) is open.",
+      "obstruction": "no two-node matrix or operator campaign on an image with D25; a poster Date equal to fn's rendering of the injection second is outside the invariance theorems; D25's provenance question (review \u00a7D25) is open.",
       "next": "the shared qualification of an image carrying D25, with the transit duplicate rows and K1's died-present resubmissions answered duplicate."
     },
     {
@@ -256,19 +256,19 @@
       "name": "live reconfiguration",
       "contract": "No reader observes a half-applied configuration change, and a crash at any instant recovers the live or the whole published generation.",
       "host": {
-        "function": "fn-oclc-publish",
+        "function": "fn-ccp-publish",
         "file": "host/owner-host.lisp"
       },
       "keystone": "fn-ocl-no-reader-observes-a-half-change",
-      "bridge": "fn-oclc-publish-is-publish",
       "tested": {
         "image": "69046a76",
         "profile": "native-operator matrix and native modules (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section)"
       },
       "profile": "default",
       "latest": "CFG-LIVE accepted and CFG-LIVE-REFUSE refused; live_reconfiguration 11/11, admin 9/9, operator_verbs 18/18, profile_upgrade 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).",
-      "obstruction": "none named for the half-change property; the node's own reconfiguration is operator-driven and not exercised on the deployed store.",
-      "next": "a live group creation on the deployed node through the operator verb, recorded against its generation."
+      "obstruction": "The actual approved consumer publication wrapper requires a complete result/effect bridge to the old OCL publication property; fn-oclc-publish-is-publish covers only its inner predecessor subject.",
+      "next": "Prove the actual fn-ccp-publish wrapper preserves complete publication and approved consumer effects, then qualify the coherent caller.",
+      "pending_bridge": "The actual approved consumer publication wrapper requires a complete result/effect bridge to the old OCL publication property; fn-oclc-publish-is-publish covers only its inner predecessor subject."
     },
     {
       "id": "P7",

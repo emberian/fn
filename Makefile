@@ -14,6 +14,12 @@ FN_CERTIFY_JOBS ?= 1
 # its slot: the brief's three-minute rule, with a minute of slack.
 FN_LD_TIMEOUT_SECONDS ?= 240
 ACL2_BOOKS ?= books/defrecord \
+	books/owner-connection-state \
+	books/owner-connection-callbacks \
+	books/owner-connection-callback-refinement \
+	tests/acl2/owner-connection-callback-tests \
+	tests/acl2/owner-connection-callback-additional-tests \
+	tests/acl2/owner-connection-callback-captured-tests \
 	books/post-identity-source-cursor \
 	books/post-identity-source-cursor-agent \
 	books/post-identity-source-cursor-agent-terminal \

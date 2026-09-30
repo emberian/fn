@@ -86,4 +86,5 @@
   :hints (("Goal" :in-theory (enable fn-frame-digest))))
 
 (defattach (fn-frame-digest-buffer fn-blake3-of-prefixed-buffer-any)
-           (fn-frame-digest-range fn-blake3-of-prefixed-range-any))
+           (fn-frame-digest-range fn-blake3-of-prefixed-range-any)
+           :hints (("Goal" :in-theory (enable fn-frame-digest))))

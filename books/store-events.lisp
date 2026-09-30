@@ -10,6 +10,7 @@
 (include-book "stx-accept-records")
 (include-book "held-record")
 (include-book "consumer-store-events")
+(include-book "consumer-authority-codec")
 (include-book "topic-history-store-events")
 (include-book "defevent") ; the retention event kinds' stable codes, one form
 
@@ -53,6 +54,7 @@
         ((equal kind :accepted-statement)
          *fn-store-accepted-statement-publication-figure*)
         ((equal kind :consumer) *fn-cpe-max-octets*)
+        ((equal kind :consumer-authority) 321)
         ((member-eq kind '(:topic-admin-install :topic-anchor :topic-admit))
          *fn-th-topic-max-octets*)
         (t 0)))
@@ -96,7 +98,7 @@
 (defun fn-store-event-p (x)
   (declare (xargs :guard t :verify-guards nil))
   (or (fn-held-p x) (fn-store-retention-event-p x)
-      (fn-stxe-p x) (fn-stxk-p x) (fn-hstxa-p x) (fn-cpe-eventp x)
+      (fn-stxe-p x) (fn-stxk-p x) (fn-hstxa-p x) (fn-cpe-eventp x) (fn-cac-eventp x)
       (fn-th-topic-eventp x)))
 
 ; The WIRE event: the codec's domain (`fn-store-event-encode',
@@ -104,7 +106,7 @@
 (defun fn-wire-event-p (x)
   (declare (xargs :guard t :verify-guards nil))
   (or (fn-record-p x) (fn-store-retention-event-p x)
-      (fn-stxe-p x) (fn-stxk-p x) (fn-stxa-p x) (fn-cpe-eventp x)
+      (fn-stxe-p x) (fn-stxk-p x) (fn-stxa-p x) (fn-cpe-eventp x) (fn-cac-eventp x)
       (fn-th-topic-eventp x)))
 
 ; The new five-field envelope cannot be mistaken for an older event.  These
@@ -128,6 +130,7 @@
         ((fn-stxe-p x) :statement-verdict)
         ((fn-stxk-p x) :keyring-snapshot)
         ((fn-hstxa-p x) :accepted-statement)
+        ((fn-cac-eventp x) :consumer-authority)
         ((fn-cpe-eventp x) :consumer)
         ((fn-th-topic-eventp x) (fn-th-at 0 x))
         (t nil)))
@@ -138,6 +141,7 @@
         ((fn-stxe-p x) (fn-stxe-sequence x))
         ((fn-stxk-p x) (fn-stxk-sequence x))
         ((fn-hstxa-p x) (fn-stxa-sequence (fn-hstxa-stxa x)))
+        ((fn-cac-eventp x) (fn-cp-nth 1 x))
         ((fn-cpe-eventp x) (fn-cpe-sequence x))
         ((fn-th-topic-eventp x) (fn-th-at 1 x))
         (t nil)))
@@ -148,6 +152,7 @@
         ((fn-stxe-p x) (fn-stxe-txid x))
         ((fn-stxk-p x) (fn-stxk-txid x))
         ((fn-hstxa-p x) (fn-stxa-txid (fn-hstxa-stxa x)))
+        ((fn-cac-eventp x) (fn-cp-nth 2 x))
         ((fn-cpe-eventp x) (fn-cpe-txid x))
         ((fn-th-topic-eventp x) (fn-th-at 2 x))
         (t nil)))
@@ -158,6 +163,7 @@
         ((fn-stxe-p x) (fn-stxe-generation x))
         ((fn-stxk-p x) (fn-stxk-generation x))
         ((fn-hstxa-p x) (fn-stxa-generation (fn-hstxa-stxa x)))
+        ((fn-cac-eventp x) (fn-cp-nth 3 x))
         ((fn-cpe-eventp x) (fn-cpe-generation x))
         ((fn-th-topic-eventp x) (fn-th-at 3 x))
         (t nil)))
@@ -180,6 +186,7 @@
         ((fn-stxe-p x) :statement-verdict)
         ((fn-stxk-p x) :keyring-snapshot)
         ((fn-stxa-p x) :accepted-statement)
+        ((fn-cac-eventp x) :consumer-authority)
         ((fn-cpe-eventp x) :consumer)
         ((fn-th-topic-eventp x) (fn-th-at 0 x))
         (t nil)))
@@ -190,6 +197,7 @@
         ((fn-stxe-p x) (fn-stxe-sequence x))
         ((fn-stxk-p x) (fn-stxk-sequence x))
         ((fn-stxa-p x) (fn-stxa-sequence x))
+        ((fn-cac-eventp x) (fn-cp-nth 1 x))
         ((fn-cpe-eventp x) (fn-cpe-sequence x))
         ((fn-th-topic-eventp x) (fn-th-at 1 x))
         (t nil)))
@@ -200,6 +208,7 @@
         ((fn-stxe-p x) (fn-stxe-txid x))
         ((fn-stxk-p x) (fn-stxk-txid x))
         ((fn-stxa-p x) (fn-stxa-txid x))
+        ((fn-cac-eventp x) (fn-cp-nth 2 x))
         ((fn-cpe-eventp x) (fn-cpe-txid x))
         ((fn-th-topic-eventp x) (fn-th-at 2 x))
         (t nil)))
@@ -210,6 +219,7 @@
         ((fn-stxe-p x) (fn-stxe-generation x))
         ((fn-stxk-p x) (fn-stxk-generation x))
         ((fn-stxa-p x) (fn-stxa-generation x))
+        ((fn-cac-eventp x) (fn-cp-nth 3 x))
         ((fn-cpe-eventp x) (fn-cpe-generation x))
         ((fn-th-topic-eventp x) (fn-th-at 3 x))
         (t nil)))
@@ -269,6 +279,7 @@
         ((fn-stxe-p event) (fn-stxe-encode event))
         ((fn-stxk-p event) (fn-stxk-encode event))
         ((fn-stxa-p event) (fn-stxa-encode event))
+        ((fn-cac-eventp event) (fn-cac-encode event))
         ((fn-cpe-eventp event) (fn-cpe-encode event))
         ((fn-th-topic-eventp event) (fn-th-topic-event-encode event))
         (t nil)))
@@ -333,7 +344,9 @@
 
 (defun fn-store-event-decode-exact (octets)
   (declare (xargs :guard t :verify-guards nil))
-  (let ((legacy (fn-record-decode-exact octets)))
+  (if (equal (ec-call (take 4 octets)) '(102 110 99 101))
+      (fn-cac-decode-exact octets)
+    (let ((legacy (fn-record-decode-exact octets)))
     (if (fn-record-result-okp legacy) legacy
       (let ((retention (fn-store-retention-event-decode-exact octets)))
         (if (equal (car retention) :ok) retention
@@ -345,7 +358,7 @@
                     (if (fn-stmt-okp accepted) accepted
                       (let ((consumer (fn-cpe-decode-exact octets)))
                         (if (fn-stmt-okp consumer) consumer
-                          (fn-th-topic-event-decode-exact octets))))))))))))))
+                          (fn-th-topic-event-decode-exact octets)))))))))))))))
 
 ; Export withdrawal.  Every book above reasons about an event through this
 ; recognizer, never by opening it: `fn-store-event-p' unfolds into five kind
@@ -377,11 +390,11 @@
   (implies (fn-hstxa-p x)
            (and (not (fn-record-p x)) (not (fn-store-retention-event-p x))
                 (not (fn-stxe-p x)) (not (fn-stxk-p x)) (not (fn-stxa-p x))
-                (not (fn-cpe-eventp x)) (not (fn-th-topic-eventp x))))
+                (not (fn-cpe-eventp x)) (not (fn-cac-eventp x)) (not (fn-th-topic-eventp x))))
   :hints (("Goal" :use ((:instance fn-hstxa-p-forward-shape))
            :in-theory (e/d (fn-record-p fn-record-shapep fn-store-retention-event-p
                             fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
-                            fn-stxa-p fn-stxa-shapep fn-cpe-eventp
+                            fn-stxa-p fn-stxa-shapep fn-cpe-eventp fn-cac-eventp
                             fn-th-topic-eventp fn-th-local-admin-eventp)
                            (fn-hstxa-p)))))
 
@@ -389,12 +402,12 @@
   (implies (fn-held-p x)
            (and (not (fn-record-p x)) (not (fn-store-retention-event-p x))
                 (not (fn-stxe-p x)) (not (fn-stxk-p x)) (not (fn-stxa-p x))
-                (not (fn-cpe-eventp x)) (not (fn-th-topic-eventp x))))
+                (not (fn-cpe-eventp x)) (not (fn-cac-eventp x)) (not (fn-th-topic-eventp x))))
   :hints (("Goal" :use ((:instance fn-held-p-forward-shape)
                         (:instance fn-held-p-forward-natural-head))
            :in-theory (e/d (fn-record-p fn-record-shapep fn-store-retention-event-p
                             fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
-                            fn-stxa-p fn-stxa-shapep fn-cpe-eventp fn-held-shapep
+                            fn-stxa-p fn-stxa-shapep fn-cpe-eventp fn-cac-eventp fn-held-shapep
                             fn-th-topic-eventp fn-th-local-admin-eventp)
                            (fn-held-p)))))
 
@@ -408,20 +421,20 @@
   (implies (fn-stxa-p x)
            (and (not (fn-record-p x)) (not (fn-store-retention-event-p x))
                 (not (fn-stxe-p x)) (not (fn-stxk-p x))
-                (not (fn-cpe-eventp x)) (not (fn-th-topic-eventp x))))
+                (not (fn-cpe-eventp x)) (not (fn-cac-eventp x)) (not (fn-th-topic-eventp x))))
   :hints (("Goal" :in-theory (enable fn-record-p fn-record-shapep fn-store-retention-event-p
                                      fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
-                                     fn-stxa-p fn-stxa-shapep fn-cpe-eventp
+                                     fn-stxa-p fn-stxa-shapep fn-cpe-eventp fn-cac-eventp
                                      fn-th-topic-eventp fn-th-local-admin-eventp))))
 
 (defthm fn-record-is-no-other-wire-event
   (implies (fn-record-p x)
            (and (not (fn-store-retention-event-p x))
                 (not (fn-stxe-p x)) (not (fn-stxk-p x))
-                (not (fn-cpe-eventp x)) (not (fn-th-topic-eventp x))))
+                (not (fn-cpe-eventp x)) (not (fn-cac-eventp x)) (not (fn-th-topic-eventp x))))
   :hints (("Goal" :in-theory (enable fn-record-p fn-record-shapep fn-store-retention-event-p
                                      fn-stxe-p fn-stxe-shapep fn-stxk-p fn-stxk-shapep
-                                     fn-cpe-eventp
+                                     fn-cpe-eventp fn-cac-eventp
                                      fn-th-topic-eventp fn-th-local-admin-eventp))))
 
 (in-theory (disable fn-hstxa-is-no-wire-event fn-held-is-no-wire-event

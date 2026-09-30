@@ -817,9 +817,10 @@
 (local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (defun fn-prc-node-prepare (s generation msgid payload groups
                               obligation-id subject evidence charge stamp
-                              view carry)
+                              view carry binding)
   (declare (xargs :guard (fn-node-statep s) :verify-guards nil))
-  (if (mbe :logic (not (fn-node-statep s)) :exec nil)
+  (if (or (not (fn-ab-p binding))
+          (mbe :logic (not (fn-node-statep s)) :exec nil))
       s
     (let ((retention (fn-node-retention s)))
       (if (not (fn-prc-admissiblep retention obligation-id subject :archive
@@ -842,7 +843,7 @@
                (cons (fn-retain-make-obligation obligation-id subject :archive
                                                 evidence charge)
                      (fn-retain-pins retention))
-               (fn-retain-releases retention)))
+               (fn-retain-releases retention)) binding)
              (fn-node-bindings s))))))))
 (local (in-theory (disable (tau-system))))
 
@@ -850,10 +851,10 @@
   (implies (fn-prc-carryp carry)
            (equal (fn-prc-node-prepare s generation msgid payload groups
                                        obligation-id subject evidence charge
-                                       stamp view carry)
+                                       stamp view carry binding)
                   (fn-pidx-node-prepare s generation msgid payload groups
                                         obligation-id subject evidence charge
-                                        stamp view)))
+                                        stamp view binding)))
   :hints (("Goal" :in-theory (e/d (fn-prc-node-prepare fn-pidx-node-prepare)
                                   (fn-node-statep fn-retain-admissiblep
                                    fn-pidx-accept-prepare fn-retain-make-state
@@ -880,7 +881,7 @@
                        (fn-record-release-evidence record)
                        (fn-record-charge record)
                        (fn-record-stamp record)
-                       view carry))
+                       view carry (fn-held-binding record)))
 
 (verify-guards fn-prc-sn-prepare-node)
 

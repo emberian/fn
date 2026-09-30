@@ -2181,6 +2181,39 @@
                obs))
     nil))
 
+; S9 carried aggregate vocabulary. The model fold is cold/reference only.
+(defun fn-own-feed-pending-of (f)
+  (declare (xargs :guard t))
+  (nfix (- (nfix (fn-feed-undelivered f))
+           (nfix (fn-feed-retry-dropped f)))))
+
+(defun fn-own-feed-pending-delta (old new)
+  (declare (xargs :guard t))
+  (- (fn-own-feed-pending-of new) (fn-own-feed-pending-of old)))
+
+(defun fn-own-feed-table-pending-model (tbl)
+  (declare (xargs :guard t))
+  (if (consp tbl)
+      (+ (fn-own-feed-pending-of (fn-own-feed-entry-feed (car tbl)))
+         (fn-own-feed-table-pending-model (cdr tbl)))
+    0))
+
+; Same target fold as the actual durable acceptance, carrying the aggregate
+; through actual successful enqueue deltas. No queue/table tally executes.
+(defun fn-own-feed-enqueue-all-counted (names tbl msgid tick pending)
+  (declare (xargs :guard (acl2-numberp pending)))
+  (if (consp names)
+      (let ((e (fn-own-feed-entry-of (car names) tbl)))
+        (if (null e)
+            (fn-own-feed-enqueue-all-counted (cdr names) tbl msgid tick pending)
+          (let* ((old (fn-own-feed-entry-feed e))
+                 (new (fn-feed-enqueue old msgid tick)))
+            (fn-own-feed-enqueue-all-counted
+             (cdr names)
+             (fn-own-feed-put (car names) (fn-own-feed-entry-record e) new tbl)
+             msgid tick (+ pending (fn-own-feed-pending-delta old new))))))
+    (cons tbl pending)))
+
 ; -----------------------------------------------------------------------------
 ; Bounded FNFD port boundary
 ;
@@ -2189,9 +2222,21 @@
 ; `fn-feed-live-port-step' that checks the exact record encoder.  Refusal is
 ; owner-visible, and preserves the table, records and effects.
 
+(defun fn-own-feed-port-result-counted (status table records effects pending-delta)
+  (declare (xargs :guard t))
+  (list status table records effects pending-delta))
+
 (defun fn-own-feed-port-result (status table records effects)
   (declare (xargs :guard t))
-  (list status table records effects))
+  (fn-own-feed-port-result-counted status table records effects 0))
+
+(defun fn-own-feed-port-pending-delta (result)
+  (declare (xargs :guard t))
+  (fix (fn-frame-item 4 result)))
+
+(defun fn-own-feed-port-pending-after (pending result)
+  (declare (xargs :guard (acl2-numberp pending)))
+  (+ pending (fn-own-feed-port-pending-delta result)))
 
 (defun fn-own-feed-port-status (result)
   (declare (xargs :guard t))
@@ -2214,13 +2259,26 @@
       (let ((step (fn-feed-live-port-step (fn-own-feed-entry-feed e) event)))
         (if (equal (fn-feed-port-step-status step) :accepted)
             (let ((effects (fn-feed-port-step-effects step)))
-              (fn-own-feed-port-result
+              (fn-own-feed-port-result-counted
                :accepted
                (fn-own-feed-put peer (fn-own-feed-entry-record e)
                                 (fn-feed-port-step-feed step) tbl)
                (fn-feed-port-step-records step)
-               (if (null effects) nil (list (cons peer effects)))))
+               (if (null effects) nil (list (cons peer effects)))
+               (fn-own-feed-pending-delta
+                (fn-own-feed-entry-feed e) (fn-feed-port-step-feed step))))
           (fn-own-feed-port-result :refused tbl nil nil))))))
+
+(defun fn-own-feed-port-replay-peer (peer tbl entries)
+  (declare (xargs :guard t))
+  (let ((e (fn-own-feed-entry-of peer tbl)))
+    (if (null e)
+        (fn-own-feed-port-result :ignored tbl nil nil)
+      (let* ((old (fn-own-feed-entry-feed e))
+             (new (fn-feed-replay old entries)))
+        (fn-own-feed-port-result-counted
+         :accepted (fn-own-feed-put peer (fn-own-feed-entry-record e) new tbl)
+         nil nil (fn-own-feed-pending-delta old new))))))
 
 (defun fn-own-feed-port-tick-peer (peer tbl obs)
   (declare (xargs :guard t))
@@ -2282,8 +2340,12 @@
     fn-own-feed-parse-response
     fn-own-feed-lost-one fn-own-feed-lost-records-of
     fn-own-feed-tick-peer-records fn-own-feed-tick-records
+    fn-own-feed-pending-of fn-own-feed-pending-delta
+    fn-own-feed-table-pending-model fn-own-feed-enqueue-all-counted
+    fn-own-feed-port-result-counted fn-own-feed-port-pending-delta fn-own-feed-port-pending-after
     fn-own-feed-port-result fn-own-feed-port-status fn-own-feed-port-table
     fn-own-feed-port-records fn-own-feed-port-effects fn-own-feed-port-peer
+    fn-own-feed-port-replay-peer
     fn-own-feed-port-tick-peer fn-own-feed-port-observe-peer
     fn-own-feed-port-lost-peer fn-own-feed-port-restart-peer))
 

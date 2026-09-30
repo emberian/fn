@@ -1007,7 +1007,7 @@
                   (fn-record-charge w) (fn-record-stamp w)
                   (fn-apc-held-facts-of bytes carry)
                   (fn-apc-held-context-of bytes keyring generation carry)
-                  nil nil)))
+                  nil nil (fn-record-binding w))))
 
 ; KEYSTONE for the host line.
 (defthm fn-apc-intern-row-at-is-reference

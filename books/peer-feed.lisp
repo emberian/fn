@@ -758,13 +758,38 @@
 ; -----------------------------------------------------------------------------
 ; The feed, an opaque record
 
+; S9 derived counts. These folds are reference/cold vocabulary only.
+(defun fn-fct-retry-drop-bit (st)
+  (declare (xargs :guard t))
+  (if (equal st '(:dropped :retry-bound)) 1 0))
+
+(defun fn-fct-retry-drops-model (queue)
+  (declare (xargs :guard t))
+  (if (consp queue)
+      (+ (fn-fct-retry-drop-bit (fn-feed-entry-state (car queue)))
+         (fn-fct-retry-drops-model (cdr queue)))
+    0))
+
+(defun fn-fct-pending-model (queue)
+  (declare (xargs :guard t))
+  (- (len queue) (fn-fct-retry-drops-model queue)))
+
 (defun fn-feed-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 7)))
+  (and (true-listp x) (equal (len x) 9)))
 
+(defun fn-feed-make-counted
+  (peer limits queue contact backoff-until conn next-attempt undelivered retry-dropped)
+  (declare (xargs :guard t))
+  (list peer limits queue contact backoff-until conn next-attempt
+        undelivered retry-dropped))
+
+; Detached logical/reference constructor. Served transitions below never
+; call this fold: they carry counts or apply an actual transition delta.
 (defun fn-feed-make (peer limits queue contact backoff-until conn next-attempt)
   (declare (xargs :guard t))
-  (list peer limits queue contact backoff-until conn next-attempt))
+  (fn-feed-make-counted peer limits queue contact backoff-until conn next-attempt
+                        (len queue) (fn-fct-retry-drops-model queue)))
 
 (defun fn-feed-peer (x)
   (declare (xargs :guard t))
@@ -787,6 +812,43 @@
 (defun fn-feed-next-attempt (x)
   (declare (xargs :guard t))
   (fn-bp-nth 6 x))
+
+(defun fn-feed-undelivered (x)
+  (declare (xargs :guard t))
+  (fn-bp-nth 7 x))
+(defun fn-feed-retry-dropped (x)
+  (declare (xargs :guard t))
+  (fn-bp-nth 8 x))
+
+(defun fn-feed-count-relationp (f)
+  (declare (xargs :guard t))
+  (and (equal (fn-feed-undelivered f) (len (fn-feed-queue f)))
+       (equal (fn-feed-retry-dropped f)
+              (fn-fct-retry-drops-model (fn-feed-queue f)))))
+
+(defthm fn-feed-shapep-of-counted-make
+  (fn-feed-shapep (fn-feed-make-counted p l q c b n a u d)))
+(defthm fn-feed-peer-of-counted-make
+  (equal (fn-feed-peer (fn-feed-make-counted p l q c b n a u d)) p))
+(defthm fn-feed-limits-of-of-counted-make
+  (equal (fn-feed-limits-of (fn-feed-make-counted p l q c b n a u d)) l))
+(defthm fn-feed-queue-of-counted-make
+  (equal (fn-feed-queue (fn-feed-make-counted p l q c b n a u d)) q))
+(defthm fn-feed-contact-of-counted-make
+  (equal (fn-feed-contact (fn-feed-make-counted p l q c b n a u d)) c))
+(defthm fn-feed-backoff-until-of-counted-make
+  (equal (fn-feed-backoff-until (fn-feed-make-counted p l q c b n a u d)) b))
+(defthm fn-feed-conn-of-counted-make
+  (equal (fn-feed-conn (fn-feed-make-counted p l q c b n a u d)) n))
+(defthm fn-feed-next-attempt-of-counted-make
+  (equal (fn-feed-next-attempt (fn-feed-make-counted p l q c b n a u d)) a))
+(defthm fn-feed-undelivered-of-counted-make
+  (equal (fn-feed-undelivered (fn-feed-make-counted p l q c b n a u d)) u))
+(defthm fn-feed-retry-dropped-of-counted-make
+  (equal (fn-feed-retry-dropped (fn-feed-make-counted p l q c b n a u d)) d))
+
+(defthm fn-feed-count-relationp-of-reference-make
+  (fn-feed-count-relationp (fn-feed-make p l q c b n a)))
 
 (defthm fn-feed-shapep-of-fn-feed-make
   (fn-feed-shapep (fn-feed-make p l q c b n a)))
@@ -837,6 +899,11 @@
                   :corollary (implies (fn-feed-next-attempt x) (consp x))
                   :trigger-terms ((fn-feed-next-attempt x)))))
 
+(in-theory (disable fn-feed-make-counted fn-feed-undelivered
+                    fn-feed-retry-dropped fn-feed-count-relationp
+                    fn-fct-retry-drop-bit fn-fct-retry-drops-model
+                    fn-fct-pending-model))
+
 (in-theory (disable (:d fn-feed-shapep) (:d fn-feed-make)
                     (:d fn-feed-peer) (:d fn-feed-limits-of)
                     (:d fn-feed-queue) (:d fn-feed-contact)
@@ -871,9 +938,57 @@
 
 (defun fn-feed-open (peer limits contact conn)
   (declare (xargs :guard t))
-  (fn-feed-make peer limits nil contact 0 conn 1))
+  (fn-feed-make-counted peer limits nil contact 0 conn 1 0 0))
 
 ; Field updates.  Each rebuilds the record, so nothing below opens it.
+(defun fn-feed-with-queue-counted (f queue undelivered retry-dropped)
+  (declare (xargs :guard t))
+  (fn-feed-make-counted
+   (fn-feed-peer f) (fn-feed-limits-of f) queue
+   (fn-feed-contact f) (fn-feed-backoff-until f)
+   (fn-feed-conn f) (fn-feed-next-attempt f) undelivered retry-dropped))
+
+(defun fn-feed-with-queue-preserving-counts (f queue)
+  (declare (xargs :guard t))
+  (fn-feed-with-queue-counted f queue (fn-feed-undelivered f)
+                                   (fn-feed-retry-dropped f)))
+
+(defthm fn-feed-fields-of-counted-queue-update
+  (and (equal (fn-feed-peer (fn-feed-with-queue-counted f q u d))
+              (fn-feed-peer f))
+       (equal (fn-feed-limits-of (fn-feed-with-queue-counted f q u d))
+              (fn-feed-limits-of f))
+       (equal (fn-feed-queue (fn-feed-with-queue-counted f q u d)) q)
+       (equal (fn-feed-contact (fn-feed-with-queue-counted f q u d))
+              (fn-feed-contact f))
+       (equal (fn-feed-backoff-until (fn-feed-with-queue-counted f q u d))
+              (fn-feed-backoff-until f))
+       (equal (fn-feed-conn (fn-feed-with-queue-counted f q u d))
+              (fn-feed-conn f))
+       (equal (fn-feed-next-attempt (fn-feed-with-queue-counted f q u d))
+              (fn-feed-next-attempt f))
+       (equal (fn-feed-undelivered (fn-feed-with-queue-counted f q u d)) u)
+       (equal (fn-feed-retry-dropped (fn-feed-with-queue-counted f q u d)) d)))
+
+(defthm fn-feed-fields-of-count-preserving-queue-update
+  (and (equal (fn-feed-peer (fn-feed-with-queue-preserving-counts f q))
+              (fn-feed-peer f))
+       (equal (fn-feed-limits-of (fn-feed-with-queue-preserving-counts f q))
+              (fn-feed-limits-of f))
+       (equal (fn-feed-queue (fn-feed-with-queue-preserving-counts f q)) q)
+       (equal (fn-feed-contact (fn-feed-with-queue-preserving-counts f q))
+              (fn-feed-contact f))
+       (equal (fn-feed-backoff-until (fn-feed-with-queue-preserving-counts f q))
+              (fn-feed-backoff-until f))
+       (equal (fn-feed-conn (fn-feed-with-queue-preserving-counts f q))
+              (fn-feed-conn f))
+       (equal (fn-feed-next-attempt (fn-feed-with-queue-preserving-counts f q))
+              (fn-feed-next-attempt f))
+       (equal (fn-feed-undelivered (fn-feed-with-queue-preserving-counts f q))
+              (fn-feed-undelivered f))
+       (equal (fn-feed-retry-dropped (fn-feed-with-queue-preserving-counts f q))
+              (fn-feed-retry-dropped f))))
+
 (defun fn-feed-with-queue (f queue)
   (declare (xargs :guard t))
   (fn-feed-make (fn-feed-peer f) (fn-feed-limits-of f) queue
@@ -882,15 +997,15 @@
 
 (defun fn-feed-with-conn (f conn)
   (declare (xargs :guard t))
-  (fn-feed-make (fn-feed-peer f) (fn-feed-limits-of f) (fn-feed-queue f)
+  (fn-feed-make-counted (fn-feed-peer f) (fn-feed-limits-of f) (fn-feed-queue f)
                 (fn-feed-contact f) (fn-feed-backoff-until f) conn
-                (fn-feed-next-attempt f)))
+                (fn-feed-next-attempt f) (fn-feed-undelivered f) (fn-feed-retry-dropped f)))
 
 (defun fn-feed-with-contact (f contact)
   (declare (xargs :guard t))
-  (fn-feed-make (fn-feed-peer f) (fn-feed-limits-of f) (fn-feed-queue f)
+  (fn-feed-make-counted (fn-feed-peer f) (fn-feed-limits-of f) (fn-feed-queue f)
                 contact (fn-feed-backoff-until f) (fn-feed-conn f)
-                (fn-feed-next-attempt f)))
+                (fn-feed-next-attempt f) (fn-feed-undelivered f) (fn-feed-retry-dropped f)))
 
 ; -----------------------------------------------------------------------------
 ; Transitions (specs/peering.md sec. 3.2)
@@ -908,9 +1023,10 @@
           (<= (fn-feed-max-queue (fn-feed-limits-of f))
               (len (fn-feed-queue f))))
       f
-      (fn-feed-with-queue
+      (fn-feed-with-queue-counted
        f (append (fn-feed-queue f)
-                 (list (fn-feed-entry msgid :queued 0 (nfix tick)))))))
+                 (list (fn-feed-entry msgid :queued 0 (nfix tick))))
+       (+ 1 (nfix (fn-feed-undelivered f))) (fn-feed-retry-dropped f))))
 
 ; Select: the head :queued entry, when the contact holds this observation, the
 ; connection is up, the backoff has elapsed and nothing is in flight.
@@ -987,11 +1103,11 @@
           (not (natp (fn-feed-conn f))))
       (mv f nil)
       (let ((attempt (fn-feed-next-attempt f)))
-        (mv (fn-feed-make (fn-feed-peer f) (fn-feed-limits-of f)
+        (mv (fn-feed-make-counted (fn-feed-peer f) (fn-feed-limits-of f)
                           (fn-feed-queue-set-state (fn-feed-queue f) msgid
                                                    (fn-feed-offered attempt))
                           (fn-feed-contact f) (fn-feed-backoff-until f)
-                          (fn-feed-conn f) (+ 1 attempt))
+                          (fn-feed-conn f) (+ 1 attempt) (fn-feed-undelivered f) (fn-feed-retry-dropped f))
             (list (list :command (fn-feed-conn f)
                         (fn-feed-offer-line
                          msgid
@@ -1007,7 +1123,7 @@
       (mv f nil)
       (let ((attempt (fn-feed-state-attempt
                       (fn-feed-state-of msgid (fn-feed-queue f)))))
-        (mv (fn-feed-with-queue
+        (mv (fn-feed-with-queue-preserving-counts
              f (fn-feed-queue-set-state (fn-feed-queue f) msgid
                                         (fn-feed-sent attempt)))
             (list (list :command (fn-feed-conn f)
@@ -1024,17 +1140,18 @@
           (not (fn-feed-state-inflightp
                 (fn-feed-state-of msgid (fn-feed-queue f)))))
       f
-      (fn-feed-with-queue
-       f (fn-feed-queue-retire (fn-feed-queue f) msgid))))
+      (fn-feed-with-queue-counted
+       f (fn-feed-queue-retire (fn-feed-queue f) msgid)
+       (nfix (- (nfix (fn-feed-undelivered f)) 1)) (fn-feed-retry-dropped f))))
 
 (defun fn-feed-with-backoff (f until)
   (declare (xargs :guard t))
-  (fn-feed-make (fn-feed-peer f) (fn-feed-limits-of f) (fn-feed-queue f)
+  (fn-feed-make-counted (fn-feed-peer f) (fn-feed-limits-of f) (fn-feed-queue f)
                 (fn-feed-contact f)
                 (if (<= (nfix (fn-feed-backoff-until f)) (nfix until))
                     (nfix until)
                     (nfix (fn-feed-backoff-until f)))
-                (fn-feed-conn f) (fn-feed-next-attempt f)))
+                (fn-feed-conn f) (fn-feed-next-attempt f) (fn-feed-undelivered f) (fn-feed-retry-dropped f)))
 
 ; 431/436: retry later.  attempts + 1, backoff-until pushed out exponentially,
 ; the entry queued again.  `fn-feed-with-backoff' never lowers the deadline,
@@ -1051,7 +1168,7 @@
              (delay (fn-feed-backoff-delay
                      (fn-feed-backoff-base (fn-feed-limits-of f)) attempts)))
         (fn-feed-with-backoff
-         (fn-feed-with-queue
+         (fn-feed-with-queue-preserving-counts
           f (fn-feed-queue-requeue (fn-feed-queue f) msgid now))
          (+ now delay)))))
 
@@ -1067,7 +1184,7 @@
                      (fn-feed-backoff-base (fn-feed-limits-of f)) 0)))
         (fn-feed-with-backoff
          (fn-feed-with-conn
-          (fn-feed-with-queue
+          (fn-feed-with-queue-preserving-counts
            f (fn-feed-queue-requeue-inflight (fn-feed-queue f) now))
           nil)
          (+ now delay)))))
@@ -1081,9 +1198,12 @@
           (not (consp (fn-feed-find msgid (fn-feed-queue f))))
           (fn-feed-droppedp (fn-feed-state-of msgid (fn-feed-queue f))))
       f
-      (fn-feed-with-queue
+      (fn-feed-with-queue-counted
        f (fn-feed-queue-set-state (fn-feed-queue f) msgid
-                                  (fn-feed-dropped reason)))))
+                                  (fn-feed-dropped reason))
+       (fn-feed-undelivered f)
+       (+ (nfix (fn-feed-retry-dropped f))
+          (fn-fct-retry-drop-bit (fn-feed-dropped reason))))))
 
 (defun fn-feed-retry-exhaustedp (f msgid)
   (declare (xargs :guard t))
@@ -1143,8 +1263,8 @@
 ; The feed with no back-off deadline.
 (defun fn-feed-without-backoff (f)
   (declare (xargs :guard t))
-  (fn-feed-make (fn-feed-peer f) (fn-feed-limits-of f) (fn-feed-queue f)
-                (fn-feed-contact f) 0 (fn-feed-conn f) (fn-feed-next-attempt f)))
+  (fn-feed-make-counted (fn-feed-peer f) (fn-feed-limits-of f) (fn-feed-queue f)
+                (fn-feed-contact f) 0 (fn-feed-conn f) (fn-feed-next-attempt f) (fn-feed-undelivered f) (fn-feed-retry-dropped f)))
 
 ; Restart: on open, before any offer.  Every in-flight entry is fenced back to
 ; :queued with its attempt RETIRED, and the connection is forgotten.  The next
@@ -1164,7 +1284,7 @@
       f
       (fn-feed-without-backoff
        (fn-feed-with-conn
-        (fn-feed-with-queue f (fn-feed-queue-settle (fn-feed-queue f)))
+        (fn-feed-with-queue-preserving-counts f (fn-feed-queue-settle (fn-feed-queue f)))
         nil))))
 
 (defun fn-feed-settle (f)
@@ -1172,7 +1292,7 @@
   (if (not (fn-feedp f))
       f
       (fn-feed-with-conn
-       (fn-feed-with-queue f (fn-feed-queue-settle (fn-feed-queue f)))
+       (fn-feed-with-queue-preserving-counts f (fn-feed-queue-settle (fn-feed-queue f)))
        nil)))
 
 (defun fn-feed-inflightp (msgid f)
@@ -1441,7 +1561,7 @@
                                       (fn-feed-queue f))
                                      0)))
                     f
-                    (fn-feed-make
+                    (fn-feed-make-counted
                      (fn-feed-peer f) (fn-feed-limits-of f)
                      (fn-feed-queue-set-state (fn-feed-queue f) msgid
                                               (fn-feed-offered attempt))
@@ -1449,7 +1569,8 @@
                      (fn-feed-conn f)
                      (if (< attempt (fn-feed-next-attempt f))
                          (fn-feed-next-attempt f)
-                         (+ 1 attempt))))))
+                         (+ 1 attempt))
+                     (fn-feed-undelivered f) (fn-feed-retry-dropped f)))))
              ((equal kind :feed-sent)
               (let ((attempt (fn-feed-record-nat 2 values)))
                 (if (not (and (fn-feed-offeredp
@@ -1459,7 +1580,7 @@
                                                         (fn-feed-queue f)))
                                      attempt)))
                     f
-                    (fn-feed-with-queue
+                    (fn-feed-with-queue-preserving-counts
                      f (fn-feed-queue-set-state (fn-feed-queue f) msgid
                                                 (fn-feed-sent attempt))))))
              ((equal kind :feed-outcome)
@@ -1593,7 +1714,8 @@
 (deftheory fn-feed-vocabulary
   '((:d fn-feed-entryp) (:d fn-feedp) (:d fn-feed-limitsp)
     (:d fn-feed-namep)
-    (:d fn-feed-open) (:d fn-feed-with-queue) (:d fn-feed-with-conn)
+    (:d fn-feed-open) (:d fn-feed-with-queue-counted)
+    (:d fn-feed-with-queue-preserving-counts) (:d fn-feed-with-queue) (:d fn-feed-with-conn)
     (:d fn-feed-with-contact) (:d fn-feed-with-backoff)
     (:d fn-feed-enqueue) (:d fn-feed-selection) (:d fn-feed-offer)
     (:d fn-feed-send) (:d fn-feed-done) (:d fn-feed-back-off)

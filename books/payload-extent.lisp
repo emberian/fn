@@ -296,7 +296,7 @@
                         (fn-record-groups w) (fn-record-obligation-id w)
                         (fn-record-content-subject w) (fn-record-release-evidence w)
                         (fn-record-charge w) (fn-record-stamp w)
-                        facts context nil nil)
+                        facts context nil nil (fn-row-binding w))
           fn-arena))))
 
 (local (in-theory (disable fn-arx-extent-of fn-arx-record-suffix-len)))

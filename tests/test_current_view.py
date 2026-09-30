@@ -77,6 +77,19 @@ class TestedCoordinateTests(unittest.TestCase):
         self.assertIn("not a shared qualification", detail)
 
 
+class PendingBridgeTests(unittest.TestCase):
+    def test_matching_old_manifest_cannot_qualify_new_caller(self):
+        self.assertEqual(
+            current_view.pending_bridge_verdicts(
+                "actual wrapper-to-core bridge missing",
+                "yes: exact-certified-manifest", "yes: matching-image", "yes: matching-deployment"),
+            ("no: caller bridge pending",) * 3)
+
+    def test_empty_pending_reason_is_rejected(self):
+        with self.assertRaises(current_view.ViewError):
+            current_view.pending_bridge_verdicts("", "yes", "yes", "yes")
+
+
 class ViewTests(unittest.TestCase):
     def test_committed_view_is_current(self) -> None:
         committed = (current_view.ROOT / current_view.OUTPUT).read_text(encoding="utf-8")

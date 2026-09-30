@@ -1,8 +1,10 @@
-; E2 v1 finite consumer-position decision kernel.  No host calls this book yet.
-; A :write result is a proposed Store event, not durable acceptance.  The
-; authoritative Store record/replay/finish join remains open.
+; E2 v1 finite consumer-position decision kernel. The local owner calls it
+; through consumer-owner-local and the Store projection. A :write is a
+; proposal, never durable acceptance. Remote metadata operations are logical
+; components only until their durable codec and authenticated host path land.
 (in-package "ACL2")
 (include-book "cbor-invariants")
+(include-book "consumer-position-fields")
 (include-book "rev-onto") ; the loop twins' step
 
 (defconst *fn-cp-max-id* 64)
@@ -22,17 +24,12 @@
   (and (consp x) (fn-cbor-at-mostp x *fn-cp-max-id*)
        (fn-cbor-octet-listp x)))
 
-(defun fn-cp-uintp (x)
-  (and (natp x) (<= x *fn-cbor-max-uint*)))
+
 
 ; Total fixed-field access.  It never walks the Store or a retained article;
 ; callers use only small record indices, and no whole-record recognizer runs
 ; on a served decision path.
-(defun fn-cp-nth (n x)
-  (declare (xargs :guard (natp n) :measure (nfix n)))
-  (if (zp n)
-      (if (consp x) (car x) nil)
-    (fn-cp-nth (1- n) (if (consp x) (cdr x) nil))))
+
 
 ; A decoded cursor: (:cursor history incarnation consumer principal query
 ;                    query-version view-version registration-epoch position).
@@ -134,7 +131,8 @@
             (if (fn-cp-cursorp cursor) (list :ok cursor)
               (list :refused :grammar))))))))
 
-; Entry: (:entry consumer principal query qver view epoch ack).
+; Local entry: (:entry consumer principal query qver view epoch ack).
+; Remote entry appends immutable GROUPS and ACCOUNT-INCARNATION (fields8/9).
 (defun fn-cp-entry (consumer principal query qver view epoch ack)
   (list :entry consumer principal query qver view epoch ack))
 
@@ -170,15 +168,179 @@
                               (theory 'minimal-theory)))))
 
 ; State: (:consumer-state history incarnation committed-frontier next-epoch
-;         entries).  next-epoch is one scalar, so unregister does not need an
+;         entries authority). next-epoch is one scalar, so unregister does not need an
 ; unbounded tombstone table.  Epoch exhaustion refuses a new registration.
+; CP7 preserves Store14 and its raw consumer slot. Authority is durable
+; metadata, never the snapshot lifetime lease or a process-local counter.
+; Account rows are (:account login creation activep adopted-descriptor).
+; A tombstone retains its creation identity; recreation allocates a new one.
+(defun fn-cp-authority-find (login rows)
+  (if (consp rows)
+      (if (equal login (fn-cp-nth 1 (car rows))) (car rows)
+        (fn-cp-authority-find login (cdr rows)))
+    nil))
+
+ ; Creation identity is exact octets, not a separately minted counter:
+; authority namespace40 = admitted CPincarnation32 + committed begin txid8;
+; creation token48 = captured namespace40 + committed new-account stage txid8.
+; Durable history is independently bound by the cursor/request. Nonreuse is
+; an actual lifecycle condition; random bytes alone are not its proof.
+(defun fn-cp-authority-namespacep (x)
+  (declare (xargs :guard t))
+  (and (fn-cbor-octet-listp x) (equal (len x) 40)))
+
+(defun fn-cp-authority-namespace (incarnation begin-txid)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (and (fn-cbor-octet-listp incarnation) (equal (len incarnation) 32)
+           (fn-cp-uintp begin-txid))
+      (append incarnation (fn-cbor-u64-bytes begin-txid))
+    nil))
+
+(defun fn-cp-creation-coordinate (token)
+  (declare (xargs :guard t))
+  (ec-call (fn-cbor-u64-from (ec-call (nthcdr 40 token)))))
+
+(defun fn-cp-account-creation (namespace stage-txid)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (and (fn-cp-authority-namespacep namespace) (fn-cp-uintp stage-txid))
+      (append namespace (fn-cbor-u64-bytes stage-txid))
+    nil))
+
+(defun fn-cp-account-creationp (token watermark)
+  (declare (xargs :guard t))
+  (and (fn-cbor-octet-listp token) (equal (len token) 48)
+       (posp (fn-cp-creation-coordinate token))
+       (< (fn-cp-creation-coordinate token) (nfix watermark))))
+
+(defun fn-cp-authority-rowp (row watermark)
+  (and (true-listp row) (equal (len row) 5)
+       (eq (car row) :account)
+       (consp (fn-cp-nth 1 row)) (fn-cbor-octet-listp (fn-cp-nth 1 row))
+       (fn-cp-account-creationp (fn-cp-nth 2 row) watermark)
+       (booleanp (fn-cp-nth 3 row))
+       (if (fn-cp-nth 3 row)
+           (and (consp (fn-cp-nth 4 row))
+                (fn-cbor-octet-listp (fn-cp-nth 4 row)))
+         (null (fn-cp-nth 4 row)))))
+
+(defun fn-cp-authority-rowsp (rows next)
+  (if (consp rows)
+      (and (fn-cp-authority-rowp (car rows) next)
+           (not (fn-cp-authority-find (fn-cp-nth 1 (car rows)) (cdr rows)))
+           (fn-cp-authority-rowsp (cdr rows) next))
+    (null rows)))
+
+ ; The explicit preparation descriptor stays inside pending slot5. Its
+; borrowed old cursor establishes complete old-account/tombstone coverage.
+; Durable preparation ticks move one row from reverse to forward before
+; the final scalar fence. The trie root is opaque here: its exact row and
+; funded representation relation belongs to the account producer boundary.
+(defun fn-cp-account-preparationp (p watermark)
+  (and (true-listp p) (equal (len p) 8)
+       (eq (car p) :account-preparation)
+       (member-eq (fn-cp-nth 1 p) '(:merge :reverse :ready))
+       (fn-cp-authority-rowsp (fn-cp-nth 2 p) watermark)
+       (fn-cp-authority-rowsp (fn-cp-nth 3 p) watermark)
+       (fn-cp-authority-rowsp (fn-cp-nth 4 p) watermark)
+       (fn-cp-authority-namespacep (fn-cp-nth 6 p))
+       (equal (fn-cp-nth 7 p) watermark)
+       (case (fn-cp-nth 1 p)
+         (:merge (null (fn-cp-nth 4 p)))
+         (:reverse (null (fn-cp-nth 2 p)))
+         (:ready (and (null (fn-cp-nth 2 p)) (null (fn-cp-nth 3 p))))
+         (otherwise nil))))
+
+(defun fn-cp-adoptionp (pending)
+  (and (true-listp pending) (equal (len pending) 9)
+       (eq (car pending) :adoption)
+       (fn-cp-idp (fn-cp-nth 1 pending))
+       (fn-cp-uintp (fn-cp-nth 2 pending))
+       (fn-cp-uintp (fn-cp-nth 3 pending))
+       (posp (fn-cp-nth 4 pending)) (fn-cp-uintp (fn-cp-nth 4 pending))
+       (fn-cp-account-preparationp (fn-cp-nth 5 pending) (fn-cp-nth 4 pending))
+       (equal (+ (len (fn-cp-nth 3 (fn-cp-nth 5 pending)))
+                 (len (fn-cp-nth 4 (fn-cp-nth 5 pending))))
+              (fn-cp-nth 3 pending))
+       (or (null (fn-cp-nth 6 pending))
+           (and (consp (fn-cp-nth 6 pending))
+                (fn-cbor-octet-listp (fn-cp-nth 6 pending))))
+       (fn-cbor-octet-listp (fn-cp-nth 7 pending))
+       (equal (len (fn-cp-nth 7 pending)) 32)
+       (booleanp (fn-cp-nth 8 pending))
+       (equal (fn-cp-nth 8 pending)
+              (eq (fn-cp-nth 1 (fn-cp-nth 5 pending)) :ready))))
+
+; Authority: (:authority revision creation-watermark authority-namespace accounts
+;             pending). Pending account rows and provisional creation IDs
+; are never read as current authority. Recognizers here are proof/recovery
+; predicates; a final fence consumes established count/ready/commitment
+; carries and must not execute this full-table recognizer.
+(defun fn-cp-authorityp (authority)
+  (and (true-listp authority) (equal (len authority) 6)
+       (eq (car authority) :authority)
+       (fn-cp-uintp (fn-cp-nth 1 authority))
+       (posp (fn-cp-nth 2 authority))
+       (fn-cp-uintp (fn-cp-nth 2 authority))
+       (or (fn-cp-authority-namespacep (fn-cp-nth 3 authority))
+           (and (null (fn-cp-nth 3 authority))
+                (null (fn-cp-nth 4 authority))))
+       (fn-cp-authority-rowsp (fn-cp-nth 4 authority)
+                              (fn-cp-nth 2 authority))
+       (or (null (fn-cp-nth 5 authority))
+           (and (fn-cp-adoptionp (fn-cp-nth 5 authority))
+                (equal (fn-cp-nth 2 (fn-cp-nth 5 authority))
+                       (fn-cp-nth 1 authority))
+                (<= (fn-cp-nth 2 authority)
+                    (fn-cp-nth 4 (fn-cp-nth 5 authority)))))))
+
+(defun fn-cp-state-carry (history incarnation frontier next-epoch entries authority)
+  (list :consumer-state history incarnation frontier next-epoch entries authority))
+
 (defun fn-cp-state (history incarnation frontier next-epoch entries)
-  (list :consumer-state history incarnation frontier next-epoch entries))
+  (fn-cp-state-carry history incarnation frontier next-epoch entries
+                     '(:authority 0 1 nil nil nil)))
+
+; A remote query is stored with the entry, separately from its opaque ID.
+; The request/profile boundary validates name grammar and resource funding.
+; This logical recognizer is used at recovery/proof boundaries, not on poll.
+(defun fn-cp-query-groupsp (groups)
+  (if (consp groups)
+      (and (consp (car groups))
+           (fn-cbor-octet-listp (car groups))
+           (if (consp (cdr groups))
+               (and (lexorder (car groups) (cadr groups))
+                    (not (equal (car groups) (cadr groups)))
+                    (fn-cp-query-groupsp (cdr groups)))
+             (null (cdr groups))))
+    nil))
+
+(defun fn-cp-remote-metadatap (groups account)
+  (and (fn-cp-query-groupsp groups) (fn-cp-idp account)))
+
+(defun fn-cp-event-entry (event)
+  (let ((entry (fn-cp-entry (fn-cp-nth 1 event) (fn-cp-nth 2 event)
+                             (fn-cp-nth 3 event) (fn-cp-nth 4 event)
+                             (fn-cp-nth 5 event) (fn-cp-nth 6 event) 0)))
+    (if (member-eq (fn-cp-nth 0 event) '(:remote-register :remote-rebase))
+        (append entry (list (fn-cp-nth 7 event) (fn-cp-nth 8 event)))
+      entry)))
+
+(defun fn-cp-entry-with-ack (entry ack)
+  (let ((base (fn-cp-entry (fn-cp-nth 1 entry) (fn-cp-nth 2 entry)
+                            (fn-cp-nth 3 entry) (fn-cp-nth 4 entry)
+                            (fn-cp-nth 5 entry) (fn-cp-nth 6 entry) ack)))
+    (if (equal (len entry) 10)
+        (append base (list (fn-cp-nth 8 entry) (fn-cp-nth 9 entry)))
+      base)))
 
 ; Whole-state recognition is for initialization/reopen and proof boundaries.
 ; None of the served decision functions below calls it per request.
 (defun fn-cp-entryp (entry frontier next-epoch)
-  (and (true-listp entry) (equal (len entry) 8)
+  (and (true-listp entry)
+       (or (equal (len entry) 8)
+           (and (equal (len entry) 10)
+                (fn-cp-remote-metadatap (fn-cp-nth 8 entry)
+                                       (fn-cp-nth 9 entry))))
        (equal (fn-cp-nth 0 entry) :entry)
        (fn-cp-idp (fn-cp-nth 1 entry))
        (fn-cp-idp (fn-cp-nth 2 entry))
@@ -198,7 +360,7 @@
     (null entries)))
 
 (defun fn-cp-statep (s)
-  (and (true-listp s) (equal (len s) 6)
+  (and (true-listp s) (equal (len s) 7)
        (equal (fn-cp-nth 0 s) :consumer-state)
        (fn-cp-idp (fn-cp-nth 1 s))
        (fn-cp-idp (fn-cp-nth 2 s))
@@ -206,7 +368,8 @@
        (posp (fn-cp-nth 4 s))
        (fn-cp-uintp (fn-cp-nth 4 s))
        (fn-cp-entriesp (fn-cp-nth 5 s)
-                       (fn-cp-nth 3 s) (fn-cp-nth 4 s))))
+                       (fn-cp-nth 3 s) (fn-cp-nth 4 s))
+       (fn-cp-authorityp (fn-cp-nth 6 s))))
 
 (defun fn-cp-initial (history incarnation frontier)
   (fn-cp-state history incarnation frontier 1 nil))
@@ -297,6 +460,35 @@
           (t (list :write (list :rebase consumer caller query qver view
                                 (fn-cp-nth 4 s)))))))
 
+; Remote proposals carry the definition atomically with cursor scope.
+(defun fn-cp-remote-register (s max caller consumer query qver view groups account)
+  (let* ((old (fn-cp-find consumer (fn-cp-nth 5 s)))
+         (d (fn-cp-register-within s max caller consumer query qver view)))
+    (cond ((not (fn-cp-remote-metadatap groups account)) (list :refused :query))
+          ((and old (or (not (equal (len old) 10))
+                        (not (equal groups (fn-cp-nth 8 old)))
+                        (not (equal account (fn-cp-nth 9 old)))))
+           (list :refused :rebase-required))
+          ((eq (fn-cp-nth 0 d) :write)
+           (list :write (list :remote-register consumer caller query qver view
+                              (fn-cp-nth 4 s) groups account)))
+          (t d))))
+
+(defun fn-cp-remote-rebase (s caller consumer query qver view groups account)
+  (let* ((old (fn-cp-find consumer (fn-cp-nth 5 s)))
+         (d (fn-cp-rebase s caller consumer query qver view)))
+    (cond ((not (fn-cp-remote-metadatap groups account)) (list :refused :query))
+          ((eq (fn-cp-nth 0 d) :refused) d)
+          ((and (eq (fn-cp-nth 0 d) :no-op) (equal (len old) 10)
+                (equal groups (fn-cp-nth 8 old))
+                (equal account (fn-cp-nth 9 old))) d)
+          ((or (not (posp (fn-cp-nth 4 s)))
+               (not (fn-cp-uintp (fn-cp-nth 4 s)))
+               (equal (fn-cp-nth 4 s) *fn-cbor-max-uint*))
+           (list :refused :epoch-exhausted))
+          (t (list :write (list :remote-rebase consumer caller query qver view
+                                (fn-cp-nth 4 s) groups account))))))
+
 (defun fn-cp-unregister (s caller consumer)
   (let ((entry (fn-cp-find consumer (fn-cp-nth 5 s))))
     (if (and entry (equal caller (fn-cp-nth 2 entry)))
@@ -312,7 +504,10 @@
          (entries (fn-cp-nth 5 s))
          (old (fn-cp-find consumer entries)))
     (cond
-     ((and (eq kind :register) (equal (len event) 7)
+     ((and (or (and (eq kind :register) (equal (len event) 7))
+                (and (eq kind :remote-register) (equal (len event) 9)
+                     (fn-cp-remote-metadatap (fn-cp-nth 7 event)
+                                            (fn-cp-nth 8 event))))
            (not old)
            (equal (fn-cp-nth 6 event) (fn-cp-nth 4 s))
            (posp (fn-cp-nth 6 event))
@@ -321,13 +516,14 @@
            (fn-cp-idp consumer) (fn-cp-idp (fn-cp-nth 2 event))
            (fn-cp-idp (fn-cp-nth 3 event))
            (fn-cp-uintp (fn-cp-nth 4 event)) (fn-cp-uintp (fn-cp-nth 5 event)))
-      (fn-cp-state (fn-cp-nth 1 s) (fn-cp-nth 2 s) (fn-cp-nth 3 s)
+      (fn-cp-state-carry (fn-cp-nth 1 s) (fn-cp-nth 2 s) (fn-cp-nth 3 s)
                    (1+ (fn-cp-nth 4 s))
-                   (cons (fn-cp-entry consumer (fn-cp-nth 2 event)
-                                      (fn-cp-nth 3 event) (fn-cp-nth 4 event)
-                                      (fn-cp-nth 5 event) (fn-cp-nth 6 event) 0)
-                         entries)))
-     ((and (eq kind :rebase) (equal (len event) 7)
+                   (cons (fn-cp-event-entry event)
+                         entries) (fn-cp-nth 6 s)))
+     ((and (or (and (eq kind :rebase) (equal (len event) 7))
+                (and (eq kind :remote-rebase) (equal (len event) 9)
+                     (fn-cp-remote-metadatap (fn-cp-nth 7 event)
+                                            (fn-cp-nth 8 event))))
            old (equal (fn-cp-nth 2 event) (fn-cp-nth 2 old))
            (equal (fn-cp-nth 6 event) (fn-cp-nth 4 s))
            (posp (fn-cp-nth 6 event))
@@ -335,12 +531,10 @@
            (< (fn-cp-nth 6 event) *fn-cbor-max-uint*)
            (fn-cp-idp (fn-cp-nth 3 event))
            (fn-cp-uintp (fn-cp-nth 4 event)) (fn-cp-uintp (fn-cp-nth 5 event)))
-      (fn-cp-state (fn-cp-nth 1 s) (fn-cp-nth 2 s) (fn-cp-nth 3 s)
+      (fn-cp-state-carry (fn-cp-nth 1 s) (fn-cp-nth 2 s) (fn-cp-nth 3 s)
                    (1+ (fn-cp-nth 4 s))
-                   (cons (fn-cp-entry consumer (fn-cp-nth 2 old)
-                                      (fn-cp-nth 3 event) (fn-cp-nth 4 event)
-                                      (fn-cp-nth 5 event) (fn-cp-nth 6 event) 0)
-                         (fn-cp-remove consumer entries))))
+                   (cons (fn-cp-event-entry event)
+                         (fn-cp-remove consumer entries)) (fn-cp-nth 6 s)))
      ((and (eq kind :ack) (equal (len event) 2)
            (fn-cp-scope-matchp s (fn-cp-nth 4 (fn-cp-nth 1 event))
                                 (fn-cp-nth 6 (fn-cp-nth 1 event))
@@ -352,16 +546,14 @@
                (fn-cp-nth 9 (fn-cp-nth 1 event))))
       (let* ((cursor (fn-cp-nth 1 event))
              (entry (fn-cp-find (fn-cp-nth 3 cursor) entries)))
-        (fn-cp-state (fn-cp-nth 1 s) (fn-cp-nth 2 s) (fn-cp-nth 3 s) (fn-cp-nth 4 s)
-                     (cons (fn-cp-entry (fn-cp-nth 3 cursor) (fn-cp-nth 2 entry)
-                                        (fn-cp-nth 3 entry) (fn-cp-nth 4 entry)
-                                        (fn-cp-nth 5 entry) (fn-cp-nth 6 entry)
-                                        (fn-cp-nth 9 cursor))
-                           (fn-cp-remove (fn-cp-nth 3 cursor) entries)))))
+        (fn-cp-state-carry (fn-cp-nth 1 s) (fn-cp-nth 2 s) (fn-cp-nth 3 s) (fn-cp-nth 4 s)
+                     (cons (fn-cp-entry-with-ack entry (fn-cp-nth 9 cursor))
+                           (fn-cp-remove (fn-cp-nth 3 cursor) entries))
+                     (fn-cp-nth 6 s))))
      ((and (eq kind :unregister) (equal (len event) 3)
            old (equal (fn-cp-nth 2 event) (fn-cp-nth 6 old)))
-      (fn-cp-state (fn-cp-nth 1 s) (fn-cp-nth 2 s) (fn-cp-nth 3 s) (fn-cp-nth 4 s)
-                   (fn-cp-remove consumer entries)))
+      (fn-cp-state-carry (fn-cp-nth 1 s) (fn-cp-nth 2 s) (fn-cp-nth 3 s) (fn-cp-nth 4 s)
+                   (fn-cp-remove consumer entries) (fn-cp-nth 6 s)))
      (t s))))
 
 ; A finite replay of already committed consumer events.  Store replay will
@@ -393,7 +585,9 @@
   :rule-classes :forward-chaining)
 
 (verify-guards fn-cp-idp)
-(verify-guards fn-cp-uintp)
+
+(verify-guards fn-cp-authority-namespace)
+(verify-guards fn-cp-account-creation)
 (verify-guards fn-cp-cursor)
 (verify-guards fn-cp-cursorp)
 (verify-guards fn-cp-id-bytes)
@@ -413,7 +607,18 @@
                               '(fn-cp-remove fn-ag-rev-onto fn-cp-remove-loop-is-rev-onto car-cons cdr-cons)
                               (union-theories (theory 'minimal-theory)
                                               (executable-counterpart-theory :here))))))
+(verify-guards fn-cp-authority-find)
+(verify-guards fn-cp-authority-rowp)
+(verify-guards fn-cp-authority-rowsp)
+(verify-guards fn-cp-account-preparationp)
+(verify-guards fn-cp-adoptionp)
+(verify-guards fn-cp-authorityp)
+(verify-guards fn-cp-state-carry)
 (verify-guards fn-cp-state)
+(verify-guards fn-cp-query-groupsp)
+(verify-guards fn-cp-remote-metadatap)
+(verify-guards fn-cp-event-entry)
+(verify-guards fn-cp-entry-with-ack)
 (verify-guards fn-cp-entryp)
 (verify-guards fn-cp-entriesp)
 (verify-guards fn-cp-statep)
@@ -424,6 +629,8 @@
 (verify-guards fn-cp-register-within)
 (verify-guards fn-cp-ack)
 (verify-guards fn-cp-rebase)
+(verify-guards fn-cp-remote-register)
+(verify-guards fn-cp-remote-rebase)
 (verify-guards fn-cp-unregister)
 (verify-guards fn-cp-apply)
 (verify-guards fn-cp-apply-trace)
@@ -467,7 +674,7 @@
 ; Only a register grows the table, and by one entry.
 (defthm fn-cp-apply-grows-only-by-a-register
   (<= (len (fn-cp-nth 5 (fn-cp-apply s event)))
-      (if (eq (fn-cp-nth 0 event) :register)
+      (if (member-eq (fn-cp-nth 0 event) '(:register :remote-register))
           (1+ (len (fn-cp-nth 5 s)))
         (len (fn-cp-nth 5 s))))
   :rule-classes nil)
@@ -495,20 +702,24 @@
 
 ; KEYSTONE (the table stays within the operator's bound).  From a table of
 ; at most MAX entries, applying the write the served decision proposed --
-; or any event that is not a register -- leaves at most MAX.  The profile
+; or any event outside both registration kinds -- leaves at most MAX.  The profile
 ; is the store's birth profile (D34), so the bound holds across reopen.
 (defthm fn-cp-apply-preserves-consumer-capacity
   (implies (and (<= (len (fn-cp-nth 5 s)) (nfix max))
-                (or (not (eq (fn-cp-nth 0 event) :register))
+                (or (not (member-eq (fn-cp-nth 0 event) '(:register :remote-register)))
                     (equal (fn-cp-register-within s max caller consumer
                                                   query qver view)
+                           (list :write event))
+                    (equal (fn-cp-remote-register s max caller consumer
+                                                 query qver view groups account)
                            (list :write event))))
            (<= (len (fn-cp-nth 5 (fn-cp-apply s event))) (nfix max)))
   :hints (("Goal" :use ((:instance fn-cp-apply-grows-only-by-a-register)
                         (:instance
                          fn-cp-register-within-refuses-exactly-past-the-operator-bound))
-           :in-theory (disable fn-cp-apply fn-cp-register-within
-                               fn-cp-register)))
+           :in-theory (e/d (fn-cp-remote-register)
+                           (fn-cp-apply fn-cp-register-within
+                            fn-cp-register fn-cp-remote-metadatap))))
   :rule-classes nil)
 
 (defthm fn-cp-find-remove-absent-id
@@ -600,12 +811,31 @@
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (enable fn-cp-scope-matchp))))
 
+(defthm fn-cp-find-remote-metadata
+  (implies (and (fn-cp-entriesp entries frontier next-epoch)
+                (equal (len (fn-cp-find consumer entries)) 10))
+           (fn-cp-remote-metadatap (fn-cp-nth 8 (fn-cp-find consumer entries))
+                                  (fn-cp-nth 9 (fn-cp-find consumer entries))))
+  :hints (("Goal" :induct (fn-cp-find consumer entries)
+           :in-theory (disable fn-cp-remote-metadatap))))
+
 ; This is the invariant over arbitrary committed consumer event traces.
 ; It says nothing about which events a physical Store has persisted.
+(defthm fn-cp-progress-preserves-authority
+  (equal (fn-cp-nth 6 (fn-cp-apply s event)) (fn-cp-nth 6 s))
+  :hints (("Goal" :in-theory
+           (e/d (fn-cp-apply fn-cp-state-carry fn-cp-nth)
+                (fn-cp-idp fn-cp-remote-metadatap fn-cp-scope-matchp
+                 fn-cp-find fn-cp-entry-with-ack fn-cp-event-entry
+                 fn-cp-remove)))))
+
 (defthm fn-cp-apply-preserves-statep
   (implies (fn-cp-statep s)
            (fn-cp-statep (fn-cp-apply s event)))
-  :hints (("Goal" :in-theory (e/d (fn-cp-apply) (fn-cp-idp)))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-cp-apply)
+                (fn-cp-idp fn-cp-remote-metadatap fn-cp-authorityp
+                 fn-cp-adoptionp fn-cp-authority-rowsp)))))
 
 (defthm fn-cp-apply-trace-preserves-statep
   (implies (fn-cp-statep s)
@@ -833,9 +1063,14 @@
 ; The codec and decision internals are opened only by a caller's focused
 ; proof.  Importing this leaf must not expand its parser in every later goal.
 (in-theory (disable (:d fn-cp-cursor-encode) (:d fn-cp-cursor-decode)
-                    (:d fn-cp-register) (:d fn-cp-ack)
+                    (:d fn-cp-register) (:d fn-cp-remote-register)
+                    (:d fn-cp-remote-rebase) (:d fn-cp-ack)
                     (:d fn-cp-rebase) (:d fn-cp-unregister)
-                    (:d fn-cp-apply) (:d fn-cp-scope-matchp)))
+                    (:d fn-cp-apply) (:d fn-cp-scope-matchp)
+                    (:d fn-cp-authority-find) (:d fn-cp-authority-rowp)
+                    (:d fn-cp-authority-rowsp) (:d fn-cp-adoptionp)
+                    (:d fn-cp-authorityp)
+                    (:d fn-cp-state-carry)))
 
 ;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
 ;; Each is tried in includers' proofs and pays for its frames in

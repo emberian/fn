@@ -462,6 +462,8 @@
 (defun fn-heap-operation-list-figure-octets (action profile core nursery observed)
   (declare (xargs :guard t))
   (+ (fn-heap-core-dynamic core) (nfix nursery)
+     ; The old/new keyed carry also coexists with offline list processing.
+     (fn-heap-obligation-view-reserve (fn-bs-profile-max-transactions profile))
      (* 2 (fn-heap-operation-list-octets action profile observed))
      (fn-heap-buffer-octets profile)))
 
@@ -581,6 +583,7 @@
                            (<= used (fn-heap-observed-octets observed)))
                   (natp nursery))
              (and (<= (+ (fn-heap-core-dynamic core) nursery
+                (fn-heap-obligation-view-reserve (fn-bs-profile-max-transactions profile))
                          (* 2 *fn-heap-octets-per-list-octet*
                             (+ (* (fn-heap-operation-history-copies action) used)
                                (fn-bs-profile-max-record-octets profile)
@@ -703,13 +706,16 @@
 ;; (269.7 MiB); THE SWITCH (PRF-1037) adds the keyed Message-ID index's
 ;; 64 octets a record, twice for the collector, over the profile's 16,384
 ;; records: 284,861,450 octets (271.7 MiB), the value ACL2 evaluates.  The run of an empty small store
+;; W9 reserves another546,341,504 octets for the two collector-backed views,
+;; integer representation and bounded delta allocation (actual support/bit
+;; invariant and matching measurement remain PRF-1052 open). The empty run
 ;; is accepted on every machine
 ;; of at least 1,536 MiB (OpenBSD's default login class) for any image up to
 ;; 512 MiB of dynamic content, and on 2,048 MiB too (the friend's machine
 ;; has about 2 GB).
 (defthm fn-heap-small-run-base-of-an-empty-store
   (equal (fn-heap-store-base-octets *fn-heap-small-profile* core '(0 . 0))
-         (+ (fn-heap-core-dynamic core) 284861450))
+         (+ (fn-heap-core-dynamic core) 831202954))
   :hints (("Goal" :in-theory (enable fn-heap-store-base-octets fn-heap-open-octets-bound
                                      fn-heap-open-records-bound))))
 

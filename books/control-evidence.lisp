@@ -51,6 +51,7 @@
 ; Prefix `fn-cev-' (docs/prefixes.md).
 (in-package "ACL2")
 (include-book "control-evidence-grammar")
+(include-book "obligation-subject-grammar")
 (include-book "native-live-status")
 (include-book "native-control-reason")
 (include-book "control-visible")
@@ -622,7 +623,7 @@
 ; (:inspect-group . GROUP) (books/owner-inspect-group.lisp fn-oig-kindp).
 (defun fn-cev-report-kindp (kind)
   (declare (xargs :guard t))
-  (or (fn-cevg-kindp kind) (fn-oig-kindp kind)))
+  (or (fn-cevg-kindp kind) (fn-oig-kindp kind) (fn-oqg-kindp kind)))
 
 (defun fn-cev-kind-code (kind)
   (declare (xargs :guard t))
@@ -632,6 +633,7 @@
         ((and (consp kind) (equal (car kind) :moderation-list)) 10)
         ; Row S3d: `store inspect --group GROUP' (code 11).
         ((and (consp kind) (equal (car kind) :inspect-group)) 11)
+        ((fn-oqg-kindp kind) 12)
         (t 0)))
 
 (defun fn-cev-kind-argument (kind)
@@ -650,7 +652,10 @@
 
 (defun fn-cev-code-kind (code argument)
   (declare (xargs :guard t))
-  (cond ((and (equal code 8) (null argument)) :control-log)
+  (cond ((and (equal code 12) (fn-cbor-octet-listp argument))
+         (let ((kind (cons :obligation-subject (fn-record-octets-string argument))))
+           (if (fn-oqg-kindp kind) kind nil)))
+        ((and (equal code 8) (null argument)) :control-log)
         ((and (equal code 9) (fn-cbor-octet-listp argument))
          (let ((kind (cons :control-evidence (fn-record-octets-string argument))))
            (if (fn-cevg-kindp kind) kind nil)))
@@ -834,6 +839,19 @@
                 (equal (fn-record-octets-string (fn-record-string-octets x)) x)))
   :hints (("Goal" :in-theory (enable fn-cevg-groupp fn-record-string-octets fn-record-octets-string)))))
 
+(defconst *fn-cev-max-argument-octets*
+  (max *fn-cevg-max-msgid-octets* *fn-record-max-metadata*))
+
+(defthm fn-cev-subject-octets
+  (implies (fn-record-metadata-bytes-p x)
+           (and (fn-cbor-octet-listp (fn-record-string-octets x))
+                (<= (len (fn-record-string-octets x)) *fn-record-max-metadata*)
+                (equal (fn-record-octets-string (fn-record-string-octets x)) x)))
+  :hints (("Goal" :use ((:instance fn-record-string-round-trip (text x)))
+           :in-theory (e/d (fn-record-metadata-bytes-p fn-record-nonempty-at-mostp)
+                           (fn-record-string-octets fn-record-octets-string
+                            fn-record-string-round-trip)))))
+
 (encapsulate ()
 (local (defthm fn-cev-octets-of-append
   (implies (and (fn-cbor-octet-listp a) (fn-cbor-octet-listp b))
@@ -843,17 +861,18 @@
 (local (defthm fn-cev-argument-facts
   (implies (fn-cev-report-kindp kind)
            (and (fn-cbor-octet-listp (fn-cev-kind-argument kind))
-                (<= (len (fn-cev-kind-argument kind)) *fn-cevg-max-msgid-octets*)))
+                (<= (len (fn-cev-kind-argument kind)) *fn-cev-max-argument-octets*)))
   :hints (("Goal" :use ((:instance fn-cev-msgid-octets (x (cdr kind)))
-                        (:instance fn-cev-group-octets (x (cdr kind))))
-           :in-theory (e/d (fn-cev-report-kindp fn-oig-kindp fn-cevg-kindp fn-cev-kind-argument)
+                        (:instance fn-cev-group-octets (x (cdr kind)))
+                        (:instance fn-cev-subject-octets (x (cdr kind))))
+           :in-theory (e/d (fn-cev-report-kindp fn-oqg-kindp fn-oig-kindp fn-cevg-kindp fn-cev-kind-argument)
                            (fn-cev-msgid-octets fn-cev-group-octets fn-cevg-msgidp
                             fn-cevg-groupp fn-record-string-octets
                             fn-record-octets-string))))))
 (defthm fn-cev-request-payload-fits
   (implies (fn-cev-report-kindp kind)
            (<= (len (fn-record-item-encode (cons :bytes (fn-cev-kind-argument kind))))
-               (+ 5 *fn-cevg-max-msgid-octets*)))
+               (+ 5 *fn-cev-max-argument-octets*)))
   :rule-classes :linear
   :hints (("Goal" :use ((:instance fn-nls-bytes-item-length (xs (fn-cev-kind-argument kind)))
                         fn-cev-argument-facts)
@@ -898,8 +917,9 @@
            (equal (fn-cev-code-kind (fn-cev-kind-code kind) (fn-cev-kind-argument kind))
                   kind))
   :hints (("Goal" :use ((:instance fn-cev-msgid-octets (x (cdr kind)))
-                        (:instance fn-cev-group-octets (x (cdr kind))))
-           :in-theory (e/d (fn-cev-report-kindp fn-oig-kindp
+                        (:instance fn-cev-group-octets (x (cdr kind)))
+                        (:instance fn-cev-subject-octets (x (cdr kind))))
+           :in-theory (e/d (fn-cev-report-kindp fn-oqg-kindp fn-oig-kindp
                             fn-cevg-kindp fn-cev-kind-argument fn-cev-kind-code fn-cev-code-kind)
                            (fn-cev-msgid-octets fn-cevg-msgidp fn-record-string-octets
                             fn-record-octets-string))))))
@@ -908,8 +928,9 @@
            (and (fn-cbor-octet-listp (fn-cev-kind-argument kind))
                 (<= (len (fn-cev-kind-argument kind)) *fn-record-max-octets*)))
   :hints (("Goal" :use ((:instance fn-cev-msgid-octets (x (cdr kind)))
-                        (:instance fn-cev-group-octets (x (cdr kind))))
-           :in-theory (e/d (fn-cev-report-kindp fn-oig-kindp fn-cevg-kindp fn-cev-kind-argument)
+                        (:instance fn-cev-group-octets (x (cdr kind)))
+                        (:instance fn-cev-subject-octets (x (cdr kind))))
+           :in-theory (e/d (fn-cev-report-kindp fn-oqg-kindp fn-oig-kindp fn-cevg-kindp fn-cev-kind-argument)
                            (fn-cev-msgid-octets fn-cev-group-octets fn-cevg-msgidp
                             fn-cevg-groupp fn-record-string-octets
                             fn-record-octets-string))))))

@@ -72,6 +72,13 @@ def host_call(root: Path, function: str, file: str) -> int:
     raise ViewError(f"{file} does not call {function}")
 
 
+def pending_bridge_verdicts(reason: str, proved: str, qualified: str, deployed: str) -> tuple[str, str, str]:
+    """A matching component coordinate cannot establish an unproved caller bridge."""
+    if not isinstance(reason, str) or not reason.strip():
+        raise ViewError("pending_bridge must name the missing caller bridge")
+    return ("no: caller bridge pending",) * 3
+
+
 def theorem(tree: ledger.Tree, name: str) -> ledger.Theorem:
     found = tree.theorems.get(name)
     if found is None:
@@ -280,9 +287,16 @@ def build(root: Path = ROOT) -> str:
                   f"cache only: `{installer}`" if installer else
                   "no: closure moved" if earlier else "no: source uncertified")
 
+        if cap.get("pending_bridge") is not None:
+            proved, qualified, deployed = pending_bridge_verdicts(
+                cap["pending_bridge"], proved, qualified, deployed)
+            tested_line = deployed_line = "no: " + cap["pending_bridge"]
+
         summary.append(f"| [{ident}](#{ident.lower()}) {cap['name']} | `{cap['keystone']}` "
                        f"| yes | {proved} | {qualified} | {deployed} |")
         subject = f"`{host['function']}` at {host['file']}:{line}"
+        if cap.get("pending_bridge"):
+            subject += ", caller bridge pending: " + cap["pending_bridge"]
         if bridge:
             subject += (f", equated by `{cap['bridge']}` "
                         f"({bridge.book}:{bridge.line})")
