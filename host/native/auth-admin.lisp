@@ -407,7 +407,7 @@ production image, which refuses to start with the variable set."
                         (fnn-store-owner-observation
                          *fnn-native-auth-admin-store-root*)
                         :unknown)))
-             (live (and durable (member action '(:set-password :bind))
+             (live (and durable (member action '(:set-password :bind :delete))
                         (not (member observation '(:free :absent)))
                         (fnn-login-bindings-request-reload
                          *fnn-native-auth-admin-control-path*))))
@@ -482,6 +482,29 @@ production image, which refuses to start with the variable set."
             (fnn-native-auth-admin-core
              'fn-native-auth-admin-host-result-octets result))))
          (t (fnn-native-auth-admin-result-code result :bind)))))
+    (:delete
+     ;; Row S6: `account delete LOGIN'.  ACL2 rewrites the file without the
+     ;; login; a login the file does not hold is the configuration's
+     ;; (:account), whose `account delete' record the operator sends after
+     ;; the file lock is released.  Nothing was written then.
+     (let ((result
+             (fnn-native-auth-admin-core
+              'fn-native-auth-admin-host-delete
+              octets presentp
+              (fnn-native-auth-admin-core
+               'fn-native-auth-admin-host-action-name plan-result)
+              max-credentials)))
+       (case (fnn-native-auth-admin-core
+              'fn-native-auth-admin-host-result-status result)
+         (:account :account)
+         (:accepted
+          (fnn-native-auth-admin-result-code
+           result :delete
+           (fnn-native-auth-admin-publish
+            stage final directory
+            (fnn-native-auth-admin-core
+             'fn-native-auth-admin-host-result-octets result))))
+         (t (fnn-native-auth-admin-result-code result :delete)))))
     (t (fnn-fault "ACL2 returned no executable principal action"))))
 
 (defun fnn-native-auth-admin-execute (plan-result auth-path max-credentials)

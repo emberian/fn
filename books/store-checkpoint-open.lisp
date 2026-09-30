@@ -252,7 +252,7 @@
                                 (fn-cpo-install
                                  (fn-sn-update-replayed
                                   seed files advanced
-                                  (fn-stx-index-empty)
+                                  (fn-sn-index-of-rows events)
                                   identity)
                                  (fn-cnode-make advanced config) configs)
                                 (fn-cp-nth 1 consumer))
@@ -835,7 +835,7 @@
                               (fn-cpo-install
                                (fn-sn-update-replayed
                                 seed files advanced
-                                (fn-stx-index-empty)
+                                (fn-sn-index-of-rows events)
                                 identity)
                                (fn-cnode-make advanced config) configs)
                               (fn-cp-nth 1 consumer))

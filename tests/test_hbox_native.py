@@ -444,12 +444,16 @@ class HarnessBudgetTests(unittest.TestCase):
         import sys
         sys.path.insert(0, str(ROOT))
         from tools import native_env
-        self.assertEqual(native_env.harness_store_env({})["FN_INIT_BUDGET_MB"],
-                         native_env.HARNESS_INIT_BUDGET_MB)
-        self.assertEqual(native_env.harness_store_env({"FN_INIT_BUDGET_MB": "5"})
-                         ["FN_INIT_BUDGET_MB"], "5")
+        self.assertEqual(native_env.HARNESS_INIT_WORDS,
+                         ("--budget", native_env.HARNESS_INIT_BUDGET_MB))
+        # Row Q10b: the budget is init's grammar word; no harness or test
+        # sets an FN_INIT_ variable any more.
+        env_named = subprocess.run(["git", "grep", "-n", "-E", "FN_INIT_(BUDGET_MB|SIZING)",
+                                    "--", "tools", "tests", "host", "books"],
+                                   cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(env_named.stdout, "")
         # No harness types the figure itself (four did, 2026-09-27).
-        typed = subprocess.run(["git", "grep", "-n", "-E", "FN_INIT_BUDGET_MB.{0,40}9830[4]",
+        typed = subprocess.run(["git", "grep", "-n", "-E", "--budget.{0,40}9830[4]",
                                 "--", "tools", "tests"],
                                cwd=ROOT, capture_output=True, text=True)
         self.assertEqual(typed.stdout, "")

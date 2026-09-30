@@ -28,12 +28,12 @@ name, outside a limit of at most 2 GiB.
 * The refusal: `init --profile development' is the operator's request,
   never resized: under the launcher and run directly, init refuses it by
   name with both numbers (lane
-  membership-budget); `init --profile scale' with FN_INIT_BUDGET_MB=16384
+  membership-budget); `init --budget 16384 --profile scale'
   writes it for that target (`within-budget=no target-budget=16384 MB'),
   and the launcher refuses its `run' and `status' by name (an empty
   development store's run fits 2 GiB since lane heap-bounds, B4).
 * FreshInitTests (also without a small limit): conservative sizing,
-  FN_INIT_SIZING=largest, FN_INIT_BUDGET_MB (below the machine: init
+  `init --largest', `init --budget MB' (below the machine: init
   warns by name with both figures), and the default mission
   (inits and runs, under 2 GiB too; refused by name under a 500 MB budget).
 """
@@ -51,7 +51,7 @@ import unittest
 from pathlib import Path
 
 from tests.native_harness import (
-    EXIT_OK, EXIT_REFUSED, ROOT, Client, Node, article, environment, native_image,
+    EXIT_OK, EXIT_REFUSED, EXIT_USAGE, ROOT, Client, Node, article, environment, native_image,
     node_log_on_failure, run)
 
 IMAGE = str(native_image("FN_NATIVE_HOST"))
@@ -143,9 +143,9 @@ class Harness:
     @staticmethod
     def stripped():
         """What the launcher must not inherit: every FN_NATIVE_/FN_RUN_/
-        FN_TEST_/FN_INIT_ and SBCL_ variable (the launcher sets the stack)."""
+        FN_TEST_ and SBCL_ variable (the launcher sets the stack)."""
         names = [name for name in os.environ
-                 if name.startswith(("FN_NATIVE_", "FN_RUN_", "FN_TEST_", "FN_INIT_", "SBCL_"))]
+                 if name.startswith(("FN_NATIVE_", "FN_RUN_", "FN_TEST_", "SBCL_"))]
         return dict.fromkeys(names + ["SBCL_USER_ARGS"])
 
     def env(self, **extra):
@@ -240,8 +240,7 @@ class FreshInitTests(Harness, unittest.TestCase):
         term the small floor's first run was 1,872 MB and this was refused),
         within 1,536 MB, and the store runs and takes POSTs."""
         config, port = self.config("friend")
-        made = self.run_fn("operator", config, "init", "local.test",
-                           env={"FN_INIT_BUDGET_MB": "1536"})
+        made = self.run_fn("operator", config, "init", "--budget", "1536", "local.test")
         self.assertEqual(made.returncode, EXIT_OK, text(made))
         word, sizing, reservation, budget = self.init_line(made)
         self.assertEqual(sizing, "conservative")
@@ -272,15 +271,14 @@ class FreshInitTests(Harness, unittest.TestCase):
         self.stop()
 
     def test_largest_within_the_budget_on_request(self):
-        """FN_INIT_SIZING=largest takes the first of scale, development and
+        """`init --largest' takes the first of scale, development and
         small the budget holds; an operator budget below the machine
-        (FN_INIT_BUDGET_MB=2000) takes small, or the friend rung whose
+        (`init --budget' 2000) takes small, or the friend rung whose
         first run it holds (the word is `custom').  (1,500 until lane
         heap-bounds: the small floor's first run is 1,906 MB since the
         records' term is derived from the profile's limits.)"""
         config, _ = self.config("largest")
-        made = self.run_fn("operator", config, "init", "local.test",
-                           env={"FN_INIT_SIZING": "largest"})
+        made = self.run_fn("operator", config, "init", "--largest", "local.test")
         self.assertEqual(made.returncode, EXIT_OK, text(made))
         self.assertNotIn(b"init-budget-below-machine", made.stderr)
         word, sizing, _, budget = self.init_line(made)
@@ -289,8 +287,7 @@ class FreshInitTests(Harness, unittest.TestCase):
         if SMALL:
             self.assertEqual(word, "small")
         config, _ = self.config("budget")
-        made = self.run_fn("operator", config, "init", "local.test",
-                           env={"FN_INIT_BUDGET_MB": "2000"})
+        made = self.run_fn("operator", config, "init", "--budget", "2000", "local.test")
         self.assertEqual(made.returncode, EXIT_OK, text(made))
         word, _, _, budget = self.init_line(made)
         self.assertIn(word, ("small", "custom"))
@@ -304,10 +301,10 @@ class FreshInitTests(Harness, unittest.TestCase):
         if LIMIT:
             self.assertLessEqual(int(below.group(2)), LIMIT // (1024 * 1024))
         config, _ = self.config("badbudget")
-        refused = self.run_fn("operator", config, "init", "local.test",
-                              env={"FN_INIT_BUDGET_MB": "lots"})
-        self.assertEqual(refused.returncode, EXIT_REFUSED, text(refused))
-        self.assertIn("refused invalid-init-budget", text(refused))
+        # Row Q10b: a malformed budget is init's usage error, by name.
+        refused = self.run_fn("operator", config, "init", "--budget", "lots", "local.test")
+        self.assertEqual(refused.returncode, EXIT_USAGE, text(refused))
+        self.assertIn("invalid-init-budget", text(refused).lower())
         self.assertFalse((self.tmp / "badbudget").exists())
 
     def test_the_default_mission_inits_and_runs(self):
@@ -316,13 +313,12 @@ class FreshInitTests(Harness, unittest.TestCase):
         capacity, under 2 GiB (the friend's machine) on the small preset's
         (1,326 MB: the thread stacks are a constant since
         served-line-iterative); it runs and takes POSTs either way.  A
-        budget that cannot hold its first run (FN_INIT_BUDGET_MB=500) is
+        budget that cannot hold its first run (`init --budget' 500) is
         refused by name with no store made."""
         config, port = self.config("mission")
         with open(config, "a", encoding="ascii") as f:
             f.write('[ops]\nmission = "small-community"\n')
-        refused = self.run_fn("operator", config, "init",
-                              env={"FN_INIT_BUDGET_MB": "500"})
+        refused = self.run_fn("operator", config, "init", "--budget", "500")
         self.assertEqual(refused.returncode, EXIT_REFUSED, text(refused))
         found = INIT_REFUSED.search(text(refused))
         self.assertIsNotNone(found, text(refused))
@@ -482,7 +478,7 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         """`--profile development' is the operator's request: never resized.
         Under the launcher its probe refuses it by name here; the image's own
         init REFUSES it by name with both numbers and makes nothing (ember,
-        2026-09-27: lane membership-budget), unless FN_INIT_BUDGET_MB names a
+        2026-09-27: lane membership-budget), unless `init --budget MB' names a
         target budget that holds it: then it is written for that machine
         (`within-budget=no target-budget=16384 MB', the scale preset) and
         the launcher refuses its run and status here by name."""
@@ -512,9 +508,8 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         # bounded by the input, and a run sizes the open by the store on
         # disk), so the launcher's refusal is shown on the scale preset,
         # whose state at its bounds alone is past 2 GiB.
-        made = self.run_fn("operator", config, "init", "--profile", "scale",
-                           "local.test", command=[IMAGE, "--fn"],
-                           env={"FN_INIT_BUDGET_MB": "16384"})
+        made = self.run_fn("operator", config, "init", "--budget", "16384", "--profile", "scale",
+                           "local.test", command=[IMAGE, "--fn"])
         self.assertEqual(made.returncode, EXIT_OK, text(made))
         self.assertRegex(made.stdout.decode(),
                          r"init: profile=scale sizing=requested reservation=\d+ MB "

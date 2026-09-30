@@ -141,6 +141,7 @@
 (include-book "books/bp-node-rotation-buffer")
 ;; The held projection at open: fnn-bps-open calls fn-bphp-recover-auto-event.
 (include-book "books/bp-held-projection")
+(include-book "books/bp-recovery-profile")
 (include-book "books/bp-node-retire")
 ;; Natural rotation at a node verb's open (fnn-bps-rotate-when-due calls
 ;; fn-bpnrd-due-rotation-event; profile 3).
@@ -214,6 +215,8 @@
 ;; entries their fusion fn-rii-sco-extend-open (PRF-321).
 (include-book "books/replay-identity-index")
 (ld "host/store-host.lisp" :ld-error-action :error)
+(ld "host/page-read-host.lisp" :ld-error-action :error)
+(ld "host/page-executor-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
 ;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.
 (include-book "books/store-checkpoint-buffer")
@@ -246,6 +249,7 @@
 ; octet-list helpers store-host defines above it, as run_store.py's bridge does.
 (ld "host/config-host.lisp" :ld-error-action :error)
 (ld "host/native-admin-host.lisp" :ld-error-action :error)
+(ld "host/page-read-host.lisp" :ld-error-action :error)
 (ld "host/native-control-host.lisp" :ld-error-action :error)
 (ld "host/native-config-host.lisp" :ld-error-action :error)
 ; host/native/operator.lisp (loaded below) asks fn-native-auth-host-max-octets
@@ -283,6 +287,7 @@
 ;; as in build.lisp.
 (include-book "books/heap-open-nursery")
 (include-book "books/heap-reservation")
+(include-book "books/cold-read-reservation")
 
 ; D40: explicit raw declaration scope. Every selected entry is checked in
 ; this loaded world; an unavailable target refuses the build.
@@ -384,6 +389,7 @@
         ; The node: FNBS, the owner Store and FNRJ/FNWF under one
         ; `bp-node serve' (specs/bp-node-machine.md).  `bp send' and `bp
         ; receive' above stay as the lab's transport tools.
+        (load "host/native/bp-listener-control.lisp")
         (load "host/native/bp-control.lisp")
         (load "host/native/bp-node.lisp")
         ; `acl2 session': developer images only (the test fixtures' ACL2).

@@ -547,8 +547,11 @@
                (t (fn-native-admin-result :accepted nil :consumer-bind
                                           (fn-native-admin-arg 1 argv) 0 nil
                                           (fn-native-admin-arg 3 argv)))))
+        ; Row Q10c: `consumer show' reports the consumer bindings alone
+        ; (books/account-list.lisp fn-acct-consumers-list-report), never the
+        ; whole account list.
         ((equal words '("show"))
-         (fn-native-admin-result :accepted nil :list-accounts nil 0 nil nil))
+         (fn-native-admin-result :accepted nil :list-consumers nil 0 nil nil))
         (t (fn-native-admin-result :refused :consumer nil nil 0 nil nil))))
 
 ;; PKT-597: `policy set complaints-to ADDR' with ADDR an addr-spec
@@ -1475,7 +1478,7 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
   (declare (xargs :guard t))
   (and (equal (fn-native-admin-result-status result) :accepted)
        (member-equal (fn-native-admin-result-kind result)
-                     '(:list-peers :list-control :list-accounts))
+                     '(:list-peers :list-control :list-accounts :list-consumers))
        t))
 
 ;; `control list': one line per grant row of the replayed configuration,
@@ -1552,6 +1555,7 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
   (declare (xargs :guard t))
   (cond ((equal (fn-native-admin-result-kind plan) :list-control) :control)
         ((equal (fn-native-admin-result-kind plan) :list-accounts) :accounts)
+        ((equal (fn-native-admin-result-kind plan) :list-consumers) :consumers)
         (t :peers)))
 
 ;; The report a query plan asks for, over a replayed configuration value.
