@@ -23,6 +23,7 @@
 ; effect list, `fn-owner-submittedp' (fn-served-submission).  The host never
 ; writes a reply octet.
 (in-package "ACL2")
+(include-book "../books/owner-config-state")
 ; books/owner-fault includes books/owner and adds the host-fault transition
 ; `fn-own-fault'.  The host needs it: `fn-owner-fault' below is the only way
 ; tools/run_owner.py can abandon ONE connection, and before it existed an
@@ -269,18 +270,13 @@
   (declare (xargs :guard t))
   (fn-oag-post-config cfg *fn-record-max-payload*))
 
-(defun fn-owner-ocfg (state)
-  ; Internal, single-valued accessor for host wrappers.
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
-  (f-get-global 'fn-owner state))
+
 
 ; `fn-owner' has one canonical value: the configured owner.  These are the
 ; only host accessors for its raw owner component.  A wrapper that changes
 ; connection membership must use fn-owner-step's fn-ocfg transition; a core
 ; operation which preserves membership may use fn-owner-replace-core.
-(defun fn-owner-core (state)
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
-  (fn-ocfg-owner (f-get-global 'fn-owner state)))
+
 
 ;; A live owner's administrative publication (PKT-837): the authorization
 ;; from the owner's carried state, books/config-owner-live-authorize.lisp
@@ -322,11 +318,7 @@
                     (fn-own-clock (fn-owner-core state))))
              :usable :clock-unusable)))
 
-(defun fn-owner-config (state)
-  ; The one live configuration.  No host global shadows this value: every
-  ; caller reads the generation replayed into and published by fn-ocfg.
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
-  (fn-ocfg-config (fn-owner-ocfg state)))
+
 
 ;; The injection configuration the owner has installed (fn-own-config): the
 ;; one served POST and control submission read, whose bound is the store
@@ -580,9 +572,7 @@
        (fn-rii-sco-extend checkpoint config-records rows)
        config-records frontier max-conns fn-arena fn-hist state))))
 
-(defun fn-owner-store (state)
-  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
-  (fn-own-store (fn-owner-core state)))
+
 
 ; The Store's persisted profile, carried from open.  VALUES is what
 ; `fn-bs-config-decode' returned for the store's metadata file (the host

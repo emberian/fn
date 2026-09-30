@@ -1,5 +1,6 @@
 ; fn: executable binding of live node transactions to the file kernel.
 (in-package "ACL2")
+(include-book "store-node-files-selector")
 ; store-files-invariants is included because the kernel preservation
 ; keystones are this book's guard proofs: fn-sn-finish calls
 ; fn-sf-emit-success on the result of fn-sf-core-completion, and
@@ -47,11 +48,9 @@
        :exec (fn-ag-car (fn-ag-cdr s))))
 
 (verify-guards fn-sn-capacity)
-(defun fn-sn-files (s) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (caddr s)
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr s)))))
 
-(verify-guards fn-sn-files)
+
+
 (defun fn-sn-node (s) (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (cadddr s)
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s))))))

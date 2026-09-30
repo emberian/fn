@@ -17664,6 +17664,20 @@
           "name": "fn-cvcg-accepted-publication-count-fits-profile"
         }
       ]
+    },
+    {
+      "id": "PRF-1167",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-owner-incoming-recheck-current-matches-live-authority"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owner-incoming-recapture-retains-original-roots"
+        }
+      ],
+      "pending_subject": "Actual registered query-token attachment, source-publication correspondence and funded scheduling caller remain required; authority-current is not the complete query decision."
     }
   ]
 }
