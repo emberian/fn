@@ -14756,6 +14756,10 @@
         {
           "kind": "theorem",
           "name": "fn-ars-current-plan-is-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ars-parse-lines-acc-is-parse-lines"
         }
       ]
     },
