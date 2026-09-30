@@ -113,7 +113,7 @@
         (fn-nntp-command-inputp *pcrm-line*)
         (fn-nntp-command-arguments-at-mostp (list *fn-pcr-article-keyword* *pcrm-token*))
         (equal (fn-nntp-tokenize *pcrm-line*) (list *fn-pcr-article-keyword* *pcrm-token*))
-        (fn-arena-p (list *pcrt-payload*))
+
         (and (fn-nntp-message-id-tokenp *pcrm-token*) (fn-octet-listp *pcrm-token*))
         (consp article)
         server
@@ -247,7 +247,7 @@
         (fn-nntp-command-inputp *pcrm-line*)
         (fn-nntp-command-arguments-at-mostp (list *fn-pcr-article-keyword* *pcrm-token*))
         (equal (fn-nntp-tokenize *pcrm-line*) (list *fn-pcr-article-keyword* *pcrm-token*))
-        (fn-arena-p (list *pcrt-payload*))
+
         (and (fn-nntp-message-id-tokenp *pcrm-token*) (fn-octet-listp *pcrm-token*))
         (consp article)
         server
@@ -379,7 +379,7 @@
         (fn-nntp-command-inputp *pcrm-line*)
         (fn-nntp-command-arguments-at-mostp (list *fn-pcr-article-keyword* *pcrm-token*))
         (equal (fn-nntp-tokenize *pcrm-line*) (list *fn-pcr-article-keyword* *pcrm-token*))
-        (fn-arena-p (list *pcrt-payload*))
+
         (and (fn-nntp-message-id-tokenp *pcrm-token*) (fn-octet-listp *pcrm-token*))
         (consp article)
         server
