@@ -1316,3 +1316,45 @@
 (defthm fn-bpfs-fragment-outcome-accepted-iff-accepted-by-definition
   (equal (equal (fn-bpfs-fragment-outcome index outcome) :accepted)
          (equal outcome :accepted)))
+
+; PRF-1135: an observation-trace refinement, not a persistence/ACK claim.
+; Logical observation trace of fnn-bps-send-effect's ordered transfer loop.
+; Each element is the transport outcome, before fragment normalization.
+; No further transfer is observed after the first nonaccepted outcome.
+(defun fn-bpfs-send-observations (outcomes index)
+  (declare (xargs :guard (natp index)))
+  (if (consp outcomes)
+      (if (equal (car outcomes) :accepted)
+          (fn-bpfs-send-observations (cdr outcomes) (+ 1 index))
+        (fn-bpfs-fragment-outcome index (car outcomes)))
+    :accepted))
+
+(defun fn-bpfs-accepted-prefixp (outcomes)
+  (declare (xargs :guard t))
+  (if (consp outcomes)
+      (and (equal (car outcomes) :accepted)
+           (fn-bpfs-accepted-prefixp (cdr outcomes)))
+    (equal outcomes nil)))
+
+(defthm fn-bpfs-send-observations-after-accepted-prefix
+  (implies (and (fn-bpfs-accepted-prefixp prefix) (natp index))
+           (equal (fn-bpfs-send-observations (append prefix outcomes) index)
+                  (fn-bpfs-send-observations outcomes (+ index (len prefix)))))
+  :hints (("Goal" :induct (fn-bpfs-send-observations prefix index)
+           :in-theory (enable fn-bpfs-send-observations fn-bpfs-accepted-prefixp))))
+
+(defthm fn-bpfs-fragment-outcome-refines-ordered-send
+  (implies (fn-bpfs-accepted-prefixp prefix)
+           (equal (fn-bpfs-fragment-outcome (+ 1 (len prefix)) outcome)
+                  (fn-bpfs-send-observations (append prefix (list outcome)) 1)))
+  :hints (("Goal" :use ((:instance fn-bpfs-send-observations-after-accepted-prefix
+                                   (outcomes (list outcome)) (index 1)))
+           :in-theory (enable fn-bpfs-send-observations fn-bpfs-fragment-outcome))))
+
+(defthm fn-bpfs-send-observations-failed-only-at-first-transfer
+  (implies (<= 1 index)
+           (equal (equal (fn-bpfs-send-observations outcomes index) :failed)
+                  (and (equal index 1) (consp outcomes)
+                       (equal (car outcomes) :failed))))
+  :hints (("Goal" :induct (fn-bpfs-send-observations outcomes index)
+           :in-theory (enable fn-bpfs-send-observations fn-bpfs-fragment-outcome))))
