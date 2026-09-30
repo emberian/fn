@@ -75,6 +75,9 @@ canonical readiness or a publication capability."
                (when erp (fnn-fault "startup constructor custody core call failed"))
                (unless (eq (first entered) :entered)
                  (fnn-fault "startup constructor custody retained: ~a" entered)))
+             ; Enter the owner's recovery-only lifecycle after actual INITIAL.
+             ; Caller already holds owner; the entry takes the common view lock.
+             (fnn-payload-lifecycle-recover service)
              (let* ((context (fnn-snapshot-source-context))
                     (plan (fnn-core 'fn-osj-resource-word context maintenance)))
                (unless (eq (first plan) :capture)
