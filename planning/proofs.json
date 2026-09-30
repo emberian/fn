@@ -18665,7 +18665,6 @@
       ],
       "assumptions": [],
       "status": "planned",
-      "events": [],
       "evidence": [
         "books/history-page-metadata.lisp",
         "tests/acl2/history-page-metadata-tests.lisp",
