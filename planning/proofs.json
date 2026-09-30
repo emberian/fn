@@ -18490,6 +18490,57 @@
         "fn-pxe-commit-requires-returned-settled-exact-job",
         "fn-pxe-acquired-token-cannot-own-a-second-worker"
       ]
+    },
+    {
+      "id": "PRF-1113",
+      "title": "Compositional canonical Store tree sizes and held handle remapping",
+      "statement": "The size carry contains exact canonical encoded octets, octet-list length or nil, and scalar octet membership. Cons construction preserves this correspondence from both child correspondences, including compact octet-list collapse. A new fixed held-record spine composes supplied field carries; payload handle remapping changes its scalar width and reconstructs the exact canonical size. Subjects fn-scs-cons, fn-scs-spine, fn-scs-octets, fn-hsz-make and fn-hsz-remap are constructor/decoder dependencies, currently unreachable-in-composition from the host: no live maintained-size admission or funded checkpoint claim.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [
+        "fn-scs-cons-preserves-canonical-size",
+        "fn-scs-spine-preserves-canonical-size",
+        "fn-scs-octets-establishes-canonical-size",
+        "fn-hsz-make-preserves-canonical-size",
+        "fn-hsz-remap-preserves-canonical-size"
+      ],
+      "evidence": [
+        "books/store-tree-size.lisp",
+        "books/held-record-size.lisp",
+        "tests/acl2/store-tree-size-tests.lisp",
+        "tests/acl2/held-record-size-tests.lisp",
+        "specs/store-size-carry.md"
+      ],
+      "progress_note": "Clean source-only REPL admission and literal positive/hypothesis-removal teeth. No certification manifest, host caller, matching image, native cost or supported-profile representability evidence. Pending binding field changes the held constructor arity and must update this companion."
+    },
+    {
+      "id": "PRF-1120",
+      "title": "Identity context size sidecars preserve actual snapshot and verdict transitions",
+      "statement": "For a shaped identity context, exact field carries and the exact proposed event carry, fn-ics-snapshot and fn-ics-verdict return precisely the existing fn-stxk-apply-snapshot/verdict context and preserve all field-size correspondences. Shared snapshots/verdict trees are reused; only the inserted event and scalar coordinate widths affect the carry. Empty initialization establishes correspondence. These are constructor companions, unreachable-in-composition until the checkpoint identity accumulator, bounded bootstrap and every owner writer install them together; the live Store verdict-pair table is not that accumulator.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020"
+      ],
+      "depends_on": [
+        "PRF-1113"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [
+        "fn-ics-snapshot-preserves-canonical-size",
+        "fn-ics-verdict-preserves-canonical-size"
+      ],
+      "evidence": [
+        "books/identity-context-size.lisp",
+        "tests/acl2/identity-context-size-tests.lisp",
+        "specs/store-size-carry.md"
+      ],
+      "progress_note": "Clean source-only REPL and literal teeth for insertion, duplicates, conflict, scalar-width crossing, and each removed hypothesis. Bounded decoder output, replay-composite translation, actual owner global installation and consumer/topic sidecars remain open. No manifest or host/image claim."
     }
   ]
 }

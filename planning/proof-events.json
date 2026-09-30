@@ -17647,6 +17647,46 @@
         }
       ],
       "pending_subject": "Pure actual capture/recovery inverse dependency with full retained semantic fields. Actual producer capture/canonical writer/load payload alpha and complete live transition/owner installation bridges remain open; no full producer completion claim."
+    },
+    {
+      "id": "PRF-1113",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-scs-cons-preserves-canonical-size"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scs-spine-preserves-canonical-size"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scs-octets-establishes-canonical-size"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsz-make-preserves-canonical-size"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hsz-remap-preserves-canonical-size"
+        }
+      ],
+      "pending_subject": "Constructor component; currently unreachable-in-composition. Actual owner writer installation and bounded bootstrap are open; no live funding/reserve claim."
+    },
+    {
+      "id": "PRF-1120",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ics-snapshot-preserves-canonical-size"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ics-verdict-preserves-canonical-size"
+        }
+      ],
+      "pending_subject": "Constructor component; currently unreachable-in-composition. Actual owner writer installation and bounded bootstrap are open; no live funding/reserve claim."
     }
   ]
 }
