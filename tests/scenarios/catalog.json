@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6981,6 +6981,40 @@
         "planning/evidence/bp-waits-2026-09-30.md"
       ],
       "execution_scope": "Executable ACL2 source trace admitted in clean protected guard world; matching certification and native image evidence pending."
+    },
+    {
+      "id": "SCN-1046",
+      "title": "Disconnected real article delivery survives decision, receipt job, contact and checkpoint interruption",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-005",
+        "REP-006",
+        "REP-008",
+        "STO-015"
+      ],
+      "steps": [
+        "Require matching published source manifests for the production NNTP producer and BP node images before mutation. Accept the target and unrelated article through served POST and read the stopped owner's exact persisted bytes through the core.",
+        "Kill after the durable application decision; replay the owed receipt; retry a carrier, change the live route at the durable outbox, and kill that receipt job.",
+        "Interrupt the receipt contact, restart the sender, kill checkpoint staging, resume the receiver and deliver the durable receipt."
+      ],
+      "expected": [
+        "All application, job, contact and checkpoint interruptions preserve one accepted article and the unresolved matching obligation.",
+        "The resumed job preserves the attempted work identity and only the matching durable receipt releases its obligation; the unrelated obligation remains pinned.",
+        "A clean final checkpoint preserves article visibility."
+      ],
+      "evidence": [
+        "tests/test_bp_node_native.py",
+        "tests/native_image_provenance.py"
+      ],
+      "implementation": {
+        "test": "tests.test_bp_node_native",
+        "cases": [
+          "NativeBpNodeTests.test_disconnected_delivery_restarts_and_releases_only_matching_obligation"
+        ],
+        "native": true
+      },
+      "execution_scope": "Authored composed fixture; Python compilation and source-manifest helper unit tests pass. No matching native execution yet. Current checkpoint host still materializes whole bytes; bounded producer, funding and final retirement join remain open and this scenario does not close full Q4/Q12."
     }
   ]
 }

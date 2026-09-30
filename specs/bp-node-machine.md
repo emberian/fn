@@ -5008,3 +5008,16 @@ keystones and complete hypothesis-removal teeth are in `bp-node-waits` and its
 teeth book. This is an fn scheduling guarantee, not an RFC BP requirement.
 Clean source admission is recorded in `planning/evidence/bp-waits-2026-09-30.md`;
 matching certification and native observation are still pending.
+
+### Composed disconnected delivery fixture (SCN-1046)
+
+`test_disconnected_delivery_restarts_and_releases_only_matching_obligation`
+composes real served POST, the core's persisted source-byte readback, durable
+application-decision death, receipt-outbox death with live route changes,
+interrupted receipt contact, sender restart and checkpoint-staging death. Its
+source-manifest check requires both native images to name the same immutable
+source before Store mutation. The expected final durable receipt releases only
+the matching obligation; the unrelated one stays pinned. Matching native
+execution is pending. This fixture leaves the bounded checkpoint writer, its
+resident capture funding and the final retirement producer fence/join open;
+it does not establish full Q4 or Q12 completion.

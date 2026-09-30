@@ -18,6 +18,7 @@ from tests.native_harness import (
     requires, run, scratch, start)
 from tests.test_bp_contact_relay_native import ByteRelay
 from tests.bp_producer import post_articles
+from tests.native_image_provenance import assert_same_published_source
 
 # specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a
 # connection lost after it existed is EXIT.INTERRUPTED (connection-local:
@@ -42,6 +43,9 @@ PRODUCER = native_image("FN_NATIVE_HOST")
 @requires(IMAGE, PRODUCER)
 class NativeBpNodeTests(unittest.TestCase):
     def setUp(self):
+        if self._testMethodName == (
+                "test_disconnected_delivery_restarts_and_releases_only_matching_obligation"):
+            self.image_source = assert_same_published_source(self, PRODUCER, IMAGE)
         self.tmp = scratch(self, "fn-bp-node-a3-")
         self.relay = ByteRelay()
         self.addCleanup(self.relay.close)
@@ -1065,6 +1069,76 @@ class NativeBpNodeTests(unittest.TestCase):
         unrelated = self.unrelated_status()
         self.assertEqual(unrelated.returncode, EXIT.OK, unrelated.stderr)
         self.assertIn(b"pinned=yes", unrelated.stdout)
+
+    def test_disconnected_delivery_restarts_and_releases_only_matching_obligation(self):
+        """One real POST survives application, job and checkpoint death cuts.
+
+        The source owner has already stopped after the durable NNTP POST in
+        setUp. A transport result cannot release either sender obligation.
+        """
+        self.assertIn(b"pinned=yes", self.sender_status().stdout)
+        self.kill_at_durable_cut(
+            "FN_BP_APP_TEST_PAUSE_AFTER_DECISION", b"BP APP DECISION DURABLE")
+        replayed = self.dispatch_receiver()
+        self.assertEqual(replayed.returncode, EXIT.OK, replayed.stdout + replayed.stderr)
+        self.assertIn(b"BP application handoff durable", replayed.stdout)
+        self.assertIn(b"BP node receipt queued", replayed.stdout)
+        self.assertIn(b"pinned=yes", self.sender_status().stdout)
+
+        # A second carrier reaches the durable outbox. Reconfigure the live
+        # node there, then kill the receipt job before its contact runs.
+        receiver, port = self.start_node(
+            True, control=True,
+            extra_env={"FN_BP_NODE_TEST_PAUSE_AFTER_OUTBOX": "1"})
+        retry = self.send_request(port, "slice-retry")
+        self.assertEqual(retry.returncode, EXIT.OK, retry.stdout + retry.stderr)
+        self.wait_for_output(receiver, b"BP NODE OUTBOX DURABLE", timeout=120)
+        config = self.tmp / "receiver-fn.toml"
+        for action in ("remove", "add"):
+            changed = self.invoke("operator", config, "bp-route", action,
+                                  "dtn://sender/*", "sender-boundary")
+            self.assertEqual(changed.returncode, EXIT.OK,
+                             changed.stdout + changed.stderr)
+        receiver.kill()
+        receiver.wait(timeout=15)
+        self.assertEqual(self.receiver_articles(), 1)
+        self.assertIn(b"pinned=yes", self.sender_status().stdout)
+
+        sender, sender_port = self.start_node(False, once=False)
+        self.relay.route(sender_port, cut_after=80)
+        interrupted = self.dispatch_receiver()
+        self.assertEqual(interrupted.returncode, EXIT.OK,
+                         interrupted.stdout + interrupted.stderr)
+        self.assertIn(b"BP node receipt transfer uncertain", interrupted.stdout)
+        attempted = [line for line in interrupted.stdout.splitlines()
+                     if line.startswith(b"BP transport work=") and
+                     b"status=attempted" in line]
+        self.assertTrue(attempted, interrupted.stdout)
+        sender.stop(grace=5)
+        self.assertIn(b"pinned=yes", self.sender_status().stdout)
+        self.assertIn(b"pinned=yes", self.unrelated_status().stdout)
+
+        # Checkpoint publication dies before selection. Recovery must retain
+        # the same owed receipt jobs and the accepted article.
+        self.rotate_receiver("stage")
+        sender, sender_port = self.start_node(False, once=False)
+        self.relay.route(sender_port)
+        resumed = self.dispatch_receiver()
+        self.assertEqual(resumed.returncode, EXIT.OK, resumed.stdout + resumed.stderr)
+        forwarded = [line for line in resumed.stdout.splitlines()
+                     if line.startswith(b"BP transport work=") and
+                     b"status=forwarded" in line]
+        attempted_work = {line.split(b"work=")[1].split()[0] for line in attempted}
+        forwarded_work = {line.split(b"work=")[1].split()[0] for line in forwarded}
+        self.assertTrue(attempted_work <= forwarded_work, resumed.stdout)
+        self.wait_for_output(sender, b"BP node delivery receipt-accepted", timeout=120)
+        sender.stop(grace=5)
+        self.assertEqual(self.receiver_articles(), 1)
+        self.assertIn(b"pinned=no", self.sender_status().stdout)
+        self.assertIn(b"pinned=yes", self.unrelated_status().stdout)
+        code, out, err = self.rotate_receiver()
+        self.assertEqual(code, EXIT.OK, out + err)
+        self.assertEqual(self.receiver_articles(), 1)
 
     def test_dropped_receipt_contact_is_reoffered_by_the_next_pass(self):
         """Spec 4.3.2: an uncertain receipt transfer is connection-local.
