@@ -14,3 +14,7 @@
   (declare (xargs :stobjs (fn-page-read-pool state) :guard t))
   (declare (ignore fn-page-read-pool state))
   (mv :runtime-bootstrap-source-unavailable nil))
+(defun fn-owner-runtime-bootstrap-domain (fn-page-read-pool state)
+  (declare (xargs :stobjs (fn-page-read-pool state) :guard t))
+  (declare (ignore fn-page-read-pool state))
+  (mv :runtime-bootstrap-source-unavailable nil))

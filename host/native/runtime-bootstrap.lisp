@@ -49,9 +49,23 @@
   "Earliest saved-image entry; only accepted may return to facility startup."
   (let ((outcome :fenced))
     (handler-case
-        (multiple-value-bind (word class) (fnn-runtime-bootstrap-entry)
-          (declare (ignore word))
-          (setq outcome class))
+        (if (and *fnn-runtime-bootstrap*
+                 (eq (fnn-runtime-bootstrap-phase *fnn-runtime-bootstrap*)
+                     :startup-accepted))
+            ; XL-TOPLEVEL and the raw native entry share one process attempt.
+            ; Successful reuse still checks the live registry association.
+            (when (and (eq (fnn-runtime-bootstrap-pool *fnn-runtime-bootstrap*)
+                           (fnn-live-page-read-pool))
+                       (eq (fnn-runtime-bootstrap-pool *fnn-runtime-bootstrap*)
+                           (cdr (assoc 'fn-page-read-pool
+                                       (user-stobj-alist *the-live-state*)))))
+              (setq outcome :accepted))
+          (multiple-value-bind (word class) (fnn-runtime-bootstrap-entry)
+            (declare (ignore word))
+            (setq outcome class)
+            (when (eq class :accepted)
+              (setf (fnn-runtime-bootstrap-phase *fnn-runtime-bootstrap*)
+                    :startup-accepted))))
       ; Do not render the condition or enter general startup cleanup.
       (serious-condition () (setq outcome :fenced)))
     (unless (eq outcome :accepted)
