@@ -334,6 +334,7 @@
 (include-book "../../books/hybrid-store")
 (include-book "../../books/hybrid-carrier")
 (include-book "../../books/native-statement-material")
+(include-book "../../books/peer-invite-retry")
 (include-book "../../books/tls-reload")
 (include-book "../../books/web-session-keystones")
 (include-book "../../books/web-config")

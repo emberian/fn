@@ -1453,7 +1453,13 @@
     "books/key-statements",
     "tests/acl2/key-statements-tests",
     "books/peer-invite",
+    "books/peer-adoption-receipt-rows",
+    "books/peer-adoption-invalidation",
+    "books/peer-invite-retry",
     "tests/acl2/peer-invite-tests",
+    "tests/acl2/peer-adoption-receipt-rows-tests",
+    "tests/acl2/peer-invite-retry-tests",
+    "tests/acl2/peer-invite-administrator-tests",
     "books/tls-reload",
     "tests/acl2/tls-reload-tests",
     "books/control-visible",
@@ -1812,26 +1818,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1893,
-    "books_in_root_closure": 1876,
-    "roots": 1808,
-    "theorems": 29785,
-    "functions": 19084,
-    "assert_events": 24023,
+    "books": 1899,
+    "books_in_root_closure": 1882,
+    "roots": 1814,
+    "theorems": 29831,
+    "functions": 19096,
+    "assert_events": 24052,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
       "verified": 3530,
       "declared-off": 2277,
-      "default-guarded": 10421,
+      "default-guarded": 10433,
       "default-unguarded": 2856
     },
     "suspect_theorems": 1256,
     "export_hygiene_warnings": 350,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2562,
+    "include_hygiene_warnings": 2569,
     "host_names_warnings": 2193,
     "hand_written_record_warnings": 18
   },
@@ -9827,7 +9833,7 @@
       "book": "books/config-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 70,
+      "theorems": 71,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -10315,11 +10321,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 115,
-      "functions": 285,
+      "functions": 286,
       "guards": {
         "verified": 33,
         "declared-off": 0,
-        "default-guarded": 252,
+        "default-guarded": 253,
         "default-unguarded": 0
       },
       "verify_guards_events": 33,
@@ -10332,6 +10338,7 @@
       "includes": [
         "clock-unit",
         "defevent",
+        "peer-adoption-receipt-rows",
         "records-invariants",
         "rev-onto"
       ],
@@ -11992,7 +11999,7 @@
       "book": "books/feed-pause.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 24,
+      "theorems": 29,
       "functions": 11,
       "guards": {
         "verified": 2,
@@ -15739,6 +15746,7 @@
         "peer-catchup",
         "peer-config",
         "peer-invite",
+        "peer-invite-retry",
         "peer-pull",
         "peer-pull-session",
         "peer-transit-authority",
@@ -24055,6 +24063,56 @@
       "read_error": null
     },
     {
+      "book": "books/peer-adoption-invalidation.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/peer-adoption-receipt-rows.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 4,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 6,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/peer-authored-accept.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -24089,7 +24147,7 @@
       "book": "books/peer-carriage-rows.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 41,
+      "theorems": 50,
       "functions": 14,
       "guards": {
         "verified": 1,
@@ -24233,7 +24291,7 @@
       "book": "books/peer-config.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 37,
+      "theorems": 38,
       "functions": 38,
       "guards": {
         "verified": 1,
@@ -24472,6 +24530,33 @@
       "read_error": null
     },
     {
+      "book": "books/peer-invite-retry.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 17,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "peer-adoption-receipt-rows",
+        "peer-invite"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/peer-invite.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -24634,7 +24719,7 @@
       "book": "books/peer-set.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 29,
+      "theorems": 33,
       "functions": 18,
       "guards": {
         "verified": 1,
@@ -49970,6 +50055,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/peer-adoption-receipt-rows-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 3,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/peer-adoption-receipt-rows"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/peer-authored-accept-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -50164,6 +50275,61 @@
         "../../books/peer-inbound-invariants",
         "arena-lift",
         "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/peer-invite-administrator-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 2,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/native-admin"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/peer-invite-retry-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 24,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 4,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/peer-adoption-invalidation",
+        "../../books/peer-carriage-rows",
+        "../../books/peer-invite-retry",
+        "peer-invite-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -58318,7 +58484,7 @@
     {
       "theorem": "fn-cfg-delta-items-is-head-and-rows",
       "book": "books/config.lisp",
-      "line": 3329,
+      "line": 3361,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "reflexive-conclusion: a conjunct is (equal X X)"
@@ -58335,7 +58501,7 @@
     {
       "theorem": "fn-cfg-inadmissible-record-is-not-applied",
       "book": "books/config-invariants.lisp",
-      "line": 601,
+      "line": 607,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-config-replay-loop and the conclusion is that branch's value"
       ]
@@ -58930,7 +59096,7 @@
     {
       "theorem": "fn-fps-deltas-of-an-absent-peer",
       "book": "books/feed-pause.lisp",
-      "line": 295,
+      "line": 326,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-fps-deltas and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-fps-deltas and the conclusion is that branch's value"
@@ -72901,6 +73067,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/config.lisp",
+        "line": 35,
+        "include": "peer-adoption-receipt-rows",
+        "included": "books/peer-adoption-receipt-rows.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/connection-budget.lisp",
         "line": 97,
         "include": "public-exposure",
@@ -76003,119 +76176,126 @@
       },
       {
         "book": "books/image-world.lisp",
-        "line": 340,
+        "line": 338,
+        "include": "peer-invite-retry",
+        "included": "books/peer-invite-retry.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/image-world.lisp",
+        "line": 341,
         "include": "web-config",
         "included": "books/web-config.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 341,
+        "line": 342,
         "include": "topic-history-authorship",
         "included": "books/topic-history-authorship.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 342,
+        "line": 343,
         "include": "bp-workflow-constructors",
         "included": "books/bp-workflow-constructors.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 343,
+        "line": 344,
         "include": "bp-channel-ingress",
         "included": "books/bp-channel-ingress.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 344,
+        "line": 345,
         "include": "bp-listener-set",
         "included": "books/bp-listener-set.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 348,
+        "line": 349,
         "include": "bp-release-authority",
         "included": "books/bp-release-authority.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 349,
+        "line": 350,
         "include": "tcpcl-host-drive",
         "included": "books/tcpcl-host-drive.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 350,
+        "line": 351,
         "include": "tcpcl-delivery",
         "included": "books/tcpcl-delivery.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 351,
+        "line": 352,
         "include": "bp-run-class",
         "included": "books/bp-run-class.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 352,
+        "line": 353,
         "include": "bp-node-profile",
         "included": "books/bp-node-profile.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 353,
+        "line": 354,
         "include": "bp-node-profile-admission",
         "included": "books/bp-node-profile-admission.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 354,
+        "line": 355,
         "include": "bp-node-host-transfer",
         "included": "books/bp-node-host-transfer.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 355,
+        "line": 356,
         "include": "bp-node-host-sequence",
         "included": "books/bp-node-host-sequence.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 356,
+        "line": 357,
         "include": "bp-node-host-machine",
         "included": "books/bp-node-host-machine.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 357,
+        "line": 358,
         "include": "bp-evidence-host-names",
         "included": "books/bp-evidence-host-names.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 359,
+        "line": 360,
         "include": "bp-handoff-report",
         "included": "books/bp-handoff-report.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/image-world.lisp",
-        "line": 360,
+        "line": 361,
         "include": "tcpcl-delivery-invariants",
         "included": "books/tcpcl-delivery-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -77371,6 +77551,13 @@
         "line": 77,
         "include": "records-stamp",
         "included": "books/records-stamp.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/peer-invite-retry.lisp",
+        "line": 7,
+        "include": "peer-adoption-receipt-rows",
+        "included": "books/peer-adoption-receipt-rows.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -86166,6 +86353,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/peer-adoption-receipt-rows-tests.lisp",
+        "line": 2,
+        "include": "../../books/peer-adoption-receipt-rows",
+        "included": "books/peer-adoption-receipt-rows.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/peer-authored-accept-tests.lisp",
         "line": 3,
         "include": "topic-history-authorship-tests",
@@ -86275,6 +86469,27 @@
         "line": 229,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/peer-invite-retry-tests.lisp",
+        "line": 2,
+        "include": "peer-invite-tests",
+        "included": "tests/acl2/peer-invite-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/peer-invite-retry-tests.lisp",
+        "line": 3,
+        "include": "../../books/peer-invite-retry",
+        "included": "books/peer-invite-retry.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/peer-invite-retry-tests.lisp",
+        "line": 4,
+        "include": "../../books/peer-adoption-invalidation",
+        "included": "books/peer-adoption-invalidation.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -99973,182 +100188,182 @@
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 232,
+        "line": 237,
         "name": "*fnn-hybrid-control-handler*",
         "source": "host/native/control.lisp",
         "reason": "defined in host/native/control.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 258,
+        "line": 263,
         "name": "fnn-hybrid-control-send",
         "source": "host/native/hybrid-control.lisp",
         "reason": "defined in host/native/hybrid-control.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 266,
+        "line": 271,
         "name": "fnn-ascii-octet-list",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 268,
+        "line": 273,
         "name": "probe-file",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 268,
+        "line": 273,
         "name": "fnn-anchor-csprng-nonce",
         "source": "host/native/anchor.lisp",
         "reason": "defined in host/native/anchor.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 268,
+        "line": 273,
         "name": "fnn-out",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 268,
+        "line": 273,
         "name": "fnn-hex",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 308,
+        "line": 313,
         "name": "fnn-hsig-initialize",
         "source": "host/native/signatures.lisp",
         "reason": "defined in host/native/signatures.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 334,
+        "line": 339,
         "name": "fnn-crypto-initialize",
         "source": "host/native/crypto.lisp",
         "reason": "defined in host/native/crypto.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 345,
+        "line": 350,
         "name": "fnn-lstat",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 345,
+        "line": 350,
         "name": "fnn-mkdir",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 345,
+        "line": 350,
         "name": "fnn-write-staged",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 345,
+        "line": 350,
         "name": "fill",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 345,
+        "line": 350,
         "name": "fnn-fsync-dir",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 363,
+        "line": 368,
         "name": "fnn-owner-wall-milliseconds",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 446,
+        "line": 451,
         "name": "*fnn-operator-live-owner*",
         "source": "host/native/operator.lisp",
         "reason": "defined in host/native/operator.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 446,
+        "line": 451,
         "name": "fnn-admin-plan-acceptedp",
         "source": "host/native/admin.lisp",
         "reason": "defined in host/native/admin.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 446,
+        "line": 451,
         "name": "fnn-admin-plan-reason",
         "source": "host/native/admin.lisp",
         "reason": "defined in host/native/admin.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 446,
+        "line": 451,
         "name": "fnn-olo-socket-present",
         "source": "host/native/operator.lisp",
         "reason": "defined in host/native/operator.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 446,
+        "line": 451,
         "name": "fnn-olo-admin",
         "source": "host/native/operator.lisp",
         "reason": "defined in host/native/operator.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 446,
+        "line": 451,
         "name": "fnn-admin-execute",
         "source": "host/native/admin.lisp",
         "reason": "defined in host/native/admin.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 477,
+        "line": 482,
         "name": "fnn-octets-string",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 477,
+        "line": 482,
         "name": "fnn-fault",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 477,
+        "line": 482,
         "name": "fnn-operator-emit-status",
         "source": "host/native/operator.lisp",
         "reason": "defined in host/native/operator.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 477,
+        "line": 482,
         "name": "fnn-operator-status-of-exit-code",
         "source": "host/native/operator.lisp",
         "reason": "defined in host/native/operator.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/peer-invite.lisp",
-        "line": 477,
+        "line": 482,
         "name": "fnn-exit-code-for",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -102248,42 +102463,42 @@
       },
       {
         "host": "host/peer-invite-host.lisp",
-        "line": 69,
+        "line": 76,
         "name": "fn-owner-config",
         "source": "host/owner-host.lisp",
         "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/peer-invite-host.lisp",
-        "line": 73,
+        "line": 80,
         "name": "fn-owner-reconfigure-deltas",
         "source": "host/owner-host.lisp",
         "reason": "defined in host/owner-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/peer-invite-host.lisp",
-        "line": 102,
+        "line": 109,
         "name": "fn-native-operator-result-peering-words",
         "source": "books/native-operator.lisp",
         "reason": "defined in books/native-operator.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/peer-invite-host.lisp",
-        "line": 106,
+        "line": 113,
         "name": "fn-native-operator-result-peering-control-path-octets",
         "source": "books/native-operator.lisp",
         "reason": "defined in books/native-operator.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/peer-invite-host.lisp",
-        "line": 130,
+        "line": 137,
         "name": "fn-native-operator-result-keys-msgid-octets",
         "source": "books/native-operator.lisp",
         "reason": "defined in books/native-operator.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/peer-invite-host.lisp",
-        "line": 134,
+        "line": 141,
         "name": "fn-native-operator-result-keys-control-path-octets",
         "source": "books/native-operator.lisp",
         "reason": "defined in books/native-operator.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
