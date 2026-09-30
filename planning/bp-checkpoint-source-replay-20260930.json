@@ -1,0 +1,60 @@
+{
+  "kind": "source-repl-and-recording-refuter",
+  "date": "2026-09-30",
+  "scope": "Unactivated BP bounded checkpoint source; neither certification, runtime funding adequacy, qualified image nor native slice completion.",
+  "files": {
+    "books/bp-node-rotation-cursor.lisp": "13eca2da90b35aa497df7180c5c09c26208808493fc0c0b2c2d488ee6241811f",
+    "books/bp-node-checkpoint-job.lisp": "8e4126693f088cf96437912dced4a5739a31be65af3802a64906b67948baaf6e",
+    "books/bp-node-checkpoint-digest.lisp": "1f6486a81f4d8b5bca66adb5960e5fea023bfc8b4d1db1ea3c9191e14eb8aa1d",
+    "books/bp-node-checkpoint-resources.lisp": "18d7bcdc9b693b42057f121fdefdbaa499d2cb2a7c75359e3bbd0e6613a1242c",
+    "books/page-maintenance-lease.lisp": "4fb06d4753dccf66ec43cc056758567d8335864045abcc9d36ce0b758827b235",
+    "books/page-read-ledger.lisp": "9e51c34af4af7300ac68f805c55a4b6bbce52ad078c60c483876988690a9ffd0",
+    "books/page-read-resources.lisp": "50a31ef23b2133cd454a9d4eebfa4245062e99dce1482bc67a343d19618a6c9c",
+    "host/native/bp-checkpoint-writer.lisp": "636a20f534ea5f8aa40eb227b95487d76e3b38958f4ab24b3b9625388fdff028",
+    "tests/bp_checkpoint_writer_host_refuter.lisp": "9cd9fd818db02aeb8dffb2d57e6879a34e27c7c48ed7b747752c675ba8f6c4d2",
+    "tests/acl2/bp-node-checkpoint-job-tests.lisp": "bc4fccd59ed6e53eb642ecc6fa17bfd6859332cb5e7aabb0e004813770be0eaa",
+    "tests/acl2/bp-node-checkpoint-digest-tests.lisp": "b73b3430b979d099f17907f8a769772cf6947396adacee803accf285214208f1"
+  },
+  "source_roots": [
+    {
+      "session": "bpck-resource3",
+      "root": "books/bp-node-checkpoint-resources",
+      "root_forms": 12,
+      "acl2_seconds": 13.65,
+      "prover_steps": 5764646,
+      "source_dependencies_properly_encapsulated": true,
+      "fixtures": "tests/acl2/bp-node-checkpoint-job-tests.lisp",
+      "fixture_forms": 10,
+      "fixture_assertions": 8,
+      "status": "passed; session stopped"
+    },
+    {
+      "session": "bpck-digest3",
+      "root": "books/bp-node-checkpoint-digest",
+      "root_forms": 9,
+      "acl2_seconds": 13.88,
+      "prover_steps": 6110352,
+      "source_dependencies_properly_encapsulated": true,
+      "fixtures": "tests/acl2/bp-node-checkpoint-digest-tests.lisp",
+      "fixture_forms": 4,
+      "fixture_assertions": 1,
+      "status": "passed; session stopped"
+    }
+  ],
+  "recording_refuter": {
+    "command": "/opt/homebrew/bin/sbcl --script tests/bp_checkpoint_writer_host_refuter.lisp",
+    "status": "passed",
+    "effects": "recorded stubs only; no disk/network/native execution"
+  },
+  "remaining": [
+    "actual charged capture and CURRENT state epoch/token freeze",
+    "actual bounded worker/scheduler integration",
+    "standalone supported B/U shared-pool installation",
+    "selected runtime envelope and operation counts",
+    "immutable staged prefix/full fn-frame-trailer refinement",
+    "typed publication/cleanup and native interruption/restart",
+    "P2 funded registered receipt query",
+    "production frozen retirement settlement/report"
+  ],
+  "logs": "build/proof-repl/{bpck-resource3,bpck-digest3}/log (local retained, not committed)"
+}
