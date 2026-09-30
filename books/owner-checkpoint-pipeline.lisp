@@ -688,6 +688,14 @@
                                          (:executable-counterpart natp)))))))
 
 (local
+ (defthm fn-ockp-admit-frames-total-cadr-natp-by-definition
+   (implies (and (natp total)
+                 (equal (car (fn-ockp-admit-frames frames total segment-bound file-bound)) :ok))
+            (natp (cadr (fn-ockp-admit-frames frames total segment-bound file-bound))))
+   :hints (("Goal" :use fn-ockp-admit-frames-total-natp
+            :in-theory (e/d (nth) (fn-ockp-admit-frames))))))
+
+(local
  (defthm fn-ockp-batch-total-natp
    (implies (and (natp total)
                  (equal (mv-nth 0 (fn-ockp-batch tables k rest i index prev w b bytes seg s counts n mtrie
@@ -804,7 +812,7 @@
                                      (fn-sco-at 4 setup) (fn-sco-at 2 setup) seg s fn-octets)))
   :hints (("Goal" :induct (fn-ockp-run setup pst b bytes seg s segment-bound file-bound fuel fn-octets)
            :in-theory (e/d (fn-ockp-run fn-ockp-donep fn-sco-at)
-                           (nth nfix fn-scc-header fn-scc-seal fn-scc-chunks fn-scc-frames
+                           (nth adt-nth-0 adt-nth-1+ nfix fn-scc-header fn-scc-seal fn-scc-chunks fn-scc-frames
                             fn-scc-concat fn-sct-rows-program fn-ockp-table-rows fn-ockp-count
                             fn-ockp-batch fn-ockp-step fn-ockp-remaining fn-ockp-later
                             fn-ockp-run-remaining fn-ockp-remaining-unfold fn-ockp-later-unfold
