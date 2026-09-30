@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6496,6 +6496,34 @@
         "specs/extent-window-read.md"
       ],
       "execution_scope": "Source components and concrete buffer witnesses only. Streaming digest, compressed legacy acceptance equivalence, native lifetime/funding and matching full-path execution remain open."
+    },
+    {
+      "id": "SCN-1006",
+      "title": "Fixed-block page digest continuation and current word-digest identity",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-035",
+        "HST-040"
+      ],
+      "steps": [
+        "Capture exact immutable source and lease names; census final64B blockcount before digest begin.",
+        "Tick empty,64B,1024B,1024+64B and2048+64B word streams, yielding between split search, block and parent phases.",
+        "Compare terminal natural to the existing actual pgs-x-words-digest; mutate source and separately corrupt continuation depth.",
+        "After general refinement/progress/allocation proofs, wire into the disk-backed two-pass preparation controller and run matching producer/image evidence."
+      ],
+      "expected": [
+        "No whole directory staging; each input quantum is at most eight u64 words and one compression; source is read-only.",
+        "Finished digest preserves current persistent-format value and capture/lease names.",
+        "Source change is distinguished in ground evidence; corrupted-depth continuation returns invalid with unchanged state.",
+        "No producer/resource-admission completion until actual composition, general proof and matching evidence."
+      ],
+      "evidence": [
+        "books/pagestore-digest-cursor.lisp",
+        "tests/acl2/pagestore-digest-cursor-tests.lisp",
+        "planning/page-digest-cursor-contract.md"
+      ],
+      "execution_scope": "Guard-verified library/source REPL ground evidence only; general terminal/refinement/work/allocation and host composition remain open."
     }
   ]
 }
