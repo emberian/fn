@@ -323,3 +323,138 @@
    (and (fn-hrcur-tree-domainp x)
         (equal (car result) :prepared)
         (equal (caddr result) (fn-scc-encode x)))))
+
+(defun fn-hrcur-test-byte-tracep (fuel c)
+  (declare (xargs :guard (natp fuel) :verify-guards nil))
+  (if (zp fuel) t
+    (mv-let (v byte next) (fn-hrcur-byte-tick c)
+      (and (fn-hrcur-byte-invariantp c) (fn-hrcur-byte-invariantp next)
+           (member-eq v '(:continue :emit :prepared))
+           (implies (eq v :emit) (fn-scc-octetp byte))
+           (equal (fn-hrcur-byte-rest c)
+                  (if (eq v :emit) (cons byte (fn-hrcur-byte-rest next))
+                    (fn-hrcur-byte-rest next)))
+           (implies (eq v :prepared) (equal (fn-hrcur-byte-rest c) nil))
+           (equal (fn-hrcur-field 3 next) (fn-hrcur-field 3 c))
+           (equal (fn-hrcur-field 4 next) (fn-hrcur-field 4 c))
+           (fn-hrcur-test-byte-tracep (1- fuel) next)))))
+
+(defun fn-hrcur-test-byte-run (fuel c)
+  (declare (xargs :guard (natp fuel) :verify-guards nil))
+  (if (zp fuel) (list :yield c nil)
+    (mv-let (v byte next) (fn-hrcur-byte-tick c)
+      (cond ((eq v :prepared) (list :prepared next nil))
+            ((eq v :continue) (fn-hrcur-test-byte-run (1- fuel) next))
+            ((eq v :emit)
+             (let ((rest (fn-hrcur-test-byte-run (1- fuel) next)))
+               (list (car rest) (cadr rest) (cons byte (caddr rest)))))
+            (t (list v next nil))))))
+
+(defconst *fn-hrcur-test-byte-begin*
+  (fn-hrcur-byte-begin (list :resident *fn-hrcur-test-tree*) :capture :lease))
+
+; Complete literal initial domain and both refinement conclusions.
+(assert-event
+ (and (fn-hrcur-tree-domainp *fn-hrcur-test-tree*)
+      (fn-hrcur-byte-invariantp *fn-hrcur-test-byte-begin*)
+      (equal (fn-hrcur-byte-rest *fn-hrcur-test-byte-begin*)
+             (fn-scc-encode *fn-hrcur-test-tree*))))
+
+; Every runtime tick checks all literal antecedents/conclusions, including
+; scalar strings/symbols, nonempty octets, dotted pair and postfix CONS.
+(assert-event (fn-hrcur-test-byte-tracep 500 *fn-hrcur-test-byte-begin*))
+(assert-event
+ (let ((r (fn-hrcur-test-byte-run 500 *fn-hrcur-test-byte-begin*)))
+   (and (eq (car r) :prepared)
+        (equal (caddr r) (fn-scc-encode *fn-hrcur-test-tree*)))))
+(assert-event
+ (let* ((first (fn-hrcur-test-byte-run 43 *fn-hrcur-test-byte-begin*))
+        (second (fn-hrcur-test-byte-run 500 (cadr first))))
+   (and (eq (car first) :yield) (eq (car second) :prepared)
+        (equal (append (caddr first) (caddr second))
+               (fn-scc-encode *fn-hrcur-test-tree*)))))
+
+; Sole-invariant removal, corrupted active scalar state: an invalid digit width
+; is refused while a nonempty opcode residual remains, breaking conservation.
+(assert-event
+ (let ((bad (list :scalar (fn-hrcur-tree-begin nil :capture :lease)
+                  '(:prefix :x (4) 0 0 256 "" 0 :capture :lease) :capture :lease nil)))
+   (mv-let (v byte next) (fn-hrcur-byte-tick bad)
+     (declare (ignore byte))
+     (and (not (fn-hrcur-byte-invariantp bad)) (equal v '(:refused :cursor))
+          (not (equal (fn-hrcur-byte-rest bad) (fn-hrcur-byte-rest next)))))))
+
+; Initial sole domain removal is an argument mutation, not a captured row.
+(assert-event
+ (let* ((row (expt 256 256)) (c (fn-hrcur-byte-begin (list :resident row) :c :l)))
+   (and (not (fn-hrcur-tree-domainp row)) (not (fn-hrcur-byte-invariantp c)))))
+
+(defun fn-hrcur-test-word-byte-run (fuel c k w)
+  (declare (xargs :guard (natp fuel) :verify-guards nil))
+  (if (zp fuel) (list :yield c nil k w)
+    (mv-let (v byte next) (fn-hrcur-byte-tick c)
+      (cond
+       ((eq v :continue) (fn-hrcur-test-word-byte-run (1- fuel) next k w))
+       ((eq v :emit)
+        (mv-let (wv word k2 w2) (fn-hrcur-word-push byte k w)
+          (let ((rest (fn-hrcur-test-word-byte-run (1- fuel) next k2 w2)))
+            (list (car rest) (cadr rest)
+                  (if (eq wv :emit) (cons word (caddr rest)) (caddr rest))
+                  (cadddr rest) (fn-hrcur-field 4 rest)))))
+       ((eq v :prepared)
+        (mv-let (wv word k2 w2) (fn-hrcur-word-finish k w)
+          (list :prepared next (if (eq wv :emit) (list word) nil) k2 w2)))
+       (t (list v next nil k w))))))
+
+; Reachable composed output matches current physical blob words including
+; final zero padding; the oracle exists only inside this test.
+(assert-event
+ (let* ((r (fn-hrcur-test-word-byte-run 500 *fn-hrcur-test-byte-begin* 0 0))
+        (encoded (fn-scc-encode *fn-hrcur-test-tree*))
+        (padded (append encoded (adt-zeros (mod (- (len encoded)) 8)))))
+   (and (eq (car r) :prepared) (equal (cadddr r) 0) (equal (fn-hrcur-field 4 r) 0)
+        (equal (caddr r) (fn-hp-pack8 (floor (len padded) 8) padded)))))
+
+(defun fn-hrcur-test-census-run (fuel c)
+  (declare (xargs :guard (natp fuel) :verify-guards nil))
+  (if (zp fuel) (list :yield nil c)
+    (mv-let (v n next) (fn-hrcur-census-tick c)
+      (if (eq v :continue) (fn-hrcur-test-census-run (1- fuel) next)
+        (list v n next)))))
+
+(defun fn-hrcur-test-census-tracep (fuel c)
+  (declare (xargs :guard (natp fuel) :verify-guards nil))
+  (if (zp fuel) t
+    (mv-let (v n next) (fn-hrcur-census-tick c)
+      (and (fn-hrcur-census-invariantp c) (fn-hrcur-census-invariantp next)
+           (member-eq v '(:continue :prepared))
+           (equal (fn-hrcur-census-total c) (fn-hrcur-census-total next))
+           (implies (eq v :prepared) (equal n (fn-hrcur-census-total c)))
+           (fn-hrcur-test-census-tracep (1- fuel) next)))))
+
+(defconst *fn-hrcur-test-census-begin*
+  (fn-hrcur-census-begin (list :resident *fn-hrcur-test-tree*) :capture :lease))
+(assert-event
+ (and (fn-hrcur-tree-domainp *fn-hrcur-test-tree*)
+      (< (len (fn-scc-encode *fn-hrcur-test-tree*)) *fn-hrcur-u64-bound*)
+      (fn-hrcur-census-invariantp *fn-hrcur-test-census-begin*)
+      (equal (fn-hrcur-census-total *fn-hrcur-test-census-begin*)
+             (len (fn-scc-encode *fn-hrcur-test-tree*)))))
+(assert-event (fn-hrcur-test-census-tracep 500 *fn-hrcur-test-census-begin*))
+(assert-event
+ (let* ((first (fn-hrcur-test-census-run 43 *fn-hrcur-test-census-begin*))
+        (second (fn-hrcur-test-census-run 500 (caddr first))))
+   (and (eq (car first) :yield) (eq (car second) :prepared)
+        (equal (cadr second) (len (fn-scc-encode *fn-hrcur-test-tree*))))))
+
+; Sole-invariant removal: unsupported census total at the existing u64 edge.
+; The next one-byte step is explicitly refused, never a completed count.
+(assert-event
+ (let* ((bytes '(:tree (((:byte 5)) :capture :lease) nil :capture :lease nil))
+        (bad (list :active bytes (1- *fn-hrcur-u64-bound*))))
+   (mv-let (v n next) (fn-hrcur-census-tick bad)
+     (declare (ignore n))
+     (and (fn-hrcur-byte-invariantp bytes) (not (fn-hrcur-census-invariantp bad))
+          (equal v '(:refused :codec-width))
+          (not (member-eq v '(:continue :prepared)))
+          (not (equal (fn-hrcur-census-total bad) (fn-hrcur-census-total next)))))))
