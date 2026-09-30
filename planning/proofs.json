@@ -17833,9 +17833,13 @@
         "books/owner-obligation-completion.lisp",
         "tests/acl2/owner-obligation-completion-tests.lisp",
         "books/retention-obligation-view-bounds.lisp",
-        "tests/acl2/retention-obligation-view-bounds-tests.lisp"
+        "tests/acl2/retention-obligation-view-bounds-tests.lisp",
+        "books/obligation-configured-bounds.lisp",
+        "tests/acl2/obligation-configured-bounds-tests.lisp",
+        "books/obligation-view-growth.lisp",
+        "tests/acl2/obligation-view-growth-tests.lisp"
       ],
-      "progress_note": "Clean narrow hbox source REPL evidence covers concrete delta/oracle, actual identity prepare, cold initialization and actual rebuild/swap, durable finish, report/codec/operator boundaries and literal/live/corrupted-state teeth. Cold reconstruction typing and finish Store/carry proof premises were removed after stronger proofs passed; executable guards are unchanged. The lifetime-T arithmetic reserve is included in store/offline figures. Exact radix updater and cold-fold retained cons growth are proved. Total and keyed count/charge are bounded by ledger capacity and conditionally fit uint64, with every conditional premise exercised. Remaining actual prepare variants/owner installations, configured capacity and cumulative zero-path support, physical allocator/coexistence/collector bounds, matched real-caller costs and coalesced native scenarios remain open. No committed certification manifest, matching native execution or W9 completion claim."
+      "progress_note": "Clean narrow hbox source REPL evidence covers concrete delta/oracle, actual identity prepare, cold initialization and actual rebuild/swap, durable finish, report/codec/operator boundaries and literal/live/corrupted-state teeth. Cold reconstruction typing and finish Store/carry proof premises were removed after stronger proofs passed; executable guards are unchanged. The lifetime-T arithmetic reserve is included in store/offline figures. Exact radix updater and cold-fold retained cons growth are proved. The phase-aware fn-cst-relation now forces node retention capacity to uint32, including pending/completing and recovery phases; combined with view correspondence, total and keyed count/charge fit uint64. The exact fn-rov-update retained cons bound covers arrival, release and no-change, including retained zero terminals. Literal positive and corrupted-state witnesses exercise the numeric premises. Remaining actual prepare variants/owner installations, actual owner configured-domain preservation and cumulative zero-path support, physical allocator/coexistence/collector bounds, matched real-caller costs and coalesced native scenarios remain open. No committed certification manifest, matching native execution or W9 completion claim."
     },
     {
       "id": "PRF-1072",

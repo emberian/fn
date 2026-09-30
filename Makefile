@@ -419,6 +419,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-obligation-recovery \
 	books/owner-obligation-completion \
 	tests/acl2/owner-obligation-completion-tests \
+	books/obligation-view-growth \
+	tests/acl2/obligation-view-growth-tests \
+	books/obligation-configured-bounds \
+	tests/acl2/obligation-configured-bounds-tests \
 	books/retention-obligation-view-bounds \
 	tests/acl2/retention-obligation-view-bounds-tests \
 	tests/acl2/owner-obligation-recovery-tests \
