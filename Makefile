@@ -487,6 +487,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-log-buffer \
 	tests/acl2/store-log-buffer-tests \
 	books/store-log-walk-once \
+	books/store-log-walk-sized \
+	tests/acl2/store-log-walk-sized-tests \
 	tests/acl2/store-log-walk-once-tests \
 	books/store-log-segments \
 	tests/acl2/store-log-segments-tests \
