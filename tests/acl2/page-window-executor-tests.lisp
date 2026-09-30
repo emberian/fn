@@ -59,3 +59,42 @@
   (equal (fn-prl-close-preview (nth 2 *pwx-released*) 11) :closable)
   (equal (mv-list 3 (fn-pwx-release (nth 2 *pwx-released*) (nth 1 *pwx-released*) *prw-token*))
          (list :stale-job (nth 1 *pwx-released*) (nth 2 *pwx-released*)))))
+
+(defconst *pwx-cancelled* (mv-list 3 (fn-pwx-cancel *pwx-held* *pwx-worker* *prw-token*)))
+(defconst *pwx-cancel-return* (mv-list 3 (fn-pwx-return *pwx-held* (nth 1 *pwx-cancelled*) *prw-token*)))
+(assert-event (and (equal (nth 0 *pwx-cancelled*) :cancelled)
+  (equal (nth 2 *pwx-cancelled*) *pwx-held*)
+  (fn-pwx-rowp *pwx-worker*) (fn-pwx-rowp (nth 1 *pwx-cancelled*))
+  (equal (fn-prl-nth 2 (nth 1 *pwx-cancelled*)) :cancelled-running)
+  (not (fn-pwx-work-permittedp *pwx-held* (nth 1 *pwx-cancelled*) *prw-token*))
+  (equal (mv-list 3 (fn-pwx-settle-cancelled *pwx-held* (nth 1 *pwx-cancelled*) *prw-token*))
+         (list :stale-job (nth 1 *pwx-cancelled*) *pwx-held*))))
+(assert-event (and (equal (nth 0 *pwx-cancel-return*) :returned)
+  (fn-pwx-boundp (nth 2 *pwx-cancel-return*) (nth 1 *pwx-cancel-return*) *prw-token* :cancelled-returned)
+  (not (fn-pwx-boundp (nth 2 *pwx-cancel-return*) (nth 1 *pwx-cancel-return*) *prw-token* :returned))
+  (equal (nth 0 (mv-list 3 (fn-pwx-settle-cancelled (nth 2 *pwx-cancel-return*) (nth 1 *pwx-cancel-return*) *prw-token*))) :released)))
+; Revocation after physical return still retains all credits and prevents the
+; ordinary publication release path from consuming the revoked owner row.
+(assert-event
+ (let* ((c (mv-list 3 (fn-pwx-cancel *pwx-held-returned* *pwx-worker-returned* *prw-token*)))
+        (w (nth 1 c)))
+   (and (equal (nth 0 c) :cancelled)
+        (equal (nth 2 c) *pwx-held-returned*)
+        (equal (mv-list 3 (fn-pwx-release *pwx-held-returned* w *prw-token*))
+               (list :stale-job w *pwx-held-returned*))
+        (equal (nth 0 (mv-list 3 (fn-pwx-settle-cancelled *pwx-held-returned* w *prw-token*)))
+               :released))))
+
+; HYPOTHESIS-REMOVAL / CORRUPTED STATE: the worker-shape premise of each
+; preservation theorem is necessary; every other premise (none) is retained.
+(assert-event
+ (let ((bad '(0 nil :idle (:window))))
+   (and (not (fn-pwx-rowp bad))
+        (not (fn-pwx-rowp (nth 1 (mv-list 3 (fn-pwx-cancel *pwx-held* bad *prw-token*)))))
+        (not (fn-pwx-rowp (nth 1 (mv-list 3 (fn-pwx-settle-cancelled *pwx-held* bad *prw-token*))))))))
+; MUTATION: revocation cannot borrow another job's descriptor projection.
+(assert-event
+ (let ((wrong (update-nth 7 0 *prw-token*)))
+   (and (not (equal wrong *prw-token*))
+        (equal (mv-list 3 (fn-pwx-cancel *pwx-held* *pwx-worker* wrong))
+               (list :stale-job *pwx-worker* *pwx-held*)))))
