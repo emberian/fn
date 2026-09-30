@@ -117,12 +117,16 @@ universal composed authentication/invariant/refinement/progress theorem,
 physical funding or host activation. PRF-1107 stays planned with no events.
 
 `fn-hsr-auth-lifetimep` is logical proof vocabulary coupling the fixed outer
-modes to the nested I/O invariant. Begin establishes it, and request,
-completion, release, cancellation and joined failure preserve it. Completion
+modes to the nested I/O invariant. Begin establishes it, and all eight public reader transitions preserve it,
+including selection, byte packing and digest phase changes. Completion
 and joined failure require both the outer and nested modes to be waiting;
-a deliberately corrupted mismatch refuses unchanged. This is the I/O subset
-of trajectory preservation. Selection, byte packing and digest phase transitions
-still require the combined stream/scanner/digest invariant.
+a deliberately corrupted mismatch refuses unchanged. This is the I/O lifetime subset
+of trajectory preservation. Phase opening preserves it when nested I/O is idle
+or observed; the observed case retains the old borrow and enters release before
+the next request. The complete actual three-page test checks each literal public
+shape/lifetime antecedent and conclusion at every reachable tick. The stream,
+scanner and digest semantic relation still requires its combined invariant; no
+full authentication/refinement/progress theorem follows from lifetime alone.
 
 The fixed coordinate projection `fn-hsr-auth-identities` carries the exact
 selected root and nested I/O ticket, epoch and opaque capture/lease. All eight

@@ -351,3 +351,71 @@
          (equal (second (fn-hsr-auth-identities verified))
                 '(0 41 (:captured 7) (:lease 8 2)))))
   :rule-classes nil)
+
+; Reachable positive witnesses for each public shape/lifetime preservation
+; literal: the full antecedent and conclusion are checked at every actual tick.
+; This test-only walker may validate state; the served path never calls it.
+(defun fn-hsr-auth-test-carried-run (fuel c buffer pages pgs-digest-state)
+  (declare (xargs :stobjs pgs-digest-state :measure (nfix fuel) :verify-guards nil))
+  (if (zp fuel) (mv nil c pgs-digest-state)
+    (let ((antecedent (and (fn-hsr-auth-shapep c) (fn-hsr-auth-lifetimep c))))
+      (case (fn-hsr-field 0 c)
+        (:need-read
+         (mv-let (v request waiting) (fn-hsr-auth-request c)
+           (let ((bytes (cdr (assoc-equal (fn-hsr-field 5 request) pages))))
+             (mv-let (completed next) (fn-hsr-auth-complete request (fn-hsr-field 3 request) (len bytes) :read-ok waiting)
+               (mv-let (ok final pgs-digest-state)
+                 (fn-hsr-auth-test-carried-run (1- fuel) next bytes pages pgs-digest-state)
+                 (mv (and antecedent (equal v :need-read) (equal completed :yield)
+                          (fn-hsr-auth-shapep waiting) (fn-hsr-auth-lifetimep waiting)
+                          (fn-hsr-auth-shapep next) (fn-hsr-auth-lifetimep next) ok)
+                     final pgs-digest-state))))))
+        (:digest
+         (mv-let (v next pgs-digest-state) (fn-hsr-auth-digest-tick c pgs-digest-state)
+           (declare (ignore v))
+           (mv-let (ok final pgs-digest-state)
+             (fn-hsr-auth-test-carried-run (1- fuel) next buffer pages pgs-digest-state)
+             (mv (and antecedent (fn-hsr-auth-shapep next) (fn-hsr-auth-lifetimep next) ok)
+                 final pgs-digest-state))))
+        (:byte
+         (let ((demand (fn-hsr-auth-byte-demand c)))
+           (mv-let (v next) (fn-hsr-auth-feed-byte (fn-hsr-field 1 demand) (fn-hsr-field 2 demand) (car buffer) c)
+             (mv-let (ok final pgs-digest-state)
+               (fn-hsr-auth-test-carried-run (1- fuel) next (cdr buffer) pages pgs-digest-state)
+               (mv (and antecedent (equal v :yield) (fn-hsr-auth-shapep next) (fn-hsr-auth-lifetimep next) ok)
+                   final pgs-digest-state)))))
+        (:release
+         (mv-let (v next) (fn-hsr-auth-release (fn-hsr-field 5 (fn-hsr-field 1 c)) c)
+           (mv-let (ok final pgs-digest-state)
+             (fn-hsr-auth-test-carried-run (1- fuel) next nil pages pgs-digest-state)
+             (mv (and antecedent (equal v :released) (fn-hsr-auth-shapep next) (fn-hsr-auth-lifetimep next) ok)
+                 final pgs-digest-state))))
+        (otherwise (mv (and antecedent (equal (fn-hsr-field 0 c) :verified)) c pgs-digest-state))))))
+
+(defthm fn-hsr-auth-carried-trajectory-positive
+  (let* ((root (fn-hsr-field 2 (second (fn-hsr-auth-test-waiting))))
+         (c (mv-nth 1 (fn-hsr-auth-begin root 0 41 '(:captured 7) '(:lease 8 2))))
+         (selected (fn-hsr-auth-select-page 0 c (create-pgs-digest-state)))
+         (run (fn-hsr-auth-test-carried-run 60000 (mv-nth 1 selected) nil *fn-hsr-auth-pages* (mv-nth 2 selected))))
+    (and (fn-hsr-auth-shapep c) (fn-hsr-auth-lifetimep c)
+         (equal (fn-hsr-field 0 c) :idle)
+         (equal (mv-nth 0 selected) :yield)
+         (fn-hsr-auth-shapep (mv-nth 1 selected)) (fn-hsr-auth-lifetimep (mv-nth 1 selected))
+         (mv-nth 0 run)
+         (equal (fn-hsr-field 17 (mv-nth 1 run)) '(:verified-page 0 41 0 304 2))))
+  :rule-classes nil)
+
+; Corrupted-state antecedent removals: each one-hypothesis public literal has
+; no retained hypotheses. Both omission and the complete conclusion fail.
+(defthm fn-hsr-auth-trajectory-shape-hypothesis-removals
+  (and (not (fn-hsr-auth-shapep nil))
+       (not (fn-hsr-auth-shapep (mv-nth 1 (fn-hsr-auth-select-page 0 nil (create-pgs-digest-state)))))
+       (not (fn-hsr-auth-shapep (mv-nth 1 (fn-hsr-auth-feed-byte 0 0 0 nil))))
+       (not (fn-hsr-auth-shapep (mv-nth 1 (fn-hsr-auth-digest-tick nil (create-pgs-digest-state))))))
+  :rule-classes nil)
+(defthm fn-hsr-auth-trajectory-lifetime-hypothesis-removals
+  (and (not (fn-hsr-auth-lifetimep nil))
+       (not (fn-hsr-auth-lifetimep (mv-nth 1 (fn-hsr-auth-select-page 0 nil (create-pgs-digest-state)))))
+       (not (fn-hsr-auth-lifetimep (mv-nth 1 (fn-hsr-auth-feed-byte 0 0 0 nil))))
+       (not (fn-hsr-auth-lifetimep (mv-nth 1 (fn-hsr-auth-digest-tick nil (create-pgs-digest-state))))))
+  :rule-classes nil)

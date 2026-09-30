@@ -162,6 +162,70 @@
       (fn-hsr-auth-open-phase :directory (fn-hsr-field 2 root) (* 2048 (fn-hsr-field 12 c))
                               (pgs-x-ntables np) tp (fn-hsr-field 4 root) next pgs-digest-state))))
 
+(local
+ (defthm fn-hsr-phase-tag-shape
+   (implies (and (fn-hsr-io-shapep io)
+                 (member-eq phase '(:directory :table :data)))
+            (fn-hsr-tagp (list (fn-hsr-field 1 io) (fn-hsr-field 2 io)
+                               (fn-hsr-field 3 io) phase)))
+   :hints (("Goal" :in-theory (enable fn-hsr-io-shapep fn-hsr-tagp fn-hsr-field fn-hsr-widthp)))))
+(local
+ (defthm fn-hsr-scan-begin-shape
+   (implies (and (unsigned-byte-p 64 total) (unsigned-byte-p 64 count)
+                 (unsigned-byte-p 64 selected) (unsigned-byte-p 64 txid)
+                 (<= (* 6 count) total) (< selected count))
+            (fn-hsr-scan-shapep (fn-hsr-scan-begin total count selected txid capture lease)))
+   :hints (("Goal" :use fn-hsr-scan-begin-establishes-invariant
+            :in-theory (e/d (fn-hsr-scan-invariantp)
+                            (fn-hsr-scan-begin fn-hsr-scan-shapep fn-hsr-scan-begin-establishes-invariant))))))
+(local
+ (defthm fn-hsr-auth-root-txid-domain
+   (implies (fn-hsr-rootp root) (unsigned-byte-p 64 (fn-hsr-field 1 root)))
+   :hints (("Goal" :in-theory (enable fn-hsr-rootp)))))
+(defthm fn-hsr-auth-open-phase-preserves-shape
+  (implies (fn-hsr-auth-shapep c)
+           (fn-hsr-auth-shapep
+            (mv-nth 1 (fn-hsr-auth-open-phase phase physical total count selected expected c pgs-digest-state))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-hsr-auth-open-phase fn-hsr-auth-shapep)
+                (fn-hsr-rootp fn-hsr-put fn-hsr-field fn-hsr-io-shapep fn-hsr-prefixp fn-hsr-widthp
+                 fn-hsr-tagp fn-hrcur-wordp pgs-dc-begin fn-hsr-scan-begin fn-hsr-scan-shapep floor mod)))))
+(defthm fn-hsr-auth-open-phase-preserves-lifetime
+  (implies (and (fn-hsr-auth-lifetimep c)
+                (member-eq (fn-hsr-field 0 (fn-hsr-field 1 c)) '(:idle :observed)))
+           (fn-hsr-auth-lifetimep
+            (mv-nth 1 (fn-hsr-auth-open-phase phase physical total count selected expected c pgs-digest-state))))
+  :hints (("Goal" :use fn-hsr-auth-open-phase-preserves-shape
+           :in-theory (e/d (fn-hsr-auth-open-phase fn-hsr-auth-lifetimep fn-hsr-io-invariantp)
+                           (fn-hsr-auth-open-phase-preserves-shape fn-hsr-auth-shapep fn-hsr-io-shapep
+                            fn-hsr-put fn-hsr-field fn-hsr-prefixp fn-hsr-widthp fn-hsr-tagp fn-hrcur-wordp
+                            pgs-dc-begin fn-hsr-scan-begin fn-hsr-scan-shapep floor mod)))))
+(local
+ (defthm fn-hsr-auth-selection-shape
+   (implies (and (fn-hsr-auth-shapep c) (natp logical) (natp tp) (natp count))
+            (fn-hsr-auth-shapep (fn-hsr-put 3 logical (fn-hsr-put 13 tp (fn-hsr-put 14 count c)))))
+   :hints (("Goal" :in-theory (e/d (fn-hsr-auth-shapep)
+                                  (fn-hsr-put fn-hsr-field fn-hsr-io-shapep fn-hsr-rootp fn-hsr-prefixp
+                                   fn-hsr-widthp fn-hsr-tagp fn-hrcur-wordp fn-hsr-scan-shapep))))))
+(local
+ (defthm fn-hsr-table-quotient-natural
+   (implies (natp logical) (natp (floor logical 341)))
+   :hints (("Goal" :in-theory (enable floor)))))
+(defthm fn-hsr-auth-select-page-preserves-shape
+  (implies (fn-hsr-auth-shapep c)
+           (fn-hsr-auth-shapep (mv-nth 1 (fn-hsr-auth-select-page logical c pgs-digest-state))))
+  :hints (("Goal" :in-theory (e/d (fn-hsr-auth-select-page pgs-tq)
+                                 (fn-hsr-auth-open-phase fn-hsr-auth-shapep fn-hsr-put fn-hsr-field
+                                  fn-hsr-io-shapep fn-hsr-rootp fn-hsr-prefixp fn-hsr-widthp fn-hsr-tagp
+                                  fn-hrcur-wordp fn-hsr-scan-shapep floor mod)))))
+(defthm fn-hsr-auth-select-page-preserves-lifetime
+  (implies (fn-hsr-auth-lifetimep c)
+           (fn-hsr-auth-lifetimep (mv-nth 1 (fn-hsr-auth-select-page logical c pgs-digest-state))))
+  :hints (("Goal" :in-theory (e/d (fn-hsr-auth-select-page fn-hsr-auth-lifetimep pgs-tq)
+                                 (fn-hsr-auth-open-phase fn-hsr-auth-shapep fn-hsr-put fn-hsr-field
+                                  fn-hsr-io-shapep fn-hsr-rootp fn-hsr-prefixp fn-hsr-widthp fn-hsr-tagp
+                                  fn-hrcur-wordp fn-hsr-scan-shapep fn-hsr-io-invariantp floor mod)))))
+
 (defun fn-hsr-auth-request (c)
   (declare (xargs :guard t))
   (if (not (and (fn-hsr-auth-shapep c) (equal (fn-hsr-field 0 c) :need-read)
@@ -305,6 +369,58 @@
                                (fn-hsr-put 9 block (fn-hsr-put 10 scan c))))))))
                    (mv :yield next)))))))))
 
+(local
+ (defthm fn-hsr-auth-prefix-append-one
+   (implies (and (natp k) (fn-hsr-prefixp p k) (< (len p) k) (unsigned-byte-p 64 w))
+            (fn-hsr-prefixp (append p (list w)) k))
+   :hints (("Goal" :induct (fn-hsr-prefixp p k) :in-theory (enable fn-hsr-prefixp)))))
+(local
+ (defthm fn-hsr-scan-word-preserves-shape
+   (implies (fn-hsr-scan-shapep c) (fn-hsr-scan-shapep (mv-nth 1 (fn-hsr-scan-word word c))))
+   :hints (("Goal" :in-theory (e/d (fn-hsr-scan-shapep fn-hsr-scan-word fn-hsr-field fn-hsr-widthp)
+                                  (fn-hsr-prefixp fn-hsr-word-okp fn-hsr-selected-indexp))))))
+(local
+ (defthm fn-hsr-scan-word-continue-shape
+   (implies (equal (mv-nth 0 (fn-hsr-scan-word word c)) :continue)
+            (fn-hsr-scan-shapep (mv-nth 1 (fn-hsr-scan-word word c))))
+   :hints (("Goal" :use fn-hsr-scan-word-preserves-shape
+            :in-theory (e/d (fn-hsr-scan-word)
+                            (fn-hsr-scan-word-preserves-shape fn-hsr-scan-shapep fn-hsr-field
+                             fn-hsr-prefixp fn-hsr-word-okp fn-hsr-selected-indexp))))))
+(local
+ (defthm fn-hsr-auth-prefix-append-two
+   (implies (and (natp k) (fn-hsr-prefixp p k) (<= (+ 2 (len p)) k)
+                 (unsigned-byte-p 64 a) (unsigned-byte-p 64 b))
+            (fn-hsr-prefixp (append p (list a b)) k))
+   :hints (("Goal" :induct (fn-hsr-prefixp p k) :in-theory (enable fn-hsr-prefixp)))))
+(local
+ (defthm fn-hsr-auth-word-halves
+   (and (unsigned-byte-p 64 (pgs-lo32 word)) (unsigned-byte-p 64 (pgs-hi32 word)))
+   :hints (("Goal" :use ((:instance pgs-u32-of-lo32 (w word)) (:instance pgs-u32-of-hi32 (w word)))
+            :in-theory (e/d (unsigned-byte-p) (pgs-lo32 pgs-hi32 floor mod))))))
+(local
+ (defthm fn-hsr-auth-block-append-word
+   (implies (and (fn-hsr-prefixp block 16) (<= (len block) 14) (unsigned-byte-p 64 word))
+            (fn-hsr-prefixp (append block (list (pgs-lo32 word) (pgs-hi32 word))) 16))
+   :hints (("Goal" :in-theory (disable fn-hsr-prefixp pgs-lo32 pgs-hi32)))))
+(defthm fn-hsr-auth-feed-byte-preserves-shape
+  (implies (fn-hsr-auth-shapep c)
+           (fn-hsr-auth-shapep (mv-nth 1 (fn-hsr-auth-feed-byte discovery-id offset byte c))))
+  :hints (("Goal" :use ((:instance fn-hrcur-word-push-preserves
+                                   (octet byte) (k (fn-hsr-field 7 c)) (w (fn-hsr-field 8 c))))
+           :in-theory (e/d (fn-hsr-auth-feed-byte fn-hsr-auth-shapep fn-hsr-auth-refuse fn-scc-octetp)
+                           (fn-hsr-put fn-hsr-field fn-hsr-io-shapep fn-hsr-rootp fn-hsr-prefixp fn-hsr-widthp
+                            fn-hsr-tagp fn-hrcur-wordp fn-hrcur-word-push fn-hsr-scan-word fn-hsr-scan-shapep
+                            pgs-lo32 pgs-hi32 floor mod fn-hrcur-word-push-preserves)))))
+(defthm fn-hsr-auth-feed-byte-preserves-lifetime
+  (implies (fn-hsr-auth-lifetimep c)
+           (fn-hsr-auth-lifetimep (mv-nth 1 (fn-hsr-auth-feed-byte discovery-id offset byte c))))
+  :hints (("Goal" :use fn-hsr-auth-feed-byte-preserves-shape
+           :in-theory (e/d (fn-hsr-auth-feed-byte fn-hsr-auth-lifetimep fn-hsr-auth-refuse)
+                           (fn-hsr-auth-feed-byte-preserves-shape fn-hsr-auth-shapep fn-hsr-put fn-hsr-field
+                            fn-hsr-io-invariantp fn-hsr-prefixp fn-hrcur-word-push fn-hsr-scan-word
+                            pgs-lo32 pgs-hi32 floor mod)))))
+
 (defun fn-hsr-auth-finish-phase (c pgs-digest-state)
   (declare (xargs :stobjs pgs-digest-state :guard t))
   (if (not (and (fn-hsr-auth-shapep c) (equal (fn-hsr-field 0 c) :digest)
@@ -341,6 +457,28 @@
                                     (fn-hsr-field 3 c) (fn-hsr-field 4 c) (fn-hsr-field 5 io))))
                  (mv result (fn-hsr-put 0 :verified (fn-hsr-put 17 result c)) pgs-digest-state)))))))
 
+(local
+ (defthm fn-hsr-auth-terminal-shape
+   (implies (and (fn-hsr-auth-shapep c) (member-eq mode '(:verified :refused)))
+            (fn-hsr-auth-shapep (fn-hsr-put 0 mode (fn-hsr-put 17 verdict c))))
+   :hints (("Goal" :in-theory (e/d (fn-hsr-auth-shapep)
+                                  (fn-hsr-put fn-hsr-field fn-hsr-io-shapep fn-hsr-rootp fn-hsr-prefixp
+                                   fn-hsr-widthp fn-hsr-tagp fn-hrcur-wordp fn-hsr-scan-shapep))))))
+(defthm fn-hsr-auth-finish-phase-preserves-shape
+  (implies (fn-hsr-auth-shapep c)
+           (fn-hsr-auth-shapep (mv-nth 1 (fn-hsr-auth-finish-phase c pgs-digest-state))))
+  :hints (("Goal" :in-theory (e/d (fn-hsr-auth-finish-phase fn-hsr-auth-refuse)
+                                 (fn-hsr-auth-open-phase fn-hsr-auth-shapep fn-hsr-put fn-hsr-field
+                                  fn-hsr-page-verdict fn-hsr-scan-shapep fn-hsr-scan-entry pgs-dc-result)))))
+(defthm fn-hsr-auth-finish-phase-preserves-lifetime
+  (implies (fn-hsr-auth-lifetimep c)
+           (fn-hsr-auth-lifetimep (mv-nth 1 (fn-hsr-auth-finish-phase c pgs-digest-state))))
+  :hints (("Goal" :use fn-hsr-auth-finish-phase-preserves-shape
+           :in-theory (e/d (fn-hsr-auth-finish-phase fn-hsr-auth-refuse fn-hsr-auth-lifetimep)
+                           (fn-hsr-auth-finish-phase-preserves-shape fn-hsr-auth-open-phase fn-hsr-auth-shapep
+                            fn-hsr-put fn-hsr-field fn-hsr-page-verdict fn-hsr-scan-shapep fn-hsr-scan-entry
+                            pgs-dc-result fn-hsr-io-invariantp)))))
+
 (defun fn-hsr-auth-digest-tick (c pgs-digest-state)
   (declare (xargs :stobjs pgs-digest-state :guard t
                   :guard-hints (("Goal" :in-theory (enable pgs-dc-next-word-offset)))))
@@ -373,6 +511,30 @@
                   ((equal verdict :continue) (mv :yield next pgs-digest-state))
                   (t (mv-let (v next) (fn-hsr-auth-refuse :digest-invalid next)
                        (mv v next pgs-digest-state)))))))))))
+
+(defthm fn-hsr-auth-digest-tick-preserves-shape
+  (implies (fn-hsr-auth-shapep c)
+           (fn-hsr-auth-shapep (mv-nth 1 (fn-hsr-auth-digest-tick c pgs-digest-state))))
+  :hints (("Goal" :in-theory (e/d (fn-hsr-auth-digest-tick fn-hsr-auth-shapep fn-hsr-auth-refuse)
+                                 (fn-hsr-auth-finish-phase fn-hsr-put fn-hsr-field fn-hsr-page-verdict
+                                  fn-hsr-scan-shapep fn-hsr-rootp fn-hsr-tagp fn-hsr-widthp fn-hsr-prefixp
+                                  fn-hrcur-wordp fn-hsr-io-shapep pgs-dc-step pgs-dc-needs-block
+                                  pgs-dc-next-word-offset pgs-dc-read-demand floor mod)))))
+(local
+ (defthm fn-hsr-auth-clear-block-lifetime
+   (implies (fn-hsr-auth-lifetimep c) (fn-hsr-auth-lifetimep (fn-hsr-put 9 nil c)))
+   :hints (("Goal" :in-theory (e/d (fn-hsr-auth-lifetimep fn-hsr-auth-shapep)
+                                  (fn-hsr-put fn-hsr-field fn-hsr-io-invariantp fn-hsr-io-shapep fn-hsr-rootp
+                                   fn-hsr-scan-shapep fn-hsr-tagp fn-hsr-widthp fn-hsr-prefixp fn-hrcur-wordp))))))
+(defthm fn-hsr-auth-digest-tick-preserves-lifetime
+  (implies (fn-hsr-auth-lifetimep c)
+           (fn-hsr-auth-lifetimep (mv-nth 1 (fn-hsr-auth-digest-tick c pgs-digest-state))))
+  :hints (("Goal" :use fn-hsr-auth-digest-tick-preserves-shape
+           :in-theory (e/d (fn-hsr-auth-digest-tick fn-hsr-auth-lifetimep fn-hsr-auth-refuse)
+                           (fn-hsr-auth-digest-tick-preserves-shape fn-hsr-auth-finish-phase fn-hsr-auth-shapep
+                            fn-hsr-put fn-hsr-field fn-hsr-io-invariantp fn-hsr-page-verdict fn-hsr-scan-shapep
+                            fn-hsr-rootp fn-hsr-tagp fn-hsr-widthp fn-hsr-prefixp fn-hrcur-wordp fn-hsr-io-shapep
+                            pgs-dc-step pgs-dc-needs-block pgs-dc-next-word-offset pgs-dc-read-demand floor mod)))))
 
 (local
  (defthm fn-hsr-io-release-shape
