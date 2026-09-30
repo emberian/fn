@@ -18,8 +18,15 @@ initial joined state has no intents or facts and is not strict; successful
 context-first records preserve that shape. Refusal retains the same accepted
 prefix in both interpreters. Transit is a separate domain: a valid transit
 intent succeeds in the join and is refused by the receiver-only model.
-The test book checks a request plus committed receipt, duplicate-request
-refusal, and that reachable transit separation. Source admission, matching
+`fn-bpaj-replay-rest-receiver-is-receiver-replay-rest` additionally covers
+an arbitrary finite suffix from a context-first joined state. Its
+`fn-bpaj-context-firstp` premise names the exact pre-transit shape
+(receiver, no intents, no facts, non-strict); the receiver itself need not
+be well formed because both interpreters refuse malformed receiver states.
+The second premise is the same no-transit-record domain. The test book
+checks a request plus committed receipt, duplicate-request refusal, the
+reachable transit-record separation, and a reachable strict joined state
+which refuses a context-first request that the receiver-only model accepts. Source admission, matching
 certification, host reach classification and native execution are separate
 evidence coordinates; this source statement is not a qualification claim.
 

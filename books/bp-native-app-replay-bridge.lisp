@@ -112,7 +112,73 @@
             (theory 'minimal-theory)
             '(fn-bpaj-replay fn-bprr-replay fn-bpaj-receiver-result
               fn-bpaj-receiver-only-recordsp fn-bpaj-make-state
-              fn-bpaj-receiver-replay-result-pair
+              fn-bpaj-receiver-replay-result-pair fn-bprr-result-state
               car-cons cdr-cons default-car default-cdr endp)))))
+
+(local
+ (defthm fn-bpaj-invalid-receiver-apply-by-definition
+   (implies (not (fn-bpr-statep st))
+            (equal (fn-bprr-apply-record st store r fn-arena) (list nil st)))
+   :hints (("Goal" :in-theory
+            (union-theories (theory 'minimal-theory)
+             '(fn-bprr-apply-record fn-bpr-accept-request
+               fn-bpr-prepare-receipt fn-bpr-commit-receipt
+               car-cons cdr-cons))))))
+
+(local
+ (defthm fn-bpaj-invalid-receiver-replay-by-definition
+   (implies (not (fn-bpr-statep st))
+            (equal (fn-bprr-replay-rest st store records fn-arena)
+                   (list (if (consp records) nil t) st)))
+   :hints (("Goal" :expand ((fn-bprr-replay-rest st store records fn-arena))
+            :in-theory (union-theories (theory 'minimal-theory)
+                         '(fn-bpaj-invalid-receiver-apply-by-definition
+                           endp car-cons cdr-cons))))))
+
+(local
+ (defthm fn-bpaj-invalid-context-first-replay-by-definition
+   (implies (not (fn-bpr-statep st))
+            (equal (fn-bpaj-replay-rest
+                    (fn-bpaj-make-state st nil nil nil) store records fn-arena)
+                   (list (if (consp records) nil t)
+                         (fn-bpaj-make-state st nil nil nil))))
+   :hints (("Goal"
+            :expand ((fn-bpaj-replay-rest
+                      (fn-bpaj-make-state st nil nil nil) store records fn-arena))
+            :in-theory (union-theories (theory 'minimal-theory)
+                         '(fn-bpaj-context-first-statep fn-bpaj-apply-record
+                           endp car-cons cdr-cons))))))
+
+; A joined state in the context-first phase, including malformed receiver
+; states (both interpreters refuse them). This finite-prefix proof domain
+; is not checked by the host. Real transit intent switches out of it.
+(defun fn-bpaj-context-firstp (joined)
+  (declare (xargs :guard t))
+  (equal joined (list (if (consp joined) (car joined) nil) nil nil nil)))
+(verify-guards fn-bpaj-context-firstp)
+
+(defthm fn-bpaj-replay-rest-receiver-is-receiver-replay-rest
+  (implies (and (fn-bpaj-context-firstp joined)
+                (fn-bpaj-receiver-only-recordsp records))
+           (equal (fn-bpaj-receiver-result
+                   (fn-bpaj-replay-rest joined store records fn-arena))
+                  (fn-bprr-replay-rest (fn-bpaj-receiver joined)
+                                       store records fn-arena)))
+  :hints (("Goal"
+           :cases ((fn-bpr-statep (fn-bpaj-receiver joined)))
+           :use ((:instance fn-bpaj-context-first-replay-rest
+                            (st (fn-bpaj-receiver joined)))
+                 (:instance fn-bpaj-invalid-receiver-replay-by-definition
+                            (st (fn-bpaj-receiver joined)))
+                 (:instance fn-bpaj-invalid-context-first-replay-by-definition
+                            (st (fn-bpaj-receiver joined))))
+           :in-theory
+           (union-theories (theory 'minimal-theory)
+            '(fn-bpaj-context-firstp fn-bpaj-make-state
+              fn-bpaj-receiver-result fn-bpaj-receiver fn-bpaj-nth
+              fn-bpaj-receiver-replay-result-pair fn-bprr-result-state
+              car-cons cdr-cons default-car default-cdr
+              (:executable-counterpart zp))))))
+(in-theory (disable fn-bpaj-context-firstp))
 
 (in-theory (disable fn-bpaj-receiver-only-recordsp fn-bpaj-receiver-result))
