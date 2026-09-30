@@ -19,8 +19,11 @@ def post_articles(case, image, store, articles):
     try:
         producer.start()
         for message_id, payload in articles:
-            producer.post(message_id, payload, expect=EXIT.OK)
             with producer.session() as client:
+                first, final = client.post(payload)
+                case.assertTrue(first.startswith(b"340"), first)
+                case.assertIsNotNone(final, "NNTP POST must return a durable reply")
+                case.assertTrue(final.startswith(b"240"), final)
                 article = client.article(message_id)
             case.assertIsNotNone(article, "producer owner must serve its durable post")
             (producer.root / ("article-{}.nntp".format(len(message_ids)))).write_bytes(article)
