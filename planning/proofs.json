@@ -18637,6 +18637,27 @@
         "tests/acl2/legacy-parser-header-tests.lisp"
       ],
       "progress_note": "Source component only; no host call, qualified image, certification manifest or completed Q5c/J1 claim. Runtime work counts raw byte transitions; constant-size record allocation is explicit in source, while a proved allocation accounting bound and physical measurement remain open. Clean protected REPL evidence is recorded in LANEDUMP.md. fn-lpc-agreesp states the full outstanding catalog equality and is not a theorem. Fixforward from 8c6750b42: whitespace-only folded physical lines now reject independently of earlier visible field content. Exact pre-fix counterexample was admitted; W=1 regression and full source replay passed. Per-line fold mode is distinct from accumulated field visibility."
+    },
+    {
+      "id": "PRF-1104",
+      "title": "Bounded metadata spool emission preserves current table and directory words",
+      "statement": "Component fn-hpm-tick writes one metadata word into fixed scratch and advances a scalar ordinal/component/remaining continuation, or returns done/page-full/refused unchanged. Entry words match existing pgs-entry-words; indexed stream and concrete prefix effect refine existing pgs-encode-run, with table encoding the single-page case. Directory entries may straddle page boundaries; continuation survives scratch reset. Source digest attribution is an explicit theorem premise supplied by the staged spool lease/reader, not guessed by the writer. Scalar domain, concrete scratch invariant, identities and progress are preserved. Full spool admission/authentication, stream induction to completed root binding and producer integration remain open.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-040"
+      ],
+      "depends_on": [
+        "PRF-1093"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": [
+        "books/history-page-metadata.lisp",
+        "tests/acl2/history-page-metadata-tests.lisp",
+        "planning/history-page-cursor-contract.md"
+      ],
+      "progress_note": "Clean protected auto-persvati hpmt63 source-loaded scratch and metadata in proper encapsulates plus15testforms:0.46ACL2seconds/69691steps,zero refusals. Guardverified tick preserves scalar domain/concrete scratch/identities; current run effect and progress admitted. Actual342entry two-page crossing matches complete existing encoding. Full per-literal hypothesis audit and served composition remain open; no certificate/image/native claim."
     }
   ]
 }

@@ -1549,6 +1549,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-page-buffer-tests \
 	tests/acl2/history-image-census-tests \
 	tests/acl2/history-image-header-tests \
+	tests/acl2/history-page-metadata-tests \
 	tests/acl2/owner-snapshot-request-tests \
 	books/owner-snapshot-recovery \
 	tests/acl2/owner-snapshot-recovery-tests \

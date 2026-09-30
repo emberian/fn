@@ -419,3 +419,17 @@ conversion nor terminal span materialization is permitted. Canonical body,
 table/directory emission, offset-domain checks, resource admission and complete
 publication refinement remain open. This source increment carries no served
 keystone or certification claim.
+
+`books/history-page-metadata.lisp` (PRF-1104) emits the existing six-word
+address/transaction/digest entry into the same scratch. `fn-hpm-tick` carries
+ordinal, component and remaining run words; each stored word advances once.
+Page-full, done and address/ordinal refusal preserve cursor and scratch. The
+ordinal/component survives scratch consumption/reset, since a directory entry
+may straddle physical pages. Named entry, run-position and concrete effect
+refinements use `pgs-entry-words` and `pgs-encode-run`; a table is the single-page
+case, with its341entries and two final zeros. Digest source attribution remains
+an explicit premise: the spool reader must return the exact captured/staged
+digest at that ordinal. The emitter retains only one256-bit digest and scalar
+state. It preserves concrete scratch representation and epoch/lease identity.
+Complete spool admission, authenticated reads, final root binding and served
+composition remain open; no host caller or certification claim is added.
