@@ -1045,6 +1045,8 @@
     "tests/acl2/response-plan-token-tests",
     "books/over-byte-cursor",
     "books/over-byte-invariants",
+    "books/served-plan-byte-cursor",
+    "tests/acl2/served-plan-byte-cursor-tests",
     "tests/acl2/over-byte-cursor-tests",
     "books/nov-row-facts",
     "tests/acl2/nov-row-facts-tests",
@@ -1734,26 +1736,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1797,
-    "books_in_root_closure": 1794,
-    "roots": 1730,
-    "theorems": 28743,
-    "functions": 18649,
-    "assert_events": 23595,
+    "books": 1799,
+    "books_in_root_closure": 1796,
+    "roots": 1732,
+    "theorems": 28749,
+    "functions": 18664,
+    "assert_events": 23603,
     "must_fails": 2506,
     "prover_refusals": 0,
     "encapsulates": 157,
     "guards": {
-      "verified": 3493,
-      "declared-off": 2182,
-      "default-guarded": 10193,
+      "verified": 3496,
+      "declared-off": 2186,
+      "default-guarded": 10201,
       "default-unguarded": 2781
     },
     "suspect_theorems": 1238,
     "export_hygiene_warnings": 333,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2503,
+    "include_hygiene_warnings": 2506,
     "host_names_warnings": 2137,
     "hand_written_record_warnings": 18
   },
@@ -26796,6 +26798,33 @@
       "read_error": null
     },
     {
+      "book": "books/served-plan-byte-cursor.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 6,
+      "functions": 11,
+      "guards": {
+        "verified": 3,
+        "declared-off": 0,
+        "default-guarded": 8,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 3,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "over-byte-cursor",
+        "served-plan"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/served-plan-cursor.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -49716,6 +49745,33 @@
         "../../books/served-tls-prefix",
         "arena-lift",
         "must-fail-checked"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/served-plan-byte-cursor-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 4,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 8,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/served-plan-byte-cursor",
+        "over-byte-cursor-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -74873,6 +74929,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/served-plan-byte-cursor.lisp",
+        "line": 8,
+        "include": "over-byte-cursor",
+        "included": "books/over-byte-cursor.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/served-plan-cursor.lisp",
         "line": 101,
         "include": "over-window",
@@ -83935,6 +83998,20 @@
         "line": 62,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/served-plan-byte-cursor-tests.lisp",
+        "line": 2,
+        "include": "../../books/served-plan-byte-cursor",
+        "included": "books/served-plan-byte-cursor.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/served-plan-byte-cursor-tests.lisp",
+        "line": 3,
+        "include": "over-byte-cursor-tests",
+        "included": "tests/acl2/over-byte-cursor-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

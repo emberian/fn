@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1797 |
-| Certification roots in the Makefile | 1730 |
-| Books inside the root closure | 1794 |
-| `defthm` and `defthmd` events | 28743 |
-| `defun` events | 18649 |
-| Functions with verified guards | 3493 |
-| Functions declared `:verify-guards nil` and never verified | 2182 |
-| Functions left at the default with an explicit guard | 10193 |
+| Books read | 1799 |
+| Certification roots in the Makefile | 1732 |
+| Books inside the root closure | 1796 |
+| `defthm` and `defthmd` events | 28749 |
+| `defun` events | 18664 |
+| Functions with verified guards | 3496 |
+| Functions declared `:verify-guards nil` and never verified | 2186 |
+| Functions left at the default with an explicit guard | 10201 |
 | Functions left at the default with no guard | 2781 |
-| `assert-event` checks | 23595 |
+| `assert-event` checks | 23603 |
 | `must-fail` checks | 2506 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 157 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 333 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2503 |
+| Include-hygiene warnings | 2506 |
 | Host-names warnings | 2137 |
 | Hand-written-record warnings | 18 |
 
@@ -920,6 +920,7 @@ that `make certify` requests.
 | `books/served-column-relation.lisp` | root | 1 | 3 | 0/2/0/1 | 0 | 0 | 0 |
 | `books/served-columns.lisp` | root | 49 | 16 | 2/0/14/0 | 0 | 0 | 0 |
 | `books/served-implicit-tls.lisp` | root | 5 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/served-plan-byte-cursor.lisp` | root | 6 | 11 | 3/0/8/0 | 0 | 0 | 0 |
 | `books/served-plan-cursor.lisp` | root | 29 | 11 | 1/3/7/0 | 0 | 0 | 1 |
 | `books/served-plan.lisp` | root | 33 | 27 | 0/1/26/0 | 0 | 0 | 2 |
 | `books/served-reply-buffer.lisp` | root | 8 | 4 | 0/0/4/0 | 0 | 0 | 0 |
@@ -1728,6 +1729,7 @@ that `make certify` requests.
 | `tests/acl2/served-implicit-tls-tests.lisp` | root | 0 | 7 | 0/3/0/4 | 23 | 2 | 0 |
 | `tests/acl2/served-line-iterative-tests.lisp` | root | 0 | 4 | 0/0/4/0 | 22 | 4 | 0 |
 | `tests/acl2/served-pipelining-tests.lisp` | root | 0 | 11 | 0/5/0/6 | 37 | 3 | 0 |
+| `tests/acl2/served-plan-byte-cursor-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 8 | 0 | 0 |
 | `tests/acl2/served-plan-cursor-tests.lisp` | root | 6 | 2 | 0/0/0/2 | 3 | 3 | 0 |
 | `tests/acl2/served-plan-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 39 | 8 | 0 |
 | `tests/acl2/served-reply-buffer-tests.lisp` | root | 0 | 4 | 0/0/4/0 | 7 | 2 | 0 |
