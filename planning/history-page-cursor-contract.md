@@ -237,3 +237,29 @@ the F-row binding. PageA starts at16384+16384*A; framed segments start after
 NPphysicalpages. Headerword/tableword emitters do not publish a root or marker.
 ACL2 offset-domain plans must validate the admitted platform/profile bound
 before positional I/O; native code may not derive those decisions itself.
+
+## Census controller composition (resident source increment)
+
+`fn-hct-begin(expected,capture-context,resource-lease)` creates seven cells:
+phase, expected rows, completed count, padded pool bytes, pending codec,
+capture context, resource lease. `fn-hct-offer(c,ordinal,source-sum)` accepts
+only the next ordinal while waiting for a row. `fn-hct-tick` performs exactly
+one child census tick; only its prepared result permits `fn-hcc-row` to update
+the scalar history totals. Continuation does not scan source or logical
+invariants. The expected count uses the current four u64-column format's
+61-bit count domain; rounded final image admission remains a separate check.
+
+The capture context must come from the source protocol, including its pass;
+it is distinct from the resource lease and retained physical file pin. The
+controller borrows those references and never compares an entire Store, file
+name or lease. The current child codec accepts resident rows; decoded spans
+remain explicitly unsupported until the cold encoder joins. No disk reader,
+source authentication, physical reservation or publication is implied by this
+composition. Retained allocations include seven controller cells, the child
+codec's bounded frontier and source references; completed rows are released.
+Exact runtime representation charges remain the admission owner's obligation.
+During a scheduling call the prior and successor seven-cell wrappers coexist;
+admission must include that transient overlap and both child frontiers until
+the old cursor is released. A successful offer allocates the two-cell child
+capture/ordinal context as well. This is an allocation description, not a
+numeric rescue reserve; Lisp cell/header representation remains runtime-specific.
