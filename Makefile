@@ -493,6 +493,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/payload-budget-shift-workspace-tests \
 	books/payload-action-runtime-workspace \
 	books/payload-action-header16-workspace \
+	books/assumptions-selected-runtime-pull \
+	books/payload-pull-runtime-workspace \
+	tests/acl2/payload-pull-runtime-workspace-tests \
 	books/snapshot-maintenance-profile \
 	tests/acl2/snapshot-maintenance-profile-tests \
 	tests/acl2/snapshot-maintenance-host-tests \

@@ -6402,7 +6402,11 @@
         "planning/evidence/payload-action-runtime-workspace-2026-09-30/README.md",
         "books/payload-action-header16-workspace.lisp",
         "tests/acl2/payload-action-header16-workspace-tests.lisp",
-        "planning/evidence/payload-action-header16-workspace-2026-09-30/README.md"
+        "planning/evidence/payload-action-header16-workspace-2026-09-30/README.md",
+        "books/assumptions-selected-runtime-pull.lisp",
+        "books/payload-pull-runtime-workspace.lisp",
+        "tests/acl2/payload-pull-runtime-workspace-tests.lisp",
+        "planning/evidence/selected-runtime-pull-2026-09-30/README.md"
       ],
       "execution_scope": "Protected source replay only; the codec/runtime/controller/host composition remains open."
     },

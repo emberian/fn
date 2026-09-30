@@ -375,3 +375,4 @@ anything a book does not already decide.
 | `fn-pbs-` | `payload-budget-shift-workspace` | actual budget source roster mapped to selected ASH result/add families; full runtime adequacy open |
 
 | `fn-paw-` | `payload-action-runtime-workspace` | actual action arithmetic operand and conditional workspace joins; borrowed/compiler/lifetime costs remain open |
+| `fn-srp-pull-`, `fn-assume-srp-pull-` | `assumptions-selected-runtime-pull` | Exact source/body qualified fixnum input-helper object path; excludes compiler frames and whole-job adequacy |

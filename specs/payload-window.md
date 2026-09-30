@@ -265,3 +265,19 @@ arithmetic-only sums, including6368 at K64, and does not require an unproved
 mode12-origin N<259 invariant or impose that smaller bound on stored data.
 Five literal positive/removal/corrupted-origin teeth distinguish header width
 from valid length-code provenance; complete decoder/native funding remains open.
+
+`payload-pull-runtime-workspace.lisp` connects the actual needed-input pull
+condition, carried bit width and one octet to the scalar helper domain:
+NBITS<=31, bits<2^NBITS and octet<=255. The actual `fn-zin-shift-in`
+power/product/result stay below2^39. The named source/body-qualified
+A-SELECTED-RUNTIME-PULL-OBJECTS assumption covers only the reviewed ASH(1,n)
+for n0..31 and fitting fixnum multiply/add result/workspace object paths.
+These arithmetic paths allocate no such objects under the exact domain and
+compiled-body coordinate. The derived workspace corollary is explicitly
+`-by-definition`, not a separate keystone. Ten complete literal domain
+positive/removal/mutation teeth ship; local assumption countermodels concern
+unsupported model choices, never observed allocator failure. Exact disassembly
+hashes are qualification requirements, not a final image attestation.
+Frames/control stack/cache/fault/GC, other borrowed helpers and full decoder
+job activation-to-cleanup adequacy remain open. The complete alternative
+central-inclusion patch remains mandatory at convergence.
