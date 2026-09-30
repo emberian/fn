@@ -1122,6 +1122,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-checkpoint-tables \
 	books/store-checkpoint-tables-reader \
 	books/store-checkpoint-size-reader \
+	tests/acl2/store-checkpoint-size-reader-tests \
 	books/owner-checkpoint-writer \
 	books/owner-checkpoint-pipeline \
 	books/store-checkpoint-arena \
