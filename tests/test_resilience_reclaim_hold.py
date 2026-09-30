@@ -1,6 +1,10 @@
 """Capture-first independent response observer; no native execution implied."""
 import copy
 import unittest
+import json
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
 
 from tests.native_harness import EXIT
 from tools.resilience import checker, mutations
@@ -34,6 +38,51 @@ def fixture():
 
 
 class ReclaimHoldObserverTests(unittest.TestCase):
+    def test_failed_setup_and_cleanup_seal_original_without_native_execution(self):
+        class BrokenFixture:
+            cleaned = False
+            def copy_of(self, base, name):
+                raise AssertionError("setup should fail before copying")
+            def recorded_base(self):
+                raise OSError("actual setup diagnostic \u00ff")
+            def doCleanups(self):
+                self.cleaned = True
+                raise RuntimeError("owned cleanup failed")
+        fixture = BrokenFixture()
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary) / "trial"
+            image = Path(temporary) / "fixture-image"
+            image.write_bytes(b"unexecuted fixture coordinate")
+            with patch.object(reclaim_hold, "Fixture", return_value=fixture):
+                journal, verdict = reclaim_hold.run_scenario(reclaim_hold.example(),
+                                                            image, work)
+            primary = json.loads((work / "primary-outcome.json").read_text())
+            self.assertEqual(primary["failure"]["exception"], "OSError")
+            self.assertIn("\u00ff", primary["failure"]["diagnostic"])
+            self.assertTrue(fixture.cleaned)
+            self.assertEqual(verdict.kind, "harness-failure")
+            self.assertIn("actual setup diagnostic", verdict.cause)
+            self.assertIn("reclaim-cleanup-incomplete", verdict.cause)
+            self.assertEqual(primary["cleanup_errors"][0]["action"], "fixture-cleanups")
+            self.assertTrue((work / "journal.jsonl").is_file())
+            manifest = json.loads((work / "manifest.json").read_text())
+            self.assertIsNotNone(manifest["image_sha256"])
+            self.assertFalse(manifest["cleanup_complete"])
+            self.assertTrue(manifest["image_present"])
+            self.assertFalse(journal.of_kind("client"))
+
+    def test_actual_absent_image_stops_before_store_bootstrap_and_seals(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary) / "trial"
+            with patch.object(reclaim_hold.Fixture, "recorded_base", side_effect=AssertionError("bootstrap forbidden")):
+                journal, verdict = reclaim_hold.run_scenario(reclaim_hold.example(),
+                                                            Path(temporary) / "absent", work)
+            self.assertEqual(verdict.cause, "reclaim-image-unavailable")
+            self.assertEqual(verdict.kind, "harness-failure")
+            self.assertFalse(journal.of_kind("client"))
+            self.assertTrue((work / "primary-outcome.json").is_file())
+            self.assertIsNone(json.loads((work / "manifest.json").read_text())["image_sha256"])
+
     def test_native_markers_parse_without_reconstructing_generation(self):
         rows = reclaim_hold.events(
             b"RECLAIM held at=captured\nOVER quantum-held cid=7\n"
