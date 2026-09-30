@@ -19224,9 +19224,35 @@
         "host/native/history-image-writer.lisp",
         "tests/acl2/history-image-producer-tests.lisp",
         "specs/history-image-producer.md",
-        "planning/evidence/history-image-producer-source-2026-09-30.json"
+        "planning/evidence/history-image-producer-source-2026-09-30.json",
+        "books/history-image-record-root-refinement.lisp",
+        "tests/acl2/history-image-record-root-refinement-tests.lisp",
+        "planning/evidence/history-image-record-root-refinement-source-2026-09-30.json",
+        "tests/acl2/history-image-funded-host-tests.lisp",
+        "planning/evidence/history-image-funded-host-source-2026-09-30.json"
       ],
-      "progress_note": "All current writer definitions and guards admitted in protected hpi3. Complete decoded-cold-row trajectory compares all nine physical pages, seven data/table digest spools, canonical padding/metadata, exact frozen terminal fields and full root against independent actual pgs-x-write-rec; stale-stage, uncertain outcome and malformed-octet mutation fixtures pass. Source runtime evidence only; full canonical residual/effect/authority/progress theorem, general concrete record boundary, initial whole-operation demand and actual native joined execution remain open. No certification, image or publication claim. Fresh hpi4 exact test root loads 28 proper-local source dependencies and 13 target forms, ready/error-free before explicit stop: 130.53 ACL2 seconds /44,475,652 prover steps; 95 matching cached books reused."
+      "progress_note": "All current writer definitions and guards admitted in protected hpi3. Complete decoded-cold-row trajectory compares all nine physical pages, seven data/table digest spools, canonical padding/metadata, exact frozen terminal fields and full root against independent actual pgs-x-write-rec; stale-stage, uncertain outcome and malformed-octet mutation fixtures pass. Source runtime evidence only; full canonical residual/effect/authority/progress theorem, abstract digest observation, initial whole-operation demand and actual native joined execution remain open. No certification, image or publication claim. Fresh hpi4 exact test root loads 28 proper-local source dependencies and 13 target forms, ready/error-free before explicit stop: 130.53 ACL2 seconds /44,475,652 prover steps; 95 matching cached books reused. Component concrete-root equality fn-hpir-root-agrees-with-current-record-writer proves the complete six-field output agrees with actual pgs-x-write-rec unconditionally; its private checksum/array lemmas are supporting representation facts. This does not close whole writer PRF-1144 or prove actual cryptographic correctness. Fresh hpir2 proper-local proof/test replay: 15.21 ACL2 seconds /51,123 prover steps, two source dependencies plus four target forms and ten matching cached books; ready/error-free before explicit stop. Component evidence committed separately from unchanged c470 runtime. Actual funded host wrappers admitted in shared hpie2 proper-local source world, including core pool/growth and current effect boundary; complete source closure201.89s/44,475,693steps plus bounded host dependencies. Reachable funded-host fixture obtains actual token/receipt, issues full zero page and consumes short-write core observation; recovery preserves pending effect/generation/buffer/livecredit. Initial demand/native lifetimes and whole writer proof remain open."
+    },
+    {
+      "id": "PRF-1149",
+      "title": "Actual cold recovery issuer preserves checked source and same-pass install provenance",
+      "statement": "STATE-only fn-owner-recovery-source-start binds the successful loader root/plan/R region/log position and frontier to the current reset epoch, nonreused loader generation and monotone issuer ticket. Actual same-pass SSR context/fold completions advance count and acknowledgement serial; stale/reset/replaced or partial results remain unavailable. The actual final install reads Store count/frontier/CP and installs original context/carries and sealed live source4 together. Complete claim requires actual loader and SSR lineage, allocation admission before each bounded producer step, namespace/runtime representability, full configured replay and retained source cleanup.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [
+        "PRF-1081"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": [
+        "books/recovery-source-authority.lisp",
+        "host/recovery-source-host.lisp",
+        "specs/recovery-source-authority.md",
+        "tests/acl2/recovery-source-authority-tests.lisp",
+        "planning/evidence/recovery-source-authority-source-2026-09-30.json"
+      ],
+      "progress_note": "Fresh rsag3 exact test root loads both dependencies protected proper-local; all eight kernel definitions and guards plus four scalar/token fixtures pass (15 target forms, 0.04 ACL2 seconds/238 prover steps). STATE wrappers are authored but unadmitted until actual loader getters and same-pass SSR carries land. Region records successful decode provenance, not a retained byte buffer. General lineage, initial funding and actual native recovery/install remain open; no certification or full recovery claim."
     }
   ]
 }

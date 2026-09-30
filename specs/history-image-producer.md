@@ -31,8 +31,11 @@ acknowledged tables, then streams the full M-page directory from table digests.
 Directory hashing covers all M pages. The terminal root uses original
 `fn-hpir-root 1 1 N directory-digest`, the fixed16-word/128-byte concrete
 record check extracted from `pgs-x-write-rec`, with N data pages. The abstract
-`pgs-make-rec` calls constrained `pgs-digest` and cannot be executed; general
-concrete equality and abstract digest observation remain named proof obligations.
+`pgs-make-rec` calls constrained `pgs-digest` and cannot be executed; `fn-hpir-root-agrees-with-current-record-writer` connects the complete six-field
+root to the actual `pgs-x-write-rec` with no hypotheses. Its proof derives the
+checksum representation from actual BLAKE3 output and the concrete word writes;
+legal executable reference calls still satisfy their stobj guards. Abstract
+digest observation remains a separate named proof obligation.
 The writer returns the exact
 captured node/salt/count/trail for the outer existing `fn-his-binding`.
 Full Store summary and A/F/P/E/R framing/publication stay with the outer
@@ -65,9 +68,18 @@ all7 digest spools, padding/table/directory words, frozen terminal fields and
 root against the independently executed `pgs-x-write-rec`. Mutation fixtures
 check the live ledger/issued demand antecedents before stale-stage, uncertain
 outcome and malformed-octet rejection. These are source runtime fixtures.
-General full canonical residual/effect/authority/progress proof, concrete
-record boundary, larger table/directory trajectories, initial whole-operation
+General full canonical residual/effect/authority/progress proof, abstract
+digest observation, larger table/directory trajectories, initial whole-operation
 funding and actual native joined execution remain open. No certificate,
 qualified image, deployment, publication or complete checkpoint claim follows.
 Physical page0 remains zero as the original snapshot format specifies: its
 sole root record is protected by the outer F binding consumed by `fn-his-open`.
+
+The actual funded host wrappers also pass scoped source admission in the same
+writer/effect world. A reachable fixture installs the actual pool, obtains
+its maintenance and image-growth receipts, drives full zero-page issuance,
+and calls the exact native-facing effect projections. Its short-write result
+puts the writer in recovery while retaining the pending effect, buffer
+generation, complete buffer and live credit. This is a concrete host seam
+fixture; it does not establish initial whole-operation allocation adequacy
+or replace native syscall/lifetime and general writer proofs.

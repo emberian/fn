@@ -7019,6 +7019,33 @@
         "planning/evidence/history-image-producer-source-2026-09-30.json"
       ],
       "execution_scope": "Complete small decoded-cold-row ACL2 source trajectory and explicit stale-stage/uncertain/malformed-byte mutations pass in fresh exact-source hpi4, with full image/spools/concrete-root comparison. General full trajectory/effect proof, multi-table/multi-page directory witnesses, all interruption cuts and actual native joined execution remain pending."
+    },
+    {
+      "id": "SCN-1054",
+      "title": "Cold source issuance seals only the same checked recovery producer",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [],
+      "steps": [
+        "Reset canonical state before physical open; issue cold authority only after the actual loader retains checked root/plan/R-region/F coordinates and generation.",
+        "Consume actual funded same-pass SSR completions including empty/multiple-row chunks; derive count from produced ORIGINAL context and reject duplicate/stale tokens.",
+        "Replace/reset source, alter region/epoch/generation or interrupt a producing step; require canonical state to remain unavailable with retained obligations.",
+        "Complete configured recovery, read actual Store count/frontier/CP and atomically install context/carries/canonical sizes with sealed source4.",
+        "Run real accepted-history checkpoint/restart/two-page cold read with retained old reader and joined cleanup under actual admission."
+      ],
+      "expected": [
+        "No old live-owner source fallback or host-supplied final count.",
+        "No deep graph validation or source equality at a served fence.",
+        "Issuer authority does not establish resource admission or disk integrity."
+      ],
+      "implementation": {
+        "test": "tests/acl2/recovery-source-authority-tests.lisp"
+      },
+      "evidence": [
+        "specs/recovery-source-authority.md",
+        "planning/evidence/recovery-source-authority-source-2026-09-30.json"
+      ],
+      "execution_scope": "Source-only scalar/token fixtures pass in fresh protected rsag3; actual loader/SSR/install and native accepted-history scenario remain specified and open."
     }
   ]
 }
