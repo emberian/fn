@@ -5784,7 +5784,9 @@
         "books/history-page-metadata.lisp",
         "tests/acl2/history-page-metadata-tests.lisp",
         "books/history-page-io.lisp",
-        "tests/acl2/history-page-io-tests.lisp"
+        "tests/acl2/history-page-io-tests.lisp",
+        "books/history-image-columns.lisp",
+        "tests/acl2/history-image-columns-tests.lisp"
       ],
       "implementation_note": "The full S7 producer remains planned. Landed components are the live snapshot inverse and bounded descriptor/scalar page-layout libraries; these have no new producer host caller. Capture/controller, bounded history preparation, physical admission, full retained-projection recovery, I/O effects and marker-last publication are still required. Unmerged producer prototypes and their separate proof targets are not cited as landed evidence."
     }

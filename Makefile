@@ -1619,6 +1619,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-page-cursor-tests \
 	tests/acl2/history-page-layout-tests \
 	tests/acl2/history-page-buffer-tests \
+	tests/acl2/history-page-buffers-tests \
+	tests/acl2/history-pool-emitter-tests \
+	tests/acl2/history-image-columns-tests \
+	tests/acl2/history-pool-columns-tests \
 	tests/acl2/history-image-census-tests \
 	tests/acl2/history-image-header-tests \
 	tests/acl2/history-page-metadata-tests \
