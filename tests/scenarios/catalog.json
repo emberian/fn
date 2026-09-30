@@ -6353,7 +6353,8 @@
         "Construct actual small and N>2^63 core decoded descriptors; assert complete descriptor/off_t-to-C63/N72/budget73 antecedent and conclusion, both literal hypothesis removals, corrupted trailer2^400 and wide ticket/file ceiling witnesses.",
         "Call the actual typed initializer with empty and real shipped presets and a supported wide scalar decoded descriptor; assert complete internal carry, fixed buffer representation, zero counters and returned control domains, then both literal control-premise removals.",
         "Use an actual reset/pull/header-produced table to assert full weakened selected table object-domain theorem; check all four retained-premise removals and local assumption-domain/coordinate countermodels, preserving exact standalone compiled-body qualification scope.",
-        "Assert complete actual fresh and shipped-preset initializer value/effects/source-roster positives; test a labelled constructor-trace mutation, selected digest offset-profile removal, concrete reserve natural-input removal, larger retained concrete buffer and actual prior digest split-frame retention. Reject unclassified generator calls and forward observer-rune references."
+        "Assert complete actual fresh and shipped-preset initializer value/effects/source-roster positives; test a labelled constructor-trace mutation, selected digest offset-profile removal, concrete reserve natural-input removal, larger retained concrete buffer and actual prior digest split-frame retention. Reject unclassified generator calls and forward observer-rune references.",
+        "Assert complete actual begin executive six-result/effect refinement from typed physical arrays despite mismatched old logical models. Remove each retained array-type premise with a non-octet in the untouched tail; assert all other hypotheses and full conclusion failure. Check exact retained old capacities and a separately labelled shrink-tariff mutation; reject changed foundations/missing selectors/declarations in the source generator."
       ],
       "expected": [
         "Bit buffer remains at most39bits and exact length-relative Huffman carry is preserved only on non-error exits; every walker exit remains within the stated fixed scalar bounds.",
@@ -6369,7 +6370,8 @@
         "Selected offset representability and actual stored admissibility establish decoder scalar widths. Descriptor validity does not establish257-bit trailer provenance or small identity/ticket widths; no full decoded job admission is activated.",
         "Actual initialization establishes its representation and scalar funding prerequisites without a prior decoder invariant. These source facts do not justify a supplied-demand lease or full compiled activation-to-cleanup adequacy.",
         "The natural entry upper bound is derived from fixed table length and typed read, not assumed. Conditional standalone arithmetic/getter object charge excludes actual inline callers and full compiled job/INIT lifetime; central assumption inclusion remains a convergence obligation.",
-        "Actual initialization has35 explicit constructor cells,21 register writes,3 ceiling sites,69094 reserved and69030 populated octets; observer lists, borrowed primitive costs, old buffer/frame retention and compiled lifecycle demand stay distinct. Complete INITIAL admission remains open."
+        "Actual initialization has35 explicit constructor cells,21 register writes,3 ceiling sites,69094 reserved and69030 populated octets; observer lists, borrowed primitive costs, old buffer/frame retention and compiled lifecycle demand stay distinct. Complete INITIAL admission remains open.",
+        "Initial buffer-content correlation is redundant after actual clearing. Typed unused tails remain necessary for the full representation relation; larger prior physical arrays remain charged. Capacity/refinement proofs do not establish complete compiled runtime or INITIAL admission."
       ],
       "evidence": [
         "tests/acl2/payload-window-width-tests.lisp",
@@ -6424,7 +6426,14 @@
         "tests/acl2/decoded-window-initial-funding-domain-tests.lisp",
         "planning/evidence/decoded-window-initial-funding-domain-2026-09-30/README.md",
         "tests/acl2/payload-table-runtime-workspace-tests.lisp",
-        "planning/evidence/selected-runtime-table-2026-09-30/README.md"
+        "planning/evidence/selected-runtime-table-2026-09-30/README.md",
+        "books/decoded-window-initial-buffer-capacity.lisp",
+        "books/decoded-window-initial-buffer-exec.lisp",
+        "books/decoded-window-initial-buffer-refinement.lisp",
+        "tests/acl2/decoded-window-initial-buffer-refinement-tests.lisp",
+        "tools/decoded_window_buffer_exec.py",
+        "tests/test_decoded_window_buffer_exec.py",
+        "planning/evidence/decoded-window-initial-buffer-refinement-2026-09-30/README.md"
       ],
       "execution_scope": "Protected source replay only; the codec/runtime/controller/host composition remains open."
     },

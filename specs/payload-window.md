@@ -361,3 +361,22 @@ literal offset/natural premise removals accompany the component. The actual
 installed Store/CP7/pool/source lineage, native callbacks/constructors/frames,
 cache/GC/lifetime and activation-to-definite-cleanup demand remain open before
 INITIAL admission.
+
+
+The selected WIN/TAB/OUT executive composition now has a named complete
+six-result/effect refinement to actual `fn-pwz-begin`. Its generator reads
+the real abstract-stobj `:exec` selectors and pins each source body; the
+composition is proof-only and no host executes it. Only typed physical
+arrays are required. Prior logical-content correlation was proved redundant
+because actual initialization clears all three buffers. Typed unused tails
+remain necessary: a malformed cell beyond the newly populated region survives
+and invalidates the full representation relation.
+
+Actual selected initialization retains capacities exactly
+`max(old,65536)`, `max(old,3494)` and `max(old,64)`, with fills65536/3494/0.
+The complete positive, three retained-array removals and old-capacity tariff
+mutation accompany this boundary. These are representation/capacity facts,
+not a zero-allocation assertion: old/new reserve arrays, payload/header
+constructors, selected compiler callbacks/frames/cache/GC and full definite
+cleanup lifetime still require their actual funded runtime join. Installed
+Store/CP7/pool/source authority and complete INITIAL admission remain open.
