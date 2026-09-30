@@ -6301,6 +6301,34 @@
         "tests/acl2/page-read-ownership-tests.lisp"
       ],
       "execution_scope": "Pending matching union image; ownership only, no funded worker/buffer admission claim."
+    },
+    {
+      "id": "SCN-1010",
+      "title": "Resumable atom encoding preserves exact current scalar bytes",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [],
+      "steps": [
+        "Begin every supported scalar class with explicit capture and lease identities; walk actual counting, prefix, digits, body and terminal states.",
+        "Affirm complete invariant, residual, verdict, octet, identity and nonterminal progress antecedents/conclusions at every reached state; compare the final stream with fn-scc-atom-octets.",
+        "Interrupt and resume a nonempty string stream; preserve every emitted byte.",
+        "Exercise the actual 255-digit positive and negative codec limits and refuse the first overwide natural.",
+        "For each theorem hypothesis, label the mutation or corrupted state, affirm all retained hypotheses, and demonstrate both omitted-hypothesis and literal-conclusion failure."
+      ],
+      "expected": [
+        "No eager scalar byte list or source-string copying.",
+        "One octet maximum per step; quantum exhaustion retains resumable state.",
+        "Current codec bytes, package indices and capture/lease identities remain exact.",
+        "Logical evidence is a library component; no composed host or physical-resource conclusion is inferred."
+      ],
+      "implementation": {
+        "test": "tests/acl2/history-scalar-cursor-tests.lisp"
+      },
+      "evidence": [
+        "tests/acl2/history-scalar-cursor-tests.lisp",
+        "specs/history-scalar-cursor.md"
+      ],
+      "execution_scope": "Scalar source library only; full tree/census/producer and native qualification remain open."
     }
   ]
 }
