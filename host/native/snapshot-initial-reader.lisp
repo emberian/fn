@@ -20,7 +20,7 @@ No page boundary or NIL alias returns this whole reader role."
                 (fnn-live-page-read-pool) *the-live-state*)
     (declare (ignore pool state))
     (when erp (fnn-fault "INITIAL reader core call failed"))
-    (unless (eq (first packet) :reader)
+    (unless (and (consp packet) (eq (first packet) :reader))
       (return-from fnn-snapshot-initial-reader-begin (values :unavailable nil packet)))
     (let ((digest nil) (reader nil))
       (handler-case
