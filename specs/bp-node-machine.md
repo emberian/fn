@@ -5154,3 +5154,20 @@ The committed source transcript is in
 `planning/evidence/bp-bounded-checkpoint-reader-20260930/manifest.json`.
 This is not yet the universal refinement to `fn-bpnr-enc`/legacy decoding,
 registered funding, file/header/trailer reopen, or native recovery qualification.
+
+The bounded reader's typed encoding boundary is now connected to the
+actual `fn-bpnr-enc` producer. For a value in `fn-bpcv-valuep` whose encoding
+is nonempty, `fn-bpcr-typed-encoder-reader-endpoint` proves exact reconstruction,
+consumed-byte offset and untouched trailing input. The positive depth needed
+by recursive decoding is derived from nonempty encoding. The leaf and pair
+composition supports are local, rather than separate completion claims.
+`fn-bpcr-run-preserves-typed-encoder-endpoint` connects every scheduler quantum
+of the host-called runner to that same logical endpoint, including yielded
+turns. Literal actual CK7 producer and interrupted-run positives, foreign
+symbol domain refusal and exhausted-depth omission witnesses accompany it.
+This is a typed producer refinement, not all-input equivalence with the
+legacy symbol decoder. Evidence is in
+`planning/evidence/bp-checkpoint-reader-encoder-refinement-20260930/manifest.json`.
+The reader remains unhooked: charged workspace, installed supported format
+bound, exact file integrity and registered native recovery/publication joins
+still precede activation and whole delivery/restart qualification.
