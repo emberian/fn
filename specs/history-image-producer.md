@@ -125,3 +125,23 @@ in the same composed source world. The full cold image trajectory was rerun
 against the changed controller. This establishes no whole-operation INIT
 adequacy, whole writer invariant/progress or native execution claim; exact
 source evidence is `planning/evidence/history-image-native-profile-source-2026-09-30.json`.
+
+
+The supporting `history-image-writer-refinement` safety boundary is now
+proved for the actual ten-output `fn-hpi-tick`. Immutable capture and exact
+stage receipt remain live through retained steps; successful initial growth
+establishes the same authority. Returned `:write`/`:io` alone establishes the
+fixed effect tag, pending effect, captured source/stage and monotone serial.
+Internal arbitrary-tag helpers retain their own tag constraint. The complete
+uncertain-page and uncertain-stream laws preserve the ledger, all five buffers
+and digest state. Stream return word `:uncertain` sets the cursor phase to
+`:recovery-required`; it is distinct from the page return word
+`:recovery-required`. Literal tests reach all four actual I/O phase kinds,
+assert complete premises/results, and falsify each omitted premise while
+retaining the others. Corrupted phase witnesses use explicitly constructed
+matching observations and make no claim that the native executor emits them.
+The canonical byte trace still uses an explicit acknowledged-write/read oracle;
+A-HPI-POSITIONAL-IO's visible-byte assumption needs exact held FD/private role
+and ordered trace composition and does not establish durability. Whole byte
+fidelity, productive progress, initial demand and native qualification remain
+open. PRF-1144 remains planned with no completion events.
