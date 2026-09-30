@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6603,7 +6603,8 @@
         "Exercise overlapping requested windows, empty C/N after a protected prefix, split compressed input, final-block trailing bytes, sync flush,16KiB windows and93100-byte expansion over more than1000 quanta.",
         "Refuse truncated/malformed streams, wrongN, short read, protected-prefix corruption and wrong trailer commitment.",
         "Assert every literal scratch-copy/decoded/new-integrity antecedent and conclusion; remove only natural output index, decoded result or no-prior-publication as labelled.",
-        "Affirm actual real-input carry in nonempty scan/codec and empty final-drain transitions; corrupted-state removal keeps every remaining hypothesis true and fails the conclusion."
+        "Affirm actual real-input carry in nonempty scan/codec and empty final-drain transitions; corrupted-state removal keeps every remaining hypothesis true and fails the conclusion.",
+        "Affirm active TOUT<=min(N,storedAllowance(C)) after actual begin/codec/read/hash; codec establishes the carry without pre-call hypotheses. Separately labelled corrupted-state read and scan-hash removals falsify only carried-output evidence and the conclusion."
       ],
       "expected": [
         "The exact requested bytes remain private until accepted codec terminal/exactN and full raw extent integrity.",

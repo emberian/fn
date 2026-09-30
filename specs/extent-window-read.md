@@ -136,3 +136,20 @@ show nonempty codec and empty-payload drain transitions, and affirm each
 full antecedent and conclusion. Malformed-coordinate and corrupted-state
 hypothesis-removal witnesses are labelled separately. Native integration,
 full trajectory, total progress and allocation/profile funding remain open.
+
+### Active decoded-output carry
+
+`fn-ewz-output-invariantp` carries original C/N admission and actual
+TOUT<=min(N,storedAllowance(C)) in scan, codec, drain and decoded modes.
+Inactive refusal modes may retain a private overflow sentinel. Actual
+BEGIN establishes the carry without hypotheses. Actual CODEC-TICK also
+establishes it without a pre-call carry or pool-shape hypothesis: its
+stored-decision gate excludes output overshoot before any active mode is
+returned. READ and HASH-TICK preserve the carried evidence without further
+coordinate hypotheses. No served entry evaluates this proof recognizer.
+
+Literal witnesses execute nonempty scan/read/codec and final empty drain
+transitions. Corrupted-state READ and scan-HASH removals check failure of
+the sole carry hypothesis and of the conclusion. The codec theorem has no
+hypotheses to remove. This is numerical output carry, not whole-decoder
+fidelity, total scheduling completeness or a runtime allocation claim.
