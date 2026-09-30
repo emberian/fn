@@ -63,8 +63,10 @@
                   (:instance fn-cbor-u32-bytes-are-octets (n (len payload))))
             :in-theory (e/d (fn-frame-seal fn-frame-encode fn-frame-protected
                              fn-frame-header fn-frame-inputp fn-frame-magicp
-                             fn-frame-digestp fn-cbor-octet-listp-append)
-                            (fn-frame-digestp-of-fn-frame-digest
+                             fn-frame-digestp fn-cbor-octet-listp
+                             fn-cbor-octet-listp-append)
+                            (fn-oct-octet-listp-of-append
+                             fn-frame-digestp-of-fn-frame-digest
                              fn-cbor-u32-bytes-are-octets))))))
 
 (local
