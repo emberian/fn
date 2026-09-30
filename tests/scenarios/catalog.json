@@ -6427,9 +6427,10 @@
         "planning/evidence/history-image-directory-handoff-source-2026-09-30.json",
         "planning/evidence/history-image-directory-resume-source-2026-09-30.json",
         "books/history-image-table-refinement.lisp",
-        "planning/evidence/history-image-table-phase-source-2026-09-30.json"
+        "planning/evidence/history-image-table-phase-source-2026-09-30.json",
+        "planning/evidence/history-image-spool-transition-source-2026-09-30.json"
       ],
-      "execution_scope": "Actual fn-hpi-tick table word/invariant/two-zero tail/full-page handoff laws now source-admitted in a separate proper-local phase book. Clean 55 forms/45 locals: 46.09 ACL2s / 26,322,722 steps; 38 local fixture forms: 3.90s / 7,244 steps, 27 assertions including all 17 prior directory assertions. Ten new complete table assertions use labelled constructed supported N517/T2 phase states with real admission/growth receipt and actual scratch writes; they do not establish whole large-image reachability. Runtime unchanged d3c41e373. Next-table/digest transitions, full image/progress/effect-payload/FD/source authority/INITIAL/native remain open; PRF-1144 planned/events[]."
+      "execution_scope": "Actual accepted digest-spool ACK now establishes full next-table or initial directory canonical invariant and frames all buffers/ledger/digest. Clean combined table/spool book: 69 forms/54 locals, 43.11 ACL2s / 26,497,968 steps; 53 local fixture forms, 5.43s / 16,622 steps, all 36 assertions. First-table/directory positives follow the actual small decoded-row image trajectory; second-table is a labelled supported constructed phase. Context and stale-status removals affirm all retained premises and negate complete output. Runtime unchanged d3. Model digest/private spool correspondence, full image/progress/effect-payload/FD/source authority/INITIAL/native remain open; PRF-1144 planned/events[]."
     }
   ]
 }

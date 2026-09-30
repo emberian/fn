@@ -264,3 +264,24 @@ The next-table/digest transition relation, full pool/data/digest/root
 trajectory and progress, actual effect-to-payload/FD coupling, installed
 source authority and complete INITIAL runtime/funding envelope remain open.
 Runtime is unchanged; PRF-1144 remains planned with no completion events.
+
+
+Actual digest-spool settlement now establishes the next canonical metadata
+state: the final data-page spool ACK starts table zero, a nonfinal table
+spool ACK starts its next table, and the last table spool ACK starts the
+full directory at global ordinal/component zero. The carried context names
+the supported page/layout relationship and empty scratch. Actual returned
+`:continue` plus that context implies the entire table or directory
+invariant, with all buffers, ledger and digest state unchanged.
+
+Nine added literal assertions cover all three complete positives and both
+retained premise removals. First-table and directory cases follow the actual
+small decoded-row image pipeline; second-table is a labelled supported phase
+construction. Model digest lists are parameters to these empty-prefix
+transition laws. Their relation to actual spool contents still needs the
+private byte/digest observation join and is not inferred from an ACK.
+Exact combined source evidence is
+`planning/evidence/history-image-spool-transition-source-2026-09-30.json`.
+All thirty-six assertions pass. Full image residual/progress, private
+payload/FD coupling, captured source authority and INITIAL runtime funding
+remain open. Runtime is unchanged; PRF-1144 remains planned/events[].

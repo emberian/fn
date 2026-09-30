@@ -621,3 +621,178 @@
     fn-hpic-take-next fn-hpic-nth-nthcdr fn-hpic-stored-step-has-word-room-unfolds
     fn-hpic-continue-state-projection-unfolds fn-hpic-continue-used-projection-unfolds
     pgs-encode-table fn-hpm-model-entries take nth nthcdr unsigned-byte-p)))))
+
+; Successful data/table digest spool settlement is the actual transition
+; that establishes the next table page. This observer carries the supported
+; layout coordinate and empty scratch, not a host assertion of digest truth.
+(defun fn-hpic-next-table-page (c)
+ (declare (xargs :guard t :verify-guards nil))
+ (if (equal (fn-omk-at 0 (fn-omk-at 20 c)) :data) 0
+   (+ 1 (nfix (fn-omk-at 1 (fn-omk-at 20 c))))))
+
+(defun fn-hpic-table-spool-contextp (c digests fn-hpb)
+ (declare (xargs :stobjs fn-hpb :verify-guards nil))
+ (let* ((layout (fn-omk-at 1 (fn-omk-at 6 c)))
+        (kind (fn-omk-at 0 (fn-omk-at 20 c)))
+        (index (nfix (fn-omk-at 1 (fn-omk-at 20 c))))
+        (page (fn-hpic-next-table-page c))
+        (n (nfix (fn-omk-at 1 layout)))
+        (nt (nfix (fn-omk-at 2 layout))))
+  (and (fn-omk-widthp c 25) (equal (fn-omk-at 0 c) :wait-spool-write)
+       (or (and (equal kind :data) (equal (+ 1 index) n))
+           (and (equal kind :table) (< (+ 1 index) nt)))
+       (equal (len digests) n) (< page nt) (<= (* 341 page) n)
+       (equal (fn-hpb-used fn-hpb) 0) (equal (fn-hpb-prefix fn-hpb) nil))))
+
+(local (defthm fn-hpic-table-start-prefix-zero-by-definition
+ (equal (take 0 xs) nil)
+ :hints (("Goal" :in-theory (enable take)))))
+
+(local (defthm fn-hpic-table-meta-begin-establishes-invariant
+ (implies (and (fn-omk-widthp c 25) (natp page)
+               (< page (nfix (fn-omk-at 2 (fn-omk-at 1 (fn-omk-at 6 c)))))
+               (<= (* 341 page) (len digests))
+               (equal (len digests) (nfix (fn-omk-at 1 (fn-omk-at 1 (fn-omk-at 6 c)))))
+               (equal (fn-hpb-used fn-hpb) 0) (equal (fn-hpb-prefix fn-hpb) nil))
+  (fn-hpic-table-invariantp (fn-hpi-meta-begin :table page c) digests fn-hpb))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :in-theory (e/d (fn-hpi-meta-begin fn-hpic-table-invariantp fn-hpic-meta-field
+                  fn-hpic-table-start fn-hpic-table-cache-agreesp)
+   (fn-hpi-set fn-hpi-set-is-update-by-definition fn-omk-at fn-omk-widthp
+    fn-hpb-prefix fn-hpb-used fn-hpic-table-model take nth nthcdr
+    fn-hpic-take-next fn-hpic-stored-step-has-word-room-unfolds))))))
+
+(local (defthm fn-hpic-after-spool-establishes-table-invariant
+ (implies (fn-hpic-table-spool-contextp c digests fn-hpb)
+  (and (equal (car (fn-hpi-after-spool c pgs-digest-state)) :continue)
+       (fn-hpic-table-invariantp
+        (mv-nth 1 (fn-hpi-after-spool c pgs-digest-state)) digests fn-hpb)
+       (equal (mv-nth 2 (fn-hpi-after-spool c pgs-digest-state)) pgs-digest-state)))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use ((:instance fn-hpic-table-meta-begin-establishes-invariant
+         (page (fn-hpic-next-table-page c))))
+  :in-theory (e/d (fn-hpic-table-spool-contextp fn-hpic-next-table-page fn-hpi-after-spool)
+   (fn-hpi-meta-begin fn-hpic-table-invariantp fn-hpi-set fn-hpi-set-is-update-by-definition
+    fn-omk-at fn-omk-widthp fn-hpb-prefix fn-hpb-used fn-hpi-digest-begin mv-nth
+    fn-hpic-stored-step-has-word-room-unfolds))))))
+
+(local (defthm fn-hpic-spool-context-pending-frame-unfolds
+ (implies (fn-hpic-table-spool-contextp c digests fn-hpb)
+  (fn-hpic-table-spool-contextp (fn-hpi-set 5 nil c) digests fn-hpb))
+ :hints (("Goal" :in-theory (e/d (fn-hpic-table-spool-contextp fn-hpic-next-table-page)
+   (fn-hpi-set fn-hpi-set-is-update-by-definition fn-omk-at fn-omk-widthp
+    fn-hpb-prefix fn-hpb-used))))))
+
+(local (defthm fn-hpic-matched-io-outcome-by-definition
+ (implies (fn-hpi-io-matchp c observation tag width)
+  (member-eq (fn-omk-at 7 observation) '(:ok :uncertain :refused)))
+ :hints (("Goal" :in-theory (e/d (fn-hpi-io-matchp)
+  (fn-omk-at fn-omk-widthp fn-omk-token-matchp))))))
+
+(local (defthm fn-hpic-tick-accepted-spool-frame-unfolds
+ (let ((r (fn-hpi-tick c observation ledger fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb pgs-digest-state)))
+  (implies (and (fn-omk-widthp c 25) (equal (fn-omk-at 0 c) :wait-spool-write)
+                (equal (car r) :continue))
+   (and (equal (mv-nth 2 r)
+          (mv-nth 1 (fn-hpi-after-spool (fn-hpi-set 5 nil c) pgs-digest-state)))
+        (equal (mv-nth 9 r)
+          (mv-nth 2 (fn-hpi-after-spool (fn-hpi-set 5 nil c) pgs-digest-state)))
+        (equal (mv-nth 3 r) ledger) (equal (mv-nth 4 r) fn-hpq0)
+        (equal (mv-nth 5 r) fn-hpq1) (equal (mv-nth 6 r) fn-hpq2)
+        (equal (mv-nth 7 r) fn-hpq3) (equal (mv-nth 8 r) fn-hpb))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use ((:instance fn-hpic-matched-io-outcome-by-definition (tag :spool-written) (width 8)))
+  :in-theory (e/d (fn-hpi-tick fn-hpi-stream-step)
+   (fn-hpi-after-spool fn-hpi-io-matchp fn-hpi-grant-matchesp fn-omk-at fn-hpi-set
+    fn-hpi-set-is-update-by-definition mv-nth fn-hpi-written fn-hpi-supply fn-hpi-buffer-step
+    fn-hpi-digest-begin fn-hpi-digest-validp pgs-dcb-read-demand pgs-dcb-step
+    fn-hpi-issue-io pgs-dcb-result-octets fn-hpir-root fn-hpi-octets-p))))))
+
+(defthm fn-hpi-tick-establishes-next-canonical-table-after-spool-ack
+ (let ((r (fn-hpi-tick c observation ledger fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb pgs-digest-state)))
+  (implies (and (fn-hpic-table-spool-contextp c digests fn-hpb)
+                (equal (car r) :continue))
+   (and (fn-hpic-table-invariantp (mv-nth 2 r) digests (mv-nth 8 r))
+        (equal (mv-nth 3 r) ledger) (equal (mv-nth 4 r) fn-hpq0)
+        (equal (mv-nth 5 r) fn-hpq1) (equal (mv-nth 6 r) fn-hpq2)
+        (equal (mv-nth 7 r) fn-hpq3) (equal (mv-nth 8 r) fn-hpb)
+        (equal (mv-nth 9 r) pgs-digest-state))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use (fn-hpic-tick-accepted-spool-frame-unfolds
+        (:instance fn-hpic-after-spool-establishes-table-invariant (c (fn-hpi-set 5 nil c))))
+  :in-theory (e/d (fn-hpic-table-spool-contextp)
+   (fn-hpi-tick fn-hpi-stream-step fn-hpi-after-spool fn-hpi-meta-begin
+    fn-hpic-table-invariantp fn-hpic-next-table-page fn-hpi-set
+    fn-hpi-set-is-update-by-definition fn-omk-at fn-omk-widthp fn-hpb-prefix
+    fn-hpb-used mv-nth fn-hpic-stored-step-has-word-room-unfolds)))))
+
+(defun fn-hpic-directory-spool-contextp (c digests fn-hpb)
+ (declare (xargs :stobjs fn-hpb :verify-guards nil))
+ (let* ((layout (fn-omk-at 1 (fn-omk-at 6 c)))
+        (index (nfix (fn-omk-at 1 (fn-omk-at 20 c))))
+        (nt (nfix (fn-omk-at 2 layout)))
+        (m (nfix (fn-omk-at 3 layout))))
+  (and (fn-omk-widthp c 25) (equal (fn-omk-at 0 c) :wait-spool-write)
+       (equal (fn-omk-at 0 (fn-omk-at 20 c)) :table) (<= nt (+ 1 index))
+       (equal (len digests) nt) (< 0 m) (<= (* 6 nt) (* 2048 m))
+       (equal (fn-hpb-used fn-hpb) 0) (equal (fn-hpb-prefix fn-hpb) nil))))
+
+(local (defthm fn-hpic-directory-meta-begin-establishes-invariant
+ (implies (and (fn-omk-widthp c 25)
+               (equal (len digests) (nfix (fn-omk-at 2 (fn-omk-at 1 (fn-omk-at 6 c)))))
+               (< 0 (nfix (fn-omk-at 3 (fn-omk-at 1 (fn-omk-at 6 c)))))
+               (<= (* 6 (len digests)) (* 2048 (nfix (fn-omk-at 3 (fn-omk-at 1 (fn-omk-at 6 c))))))
+               (equal (fn-hpb-used fn-hpb) 0) (equal (fn-hpb-prefix fn-hpb) nil))
+  (fn-hpic-directory-invariantp (fn-hpi-meta-begin :directory page c) digests fn-hpb))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :in-theory (e/d (fn-hpi-meta-begin fn-hpic-directory-invariantp fn-hpic-meta-field
+                  fn-hpic-cached-digest-agreesp)
+   (fn-hpi-set fn-hpi-set-is-update-by-definition fn-omk-at fn-omk-widthp
+    fn-hpb-prefix fn-hpb-used fn-hpic-directory-model take nth nthcdr
+    fn-hpic-take-next fn-hpic-stored-step-has-word-room-unfolds))))))
+
+(local (defthm fn-hpic-after-spool-establishes-directory-invariant
+ (implies (fn-hpic-directory-spool-contextp c digests fn-hpb)
+  (and (equal (car (fn-hpi-after-spool c pgs-digest-state)) :continue)
+       (fn-hpic-directory-invariantp
+        (mv-nth 1 (fn-hpi-after-spool c pgs-digest-state)) digests fn-hpb)
+       (equal (mv-nth 2 (fn-hpi-after-spool c pgs-digest-state)) pgs-digest-state)))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use ((:instance fn-hpic-directory-meta-begin-establishes-invariant
+         (page (+ 1 (nfix (fn-omk-at 1 (fn-omk-at 20 c)))))))
+  :in-theory (e/d (fn-hpic-directory-spool-contextp fn-hpi-after-spool)
+   (fn-hpi-meta-begin fn-hpic-directory-invariantp fn-hpi-set fn-hpi-set-is-update-by-definition
+    fn-omk-at fn-omk-widthp fn-hpb-prefix fn-hpb-used fn-hpi-digest-begin mv-nth
+    fn-hpic-stored-step-has-word-room-unfolds))))))
+
+(local (defthm fn-hpic-directory-spool-context-pending-frame-unfolds
+ (implies (fn-hpic-directory-spool-contextp c digests fn-hpb)
+  (fn-hpic-directory-spool-contextp (fn-hpi-set 5 nil c) digests fn-hpb))
+ :hints (("Goal" :in-theory (e/d (fn-hpic-directory-spool-contextp)
+   (fn-hpi-set fn-hpi-set-is-update-by-definition fn-omk-at fn-omk-widthp
+    fn-hpb-prefix fn-hpb-used))))))
+
+(defthm fn-hpi-tick-establishes-canonical-directory-after-last-table-spool-ack
+ (let ((r (fn-hpi-tick c observation ledger fn-hpq0 fn-hpq1 fn-hpq2 fn-hpq3 fn-hpb pgs-digest-state)))
+  (implies (and (fn-hpic-directory-spool-contextp c digests fn-hpb)
+                (equal (car r) :continue))
+   (and (fn-hpic-directory-invariantp (mv-nth 2 r) digests (mv-nth 8 r))
+        (equal (mv-nth 3 r) ledger) (equal (mv-nth 4 r) fn-hpq0)
+        (equal (mv-nth 5 r) fn-hpq1) (equal (mv-nth 6 r) fn-hpq2)
+        (equal (mv-nth 7 r) fn-hpq3) (equal (mv-nth 8 r) fn-hpb)
+        (equal (mv-nth 9 r) pgs-digest-state))))
+ :rule-classes nil
+ :hints (("Goal" :do-not-induct t
+  :use (fn-hpic-tick-accepted-spool-frame-unfolds
+        (:instance fn-hpic-after-spool-establishes-directory-invariant (c (fn-hpi-set 5 nil c))))
+  :in-theory (e/d (fn-hpic-directory-spool-contextp)
+   (fn-hpi-tick fn-hpi-stream-step fn-hpi-after-spool fn-hpi-meta-begin
+    fn-hpic-directory-invariantp fn-hpi-set fn-hpi-set-is-update-by-definition
+    fn-omk-at fn-omk-widthp fn-hpb-prefix fn-hpb-used mv-nth
+    fn-hpic-stored-step-has-word-room-unfolds)))))
