@@ -10,14 +10,14 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1979 |
+| Books read | 1980 |
 | Certification roots in the Makefile | 1866 |
 | Books inside the root closure | 1938 |
-| `defthm` and `defthmd` events | 30252 |
-| `defun` events | 19296 |
+| `defthm` and `defthmd` events | 30255 |
+| `defun` events | 19297 |
 | Functions with verified guards | 3549 |
 | Functions declared `:verify-guards nil` and never verified | 2350 |
-| Functions left at the default with an explicit guard | 10531 |
+| Functions left at the default with an explicit guard | 10532 |
 | Functions left at the default with no guard | 2866 |
 | `assert-event` checks | 24064 |
 | `must-fail` checks | 2519 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 348 |
 | Enabled-projection warnings | 55 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2714 |
+| Include-hygiene warnings | 2715 |
 | Host-names warnings | 2193 |
 | Hand-written-record warnings | 18 |
 
@@ -558,6 +558,7 @@ that `make certify` requests.
 | `books/index-range-controller.lisp` | root | 4 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/index-range-held-row-controller.lisp` | - | 5 | 7 | 2/0/5/0 | 0 | 0 | 0 |
 | `books/index-range-number-controller.lisp` | - | 3 | 6 | 0/0/6/0 | 0 | 0 | 0 |
+| `books/index-range-render-active.lisp` | - | 3 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/index-range-render-custody.lisp` | - | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/index-range-render-demand.lisp` | - | 1 | 5 | 2/0/3/0 | 0 | 0 | 0 |
 | `books/index.lisp` | root | 35 | 26 | 24/0/2/0 | 0 | 0 | 3 |
