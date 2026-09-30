@@ -121,6 +121,7 @@
 (include-book "owner-state-accessors")
 (include-book "state-globals")
 (include-book "owner-retain-state")
+(include-book "owner-retain-transitions")
 (include-book "owner-obligation-state")
 (include-book "deflate-inflate")
 (include-book "owner-checkpoint-open")

@@ -18034,6 +18034,31 @@
         "tests/acl2/nov-column-window-tests.lisp"
       ],
       "progress_note": "Clean persvati REPL: gpt61-nbw4 25/25 forms (21 same +2 macro named forms), gpt61-nbwt4 12/12 (11 named exact), gpt61-nbwc2 10/10 (6 named exact), gpt61-nbwct3 16/16 including actual intern/commit/lookup positive and literal hypothesis removal for F, exact facts and ok. All stopped. Source-dependency loads are not certificates. No host call, qualified image, allocator measurement or completed Q5c/J1 claim. Work/fuel models loop iterations and output length, not measured physical resources. Numeric setup still requires maintained codec/profile premise. Legacy parse/cache hydration remains owned open. The two named library theorems are retained as component evidence, not cited registry events: no served keystone is claimed until the actual host-called byte cursor composes them."
+    },
+    {
+      "id": "PRF-1072",
+      "title": "Actual owner carry writers preserve the carried entry state",
+      "statement": "Subject: books/owner-retain-transitions.lisp fn-owner-prepare-identity, called by host/native/owner.lisp fnn-owner-identity-commit, and fn-owner-finish-synced, called by host/owner-host.lisp fn-owner-finish. Each preserves fn-prc-carryp of the returned live state under fn-prc-carryp at entry. Identity prepare additionally preserves the proof-only fn-owner-retain-statep relation: owner global bound, configured owner fn-lgoc-invariantp, and retention carry fn-prc-carryp; that relation implies its literal bound-owner/Store-state/carry guard. The exact definitions retain their executable guards and effects, including signed candidate installation and completion words. The full initialization/five-writer mission is in progress: program prepare variants, live reclaim swap, initialization, complete completion owner relation, native producer premises and matched image evidence remain open. These bounded claims enable no real-owner raw annotations and establish no signed POST cost curve. Local policy; no RFC requirement.",
+      "depends_on": [
+        "PRF-1067",
+        "PRF-289"
+      ],
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-retain-transitions.lisp",
+        "tests/acl2/owner-retain-transitions-tests.lisp"
+      ],
+      "progress_note": "Clean source REPL guard and transition proofs, reachable signed prepare/seal and durable completion/ready witnesses, and corrupted carry hypothesis-removal witnesses passed. Matching union certificate manifest, host load and native remain runner-owned and pending. Initialization and the remaining writer domains remain open.",
+      "events": [
+        "fn-owner-prepare-identity-preserves-retain-carry",
+        "fn-owner-prepare-identity-preserves-retain-state",
+        "fn-owner-finish-synced-preserves-retain-carry"
+      ]
     }
   ]
 }

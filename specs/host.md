@@ -442,6 +442,16 @@ leaves that read unchanged (PRF-1067). The actual carry writers use this
 setter. These state effects do not establish the validity of the supplied
 value or the invariant across a whole owner transition.
 
+The exact signed identity prepare and synchronized completion definitions
+live in `books/owner-retain-transitions.lisp` (PRF-1072). Each preserves a
+valid retention carry across the returned live state's effects. Identity
+prepare also preserves the bound-owner, configured Store-relation and carry
+invariant, which implies its literal entry guard. These functions remain
+guard-verified with their existing behavior. Initialization, the other
+writers' complete entry domains, completion's full owner relation and the
+native producer premises remain separate obligations; no real-owner raw
+annotation or cost qualification follows from these bounded properties.
+
 The off-mutex owner reclamation rebuild calls the logical entry
 `fn-owner-orcp-rebuild` (books/owner-reclaim-carry.lisp). Its returned field 2
 always satisfies `fn-prc-carryp` (PRF-1060), including a refused open's nil
