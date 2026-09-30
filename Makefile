@@ -149,6 +149,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-entry-completion-model \
 	books/consumer-authority-carried-result \
 	books/consumer-authority-carried-result-model \
+	books/store-tree-size-info \
+	books/consumer-checkpoint-carry-map \
+	books/consumer-checkpoint-carry-map-model \
+	books/consumer-checkpoint-carry-attribution \
 	books/consumer-account-state \
 	books/consumer-config-authority \
 	books/consumer-config-publication \
@@ -173,6 +177,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-entry-preparation-tests \
 	tests/acl2/consumer-entry-completion-tests \
 	tests/acl2/consumer-authority-carried-result-tests \
+	tests/acl2/consumer-checkpoint-carry-map-tests \
+	tests/acl2/consumer-checkpoint-carry-attribution-tests \
 	tests/acl2/consumer-account-auth-tests \
 	tests/acl2/consumer-config-authority-tests \
 	tests/acl2/consumer-config-publication-tests \

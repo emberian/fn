@@ -1194,3 +1194,22 @@ actual bounded availability accessor, not the host STATE collector or disk I/O.
 The high Store callback, attributed same-load cfg-first CP metadata production,
 all-writer source revalidation, funds and atomic installation remain open;
 no nonempty restart metadata may be invented from a current STATE getter.
+
+
+The bounded checkpoint annotation mapper visits one list/trie cell or returns
+one completed child per scheduling tick. It preserves the complete pending
+output across yields; missing pair annotations refuse instead of triggering a
+size summary. Real-parser provenance supplies complete list/trie annotations
+only with explicit child coverage. Literal ghost infos test this relation and
+are not wire-parse observations. Whole CP7 sameparse metadata association and
+actual cold caller/source-holder/funding joins remain open.
+
+The committed account root includes policy, exact lookup index and credentials;
+CP7 adopted rows alone do not retain this publication after fence clears pending
+preparation. The coordinated checkpoint producer must retain
+`(:ok CP7 committedRootOrNil fenceEventCountOrNil)` in the existing consumer R
+root, with separate metadata from the same parse. Fence count is the dense
+committed event count (`event.sequence + 1`), independent of allocator txid.
+No parsed shape or size carry establishes authority; nonempty old results do
+not acquire a missing committed root from a current STATE getter. The actual
+cfg-first producer/decoder association remains an open join.
