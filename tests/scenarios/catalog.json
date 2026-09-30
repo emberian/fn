@@ -6844,7 +6844,7 @@
       "id": "SCN-1012",
       "title": "Network readiness on the existing owner without a second image process",
       "milestone": "M6",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "WEB-005"
       ],
@@ -6877,7 +6877,7 @@
       "id": "SCN-1021",
       "title": "Accepted socket service log carries its observed client address once",
       "milestone": "M6",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "HST-002"
       ],
@@ -6930,6 +6930,31 @@
         "host/native/owner.lisp"
       ],
       "execution_scope": "Source-only library/adapter and raw-host checks; producer activation and matching native execution pending."
+    },
+    {
+      "id": "SCN-1029",
+      "title": "Pinned INN protected reader serves an article delivered by native fn, with verified STARTTLS and refused/accepted USER/PASS",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-005"
+      ],
+      "steps": [
+        "Run the existing native fn and real pinned-INN lab with an explicit separate TLS-capable INN prefix and --inn-security.",
+        "POST to native fn, observe its IHAVE delivery to innd, then connect to the separate loopback nnrpd reader.",
+        "Verify STARTTLS certificate and IP name; try the wrong password and GROUP before login; authenticate with the scratch account and fetch the fn article."
+      ],
+      "expected": [
+        "STARTTLS 382 and a certificate/name-verified handshake; bad password 481; unauthenticated GROUP 480; accepted USER/PASS 281; GROUP 211 and ARTICLE 220.",
+        "The authenticated read preserves the body and every header except Path/Xref relay changes. Authentication failure or changed article fails the selected row.",
+        "Cleanup stops only recorded owned pids. The optional row refuses the standing plaintext prefix and requires all six selected ports to differ."
+      ],
+      "evidence": [
+        "tools/inn_lab.py",
+        "tests/test_inn_lab.py",
+        "docs/interop-inn.md"
+      ],
+      "execution_scope": "Source-present partial W3 fixture. Narrow scripted-peer and harness tests do not establish real INN or fn-image behavior. No real protected-reader run yet; native protected feed, actual Control-header behavior, Distribution/cancel/expiry and broader Q12/W3 criteria remain open. INN authentication is an external implementation observation, not an fn theorem."
     }
   ]
 }

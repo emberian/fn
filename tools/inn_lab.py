@@ -87,6 +87,7 @@ DEFAULT_LAB_ROOT = "$HOME/fn-inn-lab"
 # below INN's, so a stray connection to the wrong one is obvious in a log.
 INN_PORT = 11419          # innd: transit (IHAVE/CHECK/TAKETHIS)
 NNRPD_PORT = 11420        # nnrpd: the reader daemon, read-back only
+INN_SECURITY_PORT = 11421 # optional certificate-verified STARTTLS reader
 FN_PORT = 11490           # the native fn owner's listener
 TAP_OUT_PORT = 11418      # fn's peer record names this; the relay forwards to innd
 TAP_IN_PORT = 11417       # innfeed.conf names this; the relay forwards to fn
@@ -100,6 +101,13 @@ FN_PEER_NAME = "inn"
 GROUP = GROUPS[0]
 # RFC 5537 section 3.6: a relaying agent MUST NOT alter anything but these.
 RELAY_MAY_CHANGE = ("path", "xref")
+
+
+def shell_fixture_path(path: str) -> str:
+    """Quote a fixture path, retaining only the lab's known HOME prefix expansion."""
+    if path.startswith("$HOME/"):
+        return '"$HOME"/' + shlex.quote(path[len("$HOME/"):])
+    return shlex.quote(path)
 
 
 def reported_pid(output: str) -> str:
@@ -463,6 +471,21 @@ access "localhost" {{
 }}
 """
 
+READERS_SECURITY_CONF = """\
+# Separate STARTTLS reader; no default identity or anonymous read access.
+auth "protected-fixture" {{
+    hosts: "127.0.0.1"
+    require_encryption: true
+    auth: "ckpasswd -f {prefix}/db/security-newsusers"
+}}
+access "protected-fixture" {{
+    users: "fn-lab"
+    newsgroups: "fn.*"
+    access: RA
+}}
+"""
+
+
 CONFIG_FILES = ("inn.conf", "incoming.conf", "newsfeeds", "innfeed.conf",
                 "readers.conf")
 
@@ -480,7 +503,7 @@ socket, and every article is sent and read as octets: a transit client
 written against the wire is the only kind that can hand a server a Path it
 must refuse, and the only kind whose read-back can be compared byte for byte.
 """
-import argparse, base64, json, socket, sys
+import argparse, base64, json, socket, ssl, sys
 
 
 class Wire:
@@ -498,6 +521,17 @@ class Wire:
     def cmd(self, text):
         self.sock.sendall(text.encode() + b"\r\n")
         return self.line()
+
+    def starttls(self, cafile):
+        """The real peer's 382, then certificate/name-verified TLS on it."""
+        reply = self.cmd("STARTTLS")
+        if not reply.startswith("382"):
+            raise RuntimeError("STARTTLS refused: " + reply)
+        self.file.close()
+        context = ssl.create_default_context(cafile=cafile)
+        self.sock = context.wrap_socket(self.sock, server_hostname="127.0.0.1")
+        self.file = self.sock.makefile("rb")
+        return reply
 
     def block(self):
         """A dot-terminated block, unstuffed, as the octets it carries."""
@@ -628,10 +662,50 @@ def caps(args):
     return out
 
 
+def protected_read(args):
+    """Real nnrpd STARTTLS, failed/successful USER/PASS and authenticated read.
+
+    The password is a scratch fixture file, never argv or JSON evidence.
+    This is the reader/authentication arm; no relay/discharge claim follows.
+    """
+    wire = Wire(args.port)
+    out = {"greeting": wire.greeting}
+    try:
+        out["starttls"] = wire.starttls(args.cafile)
+        out["tls"] = wire.sock.version()
+        out["bad_user"] = wire.cmd("AUTHINFO USER " + args.username)
+        if out["bad_user"].startswith("381"):
+            out["bad_pass"] = wire.cmd("AUTHINFO PASS not-the-fixture-password")
+        else:
+            out["bad_pass"] = ""
+        out["before_login"] = wire.cmd("GROUP " + args.group)
+        out["user"] = wire.cmd("AUTHINFO USER " + args.username)
+        if not out["user"].startswith("381"):
+            out["ok"] = False
+            return out
+        password = octets(args.password_file).decode("ascii").rstrip("\n")
+        if not password or "\r" in password or "\n" in password:
+            raise ValueError("password fixture must be one nonempty ASCII line")
+        out["pass"] = wire.cmd("AUTHINFO PASS " + password)
+        if not out["pass"].startswith("281"):
+            out["ok"] = False
+            return out
+        out["group"] = wire.cmd("GROUP " + args.group)
+        out["article"], out["octets"] = fetch_one(wire, args.msgid)
+        out["ok"] = (out["bad_user"].startswith("381")
+                     and out["bad_pass"].startswith("481")
+                     and out["before_login"].startswith("480")
+                     and out["group"].startswith("211")
+                     and out["article"].startswith("220"))
+        return out
+    finally:
+        wire.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="phase", required=True)
-    for name in ("read", "ihave", "offer", "post", "fetch", "caps"):
+    for name in ("read", "ihave", "offer", "post", "fetch", "caps", "protected-read"):
         one = sub.add_parser(name)
         one.add_argument("--port", type=int, required=True)
         one.add_argument("--group", default="fn.letters")
@@ -642,9 +716,12 @@ def main():
         one.add_argument("--loop-file", default="")
         one.add_argument("--read", action="store_true",
                          help="offer: read the Message-ID back on the same connection")
+        one.add_argument("--cafile", default="")
+        one.add_argument("--username", default="fn-lab")
+        one.add_argument("--password-file", default="")
     args = parser.parse_args()
     handler = {"read": read, "ihave": ihave, "offer": offer, "post": post,
-               "fetch": fetch, "caps": caps}[args.phase]
+               "fetch": fetch, "caps": caps, "protected-read": protected_read}[args.phase]
     try:
         result = handler(args)
     except Exception as error:
@@ -751,7 +828,7 @@ class InnLab(deploy_gate.DeployGate):
                  "inn read of fn's article", "fn post vs fn served",
                  "fn served vs inn served", "operator post feed", "inn control",
                  "innfeed to fn", "inn served vs fn served", "duplicates", "fn loop",
-                 "fn term", "innd cut")
+                 "fn term", "innd cut", "inn protected reader")
     # What this lab decides.  Nothing of deploy_gate's own inventory is
     # inherited: those assertions are about the development store CLI and
     # its certificates, and this lab runs neither.
@@ -823,6 +900,11 @@ class InnLab(deploy_gate.DeployGate):
         "fn-articles-survived-term": (
             "after SIGTERM, recover and restart, fn serves the articles it held "
             "byte-identical", ("fn-article", "inn-article")),
+        "inn-protected-reader": (
+            "the separate nnrpd reader completed certificate/name-verified STARTTLS "
+            "(382), refused a bad password (481) and unauthenticated read (480), "
+            "then accepted USER/PASS (281) and served fn's article (220) with "
+            "only the already permitted relay header changes", ("",)),
         "innd-died": ("innd died on SIGKILL, so the control really cut", ("",)),
         "innd-restarted": ("innd came back after the SIGKILL", ("",)),
         "inn-history-survived-kill": (
@@ -848,7 +930,8 @@ class InnLab(deploy_gate.DeployGate):
     def __init__(self, *args, native_image, inn_prefix, inn_version, inn_port,
                  nnrpd_port, fn_port, tap_out_port, tap_in_port,
                  lab_root=DEFAULT_LAB_ROOT, native_openssl_prefix=None,
-                 extra_overlays=(), feed_wait=90, **kwargs):
+                 extra_overlays=(), feed_wait=90, inn_security=False,
+                 inn_security_port=INN_SECURITY_PORT, **kwargs):
         super().__init__(*args, **kwargs)
         if not native_image:
             raise GateError("the fn side is the native image or the lab does not run "
@@ -857,6 +940,22 @@ class InnLab(deploy_gate.DeployGate):
         self.native_openssl_prefix = native_openssl_prefix
         self.inn_prefix = inn_prefix
         self.inn_version = inn_version
+        self.inn_security = inn_security
+        self.inn_security_port = inn_security_port
+        if inn_security and inn_prefix.rstrip("/") == "{}/{}".format(
+                DEFAULT_INN_ROOT, inn_version):
+            raise GateError("--inn-security requires a separate TLS-capable "
+                            "--inn-prefix, not the standing plaintext install")
+        if inn_security:
+            self.STANDING_GAPS = tuple(
+                "The optional reader uses verified STARTTLS and USER/PASS; the "
+                "transit relays remain clear and address-authorized. No "
+                "Distribution, control messages, cancel or expiry is exercised."
+                if gap.startswith("No TLS,") else gap for gap in self.STANDING_GAPS)
+        else:
+            # An unselected optional row is not an observed failure or a pass.
+            self.ASSERTIONS = {name: assertion for name, assertion in self.ASSERTIONS.items()
+                               if name != "inn-protected-reader"}
         self.inn_port = inn_port
         self.nnrpd_port = nnrpd_port
         self.fn_port = fn_port
@@ -1136,7 +1235,7 @@ if kill -0 {pid} 2>/dev/null; then kill -9 {pid}; echo "OWNER-KILLED-AFTER-60S";
     # -- INN --------------------------------------------------------------
     def inn_preflight(self):
         ports = (self.inn_port, self.nnrpd_port, self.fn_port, self.tap_out_port,
-                 self.tap_in_port)
+                 self.tap_in_port) + ((self.inn_security_port,) if self.inn_security else ())
         step = self.sh("INN install", """
 P={prefix}
 if [ ! -x $P/bin/innd ]; then echo "NO-INN $P"; exit 1; fi
@@ -1174,7 +1273,7 @@ done
                     "; ".join(busy)),
                 "a port the lab needs was already in use", observed="; ".join(busy))
             raise GateError("a port the lab needs is in use: {}".format("; ".join(busy)))
-        self.check("ports-free", True, "", observed="all five ports free")
+        self.check("ports-free", True, "", observed="all {} ports free".format(len(ports)))
 
     def inn_configure(self):
         """Write the five configuration files and cold-start history if absent."""
@@ -1193,8 +1292,13 @@ done
                                ("newsfeeds", NEWSFEEDS),
                                ("innfeed.conf", INNFEED_CONF),
                                ("readers.conf", READERS_CONF)):
-            self.push_file(template.format(**fields),
-                           "{}/etc/{}".format(self.inn_prefix, name), mode="640")
+            contents = template.format(**fields)
+            if name == "inn.conf" and self.inn_security:
+                contents += ("tlscertfile: {p}/etc/security-cert.pem\n"
+                             "tlskeyfile: {p}/etc/security-key.pem\n").format(p=self.inn_prefix)
+            self.push_file(contents, "{}/etc/{}".format(self.inn_prefix, name), mode="640")
+        if self.inn_security:
+            self.inn_security_configure(fields)
         # innfeed appends for ever; a tail of it must be THIS run's.
         self.sh("truncate innfeed's log", ": > {p}/log/innfeed.log".format(
             p=self.inn_prefix))
@@ -1219,6 +1323,46 @@ ls $P/db
         for name in CONFIG_FILES:
             self.sh("INN {} as written".format(name),
                     "cat {}/etc/{}".format(self.inn_prefix, name))
+
+    def inn_security_configure(self, fields):
+        """Only the explicitly isolated test prefix; credentials are scratch files."""
+        self.push_file(READERS_SECURITY_CONF.format(**fields),
+                       "{}/etc/readers-security.conf".format(self.inn_prefix), mode="640")
+        openssl = (self.native_openssl_prefix.rstrip("/") + "/bin/openssl"
+                   if self.native_openssl_prefix else "openssl")
+        step = self.sh("INN protected-reader fixture", """
+set -e
+P={p}
+umask 077
+{ssl} rand -hex 24 > {run}/inn-security.password
+hash=$({ssl} passwd -6 -stdin < {run}/inn-security.password)
+printf 'fn-lab:%s\\n' "$hash" > $P/db/security-newsusers
+{ssl} req -x509 -newkey rsa:2048 -nodes -days 2 -sha256 \\
+  -subj /CN=127.0.0.1 -addext subjectAltName=IP:127.0.0.1 \\
+  -keyout $P/etc/security-key.pem -out $P/etc/security-cert.pem 2>/dev/null
+{ssl} x509 -in $P/etc/security-cert.pem -noout -fingerprint -sha256
+""".format(p=self.inn_prefix, run=self.run, ssl=shlex.quote(openssl)), expect=None)
+        if step.rc != 0:
+            raise GateError("cannot prepare INN protected-reader scratch fixture")
+
+    def inn_security_start(self):
+        step = self.sh("start protected nnrpd", """
+P={p}
+nohup $P/bin/nnrpd -D -4 127.0.0.1 -p {port} -c readers-security.conf \\
+  > $P/log/nnrpd-security-stdout.log 2>&1 < /dev/null &
+for i in $(seq 1 30); do
+  if python3 -c "import socket,sys; s=socket.socket(); s.settimeout(2); sys.exit(0 if s.connect_ex(('127.0.0.1',{port}))==0 else 1)"; then
+    echo "NNRPD-UP pid=$(cat $P/run/nnrpd-{port}.pid 2>/dev/null)"; exit 0; fi
+  sleep 1
+done
+echo NNRPD-TIMEOUT; tail -10 $P/log/nnrpd-security-stdout.log; exit 1
+""".format(p=self.inn_prefix, port=self.inn_security_port), timeout=90, expect=None)
+        pid = reported_pid(step.output)
+        if pid:
+            self.started_pids["nnrpd-security"] = pid
+        if step.rc != 0 or not pid:
+            raise GateError("protected nnrpd did not start with an owned, recorded pid")
+        self.facts["ports"] += "; protected nnrpd {} (STARTTLS reader)".format(self.inn_security_port)
 
     def innd_start(self, name: str, append=False) -> Step:
         return self.sh(name, """
@@ -1318,9 +1462,10 @@ echo TAP-TIMEOUT; cat {run}/tap.stdout; exit 1
 
     def inn_stop(self):
         """Only what this run started, and only by the pid it recorded."""
-        if "nnrpd" in self.started_pids:
-            self.sh("stop nnrpd", "kill {} 2>/dev/null || true; echo stopped".format(
-                self.started_pids.pop("nnrpd")))
+        for name in ("nnrpd-security", "nnrpd"):
+            if name in self.started_pids:
+                self.sh("stop " + name, "kill {} 2>/dev/null || true; echo stopped".format(
+                    self.started_pids.pop(name)))
         if self.inn_running:
             self.sh("ctlinnd shutdown", "{} -t 5 shutdown 'inn lab done' 2>&1 || true"
                     .format(self.bin("ctlinnd")), expect=None)
@@ -1344,6 +1489,28 @@ kill -0 $pid 2>/dev/null && echo INNFEED-ALIVE || echo INNFEED-GONE
             return "(no exchange on the relay)"
         return "{}: {}".format("+".join(found["verbs"]), " / ".join(
             one for one in (found["offer"], found["result"]) if one) or "(no reply)")
+
+    def scenario_protected_read(self):
+        probe = self.drive_inn("protected-read",
+            "--port {} --cafile {} --password-file {} --group {} --msgid {}".format(
+                self.inn_security_port,
+                shell_fixture_path(self.inn_prefix + "/etc/security-cert.pem"),
+                shell_fixture_path(self.run + "/inn-security.password"), GROUP,
+                shlex.quote(self.ids["FN_POST_ID"])), "INN protected reader")
+        result = self.payload(probe)
+        original = self.held_octets.get("fn-article", b"")
+        served = self.octets_of(result)
+        diff = header_differences(original, served)
+        ok = bool(probe.rc == 0 and result.get("ok") and original and served
+                  and relay_changes_permitted(diff))
+        self.facts["inn protected reader"] = (
+            "STARTTLS={}; TLS={}; bad PASS={}; before login={}; PASS={}; "
+            "ARTICLE={}; {}".format(result.get("starttls"), result.get("tls"),
+                result.get("bad_pass"), result.get("before_login"), result.get("pass"),
+                result.get("article"), describe_differences(diff)))
+        self.check("inn-protected-reader", ok,
+                   "the selected protected reader did not establish all TLS/auth/read assertions",
+                   observed=self.facts["inn protected reader"])
 
     def scenario_fn_posts(self):
         """POST to the owner; its feed offers the article to innd; nnrpd serves it."""
@@ -1838,6 +2005,8 @@ rm -f {p}/run/innd.pid {p}/run/control.ctl
         self.inn_configure()
         if not self.inn_start():
             raise GateError("innd did not start; see the evidence for its log")
+        if self.inn_security:
+            self.inn_security_start()
         if not self.tap_start():
             raise GateError("the relay did not start")
         if not self.start_fn("main"):
@@ -1845,6 +2014,8 @@ rm -f {p}/run/innd.pid {p}/run/control.ctl
         self.sh("fn CAPABILITIES", self.cd("python3 {}/inn.py caps --port {}".format(
             self.run, self.fn_port)), expect=None)
         self.scenario_fn_posts()
+        if self.inn_security:
+            self.scenario_protected_read()
         self.scenario_operator_post()
         self.scenario_from_invalid()
         self.scenario_supplied_path()
@@ -1909,6 +2080,10 @@ def main(argv=None) -> int:
                              "{}/<version>".format(DEFAULT_INN_ROOT))
     parser.add_argument("--inn-port", type=int, default=INN_PORT)
     parser.add_argument("--nnrpd-port", type=int, default=NNRPD_PORT)
+    parser.add_argument("--inn-security", action="store_true",
+                        help="add certificate-verified STARTTLS and USER/PASS reader "
+                             "checks; requires a separate TLS-capable --inn-prefix")
+    parser.add_argument("--inn-security-port", type=int, default=INN_SECURITY_PORT)
     parser.add_argument("--fn-port", type=int, default=FN_PORT)
     parser.add_argument("--tap-out-port", type=int, default=TAP_OUT_PORT)
     parser.add_argument("--tap-in-port", type=int, default=TAP_IN_PORT)
@@ -1922,8 +2097,13 @@ def main(argv=None) -> int:
                      "or the lab does not run (D07)")
     ports = (args.inn_port, args.nnrpd_port, args.fn_port, args.tap_out_port,
              args.tap_in_port)
+    if args.inn_security:
+        if not args.inn_prefix or args.inn_prefix.rstrip("/") == "{}/{}".format(
+                DEFAULT_INN_ROOT, args.inn_version):
+            parser.error("--inn-security needs a separate TLS-capable --inn-prefix")
+        ports += (args.inn_security_port,)
     if len(set(ports)) != len(ports):
-        parser.error("the five ports must differ: {}".format(ports))
+        parser.error("all selected ports must differ: {}".format(ports))
 
     repo = Path(args.repo).resolve() if args.repo else repo_root()
     commit, rev = resolve(repo, args.commit)
@@ -1946,7 +2126,8 @@ def main(argv=None) -> int:
                  inn_version=args.inn_version, inn_port=args.inn_port,
                  nnrpd_port=args.nnrpd_port, fn_port=args.fn_port,
                  tap_out_port=args.tap_out_port, tap_in_port=args.tap_in_port,
-                 feed_wait=args.feed_wait, extra_overlays=overlays[1:])
+                 feed_wait=args.feed_wait, extra_overlays=overlays[1:],
+                 inn_security=args.inn_security, inn_security_port=args.inn_security_port)
     started = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     clock = time.monotonic()
     failure = None

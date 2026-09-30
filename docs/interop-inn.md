@@ -76,6 +76,51 @@ configuration is the tool's and not a box's accumulated state. It starts
 started, leaves the install and its spool in place, and removes the fn deploy
 tree unless `--keep`.
 
+## Optional protected reader fixture
+
+`--inn-security` adds a second, loopback-only `nnrpd` reader on port 11421
+(or `--inn-security-port`). It requires an explicit, separate TLS-capable
+`--inn-prefix`; the standing `/tank/fn/inn/2.7.4` plaintext installation is
+refused. The pinned release and checksum remain the same. A coordinated
+build must enable OpenSSL in that separate prefix; USER/PASS uses `ckpasswd`
+and does not require SASL. This source fixture has not yet run against real
+INN. The runner owns the isolated build and the matching-image run.
+
+    python3 tools/inn_lab.py HEAD --host hbox --native-image IMG \
+        --native-openssl-prefix /tank/fn/toolchains/openssl-3.5.8 \
+        --inn-prefix /tank/fn/inn/2.7.4-tls-lab --inn-security
+
+The lab creates a short-lived self-signed certificate with IP subjectAltName
+`127.0.0.1`, an encrypted `ckpasswd` fixture entry, and a mode-0600 scratch
+password file. The client trusts that certificate and verifies the IP name;
+it never disables verification. The password is read from the scratch file,
+not passed in argv or printed in the result. An alternate `readers.conf`
+requires encryption and has no default identity or anonymous read access.
+Cleanup stops only the new reader's recorded pid, alongside the existing
+owned processes.
+
+After fn's ordinary feed has delivered its article to `innd`, this row
+requires STARTTLS `382`, a certificate-verified handshake, bad USER/PASS
+`481`, unauthenticated `GROUP` `480`, good USER/PASS `281`, and authenticated
+`ARTICLE` `220`. The read article must preserve the body and every header
+except the already permitted Path/Xref relay changes. A changed body or
+failed authentication makes the row fail. The source scenario is SCN-1029.
+
+This exercises INN's protected reader access to an article originating at
+fn. Native fn feeding over TLS/AUTHINFO, actual `Control:` traffic and its
+outcome, Distribution, cancel and expiry remain separate work. `nnrpd`'s
+IHAVE facility is an injecting endpoint, not the `innd` transit listener;
+an eventual protected injection row must name that scope. The existing row
+called `inn-control` is manual IHAVE/duplicate/loop traffic and does not
+exercise a Usenet control message.
+
+The INN behavior and configuration above follow its pinned 2.7.4 PODs and
+[the nnrpd manual](https://www.eyrie.org/~eagle/software/inn/docs-2.7/nnrpd.html)
+and [readers.conf manual](https://www.eyrie.org/~eagle/software/inn/docs/readers.conf.html).
+Those are external implementation facts, not fn proof claims. STARTTLS is
+RFC 4642 section 2; USER/PASS is RFC 4643 section 2.3; authorization is local
+policy.
+
 ## How INN was built
 
 No root is needed: the prefix is user-owned and the news user is the ordinary
@@ -310,8 +355,9 @@ Repeated in every evidence file, and here once:
 
 - INN and fn are on one host, over loopback. No real network, no partition,
   no latency, no clock disagreement.
-- No TLS, no `AUTHINFO`, no `Distribution`, no control messages, no cancels,
-  no expiry. `incoming.conf` authorises by source address, which on loopback
+- The default lab has no TLS or `AUTHINFO`. The optional protected reader
+  row above does not exercise either transit relay over TLS. No `Distribution`,
+  actual control messages, cancels or expiry. `incoming.conf` authorises by source address, which on loopback
   authorises everything that can connect.
 - No RFC 3977/4644/5537 conformance audit. The assertions are the lab
   driver's. A green run says these two programs agreed on these exchanges.
