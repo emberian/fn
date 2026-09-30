@@ -158,3 +158,31 @@
 
 (assert-event (ssct-staged-run "GROUP fn.test"))
 (assert-event (ssct-staged-run "LISTGROUP fn.test"))
+
+(defun ssct-owner-effects (command fn-octets fn-arena fn-cat)
+ (declare (xargs :stobjs (fn-octets fn-arena fn-cat) :verify-guards nil))
+ (let* ((o (cdr (fn-own-open (fn-own-start (fn-sn-initial *ssct-groups* 10) 4) nil)))
+        (conn (car (fn-own-conns o)))
+        (id (fn-own-conn-id conn))
+        (bytes (append (ssct-line "OVER") (ssct-line command) (ssct-line "OVER")))
+        (fn-octets (fn-octets-from-list bytes fn-octets))
+        (result (fn-scr-source-own-read-span o id 0 (fn-octets-len fn-octets)
+                                           nil fn-octets fn-arena fn-cat)))
+  (mv (and conn
+           (true-listp (fn-own-tls-result-effects result))
+           (equal (fn-own-tls-result-consumed result) (len (ssct-line "OVER"))))
+      fn-octets)))
+(defun ssct-owner-effects-run (command)
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn-octets
+  (mv-let (v fn-octets)
+   (with-local-stobj fn-arena
+    (mv-let (v fn-octets fn-arena)
+     (with-local-stobj fn-cat
+      (mv-let (v fn-octets fn-cat)
+       (mv-let (v fn-octets) (ssct-owner-effects command fn-octets fn-arena fn-cat)
+        (mv v fn-octets fn-cat))
+       (mv v fn-octets fn-arena)))
+     (mv v fn-octets))) v)))
+(assert-event (ssct-owner-effects-run "GROUP fn.test"))
+(assert-event (ssct-owner-effects-run "LISTGROUP fn.test"))

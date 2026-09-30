@@ -2288,6 +2288,22 @@
         (:type-prescription true-listp-append) true-listp))))))
 
 (local
+ (defthm fn-scrs-source-loop-effects-true-listp
+  (implies (true-listp acc)
+   (true-listp (fn-served-result-effects (fn-served-counted-result
+    (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+                                 fn-octets fn-arena fn-cat consumed acc)))))
+  :rule-classes :type-prescription
+  :hints (("Goal" :induct
+   (fn-scr-source-scan-span-loop conn i end live trie lver arts cache
+                                fn-octets fn-arena fn-cat consumed acc)
+   :in-theory (union-theories (theory 'minimal-theory)
+    '(fn-scr-source-scan-span-loop fn-scrs-result-of-counted-make
+      fn-served-result-effects-of-fn-served-make-result
+      fn-scrs-dispatch-effects-true-listp fn-ag-rev-onto-true-listp
+      (:type-prescription true-listp-append) true-listp))))))
+
+(local
  (defthm fn-scrs-source-loop-is-old-loop-at-stop
   (implies (and (natp consumed) (natp i) (natp end) (natp stop)
                 (<= i stop) (<= stop end)
@@ -2449,6 +2465,21 @@
    :in-theory (union-theories (theory 'minimal-theory)
      '(fn-scr-source-scan-span fn-served-counted-consumed fn-served-counted-make
        fn-ag-car fn-ag-cdr car-cons cdr-cons fn-ag-rev-onto natp nfix)))))
+
+(defthm fn-scr-source-own-read-span-effects-are-proper
+ (true-listp (fn-own-tls-result-effects
+  (fn-scr-source-own-read-span o id i end cache fn-octets fn-arena fn-cat)))
+ :rule-classes :type-prescription
+ :hints (("Goal" :in-theory
+  (union-theories (theory 'minimal-theory)
+   '(fn-scr-source-own-read-span fn-scr-source-step-span-fast
+     fn-scr-source-step-span-core fn-scr-source-scan-span
+     fn-own-tls-make-result fn-own-tls-result-effects fn-scar-finish-read
+     fn-scrs-source-loop-effects-true-listp fn-scrs-result-of-counted-make
+     fn-served-result-effects-of-fn-served-make-result
+     fn-served-counted-make fn-served-counted-result
+     fn-ag-car fn-ag-cdr car-cons cdr-cons
+     (:type-prescription true-listp-append) true-listp)))))
 
 (verify-guards fn-scr-source-scan-span-loop
  :hints (("Goal"
