@@ -508,7 +508,8 @@ keeps."
           *fn-nls-lf*
           (fn-nls-connection-lines pins)))
 
-(defconst *fn-nls-kinds* (quote (:status :pins :peers :obligations :control :health :accounts)))
+(defconst *fn-nls-kinds* (quote (:status :pins :peers :obligations :control :health :accounts
+                                  :consumers)))
 
 ;; PKT-885: the report's `transactions=' and `articles=' counts are SEEN, a
 ;; pair (TRANSACTIONS . ARTICLES) of the view the report is rendered at, not
@@ -552,6 +553,8 @@ configuration pins (nil with no owner), OBS the host's open observation."
     (fn-native-admin-control-report (fn-cfg-authorities (fn-cfg-value cfg))))
    ; PRF-164: `account list' (books/accounts.lisp, no digest or verifier).
    ((equal kind :accounts) (fn-acct-kinds-list-report (fn-cfg-value cfg)))
+   ; Row Q10c: `consumer show', the consumer rows' lines alone.
+   ((equal kind :consumers) (fn-acct-consumers-list-report (fn-cfg-value cfg)))
    ((equal kind :pins) (fn-nls-pins-line s pins))
    ((equal kind :obligations)
     (append (fn-nls-text "obligations=")
@@ -673,9 +676,11 @@ flight, which the host puts in place)."
 ; so the query report of all three kinds is named here.
 (defun fn-nls-query-report (plan value)
   (declare (xargs :guard t))
-  (if (equal (fn-native-admin-result-kind plan) :list-accounts)
-      (fn-acct-kinds-list-report value)
-    (fn-native-admin-query-report plan value)))
+  (cond ((equal (fn-native-admin-result-kind plan) :list-accounts)
+         (fn-acct-kinds-list-report value))
+        ((equal (fn-native-admin-result-kind plan) :list-consumers)
+         (fn-acct-consumers-list-report value))
+        (t (fn-native-admin-query-report plan value))))
 
 (defthm fn-nls-report-of-query-kind-is-query-report
   (equal (fn-nls-report (fn-native-admin-result-report-kind plan)
@@ -713,14 +718,18 @@ flight, which the host puts in place)."
   (cond ((equal kind :status) 1) ((equal kind :pins) 2)
         ((equal kind :peers) 3) ((equal kind :obligations) 4)
         ((equal kind :control) 5) ((equal kind :health) 6)
-        ((equal kind :accounts) 7) (t 0)))
+        ((equal kind :accounts) 7)
+        ; 13: after the frame-kind-3 codes (books/control-evidence.lisp
+        ; fn-cev-kind-code 8..12, including obligation-subject), so no code
+        ; names two reports in the shared FNLS allocation table.
+        ((equal kind :consumers) 13) (t 0)))
 
 (defun fn-nls-code-kind (code)
   (declare (xargs :guard t))
   (cond ((equal code 1) :status) ((equal code 2) :pins)
         ((equal code 3) :peers) ((equal code 4) :obligations)
         ((equal code 5) :control) ((equal code 6) :health)
-        ((equal code 7) :accounts) (t nil)))
+        ((equal code 7) :accounts) ((equal code 13) :consumers) (t nil)))
 
 (local (in-theory (enable (tau-system)))) ; tau-cost: this form needs tau
 (defun fn-nls-seal (kind payload)

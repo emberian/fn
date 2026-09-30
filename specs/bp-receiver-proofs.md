@@ -1,12 +1,34 @@
 # Receiver journal proof scope
 
-The receiver invariant books reason about the existing `fn-bpr` operations and
-the actual `fn-bprr-apply-record`, `fn-bprr-replay-rest` and `fn-bprr-replay`
-journal interpreters, which are the functions the host calls
-(`host/bp-receipt-journal-host.lisp`: `fn-bprj-install` line 12,
-`fn-bprj-preflight` line 18, `fn-bprj-apply` line 22, `fn-bprj-receipt-adu`
-line 38). They add proof predicates and record witnesses; they do not alter
-receipt generation or filter outputs on a desired conclusion.
+The receiver invariant books reason about `fn-bpr` operations and the
+receiver-only `fn-bprr-apply-record`, `fn-bprr-replay-rest` and
+`fn-bprr-replay` journal model. The native host's `fn-bprj-install`
+(`host/bp-receipt-journal-host.lisp`) calls `fn-bpaj-replay`, tests its
+success flag, and installs the receiver component of the returned joined
+state. Its served preflight/apply calls use `fn-bpaj-apply-record-fast`.
+These are distinct subjects.
+
+The source-admitted PKT-413 equation in `books/bp-native-app-replay-bridge.lisp`,
+`fn-bpaj-replay-receiver-is-receiver-replay`, projects both the actual replay
+success flag and its receiver state to the receiver-only replay result.
+Its explicit `fn-bpaj-receiver-only-recordsp` hypothesis excludes both
+`:request-transit-intent` and `:request-transit-context` records. This is a
+proof-domain predicate, never an additional served-path validation. The
+initial joined state has no intents or facts and is not strict; successful
+context-first records preserve that shape. Refusal retains the same accepted
+prefix in both interpreters. Transit is a separate domain: a valid transit
+intent succeeds in the join and is refused by the receiver-only model.
+`fn-bpaj-replay-rest-receiver-is-receiver-replay-rest` additionally covers
+an arbitrary finite suffix from a context-first joined state. Its
+`fn-bpaj-context-firstp` premise names the exact pre-transit shape
+(receiver, no intents, no facts, non-strict); the receiver itself need not
+be well formed because both interpreters refuse malformed receiver states.
+The second premise is the same no-transit-record domain. The test book
+checks a request plus committed receipt, duplicate-request refusal, the
+reachable transit-record separation, and a reachable strict joined state
+which refuses a context-first request that the receiver-only model accepts. Source admission, matching
+certification, host reach classification and native execution are separate
+evidence coordinates; this source statement is not a qualification claim.
 
 ## The relation over an evolving Store
 

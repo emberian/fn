@@ -114,3 +114,85 @@
 ; accepts there.
 (assert-event (stringp (fn-native-operator-result-hint
                         (fn-native-operator-run *nmt-text* (nmt-argv '("init" "--profile" "scale" "x"))))))
+
+; Row Q10a: `mission ... --tls-port P [--tls-name NAME ...]'.  The fn.toml
+; names the TLS port and the pair beside it; the request names the pair.
+(defconst *nmt-tls*
+  (fn-native-operator-mission-run *nmt-path*
+                                  (nmt-argv '("mission" "relay" "--port" "11942"
+                                              "--tls-port" "11943"
+                                              "--tls-name" "news.example.org"
+                                              "--tls-name" "127.0.0.1"))))
+(assert-event (equal (fn-native-operator-result-status *nmt-tls*) :accepted))
+(assert-event (equal (fn-native-operator-result-self-signed *nmt-tls*)
+                     (list (list "news.example.org" "127.0.0.1") 365
+                           (fn-record-string-octets "/tank/fn/scratch/operator-config/relay/tls/cert.pem")
+                           (fn-record-string-octets "/tank/fn/scratch/operator-config/relay/tls/key.pem"))))
+(assert-event (equal (fn-native-config-listener-tls-port
+                      (cadr (fn-native-config-load
+                             (fn-native-operator-result-mission-octets *nmt-tls*))))
+                     11943))
+; No --tls-name: the --host address is the name.
+(assert-event (equal (car (fn-native-operator-result-self-signed
+                           (fn-native-operator-mission-run
+                            *nmt-path* (nmt-argv '("mission" "relay" "--host" "192.0.2.7"
+                                                   "--tls-port" "563")))))
+                     (list "192.0.2.7")))
+; Without --tls-port there is no pair.
+(assert-event (null (fn-native-operator-result-self-signed *nmt-mission*)))
+; Refused by name: the unspecified address as a name, a bad name, the TLS
+; port equal to the port.
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-native-operator-mission-run
+                       *nmt-path* (nmt-argv '("mission" "relay" "--tls-port" "563"
+                                              "--tls-name" "0.0.0.0"))))
+                     :tls-name))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-native-operator-mission-run
+                       *nmt-path* (nmt-argv '("mission" "relay" "--tls-port" "563"
+                                              "--tls-name" "bad_name"))))
+                     :tls-name))
+; --tls-name alone: the pair for STARTTLS, no TLS port.
+(assert-event (let ((r (fn-native-operator-mission-run
+                        *nmt-path* (nmt-argv '("mission" "relay" "--tls-name" "a.example")))))
+                (and (equal (car (fn-native-operator-result-self-signed r)) (list "a.example"))
+                     (null (fn-native-config-listener-tls-port
+                            (cadr (fn-native-config-load
+                                   (fn-native-operator-result-mission-octets r))))))))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-mission-run
+                       *nmt-path* (nmt-argv '("mission" "relay" "--port" "563"
+                                              "--tls-port" "563"))))
+                     :refused))
+; An existing certificate or key is refused by name (`exists').
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-native-operator-self-signed-outcome *nmt-tls* t nil))
+                     :exists))
+(assert-event (equal (fn-native-operator-self-signed-outcome *nmt-tls* nil nil) *nmt-tls*))
+
+; `tls self-signed NAME... [--days N]' under the mission's configuration.
+(defconst *nmt-tls-text* (fn-native-operator-result-mission-octets *nmt-tls*))
+(defun nmt-tls-run (words)
+  (fn-native-operator-run-at (fn-record-string-octets "/") *nmt-path* *nmt-tls-text*
+                             (nmt-argv words)))
+(defconst *nmt-ss* (nmt-tls-run '("tls" "self-signed" "news.example.org" "--days" "30")))
+(assert-event (equal (fn-native-operator-result-status *nmt-ss*) :accepted))
+(assert-event (equal (fn-native-operator-result-native-action *nmt-ss*) :tls-self-signed))
+(assert-event (equal (fn-native-operator-result-self-signed *nmt-ss*)
+                     (list (list "news.example.org") 30
+                           (fn-record-string-octets "/tank/fn/scratch/operator-config/relay/tls/cert.pem")
+                           (fn-record-string-octets "/tank/fn/scratch/operator-config/relay/tls/key.pem"))))
+(assert-event (equal (cadr (fn-native-operator-result-self-signed
+                            (nmt-tls-run '("tls" "self-signed" "a.example" "b.example"))))
+                     365))
+(assert-event (equal (fn-native-operator-result-reason
+                      (nmt-tls-run '("tls" "self-signed" "::"))) :tls-name))
+(assert-event (equal (fn-native-operator-result-status
+                      (nmt-tls-run '("tls" "self-signed"))) :usage))
+(assert-event (equal (fn-native-operator-result-status
+                      (nmt-tls-run '("tls" "self-signed" "a.example" "--days"))) :usage))
+(assert-event (equal (fn-native-operator-result-native-action (nmt-tls-run '("tls" "reload")))
+                     :tls))
+(assert-event (equal (fn-native-operator-result-reason
+                      (fn-native-operator-self-signed-refused *nmt-ss* :clock))
+                     :clock))

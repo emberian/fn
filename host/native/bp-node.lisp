@@ -982,17 +982,8 @@ uncertain, as it does everywhere else."
              ;; no other; a numeric PORT is the one-row case.  The loop
              ;; stays serialized: poll(2) picks the next ready listener and
              ;; that session runs to its end before the next (spec 9.1).
-             (let ((ports (if (eq listen-port :boundaries)
-                              (fnn-owner-core 'fn-owner-bp-listener-ports)
-                            (list listen-port))))
-               (unless ports
-                 (fnn-refuse "bp-node serve: the configuration admits no transport-bp boundary listener"))
-               (dolist (port ports)
-                 (multiple-value-bind (bound bound-port)
-                     (fnn-tcl-listen port)
-                   (push bound listener)
-                   (fnn-out "BP NODE LISTENING ~d" bound-port)))
-               (setq listener (nreverse listener)))
+             (setq listener (fnn-bplc-start listen-port))
+             (when control (setf (fnn-bpnc-listeners control) listener))
              (fnn-bpnc-accept-loop
               control listener
               (lambda (socket &aux (profile-started (get-internal-real-time)))
@@ -1000,6 +991,15 @@ uncertain, as it does everywhere else."
                          (incf (fnn-bps-next-session bp)))
                        (observed-channel
                          (fnn-bpnode-observed-channel socket))
+                       (session-fd (fnn-socket-fd socket))
+                       (parent-waiter *fnn-fd-waiter*)
+                       (*fnn-fd-waiter*
+                         (if control
+                             (lambda (fd direction seconds)
+                               (if (and (= fd session-fd) (eq direction :input))
+                                   (fnn-bpnc-wait-input control fd seconds)
+                                 (funcall parent-waiter fd direction seconds)))
+                           parent-waiter))
                        (*fnn-tcl-deliver*
                          (lambda (conn xfer-id octets)
                            (fnn-bp-deliver-node
@@ -1085,12 +1085,14 @@ uncertain, as it does everywhere else."
                                session-word)))
       (unwind-protect
            (when control (fnn-bpnc-retire control))
-      (dolist (bound listener) (fnn-socket-shut bound))
-      (when owner
-        (ignore-errors (fnn-owner-action 'fn-owner-app-unbind-receipt-store))
-        (fnn-owner-feed-close-all owner)
-        (fnn-store-close (fnn-owner-service-store owner)))
-      (fnn-bps-release bp)))))
+        (unwind-protect
+             (when listener (fnn-bplc-close-all listener))
+          (unwind-protect
+               (when owner
+                 (ignore-errors (fnn-owner-action 'fn-owner-app-unbind-receipt-store))
+                 (fnn-owner-feed-close-all owner)
+                 (fnn-store-close (fnn-owner-service-store owner)))
+            (fnn-bps-release bp)))))))
 
 (defun fnn-dispatch-bp-node (command args)
   (when (string= command "resume")

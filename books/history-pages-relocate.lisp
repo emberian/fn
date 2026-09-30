@@ -418,7 +418,7 @@
             :in-theory (e/d (update-nth) (adt-cap fn-hp-apart-at-end))))))
 
 (local
- (defthm fn-hp-placement-mono
+ (defthm fn-hp-relocate-placement-mono
    (implies (and (adt-placement-ok starts lens np) (natp np) (natp np2) (<= np np2))
             (adt-placement-ok starts lens np2))
    :hints (("Goal" :induct (adt-placement-ok starts lens np) :in-theory (disable adt-cap adt-apart)))))

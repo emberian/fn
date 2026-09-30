@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -1521,23 +1521,27 @@
       "milestone": "M5",
       "status": "specified",
       "requirements": [
-        "STO-014"
+        "STO-014",
+        "OBJ-008"
       ],
       "steps": [
         "On a store of N=5,000 articles in one group, run `admin retention set released-by-all-holders`; hold article 100 by a reader pin, articles above 2,000 by a consumer cursor at 2,000, and articles 3,000 to 3,100 by an undelivered feed to a live peer.",
         "Run `store reclaim --dry-run`, then `store reclaim`; record the disk use of the store before and after.",
         "Re-post the Message-ID of a reclaimed article with its original bytes, and with changed bytes; ARTICLE it by Message-ID and by number; STAT and ARTICLE a held one.",
-        "Kill `store reclaim` at each cut of its program (SIGKILL and EIO) and reopen after each."
+        "Kill `store reclaim` at each cut of its program (SIGKILL and EIO) and reopen after each.",
+        "Inspect the rewritten event through the current FN-RCL2 codec: preserve the typed relay-v1 commitment and original byte-content commitment; change the magic to the retired RCL1 value and truncate below 145 bytes to confirm neither is recognized."
       ],
       "expected": [
         "The dry run names every article with its verdict; exactly articles 1 to 2,000 except 100 are reclaimable, and 100 is held-reader-pin, 2,001 to 5,000 held-consumer-cursor.",
         "After the run the same numbers are tombstones (verified by number), the others are byte-identical, and disk use falls by the reclaimed payload octets less the tombstones.",
         "The original bytes are refused as a duplicate, the changed bytes as a conflict; ARTICLE answers 430 and 423 article reclaimed; the held article is served unchanged.",
-        "Every reopen replays to a state whose Message-IDs, numbers and group bindings equal the state before; each article is either its original payload or its tombstone."
+        "Every reopen replays to a state whose Message-IDs, numbers and group bindings equal the state before; each article is either its original payload or its tombstone.",
+        "The host per-event rewriter retains fn-asj-subject of the original payload exactly; permitted Path/Xref variants share that commitment. This is commitment preservation, not digest injectivity or a claim that the duplicate decision already uses it."
       ],
       "evidence": [
         "tests/acl2/store-reclaim-tests.lisp",
-        "planning/evidence/reclaim-d13-2026-09-25.md"
+        "planning/evidence/reclaim-d13-2026-09-25.md",
+        "tests/acl2/reclaim-article-subject-tests.lisp"
       ]
     },
     {
@@ -4600,7 +4604,7 @@
         "Drain bob-pub, alice-priv (bound) and operator (plain); bound-poll bob-priv; `account access bob --read '*' --post '*'`; drain bob-priv; `consumer unbind bob-pub`; bound-poll and plain poll of bob-pub."
       ],
       "expected": [
-        "The malformed binding exits non-zero; `consumer show` prints `consumer bob-pub account bob` and `consumer alice-priv account alice`.",
+        "The malformed binding exits non-zero; `consumer show` prints `consumer bob-pub account bob` and `consumer alice-priv account alice`. It contains no pending invitation or redeemed-account line.",
         "Every refusal in step 4 exits 1 and writes no cursor.",
         "bob-pub is served pub1; the wrong-password and plain acks exit 1, the bound ack 0.",
         "After the restart: bob-pub pub2, cross; alice-priv secret1 (re-served), secret2, cross; operator secret1, secret2, cross; bob-priv refused, then after the widened rule secret1, secret2, cross (nothing skipped); unbound bob-pub: bound-poll exits 1, plain poll an empty page."
@@ -6337,6 +6341,352 @@
         "planning/evidence/resilience-bp-control-2026-09-29.md"
       ],
       "execution_scope": "Source adapter and BP live-control source0238f266f integrated for schedule-receipt-observed-reorder. A matching runner image/native run remains pending; adapter unit tests do not establish native activation or receipt ordering."
+    },
+    {
+      "id": "SCN-1007",
+      "title": "History image write descriptors resume through all phases",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-040"
+      ],
+      "steps": [
+        "Capture a nonempty existing plan with two data pages, a table page and a two-page directory.",
+        "Tick through data, table, directory and terminal phases, checking the literal residual theorem and identity preservation each time.",
+        "Corrupt the directory counter; separately mutate an emitted selector.",
+        "Compute a nonempty scalar layout and compare its directory/data/table allocation with the actual fresh allocator; exercise each range/type hypothesis independently.",
+        "Write a nonempty scratch prefix, reset while physical words remain, then fill a whole2048word page and attempt another put.",
+        "Reduce completed codec lengths for actual nonempty rows; reject stale ordinal/overflow; resume scalar capacity and fill the current header one concrete word per tick.",
+        "Stream342current-format metadata entries across two scratch pages, yielding within an entry; reset only after consumption and resume the same ordinal/component. Supply one incorrectly attributed digest separately.",
+        "Request positional writes for last/adjacent pages under the admitted extent; try the framed-region boundary and one-byte-short extent."
+      ],
+      "expected": [
+        "Each valid tick emits one exact original descriptor or yields without losing remaining writes.",
+        "The captured lease and source epoch are unchanged.",
+        "Invalid counter fails both the invariant and theorem conclusion; selector mutation fails exact plan equality.",
+        "Scalar addresses equal indexed fresh allocation without building an allocation list in execution; representation overflow refuses before allocation.",
+        "Each stored word extends exactly the logical prefix; reset prevents stale-word exposure; full page refuses further writes without changing prefix or identities.",
+        "Census equals existing individually padded history regions; capacity preserves the canonical result; emitted scratch page equals the current header, including zeros, with identities and representation preserved.",
+        "Concatenated test pages equal existing encoded directory run including padding; page-full/done leave state unchanged; wrong digest fails the exact source-attribution conclusion.",
+        "Accepted whole-file offsets preserve the FNSI wrapper base, stay before framed segments and do not overlap; domain/extent violations refuse before I/O."
+      ],
+      "implementation": {
+        "test": "tests/acl2/history-page-cursor-tests.lisp",
+        "native": false
+      },
+      "evidence": [
+        "tests/acl2/history-page-cursor-tests.lisp",
+        "tests/acl2/history-page-layout-tests.lisp",
+        "tests/acl2/history-page-buffer-tests.lisp",
+        "tests/acl2/history-image-census-tests.lisp",
+        "tests/acl2/history-image-header-tests.lisp",
+        "tests/acl2/history-page-metadata-tests.lisp",
+        "tests/acl2/history-page-io-tests.lisp"
+      ],
+      "execution_scope": "Library component only; no actual host or funded producer completion claim."
+    },
+    {
+      "id": "SCN-1001",
+      "title": "Live BP listener generation rebind and post-publication recovery",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "HST-002",
+        "HST-010"
+      ],
+      "steps": [
+        "Start actual configured BP node with same-owner local control; establish an old TCPCL session.",
+        "Replace its actual BP boundary with a new port; observe installed generation and transient descriptor peak; old established FD remains usable and new acceptance pins installed generation.",
+        "Occupy the new port before administration: durable configuration publication completes, runtime bind fails, both operator and BP node report uncertain and node stops. Release port and restart from persisted configuration.",
+        "Kill at configuration-published, before/after-bind, before/after-install and before/after-retire; cold recovery binds the persisted new generation without another configuration record."
+      ],
+      "expected": [
+        "No concurrent core writer; no rollback of durable configuration or false runtime success.",
+        "Unchanged listener handles reused; removed listeners retired without closing accepted TCPCL sessions.",
+        "Control polling during idle TCPCL reads preserves the original absolute read deadline.",
+        "Every process-death cut is fn-bplc-cut-plan -> explicit :crash; runtime descriptor credits and session pins are cleared on process death."
+      ],
+      "evidence": [
+        "books/bp-node-listener-control.lisp",
+        "tests/acl2/bp-node-listener-control-tests.lisp",
+        "host/native/bp-listener-control.lisp",
+        "tests/test_bp_node_native.py",
+        "planning/evidence/bp-listener-control-2026-09-29.md"
+      ],
+      "execution_scope": "Specified native cases; matching coalesced image execution pending. Narrow logical admission does not qualify a native image.",
+      "implementation": {
+        "test": "tests.test_bp_node_native",
+        "cases": [
+          "test_live_listener_rebind_keeps_old_session_generation_and_fd",
+          "test_live_listener_occupied_port_is_uncertain_and_restart_reconciles",
+          "test_death_at_each_live_listener_effect_recovers_published_configuration"
+        ],
+        "native": true
+      }
+    },
+    {
+      "id": "SCN-1008",
+      "title": "BP restart rejects oversized fragment ADU from saved rows and selected checkpoint",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-008",
+        "STO-015"
+      ],
+      "steps": [
+        "Raise the BP profile ADU bound and receive one small nonzero-offset fragment whose total ADU exceeds the default ADU bound.",
+        "Stop the node; in the checkpoint case run the actual checkpoint verb before changing the profile fixture.",
+        "Remove the profile file to simulate a mismatched restore; attempt actual bp-node dispatch/open.",
+        "Restore the saved profile and open again."
+      ],
+      "expected": [
+        "Open reports the named ADU-BEYOND-PROFILE uncertainty before replay can use the fragment to reassemble or install held state.",
+        "The row case identifies replay profile refusal and the checkpoint case identifies checkpoint profile refusal.",
+        "Restoring the original profile recovers exactly one held fragment, with no article committed."
+      ],
+      "evidence": [
+        "tests/test_bp_fragment_node_native.py",
+        "tests/acl2/bp-recovery-profile-tests.lisp",
+        "planning/evidence/bp-recovery-profile-2026-09-30.md"
+      ],
+      "execution_scope": "Native cases staged, NOT RUN at current source; runner supplies matching image evidence. ACL2 teeth also cover nonfragment payload, later-deleted row, member/readiness hypothesis removals and invalid profile."
+    },
+    {
+      "id": "SCN-1002",
+      "title": "Cold resource credits survive timeout until private result relinquishment, eviction and incarnation close",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "At launch, extend the previous ACL2 reservation by explicit cold_heap_octets and persistent cold_workers stack/runtime; exercise accepted and machine-too-small decisions. Missing or unsupported policy cannot silently enable unfunded cold reads.",
+        "Install a supported, launcher-funded resource profile including persistent peak table capacity; open and charge a file incarnation before issuing served cold reads.",
+        "Stall a real pread, issue until admission refuses, cancel/timeout clients repeatedly while original workers remain live.",
+        "Release the stall, observe thread death and join, publish one verified buffer in cache; replay the old token, then evict it and physically close its file.",
+        "Exercise failed completion, ambiguous close, startup/recovery direct cache population and checkpoint old/new incarnation overlap under the same funded profile.",
+        "Reject an unfunded permanent baseline without installing the pool; install a nonzero funded baseline, admit and settle a cached read, evict and close, and verify baseline remains charged after every transition.",
+        "Enter served mode before a funded recovery; an uninitialized or served-but-unfunded context cannot issue a file identity. Explicit offline open is distinguishable and cannot silently replace served mode.",
+        "Admit a typed unverified discovery lease, retain the file against close while its protected vector is borrowed, reject verified-cache settlement, release once after relinquishing the buffer, and reject replay or mutated identity.",
+        "Release the stall, observe the private job return, publish one verified buffer in cache and settle its exact token; replay the old token, then evict it and physically close its file. Unexpected worker death requires a real join first.",
+        "Admit a typed unverified discovery lease before allocation; fnn-extent-entry-fresh returns vector and lease. fnn-owner-release-extents retains the lease through publication-buffer reseating, clears the buffer alias, then releases. Hold the file against close, reject verified-cache settlement, and reject replay or mutated identity."
+      ],
+      "expected": [
+        "Refused issue creates no buffer, thread, descriptor or identity and returns the ACL2 resource-unavailable reply without borrowing rescue.",
+        "Timeout/cancel gives no resource refund; one monotone core-issued token identifies both ownership and exact charge.",
+        "Job execution credit releases only after private result relinquishment and exact settlement; the persistent worker baseline remains charged until shutdown. Cached buffer memory remains charged until physical eviction. Duplicate or mutated token is stale with unchanged state.",
+        "Incarnation credit lasts until physical close; retained hash capacity stays baseline-funded; faults fence when their persistence/close outcome is ambiguous."
+      ],
+      "evidence": [
+        "tests/acl2/page-read-ledger-tests.lisp",
+        "tests/acl2/page-read-host-tests.lisp",
+        "books/cold-read-reservation.lisp",
+        "tests/acl2/cold-read-reservation-tests.lisp",
+        "tests/acl2/native-operator-tests.lisp",
+        "tests/acl2/page-discovery-ledger-tests.lisp",
+        "host/native/extent.lisp",
+        "host/native/owner.lisp"
+      ],
+      "execution_scope": "Model/adapter source REPL and native source-load checks only; native scenario and actual allocator/profile refinement pending. Discovery vector lifetime is wired, but synchronous verified reads, decoded representations and checkpoint/suffix rescue remain open."
+    },
+    {
+      "id": "SCN-1004",
+      "title": "Fixed funded executor jobs remain owned through cancel, stale reuse and startup failure",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Install explicit operator worker/descriptor/read/file budgets, baseline-fund and preallocate fixed executors and tables before owner recovery.",
+        "Hold actual pread on every admitted worker and cancel clients repeatedly; issue another read while the pool is full.",
+        "Release one worker result, verify owner settlement then reuse that worker for a newer exact token; deliver its older token again.",
+        "Fail executor startup partway, exercise process death with queued/running/returned jobs, and restart without publishing old results."
+      ],
+      "expected": [
+        "Admission refuses before new buffer/thread/job allocation when all slots remain charged. Cancellation neither releases the slot nor closes the held file.",
+        "One admitted token owns one executor slot. Returned result stays charged until matching settled I/O and physical publication/discard.",
+        "Old token cannot return or free a reused worker; cached buffer remains charged until actual eviction. Permanent executor/table storage remains baseline-funded through shutdown.",
+        "Partial startup tears down only resources actually created, joins created workers and fences ambiguous close; restart derives fresh process-local identity state."
+      ],
+      "evidence": [
+        "books/page-read-executor.lisp",
+        "tests/acl2/page-read-executor-tests.lisp"
+      ],
+      "execution_scope": "Pure executor model source REPL and folded literal teeth only. Native executor/refinement, real process-death cuts and supported funding/profile consumer pending; not a full P12 claim."
+    },
+    {
+      "id": "SCN-1010",
+      "title": "Resumable atom encoding preserves exact current scalar bytes",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [],
+      "steps": [
+        "Begin every supported scalar class with explicit capture and lease identities; walk actual counting, prefix, digits, body and terminal states.",
+        "Affirm complete invariant, residual, verdict, octet, identity and nonterminal progress antecedents/conclusions at every reached state; compare the final stream with fn-scc-atom-octets.",
+        "Interrupt and resume a nonempty string stream; preserve every emitted byte.",
+        "Exercise the actual 255-digit positive and negative codec limits and refuse the first overwide natural.",
+        "For each theorem hypothesis, label the mutation or corrupted state, affirm all retained hypotheses, and demonstrate both omitted-hypothesis and literal-conclusion failure."
+      ],
+      "expected": [
+        "No eager scalar byte list or source-string copying.",
+        "One octet maximum per step; quantum exhaustion retains resumable state.",
+        "Current codec bytes, package indices and capture/lease identities remain exact.",
+        "Logical evidence is a library component; no composed host or physical-resource conclusion is inferred."
+      ],
+      "implementation": {
+        "test": "tests/acl2/history-scalar-cursor-tests.lisp"
+      },
+      "evidence": [
+        "tests/acl2/history-scalar-cursor-tests.lisp",
+        "specs/history-scalar-cursor.md"
+      ],
+      "execution_scope": "Scalar source library only; full tree/census/producer and native qualification remain open."
+    },
+    {
+      "id": "SCN-1015",
+      "title": "Actual parser first-five NOV projection, first match and exact refusals",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "NNT-006"
+      ],
+      "steps": [
+        "Parse a nonempty article with repeated Subject, folded values, TAB-first From, whitespace-only first References line and binary CRLF body.",
+        "Assert the literal general parser projection and five-column composition conclusions and independently expected output.",
+        "Exercise bare empty field, orphan fold, NUL header, bare LF, missing separator, body framing error and empty first line followed by a fold.",
+        "Mutate expected first-match selection and initial TAB normalization; assert inequality.",
+        "Exercise literal byte-control commutation, exact body acceptance and new-field/fold physical-line conclusions; remove each retained hypothesis with all other hypotheses checked."
+      ],
+      "expected": [
+        "Exactly the first matching fields, one initial SP removed, folding CRLF removed and TAB scrubbed to SP.",
+        "All invalid/error classifications match the actual parser; binary NUL body remains valid.",
+        "Both component keystones are unconditional after redundant accumulator typing was proved unnecessary.",
+        "Whitespace-only continuation after an already visible field is rejected independently of field-wide visibility."
+      ],
+      "evidence": [
+        "tests/acl2/nov-line-projection-tests.lisp",
+        "planning/evidence/nov-line-projection-source.md",
+        "tests/acl2/legacy-parser-validity-tests.lisp",
+        "planning/evidence/legacy-parser-validity-source.md"
+      ],
+      "execution_scope": "Clean source REPL only; no served cursor or native completion claim."
+    },
+    {
+      "id": "SCN-1013",
+      "title": "Retained obligation logic survives explicit resource maintenance",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-017",
+        "STO-014"
+      ],
+      "steps": [
+        "Build a nonempty ledger by actual fn-retain-admit and reduce one retained pin through fn-hkn-release-retention.",
+        "Check the full logical/resource commuting square and each promised obligation field.",
+        "Admit the same affordable request on both ledgers and release with matching evidence.",
+        "Retain both observations when a larger request is capacity-refused before maintenance and admitted afterward.",
+        "Affirm retained hypotheses, falsify each omitted literal hypothesis and conclusion; corrupt accounting and mutate evidence separately."
+      ],
+      "expected": [
+        "Maintenance preserves logical obligations and release history, and changes resources exactly through the abstract maintenance step.",
+        "Common-admitted requests and matching releases have equal logical results.",
+        "Capacity disagreement is observed; no refusal event is dropped and unrestricted future equivalence is not claimed."
+      ],
+      "evidence": [
+        "tests/acl2/history-resource-refinement-tests.lisp"
+      ],
+      "execution_scope": "ACL2 retained-ledger component witnesses only; complete owner lifecycle and external-history checker integration remain open."
+    },
+    {
+      "id": "SCN-1005",
+      "title": "Resumable history record codec preserves exact current-format bytes",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [],
+      "steps": [
+        "Capture a nonempty opaque octet leaf with explicit capture and lease identities.",
+        "Advance classification, prefix and body phases one cell or byte per tick; interrupt before the body is complete and resume the returned cursor.",
+        "Check each reached state against complete invariant, permitted verdict and exact pre/post residual equation; compare final bytes with fn-scc-encode.",
+        "Separately corrupt the prefix byte or count relation and affirm failure of the omitted invariant hypothesis and theorem conclusion.",
+        "Feed varied bytes through the scalar word accumulator; assert complete partial/eighth-byte/final-pad antecedents, exact existing fn-hp-pack8 outputs and no extra word after an aligned stream.",
+        "For every remaining word-boundary hypothesis, retain all other hypotheses and affirm both failure of the removed premise and failure of the literal conclusion in a labeled argument/cursor mutation.",
+        "Traverse a nonempty nested/dotted resident row with source-reference descriptors; check every literal invariant/residual/capture antecedent and compare interpreted output with fn-scc-encode.",
+        "Classify a 200-byte prefix ending in a non-byte symbol and complete within810 descriptor ticks using maintained non-octets suffix tasks.",
+        "Compose descriptor traversal with scalar and opaque leaf byte cursors; assert every per-byte invariant/residual and exact current-codec output before and after a scheduling interruption.",
+        "Feed the complete resident byte stream through bounded word push/finish and compare packed zero-padded output with the current pack8 oracle.",
+        "Census the identical captured row without retaining encoded bytes; interrupt/resume, compare the terminal exact count with codec length and explicitly refuse a corrupted census total at the u64 edge."
+      ],
+      "expected": [
+        "No source-list copy or whole-row encoding occurs at begin or tick.",
+        "Quantum exhaustion yields a resumable cursor, never truncation or false prepared.",
+        "Every emitted byte and identity agrees with the current codec and original capture.",
+        "Corrupted-state witnesses are separately labeled; no native or composed reachability is inferred."
+      ],
+      "implementation": {
+        "test": "tests/acl2/history-record-cursor-tests.lisp"
+      },
+      "evidence": [
+        "tests/acl2/history-record-cursor-tests.lisp",
+        "specs/history-record-cursor.md"
+      ],
+      "execution_scope": "Resident descriptor, scalar/leaf byte composition, exact byte census and scalar word-boundary source libraries only. Borrowed cold spans, general progress, total padded placement/producer/profile bridge and native qualification remain open."
+    },
+    {
+      "id": "SCN-1009",
+      "title": "Byte-budgeted legacy NOV hydration keeps exact first headers and body facts",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-023"
+      ],
+      "steps": [
+        "Seal an article in the arena and begin a cursor with its handle, length and origin pin. Resume across every byte boundary, including a split CRLF, colon, first value SP and folded line.",
+        "Exercise five selected fields, mixed-case and repeated names, empty initial values completed by folds, TAB versus exactly one initial SP, missing fields and physical lines of 998 and 999 octets.",
+        "Exercise invalid names, orphan folds, empty final fields, missing separator, bare CR/LF, header NUL, body NUL and unterminated body; compare terminal results with fn-hnov-of and fn-hf-body-lines-of.",
+        "Mutate continuation position, source handle, first-header selection and whitespace normalization separately.",
+        "Check the literal actual value-transition invariant and remove its value correspondence, phase, line-budget and valid-byte hypotheses individually while affirming all retained hypotheses; verify folded completed source spans and absent-versus-empty first hits."
+      ],
+      "expected": [
+        "Each tick consumes and reports at most its fuel, preserves handle and pin and makes bounded progress. No final tick walks or copies the full source or field.",
+        "The body count equals the actual catalog function even for a rejected header parse.",
+        "The five spans materialize to the existing first-header NOV semantics. This last general refinement is open; ground fixtures currently supply examples only."
+      ],
+      "evidence": [
+        "books/legacy-parser-cursor.lisp",
+        "books/legacy-parser-reference.lisp",
+        "tests/acl2/legacy-parser-cursor-tests.lisp",
+        "books/legacy-parser-values.lisp",
+        "tests/acl2/legacy-parser-values-tests.lisp",
+        "planning/evidence/legacy-parser-values-source.md"
+      ]
+    },
+    {
+      "id": "SCN-1014",
+      "title": "Byte-fed current history decode preserves values and source lifetime",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [],
+      "steps": [
+        "Feed nonempty little-endian digits one at a time, including a nonminimal leading-zero spelling, and compare the existing numeric codec.",
+        "Decode nonempty strings, opaque symbol spans, fixed HSTXA, paired values and empty opcode6; cut and resume within payload.",
+        "Remove each residual hypothesis literally; check malformed package, truncated number/string and stack underflow refusal.",
+        "Compose authenticated captured root pages, exact source tokens, padding/MKEY checks, borrowed row remap and canonical reencoding."
+      ],
+      "expected": [
+        "Every live byte step consumes exactly one byte and retains source epoch/lease; no whole string coerce, intern, reverse, row decode or pool preflight occurs in the tick.",
+        "Spans name raw payload bytes in the captured immutable pool, and general borrowed-tree abstraction equals the old decoder result.",
+        "No partial row escapes malformed input; stale/uncertain physical I/O cannot advance or release a borrowed source."
+      ],
+      "implementation": {
+        "test": "tests/acl2/history-decode-cursor-tests.lisp",
+        "native": false
+      },
+      "evidence": [
+        "tests/acl2/history-decode-cursor-tests.lisp",
+        "planning/history-decode-contract.md"
+      ],
+      "execution_scope": "Source component tests only. General stream inverse, page-source authentication, integrated native caller and full producer remain open."
     }
   ]
 }
