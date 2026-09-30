@@ -122,3 +122,15 @@
        (equal (nth 3 result) backing) (equal (nth 4 result) pool))))
 (defthm iiq-adopt-intent-refuses-repeat-corrupted-state
  (iiq-adopt-intent-refuses-repeat) :rule-classes nil)
+
+(defun-nx iiq-completed-observation-not-interrupted ()
+ (let* ((answer (iiq-complete-internal-capture))
+        (marker (nth 5 answer)))
+  (and (equal (nth 0 answer) :retained)
+       (equal (nth 1 answer) :captured)
+       (null marker)
+       (not (member-eq (fn-omk-at 0 (fn-omk-at 3 marker))
+                      '(:adopt-intent :adopt-uncertain)))
+       (not (equal (nth 1 answer) :recovery-required)))))
+(defthm iiq-completed-observation-not-interrupted-tooth
+ (iiq-completed-observation-not-interrupted) :rule-classes nil)
