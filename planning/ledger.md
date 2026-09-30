@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1803 |
-| Certification roots in the Makefile | 1736 |
-| Books inside the root closure | 1800 |
-| `defthm` and `defthmd` events | 28811 |
-| `defun` events | 18756 |
+| Books read | 1811 |
+| Certification roots in the Makefile | 1744 |
+| Books inside the root closure | 1808 |
+| `defthm` and `defthmd` events | 29046 |
+| `defun` events | 18785 |
 | Functions with verified guards | 3507 |
-| Functions declared `:verify-guards nil` and never verified | 2195 |
-| Functions left at the default with an explicit guard | 10251 |
-| Functions left at the default with no guard | 2803 |
-| `assert-event` checks | 23798 |
+| Functions declared `:verify-guards nil` and never verified | 2205 |
+| Functions left at the default with an explicit guard | 10252 |
+| Functions left at the default with no guard | 2821 |
+| `assert-event` checks | 23805 |
 | `must-fail` checks | 2515 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
-| Theorems flagged SUSPECT by shape | 1235 |
-| Export-hygiene warnings | 335 |
+| Theorems flagged SUSPECT by shape | 1240 |
+| Export-hygiene warnings | 337 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2499 |
+| Include-hygiene warnings | 2509 |
 | Host-names warnings | 2156 |
 | Hand-written-record warnings | 18 |
 
@@ -468,7 +468,8 @@ that `make certify` requests.
 | `books/history-columns.lisp` | root | 78 | 26 | 2/1/17/6 | 0 | 0 | 2 |
 | `books/history-decode-cursor.lisp` | root | 7 | 5 | 1/0/4/0 | 0 | 0 | 0 |
 | `books/history-decode-nodes.lisp` | root | 4 | 6 | 0/0/5/1 | 0 | 0 | 0 |
-| `books/history-decode-stream.lisp` | root | 12 | 9 | 1/0/8/0 | 0 | 0 | 0 |
+| `books/history-decode-refinement.lisp` | root | 63 | 15 | 0/0/0/15 | 0 | 0 | 1 |
+| `books/history-decode-stream.lisp` | root | 12 | 10 | 1/0/9/0 | 0 | 0 | 0 |
 | `books/history-fold-refinement.lisp` | closure | 29 | 4 | 1/0/3/0 | 0 | 0 | 3 |
 | `books/history-image-binding.lisp` | root | 99 | 39 | 0/3/25/11 | 0 | 0 | 0 |
 | `books/history-image-census.lisp` | closure | 12 | 7 | 0/0/7/0 | 0 | 0 | 0 |
@@ -542,11 +543,14 @@ that `make certify` requests.
 | `books/key-statements.lisp` | root | 53 | 36 | 4/0/32/0 | 0 | 0 | 0 |
 | `books/lace-invariants.lisp` | root | 65 | 1 | 0/0/0/1 | 0 | 0 | 2 |
 | `books/lace.lisp` | root | 5 | 20 | 0/0/20/0 | 0 | 0 | 0 |
+| `books/legacy-parser-catalog.lisp` | root | 28 | 0 | 0/0/0/0 | 0 | 0 | 1 |
+| `books/legacy-parser-columns.lisp` | root | 46 | 6 | 0/6/0/0 | 0 | 0 | 2 |
 | `books/legacy-parser-composition.lisp` | root | 30 | 4 | 0/1/1/2 | 0 | 0 | 0 |
 | `books/legacy-parser-cursor.lisp` | root | 9 | 23 | 1/0/22/0 | 0 | 0 | 0 |
 | `books/legacy-parser-header.lisp` | root | 19 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/legacy-parser-reference.lisp` | root | 28 | 12 | 0/6/6/0 | 0 | 0 | 0 |
 | `books/legacy-parser-validity.lisp` | root | 59 | 14 | 0/0/12/2 | 0 | 0 | 0 |
+| `books/legacy-parser-value-run.lisp` | root | 37 | 2 | 0/0/0/2 | 0 | 0 | 1 |
 | `books/legacy-parser-values.lisp` | root | 52 | 5 | 0/5/0/0 | 0 | 0 | 2 |
 | `books/limits-live.lisp` | closure | 11 | 30 | 0/0/30/0 | 0 | 0 | 0 |
 | `books/log-sink.lisp` | root | 5 | 12 | 0/0/12/0 | 0 | 0 | 0 |
@@ -1411,6 +1415,7 @@ that `make certify` requests.
 | `tests/acl2/history-columns-store-tests.lisp` | root | 2 | 3 | 0/2/1/0 | 16 | 2 | 0 |
 | `tests/acl2/history-columns-tests.lisp` | root | 10 | 9 | 0/0/7/2 | 14 | 4 | 0 |
 | `tests/acl2/history-decode-cursor-tests.lisp` | root | 1 | 2 | 0/2/0/0 | 15 | 0 | 0 |
+| `tests/acl2/history-decode-refinement-tests.lisp` | root | 20 | 1 | 0/1/0/0 | 4 | 0 | 0 |
 | `tests/acl2/history-fold-refinement-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 30 | 1 | 0 |
 | `tests/acl2/history-image-binding-tests.lisp` | root | 1 | 31 | 0/24/1/6 | 37 | 0 | 0 |
 | `tests/acl2/history-image-campaign-tests.lisp` | root | 1 | 13 | 0/5/1/7 | 16 | 0 | 0 |
@@ -1459,10 +1464,13 @@ that `make certify` requests.
 | `tests/acl2/journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/key-statements-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 104 | 23 | 0 |
 | `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |
+| `tests/acl2/legacy-parser-catalog-tests.lisp` | root | 16 | 3 | 0/3/0/0 | 3 | 0 | 0 |
+| `tests/acl2/legacy-parser-columns-tests.lisp` | root | 20 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `tests/acl2/legacy-parser-composition-tests.lisp` | root | 5 | 2 | 0/0/2/0 | 29 | 0 | 0 |
 | `tests/acl2/legacy-parser-cursor-tests.lisp` | root | 5 | 3 | 0/3/0/0 | 34 | 0 | 0 |
 | `tests/acl2/legacy-parser-header-tests.lisp` | root | 2 | 0 | 0/0/0/0 | 1 | 0 | 0 |
 | `tests/acl2/legacy-parser-validity-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 53 | 0 | 0 |
+| `tests/acl2/legacy-parser-value-run-tests.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/legacy-parser-values-tests.lisp` | root | 7 | 1 | 0/0/1/0 | 1 | 0 | 0 |
 | `tests/acl2/limits-live-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/linear-recognizers-tests.lisp` | root | 0 | 5 | 0/5/0/0 | 24 | 0 | 0 |
@@ -2171,6 +2179,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-gac-state-nexts-of-restrict` | `books/group-access.lisp` | 569 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-gacc-restrict-articles-of-consp` | `books/group-access-cache.lisp` | 236 | branch-of-definition: the hypothesis is a branch test of fn-gac-restrict-articles and the conclusion is that branch's value |
 | `fn-hc-error-preserves-original` | `books/hybrid-carrier.lisp` | 461 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-hdc-begin-coordinates-unfolds` | `books/history-decode-refinement.lisp` | 781 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-heap-reserve-decide-keeps-heap-figures-refusals` | `books/heap-reservation.lisp` | 219 | arm-of-definition: the hypotheses select one IF/COND arm of fn-heap-reserve-decide and the conclusion is that arm's value |
 | `fn-held-accessors-are-the-wire-accessors` | `books/held-record.lisp` | 165 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-held-wire-of-with-context` | `books/catalog-relation.lisp` | 142 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -2249,8 +2258,12 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-lgx-rotation-entry-is-entry` | `books/store-log-kernel-concrete.lisp` | 644 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-lgx-rotation-frame-is-frame` | `books/store-log-kernel-concrete.lisp` | 629 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-lgx-trailer-is-trailer` | `books/store-log-kernel-concrete.lisp` | 312 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-lpv-add-fold-value-by-definition` | `books/legacy-parser-columns.lisp` | 270 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-lpv-header-first-is-value-byte-by-definition` | `books/legacy-parser-values.lisp` | 360 | branch-of-definition: the hypothesis is a branch test of fn-lpc-header-byte and the conclusion is that branch's value |
 | `fn-lpv-header-fold-is-value-byte-by-definition` | `books/legacy-parser-values.lisp` | 370 | branch-of-definition: the hypothesis is a branch test of fn-lpc-header-byte and the conclusion is that branch's value |
+| `fn-lpv-make-field-value-by-definition` | `books/legacy-parser-columns.lisp` | 411 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-lpv-nil-span-value-by-definition` | `books/legacy-parser-catalog.lisp` | 148 | arm-of-definition: constant arguments select one IF/COND arm of fn-lpc-span-value and the conclusion is that arm's value |
+| `fn-lpv-run-atom` | `books/legacy-parser-value-run.lisp` | 39 | arm-of-definition: the hypotheses select one IF/COND arm of fn-nlv-run and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-nlv-run and the conclusion is that branch's value |
 | `fn-lzr-composite-payload-octets` | `books/payload-lz-replay.lisp` | 207 | instance-corollary: the statement is fn-lzr-record-payload-octets instantiated, discharging nothing |
 | `fn-lzr-decode-empty-stream` | `books/payload-lz-record.lisp` | 383 | instance-corollary: the statement is fn-pzd-decode-of-empty instantiated, discharging nothing |
 | `fn-lzr-expand-of-plain` | `books/payload-lz-record.lisp` | 410 | arm-of-definition: the hypotheses select one IF/COND arm of fn-lzr-expand and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-lzr-expand and the conclusion is that branch's value |
