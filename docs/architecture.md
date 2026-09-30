@@ -190,6 +190,13 @@ change configuration, authorize a new peer, erase another article, or create a
 retention obligation simply by naming it. The policy version and authorization
 context of acceptance must be recoverable.
 
+- `books/assumptions-selected-runtime-bp-creators.lisp`:
+  A-SELECTED-RUNTIME-BP-CREATORS conditionally bounds successful exact BP
+  record12/mutex, digest16/frame64, carry6 and table16 node object requests.
+  Temporary keyword-list requests add cumulative allocation debt. These rows
+  exclude full caller/frame, allocator/GC, first-use, faults, publication and
+  borrowed-root lifetime; no installed constructor allowance follows.
+
 ## Product boundaries
 
 The first usable site has configured unmoderated groups, a complete planned
