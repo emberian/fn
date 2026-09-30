@@ -207,7 +207,7 @@
         "tests/evidence/2026-09-18-assurance.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Primitive/record full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 §4.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema1-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
+      "implementation_note": "Primitive/record full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Explicit-budget deterministic byte strings admit bounded keyring and accepted-statement Store events above the legacy generic ceiling while old entry points retain their exact contracts. Native signature preimages remain open. Since T1 (plan 2026-09-22 \u00a74.1) the record codec is behind a seam: fn-record-round-trip and fn-record-accepted-input-is-canonical are constraints of books/records-seam.lisp over the constrained fn-record-encode and fn-record-decode-exact that the host and every book above the codec call, and fn-record-impl-round-trip and fn-record-impl-accepted-input-is-canonical are the same properties of the implementation books/records-attach.lisp attaches. The header is two constraints, fn-record-accepted-input-magic and fn-record-accepted-schema-is-the-stamp-kind, so the acceptance stamp's schema 1 widens the grammar behind the seam; the exact octets are the concrete fact fn-record-schema1-golden-octets-are-the-encoding of books/records.lisp, since a round trip and canonicality do not identify the wire language.",
       "keystones": [
         "fn-cbor-value-round-trip",
         "fn-cbor-accepted-input-is-canonical",
@@ -1458,7 +1458,7 @@
     },
     {
       "id": "NNT-008",
-      "title": "NEWNEWS answers from this node’s durable acceptance stamp",
+      "title": "NEWNEWS answers from this node\u2019s durable acceptance stamp",
       "specification": "specs/nntp.md#polling-newnews",
       "milestone": "M3",
       "status": "implemented",
@@ -1476,7 +1476,7 @@
         "specs/nntp.md",
         "specs/nntp-audit.md"
       ],
-      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner’s durable whole-second acceptance stamp; an article without a natural stamp uses the nearest later stamped acceptance, else the pinned reader wall second, else remains visible; no record carries such a stamp since schema 0 was deleted (no migrations: fresh deploys at 6.6.0), and deleting this horizon is open. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
+      "implementation_note": "RFC 3977 section 7.4 uses the existing section 7.3.2 date/time and wildmat parsers. For schema-1 articles it compares the owner\u2019s durable whole-second acceptance stamp; an article without a natural stamp uses the nearest later stamped acceptance, else the pinned reader wall second, else remains visible; no record carries such a stamp since schema 0 was deleted (no migrations: fresh deploys at 6.6.0), and deleting this horizon is open. One command scans the committed list once, reads no article payload octets, emits at most one line per matching candidate and has no parse-budget refusal.",
       "note": "The DATE-to-NEWNEWS no-miss guarantee across a reader pin and in-flight prepare remains T6 under A-CLOCK."
     },
     {
@@ -1607,10 +1607,13 @@
         "books/bp-node-listener-control.lisp",
         "tests/acl2/bp-node-listener-control-tests.lisp",
         "host/native/bp-listener-control.lisp",
-        "planning/evidence/bp-listener-control-2026-09-29.md"
+        "planning/evidence/bp-listener-control-2026-09-29.md",
+        "books/owner-log.lisp",
+        "tests/acl2/owner-log-tests.lisp",
+        "tests/test_native_profile.py"
       ],
       "implementation_note": "Logical single-owner serialization is implemented. The frozen03 native runtime exercises concurrent uncertainty fencing and worker lifetime, with FNFD intent reconciliation after independent restart. Full concurrent backpressure, stale completion and production two-peer lifecycle composition remain open. The integrated control endpoint uses an adjacent persistent lease and worker-owned final socket close, with bounded accept polling for orderly SIGTERM. Scoped native collision, repeated-signal and lost-reply/restart tests passed. U18's active-client ceiling, absolute frame deadline and linear bounded accumulation are now integrated with scoped native slow-drip and excess-client witnesses; complete concurrent host refinement and the combined Linux image remain open.",
-      "note": "Bounded protocol effects and scoped native mutex/worker runtime evidence are recorded separately. Frozen03 supersedes the historical owner-does-not-certify blocker; it does not establish complete serialization, backpressure or crash correspondence for every later native module."
+      "note": "Bounded protocol effects and scoped native mutex/worker runtime evidence are recorded separately. Frozen03 supersedes the historical owner-does-not-certify blocker; it does not establish complete serialization, backpressure or crash correspondence for every later native module. Q10d accepted socket service log carries ACL2-projected client-address with fixed-width validation; source increment only until matching qualification."
     },
     {
       "id": "HST-003",
@@ -2593,7 +2596,7 @@
         "fn-bpfw-reassemble-is-spec",
         "fn-bpfs-plan-fragments-reassemble-uncapped"
       ],
-      "note": "Lane bp-n16-prod-2 (2026-09-25), PRF-114, SCN-059. Lane bp-lifecycle (2026-09-25): PRF-121, SCN-067. Lane bp-lifecycle-3 (2026-09-26): PRF-131, SCN-077 (specified; blocked by the ADU and bundle-decoder ceilings). Lane bp-lifecycle-5 (2026-09-26): PRF-136 (the selector re-encodes no row of a family without its offset-zero fragment)."
+      "note": "Lane bp-n16-prod-2 (2026-09-25), PRF-114, SCN-059. Lane bp-lifecycle (2026-09-25): PRF-121, SCN-067. Lane bp-lifecycle-3 (2026-09-26): PRF-131, SCN-077 (specified; blocked by the ADU and bundle-decoder ceilings). Lane bp-lifecycle-5 (2026-09-26): PRF-136 (the selector re-encodes no row of a family without its offset-zero fragment). 2026-09-30: the reassembly job host supplies the existing held-octet budget as its internal image limit; the received-wire limit still bounds each fragment. SCN-077 keeps its original 10 MiB input and profile, pending matching native rerun."
     },
     {
       "id": "NNT-022",
@@ -2999,7 +3002,7 @@
         "books/store-carried-folds.lisp",
         "tests/acl2/store-carried-folds-tests.lisp"
       ],
-      "implementation_note": "The served gates keep a release record for every open forward undertaking and one for the maintenance release (fn-cvec-verdict-at, fn-cvec-article-budget-for, fn-cvec-article-verdict-at); configuration records other than `retention set` leave the last generation to it (fn-cvec-config-generations); `status` prints `maintenance-reserve octets=R transactions=N debt=D held|short`. P12 partial (paged-history-5): exact token cold-pool admission and settlement library plus stobj adapter (PRF-1065, SCN-1002); supplied demand only. Full actual allocation/profile funding, persistent table capacity, checkpoint/recovery old/new reserve and suffix rescue remain unimplemented; the existing one-release reserve is not the full resource-vector proof. PRF-1082 adds a host-called numerical launcher extension for explicit cold resources, with no productive supported policy claim until the measured allocator/initialization consumer is integrated. Latest physical continuation: The served gates keep a release record for every open forward undertaking and one for the maintenance release (fn-cvec-verdict-at, fn-cvec-article-budget-for, fn-cvec-article-verdict-at); configuration records other than `retention set` leave the last generation to it (fn-cvec-config-generations); `status` prints `maintenance-reserve octets=R transactions=N debt=D held|short`. P12 partial (paged-history-5): exact token cold-pool admission and settlement library plus stobj adapter (PRF-1065, SCN-1002); supplied demand only. Full actual allocation/profile funding, persistent table capacity, checkpoint/recovery old/new reserve and suffix rescue remain unimplemented; the existing one-release reserve is not the full resource-vector proof. PRF-1106 adds exact checkpoint-file retention pins and fixed page-buffer leases as source components; its descriptor/retention reservation bounds file-pin rows jointly with registered incarnations. Producer activation and logical/page authentication remain separate."
+      "implementation_note": "The served gates keep a release record for every open forward undertaking and one for the maintenance release (fn-cvec-verdict-at, fn-cvec-article-budget-for, fn-cvec-article-verdict-at); configuration records other than `retention set` leave the last generation to it (fn-cvec-config-generations); `status` prints `maintenance-reserve octets=R transactions=N debt=D held|short`. P12 partial (paged-history-5): exact token cold-pool admission and settlement library plus stobj adapter (PRF-1065, SCN-1002); supplied demand only. Full actual allocation/profile funding, persistent table capacity, checkpoint/recovery old/new reserve and suffix rescue remain unimplemented; the existing one-release reserve is not the full resource-vector proof. PRF-1082 adds a host-called numerical launcher extension for explicit cold resources, with no productive supported policy claim until the measured allocator/initialization consumer is integrated. PRF-1106 adds exact checkpoint-file retention pins and fixed page-buffer leases as source components; its descriptor/retention reservation bounds file-pin rows jointly with registered incarnations. Producer activation and logical/page authentication remain separate."
     },
     {
       "id": "CNS-003",
@@ -3429,7 +3432,8 @@
         "PRF-165",
         "PRF-307",
         "PRF-376",
-        "PRF-381"
+        "PRF-381",
+        "PRF-1122"
       ],
       "verification": [
         "proof",
@@ -3452,9 +3456,10 @@
         "tests/acl2/feed-link-backoff-tests.lisp",
         "tests/test_native_feed_tls_read.py",
         "books/feed-pause.lisp",
-        "tests/acl2/feed-pause-tests.lisp"
+        "tests/acl2/feed-pause-tests.lisp",
+        "tests/test_native_feed_temporary.py"
       ],
-      "implementation_note": "RFC 3977 section 6.2.1.3 (430: no article with that message-id) and section 7.4 (NEWNEWS). The unavailable class, the consecutive-round count and the bound (peer row pull-unavailable-rounds, default 5) are fn local policy. The feed half (a MODE STREAM refusal durable across a restart with an IHAVE fallback on the same connection, RFC 4644 section 2.3) is not implemented: PKT-431. The feed's link (defect M3, specs/peering.md 3.2.2): a TLS read that meets only a TLS 1.3 NewSessionTicket is no data yet, never a loss; every dropped link is named in ACL2's line and the redial delay doubles per consecutive failure (fn-flb-lost, PRF-376). An operator contains a misbehaving push without `peer remove': `peer feed NAME pause|resume' (PRF-381)."
+      "implementation_note": "RFC 3977 section 6.2.1.3 (430: no article with that message-id) and section 7.4 (NEWNEWS). The unavailable class, the consecutive-round count and the bound (peer row pull-unavailable-rounds, default 5) are fn local policy. The feed half (a MODE STREAM refusal durable across a restart with an IHAVE fallback on the same connection, RFC 4644 section 2.3) is not implemented: PKT-431. The feed's link (defect M3, specs/peering.md 3.2.2): a TLS read that meets only a TLS 1.3 NewSessionTicket is no data yet, never a loss; every dropped link is named in ACL2's line and the redial delay doubles per consecutive failure (fn-flb-lost, PRF-376). An operator contains a misbehaving push without `peer remove': `peer feed NAME pause|resume' (PRF-381). PKT-599(d): a MODE STREAM 400 now closes the connection without a process stop, so existing loss/backoff handling can retry. PRF-1122 is source-admitted; SCN-1028 matching-image observation remains pending."
     },
     {
       "id": "CNS-004",
@@ -4063,7 +4068,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-207"
+        "PRF-207",
+        "PRF-1122"
       ],
       "verification": [
         "proof",
@@ -4075,9 +4081,12 @@
         "books/owner.lisp",
         "host/owner-host.lisp",
         "tests/test_native_peering.py",
-        "planning/evidence/transit-streaming-2026-09-26.md"
+        "planning/evidence/transit-streaming-2026-09-26.md",
+        "tests/owner-feed-tls-ready-host.lsp",
+        "tests/test_native_feed_tls_ready.py",
+        "tests/test_native_feed_temporary.py"
       ],
-      "implementation_note": "RFC 4644 sections 2.3 to 2.5 and RFC 3977 section 6.3.2 are RFC requirements; one admission decision for the three forms is the fn guarantee; 436 after TAKETHIS, the 431 past max-inflight (16 from `peer add`) and the IHAVE fallback on 500/501 are local policy. fn chooses the form by MODE STREAM, not CAPABILITIES (PKT-599)."
+      "implementation_note": "RFC 4644 sections 2.3 to 2.5 and RFC 3977 section 6.3.2 are RFC requirements; one admission decision for the three forms is the fn guarantee; 436 after TAKETHIS, the 431 past max-inflight (16 from `peer add`) and the IHAVE fallback on 500/501 are local policy. fn chooses the form by MODE STREAM, not CAPABILITIES (PKT-599). PKT-599(b): the owner TLS completion now installs the feed connection/form before publishing ready for STARTTLS without streaming or login; SCN-1022 exercises that path and the implicit-TLS greeting control. Matching native observation is pending."
     },
     {
       "id": "HST-021",
@@ -5133,7 +5142,8 @@
         "PRF-338",
         "PRF-339",
         "PRF-340",
-        "PRF-353"
+        "PRF-353",
+        "PRF-1100"
       ],
       "verification": [
         "proof",
@@ -5154,9 +5164,11 @@
         "tests/acl2/web-render-tests.lisp",
         "tests/acl2/web-session-tests.lisp",
         "tests/test_native_web.py",
-        "planning/evidence/web-native-2026-09-28.md"
+        "planning/evidence/web-native-2026-09-28.md",
+        "books/web-health.lisp",
+        "tests/acl2/web-health-tests.lisp"
       ],
-      "implementation_note": "Replaces tools/fn_reader.py and tools/fn_web.py (a second implementation of the boundary in Python) with the node's own face; lane web-native-2 packaged it (install.sh --reader, WEB-004) and retired the Python readers."
+      "implementation_note": "Replaces tools/fn_reader.py and tools/fn_web.py (a second implementation of the boundary in Python) with the node's own face; lane web-native-2 packaged it (install.sh --reader, WEB-004) and retired the Python readers. Q10d source continuation adds GET/HEAD /health as fixed disk/checkpoint readiness from the running owner, without login/NNTP connection or a second image process; 200 only observed ready, otherwise 503, at most 23 body octets. Full operator health scope is separate; matching native/certification pending."
     },
     {
       "id": "STO-036",
@@ -5678,7 +5690,8 @@
         "host/native/io.lisp",
         "tests/test_native_snapshot_bless.py"
       ],
-      "implementation_note": "S7a checker implemented; native evidence pending matching union image. S7 running producer remains separate, unfinished."
+      "implementation_note": "S7a checker implemented; native evidence pending matching union image. S7 running producer remains separate, unfinished.",
+      "note": " The three normal blessing refusal observations do not exhaust runtime failures. Rejected/corrupted durable metadata remains a fault (exit 4); sealed foreign-format/lineage open refusals stay distinct, and uncertain I/O is not flattened into refusal."
     },
     {
       "id": "HST-040",
@@ -5699,7 +5712,8 @@
         "PRF-1093",
         "PRF-1096",
         "PRF-1124",
-        "PRF-1104"
+        "PRF-1104",
+        "PRF-1133"
       ],
       "verification": [
         "proof",

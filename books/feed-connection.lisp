@@ -177,6 +177,11 @@ every transit server has."
             (fn-fc-result :ready (fn-fc-with-input-phase st input :ready) nil))
            ((fn-fc-mode-unsupportedp line)
             (fn-fc-result :ready (fn-fc-with-input-ihave st input) nil))
+           ;; RFC 3977 section 3.2.1: 400 is temporary unavailability,
+           ;; not a permanent refusal of streaming. The existing :closed
+           ;; owner path drops/backoffs the link without setting its stop bit.
+           ((equal (fn-own-feed-response-code line) 400)
+            (fn-fc-result :closed (fn-fc-with-input-phase st input :closed) nil))
            (t (fn-fc-result :refused (fn-fc-with-input-phase st input :closed) nil))))
     (:ready (fn-fc-result :reply (fn-fc-with-input-phase st input :ready) line))
     (otherwise (fn-fc-result :closed (fn-fc-with-input-phase st input :closed) nil))))
@@ -313,8 +318,9 @@ every transit server has."
 ;; goes on in IHAVE (`fn-fc-mode-unsupportedp', :ready with streaming off;
 ;; the owner's `fn-own-feed-connect' takes the form).  No stop is recorded
 ;; and the next dial asks again (RFC 4644 section 2.3's MODE STREAM is per
-;; connection).  Every other non-203 answer (400, 502, ...) is still the
-;; refusal PRF-130 stops on.
+;; connection). PKT-599(d): 400 closes this connection and backs off; it
+;; never stops the peer. Every other non-203 answer (502, ...) remains the
+;; permanent streaming refusal PRF-130 stops on.
 
 (defconst *fn-fc-stop-mode-stream-refused* :mode-stream-refused)
 
@@ -372,13 +378,14 @@ not stream, nil when it does."
 ; (host/owner-host.lisp) calls on every peer line, and
 ; `fn-fc-dial-allowedp', which `fn-owner-feed-has-queued' answers the dial
 ; loop with (host/native/feed-service.lisp `fnn-feed-dial-plan').  A
-; complete line other than 203 in the :mode phase is a refusal the owner
+; complete line other than 203, 400, 500 or 501 in the :mode phase is a refusal the owner
 ; classifies as a streaming refusal, and once recorded the peer is not
 ; dialled again, whatever its queue.
 (local
  (defthm fn-fc-from-line-mode-refusal
    (implies (and (equal (fn-fc-phase st) :mode)
                  (not (equal (fn-own-feed-response-code line) 203))
+                 (not (equal (fn-own-feed-response-code line) 400))
                  (not (fn-fc-mode-unsupportedp line)))
             (let ((r (fn-fc-from-line st input line)))
               (and (equal (fn-fc-kind r) :refused)
@@ -401,7 +408,10 @@ not stream, nil when it does."
                              (fn-fwi-line (fn-fwi-step (fn-fc-input st) octets)))
                             203))
                 (not (fn-fc-mode-unsupportedp
-                      (fn-fwi-line (fn-fwi-step (fn-fc-input st) octets)))))
+                      (fn-fwi-line (fn-fwi-step (fn-fc-input st) octets))))
+                (not (equal (fn-own-feed-response-code
+                             (fn-fwi-line (fn-fwi-step (fn-fc-input st) octets)))
+                            400)))
            (let ((step (fn-fc-step st octets)))
              (and (equal (fn-fc-kind step) :refused)
                   (equal (fn-fc-phase (fn-fc-next-state step)) :closed)
@@ -420,6 +430,40 @@ not stream, nil when it does."
                                    fn-own-feed-response-code fn-fc-phase
                                    fn-fc-kind fn-fc-next-state fn-fc-input
                                    fn-fc-mode-unsupportedp)))))
+
+; PKT-599(d), PRF-1122. The complete-line and chunk premises follow
+; from the decoded 400; the keystone needs neither as a redundant hypothesis.
+(local
+ (defthm fn-fc-400-line-is-complete
+   (implies (equal (fn-own-feed-response-code
+                    (fn-fwi-line (fn-fwi-step input octets))) 400)
+            (and (fn-fwi-chunkp octets)
+                 (equal (fn-fwi-kind (fn-fwi-step input octets)) :line)))
+   :hints (("Goal" :in-theory (e/d
+    (fn-fwi-step fn-fwi-callp fn-fwi-from-wire-next fn-fwi-result
+     fn-fwi-kind fn-fwi-line fn-own-feed-response-code)
+    (fn-wire-next fn-fwi-chunkp fn-fwi-statep fn-fwi-input
+     fn-fwi-command-eventp fn-fwi-make-state fn-wire-next-state
+     fn-wire-next-unconsumed fn-wire-next-event fn-wire-state-mode))))))
+
+(defthm fn-fc-temporary-mode-refusal-closes-without-stopping
+  (implies (and (fn-fc-statep st)
+                (equal (fn-fc-phase st) :mode)
+                (equal (fn-own-feed-response-code
+                         (fn-fwi-line (fn-fwi-step (fn-fc-input st) octets))) 400))
+           (let ((step (fn-fc-step st octets)))
+             (and (equal (fn-fc-kind step) :closed)
+                  (equal (fn-fc-phase (fn-fc-next-state step)) :closed)
+                  (equal (fn-fc-conn (fn-fc-next-state step)) (fn-fc-conn st))
+                  (not (fn-fc-streaming-refusal-p st step)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d
+    (fn-fc-from-line fn-fc-mode-okp fn-fc-mode-unsupportedp
+     fn-fc-result fn-fc-kind fn-fc-next-state fn-fc-with-input-phase
+     fn-fc-phase fn-fc-conn fn-fc-make-state fn-fc-streaming-refusal-p)
+    (fn-fc-step fn-fwi-step fn-fwi-line fn-fwi-kind fn-fwi-next-state
+     fn-own-feed-response-code fn-fc-statep fn-fc-input fn-fc-streamingp
+     fn-fc-security fn-fc-user fn-fc-pass fn-fc-allow-clear)))))
 
 ; KEYSTONE (PRF-207).  Subject: `fn-fc-step', which
 ; `fn-owner-feed-reply-chunk' (host/owner-host.lisp) calls on every peer

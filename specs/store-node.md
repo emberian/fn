@@ -103,6 +103,18 @@ acknowledgement. All five file-kernel recovery barriers must still complete
 before ordinary preparation can resume. Known prepublication absence also has the explicit resolution operations
 described below; uncertain publication still requires recovery.
 
+The catalog's public keyring and generation have a conditional recovery frame.
+`fn-osr-ready-crash-recovery-keeps-catalog-context` in
+`books/catalog-context-recovery.lisp` assumes the full `fn-osr-retainedp` and
+`:ready`. Every model `fn-sn-crash` choice then retains a coherent identity
+history, and actual `fn-sn-recover` preserves the original keyring and
+generation. The coherence premise is derived from the retained invariant;
+recovered equality is the conclusion. A published identity snapshot before
+live finish refutes omission of readiness. A ready corrupted generation
+refutes omission of the retained invariant. This is a logical model
+composition; physical canonical checkpoint loading and actual owner cold
+installation remain separate open boundaries.
+
 `fn-sn-replay-loop-append` proves sequential composition of the actual replay
 interpreter. `fn-sn-extended-history-equals-live-completion` then proves that,
 starting from a successful replayed prefix, appending one correctly sequenced,

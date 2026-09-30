@@ -1936,17 +1936,35 @@ unfolded value after the one-SP rule and `fn-nov-scrub`. The actual value and
 fold-byte transitions preserve it; a complete physical CRLF pair preserves
 the value, and the completed line endpoint identifies the normalized span.
 Normalization also commutes with the projection's first-hit update, keeping
-a present empty value distinct from an absent column. These component
-theorems do not yet establish whole-header correspondence.
+a present empty value distinct from an absent column. The complete successful
+header traversal now maintains all five source spans across arbitrary actual
+new-field and folded lines, first-field closure, the separator and body.
+`fn-lpv-complete-values-are-actual-overview-content` equates those normalized
+spans with the actual five `fn-nov-header-content` values; its only premise
+is success of the actual article parser. Literal removal witnesses distinguish
+invalid grammar, a missing current field, an overlong physical line and a
+corrupted source/span invariant. The catalog join now also proves complete
+actual arena-tick NOV equality with `fn-hnov-of`, including invalid grammar
+and the actual tombstone magic/89-byte threshold, under only the octet source
+domain. The actual parser and begin decide oversized sources alike, so the
+final equation assumes no codec-ceiling premise. A natural-handle premise
+was removed after proving the stronger logical arena abstraction.
 
-This component is not served yet. `fn-lpc-agreesp` states the full remaining
-comparison with actual `fn-hnov-of` and `fn-hf-body-lines-of`; it is a
-predicate, not a proved theorem. General header-verdict/field refinement,
-allocation accounting, actual cursor composition
-and matched runtime measurements remain open. The source stores fixed-size
+This component is not served yet. `fn-lpc-agrees-with-actual-catalog` proves
+the full `fn-lpc-agreesp` comparison with actual `fn-hnov-of` and
+`fn-hf-body-lines-of` under the octet source domain. The formal allocation
+accounting, actual served cursor/formatter composition and matched runtime
+measurements remain open. The source stores fixed-size
 records and source references and reports raw-byte work; that statement
 alone is not a physical allocation or latency qualification.
 
+The analysis-only `fn-lpa-tick-conses` source observer counts transient
+constructor sites, including closing span and copied fields spines, and
+tracks the actual tick's arena reads/transitions. Its demand is at most
+`4 + 39 * actual-work`, hence `4 + 39 * fuel` for natural fuel. This bound
+covers that structural CONS inventory, not compiled allocator behavior,
+integer buffers, stack, first-use state or native call wrappers. A selected
+runtime refinement and actual funding/served composition remain open.
 
 
 ## Public exposure (NNT-031)

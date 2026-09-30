@@ -708,6 +708,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-rotation-buffer \
 	tests/acl2/bp-node-rotation-buffer-tests \
 	books/bp-held-projection \
+	books/bp-recovery-guards \
 	books/bp-recovery-profile \
 	tests/acl2/bp-recovery-profile-tests \
 	tests/acl2/bp-held-projection-tests \
@@ -922,11 +923,21 @@ ACL2_BOOKS ?= books/defrecord \
 	books/legacy-parser-reference \
 	books/legacy-parser-header \
 	books/legacy-parser-validity \
+	books/legacy-parser-composition \
+	tests/acl2/legacy-parser-composition-tests \
 	tests/acl2/legacy-parser-cursor-tests \
 	tests/acl2/legacy-parser-header-tests \
 	tests/acl2/legacy-parser-validity-tests \
 	books/legacy-parser-values \
 	tests/acl2/legacy-parser-values-tests \
+	books/legacy-parser-value-run \
+	tests/acl2/legacy-parser-value-run-tests \
+	books/legacy-parser-columns \
+	tests/acl2/legacy-parser-columns-tests \
+	books/legacy-parser-catalog \
+	books/legacy-parser-allocation \
+	tests/acl2/legacy-parser-catalog-tests \
+	tests/acl2/legacy-parser-allocation-tests \
 	books/nntp-article-pass \
 	books/nntp-responses \
 	books/nntp-article-block \
@@ -1023,6 +1034,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-record \
 	books/catalog \
 	books/catalog-commit \
+	books/catalog-context-recovery \
 	books/catalog-delta \
 	books/catalog-relation \
 	books/catalog-view \
@@ -1104,6 +1116,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-record-tests \
 	tests/acl2/catalog-tests \
 	tests/acl2/catalog-commit-tests \
+	tests/acl2/catalog-context-recovery-tests \
 	tests/acl2/catalog-delta-tests \
 	tests/acl2/catalog-relation-tests \
 	tests/acl2/catalog-view-tests \
@@ -1502,6 +1515,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-time-bars \
 	tests/acl2/owner-time-bars-tests \
 	tests/acl2/tls-handshake-budget-tests \
+	tests/acl2/tls-proxy-tests \
 	tests/acl2/owner-cold-line-tests \
 	books/owner-resource-line \
 	tests/acl2/owner-resource-line-tests \
@@ -1523,6 +1537,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/web-render \
 	books/web-render-keystones \
 	tests/acl2/web-render-tests \
+	books/web-health \
+	tests/acl2/web-health-tests \
 	books/web-session \
 	books/web-session-keystones \
 	tests/acl2/web-session-tests \
@@ -1574,8 +1590,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-record-cursor \
 	tests/acl2/history-record-cursor-tests \
 	books/history-decode-nodes \
+	books/history-symbol-normalize \
+	tests/acl2/history-symbol-normalize-tests \
 	books/history-decode-cursor \
 	books/history-decode-stream \
+	books/history-decode-refinement \
+	tests/acl2/history-decode-refinement-tests \
 	tests/acl2/history-decode-cursor-tests \
 	books/pagestore-digest-cursor \
 	books/pagestore-digest-cursor-refinement \

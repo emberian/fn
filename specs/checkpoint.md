@@ -575,3 +575,11 @@ the core reset decision. These source components do not establish captured-row
 source authorization, funded metadata/retirement debt, physical current-placement
 acquisition, concurrent reset serialization or complete snapshot recovery. A
 borrowed nonnil maintenance reference is not itself admission evidence.
+The planned bounded source-row decoder also normalizes symbol package aliases
+accepted by the current postfix codec. `books/history-symbol-normalize.lisp`
+scans the actual fixed ACL2 import table one candidate or borrowed source byte
+per scheduling step. It preserves arbitrary name spans, canonicalizes imported
+COMMON-LISP names and NIL, and requires the authenticated provider's matching
+source-byte and capture/pass lifetime premise. Its cursor and semantic proofs
+are component source evidence under PRF-1102; full row decoding, metadata checks,
+resource funding and host composition remain open.

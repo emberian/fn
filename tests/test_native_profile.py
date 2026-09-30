@@ -89,8 +89,14 @@ class NativeProfileTests(unittest.TestCase):
         text = self.wait_for_log("message-id=<control-log@example.invalid>")
         lines = text.splitlines()
         self.assertEqual(lines[0], "earlier line")
-        self.assertTrue(any(line.startswith("accepted reader connection=")
-                            for line in lines), lines)
+        connections = [line for line in lines
+                       if line.startswith("accepted reader connection=")]
+        self.assertTrue(connections, lines)
+        # Q10d: one accepted socket line includes its actual loopback client
+        # address; the host neither formats nor substitutes a peer identity.
+        for line in connections:
+            self.assertEqual(line.count(" client-address="), 1, line)
+            self.assertTrue(line.endswith(" client-address=127.0.0.1"), line)
         served = [line for line in lines
                   if "message-id=<served-log@example.invalid>" in line]
         self.assertEqual(len(served), 1, lines)

@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -2333,7 +2333,7 @@
       "id": "SCN-077",
       "title": "A 10 MiB article carried by BP through 4 KiB fragments, under a node profile that admits it, is reassembled once and handed to the Store once",
       "milestone": "M4",
-      "status": "validated",
+      "status": "implemented",
       "requirements": [
         "REP-008",
         "REP-015",
@@ -2346,7 +2346,8 @@
       ],
       "expected": [
         "The receiver publishes one kind-18 family, logs `BP application handoff durable disposition=request-accepted` once, and the Store holds one article whose bytes are the ADU. Under the development-base Store (32,768-octet articles) the Store refuses the article as oversize and the handoff is reported refused (PKT-630 (7), PRF-224): the harness raises the Store profile (--max-article-octets 11534336 --max-record-octets 33554432 --max-history-octets 268435456).",
-        "Arrivals no longer block it (PRF-136, bp-lifecycle-5): a bp-node serve session costs about 60 ms at 64 to 256 held rows (3.7 to 15.9 s before) and the first 1,311 fragments arrive in 90 s. Blocked now by the open: a journal of 1,311 held rows opens in 51.9 s (three re-encodings per row, an unverified bundle decode, a quadratic held-octet sum), so the restarted receiver misses the harness's waits in the second half. PKT-308. 2026-09-27 (bp-fragments-10mib): the reopen and the family pass; with the Store and the neighbour's inbound bound raised the delivery is refused by FNRJ, whose request-ADU :blob is 131,072 octets (PKT-646, open), and reported `BP application handoff refused disposition=request-refused (kind 7 durable)`. Reassembly and handoff 280.3 s -> 117.2 s with the table-driven CRC-16 (PRF-225). 2026-09-27 (bp-fragments-10mib-4): PKT-646 closed; accepted, `disposition=request-accepted`, and the Store's own open reads one article byte-equal to the authored one (`store PATH status`, `store PATH inspect`), on the developer and production images at be7e5cb17 (tests.test_bp_fragment_node_native)."
+        "Arrivals no longer block it (PRF-136, bp-lifecycle-5): a bp-node serve session costs about 60 ms at 64 to 256 held rows (3.7 to 15.9 s before) and the first 1,311 fragments arrive in 90 s. Blocked now by the open: a journal of 1,311 held rows opens in 51.9 s (three re-encodings per row, an unverified bundle decode, a quadratic held-octet sum), so the restarted receiver misses the harness's waits in the second half. PKT-308. 2026-09-27 (bp-fragments-10mib): the reopen and the family pass; with the Store and the neighbour's inbound bound raised the delivery is refused by FNRJ, whose request-ADU :blob is 131,072 octets (PKT-646, open), and reported `BP application handoff refused disposition=request-refused (kind 7 durable)`. Reassembly and handoff 280.3 s -> 117.2 s with the table-driven CRC-16 (PRF-225). 2026-09-27 (bp-fragments-10mib-4): PKT-646 closed; accepted, `disposition=request-accepted`, and the Store's own open reads one article byte-equal to the authored one (`store PATH status`, `store PATH inspect`), on the developer and production images at be7e5cb17 (tests.test_bp_fragment_node_native).",
+        "2026-09-30 current-source regression: E739 produced no durable family at the final fragment because the host used the 1 MiB received-wire budget for the whole internal image. The corrected host reads max-held-octets for reassembly. Original 10 MiB input, 4 KiB fragments, 16 MiB held budget, 11 MiB ADU budget and 1 MiB received-wire budget remain unchanged. Matching current native result is pending; historical be7e5cb17 validation is not transferred."
       ],
       "evidence": [
         "planning/evidence/bp-lifecycle-3-2026-09-26.md",
@@ -2355,7 +2356,8 @@
         "books/bp-node-profile-admission.lisp",
         "planning/evidence/bp-lifecycle-5-2026-09-26.md",
         "planning/evidence/bp-fragments-10mib-2026-09-27.md",
-        "tests/test_bp_fragment_node_native.py"
+        "tests/test_bp_fragment_node_native.py",
+        "tests/acl2/bp-node-fragment-job-tests.lisp"
       ],
       "implementation": {
         "test": "tests.test_bp_fragment_node_native",
@@ -6216,10 +6218,10 @@
         "HST-039"
       ],
       "steps": [
-        "Copy a stopped three-article store; explicitly supply the producer completion observation marker; bless, start the copy and retrieve each article. Remove marker or key, corrupt the key or profile; preserve first-failure refusal. Diverge copied stores and install a foreign checkpoint; blessing refuses its lineage."
+        "Copy a stopped three-article store; explicitly supply the producer completion observation marker; bless, start the copy and retrieve each article. Remove marker or key, corrupt the key or profile; preserve first-failure refusal for known missing/open observations and durable corruption as fault. Diverge copied stores and install a foreign checkpoint; blessing refuses its lineage."
       ],
       "expected": [
-        "Blessed iff the marker, own read-only open and node-secret observations hold; accepted exit 0, named refusal exit 1. Missing marker omits open even with malformed profile. A complete older own-lineage copy remains accepted (no freshness guarantee)."
+        "Blessed iff the marker, own read-only open and node-secret observations hold; accepted exit 0, named refusal exit 1. Missing marker omits open even with malformed profile. A complete older own-lineage copy remains accepted (no freshness guarantee). Rejected durable config.json remains fault exit 4 with the decoder message, never open-refused; known sealed format/lineage open refusals stay exit 1."
       ],
       "implementation": {
         "test": "tests.test_native_snapshot_bless",
@@ -6230,9 +6232,10 @@
         "native": true
       },
       "evidence": [
-        "tests/test_native_snapshot_bless.py"
+        "tests/test_native_snapshot_bless.py",
+        "planning/evidence/operator-snapshot-e739-harvest-2026-09-29.md"
       ],
-      "scope_note": "Stopped-copy fixtures explicitly supply SNAPSHOT. No running snapshot producer or atomic-capture claim."
+      "scope_note": "Stopped-copy fixtures explicitly supply SNAPSHOT. No running snapshot producer or atomic-capture claim. E739 historical module executed 2, one pass/one fixture mismatch: malformed config expected REFUSED 1 but actual existing decoder FAULT 4. Fixture corrected to authoritative store-profile boundary; matching execution pending."
     },
     {
       "id": "SCN-216",
@@ -6340,6 +6343,7 @@
         "Feed nonempty little-endian digits one at a time, including a nonminimal leading-zero spelling, and compare the existing numeric codec.",
         "Decode nonempty strings, opaque symbol spans, fixed HSTXA, paired values and empty opcode6; cut and resume within payload.",
         "Remove each residual hypothesis literally; check malformed package, truncated number/string and stack underflow refusal.",
+        "Normalize accepted ACL2/COMMON-LISP import and NIL spellings by resumable static-candidate scan; preserve arbitrary name spans, reject stale read coordinates and measure productive progress.",
         "Compose authenticated captured root pages, exact source tokens, padding/MKEY checks, borrowed row remap and canonical reencoding."
       ],
       "expected": [
@@ -6353,9 +6357,12 @@
       },
       "evidence": [
         "tests/acl2/history-decode-cursor-tests.lisp",
-        "planning/history-decode-contract.md"
+        "planning/history-decode-contract.md",
+        "tests/acl2/history-symbol-normalize-tests.lisp",
+        "tests/acl2/history-decode-refinement-tests.lisp",
+        "planning/evidence/history-decode-refinement-source-2026-09-30.json"
       ],
-      "execution_scope": "Source component tests only. General stream inverse, page-source authentication, integrated native caller and full producer remain open."
+      "execution_scope": "Clean source component replay only. General stream inverse, recursive node span bounds, lifetime and fuel partition source proofs pass with literal witnesses; page-source authentication, canonical reencoding, integrated native caller, funded storage and full producer remain open. No certificate or image claim."
     },
     {
       "id": "SCN-1007",
@@ -6467,7 +6474,7 @@
         "tests/acl2/bp-recovery-profile-tests.lisp",
         "planning/evidence/bp-recovery-profile-2026-09-30.md"
       ],
-      "execution_scope": "Native cases staged, NOT RUN at current source; runner supplies matching image evidence. ACL2 teeth also cover nonfragment payload, later-deleted row, member/readiness hypothesis removals and invalid profile."
+      "execution_scope": "Native cases staged, NOT RUN at current source; runner supplies matching image evidence. ACL2 teeth also cover nonfragment payload, later-deleted row, member/readiness hypothesis removals and invalid profile. The recovery guard increment additionally checks the actual fn-bphp-recover-auto-event world class and direct refinement subject in tests/acl2/bp-held-projection-tests.lisp; it does not replace these native cases."
     },
     {
       "id": "SCN-1002",
@@ -6578,19 +6585,23 @@
         "Exercise literal byte-control commutation, exact body acceptance and new-field/fold physical-line conclusions; remove each retained hypothesis with all other hypotheses checked.",
         "Assert exact actual-byte start/bad result for arbitrary physical lines: missing/invalid colon or name, non-WSP first value, NUL/non-ASCII bytes, orphan and whitespace-only folds, exact 998 and 999 lengths; remove each retained start/length/nonempty/CRLF-free hypothesis while checking all others.",
         "Assert exact separator/body acceptance, rejection of unfinished headers with or without trailing CR, absorbing bare LF and universal CR/non-LF refusal; every retained hypothesis has an affirmative removal witness.",
-        "Check source-dominated parser counters, each of three retained inequality removals with others affirmed, and unconditional actual widest-parser counter-error exclusion on a nonempty successful article; label reduced profile-limit mutation separately."
+        "Check source-dominated parser counters, each of three retained inequality removals with others affirmed, and unconditional actual widest-parser counter-error exclusion on a nonempty successful article; label reduced profile-limit mutation separately.",
+        "Assert the full actual byte-machine/body iff actual parser success theorem on nonempty ordinary, folded, empty-header/binary-body, repeated unknown-field and malformed inputs, including 998/999 line lengths. Affirm both original source hypotheses on every case. Remove the octet premise with a non-octet body; prove the codec-ceiling removal on a finite symbolic oversized body without allocating it. Exercise actual scanner failure and both retained-hypothesis removals, and the generalized counter-free parser join with each inequality removed."
       ],
       "expected": [
         "Exactly the first matching fields, one initial SP removed, folding CRLF removed and TAB scrubbed to SP.",
         "All invalid/error classifications match the actual parser; binary NUL body remains valid.",
         "Both component keystones are unconditional after redundant accumulator typing was proved unnecessary.",
-        "Whitespace-only continuation after an already visible field is rejected independently of field-wide visibility."
+        "Whitespace-only continuation after an already visible field is rejected independently of field-wide visibility.",
+        "For every proper octet source within the original codec ceiling, actual byte-fold terminal :body is equivalent to actual article parser success; arbitrary malformed sources remain in scope. Arena cursor/EOF, five spans and served OVER joins remain separate obligations."
       ],
       "evidence": [
         "tests/acl2/nov-line-projection-tests.lisp",
         "planning/evidence/nov-line-projection-source.md",
         "tests/acl2/legacy-parser-validity-tests.lisp",
-        "planning/evidence/legacy-parser-validity-source.md"
+        "planning/evidence/legacy-parser-validity-source.md",
+        "tests/acl2/legacy-parser-composition-tests.lisp",
+        "planning/evidence/legacy-parser-composition-source.md"
       ],
       "execution_scope": "Clean source REPL only; no served cursor or native completion claim."
     },
@@ -6667,12 +6678,15 @@
         "Exercise five selected fields, mixed-case and repeated names, empty initial values completed by folds, TAB versus exactly one initial SP, missing fields and physical lines of 998 and 999 octets.",
         "Exercise invalid names, orphan folds, empty final fields, missing separator, bare CR/LF, header NUL, body NUL and unterminated body; compare terminal results with fn-hnov-of and fn-hf-body-lines-of.",
         "Mutate continuation position, source handle, first-header selection and whitespace normalization separately.",
-        "Check the literal actual value-transition invariant and remove its value correspondence, phase, line-budget and valid-byte hypotheses individually while affirming all retained hypotheses; verify folded completed source spans and absent-versus-empty first hits."
+        "Check the literal actual value-transition invariant and remove its value correspondence, phase, line-budget and valid-byte hypotheses individually while affirming all retained hypotheses; verify folded completed source spans and absent-versus-empty first hits.",
+        "Check literal arbitrary-line theorem instances for actual new-field/fold runs, completed source spans, selected name and preserved earlier columns; remove source-value correspondence and fold-local visibility independently.",
+        "Assert complete literal new-field/fold/header traversal premises and conclusions; remove every retained line-step premise and both traversal premises separately, including corrupted source-span state and malformed physical continuations.",
+        "Assert the literal full actual arena-tick NOV equation on octet sources, including five first/repeated/folded fields, invalid folds, opaque body NUL and tombstones. Remove the sole octet-domain premise with non-octet opaque body input; affirm negative-handle equality after removing that redundant premise. Check complete tombstone prefix antecedents and remove natural position and sufficient bytes independently."
       ],
       "expected": [
         "Each tick consumes and reports at most its fuel, preserves handle and pin and makes bounded progress. No final tick walks or copies the full source or field.",
         "The body count equals the actual catalog function even for a rejected header parse.",
-        "The five spans materialize to the existing first-header NOV semantics. This last general refinement is open; ground fixtures currently supply examples only."
+        "For every successful actual parser result, the complete byte traversal's five spans normalize to the exact first-header NOV content. The full actual arena-tick NOV record equals fn-hnov-of under the sole octet source premise, including invalid parses and tombstones."
       ],
       "evidence": [
         "books/legacy-parser-cursor.lisp",
@@ -6680,7 +6694,19 @@
         "tests/acl2/legacy-parser-cursor-tests.lisp",
         "books/legacy-parser-values.lisp",
         "tests/acl2/legacy-parser-values-tests.lisp",
-        "planning/evidence/legacy-parser-values-source.md"
+        "planning/evidence/legacy-parser-values-source.md",
+        "books/legacy-parser-value-run.lisp",
+        "tests/acl2/legacy-parser-value-run-tests.lisp",
+        "planning/evidence/legacy-parser-value-run-source.md",
+        "books/legacy-parser-columns.lisp",
+        "tests/acl2/legacy-parser-columns-tests.lisp",
+        "planning/evidence/legacy-parser-columns-source.md",
+        "books/legacy-parser-catalog.lisp",
+        "tests/acl2/legacy-parser-catalog-tests.lisp",
+        "planning/evidence/legacy-parser-catalog-source.md",
+        "books/legacy-parser-allocation.lisp",
+        "tests/acl2/legacy-parser-allocation-tests.lisp",
+        "planning/evidence/legacy-parser-allocation-source.md"
       ]
     },
     {
@@ -6798,6 +6824,131 @@
         "tests/acl2/history-page-reader-verdict-tests.lisp"
       ],
       "execution_scope": "Scanner component source only; authenticated continuation and host integration remain open."
+    },
+    {
+      "id": "SCN-1012",
+      "title": "Network readiness on the existing owner without a second image process",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "WEB-005"
+      ],
+      "steps": [
+        "Start one scratch native owner with web listener and required authentication.",
+        "Without account or cookies, repeat GET /health and issue HEAD /health on the same owner process.",
+        "Drive reached scheduler full/stalled/slow and deferred/unobserved health observations through the model and parsed HTTP flow."
+      ],
+      "expected": [
+        "Observed ready returns 200 and ready newline; Content-Type plain text, no-store, no cookies, body at most 23 octets.",
+        "HEAD has identical status and Content-Length with empty body; owner PID remains alive/unchanged.",
+        "Full/stalled/deferred/unobserved return 503 by the named observation; slow remains clear under existing health policy.",
+        "No reader open/send, session change or full store/feed report allocation in the composed health step."
+      ],
+      "implementation": {
+        "test": "tests.test_native_web",
+        "cases": [
+          "test_health_is_bounded_readiness_in_the_running_owner_without_login"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "tests/test_native_web.py",
+        "tests/acl2/web-health-tests.lisp",
+        "tests/acl2/web-session-tests.lisp"
+      ],
+      "execution_scope": "Source scheduler and HTTP flow admission only so far. Matching plain/TLS native union and committed certification are pending; unchanged PID alone is not a process-spawn trace."
+    },
+    {
+      "id": "SCN-1021",
+      "title": "Accepted socket service log carries its observed client address once",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "HST-002"
+      ],
+      "steps": [
+        "Start a scratch native owner with configured service log.",
+        "Complete a served POST and a control POST through the existing native profile workflow.",
+        "Inspect the accepted reader connection lines in the same log."
+      ],
+      "expected": [
+        "Each accepted socket line contains exactly one client-address field for actual loopback 127.0.0.1.",
+        "Model IPv4 and expanded IPv6 observations render exactly; malformed observations read unobserved.",
+        "Every complete rendered line contains no CR or LF, even with corrupted peer/address input."
+      ],
+      "implementation": {
+        "test": "tests.test_native_profile",
+        "cases": [
+          "test_posts_land_in_the_configured_log_and_name_the_path_identity"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "tests/test_native_profile.py",
+        "tests/acl2/owner-log-tests.lisp"
+      ],
+      "execution_scope": "Source increment and narrow ACL2 admission pending; matching image/native profile execution is sole-runner owned. Kernel observation truth is outside the logical renderer proof."
+    },
+    {
+      "id": "SCN-1022",
+      "title": "TLS completion installs the outbound nonstreaming feed without a login",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-045",
+        "NNT-048"
+      ],
+      "steps": [
+        "Configure a scratch native owner with one source-address outbound peer, streaming false, no credential, and a pinned STARTTLS destination. Post one article; observe the scripted loopback TLS peer.",
+        "Repeat with implicit TLS, where the peer sends its greeting after the handshake.",
+        "Run the actual owner TLS entry from reachable STARTTLS, implicit, MODE, AUTHINFO and invalid phases; inspect the installed owner, not only the publication word."
+      ],
+      "expected": [
+        "The STARTTLS connection sends STARTTLS, completes one authenticated TLS handshake and sends IHAVE for the posted article on that same connection, with neither AUTHINFO nor MODE STREAM.",
+        "Implicit TLS sends IHAVE only after the protected greeting.",
+        "A ready TLS publication installs the ACL2 connection/form transition; pending and invalid phases leave the owner feed unchanged."
+      ],
+      "evidence": [
+        "tests/owner-feed-tls-ready-host.lsp",
+        "tests/native_feed_service_raw.lisp",
+        "tests/test_native_feed_tls_ready.py"
+      ],
+      "implementation": {
+        "test": "tests.test_native_feed_tls_ready",
+        "cases": [
+          "NativeFeedTlsReadyTests.test_starttls_installs_ready_feed_without_login_or_streaming",
+          "NativeFeedTlsReadyTests.test_implicit_tls_installs_feed_after_greeting"
+        ],
+        "native": true
+      }
+    },
+    {
+      "id": "SCN-1028",
+      "title": "Temporary MODE STREAM 400 backs off and resumes delivery",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-035",
+        "NNT-045"
+      ],
+      "steps": [
+        "Start one scratch native owner and a scripted loopback peer that answers MODE STREAM 400 on three connections, then 203 on the fourth. Post one article."
+      ],
+      "expected": [
+        "No process stop is recorded. The first three connections send no offer; retry delays increase from the configured 1000 ms base to 2000 ms and 4000 ms.",
+        "The fourth connection streams the queued article with CHECK/TAKETHIS; the same owner remains running."
+      ],
+      "evidence": [
+        "tests/test_native_feed_temporary.py",
+        "tests/acl2/feed-connection-tests.lisp"
+      ],
+      "implementation": {
+        "test": "tests.test_native_feed_temporary",
+        "cases": [
+          "NativeFeedTemporaryTests.test_temporary_mode_refusals_back_off_and_then_deliver"
+        ],
+        "native": true
+      }
     }
   ]
 }

@@ -121,10 +121,6 @@
       "class": "unexpected",
       "packet": "PKT-308"
     },
-    "fn-bpnf-find-arrival*1* recursion F": {
-      "class": "unexpected",
-      "packet": "PKT-308"
-    },
     "fn-bpnf-find-held recursion F": {
       "class": "unexpected",
       "packet": "PKT-308"
