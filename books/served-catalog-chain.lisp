@@ -1427,7 +1427,7 @@
    (let* ((w (fn-wire-scan (fn-served-conn-wire conn) i end fn-octets))
           (next (fn-wsp-next w)))
     (if (fn-scr-source-change-eventsp (fn-wsp-events w))
-        (if (or (consp acc) (< 0 consumed))
+        (if (or (consp acc) (posp consumed))
             ; Commit only the prefix/pre-command wire. The speculative parse
             ; is discarded and explicitly paid; next request parses current
             ; unconsumed command bytes again under its current source/policy.
@@ -1495,7 +1495,7 @@
    (let* ((w (fn-wire-scan (fn-served-conn-wire conn) i end fn-octets))
           (next (fn-wsp-next w))
           (changing (fn-scr-source-change-eventsp (fn-wsp-events w))))
-     (if (and changing (or (consp acc) (< 0 consumed)))
+     (if (and changing (or (consp acc) (posp consumed)))
          ; Do not install the scanned wire: the entire command is unconsumed.
          (fn-served-counted-make consumed
            (fn-served-make-result conn (fn-ag-rev-onto acc nil)))
