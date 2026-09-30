@@ -106,8 +106,19 @@ The actual Huffman walker has a separate length-relative code/first/index
 carry. Non-error exits preserve it; every exit, including a bad-code refusal,
 has code <= 32,767, first <= 2,147,319,810, index <= 917,490 and length in1..15.
 Octet-table and natural-bit-count premises were proved redundant for these
-walker facts. Full establishment/preservation of the Huffman and header fields
-through the stored decoder remains open. Guard verification alone does not
+walker facts. `books/payload-window-register-width.lisp` now establishes the
+Huffman carry in the actual initializer and preserves it through the actual
+stored quantum on all exits except `(:refused :bad-code)`. The weaker fixed
+scalar envelope holds on every exit, including that refusal.
+
+The same book establishes actual initializer header carry unconditionally and
+preserves it through stored chunks under the carried fixed table representation:
+mode <=13, remaining stored length <=65,535, distance/preset <=32,768,
+history position <32,768, final/sync marker <=1, symbol <=65,535,
+HLIT <=286, HDIST <=30, HCLEN <=19 and index <=316. Window and output-buffer
+hypotheses were proved redundant for this header carry and removed. The
+fixed table representation is a proof-only boundary predicate; the served
+path does not scan it on every quantum. Guard verification alone does not
 exclude an unbounded corrupted register.
 
 The reviewed profile-arithmetic candidate per chunk plus one budget update,

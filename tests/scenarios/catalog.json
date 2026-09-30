@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6637,17 +6637,22 @@
         "Run actual initializer on corrupted previous bit registers and actual one-byte stored chunk; affirm complete width hypotheses and conclusions.",
         "Remove each retained stored-bit carry hypothesis, distinguishing logical invalid-octet representation from native corrupted state; assert literal conclusion failures.",
         "Check actual suspended and malformed/refused Huffman walks, remove carried registers and non-error premises, and distinguish a bit-count mutation.",
-        "Check an actual consuming input span and both natural-start/order hypothesis removals."
+        "Check an actual consuming input span and both natural-start/order hypothesis removals.",
+        "Run actual stored chunk for whole-quantum Huffman/header carry; affirm strong non-bad-code and all-exit scalar conclusions, each retained hypothesis removal and labelled register mutants.",
+        "Run actual initializer on corrupt prior Huffman/header/preset fields; affirm unconditional postconditions and exact three-byte preset."
       ],
       "expected": [
         "Bit buffer remains at most39bits and exact length-relative Huffman carry is preserved only on non-error exits; every walker exit remains within the stated fixed scalar bounds.",
         "Returned input IP is natural and in the requested span; a reversed or negative logical span is an explicit counterexample outside host guards.",
-        "No selected-runtime allocation bound, native activation, new data ceiling or full old-success guarantee is inferred."
+        "No selected-runtime allocation bound, native activation, new data ceiling or full old-success guarantee is inferred.",
+        "Whole stored quantum preserves header fields under captured table representation; malformed-code exits retain fixed scalar bounds even when the stronger length-relative carry fails."
       ],
       "evidence": [
         "tests/acl2/payload-window-width-tests.lisp",
         "specs/payload-window.md",
-        "planning/evidence/payload-window-width-2026-09-30.md"
+        "planning/evidence/payload-window-width-2026-09-30.md",
+        "tests/acl2/payload-window-register-width-tests.lisp",
+        "planning/evidence/payload-window-register-width-2026-09-30.md"
       ],
       "execution_scope": "Protected source replay only; the codec/runtime/controller/host composition remains open."
     },
