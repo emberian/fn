@@ -72,7 +72,7 @@
 (local
  (defthm fn-authsec-sha256-octets-are-cbor-octets
    (implies (fn-sha256-octet-listp x) (fn-cbor-octet-listp x))
-   :hints (("Goal" :in-theory (enable fn-sha256-octet-listp)))))
+   :hints (("Goal" :in-theory (enable fn-sha256-octet-listp fn-cbor-octet-listp)))))
 
 ; -----------------------------------------------------------------------------
 ; Shapes
@@ -96,11 +96,13 @@
 
 (defthm fn-authsec-octets-is-octet-list
   (and (fn-cbor-octet-listp (fn-authsec-octets x))
-       (true-listp (fn-authsec-octets x))))
+       (true-listp (fn-authsec-octets x)))
+  :hints (("Goal" :in-theory (enable fn-cbor-octet-listp))))
 
 (defthm fn-authsec-octets-is-identity-on-octets
   (implies (fn-cbor-octet-listp x)
-           (equal (fn-authsec-octets x) x)))
+           (equal (fn-authsec-octets x) x))
+  :hints (("Goal" :in-theory (enable fn-cbor-octet-listp))))
 
 (defthm fn-authsec-len-of-octets
   (equal (len (fn-authsec-octets x)) (len x)))
@@ -315,7 +317,8 @@
 ; comparing a record with a password.
 (defthm fn-authsec-verifier-is-not-octets
   (implies (fn-authsec-verifierp v)
-           (not (fn-cbor-octet-listp v))))
+           (not (fn-cbor-octet-listp v)))
+  :hints (("Goal" :in-theory (enable fn-cbor-octet-listp))))
 
 ; K3.  The stored digest is 32 octets whatever the secret is: a stolen
 ; configuration reveals neither the secret nor its length.  Stated as the
