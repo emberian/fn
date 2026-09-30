@@ -86,7 +86,7 @@
       (let* ((entry (car rows))
              (key (if (consp entry) (car entry) nil))
              (row (if (consp entry) (cdr entry) nil)))
-        (or (and (member-equal (fn-prl-nth 1 row) '(:issued :cached :discovery))
+        (or (and (member-equal (fn-prl-nth 1 row) '(:issued :cached :discovery :file-pin))
                  (equal (fn-prl-nth 2 key) file))
             (fn-prl-file-heldp file (cdr rows)))) nil))
 

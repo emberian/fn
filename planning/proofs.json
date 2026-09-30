@@ -17785,7 +17785,7 @@
     {
       "id": "PRF-1057",
       "title": "Issued cold page reads retain identity and worker ownership through cancellation and late completion",
-      "statement": "Host/native/extent.lisp fnn-extent-complete-read calls fn-pio-complete. Publication requires its exact immutable token (process-local read ID, original CID, file incarnation ID, offset, length, expected trailer), phase issued and successful full commitment check, and settles once. fn-pio-cancel retains token and unsettled ownership even after deadline/client loss. fnn-extent-close calls fn-pio-file-clear-p over carried valid ownership rows: every issued/cancelled worker naming a retired file prevents close independently of the arena-reader generation gate. Duplicate/stale completions cannot publish or settle twice. Host OS/thread/mutex/table fidelity is A-HOST; observed worker death and join (or definite failed launch) is required before settlement. Incarnation allocator fn-pio-file-issue derives process-local identities and successive admitted allocations are distinct; a failed open spends its name and invalid carried counter refuses rather than resetting. No funded read-pool admission or memory bound is claimed; repeated detached workers remain P12 open. The operator-funded local file namespace can exhaust before open without wrapping or refunding a spent name; admitted resource-pool tokens establish the identical owned read row and use the ledger’s single counter. These are partial algebra/lifetime subjects; supported profile installation, retained runtime storage and legacy large-frame streaming remain open.",
+      "statement": "Host/native/extent.lisp fnn-extent-complete-read calls fn-pio-complete. Publication requires its exact immutable token (process-local read ID, original CID, file incarnation ID, offset, length, expected trailer), phase issued and successful full commitment check, and settles once. fn-pio-cancel retains token and unsettled ownership even after deadline/client loss. fnn-extent-close calls fn-pio-file-clear-p over carried valid ownership rows: every issued/cancelled worker naming a retired file prevents close independently of the arena-reader generation gate. Duplicate/stale completions cannot publish or settle twice. Host OS/thread/mutex/table fidelity is A-HOST; observed worker death and join (or definite failed launch) is required before settlement. Incarnation allocator fn-pio-file-issue derives process-local identities and successive admitted allocations are distinct; a failed open spends its name and invalid carried counter refuses rather than resetting. No funded read-pool admission or memory bound is claimed; repeated detached workers remain P12 open. The operator-funded local file namespace can exhaust before open without wrapping or refunding a spent name; admitted resource-pool tokens establish the identical owned read row and use the ledger\u2019s single counter. These are partial algebra/lifetime subjects; supported profile installation, retained runtime storage and legacy large-frame streaming remain open.",
       "milestone": "M5",
       "requirements": [
         "STO-017"
@@ -18428,7 +18428,7 @@
         "host/native/extent.lisp",
         "host/native/owner.lisp"
       ],
-      "progress_note": "Clean source sessions: baseline27/pureteeth48/adapter18; selected layout p12layout16forms; discovery p12discovery6forms and p12discoveryteeth16forms; final lifecycle/discovery adapter p12modehostclean26forms, all zero refused. Native configuration/startup and lifetime call sites are separate physical-owner integration; no matching image/native verdict or full Store rescue claim. Native discovery source now reserves before allocation in fnn-extent-entry-fresh and retains its exact lease through the final fn-octets-pub borrow in fnn-owner-release-extents. This covers the protected vector lifetime only; no productive startup or decoded-output funding claim.",
+      "progress_note": "Clean source sessions: baseline27/pureteeth48/adapter18; selected layout p12layout16forms; discovery p12discovery6forms and p12discoveryteeth16forms; final lifecycle/discovery adapter p12modehostclean26forms, all zero refused. Native configuration/startup and lifetime call sites are separate physical-owner integration; no matching image/native verdict or full Store rescue claim. Native discovery source now reserves before allocation in fnn-extent-entry-fresh and retains its exact lease through the final fn-octets-pub borrow in fnn-owner-release-extents. This covers the protected vector lifetime only; no productive startup or decoded-output funding claim. Synchronous verified misses now admit before allocation, hold a local exact I/O row until private read/verifier return, transfer to charged cache, then settle. The existing completion/refund claims apply; full allocator and productive startup obligations remain.",
       "events": [
         "fn-prl-admit-preserves-pool-funding",
         "fn-prl-completion-refunds-at-most-once",
@@ -18487,7 +18487,7 @@
     {
       "id": "PRF-1080",
       "title": "A persistent cold executor owns one fresh charged job until returned exact I/O settlement",
-      "statement": "Subjects fn-pxe-acquire, fn-pxe-return and fn-pxe-commit in books/page-read-executor.lisp, reached by native fnn-extent-executor-acquire, fnn-extent-executor-loop and fnn-extent-executor-commit. The stobj adapter answers and effects are equated by fn-owner-page-executor-acquire-refines-pxe-by-definition and fn-owner-page-executor-commit-refines-pxe-by-definition. Assignment requires an idle worker and a newer read ID, binds each charged token to one executor slot, and preserves permanent baseline. Stale completion cannot return a reused worker. Commit requires returned worker, exact settled I/O and matching ledger slot before refund. Native workers retain stack/runtime allowance; their job activation returns before private result relinquishment is observable, and shutdown joins before shared close. Startup policy/fixed-map demand, direct and compressed reads, and full maintenance rescue remain open; no allocator or full P12 funding claim.",
+      "statement": "Subjects fn-pxe-acquire, fn-pxe-return and fn-pxe-commit in books/page-read-executor.lisp, reached by native fnn-extent-executor-acquire, fnn-extent-executor-loop and fnn-extent-executor-commit. The stobj adapter answers and effects are equated by fn-owner-page-executor-acquire-refines-pxe-by-definition and fn-owner-page-executor-commit-refines-pxe-by-definition. Assignment requires an idle worker and a newer read ID, binds each charged token to one executor slot, and preserves permanent baseline. Stale completion cannot return a reused worker. Commit requires returned worker, exact settled I/O and matching ledger slot before refund. Native workers retain stack/runtime allowance; their job activation returns before private result relinquishment is observable. The private owner transfer activation also returns before refund; readiness exposes no result alias. Shutdown joins before shared close. Startup policy/fixed-map demand, direct and compressed reads, and full maintenance rescue remain open; no allocator or full P12 funding claim.",
       "milestone": "M5",
       "requirements": [
         "STO-020"
@@ -18736,6 +18736,31 @@
         "tests/test_native_web.py"
       ],
       "progress_note": "Clean persvati source roots: oa61-health web-health-tests 25/25; oa61-web-health-ready web-session-tests 125/125 forms, including parsed GET/HEAD/POST, reached unavailable states and literal composed hypothesis-removal teeth; 60/60 named events match the file. Full dependencies loaded in local encapsulates; 18.09 s and 9,881,238 prover steps. Both sessions stopped. Source admission is not committed certification. Matching plain/TLS native web tests remain runner-owned; no lane image/native campaign."
+    },
+    {
+      "id": "PRF-1106",
+      "title": "Exact checkpoint file leases separate physical retention from logical scans",
+      "statement": "Subjects fn-prf-acquire and fn-prf-release in books/page-file-lease.lisp, called by fn-owner-page-file-pin/unpin and native fnn-snapshot-source-root-acquire/release. An admitted exact (:file-pin id file) keeps its registered file incarnation nonclosable and preserves installed pool funding. It consumes one descriptor/retention credit and no execution worker, bounding retained pin rows jointly with registered files. Its permanent baseline survives release; page discovery leases independently hold their file through actual I/O and final buffer borrowing. The root pin names physical retention only: logical view invariants, root/directory/table/data authentication, relocation correspondence and producer activation remain separate. Physical page placement checks the active exact pin/ticket, region-relative fixed page offset and selected signed64 pread representation; it makes no page-content claim. The native bridge is unreachable-in-composition until the producer calls its capture/read/cleanup entries.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020"
+      ],
+      "depends_on": [
+        "PRF-1065"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-prf-acquire-preserves-pool-funding",
+        "fn-prf-acquired-file-is-held"
+      ],
+      "evidence": [
+        "books/page-file-lease.lisp",
+        "host/page-file-lease-host.lisp",
+        "host/native/owner.lisp",
+        "tests/acl2/page-file-lease-tests.lisp"
+      ],
+      "progress_note": "Source library and physical bridge only; no startup activation, native/image execution, bounded page authentication, or full P12 claim. Clean source gates recorded in persistent-cold-executor evidence."
     }
   ]
 }

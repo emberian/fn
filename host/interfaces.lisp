@@ -4810,3 +4810,14 @@
 (definterface fn-web-host-health-observe
   :class :program
   :keystones ((fn-whl-success-requires-observed-clear-owner :via fn-whl-observe)))
+(definterface fn-owner-page-read-settle :class :common-lisp-compliant
+  :keystones ((fn-prl-completion-refunds-at-most-once :via fn-prl-settle)))
+
+(definterface fn-owner-page-file-pin :class :common-lisp-compliant
+  :keystones ((fn-prf-acquire-preserves-pool-funding :via fn-prf-acquire)
+              (fn-prf-acquired-file-is-held :via fn-prf-acquire)))
+(definterface fn-owner-page-file-unpin :class :common-lisp-compliant)
+(definterface fn-hrs-h-file :class :common-lisp-compliant)
+(definterface fn-owner-page-file-pin-file :class :common-lisp-compliant)
+(definterface fn-owner-page-file-pin-read :class :common-lisp-compliant
+  :keystones ((fn-prd-admit-preserves-pool-funding :via fn-prd-admit)))

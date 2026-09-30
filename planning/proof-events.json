@@ -17716,6 +17716,19 @@
           "note": "Q10d reachable live-owner readiness; literal positive and hypothesis-removal teeth in web-health-tests/web-session-tests. Physical observations and no-second-process are native scope, not a theorem."
         }
       ]
+    },
+    {
+      "id": "PRF-1106",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-prf-acquire-preserves-pool-funding"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prf-acquired-file-is-held"
+        }
+      ]
     }
   ]
 }
