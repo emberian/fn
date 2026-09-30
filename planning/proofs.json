@@ -18001,6 +18001,25 @@
         "tests/acl2/nov-column-window-tests.lisp"
       ],
       "progress_note": "Clean persvati REPL: gpt61-nbw4 25/25 forms (21 same +2 macro named forms), gpt61-nbwt4 12/12 (11 named exact), gpt61-nbwc2 10/10 (6 named exact), gpt61-nbwct3 16/16 including actual intern/commit/lookup positive and literal hypothesis removal for F, exact facts and ok. All stopped. Source-dependency loads are not certificates. No host call, qualified image, allocator measurement or completed Q5c/J1 claim. Work/fuel models loop iterations and output length, not measured physical resources. Numeric setup still requires maintained codec/profile premise. Legacy parse/cache hydration remains owned open. The two named library theorems are retained as component evidence, not cited registry events: no served keystone is claimed until the actual host-called byte cursor composes them."
+    },
+    {
+      "id": "PRF-1102",
+      "title": "Bounded current-format history byte decoder and borrowed row abstraction",
+      "statement": "Planned full source-row boundary: authenticated captured history page bytes consumed in bounded ticks decode to a concrete borrowed node whose fn-hdc-abstract equals the actual current fn-scc-decode-tree result, with unchanged root/epoch/lease, exact padding/MKEY refusal and bounded funded storage. Current library components: fn-hdc-number-feed-preserves-value preserves the little-endian residual under positive remaining digits and a natural consumed byte; fn-hdc-number-is-current-codec refines the existing numeric reader including nonminimal spellings. fn-hdc-feed is guard-verified, preserves its fixed-size shape and lifetime fields, and consumes exactly one byte per active call. Payloads remain source spans; a fixed HSTXA comparison avoids arbitrary symbol interning. Full stream semantic inverse, source authentication, funding and actual host composition remain open. This row cites no production event before that boundary exists.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/history-decode-cursor.lisp",
+        "books/history-decode-nodes.lisp",
+        "books/history-decode-stream.lisp",
+        "tests/acl2/history-decode-cursor-tests.lisp",
+        "planning/history-decode-contract.md",
+        "specs/checkpoint.md"
+      ],
+      "progress_note": "Protected source REPL admissions only, no certificate or qualified image. Producer/encoder consume the tagged node API. Numeric residual theorem was weakened after proving cursor shape and upper octet bound redundant to its algebra; execution still requires a valid cursor and octet. General decoder inverse is not established by the finite compatibility witnesses."
     }
   ]
 }
