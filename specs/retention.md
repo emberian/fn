@@ -423,3 +423,17 @@ only for a newly admitted turn; busy callers receive NIL, never the retained
 request's ticket. These guarded source boundaries do not acknowledge a raw
 copy, authorize consumer sequencing or establish custody transfer/settlement.
 Canonical demand and the actual backing association remain activation gates.
+
+The selected copy sequence now has a fixed pending range in the existing turn
+job field. `fn-owner-rx-turn-copy-next` fences provider readiness before it
+returns endpoints, marks the turn `:copy-issued`, and stores start/end/left
+once. Repeated NEXT returns that same range without another fuel charge.
+`fn-owner-rx-turn-copy-ack` accepts exact ticket/pending endpoints and the
+named native copy primitive's outcome. Success requires actual child fill=end,
+marks `:filled`, then publishes capacity4096 last. Uncertainty keeps readiness
+revoked, pending tuple and charge retained, with phase `:cancelled`. All
+consumers must use the exact filled-turn `fn-owner-rx-turn-consumablep` gate;
+its companion source getter derives the retained association. This is neither
+alias settlement nor re-enable after an uncertain turn. The fixed pending
+allocation, primitive callback overlap and actual array observation binding
+remain part of canonical runtime demand/refinement. No return/reset exists.

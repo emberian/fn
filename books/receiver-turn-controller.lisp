@@ -81,7 +81,7 @@
 ; paired gate reads the current fixed turn slot and the same pool. Its carried
 ; association is established by the paired installer and actual begin, not by
 ; equality of a connection id, publication holder, or served-step result.
-(defun fn-rxt-live-claim-p
+(defun fn-rxt-owned-claim-p
  (ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)
  (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
  (let* ((receiver-token (fn-rxp-token fn-rx-provider))
@@ -89,15 +89,12 @@
         (ledger (fn-owner-page-read-ledger fn-page-read-pool))
         (charged (fn-prl-nth 1 ledger)))
   (and (eq (fn-prp-mode fn-page-read-pool) :served)
-       (eq (fn-rxt-phase fn-receiver-turn) :live)
-       (null (fn-rxt-job fn-receiver-turn))
        (consp ticket) (eq (car ticket) :receiver-turn)
        (consp (cdr ticket)) (natp (cadr ticket)) (null (cddr ticket))
        (equal ticket (fn-rxt-ticket fn-receiver-turn))
        (natp (fn-prl-nth 2 ledger))
        (< (cadr ticket) (fn-prl-nth 2 ledger))
        (fn-rxt-installed-anchor-p receiver-token fn-rx-provider fn-receiver-turn)
-       (fn-rxp-currentp receiver-token fn-rx-provider)
        (consp source) (eq (car source) :receiver-source)
        (consp (cdr source)) (equal (cadr source) ticket)
        (consp (cddr source)) (equal (caddr source) receiver-token)
@@ -107,6 +104,13 @@
        (fn-rxt-issued-demandp (fn-rxt-demand fn-receiver-turn))
        (fn-prs-vectorp charged)
        (fn-prs-below (fn-rxt-demand fn-receiver-turn) charged))))
+(defun fn-rxt-live-claim-p
+ (ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)
+ (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
+ (and (eq (fn-rxt-phase fn-receiver-turn) :live)
+      (null (fn-rxt-job fn-receiver-turn))
+      (fn-rxp-currentp (fn-rxp-token fn-rx-provider) fn-rx-provider)
+      (fn-rxt-owned-claim-p ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)))
 (defun fn-owner-rx-turn-fill-range
  (ticket n limits fuel fn-rx-provider fn-receiver-turn fn-page-read-pool)
  (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
@@ -124,6 +128,82 @@
    (fn-owner-rx-turn-begin receiver-token demand fn-rx-provider fn-receiver-turn fn-page-read-pool)
    (mv word (if (eq word :admitted) (fn-rxt-ticket fn-receiver-turn) nil)
        fn-receiver-turn fn-page-read-pool)))
+; One fixed pending tuple per turn. Repeated NEXT reuses it; it does not
+; create another range or consume the quantum a second time. Its allocation
+; and retained callback overlap remain part of canonical demand, not GC credit.
+(defun fn-rxt-pending-rangep (x)
+ (declare (xargs :guard t))
+ (and (consp x) (eq (car x) :receiver-copy)
+      (consp (cdr x)) (equal (cadr x) 0)
+      (consp (cddr x)) (natp (caddr x)) (<= (caddr x) 4096)
+      (consp (cdddr x)) (natp (cadddr x)) (null (cddddr x))))
+(defun fn-owner-rx-turn-copy-next
+ (ticket n limits fuel fn-rx-provider fn-receiver-turn fn-page-read-pool)
+ (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
+ (let ((pending (fn-rxt-job fn-receiver-turn)))
+  (if (and (eq (fn-rxt-phase fn-receiver-turn) :copy-issued)
+           (fn-rxt-owned-claim-p ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)
+           (null (fn-rxp-capacity fn-rx-provider))
+           (fn-rxt-pending-rangep pending)
+           (equal n (caddr pending)))
+      (mv :receive-copy (cadr pending) (caddr pending) (cadddr pending)
+          fn-rx-provider fn-receiver-turn fn-page-read-pool)
+   (mv-let (word start end left fn-rx-provider fn-receiver-turn fn-page-read-pool)
+    (fn-owner-rx-turn-fill-range ticket n limits fuel fn-rx-provider fn-receiver-turn fn-page-read-pool)
+    (if (not (eq word :receive-copy))
+        (mv word start end left fn-rx-provider fn-receiver-turn fn-page-read-pool)
+     (mv-let (fenced fn-rx-provider)
+      (fn-rxp-fence (fn-rxp-token fn-rx-provider) fn-rx-provider)
+      (declare (ignore fenced))
+      (let* ((fn-receiver-turn
+              (update-fn-rxt-job (list :receiver-copy start end left) fn-receiver-turn))
+             (fn-receiver-turn (update-fn-rxt-phase :copy-issued fn-receiver-turn)))
+       (mv :receive-copy start end left fn-rx-provider fn-receiver-turn fn-page-read-pool))))))))
+; This helper is private to the paired ACK below. :copied is the named native
+; primitive's observation after both copy and fill publication return. It is
+; not a caller's alias-joined assertion, and never settles/refunds the turn.
+(defun fn-rxt-copy-publish (end fn-rx-provider fn-receiver-turn)
+ (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn)))
+ (stobj-let ((fn-octets-rx (fn-rxp-octets fn-rx-provider))
+             (fn-rx-carry (fn-rxp-carry fn-rx-provider)))
+            (word fn-rx-carry fn-receiver-turn)
+            (if (equal (fn-octets-rx-len fn-octets-rx) end)
+                (let* ((fn-receiver-turn (update-fn-rxt-phase :filled fn-receiver-turn))
+                       (fn-rx-carry (update-fn-rxc-capacity 4096 fn-rx-carry)))
+                 (mv :receive-recorded fn-rx-carry fn-receiver-turn))
+              (mv :receiver-unavailable fn-rx-carry fn-receiver-turn))
+            (mv word fn-rx-provider fn-receiver-turn)))
+(defun fn-owner-rx-turn-copy-ack
+ (ticket start end outcome fn-rx-provider fn-receiver-turn fn-page-read-pool)
+ (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
+ (let ((pending (fn-rxt-job fn-receiver-turn)))
+  (if (not (and (eq (fn-rxt-phase fn-receiver-turn) :copy-issued)
+                (fn-rxt-owned-claim-p ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)
+                (null (fn-rxp-capacity fn-rx-provider))
+                (fn-rxt-pending-rangep pending)
+                (equal start (cadr pending)) (equal end (caddr pending))))
+      (mv :receiver-unavailable fn-rx-provider fn-receiver-turn fn-page-read-pool)
+   (cond
+    ((eq outcome :uncertain)
+     (let ((fn-receiver-turn (update-fn-rxt-phase :cancelled fn-receiver-turn)))
+      (mv :receive-cancelled fn-rx-provider fn-receiver-turn fn-page-read-pool)))
+    ((eq outcome :copied)
+     (mv-let (word fn-rx-provider fn-receiver-turn)
+       (fn-rxt-copy-publish end fn-rx-provider fn-receiver-turn)
+       (mv word fn-rx-provider fn-receiver-turn fn-page-read-pool)))
+    (t (mv :invalid-receive-outcome fn-rx-provider fn-receiver-turn fn-page-read-pool))))))
+(defun fn-owner-rx-turn-consumablep
+ (ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)
+ (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
+ (and (eq (fn-rxt-phase fn-receiver-turn) :filled)
+      (fn-rxt-pending-rangep (fn-rxt-job fn-receiver-turn))
+      (fn-rxp-currentp (fn-rxp-token fn-rx-provider) fn-rx-provider)
+      (fn-rxt-owned-claim-p ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)))
+(defun fn-owner-rx-turn-consumer-source
+ (ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)
+ (declare (xargs :stobjs (fn-rx-provider fn-receiver-turn fn-page-read-pool)))
+ (if (fn-owner-rx-turn-consumablep ticket fn-rx-provider fn-receiver-turn fn-page-read-pool)
+     (fn-rxt-source fn-receiver-turn) nil))
 (defthm fn-owner-rx-turn-begin-uses-actual-pool-nonce
  (implies
   (equal (mv-nth 0 (fn-owner-rx-turn-begin receiver-token demand fn-rx-provider
@@ -189,4 +269,21 @@
    (fn-owner-rx-turn-fill-range ticket n limits fuel fn-rx-provider fn-receiver-turn fn-page-read-pool)
    (mv :receiver-unavailable 0 0 fuel fn-rx-provider fn-receiver-turn fn-page-read-pool)))
  :hints (("Goal" :in-theory (enable fn-owner-rx-turn-fill-range)))
+ :rule-classes nil)
+(defthm fn-owner-rx-turn-copy-next-revokes-reader-readiness
+ (implies
+  (equal (mv-nth 0 (fn-owner-rx-turn-copy-next ticket n limits fuel
+                       fn-rx-provider fn-receiver-turn fn-page-read-pool)) :receive-copy)
+  (and
+   (null (fn-rxp-capacity
+          (mv-nth 4 (fn-owner-rx-turn-copy-next ticket n limits fuel
+                       fn-rx-provider fn-receiver-turn fn-page-read-pool))))
+   (equal (fn-rxt-phase
+          (mv-nth 5 (fn-owner-rx-turn-copy-next ticket n limits fuel
+                       fn-rx-provider fn-receiver-turn fn-page-read-pool))) :copy-issued)
+   (equal (mv-nth 6 (fn-owner-rx-turn-copy-next ticket n limits fuel
+                       fn-rx-provider fn-receiver-turn fn-page-read-pool)) fn-page-read-pool)))
+ :hints (("Goal" :in-theory (enable fn-owner-rx-turn-copy-next
+   fn-owner-rx-turn-fill-range fn-rxt-live-claim-p fn-rxp-fill-range
+   fn-rxc-fill-range fn-rxp-fence fn-rxc-fence fn-rxp-capacity)))
  :rule-classes nil)
