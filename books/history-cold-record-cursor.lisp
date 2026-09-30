@@ -530,6 +530,13 @@
                    (append (cons 6 (fn-scc-nat-octets (len x))) x)))
    :hints (("Goal" :in-theory (e/d (fn-scc-program)
                                   (fn-scc-octets-valuep fn-scc-atom-octets fn-scc-nat-octets))))))
+(local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
+(local
+ (defthm fn-hrcur-cold-floor-256-lower-bound
+   (implies (natp n) (<= (* 256 (floor n 256)) n))
+   :rule-classes :linear
+   :hints (("Goal" :use ((:instance floor-bounded-by-/ (x n) (y 256)))
+            :in-theory (disable floor floor-bounded-by-/)))))
 (local
  (defthm fn-hrcur-cold-digits-length-bound
    (implies (and (natp n) (natp k) (< n (expt 256 k)))
@@ -545,6 +552,13 @@
                               fn-scc-octet-listp fn-scc-octetp)
                              (fn-scc-le-digits fn-hrcur-cold-digits-length-bound))))))
 
+(local
+ (defthm fn-hrcur-cold-append-associates
+   (equal (append (append x y) z) (append x y z))
+   :rule-classes nil
+   :hints (("Goal" :induct (append x y)
+            :in-theory (enable binary-append)))))
+
 (defthm fn-hrcur-cold-classify-tick-refines-residual
   (implies (and (fn-hrcur-cold-invariantp c pool)
                 (eq (fn-hrcur-field 0 c) :classify))
@@ -555,7 +569,11 @@
            (equal (fn-hrcur-cold-rest c pool) (fn-hrcur-cold-rest next pool)))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-hrcur-dos-tick-preserves-classification (c (fn-hrcur-field 2 c)))
+           :use ((:instance fn-hrcur-cold-append-associates
+                   (x (fn-scc-nat-octets (fn-hrcur-field 3 (fn-hrcur-field 2 c))))
+                   (y (fn-hdc-abstract (fn-hrcur-field 7 c) pool))
+                   (z (fn-hrcur-cold-tasks-rest (fn-hrcur-field 1 c) pool)))
+                 (:instance fn-hrcur-dos-tick-preserves-classification (c (fn-hrcur-field 2 c)))
                  (:instance fn-hrcur-cold-dos-control-unfolds (child (fn-hrcur-field 2 c)))
                  (:instance fn-hrcur-cold-dos-verdicts-unfolds (child (fn-hrcur-field 2 c)))
                  (:instance fn-hrcur-cold-dos-keeps-original-unfolds (child (fn-hrcur-field 2 c)))
@@ -859,7 +877,11 @@
             (fn-hrcur-cold-tick-lawp c pool))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t
-            :use ((:instance fn-hrcur-cold-tasksp-control-unfolds (tasks (fn-hrcur-field 1 c)))
+            :use ((:instance fn-hrcur-cold-append-associates
+                    (x (fn-scc-encode (fn-hdc-abstract (fn-hrcur-field 1 (fn-hrcur-field 1 (car (fn-hrcur-field 1 c)))) pool))) (y (append (fn-scc-encode (fn-hdc-abstract (fn-hrcur-field 2 (fn-hrcur-field 1 (car (fn-hrcur-field 1 c)))) pool)) '(5))) (z (fn-hrcur-cold-tasks-rest (cdr (fn-hrcur-field 1 c)) pool)))
+                  (:instance fn-hrcur-cold-append-associates
+                    (x (fn-scc-encode (fn-hdc-abstract (fn-hrcur-field 2 (fn-hrcur-field 1 (car (fn-hrcur-field 1 c)))) pool))) (y '(5)) (z (fn-hrcur-cold-tasks-rest (cdr (fn-hrcur-field 1 c)) pool)))
+                  (:instance fn-hrcur-cold-tasksp-control-unfolds (tasks (fn-hrcur-field 1 c)))
                   (:instance fn-hrcur-cold-pair-domain-control-unfolds
                     (node (fn-hrcur-field 1 (car (fn-hrcur-field 1 c)))))
                   (:instance fn-hrcur-cold-abstract-pair-unfolds
@@ -1150,6 +1172,18 @@
    :rule-classes nil
    :hints (("Goal" :in-theory (e/d (fn-hrcur-cold-symbol-childp fn-hrcur-cold-symbol-budgetp)
                                    (fn-hdsn-statep fn-hdsn-coherent fn-hdsn-work))))))
+(local
+ (defthm fn-hrcur-cold-nth-zero-is-car
+   (equal (nth 0 x) (car x))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable nth)))))
+
+(local
+ (defthm fn-hrcur-cold-nth-one-is-cadr
+   (equal (nth 1 x) (cadr x))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable nth)))))
+
 (defthm fn-hrcur-cold-symbol-tick-refines-residual
    (implies (and (fn-hrcur-cold-invariantp c pool) (eq (fn-hrcur-field 0 c) :symbol))
      (and (or (eq (mv-nth 0 (fn-hrcur-cold-tick c)) :continue)
@@ -1159,7 +1193,11 @@
                  (fn-hrcur-cold-rest (mv-nth 2 (fn-hrcur-cold-tick c)) pool))))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t
-     :use ((:instance fn-hrcur-cold-symbol-tick-coordinates-unfolds (child (fn-hrcur-field 2 c)))
+     :use ((:instance fn-hrcur-cold-nth-zero-is-car
+             (x (mv-nth 0 (fn-hdsn-tick (fn-hrcur-field 2 c)))))
+           (:instance fn-hrcur-cold-nth-one-is-cadr
+             (x (mv-nth 0 (fn-hdsn-tick (fn-hrcur-field 2 c)))))
+           (:instance fn-hrcur-cold-symbol-tick-coordinates-unfolds (child (fn-hrcur-field 2 c)))
            (:instance fn-hrcur-cold-symbol-control-unfolds (child (fn-hrcur-field 2 c)))
            (:instance fn-hrcur-cold-name-length-unfolds (node (fn-hrcur-field 7 c)))
            (:instance fn-hrcur-cold-symbol-tick-child-unfolds (child (fn-hrcur-field 2 c)))
@@ -1174,7 +1212,8 @@
              (capture (fn-hrcur-field 4 c)) (lease (fn-hrcur-field 5 c))))
      :in-theory (e/d (fn-hrcur-cold-invariantp fn-hrcur-cold-tick fn-hrcur-cold-state
                       fn-hrcur-cold-rest fn-hrcur-cold-demand fn-hrcur-cold-field-is-nth)
-                     (fn-hrcur-cold-symbol-childp fn-hrcur-cold-symbol-budgetp fn-hdsn-work
+                     (nth length fn-scc-octet-listp
+                      fn-hrcur-cold-symbol-childp fn-hrcur-cold-symbol-budgetp fn-hdsn-work
                       fn-hrcur-cold-tasksp fn-hrcur-cold-tasks-rest fn-hrcur-cold-domainp fn-hrcur-cold-name
                       fn-hrcur-cold-name-length-unfolds fn-hrcur-cold-symbol-tick-child-unfolds
                       fn-hrcur-cold-symbol-tick-verdict-unfolds fn-hdsn-tick fn-hdsn-denote fn-hdsn-coherent
@@ -1196,7 +1235,8 @@
  (defthm fn-hrcur-cold-nth-take-unfolds
    (implies (and (natp i) (natp n) (< i n))
      (equal (nth i (take n xs)) (nth i xs)))
-   :hints (("Goal" :induct (fn-hrcur-cold-take-induct i n xs) :in-theory (enable nth take)))))
+   :hints (("Goal" :induct (fn-hrcur-cold-take-induct i n xs)
+            :expand ((take n xs)) :in-theory (enable nth take)))))
 (local
  (defthm fn-hrcur-cold-nth-tail-unfolds
    (implies (and (natp off) (natp i))
@@ -1278,6 +1318,8 @@
                  (cadr (mv-nth 0 (fn-hdsn-tick (fn-hrcur-field 2 c)))))))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t
+     :use ((:instance fn-hrcur-cold-nth-one-is-cadr
+             (x (mv-nth 0 (fn-hdsn-tick (fn-hrcur-field 2 c))))))
      :in-theory (e/d (fn-hrcur-cold-tick fn-hrcur-cold-demand fn-hrcur-cold-field-is-nth)
                      (fn-hdsn-tick fn-hrcur-cold-symbol-childp))))))
 (local
@@ -1304,7 +1346,8 @@
           (:instance fn-hrcur-cold-pool-byte))
     :in-theory (e/d (fn-hrcur-cold-invariantp
                      fn-hrcur-cold-countp fn-hrcur-cold-field-is-nth)
-                    (fn-hrcur-cold-symbol-childp fn-hrcur-cold-symbol-budgetp fn-hdsn-work
+                    (nth char length fn-scc-octetp
+                     fn-hrcur-cold-symbol-childp fn-hrcur-cold-symbol-budgetp fn-hdsn-work
                      fn-hrcur-cold-domainp fn-hrcur-cold-name fn-hrcur-cold-tasksp
                      fn-hrcur-cold-tick fn-hdsn-tick fn-hdsn-statep fn-hdsn-state-fields fn-hdsn-coherent
                      fn-hdsn-denote fn-hdsn-classify-name fn-hdsn-begin
