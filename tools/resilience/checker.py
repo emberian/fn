@@ -528,8 +528,18 @@ def check_bp_slice_observations(journal, *, expected_source, budget=None):
     events["post-observed"] = [r for r in observations if r["event"] == "post-observed"]
     if events["fixture"].get("source") != expected_source:
         return Verdict("harness-failure", cause="fixture-source-mismatch", **base).sign()
+    environment_faults = [r for r in journal.of_kind("environment") if r.get("event") == "slice-fault-fact"]
+    expected_faults = {
+        "decision-cut-readback": events["decision-cut-readback"].get("fault"),
+        "outbox-process-death": {key: events["outbox-process-death"][key] for key in ("exit_code", "held_stdout", "selector", "value") if key in events["outbox-process-death"]},
+        "receipt-contact-uncertain": events["receipt-contact-uncertain"].get("relay_faults"),
+        "checkpoint-stage-cut": events["checkpoint-stage-cut"].get("fault"),
+    }
+    if (len(environment_faults) != 4 or
+            {r.get("operation"): r.get("facts") for r in environment_faults} != expected_faults):
+        return Verdict("harness-failure", cause="slice-environment-fault-facts-missing-or-inconsistent", **base).sign()
     try:
-        violation = bp_slice_contract.obligations(events)
+        violation = bp_slice_contract.obligations(events) or bp_slice_contract.fault_observations(events)
     except (KeyError, bp_slice_contract.MissingObservation) as error:
         return Verdict("harness-failure", cause="missing-slice-fact:" + str(error), **base).sign()
     if violation:

@@ -51,6 +51,17 @@ class SliceObserver:
             if (not isinstance(source, str) or len(source) != 40 or
                     any(c not in "0123456789abcdef" for c in source)):
                 raise ValueError("missing validated image source coordinate")
+        # Fault facts stay in the environment history. They never establish
+        # a client promise even when collected alongside a served readback.
+        fault = None
+        if event in ("decision-cut-readback", "checkpoint-stage-cut"):
+            fault = values.get("fault")
+        elif event == "outbox-process-death":
+            fault = {key: values[key] for key in ("exit_code", "held_stdout", "selector", "value") if key in values}
+        elif event == "receipt-contact-uncertain":
+            fault = values.get("relay_faults")
+        if fault is not None:
+            self.journal.environment("slice-fault-fact", operation=event, facts=encode(fault))
         self.journal.append(OBSERVATION_KINDS[event], event=event, **encode(values))
         self.seen.append(event)
 

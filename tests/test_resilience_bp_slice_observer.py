@@ -59,7 +59,14 @@ class SliceSemanticTests(unittest.TestCase):
             ("checkpoint-complete-readback", dict(exit_code=0, octets=b"stored")),
             ("retirement-frozen-report", dict(exit_code=0, report=b"obligation id=forward-unrelated kind=forward\n", stdout=b"obligation id=forward-unrelated kind=forward\n")),
         ]
+        facts = {
+            "decision-cut-readback": dict(fault=dict(exit_code=-9, held_stdout=b"BP APP DECISION DURABLE", selector="FN_BP_APP_TEST_PAUSE_AFTER_DECISION", value="1")),
+            "outbox-process-death": dict(held_stdout=b"BP NODE OUTBOX DURABLE", selector="FN_BP_NODE_TEST_PAUSE_AFTER_OUTBOX", value="1"),
+            "checkpoint-stage-cut": dict(fault=dict(exit_code=-9, held_stdout=b"BP journal rotation stopped at=stage", selector="FN_BP_ROTATION_TEST_STOP", value="stage")),
+            "receipt-contact-uncertain": dict(relay_faults=[dict(event="byte-limit-severed", forwarded=80, limit=80, send_succeeded=True)]),
+        }
         for event, fields in records:
+            fields.update(facts.get(event, {}))
             observer(event, **fields)
         observer.journal.environment("image-artifact-coordinate", images=[
             dict(source="a" * 40, manifest_sha256="b" * 64, launcher="synthetic-nntp", manifest="synthetic-set/MANIFEST.json"),
@@ -136,3 +143,20 @@ class SliceImagePreflightTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "differs from expected source"):
                 run_fixture("unused.jsonl", "a" * 40)
             fixture.assert_not_called()
+
+
+class FaultFactTests(SliceSemanticTests):
+    def test_missing_actual_sever_fails_closed(self):
+        journal = self.journal()
+        record = next(r for r in journal.records if r.get("event") == "receipt-contact-uncertain")
+        record.pop("relay_faults")
+        self.assertEqual(self.check(journal).kind, "harness-failure")
+
+    def test_selector_without_death_is_named_violation(self):
+        journal = self.journal()
+        record = next(r for r in journal.records if r.get("event") == "outbox-process-death")
+        record["exit_code"] = 0
+        next(r for r in journal.records if r.get("event") == "slice-fault-fact" and r.get("operation") == "outbox-process-death")["facts"]["exit_code"] = 0
+        verdict = self.check(journal)
+        self.assertEqual(verdict.kind, "violation")
+        self.assertEqual(verdict.cause, "intended-process-death-observed")

@@ -101,3 +101,29 @@ def obligations(events):
     if report not in octets(retirement, "stdout"):
         return "retirement-report-frozen", "returned report differs from retained report bytes"
     return None
+
+
+def fault_observations(events):
+    """A configured selector is insufficient; require observed kill/hold/sever."""
+    decision = events["decision-cut-readback"].get("fault")
+    checkpoint = events["checkpoint-stage-cut"].get("fault")
+    outbox = events["outbox-process-death"]
+    for name, row, selector, value, marker in (
+        ("application", decision, "FN_BP_APP_TEST_PAUSE_AFTER_DECISION", "1", b"BP APP DECISION DURABLE"),
+        ("outbox", outbox, "FN_BP_NODE_TEST_PAUSE_AFTER_OUTBOX", "1", b"BP NODE OUTBOX DURABLE"),
+        ("checkpoint", checkpoint, "FN_BP_ROTATION_TEST_STOP", "stage", b"BP journal rotation stopped at=stage")):
+        if not isinstance(row, dict) or type(row.get("exit_code")) is not int:
+            raise MissingObservation(name + ": observed process death missing")
+        if row.get("selector") != selector or row.get("value") != value:
+            raise MissingObservation(name + ": exact held selector missing")
+        if row["exit_code"] != -9 or marker not in octets(row, "held_stdout"):
+            return "intended-process-death-observed", "kill or held point was not observed at " + name
+    relay = events["receipt-contact-uncertain"].get("relay_faults")
+    if not isinstance(relay, list) or not relay:
+        raise MissingObservation("receipt: actual relay sever observation missing")
+    if not any(isinstance(row, dict) and row.get("event") == "byte-limit-severed"
+               and type(row.get("forwarded")) is int and row["forwarded"] == 80
+               and type(row.get("limit")) is int and row["limit"] == 80
+               and row.get("send_succeeded") is True for row in relay):
+        return "intended-contact-cut-observed", "configured receipt cut was not confirmed by actual send/sever"
+    return None
