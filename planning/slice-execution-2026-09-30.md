@@ -70,3 +70,60 @@ The selected [reference-aware writer contract](checkpoint-reference-cursor-2026-
 preserves exact schema-3 bytes, candidate order and composite payload meaning,
 using resumable reference comparison, census, emission and framing. Its
 funding joins the same maintenance authority; source design is not completion.
+
+## Shared compiled-runtime accounting
+
+The runtime owner supplies one reusable primitive table, rather than a new
+whole-job adequacy assumption for each caller. Its coordinate binds the runtime
+and layout, implementation source, ACL2/compiler toolchain and compilation
+policy, and the actual attachment/extent/paged representation. Input,
+intermediate and result integer domains are explicit. The selected constructor
+layout charges cells; signed negation and addition have separate pre-normalization
+allocation bounds. A source binary subtraction counts both lowered operations.
+The proposed 16-byte cell and 32-byte NEG/ADD rows remain conditional on that
+selected primitive contract and its domain; they are not a completed native
+workspace claim.
+
+Each operation owner proves its actual constructor and lowered-operation counts
+and supplies its retained-state roster. First-use work, caches, TLS, stack frames,
+fault construction and physical arena capacity remain separate obligations.
+Allocated-object bounds do not establish garbage collection or release of retained
+capacity. All callers use the same installed baseline U and outstanding charge C;
+definitely installed capacity transfers from C to U before the remaining job
+credit is released. The compiled observations must use the attachment before
+the generic arena is introduced. A generic list-backed observation does not
+qualify the native paged/extent path.
+
+## Core-held render plans
+
+The selected OVER route keeps each response's plan in a private concrete holder.
+The actual logical read producer, `fn-mca-read-span`, establishes its effects and
+the matching source/pin/query grant in a composed core operation. The program
+wrapper threads that holder; it does not install a host-supplied plan. Actual
+outcome, exposure and redeem transitions attach their own tails. Subsequent
+positioning, window and byte entries receive the holder stobj and bounded
+primitive inputs, with establishment and preservation over that same state.
+The existing `:raw-with` rejection of unchecked host plan arguments remains.
+A host `:ready` word and startup guard-cache preparation do not establish a
+per-call plan invariant. Holder construction, registration and retained capacity
+are funded through the shared pool before allocation.
+
+## Resumable admission and canonical row offers
+
+Admission retains its durable feed-intent phase, evidence, generation and
+transaction identity across query yields. Resumption does not write the intent
+again or publish a resolution before a terminal result. A yielded query keeps
+its wake-up and open input charge; an empty commit-member list does not establish
+that those resources may be settled. Before prepare/reservation, the owner either
+revalidates the captured catalog and authority coordinates under its lock or
+proves that its retained leases exclude every relevant intervening writer.
+Changed coordinates restart or reconcile the job rather than reusing absence.
+
+Snapshot census and emission both offer canonically remapped rows. Event ordinal
+and target payload handle are different counters: only payload-sealing held or
+composite rows consume the next handle. Both passes restart the same immutable
+source and counter state; retrying an offer before its acknowledgement does not
+advance twice. Tests include mixed event kinds and a handle-width change.
+The original row remains available for the outer P wire projection, while the
+remapped row supplies the new history image. Complete metadata tails, including
+the mandatory binding field, survive both resident and borrowed remapping.
