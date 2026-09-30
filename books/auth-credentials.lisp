@@ -181,4 +181,3 @@
        (booleanp (fn-auth-config-protected-onlyp x))
        (booleanp (fn-auth-config-tls-availablep x))
        (fn-auth-cred-listp (fn-auth-config-creds x))))
-
