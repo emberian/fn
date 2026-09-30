@@ -655,6 +655,11 @@
     "books/bp-node-machine-authorization",
     "tests/acl2/bp-node-machine-tests",
     "books/bp-node-foundation",
+    "books/bp-handoff-recovery-shape",
+    "books/bp-handoff-producer-shape",
+    "books/bp-handoff-recovery-refinement",
+    "tests/acl2/bp-checkpoint-recovery-symbol-tests",
+    "tests/acl2/bp-handoff-producer-shape-tests",
     "tests/acl2/bp-node-foundation-tests",
     "books/bp-node-fragment-family",
     "tests/acl2/bp-node-fragment-family-tests",
@@ -1807,17 +1812,17 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1888,
-    "books_in_root_closure": 1871,
-    "roots": 1803,
-    "theorems": 29777,
-    "functions": 19076,
-    "assert_events": 24018,
+    "books": 1893,
+    "books_in_root_closure": 1876,
+    "roots": 1808,
+    "theorems": 29785,
+    "functions": 19084,
+    "assert_events": 24023,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
-      "verified": 3522,
+      "verified": 3530,
       "declared-off": 2277,
       "default-guarded": 10421,
       "default-unguarded": 2856
@@ -1826,7 +1831,7 @@
     "export_hygiene_warnings": 350,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2557,
+    "include_hygiene_warnings": 2562,
     "host_names_warnings": 2193,
     "hand_written_record_warnings": 18
   },
@@ -4373,6 +4378,85 @@
       "read_error": null
     },
     {
+      "book": "books/bp-handoff-producer-shape.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 2,
+      "guards": {
+        "verified": 2,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 2,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-handoff-recovery-shape",
+        "bp-node-foundation"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-handoff-recovery-refinement.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-node-foundation"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-handoff-recovery-shape.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 6,
+      "guards": {
+        "verified": 6,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 6,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-node-machine"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/bp-handoff-report.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -5073,6 +5157,7 @@
       "encapsulates": 0,
       "includes": [
         "bp-adu",
+        "bp-handoff-recovery-shape",
         "bp-node-machine",
         "bp-signed-receipt"
       ],
@@ -35071,6 +35156,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/bp-checkpoint-recovery-symbol-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-node-rotation"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/bp-clock-domain-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -35965,6 +36076,33 @@
       "suspects": [
         "fn-bpf-fragment-block-preserves-adu-key-for-any-object"
       ],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bp-handoff-producer-shape-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-handoff-producer-shape",
+        "../../books/bp-node-rotation"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -71671,6 +71809,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/bp-handoff-producer-shape.lisp",
+        "line": 5,
+        "include": "bp-handoff-recovery-shape",
+        "included": "books/bp-handoff-recovery-shape.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/bp-handoff-status.lisp",
         "line": 6,
         "include": "bp-app-handoff",
@@ -71808,6 +71953,13 @@
         "line": 9,
         "include": "bp-node-forward-retry",
         "included": "books/bp-node-forward-retry.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-node-foundation.lisp",
+        "line": 6,
+        "include": "bp-handoff-recovery-shape",
+        "included": "books/bp-handoff-recovery-shape.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -78776,6 +78928,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/bp-checkpoint-recovery-symbol-tests.lisp",
+        "line": 5,
+        "include": "../../books/bp-node-rotation",
+        "included": "books/bp-node-rotation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/bp-clock-domain-tests.lisp",
         "line": 4,
         "include": "must-fail-checked",
@@ -79354,6 +79513,20 @@
         "line": 10,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-handoff-producer-shape-tests.lisp",
+        "line": 3,
+        "include": "../../books/bp-handoff-producer-shape",
+        "included": "books/bp-handoff-producer-shape.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-handoff-producer-shape-tests.lisp",
+        "line": 4,
+        "include": "../../books/bp-node-rotation",
+        "included": "books/bp-node-rotation.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

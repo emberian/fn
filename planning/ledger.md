@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1888 |
-| Certification roots in the Makefile | 1803 |
-| Books inside the root closure | 1871 |
-| `defthm` and `defthmd` events | 29777 |
-| `defun` events | 19076 |
-| Functions with verified guards | 3522 |
+| Books read | 1893 |
+| Certification roots in the Makefile | 1808 |
+| Books inside the root closure | 1876 |
+| `defthm` and `defthmd` events | 29785 |
+| `defun` events | 19084 |
+| Functions with verified guards | 3530 |
 | Functions declared `:verify-guards nil` and never verified | 2277 |
 | Functions left at the default with an explicit guard | 10421 |
 | Functions left at the default with no guard | 2856 |
-| `assert-event` checks | 24018 |
+| `assert-event` checks | 24023 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 350 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2557 |
+| Include-hygiene warnings | 2562 |
 | Host-names warnings | 2193 |
 | Hand-written-record warnings | 18 |
 
@@ -176,6 +176,9 @@ that `make certify` requests.
 | `books/bp-fragment-send.lisp` | root | 98 | 20 | 8/4/8/0 | 0 | 0 | 10 |
 | `books/bp-fragment-sweep.lisp` | root | 56 | 24 | 8/5/11/0 | 0 | 0 | 0 |
 | `books/bp-fragment.lisp` | root | 6 | 36 | 35/1/0/0 | 0 | 0 | 0 |
+| `books/bp-handoff-producer-shape.lisp` | root | 3 | 2 | 2/0/0/0 | 0 | 0 | 0 |
+| `books/bp-handoff-recovery-refinement.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/bp-handoff-recovery-shape.lisp` | root | 2 | 6 | 6/0/0/0 | 0 | 0 | 0 |
 | `books/bp-handoff-report.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-handoff-status.lisp` | root | 6 | 6 | 6/0/0/0 | 0 | 0 | 0 |
 | `books/bp-held-payload.lisp` | root | 8 | 2 | 0/0/2/0 | 0 | 0 | 0 |
@@ -1199,6 +1202,7 @@ that `make certify` requests.
 | `tests/acl2/bp-carry-control-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 27 | 1 | 0 |
 | `tests/acl2/bp-carry-waiver-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 45 | 2 | 0 |
 | `tests/acl2/bp-channel-ingress-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 6 | 0 |
+| `tests/acl2/bp-checkpoint-recovery-symbol-tests.lisp` | root | 2 | 0 | 0/0/0/0 | 1 | 0 | 0 |
 | `tests/acl2/bp-clock-domain-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 26 | 3 | 0 |
 | `tests/acl2/bp-contact-service-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 4 | 0 |
 | `tests/acl2/bp-evidence-host-names-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 1 | 0 |
@@ -1231,6 +1235,7 @@ that `make certify` requests.
 | `tests/acl2/bp-fragment-send-tests.lisp` | root | 0 | 11 | 0/0/1/10 | 33 | 12 | 0 |
 | `tests/acl2/bp-fragment-sweep-tests.lisp` | root | 2 | 3 | 0/1/2/0 | 18 | 1 | 0 |
 | `tests/acl2/bp-fragment-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 88 | 0 | 1 |
+| `tests/acl2/bp-handoff-producer-shape-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/bp-handoff-report-tests.lisp` | root | 0 | 8 | 0/8/0/0 | 10 | 1 | 0 |
 | `tests/acl2/bp-handoff-status-tests.lisp` | root | 0 | 3 | 0/1/1/1 | 18 | 3 | 0 |
 | `tests/acl2/bp-held-payload-tests.lisp` | root | 5 | 3 | 0/2/1/0 | 2 | 2 | 0 |
