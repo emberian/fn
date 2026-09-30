@@ -1,6 +1,7 @@
 # Authenticated remote consumers: implementation plan
 
-Source coordinate: `b6dac49d2` plus the stale-ACK scenario increment.
+Source components: `e6d11b780` (FNCR request codec), `4442f3d23`
+(remote10 CP metadata kernel), integrated with origin/dev in `7e67fcb59`.
 Authority: [PKT-673](decisions.md#2026-09-29-authenticated-remote-consumers-pkt-673).
 This is a concrete implementation plan for PKT-255, not a claim that the
 remote endpoint or multi-group profile exists. The selected consumer contract
@@ -47,14 +48,13 @@ The query's admitted size and representation must come from the supported
 operator profile and funded request/work budgets. Do not silently use the
 cursor ID's 64-octet field as a ceiling on encoded group names.
 
-Persist a query definition before a consumer registration may reference it.
-The ID must resolve to exactly that definition after replay; an unreferenced
-committed definition creates no acknowledgement or processing claim. Retries
-must reuse the definition and registration instead of allocating a new query
-or registration epoch on each uncertain response. No accepted registration
-may reference an uncommitted definition. Choosing the concrete config/event
-schema is the next implementation step and must be announced to the snapshot
-owner before changing its projection.
+Persist the immutable query definition atomically inside registration/rebase,
+using the remote operation9 and entry10 schema below. The opaque ID must
+resolve to exactly that definition after replay. Retries reuse an identical
+definition and registration without allocating another epoch after uncertain
+responses. No accepted registration may reference an uncommitted definition.
+The logical schema is selected; the durable codec, actual charge and authority
+producer remain to be implemented together.
 
 The caller never supplies authoritative query/view versions. ACL2 derives
 them from committed context. A change that may reveal an old article changes
@@ -159,3 +159,13 @@ existing durable codec still rejects these new tags. The generic CP state
 retains its six fields. The size-carry owner has the exact proposed schema and
 requires constructor child carries for the variable group tree, not a later
 whole-tree size walk.
+
+
+## Execution transfer and remaining design boundary
+
+Execution is handed to Sol at the clean checkpoint above. The exact next
+source edits and unresolved architectural choices are recorded in
+[consumer-remote-execution-handoff](consumer-remote-execution-handoff.md).
+These components do not make a durable remote event reachable. Do not connect
+the listener or allow CPE remote tags until actual charge admission and current
+account/view authority have a complete carried-state contract.
