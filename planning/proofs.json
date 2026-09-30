@@ -18040,9 +18040,10 @@
         "planning/evidence/history-page-reader-verdict-source-2026-09-30.json",
         "books/history-page-reader-io.lisp",
         "tests/acl2/history-page-reader-io-tests.lisp",
-        "planning/evidence/history-page-reader-io-source-2026-09-30.json"
+        "planning/evidence/history-page-reader-io-source-2026-09-30.json",
+        "planning/evidence/history-page-reader-io-flat-source-2026-09-30.json"
       ],
-      "progress_note": "First scanner component: clean protected persvati hsread2 source-dependency replay, proper local scope; 41 test forms loaded, 28 literal assertions passed; static teeth and narrow theory checks green. Runtime scanner functions guard verified. No full authentication, certificate, host or native claim. Canonical-verdict increment: clean proper-local hsrcanon2, 17 test forms / 11 assertions, 4.89 ACL2 seconds / 1,676,570 steps. Redundant stream length premise proved removable; short I/O is a separate continuation obligation. I/O increment: guarded functions, clean proper-local hsio2, 33 test forms / 20 assertions, 2.16 ACL2 seconds / 938,988 steps. Resource ID0 is admitted; NIL is the no-borrow sentinel. Actual root/digest/host composition remains open."
+      "progress_note": "First scanner component: clean protected persvati hsread2 source-dependency replay, proper local scope; 41 test forms loaded, 28 literal assertions passed; static teeth and narrow theory checks green. Runtime scanner functions guard verified. No full authentication, certificate, host or native claim. Canonical-verdict increment: clean proper-local hsrcanon2, 17 test forms / 11 assertions, 4.89 ACL2 seconds / 1,676,570 steps. Redundant stream length premise proved removable; short I/O is a separate continuation obligation. I/O increment: guarded functions, clean proper-local hsio2, 33 test forms / 20 assertions, 2.16 ACL2 seconds / 938,988 steps. Resource ID0 is admitted; NIL is the no-borrow sentinel. Actual root/digest/host composition remains open. hsio3 strengthens pending request guard to fixed scalar nine-field shape; same20 witnesses green,1.79s/1099638steps."
     },
     {
       "id": "PRF-1087",

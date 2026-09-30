@@ -99,3 +99,9 @@ unresolved join retains the pending request and physical charge. Release in
 the logical continuation is an acknowledgement after physical settlement and
 alias clearance, never a refund operation. Every transition preserves captured
 root ticket, epoch and opaque capture/lease references.
+
+The pending request recognizer checks exactly nine scalar fields, including
+phase, length and ACL2-computed offset. Completion equality therefore compares
+a fixed flat packet under the executable outer guard; it cannot walk nested
+caller data retained as a malformed pending request. Opaque capture and lease
+references are carried, never traversed by that comparison.

@@ -7,6 +7,16 @@
 ; mode,ticket,epoch,next serial,pending request,borrow ID,capture,lease,cancel.
 ; The exact registered incarnation and physical buffer remain in the caller's
 ; ledger. Scalar IDs distinguish them without retaining/traversing file paths.
+(defun fn-hsr-io-requestp (request)
+  (declare (xargs :guard t))
+  (and (fn-hsr-widthp request 9) (equal (fn-hsr-field 0 request) :read-page)
+       (natp (fn-hsr-field 1 request)) (natp (fn-hsr-field 2 request))
+       (natp (fn-hsr-field 3 request))
+       (member-eq (fn-hsr-field 4 request) '(:directory :table :data))
+       (natp (fn-hsr-field 5 request)) (natp (fn-hsr-field 6 request))
+       (equal (fn-hsr-field 6 request) (* 16384 (fn-hsr-field 5 request)))
+       (equal (fn-hsr-field 7 request) 16384) (natp (fn-hsr-field 8 request))))
+
 (defun fn-hsr-io-shapep (c)
   (declare (xargs :guard t))
   (and (fn-hsr-widthp c 9)
@@ -14,7 +24,7 @@
        (natp (fn-hsr-field 1 c)) (natp (fn-hsr-field 2 c))
        (natp (fn-hsr-field 3 c))
        (or (null (fn-hsr-field 5 c)) (natp (fn-hsr-field 5 c)))
-       (or (not (fn-hsr-field 4 c)) (fn-hsr-widthp (fn-hsr-field 4 c) 9))
+       (or (not (fn-hsr-field 4 c)) (fn-hsr-io-requestp (fn-hsr-field 4 c)))
        (booleanp (fn-hsr-field 8 c))))
 
 (defun fn-hsr-io-begin (ticket epoch capture lease)
@@ -236,6 +246,6 @@
            :in-theory (enable fn-hsr-io-shapep fn-hsr-io-complete
                               fn-hsr-io-release fn-hsr-io-cancel fn-hsr-io-request))))
 
-(in-theory (disable fn-hsr-io-shapep fn-hsr-io-begin fn-hsr-io-request fn-hsr-io-complete
+(in-theory (disable fn-hsr-io-requestp fn-hsr-io-shapep fn-hsr-io-begin fn-hsr-io-request fn-hsr-io-complete
                     fn-hsr-io-cancel fn-hsr-io-release fn-hsr-io-invariantp
                     fn-hsr-io-joined-failure fn-hsr-io-identities))
