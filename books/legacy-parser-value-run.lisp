@@ -36,7 +36,7 @@
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (e/d (fn-lpv-value-state-p) (fn-nlv-run-phase-is-control-run-phase)))))
 
-(local (defthm fn-lpv-run-atom
+(local (defthm fn-lpv-run-atom-by-definition
   (implies (not (consp bytes)) (equal (fn-nlv-run bytes s pos h pin) s))
   :hints (("Goal" :in-theory (e/d (fn-nlv-run) (fn-nlv-run-phase-is-control-run-phase))))))
 

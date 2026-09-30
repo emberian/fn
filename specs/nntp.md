@@ -1958,6 +1958,35 @@ measurements remain open. The source stores fixed-size
 records and source references and reports raw-byte work; that statement
 alone is not a physical allocation or latency qualification.
 
+The analysis-only `fn-lpa-tick-conses` source observer counts transient
+constructor sites, including closing span and copied fields spines, and
+tracks the actual tick's arena reads/transitions. Its demand is at most
+`4 + 39 * actual-work`, hence `4 + 39 * fuel` for natural fuel. This bound
+covers that structural CONS inventory, not compiled allocator behavior,
+integer buffers, stack, first-use state or native call wrappers. A selected
+runtime refinement and actual funding/served composition remain open.
+
+
+`fn-lps-scalars-p` is a carried logical invariant, established by begin and
+preserved by the actual byte transition and tick. Header line count and body
+count are natural and bounded by consumed source position; value start, last
+end and spans retain the existing source bounds. Under this invariant, the
+cheap ready guard and a supported source-length bound, the actual tick's
+position, header count/start/end and body count fit that bound. Its returned
+consumed/work fit the supported quantum bound. These parameterized source
+results add no admission ceiling and do not select a machine fixnum width or
+establish compiler, primitive workspace, stack or allocation correspondence.
+
+
+The proof-only `fn-lpr-prefix-p` ties the resumed cursor to the exact consumed
+prefix of its immutable full source, from the same handle/length/origin pin.
+Begin establishes it, and actual arena ticks with fuel one preserve it under
+exact selected-source binding. Under this carried correspondence, a nonyield
+verdict implies equality with the complete source feed. Rejected header grammar
+still yields until EOF because independent body facts require the remaining
+source bytes. This theorem enables repeated scheduling steps to use the full
+catalog equation; the predicate itself is never evaluated on the served path.
+Actual consumer reply refinement and runtime funding remain separate obligations.
 
 
 ## Public exposure (NNT-031)
