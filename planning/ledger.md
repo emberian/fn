@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1971 |
 | Certification roots in the Makefile | 1866 |
 | Books inside the root closure | 1938 |
-| `defthm` and `defthmd` events | 30194 |
+| `defthm` and `defthmd` events | 30199 |
 | `defun` events | 19261 |
 | Functions with verified guards | 3545 |
 | Functions declared `:verify-guards nil` and never verified | 2341 |
@@ -716,7 +716,7 @@ that `make certify` requests.
 | `books/over-row-piece-shape.lisp` | closure | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/over-row-pieces.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/over-row-state.lisp` | closure | 0 | 4 | 0/0/4/0 | 0 | 0 | 0 |
-| `books/over-selected-held-cell.lisp` | - | 7 | 4 | 1/0/3/0 | 0 | 0 | 0 |
+| `books/over-selected-held-cell.lisp` | - | 8 | 4 | 1/0/3/0 | 0 | 0 | 0 |
 | `books/over-window.lisp` | root | 30 | 6 | 1/3/2/0 | 0 | 0 | 0 |
 | `books/owner-ack-after-barrier.lisp` | root | 34 | 27 | 0/1/26/0 | 0 | 0 | 3 |
 | `books/owner-advance-carried.lisp` | root | 33 | 7 | 0/2/5/0 | 0 | 0 | 0 |
@@ -1688,7 +1688,7 @@ that `make certify` requests.
 | `tests/acl2/over-held-row-carry-tests.lisp` | - | 3 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `tests/acl2/over-held-row-establishment-tests.lisp` | - | 6 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `tests/acl2/over-held-row-tests.lisp` | - | 6 | 2 | 0/1/1/0 | 0 | 0 | 0 |
-| `tests/acl2/over-selected-held-cell-tests.lisp` | - | 9 | 4 | 0/4/0/0 | 0 | 0 | 0 |
+| `tests/acl2/over-selected-held-cell-tests.lisp` | - | 13 | 4 | 0/4/0/0 | 0 | 0 | 0 |
 | `tests/acl2/over-window-tests.lisp` | root | 6 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/owner-ack-after-barrier-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 40 | 0 | 0 |
 | `tests/acl2/owner-advance-carried-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 64 | 16 | 0 |
