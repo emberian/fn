@@ -2,7 +2,7 @@
 ; account adoption version2 and signing binding version3. The full encoder
 ; is a logical/recovery reference. Served preparation emits bounded chunks.
 (in-package "ACL2")
-(include-book "consumer-remote-wire-charge")
+(include-book "consumer-remote-fields")
 (include-book "consumer-store-events")
 
 (defun fn-crev-code (kind)

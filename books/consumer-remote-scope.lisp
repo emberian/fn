@@ -3,6 +3,7 @@
 ; fn-oag-post-config or validates the whole configuration on a request.
 (in-package "ACL2")
 (include-book "consumer-remote-ingress")
+(include-book "consumer-remote-fields")
 (include-book "consumer-account-carried")
 (include-book "group-access")
 (include-book "moderation")
@@ -32,13 +33,6 @@
     (fn-gac-listing-table (fn-inj-config-listing installed-config)) nil groups
     (fn-inj-config-groups installed-config) (fn-inj-config-closed installed-config)
     nil nil nil 0 nil nil nil nil 0))))
-
-; This gate runs before a name's grammar, LEN, octet conversion or wildcard
-; work. The representation width is the admitted group's codec width (256).
-(defun fn-crs-namep (name)
- (declare (xargs :guard t))
- (and (consp name) (fn-cbor-at-mostp name *fn-record-max-group-name*)
-      (fn-cbor-octet-listp name) (fn-record-group-name-octetsp name)))
 
 (defun fn-crs-wire (s)
  (declare (xargs :guard t))

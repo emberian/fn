@@ -10,7 +10,7 @@
 (defconst *fn-cr-operations*
   '(:register :rebase :poll :wait :position :status :ack :unregister))
 
-; G is the admitted group count from the Store profile. Group definitions
+; G is the separately admitted consumer-query group count. Group definitions
 ; have their own blob; the 64-octet cursor query ID is never their encoding.
 (defun fn-cr-spec (g)
   (declare (xargs :guard t))

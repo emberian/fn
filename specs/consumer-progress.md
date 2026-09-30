@@ -1260,3 +1260,16 @@ not called on the served path. Concrete buffer/replay refinement, exact carried
 Store budget/atomic finish and installed source custody remain open. A consumer
 query profile cardinality must be independently configured/validated; it cannot
 be inferred from per-article groups or a historical 65535 codec ceiling.
+
+The required operator dimension is the typed current-C limit
+`max-consumer-query-groups`, separate from article group cardinality and the
+fixed storage-profile format. The bounded producer borrows the current limit
+tail, examines one row per tick, and preserves first-match semantics. It
+refuses changed current-source coordinates or Store R, and returns unavailable
+when the row is absent. Accepted source policy requires a valid FNCR field
+grammar and payload width plus the FNCE4 worst-case record charge below the
+actual admitted Store R. No arbitrary default or 65535 query ceiling applies.
+This policy is not allocation authority: selected host representation and
+retained current-source custody require their genuine installed issuer, which
+is currently unavailable. The existing typed C delta codec carries the row;
+atomic current-C publication remains the actual collector's responsibility.

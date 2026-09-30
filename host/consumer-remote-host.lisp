@@ -2,6 +2,7 @@
 ; Actual current configured owner/account publication is read in one span.
 (in-package "ACL2")
 (include-book "../books/consumer-remote-dispatch")
+(include-book "../books/consumer-remote-query-profile")
 (include-book "../books/consumer-account-carries-state")
 (include-book "../books/consumer-account-state")
 (include-book "../books/owner-canonical-epoch")
@@ -135,3 +136,43 @@
    (value (if (eq (fn-cp-nth 0 ingress) :authenticated)
                (fn-crd-finish cursor (fn-crx-coordinate ingress cp generation count)
                               (fn-owner-account-carries-read state)) ingress)))))
+
+
+; Required current-C query policy, captured before frame admission. This is
+; not the installed runtime family/role descriptor or an allocation grant.
+; The actual owner source issuer must keep/revalidate this C/profile span.
+(defun fn-owner-remote-query-policy-key (state)
+ (declare (xargs :stobjs state :mode :program))
+ (list :query-policy-current (fn-owner-canonical-epoch state)
+       (fn-cfg-generation (fn-owner-config state))))
+
+(defun fn-owner-remote-query-record-ceiling (state)
+ (declare (xargs :stobjs state :mode :program))
+ ; The sole profile publisher carries its admission once. Borrow that exact
+ ; installed child; no fn-bs-profile-validp or profile tree scan runs here.
+ (let ((carry (fn-owner-profile-carry state)))
+  (and (consp carry) (cdr carry)
+       (fn-bs-pf *fn-bs-pf-max-record-octets* (car carry)))))
+
+(defun fn-owner-remote-query-policy-begin (state)
+ (declare (xargs :stobjs state :mode :program))
+ (let ((record-ceiling (fn-owner-remote-query-record-ceiling state)))
+  (if (not (and (boundp-global 'fn-owner state) record-ceiling))
+      (value '(:unavailable :store-profile))
+   (value (fn-crp-begin (fn-owner-remote-query-policy-key state)
+          (fn-cfg-limits (fn-cfg-value (fn-owner-config state))) record-ceiling)))))
+
+(defun fn-owner-remote-query-policy-tick (cursor state)
+ (declare (xargs :stobjs state :mode :program))
+ (let ((record-ceiling (fn-owner-remote-query-record-ceiling state)))
+  (if (not (and (boundp-global 'fn-owner state) record-ceiling))
+      (value '(:unavailable :store-profile))
+   (value (fn-crp-tick cursor (fn-owner-remote-query-policy-key state) record-ceiling)))))
+
+(defun fn-owner-remote-query-runtime-verdict (cursor state)
+ (declare (xargs :stobjs state :mode :program))
+ (let ((record-ceiling (fn-owner-remote-query-record-ceiling state)))
+  (if (not (and (boundp-global 'fn-owner state) record-ceiling))
+      (value '(:unavailable :store-profile))
+   (value (fn-crp-runtime-verdict
+            (fn-crp-finish cursor (fn-owner-remote-query-policy-key state) record-ceiling))))))

@@ -3,11 +3,6 @@
 (in-package "ACL2")
 (include-book "consumer-remote-scope")
 
-(defun fn-crw-groups-charge (groups)
- (declare (xargs :guard t))
- (if (not (consp groups)) 0
-  (+ 2 (len (car groups)) (fn-crw-groups-charge (cdr groups)))))
-
 (defun fn-crw-wirep (s)
  (declare (xargs :guard t))
  (and (natp (fn-cp-nth 17 s)) (natp (fn-cp-nth 12 s))
