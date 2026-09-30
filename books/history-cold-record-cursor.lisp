@@ -1781,6 +1781,618 @@
        (union-theories (theory 'minimal-theory) (executable-counterpart-theory :here))
        '(fn-hrcur-cold-tick-lawp member-eq member-equal eq not)))))
 
+(local
+ (defthm fn-hrcur-cold-tick-active-node-control-unfolds
+   (implies (member-eq (fn-hrcur-field 0 (mv-nth 2 (fn-hrcur-cold-tick c)))
+                       '(:classify :symbol :scalar :span :opaque-prefix :opaque :opaque-span))
+     (or (and (member-eq (fn-hrcur-field 0 c)
+                            '(:classify :symbol :scalar :span :opaque-prefix :opaque :opaque-span))
+              (equal (fn-hrcur-field 7 (mv-nth 2 (fn-hrcur-cold-tick c))) (fn-hrcur-field 7 c)))
+         (and (eq (fn-hrcur-field 0 c) :work)
+              (consp (fn-hrcur-field 1 c))
+              (member-eq (fn-hrcur-field 0 (car (fn-hrcur-field 1 c))) '(:node :no-octets))
+              (equal (fn-hrcur-field 7 (mv-nth 2 (fn-hrcur-cold-tick c)))
+                     (fn-hrcur-field 1 (car (fn-hrcur-field 1 c)))))
+         (and (eq (fn-hrcur-field 0 c) :opaque)
+              (eq (fn-hrcur-field 0 (fn-hrcur-field 7 c)) :pair)
+              (equal (fn-hrcur-field 7 (mv-nth 2 (fn-hrcur-cold-tick c)))
+                     (fn-hrcur-field 2 (fn-hrcur-field 7 c))))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :in-theory (e/d (fn-hrcur-cold-tick fn-hrcur-cold-state)
+                     (fn-hdsn-tick fn-hrcur-dos-tick fn-hrcur-span-tick fn-hrsc-tick
+                      fn-hdsn-begin fn-hrcur-dos-begin fn-hrcur-span-begin fn-hrsc-begin
+                      fn-scc-nat-octets fn-hrcur-ns-begin))))))
+(local
+ (defthm fn-hrcur-cold-task-node-domain-unfolds
+   (implies (and (fn-hrcur-cold-tasksp tasks pool) (consp tasks)
+                 (member-eq (fn-hrcur-field 0 (car tasks)) '(:node :no-octets)))
+            (fn-hrcur-dos-domainp (fn-hrcur-field 1 (car tasks)) pool))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :expand ((fn-hrcur-cold-tasksp tasks pool))
+     :in-theory (e/d (fn-hrcur-cold-taskp fn-hrcur-cold-domainp)
+                     (fn-hrcur-dos-domainp fn-hrcur-cold-tasksp fn-hdc-abstract
+                      fn-hrcur-cold-rejected-prefixp fn-hrsc-domainp))))))
+(local
+ (defthm fn-hrcur-cold-opaque-cdr-domain-unfolds
+   (implies (and (fn-hrcur-cold-invariantp c pool)
+                 (eq (fn-hrcur-field 0 c) :opaque)
+                 (eq (fn-hrcur-field 0 (fn-hrcur-field 7 c)) :pair))
+            (fn-hrcur-dos-domainp (fn-hrcur-field 2 (fn-hrcur-field 7 c)) pool))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :expand ((fn-hrcur-dos-domainp (fn-hrcur-field 7 c) pool))
+     :in-theory (e/d (fn-hrcur-cold-invariantp)
+                     (fn-hrcur-dos-domainp fn-hrcur-cold-domainp fn-hrcur-cold-tasksp
+                      fn-hdc-abstract fn-hdsn-denote fn-hdsn-classify-name
+                      fn-hrcur-cold-symbol-budgetp fn-hrcur-cold-symbol-childp))))))
+(local
+ (defthm fn-hrcur-cold-invariant-tasks-unfolds
+   (implies (fn-hrcur-cold-invariantp c pool)
+            (fn-hrcur-cold-tasksp (fn-hrcur-field 1 c) pool))
+   :rule-classes nil
+   :hints (("Goal" :in-theory
+     (union-theories
+       (union-theories (theory 'minimal-theory) (executable-counterpart-theory :here))
+       '(fn-hrcur-cold-invariantp eq not member-equal member-eq))))))
+(defthm fn-hrcur-cold-tick-preserves-progress-invariant
+   (implies (fn-hrcur-cold-progress-invariantp c pool)
+            (fn-hrcur-cold-progress-invariantp (mv-nth 2 (fn-hrcur-cold-tick c)) pool))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :use (fn-hrcur-cold-tick-preserves-current-codec-residual
+           fn-hrcur-cold-tick-active-node-control-unfolds
+           fn-hrcur-cold-invariant-tasks-unfolds
+           fn-hrcur-cold-opaque-cdr-domain-unfolds
+           (:instance fn-hrcur-cold-task-node-domain-unfolds (tasks (fn-hrcur-field 1 c)))
+           (:instance fn-hrcur-cold-domain-node-credit-positive
+             (node (fn-hrcur-field 1 (car (fn-hrcur-field 1 c)))))
+           (:instance fn-hrcur-cold-domain-node-credit-positive
+             (node (fn-hrcur-field 2 (fn-hrcur-field 7 c)))))
+     :in-theory (union-theories
+       (union-theories (theory 'minimal-theory) (executable-counterpart-theory :here))
+       '(fn-hrcur-cold-progress-invariantp eq not member-eq member-equal)))))
+(local
+ (defthm fn-hrcur-cold-supply-active-control-unfolds
+   (and (equal (fn-hrcur-field 0 (mv-nth 2 (fn-hrcur-cold-supply c position byte)))
+               (fn-hrcur-field 0 c))
+        (equal (fn-hrcur-field 7 (mv-nth 2 (fn-hrcur-cold-supply c position byte)))
+               (fn-hrcur-field 7 c)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :in-theory (e/d (fn-hrcur-cold-supply fn-hrcur-cold-state)
+                     (fn-hrcur-dos-supply fn-hdsn-supply fn-hrcur-span-supply))))))
+(defthm fn-hrcur-cold-supply-preserves-progress-invariant
+   (implies (and (fn-hrcur-cold-progress-invariantp c pool)
+                 (eq (fn-hrcur-field 0 (mv-nth 0 (fn-hrcur-cold-tick c))) :need-byte)
+                 (equal position (fn-hrcur-field 1 (mv-nth 0 (fn-hrcur-cold-tick c))))
+                 (equal byte (nth position pool)))
+            (fn-hrcur-cold-progress-invariantp
+              (mv-nth 2 (fn-hrcur-cold-supply c position byte)) pool))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :use (fn-hrcur-cold-supply-preserves-current-codec-residual
+           fn-hrcur-cold-supply-active-control-unfolds)
+     :in-theory (union-theories
+       (union-theories (theory 'minimal-theory) (executable-counterpart-theory :here))
+       '(fn-hrcur-cold-progress-invariantp eq not member-eq member-equal)))))
+
+(local
+ (defthm fn-hrcur-cold-ordinal-lexicographic-unfolds
+   (implies (and (natp a) (natp p) (natp d) (natp b) (natp q) (natp e)
+                 (or (< a b) (and (equal a b) (< p q))
+                     (and (equal a b) (equal p q) (< d e))))
+            (o< (make-ord 2 (+ 1 a) (make-ord 1 (+ 1 p) d))
+                (make-ord 2 (+ 1 b) (make-ord 1 (+ 1 q) e))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :in-theory (enable make-ord o< o-first-expt o-first-coeff o-rst o-finp)))))
+(defun-nx fn-hrcur-cold-credits-descendp (next c)
+  (let ((a (fn-hrcur-cold-structural-credit next)) (b (fn-hrcur-cold-structural-credit c))
+        (p (fn-hrcur-cold-phase-credit (fn-hrcur-field 0 next)))
+        (q (fn-hrcur-cold-phase-credit (fn-hrcur-field 0 c)))
+        (d (fn-hrcur-cold-child-credit next)) (e (fn-hrcur-cold-child-credit c)))
+    (or (< a b) (and (equal a b) (< p q))
+        (and (equal a b) (equal p q) (< d e)))))
+(local
+ (defthm fn-hrcur-cold-credits-descend-rank-unfolds
+   (implies (fn-hrcur-cold-credits-descendp next c)
+            (o< (fn-hrcur-cold-rank next) (fn-hrcur-cold-rank c)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :use ((:instance fn-hrcur-cold-ordinal-lexicographic-unfolds
+             (a (fn-hrcur-cold-structural-credit next))
+             (b (fn-hrcur-cold-structural-credit c))
+             (p (fn-hrcur-cold-phase-credit (fn-hrcur-field 0 next)))
+             (q (fn-hrcur-cold-phase-credit (fn-hrcur-field 0 c)))
+             (d (fn-hrcur-cold-child-credit next)) (e (fn-hrcur-cold-child-credit c))))
+     :in-theory (e/d (fn-hrcur-cold-credits-descendp fn-hrcur-cold-rank
+                      fn-hrcur-cold-phase-credit fn-hrcur-cold-child-credit)
+                     (fn-hrcur-cold-structural-credit fn-hdsn-work fn-hrsc-work
+                      fn-hrcur-span-work fn-hrcur-dos-work make-ord o<))))))
+(local
+ (defthm fn-hrcur-cold-prefix-credit-descent-unfolds
+   (implies (and (fn-hrcur-cold-progress-invariantp c pool)
+                 (eq (fn-hrcur-field 0 c) :opaque-prefix))
+            (fn-hrcur-cold-credits-descendp (mv-nth 2 (fn-hrcur-cold-tick c)) c))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :in-theory (e/d (fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+                      fn-hrcur-cold-tick fn-hrcur-cold-state fn-hrcur-cold-credits-descendp
+                      fn-hrcur-cold-structural-credit fn-hrcur-cold-phase-credit
+                      fn-hrcur-cold-child-credit fn-scc-octet-listp)
+                     (fn-hrcur-cold-tasks-credit fn-hrcur-cold-tasksp fn-hrcur-dos-domainp
+                      fn-hdc-abstract acl2-count fn-hdsn-work fn-hrsc-work
+                      fn-hrcur-span-work fn-hrcur-dos-work))))))
+(local
+ (defthm fn-hrcur-cold-opaque-span-tick-credit-descent-unfolds
+   (implies (and (fn-hrcur-cold-progress-invariantp c pool)
+                 (eq (fn-hrcur-field 0 c) :opaque-span)
+                 (not (eq (fn-hrcur-field 0 (mv-nth 0 (fn-hrcur-cold-tick c))) :need-byte)))
+            (fn-hrcur-cold-credits-descendp (mv-nth 2 (fn-hrcur-cold-tick c)) c))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :in-theory (e/d (fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+                      fn-hrcur-cold-tick fn-hrcur-cold-state fn-hrcur-cold-demand
+                      fn-hrcur-cold-countp fn-hrcur-cold-credits-descendp
+                      fn-hrcur-cold-structural-credit fn-hrcur-cold-phase-credit
+                      fn-hrcur-cold-child-credit)
+                     (fn-hrcur-cold-tasks-credit fn-hrcur-cold-tasksp fn-hrcur-dos-domainp
+                      fn-hdc-abstract acl2-count fn-hdsn-work fn-hrsc-work
+                      fn-hrcur-span-work fn-hrcur-dos-work))))))
+(local
+ (defthm fn-hrcur-cold-opaque-span-supply-credit-descent-unfolds
+   (implies (and (fn-hrcur-cold-progress-invariantp c pool)
+                 (eq (fn-hrcur-field 0 c) :opaque-span)
+                 (eq (fn-hrcur-field 0 (mv-nth 0 (fn-hrcur-cold-tick c))) :need-byte)
+                 (equal position (fn-hrcur-field 1 (mv-nth 0 (fn-hrcur-cold-tick c))))
+                 (equal byte (nth position pool)))
+            (fn-hrcur-cold-credits-descendp
+              (mv-nth 2 (fn-hrcur-cold-supply c position byte)) c))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :use (fn-hrcur-cold-supply-preserves-current-codec-residual)
+     :in-theory (e/d (fn-hrcur-cold-progress-invariantp fn-hrcur-cold-supply
+                      fn-hrcur-cold-state fn-hrcur-cold-countp fn-hrcur-cold-credits-descendp
+                      fn-hrcur-cold-structural-credit fn-hrcur-cold-phase-credit
+                      fn-hrcur-cold-child-credit)
+                     (fn-hrcur-cold-invariantp fn-hrcur-cold-tick fn-hrcur-cold-rest
+                      fn-hrcur-cold-tasks-credit fn-hrcur-cold-tasksp fn-hrcur-dos-domainp
+                      fn-hdc-abstract acl2-count fn-hdsn-work fn-hrsc-work
+                      fn-hrcur-span-work fn-hrcur-dos-work))))))
+(local
+ (defthm fn-hrcur-cold-scalar-work-natural-unfolds
+   (natp (fn-hrsc-work child))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :in-theory (e/d (fn-hrsc-work)
+                     (fn-hrsc-text-rest fn-scc-le-digits fn-scc-atom-octets))))))
+(local
+ (defthm fn-hrcur-cold-span-work-natural-unfolds
+   (natp (fn-hrcur-span-work child))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t :in-theory (enable fn-hrcur-span-work)))))
+(local
+ (defthm fn-hrcur-cold-scalar-done-prepared-unfolds
+   (implies (and (fn-hrsc-invariantp child) (eq (fn-hrsc-field 0 child) :done))
+            (eq (mv-nth 0 (fn-hrsc-tick child)) :prepared))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :in-theory (e/d (fn-hrsc-invariantp fn-hrsc-shapep fn-hrsc-tick)
+                     (fn-hrsc-domainp fn-hrsc-rest fn-scc-atom-octets
+                      fn-scc-le-digits fn-hrsc-codecp fn-hrsc-text-rest))))))
+(local
+ (defthm fn-hrcur-cold-scalar-tick-credit-descent-unfolds
+   (implies (and (fn-hrcur-cold-progress-invariantp c pool)
+                 (eq (fn-hrcur-field 0 c) :scalar))
+            (fn-hrcur-cold-credits-descendp (mv-nth 2 (fn-hrcur-cold-tick c)) c))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :use (fn-hrcur-cold-scalar-tick-refines-residual
+           (:instance fn-hrsc-tick-makes-progress (c (fn-hrcur-field 2 c)))
+           (:instance fn-hrcur-cold-scalar-done-prepared-unfolds (child (fn-hrcur-field 2 c)))
+           (:instance fn-hrcur-cold-scalar-work-natural-unfolds (child (fn-hrcur-field 2 c)))
+           (:instance fn-hrcur-cold-scalar-work-natural-unfolds
+             (child (mv-nth 2 (fn-hrsc-tick (fn-hrcur-field 2 c))))))
+     :in-theory (e/d (fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+                      fn-hrcur-cold-tick fn-hrcur-cold-state fn-hrcur-cold-credits-descendp
+                      fn-hrcur-cold-structural-credit fn-hrcur-cold-phase-credit
+                      fn-hrcur-cold-child-credit nfix)
+                     (fn-hrcur-cold-tasks-credit fn-hrcur-cold-tasksp fn-hrsc-invariantp
+                      fn-hrsc-tick fn-hrcur-cold-rest fn-hdc-abstract acl2-count
+                      fn-hdsn-work fn-hrsc-work fn-hrcur-span-work fn-hrcur-dos-work))))))
+(local
+ (defthm fn-hrcur-cold-span-done-prepared-unfolds
+   (implies (and (fn-hrcur-span-invariantp child pool) (eq (fn-hrcur-field 0 child) :done))
+            (eq (mv-nth 0 (fn-hrcur-span-tick child)) :prepared))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :in-theory (e/d (fn-hrcur-span-invariantp fn-hrcur-span-tick)
+                     (fn-hrcur-span-tick-refines-wire fn-hrcur-span-supply-refines-wire
+                      fn-scc-octet-listp))))))
+(local
+ (defthm fn-hrcur-cold-span-tick-credit-descent-unfolds
+   (implies (and (fn-hrcur-cold-progress-invariantp c pool)
+                 (eq (fn-hrcur-field 0 c) :span)
+                 (not (eq (fn-hrcur-field 0 (mv-nth 0 (fn-hrcur-cold-tick c))) :need-byte)))
+            (fn-hrcur-cold-credits-descendp (mv-nth 2 (fn-hrcur-cold-tick c)) c))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :use (fn-hrcur-cold-tick-current-codec-boundary
+           (:instance fn-hrcur-cold-span-done-prepared-unfolds (child (fn-hrcur-field 2 c)))
+           (:instance fn-hrcur-span-tick-progress-or-request (c (fn-hrcur-field 2 c)))
+           (:instance fn-hrcur-cold-span-work-natural-unfolds (child (fn-hrcur-field 2 c)))
+           (:instance fn-hrcur-cold-span-work-natural-unfolds
+             (child (mv-nth 2 (fn-hrcur-span-tick (fn-hrcur-field 2 c))))))
+     :in-theory (e/d (fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+                      fn-hrcur-cold-tick-lawp fn-hrcur-cold-tick fn-hrcur-cold-state
+                      fn-hrcur-cold-demand fn-hrcur-cold-credits-descendp
+                      fn-hrcur-cold-structural-credit fn-hrcur-cold-phase-credit
+                      fn-hrcur-cold-child-credit nfix)
+                     (fn-hrcur-cold-tasks-credit fn-hrcur-cold-tasksp fn-hrcur-span-invariantp
+                      fn-hrcur-span-tick fn-hrcur-cold-rest fn-hdc-abstract acl2-count
+                      fn-hdsn-work fn-hrsc-work fn-hrcur-span-work fn-hrcur-dos-work
+                      fn-hrcur-span-tick-refines-wire fn-hrcur-span-supply-refines-wire
+                      fn-hrcur-span-tick-progress-or-request))))))
+(local
+ (defthm fn-hrcur-cold-span-supply-not-continue-unfolds
+   (not (eq (mv-nth 0 (fn-hrcur-span-supply child position byte)) :continue))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t :in-theory (enable fn-hrcur-span-supply)))))
+(local
+ (defthm fn-hrcur-cold-span-supply-credit-descent-unfolds
+   (implies (and (fn-hrcur-cold-progress-invariantp c pool)
+                 (eq (fn-hrcur-field 0 c) :span)
+                 (eq (fn-hrcur-field 0 (mv-nth 0 (fn-hrcur-cold-tick c))) :need-byte)
+                 (equal position (fn-hrcur-field 1 (mv-nth 0 (fn-hrcur-cold-tick c))))
+                 (equal byte (nth position pool)))
+            (fn-hrcur-cold-credits-descendp
+              (mv-nth 2 (fn-hrcur-cold-supply c position byte)) c))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :use (fn-hrcur-cold-supply-preserves-current-codec-residual
+           (:instance fn-hrcur-cold-span-supply-not-continue-unfolds (child (fn-hrcur-field 2 c)))
+           fn-hrcur-cold-span-demand-control-unfolds
+           (:instance fn-hrcur-span-supply-progress (c (fn-hrcur-field 2 c)))
+           (:instance fn-hrcur-cold-span-work-natural-unfolds (child (fn-hrcur-field 2 c)))
+           (:instance fn-hrcur-cold-span-work-natural-unfolds
+             (child (mv-nth 2 (fn-hrcur-span-supply (fn-hrcur-field 2 c) position byte)))))
+     :in-theory (e/d (fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+                      fn-hrcur-cold-supply fn-hrcur-cold-state fn-hrcur-cold-credits-descendp
+                      fn-hrcur-cold-structural-credit fn-hrcur-cold-phase-credit
+                      fn-hrcur-cold-child-credit nfix)
+                     (fn-hrcur-cold-tick fn-hrcur-cold-tasks-credit fn-hrcur-cold-tasksp
+                      fn-hrcur-span-invariantp fn-hrcur-span-supply fn-hrcur-cold-rest
+                      fn-hdc-abstract acl2-count fn-hdsn-work fn-hrsc-work fn-hrcur-span-work
+                      fn-hrcur-dos-work fn-hrcur-span-supply-progress
+                      fn-hdsn-denote fn-hdsn-classify-name fn-hdsn-coherent
+                      fn-hrcur-span-tick-refines-wire fn-hrcur-span-supply-refines-wire))))))
+(local
+ (defthm fn-hrcur-cold-symbol-work-natural-unfolds
+   (natp (fn-hdsn-work child))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :in-theory (e/d (fn-hdsn-work) (fn-hdsn-candidate-work))))))
+(local
+ (defthm fn-hrcur-cold-symbol-tick-credit-descent-unfolds
+   (implies (and (fn-hrcur-cold-progress-invariantp c pool)
+                 (eq (fn-hrcur-field 0 c) :symbol)
+                 (not (eq (fn-hrcur-field 0 (mv-nth 0 (fn-hrcur-cold-tick c))) :need-byte)))
+            (fn-hrcur-cold-credits-descendp (mv-nth 2 (fn-hrcur-cold-tick c)) c))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :use (fn-hrcur-cold-symbol-tick-refines-residual
+           (:instance fn-hdsn-tick-progress (c (fn-hrcur-field 2 c)))
+           (:instance fn-hrcur-cold-symbol-work-natural-unfolds (child (fn-hrcur-field 2 c)))
+           (:instance fn-hrcur-cold-symbol-work-natural-unfolds
+             (child (mv-nth 1 (fn-hdsn-tick (fn-hrcur-field 2 c))))))
+     :in-theory (e/d (fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+                      fn-hrcur-cold-symbol-budgetp fn-hrcur-cold-tick fn-hrcur-cold-state
+                      fn-hrcur-cold-demand fn-hrcur-cold-credits-descendp
+                      fn-hrcur-cold-structural-credit fn-hrcur-cold-phase-credit
+                      fn-hrcur-cold-child-credit nfix)
+                     (fn-hrcur-cold-tasks-credit fn-hrcur-cold-tasksp fn-hdsn-tick
+                      fn-hrcur-cold-rest fn-hrcur-cold-symbol-childp fn-hrcur-ns-begin
+                      fn-hdc-abstract acl2-count fn-hdsn-work fn-hrsc-work fn-hrcur-span-work
+                      fn-hrcur-dos-work fn-hdsn-denote fn-hdsn-classify-name fn-hdsn-coherent))))))
+(local
+ (defthm fn-hrcur-cold-symbol-supply-credit-descent-unfolds
+   (implies (and (fn-hrcur-cold-progress-invariantp c pool)
+                 (eq (fn-hrcur-field 0 c) :symbol)
+                 (eq (fn-hrcur-field 0 (mv-nth 0 (fn-hrcur-cold-tick c))) :need-byte)
+                 (equal position (fn-hrcur-field 1 (mv-nth 0 (fn-hrcur-cold-tick c))))
+                 (equal byte (nth position pool)))
+            (fn-hrcur-cold-credits-descendp
+              (mv-nth 2 (fn-hrcur-cold-supply c position byte)) c))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :use (fn-hrcur-cold-supply-preserves-current-codec-residual
+           (:instance fn-hrcur-cold-symbol-supply-does-not-emit-unfolds
+             (child (fn-hrcur-field 2 c)) (serial (fn-hrcur-field 5 (fn-hrcur-field 2 c))))
+           (:instance fn-hdsn-supply-progress (c (fn-hrcur-field 2 c))
+             (offset position) (serial (fn-hrcur-field 5 (fn-hrcur-field 2 c))))
+           (:instance fn-hrcur-cold-symbol-work-natural-unfolds (child (fn-hrcur-field 2 c)))
+           (:instance fn-hrcur-cold-symbol-work-natural-unfolds
+             (child (mv-nth 1 (fn-hdsn-supply position (fn-hrcur-field 5 (fn-hrcur-field 2 c))
+                                            byte (fn-hrcur-field 2 c))))))
+     :in-theory (e/d (fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+                      fn-hrcur-cold-symbol-budgetp fn-hrcur-cold-supply fn-hrcur-cold-state
+                      fn-hrcur-cold-credits-descendp fn-hrcur-cold-structural-credit
+                      fn-hrcur-cold-phase-credit fn-hrcur-cold-child-credit nfix)
+                     (fn-hrcur-cold-tick fn-hrcur-cold-tasks-credit fn-hrcur-cold-tasksp
+                      fn-hdsn-supply fn-hrcur-cold-rest fn-hrcur-cold-symbol-childp
+                      fn-hdc-abstract acl2-count fn-hdsn-work fn-hrsc-work fn-hrcur-span-work
+                      fn-hrcur-dos-work fn-hdsn-denote fn-hdsn-classify-name fn-hdsn-coherent
+                      fn-hrcur-cold-symbol-supply-does-not-emit-unfolds))))))
+(local
+ (defthm fn-hrcur-cold-tasks-credit-cons-unfolds
+   (equal (fn-hrcur-cold-tasks-credit (cons task tasks))
+          (+ (fn-hrcur-cold-task-credit task) (fn-hrcur-cold-tasks-credit tasks)))
+   :hints (("Goal" :in-theory (enable fn-hrcur-cold-tasks-credit)))))
+(local
+ (defthm fn-hrcur-cold-classifier-work-natural-unfolds
+   (natp (fn-hrcur-dos-work child))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :in-theory (e/d (fn-hrcur-dos-work) (fn-hrcur-nil-work acl2-count))))))
+(local
+ (defthm fn-hrcur-cold-classify-tick-credit-descent-unfolds
+   (implies (and (fn-hrcur-cold-progress-invariantp c pool)
+                 (eq (fn-hrcur-field 0 c) :classify)
+                 (not (eq (fn-hrcur-field 0 (mv-nth 0 (fn-hrcur-cold-tick c))) :need-byte)))
+            (fn-hrcur-cold-credits-descendp (mv-nth 2 (fn-hrcur-cold-tick c)) c))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :use (fn-hrcur-cold-classify-tick-refines-residual
+           (:instance fn-hrcur-dos-tick-productive-progress (c (fn-hrcur-field 2 c)))
+           (:instance fn-hrcur-cold-classifier-work-natural-unfolds (child (fn-hrcur-field 2 c)))
+           (:instance fn-hrcur-cold-classifier-work-natural-unfolds
+             (child (mv-nth 1 (fn-hrcur-dos-tick (fn-hrcur-field 2 c))))))
+     :in-theory (e/d (fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+                      fn-hrcur-cold-tick fn-hrcur-cold-state fn-hrcur-cold-demand
+                      fn-hrcur-cold-credits-descendp fn-hrcur-cold-structural-credit
+                      fn-hrcur-cold-task-credit fn-hrcur-cold-phase-credit
+                      fn-hrcur-cold-child-credit nfix)
+                     (fn-hrcur-cold-tasks-credit fn-hrcur-cold-tasksp fn-hrcur-dos-tick
+                      fn-hrcur-dos-invariantp fn-hrcur-cold-domainp fn-hrcur-cold-rest
+                      fn-hdc-abstract acl2-count fn-hdsn-work fn-hrsc-work fn-hrcur-span-work
+                      fn-hrcur-dos-work fn-hrcur-dos-tick-productive-progress
+                      fn-hdsn-denote fn-hdsn-classify-name fn-hdsn-coherent
+                      fn-scc-nat-octets)))))
+)
+(local
+ (defthm fn-hrcur-cold-classifier-supply-progress-on-continue-unfolds
+   (implies (eq (mv-nth 0 (fn-hrcur-dos-supply child position byte)) :continue)
+            (< (fn-hrcur-dos-work (mv-nth 1 (fn-hrcur-dos-supply child position byte)))
+               (fn-hrcur-dos-work child)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :use ((:instance fn-hrcur-dos-supply-productive-progress (c child)))
+     :in-theory (e/d (fn-hrcur-dos-supply fn-hrcur-nil-supply)
+                     (fn-hrcur-dos-work fn-hrcur-nil-work
+                      fn-hrcur-dos-supply-productive-progress))))))
+(local
+ (defthm fn-hrcur-cold-classify-supply-credit-descent-unfolds
+   (implies (and (fn-hrcur-cold-progress-invariantp c pool)
+                 (eq (fn-hrcur-field 0 c) :classify)
+                 (eq (fn-hrcur-field 0 (mv-nth 0 (fn-hrcur-cold-tick c))) :need-byte)
+                 (equal position (fn-hrcur-field 1 (mv-nth 0 (fn-hrcur-cold-tick c))))
+                 (equal byte (nth position pool)))
+            (fn-hrcur-cold-credits-descendp
+              (mv-nth 2 (fn-hrcur-cold-supply c position byte)) c))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :use (fn-hrcur-cold-supply-preserves-current-codec-residual
+           (:instance fn-hrcur-cold-classifier-supply-does-not-emit-unfolds (child (fn-hrcur-field 2 c)))
+           (:instance fn-hrcur-cold-classifier-supply-progress-on-continue-unfolds (child (fn-hrcur-field 2 c)))
+           (:instance fn-hrcur-cold-classifier-work-natural-unfolds (child (fn-hrcur-field 2 c)))
+           (:instance fn-hrcur-cold-classifier-work-natural-unfolds
+             (child (mv-nth 1 (fn-hrcur-dos-supply (fn-hrcur-field 2 c) position byte)))))
+     :in-theory (e/d (fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+                      fn-hrcur-cold-supply fn-hrcur-cold-state fn-hrcur-cold-credits-descendp
+                      fn-hrcur-cold-structural-credit fn-hrcur-cold-phase-credit
+                      fn-hrcur-cold-child-credit nfix)
+                     (fn-hrcur-cold-tick fn-hrcur-cold-tasks-credit fn-hrcur-cold-tasksp
+                      fn-hrcur-dos-invariantp fn-hrcur-dos-supply fn-hrcur-cold-domainp fn-hrcur-cold-rest
+                      fn-hdc-abstract acl2-count fn-hdsn-work fn-hrsc-work fn-hrcur-span-work
+                      fn-hrcur-dos-work fn-hdsn-denote fn-hdsn-classify-name fn-hdsn-coherent
+                      fn-hrcur-cold-classifier-supply-does-not-emit-unfolds))))))
+(local
+ (defthm fn-hrcur-cold-decoded-pair-cdr-credit-smaller-unfolds
+   (implies (and (fn-hrcur-dos-domainp node pool)
+                 (eq (fn-hrcur-field 0 node) :pair))
+            (< (acl2-count (fn-hrcur-field 2 node)) (acl2-count node)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :expand ((fn-hrcur-dos-domainp node pool) (fn-hrcur-widthp node 3)
+              (fn-hrcur-widthp (cdr node) 2) (fn-hrcur-widthp (cddr node) 1)
+              (fn-hrcur-widthp (cdddr node) 0)
+              (acl2-count node) (acl2-count (cdr node)) (acl2-count (cddr node)))
+     :in-theory (e/d (fn-hrcur-field)
+                     (fn-hrcur-dos-domainp fn-hrcur-widthp acl2-count fn-scc-atomp)))))
+)
+(local
+ (defthm fn-hrcur-cold-opaque-tick-credit-descent-unfolds
+   (implies (and (fn-hrcur-cold-progress-invariantp c pool)
+                 (eq (fn-hrcur-field 0 c) :opaque))
+            (fn-hrcur-cold-credits-descendp (mv-nth 2 (fn-hrcur-cold-tick c)) c))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :use (fn-hrcur-cold-opaque-tick-refines-residual
+           (:instance fn-hrcur-cold-decoded-pair-cdr-credit-smaller-unfolds
+             (node (fn-hrcur-field 7 c))))
+     :in-theory (e/d (fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+                      fn-hrcur-cold-tick fn-hrcur-cold-state fn-hrcur-cold-credits-descendp
+                      fn-hrcur-cold-structural-credit fn-hrcur-cold-phase-credit
+                      fn-hrcur-cold-child-credit nfix)
+                     (fn-hrcur-cold-tasks-credit fn-hrcur-cold-tasksp fn-hrcur-dos-domainp
+                      fn-hrcur-cold-rest fn-hdc-abstract acl2-count fn-hdsn-work fn-hrsc-work
+                      fn-hrcur-span-work fn-hrcur-dos-work
+                      fn-hdsn-denote fn-hdsn-classify-name fn-hdsn-coherent))))))
+(local
+ (defthm fn-hrcur-cold-decoded-pair-credit-sum-unfolds
+   (implies (and (fn-hrcur-dos-domainp node pool)
+                 (eq (fn-hrcur-field 0 node) :pair))
+            (equal (acl2-count node)
+                   (+ 3 (acl2-count (fn-hrcur-field 1 node))
+                        (acl2-count (fn-hrcur-field 2 node)))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :expand ((fn-hrcur-dos-domainp node pool) (fn-hrcur-widthp node 3)
+              (fn-hrcur-widthp (cdr node) 2) (fn-hrcur-widthp (cddr node) 1)
+              (fn-hrcur-widthp (cdddr node) 0)
+              (acl2-count node) (acl2-count (cdr node)) (acl2-count (cddr node)))
+     :in-theory (e/d (fn-hrcur-field)
+                     (fn-hrcur-dos-domainp fn-hrcur-widthp acl2-count fn-scc-atomp))))))
+(local
+ (defthm fn-hrcur-cold-work-tick-credit-descent-unfolds
+   (implies (and (fn-hrcur-cold-progress-invariantp c pool)
+                 (eq (fn-hrcur-field 0 c) :work))
+            (fn-hrcur-cold-credits-descendp (mv-nth 2 (fn-hrcur-cold-tick c)) c))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :expand ((fn-hrcur-cold-tasks-credit (fn-hrcur-field 1 c)))
+     :use (fn-hrcur-cold-tick-current-codec-boundary
+           fn-hrcur-cold-work-invariant-control-unfolds
+           (:instance fn-hrcur-cold-tasksp-control-unfolds (tasks (fn-hrcur-field 1 c)))
+           (:instance fn-hrcur-cold-task-node-domain-unfolds (tasks (fn-hrcur-field 1 c)))
+           (:instance fn-hrcur-cold-domain-node-credit-positive
+             (node (fn-hrcur-field 1 (car (fn-hrcur-field 1 c)))))
+           (:instance fn-hrcur-cold-decoded-pair-credit-sum-unfolds
+             (node (fn-hrcur-field 1 (car (fn-hrcur-field 1 c))))))
+     :in-theory (e/d (fn-hrcur-cold-progress-invariantp fn-hrcur-cold-tick-lawp
+                      fn-hrcur-cold-tick fn-hrcur-cold-state fn-hrcur-cold-credits-descendp
+                      fn-hrcur-cold-structural-credit fn-hrcur-cold-task-credit
+                      fn-hrcur-cold-phase-credit fn-hrcur-cold-child-credit nfix)
+                     (fn-hrcur-cold-invariantp fn-hrcur-cold-tasks-credit fn-hrcur-cold-tasksp
+                      fn-hrcur-cold-taskp fn-hrcur-cold-domainp fn-hrcur-dos-domainp
+                      fn-hrcur-cold-rest fn-hdc-abstract acl2-count fn-hdsn-work fn-hrsc-work
+                      fn-hrcur-span-work fn-hrcur-dos-work fn-hdsn-begin fn-hrsc-begin
+                      fn-hrcur-dos-begin fn-hrcur-span-begin
+                      fn-hdsn-denote fn-hdsn-classify-name fn-hdsn-coherent))))))
+(defthm fn-hrcur-cold-tick-productive-progress
+   (implies (and (fn-hrcur-cold-progress-invariantp c pool)
+                 (not (eq (mv-nth 0 (fn-hrcur-cold-tick c)) :prepared))
+                 (not (eq (fn-hrcur-field 0 (mv-nth 0 (fn-hrcur-cold-tick c))) :need-byte)))
+            (o< (fn-hrcur-cold-rank (mv-nth 2 (fn-hrcur-cold-tick c)))
+                (fn-hrcur-cold-rank c)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :use (fn-hrcur-cold-invariant-control-unfolds fn-hrcur-cold-done-law-unfolds
+           fn-hrcur-cold-work-tick-credit-descent-unfolds
+           fn-hrcur-cold-classify-tick-credit-descent-unfolds
+           fn-hrcur-cold-symbol-tick-credit-descent-unfolds
+           fn-hrcur-cold-scalar-tick-credit-descent-unfolds
+           fn-hrcur-cold-span-tick-credit-descent-unfolds
+           fn-hrcur-cold-prefix-credit-descent-unfolds
+           fn-hrcur-cold-opaque-tick-credit-descent-unfolds
+           fn-hrcur-cold-opaque-span-tick-credit-descent-unfolds
+           (:instance fn-hrcur-cold-credits-descend-rank-unfolds
+             (next (mv-nth 2 (fn-hrcur-cold-tick c)))))
+     :in-theory (union-theories
+       (union-theories (theory 'minimal-theory) (executable-counterpart-theory :here))
+       '(fn-hrcur-cold-progress-invariantp eq not member-eq member-equal)))))
+(defthm fn-hrcur-cold-supply-productive-progress
+   (implies (and (fn-hrcur-cold-progress-invariantp c pool)
+                 (eq (fn-hrcur-field 0 (mv-nth 0 (fn-hrcur-cold-tick c))) :need-byte)
+                 (equal position (fn-hrcur-field 1 (mv-nth 0 (fn-hrcur-cold-tick c))))
+                 (equal byte (nth position pool)))
+            (o< (fn-hrcur-cold-rank (mv-nth 2 (fn-hrcur-cold-supply c position byte)))
+                (fn-hrcur-cold-rank c)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+     :use (fn-hrcur-cold-demand-phase-control-unfolds
+           fn-hrcur-cold-classify-supply-credit-descent-unfolds
+           fn-hrcur-cold-symbol-supply-credit-descent-unfolds
+           fn-hrcur-cold-span-supply-credit-descent-unfolds
+           fn-hrcur-cold-opaque-span-supply-credit-descent-unfolds
+           (:instance fn-hrcur-cold-credits-descend-rank-unfolds
+             (next (mv-nth 2 (fn-hrcur-cold-supply c position byte)))))
+     :in-theory (union-theories
+       (union-theories (theory 'minimal-theory) (executable-counterpart-theory :here))
+       '(fn-hrcur-cold-progress-invariantp eq not member-eq member-equal)))))
+; Proof-only driver: an immutable-pool oracle supplies exactly the current
+; demanded byte. This is not an executable provider or an I/O liveness claim.
+(defun-nx fn-hrcur-cold-oracle-step (c pool)
+  (mv-let (v byte next) (fn-hrcur-cold-tick c)
+    (if (eq (fn-hrcur-field 0 v) :need-byte)
+        (fn-hrcur-cold-supply c (fn-hrcur-field 1 v)
+          (nth (fn-hrcur-field 1 v) pool))
+      (mv v byte next))))
+(defthm fn-hrcur-cold-oracle-step-boundary
+  (implies (fn-hrcur-cold-progress-invariantp c pool)
+    (let ((v (mv-nth 0 (fn-hrcur-cold-oracle-step c pool)))
+          (byte (mv-nth 1 (fn-hrcur-cold-oracle-step c pool)))
+          (next (mv-nth 2 (fn-hrcur-cold-oracle-step c pool))))
+      (and (member-eq v '(:continue :emit :prepared))
+           (fn-hrcur-cold-progress-invariantp next pool)
+           (equal (fn-hrcur-cold-rest c pool)
+                  (if (eq v :emit) (cons byte (fn-hrcur-cold-rest next pool))
+                    (fn-hrcur-cold-rest next pool)))
+           (implies (eq v :prepared) (equal (fn-hrcur-cold-rest c pool) nil))
+           (implies (not (eq v :prepared))
+             (o< (fn-hrcur-cold-rank next) (fn-hrcur-cold-rank c))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+    :use (fn-hrcur-cold-tick-current-codec-boundary
+          fn-hrcur-cold-tick-preserves-progress-invariant
+          fn-hrcur-cold-tick-productive-progress
+          (:instance fn-hrcur-cold-supply-preserves-current-codec-residual
+            (position (fn-hrcur-field 1 (mv-nth 0 (fn-hrcur-cold-tick c))))
+            (byte (nth (fn-hrcur-field 1 (mv-nth 0 (fn-hrcur-cold-tick c))) pool)))
+          (:instance fn-hrcur-cold-supply-preserves-progress-invariant
+            (position (fn-hrcur-field 1 (mv-nth 0 (fn-hrcur-cold-tick c))))
+            (byte (nth (fn-hrcur-field 1 (mv-nth 0 (fn-hrcur-cold-tick c))) pool)))
+          (:instance fn-hrcur-cold-supply-productive-progress
+            (position (fn-hrcur-field 1 (mv-nth 0 (fn-hrcur-cold-tick c))))
+            (byte (nth (fn-hrcur-field 1 (mv-nth 0 (fn-hrcur-cold-tick c))) pool))))
+    :in-theory (union-theories
+      (union-theories (theory 'minimal-theory) (executable-counterpart-theory :here))
+      '(fn-hrcur-cold-oracle-step fn-hrcur-cold-progress-invariantp
+        fn-hrcur-cold-tick-lawp mv-nth car-cons cdr-cons eq not member-eq member-equal)))))
+(defun-nx fn-hrcur-cold-oracle-run (c pool)
+  (declare (xargs :measure (fn-hrcur-cold-rank c)
+                  :well-founded-relation o<
+                  :hints (("Goal" :do-not-induct t
+                    :use (fn-hrcur-cold-rank-is-well-founded-ordinal
+                          fn-hrcur-cold-oracle-step-boundary)
+                    :in-theory (union-theories
+                      (union-theories (theory 'minimal-theory)
+                                      (executable-counterpart-theory :here))
+                      '(mv-nth car-cons cdr-cons eq not))))))
+  (if (not (fn-hrcur-cold-progress-invariantp c pool)) nil
+    (mv-let (v byte next) (fn-hrcur-cold-oracle-step c pool)
+      (if (eq v :prepared) nil
+        (if (eq v :emit)
+            (cons byte (fn-hrcur-cold-oracle-run next pool))
+          (fn-hrcur-cold-oracle-run next pool))))))
+(defthm fn-hrcur-cold-oracle-run-is-current-codec-residual
+  (implies (fn-hrcur-cold-progress-invariantp c pool)
+           (equal (fn-hrcur-cold-oracle-run c pool) (fn-hrcur-cold-rest c pool)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-hrcur-cold-oracle-run c pool)
+    :in-theory (union-theories
+      (union-theories (theory 'minimal-theory) (executable-counterpart-theory :here))
+      '(fn-hrcur-cold-oracle-run mv-nth car-cons cdr-cons eq not)))
+   ("Subgoal *1/3" :use fn-hrcur-cold-oracle-step-boundary)
+   ("Subgoal *1/2" :use fn-hrcur-cold-oracle-step-boundary)
+   ("Subgoal *1/1" :use fn-hrcur-cold-oracle-step-boundary)))
+(defthm fn-hrcur-cold-supported-source-run-is-current-codec
+  (implies (and (fn-hrcur-widthp source 2) (eq (car source) :decoded)
+                (fn-hrcur-cold-domainp (cadr source) pool)
+                (fn-scc-octet-listp pool))
+           (equal (fn-hrcur-cold-oracle-run (fn-hrcur-cold-begin source capture lease) pool)
+                  (fn-scc-encode (fn-hdc-abstract (cadr source) pool))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+    :use (fn-hrcur-cold-begin-establishes-progress-invariant
+          fn-hrcur-cold-begin-establishes-invariant
+          (:instance fn-hrcur-cold-oracle-run-is-current-codec-residual
+            (c (fn-hrcur-cold-begin source capture lease))))
+    :in-theory (union-theories
+      (union-theories (theory 'minimal-theory) (executable-counterpart-theory :here))
+      '(eq not)))) )
 (in-theory (disable fn-hrcur-cold-state fn-hrcur-cold-begin fn-hrcur-cold-countp
                     fn-hrcur-cold-symbol-childp fn-hrcur-cold-demand fn-hrcur-cold-tick fn-hrcur-cold-supply
                     fn-hrcur-cold-task-rest fn-hrcur-cold-tasks-rest fn-hrcur-cold-rest
@@ -1790,4 +2402,5 @@
                     fn-hrcur-cold-tick-lawp
                     fn-hrcur-cold-task-credit fn-hrcur-cold-tasks-credit fn-hrcur-cold-phase-credit
                     fn-hrcur-cold-structural-credit fn-hrcur-cold-child-credit fn-hrcur-cold-rank
-                    fn-hrcur-cold-progress-invariantp))
+                    fn-hrcur-cold-progress-invariantp fn-hrcur-cold-credits-descendp
+                    fn-hrcur-cold-oracle-step fn-hrcur-cold-oracle-run))

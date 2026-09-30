@@ -264,3 +264,279 @@
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-hrcur-cold-rank-is-well-founded-ordinal
                             (c (fn-hrcur-cold-test-ticks (fn-hrcur-cold-begin '(:decoded (:span 6 0 0 2)) :capture :lease) 5)))))))
+
+; Productive progress: reachable positives and literal hypothesis removals.
+; Invariant removals are corrupted-state/source mutations; other omissions
+; are reachable terminal/demand states or scalar observation mutations.
+(defthm fn-hrcur-cold-test-progress-tick-positive
+  (let ((c (fn-hrcur-cold-test-ticks (fn-hrcur-cold-begin '(:decoded (:span 6 0 0 2)) :capture :lease) 1)))
+    (and
+      (fn-hrcur-cold-progress-invariantp c '(17 23))
+      (not (eq (mv-nth 0 (fn-hrcur-cold-tick c)) :prepared))
+      (not (eq (fn-hrcur-field 0 (mv-nth 0 (fn-hrcur-cold-tick c))) :need-byte))
+      (o< (fn-hrcur-cold-rank (mv-nth 2 (fn-hrcur-cold-tick c)))
+             (fn-hrcur-cold-rank c))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+    (enable fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+            fn-hrcur-cold-domainp fn-hrcur-cold-tasksp fn-hrcur-cold-taskp
+            fn-hrcur-dos-domainp fn-hrcur-span-invariantp fn-hrcur-span-shapep
+            fn-hrcur-span-rest fn-hrcur-span-wire fn-hdc-abstract
+            fn-hrcur-cold-rank fn-hrcur-cold-structural-credit fn-hrcur-cold-tasks-credit
+            fn-hrcur-cold-task-credit fn-hrcur-cold-phase-credit fn-hrcur-cold-child-credit
+            fn-hrcur-span-work o< make-ord))))
+
+(defthm fn-hrcur-cold-test-progress-tick-remove-invariant
+  (let ((c '(:work ((:bad-task nil)) nil nil :capture :lease nil nil 0)))
+    (and
+      (not (fn-hrcur-cold-progress-invariantp c '(17 23)))
+      (not (eq (mv-nth 0 (fn-hrcur-cold-tick c)) :prepared))
+      (not (eq (fn-hrcur-field 0 (mv-nth 0 (fn-hrcur-cold-tick c))) :need-byte))
+      (not (o< (fn-hrcur-cold-rank (mv-nth 2 (fn-hrcur-cold-tick c)))
+             (fn-hrcur-cold-rank c)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+    (enable fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+            fn-hrcur-cold-domainp fn-hrcur-cold-tasksp fn-hrcur-cold-taskp
+            fn-hrcur-dos-domainp fn-hrcur-span-invariantp fn-hrcur-span-shapep
+            fn-hrcur-span-rest fn-hrcur-span-wire fn-hdc-abstract
+            fn-hrcur-cold-rank fn-hrcur-cold-structural-credit fn-hrcur-cold-tasks-credit
+            fn-hrcur-cold-task-credit fn-hrcur-cold-phase-credit fn-hrcur-cold-child-credit
+            fn-hrcur-span-work o< make-ord))))
+
+(defthm fn-hrcur-cold-test-progress-tick-remove-terminal
+  (let ((c (fn-hrcur-cold-test-ticks (fn-hrcur-cold-begin '(:decoded (:atom nil)) :capture :lease) 20)))
+    (and
+      (fn-hrcur-cold-progress-invariantp c nil)
+      (eq (mv-nth 0 (fn-hrcur-cold-tick c)) :prepared)
+      (not (eq (fn-hrcur-field 0 (mv-nth 0 (fn-hrcur-cold-tick c))) :need-byte))
+      (not (o< (fn-hrcur-cold-rank (mv-nth 2 (fn-hrcur-cold-tick c)))
+             (fn-hrcur-cold-rank c)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+    (enable fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+            fn-hrcur-cold-domainp fn-hrcur-cold-tasksp fn-hrcur-cold-taskp
+            fn-hrcur-dos-domainp fn-hrcur-span-invariantp fn-hrcur-span-shapep
+            fn-hrcur-span-rest fn-hrcur-span-wire fn-hdc-abstract
+            fn-hrcur-cold-rank fn-hrcur-cold-structural-credit fn-hrcur-cold-tasks-credit
+            fn-hrcur-cold-task-credit fn-hrcur-cold-phase-credit fn-hrcur-cold-child-credit
+            fn-hrcur-span-work o< make-ord))))
+
+(defthm fn-hrcur-cold-test-progress-tick-remove-demand
+  (let ((c (fn-hrcur-cold-test-ticks (fn-hrcur-cold-begin '(:decoded (:span 6 0 0 2)) :capture :lease) 5)))
+    (and
+      (fn-hrcur-cold-progress-invariantp c '(17 23))
+      (not (eq (mv-nth 0 (fn-hrcur-cold-tick c)) :prepared))
+      (eq (fn-hrcur-field 0 (mv-nth 0 (fn-hrcur-cold-tick c))) :need-byte)
+      (not (o< (fn-hrcur-cold-rank (mv-nth 2 (fn-hrcur-cold-tick c)))
+             (fn-hrcur-cold-rank c)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+    (enable fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+            fn-hrcur-cold-domainp fn-hrcur-cold-tasksp fn-hrcur-cold-taskp
+            fn-hrcur-dos-domainp fn-hrcur-span-invariantp fn-hrcur-span-shapep
+            fn-hrcur-span-rest fn-hrcur-span-wire fn-hdc-abstract
+            fn-hrcur-cold-rank fn-hrcur-cold-structural-credit fn-hrcur-cold-tasks-credit
+            fn-hrcur-cold-task-credit fn-hrcur-cold-phase-credit fn-hrcur-cold-child-credit
+            fn-hrcur-span-work o< make-ord))))
+
+(defthm fn-hrcur-cold-test-progress-supply-positive
+  (let ((c (fn-hrcur-cold-test-ticks (fn-hrcur-cold-begin '(:decoded (:span 6 0 0 2)) :capture :lease) 5)))
+    (and
+      (fn-hrcur-cold-progress-invariantp c '(17 23))
+      (eq (fn-hrcur-field 0 (mv-nth 0 (fn-hrcur-cold-tick c))) :need-byte)
+      (equal 0 (fn-hrcur-field 1 (mv-nth 0 (fn-hrcur-cold-tick c))))
+      (equal 17 (nth 0 '(17 23)))
+      (o< (fn-hrcur-cold-rank (mv-nth 2 (fn-hrcur-cold-supply c 0 17)))
+             (fn-hrcur-cold-rank c))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+    (enable fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+            fn-hrcur-cold-domainp fn-hrcur-cold-tasksp fn-hrcur-cold-taskp
+            fn-hrcur-dos-domainp fn-hrcur-span-invariantp fn-hrcur-span-shapep
+            fn-hrcur-span-rest fn-hrcur-span-wire fn-hdc-abstract
+            fn-hrcur-cold-rank fn-hrcur-cold-structural-credit fn-hrcur-cold-tasks-credit
+            fn-hrcur-cold-task-credit fn-hrcur-cold-phase-credit fn-hrcur-cold-child-credit
+            fn-hrcur-span-work o< make-ord))))
+
+(defthm fn-hrcur-cold-test-progress-supply-remove-invariant
+  (let ((c (fn-hrcur-cold-test-ticks (fn-hrcur-cold-begin '(:decoded (:span 6 0 0 2)) :capture :lease) 5)))
+    (and
+      (not (fn-hrcur-cold-progress-invariantp c '(999 23)))
+      (eq (fn-hrcur-field 0 (mv-nth 0 (fn-hrcur-cold-tick c))) :need-byte)
+      (equal 0 (fn-hrcur-field 1 (mv-nth 0 (fn-hrcur-cold-tick c))))
+      (equal 999 (nth 0 '(999 23)))
+      (not (o< (fn-hrcur-cold-rank (mv-nth 2 (fn-hrcur-cold-supply c 0 999)))
+             (fn-hrcur-cold-rank c)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+    (enable fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+            fn-hrcur-cold-domainp fn-hrcur-cold-tasksp fn-hrcur-cold-taskp
+            fn-hrcur-dos-domainp fn-hrcur-span-invariantp fn-hrcur-span-shapep
+            fn-hrcur-span-rest fn-hrcur-span-wire fn-hdc-abstract
+            fn-hrcur-cold-rank fn-hrcur-cold-structural-credit fn-hrcur-cold-tasks-credit
+            fn-hrcur-cold-task-credit fn-hrcur-cold-phase-credit fn-hrcur-cold-child-credit
+            fn-hrcur-span-work o< make-ord))))
+
+(defthm fn-hrcur-cold-test-progress-supply-remove-demand
+  (let ((c (fn-hrcur-cold-test-ticks (fn-hrcur-cold-begin '(:decoded (:span 6 0 0 2)) :capture :lease) 1)))
+    (and
+      (fn-hrcur-cold-progress-invariantp c '(17 23))
+      (not (eq (fn-hrcur-field 0 (mv-nth 0 (fn-hrcur-cold-tick c))) :need-byte))
+      (equal nil (fn-hrcur-field 1 (mv-nth 0 (fn-hrcur-cold-tick c))))
+      (equal 17 (nth nil '(17 23)))
+      (not (o< (fn-hrcur-cold-rank (mv-nth 2 (fn-hrcur-cold-supply c nil 17)))
+             (fn-hrcur-cold-rank c)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+    (enable fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+            fn-hrcur-cold-domainp fn-hrcur-cold-tasksp fn-hrcur-cold-taskp
+            fn-hrcur-dos-domainp fn-hrcur-span-invariantp fn-hrcur-span-shapep
+            fn-hrcur-span-rest fn-hrcur-span-wire fn-hdc-abstract
+            fn-hrcur-cold-rank fn-hrcur-cold-structural-credit fn-hrcur-cold-tasks-credit
+            fn-hrcur-cold-task-credit fn-hrcur-cold-phase-credit fn-hrcur-cold-child-credit
+            fn-hrcur-span-work o< make-ord))))
+
+(defthm fn-hrcur-cold-test-progress-supply-remove-position
+  (let ((c (fn-hrcur-cold-test-ticks (fn-hrcur-cold-begin '(:decoded (:span 6 0 0 2)) :capture :lease) 5)))
+    (and
+      (fn-hrcur-cold-progress-invariantp c '(17 23))
+      (eq (fn-hrcur-field 0 (mv-nth 0 (fn-hrcur-cold-tick c))) :need-byte)
+      (not (equal 1 (fn-hrcur-field 1 (mv-nth 0 (fn-hrcur-cold-tick c)))))
+      (equal 23 (nth 1 '(17 23)))
+      (not (o< (fn-hrcur-cold-rank (mv-nth 2 (fn-hrcur-cold-supply c 1 23)))
+             (fn-hrcur-cold-rank c)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+    (enable fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+            fn-hrcur-cold-domainp fn-hrcur-cold-tasksp fn-hrcur-cold-taskp
+            fn-hrcur-dos-domainp fn-hrcur-span-invariantp fn-hrcur-span-shapep
+            fn-hrcur-span-rest fn-hrcur-span-wire fn-hdc-abstract
+            fn-hrcur-cold-rank fn-hrcur-cold-structural-credit fn-hrcur-cold-tasks-credit
+            fn-hrcur-cold-task-credit fn-hrcur-cold-phase-credit fn-hrcur-cold-child-credit
+            fn-hrcur-span-work o< make-ord))))
+
+(defthm fn-hrcur-cold-test-progress-supply-remove-source-byte
+  (let ((c (fn-hrcur-cold-test-ticks (fn-hrcur-cold-begin '(:decoded (:span 6 0 0 2)) :capture :lease) 5)))
+    (and
+      (fn-hrcur-cold-progress-invariantp c '(17 23))
+      (eq (fn-hrcur-field 0 (mv-nth 0 (fn-hrcur-cold-tick c))) :need-byte)
+      (equal 0 (fn-hrcur-field 1 (mv-nth 0 (fn-hrcur-cold-tick c))))
+      (not (equal 999 (nth 0 '(17 23))))
+      (not (o< (fn-hrcur-cold-rank (mv-nth 2 (fn-hrcur-cold-supply c 0 999)))
+             (fn-hrcur-cold-rank c)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+    (enable fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+            fn-hrcur-cold-domainp fn-hrcur-cold-tasksp fn-hrcur-cold-taskp
+            fn-hrcur-dos-domainp fn-hrcur-span-invariantp fn-hrcur-span-shapep
+            fn-hrcur-span-rest fn-hrcur-span-wire fn-hdc-abstract
+            fn-hrcur-cold-rank fn-hrcur-cold-structural-credit fn-hrcur-cold-tasks-credit
+            fn-hrcur-cold-task-credit fn-hrcur-cold-phase-credit fn-hrcur-cold-child-credit
+            fn-hrcur-span-work o< make-ord))))
+
+(defun-nx fn-hrcur-cold-test-source-run-conclusionp (source pool)
+  (equal (fn-hrcur-cold-oracle-run (fn-hrcur-cold-begin source :capture :lease) pool)
+         (fn-scc-encode (fn-hdc-abstract (cadr source) pool))))
+
+; Supported-source full stream positive.
+(defthm fn-hrcur-cold-test-source-run-positive
+  (let ((source '(:decoded (:span 6 0 0 2))) (pool '(17 23)))
+    (and
+      (fn-hrcur-widthp source 2)
+      (eq (car source) :decoded)
+      (fn-hrcur-cold-domainp (cadr source) pool)
+      (fn-scc-octet-listp pool)
+      (fn-hrcur-cold-test-source-run-conclusionp source pool)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-hrcur-cold-supported-source-run-is-current-codec
+      (source '(:decoded (:span 6 0 0 2))) (pool '(17 23))
+      (capture :capture) (lease :lease))) :in-theory
+    (enable fn-hrcur-cold-test-source-run-conclusionp fn-hrcur-cold-oracle-run
+            fn-hrcur-cold-oracle-step fn-hrcur-cold-begin
+            fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+            fn-hrcur-cold-domainp fn-hrcur-cold-tasksp fn-hrcur-cold-taskp
+            fn-hrcur-dos-domainp fn-hdc-abstract fn-hrcur-span-invariantp
+            fn-hrcur-span-shapep fn-hrcur-span-rest fn-hrcur-span-wire
+            fn-hrcur-cold-tick fn-hrcur-cold-supply fn-hrcur-cold-state
+            fn-hrcur-cold-countp fn-hrcur-cold-demand))))
+
+; Supported-source full stream argument/source mutation.
+(defthm fn-hrcur-cold-test-source-run-remove-width
+  (let ((source '(:decoded (:span 6 0 0 2) :extra)) (pool '(17 23)))
+    (and
+      (not (fn-hrcur-widthp source 2))
+      (eq (car source) :decoded)
+      (fn-hrcur-cold-domainp (cadr source) pool)
+      (fn-scc-octet-listp pool)
+      (not (fn-hrcur-cold-test-source-run-conclusionp source pool))))
+  :rule-classes nil
+  :hints (("Goal" :expand ((fn-hrcur-cold-oracle-run '(:refused nil nil nil :capture :lease nil nil 0) '(17 23))) :in-theory
+    (enable fn-hrcur-cold-test-source-run-conclusionp fn-hrcur-cold-oracle-run
+            fn-hrcur-cold-oracle-step fn-hrcur-cold-begin
+            fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+            fn-hrcur-cold-domainp fn-hrcur-cold-tasksp fn-hrcur-cold-taskp
+            fn-hrcur-dos-domainp fn-hdc-abstract fn-hrcur-span-invariantp
+            fn-hrcur-span-shapep fn-hrcur-span-rest fn-hrcur-span-wire
+            fn-hrcur-cold-tick fn-hrcur-cold-supply fn-hrcur-cold-state
+            fn-hrcur-cold-countp fn-hrcur-cold-demand))))
+
+; Supported-source full stream argument/source mutation.
+(defthm fn-hrcur-cold-test-source-run-remove-tag
+  (let ((source '(:resident (:span 6 0 0 2))) (pool '(17 23)))
+    (and
+      (fn-hrcur-widthp source 2)
+      (not (eq (car source) :decoded))
+      (fn-hrcur-cold-domainp (cadr source) pool)
+      (fn-scc-octet-listp pool)
+      (not (fn-hrcur-cold-test-source-run-conclusionp source pool))))
+  :rule-classes nil
+  :hints (("Goal" :expand ((fn-hrcur-cold-oracle-run '(:refused nil nil nil :capture :lease nil nil 0) '(17 23))) :in-theory
+    (enable fn-hrcur-cold-test-source-run-conclusionp fn-hrcur-cold-oracle-run
+            fn-hrcur-cold-oracle-step fn-hrcur-cold-begin
+            fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+            fn-hrcur-cold-domainp fn-hrcur-cold-tasksp fn-hrcur-cold-taskp
+            fn-hrcur-dos-domainp fn-hdc-abstract fn-hrcur-span-invariantp
+            fn-hrcur-span-shapep fn-hrcur-span-rest fn-hrcur-span-wire
+            fn-hrcur-cold-tick fn-hrcur-cold-supply fn-hrcur-cold-state
+            fn-hrcur-cold-countp fn-hrcur-cold-demand))))
+
+; Supported-source full stream argument/source mutation.
+(defthm fn-hrcur-cold-test-source-run-remove-domain
+  (let ((source '(:decoded (:bogus nil))) (pool '(17 23)))
+    (and
+      (fn-hrcur-widthp source 2)
+      (eq (car source) :decoded)
+      (not (fn-hrcur-cold-domainp (cadr source) pool))
+      (fn-scc-octet-listp pool)
+      (not (fn-hrcur-cold-test-source-run-conclusionp source pool))))
+  :rule-classes nil
+  :hints (("Goal" :expand ((fn-hrcur-cold-oracle-run '(:work ((:node (:bogus nil))) nil (:bogus nil) :capture :lease nil nil 0) '(17 23))) :in-theory
+    (enable fn-hrcur-cold-test-source-run-conclusionp fn-hrcur-cold-oracle-run
+            fn-hrcur-cold-oracle-step fn-hrcur-cold-begin
+            fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+            fn-hrcur-cold-domainp fn-hrcur-cold-tasksp fn-hrcur-cold-taskp
+            fn-hrcur-dos-domainp fn-hdc-abstract fn-hrcur-span-invariantp
+            fn-hrcur-span-shapep fn-hrcur-span-rest fn-hrcur-span-wire
+            fn-hrcur-cold-tick fn-hrcur-cold-supply fn-hrcur-cold-state
+            fn-hrcur-cold-countp fn-hrcur-cold-demand))))
+
+; Supported-source full stream argument/source mutation.
+(defthm fn-hrcur-cold-test-source-run-remove-pool
+  (let ((source '(:decoded (:span 6 0 0 2))) (pool '(999 23)))
+    (and
+      (fn-hrcur-widthp source 2)
+      (eq (car source) :decoded)
+      (fn-hrcur-cold-domainp (cadr source) pool)
+      (not (fn-scc-octet-listp pool))
+      (not (fn-hrcur-cold-test-source-run-conclusionp source pool))))
+  :rule-classes nil
+  :hints (("Goal" :expand ((fn-hrcur-cold-oracle-run '(:work ((:node (:span 6 0 0 2))) nil (:span 6 0 0 2) :capture :lease nil nil 0) '(999 23))) :in-theory
+    (enable fn-hrcur-cold-test-source-run-conclusionp fn-hrcur-cold-oracle-run
+            fn-hrcur-cold-oracle-step fn-hrcur-cold-begin
+            fn-hrcur-cold-progress-invariantp fn-hrcur-cold-invariantp
+            fn-hrcur-cold-domainp fn-hrcur-cold-tasksp fn-hrcur-cold-taskp
+            fn-hrcur-dos-domainp fn-hdc-abstract fn-hrcur-span-invariantp
+            fn-hrcur-span-shapep fn-hrcur-span-rest fn-hrcur-span-wire
+            fn-hrcur-cold-tick fn-hrcur-cold-supply fn-hrcur-cold-state
+            fn-hrcur-cold-countp fn-hrcur-cold-demand))))

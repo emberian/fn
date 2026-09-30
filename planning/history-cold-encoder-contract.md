@@ -78,7 +78,7 @@ resume until complete; quantum exhaustion never truncates them.
 
 Runtime implementation is in books/history-cold-record-runtime.lisp.
 The separate books/history-cold-record-cursor.lisp exposes conditional residual
-and invariant laws, with strict general progress/run still open. Its state has nine fixed cells:
+and invariant laws, productive rank descent and a terminating proof-only oracle run. Its state has nine fixed cells:
 phase, pending tasks, child, original borrowed node, capture, lease, bounded
 header prefix, active borrowed node, remaining opaque count. Cold tick returns
 mv verdict/octet/cursor, matching the resident byte emitter. The exact demand
@@ -117,7 +117,7 @@ tick and supply preserve serial plus remaining work at most 12250. This number
 is derived from the current import table, not a new stored-name limit. No runtime source
 coerce/intern, whole-tree domain scan or whole encoded-row allocation occurs.
 
-Full-controller progress plan (proof-only; not yet claimed): use a lexicographic
+Full-controller progress measure (proof-only): use a lexicographic
 triple of remaining structural credit, phase order, and current child work. A
 queued :node has twice its ACL2 node count as credit; :no-octets has two fewer
 credits, and a queued literal byte has one. Active classification has one fewer
@@ -129,7 +129,7 @@ opaque2, opaque-span1, done0. Child work comes from the existing scanner, scalar
 span and normalizer measures, or the remaining prefix/payload count. The triple
 is never evaluated on the served path. A demand is unchanged; an attributed
 supply or productive tick must strictly lower the triple. The general rank
-and finite completion proofs are still open.
+and finite exact-output proof now compose conditionally on the carried source domain.
 
 Conditional source checkpoint: exact initializer, all-phase tick/supply residual
 and invariant, permitted verdicts and emitted-octet boundaries now compose in
@@ -137,4 +137,22 @@ hrcrt1 after cached row (139 source body forms,31.79s/11,159,948steps;22proof
 test forms,.07s/4,464steps). Matching public source admissions are reused; this
 is not certification. Initial/tick/supply literal removals are explicit.
 The ordinal rank and progress initializer are admitted; strict general
-productive rank decrease and finite-run completion remain the next proof work.
+productive rank decrease and finite-run completion are supplied by the following conditional checkpoint.
+
+Productive progress source checkpoint: every productive actual tick strictly
+decreases the well-founded rank when the carried progress invariant holds;
+prepared and byte-demand are excluded explicitly. Every attributed actual
+supply strictly decreases the same rank under current demand, position and
+immutable-pool byte attribution. Both operations preserve the progress
+invariant. Nine literal positives/removals cover the two progress boundaries.
+
+The proof-only fn-hrcur-cold-oracle-step invokes the actual tick, and on demand
+invokes actual supply with nth(request-position, immutable-pool). Its recursive
+fn-hrcur-cold-oracle-run terminates by the proved ordinal descent and equals
+the exact current-codec residual. Initialization consequently returns the
+complete fn-scc-encode(fn-hdc-abstract source pool), without fixed fuel or
+truncation, for every supported source in the explicit domain. Five literal
+full-stream positive/removal witnesses accompany the initializer. This oracle
+is non-executable; it does not supply runtime bytes or establish physical I/O
+liveness. Actual decoder/source lineage, authenticated reader/pin authority,
+continuation funding and full producer qualification remain open outer joins.

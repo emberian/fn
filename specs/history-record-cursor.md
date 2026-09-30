@@ -404,8 +404,8 @@ cold dependency in the older record book would introduce an include cycle.
 
 The lane's separate work-in-progress `history-cold-record-cursor` proof book
 includes this runtime; that suffix is not part of this importable checkpoint.
-Its complete all-phase invariant/residual, productive progress, literal teeth
-and fresh full replay are still open. Runtime tests exercise complete current
+Its conditional all-phase invariant/residual and productive progress are now
+provided by the following source-library checkpoints; actual producer joins remain open. Runtime tests exercise complete current
 codec outputs for scalar, borrowed strings/octet spans, collapsed pair tails,
 imported symbols and NIL aliases. These tests and runtime guard admission do
 not complete the cold producer, physical funding or qualification claim.
@@ -432,7 +432,31 @@ Twenty-two proof-test forms cover complete initial, tick and attributed-supply
 positives/removals, output-type antecedents and reachable ordinal rank. All
 139 proof body forms compose in the protected cached-row world; matching
 previous public admissions are reused, locals replay inside one encapsulate.
-This is conditional source-library evidence. Strict general rank decrease,
-finite-run completion, actual decoded source lineage, authenticated
+This is conditional source-library evidence. The progress and finite-run
+checkpoint below extends it; actual decoded source lineage, authenticated
 reader/producer authority, physical funding and certification remain open.
 The well-founded rank is proof-only and is never evaluated by the runtime.
+
+## Conditional cold progress and complete stream
+
+The same actual runtime now has a well-founded proof-only progress rank.
+A productive tick under fn-hrcur-cold-progress-invariantp lowers it strictly;
+prepared and current byte demand are explicit exclusions. Supply lowers it
+strictly under the invariant, current demand, exact requested position and
+exact immutable-pool byte. Both preserve the carried progress invariant.
+Nine literal progress positives and hypothesis removals include reachable
+terminal/demand states and separately labeled cursor/source/observation
+mutations. No rank or recursive domain model runs on the served path.
+
+fn-hrcur-cold-oracle-run is a terminating non-executable composition of actual
+tick and attributed supply. It returns precisely fn-hrcur-cold-rest; begin
+therefore produces the complete canonical fn-scc-encode of the borrowed node
+abstraction under the initial shape/tag/domain/pool hypotheses. Five literal
+full-stream witnesses check the complete antecedent and conclusion and every
+initial hypothesis omission. It has no fixed fuel or whole-row runtime buffer.
+
+This source-library theorem assumes the immutable byte oracle actually serves
+each demand. Establishing those bytes through the authenticated reader,
+source/pass/root pin, actual decoder numeric/size lineage, physical lifetime
+and funding remains the producer's composition obligation. No certificate,
+qualified image, deployment or completed producer follows from this result.
