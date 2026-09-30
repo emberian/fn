@@ -160,11 +160,21 @@
 ; Store's history, books/history-columns-relation.lisp) replaces the retired
 ; event index's ; the view's count is the snoc-list's
 ; carried count (fn-sf-records-count, no hypothesis).
+(local
+ (defthm fn-orix-records-count-is-length-by-definition
+   (equal (fn-sf-records-count files) (len (fn-sf-records files)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory
+            (union-theories '(fn-sf-records-count)
+                            (theory 'minimal-theory))))))
+
 (defthm fn-own-refresh-ix-is-own-refresh
   (implies (and (fn-sn-statep (fn-own-store o))
                 (fn-hist-of-storep fn-hist (fn-own-store o)))
            (equal (fn-own-refresh-ix o fn-hist) (fn-own-refresh o)))
-  :hints (("Goal" :use ((:instance fn-orix-store-rows-agree (s (fn-own-store o))))
+  :hints (("Goal" :use ((:instance fn-orix-store-rows-agree (s (fn-own-store o)))
+                        (:instance fn-orix-records-count-is-length-by-definition
+                                   (files (fn-sn-files (fn-own-store o)))))
            :in-theory (e/d (fn-own-refresh-ix fn-own-refresh
                             fn-ctl-refresh-withdrawals-fx fn-sf-records-count)
                            (fn-sn-statep
