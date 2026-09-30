@@ -1,0 +1,32 @@
+import unittest
+from tools.resilience.typed_window_model import Step, validate, driver, expectations, dependencies, observe, judge
+
+class TypedWindowModelTests(unittest.TestCase):
+    def test_release_reacquire_and_old_request(self):
+        steps = [Step("r", "return"), Step("s", "release"), Step("a", "admit", "next"),
+                 Step("q", "acquire", "next"), Step("old", "return"), Step("new", "return", "next")]
+        views = expectations(steps)
+        self.assertEqual([v["answer"] for v in views], [":RETURNED", ":RELEASED", ":ADMITTED", ":ASSIGNED", ":STALE-JOB", ":RETURNED"])
+        self.assertIn("a", dependencies(steps)["q"])
+    def test_symbolic_labels_never_enter_executable_text(self):
+        label = '\" (value-triple :injected)'
+        text = driver([Step(label, "admit", label), Step("use", "acquire", label)], 2)
+        self.assertNotIn(label, text)
+        with self.assertRaises(ValueError): validate([Step("use", "return", "missing")])
+    def test_partial_trial_fails_closed(self):
+        verdict = judge([Step("c", "cancel")], observe("", 0), 0)
+        self.assertEqual(verdict.kind, "harness-failure")
+    def test_actual_literal_parser_and_named_violation(self):
+        steps = [Step("c", "cancel")]
+        text = "FN_W7_TYPED trial=0 step=0 answer=:CANCELLED phase=:CANCELLED-RUNNING bytes=320 workers=1 close=:READ-FILE-HELD"
+        self.assertEqual(judge(steps, observe(text, 0), 0).kind, "consistent")
+        self.assertEqual(judge(steps, observe(text.replace("bytes=320", "bytes=64"), 0), 0).kind, "violation")
+        self.assertEqual(len(observe(text, 1).records), 0)
+
+    def test_retained_actual_acl2_trials(self):
+        import json
+        from pathlib import Path
+        evidence = Path(__file__).resolve().parents[1] / "planning/evidence/resilience-typed-window-2026-09-30"
+        text = (evidence / "model-trials.log").read_text()
+        for i, case in enumerate(json.loads((evidence / "model-trials.json").read_text())):
+            self.assertEqual(judge([Step(**s) for s in case], observe(text, i), i).kind, "consistent")
