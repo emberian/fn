@@ -1870,26 +1870,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1955,
-    "books_in_root_closure": 1936,
+    "books": 1964,
+    "books_in_root_closure": 1937,
     "roots": 1866,
-    "theorems": 30087,
-    "functions": 19177,
-    "assert_events": 24056,
+    "theorems": 30156,
+    "functions": 19249,
+    "assert_events": 24064,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
-      "verified": 3526,
-      "declared-off": 2329,
-      "default-guarded": 10465,
-      "default-unguarded": 2857
+      "verified": 3544,
+      "declared-off": 2334,
+      "default-guarded": 10513,
+      "default-unguarded": 2858
     },
     "suspect_theorems": 1266,
     "export_hygiene_warnings": 348,
     "enabled_projection_warnings": 55,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2683,
+    "include_hygiene_warnings": 2694,
     "host_names_warnings": 2193,
     "hand_written_record_warnings": 18
   },
@@ -8995,6 +8995,32 @@
       "read_error": null
     },
     {
+      "book": "books/catalog-message-id-shape.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "nntp-syntax"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/catalog-number-index.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -9266,11 +9292,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 385,
-      "functions": 131,
+      "functions": 130,
       "guards": {
         "verified": 14,
         "declared-off": 20,
-        "default-guarded": 70,
+        "default-guarded": 69,
         "default-unguarded": 27
       },
       "verify_guards_events": 14,
@@ -9281,6 +9307,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "catalog-message-id-shape",
         "catalog-record",
         "msgid-pages-exec"
       ],
@@ -12677,6 +12704,90 @@
       "read_error": null
     },
     {
+      "book": "books/group-number-source-assignment.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 12,
+      "functions": 12,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 12,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "group-number-source"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/group-number-source.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 8,
+      "functions": 11,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 11,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "group-number-trie"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/group-number-trie.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 2,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "acceptance-alloc"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/group-status.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -12841,6 +12952,35 @@
       "encapsulates": 0,
       "includes": [
         "owner-checkpoint-pipeline"
+      ],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/held-message-id-cursor.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 17,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 10,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "acceptance-alloc",
+        "catalog-message-id-shape"
       ],
       "system_includes": [
         "arithmetic-5/top"
@@ -15939,6 +16079,33 @@
       "read_error": null
     },
     {
+      "book": "books/index-publication-shape.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 23,
+      "functions": 20,
+      "guards": {
+        "verified": 18,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 18,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "acceptance-alloc",
+        "defrecord"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/index-range-controller.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -15959,6 +16126,35 @@
       "encapsulates": 0,
       "includes": [
         "served-render-holder"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/index-range-number-controller.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 3,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 6,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "group-number-source-assignment",
+        "index-publication-shape",
+        "index-range-controller",
+        "over-row-state"
       ],
       "system_includes": [],
       "suspects": [],
@@ -43610,6 +43806,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/held-message-id-cursor-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 8,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/held-message-id-cursor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/held-rows-intern-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -45146,6 +45368,32 @@
       "encapsulates": 0,
       "includes": [
         "../../books/index-range-controller"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/index-range-number-controller-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 4,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 4,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/index-range-number-controller"
       ],
       "system_includes": [],
       "suspects": [],
@@ -60411,7 +60659,7 @@
     {
       "theorem": "fn-ctg-assign-fields",
       "book": "books/catalog.lisp",
-      "line": 1478,
+      "line": 1473,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60419,7 +60667,7 @@
     {
       "theorem": "fn-ctg-corr-live-facts",
       "book": "books/catalog.lisp",
-      "line": 3409,
+      "line": 3404,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-cat$corr-live"
       ]
@@ -60427,7 +60675,7 @@
     {
       "theorem": "fn-ctg-mark-withdrawn-is-update",
       "book": "books/catalog.lisp",
-      "line": 1676,
+      "line": 1671,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-cat-mark-withdrawn and the conclusion is that arm's value"
       ]
@@ -60435,7 +60683,7 @@
     {
       "theorem": "fn-ctg-withdrawn-of-assign",
       "book": "books/catalog.lisp",
-      "line": 1503,
+      "line": 1498,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60443,7 +60691,7 @@
     {
       "theorem": "fn-ctg-withdrawn-of-with-context",
       "book": "books/catalog.lisp",
-      "line": 3715,
+      "line": 3710,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60451,7 +60699,7 @@
     {
       "theorem": "fn-ctg-withdrawn-of-with-withdrawn",
       "book": "books/catalog.lisp",
-      "line": 3646,
+      "line": 3641,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60517,7 +60765,7 @@
     {
       "theorem": "fn-ctw-corr-wbv-parts",
       "book": "books/catalog.lisp",
-      "line": 4291,
+      "line": 4286,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-cat$corr-wbv"
       ]
@@ -69221,7 +69469,7 @@
       {
         "theorem": "fn-cat-total-octets-is-octets-of",
         "book": "books/catalog.lisp",
-        "line": 4748,
+        "line": 4743,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -74675,6 +74923,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/catalog.lisp",
+        "line": 62,
+        "include": "catalog-message-id-shape",
+        "included": "books/catalog-message-id-shape.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/checkpoint-publish.lisp",
         "line": 30,
         "include": "byte-store-txn-name",
@@ -74997,6 +75252,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/group-number-source-assignment.lisp",
+        "line": 4,
+        "include": "group-number-source",
+        "included": "books/group-number-source.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/group-number-trie.lisp",
+        "line": 3,
+        "include": "acceptance-alloc",
+        "included": "books/acceptance-alloc.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/heap-figure.lisp",
         "line": 68,
         "include": "outcome-class",
@@ -75008,6 +75277,20 @@
         "line": 55,
         "include": "profile-limits",
         "included": "books/profile-limits.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/held-message-id-cursor.lisp",
+        "line": 4,
+        "include": "catalog-message-id-shape",
+        "included": "books/catalog-message-id-shape.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/held-message-id-cursor.lisp",
+        "line": 5,
+        "include": "acceptance-alloc",
+        "included": "books/acceptance-alloc.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -78000,10 +78283,38 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/index-publication-shape.lisp",
+        "line": 4,
+        "include": "acceptance-alloc",
+        "included": "books/acceptance-alloc.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/index-range-controller.lisp",
         "line": 4,
         "include": "served-render-holder",
         "included": "books/served-render-holder.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/index-range-number-controller.lisp",
+        "line": 4,
+        "include": "index-range-controller",
+        "included": "books/index-range-controller.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/index-range-number-controller.lisp",
+        "line": 6,
+        "include": "group-number-source-assignment",
+        "included": "books/group-number-source-assignment.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/index-range-number-controller.lisp",
+        "line": 7,
+        "include": "over-row-state",
+        "included": "books/over-row-state.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -85651,6 +85962,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/held-message-id-cursor-tests.lisp",
+        "line": 2,
+        "include": "../../books/held-message-id-cursor",
+        "included": "books/held-message-id-cursor.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/held-rows-intern-tests.lisp",
         "line": 6,
         "include": "held-rows-tests",
@@ -86096,6 +86414,13 @@
         "line": 2,
         "include": "../../books/index-range-controller",
         "included": "books/index-range-controller.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/index-range-number-controller-tests.lisp",
+        "line": 2,
+        "include": "../../books/index-range-number-controller",
+        "included": "books/index-range-number-controller.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
