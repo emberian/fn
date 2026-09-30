@@ -18741,6 +18741,24 @@
         "tests/acl2/refusal-headroom-tests.lisp"
       ],
       "progress_note": "Clean protected persvati rfh2 admitted the source and 79 source dependencies (157.12 ACL2 seconds; 33,691,947 prover steps), then the final export theory form and all 13 fixture forms / five assertions. All 18 named source events match the file. Scoped theory and teeth checks passed with zero findings; ledger/current regenerated remotely. Session stopped and source evidence committed. No certification or native claim. Component theorems are not cited host keystones until exact owner composition and matching evidence."
+    },
+    {
+      "id": "PRF-1107",
+      "title": "Bounded authenticated current-format checkpoint page source",
+      "statement": "Planned full reader replaces eager source directory/table materialization. First component fn-hsr-scan-word consumes one u64, preserves fixed capture/lease identities and a carried invariant, advances exactly one word, and retains only the selected six-word entry while latching txid/padding failures. The selected stream is proved equal to the current pgs-decode-table entry, including cross-page entries. Authentication, root-to-table-to-data request composition, whole canonical verdict refinement, physical ownership integration and host activation remain open.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": [
+        "books/history-page-reader.lisp",
+        "tests/acl2/history-page-reader-tests.lisp",
+        "specs/history-auth-reader.md",
+        "planning/evidence/history-page-reader-source-2026-09-30.json"
+      ],
+      "progress_note": "First scanner component: clean protected persvati hsread2 source-dependency replay, proper local scope; 41 test forms loaded, 28 literal assertions passed; static teeth and narrow theory checks green. Runtime scanner functions guard verified. No full authentication, certificate, host or native claim."
     }
   ]
 }
