@@ -357,7 +357,7 @@
            (fn-lpv-value-state-p s source nil))
   :hints (("Goal" :in-theory (e/d (fn-lpv-value-state-p) (fn-lpc-at)))))
 
-(defthm fn-lpv-header-first-is-value-byte
+(defthm fn-lpv-header-first-is-value-byte-by-definition
   (implies (and (equal (fn-lpc-at 0 s) :first)
                 (< (nfix (fn-lpc-at 1 s)) *fn-article-max-line-octets*)
                 (fn-article-wspp byte))
@@ -367,7 +367,7 @@
            (e/d (fn-lpc-header-byte fn-article-wspp)
                 (fn-lpc-value-byte fn-lpc-at fn-lpc-put fn-lpc-header-bad)))))
 
-(defthm fn-lpv-header-fold-is-value-byte
+(defthm fn-lpv-header-fold-is-value-byte-by-definition
   (implies (and (equal (fn-lpc-at 0 s) :start) (fn-lpc-at 2 s)
                 (< (nfix (fn-lpc-at 1 s)) *fn-article-max-line-octets*)
                 (fn-article-wspp byte))
@@ -386,14 +386,14 @@
             (fn-lpc-header-byte s byte (len source) h pin)
             (append source (list byte)) (append value (list byte))))
   :hints (("Goal"
-           :use ((:instance fn-lpv-header-fold-is-value-byte (pos (len source)))
+           :use ((:instance fn-lpv-header-fold-is-value-byte-by-definition (pos (len source)))
                  (:instance fn-lpv-value-byte-refines-unfolded-append
                             (s (fn-lpc-put 10 :fold-empty s))))
            :in-theory
            (e/d (fn-article-wspp fn-article-header-bytep)
                 (fn-lpv-value-state-p fn-lpc-header-byte fn-lpc-value-byte
                  fn-lpc-put fn-lpc-at binary-append len nfix
-                 fn-lpv-header-fold-is-value-byte
+                 fn-lpv-header-fold-is-value-byte-by-definition
                  fn-lpv-value-byte-refines-unfolded-append)))))
 
 (defthm fn-lpv-header-line-end
