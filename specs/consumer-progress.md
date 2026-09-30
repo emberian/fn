@@ -1213,3 +1213,30 @@ committed event count (`event.sequence + 1`), independent of allocator txid.
 No parsed shape or size carry establishes authority; nonempty old results do
 not acquire a missing committed root from a current STATE getter. The actual
 cfg-first producer/decoder association remains an open join.
+
+The additive FNCR source caller captures the real current CP, dense event count,
+canonical process coordinate, ready account publication and installed owner
+post-config in the same serialized span. Every scope tick reauthenticates the
+explicit login and rechecks its account creation, namespace/revision and current
+configured generation. The resettable canonical coordinate is not source
+freshness or custody. A genuine retained-source issuer and its revalidation are
+still required before article lookup or a mutation.
+
+The source scope producer borrows the installed READ table, served groups and
+closed moderation entries. It follows first-match READ precedence and hides a
+shared queue unless the named login moderates every queued group. One access
+row, served group, closed entry, moderator cell or output spine cell is processed
+per tick. The carried key must agree before any such step. Its logical
+continuation refinement and positive/hypothesis-removal source witnesses are
+implemented; no whole configured table is reconstructed or revalidated.
+
+The concrete FNCR source decoder locates the definition blob in a retained
+client octet buffer. Fixed-width fields are parsed separately; group count is
+checked against the supported profile before allocating a name, and each group
+step preflights its codec width before copying or grammar work. Stored query
+order is canonical and strictly increasing, which also rejects duplicates in
+linear total work. There is no historical article-grammar 65535 group ceiling
+on this producer. A truncated stream is refused rather than silently shortened.
+These are source components of CNS-011. The actual digest/parser refinement,
+installed transport admission/custody, durable variable CPE publication and full
+native endpoint/scenarios remain open.
