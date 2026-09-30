@@ -1475,7 +1475,7 @@
         "PRF-007"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "note": "Decisions D14-b (lane w10/kernel-freedom, the record arm) and D14-c (lane w11/bytestore-k2, the frontier arm K2f). The recognizer is a SECOND one: fn-sf-crash-imagep is unchanged and stays the reliance predicate that fn-own-reopen gates on and every reopen theorem takes as a premise, because widening it is false for the composition -- an owner reopened on an image is a recovery-window state whose own success history is empty while its ledger names records earlier processes acknowledged, and which of a state's records are fenced is a fact about the byte store's pending list, not about the kernel state. The counterexample is mechanized in tests/acl2/owner-tests.lisp (the owner half) and tests/acl2/store-observed-traces-tests.lisp (the kernel half). This target retires the open row K2r of specs/crash-model-v2.md; crash-model-v2 K2, whose conclusion this predicate is, remains open on the byte side, and what it waits on is now only K1's three remaining scan clauses: the frontier sub-case K2f is modelled, so K2's STATEMENT is true of every image the platform can leave in the window.",
       "events": [
         "fn-sf-recovery-crash-realizes-every-admissible-image",
@@ -1645,7 +1645,7 @@
         "PRF-032"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "note": "Lane w11/bytestore-k2, packet 2. fn-sn-replay-loop-append already gave ok(whole) implies ok(prefix); what was missing, and what blocked lane w10/kernel-freedom's first widening at fn-snt-admissible-crash-image-is-recoverable, is that the prefix node is idle with next-txid at most the frontier. The acknowledged-record half of crash-model-v2 K4 is NOT restated over the wider predicate: on both rollback arms the arm's own (null (fn-sf-successes s)) and a member-equal success hypothesis are contradictory, so the restatement would be fn-sn-acknowledged-record-survives-observed-reopen with two vacuous arms. fn-sf-recovery-admissible-image-facts carries that guarantee over every arm instead. Claimed as PRF-033 before merging dev at 81ae082 and RENUMBERED: w11/clock-seam and w11/workflow-replay had taken 033 and 034, and w11/one-owner 035, while this lane held an older dev. Host tie (books/store-open-bridge.lisp, k4-bridges lane): the cited keystones stay the registry events; fn-cpo-open-observed-is-sn-open-observed-on-the-kernel and fn-cpo-open-observed-succeeds-exactly are the named theorems relating them to fn-cpo-open-observed, which host/store-node-host.lisp:159 and host/owner-host.lisp:193 call. Corollaries (the host's subject, not registry events): fn-sn-recovery-admissible-image-reopens -> fn-sn-recovery-admissible-image-reopens-of-host-open (added hypothesis fn-sob-configured-openp).",
       "evidence": [
         "books/store-node-invariants.lisp",
@@ -5598,7 +5598,7 @@
         "PRF-133"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-sct-load-is-decode-file",
         "fn-sctr-run-decode-is-run-decode",
@@ -11447,7 +11447,7 @@
         "PRF-344"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/history-pages.lisp",
         "tests/acl2/history-pages-tests.lisp",
@@ -11676,7 +11676,7 @@
         "A-CRYPTO",
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/frame-digest-buffer.lisp",
         "books/store-checkpoint-reader.lisp",
@@ -13301,7 +13301,7 @@
       "assumptions": [
         "A-PGS-HOST-IO"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/history-records.lisp",
         "tests/acl2/history-records-tests.lisp",
@@ -13823,7 +13823,7 @@
       "assumptions": [
         "A-PGS-HOST-IO"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/history-records-disk.lisp",
         "books/store-records-field.lisp",
