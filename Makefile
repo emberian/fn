@@ -982,6 +982,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-view \
 	books/served-columns \
 	tests/acl2/served-columns-tests \
+	books/nov-column-pieces \
+	tests/acl2/nov-column-pieces-tests \
+	tests/acl2/nov-metadata-tests \
 	books/nov-piece-window \
 	tests/acl2/nov-piece-window-tests \
 	books/nov-span-window \
