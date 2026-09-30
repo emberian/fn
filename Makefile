@@ -740,6 +740,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-job-offer \
 	books/bp-node-job-offer-progress \
 	tests/acl2/bp-node-job-offer-tests \
+	books/bp-controller-checkpoint-capture \
+	tests/acl2/bp-controller-checkpoint-capture-tests \
 	books/bp-node-job-cursor \
 	tests/acl2/bp-node-job-cursor-tests \
 	books/bp-node-run-class \
