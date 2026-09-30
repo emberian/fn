@@ -7384,7 +7384,11 @@
         "tests/acl2/catalog-context-recovery-tests.lisp"
       ],
       "progress_note": "Snapshot recovery successor: repaired the false unconditional keyring frame with the actual ARTICLE phase/kind frame and retained-snapshot recovery coherence; exact constructor writer equations are named -by-definition and not cited as keystones. Clean source admission and literal witnesses are source evidence only. Full retained-ready establishment is proved by the context recovery composition with literal nonempty enrollment, readiness removal and corrupted-carry removal witnesses; host adoption and qualification remain open. General ready/crash/actual-recover composition now admitted in a clean proper source root with complete literal positive and both hypothesis-removal witnesses; status remains planned.",
-      "pending_subject": "No host line calls fn-cat-prepare, fn-cat-complete or fn-sn-finish-held yet: the host's finish is fn-owner-finish-submission -> fn-ccar-own-finish -> fn-ccar-sn-finish-enabled (host/owner-host.lisp), the walk the token replaces; moving it is step 8 of PKT-585. Until then the keystones' subjects are reached only by the test books."
+      "pending_subject": "Proved catalog context source components are not yet reached through the actual owner cold recovery boundary. Physical writer/load and owner adoption remain open.",
+      "events": [
+        "fn-osr-ready-establishes-catalog-recovery-context",
+        "fn-osr-ready-crash-recovery-keeps-catalog-context"
+      ]
     },
     {
       "id": "PRF-204",
@@ -10750,7 +10754,7 @@
         "PRF-164"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-reader-read.lisp",
         "tests/acl2/owner-reader-read-tests.lisp",
@@ -12276,7 +12280,7 @@
         "PRF-302"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-rcompat-reply-cat-is-rcompat-reply",
         "fn-rcompat-retrieval-cat-is-retrieval",
@@ -13158,7 +13162,7 @@
         "PRF-332"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-nntp-verdict-hdr-response-cat-is-archive",
         "fn-nntp-verdict-hdr-range-cat-is-archive",
@@ -13664,7 +13668,7 @@
         "PRF-377"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/memory-credits.lisp",
         "books/owner-credits.lisp",
@@ -13989,7 +13993,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/nntp-responses.lisp",
         "books/nntp.lisp",
@@ -14055,7 +14059,7 @@
         "PRF-222"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/group-access-cache.lisp",
         "books/group-access.lisp",
@@ -14408,7 +14412,7 @@
         "PRF-918"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-reclaim.lisp",
         "tests/acl2/owner-reclaim-tests.lisp",
@@ -17775,7 +17779,7 @@
         "HST-001"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-reclaim-carry.lisp",
         "tests/acl2/owner-reclaim-carry-tests.lisp"
@@ -17788,7 +17792,7 @@
     {
       "id": "PRF-1057",
       "title": "Issued cold page reads retain identity and worker ownership through cancellation and late completion",
-      "statement": "Host/native/extent.lisp fnn-extent-complete-read calls fn-pio-complete. Publication requires its exact immutable token (process-local read ID, original CID, file incarnation ID, offset, length, expected trailer), phase issued and successful full commitment check, and settles once. fn-pio-cancel retains token and unsettled ownership even after deadline/client loss. fnn-extent-close calls fn-pio-file-clear-p over carried valid ownership rows: every issued/cancelled worker naming a retired file prevents close independently of the arena-reader generation gate. Duplicate/stale completions cannot publish or settle twice. Host OS/thread/mutex/table fidelity is A-HOST; observed worker death and join (or definite failed launch) is required before settlement. Incarnation allocator fn-pio-file-issue derives process-local identities and successive admitted allocations are distinct; a failed open spends its name and invalid carried counter refuses rather than resetting. No funded read-pool admission or memory bound is claimed; repeated detached workers remain P12 open. The operator-funded local file namespace can exhaust before open without wrapping or refunding a spent name; admitted resource-pool tokens establish the identical owned read row and use the ledger’s single counter. These are partial algebra/lifetime subjects; supported profile installation, retained runtime storage and legacy large-frame streaming remain open.",
+      "statement": "Host/native/extent.lisp fnn-extent-complete-read calls fn-pio-complete. Publication requires its exact immutable token (process-local read ID, original CID, file incarnation ID, offset, length, expected trailer), phase issued and successful full commitment check, and settles once. fn-pio-cancel retains token and unsettled ownership even after deadline/client loss. fnn-extent-close calls fn-pio-file-clear-p over carried valid ownership rows: every issued/cancelled worker naming a retired file prevents close independently of the arena-reader generation gate. Duplicate/stale completions cannot publish or settle twice. Host OS/thread/mutex/table fidelity is A-HOST; observed worker death and join (or definite failed launch) is required before settlement. Incarnation allocator fn-pio-file-issue derives process-local identities and successive admitted allocations are distinct; a failed open spends its name and invalid carried counter refuses rather than resetting. No funded read-pool admission or memory bound is claimed; repeated detached workers remain P12 open. The operator-funded local file namespace can exhaust before open without wrapping or refunding a spent name; admitted resource-pool tokens establish the identical owned read row and use the ledger\u2019s single counter. These are partial algebra/lifetime subjects; supported profile installation, retained runtime storage and legacy large-frame streaming remain open.",
       "milestone": "M5",
       "requirements": [
         "STO-017"
