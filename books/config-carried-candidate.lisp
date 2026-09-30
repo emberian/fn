@@ -141,7 +141,9 @@
                              fn-cpr-apply-event fn-cnode-record-acceptablep
                              fn-store-event-p fn-cfg-recordp
                              fn-replay-advance-okp fn-replay-advance-txid
-                             fn-cnode-carried-acceptablep))))))
+                             fn-cnode-carried-acceptablep
+                             fn-ocl-cpr-loop-configuration-is-the-record-fold
+                             fn-ocl-config-fold))))))
 
 ; KEYSTONE.  The physical fold over CONFIGS ++ (RECORD) and EVENTS is one step
 ; from the fold over CONFIGS and EVENTS, when RECORD is filed after every event.
