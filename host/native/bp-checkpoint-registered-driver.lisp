@@ -4,6 +4,8 @@
 (in-package "ACL2")
 (defvar *fnn-bpck-prefix-next-callback* nil)
 (defvar *fnn-bpck-prefix-observe-callback* nil)
+(defvar *fnn-bpck-close-next-callback* nil)
+(defvar *fnn-bpck-close-observe-callback* nil)
 
 (defstruct (fnn-bpck-registered-io (:constructor %make-fnn-bpck-registered-io))
   controller stage action fd (close-result :closed) (outcome :idle)
@@ -46,7 +48,7 @@ No native CURRENT, checkpoint job or digest stobj is authoritative here."
                 (declare (ignore left registry))
                 (setf (fnn-bpck-registered-io-status record) word)
                 (case word
-                  ((:observed :uncertain)
+                  ((:observed :uncertain :close-observed :close-uncertain)
                    (setf (fnn-bpck-registered-io-action record) nil
                          (fnn-bpck-registered-io-outcome record) :idle))
                   (:yield nil)
@@ -77,6 +79,18 @@ No native CURRENT, checkpoint job or digest stobj is authoritative here."
                                        (logior sb-posix:o-rdwr sb-posix:o-creat
                                                sb-posix:o-excl +fnn-o-nofollow+) #o600)
                              (fnn-bpck-registered-io-close-result record) :open))
+                      (:close
+                       ;; Detach before CLOSE. Unknown close is never retried,
+                       ;; and detached NIL never establishes definite return.
+                       (let ((closing (fnn-bpck-registered-io-fd record)))
+                        (cond
+                         (closing
+                          (setf (fnn-bpck-registered-io-fd record) nil
+                                (fnn-bpck-registered-io-close-result record) :uncertain)
+                          (fnn-close closing)
+                          (setf (fnn-bpck-registered-io-close-result record) :closed))
+                         ((eq (fnn-bpck-registered-io-close-result record) :closed) nil)
+                         (t (fnn-fault "detached BP descriptor has uncertain close custody")))))
                       (:emit (fnn-write-all (fnn-bpck-registered-io-fd record)
                                            (sixth action)))
                       (otherwise (fnn-fault "unrecognized registered prefix I/O action")))
@@ -88,3 +102,11 @@ No native CURRENT, checkpoint job or digest stobj is authoritative here."
       (setf (fnn-bpck-registered-io-core-failure record) condition)))
     (setf (fnn-bpck-registered-io-source-result record) :returned)))
   record)
+
+(defun fnn-bps-registered-checkpoint-close-turn (record fuel)
+  "One retained registered close action/result. No release is performed."
+  (unless (and *fnn-bpck-close-next-callback* *fnn-bpck-close-observe-callback*)
+    (fnn-fault "guarded registered BP close callbacks unavailable"))
+  (let ((*fnn-bpck-prefix-next-callback* *fnn-bpck-close-next-callback*)
+        (*fnn-bpck-prefix-observe-callback* *fnn-bpck-close-observe-callback*))
+    (fnn-bps-registered-checkpoint-prefix-turn record fuel)))

@@ -103,3 +103,21 @@ helper's green test cannot substitute for the actual composed controller.
 
 This contract resolves the representation choice. Full S7/P12/W8 behavior,
 funding, source proofs, certification and native evidence remain open.
+
+## Registered close custody source, 2026-09-30
+
+The additive close handler persists a revisioned close action before I/O and
+retains the registered phase, including cancellation. It accepts only the exact
+job token/action revision for a result. Closing does not delete the private
+stage, transfer publication capacity, or release its claim. Definite close with
+uncertain stage still yields `fn-bpck-cleanup-word :uncertain`.
+
+The actual dormant native caller detaches its descriptor before the close
+primitive; an ambiguous close is never retried. A detached NIL descriptor with
+uncertain close custody cannot be observed as closed. The recording refuter
+passes these paths and the prior competing-turn race; it uses explicitly
+unfunded raw holders and recording callbacks/I/O. The additive ACL2 source and
+fixture are **unadmitted**: the retained proof world expired before the send.
+No bootstrap or native qualification was performed. The old cancelled primitive
+result still needs a separate retentive settlement join before preparing close;
+this source does not discharge that obligation or authorize constructors.
