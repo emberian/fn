@@ -257,6 +257,41 @@ has both hypothesis removals. The stronger semantic span-domain refinements
 and supply progress retain further literal-teeth work; no fully toothed full
 cold-source/producer target is claimed.
 
+## Bounded decoded NIL-tail probe
+
+`books/history-decoded-record-cursor.lisp` adds the guarded seven-field
+`fn-hrcur-nil-begin`, `fn-hrcur-nil-tick` and `fn-hrcur-nil-supply` seam.
+Only package1/2 symbols with raw payload length3 request bytes. Each supply
+compares one of the three NIL name octets; all other packages or lengths
+complete as non-NIL without reading payload. Request ticks preserve the
+cursor unchanged; wrong or replayed positions refuse unchanged. This is the
+bounded nullness decision needed before decoded CONS classification can
+canonically collapse an octet-list tail. General symbol import normalization
+remains a separate emission boundary.
+
+`fn-hrcur-nil-model-refines-decoded-symbol` equates the result with nullness
+of the actual `fn-hdc-abstract` symbol span. Initialization, supply invariant
+preservation, terminal denotation, productive supply progress and opaque
+capture/lease retention are admitted with proper-local source replay after
+cached `history-pages-row`. The runtime never reads the logical pool,
+materializes a name or compares whole source references. The outer reader
+must establish epoch/pass/pin/request authority before supplying a byte.
+
+Begin and productive supply each retain seven cursor cells; begin temporarily
+constructs no encoded name, and supply adds no source-sized object. Old/new
+cursor retention, return tuples, source pin and authenticated scratch/request
+objects require separate funding. Offsets/counts are checked individually
+against the current format's u64 domain before their bounded sum is computed.
+No physical allocation pool or reclamation refund is asserted.
+
+Tests exercise both NIL packages, non-NIL names, metadata-only rejection,
+yield/resume, decoded octet-list-tail canonicalization, all four supply
+preservation removals, the tick invariant removal and all five productive
+progress removals. Five initialization removals are executable; the u64 sum
+removal retains a pool of at least2^64 octets and has no practical fixture.
+The abstraction bridge's literal domain removals remain partial. This is a
+source-library checkpoint, not a completed cold-tree encoder or producer.
+
 ## Remaining union obligations
 
 The resident byte stream and exact byte census are admitted library components.
