@@ -81,5 +81,24 @@ def main():
     args.out.write_text(json.dumps(report(scenario, journal), indent=2) + "\n")
 
 
+def typed_window_report(journal):
+    """Project observed logical request obligations; native dimensions stay unknown."""
+    from .adapters.typed_window import judge
+    verdict = judge(journal)
+    if verdict.kind == "harness-failure":
+        raise ValueError(verdict.cause)
+    counts = Counter()
+    for row in journal.of_kind("client"):
+        phase = row["phase"]
+        pending = "none" if phase == ":IDLE" else phase.lstrip(":").lower() + "-window"
+        counts[Signature("logical-typed-window", "unobserved", "unobserved", pending)] += 1
+    return dict(version="resilience-semantic-coverage/1", scenario=journal.scenario_id,
+                journal_digest=journal.digest(),
+                scope="observed logical typed request obligations; no physical return, join or native headroom observation",
+                distinct=len(counts), observations=sum(counts.values()),
+                situations=[dict(signature=asdict(signature), count=count)
+                            for signature, count in sorted(counts.items(), key=lambda item: repr(item[0]))])
+
+
 if __name__ == "__main__":
     main()
