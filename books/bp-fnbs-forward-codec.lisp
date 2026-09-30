@@ -100,7 +100,7 @@
       nil)))
 
 (defun fn-bpnp-forward-unframe-with (octets kind fields)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-frame-spec-listp fields)))
   (if (not (fn-cbor-octet-listp octets)) nil
     (let ((answer (fn-frame-decode
                    octets
@@ -176,3 +176,10 @@
 (verify-guards fn-bpnp-deferral-frame)
 (verify-guards fn-bpnp-attempt-from-values)
 (verify-guards fn-bpnp-result-from-values)
+
+; Replay codec guard closure: callers supply these fixed field specs.
+(verify-guards fn-bpnp-forward-unframe-with)
+(verify-guards fn-bpnp-attempt-unframe)
+(verify-guards fn-bpnp-result-unframe)
+(verify-guards fn-bpnp-deferral-from-values)
+(verify-guards fn-bpnp-deferral-unframe)

@@ -88,3 +88,8 @@
 (verify-guards fn-bpnp-dispatch-recordp)
 (verify-guards fn-bpnp-dispatch-values)
 (verify-guards fn-bpnp-dispatch-frame)
+
+; Executable prerequisites of the host-called family recovery fold.
+(verify-guards fn-bpnp-dispatch-record)
+(verify-guards fn-bpnp-dispatch-from-values)
+(verify-guards fn-bpnp-dispatch-unframe)
