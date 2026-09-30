@@ -199,3 +199,17 @@ unlink. Its resource contract must cover the released-but-still-reachable
 node/token and callback frames, or retain a distinct cleanup charge; it cannot
 assume immediate garbage collection. The operation-derived start callback and
 native constructor allowance are still required before activation.
+
+Before a source-changing read dispatch, the internal
+`fn-owner-index-connection-repin-prepare` validates the old live holder and a
+distinct registered replacement for that same connection, then captures the
+reader's offered D/current publication. Every read through `fn-orr-read-span`
+uses D while a batch capture is held, even on an exposure/peer connection whose
+initial open used working state. A replay must still select the captured
+generation; a changed selection retains the original pin for definite abort,
+without silently acquiring a replacement. The three-walk allowance covers
+only this preparation's directory work. Command parsing, query ownership,
+dispatch, completion and cleanup need their own admitted allowance.
+[Preparation evidence](../planning/evidence/connection-repin-prepare-2026-09-30/README.md)
+records guarded source and actual registry fixtures; the composed served
+continuation and operation-derived runtime funding remain open.
