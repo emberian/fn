@@ -2044,29 +2044,35 @@
     "books/index-backing-publication-row-carry",
     "books/catalog-prepare",
     "books/index-backing-row-carry",
-    "books/store-intern-row"
+    "books/store-intern-row",
+    "books/stx-commit-codec",
+    "books/substrate-committed-transcript",
+    "books/substrate-committed-row",
+    "tests/acl2/substrate-committed-transcript-tests",
+    "tests/acl2/substrate-committed-row-tests",
+    "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2227,
-    "books_in_root_closure": 2177,
-    "roots": 2043,
-    "theorems": 32473,
-    "functions": 20841,
-    "assert_events": 24437,
+    "books": 2233,
+    "books_in_root_closure": 2183,
+    "roots": 2049,
+    "theorems": 32501,
+    "functions": 20867,
+    "assert_events": 24478,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 166,
     "guards": {
       "verified": 3738,
       "declared-off": 2536,
-      "default-guarded": 11557,
+      "default-guarded": 11583,
       "default-unguarded": 3010
     },
-    "suspect_theorems": 1294,
-    "export_hygiene_warnings": 381,
+    "suspect_theorems": 1295,
+    "export_hygiene_warnings": 382,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2866,
+    "include_hygiene_warnings": 2871,
     "host_names_warnings": 2419,
     "hand_written_record_warnings": 19
   },
@@ -39315,15 +39321,15 @@
       "read_error": null
     },
     {
-      "book": "books/stx-epochs.lisp",
+      "book": "books/stx-commit-codec.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 17,
-      "functions": 13,
+      "theorems": 3,
+      "functions": 8,
       "guards": {
         "verified": 0,
         "declared-off": 1,
-        "default-guarded": 12,
+        "default-guarded": 7,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -39335,6 +39341,33 @@
       "encapsulates": 0,
       "includes": [
         "membership-epochs-invariants",
+        "statement-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/stx-epochs.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 14,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "stx-commit-codec",
         "stx-policy"
       ],
       "system_includes": [],
@@ -39663,6 +39696,62 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/substrate-committed-row.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 8,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "peer-transit-authority",
+        "substrate-committed-transcript"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/substrate-committed-transcript.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 20,
+      "functions": 16,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 16,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "principal",
+        "stx-commit-codec"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-stce-exact-retransmission-keeps-evidence-by-definition"
+      ],
       "read_error": null
     },
     {
@@ -53546,7 +53635,7 @@
       "book": "tests/acl2/native-status-columns-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
+      "theorems": 1,
       "functions": 9,
       "guards": {
         "verified": 0,
@@ -53555,10 +53644,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 8,
+      "assert_events": 10,
       "must_fails": 5,
       "prover_refusals": 0,
-      "defconsts": 2,
+      "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -64974,6 +65063,88 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/substrate-commit-codec-gap-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/statement-attach",
+        "../../books/stx-commit-codec"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/substrate-committed-row-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 15,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/substrate-committed-row",
+        "substrate-committed-transcript-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/substrate-committed-transcript-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 23,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/substrate-committed-transcript",
+        "crypto-seam-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/tcpcl-delivery-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -75061,6 +75232,15 @@
       ]
     },
     {
+      "theorem": "fn-stce-exact-retransmission-keeps-evidence-by-definition",
+      "book": "books/substrate-committed-transcript.lisp",
+      "line": 149,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-stce-retain and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis is a branch test of fn-stce-retain and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-sti-prepare-article-unreserved-no-op-by-definition",
       "book": "books/topic-history-store-invariants.lisp",
       "line": 280,
@@ -75294,7 +75474,7 @@
     {
       "theorem": "fn-stx-reconnect-does-not-extend-the-chain",
       "book": "books/stx-epochs.lisp",
-      "line": 317,
+      "line": 188,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -75302,7 +75482,7 @@
     {
       "theorem": "fn-stx-reconnect-never-revises-admissibility",
       "book": "books/stx-epochs.lisp",
-      "line": 299,
+      "line": 170,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -78731,6 +78911,12 @@
         "theorem": "fn-sidb-subject-id-is-id-subject-of-payload",
         "book": "books/subject-id-buffer.lisp",
         "line": 42,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-stce-row-start-carried-is-row-start",
+        "book": "books/substrate-committed-row.lisp",
+        "line": 110,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -101687,6 +101873,41 @@
         "line": 26,
         "include": "store-node-index-tests",
         "included": "tests/acl2/store-node-index-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/substrate-commit-codec-gap-tests.lisp",
+        "line": 5,
+        "include": "../../books/statement-attach",
+        "included": "books/statement-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/substrate-committed-row-tests.lisp",
+        "line": 3,
+        "include": "substrate-committed-transcript-tests",
+        "included": "tests/acl2/substrate-committed-transcript-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/substrate-committed-row-tests.lisp",
+        "line": 4,
+        "include": "../../books/substrate-committed-row",
+        "included": "books/substrate-committed-row.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/substrate-committed-transcript-tests.lisp",
+        "line": 3,
+        "include": "crypto-seam-tests",
+        "included": "tests/acl2/crypto-seam-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/substrate-committed-transcript-tests.lisp",
+        "line": 4,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

@@ -221,7 +221,7 @@
 ; Every other kind is fn-nls-report's.
 (defun fn-nsc-report (kind profile s bytes seen cfg pins obs fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :guard t :verify-guards nil))
-  (if (member-equal kind '(:peers :control :accounts :pins :obligations))
+  (if (member-equal kind '(:peers :control :accounts :consumers :pins :obligations))
       (fn-nls-report kind profile s bytes seen cfg pins obs fn-arena)
     (append (fn-nls-counts-words seen)
             (fn-nls-text " ") (fn-nls-orphan-words obs)
@@ -319,7 +319,7 @@
                 (fn-nls-view-seen (if (consp views)
                                       (car views)
                                     (fn-own-view (fn-ocfg-owner oc)))))))
-    (implies (not (member-equal kind '(:health :peers :control :accounts
+    (implies (not (member-equal kind '(:health :peers :control :accounts :consumers
                                        :pins :obligations)))
              (equal (take (len words) report) words)))
   :hints (("Goal" :do-not-induct t

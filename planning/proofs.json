@@ -9256,7 +9256,7 @@
       "assumptions": [
         "A-CRYPTO-TRAILER"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-log-crash.lisp",
         "planning/evidence/w6-log-core-2026-09-27.md",
@@ -15419,7 +15419,7 @@
     {
       "id": "PRF-980",
       "title": "The running owner's status counts never include a batch whose barrier has not returned",
-      "statement": "books/native-status-columns.lisp, books/native-live-status.lisp (PKT-885). The status report's transactions= and articles= counts are SEEN, the (TRANSACTIONS . ARTICLES) of the view the report is rendered at: offline the Store's (fn-nls-store-seen), on the running owner the configured owner's view's (fn-nls-view-seen). KEYSTONE fn-nsc-answer-report-counts-are-the-reader-view: the subject is fn-nsc-answer-report, which host/native-live-status-host.lisp fn-native-live-status-host-answer calls over (fn-ocfg-at-reader-view OC VIEWS) with VIEWS the committer's captured reader views (host/owner-host.lisp fn-owner-reader-views); for every status kind (not health, peers, control, accounts, pins, obligations) the report opens with the counts of the reader view while a capture is held and of the owner's view otherwise. With books/owner-reader-view.lisp fn-ocvm-reader-view-is-the-completed-prefix that reader view is the view at the records whose batch completed. fn-nsc-view-seen-is-its-history: for a view related to its Store (fn-ocl-view-historyp) the counts are its version and the article count of the configured replay of that many records. fn-nls-live-report-is-the-offline-report now also assumes fn-nls-view-currentp (the view is the Store's current state); a view behind the Store changes the counts (witnessed). Scope: the capacity, reserve, reclaim and pins lines remain the Store's (commitments the owner holds, conservative, no number); the PKT-209 records/archive kinds (fn-cev-live-report) are not changed here.",
+      "statement": "books/native-status-columns.lisp, books/native-live-status.lisp (PKT-885). The status report's transactions= and articles= counts are SEEN, the (TRANSACTIONS . ARTICLES) of the view the report is rendered at: offline the Store's (fn-nls-store-seen), on the running owner the configured owner's view's (fn-nls-view-seen). KEYSTONE fn-nsc-answer-report-counts-are-the-reader-view: the subject is fn-nsc-answer-report, which host/native-live-status-host.lisp fn-native-live-status-host-answer calls over (fn-ocfg-at-reader-view OC VIEWS) with VIEWS the committer's captured reader views (host/owner-host.lisp fn-owner-reader-views); for every status kind (not health, peers, control, accounts, consumers, pins, obligations) the report opens with the counts of the reader view while a capture is held and of the owner's view otherwise. With books/owner-reader-view.lisp fn-ocvm-reader-view-is-the-completed-prefix that reader view is the view at the records whose batch completed. fn-nsc-view-seen-is-its-history: for a view related to its Store (fn-ocl-view-historyp) the counts are its version and the article count of the configured replay of that many records. fn-nls-live-report-is-the-offline-report now also assumes fn-nls-view-currentp (the view is the Store's current state); a view behind the Store changes the counts (witnessed). Scope: the capacity, reserve, reclaim and pins lines remain the Store's (commitments the owner holds, conservative, no number); the PKT-209 records/archive kinds (fn-cev-live-report) are not changed here.",
       "milestone": "M4",
       "requirements": [
         "HST-006",
@@ -19650,6 +19650,46 @@
         "planning/evidence/source-convergence-2026-09-30/served-writer-source.json"
       ],
       "progress_note": "Current compatible row/served/writer source assembled with modern provider3 appended fields. Actor source proofs and predecessor132 normal are distinct scopes; combined current PROGRAM arena/catalog declarations, SAMEarena lifetime, delta publication, guarded concrete closure, genuine constructor census and runtime issuance remain open. No predecessor proof verdict transfers to this combined source."
+    },
+    {
+      "id": "PRF-1176",
+      "title": "Resumable committed transcript preserves signed envelopes and refuses commit-ID collisions",
+      "statement": "fn-stce-resume retains every prior envelope unconditionally when it was a member of evidence; publication retains its candidate under the explicit duplicate-witness implication. Under a well-shaped cursor, cursor witness preservation carries the remaining scan tail subset and exact retransmission witness; cursor shape is established from well-formed statements and preserved under true-listp evidence and a well-shaped cursor. When a completed scan has a conflict flag and the candidate is verified, names its configured authority and actor, publication returns :commit-id-conflict. Signed statement and decoded commit remain paired; distinct envelopes are retained, and no fn-me-merge suppression occurs. A non-authority prior envelope does not generate an authority collision. The row authority phase pins its configuration/generation observation and resolves one entry per resume. Start requires a remaining group; preservation requires a resolve tag, nonempty tail and a nonmatching head. Final exact agreement with fn-pta-group-authority requires the resolve tag, pinned-source invariant and an empty or matching tail.",
+      "milestone": "M4",
+      "requirements": [
+        "SUB-008"
+      ],
+      "depends_on": [
+        "PRF-025",
+        "PRF-1023"
+      ],
+      "assumptions": [
+        "A-CRYPTO"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/substrate-committed-transcript.lisp",
+        "books/substrate-committed-row.lisp",
+        "tests/acl2/substrate-committed-transcript-tests.lisp",
+        "tests/acl2/substrate-committed-row-tests.lisp",
+        "planning/evidence/substrate-committed-transcript-2026-09-30.md",
+        "tests/acl2/substrate-commit-codec-gap-tests.lisp"
+      ],
+      "progress_note": "Core/row source and guards certified at matching digests. Final authority phase and every literal positive/hypothesis-removal tooth passed in certify-20260930T220923Z-250000; all 222 source closure hashes match. Each resume checks one config entry while carrying cfg/generation; this is an entry-traversal bound, not a measured complete configured comparison/allocation bound. Actual definite-persistence completion/replay host subject installation remains open; no image or deployment claim. Separate concrete codec counterexample: encodable ID=513 octets with base 0, actor/subject 32 and remove encodes to 586 octets but decode-exact returns :limit at 512. No encoder/decoder representability or full supported-profile claim; the negative witness does not extend the earlier positive certificates. Current combined source dependencies differ from the frozen 222-source certificate; that historical evidence is retained without current proof transfer.",
+      "events": [
+        "fn-stce-resume-retains-existing-evidence",
+        "fn-stce-publish-retains-the-envelope",
+        "fn-stce-resume-preserves-cursor-witness",
+        "fn-stce-publish-conflict-refuses-authority",
+        "fn-stce-start-has-cursor-shape",
+        "fn-stce-resume-preserves-cursor-shape",
+        "fn-stce-scanned-slot-conflict-is-recorded",
+        "fn-stce-row-start-carried-is-row-start",
+        "fn-stce-committed-row-start-has-cursor-shape",
+        "fn-stce-authority-start-pins-the-policy-source",
+        "fn-stce-authority-scan-keeps-the-pinned-source",
+        "fn-stce-authority-resolution-is-the-pinned-policy-source"
+      ]
     }
   ]
 }

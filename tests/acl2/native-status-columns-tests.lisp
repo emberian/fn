@@ -261,3 +261,48 @@
                                        (car views)
                                      (fn-own-view (fn-ocfg-owner oc)))))))
      (equal (take (len words) report) words))))
+
+; The full antecedent is non-executable (defun-nx). Establish it for the
+; exact cleared fixture, then executable witnesses check the cleared arena
+; and empty catalog count plus literal report outputs.
+(local
+ (defthm nsct-cleared-fixture-has-full-column-relation
+   (fn-scol-okp (fn-arena-clear fn-arena) (fn-cat-clear fn-cat))
+   :hints (("Goal" :in-theory (enable fn-scol-okp fn-scol-rows-okp)))))
+; Regression: :consumers is a special report arm, not the full status report.
+; Assert the literal full-report correspondence antecedent and conclusion.
+; The prior dispatch renders status bytes and fails this case.
+(assert-event
+ (let* ((fn-arena (fn-arena-clear fn-arena))
+        (fn-cat (fn-cat-clear fn-cat))
+        (expected (fn-acct-consumers-list-report (fn-cfg-value *rht-release-cfg*)))
+        (actual (fn-nsc-report :consumers nil *rht-caught* 0 '(0 . 0)
+                               *rht-release-cfg* nil nil fn-arena fn-cat)))
+   (mv (and (fn-arena-p fn-arena)
+            (equal (fn-cat-count fn-cat) 0)
+            (equal expected nil)
+            (equal actual expected)
+            (equal actual
+                   (fn-nls-report :consumers nil *rht-caught* 0 '(0 . 0)
+                                  *rht-release-cfg* nil nil fn-arena)))
+       fn-arena fn-cat))
+ :stobjs-out '(nil fn-arena fn-cat))
+(defconst *nsct-consumer-cfg*
+  (fn-cfg-make 0
+   (fn-cfg-value-make nil 0 nil nil nil nil nil nil nil
+                      (list (fn-cfg-row-make "bob-pub" "bob" "" 6)))))
+(assert-event
+ (let* ((fn-arena (fn-arena-clear fn-arena))
+        (fn-cat (fn-cat-clear fn-cat))
+        (actual (fn-nsc-report :consumers nil *rht-caught* 0 '(0 . 0)
+                               *nsct-consumer-cfg* nil nil fn-arena fn-cat)))
+   (mv (and (fn-arena-p fn-arena)
+            (equal (fn-cat-count fn-cat) 0)
+            (equal actual
+                   (fn-record-string-octets
+                    (concatenate 'string "consumer bob-pub account bob" (string #\Newline))))
+            (equal actual
+                   (fn-nls-report :consumers nil *rht-caught* 0 '(0 . 0)
+                                  *nsct-consumer-cfg* nil nil fn-arena)))
+       fn-arena fn-cat))
+ :stobjs-out '(nil fn-arena fn-cat))

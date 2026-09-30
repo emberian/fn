@@ -410,3 +410,6 @@ anything a book does not already decide.
 - `fn-par-`: peer adoption receipt filtering, authenticated retry decision and
   affected-peer invalidation (`peer-adoption-receipt-rows`,
   `peer-adoption-invalidation`, `peer-invite-retry`); peer-specific source scope.
+
+| `fn-stce-` | `substrate-committed-transcript`, `substrate-committed-row` | Resumable signed membership evidence, retaining same commit-ID conflicts before authority merge; actual committed-row/configuration adapter. |
+| `fn-stcet-` | `tests/acl2/substrate-committed-transcript-tests` | Literal committed transcript witnesses under the explicitly toy crypto realization. |

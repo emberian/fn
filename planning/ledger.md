@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2227 |
-| Certification roots in the Makefile | 2043 |
-| Books inside the root closure | 2177 |
-| `defthm` and `defthmd` events | 32473 |
-| `defun` events | 20841 |
+| Books read | 2233 |
+| Certification roots in the Makefile | 2049 |
+| Books inside the root closure | 2183 |
+| `defthm` and `defthmd` events | 32501 |
+| `defun` events | 20867 |
 | Functions with verified guards | 3738 |
 | Functions declared `:verify-guards nil` and never verified | 2536 |
-| Functions left at the default with an explicit guard | 11557 |
+| Functions left at the default with an explicit guard | 11583 |
 | Functions left at the default with no guard | 3010 |
-| `assert-event` checks | 24437 |
+| `assert-event` checks | 24478 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 166 |
-| Theorems flagged SUSPECT by shape | 1294 |
-| Export-hygiene warnings | 381 |
+| Theorems flagged SUSPECT by shape | 1295 |
+| Export-hygiene warnings | 382 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2866 |
+| Include-hygiene warnings | 2871 |
 | Host-names warnings | 2419 |
 | Hand-written-record warnings | 19 |
 
@@ -1350,7 +1350,8 @@ that `make certify` requests.
 | `books/stx-accept-records.lisp` | root | 16 | 22 | 10/0/12/0 | 0 | 0 | 0 |
 | `books/stx-authority.lisp` | root | 3 | 3 | 0/0/3/0 | 0 | 0 | 2 |
 | `books/stx-carrier.lisp` | root | 56 | 31 | 8/0/23/0 | 0 | 0 | 0 |
-| `books/stx-epochs.lisp` | root | 17 | 13 | 0/1/12/0 | 0 | 0 | 2 |
+| `books/stx-commit-codec.lisp` | root | 3 | 8 | 0/1/7/0 | 0 | 0 | 0 |
+| `books/stx-epochs.lisp` | root | 14 | 5 | 0/0/5/0 | 0 | 0 | 2 |
 | `books/stx-evidence-records.lisp` | root | 18 | 27 | 8/0/19/0 | 0 | 0 | 1 |
 | `books/stx-index.lisp` | root | 93 | 38 | 10/0/20/8 | 0 | 0 | 11 |
 | `books/stx-invariants.lisp` | root | 24 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -1362,6 +1363,8 @@ that `make certify` requests.
 | `books/stx-reader.lisp` | root | 4 | 3 | 0/0/3/0 | 0 | 0 | 1 |
 | `books/stx-verify.lisp` | root | 19 | 16 | 0/0/16/0 | 0 | 0 | 0 |
 | `books/subject-id-buffer.lisp` | root | 4 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/substrate-committed-row.lisp` | root | 7 | 8 | 0/0/8/0 | 0 | 0 | 0 |
+| `books/substrate-committed-transcript.lisp` | root | 20 | 16 | 0/0/16/0 | 0 | 0 | 1 |
 | `books/tcpcl-delivery-invariants.lisp` | root | 20 | 4 | 0/4/0/0 | 0 | 0 | 0 |
 | `books/tcpcl-delivery.lisp` | root | 2 | 11 | 2/0/9/0 | 0 | 0 | 0 |
 | `books/tcpcl-host-drive.lisp` | root | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
@@ -1859,7 +1862,7 @@ that `make certify` requests.
 | `tests/acl2/native-operator-stage-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 27 | 3 | 0 |
 | `tests/acl2/native-operator-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 374 | 28 | 0 |
 | `tests/acl2/native-retire-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 31 | 2 | 0 |
-| `tests/acl2/native-status-columns-tests.lisp` | root | 0 | 9 | 0/9/0/0 | 8 | 5 | 0 |
+| `tests/acl2/native-status-columns-tests.lisp` | root | 1 | 9 | 0/9/0/0 | 10 | 5 | 0 |
 | `tests/acl2/ninep-fields-tests.lisp` | - | 6 | 6 | 0/0/0/6 | 0 | 0 | 0 |
 | `tests/acl2/ninep-group-directory-source-tests.lisp` | root | 3 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `tests/acl2/ninep-header-tests.lisp` | - | 4 | 4 | 0/0/0/4 | 0 | 0 | 0 |
@@ -2273,6 +2276,9 @@ that `make certify` requests.
 | `tests/acl2/stx-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 42 | 0 | 0 |
 | `tests/acl2/stx-transit-tests.lisp` | root | 0 | 24 | 0/13/11/0 | 154 | 5 | 0 |
 | `tests/acl2/subject-id-buffer-tests.lisp` | root | 2 | 1 | 0/0/0/1 | 3 | 0 | 0 |
+| `tests/acl2/substrate-commit-codec-gap-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 1 | 0 | 0 |
+| `tests/acl2/substrate-committed-row-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 15 | 0 | 0 |
+| `tests/acl2/substrate-committed-transcript-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 23 | 0 | 0 |
 | `tests/acl2/tcpcl-delivery-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 5 | 0 |
 | `tests/acl2/tcpcl-spool-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/tcpcl-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 168 | 6 | 0 |
@@ -3420,6 +3426,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-srs-split-zero` | `books/store-recover-stream.lisp` | 437 | arm-of-definition: the hypotheses select one IF/COND arm of fn-frame-split and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-frame-split and the conclusion is that branch's value |
 | `fn-sscan-dispatch-no-events` | `books/served-scan.lisp` | 132 | arm-of-definition: the hypotheses select one IF/COND arm of fn-scar-dispatch-events and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-scar-dispatch-events and the conclusion is that branch's value |
 | `fn-sscan-handshaking-of-with-wire` | `books/served-scan.lisp` | 101 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-stce-exact-retransmission-keeps-evidence-by-definition` | `books/substrate-committed-transcript.lisp` | 149 | arm-of-definition: the hypotheses select one IF/COND arm of fn-stce-retain and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-stce-retain and the conclusion is that branch's value |
 | `fn-sti-prepare-article-unreserved-no-op-by-definition` | `books/topic-history-store-invariants.lisp` | 280 | arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-prepare and the conclusion is that arm's value |
 | `fn-stmt-content-id-unfolds` | `books/statement-invariants.lisp` | 314 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-stmt-header-creator-of-fn-stmt-make-header` | `books/statement.lisp` | 585 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
@@ -3448,8 +3455,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-stx-index-slots-of-fn-stx-make-index` | `books/stx-index.lisp` | 231 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-stx-lace-is-the-wire-lace-of-alpha-by-definition` | `books/stx-node-lace.lisp` | 92 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-stx-lace; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-stx-reader-verdict-is-the-recorded-verdict` | `books/stx-reader.lisp` | 52 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-stx-reader-verdict; reflexive-conclusion: a conjunct is (equal X X) |
-| `fn-stx-reconnect-does-not-extend-the-chain` | `books/stx-epochs.lisp` | 317 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-stx-reconnect-never-revises-admissibility` | `books/stx-epochs.lisp` | 299 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-stx-reconnect-does-not-extend-the-chain` | `books/stx-epochs.lisp` | 188 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-stx-reconnect-never-revises-admissibility` | `books/stx-epochs.lisp` | 170 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-stx-record-creator-of-fn-stx-equivocation-record` | `books/stx-index.lisp` | 283 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-stx-record-id-new-of-fn-stx-equivocation-record` | `books/stx-index.lisp` | 296 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-stx-record-incarnation-of-fn-stx-equivocation-record` | `books/stx-index.lisp` | 286 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

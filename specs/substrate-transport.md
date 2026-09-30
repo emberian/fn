@@ -433,15 +433,16 @@ poster's fork, under the carried index invariant; the node-lace form reaches it
 through `fn-stx-lace-of-node-is-the-rows-lace` (PRF-995), whose correspondence
 hypothesis is carried on the served path: `fn-snc-correspondp`
 (books/store-node-correspondence.lisp) is established at the initial store and
-preserved by every transition of the store node (PRF-1027, PRF-1034). The
-group's authority is the live group entry's policy-id when it is a principal id
-([reconfiguration](reconfiguration.md) `(:create-group name policy-id)`); every
-other group is ungoverned by name. In the configuration model that policy-id
-is the posting-policy identifier (`*fn-cfg-default-policy-id*` in
-books/config.lisp, written by `store init` and `:set-group-status`), and no operator path binds a principal there,
-so on a running node the gate answers `:ungoverned` for every take
-(tests/test_native_key_statements' forked pair) until D11's group authority
-binding lands: an open decision, not a served refusal.
+preserved by every transition of the store node (PRF-1027, PRF-1034).
+The group's authority is the explicit `fn-cfg-group-authority` field of the
+live group entry in the connection-pinned configuration, distinct from its
+posting `policy-id` ([reconfiguration](reconfiguration.md), "Group authority
+binding"). `(:set-group-authority NAME HEX 0 nil)` is code 29 and is durably
+journalled; an empty binding yields `:ungoverned`. A selected policy statement
+is reverified under the active keyring before it grants authority. This local
+binding does not settle portable multi-node group authority. The rows-to-lace
+equation retains its uniform-context hypothesis; historical keyring generations
+are not silently treated as current authorization.
 
 Three consequences, each a §6 theorem.
 
@@ -461,9 +462,13 @@ group, an authority and a statement. The peer is not among them. That is a
 definition, not a proof event, and it is named honestly
 (`fn-stx-admission-is-peer-independent-by-definition`); the proof event is the
 *equating* theorem that the function the host calls on the transit path is this
-one, which is what the theorem-subject rule requires. That equation is open
-(§6, the S4-1 row); `fn-stx-transit-admit-is-fn-pol-admitp-by-definition` is
-only the gate's unfolding.
+one, which is what the theorem-subject rule requires. On the served indexed
+path, `fn-pta-admitted-is-the-gate-over-the-rows` supplies the group equation
+under the premises stated above, and
+`fn-pta-decide-admits-iff-every-governed-group-admits` composes the scoped groups
+on a `:want` byte decision (PRF-1024). The gate's own unfolding
+`fn-stx-transit-admit-is-fn-pol-admitp-by-definition` remains a definition fact.
+
 
 **Policy statements propagate as statements.** A policy change reaches a peer
 as an ordinary article in the governed group carrying a `:policy`
@@ -1210,3 +1215,67 @@ by `NativeProductiveGroupAuthorityTests`; that witness requires
 admission, an abstract signature attachment and this pending native fixture
 are separate coordinates. No durable article-subject/Message-ID conflict
 binding or store adoption is asserted by this bridge.
+
+### Committed transcript collision boundary
+
+SUB-008 requires a membership transcript to preserve the actual signed carrier
+statement beside the decoded `(id base actor op subject)` commit and the actual
+carrier group and selected local authority. The payload's `id` is not the
+statement identity. A distinct authority-signed envelope using the same commit
+id in the same group cannot disappear through `fn-me-merge`'s id suppression:
+both envelopes remain evidence, and their authority is refused as
+`:commit-id-conflict`. An exact envelope retransmission is `:retransmission`.
+Prior evidence by a principal other than the selected authority cannot poison
+that authority's commit id. Byte acceptance and persistence remain separate.
+
+`books/substrate-committed-transcript.lisp` supplies a resumable selection,
+comparison and publication machine. A comparison resume examines one retained
+envelope. `fn-stce-resume-retains-existing-evidence` preserves prior members;
+`fn-stce-publish-retains-the-envelope` requires the explicit duplicate witness
+that `fn-stce-resume-preserves-cursor-witness` carries under a well-shaped
+cursor. The cursor-shape facts require well-formed input statements, a
+true-list transcript and a well-shaped prior cursor. Runtime dispatch uses
+shallow cursor tags rather than revalidating the remaining transcript.
+`fn-stce-publish-conflict-refuses-authority` requires a completed conflict scan,
+verified candidate, nonempty authority and matching statement creator/commit
+actor (PRF-1176). Verification remains conditional on the signature seam and
+A-CRYPTO; toy test realizers establish no real signature property.
+
+The carried row adapter selects the groups from a held committed row
+by its fixed head, equated by `fn-stce-row-start-carried-is-row-start` under
+the carried held/composite row type, and resolves the
+explicit authority from pinned configuration. Its source is the exact accepted
+persistence completion or the recovered retained row, never a transport reply
+or an unrelated supplied row. Actual caller installation, cold streaming
+reconstruction and native execution remain open. Selection of a configured
+authority still has profile-dependent work; a one-row label is not a cost bound.
+No founding roster, chain adoption or private-group cryptosystem is installed by
+this evidence transition. Activating the membership application decision needs
+an explicit durable founding roster and locally authorized adoption path.
+
+The selected authority is a projection under the collector's pinned
+configuration observation, not a reconstruction of a past connection's
+acceptance authorization. Row generation alone does not recover an older
+transit connection pin. Cold reconstruction must own its coherent
+configuration/keyring observation separately. The existing commit payload
+codec does not contain a signed group coordinate: the envelope records the
+actual carrier group, and does not claim that the signature binds that group
+or authorizes adoption there. That binding remains required before an
+application may promote evidence into a membership operation.
+
+The extracted commit codec preserves its existing 512-octet decoder input
+cap and uint32 base representation. The abstract `fn-me-commitp` admits
+broader values. Reconciling that inherited restriction with supported
+profiles and format evolution remains open; SUB-008 makes no complete
+supported-profile claim. A decoder failure on the evidence projection does
+not remove the already durable carrier from the store.
+
+This is a concrete encoder/decoder disagreement, not only abstract-model
+breadth: `fn-stx-commit-encodablep` accepts ID = 513 octets of 1, base = 0,
+actor = 32 octets of 2, operation = remove, subject = 32 octets of 3.
+`fn-stx-commit-encode` emits 586 octets; `fn-stx-commit-decode-exact` then
+returns `:limit`. The exact preimage/output and affirmative refusal live
+separately in `tests/acl2/substrate-commit-codec-gap-tests.lisp`
+(SUB-008, PRF-1176). Closing this gap requires profile-aligned bounded or
+resumable codec work and agreed uint32 format evolution; an arbitrary new
+stored-data ceiling or an unbounded decoder does not discharge it.

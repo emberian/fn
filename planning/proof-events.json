@@ -17888,6 +17888,77 @@
           "pending_subject": "Receiver-only fixed metadata component; actual BP host does not yet call fn-bps-op-complete. Immutable registry/provider, canonical input and primitive provenance/current lease remain caller obligations. Source admission is not normal certification or actual acceptance."
         }
       ]
+    },
+    {
+      "id": "PRF-1176",
+      "events": [
+        {
+          "name": "fn-stce-resume-retains-existing-evidence",
+          "pending_subject": true,
+          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
+        },
+        {
+          "name": "fn-stce-publish-retains-the-envelope",
+          "pending_subject": true,
+          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
+        },
+        {
+          "name": "fn-stce-resume-preserves-cursor-witness",
+          "pending_subject": true,
+          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
+        },
+        {
+          "name": "fn-stce-publish-conflict-refuses-authority",
+          "pending_subject": true,
+          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
+        },
+        {
+          "name": "fn-stce-start-has-cursor-shape",
+          "pending_subject": true,
+          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
+        },
+        {
+          "name": "fn-stce-resume-preserves-cursor-shape",
+          "pending_subject": true,
+          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stce-scanned-slot-conflict-is-recorded",
+          "pending_subject": true,
+          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf/row adapter only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stce-row-start-carried-is-row-start",
+          "pending_subject": true,
+          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf/row adapter only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stce-committed-row-start-has-cursor-shape",
+          "pending_subject": true,
+          "note": "Actual durable completion/cold replay caller installation remains open; local committed transcript leaf/row adapter only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stce-authority-start-pins-the-policy-source",
+          "pending_subject": true,
+          "note": "Actual durable completion/cold replay caller installation remains open; authority phase leaf only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stce-authority-scan-keeps-the-pinned-source",
+          "pending_subject": true,
+          "note": "Actual durable completion/cold replay caller installation remains open; authority phase leaf only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stce-authority-resolution-is-the-pinned-policy-source",
+          "pending_subject": true,
+          "note": "Actual durable completion/cold replay caller installation remains open; authority phase leaf only."
+        }
+      ]
     }
   ]
 }

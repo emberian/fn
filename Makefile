@@ -2055,7 +2055,13 @@ ACL2_BOOKS ?= books/defrecord \
     books/index-backing-publication-row-carry \
     books/catalog-prepare \
     books/index-backing-row-carry \
-    books/store-intern-row
+    books/store-intern-row \
+    books/stx-commit-codec \
+    books/substrate-committed-transcript \
+    books/substrate-committed-row \
+    tests/acl2/substrate-committed-transcript-tests \
+    tests/acl2/substrate-committed-row-tests \
+    tests/acl2/substrate-commit-codec-gap-tests
 
 .PHONY: host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
