@@ -6713,14 +6713,16 @@
         "Tick empty,64-byte,1,024-byte,1024+64-byte and2048+64-byte word streams, yielding between split search, block and parent phases.",
         "Compare terminal natural to the existing actual pgs-x-words-digest; mutate source and separately corrupt continuation depth.",
         "After general refinement/progress/allocation proofs, wire into the disk-backed two-pass preparation controller and run matching producer/image evidence.",
-        "Capture exact byte-total for protected extents and stream partial final blocks with canonical zero padding; compare exact digest octets to the existing concrete fn-blake3."
+        "Capture exact byte-total for protected extents and stream partial final blocks with canonical zero padding; compare exact digest octets to the existing concrete fn-blake3.",
+        "Establish page-core representation domain, preserve it for an actual step, and witness every initialization/profile bound removal and separately corrupted mode/position."
       ],
       "expected": [
         "No whole directory staging; each input quantum is at most eight u64 words and one compression; source is read-only.",
         "Finished digest preserves current persistent-format value and capture/lease names.",
         "Source change is distinguished in ground evidence; corrupted-depth continuation returns invalid with unchanged state.",
         "No producer/resource-admission completion until actual composition, general proof and matching evidence.",
-        "Exact-byte step preserves page-step behavior on aligned lengths and returns the exact residual byte count; constrained frame-digest composition remains explicit."
+        "Exact-byte step preserves page-step behavior on aligned lengths and returns the exact residual byte count; constrained frame-digest composition remains explicit.",
+        "Current u32 directory count fits depth36 and at most2^64 u64 words fits depth57 in64 physical slots; no new data ceiling."
       ],
       "evidence": [
         "books/pagestore-digest-cursor.lisp",
@@ -6732,9 +6734,13 @@
         "books/pagestore-digest-byte-cursor.lisp",
         "books/pagestore-digest-byte-refinement.lisp",
         "tests/acl2/pagestore-digest-byte-cursor-tests.lisp",
-        "planning/evidence/page-digest-byte-source-2026-09-30.md"
+        "planning/evidence/page-digest-byte-source-2026-09-30.md",
+        "books/pagestore-digest-cursor-domain.lisp",
+        "tests/acl2/pagestore-digest-cursor-domain-tests.lisp",
+        "planning/evidence/page-digest-cursor-domain-2026-09-30.md",
+        "planning/evidence/page-digest-cursor-rename-2026-09-30.md"
       ],
-      "execution_scope": "Guard-verified source library plus clean phase equations and conditional actual-digest terminal bridge. Literal semantic carry and matching-block removal with distinct output mutation pass. Maintained trajectory/progress/domain/allocation and host composition remain open."
+      "execution_scope": "Guard-verified source library plus clean phase equations and conditional actual-digest terminal bridge. Literal semantic carry and matching-block removal with distinct output mutation pass. Maintained trajectory/progress/domain/allocation and host composition remain open. Page-core representation domain and supported-domain stack sufficiency now source-admitted; exact-byte guard and semantic/progress composition remain open."
     },
     {
       "id": "SCN-1019",
