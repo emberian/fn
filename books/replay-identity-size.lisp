@@ -1,6 +1,6 @@
 ; Exact six-field carry through the actual replay decision, including effects.
 (in-package "ACL2")
-(include-book "replay")
+(include-book "replay-identity-effects")
 (include-book "identity-context-size")
 
 (defun fn-ris-step (ctx carries event child-carry)
@@ -29,7 +29,9 @@
 (defthm fn-ris-step-is-actual-replay-by-definition
   (equal (mv-nth 0 (fn-ris-step ctx carries event child-carry))
          (fn-replay-identity-step ctx event))
-  :hints (("Goal" :in-theory (enable fn-ris-step fn-replay-identity-step))))
+  :hints (("Goal" :use fn-replay-identity-effects-context-is-original-by-definition
+           :in-theory (e/d (fn-ris-step)
+                           (fn-replay-identity-effects fn-replay-identity-step)))))
 
 (local
  (defthm fn-ris-snapshot-generation-natural
