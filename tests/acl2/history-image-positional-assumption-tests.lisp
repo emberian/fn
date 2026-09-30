@@ -33,3 +33,20 @@
 (local (assert-event
  (and (not (hio-write-conclusion *hio-before* *hio-after* 1 '(9 8) 1 :ok))
       (not (hio-read-conclusion *hio-after* 1 2 '(9 8) 1 :ok)))))
+
+; A full successful splice does not itself constrain a different inode.
+(local (defconst *hio-two-before*
+ (fn-bs-make 1 (list (cons 7 '(1 2 3 4)) (cons 8 '(5 6))) nil nil 9)))
+(local (defconst *hio-two-after*
+ (fn-bs-make 1 (list (cons 7 '(1 9 8 4)) (cons 8 '(5 6))) nil nil 9)))
+(local (defconst *hio-two-corrupt*
+ (fn-bs-make 1 (list (cons 7 '(1 9 8 4)) (cons 8 '(5 99))) nil nil 9)))
+(local (assert-event
+ (and (eq :ok :ok) (not (equal 7 8))
+      (hio-write-conclusion *hio-two-before* *hio-two-after* 1 '(9 8) 2 :ok)
+      (equal (fn-bs-content *hio-two-after* 8) (fn-bs-content *hio-two-before* 8)))))
+(local (assert-event
+ (and (eq :ok :ok) (not (equal 7 8))
+      (hio-write-conclusion *hio-two-before* *hio-two-corrupt* 1 '(9 8) 2 :ok)
+      (not (equal (fn-bs-content *hio-two-corrupt* 8)
+                  (fn-bs-content *hio-two-before* 8))))))

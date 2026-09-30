@@ -104,3 +104,5 @@ or uncertain outcomes remain unconstrained and fenced. General writer fidelity
 proofs must take the named predicates explicitly; interval proofs do not imply
 byte fidelity. Literal local-witness constraint teeth are separate from native
 qualification.
+
+Interleaved private stage/spool fidelity additionally names `fn-assume-hpi-positional-other-role`. A complete write on one role alone does not preserve other-role content. The new predicate has its own local witness and explicit distinct-role frame law; actual held FD identity and role nonaliasing remain qualification obligations. Source-only frame evidence is in `planning/evidence/history-image-positional-frame-2026-09-30/coordinate.json`.

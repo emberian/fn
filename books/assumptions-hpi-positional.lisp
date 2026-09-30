@@ -34,3 +34,18 @@
                 (<= (+ offset count) (len (fn-bs-content bytes file)))
                 (equal octets (take count (nthcdr offset (fn-bs-content bytes file))))))
   :rule-classes nil))
+
+; Interleaved stage and two-spool traces also require a visible frame.
+; This is explicit evidence for a distinct retained role, never inferred
+; from a full byte count on the written role or from an FD number alone.
+(encapsulate
+ (((fn-assume-hpi-positional-other-role * * * * *) => *))
+ (local
+  (defun fn-assume-hpi-positional-other-role (before after file other outcome)
+   (or (not (eq outcome :ok)) (equal file other)
+       (equal (fn-bs-content after other) (fn-bs-content before other)))))
+ (defthm fn-assume-hpi-full-write-preserves-distinct-visible-role
+  (implies (and (fn-assume-hpi-positional-other-role before after file other outcome)
+                (eq outcome :ok) (not (equal file other)))
+           (equal (fn-bs-content after other) (fn-bs-content before other)))
+  :rule-classes nil))

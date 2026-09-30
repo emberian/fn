@@ -112,3 +112,5 @@ failed syscall outcome, SIGKILL is process death, and the copied backing image
 is an explicit simulated write-loss experiment.  None represents an actual
 power cut or qualifies hbox's ZFS, hardware write cache, or a deployed node.
 No automatic release of retained history follows from this profile.
+
+A-HPI-POSITIONAL-IO also isolates the explicit `fn-assume-hpi-positional-other-role` frame for successful interleaved private writes. It does not derive other-file preservation from a successful count, nor derive actual FD nonaliasing.
