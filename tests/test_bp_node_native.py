@@ -303,7 +303,7 @@ class NativeBpNodeTests(unittest.TestCase):
             "dtn://sender/", "dtn://receiver/", 0, 65536, 1048576, 0,
         )
 
-    def rotate_receiver(self, stop=None):
+    def rotate_receiver(self, stop=None, observer=None):
         """`bp-node checkpoint` on the stopped receiver; with STOP, the
         developer cut stops it at that point of the publication program and
         the test kills it there with SIGKILL."""
@@ -319,6 +319,9 @@ class NativeBpNodeTests(unittest.TestCase):
         process.kill()
         process.wait(timeout=15)
         process.finish()
+        if observer is not None:
+            observer(exit_code=process.returncode, held_stdout=seen,
+                     selector="FN_BP_ROTATION_TEST_STOP", value=stop)
         return None, seen, b""
 
     def recovered_held(self):
@@ -1091,10 +1094,12 @@ class NativeBpNodeTests(unittest.TestCase):
         observe("fixture", source=self.image_source, msgid=self.msgid,
                 accepted_octets=self.article, status=pinned.stdout,
                 exit_code=pinned.returncode)
+        decision_fault = {}
         self.kill_at_durable_cut(
-            "FN_BP_APP_TEST_PAUSE_AFTER_DECISION", b"BP APP DECISION DURABLE")
+            "FN_BP_APP_TEST_PAUSE_AFTER_DECISION", b"BP APP DECISION DURABLE",
+            observer=lambda **fields: decision_fault.update(fields))
         accepted_octets = self.receiver_article(self.msgid)
-        observe("decision-cut-readback", octets=accepted_octets)
+        observe("decision-cut-readback", octets=accepted_octets, fault=decision_fault)
         replayed = self.dispatch_receiver()
         self.assertEqual(replayed.returncode, EXIT.OK, replayed.stdout + replayed.stderr)
         self.assertIn(b"BP application handoff durable", replayed.stdout)
@@ -1110,7 +1115,7 @@ class NativeBpNodeTests(unittest.TestCase):
             extra_env={"FN_BP_NODE_TEST_PAUSE_AFTER_OUTBOX": "1"})
         retry = self.send_request(port, "slice-retry")
         self.assertEqual(retry.returncode, EXIT.OK, retry.stdout + retry.stderr)
-        self.wait_for_output(receiver, b"BP NODE OUTBOX DURABLE", timeout=120)
+        outbox_held = self.wait_for_output(receiver, b"BP NODE OUTBOX DURABLE", timeout=120)
         config = self.tmp / "receiver-fn.toml"
         for action in ("remove", "add"):
             changed = self.invoke("operator", config, "bp-route", action,
@@ -1124,10 +1129,13 @@ class NativeBpNodeTests(unittest.TestCase):
 
         observe("outbox-process-death", exit_code=receiver.returncode,
                 retry_exit_code=retry.returncode, retry_stdout=retry.stdout,
-                retry_stderr=retry.stderr)
+                retry_stderr=retry.stderr, held_stdout=outbox_held,
+                selector="FN_BP_NODE_TEST_PAUSE_AFTER_OUTBOX", value="1")
 
         sender, sender_port = self.start_node(False, once=False)
-        self.relay.route(sender_port, cut_after=80)
+        relay_faults = []
+        self.relay.route(sender_port, cut_after=80,
+                         observer=lambda **fields: relay_faults.append(fields))
         interrupted = self.dispatch_receiver()
         self.assertEqual(interrupted.returncode, EXIT.OK,
                          interrupted.stdout + interrupted.stderr)
@@ -1138,16 +1146,18 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertTrue(attempted, interrupted.stdout)
         observe("receipt-contact-uncertain", exit_code=interrupted.returncode,
                 stdout=interrupted.stdout, stderr=interrupted.stderr,
-                attempted=attempted)
+                attempted=attempted, relay_faults=list(relay_faults))
         sender.stop(grace=5)
         self.assertIn(b"pinned=yes", self.sender_status().stdout)
         self.assertIn(b"pinned=yes", self.unrelated_status().stdout)
 
         # Checkpoint publication dies before selection. Recovery must retain
         # the same owed receipt jobs and the accepted article.
-        cut_code, cut_out, cut_err = self.rotate_receiver("stage")
+        checkpoint_fault = {}
+        cut_code, cut_out, cut_err = self.rotate_receiver(
+            "stage", observer=lambda **fields: checkpoint_fault.update(fields))
         observe("checkpoint-stage-cut", exit_code=cut_code,
-                stdout=cut_out, stderr=cut_err)
+                stdout=cut_out, stderr=cut_err, fault=checkpoint_fault)
         sender, sender_port = self.start_node(False, once=False)
         self.relay.route(sender_port)
         resumed = self.dispatch_receiver()
@@ -1359,14 +1369,17 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertIn(b"conflicting durable bytes", restarted.stderr)
         self.assertEqual(self.receiver_articles(), 1)
 
-    def kill_at_durable_cut(self, selector, marker):
+    def kill_at_durable_cut(self, selector, marker, observer=None):
         receiver, port = self.start_node(True, extra_env={selector: "1"})
         sent = self.send_request(port, "cut-request")
         self.assertEqual(sent.returncode, EXIT.OK, sent.stderr)
-        self.wait_for_output(receiver, marker, timeout=120)
+        held = self.wait_for_output(receiver, marker, timeout=120)
         receiver.kill()
         receiver.wait(timeout=15)
         self.assertEqual(self.receiver_articles(), 1)
+        if observer is not None:
+            observer(exit_code=receiver.returncode, held_stdout=held,
+                     selector=selector, value="1", marker=marker)
 
     def test_death_after_fnrj_receipt_decision_replays_one_article(self):
         self.kill_at_durable_cut(
