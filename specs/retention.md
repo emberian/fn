@@ -31,6 +31,17 @@ wrong-subject, wrong-incarnation, unauthorized, or insufficient receipt cannot
 discharge it. Record the release decision and evidence before making its objects
 eligible for reclamation. Removing one obligation does not remove other pins.
 
+Current authority and historical evidence are separate. A new signed receipt
+is checked using the Store's current principal snapshot inside the serialized
+owner operation (`fnn-bpnode-receipt-result`); a primitive signature observation
+computed earlier is insufficient after a durable `fn-hl-revoke-event`.
+`books/receipt-revocation.lisp` (PRF-1118, SCN-1024) develops the composition
+from actual `fn-sn-finish` to the host-called receipt gate and record selector.
+Revocation must retain historical key snapshots, article verdicts, obligations
+and their evidence. A previously committed intent remains historical replay
+evidence for that decision; it grants no authority to accept another receipt.
+The full owner/reclamation refinement and matching native evidence remain open.
+
 Proposed handoff, assuming cooperative peers:
 
 1. Sender retains under an active obligation.

@@ -6635,6 +6635,29 @@
         "books/legacy-parser-reference.lisp",
         "tests/acl2/legacy-parser-cursor-tests.lisp"
       ]
+    },
+    {
+      "id": "SCN-1024",
+      "title": "Current receipt authority after durable signer revocation",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "RET-004",
+        "RET-005"
+      ],
+      "steps": [
+        "Accept a signed article under an enrolled receipt signer, retain the article verdict, and create a receipt for an outstanding forwarding obligation.",
+        "Prepare and durably complete the actual principal revocation through Store transitions. Reuse the earlier signature observations for a new receipt authorization.",
+        "Check current refusal and preservation of exact snapshot history, prior article verdict and retention. Exercise other-principal revocation and each necessary literal theorem premise."
+      ],
+      "expected": [
+        "A revoked current signer cannot authorize a new release; old successful signature observations do not restore authority.",
+        "Revocation preserves prior snapshots and verdicts and does not remove unrelated pins or historical authorization evidence."
+      ],
+      "evidence": [
+        "tests/acl2/receipt-revocation-tests.lisp"
+      ],
+      "execution_scope": "Logical Store completion and host-called receipt selector composition. Signature observations abstract; native owner serialization and matching image evidence remain separate."
     }
   ]
 }

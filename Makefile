@@ -862,6 +862,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-transit-join \
 	tests/acl2/bp-transit-join-tests \
 	books/bp-release-authority \
+	books/receipt-revocation \
+	tests/acl2/receipt-revocation-tests \
 	tests/acl2/bp-release-authority-tests \
 	books/bp-receiver-store-invariants \
 	books/bp-receiver-context-invariants \

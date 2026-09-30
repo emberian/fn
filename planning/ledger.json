@@ -311,6 +311,8 @@
     "tests/acl2/byte-store-state-checkpoint-program-tests",
     "books/store-node-resolution",
     "books/refusal-effect",
+    "books/refusal-headroom",
+    "tests/acl2/refusal-headroom-tests",
     "books/closure-open",
     "books/store-identity-sequence-invariants",
     "tests/acl2/store-identity-sequence-invariants-tests",
@@ -849,6 +851,8 @@
     "books/bp-transit-join",
     "tests/acl2/bp-transit-join-tests",
     "books/bp-release-authority",
+    "books/receipt-revocation",
+    "tests/acl2/receipt-revocation-tests",
     "tests/acl2/bp-release-authority-tests",
     "books/bp-receiver-store-invariants",
     "books/bp-receiver-context-invariants",
@@ -1696,26 +1700,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1757,
-    "books_in_root_closure": 1754,
-    "roots": 1692,
-    "theorems": 28241,
-    "functions": 18533,
-    "assert_events": 23452,
+    "books": 1762,
+    "books_in_root_closure": 1759,
+    "roots": 1696,
+    "theorems": 28269,
+    "functions": 18544,
+    "assert_events": 23475,
     "must_fails": 2506,
     "prover_refusals": 0,
     "encapsulates": 157,
     "guards": {
       "verified": 3483,
-      "declared-off": 2143,
-      "default-guarded": 10138,
-      "default-unguarded": 2769
+      "declared-off": 2145,
+      "default-guarded": 10139,
+      "default-unguarded": 2777
     },
     "suspect_theorems": 1231,
     "export_hygiene_warnings": 329,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2455,
+    "include_hygiene_warnings": 2463,
     "host_names_warnings": 2137,
     "hand_written_record_warnings": 18
   },
@@ -20370,7 +20374,7 @@
       "book": "books/owner-reclaim.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 14,
+      "theorems": 15,
       "functions": 9,
       "guards": {
         "verified": 1,
@@ -23810,6 +23814,33 @@
       "read_error": null
     },
     {
+      "book": "books/receipt-revocation.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 10,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-release-authority",
+        "hybrid-lifecycle-store-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/reclaim-admission.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -24362,6 +24393,32 @@
         "fn-rfx-unaffordable-prepare-is-unchanged-by-definition",
         "fn-rfx-unserved-prepare-is-unchanged-by-definition"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/refusal-headroom.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 15,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "refusal-effect"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -29062,7 +29119,7 @@
       "book": "books/store-node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 84,
+      "theorems": 86,
       "functions": 73,
       "guards": {
         "verified": 39,
@@ -47426,6 +47483,64 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/receipt-revocation-store-fixtures.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 0,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 6
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/crypto-attach",
+        "../../books/hybrid-store",
+        "../../books/store-observed",
+        "held-rows-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/receipt-revocation-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 14,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/receipt-revocation",
+        "bp-release-authority-tests",
+        "receipt-revocation-store-fixtures"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/reclaim-admission-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -47734,6 +47849,33 @@
         "../../books/refusal-effect",
         "owner-config-tests",
         "owner-prepare-served-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/refusal-headroom-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 5,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 7,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/refusal-headroom",
+        "../../books/store-observed"
       ],
       "system_includes": [],
       "suspects": [],
@@ -56992,7 +57134,7 @@
     {
       "theorem": "fn-orc-one-pass-in-flight-by-definition",
       "book": "books/owner-reclaim.lisp",
-      "line": 263,
+      "line": 282,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-orc-request-word and the conclusion is that arm's value"
       ]
@@ -60769,7 +60911,7 @@
     {
       "theorem": "fn-sn-article-record-without-a-usable-clock-is-refused",
       "book": "books/store-node.lisp",
-      "line": 862,
+      "line": 884,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-sn-article-record and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-sn-article-record and the conclusion is that branch's value"
@@ -60778,7 +60920,7 @@
     {
       "theorem": "fn-sn-capacity-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 390,
+      "line": 412,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60786,7 +60928,7 @@
     {
       "theorem": "fn-sn-capacity-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 349,
+      "line": 371,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60803,7 +60945,7 @@
     {
       "theorem": "fn-sn-config-history-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 423,
+      "line": 445,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60811,7 +60953,7 @@
     {
       "theorem": "fn-sn-config-history-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 380,
+      "line": 402,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60819,7 +60961,7 @@
     {
       "theorem": "fn-sn-files-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 392,
+      "line": 414,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60827,7 +60969,7 @@
     {
       "theorem": "fn-sn-files-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 352,
+      "line": 374,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60843,7 +60985,7 @@
     {
       "theorem": "fn-sn-files-of-fn-sn-update",
       "book": "books/store-node.lisp",
-      "line": 516,
+      "line": 538,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60867,7 +61009,7 @@
     {
       "theorem": "fn-sn-files-of-fn-sn-with-event-index",
       "book": "books/store-node.lisp",
-      "line": 830,
+      "line": 852,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60892,7 +61034,7 @@
     {
       "theorem": "fn-sn-groups-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 388,
+      "line": 410,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60900,7 +61042,7 @@
     {
       "theorem": "fn-sn-groups-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 346,
+      "line": 368,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60908,7 +61050,7 @@
     {
       "theorem": "fn-sn-identity-next-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 419,
+      "line": 441,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60916,7 +61058,7 @@
     {
       "theorem": "fn-sn-identity-next-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 376,
+      "line": 398,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60924,7 +61066,7 @@
     {
       "theorem": "fn-sn-identity-next-of-fn-sn-update",
       "book": "books/store-node.lisp",
-      "line": 523,
+      "line": 545,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60932,7 +61074,7 @@
     {
       "theorem": "fn-sn-identity-next-of-fn-sn-with-event-index",
       "book": "books/store-node.lisp",
-      "line": 762,
+      "line": 784,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60940,7 +61082,7 @@
     {
       "theorem": "fn-sn-index-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 398,
+      "line": 420,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60948,7 +61090,7 @@
     {
       "theorem": "fn-sn-index-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 361,
+      "line": 383,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60964,7 +61106,7 @@
     {
       "theorem": "fn-sn-keyring-generation-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 408,
+      "line": 430,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60972,7 +61114,7 @@
     {
       "theorem": "fn-sn-keyring-generation-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 364,
+      "line": 386,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60980,7 +61122,7 @@
     {
       "theorem": "fn-sn-keyring-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 396,
+      "line": 418,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60988,7 +61130,7 @@
     {
       "theorem": "fn-sn-keyring-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 358,
+      "line": 380,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60996,7 +61138,7 @@
     {
       "theorem": "fn-sn-keyring-snapshots-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 415,
+      "line": 437,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61004,7 +61146,7 @@
     {
       "theorem": "fn-sn-keyring-snapshots-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 372,
+      "line": 394,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61021,7 +61163,7 @@
     {
       "theorem": "fn-sn-node-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 394,
+      "line": 416,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61029,7 +61171,7 @@
     {
       "theorem": "fn-sn-node-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 355,
+      "line": 377,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61111,7 +61253,7 @@
     {
       "theorem": "fn-sn-state-fields-of-fn-sn-with-consumer",
       "book": "books/store-node.lisp",
-      "line": 649,
+      "line": 671,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61119,7 +61261,7 @@
     {
       "theorem": "fn-sn-state-fields-of-fn-sn-with-topic",
       "book": "books/store-node.lisp",
-      "line": 676,
+      "line": 698,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61151,7 +61293,7 @@
     {
       "theorem": "fn-sn-verdicts-of-fn-sn-make",
       "book": "books/store-node.lisp",
-      "line": 412,
+      "line": 434,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -61159,7 +61301,7 @@
     {
       "theorem": "fn-sn-verdicts-of-fn-sn-make-v2",
       "book": "books/store-node.lisp",
-      "line": 368,
+      "line": 390,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -65485,12 +65627,13 @@
           "books/owner-prepare-served-ocl.lisp",
           "books/owner-signed-post.lisp",
           "books/owner-snapshot-recovery.lisp",
+          "books/receipt-revocation.lisp",
           "books/served-catalog-join-host-identity-finish.lisp",
           "books/store-checkpoint-open.lisp",
           "books/store-identity-sequence-invariants.lisp",
           "books/store-open-pre-c1.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 8 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 9 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-stxk-context-next",
@@ -65514,11 +65657,12 @@
           "books/hybrid-lifecycle-store-invariants.lisp",
           "books/owner-signed-post.lisp",
           "books/owner-snapshot-recovery.lisp",
+          "books/receipt-revocation.lisp",
           "books/statement-keyring-publication.lisp",
           "books/store-finalize-incremental.lisp",
           "books/store-node.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 6 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 7 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-stxk-context-verdicts",
@@ -73010,6 +73154,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/receipt-revocation.lisp",
+        "line": 6,
+        "include": "bp-release-authority",
+        "included": "books/bp-release-authority.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/receipt-revocation.lisp",
+        "line": 7,
+        "include": "hybrid-lifecycle-store-invariants",
+        "included": "books/hybrid-lifecycle-store-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/reclaim-instant.lisp",
         "line": 44,
         "include": "store-log-reclaim",
@@ -73049,6 +73207,13 @@
         "line": 51,
         "include": "store-log-route-phases",
         "included": "books/store-log-route-phases.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/refusal-headroom.lisp",
+        "line": 5,
+        "include": "refusal-effect",
+        "included": "books/refusal-effect.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -81813,6 +81978,41 @@
         "line": 6,
         "include": "owner-advance-carried-tests",
         "included": "tests/acl2/owner-advance-carried-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/receipt-revocation-store-fixtures.lisp",
+        "line": 8,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/receipt-revocation-store-fixtures.lisp",
+        "line": 14,
+        "include": "held-rows-tests",
+        "included": "tests/acl2/held-rows-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/receipt-revocation-tests.lisp",
+        "line": 3,
+        "include": "../../books/receipt-revocation",
+        "included": "books/receipt-revocation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/receipt-revocation-tests.lisp",
+        "line": 4,
+        "include": "bp-release-authority-tests",
+        "included": "tests/acl2/bp-release-authority-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/receipt-revocation-tests.lisp",
+        "line": 5,
+        "include": "receipt-revocation-store-fixtures",
+        "included": "tests/acl2/receipt-revocation-store-fixtures.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

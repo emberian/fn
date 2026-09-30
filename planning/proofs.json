@@ -18654,6 +18654,28 @@
         "tests/acl2/legacy-parser-header-tests.lisp"
       ],
       "progress_note": "Source component only; no host call, qualified image, certification manifest or completed Q5c/J1 claim. Runtime work counts raw byte transitions; constant-size record allocation is explicit in source, while a proved allocation accounting bound and physical measurement remain open. Clean protected REPL evidence is recorded in LANEDUMP.md. fn-lpc-agreesp states the full outstanding catalog equality and is not a theorem. Fixforward from 8c6750b42: whitespace-only folded physical lines now reject independently of earlier visible field content. Exact pre-fix counterexample was admitted; W=1 regression and full source replay passed. Per-line fold mode is distinct from accumulated field visibility."
+    },
+    {
+      "id": "PRF-1118",
+      "title": "Durable principal revocation removes prospective receipt release authority and retains history",
+      "statement": "Actual fn-sn-finish of fn-hl-revoke-event is composed with host-called fn-bpah-receipt-gatep and fn-bpah-receipt-release-record under current retained snapshots. New receipt authorization must refuse the revoked signer even with earlier successful primitive observations; historical snapshots, article verdicts and independent retention survive. Owner serialization supplies current state. Durable receipt intent replay remains historical evidence, not authority to issue a new receipt. Full W8 owner/reclaim continuation and physical resource refinement remain open.",
+      "milestone": "M5",
+      "requirements": [
+        "RET-004",
+        "RET-005"
+      ],
+      "depends_on": [
+        "PRF-098"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/receipt-revocation.lisp",
+        "tests/acl2/receipt-revocation-tests.lisp",
+        "tests/acl2/receipt-revocation-store-fixtures.lisp",
+        "planning/evidence/receipt-revocation-2026-09-29/README.md"
+      ],
+      "progress_note": "Clean protected rrv7 admitted the actual source book: 10/10 named events match, including the weakened durable revocation statement without separate signed-nonnil or tomb-success premises. Clean rrv9 loaded the declared narrow test root and evaluated all 14 literal assertions; current source dependencies loaded in one encapsulate. No certificate or current-source image qualification. Published image6462 diagnostics remain historical. Original full store-identity trace dependency refusal is preserved separately; no full W8 owner/continuation/resource claim."
     }
   ]
 }
