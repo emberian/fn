@@ -877,6 +877,8 @@
 (defun fn-sct-run-decode (segs s)
   (declare (xargs :guard (fn-scc-segment-listp segs)
                   :guard-hints (("Goal" :expand ((fn-scc-segment-listp segs))
+                                 :use ((:instance fn-sct-parse-header-count-natp
+                                                  (seg (car segs))))
                                  :in-theory (disable fn-scc-parse-header fn-scc-join
                                                      fn-scc-segment-listp)))))
   (let ((h (and (consp segs) (fn-scc-parse-header (car segs)))))
