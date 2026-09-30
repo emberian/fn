@@ -10,15 +10,15 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1881 |
+| Books read | 1883 |
 | Certification roots in the Makefile | 1808 |
 | Books inside the root closure | 1873 |
-| `defthm` and `defthmd` events | 29678 |
-| `defun` events | 19012 |
-| Functions with verified guards | 3561 |
+| `defthm` and `defthmd` events | 29688 |
+| `defun` events | 19033 |
+| Functions with verified guards | 3563 |
 | Functions declared `:verify-guards nil` and never verified | 2251 |
-| Functions left at the default with an explicit guard | 10370 |
-| Functions left at the default with no guard | 2830 |
+| Functions left at the default with an explicit guard | 10382 |
+| Functions left at the default with no guard | 2837 |
 | `assert-event` checks | 23983 |
 | `must-fail` checks | 2516 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 363 |
 | Enabled-projection warnings | 62 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2591 |
-| Host-names warnings | 2159 |
+| Include-hygiene warnings | 2592 |
+| Host-names warnings | 2181 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -534,6 +534,7 @@ that `make certify` requests.
 | `books/image-world-dtn.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/image-world-store-test.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/image-world.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/index-incoming-request.lisp` | - | 3 | 14 | 2/0/12/0 | 0 | 0 | 0 |
 | `books/index.lisp` | root | 35 | 26 | 24/0/2/0 | 0 | 0 | 3 |
 | `books/injection-info-params-invariants.lisp` | root | 82 | 4 | 0/0/4/0 | 0 | 0 | 2 |
 | `books/injection-info-params.lisp` | root | 1 | 11 | 0/0/11/0 | 0 | 0 | 0 |
@@ -1502,6 +1503,7 @@ that `make certify` requests.
 | `tests/acl2/hybrid-store-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 4 | 8 | 0 |
 | `tests/acl2/identity-retain-carried-tests.lisp` | root | 0 | 5 | 0/3/0/2 | 39 | 0 | 0 |
 | `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 0 | 0 |
+| `tests/acl2/index-incoming-request-tests.lisp` | - | 7 | 7 | 0/0/0/7 | 0 | 0 | 0 |
 | `tests/acl2/index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/injection-info-params-tests.lisp` | root | 0 | 5 | 0/0/3/2 | 48 | 14 | 0 |
 | `tests/acl2/injection-tests.lisp` | root | 0 | 11 | 0/0/0/11 | 156 | 10 | 0 |
