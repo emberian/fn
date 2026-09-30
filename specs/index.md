@@ -110,3 +110,30 @@ The live owner pins the trie with each archive and calls it for exact-ID
 ARTICLE, HEAD, BODY and STAT retrieval. Its maintained correspondence is not
 rechecked across the whole archive per command. Group buckets have a different
 key and LISTGROUP query contract; they do not replace the Message-ID trie.
+
+## Registered publication holders for connections
+
+The paged reader producer associates each accepted logical connection with an
+opaque issued holder token. The native connection stores and returns that
+token; it does not derive its nonce or allocation address from the connection
+ID. Fixed-size holder segments use separately recycled physical slots. An old
+token cannot address the occupant of a reused slot. The canonical capture epoch
+is not the connection's lifetime identity: online reclaim can reset that epoch
+while an older connection retains its view.
+
+The holder retains the exact publication pin selected by the actual open or
+repin transition. Closing prevents new reads and alias acquisition, but keeps
+the publication reference and capacity grant until registered aliases return.
+A request returns its connection alias only after acquiring its own publication
+query reference, through a once-only registry transition. That publication
+reference is distinct from any incoming RX-buffer custody the request retains.
+After aliases return, the actual generation pin is dropped before the holder
+slot is released. A failure between these steps requires recovery; neither a
+socket close nor a host assertion of completion settles the reference.
+
+`index-connection-holder.lisp` and `index-backing-connection-pins.lisp` currently
+implement internal segment and registry operations. Their source fixtures cover
+retained aliases, exact generation reference settlement, repeated release,
+stale slot reuse, wrong connection IDs, and corrupted free-slot metadata.
+Funded issuance, all accepted open/repin/close hooks, and native token transport
+remain integration work; these components do not yet activate a served path.
