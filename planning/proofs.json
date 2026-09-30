@@ -19107,16 +19107,32 @@
         "books/bpsec-head.lisp",
         "books/bpsec-asb.lisp",
         "tests/acl2/bpsec-asb-tests.lisp",
-        "planning/evidence/bpsec-asb-source-2026-09-30.json"
+        "planning/evidence/bpsec-asb-source-2026-09-30.json",
+        "books/bpsec-asb-quanta.lisp",
+        "tests/acl2/bpsec-asb-quanta-tests.lisp",
+        "planning/evidence/bpsec-asb-quanta-source-2026-09-30.json",
+        "books/bpsec-asb-spine.lisp",
+        "tests/acl2/bpsec-asb-spine-tests.lisp",
+        "planning/evidence/bpsec-asb-spine-source-2026-09-30.json",
+        "books/bpsec-asb-control.lisp",
+        "tests/acl2/bpsec-asb-control-tests.lisp",
+        "planning/evidence/bpsec-asb-control-source-2026-09-30.json"
       ],
-      "progress_note": "Source-only proper-local admission at exact w28 fced dependency coordinate; six component bounds/suffix events admitted after a repaired corrupted-cursor guard failure and proof hints. No normal manifest, immutable runtime provider, full refinement or native security gate.",
+      "progress_note": "Source-only proper-local admission at exact w28 fced dependency coordinate; six component bounds/suffix events admitted after a repaired corrupted-cursor guard failure and proof hints. No normal manifest, immutable runtime provider, full refinement or native security gate. Added actual ASB complete cursor/consumed-prefix/suffix quantum-composition source; fresh proper-local14fixtureforms23.40s7930504steps (includes four new source dependencies), all literal outcomes and guard-world audit pass. Full window/provider/grammar refinement remains open. Fixed exact34-field cursor spine established/preserved by actual start/drive/step; final fresh12fixtureforms23.33s6971684steps includes4proper-local dependencies, guard-world+five literal scenarios pass. Ghost predicate never served; mutable grammar/span/provider invariants remain open. First mutable grammar-control field invariant established/preserved by actual start/drive/step, final fresh13forms24.40s7372339steps includes4proper-local dependencies; guard-world+six literal scenarios pass. Complete remaining mutable grammar/span/provider invariants remain open.",
       "events": [
         "fn-bps-head-drive-consumes-at-most-quantum",
         "fn-bps-head-drive-consumes-at-most-window",
         "fn-bps-head-drive-rest-is-exact-unconsumed-suffix",
         "fn-bps-asb-drive-consumes-at-most-quantum",
         "fn-bps-asb-drive-consumes-at-most-window",
-        "fn-bps-asb-drive-rest-is-exact-unconsumed-suffix"
+        "fn-bps-asb-drive-rest-is-exact-unconsumed-suffix",
+        "fn-bps-asb-drive-composes-quanta",
+        "fn-bps-asb-start-establishes-fixed-spine",
+        "fn-bps-asb-drive-preserves-cursor-spine",
+        "fn-bps-asb-step-preserves-cursor-spine",
+        "fn-bps-asb-start-establishes-grammar-control",
+        "fn-bps-asb-drive-preserves-grammar-control",
+        "fn-bps-asb-step-preserves-grammar-control"
       ]
     },
     {
@@ -19134,7 +19150,10 @@
       "status": "uncertified-at-current-digest",
       "events": [
         "fn-bps-target-drive-work-does-not-exceed-quantum",
-        "fn-bps-target-drive-composes-quanta"
+        "fn-bps-target-drive-composes-quanta",
+        "fn-bps-target-start-establishes-fixed-spine",
+        "fn-bps-target-drive-preserves-cursor-spine",
+        "fn-bps-target-step-preserves-cursor-spine"
       ],
       "evidence": [
         "books/bpsec-target.lisp",
@@ -19144,9 +19163,12 @@
         "books/bpsec-target-cursor.lisp",
         "books/bpsec-provider-model.lisp",
         "tests/acl2/bpsec-target-cursor-tests.lisp",
-        "planning/evidence/bpsec-target-cursor-source-2026-09-30.json"
+        "planning/evidence/bpsec-target-cursor-source-2026-09-30.json",
+        "books/bpsec-target-spine.lisp",
+        "tests/acl2/bpsec-target-spine-tests.lisp",
+        "planning/evidence/bpsec-target-spine-source-2026-09-30.json"
       ],
-      "progress_note": "Logical graph/reference data-match premise plus bounded metadata cursor source. Final fresh16fixtureforms15.82s7199127steps with6proper-local source/test dependencies and7matchingcached dependencies. Guards, unconditional quantum work bound and complete-cursor/work quantum-composition event admitted; literal quantum1/17/reference cases and provider-byte substitution refusal pass. Full state preservation/every-schedule reference equivalence, actual pinned provider/caller, complete post-decrypt graph, normal certification/native security gate remain open."
+      "progress_note": "Logical graph/reference data-match premise plus bounded metadata cursor source. Final fresh16fixtureforms15.82s7199127steps with6proper-local source/test dependencies and7matchingcached dependencies. Guards, unconditional quantum work bound and complete-cursor/work quantum-composition event admitted; literal quantum1/17/reference cases and provider-byte substitution refusal pass. Full state preservation/every-schedule reference equivalence, actual pinned provider/caller, complete post-decrypt graph, normal certification/native security gate remain open. Exact22-field target cursor spine established/preserved by actual start/drive/step; fresh8fixtureforms23.89s7360212steps includes8proper-local source/test deps, guard-world+five scenarios pass. Ghost predicate never served; complete mutable/reference/provider graph invariant remains open."
     },
     {
       "id": "PRF-1145",

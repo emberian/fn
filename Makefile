@@ -1951,6 +1951,10 @@ ACL2_BOOKS ?= books/defrecord \
     books/query-payload-scalar \
     books/query-payload-state \
     tests/acl2/bpsec-operation-tests \
+    tests/acl2/bpsec-asb-quanta-tests \
+    tests/acl2/bpsec-asb-spine-tests \
+    tests/acl2/bpsec-target-spine-tests \
+    tests/acl2/bpsec-asb-control-tests \
     tests/acl2/bpsec-target-cursor-tests \
     tests/acl2/bpsec-target-tests \
     tests/acl2/post-identity-source-cursor-source-complete-tests \

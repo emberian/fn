@@ -1031,6 +1031,34 @@ never verified. Explicit empty parameters are refused in this supported
 profile. Literal codec scenarios are SCN-1065/1066. Structural parsing is
 distinct from target-graph validity and cryptographic verification.
 
+`books/bpsec-asb-quanta.lisp` proves that splitting the actual ASB drive's
+work quantum over one fixed input preserves its complete cursor, total
+consumed-byte count and final suffix. Internal metadata steps and body-octet
+steps remain in the same order; terminal need-input/refusal states compose too.
+The theorem is unconditional on cursor shape and has literal nonempty two-target
+BIB/body and malformed-state witnesses. It is a scheduling property, separate
+from grammar invariant preservation and equivalence across changing immutable
+windows. No physical provider or native caller is established by this event.
+
+`books/bpsec-asb-spine.lisp` establishes and preserves the exact ordered
+34-field cursor spine through the actual start, drive and step functions.
+The ghost predicate inspects keys only and is never called on the served
+step. It supplies the carried fixed-record basis for bounded metadata access;
+it is separate from all mutable-field types, grammar progression, span bounds
+and physical provider facts. Literal tests carry the complete spine antecedent
+and conclusion through every exercised one-byte/quantum-one transition,
+refused starts and wrong windows. A corrupted missing-key cursor affirmatively
+fails both the omitted invariant and resulting conclusion. No whole-state
+revalidation is added to the implementation.
+
+`books/bpsec-asb-control.lisp` supplies the first mutable-field invariant:
+the actual ASB start/drive/step keep the grammar-control field within the
+declared twenty-stage set. This ghost predicate is never served revalidation.
+Tests carry its complete premise/conclusion across every exercised one-byte,
+quantum-one transition, then corrupt only the stage field and affirmatively
+check failure of both the omitted premise and drive/step conclusion. Other
+mutable fields, grammar semantics and window/provider refinement remain open.
+
 The logical target-graph reference in `books/bpsec-target.lisp` binds each
 ASB as `(block-number . ASB)`, checks actual block existence/type, unique
 service/target pairs, forbidden security targets and payload BCB flags. Every
@@ -1056,6 +1084,14 @@ relation is a carried guard, not repeated validation inside the unit step.
 Component theorems bound work by the quantum and show that split quanta
 preserve the complete cursor and exact work. Whole graph equivalence and
 state preservation remain PRF-1179 work, with no actual host installation.
+
+`books/bpsec-target-spine.lisp` establishes and preserves the actual target
+cursor's exact ordered 22-field record through start, drive and step. It uses
+the ghost spine predicate, never a served whole-bundle or whole-state check.
+Literal valid, pending-plaintext, incomplete-coverage and refused opaque-set
+cases carry the full representation antecedent/conclusion through every
+exercised quantum-one transition; dropping a real key defeats both. Complete
+mutable-field/reference graph invariants and the actual provider remain open.
 
 `books/bpsec-provider-model.lisp` names the logical unique-backing relation
 and `fn-bps-window-backing-matchp`. A same-ID/same-offset byte substitution

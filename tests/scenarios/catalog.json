@@ -7347,16 +7347,31 @@
       "steps": [
         "Encode a two-target BIB sequence with distinct per-target result bytes.",
         "Supply exact immutable backing slices one octet at a time, with quantum one so internal duplicate scans and reversals also resume.",
-        "Compare the complete span abstraction and target/result order with the literal reference object; exercise zero quantum and temporary missing input."
+        "Compare the complete span abstraction and target/result order with the literal reference object; exercise zero quantum and temporary missing input.",
+        "Split work quanta across actual metadata and nonempty result-body processing; compare complete cursor, consumed-prefix count and suffix with one combined quantum.",
+        "Check the exact ordered cursor spine through every exercised one-byte/quantum-one transition, including need-input, invalid-start refusal and wrong-window refusal.",
+        "Carry the finite grammar-stage control invariant through every exercised one-byte/quantum-one transition; mutate only the real stage field to unknown and affirmatively check missing-premise/output failures."
       ],
       "expected": [
         "Complete targets/results and exact source/result octets survive every exercised resume.",
         "No enclosing ASB array is emitted.",
-        "Zero quantum yields unchanged; absent input is need-input, not truncated."
+        "Zero quantum yields unchanged; absent input is need-input, not truncated.",
+        "Exact quantum cuts compose, including need-input, declared truncation and refused duplicate terminals. This is not a theorem about changing windows or provider bytes.",
+        "Start establishes the fixed34-field spine and actual drive/step preserve it. Dropping a real key invalidates both the antecedent and preservation conclusion; mutable-value/grammar/provider invariants remain separate.",
+        "Actual ASB start/drive/step keep control within the declared20 stages. No served invariant revalidation is added; full remaining mutable-field and provider/window refinement remain open."
       ],
       "evidence": [
         "tests/acl2/bpsec-asb-tests.lisp",
-        "planning/evidence/bpsec-asb-source-2026-09-30.json"
+        "planning/evidence/bpsec-asb-source-2026-09-30.json",
+        "books/bpsec-asb-quanta.lisp",
+        "tests/acl2/bpsec-asb-quanta-tests.lisp",
+        "planning/evidence/bpsec-asb-quanta-source-2026-09-30.json",
+        "books/bpsec-asb-spine.lisp",
+        "tests/acl2/bpsec-asb-spine-tests.lisp",
+        "planning/evidence/bpsec-asb-spine-source-2026-09-30.json",
+        "books/bpsec-asb-control.lisp",
+        "tests/acl2/bpsec-asb-control-tests.lisp",
+        "planning/evidence/bpsec-asb-control-source-2026-09-30.json"
       ],
       "execution_scope": "ACL2 literal source fixture only; full every-schedule theorem and operational provider/native execution remain open."
     },
@@ -7372,16 +7387,21 @@
         "Refuse empty/duplicate targets, trailing data, declared truncated byte strings and explicitly empty parameters.",
         "Retain reserved read flags and mark an unknown security context unsupported with original wire.",
         "Decode context2 with explicit twelve-byte IV and empty per-target result array without inventing a tag field.",
-        "Reject a mismatched input backing and keep uncertain outside the primitive result enum."
+        "Reject a mismatched input backing and keep uncertain outside the primitive result enum.",
+        "Carry exact22-field target cursor spine through all exercised quantum-one count, block lookup, membership and coverage transitions; separately drop its actual status key."
       ],
       "expected": [
         "Malformed known grammar refuses; unsupported never verifies.",
         "Reserved flags do not change the accepted source object; encoder clears them.",
-        "Ciphertext-tail tag extraction requires later exact target binding and is not performed by ASB parsing."
+        "Ciphertext-tail tag extraction requires later exact target binding and is not performed by ASB parsing.",
+        "Actual target start/drive/step preserve record shape for valid/pending/unsupported/refused outcomes; missing-key corruption fails the sole carried invariant and its output conclusion. Full mutable/reference/provider graph invariants remain open."
       ],
       "evidence": [
         "tests/acl2/bpsec-asb-tests.lisp",
-        "planning/evidence/bpsec-asb-source-2026-09-30.json"
+        "planning/evidence/bpsec-asb-source-2026-09-30.json",
+        "books/bpsec-target-spine.lisp",
+        "tests/acl2/bpsec-target-spine-tests.lisp",
+        "planning/evidence/bpsec-target-spine-source-2026-09-30.json"
       ],
       "execution_scope": "ACL2 source grammar tests only; no AES/HMAC execution, key grant, target plan, crypto gate or native receipt."
     },
