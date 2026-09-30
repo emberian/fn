@@ -23811,7 +23811,7 @@
       "applied_directly_in": []
     },
     {
-      "name": "fn-osp-canon-begin",
+      "name": "fn-orm-begin",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
@@ -23828,7 +23828,7 @@
       "applied_directly_in": []
     },
     {
-      "name": "fn-osp-canon-tick",
+      "name": "fn-orm-tick",
       "subsystem": "owner",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",

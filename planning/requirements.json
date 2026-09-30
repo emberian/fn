@@ -5653,7 +5653,8 @@
         "PRF-1069",
         "PRF-1071",
         "PRF-1074",
-        "PRF-1077"
+        "PRF-1077",
+        "PRF-1081"
       ],
       "verification": [
         "proof",
@@ -5668,9 +5669,12 @@
         "books/snapshot-capture-lease.lisp",
         "tests/acl2/snapshot-capture-lease-tests.lisp",
         "books/snapshot-prepare.lisp",
-        "tests/acl2/snapshot-prepare-tests.lisp"
+        "tests/acl2/snapshot-prepare-tests.lisp",
+        "books/snapshot-row-remap.lisp",
+        "tests/acl2/snapshot-row-remap-tests.lisp",
+        "host/native/owner.lisp"
       ],
-      "implementation_note": "S7 producer in development on codex/operability-producer; grammar and bounded copy cursor only. Full maintained-projection recovery and resource lifetime funding remain required, no producer completion claim."
+      "implementation_note": "S7 producer components in development: O(1) capture, resumable configured/summary folds, context-preserving row remap and marker-last tail. Full maintained-projection/payload-alpha recovery, bounded history/page preparation, resource funding and actual controller remain required; no producer completion claim."
     }
   ]
 }

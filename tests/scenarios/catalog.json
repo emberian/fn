@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6264,6 +6264,30 @@
         "tests/acl2/page-read-ownership-tests.lisp"
       ],
       "execution_scope": "Pending matching union image; ownership only, no funded worker/buffer admission claim."
+    },
+    {
+      "id": "SCN-215",
+      "title": "Genuine online snapshot restores the captured retained Store epoch",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-040"
+      ],
+      "steps": [
+        "Fund a supported maintenance profile, capture a committed Store and pin its source arena/version.",
+        "Include ordinary and atomic accepted articles with orphan source payload handles, historical/current identity generations, frozen verdict/index metadata, consumer obligations and topic/configuration history.",
+        "Complete remap and bounded preparation, publish a genuine marker-last snapshot while accepting a later source POST.",
+        "Restore the snapshot with the actual current-format startup; exercise cancellation and every modeled publication process-death cut."
+      ],
+      "expected": [
+        "The restored retained projection equals the captured source through the physical payload-handle abstraction, including the composite-held payload and frozen context; the later POST is outside the captured epoch.",
+        "Source and target old/new artifacts remain funded throughout; cancellation and timeout never refund still-owned physical storage.",
+        "A completed target is durable; failures before completion refuse or remain uncertain as specified, and partial artifacts are not mistaken for a snapshot."
+      ],
+      "evidence": [
+        "tests/acl2/snapshot-row-remap-tests.lisp"
+      ],
+      "note": "Remap source/teeth are partial component evidence only. Genuine running producer/controller, physical writer/load map and matching native restore/cut execution remain pending."
     }
   ]
 }

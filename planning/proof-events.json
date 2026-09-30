@@ -17289,6 +17289,27 @@
           "name": "fn-pio-close-waits-for-every-worker"
         }
       ]
+    },
+    {
+      "id": "PRF-1081",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-orm-row-retains-the-complete-payload-independent-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orm-tick-is-the-context-preserving-row-continuation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orm-continue-is-one-row-or-one-reverse-cell"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-orm-continue-keeps-the-executable-cursor"
+        }
+      ]
     }
   ]
 }

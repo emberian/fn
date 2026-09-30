@@ -17851,17 +17851,14 @@
         "fn-osp-cpr-continue-preserves-configured-state",
         "fn-osp-fold-tick-retains-the-four-summary-values",
         "fn-osp-fold-continue-is-exactly-one-record",
-        "fn-osp-fold-natural-counter-is-preserved",
-        "fn-osp-canon-tick-is-the-canonical-rows-continuation",
-        "fn-osp-canon-continue-is-one-row-or-one-reverse-cell",
-        "fn-osp-canon-continue-keeps-the-executable-cursor"
+        "fn-osp-fold-natural-counter-is-preserved"
       ],
       "evidence": [
         "books/snapshot-prepare.lisp",
         "tests/acl2/snapshot-prepare-tests.lisp",
         "host/native/owner.lisp"
       ],
-      "progress_note": "Clean proper-local persvati ospa62: source snapshot-prepare encapsulated, 30 tooth forms including canonical/article/orphan and assembled retained-history tuple, zero refused, ACL2 1.97s/536979 steps. All three ticks and assembler guard-verified. No certificate/native claim. Exact next source host gate pending."
+      "progress_note": "Clean proper-local persvati ospa62: source snapshot-prepare encapsulated, 30 tooth forms including canonical/article/orphan and assembled retained-history tuple, zero refused, ACL2 1.97s/536979 steps. All three ticks and assembler guard-verified. No certificate/native claim. Exact next source host gate pending. The former canonical-row component is now replaced on the S7 host path by PRF-1081 context-preserving remap; old fn-osp-canon events remain library lemmas, not claims about the current remap caller."
     },
     {
       "id": "PRF-1068",
@@ -17891,6 +17888,30 @@
         "fn-osr-finish-preserves-live-carry",
         "fn-osr-configure-durable-preserves-live-carry"
       ]
+    },
+    {
+      "id": "PRF-1081",
+      "title": "Snapshot row remap retains frozen metadata and resumes with a bounded outer-shape guard",
+      "statement": "Host helper fnn-snapshot-prepare-canonical-rows calls guard-verified fn-orm-begin and fn-orm-tick. The tick guard inspects only a fixed-position natural handle; the row dispatcher inspects at most fifteen outer cells and never reparses payloads or validates the retained suffix. On valid Store events, remap preserves every retained held field except the payload handle, including frozen facts/context/verdict generation, numbers, withdrawal and provenance; composites keep the original stxa. Legal-phase/proper-remaining-list hypotheses establish exact fn-orm-value continuation; each continue consumes one row, switches to reversal, or consumes one reversal cell, preserving the carried executable cursor. Named fn-orm-retained-alpha includes ordinary and composite-held payload bytes, with physical source/target payload correspondence explicitly required. The actual arena writer/load must establish that map before full recovery equality; this source increment does not claim funded controller, history-page preparation, publication or producer completion.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-040"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [
+        "fn-orm-row-retains-the-complete-payload-independent-projection",
+        "fn-orm-tick-is-the-context-preserving-row-continuation",
+        "fn-orm-continue-is-one-row-or-one-reverse-cell",
+        "fn-orm-continue-keeps-the-executable-cursor"
+      ],
+      "evidence": [
+        "books/snapshot-row-remap.lisp",
+        "tests/acl2/snapshot-row-remap-tests.lisp",
+        "host/native/owner.lisp"
+      ],
+      "progress_note": "Clean proper-local persvati osrm64t loaded the current snapshot-row-remap dependency inside an encapsulate and all29 test forms without refusal, 1.20 ACL2 seconds/83,440 steps. Both orphan ordinary/composite intern positives and wrong composite-held payload mutation evaluated; the tick/row functions are guard verified with no suffix guard. No certification, matching image/native or full producer claim."
     }
   ]
 }

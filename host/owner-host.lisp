@@ -43,6 +43,7 @@
 (include-book "../books/snapshot-capture-lease")
 (include-book "../books/owner-snapshot-recovery")
 (include-book "../books/snapshot-prepare")
+(include-book "../books/snapshot-row-remap")
 ; Row S10 (lane operability-2): a refused control post completion names the
 ; Store's word on the reply and the line.
 (include-book "../books/owner-control-post-reason")

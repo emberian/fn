@@ -4426,13 +4426,14 @@ four carried accumulators; it never copies an accumulated record prefix."
           (otherwise (fnn-fault "invalid summary snapshot preparation tick")))))))
 
 (defun fnn-snapshot-prepare-canonical-rows (records)
-  "Resume canonicalization one captured row, then one reversal cell, per tick.
-The arena lease must cover this entire read; the inner row conversion still
-needs the supported profile's allocation/work bound before producer dispatch."
-  (let ((cursor (fnn-core 'fn-osp-canon-begin records)))
+  "Remap one retained row, then one reversal cell, per tick.
+The fixed-shape remapper retains captured context/facts/verdict metadata and
+borrows payload bytes through the separately pinned arena writer. No payload
+is reparsed under a new key epoch and no suffix is validated in its guard."
+  (let ((cursor (fnn-core 'fn-orm-begin records)))
     (loop
-      (fnn-checkpoint-yield "snapshot-prepare-canonical" (third cursor))
-      (let ((tick (fnn-core 'fn-osp-canon-tick cursor (fnn-live-arena))))
+      (fnn-checkpoint-yield "snapshot-prepare-remap" (third cursor))
+      (let ((tick (fnn-core 'fn-orm-tick cursor)))
         (case (first tick)
           (:done (return (second tick)))
           (:continue (setq cursor (second tick)))

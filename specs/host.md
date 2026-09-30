@@ -1698,3 +1698,22 @@ setup, history-image page commit and writer hash preparation still need
 resumable/funded composition. Restored canonical handles differ from the
 captured source handles; the final recovery guarantee must compose the
 existing arena writer/load alpha refinements with the captured-view inverse.
+
+PRF-1081 replaces S7's old canonical re-interning component with the
+snapshot-specific `fn-orm-tick`. It changes only held payload handles,
+retaining frozen facts, context/verdict generation, local numbers,
+withdrawal, evidence and every other retained field; a composite keeps its
+original statement and remaps its held article separately. Its dispatcher
+examines at most fifteen outer cells, and its tick guard inspects only the
+fixed-position natural handle. The valid captured suffix is a maintained
+proof invariant and is never revalidated per tick. Preparation advances
+one row or one reversal cell without reading payload bytes.
+
+The complete retained-row abstraction `fn-orm-retained-alpha` includes
+the composite-held payload as well as metadata. Equal original statement
+bytes alone do not establish that held-payload correspondence. The physical
+arena writer/load must supply the source-to-target payload map for both
+ordinary and composite-held rows before the inverse becomes a full restore
+claim. SCN-215 names the genuine producer/restore/cut scenario; current
+orphan/remap teeth are component evidence only. History/page preparation,
+funded capture/controller and matching native execution remain pending.

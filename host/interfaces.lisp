@@ -4609,8 +4609,8 @@
 (definterface fn-osp-fold-begin :class :common-lisp-compliant)
 (definterface fn-osp-fold-tick :class :common-lisp-compliant)
 
-(definterface fn-osp-canon-begin :class :common-lisp-compliant)
-(definterface fn-osp-canon-tick :class :common-lisp-compliant)
+(definterface fn-orm-begin :class :common-lisp-compliant)
+(definterface fn-orm-tick :class :common-lisp-compliant)
 
 (definterface fn-osp-assemble :class :common-lisp-compliant)
 (definterface fn-owner-osn-prepared-run :class :program)
