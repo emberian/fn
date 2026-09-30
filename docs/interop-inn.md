@@ -496,3 +496,10 @@ This is a source-present actual-peer test stage. Scripted accounting tests
 are not an INN/native verdict. The original reverse-capacity 431/436,
 body-interruption/power-loss cases, and every original Q12 anchor remain
 open pending their own complete executable evidence.
+
+Relay exchange records retain `block_complete` (the full dot terminator was
+observed) and `transfer_complete` (that block and a complete final reply were
+observed). A final reply alone never qualifies an article transfer, including
+a truncated TAKETHIS transcript with239. Pre-transfer IHAVE/CHECK refusals
+remain complete without a body. These are observer facts, distinct from a
+native durable-acceptance decision.

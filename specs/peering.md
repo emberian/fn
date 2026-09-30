@@ -3172,3 +3172,10 @@ section 2.5). The successful feed's bytes avoid a receiver-added Path-loop
 confound. Failed actual positive transfer leaves the dependent observer
 NOT EXERCISED. This observer source and its scripted fixtures do not establish
 real INN/native behavior or close any original Q12 anchor.
+
+The INN observer retains literal dot-block completeness through
+`exchanges` and `find_exchange`. An accepted transfer requires both complete
+article framing and its final reply (RFC 3977 section 3.1.1, RFC 4644 section
+2.5); a reply alone cannot seal the corpus observation. Refusals before a
+transfer carry no block. This is external observation evidence, not a durable
+acceptance authority.

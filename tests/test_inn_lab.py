@@ -395,6 +395,42 @@ class StreamingContinuationTests(unittest.TestCase):
         self.assertEqual(found["verbs"], ["TAKETHIS"])
         self.assertFalse(inn_lab.streaming_transfer_completed(found, subject))
 
+    def test_reply_without_dot_terminator_never_completes_transfer(self):
+        subject = "<framing@x>"
+        body = b"Message-ID: <framing@x>\r\nSubject: framed\r\n\r\nbody\r\n"
+        for verb, client, server in (
+                ("TAKETHIS", b"CHECK <framing@x>\r\nTAKETHIS <framing@x>\r\n",
+                 b"200 ready\r\n238 <framing@x> wanted\r\n239 <framing@x> accepted\r\n"),
+                ("IHAVE", b"IHAVE <framing@x>\r\n", b"200 ready\r\n335 send\r\n235 accepted\r\n")):
+            for ending, expected in ((b"", False), (b".", False), (b".\r", False), (b".\r\n", True)):
+                sent = client + body + ending
+                parsed = inn_lab.exchanges(sent, server)["exchanges"][-1]
+                self.assertEqual(parsed["block_complete"], expected, (verb, ending))
+                self.assertEqual(parsed["transfer_complete"], expected, (verb, ending))
+                log = "\n".join([tap_line("a>b", 1, "client", sent), tap_line("a>b", 1, "server", server)])
+                found = inn_lab.find_exchange(log, "a>b", subject)
+                self.assertEqual(found["complete"], expected, (verb, ending))
+                self.assertEqual(found["transfer_complete"], expected, (verb, ending))
+                if verb == "TAKETHIS":
+                    self.assertEqual(inn_lab.streaming_transfer_completed(found, subject), expected)
+            no_final = server.rsplit(b"\r\n", 2)[0] + b"\r\n"
+            parsed = inn_lab.exchanges(client + body + b".\r\n", no_final)["exchanges"][-1]
+            self.assertTrue(parsed["block_complete"])
+            self.assertFalse(parsed["transfer_complete"])
+
+    def test_truncated_direct_takethis_and_post_preserve_framing_evidence(self):
+        body = b"Message-ID: <control@fn.invalid>\r\nControl: checkgroups\r\n\r\nfn.test y\r\n"
+        for client, server in (
+                (b"TAKETHIS <control@fn.invalid>\r\n", b"200 ready\r\n239 <control@fn.invalid>\r\n"),
+                (b"POST\r\n", b"200 ready\r\n340 send\r\n240 accepted\r\n")):
+            entry = inn_lab.exchanges(client + body, server)["exchanges"][-1]
+            self.assertEqual(entry["article"], body)
+            self.assertFalse(entry["block_complete"])
+            self.assertFalse(entry["transfer_complete"])
+            complete = inn_lab.exchanges(client + body + b".\r\n", server)["exchanges"][-1]
+            self.assertTrue(complete["block_complete"])
+            self.assertTrue(complete["transfer_complete"])
+
     def test_driver_refusal_or_wrong_subject_never_sends_article(self):
         from types import SimpleNamespace
         for replies in (["500 no streaming"], ["203 streaming", "438 <stream@x> held"],
@@ -486,7 +522,7 @@ class StreamingContinuationTests(unittest.TestCase):
             direction = name.removeprefix("streaming ")
             data = payloads["stream-" + direction]
             if mutation == "transfer-content": data += b"changed body\r\n"
-            return dict(verbs=["CHECK", "TAKETHIS"], offer="238 " + subject,
+            return dict(transfer_complete=True, block_complete=True, verbs=["CHECK", "TAKETHIS"], offer="238 " + subject,
                         result="239 " + ("<wrong@x>" if mutation == "transfer-subject" else subject),
                         article=data)
         lab.wait_tap = wait
@@ -619,7 +655,7 @@ class DistributionContinuationTests(unittest.TestCase):
         lab.drive_inn = drive
         def wait(pair, msgid, name):
             instance = name.split()[-1]
-            return dict(verbs=["IHAVE"], offer="335 send", result="235 accepted" if mutation != "control-refused" else "437 refused",
+            return dict(transfer_complete=True, block_complete=True, verbs=["IHAVE"], offer="335 send", result="235 accepted" if mutation != "control-refused" else "437 refused",
                         article=data["distribution-" + instance])
         lab.wait_tap = wait
         def read_tap():
@@ -935,7 +971,7 @@ class CheckgroupsFixtureTests(unittest.TestCase):
                 if mutation == "arrival-body": data = data.replace(b"must not create", b"will be created")
                 return data
             lab.wait_tap = lambda *args: dict(offer="238 " + msgid, result="239 " + msgid,
-                verbs=["CHECK", "TAKETHIS"], article=arrived())
+                verbs=["CHECK", "TAKETHIS"], article=arrived(), transfer_complete=True, block_complete=True)
             def drive(phase, extra, name):
                 if phase == "offer": result = dict(offer="335 send", transfer="235 accepted")
                 else:
@@ -995,7 +1031,7 @@ class InnLifecycleFixtureTests(unittest.TestCase):
         lab.drive_inn = drive
         def wait(pair, msgid, name):
             data = payloads["expiry" if name == "isolated expiry source" else name]
-            return dict(verbs=["CHECK", "TAKETHIS"], offer="238 " + msgid,
+            return dict(transfer_complete=True, block_complete=True, verbs=["CHECK", "TAKETHIS"], offer="238 " + msgid,
                         result="239 " + ("<wrong@x>" if mutation == "transfer-subject" else msgid), article=data)
         lab.wait_tap = wait
         lab.check = lambda key, ok, *args, **kwargs: checks.append((key, ok))
@@ -1125,7 +1161,7 @@ class InnThrottleFixtureTests(unittest.TestCase):
             if phase == "post": result.update(result="441 refused" if mutation == "post-refused" else "240 accepted")
             return inn_lab.Step(name, extra, 0, json.dumps(result), 0)
         lab.drive_inn = drive
-        lab.wait_tap = lambda pair, msgid, name: dict(verbs=["CHECK", "TAKETHIS"], offer="238 " + msgid,
+        lab.wait_tap = lambda pair, msgid, name: dict(transfer_complete=True, block_complete=True, verbs=["CHECK", "TAKETHIS"], offer="238 " + msgid,
             result="239 " + ("<wrong@x>" if mutation == "reply-subject" else msgid), article=payloads["throttle"])
         lab.check = lambda key, ok, *args, **kwargs: checks.append((key, ok))
         lab.record = lambda key, verdict, *args, **kwargs: checks.append((key, verdict))
