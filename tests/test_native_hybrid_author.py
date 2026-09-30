@@ -283,7 +283,7 @@ class NativeHybridAuthorTest(unittest.TestCase):
         The read bound is books/native-hybrid-control.lisp KEYSTONE
         fn-native-hybrid-control-author-request-within-read-bound."""
         store = self.root / "store-v2"
-        made = self.invoke("store", str(store), "init",
+        made = self.invoke("store", str(store), "init", "--profile", "default",
                            "--max-article-octets", "400000",
                            "--max-record-octets", "18874368", "fn.test",
                            timeout=180)

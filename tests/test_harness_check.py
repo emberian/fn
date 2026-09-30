@@ -534,11 +534,37 @@ class RawArityTests(unittest.TestCase):
             """
         stale = {"fnn-call", "fnn-owner-core", "fnn-owner-action",
                  "fnn-bpapp-core-record", "fnn-core-arena-state",
-                 "fnn-owner-feed-arena-step"}
+                 "fnn-owner-feed-arena-step", "fnn-core-buffer-state",
+                 "fnn-core-page-read-pool"}
         found = [row for row in self.scan(source, {"fn-pure": 1, "fn-stateful": 2})
                  if row["callee"] not in stale]
         self.assertEqual([(row["callee"], row["problem"]) for row in found], [
             ("fn-pure", "dispatched with 2 arguments (state included) and takes 1")])
+
+    def test_pool_dispatch_counts_the_dedicated_stobj(self):
+        source = """
+            (defun fnn-core-page-read-pool (name &rest args) (list name args))
+            (defun fnn-u ()
+              (list (fnn-core-page-read-pool 'fn-cold 7 '(1 2))
+                    (fnn-core-page-read-pool 'fn-cold 7)))
+            """
+        found = [row for row in self.scan(source, {"fn-cold": 3})
+                 if row["callee"] == "fn-cold"]
+        self.assertEqual([(row["callee"], row["problem"]) for row in found], [
+            ("fn-cold", "dispatched with 2 arguments (state included) and takes 3")])
+
+    def test_buffer_state_dispatch_counts_buffer_and_trailing_arena_run(self):
+        source = """
+            (defun fnn-core-buffer-state (name &rest args) (list name args))
+            (defun fnn-u ()
+              (list (fnn-core-buffer-state 'fn-refuse 7 0 :unavailable)
+                    (fnn-core-buffer-state 'fn-refuse 7)))
+            """
+        with patch.dict(harness_check.ARENA_ENTRIES, {"fn-refuse": 2}):
+            found = [row for row in self.scan(source, {"fn-refuse": 7})
+                     if row["callee"] == "fn-refuse"]
+        self.assertEqual([(row["callee"], row["problem"]) for row in found], [
+            ("fn-refuse", "dispatched with 5 arguments (state included) and takes 7")])
 
     def test_the_tree_has_no_raw_arity_finding(self):
         found, counts = harness_check.raw_arity_findings(ROOT)

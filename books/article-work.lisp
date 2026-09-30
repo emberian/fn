@@ -96,17 +96,11 @@
                 (fn-aw-r (fn-article-error :invalid-header)
                          (+ 1 (fn-aw-c split) (fn-aw-c name-check)
                             (fn-aw-c header-check)))
-              (let ((visible-check (fn-aw-has-vchar value)))
-                (if (not (fn-aw-v visible-check))
-                    (fn-aw-r (fn-article-error :invalid-header)
-                             (+ 1 (fn-aw-c split) (fn-aw-c name-check)
-                                (fn-aw-c header-check) (fn-aw-c visible-check)))
-                  (let ((lower (fn-aw-downcase name)))
-                    (fn-aw-r
-                     (list :ok (fn-article-make-field (list line) (fn-aw-v lower) value))
-                     (+ 1 (fn-aw-c split) (fn-aw-c name-check)
-                        (fn-aw-c header-check) (fn-aw-c visible-check)
-                        (fn-aw-c lower))))))))))))))
+              (let ((lower (fn-aw-downcase name)))
+                (fn-aw-r
+                 (list :ok (fn-article-make-field (list line) (fn-aw-v lower) value))
+                 (+ 1 (fn-aw-c split) (fn-aw-c name-check)
+                    (fn-aw-c header-check) (fn-aw-c lower))))))))))))
 
 (defthm fn-aw-new-field-value
   (equal (fn-aw-v (fn-aw-new-field line)) (fn-article-new-field line))
@@ -179,17 +173,23 @@
 ;; length, independent of the field it extends (PKT-552/770).  Contrast
 ;; fn-aw-add-fold-cost, the reference fold's cost, which grows with the field.
 (defun fn-aw-add-fold-open (cur line)
-  (let ((value (fn-aw-revappend line (car (cdr (cdr cur))))))
-    (fn-aw-r (list (cons line (car cur)) (car (cdr cur)) (fn-aw-v value))
-             (+ 1 (fn-aw-c value)))))
+  (let ((value (fn-aw-revappend line (caddr cur)))
+        (visible (if (cadddr cur) (fn-aw-r (cadddr cur) 0)
+                   (fn-aw-has-vchar line))))
+    (fn-aw-r (list (cons line (car cur)) (cadr cur) (fn-aw-v value)
+                   (fn-aw-v visible))
+             (+ 1 (fn-aw-c value) (fn-aw-c visible)))))
 (defthm fn-aw-add-fold-open-value
   (equal (fn-aw-v (fn-aw-add-fold-open cur line))
          (fn-article-add-fold-open cur line))
-  :hints (("Goal" :in-theory (disable fn-aw-revappend))))
+  :hints (("Goal" :in-theory (disable fn-aw-revappend fn-aw-has-vchar
+                                    fn-article-has-vcharp))))
 (defthm fn-aw-add-fold-open-cost
-  (equal (fn-aw-c (fn-aw-add-fold-open cur line))
-         (+ 2 (len line)))
-  :hints (("Goal" :in-theory (disable fn-aw-revappend))))
+  (<= (fn-aw-c (fn-aw-add-fold-open cur line))
+      (+ 3 (* 2 (len line))))
+  :hints (("Goal" :use ((:instance fn-aw-has-vchar-cost-bound (xs line)))
+                  :in-theory (disable fn-aw-revappend fn-aw-has-vchar
+                                      fn-article-has-vcharp fn-aw-has-vchar-cost-bound))))
 
 (defun fn-aw-header-add (header-rev line)
   (let* ((back (fn-aw-reverse line))

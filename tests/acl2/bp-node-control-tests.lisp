@@ -57,13 +57,25 @@
 ; Both sides of the complete open protocol, including a bind failure and an
 ; install failure.  Every literal equivalence is asserted, not just its tag.
 (assert-event
- (and (equal (equal (fn-ncfg-nth 0 (fn-bpnc-socket-open-run *bpnc-ready* :ok :ok)) :live)
+ (and (equal (equal (fn-ncfg-nth 0 (fn-bpnc-socket-step
+                                (fn-bpnc-socket-step (fn-bpnc-socket-initial *bpnc-ready*)
+                                                     '(:bind-result :ok))
+                                '(:install-result :ok))) :live)
              (and (equal (fn-ncfg-nth 0 *bpnc-ready*) :ready) (equal :ok :ok) (equal :ok :ok)))
-      (equal (equal (fn-ncfg-nth 0 (fn-bpnc-socket-open-run *bpnc-ready* :failed :ok)) :live)
+      (equal (equal (fn-ncfg-nth 0 (fn-bpnc-socket-step
+                                (fn-bpnc-socket-step (fn-bpnc-socket-initial *bpnc-ready*)
+                                                     '(:bind-result :failed))
+                                '(:install-result :ok))) :live)
              (and (equal (fn-ncfg-nth 0 *bpnc-ready*) :ready) (equal :failed :ok) (equal :ok :ok)))
-      (equal (equal (fn-ncfg-nth 0 (fn-bpnc-socket-open-run *bpnc-ready* :ok :failed)) :live)
+      (equal (equal (fn-ncfg-nth 0 (fn-bpnc-socket-step
+                                (fn-bpnc-socket-step (fn-bpnc-socket-initial *bpnc-ready*)
+                                                     '(:bind-result :ok))
+                                '(:install-result :failed))) :live)
              (and (equal (fn-ncfg-nth 0 *bpnc-ready*) :ready) (equal :ok :ok) (equal :failed :ok)))))
-(defconst *bpnc-live* (fn-bpnc-socket-open-run *bpnc-ready* :ok :ok))
+(defconst *bpnc-live* (fn-bpnc-socket-step
+                                (fn-bpnc-socket-step (fn-bpnc-socket-initial *bpnc-ready*)
+                                                     '(:bind-result :ok))
+                                '(:install-result :ok)))
 (assert-event
  (let* ((retiring (fn-bpnc-socket-step *bpnc-live* '(:stop)))
         (closed (fn-bpnc-socket-step retiring '(:retire-result :ok))))
@@ -84,3 +96,15 @@
  (let* ((st '(:closed nil nil 0)) (retiring (fn-bpnc-socket-step st '(:stop))))
    (and (not (member-equal (fn-ncfg-nth 0 st) '(:prepared :bound :live)))
         (not (equal (fn-ncfg-nth 0 (fn-bpnc-socket-action retiring)) :retire)))))
+
+; The interface checker inspects this exact theorem property in the ACL2 world.
+; Both actual host subjects must occur, without a :via exemption.
+(assert-event
+ (and (member-eq 'fn-bpnc-socket-initial
+                 (all-fnnames
+                  (getpropc 'fn-bpnc-open-run-live-iff-both-completions-succeed
+                            'theorem nil (w state))))
+      (member-eq 'fn-bpnc-socket-step
+                 (all-fnnames
+                  (getpropc 'fn-bpnc-open-run-live-iff-both-completions-succeed
+                            'theorem nil (w state))))))

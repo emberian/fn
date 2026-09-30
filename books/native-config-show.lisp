@@ -1321,20 +1321,27 @@
        (fn-ncfg-absolutep node)
        (not (equal (fn-ncfg-first (fn-ncfg-reverse (fn-record-string-octets node))) 47))))
 
-(defun fn-native-mission-config (name node host port)
-  (declare (xargs :guard t))
+; Row S8 (moving a node): the paths a mission writes are relative to the
+; node directory fn.toml is in (books/native-config-paths.lisp resolves them
+; for every verb), so a node directory copied elsewhere is the same node.
+; Row Q10a: TLS-PORT (NIL, or the TLS listener's port) is `mission
+; --tls-port'; the files it serves are the pair the image makes beside
+; fn.toml (books/tls-self-signed.lisp).
+(defun fn-native-mission-config (name node host port tls-port)
+  (declare (xargs :guard t)
+           (ignore node))
   (let ((row (fn-native-mission-row name)))
     (fn-native-config-make
-     (fn-ncfg-join-path node "/store") host port
-     (fn-ncfg-join-path node "/tls/cert.pem") (fn-ncfg-join-path node "/tls/key.pem")
+     "store" host port
+     "tls/cert.pem" "tls/key.pem"
      (fn-ncfg-second row) (fn-ncfg-third row)
-     (fn-ncfg-join-path node "/store/auth.toml")
+     "store/auth.toml"
      (fn-ncfg-first row) nil nil
-     (fn-ncfg-join-path node "/log/fn.log")
-     (fn-ncfg-join-path node "/store/control.sock") nil nil
+     "log/fn.log"
+     "store/control.sock" nil nil
      nil (fn-ncfg-nth 3 row) (fn-ncfg-nth 4 row) *fn-ncfg-default-cooldown-seconds*
      name nil *fn-ncfg-default-ops-scope* *fn-ncfg-default-keep-releases*
-     *fn-ncfg-default-log-max-bytes* *fn-ncfg-default-log-keep* nil nil)))
+     *fn-ncfg-default-log-max-bytes* *fn-ncfg-default-log-keep* nil tls-port)))
 
 ; The directories the operator's host creates beside fn.toml (the store is
 ; created by `init').
@@ -1344,11 +1351,11 @@
 
 ;   (:accepted CONFIG OCTETS)   write OCTETS as NODE/fn.toml
 ;   (:refused REASON)
-(defun fn-native-mission-plan (name node host port)
+(defun fn-native-mission-plan (name node host port tls-port)
   (declare (xargs :guard t))
   (cond ((null (fn-native-mission-row name)) (list :refused :unknown-mission))
         ((not (fn-native-mission-nodep node)) (list :refused :node-path))
-        (t (let ((config (fn-native-mission-config name node host port)))
+        (t (let ((config (fn-native-mission-config name node host port tls-port)))
              (if (fn-native-config-show-wfp config)
                  (list :accepted config (fn-native-config-show-octets config))
                (list :refused :listener))))))
@@ -1356,7 +1363,7 @@
 ; What a mission writes is read back, by the loader every verb uses, as the
 ; mission's configuration, naming the mission.
 (defthm fn-native-mission-plan-loads-back
-  (let ((plan (fn-native-mission-plan name node host port)))
+  (let ((plan (fn-native-mission-plan name node host port tls-port)))
     (implies (equal (car plan) :accepted)
              (and (equal (fn-native-config-load (caddr plan))
                          (list :accepted (cadr plan)))

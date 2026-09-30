@@ -259,6 +259,54 @@ class NativeFriendsAccountsTests(unittest.TestCase):
         self.assertTrue(reply.startswith("441"), reply)
         self.stop()
 
+    def set_password(self, login, password, *flags):
+        result = self.node.operator("account", "set-password", login, *flags,
+                                    input="{0}\n{0}\n".format(password).encode(),
+                                    timeout=240)
+        print("NATIVE-ACCOUNTS account set-password ->", result.returncode)
+        return result
+
+    def authinfo(self, login, password):
+        with self.tls() as client:
+            self.exchange(client, "AUTHINFO USER " + login)
+            return self.exchange(client, "AUTHINFO PASS " + password)
+
+    def test_one_account_system(self):
+        # Row S6 (PRF-1019): one verb set for both kinds of login, live.
+        self.node.start()
+        self.assertTrue(self.redeem(self.invite(), "robin", "correct-horse").startswith("281"))
+        self.invite()
+        # An unused code's expiry is a UTC time, never raw milliseconds.
+        listed = self.ok("account", "list").stdout.decode("ascii")
+        self.assertRegex(listed, r"(?m)^pending expires \d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
+        # A new login, taken by the running node at once (no restart).
+        made = self.set_password("alice", "battery-staple", "--posting")
+        self.assertEqual(made.returncode, 0, text(made))
+        self.assertIn(b"accepted operator principal set-password applied", made.stderr)
+        reply = self.login_and_post("alice", "battery-staple", "<alice-s6@friend.example>")
+        self.assertTrue(reply.startswith("240"), reply)
+        # A friend's forgotten password: the auth.toml login comes first.
+        reset = self.set_password("robin", "new-horse", "--posting")
+        self.assertEqual(reset.returncode, 0, text(reset))
+        self.assertTrue(self.authinfo("robin", "new-horse").startswith("281"))
+        self.assertTrue(self.authinfo("robin", "correct-horse").startswith("481"))
+        # Delete a file login: removed at once, by name.
+        gone = self.ok("account", "delete", "alice")
+        self.assertIn(b"accepted operator principal delete applied", gone.stderr)
+        self.assertTrue(self.authinfo("alice", "battery-staple").startswith("481"))
+        # robin twice: the auth.toml login, then the redeemed account.
+        self.ok("account", "delete", "robin")
+        self.assertTrue(self.authinfo("robin", "correct-horse").startswith("281"))
+        ended = self.ok("account", "delete", "robin")
+        self.assertIn(b"accepted operator account", ended.stderr)
+        self.assertTrue(self.authinfo("robin", "correct-horse").startswith("481"))
+        self.assertIn("deleted robin", self.ok("account", "list").stdout.decode("ascii"))
+        # Neither the file's nor an account's: refused by name, exit 1.
+        nobody = self.operator("account", "delete", "nobody")
+        self.assertEqual(nobody.returncode, 1, text(nobody))
+        self.assertIn(b"account-unknown", nobody.stderr)
+        self.stop()
+
     def test_a_code_invited_while_the_node_is_stopped_redeems(self):
         # PRF-374, bug M1 (lane node-migrate): an invitation made while no
         # owner runs is stamped by the offline configuration record, whose

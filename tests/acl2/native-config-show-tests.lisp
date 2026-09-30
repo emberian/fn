@@ -132,10 +132,16 @@
 ; writes loads back naming the mission.
 (defconst *ncst-node* "/tank/fn/scratch/operator-config/relay")
 (defconst *ncst-plans*
-  (list (fn-native-mission-plan "small-community" *ncst-node* "127.0.0.1" 11941)
-        (fn-native-mission-plan "relay" *ncst-node* "127.0.0.1" 11942)
-        (fn-native-mission-plan "archive" *ncst-node* "::1" 11943)))
-(assert-event (equal (strip-cars *ncst-plans*) '(:accepted :accepted :accepted)))
+  (list (fn-native-mission-plan "small-community" *ncst-node* "127.0.0.1" 11941 nil)
+        (fn-native-mission-plan "relay" *ncst-node* "127.0.0.1" 11942 nil)
+        (fn-native-mission-plan "archive" *ncst-node* "::1" 11943 nil)
+        ; Row Q10a: a mission with a TLS port.
+        (fn-native-mission-plan "relay" *ncst-node* "127.0.0.1" 11944 11945)))
+(assert-event (equal (strip-cars *ncst-plans*) '(:accepted :accepted :accepted :accepted)))
+(assert-event (let ((c (cadr (cadddr *ncst-plans*))))
+                (and (equal (fn-native-config-load (caddr (cadddr *ncst-plans*)))
+                            (list :accepted c))
+                     (equal (fn-native-config-listener-tls-port c) 11945))))
 (defconst *ncst-relay* (cadr (cadr *ncst-plans*)))
 (assert-event (equal (fn-native-config-load (caddr (cadr *ncst-plans*)))
                      (list :accepted *ncst-relay*)))
@@ -143,22 +149,24 @@
 (assert-event (not (fn-native-config-posting-enabledp *ncst-relay*)))
 (assert-event (fn-native-config-auth-protected-onlyp *ncst-relay*))
 (assert-event (equal (fn-native-config-alerts-refusal-rate-per-minute *ncst-relay*) 120))
-(assert-event (fn-native-config-operator-availablep *ncst-relay*))
-(assert-event (equal (fn-native-config-store *ncst-relay*)
-                     "/tank/fn/scratch/operator-config/relay/store"))
+; Row S8: the mission writes its paths relative to the node directory; the
+; operator resolves them (tests/acl2/native-config-paths-tests.lisp has the
+; resolved configuration, which `run' accepts).
+(assert-event (equal (fn-native-config-store *ncst-relay*) "store"))
+(assert-event (equal (fn-native-config-log-path *ncst-relay*) "log/fn.log"))
 ; Refusals.
-(assert-event (equal (fn-native-mission-plan "moon" *ncst-node* "127.0.0.1" 1)
+(assert-event (equal (fn-native-mission-plan "moon" *ncst-node* "127.0.0.1" 1 nil)
                      '(:refused :unknown-mission)))
-(assert-event (equal (fn-native-mission-plan "relay" "/tank/fn/" "127.0.0.1" 1)
+(assert-event (equal (fn-native-mission-plan "relay" "/tank/fn/" "127.0.0.1" 1 nil)
                      '(:refused :node-path)))
-(assert-event (equal (fn-native-mission-plan "relay" "relative" "127.0.0.1" 1)
+(assert-event (equal (fn-native-mission-plan "relay" "relative" "127.0.0.1" 1 nil)
                      '(:refused :node-path)))
-(assert-event (equal (fn-native-mission-plan "relay" *ncst-node* "0.0.0.0" 1)
+(assert-event (equal (fn-native-mission-plan "relay" *ncst-node* "0.0.0.0" 1 nil)
                      '(:refused :listener)))
-(assert-event (equal (fn-native-mission-plan "relay" *ncst-node* "127.0.0.1" 0)
+(assert-event (equal (fn-native-mission-plan "relay" *ncst-node* "127.0.0.1" 0 nil)
                      '(:refused :listener)))
 ; Teeth for fn-native-mission-plan-loads-back (one hypothesis: accepted).
-(defconst *ncst-refused* (fn-native-mission-plan "relay" *ncst-node* "0.0.0.0" 1))
+(defconst *ncst-refused* (fn-native-mission-plan "relay" *ncst-node* "0.0.0.0" 1 nil))
 (must-fail-checked
  (assert-event (equal (fn-native-config-load (caddr *ncst-refused*))
                       (list :accepted (cadr *ncst-refused*)))))

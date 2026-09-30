@@ -691,8 +691,7 @@ def run_point(args) -> dict:
     """One N: every selected probe, stage by stage.  Prints the point's JSON."""
     tree = Path(args.tree)
     sys.path.insert(0, str(tree / "tools"))
-    import native_env  # the tree's: the harness stores' budget, named once
-    env = native_env.harness_store_env(dict(os.environ, ACL2_CUSTOMIZATION="NONE"))
+    env = dict(os.environ, ACL2_CUSTOMIZATION="NONE")
     for k in ("ACL2_SYSTEM_BOOKS", "FN_HOST", "FN_PROF_OUT", "FN_PROF_HOOK"):
         env.pop(k, None)
     if args.sprof:

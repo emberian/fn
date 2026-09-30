@@ -139,3 +139,59 @@
             (equal (fn-ars-lb-gate '(97) nil t fn-octets) '(:pass (97) nil)))
        fn-octets))
  :stobjs-out '(nil fn-octets))
+
+; I5 whitespace-first continuation, on the actual live buffer parser.
+(assert-event
+ (let* ((folded '(88 58 32 9 13 10 32 120 13 10 13 10 98 13 10))
+        (fn-octets (fn-octets-clear fn-octets))
+        (fn-octets (fn-octets-append-list folded fn-octets))
+        (r (fn-ars-parse-under *fn-article-default-limits* fn-octets)))
+   (mv (and (fn-octets-p fn-octets)
+            (fn-article-result-okp r)
+            (equal r (fn-ars-of (fn-article-parse-under folded *fn-article-default-limits*)
+                                (len folded)))
+            (equal (fn-article-fields (fn-article-result-article r))
+                   '((((88 58 32 9) (32 120)) (120) (32 9 32 120)))))
+       fn-octets))
+ :stobjs-out '(nil fn-octets))
+(assert-event
+ (let* ((blank '(88 58 32 9 13 10 13 10))
+        (fn-octets (fn-octets-clear fn-octets))
+        (fn-octets (fn-octets-append-list blank fn-octets)))
+   (mv (and (fn-octets-p fn-octets)
+            (equal (fn-ars-parse-under *fn-article-default-limits* fn-octets)
+                   '(:error :invalid-header)))
+       fn-octets))
+ :stobjs-out '(nil fn-octets))
+
+; Literal executed-loop refinement teeth, after consuming a real initial
+; whitespace-only field line. The remainder starts with its visible fold.
+(defthm fn-ars-visible-carry-positive-witness
+  (let* ((cur (fn-article-open-field
+              (fn-article-line-value (fn-article-new-field '(88 58 32 9)))))
+         (rest '(32 120 13 10 13 10 98 13 10))
+         (header-rev '(10 13 9 32 58 88)))
+    (and (or (null cur) (fn-article-open-fieldp cur))
+         (equal (fn-ars-parse-lines-acc 0 *fn-article-default-limits* 256 6 0
+                                       nil cur header-rev rest)
+                (fn-ars-parse-lines 0 *fn-article-default-limits* 256 6 0
+                                   nil (and cur (fn-article-close-field cur))
+                                   header-rev rest))
+         (fn-article-result-okp
+          (fn-ars-parse-lines-acc 0 *fn-article-default-limits* 256 6 0
+                                  nil cur header-rev rest))))
+  :rule-classes nil)
+
+; Corrupted-state hypothesis removal: flag accepts what its retained WSP
+; bytes cannot justify, so the reference refuses and the executed loop differs.
+(defthm fn-ars-visible-carry-hypothesis-removal-witness
+  (let ((cur '(((88 58 32 9)) (120) (9 32) t)))
+    (and (not (or (null cur) (fn-article-open-fieldp cur)))
+         (true-listp cur) (equal (len cur) 4)
+         (true-listp (car cur)) (true-listp (caddr cur))
+         (not (equal (fn-ars-parse-lines-acc 0 *fn-article-default-limits* 256 6 0
+                                            nil cur '(10 13 9 32 58 88) '(13 10))
+                     (fn-ars-parse-lines 0 *fn-article-default-limits* 256 6 0
+                                        nil (and cur (fn-article-close-field cur))
+                                        '(10 13 9 32 58 88) '(13 10))))))
+  :rule-classes nil)

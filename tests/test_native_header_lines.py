@@ -123,9 +123,20 @@ class NativeHeaderLineTests(unittest.TestCase):
             status, block = client.multiline(b"ARTICLE <cont@example.invalid>")
             self.assertTrue(status.startswith(b"220"), status)
             self.assertIn(b"References:\r\n <r1@example.invalid>\r\n", block)
+            whitespace_fold = "References: \t\r\n <r1@example.invalid>"
+            reply = self.post(client, article("<cont-wsp@example.invalid>", date=None,
+                                              headers=(whitespace_fold,)))
+            self.assertTrue(reply.startswith(b"240"), reply)
+            status, block = client.multiline(b"ARTICLE <cont-wsp@example.invalid>")
+            self.assertTrue(status.startswith(b"220"), status)
+            self.assertIn(whitespace_fold.encode("ascii") + b"\r\n", block)
             bare = self.post(client, article("<bare@example.invalid>", date=None,
                                              headers=("References:",)))
             self.assertEqual(bare.rstrip(b"\r\n"),
+                             b"441 posting failed; the article is not valid syntax")
+            bare_wsp = self.post(client, article("<bare-wsp@example.invalid>", date=None,
+                                                 headers=("References: \t",)))
+            self.assertEqual(bare_wsp.rstrip(b"\r\n"),
                              b"441 posting failed; the article is not valid syntax")
 
             def relayed(message_id, subject, extra=b""):
@@ -140,7 +151,9 @@ class NativeHeaderLineTests(unittest.TestCase):
                     ("long", b"<t-long@example.invalid>", b"e" * 990, b"", b"IHAVE"),
                     ("long-stream", b"<t-longs@example.invalid>", b"e" * 990, b"", b"TAKETHIS"),
                     ("cont", b"<t-cont@example.invalid>", b"relayed",
-                     b"References:\r\n <r1@example.invalid>\r\n", b"IHAVE")):
+                     b"References:\r\n <r1@example.invalid>\r\n", b"IHAVE"),
+                    ("cont-wsp", b"<t-cont-wsp@example.invalid>", b"relayed",
+                     b"References: \t\r\n <r1@example.invalid>\r\n", b"IHAVE")):
                 octets = relayed(message_id, subject, extra)
                 if verb == b"IHAVE":
                     offer, final = client.post(octets, verb=b"IHAVE " + message_id)
@@ -152,6 +165,7 @@ class NativeHeaderLineTests(unittest.TestCase):
             print("NATIVE-HEADER-LINES-TRANSIT " + repr(replies))
             self.assertTrue(replies["edge"].startswith(b"235"), replies)
             self.assertTrue(replies["cont"].startswith(b"235"), replies)
+            self.assertTrue(replies["cont-wsp"].startswith(b"235"), replies)
             self.assertEqual(replies["long"], b"437 transfer rejected; " + LINE_LENGTH[len(b"441 posting failed; "):],
                              replies)
             self.assertEqual(replies["long-stream"], b"439 <t-longs@example.invalid>", replies)

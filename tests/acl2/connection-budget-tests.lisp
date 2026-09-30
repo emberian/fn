@@ -17,6 +17,8 @@
 (defconst *cbt-core* (* 192 1048576))
 (defconst *cbt-threads* 30)
 (defconst *cbt-stack* (* 1192 1024))
+; The handshakes' scratch of the default L (16) with a TLS context (PRF-986).
+(defconst *cbt-hs* (fn-cbud-handshake-octets t nil))
 (defconst *cbt-article* 32768)
 
 ; The figure: 161 KiB in the heap (the reply of a 32 KiB article rendered, 65
@@ -28,38 +30,38 @@
 (assert-event (equal (fn-cbud-conn-native-octets t) 401408))
 (assert-event (equal (fn-cbud-conn-octets *cbt-article* t) 566272))
 (assert-event (equal (fn-cbud-conn-octets *cbt-article* nil) 435200))
-(assert-event (equal (fn-cbud-base-octets *cbt-hneed* *cbt-core* *cbt-threads* *cbt-stack*)
-                     1218363392))
+(assert-event (equal (fn-cbud-base-octets *cbt-hneed* *cbt-core* *cbt-threads* *cbt-stack* *cbt-hs*)
+                     1220460544))
 
 (defmacro cbt-bound (machine tlsp)
-  `(fn-cbud-bound ,machine *cbt-hneed* *cbt-core* *cbt-threads* *cbt-stack*
+  `(fn-cbud-bound ,machine *cbt-hneed* *cbt-core* *cbt-threads* *cbt-stack* *cbt-hs*
                   *cbt-article* ,tlsp))
 
-; The friend's node holds 1,640 TLS-capable connections beside the store.
-(assert-event (equal (cbt-bound *cbt-machine* t) 1640))
+; The friend's node holds 1,637 TLS-capable connections beside the store.
+(assert-event (equal (cbt-bound *cbt-machine* t) 1637))
 ; Thread-per-connection would have held 60 threads of 5.2 MiB for the
 ; default 32 connections; the loops hold the capacity with 30 threads.
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE fn-cbud-bound-holds-its-connections.
 ;   H1 (<= (nfix n) bound)  H2 (<= base machine)
-; Witness: n = the bound, 1640; base and 1640 connections within 2 GiB.
-(assert-event (<= 1640 (cbt-bound *cbt-machine* t)))
-(assert-event (<= 1218363392 *cbt-machine*))
-(assert-event (<= (+ 1218363392 (* 1640 566272)) *cbt-machine*))
-; H1 dropped: 1641 connections do not fit.
-(assert-event (not (<= 1641 (cbt-bound *cbt-machine* t))))
+; Witness: n = the bound, 1637; base and 1637 connections within 2 GiB.
+(assert-event (<= 1637 (cbt-bound *cbt-machine* t)))
+(assert-event (<= 1220460544 *cbt-machine*))
+(assert-event (<= (+ 1220460544 (* 1637 566272)) *cbt-machine*))
+; H1 dropped: 1638 connections do not fit.
+(assert-event (not (<= 1638 (cbt-bound *cbt-machine* t))))
 (must-fail-checked
- (assert-event (<= (+ 1218363392 (* 1641 566272)) *cbt-machine*)))
+ (assert-event (<= (+ 1220460544 (* 1638 566272)) *cbt-machine*)))
 ; H2 dropped: a 1 GiB machine cannot hold the base; the bound is 0 and even
 ; no connection fits.
 (assert-event (equal (cbt-bound 1073741824 t) 0))
-(assert-event (not (<= 1218363392 1073741824)))
+(assert-event (not (<= 1220460544 1073741824)))
 (must-fail-checked
- (assert-event (<= (+ 1218363392 (* 0 566272)) 1073741824)))
+ (assert-event (<= (+ 1220460544 (* 0 566272)) 1073741824)))
 
-; fn-cbud-bound-is-the-most (no hypotheses): 1641 does not fit.
-(assert-event (< *cbt-machine* (+ 1218363392 (* (+ 1 1640) 566272))))
+; fn-cbud-bound-is-the-most (no hypotheses): 1638 does not fit.
+(assert-event (< *cbt-machine* (+ 1220460544 (* (+ 1 1637) 566272))))
 
 ; -----------------------------------------------------------------------------
 ; The dynamic space caps the heap.  Two machines: the friend's node started by
@@ -71,78 +73,78 @@
 (defconst *cbt-dyn-dev* (* 32000 1048576))
 (defconst *cbt-hneed-default* (* 70 1099511627776))
 (defconst *cbt-machine-40g* (* 40 1073741824))
-(defconst *cbt-rest* 363773952)
-(assert-event (equal (fn-cbud-rest-octets *cbt-core* *cbt-threads* *cbt-stack*) *cbt-rest*))
+(defconst *cbt-rest* 365871104)
+(assert-event (equal (fn-cbud-rest-octets *cbt-core* *cbt-threads* *cbt-stack* *cbt-hs*) *cbt-rest*))
 
 (defmacro cbt-limit (machine dynamic hneed)
-  `(fn-cbud-limit ,machine ,dynamic ,hneed *cbt-core* *cbt-threads* *cbt-stack*
+  `(fn-cbud-limit ,machine ,dynamic ,hneed *cbt-core* *cbt-threads* *cbt-stack* *cbt-hs*
                   *cbt-article* t))
 (defmacro cbt-resident (dynamic hneed n)
-  `(fn-cbud-resident-octets ,dynamic ,hneed *cbt-core* *cbt-threads* *cbt-stack*
+  `(fn-cbud-resident-octets ,dynamic ,hneed *cbt-core* *cbt-threads* *cbt-stack* *cbt-hs*
                             *cbt-article* t ,n))
 (defmacro cbt-fits (machine dynamic hneed)
-  `(fn-cbud-base-fitsp ,machine ,dynamic ,hneed *cbt-core* *cbt-threads* *cbt-stack*))
+  `(fn-cbud-base-fitsp ,machine ,dynamic ,hneed *cbt-core* *cbt-threads* *cbt-stack* *cbt-hs*))
 
-(assert-event (equal (cbt-limit *cbt-machine* *cbt-dyn-launch* *cbt-hneed*) 1640))
-(assert-event (equal (cbt-limit *cbt-machine-40g* *cbt-dyn-dev* *cbt-hneed-default*) 22499))
+(assert-event (equal (cbt-limit *cbt-machine* *cbt-dyn-launch* *cbt-hneed*) 1637))
+(assert-event (equal (cbt-limit *cbt-machine-40g* *cbt-dyn-dev* *cbt-hneed-default*) 22494))
 (assert-event (equal (cbt-limit (* 24 1073741824) *cbt-dyn-dev* *cbt-hneed-default*) 0))
 
 ; KEYSTONE fn-cbud-limit-holds-its-connections.
 ;   H1 (<= (nfix n) limit)  H2 base-fitsp
-; Witness (the figure's way): 1640 on the friend's node.
+; Witness (the figure's way): 1637 on the friend's node.
 (assert-event (cbt-fits *cbt-machine* *cbt-dyn-launch* *cbt-hneed*))
-(assert-event (<= (cbt-resident *cbt-dyn-launch* *cbt-hneed* 1640) *cbt-machine*))
-; Witness (the dynamic space's way): 22,499 on the 40 GiB developer node.
+(assert-event (<= (cbt-resident *cbt-dyn-launch* *cbt-hneed* 1637) *cbt-machine*))
+; Witness (the dynamic space's way): 22,494 on the 40 GiB developer node.
 (assert-event (cbt-fits *cbt-machine-40g* *cbt-dyn-dev* *cbt-hneed-default*))
-(assert-event (<= (cbt-resident *cbt-dyn-dev* *cbt-hneed-default* 22499) *cbt-machine-40g*))
+(assert-event (<= (cbt-resident *cbt-dyn-dev* *cbt-hneed-default* 22494) *cbt-machine-40g*))
 ; H1 dropped: one more is not held, on either machine.
 (must-fail-checked
- (assert-event (<= (cbt-resident *cbt-dyn-launch* *cbt-hneed* 1641) *cbt-machine*)))
+ (assert-event (<= (cbt-resident *cbt-dyn-launch* *cbt-hneed* 1638) *cbt-machine*)))
 (must-fail-checked
- (assert-event (<= (cbt-resident *cbt-dyn-dev* *cbt-hneed-default* 22500) *cbt-machine-40g*)))
+ (assert-event (<= (cbt-resident *cbt-dyn-dev* *cbt-hneed-default* 22495) *cbt-machine-40g*)))
 ; H2 dropped: on 24 GiB neither way holds the base; the limit is 0 and even
 ; no connection is held.
 (assert-event (not (cbt-fits (* 24 1073741824) *cbt-dyn-dev* *cbt-hneed-default*)))
 (must-fail-checked
  (assert-event (<= (cbt-resident *cbt-dyn-dev* *cbt-hneed-default* 0) (* 24 1073741824))))
 ; fn-cbud-limit-is-the-most (no hypotheses).
-(assert-event (< *cbt-machine* (cbt-resident *cbt-dyn-launch* *cbt-hneed* 1641)))
-(assert-event (< *cbt-machine-40g* (cbt-resident *cbt-dyn-dev* *cbt-hneed-default* 22500)))
+(assert-event (< *cbt-machine* (cbt-resident *cbt-dyn-launch* *cbt-hneed* 1638)))
+(assert-event (< *cbt-machine-40g* (cbt-resident *cbt-dyn-dev* *cbt-hneed-default* 22495)))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE fn-cbud-run-decide-holds-the-capacity.
 ;   H1 (equal (car d) :hold)
 (defmacro cbt-decide (capacity machine)
   `(fn-cbud-run-decide ,capacity ,machine *cbt-dyn-launch* *cbt-hneed* *cbt-core*
-                       *cbt-threads* *cbt-stack* *cbt-article* t))
-; Witness: the default capacity 31, and the most, 1640, are held.
-(assert-event (equal (cbt-decide 31 *cbt-machine*) '(:hold 1640)))
-(assert-event (equal (cbt-decide 1640 *cbt-machine*) '(:hold 1640)))
-(assert-event (<= (cbt-resident *cbt-dyn-launch* *cbt-hneed* 1640) *cbt-machine*))
+                       *cbt-threads* *cbt-stack* *cbt-hs* *cbt-article* t))
+; Witness: the default capacity 31, and the most, 1637, are held.
+(assert-event (equal (cbt-decide 31 *cbt-machine*) '(:hold 1637)))
+(assert-event (equal (cbt-decide 1637 *cbt-machine*) '(:hold 1637)))
+(assert-event (<= (cbt-resident *cbt-dyn-launch* *cbt-hneed* 1637) *cbt-machine*))
 ; H1 dropped: 3,000 is refused on this machine,
 ; and 3,000 connections are not held by it.
 (assert-event (equal (cbt-decide 3000 *cbt-machine*)
-                     '(:refused :connections-exceed-memory 3000 1640)))
+                     '(:refused :connections-exceed-memory 3000 1637)))
 (must-fail-checked
  (assert-event (<= (cbt-resident *cbt-dyn-launch* *cbt-hneed* 3000) *cbt-machine*)))
-; fn-cbud-run-decide-refuses-exactly-past-the-limit: 1641 refused, and the
+; fn-cbud-run-decide-refuses-exactly-past-the-limit: 1638 refused, and the
 ; developer node on 24 GiB refuses the default capacity (bounds_join's case,
 ; which holds on 40 GiB).
-(assert-event (equal (car (cbt-decide 1641 *cbt-machine*)) :refused))
+(assert-event (equal (car (cbt-decide 1638 *cbt-machine*)) :refused))
 (assert-event (equal (car (fn-cbud-run-decide 31 (* 24 1073741824) *cbt-dyn-dev*
                                               *cbt-hneed-default* *cbt-core*
-                                              *cbt-threads* *cbt-stack* *cbt-article* t))
+                                              *cbt-threads* *cbt-stack* *cbt-hs* *cbt-article* t))
                      :refused))
 (assert-event (equal (fn-cbud-run-decide 31 *cbt-machine-40g* *cbt-dyn-dev*
                                          *cbt-hneed-default* *cbt-core*
-                                         *cbt-threads* *cbt-stack* *cbt-article* t)
-                     '(:hold 22499)))
+                                         *cbt-threads* *cbt-stack* *cbt-hs* *cbt-article* t)
+                     '(:hold 22494)))
 ; The lines.
 (assert-event (equal (fn-cbud-refusal-line (cbt-decide 3000 *cbt-machine*)
                                            *cbt-article* t *cbt-machine*)
-                     "refused connections-exceed-memory capacity=3000 holds=1640 per-connection=553 KiB machine=2048 MB"))
+                     "refused connections-exceed-memory capacity=3000 holds=1637 per-connection=553 KiB machine=2048 MB"))
 (assert-event (equal (fn-cbud-hold-line (cbt-decide 31 *cbt-machine*) *cbt-article* t)
-                     "connections holds=1640 per-connection=553 KiB"))
+                     "connections holds=1637 per-connection=553 KiB"))
 ; The owner's line (fn-cbud-run-refusal-line, host/owner-host.lisp
 ; fn-owner-connection-budget): a base that fits keeps the line above; the raw
 ; developer image under a 24 GiB limit (its build's 32,000 MB dynamic space,
@@ -151,16 +153,16 @@
 (assert-event (equal (fn-cbud-run-refusal-line (cbt-decide 3000 *cbt-machine*)
                                                *cbt-article* t *cbt-machine*
                                                *cbt-dyn-launch* *cbt-hneed* *cbt-core*
-                                               *cbt-threads* *cbt-stack*)
+                                               *cbt-threads* *cbt-stack* *cbt-hs*)
                      (fn-cbud-refusal-line (cbt-decide 3000 *cbt-machine*)
                                            *cbt-article* t *cbt-machine*)))
 (assert-event (equal (fn-cbud-run-refusal-line
                       (fn-cbud-run-decide 31 (* 24 1073741824) *cbt-dyn-dev*
                                           *cbt-hneed-default* *cbt-core*
-                                          *cbt-threads* *cbt-stack* *cbt-article* t)
+                                          *cbt-threads* *cbt-stack* *cbt-hs* *cbt-article* t)
                       *cbt-article* t (* 24 1073741824) *cbt-dyn-dev*
-                      *cbt-hneed-default* *cbt-core* *cbt-threads* *cbt-stack*)
-                     "refused connections-exceed-memory capacity=31 holds=0 per-connection=553 KiB machine=24576 MB base-exceeds-machine heap-figure=73400320 MB dynamic=32000 MB fixed=347 MB"))
+                      *cbt-hneed-default* *cbt-core* *cbt-threads* *cbt-stack* *cbt-hs*)
+                     "refused connections-exceed-memory capacity=31 holds=0 per-connection=553 KiB machine=24576 MB base-exceeds-machine heap-figure=73400320 MB dynamic=32000 MB fixed=349 MB"))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE fn-cbud-admitted-connections-fit-the-machine.
@@ -169,30 +171,30 @@
 ;   H3 the admission decision is (:admit)
 ;   H4 (<= capacity limit)   H5 base-fitsp
 (defconst *cbt-v-empty* (fn-cfg-value (fn-cfg-initial)))
-(defconst *cbt-v-cap1640*
-  (fn-cfg-apply-delta *cbt-v-empty* 1 0 (fn-cfg-set-limit "exposure-connections" 1640)))
+(defconst *cbt-v-cap1637*
+  (fn-cfg-apply-delta *cbt-v-empty* 1 0 (fn-cfg-set-limit "exposure-connections" 1637)))
 (defconst *cbt-v-cap2200*
   (fn-cfg-apply-delta *cbt-v-empty* 1 0 (fn-cfg-set-limit "exposure-connections" 2200)))
 (defconst *cbt-a* '(:inet 192 168 1 7))
-(defconst *cbt-lim1640*
-  (fn-exp-limits *cbt-v-cap1640* *fn-exp-owner-connection-bound* nil nil))
+(defconst *cbt-lim1637*
+  (fn-exp-limits *cbt-v-cap1637* *fn-exp-owner-connection-bound* nil nil))
 (defconst *cbt-lim2200*
   (fn-exp-limits *cbt-v-cap2200* *fn-exp-owner-connection-bound* nil nil))
-; Witness: 1,639 held, the 1,640th admitted, and the 1,640 are held by the machine.
-(assert-event (fn-cfg-limits-withinp (fn-cfg-limits *cbt-v-cap1640*)))
-(assert-event (not (fn-exp-auth-refusesp (fn-exp-initial) *cbt-lim1640* *cbt-a* 5000)))
-(assert-event (equal (fn-exp-admit-decision (fn-exp-initial) *cbt-lim1640* 1639 *cbt-a* 5000)
+; Witness: 1,636 held, the 1,637th admitted, and the 1,637 are held by the machine.
+(assert-event (fn-cfg-limits-withinp (fn-cfg-limits *cbt-v-cap1637*)))
+(assert-event (not (fn-exp-auth-refusesp (fn-exp-initial) *cbt-lim1637* *cbt-a* 5000)))
+(assert-event (equal (fn-exp-admit-decision (fn-exp-initial) *cbt-lim1637* 1636 *cbt-a* 5000)
                      '(:admit)))
-(assert-event (<= (fn-exp-connections-capacity *cbt-v-cap1640*)
+(assert-event (<= (fn-exp-connections-capacity *cbt-v-cap1637*)
                   (cbt-limit *cbt-machine* *cbt-dyn-launch* *cbt-hneed*)))
 (assert-event (cbt-fits *cbt-machine* *cbt-dyn-launch* *cbt-hneed*))
-(assert-event (<= (cbt-resident *cbt-dyn-launch* *cbt-hneed* 1640) *cbt-machine*))
-; H3 dropped: at 1,640 held the 1,641th is refused (busy), and 1641 are not held.
-(assert-event (not (equal (fn-exp-admit-decision (fn-exp-initial) *cbt-lim1640* 1640
+(assert-event (<= (cbt-resident *cbt-dyn-launch* *cbt-hneed* 1637) *cbt-machine*))
+; H3 dropped: at 1,637 held the 1,638th is refused (busy), and 1638 are not held.
+(assert-event (not (equal (fn-exp-admit-decision (fn-exp-initial) *cbt-lim1637* 1637
                                                  *cbt-a* 5000)
                           '(:admit))))
 (must-fail-checked
- (assert-event (<= (cbt-resident *cbt-dyn-launch* *cbt-hneed* 1641) *cbt-machine*)))
+ (assert-event (<= (cbt-resident *cbt-dyn-launch* *cbt-hneed* 1638) *cbt-machine*)))
 ; H4 dropped: a capacity of 2,200 (a live raise the owner refuses, below) admits
 ; the 2,200th, which is not held.
 (assert-event (equal (fn-exp-admit-decision (fn-exp-initial) *cbt-lim2200* 2199 *cbt-a* 5000)
@@ -210,20 +212,52 @@
 ; tests/acl2/public-exposure-tests.lisp (a row past the width; ten 481s).
 
 ; -----------------------------------------------------------------------------
-; fn-cbud-deltas-refusal-keeps-the-capacity-held (and the live refusal).
+;; KEYSTONE fn-cbud-deltas-refusal-keeps-the-machine-held (and the live
+;; refusal).  H1 (consp held)  H2 no refusal.  HELD: the friend's node's run,
+;; its 16 handshake slots charged.
+(defconst *cbt-held*
+  (fn-cbud-run-held *cbt-machine* *cbt-dyn-launch* *cbt-hneed* *cbt-core* *cbt-threads*
+                    *cbt-stack* *cbt-article* t 16))
 (defconst *cbt-raise-2200* (list (fn-cfg-set-limit "exposure-connections" 2200)))
 (defconst *cbt-raise-1500* (list (fn-cfg-set-limit "exposure-connections" 1500)))
-(assert-event (equal (fn-cbud-deltas-refusal *cbt-v-empty* 1 0 *cbt-raise-2200* 1640)
+;; 1,500 connections hold under 16 slots (1,637 do); with 1,000 handshakes in flight
+;; (125 MiB of scratch) they do not: refused as the handshakes'.
+(defconst *cbt-raise-1500-l1000* (list (fn-cfg-set-limit "exposure-connections" 1500)
+                                       (fn-cfg-set-limit "tls-handshakes-in-flight" 1000)))
+(defconst *cbt-lower-l4* (list (fn-cfg-set-limit "tls-handshakes-in-flight" 4)))
+(defconst *cbt-raise-l64* (list (fn-cfg-set-limit "tls-handshakes-in-flight" 64)))
+(defmacro cbt-held-fits (deltas)
+  `(let ((h2 (fn-cbud-deltas-held *cbt-v-empty* 1 0 ,deltas *cbt-held*)))
+     (<= (fn-cbud-resident-octets
+          *cbt-dyn-launch* *cbt-hneed* *cbt-core* *cbt-threads* *cbt-stack*
+          (fn-cbud-slots-octets (fn-cbud-held-at 8 h2)) *cbt-article* t
+          (fn-exp-connections-capacity (fn-cfg-apply *cbt-v-empty* 1 0 ,deltas)))
+         *cbt-machine*)))
+;; Witnesses: 1,500 connections; L raised to 64 (charged 64); L lowered to 4
+;; (the charge stays 16).
+(assert-event (null (fn-cbud-deltas-refusal *cbt-v-empty* 1 0 *cbt-raise-1500* *cbt-held*)))
+(assert-event (cbt-held-fits *cbt-raise-1500*))
+(assert-event (null (fn-cbud-deltas-refusal *cbt-v-empty* 1 0 *cbt-raise-l64* *cbt-held*)))
+(assert-event (equal (fn-cbud-held-at 8 (fn-cbud-deltas-held *cbt-v-empty* 1 0 *cbt-raise-l64*
+                                                             *cbt-held*))
+                     64))
+(assert-event (cbt-held-fits *cbt-raise-l64*))
+(assert-event (null (fn-cbud-deltas-refusal *cbt-v-empty* 1 0 *cbt-lower-l4* *cbt-held*)))
+(assert-event (equal (fn-cbud-held-at 8 (fn-cbud-deltas-held *cbt-v-empty* 1 0 *cbt-lower-l4*
+                                                             *cbt-held*))
+                     16))
+;; H2 dropped: the raise to 2,200 is refused, and 2,200 are not held; the
+;; raise to 1,500 with L 1,000 (1,409 held) is refused as the handshakes', and not held.
+(assert-event (equal (fn-cbud-deltas-refusal *cbt-v-empty* 1 0 *cbt-raise-2200* *cbt-held*)
                      :connections-exceed-memory))
-(assert-event (null (fn-cbud-deltas-refusal *cbt-v-empty* 1 0 *cbt-raise-1500* 1640)))
-(assert-event (<= (fn-exp-connections-capacity (fn-cfg-apply *cbt-v-empty* 1 0 *cbt-raise-1500*))
-                  1640))
-; The refusal's hypothesis dropped: the raise to 2,200 leaves 2,200 > 1,640.
-(must-fail-checked
- (assert-event (<= (fn-exp-connections-capacity (fn-cfg-apply *cbt-v-empty* 1 0 *cbt-raise-2200*))
-                   1640)))
-; No bound installed (an ACL2 test entry): nothing refused here.
+(must-fail-checked (assert-event (cbt-held-fits *cbt-raise-2200*)))
+(assert-event (equal (fn-cbud-deltas-refusal *cbt-v-empty* 1 0 *cbt-raise-1500-l1000* *cbt-held*)
+                     :handshakes-exceed-memory))
+(must-fail-checked (assert-event (cbt-held-fits *cbt-raise-1500-l1000*)))
+;; H1 dropped: no run installed a held record (an ACL2 test entry): nothing
+;; is refused, and nothing is held.
 (assert-event (null (fn-cbud-deltas-refusal *cbt-v-empty* 1 0 *cbt-raise-2200* nil)))
+(assert-event (null (fn-cbud-deltas-held *cbt-v-empty* 1 0 *cbt-raise-2200* nil)))
 
 ; PKT-640's line.
 (assert-event (equal (fn-cbud-tls-refusal-line :timeout 7)

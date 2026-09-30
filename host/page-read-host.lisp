@@ -140,7 +140,7 @@
         (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
           (mv word token fn-page-read-pool))))))
 
-; Only after thread-dead observation + join. Cached bytes stay charged.
+; After private activation return/unwind or observed death + actual join.
 (defun fn-owner-page-read-settle (token cachedp fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
   (mv-let (word ledger)
