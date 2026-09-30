@@ -1091,6 +1091,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-row-article \
 	books/served-selected-article \
 	books/over-byte-selected-row-relation \
+	books/catalog-number-range-source \
+	books/served-selected-lines \
+	books/served-range-source \
+	books/over-reply-source \
+	books/over-byte-range-relation \
+	tests/acl2/over-byte-range-relation-tests \
 	tests/acl2/served-selected-article-tests \
 	tests/acl2/over-byte-selected-row-relation-tests \
 	tests/acl2/over-byte-old-row-relation-tests \

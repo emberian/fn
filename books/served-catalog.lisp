@@ -41,6 +41,9 @@
 (in-package "ACL2")
 (include-book "catalog-number-index")
 (include-book "served-selected-article")
+(include-book "served-selected-lines")
+(include-book "served-range-source")
+(include-book "over-reply-source")
 (include-book "over-cursor-shape")
 ; A group's summary at a view below the count (lane scale-latency, PKT-870).
 (include-book "served-catalog-view")
@@ -525,57 +528,7 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-scat-range-keep-loop (group seqs fn-cat acc)
-  (declare (xargs :stobjs fn-cat :guard (true-listp acc) :verify-guards nil))
-  (if (consp seqs)
-      (let ((s (car seqs)))
-        (if (and (natp s) (< s (fn-cat-count fn-cat)))
-            (let* ((h (fn-cat-at s fn-cat))
-                   (n (fn-held-number-in group h)))
-              (if (and (posp n)
-                       (<= n *fn-nntp-max-article-number*)
-                       (fn-scat-msgid-idp (fn-record-msgid h)))
-                  (fn-scat-range-keep-loop group (cdr seqs) fn-cat (cons n acc))
-                (fn-scat-range-keep-loop group (cdr seqs) fn-cat acc)))
-          (fn-scat-range-keep-loop group (cdr seqs) fn-cat acc)))
-    (revappend acc nil)))
-
-(defun fn-scat-range-keep (group seqs fn-cat)
-  (declare (xargs :verify-guards nil :stobjs fn-cat :guard t
-                  :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-rowsp fn-cat-count-is-len
-                                                            fn-cat-at-is-nth)))))
-  (mbe :logic
-       (if (consp seqs)
-           (let ((s (car seqs)))
-             (if (and (natp s) (< s (fn-cat-count fn-cat)))
-                 (let* ((h (fn-cat-at s fn-cat))
-                        (n (fn-held-number-in group h)))
-                   (if (and (posp n) (<= n *fn-nntp-max-article-number*)
-                            (fn-scat-msgid-idp (fn-record-msgid h)))
-                       (cons n (fn-scat-range-keep group (cdr seqs) fn-cat))
-                     (fn-scat-range-keep group (cdr seqs) fn-cat)))
-               (fn-scat-range-keep group (cdr seqs) fn-cat)))
-         nil)
-       :exec (fn-scat-range-keep-loop group seqs fn-cat nil)))
-
-(local
- (defthm fn-scat-range-keep-loop-is-revappend
-   (equal (fn-scat-range-keep-loop group seqs fn-cat acc)
-          (revappend acc (fn-scat-range-keep group seqs fn-cat)))
-   :hints (("Goal" :induct (fn-scat-range-keep-loop group seqs fn-cat acc)
-                   :in-theory (union-theories '(fn-scat-range-keep-loop fn-scat-range-keep revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-scat-range-keep-loop
-  :hints (("Goal"
-           :in-theory
-           (disable fn-cat-p-is-rowsp fn-cat-count-is-len fn-cat-at-is-nth))))
-
-(verify-guards fn-scat-range-keep
-  :hints (("Goal" :in-theory (union-theories '(revappend fn-scat-range-keep)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-scat-range-keep-loop-is-revappend (acc nil))))))
+; Exact range filtering definitions live in served-range-source.
 
 (defun fn-scat-range-numbers (group low high v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (and (natp low) (natp high) (natp v))))
@@ -625,63 +578,7 @@
 
 ;;; OVER/XOVER of a range.
 
-(defmacro fn-scat-guard ()
-  '(and (natp v) (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat)))
-
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-nov-lines-for-numbers-cat-loop (group numbers v fn-arena fn-cat acc)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard (and (fn-scat-guard) (true-listp acc)) :verify-guards nil))
-  (if (consp numbers)
-      (let* ((number (car numbers))
-             (article (fn-scat-available-article group number v fn-arena fn-cat))
-             (over (if (and (consp article)
-                            (not (fn-nntp-article-tombstonep article fn-arena)))
-                       (fn-nov-overview article fn-arena)
-                     (list :error))))
-        (if (fn-nov-okp over)
-            (fn-nov-lines-for-numbers-cat-loop group
-                                               (cdr numbers)
-                                               v
-                                               fn-arena
-                                               fn-cat
-                                               (cons (fn-nov-line number over) acc))
-          (fn-nov-lines-for-numbers-cat-loop group (cdr numbers) v fn-arena fn-cat acc)))
-    (revappend acc nil)))
-
-(defun fn-nov-lines-for-numbers-cat (group numbers v fn-arena fn-cat)
-  (declare (xargs :verify-guards nil :stobjs (fn-arena fn-cat) :guard (fn-scat-guard)))
-  (mbe :logic
-       (if (consp numbers)
-           (let* ((number (car numbers))
-                  (article (fn-scat-available-article group number v fn-arena fn-cat))
-                  (over (if (and (consp article)
-                                 (not (fn-nntp-article-tombstonep article fn-arena)))
-                            (fn-nov-overview article fn-arena)
-                          (list :error))))
-             (if (fn-nov-okp over)
-                 (cons (fn-nov-line number over)
-                       (fn-nov-lines-for-numbers-cat group (cdr numbers) v fn-arena fn-cat))
-               (fn-nov-lines-for-numbers-cat group (cdr numbers) v fn-arena fn-cat)))
-         nil)
-       :exec (fn-nov-lines-for-numbers-cat-loop group numbers v fn-arena fn-cat nil)))
-
-(local
- (defthm fn-nov-lines-for-numbers-cat-loop-is-revappend
-   (equal (fn-nov-lines-for-numbers-cat-loop group numbers v fn-arena fn-cat acc)
-          (revappend acc (fn-nov-lines-for-numbers-cat group numbers v fn-arena fn-cat)))
-   :hints (("Goal" :induct (fn-nov-lines-for-numbers-cat-loop group numbers v fn-arena fn-cat acc)
-                   :in-theory (union-theories '(fn-nov-lines-for-numbers-cat-loop fn-nov-lines-for-numbers-cat revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-nov-lines-for-numbers-cat-loop)
-
-(verify-guards fn-nov-lines-for-numbers-cat
-  :hints (("Goal" :in-theory (union-theories '(revappend fn-nov-lines-for-numbers-cat)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-nov-lines-for-numbers-cat-loop-is-revappend (acc nil))))))
+; Exact guard macro and selected line reader live in served-selected-lines.
 
 (defthm fn-nov-lines-for-numbers-cat-is-archive
   (implies (and (fn-cnx-freshp fn-cat) group)
@@ -754,12 +651,7 @@
 
 ; The lines of the numbers K..HI of GROUP in view V: the old reader's lines
 ; restricted to one window.
-(defun fn-ovw-lines (group k hi v fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (and (natp k) (natp hi) (fn-scat-guard))))
-  (fn-nov-lines-for-numbers-cat
-   group (fn-scat-range-keep group (fn-cnx-range-aux group k hi v fn-cat) fn-cat)
-   v fn-arena fn-cat))
+; Exact old range line model lives in served-range-source.
 
 ; The command's step: O(1), no number probed.
 (defun fn-ovw-start (session v token legacyp fn-cat)
@@ -781,15 +673,7 @@
 
 ; The reply of LINES: the status line when it is owed, the stuffed lines,
 ; the dot -- or the empty-range status when the owed status line has no line.
-(defun fn-ovw-reply (lines legacyp owedp)
-  (declare (xargs :guard t :verify-guards nil))
-  (if owedp
-      (if (consp lines)
-          (append (fn-ovw-status (fn-proto-text * :overview))
-                  (fn-nntp-stuff-lines lines)
-                  '(46 13 10))
-        (fn-ovw-status (fn-ovw-empty-text legacyp)))
-    (append (fn-nntp-stuff-lines lines) '(46 13 10))))
+; Exact owed-state reply framing lives in over-reply-source.
 
 ; The cursor effect.  Built here and nowhere else (tools/callers.py
 ; fn-ovw-cursor-effect): the pinned reference's effects never carry one.
