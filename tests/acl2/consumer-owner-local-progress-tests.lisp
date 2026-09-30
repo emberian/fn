@@ -292,6 +292,18 @@
            :in-theory (disable fn-bs-publication-admissiblep
                                fn-bs-profile-max-record-octets))))
 ; A refusal or an empty page passes through unchanged (the scope refusal).
+; This reached owner's unregistered consumer is refused, with no held row
+; selected. This satisfies the named non-held-row report refinement in
+; books/history-fold-refinement, connecting this report to the arena-backed
+; report the host serves. The held-row :report
+; refusal above is a separate logical-model case, not this served witness.
+; PRF-177 fn-col-poll-report-is-a-page-or-a-refusal, complete positive:
+; there are no hypotheses.
+(assert-event
+ (not (fn-held-p (caddr (fn-col-poll-h (fn-own-start *colp-after-article* 2) '(9))))))
+(assert-event
+ (member-equal (car (fn-col-poll-report-h (fn-own-start *colp-after-article* 2) '(9)))
+               '(:poll :refused)))
 (assert-event (equal (fn-col-poll-report-h (fn-own-start *colp-after-article* 2) '(9))
                      (fn-col-poll-h (fn-own-start *colp-after-article* 2) '(9))))
 (assert-event (eq (car (fn-col-poll-h (fn-own-start *colp-after-article* 2) '(9)))
