@@ -1075,7 +1075,14 @@ ACL2_BOOKS ?= books/defrecord \
 	books/over-byte-invariants \
 	books/over-byte-parser-relation \
 	tests/acl2/over-byte-parser-relation-tests \
+	books/served-plan-shape \
+	books/served-plan-position \
+	tests/acl2/served-plan-position-tests \
+	books/served-plan-window \
+	books/served-plan-position-window \
+	tests/acl2/served-plan-position-window-tests \
 	books/served-plan-byte-cursor \
+	tests/acl2/served-plan-position-byte-tests \
 	tests/acl2/served-plan-byte-cursor-tests \
 	tests/acl2/over-byte-cursor-tests \
 	books/nov-row-facts \

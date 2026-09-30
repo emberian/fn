@@ -50,6 +50,8 @@
 
 (in-package "ACL2")
 (include-book "served-reply-buffer")
+(include-book "served-plan-shape")
+(include-book "served-plan-window")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md
@@ -58,24 +60,6 @@
 
 ; -----------------------------------------------------------------------------
 ; The plan
-
-(defun fn-splan-of-effects (effects)
-  (declare (xargs :guard t))
-  (cons nil effects))
-
-(defun fn-splan-cur (p)
-  (declare (xargs :guard t))
-  (if (consp p) (car p) nil))
-
-(defun fn-splan-rest (p)
-  (declare (xargs :guard t))
-  (if (consp p) (cdr p) nil))
-
-(defthm fn-splan-cur-of-cons
-  (equal (fn-splan-cur (cons a b)) a))
-
-(defthm fn-splan-rest-of-cons
-  (equal (fn-splan-rest (cons a b)) b))
 
 ; What the plan still owes (the specification; not executed by the host).
 (defun fn-splan-remaining (p)
@@ -91,10 +75,6 @@
 ; followed by the cursor that remains, until none does.  The shape is
 ; repeated here because this book sits below the catalog; served-plan-cursor's
 ; fn-splan-cursor-effectp-is-ovw-by-definition equates the two recognizers.
-(defun fn-splan-cursor-effectp (e)
-  (declare (xargs :guard t))
-  (and (consp e) (equal (car e) :over-cursor) (consp (cdr e))))
-
 ; Done: no octets and no cursor remain.
 (defun fn-splan-rest-donep (rest)
   (declare (xargs :guard t))
@@ -178,28 +158,6 @@
 
 ; -----------------------------------------------------------------------------
 ; One window into the buffer: up to K octets appended at the fill point.
-
-(defun fn-splan-fill (cur rest k fn-octets)
-  (declare (xargs :stobjs fn-octets
-                  :guard (natp k)
-                  :measure (+ (acl2-count cur) (acl2-count rest))))
-  (cond ((zp k) (mv :ok (cons cur rest) fn-octets))
-        ((consp cur)
-         (if (fn-cbor-octetp (car cur))
-             (let ((fn-octets (fn-octets-append-octet (car cur) fn-octets)))
-               (fn-splan-fill (cdr cur) rest (- k 1) fn-octets))
-           (mv :malformed (cons cur rest) fn-octets)))
-        ((consp rest)
-         (if (fn-splan-cursor-effectp (car rest))
-             (mv :cursor (cons cur rest) fn-octets)
-           (fn-splan-fill (fn-srb-effect-octets (car rest)) (cdr rest) k fn-octets)))
-        (t (mv :ok (cons nil nil) fn-octets))))
-
-; The host-called subject: clear the buffer, then one window.
-(defun fn-splan-window (p w fn-octets)
-  (declare (xargs :stobjs fn-octets :guard (natp w)))
-  (let ((fn-octets (fn-octets-clear fn-octets)))
-    (fn-splan-fill (fn-splan-cur p) (fn-splan-rest p) w fn-octets)))
 
 ; -----------------------------------------------------------------------------
 ; The list model of the same loop: (mv status octets plan').

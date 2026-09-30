@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/served-plan-byte-cursor")
+(include-book "../../books/served-plan")
 (include-book "over-byte-cursor-tests")
 
 (defconst *spbct-tail* (list '(:audit retained) (fn-nntp-reply-effect '(97 102 116 101 114))))

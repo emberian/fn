@@ -33,15 +33,10 @@
 (in-package "ACL2")
 (include-book "served")
 (include-book "octets-stobj")
+(include-book "served-plan-shape")
 
 ; The octets one effect contributes to the reply: exactly the term
 ; `fn-served-reply-octets' appends.
-(defun fn-srb-effect-octets (e)
-  (declare (xargs :guard t))
-  (if (and (consp e) (equal (car e) :reply) (consp (cdr e)))
-      (car (cdr e))
-    nil))
-
 ; Every reply effect carries an octet list.  Checked once per step, with no
 ; allocation; it is the check the host made on the list before
 ; (fnn-owner-octets-global), now made by ACL2 per effect.
