@@ -10,6 +10,15 @@ from dataclasses import dataclass, replace
 from .scenario import Scenario, ScenarioError, check
 
 
+def violation_signature(verdict):
+    if verdict.kind != "violation":
+        return None
+    if verdict.cause:
+        return ("cause", verdict.cause)
+    rule = (getattr(verdict, "explanation", None) or {}).get("rule")
+    return ("rule", rule) if rule else None
+
+
 def dependencies(scenario):
     """Conservative prerequisites, including all model state transitions.
 
@@ -79,7 +88,9 @@ def minimize(scenario, execute, budget=100):
     attempts = []
     if verdict.kind != "violation":
         raise ValueError("minimization requires an observed violation")
-    cause = verdict.cause
+    signature = violation_signature(verdict)
+    if signature is None:
+        raise ValueError("observed violation must name its cause or contract rule")
     while True:
         changed = False
         for operation in scenario.operations:
@@ -91,7 +102,7 @@ def minimize(scenario, execute, budget=100):
                 return Reduction(scenario, verdict, count, True, attempts)
             observed = execute(candidate)
             count += 1
-            retained = observed.kind == "violation" and observed.cause == cause
+            retained = violation_signature(observed) == signature
             attempts.append(dict(removed=operation.id, kind=observed.kind,
                                  cause=observed.cause, retained=retained))
             if retained:

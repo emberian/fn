@@ -1,0 +1,3 @@
+# Optional W7g campaign runtime; isolated from the served product.
+hypothesis==6.155.7
+sortedcontainers==2.4.0

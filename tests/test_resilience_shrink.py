@@ -77,3 +77,15 @@ class ShrinkTests(unittest.TestCase):
     def test_non_violation_baseline_is_refused(self):
         with self.assertRaises(ValueError):
             minimize(fixture(), lambda _: SimpleNamespace(kind="consistent", cause=""))
+
+    def test_unnamed_or_different_rule_violation_cannot_reproduce(self):
+        with self.assertRaises(ValueError):
+            minimize(fixture(), lambda _: SimpleNamespace(kind="violation", cause=None))
+        calls = []
+        def execute(s):
+            calls.append(s)
+            return SimpleNamespace(kind="violation", cause=None,
+                                   explanation={"rule": "original" if len(calls) == 1 else "other"})
+        result = minimize(fixture(), execute)
+        self.assertEqual(len(result.scenario.operations), 4)
+        self.assertFalse(any(a["retained"] for a in result.attempts))

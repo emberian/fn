@@ -416,13 +416,26 @@ deletes transitive identity/explicit prerequisites, conservatively retains
 model transition producers, and calls the supplied backend for every trial.
 Only the original violation cause can survive reduction; budget exhaustion
 is reported explicitly. No real violation has yet been minimized by this
-increment. Hypothesis stateful generation remains PLANNED:
+increment. `tools/resilience/stateful.py` now runs a bounded Hypothesis
+proposal Bundle state machine through the actual acceptance adapter. Its
+retained campaign observes15 actual trials,90 transitions and8 activated
+faults, with productive terminal healing in each trial. Hypothesis and
+sortedcontainers are optional isolated campaign dependencies pinned in
+`tools/resilience/requirements.txt`; the campaign records their installed
+RECORD digests and Python version. This covers the A/B logical fixture;
+broader lifecycle stateful workloads remain open. The retained criteria are
 stateful workloads over the IR with bundles for symbolic identities;
 shrinking preserves prerequisites (a retry never survives its post's
 removal); separate randomness streams; the minimized scenario reproduces
 under the same backend. AFTER THE CUT.
 
 W7h **semantic coverage + structure-aware storage mutation**. PLANNED: the
+logical-model coverage projection is implemented in
+`tools/resilience/semantic_coverage.py`: it counts observed abstract situations
+from sealed journals, distinguishing unresolved outcomes, pending proposals,
+repeated recovery and logical hold-count classes. Unsupported native dimensions
+remain `unobserved`. The generated15-transition fixture yields12 situations.
+Broader native semantic coverage and storage mutation remain PLANNED: the
 coverage signature (publication phase, client-outcome certainty, pending
 effect classes, reader-generation relation, hold-count class, headroom
 band, evidence-version relation, recovery attempt) counts abstract
