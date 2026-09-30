@@ -120,10 +120,25 @@
                                   fn-native-admin-result-kind fn-native-admin-result-reason))))
   :rule-classes nil)
 
-; A complete primitive completion protocol, not a fact about a phase name.
+; Named connection from the model helper to the host's literal two-step run.
+; This equation is not a keystone.
+(defthm fn-bpnc-socket-open-run-by-definition
+  (equal (fn-bpnc-socket-open-run plan bind-outcome install-outcome)
+         (fn-bpnc-socket-step
+          (fn-bpnc-socket-step (fn-bpnc-socket-initial plan)
+                               (list :bind-result bind-outcome))
+          (list :install-result install-outcome)))
+  :hints (("Goal" :in-theory (enable fn-bpnc-socket-open-run)))
+  :rule-classes nil)
+
+; The actual host-called initial and step subjects occur literally: fnn-bpnc-start
+; performs these bind/install transitions in this order.
 (defthm fn-bpnc-open-run-live-iff-both-completions-succeed
   (equal (equal (fn-ncfg-nth 0
-                  (fn-bpnc-socket-open-run plan bind-outcome install-outcome)) :live)
+                  (fn-bpnc-socket-step
+                   (fn-bpnc-socket-step (fn-bpnc-socket-initial plan)
+                                        (list :bind-result bind-outcome))
+                   (list :install-result install-outcome))) :live)
          (and (equal (fn-ncfg-nth 0 plan) :ready)
               (equal bind-outcome :ok) (equal install-outcome :ok)))
   :hints (("Goal" :in-theory (enable fn-bpnc-socket-open-run fn-bpnc-socket-initial

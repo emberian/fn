@@ -56,13 +56,13 @@
                      (fnn-owner-connection-fault-cause condition)))))
 
 (defstruct (fnn-owner-cold-read (:constructor %make-fnn-owner-cold-read))
-  token thread prev next queuedp settledp outcome)
+  token worker prev next queuedp settledp outcome)
 
 (defstruct (fnn-owner-service (:constructor %make-fnn-owner-service))
   store lock listener stopping (exit-code +fnn-exit-ok+) (feeds nil)
   (workers nil) (clients nil) tls-context
   ;; Intrusive cold-read queue, guarded by owner mutex. Metadata remains
-  ;; owned until actual thread death/join and atomic result settlement.
+  ;; owned until worker relinquishment and atomic result settlement.
   (cold-head nil) (cold-tail nil)
   ;; The scheduler gate in front of LOCK (fnn-owner-gated), and the roster
   ;; mutex that protects WORKERS, CLIENTS, PUBLISHER and the stop flag's
@@ -3673,9 +3673,8 @@ CLOSING STARTTLS CONSUMED)."
 ;;; as the next read, exactly as after a submission's yield, PKT-600), so
 ;;; pipelined lines are answered in order.  A cold first line comes back as
 ;;; (:fnn-extent-cold FILE EOFF ELEN TRAILER).  The per-line re-run happens
-;;; only after a cold abort: a warm span runs once, as before.  With the
-;;; realizer's cache off (limit 0) the mode is never used and a cold extent
-;;; is read under the owner as before.
+;;; only after a cold abort: a warm span runs once, as before. Cache-off
+;;; still enters admission; it cannot select unfunded synchronous I/O.
 (defun fnn-owner-chunk-span-no-io (cid incoming sched)
   (flet ((try (end)
            (catch 'fnn-extent-cold
@@ -3694,7 +3693,7 @@ CLOSING STARTTLS CONSUMED)."
                 (second first-line)
               (cons :fnn-extent-cold first-line))))))))
 
-;;; The cold line's page, read OFF the owner mutex in a thread of its own
+;;; The cold line's page, read OFF the owner mutex by its persistent worker
 ;;; (fnn-extent-prefetch: its pread holds no lock), waited for at most ACL2's
 ;;; dependency deadline (books/owner-time-bars.lisp fn-otb-dependency-step,
 ;;; `read-dependency-ms', 5,000 ms by default: the operator's limit row is not
@@ -3730,41 +3729,61 @@ CLOSING STARTTLS CONSUMED)."
 
 (defun fnn-owner-cold-issue-locked (service cid entry)
   "Validated descriptor capture, owner mutex held, before retirement."
-  (fnn-owner-cold-enqueue-locked
-   service (%make-fnn-owner-cold-read :token (apply #'fnn-extent-issue-read cid entry))))
+  (multiple-value-bind (token word worker) (apply #'fnn-extent-issue-read cid entry)
+    (if (and word (not (eq word :admitted))) word
+      (fnn-owner-cold-enqueue-locked
+       service (%make-fnn-owner-cold-read :token token :worker worker)))))
 
-(defun fnn-owner-cold-result-locked (service read result)
-  "Only an observed-dead and joined worker, or definite failed launch.
-Owner->extent locking makes publication/settlement and queue removal atomic."
-  (when (fnn-owner-cold-read-settledp read)
-    (return-from fnn-owner-cold-result-locked (fnn-owner-cold-read-outcome read)))
+(declaim (notinline fnn-owner-cold-transfer-result-locked))
+(defun fnn-owner-cold-transfer-result-locked (read)
+  "Private owner activation, owner and extent locks held. Transfer a verified
+vector or discard it, then clear its slot. Return no vector/result-container
+alias; the caller may refund only AFTER this activation has returned."
   (let* ((token (fnn-owner-cold-read-token read))
+         (worker (fnn-owner-cold-read-worker read))
+         (result (and worker (fnn-cold-worker-result worker)))
          (condition (and (typep result 'serious-condition) result))
-         (verdict (if condition :error (first result)))
+         (verdict (if condition :error (if token (first result) :ok)))
          (octets (and (not condition) (second result)))
          (hold (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD"))
          (mode (fnn-developer-selector "FN_NATIVE_PAGE_IO_RESULT"))
-         (answer :stale))
+         (answer :stale) (settled-io nil) (cachedp nil) (evicted nil))
+    (when (equal mode "stale")
+      (fnn-err "PAGE-IO stale answer=~s" (fnn-extent-complete-read nil :ok)))
+    (if token (multiple-value-setq (answer settled-io) (fnn-extent-complete-read token verdict))
+      (setq answer :publish))
+    (when hold (fnn-err "PAGE-IO settled token=~s answer=~s" token answer))
+    (when (equal mode "duplicate")
+      (fnn-err "PAGE-IO duplicate answer=~s" (fnn-extent-complete-read token verdict)))
+    (when (and token (eq answer :publish))
+      (destructuring-bind (id cid file eoff elen trailer) token
+        (declare (ignore id cid))
+        (multiple-value-setq (cachedp evicted)
+          (fnn-extent-cache-store file eoff elen trailer octets token))))
+    ;; No caller has received RESULT: readiness is a predicate, never a
+    ;; borrowing getter. An exceptional transfer keeps the slot and charge.
+    (when worker (setf (fnn-cold-worker-result worker) nil))
+    (values answer settled-io cachedp evicted condition)))
+
+(defun fnn-owner-cold-result-locked (service read)
+  "The private worker and owner transfer activations relinquish their vector
+before exact settlement releases a charge. Owner->extent serializes it."
+  (when (fnn-owner-cold-read-settledp read)
+    (return-from fnn-owner-cold-result-locked (fnn-owner-cold-read-outcome read)))
+  (let ((token (fnn-owner-cold-read-token read))
+        (condition nil) (answer :stale) (settled-io nil) (cachedp nil) (evicted nil))
     (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-      (when (equal mode "stale")
-        (fnn-err "PAGE-IO stale answer=~s" (fnn-extent-complete-read nil :ok)))
-      (setq answer (if token (fnn-extent-complete-read token verdict) :publish))
-      (when hold (fnn-err "PAGE-IO settled token=~s answer=~s" token answer))
-      (when (equal mode "duplicate")
-        (fnn-err "PAGE-IO duplicate answer=~s" (fnn-extent-complete-read token verdict)))
-      (when (and token (eq answer :publish))
-        (destructuring-bind (id cid file eoff elen trailer) token
-          (declare (ignore id cid))
-          (let ((limit (fnn-extent-cache-limit)))
-            (when (plusp limit)
-              (push (list* file eoff elen trailer octets) *fnn-extent-cache*)
-              (when (> (length *fnn-extent-cache*) limit)
-                (setq *fnn-extent-cache* (subseq *fnn-extent-cache* 0 limit))))))))
-    ;; Unlink before any future resource refund: no orphan queue references
-    ;; can accumulate after timely request threads join their workers.
-    (fnn-owner-cold-remove-locked service read)
-    (setf (fnn-owner-cold-read-settledp read) t
-          (fnn-owner-cold-read-thread read) nil)
+      (multiple-value-setq (answer settled-io cachedp evicted condition)
+        (fnn-owner-cold-transfer-result-locked read))
+      ;; The helper's vector-bearing activation is gone. Only a charged
+      ;; cache owns a successful retained vector; cancelled/error data is gone.
+      (fnn-owner-cold-remove-locked service read)
+      (when token
+        (when (eq answer :stale) (fnn-fault "returned cold job lost its exact I/O owner"))
+        (fnn-extent-executor-commit (fnn-owner-cold-read-worker read) settled-io token cachedp))
+      (setf (fnn-owner-cold-read-settledp read) t
+            (fnn-owner-cold-read-worker read) nil)
+      (fnn-extent-cache-release evicted))
     (when (and (consp answer) (eq (car answer) :fault))
       (unless condition
         (setq condition
@@ -3785,21 +3804,23 @@ Owner->extent locking makes publication/settlement and queue removal atomic."
       (error condition))
     t))
 
-(defun fnn-owner-cold-settle (service read &optional no-worker-result)
-  "Join only an observed dead worker, then settle once in an owner quantum."
+(defun fnn-owner-cold-ready-p (read)
+  "Owner held. Observe relinquishment without lending the result to a caller."
+  (let ((worker (fnn-owner-cold-read-worker read)))
+    (sb-thread:with-mutex (*fnn-extent-lock*)
+      (and worker (fnn-extent-executor-observe-returned worker)))))
+
+(defun fnn-owner-cold-settle-locked (service read)
+  (if (fnn-owner-cold-read-settledp read)
+      (fnn-owner-cold-read-outcome read)
+    (when (or (null (fnn-owner-cold-read-token read)) (fnn-owner-cold-ready-p read))
+      (fnn-owner-cold-result-locked service read))))
+
+(defun fnn-owner-cold-settle (service read)
+  "A returned job, not a timeout, can transfer its result and release credit."
   (handler-case
-      (fnn-owner-serialized
-       service nil
-       (lambda ()
-         (if (fnn-owner-cold-read-settledp read)
-             (fnn-owner-cold-read-outcome read)
-           (let ((thread (fnn-owner-cold-read-thread read)))
-             (when (or no-worker-result
-                       (eq (fnn-core 'fn-pio-worker-death-step
-                                     (and thread (not (sb-thread:thread-alive-p thread)))) :settle))
-               (fnn-owner-cold-result-locked
-                service read (or no-worker-result (sb-thread:join-thread thread :default nil)))))))
-       :control)
+      (fnn-owner-serialized service nil
+                            (lambda () (fnn-owner-cold-settle-locked service read)) :control)
     (serious-condition (condition)
       (ignore-errors (fnn-owner-fault-service service nil condition))
       condition)))
@@ -3807,69 +3828,76 @@ Owner->extent locking makes publication/settlement and queue removal atomic."
 (defun fnn-owner-cold-reap (service)
   "One bounded round-robin quantum; no scan of all live or completed reads."
   (handler-case
-  (dotimes (i (fnn-core 'fn-pio-reap-work))
-    (declare (ignorable i))
-    (fnn-owner-serialized
-     service nil
-     (lambda ()
-       (let* ((read (fnn-owner-service-cold-head service))
-              (thread (and read (fnn-owner-cold-read-thread read))))
-         (when read
-           (if (eq (fnn-core 'fn-pio-worker-death-step
-                            (and thread (not (sb-thread:thread-alive-p thread)))) :settle)
-               (fnn-owner-cold-result-locked service read (sb-thread:join-thread thread :default nil))
-             (progn (fnn-owner-cold-remove-locked service read)
-                    (fnn-owner-cold-enqueue-locked service read))))))
-     :control))
+      (dotimes (i (fnn-core 'fn-pio-reap-work))
+        (declare (ignorable i))
+        (fnn-owner-serialized
+         service nil
+         (lambda ()
+           (let ((read (fnn-owner-service-cold-head service)))
+             (when read
+               (fnn-owner-cold-settle-locked service read)
+               (when (fnn-owner-cold-read-queuedp read)
+                 (fnn-owner-cold-remove-locked service read)
+                 (fnn-owner-cold-enqueue-locked service read)))))
+         :control))
     (fnn-store-error (condition)
       (unless (fnn-owner-service-stopping service)
         (fnn-owner-fault-service service nil condition)))
     (serious-condition (condition)
       (fnn-owner-fault-service service nil condition))))
 
-(defun fnn-owner-cold-line (service cid incoming socket class peerp entry read)
-  (declare (ignore entry))
+(defun fnn-owner-cold-shutdown (service)
+  "Clients have stopped. Join the persistent workers before shared close."
+  (fnn-extent-executor-stop)
+  ;; No worker activation can issue or touch a descriptor now. Its slot may
+  ;; still own the private result until the following owner transfer returns.
+  ;; All reads remain funded until this exact settlement, including errors.
+  (loop for read = (fnn-owner-service-cold-head service) while read do
+    (sb-thread:with-mutex ((fnn-owner-service-lock service))
+      (unless (or (null (fnn-owner-cold-read-token read))
+                  (fnn-extent-executor-returned-p (fnn-owner-cold-read-worker read)))
+        (fnn-fault "cold worker exited without relinquishing its job"))
+      (handler-case (fnn-owner-cold-settle-locked service read)
+        (serious-condition (condition)
+          (unless (fnn-owner-cold-read-settledp read) (error condition)))))))
+
+(defun fnn-owner-cold-await (service read)
+  "Await an already-captured read off owner lock. Return the core dependency
+word and its clock observations; the caller retains its logical cursor/pin.
+A refusal or timeout never authorizes releasing the physical I/O lease."
+  (when (keywordp read) (return-from fnn-owner-cold-await (values read 0 0 nil)))
   (let* ((since (fnn-owner-monotonic-ms)) (limit nil)
-         (token (fnn-owner-cold-read-token read)) (thread nil))
+         (token (fnn-owner-cold-read-token read))
+         (worker (fnn-owner-cold-read-worker read)))
     (unless token
-      ;; Another legitimate cache fill won between the no-I/O miss and
-      ;; capture. No worker/buffer is needed and none is launched.
-      (fnn-owner-cold-settle service read (list :ok nil))
-      (return-from fnn-owner-cold-line
-        (fnn-owner-handle-chunk service cid incoming socket class peerp)))
-    (handler-case
-        (progn
-          (when (equal (fnn-developer-selector "FN_NATIVE_PAGE_IO_RESULT") "launch-error")
-            (fnn-err "PAGE-IO launch-failed token=~s worker=none buffer=none" token)
-            (error 'fnn-extent-fault :message "arena-extent-read: injected thread launch error"))
-          (setq thread
-              (sb-thread:make-thread
-               (lambda () (handler-case (fnn-extent-prefetch token)
-                            (serious-condition (condition) condition)))
-               :name "fn cold extent")))
-      (serious-condition (condition)
-        (fnn-owner-cold-settle service read condition)
-        (error condition)))
-    (fnn-owner-gated (service :control)
-      (setf (fnn-owner-cold-read-thread read) thread))
+      (fnn-owner-cold-settle service read)
+      (return-from fnn-owner-cold-await (values :serve since since limit)))
     (unwind-protect
          (loop
            (let* ((now (fnn-owner-monotonic-ms))
-                  (done (not (sb-thread:thread-alive-p thread)))
+                  (done (or (fnn-owner-cold-read-settledp read)
+                            (fnn-extent-executor-returned-p worker)))
                   (decision (fnn-core 'fn-otb-dependency-step since now limit done)))
              (cond ((eq decision :serve)
                     (let ((got (fnn-owner-cold-settle service read)))
                       (when (typep got 'serious-condition) (error got)))
-                    (setq thread nil)
-                    (return (fnn-owner-handle-chunk service cid incoming socket class peerp)))
+                    (return (values :serve since now limit)))
                    ((eq decision :unavailable)
                     (fnn-extent-cancel-read token)
-                    (return (fnn-owner-unavailable-line service cid incoming since now limit class)))
+                    (return (values :unavailable since now limit)))
                    ((and (consp decision) (eq (car decision) :wait)
                          (integerp (second decision)) (plusp (second decision)))
-                    (sb-thread:join-thread thread :default nil :timeout (/ (second decision) 1000)))
+                    (fnn-extent-executor-wait worker (/ (second decision) 1000)))
                    (t (fnn-fault "owner returned a malformed dependency step")))))
       (fnn-extent-cancel-read token))))
+
+(defun fnn-owner-cold-line (service cid incoming socket class peerp entry read)
+  (declare (ignore entry))
+  (multiple-value-bind (word since now limit) (fnn-owner-cold-await service read)
+    (case word
+      (:serve (fnn-owner-handle-chunk service cid incoming socket class peerp))
+      (:unavailable (fnn-owner-unavailable-line service cid incoming since now limit class))
+      (otherwise (fnn-owner-resource-unavailable-line service cid incoming word class)))))
 
 ;;; ACL2's answer to the cold line past its deadline (host/owner-host.lisp
 ;;; fn-owner-unavailable-line-at over fn-ocln-unavailable-span), under the
@@ -3888,6 +3916,28 @@ Owner->extent locking makes publication/settlement and queue removal atomic."
        (let ((consumed (fnn-core 'fn-splan-step-consumed step)))
          (unless (and (integerp consumed) (< 0 consumed) (<= consumed (length incoming)))
            (fnn-fault "owner returned a malformed cold-line count"))
+         (values (fnn-core 'fn-splan-step-plan step nil nil)
+                 (or (fnn-core 'fn-splan-step-closep step)
+                     (fnn-core 'fn-splan-step-exposure-close step))
+                 (fnn-core 'fn-splan-step-handshake-owed step)
+                 consumed nil nil))))
+   class))
+
+
+(defun fnn-owner-resource-unavailable-line (service cid incoming word class)
+  "ACL2's named admission refusal; never fabricate a deadline observation."
+  (fnn-owner-serialized
+   service cid
+   (lambda ()
+     (fnn-octets-fill incoming)
+     (let ((step (fnn-core-buffer-state 'fn-owner-resource-unavailable-line-at cid 0 word)))
+       (when (eq step :unknown) (fnn-refuse "owner no longer knows connection ~d" cid))
+       (unless (fnn-core 'fn-splan-step-p step)
+         (fnn-fault "owner returned a malformed resource refusal step ~a" step))
+       (fnn-owner-refresh-read-octets service)
+       (let ((consumed (fnn-core 'fn-splan-step-consumed step)))
+         (unless (and (integerp consumed) (< 0 consumed) (<= consumed (length incoming)))
+           (fnn-fault "owner returned a malformed resource refusal count"))
          (values (fnn-core 'fn-splan-step-plan step nil nil)
                  (or (fnn-core 'fn-splan-step-closep step)
                      (fnn-core 'fn-splan-step-exposure-close step))
@@ -4285,6 +4335,64 @@ Caller holds owner mutex; extent lock is acquired only after it."
   (fnn-owner-gated (service :control)
     (fnn-owner-release-pending-extents-locked)))
 
+(defun fnn-snapshot-source-root-acquire (service base-handle maintenance-lease)
+  "Caller holds SERVICE's owner mutex while capturing BASE-HANDLE. Acquire
+one exact checkpoint incarnation before releasing that mutex. The controller
+already owns MAINTENANCE-LEASE; this token covers only physical retention."
+  (declare (ignore service maintenance-lease))
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (let ((file (fnn-core 'fn-hrs-h-file base-handle)))
+      (destructuring-bind (word token &rest ignored)
+          (fnn-core-page-read-pool 'fn-owner-page-file-pin file)
+        (declare (ignore ignored))
+        (unless (eq word :admitted) (fnn-refuse "snapshot root lease refused: ~a" word))
+        token))))
+
+(defun fnn-snapshot-source-root-release (service token)
+  "Controller has finished/joined all scans and relinquished their buffers.
+Cancellation alone never invokes this release. Cleanup remains possible after
+admission closes, so it takes the owner mutex directly rather than the gate."
+  (sb-thread:with-mutex ((fnn-owner-service-lock service))
+    (sb-thread:with-mutex (*fnn-extent-lock*)
+      (unless (eq (first (fnn-core-page-read-pool 'fn-owner-page-file-unpin token)) :released)
+        (fnn-fault "snapshot root lease release is stale")))
+    (fnn-owner-release-pending-extents-locked)))
+
+(defun fnn-snapshot-source-read-page (service root-token request buffer-lease)
+  "Read one core-authorized physical page. Return vector, exact buffer token,
+and unchanged request; the auth/decoder cursor decides its contents. BUFFER-
+LEASE denotes the controller's maintenance admission, not a refund right."
+  (declare (ignore buffer-lease))
+  (let ((fd nil) (offset nil) (count nil) (token nil)
+        (octets nil) (handed-off nil))
+    (fnn-owner-gated (service :control)
+      (sb-thread:with-mutex (*fnn-extent-lock*)
+        (let* ((file (first (fnn-core-page-read-pool 'fn-owner-page-file-pin-file root-token)))
+               (base (gethash file *fnn-extent-bases*)))
+          (destructuring-bind (word read-file read-offset read-count read-token &rest ignored)
+              (fnn-core-page-read-pool 'fn-owner-page-file-pin-read root-token request base)
+            (declare (ignore ignored))
+            (unless (eq word :admitted) (fnn-refuse "snapshot page lease refused: ~a" word))
+            (setq token read-token offset read-offset count read-count
+                  fd (gethash read-file *fnn-extent-fds*))))))
+    (unwind-protect
+         (progn
+           (unless fd (fnn-fault "snapshot page lease lost its file"))
+           (setq octets (make-array count :element-type '(unsigned-byte 8)))
+           (unless (= (fnn-extent-pread fd octets offset) count)
+             (fnn-fault "snapshot page read was short"))
+           (setq handed-off t)
+           (values octets token request))
+      (unless handed-off
+        (setq octets nil)
+        (sb-thread:with-mutex (*fnn-extent-lock*)
+          (fnn-extent-discovery-release token))))))
+
+(defun fnn-snapshot-source-page-release (token)
+  "Auth/decoder cursor has cleared every vector alias before this call."
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (fnn-extent-discovery-release token)))
+
 (defun fnn-owner-release-extents (service store frames dropped-paths pin)
   "Give the disk blocks of the files a durable checkpoint publication dropped
 back while serving (row Q16, PRF-930, books/extent-retire.lisp): register
@@ -4323,17 +4431,24 @@ or pending (closed by a later release) and serving continues."
               ;; and its trailer, self-consistency checked; ACL2 makes the
               ;; descriptors from the frame's own trailer, held in the buffer
               ;; after the prefix (fn-xrt-reseat-one; lane extent-identity).
-              (let ((octets (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-                              (fnn-extent-entry-fresh new-id eoff elen))))
-                (fnn-owner-gated (service :control)
-                  (let ((st (fnn-live-octets-pub)))
-                    (setf (svref st 0) octets (svref st 1) (length octets))
-                    (unwind-protect
-                         (let ((answer (fnn-call 'fn-xrt-reseat-checkpoint-frame
-                                                 handles new-id eoff elen st arena)))
-                           (if (eq (first answer) t) (incf reseated) (incf incomplete)))
-                      (setf (svref st 1) 0
-                            (svref st 0) (make-array 0 :element-type '(unsigned-byte 8)))))))))
+              (multiple-value-bind (octets lease)
+                  (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+                    (fnn-extent-entry-fresh new-id eoff elen))
+                (unwind-protect
+                     (fnn-owner-gated (service :control)
+                       (let ((st (fnn-live-octets-pub)))
+                         (setf (svref st 0) octets (svref st 1) (length octets))
+                         (unwind-protect
+                              (let ((answer (fnn-call 'fn-xrt-reseat-checkpoint-frame
+                                                      handles new-id eoff elen st arena)))
+                                (if (eq (first answer) t) (incf reseated) (incf incomplete)))
+                           (setf (svref st 1) 0
+                                 (svref st 0) (make-array 0 :element-type '(unsigned-byte 8))))))
+                  ;; The publication buffer no longer aliases OCTETS. A
+                  ;; scheduling refusal or reseat fault reaches this too.
+                  (setq octets nil)
+                  (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+                    (fnn-extent-discovery-release lease))))))
           (fnn-owner-gated (service :control)
             ;; fnn-call answers the values as a list: the quiet set is its
             ;; first (the whole list was taken for the set once, so no
@@ -5425,6 +5540,9 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
            (unwind-protect
                 (progn
                   (setq service (fnn-owner-install root max-connections fault))
+                  ;; Before any client/module starts, retire startup-only
+                  ;; cache borrows; absent policy never gets a warm bypass.
+                  (fnn-extent-end-recovery-cache)
                   ;; Lane time-model-2: the decision journal
                   ;; (books/owner-time-journal.lisp), a segment per run
                   ;; opened by its start entry; the served reads' clock
@@ -5539,6 +5657,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                     (fnn-owner-stop-service
                      service (fnn-owner-service-exit-code service))
                     (fnn-owner-wait-workers service)
+                    (fnn-owner-cold-shutdown service)
                     (let ((committer (fnn-owner-service-committer service)))
                       (when committer
                         (ignore-errors (sb-thread:join-thread committer :default nil))))

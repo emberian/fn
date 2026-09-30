@@ -778,14 +778,16 @@ def acl2_findings(root: Path) -> tuple[list[dict], dict]:
 RAW_DISPATCHERS = {"fnn-call": 0, "fnn-core": 0, "fnn-core-state": 1,
                    "fnn-owner-core": 1, "fnn-owner-action": 1,
                    "fnn-bpapp-core-record": 1,
-                   "fnn-core-arena-state": 2, "fnn-owner-feed-arena-step": 2}
+                   "fnn-core-arena-state": 2, "fnn-owner-feed-arena-step": 2,
+                   "fnn-core-buffer-state": 2, "fnn-core-page-read-pool": 1}
 
 # The state dispatchers pass the live payload arena before state to an entry
 # whose ACL2 formals end in (fn-arena state) (host/native/io.lisp
 # fnn-arena-then-state, read off the entry's stobjs-in: lane served-readers).
 # (or any run of fn-arena, fn-cat and fn-hist before state).  ARENA_ENTRIES (name -> how many) is
 # filled from the tree's formals by raw_arity_findings.
-ARENA_STATE_DISPATCHERS = {"fnn-core-state", "fnn-owner-core", "fnn-owner-action"}
+ARENA_STATE_DISPATCHERS = {"fnn-core-state", "fnn-owner-core", "fnn-owner-action",
+                           "fnn-core-buffer-state"}
 ARENA_ENTRIES: dict[str, int] = {}
 # The arena dispatchers (+2 above: the arena and state) pass the whole run.
 ARENA_RUN_DISPATCHERS = {"fnn-core-arena-state", "fnn-owner-feed-arena-step"}

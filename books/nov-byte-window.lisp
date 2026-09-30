@@ -83,6 +83,23 @@
                     (+ used fuel))))
   :rule-classes nil)
 
+; The output representation stays octets, including CHAR's full ACL2
+; character range. Offset/fuel/work hypotheses are unnecessary for this
+; property; the logical function remains total outside its executable guard.
+(local
+ (defthm fn-nbw-octets-of-revappend
+   (implies (and (fn-cbor-octet-listp a) (fn-cbor-octet-listp b))
+            (fn-cbor-octet-listp (revappend a b)))
+   :hints (("Goal" :induct (revappend a b)
+                   :in-theory (enable fn-cbor-octet-listp)))))
+
+(defthm fn-nbw-step-keeps-octets
+  (implies (and (fn-nbw-piecesp pieces) (fn-cbor-octet-listp acc))
+           (fn-cbor-octet-listp
+            (mv-nth 0 (fn-nbw-step-aux pieces pos fuel acc used))))
+  :hints (("Goal" :induct (fn-nbw-step-aux pieces pos fuel acc used)
+                  :in-theory (enable fn-cbor-octet-listp fn-cbor-octetp))))
+
 (local
  (defthm fn-nbw-len-of-revappend
    (equal (len (revappend a b)) (+ (len a) (len b)))

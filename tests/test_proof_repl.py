@@ -53,6 +53,10 @@ for line in lines:
         print("***** ABORTING from raw Lisp *****")
         print("Error:  Control stack exhausted")
         next(lines, None)  # ACL2 discards the pending input
+        print("ACL2 !>")  # genuine recovery, unlike an SBCL debugger's 0]
+    elif text == "(raw-debugger)":
+        print("debugger invoked on a SIMPLE-CONDITION")
+        print("0]")
     elif "FN-PROBE-AT" in text:
         print("FN-PROBE-AT %d" % world)
     elif text.startswith("(ubu! '"):
@@ -301,6 +305,54 @@ class CommandTests(unittest.TestCase):
 
 
 class EncapsulateTests(unittest.TestCase):
+    def test_nested_source_include_removal_preserves_constraint_and_local_scope(self):
+        form = '''(encapsulate
+ (((subject *) => *))
+ (local (include-book "impl"))
+ (local (defun subject (x) (impl x)))
+ (local (defthm private (equal (impl x) x)))
+ (defthm exported (equal (subject x) x)))'''
+        expected = form.replace('(local (include-book "impl"))', '')
+        result, skipped = proof_repl.source_includes(
+            form, proof_repl.ROOT / "books", {"books/impl"})
+        self.assertEqual(result, expected)
+        self.assertEqual(skipped, ["books/impl"])
+        _, wrapped = proof_repl.encapsulated(form, proof_repl.ROOT / "books",
+                                            {"books/impl"}, 10)
+        self.assertIn(expected, wrapped)
+        self.assertNotIn('include-book', wrapped)
+
+    def test_nested_substitution_only_enters_event_containers_and_known_sources(self):
+        books = proof_repl.ROOT / "books"
+        # Text that looks like an include inside data/code/hints is unchanged.
+        for form in ("'(local (include-book \"impl\"))",
+                     '(defun f () \'(include-book "impl"))',
+                     '(make-event \'(local (include-book "impl")))',
+                     '(defthm t1 t :hints (("Goal" :use (include-book "impl"))))',
+                     '(encapsulate () (local (include-book "impl" :dir :system)))',
+                     '(encapsulate () (local (include-book "uncached")))'):
+            self.assertEqual(proof_repl.source_includes(form, books, {"books/impl"}),
+                             (form, []))
+        form = ('(progn (local (encapsulate () (local (include-book "impl")) '
+                '(defthm private t))) (defthm later t))')
+        rewritten, skipped = proof_repl.source_includes(form, books, {"books/impl"})
+        self.assertEqual(skipped, ["books/impl"])
+        self.assertIn('(local (encapsulate ()  (defthm private t)))', rewritten)
+        self.assertTrue(rewritten.endswith('(defthm later t))'))
+        self.assertEqual(proof_repl.source_includes(
+            '(local (encapsulate () (local (include-book "impl"))))',
+            books, {"books/impl"}), ("", ["books/impl"]))
+
+    def test_range_reports_nested_includes_in_place_without_hoisting(self):
+        form = '(encapsulate () (local (include-book "impl")) (defthm exported t))'
+        path = proof_repl.ROOT / "books" / "seam.lisp"
+        items, skipped, local = proof_repl.range_items(
+            path, [form], range(1), {"books/impl"})
+        self.assertEqual(items, [("#1 encapsulate", form.replace(
+            '(local (include-book "impl"))', ''))])
+        self.assertEqual(skipped, ['#1 encapsulate (nested includes: books/impl)'])
+        self.assertEqual(local, 0)
+
     def test_a_from_source_book_in_one_encapsulate_keeps_its_locals_local(self):
         text = ('(in-package "ACL2")\n(include-book "dep")\n(local (defthm l t))\n'
                 '(defun f (x) x)\n')
@@ -313,6 +365,13 @@ class EncapsulateTests(unittest.TestCase):
                           "(encapsulate ()\n(local (defthm l t))\n(defun f (x) x)\n)"))
         self.assertEqual(proof_repl.encapsulated(text, books, {"books/dep"}),
                          ([], "(encapsulate ()\n(local (defthm l t))\n(defun f (x) x)\n)"))
+
+    def test_include_only_umbrella_has_no_empty_encapsulate(self):
+        text = '(in-package "ACL2")\n(include-book "dep")\n'
+        books = proof_repl.ROOT / "books"
+        self.assertEqual(proof_repl.encapsulated(text, books, set()),
+                         (['(include-book "dep")'], ""))
+        self.assertEqual(proof_repl.encapsulated(text, books, {"books/dep"}), ([], ""))
 
     def test_local_includes_stay_inside_and_defpkg_is_hoisted(self):
         text = ('(defpkg "FOO" nil)\n(local (include-book "std/lists/take" :dir :system))\n'
@@ -471,6 +530,22 @@ class LaneAskTests(unittest.TestCase):
         self.assertIn("(local (defthm l1 t))", sent[1][1])
         self.assertEqual(len(sent), 2)
         self.assertIn("inside one encapsulate", out.getvalue())
+
+    def test_include_only_local_range_sends_only_hoisted_include(self):
+        path = self.book('(in-package "ACL2")\n(include-book "std/lists/top" :dir :system)\n')
+        sent = []
+        def fake_send_many(name, items, limit, full, keep_going):
+            sent.extend(items)
+            return 0
+        args = proof_repl.argparse.Namespace(
+            name="s", book=str(path), start=None, until=None, through=None,
+            skip_includes=False, ld_local=True, limit=None, full=False, keep_going=False)
+        with mock.patch.object(proof_repl, "send_many", fake_send_many), \
+                mock.patch.object(proof_repl, "read_state", lambda name: {}), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(proof_repl.send_range(args), 0)
+        self.assertEqual([form for _, form in sent],
+                         ['(include-book "std/lists/top" :dir :system)'])
 
     def test_resync_undoes_what_is_there_and_resends_from_the_first_missing(self):
         # web-native: :ubt! then send-range --from X left earlier definitions missing.
@@ -918,6 +993,25 @@ class GraphTests(unittest.TestCase):
         self.assertEqual(proof_repl.dependency_order(self.GRAPH, {"m", "b", "t"}),
                          ["b", "m", "t"])
 
+    def test_source_siblings_keep_declared_order_and_shared_dependency_once(self):
+        graph = {"top": ["z-local", "a-export"],
+                 "z-local": ["shared"], "a-export": ["shared"], "shared": []}
+        for subset in (["a-export", "shared", "z-local"],
+                       ["z-local", "a-export", "shared"]):
+            self.assertEqual(proof_repl.dependency_order(graph, subset, "top"),
+                             ["shared", "z-local", "a-export"])
+
+    def test_order_starts_at_the_named_root_even_when_its_name_sorts_last(self):
+        graph = {"z-top": ["b", "a"], "a": [], "b": []}
+        self.assertEqual(proof_repl.dependency_order(graph, {"a", "b"}, "z-top"),
+                         ["b", "a"])
+
+    def test_only_independent_roots_use_deterministic_name_order(self):
+        graph = {"z-root": ["z2", "z1"], "a-root": ["a2", "a1"],
+                 "z2": [], "z1": [], "a2": [], "a1": []}
+        self.assertEqual(proof_repl.dependency_order(graph, set(graph)),
+                         ["a2", "a1", "a-root", "z2", "z1", "z-root"])
+
     def test_diagnosis_names_the_root_cause_and_what_follows_it(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = worktree(temporary + "/tree")
@@ -1012,6 +1106,118 @@ class CacheStartupTests(unittest.TestCase):
 
 
 class ProcessLifetimeTests(unittest.TestCase):
+    def test_debugger_invalidation_is_persisted_and_endpoint_closes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary)
+            fake = base / "fake-acl2"
+            fake.write_text(FAKE_ACL2)
+            fake.chmod(0o755)
+            scratch = ROOT / "build" / ("proof-repl-debugger-" + str(os.getpid()))
+            scratch.mkdir(parents=True, exist_ok=True)
+            (scratch / "tiny.lisp").write_text('(in-package "ACL2")\n')
+            name = "debugger-test-" + str(os.getpid())
+            env = {**os.environ, "FN_ACL2": str(fake),
+                   "FN_ACL2_SLOT_DIR": str(base / "slots"), "FN_ACL2_SLOTS": "1"}
+
+            def cli(*words):
+                return subprocess.run([sys.executable, str(ROOT / "tools" / "proof_repl.py"),
+                                       *words], cwd=ROOT, env=env, capture_output=True,
+                                      text=True, timeout=15)
+
+            try:
+                started = cli("start", name, str((scratch / "tiny").relative_to(ROOT)))
+                self.assertEqual(started.returncode, 0, started.stdout + started.stderr)
+                failed = cli("send", name, "(raw-debugger)")
+                self.assertEqual(failed.returncode, 1, failed.stdout + failed.stderr)
+                self.assertIn("session invalidated", failed.stdout)
+                directory = proof_repl.session_dir(name)
+                deadline = time.monotonic() + 5
+                while (directory / "sock").exists() and time.monotonic() < deadline:
+                    time.sleep(.01)
+                state = json.loads((directory / "state.json").read_text())
+                self.assertFalse(state["ready"])
+                self.assertEqual(state["ended"], "invalidated ACL2 protocol")
+                self.assertIn("session invalidated", state["error"])
+                self.assertFalse((directory / "sock").exists())
+                refused = cli("send", name, "(defthm later t)")
+                self.assertNotEqual(refused.returncode, 0)
+                self.assertNotIn("(defthm later t)", (directory / "log").read_text())
+            finally:
+                cli("stop", name)
+                shutil.rmtree(proof_repl.session_dir(name), ignore_errors=True)
+                shutil.rmtree(scratch, ignore_errors=True)
+
+    def raw_session(self, base, output):
+        fake = base / "raw-acl2"
+        fake.write_text("#!" + sys.executable + "\nimport sys\n"
+                        "for line in sys.stdin:\n"
+                        " if 'FN-REPL-DONE ' in line:\n"
+                        "  print('FN-REPL-DONE ' + line.split('FN-REPL-DONE ')[1].split('~%')[0], flush=True)\n"
+                        " else:\n"
+                        "  print(" + repr(output) + ", flush=True)\n")
+        fake.chmod(0o755)
+        return fake
+
+    def test_raw_debugger_cannot_accept_sentinel_or_later_forms(self):
+        # Reproduce cat-context: raw Lisp can print NIL and the cw marker,
+        # which does not imply that an ACL2 event was admitted.
+        for output in ("debugger invoked on a SIMPLE-CONDITION\n0]",
+                       "0]\nNIL", "  12] NIL"):
+            with self.subTest(output=output), tempfile.TemporaryDirectory() as temporary:
+                base = pathlib.Path(temporary)
+                fake = self.raw_session(base, output)
+                with mock.patch.dict(os.environ, {"FN_ACL2": str(fake),
+                        "FN_ACL2_SLOT_DIR": str(base / "slots"), "FN_ACL2_SLOTS": "1"}):
+                    session = proof_repl.Acl2("raw-debugger-test", base / "log")
+                    try:
+                        answer, timed_out = session.send("(defthm false nil)", 10)
+                        self.assertFalse(timed_out)
+                        self.assertTrue(proof_repl.errored(answer), answer)
+                        self.assertIn("session invalidated", answer)
+                        self.assertNotIn(proof_repl.RECOVERED_NOTE, answer)
+                        self.assertFalse(session.alive())
+                        before = (base / "log").read_text()
+                        later, timed_out = session.send("(defthm later t)", 10)
+                        self.assertFalse(timed_out)
+                        self.assertTrue(proof_repl.errored(later))
+                        self.assertEqual((base / "log").read_text(), before)
+                    finally:
+                        session.kill()
+
+    def test_raw_abort_marker_without_acl2_prompt_invalidates_session(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary)
+            fake = self.raw_session(base, "***** ABORTING from raw Lisp *****\nNIL")
+            with mock.patch.dict(os.environ, {"FN_ACL2": str(fake),
+                    "FN_ACL2_SLOT_DIR": str(base / "slots"), "FN_ACL2_SLOTS": "1"}):
+                session = proof_repl.Acl2("raw-marker-test", base / "log")
+                try:
+                    answer, timed_out = session.send("(bad-form)", 10)
+                    self.assertFalse(timed_out)
+                    self.assertTrue(proof_repl.errored(answer))
+                    self.assertIn("did not return to an ACL2 prompt", answer)
+                    self.assertFalse(session.alive())
+                finally:
+                    session.kill()
+
+    def test_unexpected_eof_cannot_count_as_success(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary)
+            fake = base / "exits-acl2"
+            fake.write_text("#!" + sys.executable + "\nimport sys\n"
+                            "sys.stdin.readline()\nprint('NIL', flush=True)\n")
+            fake.chmod(0o755)
+            with mock.patch.dict(os.environ, {"FN_ACL2": str(fake),
+                    "FN_ACL2_SLOT_DIR": str(base / "slots"), "FN_ACL2_SLOTS": "1"}):
+                session = proof_repl.Acl2("raw-eof-test", base / "log")
+                try:
+                    answer, timed_out = session.send("(defthm later t)", 10)
+                    self.assertFalse(timed_out)
+                    self.assertTrue(proof_repl.errored(answer))
+                    self.assertIn("exited before the completion marker", answer)
+                finally:
+                    session.kill()
+
     def test_start_preserves_an_old_live_json_server(self):
         with tempfile.TemporaryDirectory() as temporary:
             sessions = pathlib.Path(temporary)
@@ -1326,6 +1532,158 @@ class SessionTests(unittest.TestCase):
 
 @unittest.skipUnless(shutil.which(os.environ.get("FN_ACL2", "acl2")), "no ACL2 on PATH")
 class RealAcl2Tests(unittest.TestCase):
+    def test_nested_source_witness_include_preserves_constraints_and_private_locals(self):
+        scratch = ROOT / "build" / ("proof-repl-real-nested-" + str(os.getpid()))
+        scratch.mkdir(parents=True, exist_ok=True)
+        prefix = scratch.relative_to(ROOT).as_posix() + "/"
+        (scratch / "impl.lisp").write_text(
+            '(in-package "ACL2")\n(defun nested-impl (x) x)\n'
+            '(local (defthm nested-impl-private (equal (car (cons x y)) x)))\n'
+            '(defthm nested-impl-id (equal (nested-impl x) x))\n')
+        (scratch / "seam.lisp").write_text(
+            '(in-package "ACL2")\n'
+            '(encapsulate (((nested-subject *) => * :formals (x) :guard t))\n'
+            ' (local (include-book "impl"))\n'
+            ' (local (defun nested-subject (x) (nested-impl x)))\n'
+            ' (local (defthm nested-witness-private (equal (nested-subject x) x)))\n'
+            ' (defthm nested-subject-id (equal (nested-subject x) x)\n'
+            '  :hints (("Goal" :use nested-impl-id))))\n')
+        (scratch / "top.lisp").write_text(
+            '(in-package "ACL2")\n(include-book "seam")\n'
+            '(defthm nested-downstream (equal (nested-subject x) x))\n')
+        name = "real-nested-" + str(os.getpid())
+
+        def cli(*words):
+            return subprocess.run([sys.executable, str(ROOT / "tools" / "proof_repl.py"),
+                                   *words], capture_output=True, text=True, cwd=ROOT,
+                                  timeout=120)
+
+        try:
+            graph = proof_repl.include_graph(ROOT, prefix + "top")
+            self.assertEqual(graph[prefix + "seam"], [prefix + "impl"])
+            started = cli("start", name, prefix + "top", "--source-deps", "--ld-local")
+            self.assertEqual(started.returncode, 0, started.stdout + started.stderr)
+            state = json.loads((proof_repl.SESSIONS / name / "state.json").read_text())
+            self.assertEqual(state["ld"], [prefix + "impl", prefix + "seam"])
+            self.assertEqual(state["ld_loaded"],
+                             {prefix + "impl": "encapsulated", prefix + "seam": "encapsulated"})
+            self.assertEqual(state["loaded"], ["in-package", "nested-downstream"])
+            self.assertFalse(list(scratch.glob("*.cert")))
+            for event in ("nested-impl-private", "nested-witness-private"):
+                hidden = cli("send", name, ":pe " + event)
+                self.assertEqual(hidden.returncode, 1, hidden.stdout + hidden.stderr)
+            exported = cli("send", name, ":pe nested-subject-id")
+            self.assertEqual(exported.returncode, 0, exported.stdout + exported.stderr)
+            log = (proof_repl.SESSIONS / name / "log").read_text()
+            self.assertNotIn('(local (include-book "impl"))', log)
+            self.assertIn('(local (defun nested-subject', log)
+        finally:
+            cli("stop", name)
+            shutil.rmtree(proof_repl.SESSIONS / name, ignore_errors=True)
+            shutil.rmtree(scratch, ignore_errors=True)
+
+    def test_hons_debugger_refuses_form_and_invalidates_owned_session(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            session = proof_repl.Acl2("real-hons-debugger-test",
+                                      pathlib.Path(temporary) / "log")
+            try:
+                configured, timed_out = session.send("(set-slow-alist-action :break)", 20)
+                self.assertFalse(timed_out)
+                self.assertFalse(proof_repl.errored(configured), configured)
+                answer, timed_out = session.send("(hons-get 'key '((key . value)))", 20)
+                self.assertFalse(timed_out)
+                self.assertTrue(proof_repl.errored(answer), answer)
+                self.assertIn("raw Lisp debugger", answer)
+                self.assertIn("session invalidated", answer)
+                self.assertNotIn(proof_repl.RECOVERED_NOTE, answer)
+                self.assertFalse(session.alive())
+                later, _ = session.send("(defthm marker-does-not-prove t)", 20)
+                self.assertTrue(proof_repl.errored(later))
+            finally:
+                session.kill()
+
+    def test_source_siblings_preserve_local_name_scope_in_declared_order(self):
+        scratch = ROOT / "build" / "proof-repl-real-siblings"
+        scratch.mkdir(parents=True, exist_ok=True)
+        prefix = "build/proof-repl-real-siblings/"
+        (scratch / "shared.lisp").write_text(
+            '(in-package "ACL2")\n(defun sibling-shared (x) x)\n')
+        (scratch / "z-local.lisp").write_text(
+            '(in-package "ACL2")\n(include-book "shared")\n'
+            '(local (defthm sibling-collision (equal (car (cons x y)) x)))\n'
+            '(local (defthm sibling-private (equal (sibling-shared x) x)))\n'
+            '(defun sibling-first (x) (sibling-shared x))\n')
+        (scratch / "a-export.lisp").write_text(
+            '(in-package "ACL2")\n(include-book "shared")\n'
+            '(defthm sibling-collision (equal (cdr (cons x y)) y))\n')
+        (scratch / "top.lisp").write_text(
+            '(in-package "ACL2")\n(include-book "z-local")\n'
+            '(include-book "a-export")\n'
+            '(assert-event (equal (sibling-first 17) 17))\n')
+        name = "real-siblings-%d" % os.getpid()
+        cli = lambda *words: subprocess.run(  # noqa: E731
+            [sys.executable, str(ROOT / "tools" / "proof_repl.py"), *words],
+            capture_output=True, text=True, cwd=ROOT, timeout=300)
+        try:
+            graph = proof_repl.include_graph(ROOT, prefix + "top")
+            self.assertEqual(graph[prefix + "top"],
+                             [prefix + "z-local", prefix + "a-export"])
+            started = cli("start", name, prefix + "top", "--ld", prefix + "a-export",
+                          "--ld", prefix + "shared", "--ld", prefix + "z-local")
+            self.assertEqual(started.returncode, 0, started.stdout + started.stderr)
+            state = json.loads((proof_repl.SESSIONS / name / "state.json").read_text())
+            self.assertEqual(state["ld"],
+                             [prefix + "shared", prefix + "z-local", prefix + "a-export"])
+            self.assertEqual(set(state["ld_loaded"]), set(state["ld"]))
+            self.assertEqual(state["loaded"], ["in-package", "assert-event"])
+            self.assertFalse(list(scratch.glob("*.cert")))
+            hidden = cli("send", name, ":pe sibling-private")
+            self.assertEqual(hidden.returncode, 1, hidden.stdout + hidden.stderr)
+            exported = cli("send", name, ":pe sibling-collision")
+            self.assertEqual(exported.returncode, 0, exported.stdout + exported.stderr)
+        finally:
+            cli("stop", name)
+            shutil.rmtree(proof_repl.SESSIONS / name, ignore_errors=True)
+            shutil.rmtree(scratch, ignore_errors=True)
+
+    def test_include_only_source_umbrella_exports_child_without_leaking_locals(self):
+        scratch = ROOT / "build" / "proof-repl-real-umbrella"
+        scratch.mkdir(parents=True, exist_ok=True)
+        child = "build/proof-repl-real-umbrella/child"
+        umbrella = "build/proof-repl-real-umbrella/umbrella"
+        (scratch / "child.lisp").write_text(
+            '(in-package "ACL2")\n'
+            '(local (defthm umbrella-local (equal (car (cons x y)) x)))\n'
+            '(defun umbrella-child (x) x)\n')
+        (scratch / "umbrella.lisp").write_text(
+            '(in-package "ACL2")\n(include-book "child")\n')
+        (scratch / "top.lisp").write_text(
+            '(in-package "ACL2")\n(include-book "umbrella")\n'
+            '(assert-event (equal (umbrella-child 17) 17))\n')
+        name = "real-u-%d" % os.getpid()
+        cli = lambda *w: subprocess.run(  # noqa: E731
+            [sys.executable, str(ROOT / "tools" / "proof_repl.py"), *w],
+            capture_output=True, text=True, cwd=ROOT, timeout=300)
+        try:
+            started = cli("start", name, "build/proof-repl-real-umbrella/top",
+                          "--ld", child, "--ld", umbrella)
+            self.assertEqual(started.returncode, 0, started.stdout + started.stderr)
+            state = json.loads((proof_repl.SESSIONS / name / "state.json").read_text())
+            self.assertEqual(state["ld"], [child, umbrella])
+            self.assertEqual(state["ld_loaded"],
+                             {child: "encapsulated", umbrella: "encapsulated"})
+            self.assertEqual(state["loaded"], ["in-package", "assert-event"])
+            self.assertFalse(list(scratch.glob("*.cert")))
+            exported = cli("send", name,
+                           "(defthm umbrella-exported (equal (umbrella-child x) x))")
+            self.assertEqual(exported.returncode, 0, exported.stdout + exported.stderr)
+            hidden = cli("send", name, ":pe umbrella-local")
+            self.assertEqual(hidden.returncode, 1, hidden.stdout + hidden.stderr)
+        finally:
+            cli("stop", name)
+            shutil.rmtree(proof_repl.SESSIONS / name, ignore_errors=True)
+            shutil.rmtree(scratch, ignore_errors=True)
+
     def test_a_true_theorem_is_admitted_and_a_false_one_is_refused(self):
         scratch = ROOT / "build" / "proof-repl-real"
         scratch.mkdir(parents=True, exist_ok=True)
@@ -1962,6 +2320,34 @@ class LdHonoursLocalTests(unittest.TestCase):
 
     def test_ld_leak_loads_form_by_form(self):
         self.assertFalse(self.parsed("--ld", "books/y", "--ld-leak").ld_local)
+
+    def test_include_only_load_preserves_hoisted_failure_and_sends_no_empty_body(self):
+        scratch = ROOT / "build" / "proof-repl-umbrella"
+        scratch.mkdir(parents=True, exist_ok=True)
+        self.addCleanup(shutil.rmtree, scratch, True)
+        (scratch / "dep.lisp").write_text('(in-package "ACL2")\n(include-book "child")\n')
+        sent = []
+        class Recorder:
+            fail = False
+            def send(self, form, timeout):
+                sent.append(form)
+                if self.fail and form.startswith("(include-book"):
+                    return "ACL2 Error: child refused\n", False
+                return "", False
+        recorder = Recorder()
+        state = {"ld_loaded": {}}
+        self.assertTrue(proof_repl.load_book(recorder, "build/proof-repl-umbrella/dep",
+                                            state, 10, set(), record=False, encapsulate=True))
+        self.assertEqual(sent[-1], '(include-book "child")')
+        self.assertFalse(any(form.startswith("(encapsulate") for form in sent))
+        self.assertEqual(state["ld_loaded"],
+                         {"build/proof-repl-umbrella/dep": "encapsulated"})
+        recorder.fail = True
+        refused_state = {"ld_loaded": {}}
+        self.assertFalse(proof_repl.load_book(recorder, "build/proof-repl-umbrella/dep",
+                                             refused_state, 10, set(),
+                                             record=False, encapsulate=True))
+        self.assertEqual(refused_state["ld_loaded"], {})
 
     def test_an_encapsulated_refusal_names_ld_leak(self):
         class Refusing:

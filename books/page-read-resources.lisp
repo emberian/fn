@@ -65,6 +65,16 @@
 ; Issue reserves before allocating a token, buffer or thread. LIMIT is the
 ; representable bound for this read namespace, supplied by the supported
 ; profile/runtime contract. No arbitrary storage ceiling lives in this book.
+; Selected 64-bit SBCL string layout: wide character storage bounds base
+; strings as well. Measurement record: paged-resource-pool/layout-hbox-sbcl-
+; 2.6.8.log. 32 includes header and alignment; bookkeeping remains supplied.
+; This target layout model is not a theorem about arbitrary CL allocators.
+(defun fn-prs-incarnation-path-demand (bookkeeping path)
+  (declare (xargs :guard t))
+  (if (stringp path)
+      (fn-prs-incarnation-demand (+ (nfix bookkeeping) 32 (* 4 (length path))))
+    nil))
+
 (defun fn-prs-issue (budget used rescue charged next limit demand)
   (declare (xargs :guard t))
   (cond ((not (and (fn-prs-fundedp budget used rescue charged)
@@ -145,5 +155,5 @@
   (equal (nth 4 (fn-prs-release-reusable charged demand)) (nfix (nth 4 charged))))
 
 (in-theory (disable fn-prs-nats-p fn-prs-vectorp fn-prs-plus fn-prs-below
-                    fn-prs-fundedp fn-prs-worker-demand fn-prs-incarnation-demand
+                    fn-prs-fundedp fn-prs-worker-demand fn-prs-incarnation-demand fn-prs-incarnation-path-demand
                     fn-prs-issue fn-prs-release-reusable fn-prs-repeat))

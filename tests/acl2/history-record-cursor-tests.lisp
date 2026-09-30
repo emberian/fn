@@ -1,0 +1,812 @@
+(in-package "ACL2")
+(include-book "../../books/history-record-cursor")
+
+(defun fn-hrcur-test-run (fuel c)
+  (declare (xargs :guard (natp fuel)))
+  (if (zp fuel) (list :yield c nil)
+    (mv-let (verdict octet next) (fn-hrcur-leaf-tick c)
+      (cond ((eq verdict :prepared) (list :prepared next nil))
+            ((eq verdict :emit)
+             (let ((rest (fn-hrcur-test-run (1- fuel) next)))
+               (list (car rest) (cadr rest) (cons octet (caddr rest)))))
+            ((eq verdict :continue) (fn-hrcur-test-run (1- fuel) next))
+            (t (list verdict next nil))))))
+
+(defconst *fn-hrcur-test-leaf* '(0 127 255))
+(defconst *fn-hrcur-test-begin*
+  (fn-hrcur-leaf-begin *fn-hrcur-test-leaf* '(:captured 31 7) '(:lease 19)))
+
+; PRF-1088 reachable-positive: all literal initial-refinement hypotheses.
+(assert-event
+ (and (consp *fn-hrcur-test-leaf*)
+      (fn-scc-octet-listp *fn-hrcur-test-leaf*)
+      (< (+ (len *fn-hrcur-test-leaf*) 2
+            (len (fn-scc-le-digits (len *fn-hrcur-test-leaf*))))
+         *fn-hrcur-u64-bound*)
+      (fn-hrcur-leaf-invariantp *fn-hrcur-test-begin*)
+      (equal (fn-hrcur-leaf-rest *fn-hrcur-test-begin*)
+             (fn-scc-encode *fn-hrcur-test-leaf*))))
+
+; Every reached count/prefix/body/done state checks the complete invariant,
+; byte/refusal verdict and literal exact residual theorem.
+(defun fn-hrcur-test-tracep (fuel c)
+  (declare (xargs :guard (natp fuel) :verify-guards nil))
+  (if (zp fuel) t
+    (mv-let (verdict octet next) (fn-hrcur-leaf-tick c)
+      (and (fn-hrcur-leaf-invariantp c)
+           (fn-hrcur-leaf-invariantp next)
+           (member-eq verdict '(:continue :emit :prepared))
+           (implies (eq verdict :emit) (fn-scc-octetp octet))
+           (equal (fn-hrcur-leaf-rest c)
+                  (if (eq verdict :emit)
+                      (cons octet (fn-hrcur-leaf-rest next))
+                    (fn-hrcur-leaf-rest next)))
+           (equal (fn-hrcur-field 5 next) (fn-hrcur-field 5 c))
+           (equal (fn-hrcur-field 6 next) (fn-hrcur-field 6 c))
+           (fn-hrcur-test-tracep (1- fuel) next)))))
+
+(assert-event (fn-hrcur-test-tracep 15 *fn-hrcur-test-begin*))
+(assert-event
+ (let ((result (fn-hrcur-test-run 12 *fn-hrcur-test-begin*)))
+   (and (equal (car result) :prepared)
+        (equal (caddr result) (fn-scc-encode *fn-hrcur-test-leaf*))
+        (equal (fn-hrcur-field 5 (cadr result)) '(:captured 31 7))
+        (equal (fn-hrcur-field 6 (cadr result)) '(:lease 19)))))
+
+; Yield is resumable; it does not silently truncate the record.
+(assert-event
+ (let* ((first (fn-hrcur-test-run 7 *fn-hrcur-test-begin*))
+        (second (fn-hrcur-test-run 7 (cadr first))))
+   (and (equal (car first) :yield) (equal (car second) :prepared)
+        (equal (append (caddr first) (caddr second))
+               (fn-scc-encode *fn-hrcur-test-leaf*)))))
+
+; Literal hypothesis-removal: sole tick-invariant hypothesis fails,
+; as do preservation and its permitted-verdict conjunct. Corrupted state,
+; never asserted producer-reachable.
+(assert-event
+ (let ((bad '(:prefix nil (3) 1 (300) :capture :lease)))
+   (mv-let (verdict octet next) (fn-hrcur-leaf-tick bad)
+     (declare (ignore octet))
+     (and (not (fn-hrcur-leaf-invariantp bad))
+          (not (fn-hrcur-leaf-invariantp next))
+          (not (member-eq verdict '(:continue :emit :prepared)))))))
+
+; Literal hypothesis-removal for residual refinement: invalid count relation
+; reaches the zero-length refusal, losing the nonempty residual.
+(assert-event
+ (let ((bad '(:count nil (8 9) 0 nil :capture :lease)))
+   (mv-let (verdict octet next) (fn-hrcur-leaf-tick bad)
+     (and (not (fn-hrcur-leaf-invariantp bad))
+          (not (equal (fn-hrcur-leaf-rest bad)
+                      (if (eq verdict :emit)
+                          (cons octet (fn-hrcur-leaf-rest next))
+                        (fn-hrcur-leaf-rest next))))))))
+
+; Existing tree codec treats NIL and a non-octet list differently from an
+; opaque leaf. Their positive retained bound hypothesis holds; the omitted
+; nonempty / octet hypothesis and the exact encode conclusion fail.
+(assert-event
+ (let ((x nil))
+   (and (fn-scc-octet-listp x) (not (consp x))
+        (< (+ (len x) 2 (len (fn-scc-le-digits (len x)))) *fn-hrcur-u64-bound*)
+        (not (equal (fn-hrcur-leaf-rest (fn-hrcur-leaf-begin x :c :l))
+                    (fn-scc-encode x))))))
+(assert-event
+ (let ((x '(300)))
+   (and (consp x) (not (fn-scc-octet-listp x))
+        (< (+ (len x) 2 (len (fn-scc-le-digits (len x)))) *fn-hrcur-u64-bound*)
+        (not (equal (fn-hrcur-leaf-rest (fn-hrcur-leaf-begin x :c :l))
+                    (fn-scc-encode x))))))
+
+; Word accumulator trace uses the original pack8 as the output oracle.
+; All literal preservation and partial/full boundary antecedents are checked.
+(defun fn-hrcur-test-word-tracep (xs prefix k w)
+  (declare (xargs :guard t :verify-guards nil :measure (len xs)))
+  (if (consp xs)
+      (mv-let (verdict word k2 w2) (fn-hrcur-word-push (car xs) k w)
+        (and (fn-scc-octetp (car xs)) (fn-hrcur-wordp k w)
+             (equal k (len prefix)) (equal w (adt-unle k prefix))
+             (fn-hrcur-wordp k2 w2)
+             (member-eq verdict '(:continue :emit))
+             (if (< k 7)
+                 (and (equal verdict :continue) (equal k2 (+ 1 k))
+                      (equal w2 (adt-unle (+ 1 k) (append prefix (list (car xs)))))
+                      (fn-hrcur-test-word-tracep (cdr xs) (append prefix (list (car xs))) k2 w2))
+               (and (equal (len prefix) 7) (equal verdict :emit)
+                    (unsigned-byte-p 64 word)
+                    (equal word (car (fn-hp-pack8 1 (append prefix (list (car xs))))))
+                    (equal k2 0) (equal w2 0)
+                    (fn-hrcur-test-word-tracep (cdr xs) nil k2 w2)))))
+    (mv-let (verdict word k2 w2) (fn-hrcur-word-finish k w)
+      (and (equal k (len prefix)) (equal w (adt-unle k prefix))
+           (fn-hrcur-wordp k w) (equal k2 0) (equal w2 0)
+           (if (< 0 k)
+               (and (equal verdict :emit)
+                    (equal word (car (fn-hp-pack8 1 (append prefix (adt-zeros (- 8 k)))))))
+             (and (equal verdict :prepared) (null word)))))))
+
+(assert-event (fn-hrcur-test-word-tracep '(0 1 127 128 255 64 3 9 255 7 0) nil 0 0))
+(assert-event (fn-hrcur-test-word-tracep '(255 255 255 255 255 255 255 255) nil 0 0))
+
+(defun fn-hrcur-test-partial-conclusion (prefix octet k w)
+  (declare (xargs :guard t :verify-guards nil))
+  (mv-let (v word k2 w2) (fn-hrcur-word-push octet k w)
+    (declare (ignore word))
+    (and (equal v :continue) (equal k2 (+ 1 k))
+         (equal w2 (adt-unle (+ 1 k) (append prefix (list octet)))))))
+
+; One literal partial-boundary hypothesis is omitted per case. Every other
+; hypothesis is checked affirmatively. Corrupted-state/argument mutations,
+; not assertions that the composed producer reaches invalid word states.
+(assert-event
+ (let ((prefix nil) (octet 1) (k 1) (w 0))
+   (and (not (equal k (len prefix))) (< k 7)
+        (equal w (adt-unle k prefix)) (fn-hrcur-wordp k w) (fn-scc-octetp octet)
+        (not (fn-hrcur-test-partial-conclusion prefix octet k w)))))
+(assert-event
+ (let ((prefix '(0 0 0 0 0 0 0)) (octet 1) (k 7) (w 0))
+   (and (equal k (len prefix)) (not (< k 7))
+        (equal w (adt-unle k prefix)) (fn-hrcur-wordp k w) (fn-scc-octetp octet)
+        (not (fn-hrcur-test-partial-conclusion prefix octet k w)))))
+(assert-event
+ (let ((prefix '(0)) (octet 1) (k 1) (w 1))
+   (and (equal k (len prefix)) (< k 7)
+        (not (equal w (adt-unle k prefix))) (fn-hrcur-wordp k w) (fn-scc-octetp octet)
+        (not (fn-hrcur-test-partial-conclusion prefix octet k w)))))
+(assert-event
+ (let ((prefix '(300)) (octet 1) (k 1) (w 300))
+   (and (equal k (len prefix)) (< k 7)
+        (equal w (adt-unle k prefix)) (not (fn-hrcur-wordp k w)) (fn-scc-octetp octet)
+        (not (fn-hrcur-test-partial-conclusion prefix octet k w)))))
+(assert-event
+ (let ((prefix nil) (octet 300) (k 0) (w 0))
+   (and (equal k (len prefix)) (< k 7)
+        (equal w (adt-unle k prefix)) (fn-hrcur-wordp k w) (not (fn-scc-octetp octet))
+        (not (fn-hrcur-test-partial-conclusion prefix octet k w)))))
+
+(defun fn-hrcur-test-full-conclusion (prefix octet w)
+  (declare (xargs :guard t :verify-guards nil))
+  (mv-let (v word k2 w2) (fn-hrcur-word-push octet 7 w)
+    (and (equal v :emit)
+         (equal word (car (fn-hp-pack8 1 (append prefix (list octet)))))
+         (equal k2 0) (equal w2 0))))
+
+(assert-event
+ (let ((prefix nil) (octet 1) (w 0))
+   (and (not (equal (len prefix) 7)) (equal w (adt-unle 7 prefix))
+        (fn-hrcur-wordp 7 w) (fn-scc-octetp octet)
+        (not (fn-hrcur-test-full-conclusion prefix octet w)))))
+(assert-event
+ (let ((prefix '(0 0 0 0 0 0 0)) (octet 1) (w 1))
+   (and (equal (len prefix) 7) (not (equal w (adt-unle 7 prefix)))
+        (fn-hrcur-wordp 7 w) (fn-scc-octetp octet)
+        (not (fn-hrcur-test-full-conclusion prefix octet w)))))
+(assert-event
+ (let* ((prefix '(0 0 0 0 0 0 300)) (octet 1) (w (adt-unle 7 prefix)))
+   (and (equal (len prefix) 7) (equal w (adt-unle 7 prefix))
+        (not (fn-hrcur-wordp 7 w)) (fn-scc-octetp octet)
+        (not (fn-hrcur-test-full-conclusion prefix octet w)))))
+(assert-event
+ (let ((prefix '(0 0 0 0 0 0 0)) (octet 300) (w 0))
+   (and (equal (len prefix) 7) (equal w (adt-unle 7 prefix))
+        (fn-hrcur-wordp 7 w) (not (fn-scc-octetp octet))
+        (not (fn-hrcur-test-full-conclusion prefix octet w)))))
+
+(defun fn-hrcur-test-pad-conclusion (prefix k w)
+  (declare (xargs :guard t :verify-guards nil))
+  (mv-let (v word k2 w2) (fn-hrcur-word-finish k w)
+    (and (equal v :emit)
+         (equal word (car (fn-hp-pack8 1 (append prefix (adt-zeros (- 8 k))))))
+         (equal k2 0) (equal w2 0))))
+
+(assert-event
+ (let ((prefix '(1 2)) (k 1) (w 1))
+   (and (not (equal k (len prefix))) (< 0 k)
+        (equal w (adt-unle k prefix)) (fn-hrcur-wordp k w)
+        (not (fn-hrcur-test-pad-conclusion prefix k w)))))
+(assert-event
+ (let ((prefix nil) (k 0) (w 0))
+   (and (equal k (len prefix)) (not (< 0 k))
+        (equal w (adt-unle k prefix)) (fn-hrcur-wordp k w)
+        (not (fn-hrcur-test-pad-conclusion prefix k w)))))
+(assert-event
+ (let ((prefix '(0)) (k 1) (w 1))
+   (and (equal k (len prefix)) (< 0 k)
+        (not (equal w (adt-unle k prefix))) (fn-hrcur-wordp k w)
+        (not (fn-hrcur-test-pad-conclusion prefix k w)))))
+(assert-event
+ (let ((prefix '(300)) (k 1) (w 300))
+   (and (equal k (len prefix)) (< 0 k)
+        (equal w (adt-unle k prefix)) (not (fn-hrcur-wordp k w))
+        (not (fn-hrcur-test-pad-conclusion prefix k w)))))
+
+; Word-state and octet-domain hypotheses are both necessary to the permitted
+; verdict part of the preservation theorem. Other hypothesis stays true.
+(assert-event
+ (let ((octet 300) (k 0) (w 0))
+   (mv-let (v word k2 w2) (fn-hrcur-word-push octet k w)
+     (declare (ignore word k2 w2))
+     (and (not (fn-scc-octetp octet)) (fn-hrcur-wordp k w)
+          (not (member-eq v '(:continue :emit)))))))
+(assert-event
+ (let ((octet 0) (k 0) (w 1))
+   (mv-let (v word k2 w2) (fn-hrcur-word-push octet k w)
+     (declare (ignore word k2 w2))
+     (and (fn-scc-octetp octet) (not (fn-hrcur-wordp k w))
+          (not (member-eq v '(:continue :emit)))))))
+
+; Tree descriptor interpreter is an oracle used only by this test. Production
+; passes at most one pending descriptor to a byte cursor, not this flattening.
+(defun fn-hrcur-test-tree-tracep (fuel c)
+  (declare (xargs :guard (natp fuel) :verify-guards nil))
+  (if (zp fuel) t
+    (mv-let (v descriptor next) (fn-hrcur-tree-tick c)
+      (and (fn-hrcur-tree-invariantp c)
+           (fn-hrcur-tree-invariantp next)
+           (member-eq v '(:continue :emit :prepared))
+           (implies (eq v :emit) (fn-hrcur-descriptorp descriptor))
+           (equal (fn-hrcur-tree-rest (fn-hrcur-field 0 c))
+                  (if (eq v :emit)
+                      (append (fn-hrcur-descriptor-octets descriptor)
+                              (fn-hrcur-tree-rest (fn-hrcur-field 0 next)))
+                    (fn-hrcur-tree-rest (fn-hrcur-field 0 next))))
+           (equal (fn-hrcur-field 1 next) (fn-hrcur-field 1 c))
+           (equal (fn-hrcur-field 2 next) (fn-hrcur-field 2 c))
+           (fn-hrcur-test-tree-tracep (1- fuel) next)))))
+
+(defun fn-hrcur-test-tree-run (fuel c)
+  (declare (xargs :guard (natp fuel) :verify-guards nil))
+  (if (zp fuel) (list :yield c nil)
+    (mv-let (v descriptor next) (fn-hrcur-tree-tick c)
+      (cond ((eq v :prepared) (list :prepared next nil))
+            ((eq v :continue) (fn-hrcur-test-tree-run (1- fuel) next))
+            ((eq v :emit)
+             (let ((rest (fn-hrcur-test-tree-run (1- fuel) next)))
+               (list (car rest) (cadr rest)
+                     (append (fn-hrcur-descriptor-octets descriptor) (caddr rest)))))
+            (t (list v next nil))))))
+
+(defconst *fn-hrcur-test-tree*
+  '(:article 17 (0 127 255) "subject" (:groups "fn.test") (:alpha . :beta) nil -9 #\A))
+(defconst *fn-hrcur-test-tree-begin*
+  (fn-hrcur-tree-begin *fn-hrcur-test-tree* '(:captured 37 4) '(:lease 61)))
+
+; Complete literal initial-refinement hypothesis and both conclusions.
+(assert-event
+ (and (fn-hrcur-tree-domainp *fn-hrcur-test-tree*)
+      (fn-hrcur-tree-invariantp *fn-hrcur-test-tree-begin*)
+      (equal (fn-hrcur-tree-rest (fn-hrcur-field 0 *fn-hrcur-test-tree-begin*))
+             (fn-scc-encode *fn-hrcur-test-tree*))))
+
+; Nonempty composite trace exercises repeated prefix scanning, opaque leaf,
+; non-octet/dotted-tail descent, atom descriptors and CONS byte descriptors.
+(assert-event (fn-hrcur-test-tree-tracep 150 *fn-hrcur-test-tree-begin*))
+(assert-event
+ (let ((result (fn-hrcur-test-tree-run 150 *fn-hrcur-test-tree-begin*)))
+   (and (equal (car result) :prepared)
+        (equal (caddr result) (fn-scc-encode *fn-hrcur-test-tree*)))))
+
+; Stop before tree/atom completion, then resume exactly the retained task stack.
+(assert-event
+ (let* ((first (fn-hrcur-test-tree-run 13 *fn-hrcur-test-tree-begin*))
+        (second (fn-hrcur-test-tree-run 150 (cadr first))))
+   (and (equal (car first) :yield) (equal (car second) :prepared)
+        (equal (append (caddr first) (caddr second))
+               (fn-scc-encode *fn-hrcur-test-tree*)))))
+
+; Literal sole-hypothesis removal, corrupted scan state: fake complete count
+; does not equal the immutable source length. Both emitted descriptor validity
+; and the exact residual conclusion fail, with no other hypotheses to omit.
+(assert-event
+ (let ((bad '(((:scan (1 2) nil 0)) :capture :lease)))
+   (mv-let (v descriptor next) (fn-hrcur-tree-tick bad)
+     (and (not (fn-hrcur-tree-invariantp bad))
+          (eq v :emit) (not (fn-hrcur-descriptorp descriptor))
+          (not (equal (fn-hrcur-tree-rest (fn-hrcur-field 0 bad))
+                      (append (fn-hrcur-descriptor-octets descriptor)
+                              (fn-hrcur-tree-rest (fn-hrcur-field 0 next)))))))))
+
+; Initial-domain hypothesis is material: the current scalar format represents
+; fewer than256 length digits. This 2056-bit argument is not a producer state.
+(assert-event
+ (let* ((x (expt 256 256)) (c (fn-hrcur-tree-begin x :capture :lease)))
+   (and (not (fn-hrcur-tree-domainp x))
+        (not (fn-hrcur-tree-invariantp c)))))
+
+; A non-octet after a long byte prefix is discovered once. The carried
+; :non-octets task prevents rescanning the same shrinking suffix each time.
+(assert-event
+ (let* ((x (append (fn-scc-repeat 200 9) (list :x)))
+        (c (fn-hrcur-tree-begin x :capture :lease))
+        (result (fn-hrcur-test-tree-run 810 c)))
+   (and (fn-hrcur-tree-domainp x)
+        (equal (car result) :prepared)
+        (equal (caddr result) (fn-scc-encode x)))))
+
+(defun fn-hrcur-test-byte-tracep (fuel c)
+  (declare (xargs :guard (natp fuel) :verify-guards nil))
+  (if (zp fuel) t
+    (mv-let (v byte next) (fn-hrcur-byte-tick c)
+      (and (fn-hrcur-byte-invariantp c) (fn-hrcur-byte-invariantp next)
+           (member-eq v '(:continue :emit :prepared))
+           (implies (eq v :emit) (fn-scc-octetp byte))
+           (equal (fn-hrcur-byte-rest c)
+                  (if (eq v :emit) (cons byte (fn-hrcur-byte-rest next))
+                    (fn-hrcur-byte-rest next)))
+           (implies (eq v :prepared) (equal (fn-hrcur-byte-rest c) nil))
+           (equal (fn-hrcur-field 3 next) (fn-hrcur-field 3 c))
+           (equal (fn-hrcur-field 4 next) (fn-hrcur-field 4 c))
+           (fn-hrcur-test-byte-tracep (1- fuel) next)))))
+
+(defun fn-hrcur-test-byte-run (fuel c)
+  (declare (xargs :guard (natp fuel) :verify-guards nil))
+  (if (zp fuel) (list :yield c nil)
+    (mv-let (v byte next) (fn-hrcur-byte-tick c)
+      (cond ((eq v :prepared) (list :prepared next nil))
+            ((eq v :continue) (fn-hrcur-test-byte-run (1- fuel) next))
+            ((eq v :emit)
+             (let ((rest (fn-hrcur-test-byte-run (1- fuel) next)))
+               (list (car rest) (cadr rest) (cons byte (caddr rest)))))
+            (t (list v next nil))))))
+
+(defconst *fn-hrcur-test-byte-begin*
+  (fn-hrcur-byte-begin (list :resident *fn-hrcur-test-tree*) :capture :lease))
+
+; Complete literal initial domain and both refinement conclusions.
+(assert-event
+ (and (fn-hrcur-tree-domainp *fn-hrcur-test-tree*)
+      (fn-hrcur-byte-invariantp *fn-hrcur-test-byte-begin*)
+      (equal (fn-hrcur-byte-rest *fn-hrcur-test-byte-begin*)
+             (fn-scc-encode *fn-hrcur-test-tree*))))
+
+; Every runtime tick checks all literal antecedents/conclusions, including
+; scalar strings/symbols, nonempty octets, dotted pair and postfix CONS.
+(assert-event (fn-hrcur-test-byte-tracep 500 *fn-hrcur-test-byte-begin*))
+(assert-event
+ (let ((r (fn-hrcur-test-byte-run 500 *fn-hrcur-test-byte-begin*)))
+   (and (eq (car r) :prepared)
+        (equal (caddr r) (fn-scc-encode *fn-hrcur-test-tree*)))))
+(assert-event
+ (let* ((first (fn-hrcur-test-byte-run 43 *fn-hrcur-test-byte-begin*))
+        (second (fn-hrcur-test-byte-run 500 (cadr first))))
+   (and (eq (car first) :yield) (eq (car second) :prepared)
+        (equal (append (caddr first) (caddr second))
+               (fn-scc-encode *fn-hrcur-test-tree*)))))
+
+; Sole-invariant removal, corrupted active scalar state: an invalid digit width
+; is refused while a nonempty opcode residual remains, breaking conservation.
+(assert-event
+ (let ((bad (list :scalar (fn-hrcur-tree-begin nil :capture :lease)
+                  '(:prefix :x (4) 0 0 256 "" 0 :capture :lease) :capture :lease nil)))
+   (mv-let (v byte next) (fn-hrcur-byte-tick bad)
+     (declare (ignore byte))
+     (and (not (fn-hrcur-byte-invariantp bad)) (equal v '(:refused :cursor))
+          (not (equal (fn-hrcur-byte-rest bad) (fn-hrcur-byte-rest next)))))))
+
+; Initial sole domain removal is an argument mutation, not a captured row.
+(assert-event
+ (let* ((row (expt 256 256)) (c (fn-hrcur-byte-begin (list :resident row) :c :l)))
+   (and (not (fn-hrcur-tree-domainp row)) (not (fn-hrcur-byte-invariantp c)))))
+
+(defun fn-hrcur-test-word-byte-run (fuel c k w)
+  (declare (xargs :guard (natp fuel) :verify-guards nil))
+  (if (zp fuel) (list :yield c nil k w)
+    (mv-let (v byte next) (fn-hrcur-byte-tick c)
+      (cond
+       ((eq v :continue) (fn-hrcur-test-word-byte-run (1- fuel) next k w))
+       ((eq v :emit)
+        (mv-let (wv word k2 w2) (fn-hrcur-word-push byte k w)
+          (let ((rest (fn-hrcur-test-word-byte-run (1- fuel) next k2 w2)))
+            (list (car rest) (cadr rest)
+                  (if (eq wv :emit) (cons word (caddr rest)) (caddr rest))
+                  (cadddr rest) (fn-hrcur-field 4 rest)))))
+       ((eq v :prepared)
+        (mv-let (wv word k2 w2) (fn-hrcur-word-finish k w)
+          (list :prepared next (if (eq wv :emit) (list word) nil) k2 w2)))
+       (t (list v next nil k w))))))
+
+; Reachable composed output matches current physical blob words including
+; final zero padding; the oracle exists only inside this test.
+(assert-event
+ (let* ((r (fn-hrcur-test-word-byte-run 500 *fn-hrcur-test-byte-begin* 0 0))
+        (encoded (fn-scc-encode *fn-hrcur-test-tree*))
+        (padded (append encoded (adt-zeros (mod (- (len encoded)) 8)))))
+   (and (eq (car r) :prepared) (equal (cadddr r) 0) (equal (fn-hrcur-field 4 r) 0)
+        (equal (caddr r) (fn-hp-pack8 (floor (len padded) 8) padded)))))
+
+(defun fn-hrcur-test-census-run (fuel c)
+  (declare (xargs :guard (natp fuel) :verify-guards nil))
+  (if (zp fuel) (list :yield nil c)
+    (mv-let (v n next) (fn-hrcur-census-tick c)
+      (if (eq v :continue) (fn-hrcur-test-census-run (1- fuel) next)
+        (list v n next)))))
+
+(defun fn-hrcur-test-census-tracep (fuel c)
+  (declare (xargs :guard (natp fuel) :verify-guards nil))
+  (if (zp fuel) t
+    (mv-let (v n next) (fn-hrcur-census-tick c)
+      (and (fn-hrcur-census-invariantp c) (fn-hrcur-census-invariantp next)
+           (member-eq v '(:continue :prepared))
+           (equal (fn-hrcur-census-total c) (fn-hrcur-census-total next))
+           (implies (eq v :prepared) (equal n (fn-hrcur-census-total c)))
+           (fn-hrcur-test-census-tracep (1- fuel) next)))))
+
+(defconst *fn-hrcur-test-census-begin*
+  (fn-hrcur-census-begin (list :resident *fn-hrcur-test-tree*) :capture :lease))
+(assert-event
+ (and (fn-hrcur-tree-domainp *fn-hrcur-test-tree*)
+      (< (len (fn-scc-encode *fn-hrcur-test-tree*)) *fn-hrcur-u64-bound*)
+      (fn-hrcur-census-invariantp *fn-hrcur-test-census-begin*)
+      (equal (fn-hrcur-census-total *fn-hrcur-test-census-begin*)
+             (len (fn-scc-encode *fn-hrcur-test-tree*)))))
+(assert-event (fn-hrcur-test-census-tracep 500 *fn-hrcur-test-census-begin*))
+(assert-event
+ (let* ((first (fn-hrcur-test-census-run 43 *fn-hrcur-test-census-begin*))
+        (second (fn-hrcur-test-census-run 500 (caddr first))))
+   (and (eq (car first) :yield) (eq (car second) :prepared)
+        (equal (cadr second) (len (fn-scc-encode *fn-hrcur-test-tree*))))))
+
+; Sole-invariant removal: unsupported census total at the existing u64 edge.
+; The next one-byte step is explicitly refused, never a completed count.
+(assert-event
+ (let* ((bytes '(:tree (((:byte 5)) :capture :lease) nil :capture :lease nil))
+        (bad (list :active bytes (1- *fn-hrcur-u64-bound*))))
+   (mv-let (v n next) (fn-hrcur-census-tick bad)
+     (declare (ignore n))
+     (and (fn-hrcur-byte-invariantp bytes) (not (fn-hrcur-census-invariantp bad))
+          (equal v '(:refused :codec-width))
+          (not (member-eq v '(:continue :prepared)))
+          (not (equal (fn-hrcur-census-total bad) (fn-hrcur-census-total next)))))))
+
+(defun fn-hrcur-test-span-supply-values (c position byte)
+  (declare (xargs :guard t :verify-guards nil))
+  (mv-let (v b next) (fn-hrcur-span-supply c position byte) (list v b next)))
+(defun fn-hrcur-test-span-tick-values (c)
+  (declare (xargs :guard t :verify-guards nil))
+  (mv-let (v b next) (fn-hrcur-span-tick c) (list v b next)))
+
+; Borrowed payload run: this TEST reader supplies the model nth byte. The real
+; reader owns authentication and source/pass/file-pin fencing separately.
+(defun fn-hrcur-test-span-run (fuel c pool)
+  (declare (xargs :guard t :verify-guards nil :measure (nfix fuel)))
+  (if (zp fuel) (list :yield nil c)
+    (mv-let (v byte next) (fn-hrcur-span-tick c)
+      (cond
+       ((eq v :prepared) (list :prepared nil next))
+       ((eq v :continue) (fn-hrcur-test-span-run (1- fuel) next pool))
+       ((eq v :emit)
+        (let ((r (fn-hrcur-test-span-run (1- fuel) next pool)))
+          (list (car r) (cons byte (cadr r)) (caddr r))))
+       ((and (consp v) (eq (car v) :need-byte))
+        (mv-let (sv supplied supplied-next)
+          (fn-hrcur-span-supply next (cadr v) (nth (cadr v) pool))
+          (if (eq sv :emit)
+              (let ((r (fn-hrcur-test-span-run (1- fuel) supplied-next pool)))
+                (list (car r) (cons supplied (cadr r)) (caddr r)))
+            (list sv nil supplied-next))))
+       (t (list v nil next))))))
+
+(defun fn-hrcur-test-span-supply-conclusion (c position byte pool)
+  (declare (xargs :guard t :verify-guards nil))
+  (mv-let (v b next) (fn-hrcur-span-supply c position byte)
+    (and (equal v :emit) (fn-scc-octetp b)
+         (fn-hrcur-span-invariantp next pool)
+         (equal (fn-hrcur-span-rest c pool)
+                (cons b (fn-hrcur-span-rest next pool))))))
+
+; Reachable initial, complete header, payload request and exact wire bytes.
+(assert-event
+ (let* ((pool '(99 65 66 67 100))
+        (c (fn-hrcur-span-begin 3 0 1 3 '(:epoch :pass :row) :lease))
+        (r (fn-hrcur-test-span-run 20 c pool)))
+   (and (member-equal 3 '(0 3 4 6)) (natp 0) (< 0 3)
+        (or (equal 3 4) (equal 0 0)) (natp 1) (natp 3)
+        (< (+ 1 3) *fn-hrcur-u64-bound*)
+        (implies (equal 3 0) (equal 3 0))
+        (fn-scc-octet-listp pool) (<= (+ 1 3) (len pool))
+        (fn-hrcur-span-invariantp c pool)
+        (equal (fn-hrcur-span-rest c pool) (fn-hrcur-span-wire 3 0 1 3 pool))
+        (eq (car r) :prepared)
+        (equal (cadr r) (fn-scc-encode "ABC"))
+        (equal (fn-hrcur-field 4 (caddr r)) '(:epoch :pass :row))
+        (equal (fn-hrcur-field 5 (caddr r)) :lease))))
+
+(assert-event
+ (let* ((pool '(9 0 255 1))
+        (c (fn-hrcur-span-begin 6 0 1 3 :capture :lease))
+        (first (fn-hrcur-test-span-run 4 c pool))
+        (second (fn-hrcur-test-span-run 20 (caddr first) pool)))
+   (and (eq (car first) :yield) (eq (car second) :prepared)
+        (equal (append (cadr first) (cadr second))
+               (fn-scc-encode '(0 255 1))))))
+
+(assert-event
+ (let* ((c (fn-hrcur-span-begin 6 0 0 0 :capture :lease))
+        (r (fn-hrcur-test-span-run 10 c nil)))
+   (and (fn-hrcur-span-invariantp c nil)
+        (eq (car r) :prepared) (equal (cadr r) (fn-scc-encode nil)))))
+
+; Complete antecedent and conclusion for the supply boundary/progress.
+(assert-event
+ (let ((c '(:body nil 0 2 :capture :lease 2)) (pool '(65 66)))
+   (and (fn-hrcur-span-invariantp c pool) (eq (fn-hrcur-field 0 c) :body)
+        (< 0 (fn-hrcur-field 3 c)) (equal 0 (fn-hrcur-field 2 c))
+        (equal 65 (nth 0 pool))
+        (fn-hrcur-test-span-supply-conclusion c 0 65 pool)
+        (< (fn-hrcur-span-work (nth 2 (fn-hrcur-test-span-supply-values c 0 65)))
+           (fn-hrcur-span-work c)))))
+
+; Hypothesis removal: invariant (corrupted end coordinate), all others retained.
+(assert-event
+ (let ((c '(:body nil 0 1 :capture :lease 0)) (pool '(65)))
+   (and (not (fn-hrcur-span-invariantp c pool))
+        (eq (fn-hrcur-field 0 c) :body) (< 0 (fn-hrcur-field 3 c))
+        (equal 0 (fn-hrcur-field 2 c)) (equal 65 (nth 0 pool))
+        (not (fn-hrcur-test-span-supply-conclusion c 0 65 pool)))))
+
+; Hypothesis removal: phase, no outstanding payload request yet.
+(assert-event
+ (let ((c '(:prefix (3 1 1) 0 1 :capture :lease 1)) (pool '(65)))
+   (and (fn-hrcur-span-invariantp c pool)
+        (not (eq (fn-hrcur-field 0 c) :body)) (< 0 (fn-hrcur-field 3 c))
+        (equal 0 (fn-hrcur-field 2 c)) (equal 65 (nth 0 pool))
+        (not (fn-hrcur-test-span-supply-conclusion c 0 65 pool)))))
+
+; Hypothesis removal: nonempty payload.
+(assert-event
+ (let ((c '(:body nil 0 0 :capture :lease 0)) (pool '(65)))
+   (and (fn-hrcur-span-invariantp c pool) (eq (fn-hrcur-field 0 c) :body)
+        (not (< 0 (fn-hrcur-field 3 c)))
+        (equal 0 (fn-hrcur-field 2 c)) (equal 65 (nth 0 pool))
+        (not (fn-hrcur-test-span-supply-conclusion c 0 65 pool)))))
+
+; Hypothesis removal: expected position; response data itself is correct there.
+(assert-event
+ (let ((c '(:body nil 0 2 :capture :lease 2)) (pool '(65 66)))
+   (and (fn-hrcur-span-invariantp c pool) (eq (fn-hrcur-field 0 c) :body)
+        (< 0 (fn-hrcur-field 3 c))
+        (not (equal 1 (fn-hrcur-field 2 c))) (equal 66 (nth 1 pool))
+        (not (fn-hrcur-test-span-supply-conclusion c 1 66 pool))
+        (equal (nth 0 (fn-hrcur-test-span-supply-values c 1 66)) '(:refused :span-response))
+        (equal (nth 2 (fn-hrcur-test-span-supply-values c 1 66)) c))))
+
+; Hypothesis removal: authenticated byte equals immutable model byte.
+(assert-event
+ (let ((c '(:body nil 0 2 :capture :lease 2)) (pool '(65 66)))
+   (and (fn-hrcur-span-invariantp c pool) (eq (fn-hrcur-field 0 c) :body)
+        (< 0 (fn-hrcur-field 3 c)) (equal 0 (fn-hrcur-field 2 c))
+        (not (equal 66 (nth 0 pool)))
+        (not (fn-hrcur-test-span-supply-conclusion c 0 66 pool)))))
+
+; A supplied byte advances expected position; replaying the old response refuses.
+(assert-event
+ (let* ((c '(:body nil 0 2 :capture :lease 2))
+        (next (nth 2 (fn-hrcur-test-span-supply-values c 0 65))))
+   (and (equal (fn-hrcur-field 2 next) 1)
+        (equal (nth 0 (fn-hrcur-test-span-supply-values next 0 65)) '(:refused :span-response))
+        (equal (nth 2 (fn-hrcur-test-span-supply-values next 0 65)) next))))
+
+(defun fn-hrcur-test-span-tick-conclusion (c pool)
+  (declare (xargs :guard t :verify-guards nil))
+  (mv-let (v b next) (fn-hrcur-span-tick c)
+    (and (fn-hrcur-span-invariantp next pool)
+         (equal (fn-hrcur-span-rest c pool)
+                (if (eq v :emit) (cons b (fn-hrcur-span-rest next pool))
+                  (fn-hrcur-span-rest next pool)))
+         (implies (eq v :emit) (fn-scc-octetp b))
+         (implies (eq v :prepared) (equal (fn-hrcur-span-rest c pool) nil)))))
+
+; Literal tick refinement antecedent and conclusion, all reachable phases.
+(assert-event
+ (let ((c '(:prefix (3 1 1) 0 1 :capture :lease 1)) (pool '(65)))
+   (and (fn-hrcur-span-invariantp c pool)
+        (fn-hrcur-test-span-tick-conclusion c pool))))
+(assert-event
+ (let ((c '(:prefix nil 0 1 :capture :lease 1)) (pool '(65)))
+   (and (fn-hrcur-span-invariantp c pool)
+        (fn-hrcur-test-span-tick-conclusion c pool))))
+(assert-event
+ (let ((c '(:body nil 0 1 :capture :lease 1)) (pool '(65)))
+   (and (fn-hrcur-span-invariantp c pool)
+        (fn-hrcur-test-span-tick-conclusion c pool)
+        (not (eq (fn-hrcur-field 0 c) :done))
+        (equal (nth 0 (fn-hrcur-test-span-tick-values c)) '(:need-byte 0))
+        (equal (nth 2 (fn-hrcur-test-span-tick-values c)) c))))
+(assert-event
+ (let ((c '(:body nil 1 0 :capture :lease 1)) (pool '(65)))
+   (and (fn-hrcur-span-invariantp c pool)
+        (fn-hrcur-test-span-tick-conclusion c pool))))
+
+; Tick refinement invariant removal: corrupted header byte.
+(assert-event
+ (let ((c '(:prefix (300) 0 1 :capture :lease 1)) (pool '(65)))
+   (and (not (fn-hrcur-span-invariantp c pool))
+        (not (fn-hrcur-test-span-tick-conclusion c pool)))))
+
+; Progress: a reachable header byte decreases work; a done cursor cannot.
+(assert-event
+ (let ((c '(:prefix (3 1 1) 0 1 :capture :lease 1)) (pool '(65)))
+   (and (fn-hrcur-span-invariantp c pool)
+        (not (eq (fn-hrcur-field 0 c) :done))
+        (< (fn-hrcur-span-work (nth 2 (fn-hrcur-test-span-tick-values c)))
+           (fn-hrcur-span-work c)))))
+(assert-event
+ (let ((c '(:done nil 1 0 :capture :lease 1)) (pool '(65)))
+   (and (fn-hrcur-span-invariantp c pool)
+        (eq (fn-hrcur-field 0 c) :done)
+        (not (< (fn-hrcur-span-work (nth 2 (fn-hrcur-test-span-tick-values c)))
+                (fn-hrcur-span-work c)))
+        (not (equal (nth 0 (fn-hrcur-test-span-tick-values c))
+                    (list :need-byte (fn-hrcur-field 2 c)))))))
+
+; Tick progress invariant removal: explicitly refused corrupted state.
+(assert-event
+ (let ((c '(:refused nil 0 0 :capture :lease 0)))
+   (and (not (fn-hrcur-span-invariantp c nil))
+        (not (eq (fn-hrcur-field 0 c) :done))
+        (not (< (fn-hrcur-span-work (nth 2 (fn-hrcur-test-span-tick-values c)))
+                (fn-hrcur-span-work c)))
+        (not (equal (nth 0 (fn-hrcur-test-span-tick-values c))
+                    (list :need-byte (fn-hrcur-field 2 c)))))))
+
+; Full antecedents and complete codec result for the two span abstractions.
+(defthm fn-hrcur-test-span-octets-semantic-positive
+  (and (fn-scc-octet-listp '(9 0 255 1)) (natp 1) (natp 3)
+       (<= (+ 1 3) (len '(9 0 255 1)))
+       (equal (fn-hrcur-span-wire 6 0 1 3 '(9 0 255 1))
+              (fn-scc-encode
+                (fn-hdc-abstract (fn-hdc-span 6 0 1 3) '(9 0 255 1)))))
+  :hints (("Goal" :in-theory (enable fn-hrcur-span-wire fn-hdc-span fn-hdc-abstract))))
+(defthm fn-hrcur-test-span-string-semantic-positive
+  (and (fn-scc-octet-listp '(9 65 66 67)) (natp 1) (natp 3)
+       (<= (+ 1 3) (len '(9 65 66 67)))
+       (equal (fn-hrcur-span-wire 3 0 1 3 '(9 65 66 67))
+              (fn-scc-encode
+                (fn-hdc-abstract (fn-hdc-span 3 0 1 3) '(9 65 66 67)))))
+  :hints (("Goal" :in-theory (enable fn-hrcur-span-wire fn-hdc-span fn-hdc-abstract))))
+
+(defun fn-hrcur-test-span-begin-conclusion (op pkg offset count pool)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((c (fn-hrcur-span-begin op pkg offset count :capture :lease)))
+    (and (fn-hrcur-span-invariantp c pool)
+         (equal (fn-hrcur-span-rest c pool)
+                (fn-hrcur-span-wire op pkg offset count pool)))))
+
+; Initial boundary hypothesis removal: opcode.
+(assert-event
+ (let ((op 7) (pkg 0) (offset 0) (count 1) (pool '(65)))
+   (and (not (member-equal op '(0 3 4 6)))
+        (natp pkg)
+        (< pkg 3)
+        (or (equal op 4) (equal pkg 0))
+        (natp offset)
+        (natp count)
+        (< (+ offset count) *fn-hrcur-u64-bound*)
+        (implies (equal op 0) (equal count 0))
+        (fn-scc-octet-listp pool)
+        (<= (+ offset count) (len pool))
+        (not (fn-hrcur-test-span-begin-conclusion op pkg offset count pool)))))
+
+; Initial boundary hypothesis removal: package natural.
+(assert-event
+ (let ((op 4) (pkg 1/2) (offset 0) (count 1) (pool '(65)))
+   (and (member-equal op '(0 3 4 6))
+        (not (natp pkg))
+        (< pkg 3)
+        (or (equal op 4) (equal pkg 0))
+        (natp offset)
+        (natp count)
+        (< (+ offset count) *fn-hrcur-u64-bound*)
+        (implies (equal op 0) (equal count 0))
+        (fn-scc-octet-listp pool)
+        (<= (+ offset count) (len pool))
+        (not (fn-hrcur-test-span-begin-conclusion op pkg offset count pool)))))
+
+; Initial boundary hypothesis removal: package width.
+(assert-event
+ (let ((op 4) (pkg 3) (offset 0) (count 1) (pool '(65)))
+   (and (member-equal op '(0 3 4 6))
+        (natp pkg)
+        (not (< pkg 3))
+        (or (equal op 4) (equal pkg 0))
+        (natp offset)
+        (natp count)
+        (< (+ offset count) *fn-hrcur-u64-bound*)
+        (implies (equal op 0) (equal count 0))
+        (fn-scc-octet-listp pool)
+        (<= (+ offset count) (len pool))
+        (not (fn-hrcur-test-span-begin-conclusion op pkg offset count pool)))))
+
+; Initial boundary hypothesis removal: package on nonsymbol.
+(assert-event
+ (let ((op 3) (pkg 1) (offset 0) (count 1) (pool '(65)))
+   (and (member-equal op '(0 3 4 6))
+        (natp pkg)
+        (< pkg 3)
+        (not (or (equal op 4) (equal pkg 0)))
+        (natp offset)
+        (natp count)
+        (< (+ offset count) *fn-hrcur-u64-bound*)
+        (implies (equal op 0) (equal count 0))
+        (fn-scc-octet-listp pool)
+        (<= (+ offset count) (len pool))
+        (not (fn-hrcur-test-span-begin-conclusion op pkg offset count pool)))))
+
+; Initial boundary hypothesis removal: natural offset.
+(assert-event
+ (let ((op 3) (pkg 0) (offset -1) (count 1) (pool '(65)))
+   (and (member-equal op '(0 3 4 6))
+        (natp pkg)
+        (< pkg 3)
+        (or (equal op 4) (equal pkg 0))
+        (not (natp offset))
+        (natp count)
+        (< (+ offset count) *fn-hrcur-u64-bound*)
+        (implies (equal op 0) (equal count 0))
+        (fn-scc-octet-listp pool)
+        (<= (+ offset count) (len pool))
+        (not (fn-hrcur-test-span-begin-conclusion op pkg offset count pool)))))
+
+; Initial boundary hypothesis removal: natural count.
+(assert-event
+ (let ((op 3) (pkg 0) (offset 1) (count -1) (pool '(65)))
+   (and (member-equal op '(0 3 4 6))
+        (natp pkg)
+        (< pkg 3)
+        (or (equal op 4) (equal pkg 0))
+        (natp offset)
+        (not (natp count))
+        (< (+ offset count) *fn-hrcur-u64-bound*)
+        (implies (equal op 0) (equal count 0))
+        (fn-scc-octet-listp pool)
+        (<= (+ offset count) (len pool))
+        (not (fn-hrcur-test-span-begin-conclusion op pkg offset count pool)))))
+
+; Initial boundary hypothesis removal: NIL payload count.
+(assert-event
+ (let ((op 0) (pkg 0) (offset 0) (count 1) (pool '(65)))
+   (and (member-equal op '(0 3 4 6))
+        (natp pkg)
+        (< pkg 3)
+        (or (equal op 4) (equal pkg 0))
+        (natp offset)
+        (natp count)
+        (< (+ offset count) *fn-hrcur-u64-bound*)
+        (not (implies (equal op 0) (equal count 0)))
+        (fn-scc-octet-listp pool)
+        (<= (+ offset count) (len pool))
+        (not (fn-hrcur-test-span-begin-conclusion op pkg offset count pool)))))
+
+; Initial boundary hypothesis removal: pool octets, corrupted source model.
+(assert-event
+ (let ((op 3) (pkg 0) (offset 0) (count 1) (pool '(300)))
+   (and (member-equal op '(0 3 4 6))
+        (natp pkg)
+        (< pkg 3)
+        (or (equal op 4) (equal pkg 0))
+        (natp offset)
+        (natp count)
+        (< (+ offset count) *fn-hrcur-u64-bound*)
+        (implies (equal op 0) (equal count 0))
+        (not (fn-scc-octet-listp pool))
+        (<= (+ offset count) (len pool))
+        (not (fn-hrcur-test-span-begin-conclusion op pkg offset count pool)))))
+
+; Initial boundary hypothesis removal: span fits pool.
+(assert-event
+ (let ((op 3) (pkg 0) (offset 0) (count 2) (pool '(65)))
+   (and (member-equal op '(0 3 4 6))
+        (natp pkg)
+        (< pkg 3)
+        (or (equal op 4) (equal pkg 0))
+        (natp offset)
+        (natp count)
+        (< (+ offset count) *fn-hrcur-u64-bound*)
+        (implies (equal op 0) (equal count 0))
+        (fn-scc-octet-listp pool)
+        (not (<= (+ offset count) (len pool)))
+        (not (fn-hrcur-test-span-begin-conclusion op pkg offset count pool)))))
+
+; The initial u64 sum premise retains an enormous pool-length hypothesis;
+; no practically executable removal witness is claimed for it here.
