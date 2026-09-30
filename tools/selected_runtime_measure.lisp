@@ -18,6 +18,8 @@
 (let ((arena (fn-arena-seal-list '(83 58 32 120 13 10 13 10)
                                 (create-fn-arena)))
       (cursor (fn-lpc-begin 0 8 :pin)))
+ (unless (fn-lpc-ready-p cursor arena)
+  (error "Selected runtime fixture requires the actual entry invariant"))
  (fnn-srt-observe :begin (lambda () (fnn-selected-lpc-begin :ready 0 8 :pin)))
  (fnn-srt-observe :tick-one (lambda () (fnn-selected-lpc-tick :ready cursor 1 arena)))
  (fnn-srt-observe :invalid-carry (lambda () (fnn-selected-lpc-tick :refused cursor 1 arena)))
@@ -25,13 +27,14 @@
   (fnn-srt-observe :missing-callback
    (lambda () (fnn-selected-lpc-tick :ready cursor 1 arena)))))
 (format t "~&SELECTED-RUNTIME ~a ~a~%" (lisp-implementation-version) (machine-type))
-(with-open-file (stream "/home/ember/fn-gates/gpt61-legacy-parser-repl/build/selected-runtime-disassembly.txt"
+(with-open-file (stream "/home/ember/fn-gates/runtime-selected-attached-077b/build/selected-runtime-disassembly.txt"
  :direction :output :if-exists :supersede)
  (let ((*standard-output* stream))
   (dolist (name '(fn-srt-status fnn-selected-lpc-begin fnn-selected-lpc-tick
    fn-lpc-begin fn-lpc-header-begin fn-lpc-header-bad fn-lpc-tick fn-lpc-byte
    fn-lpc-at fn-lpc-put fn-lpc-span fn-lpc-header-byte fn-lpc-value-byte
    fn-lpc-close-fields fn-lpc-name-byte fn-lpc-name-step fn-lpc-name-key
-   fn-lpc-split-byte fn-lpc-body-byte fn-lpc-verdict))
+   fn-lpc-split-byte fn-lpc-body-byte fn-lpc-verdict
+   fn-arena-get fn-arena$x-get))
    (format t "~&SELECTED-FUNCTION ~s~%" name)
    (disassemble (symbol-function name)))))

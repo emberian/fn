@@ -5,6 +5,8 @@
 ;;; Caller/representation refinement and condition allocation remain separate
 ;;; obligations; this file alone does not enable a served family.
 (in-package "ACL2")
+(declaim (optimize (compilation-speed 0) (speed 3) (space 1)
+                   (safety 0) (debug 1)))
 
 (defvar *fnn-srt-status* nil)
 (defvar *fnn-srt-lpc-begin* nil)
@@ -55,9 +57,29 @@
 (defun fnn-selected-rpin-token (carry id owners)
  (fnn-srt-fixed-call *fnn-srt-rpin-token* carry (id owners)))
 
+;;; Startup metadata checks are ACL2's existing interface inspector. Ordinary
+;;; kind-only entries need no raw-with annotation (the linter rejects one).
+;;; A carried-invariant entry still requires the validated raw-dispatch table.
+(defun fnn-srt-compiled-callback (name world)
+ (let* ((entry (assoc name (table-alist 'fn-interfaces world)))
+        (kvs (cdr entry))
+        (formals (getpropc name 'formals nil world))
+        (stobjs (getpropc name 'stobjs-in nil world)))
+  (and entry (not (fn-di-problem name kvs world))
+       (eq (symbol-class name world) :common-lisp-compliant)
+       (fboundp name) (compiled-function-p (symbol-function name))
+       (or (eq (gethash name *fnn-raw-dispatch*) name)
+           (not (fn-di-invariant-conjuncts
+                 (fn-di-conjuncts (getpropc name 'guard *t* world))
+                 formals stobjs (fn-di-guard-kinds world) world)))
+       (not (eq (fnn-entry-guard-spec name) :unknown))
+       (symbol-function name))))
+
 ;;; Startup only. fnn-install-raw-dispatch has already validated raw-with
 ;;; declarations and carried-entry theorem names in this exact loaded world.
-;;; Install function objects from that table; a missing declaration stays NIL.
+;;; Carried entries require that table; ordinary kind-only entries require a
+;;; valid interface declaration and primitive guard-spec prewarm. Missing or
+;;; refused declarations stay NIL. No per-call argument invariant is inferred.
 ;;; Primary status is served family; secondary is parser family. A caller
 ;;; must keep its family unavailable unless its core status is :ready.
 (defun fnn-install-selected-runtime ()
@@ -81,11 +103,8 @@
                      (*fnn-srt-spbc-one* . fn-spbc-one)
                      (*fnn-srt-spbc-finish* . fn-spbc-finish)
                      (*fnn-srt-rpin-token* . fn-rpin-token)))
-    (let* ((name (cdr binding)) (raw (gethash name *fnn-raw-dispatch*))
-           (callback (and (eq raw name) (fboundp raw)
-                          (eq (symbol-class raw world) :common-lisp-compliant)
-                          (compiled-function-p (symbol-function raw))
-                          (symbol-function raw))))
+    (let* ((name (cdr binding))
+           (callback (fnn-srt-compiled-callback name world)))
      (setf (symbol-value (car binding)) callback)
      (unless callback
       (if (member name '(fn-lpc-begin fn-lpc-tick))
