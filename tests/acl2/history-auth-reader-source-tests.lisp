@@ -3,7 +3,10 @@
 (include-book "../../books/history-auth-reader-source")
 (defun fn-hsr-source-test-run (fuel c buffer pages trace pgs-digest-state)
   (declare (xargs :stobjs pgs-digest-state :measure (nfix fuel)
-                  :guard (natp fuel) :verify-guards nil))
+                  :guard (natp fuel) :verify-guards nil
+                  :hints (("Goal" :in-theory (disable fn-hsr-auth-request fn-hsr-auth-complete
+                    fn-hsr-auth-digest-tick fn-hsr-auth-byte-demand fn-hsr-auth-feed-byte
+                    fn-hsr-auth-release fn-hsr-field)))))
   (if (zp fuel) (mv :fuel c (reverse trace) pgs-digest-state)
     (case (fn-hsr-field 0 c)
       (:need-read
@@ -94,4 +97,44 @@
          (equal (car answer) :ready)
          (equal (fn-hsr-source-byte-complete (caddr answer) 42)
                 '(:byte (41 (7 3) 0 0) :cells 9 0 0 42))))
+  :rule-classes nil)
+
+(defun-nx fn-hsr-source-test-issued ()
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((mem (update-nth *pgs-mi* (pgs-zeros 20) (create-pgs-mem)))
+         (root (mv-nth 0 (pgs-x-write-rec 0 9 17 1 *fn-hsr-auth-directory-digest*
+                                         mem (create-fn-octets-pg))))
+         (begin (fn-hsr-source-begin root '(41 (7 3) 0 0) 0 '(:lease 8 2)))
+         (select (fn-hsr-auth-select-page 0 (mv-nth 1 begin) (create-pgs-digest-state)))
+         (issued (fn-hsr-auth-request (mv-nth 1 select))))
+    (list (mv-nth 1 issued) (mv-nth 2 issued))))
+
+(defthm fn-hsr-source-cancel-digest-before-settle-positive
+  (let* ((issued (fn-hsr-source-test-issued)) (request (car issued))
+         (observed (fn-hsr-auth-complete request 0 (len *fn-hsr-auth-directory*) :read-ok (cadr issued)))
+         (c (mv-nth 1 observed)) (cancel (fn-hsr-source-cancel-returned :uncertain c))
+         (next (mv-nth 1 cancel)) (release (fn-hsr-auth-release 0 next)))
+    (and (equal (mv-nth 0 observed) :yield)
+         (equal (fn-hsr-field 0 c) :digest)
+         (equal (fn-hsr-source-settle-demand 0 c) '(:retained :buffer-binding))
+         (equal (mv-nth 0 (fn-hsr-auth-release 0 c)) '(:refused :release-state))
+         (equal (fn-hsr-field 0 next) :refused)
+         (equal (fn-hsr-field 5 (fn-hsr-field 1 next)) 0)
+         (equal (fn-hsr-auth-identities next) (fn-hsr-auth-identities c))
+         (equal (fn-hsr-source-settle-demand 0 next) '(:settle 0))
+         (equal (mv-nth 0 release) :released)
+         (equal (fn-hsr-source-settle-demand nil (mv-nth 1 release)) '(:closed))))
+  :rule-classes nil)
+
+(defthm fn-hsr-source-cancel-returned-exact-pending-positive
+  (let* ((issued (fn-hsr-source-test-issued)) (c (cadr issued))
+         (joined (fn-hsr-source-cancel-returned :uncertain c)) (next (mv-nth 1 joined))
+         (invalid (fn-hsr-source-cancel-returned :ok c)))
+    (and (equal (fn-hsr-field 0 c) :waiting)
+         (equal (fn-hsr-field 4 (fn-hsr-field 1 c)) (car issued))
+         (equal (fn-hsr-source-settle-demand nil c) '(:retained :pending-source))
+         (equal (fn-hsr-field 0 next) :uncertain)
+         (equal (fn-hsr-source-settle-demand nil next) '(:closed))
+         (equal (fn-hsr-field 0 (mv-nth 1 invalid)) :waiting)
+         (equal (fn-hsr-source-settle-demand nil (mv-nth 1 invalid)) '(:retained :pending-source))))
   :rule-classes nil)

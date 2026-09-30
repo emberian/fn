@@ -79,6 +79,29 @@
       (:waiting '(:waiting))
       (otherwise (list :terminal (fn-hsr-field 17 c))))))
 
+(defun fn-hsr-source-cancel-returned (outcome c)
+  ; Caller has definitely returned/joined the executing source action.
+  (declare (xargs :guard t))
+  (mv-let (verdict next) (fn-hsr-auth-cancel c)
+    (if (equal (fn-hsr-field 0 next) :waiting)
+        (fn-hsr-auth-joined-failure (fn-hsr-field 4 (fn-hsr-field 1 next)) outcome next)
+      (mv verdict next))))
+
+(defun fn-hsr-source-settle-demand (buffer-id c)
+  (declare (xargs :guard t))
+  (let ((io (fn-hsr-field 1 c)))
+    (cond ((not (and (fn-hsr-auth-shapep c)
+                     (not (equal (fn-hsr-field 0 io) :waiting))
+                     (not (fn-hsr-field 4 io))))
+           '(:retained :pending-source))
+          ((and (member-eq (fn-hsr-field 0 c) '(:release :verified :refused :uncertain))
+                (natp buffer-id) (equal buffer-id (fn-hsr-field 5 io)))
+           (list :settle buffer-id))
+          ((and (member-eq (fn-hsr-field 0 c) '(:idle :refused :uncertain))
+                (null buffer-id) (null (fn-hsr-field 5 io)))
+           '(:closed))
+          (t '(:retained :buffer-binding)))))
+
 (defthm fn-hsr-source-verified-byte-unfolds
   (implies (equal (car (fn-hsr-source-verified-byte demand binding root-ticket c)) :ready)
            (and (fn-hsr-source-boundp binding c)
@@ -89,9 +112,10 @@
                              (fn-omk-at 3 demand) (fn-omk-at 4 demand)
                              (fn-omk-at 5 demand)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-hsr-source-verified-byte fn-hsr-source-bind
-                    fn-hsr-source-byte-complete fn-hsr-source-action))))
+  :hints (("Goal" :in-theory
+           (union-theories (theory 'minimal-theory) '(fn-hsr-source-verified-byte car-cons cdr-cons)))))
 
 (in-theory (disable fn-hsr-source-begin fn-hsr-source-boundp
                     fn-hsr-source-verified-byte fn-hsr-source-bind
-                    fn-hsr-source-byte-complete fn-hsr-source-action))
+                    fn-hsr-source-byte-complete fn-hsr-source-action
+                    fn-hsr-source-cancel-returned fn-hsr-source-settle-demand))
