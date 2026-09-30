@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1813 |
-| Certification roots in the Makefile | 1746 |
-| Books inside the root closure | 1810 |
-| `defthm` and `defthmd` events | 29057 |
-| `defun` events | 18786 |
-| Functions with verified guards | 3507 |
-| Functions declared `:verify-guards nil` and never verified | 2205 |
-| Functions left at the default with an explicit guard | 10253 |
+| Books read | 1815 |
+| Certification roots in the Makefile | 1748 |
+| Books inside the root closure | 1812 |
+| `defthm` and `defthmd` events | 29070 |
+| `defun` events | 18794 |
+| Functions with verified guards | 3508 |
+| Functions declared `:verify-guards nil` and never verified | 2207 |
+| Functions left at the default with an explicit guard | 10258 |
 | Functions left at the default with no guard | 2821 |
-| `assert-event` checks | 23816 |
-| `must-fail` checks | 2515 |
+| `assert-event` checks | 23820 |
+| `must-fail` checks | 2516 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
 | Theorems flagged SUSPECT by shape | 1242 |
 | Export-hygiene warnings | 337 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2511 |
+| Include-hygiene warnings | 2513 |
 | Host-names warnings | 2156 |
 | Hand-written-record warnings | 18 |
 
@@ -544,6 +544,7 @@ that `make certify` requests.
 | `books/key-statements.lisp` | root | 53 | 36 | 4/0/32/0 | 0 | 0 | 0 |
 | `books/lace-invariants.lisp` | root | 65 | 1 | 0/0/0/1 | 0 | 0 | 2 |
 | `books/lace.lisp` | root | 5 | 20 | 0/0/20/0 | 0 | 0 | 0 |
+| `books/legacy-parser-allocation.lisp` | root | 7 | 6 | 1/0/5/0 | 0 | 0 | 0 |
 | `books/legacy-parser-catalog.lisp` | root | 28 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/legacy-parser-columns.lisp` | root | 46 | 6 | 0/6/0/0 | 0 | 0 | 2 |
 | `books/legacy-parser-composition.lisp` | root | 30 | 4 | 0/1/1/2 | 0 | 0 | 0 |
@@ -1190,7 +1191,7 @@ that `make certify` requests.
 | `tests/acl2/bp-fragment-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 88 | 0 | 1 |
 | `tests/acl2/bp-handoff-report-tests.lisp` | root | 0 | 8 | 0/8/0/0 | 10 | 1 | 0 |
 | `tests/acl2/bp-handoff-status-tests.lisp` | root | 0 | 3 | 0/1/1/1 | 18 | 3 | 0 |
-| `tests/acl2/bp-held-payload-tests.lisp` | root | 3 | 3 | 0/2/1/0 | 2 | 1 | 0 |
+| `tests/acl2/bp-held-payload-tests.lisp` | root | 5 | 3 | 0/2/1/0 | 2 | 2 | 0 |
 | `tests/acl2/bp-held-projection-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 12 | 1 | 0 |
 | `tests/acl2/bp-ingress-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 1 | 0 |
 | `tests/acl2/bp-ingress-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 113 | 0 | 0 |
@@ -1466,6 +1467,7 @@ that `make certify` requests.
 | `tests/acl2/journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/key-statements-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 104 | 23 | 0 |
 | `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |
+| `tests/acl2/legacy-parser-allocation-tests.lisp` | root | 3 | 2 | 0/2/0/0 | 3 | 0 | 0 |
 | `tests/acl2/legacy-parser-catalog-tests.lisp` | root | 16 | 3 | 0/3/0/0 | 3 | 0 | 0 |
 | `tests/acl2/legacy-parser-columns-tests.lisp` | root | 20 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `tests/acl2/legacy-parser-composition-tests.lisp` | root | 5 | 2 | 0/0/2/0 | 29 | 0 | 0 |
@@ -1656,7 +1658,7 @@ that `make certify` requests.
 | `tests/acl2/pagestore-tests.lisp` | root | 0 | 39 | 0/0/2/37 | 41 | 0 | 0 |
 | `tests/acl2/payload-arena-extent-tests.lisp` | root | 13 | 7 | 0/2/1/4 | 6 | 10 | 0 |
 | `tests/acl2/payload-arena-paged-tests.lisp` | root | 41 | 12 | 0/6/2/4 | 5 | 20 | 0 |
-| `tests/acl2/payload-arena-tests.lisp` | root | 22 | 13 | 0/0/1/12 | 7 | 10 | 0 |
+| `tests/acl2/payload-arena-tests.lisp` | root | 23 | 13 | 0/0/1/12 | 7 | 10 | 0 |
 | `tests/acl2/payload-commit-extent-tests.lisp` | root | 2 | 0 | 0/0/0/0 | 3 | 4 | 0 |
 | `tests/acl2/payload-extent-tests.lisp` | root | 5 | 1 | 0/0/0/1 | 13 | 7 | 0 |
 | `tests/acl2/payload-kinds-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
@@ -1858,7 +1860,7 @@ that `make certify` requests.
 | `tests/acl2/stx-reader-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/stx-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 42 | 0 | 0 |
 | `tests/acl2/stx-transit-tests.lisp` | root | 0 | 24 | 0/13/11/0 | 154 | 5 | 0 |
-| `tests/acl2/subject-id-buffer-tests.lisp` | root | 2 | 1 | 0/0/0/1 | 2 | 0 | 0 |
+| `tests/acl2/subject-id-buffer-tests.lisp` | root | 2 | 1 | 0/0/0/1 | 3 | 0 | 0 |
 | `tests/acl2/tcpcl-delivery-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 5 | 0 |
 | `tests/acl2/tcpcl-spool-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/tcpcl-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 168 | 6 | 0 |
@@ -2265,7 +2267,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-lpv-header-fold-is-value-byte-by-definition` | `books/legacy-parser-values.lisp` | 370 | branch-of-definition: the hypothesis is a branch test of fn-lpc-header-byte and the conclusion is that branch's value |
 | `fn-lpv-make-field-value-by-definition` | `books/legacy-parser-columns.lisp` | 411 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-lpv-nil-span-value-by-definition` | `books/legacy-parser-catalog.lisp` | 148 | arm-of-definition: constant arguments select one IF/COND arm of fn-lpc-span-value and the conclusion is that arm's value |
-| `fn-lpv-run-atom` | `books/legacy-parser-value-run.lisp` | 39 | arm-of-definition: the hypotheses select one IF/COND arm of fn-nlv-run and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-nlv-run and the conclusion is that branch's value |
+| `fn-lpv-run-atom-by-definition` | `books/legacy-parser-value-run.lisp` | 39 | arm-of-definition: the hypotheses select one IF/COND arm of fn-nlv-run and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-nlv-run and the conclusion is that branch's value |
 | `fn-lzr-composite-payload-octets` | `books/payload-lz-replay.lisp` | 207 | instance-corollary: the statement is fn-lzr-record-payload-octets instantiated, discharging nothing |
 | `fn-lzr-decode-empty-stream` | `books/payload-lz-record.lisp` | 383 | instance-corollary: the statement is fn-pzd-decode-of-empty instantiated, discharging nothing |
 | `fn-lzr-expand-of-plain` | `books/payload-lz-record.lisp` | 410 | arm-of-definition: the hypotheses select one IF/COND arm of fn-lzr-expand and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-lzr-expand and the conclusion is that branch's value |

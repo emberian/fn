@@ -924,7 +924,9 @@
     "books/legacy-parser-columns",
     "tests/acl2/legacy-parser-columns-tests",
     "books/legacy-parser-catalog",
+    "books/legacy-parser-allocation",
     "tests/acl2/legacy-parser-catalog-tests",
+    "tests/acl2/legacy-parser-allocation-tests",
     "books/nntp-article-pass",
     "books/nntp-responses",
     "books/nntp-article-block",
@@ -1750,26 +1752,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1813,
-    "books_in_root_closure": 1810,
-    "roots": 1746,
-    "theorems": 29057,
-    "functions": 18786,
-    "assert_events": 23816,
-    "must_fails": 2515,
+    "books": 1815,
+    "books_in_root_closure": 1812,
+    "roots": 1748,
+    "theorems": 29070,
+    "functions": 18794,
+    "assert_events": 23820,
+    "must_fails": 2516,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
-      "verified": 3507,
-      "declared-off": 2205,
-      "default-guarded": 10253,
+      "verified": 3508,
+      "declared-off": 2207,
+      "default-guarded": 10258,
       "default-unguarded": 2821
     },
     "suspect_theorems": 1242,
     "export_hygiene_warnings": 337,
     "enabled_projection_warnings": 53,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2511,
+    "include_hygiene_warnings": 2513,
     "host_names_warnings": 2156,
     "hand_written_record_warnings": 18
   },
@@ -15662,6 +15664,32 @@
       "read_error": null
     },
     {
+      "book": "books/legacy-parser-allocation.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 6,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "legacy-parser-cursor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/legacy-parser-catalog.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -15880,7 +15908,7 @@
       ],
       "system_includes": [],
       "suspects": [
-        "fn-lpv-run-atom"
+        "fn-lpv-run-atom-by-definition"
       ],
       "read_error": null
     },
@@ -34758,7 +34786,7 @@
       "book": "tests/acl2/bp-held-payload-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 3,
+      "theorems": 5,
       "functions": 3,
       "guards": {
         "verified": 0,
@@ -34768,7 +34796,7 @@
       },
       "verify_guards_events": 0,
       "assert_events": 2,
-      "must_fails": 1,
+      "must_fails": 2,
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
@@ -42462,6 +42490,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/legacy-parser-allocation-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 3,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/legacy-parser-allocation"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/legacy-parser-catalog-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -47744,7 +47798,7 @@
       "book": "tests/acl2/payload-arena-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 22,
+      "theorems": 23,
       "functions": 13,
       "guards": {
         "verified": 0,
@@ -53378,7 +53432,7 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 2,
+      "assert_events": 3,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 1,
@@ -57428,7 +57482,7 @@
       ]
     },
     {
-      "theorem": "fn-lpv-run-atom",
+      "theorem": "fn-lpv-run-atom-by-definition",
       "book": "books/legacy-parser-value-run.lisp",
       "line": 39,
       "reasons": [
@@ -68576,7 +68630,7 @@
       {
         "check": "rst-bp-transit-without-the-submit",
         "book": "tests/acl2/relay-source-routes-tests.lisp",
-        "line": 253,
+        "line": 258,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -73640,6 +73694,13 @@
         "line": 83,
         "include": "article-line-bound",
         "included": "books/article-line-bound.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/legacy-parser-allocation.lisp",
+        "line": 6,
+        "include": "legacy-parser-cursor",
+        "included": "books/legacy-parser-cursor.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -80962,6 +81023,13 @@
         "line": 7,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/legacy-parser-allocation-tests.lisp",
+        "line": 3,
+        "include": "../../books/legacy-parser-allocation",
+        "included": "books/legacy-parser-allocation.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
