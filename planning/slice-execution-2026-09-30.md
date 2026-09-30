@@ -1,5 +1,35 @@
 # Completing whole slices
 
+## Batch captures retain publication backing before connections exist
+
+The actual `fn-ocv-capture` protocol retains at most two reader views, D and
+N, independently of connections. Their matching concrete publications need
+the same lifetime: START captures D before the working publication advances,
+and START-NEXT captures N before its drain. A connection may first open at D
+while a barrier is in flight, when no earlier connection or query holds that
+generation. Connection/query reference counts alone therefore do not protect
+the backing required by this reachable schedule.
+
+The core capture transition retains the exact publication associated with
+each newly captured view. Repeated START or NEXT that leaves the logical
+capture unchanged must not acquire another hold. UNNEXT releases N and keeps
+D; COMPLETE releases D and transfers N's existing hold to the D slot, or
+releases D if there is no N; DROP releases both. These effects follow the
+actual logical transition atomically, including its unchanged cases. A
+connection opened or repinned from a capture acquires its own reference
+before that batch hold can be released. Physical reclamation still waits for
+all batch, connection, query and writer holds and their outstanding effects.
+
+Use two bounded core slots and the shared charged generation registry, not
+a host lookup by version or an immortal history map. The index owner owns
+generation accounting, the admission owner owns the real capture hooks, and
+the READ/OVER owners consume the resulting matching publication. Required
+composition evidence includes zero connections at START, a working-root
+advance, first connection open during the barrier, COMPLETE, and a continued
+read through the connection's retained publication. This is a newly explicit
+join obligation; it is not a claim that the old served path has a demonstrated
+reclamation defect.
+
 Ember's 2026-09-30 correction changes the execution practice: identify the obstruction to a complete capability, remove it confidently, and close its associated original work together. This does not change the finite scope, completion criteria, evidence standards or model policy (Sol execution, Astra only architectural synthesis).
 
 | Slice | Integration owner | Acceptance path and helper roles |
@@ -63,3 +93,231 @@ The actual query capture must reserve its slot, retained roots, payload arena an
 Reuse the five-coordinate `fn-prs-issue` admission algebra against the same installed budget, baseline and aggregate charge used by the other pool consumers. A separate query registry must not introduce a second independently spendable copy of that budget. The concrete query rows can live in the bounded segmented registry, with a named relation to the logical ownership ledger and a maintained aggregate. Installation and release must preserve that relation as well as the pool funding invariant; cancellation retains charge until definite joined cleanup. Already allocated registry and buffer capacity remains charged at its retained high-water allocation.
 
 The existing logical `fn-prl-binding`, `fn-prl-remove` and file-held operations traverse active rows; `fn-prl-remove` also allocates their replacement list. Calling those operations directly in an adapter is not constant work. A concrete segmented implementation needs its boundary correspondence; a transitional served use of list operations needs an explicit supported-profile bound and funding for their full traversal and allocation. This is a constraint on the actual query admission join, not a prerequisite to redesign unrelated P12 code.
+
+The actual S7 assembly also exposed the missing bounded outer Store writer.
+The canonical history image does not replace the arena and F/P/E/R runs.
+The selected [reference-aware writer contract](checkpoint-reference-cursor-2026-09-30.md)
+preserves exact schema-3 bytes, candidate order and composite payload meaning,
+using resumable reference comparison, census, emission and framing. Its
+funding joins the same maintenance authority; source design is not completion.
+
+## Shared compiled-runtime accounting
+
+The runtime owner supplies one reusable primitive table, rather than a new
+whole-job adequacy assumption for each caller. Its coordinate binds the runtime
+and layout, implementation source, ACL2/compiler toolchain and compilation
+policy, and the actual attachment/extent/paged representation. Input,
+intermediate and result integer domains are explicit. The selected constructor
+layout charges cells; signed negation and addition have separate pre-normalization
+allocation bounds. A source binary subtraction counts both lowered operations.
+The proposed 16-byte cell and 32-byte NEG/ADD rows remain conditional on that
+selected primitive contract and its domain; they are not a completed native
+workspace claim.
+
+Each operation owner proves its actual constructor and lowered-operation counts
+and supplies its retained-state roster. First-use work, caches, TLS, stack frames,
+fault construction and physical arena capacity remain separate obligations.
+Allocated-object bounds do not establish garbage collection or release of retained
+capacity. All callers use the same installed baseline U and outstanding charge C;
+definitely installed capacity transfers from C to U before the remaining job
+credit is released. The compiled observations must use the attachment before
+the generic arena is introduced. A generic list-backed observation does not
+qualify the native paged/extent path.
+
+## Core-held render plans
+
+The selected OVER route keeps each response's plan in a private concrete holder.
+The actual logical read producer, `fn-mca-read-span`, establishes its effects and
+the matching source/pin/query grant in a composed core operation. The program
+wrapper threads that holder; it does not install a host-supplied plan. Actual
+outcome, exposure and redeem transitions attach their own tails. Subsequent
+positioning, window and byte entries receive the holder stobj and bounded
+primitive inputs, with establishment and preservation over that same state.
+The existing `:raw-with` rejection of unchecked host plan arguments remains.
+A host `:ready` word and startup guard-cache preparation do not establish a
+per-call plan invariant. Holder construction, registration and retained capacity
+are funded through the shared pool before allocation.
+
+## Resumable admission and canonical row offers
+
+Admission retains its durable feed-intent phase, evidence, generation and
+transaction identity across query yields. Resumption does not write the intent
+again or publish a resolution before a terminal result. A yielded query keeps
+its wake-up and open input charge; an empty commit-member list does not establish
+that those resources may be settled. Before prepare/reservation, the owner either
+revalidates the captured catalog and authority coordinates under its lock or
+proves that its retained leases exclude every relevant intervening writer.
+Changed coordinates restart or reconcile the job rather than reusing absence.
+
+Snapshot census and emission both offer canonically remapped rows. Event ordinal
+and target payload handle are different counters: only payload-sealing held or
+composite rows consume the next handle. Both passes restart the same immutable
+source and counter state; retrying an offer before its acknowledgement does not
+advance twice. Tests include mixed event kinds and a handle-width change.
+The original row remains available for the outer P wire projection, while the
+remapped row supplies the new history image. Complete metadata tails, including
+the mandatory binding field, survive both resident and borrowed remapping.
+
+## Registered query settlement
+
+The row-taking `fn-iqr-*` functions are internal resource algebra. An old active
+row can be replayed against a later ledger and release another query's charge;
+the coordinator's two-query diagnostic evaluated that case in the actual ACL2
+source world. This is not a reachable-provider counterexample: the public
+provider boundary is still being implemented. Its token-only operations fetch
+the current registered row and update that row and the shared pool in one
+owner-serialized core call. Promotion to retained baseline follows the same
+rule. Duplicate completion and stale tokens after slot reuse preserve every
+other live query's debt. The shared pool type is extracted without creating a
+second authority; its new incoming-holder field changes the runtime layout and
+requires matching evidence.
+
+## Captured group-number source
+
+Message-ID minimum selection is not OVER range enumeration. The shared provider
+supplies a sealed row read by ordinal; OVER separately maintains the mapping
+from a group's local article number to its catalog row ordinal. Ordinal zero is
+valid. The selected implementation uses persistent group and number bit tries,
+with resumable descent and path-copy rebuilding. It reuses generic trie algebra,
+not the older materialized entry index. Runtime group lookup consumes string
+bits directly rather than constructing an unbounded integer key or octet list.
+Numeric domains follow supported profiles and codecs, with no added fixed
+31-bit ceiling. Group lookup, updates, old captured roots and cleanup all have
+explicit funding; no full-history scan or per-request index rebuild substitutes
+for this source.
+
+The actual admission owner prepares the staged roots from the exact assigned
+catalog row and captured revision before durable publication. Yield retains
+that staging state and its credit. A changed revision is reconciled before the
+irreversible publication. At `fn-owner-finish-submission-synced`, the matching
+completion installs the staged roots with the catalog's `fn-sca-finish` effect
+under the same serialized core transition. A mismatch after durable completion
+requires recovery; it cannot become a refusal, rollback or serving interval
+with an index awaiting catch-up. Loading uses the same assigned-row insertion.
+Capture retains the selected group's exact number root, row root, count, view
+and arena grant. Visibility, holes, withdrawals, later appends and reset or
+incarnation changes remain explicit refinement and lifecycle obligations.
+`sol_over_served` owns this source and controller; `sol_owner_union` owns its
+actual admission/publication hooks, and `sol_index_integration` supplies the
+common row traversal. This is an implementation contract, not completion.
+
+## Consumer revisions follow the actual refresh
+
+An article append is not by itself evidence that previous consumer results
+are unchanged. A new cancellation can withdraw existing content, and an
+arriving target can resolve a previously pending withdrawal. The actual ACL2
+withdrawal refresh returns its result and a conservative semantic-effect tag
+together, reusing its computed new plan and existing-target predicate. The
+owner also checks its existing verdict-growth condition; a new verdict for
+an older article cannot be treated as ordinary append. Configuration and
+authority changes keep their separate invalidation rules. No native Boolean,
+second whole-view comparison, or blanket exclusion of signed appends supplies
+this decision. Existing traversal cost remains an open obligation.
+
+Live publication applies the revision from that same refresh result, with
+the authority state and view installed atomically. Recovery retains the
+withdrawal/view accumulator and derives the same decisions in historical
+order. Revision exhaustion must refuse before durable frontier allocation.
+Its preflight therefore needs a candidate-row lookup corresponding to the
+actual post-install lookup, preserving first/oldest-row semantics even when
+older history names the same Message-ID. A candidate must not blindly shadow
+that history. Its expected transaction, frontier and authority coordinates
+are revalidated after a yield, before allocation. The exact lookup relation,
+live/recovery joins and literal cancellation/target-arrival cases remain
+implementation obligations of the consumer and admission owners.
+
+## Incoming backing outlives a request
+
+The pool's third field holds a fixed carrier containing the operational
+backing descriptor and the current incoming-holder row. Release clears the
+row while preserving the descriptor. An uninitialized carrier is not evidence
+of zero capacity. The existing pool constructor still has three fields, but
+the carrier's allocation and retained layout require their own accounting.
+
+Actual controlled allocation/import establishes the capacity carry. Every
+reserve, replacement and failure preserves its correspondence to the concrete
+backing; payload length cannot substitute for capacity. Definitely installed
+capacity transfers from job charge to retained baseline atomically, and old
+and new backing remain charged during overlap. The incoming setup machine
+issues bounded copy ranges and seals only after their exact acknowledgements.
+A planned fixed-size RX buffer bounds a scheduling step, not stored data.
+The paged owner owns this carrier and setup machine; the admission owner owns
+its native job integration. Neither the old whole-buffer REPLACE path nor
+source-only constructor counts establish this runtime contract.
+
+## Fixed storage for input-copy control
+
+The retained input must also survive unrelated reader quanta. The new native
+copy adapter writes the array returned by `fnn-live-octets`; the existing
+served reader fills that same global input stobj. Holding owner and extent
+locks during one copy step does not exclude a later reader fill between
+steps. The assembly must establish exclusion for every writer of the leased
+backing, or supply separate issued incoming backing to both the copy and its
+actual parser/confirmation consumers. A service job pointer alone establishes
+neither condition. Backing identity and capacity remain carried across yields,
+and the continuation may not silently switch to a newly installed global
+array. The composition fixture interleaves an ordinary reader fill between
+admission quanta and checks the retained bytes, token, capacity and charge
+through terminal confirmation and joined release. This constrains activation
+of the new adapter; it is not a demonstrated defect in the old served path.
+
+The list-based input-copy controller allocates fresh control cells on every
+quantum. Clearing aliases is not an observation that the collector reclaimed
+them; charging the entire copy's cumulative allocation would also make
+admission depend on total input length despite a fixed live workspace.
+The selected served implementation therefore uses an admitted fixed controller
+stobj, with a named abstraction to the carrier, holder row and copy plan above.
+The pool and controller transition together under the existing authority;
+there is no independently spendable controller budget.
+
+The fixed fields carry backing identity/capacity, current holder identity and
+phase, refundable charge, copy kind/total/quantum/offset, pending range and
+proposed installed capacity. Next and acknowledgement exchange scalar multiple
+values rather than allocating a new grant or range list each time. The retained
+native job and its token are constructed once after admission. Initial and
+preserved correspondence, cancellation, failed replacement, release and actual
+constructor costs remain obligations of this representation change.
+
+The actual native caller matters: `fnn-call` constructs a `multiple-value-list`
+on every invocation. The served controller therefore needs a selected,
+guarded compiled callback returning scalar multiple values directly, with
+established caller preconditions and no generic fallback. Fixed core fields
+alone do not remove dispatcher allocation. Scalar arithmetic, callback frames
+and actual array-dimension domains need matching runtime evidence; no arbitrary
+stored-data ceiling or blanket garbage-collector adequacy claim is introduced.
+The paged owner implements the representation, admission owns the actual
+scheduler/callback join, and the runtime owner supplies the matching evidence.
+
+## Recovery authority precedes the final event count
+
+The verified checkpoint decoder establishes checkpoint, frame/root/region and
+log-position coordinates before suffix recovery knows the complete event
+count. The live captured-source issuer therefore cannot authorize recovery:
+its exact total-count promise is not established at that point. Recovery uses
+a separate core-issued token bound to those verified loaded coordinates, the
+current reset epoch and a monotone issuer ticket. A host suffix-vector length
+or an old live-owner capture cannot supply the missing authority or count.
+
+The actual decode/intern/replay pass carries count and source provenance as it
+consumes rows. Its completion seals the exact final source, full identity
+context, account/view state, counts and index roots in the same installation
+transition. Serving and live-query capture start only after that transition.
+Stale tokens, changed regions, reset and partial failure leave recovery
+unavailable, without falling back to an old live state. Each bounded step
+still reserves its decode, intern and update allocation before doing the work;
+an unknown final count does not authorize unbounded allocation. The producer
+owns the issuer, snapshot owns the same-pass context result, and admission
+owns reset and final installation.
+
+## Publication keeps Store and catalog coordinates distinct
+
+The owner's view version names a prefix of committed Store events. Catalog
+row count counts its article rows; frontier is another coordinate. They are
+not interchangeable. A publication retains all three together with the exact
+immutable row, table and number roots and the corresponding visibility state.
+In particular, the older catalog predicate's numeric test `ordinal < version`
+does not justify admitting later rows between captured catalog count and the
+Store view version. The new reader boundary relates its immutable captured
+catalog to the owner view at capture, with an explicit captured row-count
+fence and withdrawal correspondence. It does not transfer a theorem over a
+later mutable catalog by substituting the Store version for catalog count.

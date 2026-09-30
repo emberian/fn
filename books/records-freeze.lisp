@@ -55,7 +55,7 @@
 ;      version V, to the newest redirect at a version below V, so a view
 ;      pinned before the reclaim reads the original and one after reads
 ;      the tombstone (`fn-rfz-resolve-before-reclaim',
-;      `fn-rfz-resolve-after-reclaim'; both handles keep their bytes under
+;      `fn-rfz-resolve-after-reclaim-by-definition'; both handles keep their bytes under
 ;      later seals by the arena's `fn-arena-seals-keep-sealed'), and the
 ;      new row materializes to the tombstone
 ;      (`fn-rfz-reclaim-new-row-reads-the-tombstone').  Which form
@@ -478,7 +478,7 @@
            (equal (fn-rfz-resolve h (list (cons w tomb)) v) h)))
 
 ; A view taken after it reads the tombstone.
-(defthm fn-rfz-resolve-after-reclaim
+(defthm fn-rfz-resolve-after-reclaim-by-definition
   (implies (< w v)
            (equal (fn-rfz-resolve h (list (cons w tomb)) v) tomb)))
 

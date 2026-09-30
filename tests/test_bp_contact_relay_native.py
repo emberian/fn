@@ -17,6 +17,40 @@ SENDER = native_image("FN_NATIVE_CONTACT_SENDER")
 RECEIVER = native_image("FN_NATIVE_CONTACT_RECEIVER")
 
 
+class RelayCompletion:
+    """Join the exact exchanges captured by one immutable route snapshot."""
+    def __init__(self):
+        self.event = threading.Event()
+        self.lock = threading.Lock()
+        self.workers = []
+
+    def start(self, worker):
+        with self.lock:
+            self.workers.append(worker)
+            worker.start()
+
+    def set(self):
+        self.event.set()
+
+    def is_set(self):
+        return self.event.is_set()
+
+    def wait(self, timeout):
+        deadline = time.monotonic() + timeout
+        if not self.event.wait(timeout):
+            return False
+        with self.lock:
+            workers = tuple(self.workers)
+        for worker in workers:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return False
+            worker.join(remaining)
+            if worker.is_alive():
+                return False
+        return True
+
+
 class ByteRelay:
     """Forward bytes without inspecting or answering any protocol message."""
 
@@ -27,20 +61,20 @@ class ByteRelay:
         self.listener.listen(4)
         self.listener.settimeout(0.2)
         self.port = self.listener.getsockname()[1]
-        self.target = None
-        self.cut_next = False
-        self.cut_after = None
+        self.route_lock = threading.RLock()
+        self.route_state = (None, False, None, None, RelayCompletion())
         self.stopped = threading.Event()
         self.workers = []
         self.thread = threading.Thread(target=self._accept, daemon=True)
         self.thread.start()
 
-    def route(self, port, cut_next=False, cut_after=None):
-        self.target = port
-        self.cut_next = cut_next
-        # Forward both ways, but sever both sides once the client has sent
-        # CUT_AFTER octets: a transfer that started and never finished.
-        self.cut_after = cut_after
+    def route(self, port, cut_next=False, cut_after=None, observer=None):
+        # Publish target, fault and observer together. The completion belongs
+        # to this route snapshot; replacing the route cannot notify it.
+        completed = RelayCompletion()
+        with self.route_lock:
+            self.route_state = (port, cut_next, cut_after, observer, completed)
+        return completed
 
     def _accept(self):
         while not self.stopped.is_set():
@@ -50,17 +84,32 @@ class ByteRelay:
                 continue
             except OSError:
                 break
-            target, cut, limit = self.target, self.cut_next, self.cut_after
-            self.cut_next = False
-            worker = threading.Thread(
-                target=self._exchange, args=(client, target, cut, limit),
-                daemon=True
-            )
-            self.workers.append(worker)
-            worker.start()
+            # Assignment and worker registration are atomic with route drain.
+            with self.route_lock:
+                target, cut, limit, observer, completed = self._snapshot_route()
+                worker = threading.Thread(
+                    target=self._exchange, args=(client, target, cut, limit, observer, completed),
+                    daemon=True
+                )
+                self.workers.append(worker)
+                completed.start(worker)
+
+    def drain(self, completed, timeout):
+        """Seal the old route then join every exchange assigned before sealing."""
+        with self.route_lock:
+            if self.route_state[4] is completed:
+                self.route_state = (None, False, None, None, RelayCompletion())
+        return completed.wait(timeout)
+
+    def _snapshot_route(self):
+        with self.route_lock:
+            snapshot = self.route_state
+            target, cut, limit, observer, completed = snapshot
+            self.route_state = (target, False, limit, observer, completed)
+            return snapshot
 
     @staticmethod
-    def _exchange(client, target, cut, limit=None):
+    def _exchange(client, target, cut, limit=None, observer=None, completed=None):
         with client:
             if target is None:
                 return
@@ -97,10 +146,21 @@ class ByteRelay:
                         destination = upstream if source is client else client
                         if limit is not None and source is client:
                             if forwarded + len(data) >= limit:
+                                sent = False
                                 try:
                                     destination.sendall(data[:limit - forwarded])
+                                    forwarded = limit
+                                    sent = True
                                 except OSError:
                                     pass
+                                # Close both real sockets before reporting the cut.
+                                client.close()
+                                upstream.close()
+                                if observer is not None:
+                                    observer(event="byte-limit-severed", forwarded=forwarded,
+                                             send_succeeded=sent, limit=limit)
+                                if completed is not None:
+                                    completed.set()
                                 return
                             forwarded += len(data)
                         try:

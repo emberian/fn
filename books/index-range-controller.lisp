@@ -87,3 +87,39 @@
     (query (fn-spp-at 1 control)) (resource (fn-spp-resource (fn-spp-at 4 control)))
     (origin (fn-spp-origin (fn-spp-at 4 control)))))
   :in-theory (e/d (fn-ibr-render-install) (fn-rh-producer-install-positioned)))))
+
+; Actual token-only registered consumer supplies QUERY after the provider's
+; active claim/payload/generation checks. These bounded scalar comparisons
+; bind the header; they are not a replacement for registered authorization.
+(defun fn-ibr-registered-render-install (control query fn-render-holder)
+ (declare (xargs :stobjs fn-render-holder :guard t))
+ (if (and (equal (fn-spp-at 0 control) :fn-ibr)
+          (equal (fn-spp-at 3 control) :position)
+          (equal (fn-spp-at 1 query) (fn-spp-at 1 control))
+          (equal (fn-spp-at 4 query) (fn-spp-at 2 control)))
+  (let ((plan (fn-spp-at 4 control)))
+   (fn-rh-producer-install-positioned
+     plan (fn-spp-at 5 control) query
+     (fn-spp-resource plan) (fn-spp-origin plan) fn-render-holder))
+  (mv :unavailable fn-render-holder)))
+
+(defthm fn-ibr-registered-render-retains-full-query-and-same-plan
+ (implies (and (equal (fn-spp-at 0 control) :fn-ibr)
+               (equal (fn-spp-at 3 control) :position)
+               (equal (fn-spp-at 1 query) (fn-spp-at 1 control))
+               (equal (fn-spp-at 4 query) (fn-spp-at 2 control))
+               (not (fn-rh-live fn-render-holder)))
+  (let* ((next (mv-nth 1 (fn-ibr-registered-render-install control query fn-render-holder)))
+         (plan (fn-spp-at 4 control)))
+   (and (equal (fn-rh-plan next) plan)
+        (equal (fn-rh-pin next) (fn-spp-at 5 control))
+        (equal (fn-rh-query next) query)
+        (equal (fn-rh-resource next) (fn-spp-resource plan))
+        (equal (fn-rh-origin next) (fn-spp-origin plan)))))
+ :rule-classes nil
+ :hints (("Goal" :use
+  ((:instance fn-rh-installed-positioned-plan-is-same-registered-plan
+    (positioned (fn-spp-at 4 control)) (pin (fn-spp-at 5 control))
+    (resource (fn-spp-resource (fn-spp-at 4 control)))
+    (origin (fn-spp-origin (fn-spp-at 4 control)))))
+  :in-theory (e/d (fn-ibr-registered-render-install) (fn-rh-producer-install-positioned)))))

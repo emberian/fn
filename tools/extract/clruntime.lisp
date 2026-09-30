@@ -51,6 +51,22 @@
 
 ;;; --- the live stobjs (cl.py's xl-make-live-stobjs fills this at start) ----
 (defvar *xl-user-stobj-alist* nil)
+(defvar *xl-stobj-table-keys* (make-hash-table :test 'eq))
+(defun xl-make-stobj-table (size &optional rehash-size rehash-threshold)
+  (apply #'make-hash-table :test 'eq
+         (append (and size (list :size size))
+                 (and rehash-size (list :rehash-size rehash-size))
+                 (and rehash-threshold (list :rehash-threshold rehash-threshold)))))
+(defun xl-register-stobj-names (names)
+  ;; The extracted served world is immutable: it has no ACL2 undo/redefinition
+  ;; operation. Distinct congruent names retain distinct registry identities.
+  (dolist (name names)
+    (unless (gethash name *xl-stobj-table-keys*)
+      (setf (gethash name *xl-stobj-table-keys*) (gensym (symbol-name name)))))
+  nil)
+(defun xl-stobj-table-key (name)
+  (or (gethash name *xl-stobj-table-keys*)
+      (error "stobj-table key is not in the extracted stobj registry: ~s" name)))
 (defun user-stobj-alist (state) (declare (ignore state)) *xl-user-stobj-alist*)
 
 ;;; --- ACL2's error path.  A guard violation or hard error inside an entry

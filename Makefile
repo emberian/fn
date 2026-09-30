@@ -23,6 +23,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/defrecord-tests \
 	tests/acl2/defkeystone-tests \
 	tests/acl2/definterface-tests \
+	tests/acl2/definterface-recognizer-tests \
 	tests/acl2/defevent-tests \
 	books/acceptance \
 	books/acceptance-invariants \
@@ -193,6 +194,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/native-control-host-tests \
 	books/native-live-status \
 	tests/acl2/native-live-status-tests \
+	books/native-live-status-words \
+	books/operator-report-fields \
+	books/operator-report-fields-text \
+	books/operator-report-fields-native-reference \
+	tests/acl2/operator-report-fields-tests \
+	tests/acl2/operator-report-fields-native-reference-tests \
 	books/retention-figures \
 	books/control-evidence-grammar \
 	books/owner-inspect-group \
@@ -225,6 +232,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-files-teeth-tests \
 	books/store-node \
 	books/store-node-existing-invariants \
+	books/poster-bytes-source \
+	books/poster-bytes-source-buffer \
 	books/poster-bytes \
 	books/store-node-invariants-base \
 	books/store-node-invariants \
@@ -1105,6 +1114,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/over-byte-cached-row-source \
 	books/over-range-all-step-source \
 	books/over-byte-full-seek-range \
+	books/over-byte-semantic-carry \
+	books/over-byte-full-run-relation \
+	tests/acl2/over-byte-semantic-carry-tests \
 	tests/acl2/over-byte-seek-parser-range-tests \
 	tests/acl2/over-byte-cached-row-source-tests \
 	tests/acl2/over-byte-full-seek-range-tests \

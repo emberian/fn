@@ -249,7 +249,15 @@ class CL(Backend):
                 tuples.append((names, self.emit(a, env, n, mode)))
                 new_env[v] = names
             else:
-                plain.append((v, self.emit(a, env, 1, mode)))
+                binding = self.stobj_table_binding(v, a)
+                if binding is not None:
+                    # Stock raw stobj-let delays only its matching creator.
+                    emitted = "(or (%s %s %s nil) %s)" % (
+                        sym(a[1]), self.emit(binding[0], env, 1, mode),
+                        self.emit(binding[1], env, 1, mode), self.emit(binding[2], env, 1, mode))
+                else:
+                    emitted = self.emit(a, env, 1, mode)
+                plain.append((v, emitted))
         inner = self.emit(body, new_env, want, mode)
         if plain:
             inner = "(let (%s) (declare (ignorable %s)) %s)" % (
@@ -356,6 +364,10 @@ class CL(Backend):
             elif kind == "hash":
                 test = fld["type"][1][1][1] if len(fld["type"][1]) > 1 else "COMMON-LISP::EQL"
                 parts.append("(make-hash-table :test '%s)" % sym(test))
+            elif kind == "stobj-table":
+                ty = fld["type"][1]
+                size = str(ty[1]) if len(ty) > 1 else "nil"
+                parts.append("(|ACL2|::|XL-MAKE-STOBJ-TABLE| %s)" % size)
             elif fld["type"][0] == "y" and fld["type"][1] in self.stobjs:
                 parts.append(self.creator_form(fld["type"][1]))     # a nested stobj
             else:
@@ -377,6 +389,17 @@ class CL(Backend):
         i = fld["_index"]
         n = sym(name)
         slot = "(svref st %d)" % i
+        if op.startswith("table-"):
+            key = "(|ACL2|::|XL-STOBJ-TABLE-KEY| k)"
+            return {
+                "table-get": "(defun %s (k st default) (values (gethash %s %s default)))" % (n, key, slot),
+                "table-put": "(defun %s (k v st) (setf (gethash %s %s) v) st)" % (n, key, slot),
+                "table-boundp": "(defun %s (k st) (nth-value 1 (gethash %s %s)))" % (n, key, slot),
+                "table-rem": "(defun %s (k st) (remhash %s %s) st)" % (n, key, slot),
+                "table-count": "(defun %s (st) (hash-table-count %s))" % (n, slot),
+                "table-clear": "(defun %s (st) (clrhash %s) st)" % (n, slot),
+                "table-init": "(defun %s (size rehash-size rehash-threshold st) (setf %s (|ACL2|::|XL-MAKE-STOBJ-TABLE| size rehash-size rehash-threshold)) st)" % (n, slot),
+            }[op]
         return {
             "scalar-get": "(defun %s (st) %s)" % (n, slot),
             "scalar-set": "(defun %s (v st) (setf %s v) st)" % (n, slot),
@@ -454,6 +477,8 @@ class CL(Backend):
             self.counter = 0
             out.append("(defmacro %s %s %s)" % (sym(m["name"]), datum(m["args"]), self.emit(m["body"], {}, 1, "logic")))
         inv["macros"] = [m["name"] for m in self.macros]
+        out.append("(|ACL2|::|XL-REGISTER-STOBJ-NAMES| '(%s))" %
+                   " ".join(sym(n) for n in self.ir.get("stobj_names", [s["name"] for s in self.ir["stobjs"]])))
         # the live stobjs, made at start (a saved core may hold constants in
         # read-only space): every stobj of the closure by its name, as ACL2's
         # user-stobj-alist holds the live objects
