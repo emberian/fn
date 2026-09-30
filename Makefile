@@ -1077,6 +1077,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/over-byte-parser-relation \
 	books/nov-overview-source \
 	books/over-byte-old-row-relation \
+	books/catalog-row-article \
+	books/served-selected-article \
+	books/over-byte-selected-row-relation \
+	tests/acl2/served-selected-article-tests \
+	tests/acl2/over-byte-selected-row-relation-tests \
 	tests/acl2/over-byte-old-row-relation-tests \
 	tests/acl2/over-byte-parser-relation-tests \
 	books/served-plan-shape \

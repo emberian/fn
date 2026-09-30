@@ -40,6 +40,7 @@
 ; stated under archive = the view's articles.
 (in-package "ACL2")
 (include-book "catalog-number-index")
+(include-book "served-selected-article")
 (include-book "over-cursor-shape")
 ; A group's summary at a view below the count (lane scale-latency, PKT-870).
 (include-book "served-catalog-view")
@@ -86,13 +87,6 @@
 
 ;; The row bound to number N in GROUP when it is visible at view V, as an
 ;; article; nil otherwise (books/catalog-number-index.lisp fn-cnx-view-seq).
-(defun fn-scat-number-article (group n v fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (and (natp v)
-                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
-                  :verify-guards nil))
-  (let ((seq (fn-cnx-view-seq group n v fn-cat)))
-    (if seq (fn-cat-row-article seq fn-arena fn-cat) nil)))
 
 ;; Both finders return nil or a row below the count: the guards of
 ;; fn-cat-row-article hold, and the finders run as written.
@@ -112,7 +106,6 @@
   :hints (("Goal" :in-theory (disable fn-cat-handles-inp fn-cat-view-last-visible
                                       fn-cat-msgid-seqs fn-cat-p-is-rowsp
                                       fn-cat-count-is-len fn-cat-at-is-nth))))
-(verify-guards fn-scat-number-article)
 
 ;;; KEYSTONE A: the Message-ID finder is the archive scan over the view.
 
@@ -355,15 +348,6 @@
                                fn-scat-find-group-number-is-number-find
                                fn-cat-view-number-find))))
 
-(defun fn-scat-available-article (group n v fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (and (natp v)
-                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
-  (if (and (posp n) (<= n *fn-nntp-max-article-number*))
-      (let ((article (fn-scat-number-article group n v fn-arena fn-cat)))
-        (if (and article (fn-nntp-article-idp article)) article nil))
-    nil))
-
 (defthm fn-scat-available-article-is-available
   (implies (and (fn-cnx-freshp fn-cat) group)
            (equal (fn-scat-available-article group n v fn-arena fn-cat)
@@ -593,7 +577,6 @@
                                                                   (executable-counterpart-theory :here)))
                   :use ((:instance fn-scat-range-keep-loop-is-revappend (acc nil))))))
 
-
 (defun fn-scat-range-numbers (group low high v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (and (natp low) (natp high) (natp v))))
   (fn-scat-range-keep group (fn-cnx-view-range group low high v fn-cat) fn-cat))
@@ -699,7 +682,6 @@
                                                   (union-theories (theory 'minimal-theory)
                                                                   (executable-counterpart-theory :here)))
                   :use ((:instance fn-nov-lines-for-numbers-cat-loop-is-revappend (acc nil))))))
-
 
 (defthm fn-nov-lines-for-numbers-cat-is-archive
   (implies (and (fn-cnx-freshp fn-cat) group)
@@ -1654,7 +1636,6 @@
                                                                   (executable-counterpart-theory :here)))
                   :use ((:instance fn-scat-counts-lines-loop-is-revappend (acc nil))))))
 
-
 (defthm fn-scat-counts-lines-is-archive
   (implies (and (fn-cnx-freshp fn-cat) (not (member-equal nil groups))
                 (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
@@ -1807,7 +1788,6 @@
    :hints (("Goal" :induct (fn-nntp-hdr-lines-for-numbers-cat-loop field group numbers v fn-arena fn-cat acc)
                    :in-theory (union-theories '(fn-nntp-hdr-lines-for-numbers-cat-loop fn-nntp-hdr-lines-for-numbers-cat revappend car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
-
 
 (defthm fn-nntp-hdr-lines-for-numbers-cat-is-archive
   (implies (and (fn-cnx-freshp fn-cat) (fn-scol-okp fn-arena fn-cat) group)
@@ -1967,7 +1947,6 @@
    :hints (("Goal" :induct (fn-nntp-xpat-lines-for-numbers-cat-loop field patterns group numbers v fn-arena fn-cat acc)
                    :in-theory (union-theories '(fn-nntp-xpat-lines-for-numbers-cat-loop fn-nntp-xpat-lines-for-numbers-cat revappend car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
-
 
 (defthm fn-nntp-xpat-lines-for-numbers-cat-is-archive
   (implies (and (fn-cnx-freshp fn-cat) (fn-scol-okp fn-arena fn-cat) group)
@@ -2197,7 +2176,6 @@
    :hints (("Goal" :induct (fn-rcompat-hdr-lines-cat-loop group numbers server v fn-arena fn-cat acc)
                    :in-theory (union-theories '(fn-rcompat-hdr-lines-cat-loop fn-rcompat-hdr-lines-cat revappend car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
-
 
 (defthm fn-rcompat-hdr-lines-cat-is-hdr-lines
   (implies (and (fn-cnx-freshp fn-cat) group)
@@ -2645,7 +2623,6 @@
                             fn-nntp-single))
            :use ((:instance fn-nntp-parse-range-ok-has-natural-bounds (token (cadr args)))))))
 
-
 ;;; OVER/XOVER of a range with an Xref server, and the Message-ID withdrawn
 ;;; test, over the catalog (lane join-f2-midx, the fn-midx retirement): the
 ;;; served arm reads the catalog's number column and its rows, not the pinned
@@ -2887,7 +2864,6 @@
                             fn-cat-view-articles fn-ctl-msgid-withdrawn fn-nntp-token-string
                             fn-nntp-message-id-tokenp fn-gidx-pin-trie fn-gidx-pin-control))
            :use ((:instance fn-nntp-message-id-token-has-nonempty-index-key)))))
-
 
 ;;; HDR :fn-control and HDR :fn-enrollment over the catalog (lane
 ;;; join-f2-midx): the article a Message-ID names is found in the catalog's

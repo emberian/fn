@@ -1800,26 +1800,26 @@
     "books/image-world-store-test"
   ],
   "totals": {
-    "books": 1875,
-    "books_in_root_closure": 1871,
+    "books": 1879,
+    "books_in_root_closure": 1872,
     "roots": 1796,
-    "theorems": 29573,
-    "functions": 18961,
-    "assert_events": 23945,
+    "theorems": 29587,
+    "functions": 18964,
+    "assert_events": 23946,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 158,
     "guards": {
       "verified": 3516,
-      "declared-off": 2284,
-      "default-guarded": 10326,
+      "declared-off": 2286,
+      "default-guarded": 10327,
       "default-unguarded": 2835
     },
     "suspect_theorems": 1249,
     "export_hygiene_warnings": 339,
     "enabled_projection_warnings": 55,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2583,
+    "include_hygiene_warnings": 2591,
     "host_names_warnings": 2156,
     "hand_written_record_warnings": 18
   },
@@ -9100,18 +9100,49 @@
       "read_error": null
     },
     {
+      "book": "books/catalog-row-article.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 3,
+      "functions": 1,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "catalog-handles",
+        "nntp-session"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-cat-row-article-memberships",
+        "fn-cat-row-article-msgid",
+        "fn-cat-row-article-payload"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/catalog-view.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 21,
-      "functions": 12,
+      "theorems": 18,
+      "functions": 11,
       "guards": {
-        "verified": 5,
+        "verified": 4,
         "declared-off": 0,
         "default-guarded": 6,
         "default-unguarded": 1
       },
-      "verify_guards_events": 5,
+      "verify_guards_events": 4,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -9120,14 +9151,11 @@
       "encapsulates": 0,
       "includes": [
         "catalog-relation",
+        "catalog-row-article",
         "group-bucket-article"
       ],
       "system_includes": [],
-      "suspects": [
-        "fn-cat-row-article-memberships",
-        "fn-cat-row-article-msgid",
-        "fn-cat-row-article-payload"
-      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -19533,6 +19561,33 @@
       "read_error": null
     },
     {
+      "book": "books/over-byte-selected-row-relation.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 2,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "over-byte-old-row-relation",
+        "served-selected-article"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/over-cursor-shape.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -27651,14 +27706,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 172,
-      "functions": 72,
+      "functions": 70,
       "guards": {
-        "verified": 27,
+        "verified": 26,
         "declared-off": 6,
-        "default-guarded": 38,
+        "default-guarded": 37,
         "default-unguarded": 1
       },
-      "verify_guards_events": 27,
+      "verify_guards_events": 26,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -27673,7 +27728,8 @@
         "over-cursor-shape",
         "protocol-table",
         "served-catalog-view",
-        "served-columns"
+        "served-columns",
+        "served-selected-article"
       ],
       "system_includes": [],
       "suspects": [
@@ -28055,6 +28111,33 @@
         "fn-sscan-handshaking-of-with-wire",
         "fn-sscan-with-wire-twice"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/served-selected-article.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 3,
+      "functions": 2,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "catalog-number-read",
+        "catalog-row-article"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -46362,32 +46445,6 @@
       "read_error": null
     },
     {
-      "book": "tests/acl2/over-byte-old-row-relation-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 7,
-      "functions": 3,
-      "guards": {
-        "verified": 0,
-        "declared-off": 2,
-        "default-guarded": 0,
-        "default-unguarded": 1
-      },
-      "verify_guards_events": 0,
-      "assert_events": 0,
-      "must_fails": 0,
-      "prover_refusals": 0,
-      "defconsts": 1,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "../../books/over-byte-old-row-relation"
-      ],
-      "system_includes": [],
-      "suspects": [],
-      "read_error": null
-    },
-    {
       "book": "tests/acl2/over-byte-parser-relation-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -46435,6 +46492,32 @@
       "encapsulates": 0,
       "includes": [
         "../../books/over-byte-row-relation"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/over-byte-selected-row-relation-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 10,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/over-byte-selected-row-relation"
       ],
       "system_includes": [],
       "suspects": [],
@@ -51980,6 +52063,32 @@
         "../../books/codec-attach",
         "../../books/served-span",
         "arena-lift"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/served-selected-article-tests.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 6,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/served-selected-article"
       ],
       "system_includes": [],
       "suspects": [],
@@ -57627,24 +57736,24 @@
     },
     {
       "theorem": "fn-cat-row-article-memberships",
-      "book": "books/catalog-view.lisp",
-      "line": 179,
+      "book": "books/catalog-row-article.lisp",
+      "line": 29,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
     },
     {
       "theorem": "fn-cat-row-article-msgid",
-      "book": "books/catalog-view.lisp",
-      "line": 174,
+      "book": "books/catalog-row-article.lisp",
+      "line": 24,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
     },
     {
       "theorem": "fn-cat-row-article-payload",
-      "book": "books/catalog-view.lisp",
-      "line": 184,
+      "book": "books/catalog-row-article.lisp",
+      "line": 34,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60740,7 +60849,7 @@
     {
       "theorem": "fn-ovw-session-of-multi",
       "book": "books/served-catalog.lisp",
-      "line": 892,
+      "line": 874,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60748,7 +60857,7 @@
     {
       "theorem": "fn-ovw-session-of-multi-octets",
       "book": "books/served-catalog.lisp",
-      "line": 896,
+      "line": 878,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60756,7 +60865,7 @@
     {
       "theorem": "fn-ovw-session-of-single",
       "book": "books/served-catalog.lisp",
-      "line": 888,
+      "line": 870,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -60764,7 +60873,7 @@
     {
       "theorem": "fn-ovw-status-is-crlf",
       "book": "books/served-catalog.lisp",
-      "line": 995,
+      "line": 977,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "definition-restated: the conclusion is the body of fn-ovw-status"
@@ -62635,7 +62744,7 @@
     {
       "theorem": "fn-scat-article-idp-is-msgid-idp",
       "book": "books/served-catalog.lisp",
-      "line": 536,
+      "line": 520,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -62643,7 +62752,7 @@
     {
       "theorem": "fn-scat-built-trie-corresponds",
       "book": "books/served-catalog.lisp",
-      "line": 3168,
+      "line": 3144,
       "reasons": [
         "reflexive-conclusion: a conjunct is (equal X X)"
       ]
@@ -62651,7 +62760,7 @@
     {
       "theorem": "fn-scat-pin-trie-is-built",
       "book": "books/served-catalog.lisp",
-      "line": 3161,
+      "line": 3137,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-midx-correspondencep"
       ]
@@ -66805,20 +66914,20 @@
       },
       {
         "theorem": "fn-cat-row-article-msgid",
-        "book": "books/catalog-view.lisp",
-        "line": 174,
+        "book": "books/catalog-row-article.lisp",
+        "line": 24,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-cat-row-article-memberships",
-        "book": "books/catalog-view.lisp",
-        "line": 179,
+        "book": "books/catalog-row-article.lisp",
+        "line": 29,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-cat-row-article-payload",
-        "book": "books/catalog-view.lisp",
-        "line": 184,
+        "book": "books/catalog-row-article.lisp",
+        "line": 34,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -72179,6 +72288,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/catalog-row-article.lisp",
+        "line": 3,
+        "include": "catalog-handles",
+        "included": "books/catalog-handles.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/catalog-view.lisp",
         "line": 37,
         "include": "catalog-relation",
@@ -72188,6 +72304,13 @@
       {
         "book": "books/catalog-view.lisp",
         "line": 38,
+        "include": "catalog-row-article",
+        "included": "books/catalog-row-article.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/catalog-view.lisp",
+        "line": 39,
         "include": "group-bucket-article",
         "included": "books/group-bucket-article.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -76351,6 +76474,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/over-byte-selected-row-relation.lisp",
+        "line": 4,
+        "include": "over-byte-old-row-relation",
+        "included": "books/over-byte-old-row-relation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/over-byte-selected-row-relation.lisp",
+        "line": 5,
+        "include": "served-selected-article",
+        "included": "books/served-selected-article.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/over-cursor-shape.lisp",
         "line": 4,
         "include": "protocol-table",
@@ -77431,27 +77568,34 @@
       {
         "book": "books/served-catalog.lisp",
         "line": 43,
+        "include": "served-selected-article",
+        "included": "books/served-selected-article.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/served-catalog.lisp",
+        "line": 44,
         "include": "over-cursor-shape",
         "included": "books/over-cursor-shape.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/served-catalog.lisp",
-        "line": 46,
+        "line": 47,
         "include": "protocol-table",
         "included": "books/protocol-table.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/served-catalog.lisp",
-        "line": 48,
+        "line": 49,
         "include": "nntp-range-indexed-invariants",
         "included": "books/nntp-range-indexed-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/served-catalog.lisp",
-        "line": 49,
+        "line": 50,
         "include": "nntp-list-counts",
         "included": "books/nntp-list-counts.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -77545,6 +77689,20 @@
         "line": 36,
         "include": "served-plan-shape",
         "included": "books/served-plan-shape.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/served-selected-article.lisp",
+        "line": 4,
+        "include": "catalog-row-article",
+        "included": "books/catalog-row-article.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/served-selected-article.lisp",
+        "line": 5,
+        "include": "catalog-number-read",
+        "included": "books/catalog-number-read.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -84303,13 +84461,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "tests/acl2/over-byte-old-row-relation-tests.lisp",
-        "line": 2,
-        "include": "../../books/over-byte-old-row-relation",
-        "included": "books/over-byte-old-row-relation.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "tests/acl2/over-byte-parser-relation-tests.lisp",
         "line": 2,
         "include": "../../books/over-byte-parser-relation",
@@ -84328,6 +84479,13 @@
         "line": 2,
         "include": "../../books/over-byte-row-relation",
         "included": "books/over-byte-row-relation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/over-byte-selected-row-relation-tests.lisp",
+        "line": 2,
+        "include": "../../books/over-byte-selected-row-relation",
+        "included": "books/over-byte-selected-row-relation.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -86855,6 +87013,13 @@
         "line": 251,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/served-selected-article-tests.lisp",
+        "line": 2,
+        "include": "../../books/served-selected-article",
+        "included": "books/served-selected-article.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

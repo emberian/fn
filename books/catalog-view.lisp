@@ -35,6 +35,7 @@
 
 (in-package "ACL2")
 (include-book "catalog-relation")
+(include-book "catalog-row-article")
 (include-book "group-bucket-article")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
@@ -50,23 +51,6 @@
 ; HANDLE, as the owner's archive does; a served reader reads the bytes through
 ; the arena (books/nntp-session.lisp fn-nntp-article-bytes), so no view read
 ; materializes a payload and the view's articles can equal the archive's.
-(defun fn-cat-row-article (seq fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (and (natp seq) (< seq (fn-cat-count fn-cat))
-                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
-                  :verify-guards nil)
-           (ignorable fn-arena))
-  (let ((h (fn-cat-at seq fn-cat)))
-    (fn-make-article (fn-record-msgid h)
-                     (fn-record-payload h)
-                     (fn-record-groups h)
-                     (fn-held-numbers h)
-                     t
-                     (fn-record-stamp h))))
-
-(verify-guards fn-cat-row-article
-  :hints (("Goal" :in-theory (disable fn-cat-p-is-rowsp fn-cat-count-is-len fn-cat-at-is-nth)
-           :use ((:instance fn-cat-handles-inp-at (n (fn-cat-count fn-cat)) (seq seq))))))
 
 ; The rows below I visible at V, newest first (the archive's order).
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
@@ -107,7 +91,6 @@
    :hints (("Goal" :induct (fn-cat-view-below-loop i v fn-arena fn-cat acc)
                    :in-theory (union-theories '(fn-cat-view-below-loop fn-cat-view-below revappend car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
-
 
 (verify-guards fn-cat-view-below-loop
   :hints (("Goal"
@@ -171,20 +154,6 @@
            (fn-cat-view-msgids-okp seq v fn-cat)))))
 
 ; The row article's projections (the fn-defrecord accessors over fn-make-article).
-(defthm fn-cat-row-article-msgid
-  (equal (fn-article-msgid (fn-cat-row-article seq fn-arena fn-cat))
-         (fn-record-msgid (fn-cat-at seq fn-cat)))
-  :hints (("Goal" :in-theory (enable fn-cat-row-article))))
-
-(defthm fn-cat-row-article-memberships
-  (equal (fn-article-memberships (fn-cat-row-article seq fn-arena fn-cat))
-         (fn-held-numbers (fn-cat-at seq fn-cat)))
-  :hints (("Goal" :in-theory (enable fn-cat-row-article))))
-
-(defthm fn-cat-row-article-payload
-  (equal (fn-article-payload (fn-cat-row-article seq fn-arena fn-cat))
-         (fn-record-payload (fn-cat-at seq fn-cat)))
-  :hints (("Goal" :in-theory (enable fn-cat-row-article))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE 1: the Message-ID lookup over the view is the walk.
@@ -358,7 +327,6 @@
                                                   (union-theories (theory 'minimal-theory)
                                                                   (executable-counterpart-theory :here)))
                   :use ((:instance fn-cat-view-last-visible-loop-of-rev-onto (zs nil))))))
-
 
 (defthm fn-cat-view-last-visible-of-append
   (equal (fn-cat-view-last-visible (append a b) v fn-cat)
