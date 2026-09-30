@@ -463,3 +463,46 @@
 (assert-event (let ((prefix nil) (byte 10) (suffix '(0)) (s (fn-lpc-header-begin)))
  (and (not (not (equal byte 10)))
       (not (equal (fn-lpc-at 0 (fn-nlv-run (append prefix (cons 13 (cons byte suffix))) s 0 7 11)) :bad)))))
+
+; counter domination: nonempty successful article
+(assert-event (let ((octets '(83 58 32 120 13 10 13 10 0)) (limits '(100 100 100)) (lines-left 100)
+ (header-bytes 0) (nfields 0) (columns nil) (current nil) (names *fn-novlp-names*))
+ (and (< (len octets) (nfix lines-left))
+      (<= (+ header-bytes (len octets)) (fn-article-limit-octets limits))
+      (<= (+ (nfix nfields) (len octets)) (fn-article-limit-fields limits))
+      (not (member-equal (fn-novlp-parse-lines octets limits lines-left header-bytes nfields columns current names) '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit)))))))
+
+; counter line-fuel removal; both other bounds hold
+(assert-event (let ((octets '(83 58 32 120 13 10 13 10 0)) (limits '(100 100 100)) (lines-left 0)
+ (header-bytes 0) (nfields 0) (columns nil) (current nil) (names *fn-novlp-names*))
+ (and (not (< (len octets) (nfix lines-left)))
+      (<= (+ header-bytes (len octets)) (fn-article-limit-octets limits))
+      (<= (+ (nfix nfields) (len octets)) (fn-article-limit-fields limits))
+      (not (not (member-equal (fn-novlp-parse-lines octets limits lines-left header-bytes nfields columns current names) '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit))))))))
+
+; counter octet-budget removal; both other bounds hold
+(assert-event (let ((octets '(83 58 32 120 13 10 13 10 0)) (limits '(100 100 0)) (lines-left 100)
+ (header-bytes 0) (nfields 0) (columns nil) (current nil) (names *fn-novlp-names*))
+ (and (< (len octets) (nfix lines-left))
+      (not (<= (+ header-bytes (len octets)) (fn-article-limit-octets limits)))
+      (<= (+ (nfix nfields) (len octets)) (fn-article-limit-fields limits))
+      (not (not (member-equal (fn-novlp-parse-lines octets limits lines-left header-bytes nfields columns current names) '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit))))))))
+
+; counter field-budget removal; both other bounds hold
+(assert-event (let ((octets '(83 58 32 120 13 10 13 10 0)) (limits '(0 100 100)) (lines-left 100)
+ (header-bytes 0) (nfields 0) (columns nil) (current nil) (names *fn-novlp-names*))
+ (and (< (len octets) (nfix lines-left))
+      (<= (+ header-bytes (len octets)) (fn-article-limit-octets limits))
+      (not (<= (+ (nfix nfields) (len octets)) (fn-article-limit-fields limits)))
+      (not (not (member-equal (fn-novlp-parse-lines octets limits lines-left header-bytes nfields columns current names) '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit))))))))
+
+; Unconditional widest logical projection: nonempty positive, independent success.
+(assert-event (and (fn-article-result-okp (fn-article-parse '(83 58 32 120 13 10 13 10 0)))
+ (not (member-equal (fn-novlp-parse '(83 58 32 120 13 10 13 10 0)) '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit))))))
+
+; Unconditional actual parser at codec ceiling limits: nonempty positive, independent success.
+(assert-event (and (fn-article-result-okp (fn-article-parse '(83 58 32 120 13 10 13 10 0)))
+ (not (member-equal (fn-article-parse '(83 58 32 120 13 10 13 10 0)) '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit))))))
+
+; Mutated limits, not a hypothesis removal for an unconditional theorem.
+(assert-event (member-equal (fn-article-parse-under '(83 58 32 120 13 10 13 10 0) '(0 100 100)) '((:error :header-lines-limit) (:error :header-fields-limit) (:error :header-octets-limit))))
