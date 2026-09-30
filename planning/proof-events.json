@@ -17486,6 +17486,81 @@
           "pending_subject": "Actual ATS entry/finish source refinement and constructor/operand census; selected compiler primitive/request/frame closure and installed Qgate authority remain separate."
         }
       ]
+    },
+    {
+      "id": "PRF-1170",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-copc-evaluate-observes-complete-actual-result",
+          "pending_subject": "Proof-only complete source observer and operand/count component. Genuine installed runtime tariff and served operation caller activation remain separate; nested callee and complete composed-state teeth are in progress."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-copc-body-demand-source-operation-bound",
+          "pending_subject": "Proof-only complete source observer and operand/count component. Genuine installed runtime tariff and served operation caller activation remain separate; nested callee and complete composed-state teeth are in progress."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-copc-input-left-source-consumption",
+          "pending_subject": "Proof-only complete source observer and operand/count component. Genuine installed runtime tariff and served operation caller activation remain separate; nested callee and complete composed-state teeth are in progress."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-copod-body-demand-material-operators-fit",
+          "pending_subject": "Proof-only complete source observer and operand/count component. Genuine installed runtime tariff and served operation caller activation remain separate; nested callee and complete composed-state teeth are in progress."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-copod-vector-room-material-operators-fit",
+          "pending_subject": "Proof-only complete source observer and operand/count component. Genuine installed runtime tariff and served operation caller activation remain separate; nested callee and complete composed-state teeth are in progress."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-copod-issuer-domain-material-operators-fit",
+          "pending_subject": "Proof-only complete source observer and operand/count component. Genuine installed runtime tariff and served operation caller activation remain separate; nested callee and complete composed-state teeth are in progress."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-copod-evaluate-material-operators-fit",
+          "pending_subject": "Proof-only complete source observer and operand/count component. Genuine installed runtime tariff and served operation caller activation remain separate; nested callee and complete composed-state teeth are in progress."
+        }
+      ]
+    },
+    {
+      "id": "PRF-1171",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-copsc-prepare-observes-complete-actual-result",
+          "pending_subject": "Proof-only complete source observer and operand/count component. Genuine installed runtime tariff and served operation caller activation remain separate; nested callee and complete composed-state teeth are in progress."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-copsc-start-observes-complete-actual-result",
+          "pending_subject": "Proof-only complete source observer and operand/count component. Genuine installed runtime tariff and served operation caller activation remain separate; nested callee and complete composed-state teeth are in progress."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-coptc-finish-observes-complete-actual-result",
+          "pending_subject": "Proof-only complete source observer and operand/count component. Genuine installed runtime tariff and served operation caller activation remain separate; nested callee and complete composed-state teeth are in progress."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-coptc-actual-left-ticket-source-census",
+          "pending_subject": "Proof-only complete source observer and operand/count component. Genuine installed runtime tariff and served operation caller activation remain separate; nested callee and complete composed-state teeth are in progress."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-coptc-all-finish-paths-ticket-source-bound",
+          "pending_subject": "Proof-only complete source observer and operand/count component. Genuine installed runtime tariff and served operation caller activation remain separate; nested callee and complete composed-state teeth are in progress."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-coptc-fault-observes-complete-actual-result",
+          "pending_subject": "Proof-only complete source observer and operand/count component. Genuine installed runtime tariff and served operation caller activation remain separate; nested callee and complete composed-state teeth are in progress."
+        }
+      ]
     }
   ]
 }

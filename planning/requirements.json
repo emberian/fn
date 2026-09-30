@@ -5731,7 +5731,9 @@
       "proof_targets": [
         "PRF-1156",
         "PRF-1157",
-        "PRF-1164"
+        "PRF-1164",
+        "PRF-1170",
+        "PRF-1171"
       ],
       "verification": [
         "proof",

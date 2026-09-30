@@ -13,7 +13,13 @@ FN_CERTIFY_JOBS ?= 1
 # The wall clock an interactive `ld` gets before tools/acl2 kills it and frees
 # its slot: the brief's three-minute rule, with a minute of slack.
 FN_LD_TIMEOUT_SECONDS ?= 240
-ACL2_BOOKS ?= books/allocation-turn-source-cost \
+ACL2_BOOKS ?= books/connection-operation-source-cost \
+	books/connection-ticket-source-cost \
+	books/connection-operation-operand-domain \
+	books/connection-prepare-source-cost \
+	books/connection-start-source-cost \
+	tests/acl2/connection-operation-source-cost-tests \
+	books/allocation-turn-source-cost \
 	tests/acl2/allocation-turn-source-cost-tests \
 	books/allocation-turn-raw-bridge \
 	tests/acl2/allocation-turn-slots-tests \

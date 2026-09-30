@@ -77,3 +77,25 @@ closure and selected request/octet conversion must be assembled separately.
 The final ordinary standalone test root proves its fixture view decodes the
 complete state and checks actual complete results across reachable positive and
 premise-removal branches, with raw/corrupted/mutation cases labeled separately.
+
+PRF-1170 observes the actual connection evaluator's complete five-value result,
+its bounded input consumption and its ordered material arithmetic operands.
+`fn-copod-evaluate-material-operators-fit` establishes that every reached
+ADD/SUBTRACT/MULTIPLY/FLOOR operand and result fits the actual descriptor domain,
+including checked refusals before an oversized ADD or MULTIPLY could run. The
+actual five-coordinate issuer predicate has that envelope when domain >= 5,
+which includes its fixed traversal fuel. Malformed input comparisons remain
+outside that arithmetic claim.
+
+PRF-1171 connects proof-only `fn-copsc-prepare` and `fn-copsc-start` to all seven
+actual results and concrete effects, and `fn-coptc-finish`/`fn-coptc-fault` to all
+five actual ticket-wrapper results. PREPARE joins actual ATS entry, evaluator,
+body prepayment and definite refusal settlement; START joins actual input checks,
+retained ticket updates and the five-coordinate issuer preflight. Its actual
+reserve/register/abort call remains named with exact arguments and output, with
+its internal census still open. Successful ticket FINISH has four explicit
+source CONS cells and three material subtractions; every finish path is bounded
+by those counts. The observers' own records are proof scaffolding, never served
+allocations. Full composed-state literal teeth, nested callee accounting and the
+complete source/native installation contract remain in progress. No source
+count supplies an installed tariff or prices native scheduler cleanup.
