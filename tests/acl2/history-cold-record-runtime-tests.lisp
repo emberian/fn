@@ -65,4 +65,3 @@
                   '(:decoded (:pair (:atom 65)
                     (:pair (:atom 66) (:pair (:atom -1) (:atom nil))))) :capture :lease)
                 nil nil)) (fn-scc-encode '(65 66 -1))))
-
