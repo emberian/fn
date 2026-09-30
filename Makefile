@@ -879,6 +879,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nov-fields \
 	books/legacy-parser-catalog \
 	books/legacy-parser-allocation \
+	books/assumptions-selected-runtime-primitives \
+	tests/acl2/selected-runtime-primitives-tests \
 	tests/acl2/legacy-parser-catalog-tests \
 	tests/acl2/legacy-parser-allocation-tests \
 	books/nntp-article-pass \
