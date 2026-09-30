@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1677 |
-| Certification roots in the Makefile | 1621 |
-| Books inside the root closure | 1676 |
-| `defthm` and `defthmd` events | 27419 |
-| `defun` events | 17985 |
+| Books read | 1679 |
+| Certification roots in the Makefile | 1626 |
+| Books inside the root closure | 1678 |
+| `defthm` and `defthmd` events | 27423 |
+| `defun` events | 17989 |
 | Functions with verified guards | 3355 |
 | Functions declared `:verify-guards nil` and never verified | 2063 |
-| Functions left at the default with an explicit guard | 9876 |
+| Functions left at the default with an explicit guard | 9880 |
 | Functions left at the default with no guard | 2691 |
-| `assert-event` checks | 22829 |
+| `assert-event` checks | 22839 |
 | `must-fail` checks | 2463 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 157 |
@@ -28,7 +28,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 52 |
 | Teeth-form warnings | 272 |
 | Include-hygiene warnings | 2369 |
-| Host-names warnings | 2008 |
+| Host-names warnings | 2019 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -702,6 +702,7 @@ that `make certify` requests.
 | `books/packed-octets.lisp` | closure | 48 | 17 | 2/0/15/0 | 0 | 0 | 0 |
 | `books/packed-submission.lisp` | closure | 37 | 27 | 1/0/24/2 | 0 | 0 | 0 |
 | `books/page-discovery-ledger.lisp` | root | 2 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/page-file-lease.lisp` | root | 4 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/page-read-executor.lisp` | root | 11 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/page-read-ledger.lisp` | root | 9 | 16 | 0/0/16/0 | 0 | 0 | 0 |
 | `books/page-read-ownership.lisp` | root | 12 | 11 | 0/0/11/0 | 0 | 0 | 0 |
@@ -1523,6 +1524,7 @@ that `make certify` requests.
 | `tests/acl2/owner-verdict-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
 | `tests/acl2/packed-submission-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 0 | 0 |
 | `tests/acl2/page-discovery-ledger-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `tests/acl2/page-file-lease-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
 | `tests/acl2/page-read-executor-tests.lisp` | root | 0 | 6 | 0/0/6/0 | 14 | 0 | 0 |
 | `tests/acl2/page-read-host-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 5 | 0 | 0 |
 | `tests/acl2/page-read-ledger-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |

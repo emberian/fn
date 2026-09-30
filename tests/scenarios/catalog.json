@@ -6298,6 +6298,33 @@
         "tests/acl2/page-read-executor-tests.lisp"
       ],
       "execution_scope": "Pure executor model source REPL and folded literal teeth only. Native executor/refinement, real process-death cuts and supported funding/profile consumer pending; not a full P12 claim."
+    },
+    {
+      "id": "SCN-1016",
+      "title": "Checkpoint file pin outlives page borrows without retaining unrelated generations",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-020"
+      ],
+      "steps": [
+        "Under the owner capture mutex, retain one immutable checkpoint handle and acquire its exact file pin before releasing the mutex.",
+        "Request a fixed16KiB page under that pin ticket; acquire a fresh discovery buffer lease before off-lock pread. Keep the exact buffer token through authentication and decoder consumption.",
+        "Finish a page and relinquish its aliases; release that page lease while retaining the root pin for later scans.",
+        "After all scans and workers finish, release the root pin. Replay/mutate either token and require stale refusal; a still-live page lease independently prevents physical close.",
+        "Reject mismatched root tickets, noncanonical page offsets and offsets outside the selected signed64 pread representation."
+      ],
+      "expected": [
+        "Root capture consumes metadata and one descriptor/retention credit; it consumes no read worker.",
+        "Registered files and root pins jointly fit the descriptor/retention coordinate. A root pin holds exactly its selected file, not all later publications.",
+        "The region base already skips the FNSI wrapper; physical offset is base plus the core-authorized relative offset.",
+        "No raw page is called authenticated by this lease bridge. A source cursor must validate root/directory/table/data and exact buffer identity before using bytes."
+      ],
+      "evidence": [
+        "tests/acl2/page-file-lease-tests.lisp",
+        "host/native/owner.lisp"
+      ],
+      "execution_scope": "Source-only library/adapter and raw-host checks; producer activation and matching native execution pending."
     }
   ]
 }

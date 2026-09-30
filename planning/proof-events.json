@@ -17238,6 +17238,19 @@
         }
       ],
       "pending_subject": "Native executor invokes the subjects through named answer/effect adapter equations. Persistent installation remains unreachable-in-composition until funded startup constructs the workers; matching manifest/image and productive allocator/profile evidence pending."
+    },
+    {
+      "id": "PRF-1106",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-prf-acquire-preserves-pool-funding"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prf-acquired-file-is-held"
+        }
+      ]
     }
   ]
 }

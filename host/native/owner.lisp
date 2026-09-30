@@ -4104,6 +4104,64 @@ Caller holds owner mutex; extent lock is acquired only after it."
   (fnn-owner-gated (service :control)
     (fnn-owner-release-pending-extents-locked)))
 
+(defun fnn-snapshot-source-root-acquire (service base-handle maintenance-lease)
+  "Caller holds SERVICE's owner mutex while capturing BASE-HANDLE. Acquire
+one exact checkpoint incarnation before releasing that mutex. The controller
+already owns MAINTENANCE-LEASE; this token covers only physical retention."
+  (declare (ignore service maintenance-lease))
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (let ((file (fnn-core 'fn-hrs-h-file base-handle)))
+      (destructuring-bind (word token &rest ignored)
+          (fnn-core-page-read-pool 'fn-owner-page-file-pin file)
+        (declare (ignore ignored))
+        (unless (eq word :admitted) (fnn-refuse "snapshot root lease refused: ~a" word))
+        token))))
+
+(defun fnn-snapshot-source-root-release (service token)
+  "Controller has finished/joined all scans and relinquished their buffers.
+Cancellation alone never invokes this release. Cleanup remains possible after
+admission closes, so it takes the owner mutex directly rather than the gate."
+  (sb-thread:with-mutex ((fnn-owner-service-lock service))
+    (sb-thread:with-mutex (*fnn-extent-lock*)
+      (unless (eq (first (fnn-core-page-read-pool 'fn-owner-page-file-unpin token)) :released)
+        (fnn-fault "snapshot root lease release is stale")))
+    (fnn-owner-release-pending-extents-locked)))
+
+(defun fnn-snapshot-source-read-page (service root-token request buffer-lease)
+  "Read one core-authorized physical page. Return vector, exact buffer token,
+and unchanged request; the auth/decoder cursor decides its contents. BUFFER-
+LEASE denotes the controller's maintenance admission, not a refund right."
+  (declare (ignore buffer-lease))
+  (let ((fd nil) (offset nil) (count nil) (token nil)
+        (octets nil) (handed-off nil))
+    (fnn-owner-gated (service :control)
+      (sb-thread:with-mutex (*fnn-extent-lock*)
+        (let* ((file (first (fnn-core-page-read-pool 'fn-owner-page-file-pin-file root-token)))
+               (base (gethash file *fnn-extent-bases*)))
+          (destructuring-bind (word read-file read-offset read-count read-token &rest ignored)
+              (fnn-core-page-read-pool 'fn-owner-page-file-pin-read root-token request base)
+            (declare (ignore ignored))
+            (unless (eq word :admitted) (fnn-refuse "snapshot page lease refused: ~a" word))
+            (setq token read-token offset read-offset count read-count
+                  fd (gethash read-file *fnn-extent-fds*))))))
+    (unwind-protect
+         (progn
+           (unless fd (fnn-fault "snapshot page lease lost its file"))
+           (setq octets (make-array count :element-type '(unsigned-byte 8)))
+           (unless (= (fnn-extent-pread fd octets offset) count)
+             (fnn-fault "snapshot page read was short"))
+           (setq handed-off t)
+           (values octets token request))
+      (unless handed-off
+        (setq octets nil)
+        (sb-thread:with-mutex (*fnn-extent-lock*)
+          (fnn-extent-discovery-release token))))))
+
+(defun fnn-snapshot-source-page-release (token)
+  "Auth/decoder cursor has cleared every vector alias before this call."
+  (sb-thread:with-mutex (*fnn-extent-lock*)
+    (fnn-extent-discovery-release token)))
+
 (defun fnn-owner-release-extents (service store frames dropped-paths pin)
   "Give the disk blocks of the files a durable checkpoint publication dropped
 back while serving (row Q16, PRF-930, books/extent-retire.lisp): register

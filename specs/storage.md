@@ -1830,3 +1830,29 @@ and init hold an exclusive flock on `ROOT.lock` for the whole program and
 re-check ROOT's absence under it immediately before rename(2); the residual
 (a process ignoring the lock creates an empty directory at ROOT in that
 window) is an operator constraint (docs/operator.md).
+
+The new snapshot source bridge (PRF-1106, SCN-1016) separates one immutable
+checkpoint's physical file retention from a logical view pin. While holding
+the owner capture mutex, `fnn-snapshot-source-root-acquire` acquires a typed
+file pin before releasing that mutex; the controller keeps it across all
+census and column scans. This pin reserves one descriptor/retention credit
+in addition to the registered file's actual descriptor credit, conservatively
+bounding their combined ledger rows without occupying a read worker. It
+cannot settle as a cached verified read.
+
+Each `fnn-snapshot-source-read-page` call resolves the active file pin and
+admits a separate buffer lease under owner then extent locks, then preads one
+fixed 16 KiB page off those locks. Registered history bases already skip the
+FNSI wrapper; ACL2 checks and adds the region-relative page offset, including
+the selected signed 64-bit positional-I/O representation. The caller retains
+the fresh exact buffer token until its authentication/decoder cursor has
+finished and cleared every alias. Root cleanup follows the final scan and
+worker completion. Releasing a root never refunds an outstanding page.
+
+This physical bridge does not authenticate directory/table/data bytes or
+establish the captured history's logical contents. Those are the bounded
+source cursor's obligations. It remains unreachable in composition until
+the producer adopts these entries. Existing global oldest-pin retirement
+stays in place for unmigrated readers, whose live arena placement lookup
+still precedes physical lease acquisition; the new API alone cannot justify
+weakening that protection.
