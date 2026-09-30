@@ -47,6 +47,10 @@
 (include-book "../books/snapshot-prepare")
 (include-book "../books/snapshot-row-remap")
 (include-book "../books/snapshot-source-cursor")
+(include-book "../books/snapshot-based-provider")
+(include-book "../books/history-auth-reader-source")
+(include-book "../books/history-decode-completion")
+(include-book "../books/snapshot-job-capture")
 ; Row S10 (lane operability-2): a refused control post completion names the
 ; Store's word on the reply and the line.
 (include-book "../books/owner-control-post-reason")
