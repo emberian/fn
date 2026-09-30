@@ -397,3 +397,69 @@
                       (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s))
                            (fn-article-line-okp (fn-article-new-field line)))))
                :start :bad))))))
+
+; separator plus opaque binary body
+(assert-event (let ((body '(0 255 13 10 120)) (s *nlvt-open*))
+ (and (equal (fn-lpc-at 0 s) :start)
+      (equal (equal (fn-lpc-at 0 (fn-nlv-run (append '(13 10) body) s 0 7 11)) :body) (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s)) (fn-article-body-crlfp body))))))
+
+; separator then malformed body
+(assert-event (let ((body '(0 10)) (s *nlvt-open*))
+ (and (equal (fn-lpc-at 0 s) :start)
+      (equal (equal (fn-lpc-at 0 (fn-nlv-run (append '(13 10) body) s 0 7 11)) :body) (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s)) (fn-article-body-crlfp body))))))
+
+; unclosed field refuses separator
+(assert-event (let ((body '(0)) (s (fn-nlv-run '(83 58 13 10) (fn-lpc-header-begin) 0 7 11)))
+ (and (equal (fn-lpc-at 0 s) :start)
+      (equal (equal (fn-lpc-at 0 (fn-nlv-run (append '(13 10) body) s 0 7 11)) :body) (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s)) (fn-article-body-crlfp body))))))
+
+; separator phase removal: reachable bad state
+(assert-event (let ((body '(0)) (s (fn-nlv-run '(0) (fn-lpc-header-begin) 0 7 11)))
+ (and (not (equal (fn-lpc-at 0 s) :start))
+      (not (equal (equal (fn-lpc-at 0 (fn-nlv-run (append '(13 10) body) s 0 7 11)) :body) (and (or (not (fn-lpc-at 2 s)) (fn-lpc-at 3 s)) (fn-article-body-crlfp body)))))))
+
+; unfinished physical header and trailing CR
+(assert-event (let ((line '(83 58 32 120)) (s (fn-lpc-header-begin)))
+ (and (equal (fn-lpc-at 0 s) :start)
+      (fn-nlv-physicalp line)
+      (and (not (equal (fn-lpc-at 0 (fn-nlv-run line s 0 7 11)) :body)) (not (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13)) s 0 7 11)) :body))))))
+
+; unfinished phase removal: reachable body
+(assert-event (let ((line '(120)) (s *nlvt-body-state*))
+ (and (not (equal (fn-lpc-at 0 s) :start))
+      (fn-nlv-physicalp line)
+      (not (and (not (equal (fn-lpc-at 0 (fn-nlv-run line s 0 7 11)) :body)) (not (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13)) s 0 7 11)) :body)))))))
+
+; unfinished physical-prefix removal: complete separator
+(assert-event (let ((line '(13 10)) (s (fn-lpc-header-begin)))
+ (and (equal (fn-lpc-at 0 s) :start)
+      (not (fn-nlv-physicalp line))
+      (not (and (not (equal (fn-lpc-at 0 (fn-nlv-run line s 0 7 11)) :body)) (not (equal (fn-lpc-at 0 (fn-nlv-run (append line '(13)) s 0 7 11)) :body)))))))
+
+; bare LF remains rejected through arbitrary suffix
+(assert-event (let ((line '(83 58 32 120)) (suffix '(13 10 0)) (s (fn-lpc-header-begin)))
+ (and (equal (fn-lpc-at 0 s) :start)
+      (fn-nlv-physicalp line)
+      (equal (fn-lpc-at 0 (fn-nlv-run (append line (cons 10 suffix)) s 0 7 11)) :bad))))
+
+; bare LF phase removal: reachable CR-start accepts LF
+(assert-event (let ((line nil) (suffix '(0)) (s (fn-nlv-run '(13) (fn-lpc-header-begin) 0 7 11)))
+ (and (not (equal (fn-lpc-at 0 s) :start))
+      (fn-nlv-physicalp line)
+      (not (equal (fn-lpc-at 0 (fn-nlv-run (append line (cons 10 suffix)) s 0 7 11)) :bad)))))
+
+; bare LF physical-prefix removal: CR followed by LF is valid
+(assert-event (let ((line '(13)) (suffix '(0)) (s (fn-lpc-header-begin)))
+ (and (equal (fn-lpc-at 0 s) :start)
+      (not (fn-nlv-physicalp line))
+      (not (equal (fn-lpc-at 0 (fn-nlv-run (append line (cons 10 suffix)) s 0 7 11)) :bad)))))
+
+; bare CR rejects from arbitrary header/body prefix and any state
+(assert-event (let ((prefix '(13 10 0 255)) (byte 0) (suffix '(13 10 120)) (s (fn-lpc-header-begin)))
+ (and (not (equal byte 10))
+      (equal (fn-lpc-at 0 (fn-nlv-run (append prefix (cons 13 (cons byte suffix))) s 0 7 11)) :bad))))
+
+; bare CR sole-hypothesis removal: CRLF valid body separator
+(assert-event (let ((prefix nil) (byte 10) (suffix '(0)) (s (fn-lpc-header-begin)))
+ (and (not (not (equal byte 10)))
+      (not (equal (fn-lpc-at 0 (fn-nlv-run (append prefix (cons 13 (cons byte suffix))) s 0 7 11)) :bad)))))
