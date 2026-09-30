@@ -1,8 +1,9 @@
-; S7/P12 record preparation: bounded opaque-octet leaf boundary.
+; S7/P12 record preparation: bounded resident tree/byte census and word boundaries.
 ; Library only. No actual producer/host, physical pool or publication claim.
 (in-package "ACL2")
 (include-book "store-tree-codec")
 (include-book "history-pages-words")
+(include-book "history-scalar-cursor")
 (local (include-book "arithmetic/top" :dir :system))
 (local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
 
@@ -355,12 +356,12 @@
   (if (consp x)
       (and (< (len x) *fn-hrcur-u64-bound*)
            (fn-hrcur-tree-domainp (car x)) (fn-hrcur-tree-domainp (cdr x)))
-    (fn-scc-atomp x)))
+    (fn-hrsc-domainp x)))
 
 (defthm fn-hrcur-tree-domain-is-treep
   (implies (fn-hrcur-tree-domainp x) (fn-scc-treep x))
   :hints (("Goal" :induct (fn-hrcur-tree-domainp x)
-           :in-theory (enable fn-scc-treep))))
+           :in-theory (enable fn-scc-treep fn-hrsc-domainp))))
 
 (defun fn-hrcur-tail (n x)
   (declare (xargs :guard (natp n)))
@@ -524,10 +525,11 @@
 (defun fn-hrcur-descriptorp (d)
   (declare (xargs :guard t :verify-guards nil))
   (let ((tag (fn-hrcur-field 0 d)) (x (fn-hrcur-field 1 d)))
-    (cond ((eq tag :atom) (and (fn-hrcur-widthp d 2) (fn-scc-atomp x)))
+    (cond ((eq tag :atom) (and (fn-hrcur-widthp d 2) (fn-hrsc-domainp x)))
           ((eq tag :octets)
            (and (fn-hrcur-widthp d 3) (consp x) (fn-scc-octet-listp x)
-                (equal (fn-hrcur-field 2 d) (len x))))
+                (equal (fn-hrcur-field 2 d) (len x))
+                (< (len x) *fn-hrcur-u64-bound*)))
           ((eq tag :byte) (and (fn-hrcur-widthp d 2) (fn-scc-octetp x)))
           (t nil))))
 
@@ -589,3 +591,353 @@
                     fn-hrcur-tree-taskp fn-hrcur-tree-todop fn-hrcur-tree-invariantp
                     fn-hrcur-tree-rest fn-hrcur-tree-task-rest
                     fn-hrcur-descriptorp fn-hrcur-descriptor-octets))
+
+; Six cells: phase, suspended descriptor traversal, active scalar/leaf cursor,
+; captured root token, lease, reserved. Every tick has one bounded subaction.
+(defun fn-hrcur-byte-begin (source capture lease)
+  (declare (xargs :guard t))
+  (if (and (fn-hrcur-widthp source 2) (eq (car source) :resident))
+      (list :tree (fn-hrcur-tree-begin (cadr source) capture lease) nil capture lease nil)
+    (list :refused nil nil capture lease nil)))
+
+(defun fn-hrcur-byte-tick (c)
+  (declare (xargs :guard t))
+  (let ((phase (fn-hrcur-field 0 c)) (tree (fn-hrcur-field 1 c))
+        (active (fn-hrcur-field 2 c)) (capture (fn-hrcur-field 3 c))
+        (lease (fn-hrcur-field 4 c)))
+    (cond
+     ((not (fn-hrcur-widthp c 6))
+      (mv '(:refused :byte-cursor) nil (list :refused nil nil capture lease nil)))
+     ((eq phase :tree)
+      (mv-let (verdict d next) (fn-hrcur-tree-tick tree)
+        (cond
+         ((eq verdict :continue) (mv :continue nil (list :tree next nil capture lease nil)))
+         ((eq verdict :prepared) (mv :prepared nil (list :done next nil capture lease nil)))
+         ((eq verdict :emit)
+          (let ((tag (fn-hrcur-field 0 d)) (x (fn-hrcur-field 1 d))
+                (n (fn-hrcur-field 2 d)))
+            (cond
+             ((eq tag :byte) (mv :emit x (list :tree next nil capture lease nil)))
+             ((eq tag :atom)
+              (mv :continue nil
+                  (list :scalar next (fn-hrsc-begin x capture lease) capture lease nil)))
+             ((and (eq tag :octets) (natp n) (< n *fn-hrcur-u64-bound*))
+              (mv :continue nil
+                  (list :leaf next
+                        (list :prefix nil x n (cons 6 (fn-scc-nat-octets n)) capture lease)
+                        capture lease nil)))
+             (t (mv '(:refused :descriptor) nil
+                    (list :refused nil nil capture lease nil))))))
+         (t (mv verdict nil (list :refused nil nil capture lease nil))))))
+     ((or (eq phase :scalar) (eq phase :leaf))
+      (mv-let (verdict byte next)
+        (if (eq phase :scalar) (fn-hrsc-tick active) (fn-hrcur-leaf-tick active))
+        (cond
+         ((eq verdict :prepared) (mv :continue nil (list :tree tree nil capture lease nil)))
+         ((or (eq verdict :continue) (eq verdict :emit))
+          (mv verdict byte (list phase tree next capture lease nil)))
+         (t (mv verdict nil (list :refused nil nil capture lease nil))))))
+     ((eq phase :done) (mv :prepared nil c))
+     (t (mv '(:refused :byte-cursor) nil c)))))
+
+(defun fn-hrcur-byte-invariantp (c)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-hrcur-widthp c 6)
+       (fn-hrcur-tree-invariantp (fn-hrcur-field 1 c))
+       (let ((phase (fn-hrcur-field 0 c)) (active (fn-hrcur-field 2 c)))
+         (cond ((eq phase :tree) (null active))
+               ((eq phase :scalar) (fn-hrsc-invariantp active))
+               ((eq phase :leaf) (fn-hrcur-leaf-invariantp active))
+               ((eq phase :done) (null (fn-hrcur-field 0 (fn-hrcur-field 1 c))))
+               (t nil)))))
+
+(defun fn-hrcur-byte-rest (c)
+  (declare (xargs :guard t :verify-guards nil))
+  (append (cond ((eq (fn-hrcur-field 0 c) :scalar) (fn-hrsc-rest (fn-hrcur-field 2 c)))
+                ((eq (fn-hrcur-field 0 c) :leaf) (fn-hrcur-leaf-rest (fn-hrcur-field 2 c)))
+                (t nil))
+          (fn-hrcur-tree-rest (fn-hrcur-field 0 (fn-hrcur-field 1 c)))))
+
+(local
+ (defthm fn-hrcur-hrsc-field-same
+   (implies (natp i) (equal (fn-hrsc-field i c) (fn-hrcur-field i c)))
+   :hints (("Goal" :induct (fn-hrcur-field i c)
+            :in-theory (enable fn-hrsc-field)))))
+
+(local
+ (defthm fn-hrcur-leaf-prepared-empty
+   (implies (and (fn-hrcur-leaf-invariantp c)
+                 (eq (mv-nth 0 (fn-hrcur-leaf-tick c)) :prepared))
+            (equal (fn-hrcur-leaf-rest c) nil))
+   :hints (("Goal" :in-theory
+            (e/d (fn-hrcur-leaf-invariantp fn-hrcur-leaf-rest
+                    fn-hrcur-leaf-tick fn-hrcur-shapep)
+                 (fn-hrcur-leaf-tick-refines-residual fn-hrcur-leaf-tick-preserves))))))
+
+(local
+ (defthm fn-hrcur-tree-prepared-empty
+   (implies (and (fn-hrcur-tree-invariantp c)
+                 (eq (mv-nth 0 (fn-hrcur-tree-tick c)) :prepared))
+            (and (equal (fn-hrcur-field 0 c) nil)
+                 (equal (fn-hrcur-field 0 (mv-nth 2 (fn-hrcur-tree-tick c))) nil)))
+   :hints (("Goal" :in-theory
+            (e/d (fn-hrcur-tree-invariantp fn-hrcur-tree-tick)
+                 (fn-hrcur-tree-tick-refines-residual fn-hrcur-tree-tick-preserves))))))
+
+(defthm fn-hrcur-byte-begin-refines-encode
+  (implies (fn-hrcur-tree-domainp row)
+           (and (fn-hrcur-byte-invariantp (fn-hrcur-byte-begin (list :resident row) capture lease))
+                (equal (fn-hrcur-byte-rest (fn-hrcur-byte-begin (list :resident row) capture lease))
+                       (fn-scc-encode row))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-hrcur-byte-begin fn-hrcur-byte-invariantp fn-hrcur-byte-rest
+                 fn-hrcur-tree-begin fn-hrcur-tree-rest fn-hrcur-tree-task-rest
+                 fn-hrcur-tree-invariantp fn-hrcur-tree-todop fn-hrcur-tree-taskp)
+                (fn-scc-encode fn-scc-program)))))
+
+
+(local
+ (defthm fn-hrcur-scalar-verdict
+   (implies (fn-hrsc-invariantp c)
+            (member-eq (mv-nth 0 (fn-hrsc-tick c)) '(:continue :emit :prepared)))
+   :hints (("Goal" :use fn-hrsc-tick-refines-atom-residual
+            :in-theory (disable fn-hrsc-tick-refines-atom-residual fn-hrsc-rest)))))
+(local
+ (defthm fn-hrcur-leaf-prefix-ready
+   (implies (and (consp x) (fn-scc-octet-listp x)
+                 (natp n) (< n *fn-hrcur-u64-bound*))
+            (fn-hrcur-leaf-invariantp
+             (list :prefix nil x n (cons 6 (fn-scc-nat-octets n)) capture lease)))
+   :hints (("Goal" :in-theory
+            (e/d (fn-hrcur-leaf-invariantp fn-hrcur-shapep fn-scc-nat-octets
+                  fn-scc-octet-listp fn-scc-octetp)
+                 (fn-scc-le-digits))))))
+
+(defthm fn-hrcur-byte-tick-preserves
+  (implies (fn-hrcur-byte-invariantp c)
+           (and (fn-hrcur-byte-invariantp (mv-nth 2 (fn-hrcur-byte-tick c)))
+                (member-eq (mv-nth 0 (fn-hrcur-byte-tick c)) '(:continue :emit :prepared))
+                (implies (eq (mv-nth 0 (fn-hrcur-byte-tick c)) :emit)
+                         (fn-scc-octetp (mv-nth 1 (fn-hrcur-byte-tick c))))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hrcur-tree-tick-preserves (c (fn-hrcur-field 1 c)))
+                 (:instance fn-hrcur-tree-prepared-empty (c (fn-hrcur-field 1 c)))
+                 (:instance fn-hrcur-leaf-tick-preserves (c (fn-hrcur-field 2 c)))
+                 (:instance fn-hrcur-scalar-verdict (c (fn-hrcur-field 2 c))))
+           :in-theory
+           (e/d (fn-hrcur-byte-tick fn-hrcur-byte-invariantp fn-hrcur-descriptorp)
+                (fn-hrcur-tree-tick fn-hrcur-tree-invariantp fn-hrcur-tree-rest
+                 fn-hrcur-tree-tick-preserves fn-hrcur-leaf-tick-preserves
+                 fn-hrcur-leaf-invariantp fn-hrcur-leaf-tick
+                 fn-hrsc-tick fn-hrsc-invariantp fn-hrsc-rest fn-hrsc-domainp
+                 fn-scc-octet-listp fn-scc-octetp fn-scc-nat-octets)))))
+
+
+(local
+ (defthm fn-hrcur-leaf-prefix-rest
+   (equal (fn-hrcur-leaf-rest
+           (list :prefix nil x n (cons 6 (fn-scc-nat-octets n)) capture lease))
+          (cons 6 (append (fn-scc-nat-octets n) x)))
+   :hints (("Goal" :in-theory
+            (e/d (fn-hrcur-leaf-rest)
+                 (fn-hrcur-leaf-tick-refines-residual fn-scc-nat-octets))))))
+
+(local
+ (defthm fn-hrcur-tree-invariant-consp
+   (implies (fn-hrcur-tree-invariantp c) (consp c))
+   :hints (("Goal" :in-theory (enable fn-hrcur-tree-invariantp)))))
+
+(local
+ (defthm fn-hrcur-byte-scalar-residual
+   (implies (and (fn-hrcur-byte-invariantp c) (eq (fn-hrcur-field 0 c) :scalar))
+            (equal (fn-hrcur-byte-rest c)
+                  (if (eq (mv-nth 0 (fn-hrcur-byte-tick c)) :emit)
+                      (cons (mv-nth 1 (fn-hrcur-byte-tick c))
+                            (fn-hrcur-byte-rest (mv-nth 2 (fn-hrcur-byte-tick c))))
+                    (fn-hrcur-byte-rest (mv-nth 2 (fn-hrcur-byte-tick c))))))
+   :hints (("Goal" :do-not-induct t :use ((:instance fn-hrsc-tick-refines-atom-residual (c (fn-hrcur-field 2 c))))
+            :in-theory
+            (e/d (fn-hrcur-byte-tick fn-hrcur-byte-invariantp fn-hrcur-byte-rest
+                  fn-hrcur-descriptor-octets fn-hrcur-descriptorp)
+                 (fn-hrcur-tree-tick fn-hrcur-tree-invariantp fn-hrcur-tree-rest
+                 fn-hrcur-tree-tick-refines-residual fn-hrcur-tree-tick-preserves
+                 fn-hrcur-leaf-tick-refines-residual fn-hrcur-leaf-tick-preserves fn-hrcur-leaf-rest
+                 fn-hrcur-leaf-invariantp fn-hrcur-leaf-tick
+                 fn-hrsc-tick-refines-atom-residual
+                 fn-hrsc-tick fn-hrsc-invariantp fn-hrsc-rest fn-hrsc-domainp
+                 fn-scc-atom-octets fn-scc-octet-listp fn-scc-octetp fn-scc-nat-octets))))))
+(local
+ (defthm fn-hrcur-byte-leaf-residual
+   (implies (and (fn-hrcur-byte-invariantp c) (eq (fn-hrcur-field 0 c) :leaf))
+            (equal (fn-hrcur-byte-rest c)
+                  (if (eq (mv-nth 0 (fn-hrcur-byte-tick c)) :emit)
+                      (cons (mv-nth 1 (fn-hrcur-byte-tick c))
+                            (fn-hrcur-byte-rest (mv-nth 2 (fn-hrcur-byte-tick c))))
+                    (fn-hrcur-byte-rest (mv-nth 2 (fn-hrcur-byte-tick c))))))
+   :hints (("Goal" :do-not-induct t :use ((:instance fn-hrcur-leaf-tick-refines-residual (c (fn-hrcur-field 2 c)))
+                 (:instance fn-hrcur-leaf-tick-preserves (c (fn-hrcur-field 2 c)))
+                 (:instance fn-hrcur-leaf-prepared-empty (c (fn-hrcur-field 2 c))))
+            :in-theory
+            (e/d (fn-hrcur-byte-tick fn-hrcur-byte-invariantp fn-hrcur-byte-rest
+                  fn-hrcur-descriptor-octets fn-hrcur-descriptorp)
+                 (fn-hrcur-tree-tick fn-hrcur-tree-invariantp fn-hrcur-tree-rest
+                 fn-hrcur-tree-tick-refines-residual fn-hrcur-tree-tick-preserves
+                 fn-hrcur-leaf-tick-refines-residual fn-hrcur-leaf-tick-preserves fn-hrcur-leaf-rest
+                 fn-hrcur-leaf-invariantp fn-hrcur-leaf-tick
+                 fn-hrsc-tick-refines-atom-residual
+                 fn-hrsc-tick fn-hrsc-invariantp fn-hrsc-rest fn-hrsc-domainp
+                 fn-scc-atom-octets fn-scc-octet-listp fn-scc-octetp fn-scc-nat-octets))))))
+(local
+ (defthm fn-hrcur-byte-tree-residual
+   (implies (and (fn-hrcur-byte-invariantp c) (eq (fn-hrcur-field 0 c) :tree))
+            (equal (fn-hrcur-byte-rest c)
+                  (if (eq (mv-nth 0 (fn-hrcur-byte-tick c)) :emit)
+                      (cons (mv-nth 1 (fn-hrcur-byte-tick c))
+                            (fn-hrcur-byte-rest (mv-nth 2 (fn-hrcur-byte-tick c))))
+                    (fn-hrcur-byte-rest (mv-nth 2 (fn-hrcur-byte-tick c))))))
+   :hints (("Goal" :do-not-induct t :use ((:instance fn-hrcur-tree-tick-refines-residual (c (fn-hrcur-field 1 c)))
+                 (:instance fn-hrcur-tree-tick-preserves (c (fn-hrcur-field 1 c)))
+                 (:instance fn-hrcur-tree-prepared-empty (c (fn-hrcur-field 1 c))))
+            :in-theory
+            (e/d (fn-hrcur-byte-tick fn-hrcur-byte-invariantp fn-hrcur-byte-rest
+                  fn-hrcur-descriptor-octets fn-hrcur-descriptorp)
+                 (fn-hrcur-byte-scalar-residual fn-hrcur-byte-leaf-residual
+                 fn-hrcur-tree-tick fn-hrcur-tree-invariantp fn-hrcur-tree-rest
+                 fn-hrcur-tree-tick-refines-residual fn-hrcur-tree-tick-preserves
+                 fn-hrcur-leaf-tick-refines-residual fn-hrcur-leaf-tick-preserves fn-hrcur-leaf-rest
+                 fn-hrcur-leaf-invariantp fn-hrcur-leaf-tick
+                 fn-hrsc-tick-refines-atom-residual
+                 fn-hrsc-tick fn-hrsc-invariantp fn-hrsc-rest fn-hrsc-domainp
+                 fn-scc-atom-octets fn-scc-octet-listp fn-scc-octetp fn-scc-nat-octets))))))
+(local
+ (defthm fn-hrcur-byte-done-residual
+   (implies (and (fn-hrcur-byte-invariantp c) (eq (fn-hrcur-field 0 c) :done))
+            (equal (fn-hrcur-byte-rest c)
+                  (if (eq (mv-nth 0 (fn-hrcur-byte-tick c)) :emit)
+                      (cons (mv-nth 1 (fn-hrcur-byte-tick c))
+                            (fn-hrcur-byte-rest (mv-nth 2 (fn-hrcur-byte-tick c))))
+                    (fn-hrcur-byte-rest (mv-nth 2 (fn-hrcur-byte-tick c))))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory
+            (e/d (fn-hrcur-byte-tick fn-hrcur-byte-invariantp fn-hrcur-byte-rest
+                  fn-hrcur-descriptor-octets fn-hrcur-descriptorp)
+                 (fn-hrcur-byte-scalar-residual fn-hrcur-byte-leaf-residual
+                 fn-hrcur-tree-tick fn-hrcur-tree-invariantp fn-hrcur-tree-rest
+                 fn-hrcur-tree-tick-refines-residual fn-hrcur-tree-tick-preserves
+                 fn-hrcur-leaf-tick-refines-residual fn-hrcur-leaf-tick-preserves fn-hrcur-leaf-rest
+                 fn-hrcur-leaf-invariantp fn-hrcur-leaf-tick
+                 fn-hrsc-tick-refines-atom-residual
+                 fn-hrsc-tick fn-hrsc-invariantp fn-hrsc-rest fn-hrsc-domainp
+                 fn-scc-atom-octets fn-scc-octet-listp fn-scc-octetp fn-scc-nat-octets))))))
+(defthm fn-hrcur-byte-tick-refines-residual
+  (implies (fn-hrcur-byte-invariantp c) (equal (fn-hrcur-byte-rest c)
+                  (if (eq (mv-nth 0 (fn-hrcur-byte-tick c)) :emit)
+                      (cons (mv-nth 1 (fn-hrcur-byte-tick c))
+                            (fn-hrcur-byte-rest (mv-nth 2 (fn-hrcur-byte-tick c))))
+                    (fn-hrcur-byte-rest (mv-nth 2 (fn-hrcur-byte-tick c))))))
+  :hints (("Goal" :use ((:instance fn-hrcur-byte-scalar-residual)
+                        (:instance fn-hrcur-byte-leaf-residual)
+                        (:instance fn-hrcur-byte-tree-residual)
+                        (:instance fn-hrcur-byte-done-residual))
+           :in-theory (e/d (fn-hrcur-byte-invariantp)
+                            (fn-hrcur-byte-rest fn-hrcur-byte-tick
+                             fn-hrcur-byte-scalar-residual fn-hrcur-byte-leaf-residual
+                             fn-hrcur-byte-tree-residual fn-hrcur-byte-done-residual)))))
+
+(defthm fn-hrcur-byte-tick-keeps-capture-lease
+  (and (equal (fn-hrcur-field 3 (mv-nth 2 (fn-hrcur-byte-tick c))) (fn-hrcur-field 3 c))
+       (equal (fn-hrcur-field 4 (mv-nth 2 (fn-hrcur-byte-tick c))) (fn-hrcur-field 4 c)))
+  :hints (("Goal" :in-theory (enable fn-hrcur-byte-tick))))
+
+(local (in-theory (disable fn-hrcur-byte-scalar-residual fn-hrcur-byte-leaf-residual
+                           fn-hrcur-byte-tree-residual fn-hrcur-byte-done-residual)))
+(in-theory (disable fn-hrcur-byte-tick-refines-residual
+                    fn-hrcur-leaf-tick-refines-residual
+                    fn-hrcur-tree-tick-refines-residual fn-hrsc-tick-refines-atom-residual))
+
+(defthm fn-hrcur-byte-prepared-empty
+  (implies (and (fn-hrcur-byte-invariantp c)
+                (eq (mv-nth 0 (fn-hrcur-byte-tick c)) :prepared))
+           (equal (fn-hrcur-byte-rest c) nil))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hrcur-tree-prepared-empty (c (fn-hrcur-field 1 c))))
+           :in-theory
+           (e/d (fn-hrcur-byte-tick fn-hrcur-byte-invariantp fn-hrcur-byte-rest)
+                (fn-hrcur-tree-tick fn-hrcur-tree-invariantp fn-hrcur-tree-rest
+                 fn-hrcur-leaf-tick fn-hrsc-tick fn-hrsc-rest fn-hrcur-leaf-rest)))))
+
+; Census consumes the exact same byte stream as emission, with no encoded list.
+; Three cells: phase, byte cursor, exact emitted-byte count.
+(defun fn-hrcur-census-begin (source capture lease)
+  (declare (xargs :guard t))
+  (list :active (fn-hrcur-byte-begin source capture lease) 0))
+
+(defun fn-hrcur-census-tick (c)
+  (declare (xargs :guard t))
+  (let ((phase (fn-hrcur-field 0 c)) (bytes (fn-hrcur-field 1 c))
+        (n (fn-hrcur-field 2 c)))
+    (cond
+     ((not (and (fn-hrcur-widthp c 3) (natp n) (< n *fn-hrcur-u64-bound*)))
+      (mv '(:refused :census-cursor) nil (list :refused bytes 0)))
+     ((eq phase :done) (mv :prepared n c))
+     ((eq phase :active)
+      (mv-let (v byte next) (fn-hrcur-byte-tick bytes)
+        (declare (ignore byte))
+        (cond
+         ((eq v :emit)
+          (if (< (+ 1 n) *fn-hrcur-u64-bound*)
+              (mv :continue nil (list :active next (+ 1 n)))
+            (mv '(:refused :codec-width) nil (list :refused next n))))
+         ((eq v :continue) (mv :continue nil (list :active next n)))
+         ((eq v :prepared) (mv :prepared n (list :done next n)))
+         (t (mv v nil (list :refused next n))))))
+     (t (mv '(:refused :census-cursor) nil c)))))
+
+(defun fn-hrcur-census-total (c)
+  (declare (xargs :guard t :verify-guards nil))
+  (+ (nfix (fn-hrcur-field 2 c)) (len (fn-hrcur-byte-rest (fn-hrcur-field 1 c)))))
+
+(defun fn-hrcur-census-invariantp (c)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-hrcur-widthp c 3)
+       (member-eq (fn-hrcur-field 0 c) '(:active :done))
+       (fn-hrcur-byte-invariantp (fn-hrcur-field 1 c))
+       (natp (fn-hrcur-field 2 c))
+       (< (fn-hrcur-census-total c) *fn-hrcur-u64-bound*)
+       (implies (eq (fn-hrcur-field 0 c) :done)
+                (equal (fn-hrcur-byte-rest (fn-hrcur-field 1 c)) nil))))
+
+(defthm fn-hrcur-census-begin-refines-length
+  (implies (and (fn-hrcur-tree-domainp row)
+                (< (len (fn-scc-encode row)) *fn-hrcur-u64-bound*))
+           (and (fn-hrcur-census-invariantp
+                 (fn-hrcur-census-begin (list :resident row) capture lease))
+                (equal (fn-hrcur-census-total
+                         (fn-hrcur-census-begin (list :resident row) capture lease))
+                       (len (fn-scc-encode row)))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-hrcur-census-begin fn-hrcur-census-invariantp fn-hrcur-census-total)
+                (fn-hrcur-byte-begin fn-hrcur-byte-invariantp fn-hrcur-byte-rest
+                 fn-scc-encode fn-scc-program)))))
+
+(defthm fn-hrcur-census-tick-refines-length
+  (implies (fn-hrcur-census-invariantp c)
+           (and (fn-hrcur-census-invariantp (mv-nth 2 (fn-hrcur-census-tick c)))
+                (member-eq (mv-nth 0 (fn-hrcur-census-tick c)) '(:continue :prepared))
+                (equal (fn-hrcur-census-total c)
+                       (fn-hrcur-census-total (mv-nth 2 (fn-hrcur-census-tick c))))
+                (implies (eq (mv-nth 0 (fn-hrcur-census-tick c)) :prepared)
+                         (equal (mv-nth 1 (fn-hrcur-census-tick c))
+                                (fn-hrcur-census-total c)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hrcur-byte-tick-refines-residual (c (fn-hrcur-field 1 c)))
+                 (:instance fn-hrcur-byte-tick-preserves (c (fn-hrcur-field 1 c)))
+                 (:instance fn-hrcur-byte-prepared-empty (c (fn-hrcur-field 1 c))))
+           :in-theory
+           (e/d (fn-hrcur-census-tick fn-hrcur-census-invariantp fn-hrcur-census-total)
+                (fn-hrcur-byte-tick fn-hrcur-byte-invariantp fn-hrcur-byte-rest
+                 fn-hrcur-byte-tick-preserves fn-hrcur-byte-prepared-empty)))))
+
+(in-theory (disable fn-hrcur-byte-begin fn-hrcur-byte-tick fn-hrcur-byte-invariantp
+                    fn-hrcur-byte-rest fn-hrcur-census-begin fn-hrcur-census-tick
+                    fn-hrcur-census-invariantp fn-hrcur-census-total))

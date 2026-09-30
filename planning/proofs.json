@@ -17895,19 +17895,22 @@
     {
       "id": "PRF-1088",
       "title": "Bounded history record cursor refines current image codec",
-      "statement": "S7/P12/D33 planned union: an explicit source-reference task cursor incrementally validates/counts and emits tree codec bytes, packs padded u64 words, and supplies exact census/placement inputs to the private snapshot producer. No whole-record encoder, source-list scan or image resize occurs in a bounded tick. The first library component handles nonempty opaque octet leaves: begin refines existing fn-scc-encode, each tick preserves the carried invariant and exact emitted-byte/residual equation, and capture/lease identities persist. This library has no host caller and does not complete producer funding, publication, general tree/string/key hashing, word packing or fn-hp-x-blocks composition.",
+      "statement": "S7/P12/D33 planned union: an explicit source-reference task cursor incrementally validates/counts and emits tree codec bytes, packs padded u64 words, and supplies exact census/placement inputs to the private snapshot producer. No whole-record encoder, source-list scan or image resize occurs in a bounded tick. Resident descriptor, scalar/leaf byte composition and byte census components refine existing fn-scc-encode and its exact length; scalar word boundaries refine fn-hp-pack8. Carried invariants and capture/lease identities persist. This library has no host caller and does not complete borrowed decoded spans, general progress, controller funding, publication, Message-ID key hashing or fn-hp-x-blocks composition.",
       "milestone": "M5",
       "requirements": [],
-      "depends_on": [],
+      "depends_on": [
+        "PRF-1095"
+      ],
       "assumptions": [],
       "status": "planned",
       "events": [],
       "evidence": [
         "books/history-record-cursor.lisp",
         "tests/acl2/history-record-cursor-tests.lisp",
-        "specs/history-record-cursor.md"
+        "specs/history-record-cursor.md",
+        "planning/evidence/history-record-cursor-source-2026-09-30.json"
       ],
-      "progress_note": "Resident tree descriptor, opaque-leaf byte and scalar word-accumulator components clean-source admitted (68 forms, 2.13 ACL2 s /459852 steps), executable begin/tick/push/finish guards verified. All44 testbody forms pass (1.35 ACL2 s /453795 steps), including dotted composite trees, quantum resume, full/partial/aligned words and literal invariant/domain removals. Proved non-octets task carry removes repeated shrinking-suffix classification; 200-byte-prefix witness completes within810 descriptor ticks. Initial/one-tick residuals name existing fn-scc-encode/program and fn-hp-pack8. No actual host caller, certification/native/image or full producer claim. Full target remains planned: scalar byte composition, borrowed decoded spans, total census, profile/domain bridge, initial leaf size-hypothesis witness and controller funding/qualification remain open."
+      "progress_note": "Clean protected proper-local hrc11 on persvati:94 source body forms inside one encapsulate,2.99 ACL2s/2559174 steps;62 testbody forms inside one encapsulate,0.06s/4249 steps. Scalar dependency admitted separately with its locals confined. Runtime begin/tick/push/finish guards verified. Resident tree descriptors, scalar/leaf byte composition, exact byte census and scalar word boundaries refine current codec. Reachable nested/dotted source, string/symbol, quantum resume, full/partial/aligned words, census edge refusal and literal invariant/domain removals covered. No actual host caller, certification/native/image or full producer claim. Full target remains planned:borrowed cold spans,general progress,padded placement/profile bridge,initial encoded-size hypothesis witnesses,controller funding and qualification remain open."
     },
     {
       "id": "PRF-1095",
