@@ -519,3 +519,5 @@
 
 (include-book "assumptions-selected-runtime-rx-copy-cost") ; PRF-1160 conditional successful component cost
 (include-book "assumptions-selected-runtime-octets-resize")
+(include-book "assumptions-selected-runtime-initializer-register") ; PRF-1166 primary store only
+(include-book "assumptions-selected-runtime-initializer-array") ; PRF-1169 primary stores only
