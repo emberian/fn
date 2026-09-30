@@ -1560,6 +1560,17 @@ ACL2_BOOKS ?= books/defrecord \
 	books/history-decode-cursor \
 	books/history-decode-stream \
 	tests/acl2/history-decode-cursor-tests \
+	books/pagestore-digest-cursor \
+	books/pagestore-digest-cursor-refinement \
+	books/pagestore-digest-byte-cursor \
+	books/pagestore-digest-byte-refinement \
+	tests/acl2/pagestore-digest-cursor-tests \
+	tests/acl2/pagestore-digest-cursor-refinement-tests \
+	tests/acl2/pagestore-digest-byte-cursor-tests \
+	books/history-page-reader \
+	books/history-page-reader-verdict \
+	tests/acl2/history-page-reader-tests \
+	tests/acl2/history-page-reader-verdict-tests \
 	tests/acl2/history-page-cursor-tests \
 	tests/acl2/history-page-layout-tests \
 	tests/acl2/history-page-buffer-tests \
