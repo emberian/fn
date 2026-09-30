@@ -1775,16 +1775,16 @@
     "books": 1835,
     "books_in_root_closure": 1832,
     "roots": 1768,
-    "theorems": 29373,
-    "functions": 18859,
-    "assert_events": 23913,
-    "must_fails": 2517,
+    "theorems": 29376,
+    "functions": 18860,
+    "assert_events": 23921,
+    "must_fails": 2518,
     "prover_refusals": 0,
     "encapsulates": 159,
     "guards": {
       "verified": 3508,
       "declared-off": 2249,
-      "default-guarded": 10271,
+      "default-guarded": 10272,
       "default-unguarded": 2831
     },
     "suspect_theorems": 1248,
@@ -23367,12 +23367,12 @@
       "book": "books/peer-carriage.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 47,
-      "functions": 22,
+      "theorems": 50,
+      "functions": 23,
       "guards": {
         "verified": 0,
         "declared-off": 1,
-        "default-guarded": 20,
+        "default-guarded": 21,
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
@@ -48547,10 +48547,10 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 121,
-      "must_fails": 22,
+      "assert_events": 129,
+      "must_fails": 23,
       "prover_refusals": 0,
-      "defconsts": 21,
+      "defconsts": 26,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
@@ -60391,7 +60391,7 @@
     {
       "theorem": "fn-pcb-bound-carrier-with-a-failed-primitive-is-signature-failed",
       "book": "books/peer-carriage.lisp",
-      "line": 550,
+      "line": 608,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-pcb-refusal-class and the conclusion is that arm's value"
       ]
@@ -60407,7 +60407,7 @@
     {
       "theorem": "fn-pcb-transit-verdict-names-the-accepted-arm",
       "book": "books/peer-carriage.lisp",
-      "line": 806,
+      "line": 864,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-pcb-transit-verdict and the conclusion is that arm's value"
       ]

@@ -7083,6 +7083,36 @@
         "planning/evidence/peering-inn-streaming-source-2026-09-30.md"
       ],
       "execution_scope": "Source-present Q12 streaming observation harness. Scripted socket/accounting and fake baseline lab tests do not establish real INN/native image behavior. Matching runner-owned actual INN execution remains open, as do Distribution/cancel/expiry, authentication/control authority, window/soak and broader Q12/W3 obligations."
+    },
+    {
+      "id": "SCN-1044",
+      "title": "Lowering a carriage budget refuses new articles without erasing usage; raising it admits the refused article, and replay retains the raised limit and both charges",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-015"
+      ],
+      "steps": [
+        "Relay accepts a first signed carried article under count budget one. Live operator lowers the count budget to zero and the author sends a second article.",
+        "Raise count budget to two and reoffer the exact second signed article by IHAVE. Restart the relay and send a third article."
+      ],
+      "expected": [
+        "Second article is refused by carried-count-exhausted; first article bytes remain unchanged.",
+        "Second article is accepted after raising the budget. Both article bytes survive relay restart; the third is refused by carried-count-exhausted because usage did not reset."
+      ],
+      "evidence": [
+        "tests/acl2/peer-carriage-tests.lisp",
+        "tests/test_native_hybrid_author.py",
+        "planning/evidence/peer-carriage-variable-budget-2026-09-30.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_hybrid_author",
+        "cases": [
+          "test_carried_budget_lower_raise_and_restart"
+        ],
+        "native": true,
+        "record": "planning/evidence/peer-carriage-variable-budget-2026-09-30.md"
+      }
     }
   ]
 }

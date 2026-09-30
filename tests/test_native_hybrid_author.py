@@ -1204,6 +1204,73 @@ class NativeHybridAuthorTest(unittest.TestCase):
             for node, owner in reversed(owners):
                 node.stop(process=owner)
 
+    def test_carried_budget_lower_raise_and_restart(self):
+        """SCN-1044: current budgets gate new carriage, preserving old usage."""
+        nodes, first, source, ed_sig, ml_sig, ok = self._chain(
+            listed=True, budget=("1048576", "1"))
+        relay = nodes["relay"]
+        expected = b"0 carried " + self.principal.read_bytes().hex().encode() + b"\r\n"
+        owners = []
+
+        def wait_carried(msgid):
+            deadline = time.monotonic() + 60
+            while time.monotonic() < deadline:
+                if self._hdr(relay.port, msgid) == expected:
+                    return
+                time.sleep(0.2)
+            self.fail("carried article did not arrive: " + msgid)
+
+        def wait_count_refusal(msgid):
+            deadline = time.monotonic() + 60
+            while time.monotonic() < deadline:
+                lines = [line for line in relay.log.read_text().splitlines()
+                         if line.startswith("refused transit ")
+                         and " message-id=" + msgid + " " in line]
+                if lines:
+                    self.assertEqual(len(lines), 1, relay.log.read_text())
+                    self.assertIn(" detail=carried-count-exhausted ", lines[0])
+                    self.assertIsNone(self._hdr(relay.port, msgid))
+                    return
+                time.sleep(0.2)
+            self.fail("lowered carriage budget did not refuse: " + msgid)
+
+        try:
+            for node in (self.node, relay):
+                self._start(owners, node)
+            ok("hybrid-enroll", self.control, "1", self.principal,
+               self.ed_public, self.ml_public)
+            ok("hybrid-author", self.control, "1", source, ed_sig, ml_sig, self.ml_public)
+            wait_carried(first)
+            retained = self._article(relay.port, first)
+            ok("operator", relay.config, "peer", "budget", "author", "1048576", "0")
+            second = "<pcb-schedule-second@example.invalid>"
+            src2, ed2, ml2 = self._sign(second, b"varying budget second")
+            ok("hybrid-author", self.control, "1", src2, ed2, ml2, self.ml_public)
+            wait_count_refusal(second)
+            self.assertEqual(self._article(relay.port, first), retained)
+            # A refusal has not entered duplicate history.  Raising the
+            # current budget admits the very same signed article by IHAVE.
+            ok("operator", relay.config, "peer", "budget", "author", "1048576", "2")
+            reply = self._ihave(relay.port, second, self._article(self.port, second))
+            self.assertTrue(reply.startswith(b"235 "), reply)
+            wait_carried(second)
+            retained_second = self._article(relay.port, second)
+            relay_node, process = owners.pop()
+            self.assertIs(relay_node, relay)
+            relay.stop(process=process)
+            self._start(owners, relay)
+            self.assertEqual(self._article(relay.port, first), retained)
+            self.assertEqual(self._article(relay.port, second), retained_second)
+            # The raised budget and BOTH charges survive replay.  A third
+            # article is refused, rather than using a reset usage counter.
+            third = "<pcb-schedule-third@example.invalid>"
+            src3, ed3, ml3 = self._sign(third, b"varying budget third")
+            ok("hybrid-author", self.control, "1", src3, ed3, ml3, self.ml_public)
+            wait_count_refusal(third)
+        finally:
+            for node, owner in reversed(owners):
+                node.stop(process=owner)
+
     def test_carrying_boundary_without_budget_carries_nothing(self):
         nodes, msgid, source, ed_sig, ml_sig, ok = self._chain(listed=True, budget=None)
         relay = nodes["relay"]

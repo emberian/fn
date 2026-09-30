@@ -478,6 +478,64 @@
 ; =============================================================================
 ; 2. The refusal classes of a present carrier
 
+; A budget schedule has one entry per record, including records that carry
+; nothing through EVIDENCE.  Each carriage is checked against the budget at
+; THAT decision, not a later budget retroactively applied to old records.
+; This is a logical trace predicate, not a served-path history scan.  The
+; owner still calls fn-pcb-carried-event with its current budget and its
+; carried usage projection.
+(defun fn-pcb-scheduled-from (records usage budgets evidence)
+  (declare (xargs :guard t))
+  (if (consp records)
+      (and (consp budgets)
+           (let ((c (fn-pcb-event-carriage (car records))))
+             (if (and (consp c) (equal (car c) evidence))
+                 (and (equal (fn-pcb-admission (car budgets) usage (cdr c))
+                             :within)
+                      (fn-pcb-scheduled-from
+                       (cdr records) (fn-pcb-usage-plus usage (cdr c))
+                       (cdr budgets) evidence))
+               (fn-pcb-scheduled-from (cdr records) usage (cdr budgets)
+                                      evidence))))
+    (equal budgets nil)))
+
+(local (defthm fn-pcb-scheduled-from-has-one-budget-per-record
+  (implies (fn-pcb-scheduled-from records usage budgets evidence)
+           (and (equal (len budgets) (len records))
+                (true-listp budgets)))))
+
+(local (defthm fn-pcb-scheduled-from-of-append
+  (implies (and (natp (fn-pcb-car usage)) (natp (fn-pcb-cdr usage))
+                (consp usage) (equal (len budgets) (len a))
+                (true-listp budgets))
+           (equal (fn-pcb-scheduled-from
+                   (append a b) usage (append budgets more) evidence)
+                  (and (fn-pcb-scheduled-from a usage budgets evidence)
+                       (fn-pcb-scheduled-from
+                        b (fn-pcb-sum-usage usage a evidence)
+                        more evidence))))
+  :hints (("Goal" :induct (fn-pcb-scheduled-from a usage budgets evidence)
+           :in-theory (e/d (fn-pcb-usage-plus) (fn-pcb-admission))))))
+
+; KEYSTONE: the actual host-called constructor extends a varying-budget
+; admission trace at the CURRENT budget, even when the earlier records
+; were admitted under larger or smaller budgets.  A refusal adds no usage.
+(defthm fn-pcb-carried-event-keeps-budget-schedule-admitted
+  (let ((e (fn-pcb-carried-event
+            sequence txid generation msgid received groups obligation-id
+            content-subject release-evidence charge snapshots carried
+            clock-observation budget (fn-pcb-usage records release-evidence))))
+    (implies (fn-pcb-scheduled-from records (cons 0 0) budgets
+                                   release-evidence)
+             (fn-pcb-scheduled-from (append records (list e)) (cons 0 0)
+                                    (append budgets (list budget))
+                                    release-evidence)))
+  :hints (("Goal" :in-theory (disable fn-pa-carried-event fn-pcb-event-carriage
+                                      fn-pcb-carried-event
+                                      fn-hsig-article-event-carried-bindsp)
+           :use ((:instance fn-pcb-carried-event-is-carried-or-refused
+                            (usage (fn-pcb-usage records release-evidence)))))))
+
 ; The carrier field decodes to nine CBOR items that name no supported
 ; profile (fn-hc-decode-at's :profile refusal: another version, suite or
 ; algorithm).  fn-hc-received-plan reports that case as :carrier, so the

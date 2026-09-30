@@ -13,14 +13,14 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1835 |
 | Certification roots in the Makefile | 1768 |
 | Books inside the root closure | 1832 |
-| `defthm` and `defthmd` events | 29373 |
-| `defun` events | 18859 |
+| `defthm` and `defthmd` events | 29376 |
+| `defun` events | 18860 |
 | Functions with verified guards | 3508 |
 | Functions declared `:verify-guards nil` and never verified | 2249 |
-| Functions left at the default with an explicit guard | 10271 |
+| Functions left at the default with an explicit guard | 10272 |
 | Functions left at the default with no guard | 2831 |
-| `assert-event` checks | 23913 |
-| `must-fail` checks | 2517 |
+| `assert-event` checks | 23921 |
+| `must-fail` checks | 2518 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 159 |
 | Theorems flagged SUSPECT by shape | 1248 |
@@ -803,7 +803,7 @@ that `make certify` requests.
 | `books/payload-lz-value.lisp` | root | 8 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/peer-authored-accept.lisp` | root | 23 | 14 | 1/0/13/0 | 0 | 0 | 1 |
 | `books/peer-carriage-rows.lisp` | root | 41 | 14 | 1/0/13/0 | 0 | 0 | 0 |
-| `books/peer-carriage.lisp` | root | 47 | 22 | 0/1/20/1 | 0 | 0 | 4 |
+| `books/peer-carriage.lisp` | root | 50 | 23 | 0/1/21/1 | 0 | 0 | 4 |
 | `books/peer-catchup-effects.lisp` | root | 25 | 2 | 0/1/0/1 | 0 | 0 | 0 |
 | `books/peer-catchup-serve.lisp` | root | 19 | 29 | 2/0/27/0 | 0 | 0 | 0 |
 | `books/peer-catchup.lisp` | root | 41 | 97 | 14/0/83/0 | 0 | 0 | 0 |
@@ -1684,7 +1684,7 @@ that `make certify` requests.
 | `tests/acl2/payload-lz-append-tests.lisp` | root | 5 | 0 | 0/0/0/0 | 22 | 8 | 0 |
 | `tests/acl2/payload-lz-record-tests.lisp` | root | 11 | 0 | 0/0/0/0 | 14 | 10 | 0 |
 | `tests/acl2/peer-authored-accept-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 51 | 15 | 0 |
-| `tests/acl2/peer-carriage-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 121 | 22 | 0 |
+| `tests/acl2/peer-carriage-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 129 | 23 | 0 |
 | `tests/acl2/peer-catchup-tests.lisp` | root | 1 | 8 | 0/1/0/7 | 44 | 9 | 0 |
 | `tests/acl2/peer-feed-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 141 | 0 | 0 |
 | `tests/acl2/peer-guard-carried-tests.lisp` | root | 0 | 8 | 0/7/0/1 | 42 | 7 | 0 |
@@ -2572,9 +2572,9 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-payload-handle-p-is-natp` | `books/payload-kinds.lisp` | 35 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-payload-handle-p; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-pb-an-unheld-message-id-is-a-new-article-by-definition` | `books/poster-bytes-invariants.lisp` | 529 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pb-action-over and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-pb-action-over and the conclusion is that branch's value |
 | `fn-pcb-admission-without-a-budget-admits-nothing` | `books/peer-carriage.lisp` | 317 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pcb-admission and the conclusion is that arm's value |
-| `fn-pcb-bound-carrier-with-a-failed-primitive-is-signature-failed` | `books/peer-carriage.lisp` | 550 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pcb-refusal-class and the conclusion is that arm's value |
+| `fn-pcb-bound-carrier-with-a-failed-primitive-is-signature-failed` | `books/peer-carriage.lisp` | 608 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pcb-refusal-class and the conclusion is that arm's value |
 | `fn-pcb-event-carriage-needs-a-composite` | `books/peer-carriage.lisp` | 62 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pcb-event-carriage and the conclusion is that arm's value |
-| `fn-pcb-transit-verdict-names-the-accepted-arm` | `books/peer-carriage.lisp` | 806 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pcb-transit-verdict and the conclusion is that arm's value |
+| `fn-pcb-transit-verdict-names-the-accepted-arm` | `books/peer-carriage.lisp` | 864 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pcb-transit-verdict and the conclusion is that arm's value |
 | `fn-peer-archive-command-pinned-preserves-consistent-session` | `books/peer-inbound.lisp` | 2031 | instance-corollary: the statement is fn-nntp-archive-command-pinned-preserves-consistent-session instantiated, discharging nothing |
 | `fn-peer-decide-transfer-under-keeps-refusals-and-duplicates-by-definition` | `books/transit-header-limits.lisp` | 91 | arm-of-definition: the hypotheses select one IF/COND arm of fn-peer-decide-transfer-under and the conclusion is that arm's value |
 | `fn-peer-decision-kind-of-fn-peer-decision` | `books/peer-inbound.lisp` | 131 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

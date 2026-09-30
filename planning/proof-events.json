@@ -3942,6 +3942,10 @@
         {
           "kind": "theorem",
           "name": "fn-pcb-absent-carrier-has-no-class"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcb-carried-event-keeps-budget-schedule-admitted"
         }
       ]
     },

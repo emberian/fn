@@ -2380,7 +2380,8 @@
         "tests/acl2/peer-carriage-tests.lisp",
         "host/owner-host.lisp",
         "host/native/owner.lisp",
-        "planning/evidence/peer-carriage-2026-09-25.md"
+        "planning/evidence/peer-carriage-2026-09-25.md",
+        "planning/evidence/peer-carriage-variable-budget-2026-09-30.md"
       ],
       "implementation_note": "The carried arm's event is built by fn-pcb-carried-event (host/owner-host.lisp fn-owner-peer-carried-relay-event, called from host/native/owner.lisp fnn-owner-attempt-transit) over the boundary's typed budget rows and the owner-carried usage cache (fn-owner-carried-usage); NNTP transit refusals of a present carrier carry fn-pcb-refusal-class as their log detail. The class is not yet recorded in a durable verdict: no present-carrier article is held unverified on dev (see the evidence record)."
     },

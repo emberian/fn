@@ -208,12 +208,27 @@ boundary's `peer-transit:NAME`, their charges and their count
 records, extended by the records committed since, and
 `fn-pcb-carried-usage-is-the-projection` says the carried value is the
 projection; there is no host counter. Across any committed history whose
-carried records for a boundary were admitted, their charge sum is at most
+carried records for a boundary were admitted under one unchanged budget,
+their charge sum is at most
 the charge budget and their count at most the count budget
 (`fn-pcb-carried-history-within-budget`); the constructor keeps a history
 admitted (`fn-pcb-carried-event-keeps-history-admitted`). Since a record's
 charge is one more than its payload's page count, the carried payload octets
 are then at most OCTETS.
+
+
+When the operator changes the budget, the fixed-budget history bound does
+not transfer to that new limit. `fn-pcb-scheduled-from` is the logical trace
+predicate pairing each committed record with its decision-time budget.
+`fn-pcb-carried-event-keeps-budget-schedule-admitted` says the actual
+host-called constructor extends that schedule at the current budget when
+its usage is the committed projection. A lowered budget below retained
+usage refuses further carriage; old usage and articles stay. Raising the
+budget can admit a previously refused article. This trace predicate is not
+executed on a served path. The actual owner must supply the budget current
+at each decision; the theorem does not prove that configuration provenance.
+SCN-1044 is the authored lower/refuse/raise/restart native observation,
+still pending matching-image execution.
 
 A present carrier this node does not accept on NNTP transit is refused with
 one of four classes, a function of the received octets, the keyring

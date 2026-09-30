@@ -197,6 +197,78 @@
 ; -----------------------------------------------------------------------------
 ; The refusal classes
 
+; PKT-211: changing budgets apply to the NEXT decision, not retroactively
+; to the old records.  Complete literal antecedent/conclusion for
+; fn-pcb-carried-event-keeps-budget-schedule-admitted: accept one, lower
+; below retained usage and refuse, then raise and accept another.
+(defconst *pcb-schedule-low* '(0 0))
+(defconst *pcb-schedule-high* (list (* 2 *pcb-charge*) 2))
+(defconst *pcb-schedule-one* (list *pcb-budget*))
+(assert-event
+ (fn-pcb-scheduled-from *pcb-h1* '(0 . 0) *pcb-schedule-one* *pcb-evidence*))
+(assert-event
+ (fn-pcb-scheduled-from
+  (append *pcb-h1*
+          (list (pcb-gated *pcb-schedule-low*
+                           (fn-pcb-usage *pcb-h1* *pcb-evidence*))))
+  '(0 . 0) (append *pcb-schedule-one* (list *pcb-schedule-low*))
+  *pcb-evidence*))
+(make-event
+ `(defconst *pcb-schedule-h2*
+    ',(append *pcb-h1*
+              (list (pcb-gated *pcb-schedule-low*
+                               (fn-pcb-usage *pcb-h1* *pcb-evidence*))))))
+(assert-event
+ (and (equal (cadr *pcb-schedule-h2*) '(:refused :carried-count-exhausted))
+      (equal (fn-pcb-usage *pcb-schedule-h2* *pcb-evidence*)
+             (fn-pcb-usage *pcb-h1* *pcb-evidence*))
+      ; Lowering does not make existing usage obey the new limit.
+      (< (car *pcb-schedule-low*)
+         (car (fn-pcb-usage *pcb-schedule-h2* *pcb-evidence*)))))
+(defconst *pcb-schedule-two* (list *pcb-budget* *pcb-schedule-low*))
+(assert-event
+ (fn-pcb-scheduled-from *pcb-schedule-h2* '(0 . 0) *pcb-schedule-two*
+                        *pcb-evidence*))
+(assert-event
+ (fn-pcb-scheduled-from
+  (append *pcb-schedule-h2*
+          (list (pcb-gated *pcb-schedule-high*
+                           (fn-pcb-usage *pcb-schedule-h2* *pcb-evidence*))))
+  '(0 . 0) (append *pcb-schedule-two* (list *pcb-schedule-high*))
+  *pcb-evidence*))
+(make-event
+ `(defconst *pcb-schedule-h3*
+    ',(append *pcb-schedule-h2*
+              (list (pcb-gated *pcb-schedule-high*
+                               (fn-pcb-usage *pcb-schedule-h2*
+                                              *pcb-evidence*))))))
+(assert-event
+ (equal (fn-pcb-usage *pcb-schedule-h3* *pcb-evidence*)
+        (cons (* 2 *pcb-charge*) 2)))
+
+; Hypothesis removal: the old history itself violates its first budget.
+; The current constructor refuses correctly, but cannot repair that old
+; admission.  No other retained hypothesis is hidden by the witness.
+(defconst *pcb-schedule-bad* (list *pcb-schedule-low*))
+(assert-event
+ (not (fn-pcb-scheduled-from *pcb-h1* '(0 . 0) *pcb-schedule-bad*
+                             *pcb-evidence*)))
+(assert-event
+ (not (fn-pcb-scheduled-from
+       (append *pcb-h1*
+               (list (pcb-gated *pcb-schedule-low*
+                                (fn-pcb-usage *pcb-h1* *pcb-evidence*))))
+       '(0 . 0) (append *pcb-schedule-bad* (list *pcb-schedule-low*))
+       *pcb-evidence*)))
+(must-fail-checked
+ (assert-event
+  (fn-pcb-scheduled-from
+   (append *pcb-h1*
+           (list (pcb-gated *pcb-schedule-low*
+                            (fn-pcb-usage *pcb-h1* *pcb-evidence*))))
+   '(0 . 0) (append *pcb-schedule-bad* (list *pcb-schedule-low*))
+   *pcb-evidence*)))
+
 ; unsupported-profile: the carrier's nine items decode but name suite 2.
 ; The field is folded at 64 octets, as a received carrier is.
 (defun pcb-fold (octets)
