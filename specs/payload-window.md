@@ -397,3 +397,12 @@ operations; trace/MV lists are proof artifacts, not target allocations.
 Source resize/write counts are not a compiled allocation charge. Actual
 array payload/header lowering, callbacks/frames/cache/GC, old/new coexistence
 and definite full lifetime still need the selected runtime funding join.
+
+The actual selected initializer source resize requests now sum precisely the
+65536/3494/64 payloads whose captured old capacities are too small; the sum is
+at most69094 octets. The complete six-output host refinement joins this
+quantity with final retained capacities bounded by old capacities plus
+requested payload. Fresh, preallocated and mixed complete witnesses and all
+three typed-array removals accompany that boundary. This counts requested
+payload and retained logical capacity, excluding physical headers, alias
+lifetimes, GC and full INITIAL admission. Larger old buffers remain retained.
