@@ -7384,7 +7384,7 @@
         "tests/acl2/catalog-context-recovery-tests.lisp"
       ],
       "progress_note": "Snapshot recovery successor: repaired the false unconditional keyring frame with the actual ARTICLE phase/kind frame and retained-snapshot recovery coherence; exact constructor writer equations are named -by-definition and not cited as keystones. Clean source admission and literal witnesses are source evidence only. Full retained-ready establishment is proved by the context recovery composition with literal nonempty enrollment, readiness removal and corrupted-carry removal witnesses; host adoption and qualification remain open. General ready/crash/actual-recover composition now admitted in a clean proper source root with complete literal positive and both hypothesis-removal witnesses; status remains planned.",
-      "pending_subject": "No host line calls fn-cat-prepare, fn-cat-complete or fn-sn-finish-held yet: the host's finish is fn-owner-finish-submission -> fn-ccar-own-finish -> fn-ccar-sn-finish-enabled (host/owner-host.lisp), the walk the token replaces; moving it is step 8 of PKT-585. Until then the keystones' subjects are reached only by the test books."
+      "pending_subject": "Proved catalog context source components are not yet reached through the actual owner cold recovery boundary. Physical writer/load and owner adoption remain open."
     },
     {
       "id": "PRF-204",
@@ -10750,7 +10750,7 @@
         "PRF-164"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-reader-read.lisp",
         "tests/acl2/owner-reader-read-tests.lisp",
@@ -12276,7 +12276,7 @@
         "PRF-302"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-rcompat-reply-cat-is-rcompat-reply",
         "fn-rcompat-retrieval-cat-is-retrieval",
@@ -13158,7 +13158,7 @@
         "PRF-332"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-nntp-verdict-hdr-response-cat-is-archive",
         "fn-nntp-verdict-hdr-range-cat-is-archive",
@@ -13664,7 +13664,7 @@
         "PRF-377"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/memory-credits.lisp",
         "books/owner-credits.lisp",
@@ -13989,7 +13989,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/nntp-responses.lisp",
         "books/nntp.lisp",
@@ -14055,7 +14055,7 @@
         "PRF-222"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/group-access-cache.lisp",
         "books/group-access.lisp",
@@ -14376,7 +14376,7 @@
         "PRF-918"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-reclaim.lisp",
         "tests/acl2/owner-reclaim-tests.lisp",
@@ -17821,7 +17821,7 @@
         "HST-001"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-reclaim-carry.lisp",
         "tests/acl2/owner-reclaim-carry-tests.lisp"
