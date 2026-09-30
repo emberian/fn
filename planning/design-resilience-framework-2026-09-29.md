@@ -295,6 +295,17 @@ The row stays pending until a matching-image native run. A new socket does
 not establish native CID reuse, and completion/close logs alone do not
 establish worker thread death. The reclaim owner owns that join extension.
 
+Capture-first reclaim continuation: `adapters/reclaim_hold.py` starts a real
+recorded reclaim held at capture, then acquires a new live OVER response
+hold (the actual off-mutex quantum marker after ownership acquisition).
+A full candidate ARTICLE completes while competing work is held. Resuming
+reclaim must produce the actual readers deferral; draining the five-row
+captured response must settle that same CID. The next recorded reclaim
+must install and leave the retained article readable and the eligible one
+distinctly reclaimed. This is a bounded recorded-expiry fixture, not an
+arbitrary IR interpreter or a physical-sector release claim. Its source
+row remains pending matching-image execution and native composition.
+
 W7d **power_loss as a backend**. DONE: crash-image selection is an
 environment fact with the storage profile's ordering constraints made
 explicit (preflush/FUA semantics from dm-log-writes); `classify`/`bindings`
@@ -335,7 +346,7 @@ IR-driven backend. Schedule plans and separate oracle records accompany the
 traces; the driver must consume every planned step exactly once before it
 accepts the result.
 
-The next increment executes a bounded acceptance-model IR through
+The implemented bounded acceptance-model IR executes through
 `tools/resilience/adapters/simulator.py`: its validated model-prepare,
 model-complete and model-recover operations are translated to calls of the
 actual ACL2 acceptance functions, not precomputed oracle replies. It retains
@@ -377,7 +388,11 @@ declared campaign, and feedback reaches SBCL code. AFTER THE CUT.
 ## 11. What this increment does not claim
 
 No theorem changed; no native verdict is transferred from the old asserts
-to the new checker until W7b's module runs on the box at the READY sha; the
-"pending" schedule points have no host coordinate and no verdict; the
+to the new checker until W7b's module runs on the box at the READY sha.
+The page-I/O, capture-first reclaim and live BP control rows now have source
+coordinates and bounded native recipes, but remain pending matching-image
+execution; those source coordinates supply no native verdict. The fixed
+page-I/O and reclaim drivers reject altered recipe fields before native setup,
+so they cannot silently execute their fixture for a different supplied IR. The
 checker's enumeration is explicit and small (histories are products of
 per-uncertain-post fates) and says `inconclusive` past its budget.

@@ -50,9 +50,10 @@ WITNESSES = ("post-accepted", "retry-reconciled", "read-completed",
              # Path loop refused; a second offer refused as held
              "relay-normalized", "loop-refused", "duplicate-refused",
              "model-prepared", "model-published", "model-settled",
-             "issued-read-held", "cancelled-read-settled", "retired-file-closed")
+             "issued-read-held", "cancelled-read-settled", "retired-file-closed",
+             "independent-response-held", "response-hold-settled")
 REPLAY = ("exact", "timed", "image")
-CONTRACTS = ("local-commit-log", "acceptance-model", "page-io-ownership")
+CONTRACTS = ("local-commit-log", "acceptance-model", "page-io-ownership", "reclaim-response-hold")
 CANDIDATE_RULES = ("absent", "present", "either")
 # The routes a post's cut is reached by; the registry carries each route's
 # column where they differ (design §5: `operator post' and `store post' are
@@ -92,10 +93,12 @@ PENDING_BOUNDARIES = {
                                "+fnn-reclaim-cuts+; the held point is reclaim-CUT",
                       "source": "lane/online-reclaim a8b5e0f72 (its developer image does not "
                                 "build yet: a definterface :kinds refusal on fn-arx-file-count)"},
-        "coordinate": "kill form FN_NATIVE_RECLAIM_FAULT=captured:kill on dev; held form "
-                      "FN_NATIVE_RECLAIM_HOLD=captured:RELEASE-FILE on lane/online-reclaim "
-                      "a8b5e0f72: the runner that acquires a hold at it is the next increment; "
-                      "until the selector is in this tree and that runner exists, pending"},
+        "coordinate": "matching-image execution pending: capture hold "
+                      "FN_NATIVE_RECLAIM_HOLD=captured:RELEASE-FILE is in this tree, and "
+                      "response-pin sourcecaa3bc7e acquires the independent live hold. "
+                      "tools/resilience/adapters/reclaim_hold.py observes actual OVER "
+                      "quantum-held, reader deferral, named response settlement and "
+                      "productive reclaim; no plan-only substitute or physical-sector claim"},
     "receipt-observed": {
         "note": "duplicate, reorder with a policy change, lose its durable completion",
         "operations": ("receipt",),

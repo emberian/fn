@@ -933,6 +933,9 @@ def run(scenario: Scenario, image: Path, work: Path, fault_hook: bool = True) ->
     if scenario.initial.get("recipe") == "page-io":
         from tools.resilience.adapters import page_io
         return page_io.run_scenario(scenario, image, work, fault_hook)
+    if scenario.initial.get("recipe") == "reclaim-response-hold":
+        from tools.resilience.adapters import reclaim_hold
+        return reclaim_hold.run_scenario(scenario, image, work, fault_hook)
     return Run(scenario, image, work, fault_hook).run()
 
 

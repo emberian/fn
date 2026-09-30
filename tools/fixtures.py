@@ -154,8 +154,8 @@ class Context:
         # whose full store the budget (the recipe's unit) cannot hold, unless
         # a target budget is named; the fixtures are stores made for hbox and
         # their recipes run the image directly: tools/native_env.py names the
-        # target once (harness_store_env).
-        self.env = native_env.harness_store_env(dict(
+        # target once (HARNESS_INIT_WORDS, `init --budget MB').
+        self.env = (dict(
             os.environ, ACL2_CUSTOMIZATION="NONE",
             FN_NATIVE_DEVELOPER_HOST=str(image), FN_FIXTURE_REV=rev))
         self.env.pop("ACL2_SYSTEM_BOOKS", None)
@@ -256,7 +256,7 @@ def recipe_rep_store(ctx: Context, n: int, octets: int) -> None:
     ctx.run([PY, TREE / "tools/rep_measure.py", "--image", ctx.image, "--work", work / "m",
              "--articles", n, "--octets", octets, "--samples", 32, "--readers", 3,
              "--json", work / "rep.json", "--skip-reopen", "--skip-checkpoint",
-             *("--init-flag=" + w for w in CAPACITY_32K)])
+             *("--init-flag=" + w for w in (*native_env.HARNESS_INIT_WORDS, *CAPACITY_32K))])
     store = work / "m" / "store"
     copy_entries(store, ctx.dest, sorted(p.name for p in store.iterdir()
                                          if not p.name.startswith("store-checkpoint")
@@ -366,7 +366,7 @@ def cmd_post_suffix(args) -> int:
     store = Path(args.store).resolve()
     image = Path(args.image)
     work = store.parent
-    env = native_env.harness_store_env(dict(os.environ, ACL2_CUSTOMIZATION="NONE"))
+    env = dict(os.environ, ACL2_CUSTOMIZATION="NONE")
     env.pop("ACL2_SYSTEM_BOOKS", None)
     lock = store / "writer.lock"
     lock.touch()

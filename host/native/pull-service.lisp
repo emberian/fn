@@ -283,11 +283,13 @@ waits its milliseconds and is fed the same octets."
             (declare (ignore starttls more))
             (unwind-protect
                  (loop
-                   (multiple-value-bind (octets rest donep)
+                   (multiple-value-bind (octets rest donep yieldedp)
                        (fnn-owner-render-next-quantum service cid plan :transit)
                      (setq reply (concatenate 'fnn-octets reply octets))
                      (when donep (return))
-                     (setq plan rest)))
+                     (setq plan rest)
+                     (when yieldedp
+                       (sleep (/ (fnn-core 'fn-splan-cursor-resume-ms) 1000)))))
               (fnn-owner-response-unpin service cid))
             (setq closing close)
             (when (and (zerop consumed) (not close))

@@ -194,6 +194,63 @@
                        (fn-article-header-rev-add-line header-rev line)
                        fn-octets)))))))))))))
 
+(defun fn-ars-parse-lines-acc (i limits lines-left header-bytes nfields
+                             fields-rev cur header-rev fn-octets)
+  (declare (xargs :stobjs fn-octets
+                  :measure (nfix lines-left)
+                  :guard (and (natp i) (<= i (fn-octets-len fn-octets))
+                              (natp lines-left)
+                              (natp header-bytes)
+                              (natp nfields)
+                              (true-listp fields-rev)
+                              (or (null cur)
+                                  (fn-article-open-fieldp cur))
+                              (true-listp header-rev))
+                  :verify-guards nil))
+  (if (zp lines-left)
+      (fn-article-error :header-lines-limit)
+    (let ((next (fn-ars-next-line i fn-octets)))
+      (if (not (fn-article-line-okp next))
+          next
+        (let ((line (fn-article-line-value next))
+              (rest (fn-article-line-rest next)))
+          (if (null line)
+              (if (or (not (fn-ars-body-crlfp rest fn-octets))
+                      (not (fn-article-open-field-closedp cur)))
+                  (fn-article-error :invalid-header)
+                (fn-article-ok
+                 (fn-article-make
+                  (reverse header-rev) rest
+                  (fn-article-finish-fields fields-rev (and cur (fn-article-close-field cur))))))
+            (if (< (fn-article-limit-octets limits)
+                   (+ header-bytes (len line) 2))
+                (fn-article-error :header-octets-limit)
+              (if (fn-article-wspp (car line))
+                  (if (not cur)
+                      (fn-article-error :invalid-header)
+                    (if (not (fn-article-fold-linep line))
+                        (fn-article-error :invalid-header)
+                      (fn-ars-parse-lines-acc
+                       rest limits (1- lines-left) (+ header-bytes (len line) 2)
+                       nfields fields-rev (fn-article-add-fold-open cur line)
+                       (fn-article-header-rev-add-line header-rev line)
+                       fn-octets)))
+                (let ((field-result (fn-article-new-field line)))
+                  (if (not (fn-article-line-okp field-result))
+                      field-result
+                   (if (not (fn-article-open-field-closedp cur))
+                       (fn-article-error :invalid-header)
+                    (if (<= (fn-article-limit-fields limits)
+                            (+ (if cur 1 0) (nfix nfields)))
+                        (fn-article-error :header-fields-limit)
+                      (fn-ars-parse-lines-acc
+                       rest limits (1- lines-left) (+ header-bytes (len line) 2)
+                       (if cur (+ 1 (nfix nfields)) nfields)
+                       (if cur (cons (fn-article-close-field cur) fields-rev) fields-rev)
+                       (fn-article-open-field (fn-article-line-value field-result))
+                       (fn-article-header-rev-add-line header-rev line)
+                       fn-octets)))))))))))))
+
 ; The parse the host calls: fn-article-parse-under over the whole buffer.
 ; The reference's two preflights are the buffer's: its length against the
 ; codec ceiling, and every cell an octet (fn-octets-p, the invariant).
@@ -201,8 +258,10 @@
   (declare (xargs :stobjs fn-octets :guard t :verify-guards nil))
   (if (< *fn-article-max-octets* (fn-octets-len fn-octets))
       (fn-article-error :limit)
-    (fn-ars-parse-lines 0 limits (1+ (fn-article-limit-lines limits))
-                        0 0 nil nil nil fn-octets)))
+    (mbe :logic (fn-ars-parse-lines 0 limits (1+ (fn-article-limit-lines limits))
+                                  0 0 nil nil nil fn-octets)
+         :exec (fn-ars-parse-lines-acc 0 limits (1+ (fn-article-limit-lines limits))
+                                      0 0 nil nil nil fn-octets))))
 
 (defun fn-ars-parse (fn-octets)
   (declare (xargs :stobjs fn-octets :guard t :verify-guards nil))
@@ -639,6 +698,41 @@
 ; (the rest facets); the line's shape is the reference's
 ; (fn-article-next-line-value-listp, fn-article-guard-backchaining).
 
+(local
+ (defthm fn-ars-fold-line-listp
+   (implies (fn-article-fold-linep line) (true-listp line))
+   :hints (("Goal" :in-theory (enable fn-article-fold-linep
+                                     fn-article-header-bytes-true-listp)))
+   :rule-classes :forward-chaining))
+
+; The executed buffer loop carries the same visible-value flag as the list
+; accumulator. This refinement preserves the exact verdict, header, body offset
+; and fields while closing a long field by a single flag test.
+(defthm fn-ars-parse-lines-acc-is-parse-lines
+  (implies (or (null cur) (fn-article-open-fieldp cur))
+           (equal (fn-ars-parse-lines-acc i limits lines-left header-bytes nfields
+                                        fields-rev cur header-rev fn-octets)
+                  (fn-ars-parse-lines i limits lines-left header-bytes nfields
+                                    fields-rev (and cur (fn-article-close-field cur))
+                                    header-rev fn-octets)))
+  :hints (("Goal" :induct (fn-ars-parse-lines-acc i limits lines-left header-bytes
+                                                 nfields fields-rev cur header-rev fn-octets)
+                  :do-not '(generalize fertilize eliminate-destructors)
+                  :in-theory (e/d (fn-ars-parse-lines fn-ars-parse-lines-acc
+                                   fn-article-close-add-fold-open
+                                   fn-article-add-fold-open-fieldp)
+                                  (fn-article-close-field fn-article-add-fold-open
+                                      fn-article-open-field fn-article-open-fieldp
+                                      fn-article-add-fold fn-article-new-field
+                                      fn-ars-next-line fn-article-header-rev-add-line
+                                      fn-article-finish-fields fn-ars-body-crlfp
+                                      fn-article-line-okp fn-article-line-value
+                                      fn-article-line-rest fn-article-fold-linep
+                                      fn-article-make fn-article-ok fn-article-error
+                                      fn-article-wspp fn-article-limit-octets
+                                      fn-article-limit-fields fn-article-field-closedp
+                                      fn-article-open-field-closedp)))))
+
 (verify-guards fn-ars-parse-lines
   :hints (("Goal"
            :in-theory
@@ -648,6 +742,16 @@
                  fn-article-new-field fn-article-split-colon-aux
                  fn-article-add-fold fn-article-header-rev-add-line
                  fn-article-finish-fields fn-article-body-crlfp)))))
+(verify-guards fn-ars-parse-lines-acc
+  :hints (("Goal" :in-theory
+           (e/d (fn-article-guard-backchaining)
+                (fn-ars-next-line fn-ars-next-line-aux
+                 fn-article-next-line fn-article-next-line-aux
+                 fn-article-new-field fn-article-line-value fn-article-line-rest
+                 fn-article-add-fold-open fn-article-close-field fn-article-open-field
+                 fn-article-open-fieldp fn-article-open-field-closedp
+                 fn-article-header-rev-add-line fn-article-finish-fields
+                 fn-ars-body-crlfp)))))
 (verify-guards fn-ars-parse-under)
 (verify-guards fn-ars-parse)
 

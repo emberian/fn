@@ -853,7 +853,7 @@ class SlowDiskNativeTests(unittest.TestCase):
         # one by name.
         self.reap(self.owner)
         shutil.rmtree(self.store)
-        init = self.operator("init", "--max-article-octets", "262144",
+        init = self.operator("init", "--profile", "default", "--max-article-octets", "262144",
                              "--max-record-octets", "2097152", "--max-history-octets", "8388608",
                              "--max-transactions", "10000", "fn.test")
         self.assertEqual(init.returncode, 0, (init.stdout, init.stderr))

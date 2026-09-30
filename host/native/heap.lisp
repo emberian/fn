@@ -157,45 +157,37 @@ representation ceiling."
         (dolist (line (fnn-core 'fn-lim-values-lines requested nil))
           (fnn-out "~a" line))))))
 
-(defun fnn-heap-env-octets (name)
-  "NAME's value in the environment as octets for ACL2 to read (at most 32
-of them: a longer value is refused there as malformed), or NIL when unset."
-  (let ((value (sb-posix:getenv name)))
-    (and value
-         (map 'list (lambda (c) (min 255 (char-code c)))
-              (subseq value 0 (min 33 (length value)))))))
-
-(defun fnn-heap-init-decision (request)
+(defun fnn-heap-init-decision (request budget sizing)
   "ACL2's decision for what `init' writes (books/heap-reservation.lisp
 fn-heap-init-decide, PKT-582 in gpt-6's wave-5 shape): the request, or for
 a capacity-free one the preset the budget holds (conservative unless
-FN_INIT_SIZING=largest), within the budget of the physical memory less the
-OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
+`init --largest'), within the budget of the physical memory less the OS's
+share, the process's limits and `init --budget MB'; or a refusal.  BUDGET
+and SIZING are the accepted init plan's (books/native-operator.lisp
+fn-native-operator-result-init-budget / -init-sizing, row Q10b)."
   (let ((observations (fnn-heap-observations)))
     (fnn-core 'fn-heap-init-decide request (fnn-heap-image-observation)
               +fnn-gc-nursery-octets+ (first observations) (rest observations)
-              (fnn-heap-env-octets "FN_INIT_BUDGET_MB")
-              (fnn-heap-env-octets "FN_INIT_SIZING"))))
+              budget sizing)))
 
 ;; The decision and ACL2's note on it from ONE observation of the machine
 ;; (books/heap-reservation.lisp fn-heap-init-budget-note, finding R1 of the
-;; public-node rehearsal): NIL, or the named budget FN_INIT_BUDGET_MB below
+;; public-node rehearsal): NIL, or the named budget `init --budget MB' below
 ;; the machine init observes -- an init run outside the service's memory
 ;; limit.  Returns (values DECISION NOTE); the caller prints ACL2's line.
-(defun fnn-heap-init-decision-noted (request)
+(defun fnn-heap-init-decision-noted (request budget sizing)
   (let* ((observations (fnn-heap-observations))
-         (budget (fnn-heap-env-octets "FN_INIT_BUDGET_MB"))
          (decision (fnn-core 'fn-heap-init-decide request (fnn-heap-image-observation)
                              +fnn-gc-nursery-octets+ (first observations)
-                             (rest observations) budget
-                             (fnn-heap-env-octets "FN_INIT_SIZING"))))
+                             (rest observations) budget sizing)))
     (values decision
             (fnn-core 'fn-heap-init-budget-note decision (first observations)
                       (rest observations) budget))))
 
-(defun fnn-heap-init-request (request)
+(defun fnn-heap-init-request (request budget sizing)
   "The request `init' writes, or NIL when ACL2 refuses it."
-  (fnn-core 'fn-heap-init-decision-request (fnn-heap-init-decision request)))
+  (fnn-core 'fn-heap-init-decision-request
+            (fnn-heap-init-decision request budget sizing)))
 
 ;; The store's history octets on disk (PKT-686 item 1): the sizes of the
 ;; regular files directly under journal/ (the record log's segments) and
@@ -273,7 +265,7 @@ OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
                    (fnn-core 'fn-native-operator-host-preflight-needs-config-p preflight))
           (let* ((config-octets (fnn-operator-read-config
                                  config-path (fnn-core 'fn-native-config-host-max-octets)))
-                 (result (fnn-core 'fn-native-operator-host-run config-octets argv-octets))
+                 (result (fnn-operator-run-at config-path config-octets argv-octets))
                  (root (fnn-core 'fn-native-operator-host-result-store-root result)))
             (when (and (eq (fnn-core 'fn-native-operator-host-result-status result) :accepted)
                        (stringp root))
@@ -283,7 +275,13 @@ OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
                                             result)))
                      (and (consp request)
                           (let ((profile (fnn-core 'fn-bs-profile-resolve
-                                                   (fnn-heap-init-request request) nil)))
+                                                   (fnn-heap-init-request
+                                                    request
+                                                    (fnn-core 'fn-native-operator-host-result-init-budget
+                                                              result)
+                                                    (fnn-core 'fn-native-operator-host-result-init-sizing
+                                                              result))
+                                                   nil)))
                             (and (not (eq (car profile) :invalid)) profile))))
                  (fnn-heap-store-profile (fnn-absolute root)))
                ;; The owner's client workers a `run' admits, ACL2's figure
@@ -310,7 +308,8 @@ OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
                       (let ((profile (fnn-heap-store-profile (fnn-absolute root))))
                         (and profile
                              (fnn-heap-history-observation (fnn-absolute root)
-                                                           profile))))))))))
+                                                           profile)))))
+               (fnn-core 'fn-native-operator-host-result-run-cold-resources result))))))
     (error () nil)))
 
 (defun fnn-heap-command-profile (argv)
@@ -318,11 +317,12 @@ OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
 admits (0 when it is not a run) and ACL2's native action for an operator
 command (NIL otherwise: a developer `store ROOT' verb gets the serve
 figure), and the store's observed history octets for an offline verb ACL2
-sizes by them (NIL otherwise)."
+sizes by them (NIL otherwise), and its normalized explicit cold-resource
+policy (NIL when absent)."
   (cond ((and (string= (or (first argv) "") "operator") (second argv))
-         (multiple-value-bind (profile connections action observed)
+         (multiple-value-bind (profile connections action observed cold-resources)
              (fnn-heap-operator-profile (second argv) (cddr argv))
-           (values profile (if (integerp connections) connections 0) action observed)))
+           (values profile (if (integerp connections) connections 0) action observed cold-resources)))
         ((and (string= (or (first argv) "") "store") (third argv))
          (let ((profile (fnn-heap-store-profile (second argv))))
            (values profile 0 nil
@@ -335,17 +335,21 @@ sizes by them (NIL otherwise)."
 ;; the command ACTION names (the compaction verbs' operation figure, every
 ;; other command's fn-heap-reserve-decide), then the thread stacks the node's
 ;; threads reserve beside it; the launcher passes `--control-stack-size KB'
-;; too.
-(defun fnn-heap-reservation (profile connections &optional action observed)
-  (fnn-core 'fn-heap-reserve-operation-decide action profile (fnn-heap-image-observation)
-            +fnn-gc-nursery-octets+ (fnn-heap-observations) connections observed))
+;; too. The explicit cold-pool extension adds heap and persistent executor
+;; native storage to this same observed machine decision; ACL2 chooses it.
+(defun fnn-heap-reservation (profile connections &optional action observed cold-resources)
+  (let* ((core (fnn-heap-image-observation))
+         (machine (fnn-heap-observations))
+         (base (fnn-core 'fn-heap-reserve-operation-decide action profile core
+                         +fnn-gc-nursery-octets+ machine connections observed)))
+    (fnn-core 'fn-crv-extend-reservation base cold-resources core machine)))
 
 (defun fnn-command-heap (marker argv)
   (unless (string= marker "--")
     (error 'fnn-usage-error :message "heap -- ARGV..."))
-  (let* ((decision (multiple-value-bind (profile connections action observed)
+  (let* ((decision (multiple-value-bind (profile connections action observed cold-resources)
                        (fnn-heap-command-profile argv)
-                     (fnn-heap-reservation profile connections action observed)))
+                     (fnn-heap-reservation profile connections action observed cold-resources)))
          (line (fnn-core 'fn-heap-reserve-report-line decision))
          (code (fnn-core 'fn-heap-decision-exit-code decision)))
     ;; The decision line on stdout whatever it is: the launcher tells ACL2's

@@ -34,3 +34,89 @@
 (make-event
  (mv-let (ok state) (fn-orst-live-effects-witness state)
    (value (list 'assert-event ok))))
+
+; Executable association reader through ACL2's state access primitives.
+; Its exact correspondence below connects the live witness to the literal
+; global-table theorem without passing the STATE stobj to ordinary NTH.
+(defun fn-orst-association (key state)
+  (declare (xargs :stobjs state :guard (symbolp key)))
+  (if (boundp-global key state)
+      (cons key (f-get-global key state))
+    nil))
+(defthm fn-orst-nonnil-association-pair-by-definition
+  (implies (and key (assoc-equal key table))
+           (equal (cons key (cdr (assoc-equal key table)))
+                  (assoc-equal key table)))
+  :hints (("Goal" :induct (assoc-equal key table)
+           :in-theory (enable assoc-equal))))
+(defthm fn-orst-association-is-table-assoc-by-definition
+  (implies key
+           (equal (fn-orst-association key state)
+                  (assoc-equal key (nth 2 state))))
+  :hints (("Goal" :in-theory (enable fn-orst-association))))
+
+; Literal table-level frame teeth for the composed host guard repair.
+; FN-ORST-ASSOCIATION is proved equal to the literal NTH-2 association.
+(defun fn-orst-live-association-witness (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((original (fn-owner-retain-carry state))
+         (key 'fn-orst-witness-other)
+         (old-other (if (boundp-global 'fn-orst-witness-other state)
+                        (f-get-global 'fn-orst-witness-other state) nil))
+         (state (f-put-global 'fn-orst-witness-other :present-other state))
+         (before (fn-orst-association key state))
+         (state (fn-owner-retain-carry-put '("ledger-a" . "index-a") state))
+         (positive (and (not (equal key 'fn-owner-retain-carry))
+                        (consp before)
+                        (equal (fn-orst-association key state) before)))
+         (key 'fn-owner-retain-carry)
+         (before (fn-orst-association key state))
+         (state (fn-owner-retain-carry-put '("ledger-b" . "index-b") state))
+         (negative (and (equal key 'fn-owner-retain-carry)
+                        (consp before)
+                        (not (equal (fn-orst-association key state) before))))
+         (state (f-put-global 'fn-orst-witness-other old-other state))
+         (state (fn-owner-retain-carry-put original state)))
+    (mv (and positive negative) state)))
+(make-event
+ (mv-let (ok state) (fn-orst-live-association-witness state)
+   (value (list 'assert-event ok))))
+
+; The normalized frame's literal state is this same executable state write.
+; The following live witness uses fn-host-hist-sync's exact reload key;
+; the changed carry key still refutes removal of the frame hypothesis.
+(defthm fn-orst-global-put-is-normalized-update-by-definition
+  (equal (put-global key value state)
+         (update-nth 2 (add-pair key value (nth 2 state)) state))
+  :hints (("Goal" :in-theory (enable put-global))))
+
+(defun fn-orst-normalized-reload-witness (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((original (fn-owner-retain-carry state))
+         (carry '("nonempty-ledger" . "nonempty-index"))
+         (state (fn-owner-retain-carry-put carry state))
+         ; Complete unconditional conclusion of the writer theorem.
+         (put-conclusion (equal (fn-owner-retain-carry state) carry))
+         (key 'fn-store-sn-hist-reload)
+         (old-other (if (boundp-global 'fn-store-sn-hist-reload state)
+                        (f-get-global 'fn-store-sn-hist-reload state) nil))
+         (before (fn-owner-retain-carry state))
+         (state (f-put-global 'fn-store-sn-hist-reload :unrelated-value state))
+         ; Entire antecedent and conclusion of the frame theorem.
+         (other-hypothesis (not (equal key 'fn-owner-retain-carry)))
+         (other-conclusion (equal (fn-owner-retain-carry state) before))
+         ; Hypothesis removal witness: same key, changed value, false conclusion.
+         (key 'fn-owner-retain-carry)
+         (state (f-put-global 'fn-owner-retain-carry
+                              '("changed-ledger" . "changed-index") state))
+         (removed-hypothesis (equal key 'fn-owner-retain-carry))
+         (failed-conclusion (not (equal (fn-owner-retain-carry state) before)))
+         (state (f-put-global 'fn-store-sn-hist-reload old-other state))
+         (state (fn-owner-retain-carry-put original state)))
+    (mv (and (consp carry) put-conclusion other-hypothesis other-conclusion
+             removed-hypothesis failed-conclusion)
+        state)))
+
+(make-event
+ (mv-let (ok state) (fn-orst-normalized-reload-witness state)
+   (value (list 'assert-event ok))))

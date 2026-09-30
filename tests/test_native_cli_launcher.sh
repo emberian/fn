@@ -41,7 +41,7 @@ if [ "$2" = heap ]; then
   case ${FAKE_HEAP:-ok} in
     ok) printf 'heap=777 MB profile=small machine=2048 MB stack=1192 KB threads=60\n' ;;
     nostack) printf 'heap=777 MB profile=small machine=2048 MB\n' ;;
-    refuse) printf 'fn: refused machine-cannot-hold-profile heap=2671 MB machine=2048 MB\n' >&2; exit 1 ;;
+    refuse) printf 'refused machine-cannot-hold-profile heap=2671 MB machine=2048 MB\n'; exit 1 ;;
     garbage) printf 'no figure\n' ;;
   esac
   exit 0

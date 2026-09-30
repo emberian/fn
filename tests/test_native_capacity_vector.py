@@ -39,7 +39,7 @@ from tests.native_harness import Client, Node
 HIST = int(os.environ.get("FN_CV_HIST", "300000"))
 # T well above what H admits, so the history bound is the one the fill meets
 # (the transaction budget is a lifetime budget: no maintenance returns it).
-FLAGS = ["--max-transactions", "4096",
+FLAGS = ["--profile", "default", "--max-transactions", "4096",
          "--max-history-octets", str(HIST), "--max-record-octets", "262144",
          "--max-article-octets", "131072", "--max-groups-per-article", "16"]
 LOG = os.environ.get("FN_CV_LOG")

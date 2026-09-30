@@ -225,8 +225,8 @@ class DeepInputStackTests(unittest.TestCase):
                              r"sizing=conservative reservation=(\d+) MB budget=(\d+) MB")
         def attempt(name, budget):
             node = Node(self, IMAGE, root=self.tmp / name, control=False, env=NO_STACK)
-            return node, node.operator("init", "--profile", "default", "local.test",
-                                       env={"FN_INIT_BUDGET_MB": str(budget)})
+            return node, node.operator("init", "--budget", str(budget), "--profile", "default",
+                                       "local.test")
         probe, low = attempt("budget-probe", 100)
         self.assertEqual(low.returncode, 1, low.stderr)
         found = refused.search((low.stdout + low.stderr).decode(errors="replace"))
@@ -242,11 +242,14 @@ class DeepInputStackTests(unittest.TestCase):
         type(self)._small_budget = figure
         return figure
 
-    def store(self, name, flags, **init_env):
-        if init_env.get("FN_INIT_BUDGET_MB") == "small":
-            init_env["FN_INIT_BUDGET_MB"] = str(self.small_budget())
+    def store(self, name, flags, budget=None):
+        """`init --budget MB FLAGS local.test`; BUDGET "small" is the small
+        preset's figure (row Q10b: the budget is init's grammar word)."""
+        words = []
+        if budget is not None:
+            words = ["--budget", str(self.small_budget() if budget == "small" else budget)]
         node = Node(self, IMAGE, root=self.tmp / name, control=False, env=NO_STACK)
-        made = node.operator("init", *flags, "local.test", env=init_env)
+        made = node.operator("init", *words, *flags, "local.test")
         self.assertEqual(made.returncode, 0, made.stderr)
         probe = node.invoke("heap", "--", "operator", node.config, "run")
         self.assertEqual(probe.returncode, 0, probe.stderr)
@@ -266,7 +269,7 @@ class DeepInputStackTests(unittest.TestCase):
         passes the control stack the installed launcher's probe decides for
         a store, not ACL2's save-exec 64 MiB."""
         _node, stack = self.store("launcher", ["--profile", "default"],
-                                      FN_INIT_BUDGET_MB="small")
+                                      budget="small")
         found = re.findall(r"--control-stack-size (\S+) ", IMAGE.read_text(encoding="utf-8"))
         self.assertEqual(found, ["%dKB" % stack], found)
 
@@ -311,7 +314,7 @@ class DeepInputStackTests(unittest.TestCase):
         # suffix (the automatic checkpoint's period) is above 2,000 records.
         for name, extra in (("long", []), ("long-replay", ["--max-open-suffix", "4096"])):
             node, stack = self.store(name, ["--profile", "default"] + extra,
-                                          FN_INIT_BUDGET_MB="small")
+                                          budget="small")
             print("NATIVE-DEEP {} stack={} KB".format(name, stack))
             owner = self.start(node, stack)
             try:
@@ -342,7 +345,7 @@ class DeepInputStackTests(unittest.TestCase):
         lines, and one of 20,000 lines over the 32,768-octet bound, are
         refused (441) and the node serves on."""
         node, stack = self.store("errors", ["--profile", "default"],
-                                      FN_INIT_BUDGET_MB="small")
+                                      budget="small")
         print("NATIVE-DEEP errors stack={} KB".format(stack))
         owner = self.start(node, stack)
         try:
