@@ -85,3 +85,31 @@
  :hints (("Goal" :in-theory (disable mod floor)
                  :use ((:instance fn-bpcc-pending-address-ranges
                                   (address (caddr controller)))))))
+
+(defthm fn-bpcc-node-pending-capture-keeps-fuel-domain
+  (implies (and (natp depth) (natp fuel))
+           (let ((left (mv-nth 7 (fn-bpcc-node-pending-capture
+                                  controller slot physical-segment depth fuel fn-bpc-node))))
+             (and (natp left) (<= left fuel))))
+  :hints (("Goal" :induct (fn-bpcc-node-pending-capture
+                           controller slot physical-segment depth fuel fn-bpc-node)
+                  :in-theory (e/d (fn-bpcc-node-pending-capture)
+                                  (fn-bpcc-segment-pending-capture
+                                   fn-bpcn-children-get fn-bpcn-children-boundp
+                                   create-fn-bpc-left create-fn-bpc-right
+                                   create-fn-bpc-segment))))
+  :rule-classes nil)
+
+(defthm fn-bpcc-pending-capture-keeps-fuel-domain
+  (implies (and (natp fuel) (natp (fn-bpcr-depth fn-bp-controller-registry)))
+           (let ((left (mv-nth 7 (fn-bpcc-pending-capture
+                                  controller fuel fn-bp-controller-registry))))
+             (and (natp left) (<= left fuel))))
+  :hints (("Goal" :in-theory (e/d (fn-bpcc-pending-capture)
+                                  (fn-bpcc-node-pending-capture))
+                  :use ((:instance fn-bpcc-node-pending-capture-keeps-fuel-domain
+                           (slot (mod (caddr controller) 64))
+                           (physical-segment (floor (caddr controller) 64))
+                           (depth (fn-bpcr-depth fn-bp-controller-registry))
+                           (fn-bpc-node (fn-bpcr-root fn-bp-controller-registry))))))
+  :rule-classes nil)
