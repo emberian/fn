@@ -170,6 +170,11 @@
 
 ; -----------------------------------------------------------------------------
 ; fn-rs-a-wanted-transfer-keeps-the-authored-source (NNTP transit)
+; PRF-127 positive: fn-rs-a-transfer-is-wanted-only-if-both-parse is
+; witnessed by the same complete :want/input-parse/relayed-parse assertion
+; below: the injection payload is asserted equal to *rst-b*, the exact
+; fn-peer-relayed-octets result. The authored-source equality also witnesses
+; fn-rs-a-wanted-transfer-keeps-the-authored-source's stronger conclusion.
 
 (defconst *rst-mo* (pt-o *rst-msgid*))
 (make-event

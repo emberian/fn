@@ -39,6 +39,19 @@
          (fn-id-subject-of-payload '(104 105)))
   :rule-classes nil)
 
+; PRF-106 positive: fn-blake3-of-prefixed-buffer-is-blake3 has no
+; hypotheses. Execute its literal conclusion with both a nonempty prefix
+; and payload buffer, independently of the fixed external digest above.
+(assert-event
+ (let* ((prefix '(102 110 0 1))
+        (payload '(104 105 0 255))
+        (fn-octets (fn-octets-clear fn-octets))
+        (fn-octets (fn-octets-append-list payload fn-octets)))
+   (mv (equal (fn-blake3-of-prefixed-buffer prefix fn-octets)
+              (fn-blake3 (append prefix payload)))
+       fn-octets))
+ :stobjs-out '(nil fn-octets))
+
 (defthm sidbt-bounded-in-bound-witness
   (equal (fn-sidb-subject-id-bounded '(104 105))
          (fn-id-subject-of-payload '(104 105)))
