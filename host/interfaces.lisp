@@ -4826,10 +4826,14 @@
 ;; Staged exact raw extent window. Demand/allocator and served reachability
 ;; are separate obligations; these declarations do not activate a consumer.
 (definterface fn-crw-supportedp :class :common-lisp-compliant)
-(definterface fn-ews-begin :class :common-lisp-compliant)
-(definterface fn-ews-effect :class :common-lisp-compliant)
-(definterface fn-ews-tick :class :common-lisp-compliant)
+(definterface fn-ews-begin :class :common-lisp-compliant
+  :kinds ((file natp) (eoff natp) (elen natp) (poff natp) (plen natp) (offset natp) (expected natp)))
+(definterface fn-ews-effect :class :common-lisp-compliant
+  :kinds ((s true-listp)))
+(definterface fn-ews-tick :class :common-lisp-compliant
+  :kinds ((s true-listp)))
 (definterface fn-ews-read :class :common-lisp-compliant
+  :kinds ((s true-listp))
   :keystones ((fn-ews-read-publication-requires-core-integrity :via fn-ews-read)))
 (definterface fn-owner-page-read-ledger :class :common-lisp-compliant)
 (definterface fn-pwx-tokenp :class :common-lisp-compliant
@@ -4840,18 +4844,22 @@
 (definterface fn-owner-page-window-executor-return :class :common-lisp-compliant)
 (definterface fn-owner-page-window-executor-release :class :common-lisp-compliant
   :keystones ((fn-pwx-release-requires-exact-returned-window-and-slot :via fn-pwx-release)))
-(definterface fn-owner-page-window-byte :class :common-lisp-compliant)
+(definterface fn-owner-page-window-byte :class :common-lisp-compliant
+  :kinds ((plan true-listp)))
 
-(definterface fn-owner-page-window-byte-at :class :common-lisp-compliant)
+(definterface fn-owner-page-window-byte-at :class :common-lisp-compliant
+  :kinds ((plan true-listp)))
 (definterface fn-pwr-cold-descriptor :class :common-lisp-compliant)
 
-(definterface fn-owner-page-window-outcome :class :common-lisp-compliant)
+(definterface fn-owner-page-window-outcome :class :common-lisp-compliant
+  :kinds ((plan true-listp)))
 
 (definterface fn-owner-page-window-executor-cancel :class :common-lisp-compliant)
 (definterface fn-owner-page-window-executor-settle-cancelled :class :common-lisp-compliant)
 (definterface fn-owner-page-window-work-permittedp :class :common-lisp-compliant)
 
-(definterface fn-owner-page-window-current-octet :class :common-lisp-compliant)
+(definterface fn-owner-page-window-current-octet :class :common-lisp-compliant
+  :kinds ((h natp) (i natp)))
 (definterface fn-owner-page-window-decoded-refusal :class :common-lisp-compliant)
 
 ; Exact private cache declarations imported from 4b9be704b.
