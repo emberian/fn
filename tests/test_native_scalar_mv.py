@@ -16,9 +16,10 @@ class ScalarMVTests(unittest.TestCase):
     def test_actual_bridge_preserves_scalar_values_and_fails_closed(self):
         selected = []
         for form in proof_repl.forms((ROOT / "host/native/io.lisp").read_text()):
-            if proof_repl.head_and_name(form)[1] in {"fnn-fixed-raw-callback", "fnn-core-mv"}:
+            if proof_repl.head_and_name(form)[1] in {"fnn-fixed-raw-callback", "fnn-core-mv",
+                    "fnn-fixed-callback-fault", "fnn-fixed-callback-fail"}:
                 selected.append(form)
-        self.assertEqual(len(selected), 2)
+        self.assertEqual(len(selected), 4)
         driver = '''(defpackage "ACL2" (:use "COMMON-LISP"))
 (in-package "ACL2")
 (define-condition fnn-store-fault (error) ((message :initarg :message)))
@@ -57,6 +58,19 @@ class ScalarMVTests(unittest.TestCase):
 (assert (eq (fnn-core-mv 'semantic-thrown (values :thrown)) :thrown))
 (expect-fault (lambda () (fnn-core-mv 'escape (throw 'raw-ev-fncall :escaped))))
 (expect-fault (lambda () (fnn-core-mv 'exception (error "raw failure"))))
+(defvar *condition-reports* 0)
+(define-condition costly-callback-error (error) ()
+  (:report (lambda (condition stream)
+             (declare (ignore condition stream))
+             (incf *condition-reports*)
+             (error "callback condition must not be rendered"))))
+(let ((cause (make-condition 'costly-callback-error)))
+  (handler-case (fnn-core-mv 'retained-error (error cause))
+    (fnn-fixed-callback-fault (fault)
+      (assert (eq (fnn-fixed-fault-cause fault) cause))
+      (assert (eq (fnn-fixed-fault-subject fault) 'retained-error))
+      (assert (eq (fnn-fixed-fault-tag fault) :raw-callback-failed))))
+  (assert (= *condition-reports* 0)))
 (format t "PASS fixed scalar-MV values, identity, semantic status and faults~%")
 '''
         # The test collects results solely to inspect a zero-value return;

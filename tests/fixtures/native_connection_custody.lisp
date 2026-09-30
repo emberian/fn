@@ -18,6 +18,14 @@
 (defvar *debits* 0)
 (defvar *refunds* 0)
 (defvar *cases* 0)
+(defvar *condition-reports* 0)
+(defvar *seen-fault* nil)
+(define-condition custody-print-trap (error) ()
+  (:report (lambda (condition stream)
+             (declare (ignore condition stream))
+             (incf *condition-reports*)
+             (error "custody condition must not be rendered"))))
+(defvar *opaque-cause* (make-condition 'custody-print-trap))
 (defun fnn-developer-selector (name) (declare (ignore name)) nil)
 (defun fnn-owner-stop-service-locked (service code)
   (assert (sb-thread:holding-mutex-p (fnn-owner-service-lock service)))
@@ -68,7 +76,8 @@
   ;; Token is deliberately unrelated to CID 41. Native treats this object
   ;; as opaque; the recorders retain identity with EQ only for the fixture.
   (setf *token* (vector :issued-independent-of-cid *debits*))
-  (values (eq *start-mode* :error) *start-mode* *token* 91 mio pool state))
+  (values (case *start-mode* (:error t) (:cause *opaque-cause*))
+          (if (eq *start-mode* :cause) :reserved *start-mode*) *token* 91 mio pool state))
 (defun open-callback (kind family address peer token fuel mio pool state)
   (declare (ignore kind family address peer))
   (check-locks mio pool)
@@ -79,6 +88,9 @@
   (case *mode*
     (:escape (throw 'raw-ev-fncall :escaped))
     (:error (error "recorded core error"))
+    (:condition (error *opaque-cause*))
+    (:erp (values *opaque-cause* (list :recovery-required 41 token) mio pool state))
+    (:unexpected (values nil (list *opaque-cause* 41 token) mio pool state))
     (:refused (incf *refunds*) (values nil (list :refused nil nil) mio pool state))
     (otherwise (values nil (list *mode* 41 token) mio pool state))))
 (defun close-callback (id token faultp fuel mio pool arena state)
@@ -108,7 +120,8 @@
   (fnn-owner-serialized *service* nil
     (lambda () (fnn-owner-connection-open-locked *service* :reader nil nil nil))))
 (defun expect-fault (thunk)
-  (assert (handler-case (progn (funcall thunk) nil) (serious-condition () t)))
+  (assert (handler-case (progn (funcall thunk) nil)
+            (serious-condition (cause) (setf *seen-fault* cause) t)))
   (assert (fnn-owner-service-stopping *service*))
   (let ((before *debits*))
     (assert (handler-case (progn (opened) nil) (fnn-store-error () t)))
@@ -147,6 +160,23 @@
 (assert (null (opened)))
 (assert (null (fnn-owner-service-connection-head *service*)))
 (assert (= *refunds* 1))
+
+ ;; Actual retained paths preserve the same opaque cause without invoking
+;; its unbounded/arbitrary condition report, including returned error values.
+(fresh) (setf *start-mode* :cause)
+(expect-fault #'opened)
+(assert (eq *opaque-cause* (fnn-fixed-fault-cause *seen-fault*)))
+(assert (eq :issuer-error (fnn-fixed-fault-tag *seen-fault*)))
+(assert (eq *token* (fnn-owner-service-connection-raw-token *service*)))
+(dolist (mode '(:condition :erp :unexpected))
+  (fresh) (setf *mode* mode)
+  (expect-fault #'opened)
+  (assert (typep *seen-fault* 'fnn-fixed-callback-fault))
+  (assert (eq *opaque-cause*
+              (if (eq mode :unexpected) (first (fnn-fixed-fault-cause *seen-fault*))
+                (fnn-fixed-fault-cause *seen-fault*))))
+  (assert (fnn-owner-service-connection-head *service*)))
+(assert (zerop *condition-reports*))
 
 ;; Logical close holds aliases; only the core's later release unlinks.
 (fresh)

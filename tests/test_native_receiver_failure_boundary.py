@@ -29,7 +29,7 @@ SELECTED = {
         "fnn-owner-stop-service-locked", "fnn-owner-signal-commit",
         "fnn-owner-shared-action-locked", "fnn-owner-serialized",
         "fnn-owner-connection-selected-p",
-        "fnn-owner-receiver-fill",
+        "fnn-receiver-range-copy", "fnn-owner-receiver-fill",
     ],
 }
 

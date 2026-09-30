@@ -6313,7 +6313,8 @@
       "steps": [
         "Evaluate exact native constructor, intrusive splice, open/close/settle/repin and endpoint caller bodies in SBCL with real owner/extent mutexes and recording core callbacks.",
         "Inject constructor escape, error plus acquired token, raw open escape, post-refund unlink escape, held aliases, yielding close, accepted held/released repin and definite aborted replacement.",
-        "Invoke mux, web, admin and pull opening bodies; physically finish a mux connection whose logical CID was already cleared."
+        "Invoke mux, web, admin and pull opening bodies; physically finish a mux connection whose logical CID was already cleared.",
+        "Use the current fixed-tag bridge and error objects whose report method fails; observe SAME-cause retention with zero report invocations and a fence before subsequent admission."
       ],
       "expected": [
         "Every returned acquired token is reachable from the funded root before constructor/error inspection; uncertainty fences under owner exclusion without a refund or legacy fallback.",
@@ -6329,7 +6330,8 @@
         "native": false
       },
       "evidence": [
-        "planning/evidence/native-connection-custody-2026-09-30/coordinate.json"
+        "planning/evidence/native-connection-custody-2026-09-30/coordinate.json",
+        "planning/evidence/native-connection-custody-fixed-fault-2026-09-30/README.md"
       ],
       "execution_scope": "Actual raw native source bodies, recording core/runtime callbacks. No genuine runtime issuer, constructor funding, ACL2 composition, full read-completion wiring, image qualification or served activation claim."
     }

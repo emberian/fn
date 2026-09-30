@@ -17,6 +17,7 @@ from tests.test_native_receiver_failure_boundary import ROOT, proof_repl
 
 SELECTED = {
     'host/native/io.lisp': ['fnn-store-error', 'fnn-store-fault',
+        'fnn-fixed-callback-fault', 'fnn-fixed-callback-fail',
         'fnn-store-indeterminate', 'fnn-os-error', 'fnn-refuse', 'fnn-fault', 'fnn-core-mv'],
     'host/native/owner.lisp': ['fnn-owner-connection-selected-p',
         'fnn-connection-custody-make', 'fnn-connection-custody-publish-raw',
@@ -51,7 +52,8 @@ def selected_source(tree):
 class NativeConnectionCustodyTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which('sbcl'), 'SBCL required')
     def test_actual_native_custody_and_endpoint_callers(self):
-        source, hashes = selected_source(ROOT)
+        tree = Path(os.environ.get("FN_CONNECTION_CUSTODY_SOURCE_TREE", ROOT))
+        source, hashes = selected_source(tree)
         fixture = (ROOT / 'tests/fixtures/native_connection_custody.lisp').read_text()
         with tempfile.TemporaryDirectory() as temp:
             p = Path(temp)
@@ -60,7 +62,7 @@ class NativeConnectionCustodyTests(unittest.TestCase):
             run = subprocess.run([shutil.which('sbcl'), '--noinform', '--disable-debugger',
                                   '--script', str(p / 'driver.lisp')],
                                  capture_output=True, text=True, timeout=30)
-        after, after_hashes = selected_source(ROOT)
+        after, after_hashes = selected_source(tree)
         self.assertEqual(source, after, 'source changed during evaluation')
         if destination := os.environ.get('FN_CONNECTION_CUSTODY_EVIDENCE'):
             p = Path(destination)
@@ -68,7 +70,7 @@ class NativeConnectionCustodyTests(unittest.TestCase):
             (p / 'selected-source.lisp').write_text(source)
             (p / 'run.log').write_text(run.stdout + run.stderr)
             (p / 'coordinate.json').write_text(json.dumps({
-                'hashes_before': hashes, 'hashes_after': after_hashes,
+                'source_tree': str(tree), 'hashes_before': hashes, 'hashes_after': after_hashes,
                 'fixture_sha256': hashlib.sha256(fixture.encode()).hexdigest(),
                 'returncode': run.returncode,
                 'scope': 'native adapter source, real SBCL mutexes, recording callbacks; no runtime funding or activation claim',

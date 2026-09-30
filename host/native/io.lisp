@@ -75,6 +75,15 @@
   ((message :initarg :message :reader fnn-message))
   (:report (lambda (c s) (write-string (fnn-message c) s))))
 (define-condition fnn-store-fault (fnn-store-error) ())
+
+(define-condition fnn-fixed-callback-fault (fnn-store-fault)
+  ((subject :initarg :subject :reader fnn-fixed-fault-subject)
+   (tag :initarg :tag :reader fnn-fixed-fault-tag)
+   (cause :initarg :cause :reader fnn-fixed-fault-cause)))
+
+(defun fnn-fixed-callback-fail (subject tag cause)
+  (error 'fnn-fixed-callback-fault :message "core-callback-fault"
+         :subject subject :tag tag :cause cause))
 ;; host-entry-guard: the host handed an ACL2 entry an argument its guard
 ;; refuses, or the wrong number of arguments (fnn-entry-guard).  A fault
 ;; (exit 4) named by the entry, the argument position and the expected kind,
@@ -1392,8 +1401,8 @@ its own scalar refusals remain results, while execution escapes are faults."
                  nil)))
          (case ,outcome
            (:ok nil)
-           (:thrown (fnn-fault "ACL2 raw evaluation escaped in ~(~a~)" ,name))
-           (otherwise (fnn-fault "ACL2 error in ~(~a~): ~a" ,name ,outcome)))))))
+           (:thrown (fnn-fixed-callback-fail ,name :raw-callback-escaped nil))
+           (otherwise (fnn-fixed-callback-fail ,name :raw-callback-failed ,outcome)))))))
 
 (defvar *fnn-incoming-mutation-callback* nil)
 

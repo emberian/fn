@@ -4307,7 +4307,8 @@
         "tests/test_native_article_slots.py",
         "tests/test_native_connection_custody.py",
         "tests/fixtures/native_connection_custody.lisp",
-        "planning/evidence/native-connection-custody-2026-09-30/README.md"
+        "planning/evidence/native-connection-custody-2026-09-30/README.md",
+        "planning/evidence/native-connection-custody-fixed-fault-2026-09-30/README.md"
       ],
       "implementation_note": "PKT-605 closed for the stated workload: the capacity row (NNT-043) is checked against the machine by ACL2 at run and at every live reconfiguration; trusted sources count. No wire or delta code, no store format, no fn.toml key. PKT-639 (implicit TLS admitted before the handshake) and PKT-640 (TLS refusals in the service log) are folded in. SCN-153 is the native case on both images. Lane zero-copy-commit (2026-09-28): the articles in flight are a pool of credits in the store's heap figure (books/heap-store-figure.lisp fn-heap-articles-octets), admitted by every served read (books/owner-article-slots.lisp fn-oas-read-span: POST 440, IHAVE/TAKETHIS 400 and close past the slots; reserve-to-finish, so an admitted upload is never blocked); SCN-193 is its native case. Lane admission-gap (2026-09-28): the admission holds across every read, including one that enters and completes an article (a TAKETHIS in one read), and a read leaves the other connections as they were (books/owner-article-held.lisp). fn-cbud-launch-decide is gone. Native connection custody source (2026-09-30): SCN-1057 exercises the actual intrusive constructor and mux/web/admin/pull opening adapters with recording core callbacks. No installed runtime issuer or endpoint activation is claimed; constructor and cleanup overlap funding, genuine callback source and read-completion join remain open."
     },
