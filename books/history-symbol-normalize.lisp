@@ -243,6 +243,18 @@
             (equal (nthcdr n xs) nil))
    :hints (("Goal" :induct (nthcdr n xs) :in-theory (enable nthcdr len)))))
 
+(local
+ (defthm fn-hdsn-find-mismatched-length-unfolds
+  (implies (and (consp candidates)
+                (not (equal (length name)
+                            (length (symbol-name (car candidates))))))
+           (equal (fn-hdsn-find name candidates index)
+                  (fn-hdsn-find name (cdr candidates) 0)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :expand ((fn-hdsn-find name candidates index))
+           :in-theory (disable fn-hdsn-find)))))
+
 (defthm fn-hdsn-tick-preserves-denotation
   (implies (and (fn-hdsn-statep c) (stringp name)
                 (equal (length name) (nth 2 c)))
@@ -251,6 +263,8 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-hdsn-state-fields
+                 (:instance fn-hdsn-find-mismatched-length-unfolds
+                            (candidates (nth 3 c)) (index (nth 4 c)))
                  (:instance fn-hdsn-nthcdr-length (xs (coerce name 'list)) (n (nth 2 c)))
                  (:instance fn-hdsn-nthcdr-length
                             (xs (coerce (symbol-name (car (nth 3 c))) 'list)) (n (nth 2 c))))
@@ -267,6 +281,8 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-hdsn-state-fields
+                 (:instance fn-hdsn-find-mismatched-length-unfolds
+                            (candidates (nth 3 c)) (index (nth 4 c)))
                  (:instance fn-hdsn-nthcdr-length (xs (coerce name 'list)) (n (nth 2 c)))
                  (:instance fn-hdsn-nthcdr-length
                             (xs (coerce (symbol-name (car (nth 3 c))) 'list)) (n (nth 2 c))))
