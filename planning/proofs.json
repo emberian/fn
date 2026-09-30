@@ -18600,6 +18600,27 @@
         "planning/evidence/extent-window-compressed-source-2026-09-30.md"
       ],
       "progress_note": "Source composition only. Literal local-stobj witnesses affirm the complete antecedents/conclusions without materializing large logical pool terms; removal and actual regressions have separate checks. C0 with a nonzero protected-prefix offset waits in drain until positional completion. Clean protected sol-ewzu1 source union admitted13core+3testbooks with zero refusals,40.15ACL2s/19,615,494steps; no manifest/image/native campaign by this lane."
+    },
+    {
+      "id": "PRF-1132",
+      "title": "Carried scalar widths and input span for bounded stored DEFLATE (funding open)",
+      "statement": "Actual fn-pzw-initialize establishes nbits<=39 and bits<2^nbits; actual fn-pzw-stored-chunk preserves them from carried state and octet input, including malformed/refusal exits. Actual stored chunk returns natural IP in [START,END] under natural START and START<=END. The actual Huffman walker preserves length-relative register carry on non-error exits and fixed code/first/index/length bounds on every exit. These component facts do not yet establish the complete Huffman/header state trajectory, primitive operation counts, selected-runtime allocation adequacy, old-success/action-budget completeness or served admission.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-037"
+      ],
+      "depends_on": [
+        "PRF-1112"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/payload-window-width.lisp",
+        "tests/acl2/payload-window-width-tests.lisp",
+        "specs/payload-window.md",
+        "planning/evidence/payload-window-width-2026-09-30.md"
+      ],
+      "progress_note": "Protected source-only component proof and literal teeth checkpoint. No new served keystone/certificate/image/native claim; source proof coordinates and remaining funding obligations are recorded in the evidence file."
     }
   ]
 }

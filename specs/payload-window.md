@@ -90,3 +90,39 @@ bounded status/error conses, runtime multiple-value/control overhead and
 fresh-vector replacement coexistence. Source loop/action bounds are not a
 measurement or proof of those SBCL allocator costs. A positive scheduling
 quantum is necessary for progress; a zero quantum merely yields.
+
+## Carried scalar width (PRF-1132, SCN-1039)
+
+`books/payload-window-width.lisp` proves that the actual initializer establishes
+`nbits <= 39` and `bits < 2^nbits`, and that actual stored chunks preserve this
+carry when the input is an octet representation. The proof follows every
+actual loop, bulk literal/match and single-action branch, including malformed
+input and refusal. It introduces no served revalidation and no payload ceiling.
+The actual stored chunk also returns a natural input position in `[START, END]`
+under natural START and START <= END. END being natural was proved redundant
+for that theorem; the executable entry's existing guards still require it.
+
+The actual Huffman walker has a separate length-relative code/first/index
+carry. Non-error exits preserve it; every exit, including a bad-code refusal,
+has code <= 32,767, first <= 2,147,319,810, index <= 917,490 and length in1..15.
+Octet-table and natural-bit-count premises were proved redundant for these
+walker facts. Full establishment/preservation of the Huffman and header fields
+through the stored decoder remains open. Guard verification alone does not
+exclude an unbounded corrupted register.
+
+The reviewed profile-arithmetic candidate per chunk plus one budget update,
+window selection and stored decision is `17 + 6*Q + 2*O + I`: at most
+`3 + 2*Q` multiplications and `14 + 4*Q + 2*O + I` additions/subtractions,
+where Q <=1,024 and I/O <=64. Initial budget construction adds two
+multiplications and two additions. This is a source inventory candidate,
+not yet a trace-count or allocator theorem. The runtime must account for
+primitive workspaces, extra limbs, signs, status conses and control overhead.
+
+With the controller's source-position carry keeping actual TIN <= C, stored
+credit can make temporary TIN reach2*C, so the bomb-limit intermediate is
+`512*C + 65,536`. With only TIN <= C at chunk entry and a64-byte span, it may
+instead reach `512*C + 81,920`; the stronger bound needs the complete source
+sequence premise. At signed63-bit C, even `512*C + 65,536` needs up to73
+magnitude bits. None of these source facts supplies a selected-runtime
+allocation bound or authorizes native admission. The evidence file records
+the exact component and the remaining width, count and runtime obligations.
