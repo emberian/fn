@@ -129,6 +129,7 @@
 (include-book "../books/store-maintenance-reserve")
 (include-book "../books/store-capacity-vector")
 (include-book "../books/store-identity-reserve")
+(include-book "../books/owner-identity-prepare")
 ; PRF-284: the profile's admission decided once at open and carried
 ; (fn-pvc-make; fn-pvc-article-budget-carried, fn-pvc-verdict-carried,
 ; fn-pvc-post-boundary-carried).
@@ -1980,15 +1981,13 @@
                      (fn-store-octets->string id-octets)
                      (fn-store-octets->string subject-octets)
                      (fn-store-octets->string evidence-octets) charge)))
-        ; fn-pout-prepare-retention: (:store (:prepare-retention E)) and its
-        ; word (KEYSTONE fn-pout-prepare-retention-answers-the-store-change).
-        (mv-let (allowed remaining) (fn-idr-consume-grant s event grant)
-          (let ((state (f-put-global 'fn-owner-identity-grant remaining state)))
-            (if (not allowed) (value :refused)
-              (mv-let (word next)
-                (fn-pout-prepare-retention (fn-owner-ocfg state) event fn-arena)
-                (let ((state (fn-owner-install-ocfg next state)))
-                  (value word))))))))))
+        ; The fused grant/prepare boundary also decides whether installation
+        ; is allowed; a denied capability invokes no owner refresh.
+        (mv-let (word next remaining installp)
+          (fn-idrp-prepare-retention (fn-owner-ocfg state) event grant fn-arena)
+          (let* ((state (f-put-global 'fn-owner-identity-grant remaining state))
+                 (state (if installp (fn-owner-install-ocfg next state) state)))
+            (value word)))))))
 
 ; The caller supplies an ACL2-constructed kind-3 or kind-4 event.  This
 ; boundary deliberately accepts no separate profile, key, article, or verdict

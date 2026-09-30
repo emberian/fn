@@ -325,6 +325,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/refusal-headroom \
 	books/store-identity-reserve \
 	books/identity-reserve-trace \
+	books/owner-identity-prepare \
+	tests/acl2/owner-identity-prepare-tests \
 	tests/acl2/identity-reserve-trace-tests \
 	tests/acl2/store-identity-reserve-tests \
 	tests/acl2/refusal-headroom-tests \

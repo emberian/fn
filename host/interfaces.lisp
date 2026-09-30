@@ -1697,6 +1697,8 @@
 
 (definterface fn-owner-prepare-retention
   :class ::program
+  :keystones ((fn-idrp-retention-preparation-consumes-exact-current-grant
+               :via fn-idrp-prepare-retention))
   :kinds ((id-octets fn-cbor-octet-listp) (subject-octets fn-cbor-octet-listp) (evidence-octets fn-cbor-octet-listp)))
 
 (definterface fn-owner-prepare-topic

@@ -27,6 +27,7 @@ class NativeIdentityReserveTests(unittest.TestCase):
     def test_current_gate_and_actual_native_allocator(self):
         with Acl2Session(IMAGE) as session:
             for path in ("books/store-identity-reserve.lisp",
+                         "books/owner-identity-prepare.lisp",
                          "tests/acl2/store-identity-reserve-tests.lisp"):
                 for form in forms((ROOT / path).read_text()):
                     if not re.match(r"\((defun|defconst|assert-event)\s", form, re.I):
@@ -80,6 +81,7 @@ class NativeIdentityReserveTests(unittest.TestCase):
     def test_actual_owner_prepare_consumes_exact_grant(self):
         with Acl2Session(IMAGE) as session:
             for path in ("books/store-identity-reserve.lisp",
+                         "books/owner-identity-prepare.lisp",
                          "tests/acl2/store-identity-reserve-tests.lisp"):
                 for form in forms((ROOT / path).read_text()):
                     if not re.match(r"\((defun|defconst)\s", form, re.I):
@@ -119,6 +121,21 @@ class NativeIdentityReserveTests(unittest.TestCase):
                    (fn-record-string-octets "receipt-1") 0 fn-arena state)
                 (declare (ignore erp))
                 (mv nil (and (eq word :prepared)
+                             (null (f-get-global 'fn-owner-identity-grant state))
+                             (eq (fn-sf-phase (fn-sn-files (fn-owner-store state))) :record-staged))
+                    state))""")
+            self.assertNotIn(b"ACL2 Error", result, result.decode(errors="replace"))
+            self.assertRegex(result, rb"\sT\s+ACL2")
+
+            # Malformed input clears the live global BEFORE the decoded-event
+            # seam can run; no later callback can inherit that capability.
+            session.call("(assign fn-owner-identity-grant *idr-grant*)")
+            result = session.call("""(mv-let (erp word state)
+                (fn-owner-prepare-retention :release nil
+                   (fn-record-string-octets "subject-1")
+                   (fn-record-string-octets "receipt-1") 0 fn-arena state)
+                (declare (ignore erp))
+                (mv nil (and (eq word :invalid)
                              (null (f-get-global 'fn-owner-identity-grant state))
                              (eq (fn-sf-phase (fn-sn-files (fn-owner-store state))) :record-staged))
                     state))""")
