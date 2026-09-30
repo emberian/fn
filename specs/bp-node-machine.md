@@ -5081,3 +5081,14 @@ Exact source admission evidence is
 Bounded checkpoint reopening, full held producer grammar, installed runtime
 and disk capacity, funded receipt query, and the whole interrupted delivery
 and retirement trajectory remain open.
+
+The registered checkpoint job reservation uses the bounded
+`fn-bpco-checkpoint-operation-p` projection of the actual issued operation:
+its epoch equals CURRENT's epoch, operation ID is zero, kind is checkpoint,
+KEY is a positive frame-width generation, and status is pending. The scalar
+getters inspect bounded fields only; they do not compare delivery KEY values
+or encode a checkpoint. Uncertain, stale and different-kind observations are
+refused. This predicate is not resource authority: the same shared-pool claim
+and registered pending job must still be established before capture/effects.
+Source-only guard/fixture evidence:
+`planning/evidence/bp-checkpoint-operation-20260930/manifest.json`.
