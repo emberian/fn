@@ -1084,6 +1084,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/extent-window-stream-union-tests \
 	tests/acl2/extent-window-compressed-tests \
 	tests/acl2/extent-window-compressed-refinement-tests \
+	books/payload-window-width \
+	tests/acl2/payload-window-width-tests \
+	books/extent-window-compressed-input \
+	tests/acl2/extent-window-compressed-input-tests \
 	tests/acl2/records-freeze-tests \
 	tests/acl2/catalog-record-tests \
 	tests/acl2/catalog-tests \

@@ -5506,7 +5506,9 @@
         "docs/extensions/nntp-compress-dict.md",
         "books/payload-window.lisp",
         "books/extent-window-compressed.lisp",
-        "tests/acl2/extent-window-compressed-tests.lisp"
+        "tests/acl2/extent-window-compressed-tests.lisp",
+        "books/extent-window-compressed-input.lisp",
+        "tests/acl2/extent-window-compressed-input-tests.lisp"
       ]
     },
     {

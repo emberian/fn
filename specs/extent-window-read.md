@@ -111,3 +111,28 @@ This is source component evidence. Full captured-source digest/decoded
 trajectory, actual TIN<=C sequence invariant, total scheduling/action-budget
 completeness, allocator/profile funding, native lifetime/dispatch/borrow
 integration and matching images/natives remain open.
+
+### Real compressed-input carry
+
+`fn-ewz-scanned-input` derives `min(C, nfix(EOFF+POS-POFF))` from the
+original captured compressed payload coordinates. The proof-only carried
+`fn-ewz-input-invariantp` states real TIN=scanned during scan, and
+TIN+(END-IP)=scanned while a codec quantum retains input. Drain/decoded
+states preserve TIN<=scanned; trailing compressed bytes may be hashed after
+a final block without being decoded. All states retain natural IP/END with
+0<=IP<=END<=64. A drain also carries the actual ended codec status, so a
+hash tick cannot resume a fabricated decoder continuation.
+
+Actual BEGIN, READ, CODEC-TICK and HASH-TICK establish/preserve the carry;
+its consequence is TIN<=C. No served entry traverses or validates this
+logical invariant. The codec proof also covers malformed pool refusal:
+those refusals consume zero input and restore the credited input counter.
+The actual codec's exported input-span bound and bit-width evidence are
+included from `payload-window-width`. This does not establish a numerical
+SBCL allocator allowance or the whole decoded trajectory.
+
+Literal witnesses follow the actual dispatcher before read completion,
+show nonempty codec and empty-payload drain transitions, and affirm each
+full antecedent and conclusion. Malformed-coordinate and corrupted-state
+hypothesis-removal witnesses are labelled separately. Native integration,
+full trajectory, total progress and allocation/profile funding remain open.
