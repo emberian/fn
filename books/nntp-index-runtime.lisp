@@ -339,7 +339,8 @@
   (implies (fn-nntp-descending-integersp numbers)
            (equal (fn-nntp-numbers-sort numbers) (revappend numbers nil)))
   :hints (("Goal" :induct (fn-nntp-numbers-sort numbers)
-           :in-theory (enable fn-nntp-numbers-sort))))
+           :in-theory (e/d (fn-nntp-numbers-sort revappend)
+                            (revappend-removal)))))
 
 (defconst *fn-nntp-index-all-low* 1)
 
