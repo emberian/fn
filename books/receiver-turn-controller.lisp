@@ -287,3 +287,23 @@
    fn-owner-rx-turn-fill-range fn-rxt-live-claim-p fn-rxp-fill-range
    fn-rxc-fill-range fn-rxp-fence fn-rxc-fence fn-rxp-capacity)))
  :rule-classes nil)
+(defthm fn-owner-rx-turn-copy-ack-completion-keeps-custody
+ (implies
+  (equal (mv-nth 0 (fn-owner-rx-turn-copy-ack ticket start end outcome
+                      fn-rx-provider fn-receiver-turn fn-page-read-pool)) :receive-recorded)
+  (let ((provider (mv-nth 1 (fn-owner-rx-turn-copy-ack ticket start end outcome
+                      fn-rx-provider fn-receiver-turn fn-page-read-pool)))
+        (turn (mv-nth 2 (fn-owner-rx-turn-copy-ack ticket start end outcome
+                      fn-rx-provider fn-receiver-turn fn-page-read-pool))))
+   (and (equal (fn-rxp-capacity provider) 4096)
+        (equal (fn-rxt-phase turn) :filled)
+        (equal (fn-rxt-ticket turn) (fn-rxt-ticket fn-receiver-turn))
+        (equal (fn-rxt-source turn) (fn-rxt-source fn-receiver-turn))
+        (equal (fn-rxt-demand turn) (fn-rxt-demand fn-receiver-turn))
+        (equal (fn-rxt-job turn) (fn-rxt-job fn-receiver-turn))
+        (equal (fn-rxt-receipt turn) (fn-rxt-receipt fn-receiver-turn))
+        (equal (mv-nth 3 (fn-owner-rx-turn-copy-ack ticket start end outcome
+                      fn-rx-provider fn-receiver-turn fn-page-read-pool)) fn-page-read-pool))))
+ :hints (("Goal" :in-theory (enable fn-owner-rx-turn-copy-ack
+                                  fn-rxt-copy-publish fn-rxp-capacity)))
+ :rule-classes nil)
