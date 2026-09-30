@@ -490,8 +490,14 @@ def dependents_of(graph: dict[str, list[str]], seeds) -> set[str]:
     return {name for name in graph if reaches(name)}
 
 
-def dependency_order(graph: dict[str, list[str]], subset) -> list[str]:
-    """SUBSET, each book after every book of SUBSET it includes."""
+def dependency_order(graph: dict[str, list[str]], subset,
+                     root: str | None = None) -> list[str]:
+    """SUBSET in ROOT's declared include order, dependencies before parents.
+
+    Siblings cannot be alphabetized: a later exported theorem may reuse an
+    earlier book's local name. Shared dependencies are visited only once.
+    Without one named root, only independent roots have a stable name order.
+    """
     subset = set(subset)
     order: list[str] = []
     seen: set[str] = set()
@@ -500,12 +506,18 @@ def dependency_order(graph: dict[str, list[str]], subset) -> list[str]:
         if name in seen:
             return
         seen.add(name)
-        for child in sorted(graph.get(name, ())):
+        for child in graph.get(name, ()):
             visit(child)
         if name in subset:
             order.append(name)
 
-    for name in sorted(subset):
+    if root is not None:
+        visit(root)
+    else:
+        children = {child for includes in graph.values() for child in includes}
+        for name in sorted(set(graph) - children):
+            visit(name)
+    for name in sorted(subset - seen):
         visit(name)
     return order
 
@@ -1636,7 +1648,7 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
                 and report.action != "install-partial" and auto == "ld"):
             from_source |= dependents_of(graph, report.uncached) - {book}
             printed.append("proof-repl: loading from source (proofs run in the session): "
-                           + ", ".join(dependency_order(graph, from_source)))
+                           + ", ".join(dependency_order(graph, from_source, book)))
             report, required = attempt(from_source, purge=False)
         if (report is not None and report.artifact_set is None
                 and report.action != "install-partial"):
@@ -1653,7 +1665,7 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
         return False, f"proof-repl: certificate acquisition failed: {error}", []
     except (OSError, subprocess.TimeoutExpired) as error:
         return False, f"proof-repl: certificate acquisition failed: {error}", []
-    order = dependency_order(graph, from_source)
+    order = dependency_order(graph, from_source, book)
     if report is None:
         printed.append("no dependencies to install")
     else:

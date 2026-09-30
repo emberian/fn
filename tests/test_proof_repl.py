@@ -945,6 +945,25 @@ class GraphTests(unittest.TestCase):
         self.assertEqual(proof_repl.dependency_order(self.GRAPH, {"m", "b", "t"}),
                          ["b", "m", "t"])
 
+    def test_source_siblings_keep_declared_order_and_shared_dependency_once(self):
+        graph = {"top": ["z-local", "a-export"],
+                 "z-local": ["shared"], "a-export": ["shared"], "shared": []}
+        for subset in (["a-export", "shared", "z-local"],
+                       ["z-local", "a-export", "shared"]):
+            self.assertEqual(proof_repl.dependency_order(graph, subset, "top"),
+                             ["shared", "z-local", "a-export"])
+
+    def test_order_starts_at_the_named_root_even_when_its_name_sorts_last(self):
+        graph = {"z-top": ["b", "a"], "a": [], "b": []}
+        self.assertEqual(proof_repl.dependency_order(graph, {"a", "b"}, "z-top"),
+                         ["b", "a"])
+
+    def test_only_independent_roots_use_deterministic_name_order(self):
+        graph = {"z-root": ["z2", "z1"], "a-root": ["a2", "a1"],
+                 "z2": [], "z1": [], "a2": [], "a1": []}
+        self.assertEqual(proof_repl.dependency_order(graph, set(graph)),
+                         ["a2", "a1", "a-root", "z2", "z1", "z-root"])
+
     def test_diagnosis_names_the_root_cause_and_what_follows_it(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = worktree(temporary + "/tree")
