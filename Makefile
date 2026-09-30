@@ -334,6 +334,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/incoming-buffer-carrier \
 	books/incoming-copy-stobj \
 	books/incoming-copy-runtime-domain \
+	books/fixed-buffer-capacity \
+	books/receiver-provider \
 	tests/acl2/incoming-copy-runtime-domain-tests \
 	tests/acl2/incoming-setup-ranges-tests \
 	tests/acl2/incoming-copy-stobj-tests \

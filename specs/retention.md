@@ -336,3 +336,19 @@ constructor/frame/allocator/GC/startup funding, and immutable core context
 registration/clear ordering. Ordinary command traffic uses a separately funded
 congruent RX backing; it may not overwrite the held incoming backing. RX bulk
 fill needs its own core-issued bounded range and complete effect boundary.
+
+The unactivated RX source adapter uses one `fn-rx-provider` containing the
+congruent `fn-rxp-octets` child and the three-field `fn-rxp-carry` child.
+NIL carry means uninitialized. Shared-pool reservation precedes its constructor;
+the current reserved row is checked before reserve, retained capacity promotion
+commits before publishing token/instance/capacity carry, capacity last. Unknown
+outcome fences the instance and retains charge; duplicate installation does not
+reserve or rebind. This sequence still requires the actual factory/fault boundary.
+`fn-rxp-fill-range` checks the maintained token and instance, installed4096 chunk
+capacity, supported connection quantum and primitive fuel. It returns scalar
+word/start/end/remaining fuel without changing either child or scanning ledger.
+4096 bounds a chunk, never total input; exhaustion retains the source cursor.
+The reference-only list fill records complete bytes/carry/fuel effects for the
+native primitive refinement target. It does not qualify REPLACE/set-fill.
+Native object association, full boundary teeth, constructor/frame/allocator/GC
+and startup funding remain open; this adapter is not activated.
