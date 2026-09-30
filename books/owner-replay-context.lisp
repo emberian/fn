@@ -172,7 +172,8 @@
          (ctx (fn-orcb-at 4 s)) (carries (fn-orcb-at 5 s)) (event row)))
   :in-theory (e/d (fn-orcb-step fn-orcb-state fn-orcb-at fn-orcb-statep)
                  (fn-scs-correspondsp fn-ris-step fn-replay-identity-effects
-                  fn-scs-summary fn-ics-contextp fn-ics-carriesp fn-omk-token-matchp)))))
+                  fn-scs-summary fn-ics-contextp fn-ics-carriesp fn-omk-token-matchp
+                  fn-ris-step-is-actual-replay-by-definition fn-replay-identity-step)))))
 
 (local (defthm fn-orcb-width-from-proper-length
  (implies (and (natp n) (true-listp x) (equal (len x) n))

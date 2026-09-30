@@ -68,3 +68,30 @@
  (mv-let (ok state) (orbit-original-lifecycle state)
   (if ok (mv nil '(value-triple :passed) state)
    (mv "Original context independent readiness/count/reset witness failed" nil state))))
+
+; Configuration completion can invalidate CP/pool readiness while retaining
+; the exact pre-event ORIGINAL context. No new source is synthesized here.
+(defun orbit-retained-unavailable-context (state)
+ (declare (xargs :stobjs state :guard t :verify-guards nil))
+ (let* ((ctx (fn-stxk-initial-context 0))
+        (fields (orbit-fields ctx))
+        (source '(3 (4 0) 0 0))
+        (retained (list :unavailable 9 0 ctx fields nil nil 0 0 source))
+        (state (f-put-global 'fn-owner-canonical-epoch 9 state))
+        (state (f-put-global 'fn-owner-canonical-pending nil state))
+        (state (f-put-global 'fn-owner-canonical-state retained state))
+        (readout (fn-owner-orcb-context 0 state))
+        (wrong-count (fn-owner-orcb-context 1 state))
+        (not-ready (not (fn-owner-canonical-availablep 0 state)))
+        (state (fn-owner-canonical-reset state))
+        ; A stale callback retains the old tuple literally after reset.
+        (state (f-put-global 'fn-owner-canonical-state retained state)))
+  (mv (and not-ready
+           (equal readout (list :context 9 0 ctx fields source))
+           (eq (car wrong-count) :unavailable)
+           (equal (fn-owner-canonical-epoch state) 10)
+           (eq (car (fn-owner-orcb-context 0 state)) :unavailable)) state)))
+(make-event
+ (mv-let (ok state) (orbit-retained-unavailable-context state)
+  (if ok (mv nil '(value-triple :passed) state)
+   (mv "Retained unavailable context epoch/count witness failed" nil state))))
