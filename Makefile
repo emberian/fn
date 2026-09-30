@@ -125,12 +125,14 @@ ACL2_BOOKS ?= books/defrecord \
 	books/auth-credentials \
 	books/consumer-account-adoption \
 	books/consumer-authority-fold \
+	books/consumer-account-carried \
 	books/config-record-order \
 	books/control-visible-effect \
 	tests/acl2/consumer-account-index-tests \
 	tests/acl2/consumer-account-index-shape-tests \
 	tests/acl2/consumer-account-adoption-tests \
 	tests/acl2/consumer-authority-fold-tests \
+	tests/acl2/consumer-account-carried-tests \
 	tests/acl2/consumer-authority-store-tests \
 	tests/acl2/control-visible-effect-tests \
 	books/consumer-authority-revision \

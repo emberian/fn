@@ -1015,3 +1015,20 @@ Its model effect annotations are explicit model inputs, never host Boolean
 assertions or a replacement for recovery's retained withdrawal/visible
 accumulator. Actual recovery must call the same core producer at each event.
 The source component does not activate the remote endpoint or close Q13.
+
+The source carried account interpreter `fn-caac-step(s,event,metadata)` returns
+the complete logical decision, next fixed4 metadata and a published root carry
+only at an accepted ready fence. It uses the logical interpreter's bounded row
+selection plan and fixed reconstruction, invoking the carried trie mutator
+exactly once. Account-list cells carry head and tail metadata; reversal moves
+one row and one credential cell. Old/new/pending metadata is part of retained
+lifetime debt. Seven CP child carries accompany CP7 without changing Store14,
+authority6, pending9 or root4. No served call summarizes shared account trees.
+
+The input metadata must be established by the actual initial/cold producer and
+preserved jointly with row/index/credential authority. Decision equivalence
+alone does not establish this: corrupted metadata yields the same decision but
+wrong size readiness. The full maintained metadata boundary, profile quantum,
+byte/allocation/retirement funding and atomic owner publication remain open.
+Fixture exact-size observations after creation, rotation, deletion/recreation
+and multi-row merge are source observations, not a proof of every transition.

@@ -104,7 +104,7 @@
 
 ; One selected row, one persistent bounded login-path update and one bounded
 ; hash-chain step. No traversal/copy of old or accumulated account tables.
-(defun fn-caa-stage-selected (s a event row credential old-rest)
+(defun fn-caa-stage-indexed (s a event row index old-rest)
   (declare (xargs :guard t))
   (let* ((p (fn-cp-nth 5 a)) (prep (fn-cp-nth 5 p))
          (root (fn-cp-nth 5 prep))
@@ -112,9 +112,7 @@
                           (1+ (nfix (fn-cp-nth 2 event)))))
          (root1 (fn-caa-root
                  (fn-cp-nth 1 root)
-                 (fn-cai-put-octets (fn-cp-nth 1 row)
-                                    (list :account-binding row credential)
-                                    (fn-cp-nth 2 root))
+                 index
                  (fn-cp-nth 3 root)))
          (prep1 (fn-caa-preparation
                  :merge old-rest (cons row (fn-cp-nth 3 prep)) nil root1
@@ -126,7 +124,18 @@
            (fn-sha256 (ec-call (binary-append (fn-cp-nth 7 p) (fn-cac-encode event)))) nil)))
     (fn-caa-success s (fn-caa-authority-pending a pending) event nil)))
 
-(defun fn-caa-row (s a event op)
+(defun fn-caa-stage-selected (s a event row credential old-rest)
+  (declare (xargs :guard t))
+  (let* ((p (fn-cp-nth 5 a)) (prep (fn-cp-nth 5 p))
+         (root (fn-cp-nth 5 prep)))
+    (fn-caa-stage-indexed
+     s a event row
+     (fn-cai-put-octets (fn-cp-nth 1 row)
+                        (list :account-binding row credential)
+                        (fn-cp-nth 2 root))
+     old-rest)))
+
+(defun fn-caa-row-plan (a event op)
   (declare (xargs :guard t))
   (let* ((p (fn-cp-nth 5 a)) (prep (fn-cp-nth 5 p))
          (old (fn-cp-nth 2 prep)) (head (if (consp old) (car old) nil))
@@ -144,16 +153,23 @@
             (not (fn-auth-credp credential))
             (>= (nfix (fn-cp-nth 3 p)) *fn-cbor-max-uint*))
         (list :refused :authority-row)
-      (fn-caa-stage-selected
-       s a event
+      (list :stage
        (list :account name
              (if retained (fn-cp-nth 2 head)
                (fn-cp-account-creation (fn-cp-nth 6 prep) (fn-cp-nth 2 event)))
              t (fn-caa-row-descriptor op))
-       credential (if same (if (consp old) (cdr old) nil) old)))))
+       credential (if same (if (consp old) (cdr old) nil) old) same))))
 
-(defun fn-caa-tombstone (s a event op)
+(defun fn-caa-row (s a event op)
   (declare (xargs :guard t))
+  (let ((plan (fn-caa-row-plan a event op)))
+    (if (eq (fn-cp-nth 0 plan) :stage)
+        (fn-caa-stage-selected s a event (fn-cp-nth 1 plan)
+                               (fn-cp-nth 2 plan) (fn-cp-nth 3 plan))
+      plan)))
+
+(defun fn-caa-tombstone-plan (a event op)
+  (declare (ignore event) (xargs :guard t))
   (let* ((p (fn-cp-nth 5 a)) (prep (fn-cp-nth 5 p))
          (old (fn-cp-nth 2 prep)) (head (if (consp old) (car old) nil))
          (name (fn-cp-nth 3 op)) (last (fn-cp-nth 6 p)))
@@ -164,9 +180,16 @@
             (and last (not (fn-caa-name-lessp last name)))
             (>= (nfix (fn-cp-nth 3 p)) *fn-cbor-max-uint*))
         (list :refused :authority-tombstone)
-      (fn-caa-stage-selected
-       s a event (list :account name (fn-cp-nth 2 head) nil nil) nil
-       (if (consp old) (cdr old) nil)))))
+      (list :stage (list :account name (fn-cp-nth 2 head) nil nil) nil
+       (if (consp old) (cdr old) nil) t))))
+
+(defun fn-caa-tombstone (s a event op)
+  (declare (xargs :guard t))
+  (let ((plan (fn-caa-tombstone-plan a event op)))
+    (if (eq (fn-cp-nth 0 plan) :stage)
+        (fn-caa-stage-selected s a event (fn-cp-nth 1 plan)
+                               (fn-cp-nth 2 plan) (fn-cp-nth 3 plan))
+      plan)))
 
 (defun fn-caa-count-digest-matchp (p op)
   (declare (xargs :guard t))
@@ -332,7 +355,7 @@
  (defthm fn-caa-stage-selected-preserves-adopted
    (fn-caa-preserves-adoptedp a (fn-caa-stage-selected s a event row credential old-rest))
    :hints (("Goal" :in-theory
-            (e/d (fn-caa-stage-selected fn-caa-preserves-adoptedp fn-caa-success
+            (e/d (fn-caa-stage-selected fn-caa-stage-indexed fn-caa-preserves-adoptedp fn-caa-success
                    fn-caa-authority-pending fn-cp-state-carry fn-cp-nth)
                  (fn-cac-eventp fn-caa-namespace fn-caa-name-lessp fn-caa-row-credential fn-caa-row-descriptor fn-caa-preparation fn-caa-pending fn-caa-root fn-caa-matching-pendingp fn-caa-count-digest-matchp fn-cai-get-octets fn-cai-put-octets fn-sha256 fn-cp-account-creation fn-cp-uintp fn-auth-credp fn-cp-authority-namespacep fn-cp-creation-coordinate))))))
 
@@ -356,15 +379,15 @@
  (defthm fn-caa-row-preserves-adopted
    (fn-caa-preserves-adoptedp a (fn-caa-row s a event op))
    :hints (("Goal" :in-theory
-            (e/d (fn-caa-row)
-                 (fn-caa-preserves-adoptedp fn-caa-stage-selected fn-cac-eventp fn-caa-namespace fn-caa-name-lessp fn-caa-row-credential fn-caa-row-descriptor fn-caa-preparation fn-caa-pending fn-caa-root fn-caa-matching-pendingp fn-caa-count-digest-matchp fn-cai-get-octets fn-cai-put-octets fn-sha256 fn-cp-account-creation fn-cp-uintp fn-auth-credp fn-cp-authority-namespacep fn-cp-creation-coordinate fn-cp-nth))))))
+            (e/d (fn-caa-row fn-caa-row-plan fn-cp-nth)
+                 (fn-caa-preserves-adoptedp fn-caa-stage-selected fn-cac-eventp fn-caa-namespace fn-caa-name-lessp fn-caa-row-credential fn-caa-row-descriptor fn-caa-preparation fn-caa-pending fn-caa-root fn-caa-matching-pendingp fn-caa-count-digest-matchp fn-cai-get-octets fn-cai-put-octets fn-sha256 fn-cp-account-creation fn-cp-uintp fn-auth-credp fn-cp-authority-namespacep fn-cp-creation-coordinate))))))
 
 (local
  (defthm fn-caa-tombstone-preserves-adopted
    (fn-caa-preserves-adoptedp a (fn-caa-tombstone s a event op))
    :hints (("Goal" :in-theory
-            (e/d (fn-caa-tombstone)
-                 (fn-caa-preserves-adoptedp fn-caa-stage-selected fn-cac-eventp fn-caa-namespace fn-caa-name-lessp fn-caa-row-credential fn-caa-row-descriptor fn-caa-preparation fn-caa-pending fn-caa-root fn-caa-matching-pendingp fn-caa-count-digest-matchp fn-cai-get-octets fn-cai-put-octets fn-sha256 fn-cp-account-creation fn-cp-uintp fn-auth-credp fn-cp-authority-namespacep fn-cp-creation-coordinate fn-cp-nth))))))
+            (e/d (fn-caa-tombstone fn-caa-tombstone-plan fn-cp-nth)
+                 (fn-caa-preserves-adoptedp fn-caa-stage-selected fn-cac-eventp fn-caa-namespace fn-caa-name-lessp fn-caa-row-credential fn-caa-row-descriptor fn-caa-preparation fn-caa-pending fn-caa-root fn-caa-matching-pendingp fn-caa-count-digest-matchp fn-cai-get-octets fn-cai-put-octets fn-sha256 fn-cp-account-creation fn-cp-uintp fn-auth-credp fn-cp-authority-namespacep fn-cp-creation-coordinate))))))
 
 ; No pending root or provisional creation becomes adopted before the
 ; scalar fence. Local frame lemmas keep the full interpreter proof focused.
