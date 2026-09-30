@@ -20,7 +20,10 @@ Converted modules: `test_bp_obligation_native`, `test_bp_node_native`,
 module already posts through NNTP; its topology description is corrected.
 The consumer-owned four-node mission runner remains separately owned.
 
-Validation: Python syntax compilation and the existing obligation caller
-boundary source test pass. Neither establishes native producer acceptance,
+Validation: Python syntax compilation, the existing obligation caller
+boundary source test and a fake executable with actual loopback NNTP pass.
+The fake inspection fails if its owner is still active, and its returned
+core record differs from both input and served Xref-bearing ARTICLE.
+These checks do not establish native producer acceptance,
 BP delivery, signature integration, or persistence behavior at these bytes.
 Earlier module verdicts are not transferred to these changed fixtures.
