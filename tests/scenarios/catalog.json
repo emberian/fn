@@ -1137,7 +1137,7 @@
         "tests/test_native_reader_index.py",
         "planning/evidence/t17-native-listgroup-driver-2026-09-23.md"
       ],
-      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root\u2019s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
+      "execution_scope": "ACL2 owner-called LISTGROUP and pinned OVER/XOVER paths have scoped farm certification, including sparse historical replies, malformed pin counterexamples, and distinct empty-range codes. Native historical/config/restart LISTGROUP and crosspost, pinned, concurrent OVER/XOVER drivers are prepared for root’s next source-matched saved image; neither has run on this lane. No native OVER/XOVER timing or internal allocation-hole claim is made."
     },
     {
       "id": "SCN-034",
@@ -6390,6 +6390,33 @@
         "planning/evidence/page-digest-cursor-refinement-2026-09-30.md"
       ],
       "execution_scope": "Guard-verified source library plus clean phase equations and conditional actual-digest terminal bridge. Literal semantic carry and matching-block removal with distinct output mutation pass. Maintained trajectory/progress/domain/allocation and host composition remain open."
+    },
+    {
+      "id": "SCN-1005",
+      "title": "Resumable history record codec preserves exact current-format bytes",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [],
+      "steps": [
+        "Capture a nonempty opaque octet leaf with explicit capture and lease identities.",
+        "Advance classification, prefix and body phases one cell or byte per tick; interrupt before the body is complete and resume the returned cursor.",
+        "Check each reached state against complete invariant, permitted verdict and exact pre/post residual equation; compare final bytes with fn-scc-encode.",
+        "Separately corrupt the prefix byte or count relation and affirm failure of the omitted invariant hypothesis and theorem conclusion."
+      ],
+      "expected": [
+        "No source-list copy or whole-row encoding occurs at begin or tick.",
+        "Quantum exhaustion yields a resumable cursor, never truncation or false prepared.",
+        "Every emitted byte and identity agrees with the current codec and original capture.",
+        "Corrupted-state witnesses are separately labeled; no native or composed reachability is inferred."
+      ],
+      "implementation": {
+        "test": "tests/acl2/history-record-cursor-tests.lisp"
+      },
+      "evidence": [
+        "tests/acl2/history-record-cursor-tests.lisp",
+        "specs/history-record-cursor.md"
+      ],
+      "execution_scope": "First opaque-leaf source library only. Full tree/word/census/producer composition and native qualification remain open."
     }
   ]
 }
