@@ -18161,6 +18161,34 @@
         "fn-cop-octets-match-is-exact",
         "fn-cop-derived-body-fits"
       ]
+    },
+    {
+      "id": "PRF-1182",
+      "title": "Accepted-open RX association retains connection custody and fences cross-connection turn acquisition",
+      "statement": "Actual fn-ich-rx-bind :associated establishes matching readable RX origin and preserves connection row, segment identity and active count. Current RX issuance cannot acquire under another CID, holder, ticket, capacity or instance; revocation blocks a new acquisition. Genuine runtime readout, accepted-open/turn/close composition and native activation remain separate obligations.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-10001"
+      ],
+      "depends_on": [
+        "PRF-1161"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "events": [
+        "fn-crx-accepted-association-is-readable",
+        "fn-crx-bind-preserves-connection-custody",
+        "fn-crx-current-turn-cannot-cross-connection",
+        "fn-crx-revocation-blocks-new-acquisition"
+      ],
+      "evidence": [
+        "books/connection-receiver-source-invariants.lisp",
+        "tests/acl2/connection-receiver-source-tests.lisp",
+        "specs/connection-receiver-source.md",
+        "planning/evidence/connection-receiver-source-2026-09-30.md",
+        "planning/evidence/manifests/certify-20260930T211248Z-2087807.json"
+      ],
+      "progress_note": "Normal exact five-book component passes: holder/source/invariants/tests, four fresh and one reused snapshot prerequisite with uncited provenance. Literal full antecedent/conclusion and removal witnesses plus live stored-revocation fixture pass; actual accepted-open/turn/getter/close served composition, funding/native/image remain open. Target remains in-progress."
     }
   ]
 }
