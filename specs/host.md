@@ -114,6 +114,16 @@ the host tracks offsets and never reruns a state transition to finish a write.
 Quotas bound per-session staging and pending effects so one peer cannot monopolize
 the state owner merely by refusing to consume output.
 
+Q10d: each accepted NNTP socket's service-log connection line carries exactly
+one `client-address` field projected by ACL2 from the kernel's fixed-width
+family/address observation. IPv4 is dotted decimal; IPv6 is eight expanded
+lowercase hexadecimal groups. Invalid or absent observations are named
+`unobserved`, never substituted with a peer name. Rendering/validation inspect
+at most 4 or 16 input octets; every complete line contains no CR or LF.
+Logical control/pull connections have no accepted client socket and retain
+their existing logical connection line. The OS observation's truth and the
+physical log write are assumptions/measurements, not proved by the renderer.
+
 HST-003: platform persistence primitives have a documented contract tied to
 A-DURABILITY and A-WRITE-ISOLATION. The host reports known failure and uncertain
 completion distinctly. Recovery owns reconciliation after uncertainty; socket

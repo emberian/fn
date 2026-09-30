@@ -2561,6 +2561,10 @@
         {
           "kind": "theorem",
           "name": "fn-olog-connection-line-is-one-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-olog-socket-connection-line-is-one-line"
         }
       ]
     },

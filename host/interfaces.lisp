@@ -1478,7 +1478,8 @@
 
 (definterface fn-owner-exposure-open
   :class ::program
-  :kinds ((peer-octets fn-cbor-octet-listp)))
+  :kinds ((peer-octets fn-cbor-octet-listp))
+  :keystones ((fn-olog-socket-connection-line-is-one-line :via fn-olog-socket-connection-line)))
 
 (definterface fn-owner-exposure-release
   :class ::program)

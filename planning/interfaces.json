@@ -5,7 +5,7 @@
     "declared": 1292,
     "declared_and_dispatched": 1274,
     "guard_verified": 648,
-    "with_keystone": 179,
+    "with_keystone": 180,
     "raw_dispatched": 0
   },
   "raw_dispatched": [],
@@ -7617,7 +7617,12 @@
         ]
       ],
       "exempt": {},
-      "keystones": [],
+      "keystones": [
+        {
+          "theorem": "fn-olog-socket-connection-line-is-one-line",
+          "via": "fn-olog-socket-connection-line"
+        }
+      ],
       "extraction": null,
       "direct": null,
       "delegates": null,
