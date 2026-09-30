@@ -695,7 +695,9 @@
          (equal (fn-rcl-tomb-agent tomb) agent)))
   ; SEC-006: the agent is now read through fn-cll-skip; the proof is the
   ; same case split, without destructor elimination or induction.
-  :hints (("Goal" :in-theory (e/d (fn-rcl-tombstone-of) (fn-blake3 fn-pb-subject
+  :hints (("Goal" :in-theory (e/d (fn-rcl-tombstone-of fn-rcl-tombstonep
+                                  fn-rcl-prefixp fn-rcl-at-leastp-is-len)
+                            (fn-blake3 fn-pb-subject
                                                         fn-pb-path-agent))
            :do-not '(generalize eliminate-destructors fertilize)
            :do-not-induct t)))

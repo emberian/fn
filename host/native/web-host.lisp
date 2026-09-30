@@ -115,11 +115,13 @@ exposure admission decides (the id, or NIL when it refused)."
                 (declare (ignore starttls more))
                 (unwind-protect
                      (loop
-                       (multiple-value-bind (part rest donep)
+                       (multiple-value-bind (part rest donep yieldedp)
                            (fnn-owner-render-next-quantum service cid plan :reader)
                          (setq reply (concatenate 'fnn-octets reply part))
                          (when donep (return))
-                         (setq plan rest)))
+                         (setq plan rest)
+                         (when yieldedp
+                           (sleep (/ (fnn-core 'fn-splan-cursor-resume-ms) 1000)))))
                   (fnn-owner-response-unpin service cid))
                 (setq closing close)
                 (when (and (zerop consumed) (not close))

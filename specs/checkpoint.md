@@ -296,3 +296,26 @@ books (checkpoint-pack-retire, checkpoint-compaction-preservation,
 byte-store-compaction-correspondence) and host wrappers in lane
 flip-cleanup (2026-09-27). On the record log compaction and reclamation are
 the log's rotation and drop (specs/storage.md STO-012, STO-017, STO-034).
+
+### Live capture projection proof (PRF-1068; producer gate remains open)
+
+`fn-osr-capture` takes the already carried Store pointer. Its proof-side
+`fn-osr-livep` combines the phase-aware configured history relation with
+independent identity, consumer and topic prefixes. Actual successful configured
+startup establishes these prefixes; actual durable completion and configuration
+publication preserve the live carry. A live capture therefore opens successfully
+under its captured configuration history, including an in-flight transaction, without an open-success premise or a
+served history scan. At readiness, recovered node, domain/capacity, configuration/event history,
+frontier, identity cursor/snapshots, consumer obligations and topic
+conflicts/provenance equal the captured values. Source readiness and recovery
+barriers intentionally differ.
+
+This inverse is a dependency of the live producer, not its completion claim.
+Full retained recovery additionally needs the statement keytable and current
+generation, ordinary held authorship verdicts and frozen row index. Those fields
+must be established and preserved by their actual transitions and compared after
+the same actual recovery and owner node-secret installation. The owner secret is
+separate from the Store statement keytable. Canonical row handles and paused
+checkpoint summaries do not become identical to live fields by assertion.
+Existing publication assumptions connect verified bytes to checkpoint tables;
+this carry adds no new assumption and does not replace that boundary.

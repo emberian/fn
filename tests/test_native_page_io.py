@@ -99,3 +99,21 @@ class PageIOTests(unittest.TestCase):
                 self.assertIn(b"arena-extent-read", text)
                 self.assertNotIn(b"answer=:PUBLISH", text)
                 self.assertNotIn(b"outcome uncertain", text)
+
+    def test_failed_launch_settles_without_worker_or_buffer(self):
+        node = self.filled()
+        release = node.store_path.parent / "never-launched-release"
+        owner = node.start(timeout=600, env={
+            "FN_NATIVE_PAGE_IO_HOLD": str(release),
+            "FN_NATIVE_PAGE_IO_RESULT": "launch-error",
+        })
+        client = Client(node.port, timeout=120, greeting=None)
+        self.addCleanup(client.close, False)
+        client.send(("ARTICLE %s\r\n" % msgid("p0")).encode("ascii"))
+        self.wait_line(owner, rb"PAGE-IO launch-failed token=.* worker=none buffer=none")
+        self.wait_line(owner, rb"PAGE-IO settled token=.* answer=\(:FAULT :ERROR\)")
+        node.exited(EXIT.FAULT, timeout=120, process=owner)
+        text = owner.stderr.since(0)
+        self.assertNotIn(b"PAGE-IO held", text)
+        self.assertNotIn(b"answer=:PUBLISH", text)
+        self.assertIn(b"arena-extent-read: injected thread launch error", text)
