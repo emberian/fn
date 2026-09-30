@@ -140,3 +140,34 @@
   (and (not (fn-ics-contextp ctx)) (fn-scs-correspondsp fields ctx)
        (ript-snapshot-source-p ctx event carry)
        (not (ript-full-conclusion ctx fields event carry)))))
+; Complete packet boundary witness: one produced decision exports the actual
+; public checked context/effect/child and same-parse lengths with carried fields.
+(defun ript-packet-positive (row)
+ (mv-let (checked fields status effect child sizes)
+  (fn-ris-produced-step-with-effects *ript-ctx* (ript-fields *ript-ctx*) row nil)
+  (mv-let (public-checked public-effect public-child)
+   (fn-replay-identity-effects *ript-ctx* row)
+   (and (equal checked (fn-replay-identity-step *ript-ctx* row))
+       (equal checked public-checked)
+       (eq effect :verdict) (equal child *ript-carried-child*)
+       (equal effect public-effect) (equal child public-child)
+       (equal sizes (list (length (fn-stxe-msgid child))
+                         (len (fn-stxe-detail child)) (len (fn-stxe-profile child))))
+       (eq status :carried) (fn-scs-correspondsp fields checked)))))
+(defun ript-packet-live (fn-arena)
+ (declare (xargs :mode :program :stobjs fn-arena))
+ (mv-let (row fn-arena) (fn-intern-event *ript-carried-event* nil 0 fn-arena)
+  (mv (and (fn-hstxa-p row) (ript-packet-positive row)) fn-arena)))
+(defun ript-packet-local ()
+ (declare (xargs :mode :program))
+ (with-local-stobj fn-arena
+  (mv-let (ok fn-arena) (ript-packet-live fn-arena) ok)))
+(make-event (value (list 'assert-event (ript-packet-local))))
+; Metadata mutation preserves exact public decision/effect, refuses carry.
+(assert-event
+ (mv-let (checked fields status effect child sizes)
+  (fn-ris-produced-step-with-effects *ript-ctx* nil *ript-snapshot*
+                                     (fn-scs-summary *ript-snapshot*))
+  (and (eq status :unavailable) (null fields)
+       (equal checked (fn-replay-identity-step *ript-ctx* *ript-snapshot*))
+       (eq effect :snapshot) (equal child *ript-snapshot*) (null sizes))))

@@ -39,7 +39,7 @@
  (implies (fn-rips-lengths-p sizes)
           (fn-scs-carryp (fn-rips-verdict-carry child sizes)))
  :hints (("Goal" :in-theory (e/d (fn-rips-verdict-carry fn-rips-lengths-p fn-scs-carry-listp) (fn-rips-string)))))
-(defun fn-ris-produced-step (ctx fields event snapshot-carry)
+(defun fn-ris-produced-step-with-effects (ctx fields event snapshot-carry)
  (declare (xargs :guard t :verify-guards nil))
  (mv-let (checked effect child sizes)
   (fn-replay-identity-produced-effects ctx event)
@@ -48,13 +48,21 @@
                            (t nil))))
    (if (or (not (fn-ics-carriesp fields))
            (and (not (equal effect :none)) (not (fn-scs-carryp child-carry))))
-    (mv checked nil :unavailable)
+    (mv checked nil :unavailable effect child sizes)
     (mv checked
      (fn-ics-fields checked
       (if (equal effect :snapshot) (fn-scs-cons child-carry (fn-ics-field 2 fields))
        (fn-ics-field 2 fields))
       (if (equal effect :verdict) (fn-scs-cons child-carry (fn-ics-field 3 fields))
-       (fn-ics-field 3 fields))) :carried)))))
+       (fn-ics-field 3 fields))) :carried effect child sizes)))))
+; Existing result semantics preserved; actual core sharing consumes the six
+; results above from that SAME decision, never a parallel replay invocation.
+(defun fn-ris-produced-step (ctx fields event snapshot-carry)
+ (declare (xargs :guard t :verify-guards nil))
+ (mv-let (checked next-fields status effect child sizes)
+  (fn-ris-produced-step-with-effects ctx fields event snapshot-carry)
+  (declare (ignore effect child sizes))
+  (mv checked next-fields status)))
 (local (defthm fn-rips-list-field-carryp
  (implies (and (fn-scs-carry-listp fields) (natp n) (< n (len fields)))
           (fn-scs-carryp (fn-ics-field n fields)))
@@ -65,6 +73,12 @@
           (fn-scs-carryp (fn-ics-field n fields)))
  :hints (("Goal" :in-theory (e/d (fn-ics-carriesp)
              (fn-scs-fixed-carriesp fn-ics-field fn-scs-carry-listp))))))
+(verify-guards fn-ris-produced-step-with-effects
+ :hints (("Goal" :in-theory
+  (disable fn-replay-identity-produced-effects fn-rpe-produced-effects
+           fn-rpe-produce fn-rpe-result fn-rpe-lengths
+           fn-rpe-carried-bindsp fn-rpe-revoked-bindsp fn-rpe-stxa-bindsp
+           fn-rpe-snapshot-bindsp fn-rpe-verdict-effect))))
 (verify-guards fn-ris-produced-step
  :hints (("Goal" :in-theory
   (disable fn-replay-identity-produced-effects fn-rpe-produced-effects
@@ -78,7 +92,7 @@
  :hints (("Goal"
  :use (fn-replay-identity-produced-has-original-context-and-effects
        fn-replay-identity-effects-context-is-original-by-definition)
- :in-theory (e/d (fn-ris-produced-step)
+ :in-theory (e/d (fn-ris-produced-step fn-ris-produced-step-with-effects)
   (fn-replay-identity-produced-effects fn-replay-identity-effects
    fn-replay-identity-step fn-ics-carriesp fn-scs-carryp
    fn-rips-verdict-carry fn-ics-fields fn-scs-cons)))))
@@ -252,3 +266,27 @@
       fn-ics-fields fn-ics-field fn-ics-carriesp fn-ics-contextp
       fn-rips-verdict-carry fn-scs-summary fn-scs-carryp fn-scs-cons
       fn-scs-correspondsp)))))
+(defthm fn-ris-produced-packet-has-public-context-and-effects
+ (and
+  (equal (mv-nth 0 (fn-ris-produced-step-with-effects ctx fields event snapshot-carry))
+         (fn-replay-identity-step ctx event))
+  (equal (mv-nth 3 (fn-ris-produced-step-with-effects ctx fields event snapshot-carry))
+         (mv-nth 1 (fn-replay-identity-effects ctx event)))
+  (equal (mv-nth 4 (fn-ris-produced-step-with-effects ctx fields event snapshot-carry))
+         (mv-nth 2 (fn-replay-identity-effects ctx event)))
+  (equal (mv-nth 5 (fn-ris-produced-step-with-effects ctx fields event snapshot-carry))
+         (let ((effect (mv-nth 1 (fn-replay-identity-effects ctx event)))
+               (child (mv-nth 2 (fn-replay-identity-effects ctx event))))
+          (if (equal effect :verdict)
+           (list (length (fn-stxe-msgid child)) (len (fn-stxe-detail child))
+                 (len (fn-stxe-profile child))) nil))))
+ :rule-classes nil
+ :hints (("Goal"
+  :use (fn-ris-produced-step-is-public-replay
+        fn-rpe-produced-complete-result-refines-public)
+  :in-theory (e/d (fn-ris-produced-step fn-ris-produced-step-with-effects
+                   fn-replay-identity-produced-effects)
+                  (fn-rpe-produced-effects fn-replay-identity-step
+                   fn-replay-identity-effects fn-ics-carriesp fn-scs-carryp
+                   fn-rips-verdict-carry fn-ics-fields fn-scs-cons
+                   fn-stxe-msgid fn-stxe-detail fn-stxe-profile length len)))))
