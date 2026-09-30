@@ -61,4 +61,3 @@
   (fn-nov-lines-for-numbers-cat
    group (fn-scat-range-keep group (fn-cnx-range-aux group k hi v fn-cat) fn-cat)
    v fn-arena fn-cat))
-

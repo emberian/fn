@@ -41,5 +41,3 @@
                                            (executable-counterpart-theory :here)))
            :use
            ((:instance fn-cnx-range-aux-loop-is-revappend (acc nil))))))
-
-

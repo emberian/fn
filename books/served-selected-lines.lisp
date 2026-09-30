@@ -61,4 +61,3 @@
                                                   (union-theories (theory 'minimal-theory)
                                                                   (executable-counterpart-theory :here)))
                   :use ((:instance fn-nov-lines-for-numbers-cat-loop-is-revappend (acc nil))))))
-
