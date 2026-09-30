@@ -278,6 +278,8 @@
 (include-book "tls-handshake-budget")
 (include-book "owner-number-bound")
 (include-book "owner-outcome-pinned")
+(include-book "page-discovery-ledger")
+(include-book "cold-read-layout")
 (include-book "native-control")
 (include-book "native-control-launch")
 (include-book "native-control-reason")

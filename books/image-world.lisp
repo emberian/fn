@@ -301,6 +301,8 @@
 (include-book "tls-handshake-budget")
 (include-book "owner-number-bound")
 (include-book "owner-outcome-pinned")
+(include-book "page-discovery-ledger")
+(include-book "cold-read-layout")
 (include-book "accounts")
 (include-book "native-operator-stage")
 (include-book "owner-maintenance-request")

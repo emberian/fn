@@ -591,6 +591,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/post-admission-keyed-tests \
 	tests/acl2/page-read-resources-tests \
 	books/page-read-ledger \
+	books/page-discovery-ledger \
+	books/cold-read-layout \
+	tests/acl2/page-discovery-ledger-tests \
+	tests/acl2/cold-read-layout-tests \
 	books/page-read-ownership \
 	tests/acl2/page-read-ownership-tests \
 	host/page-read-host \

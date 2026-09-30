@@ -17170,6 +17170,10 @@
         {
           "kind": "theorem",
           "name": "fn-prl-settle-never-reuses-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prd-admit-preserves-pool-funding"
         }
       ],
       "pending_subject": "Guard-verified stobj adapter calls these subjects; native caller integration, matching proof manifest/image and allocator/profile refinement pending."
