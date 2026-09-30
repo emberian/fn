@@ -526,12 +526,15 @@ HEALTH_ADVICE = {
     "fenced": "Something holds the store: a start, another command, or a "
               "node that does not answer. Wait and ask again. Never delete "
               "the lock.",
-    "exhausted": "A counter (transactions or held space) ran out. Only an "
-                 "export and import raises it.",
+    "exhausted": "A transaction identifier or retention charge reached "
+                 "the store format's counter ceiling. No profile limit "
+                 "raises that ceiling.",
     "unqualified-profile": "The store uses test settings. Make the node "
                            "again with a mission.",
-    "space-pressure": "The store is nearly full. Release what is held, or "
-                      "move to larger limits.",
+    "space-pressure": "The store is nearly full. Release what is held, "
+                      "raise retention capacity with `capacity`, or use "
+                      "`policy set max-transactions N` or "
+                      "`policy set max-history-octets N` in place.",
     "no-route": "Articles wait to be forwarded and no BP route is set.",
     "stranded-transfer": "A peer kept refusing an article, and fn stopped "
                          "offering it. Fix the peer.",

@@ -20,12 +20,13 @@ could not check (the peer lines need a running node).
 
 - 20 fenced: Something holds the store: a start, another command, or a
   node that does not answer. Wait and ask again. Never delete the lock.
-- 21 exhausted: A counter (transactions or held space) ran out. Only an
-  export and import raises it.
+- 21 exhausted: A transaction identifier or retention charge reached the
+  store format's counter ceiling. No profile limit raises that ceiling.
 - 22 unqualified-profile: The store uses test settings. Make the node
   again with a mission.
-- 23 space-pressure: The store is nearly full. Release what is held, or
-  move to larger limits.
+- 23 space-pressure: The store is nearly full. Release what is held,
+  raise retention capacity with `capacity`, or use `policy set
+  max-transactions N` or `policy set max-history-octets N` in place.
 - 24 no-route: Articles wait to be forwarded and no BP route is set.
 - 25 stranded-transfer: A peer kept refusing an article, and fn stopped
   offering it. Fix the peer.
