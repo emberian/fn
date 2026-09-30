@@ -580,7 +580,8 @@ class Acl2:
         self.process = subprocess.Popen(
             [sys.executable, str(ROOT / "tools" / "acl2"), "--label", label],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, bufsize=1, cwd=ROOT, start_new_session=True)
+            text=True, encoding="utf-8", errors="backslashreplace",
+            bufsize=1, cwd=ROOT, start_new_session=True)
         # Do not reap this group leader until shutdown has signalled the
         # group. Its unreaped PID cannot be reused for an unrelated group.
         self.pgid = self.process.pid
@@ -592,21 +593,31 @@ class Acl2:
         self.reader.start()
 
     def _pump(self) -> None:
-        assert self.process.stdout is not None
-        for line in self.process.stdout:
-            self.log.write(line)
-            self.log.flush()
-            self.lines.put(line)
-        self.lines.put(None)
+        try:
+            assert self.process.stdout is not None
+            for line in self.process.stdout:
+                self.log.write(line)
+                self.log.flush()
+                self.lines.put(line)
+        except Exception as error:
+            # A broken reader must never leave queued markers looking like
+            # successful admissions. The sending/server thread owns cleanup.
+            self.protocol_error = (PROTOCOL_ERROR + "output pump failed: "
+                                   + type(error).__name__ + ": " + str(error)
+                                   + "; session invalidated; start fresh")
+        finally:
+            self.lines.put(None)
 
     def alive(self) -> bool:
-        return self.process.returncode is None and self.reader.is_alive()
+        return (self.protocol_error is None and self.process.returncode is None
+                and self.reader.is_alive())
 
     def invalidate(self, collected: list[str], reason: str) -> tuple[str, bool]:
         """A raw debugger can evaluate the sentinel without admitting ACL2 events."""
         self.protocol_error = PROTOCOL_ERROR + reason + "; session invalidated; start fresh"
-        self.log.write(self.protocol_error + "\n")
-        self.log.flush()
+        with contextlib.suppress(OSError, ValueError):
+            self.log.write(self.protocol_error + "\n")
+            self.log.flush()
         collected.append(self.protocol_error + "\n")
         self.kill()
         return "".join(collected), False
@@ -624,6 +635,7 @@ class Acl2:
         swallowed after all shows up later as a stale marker and is dropped.
         """
         if self.protocol_error:
+            self.kill()
             return self.protocol_error + "\n", False
         assert self.process.stdin is not None
         self.counter += 1
@@ -646,6 +658,9 @@ class Acl2:
             try:
                 line = self.lines.get(timeout=min(remaining, 0.5))
             except queue.Empty:
+                if self.protocol_error:
+                    self.kill()
+                    return "".join(collected) + self.protocol_error + "\n", False
                 if not self.alive():
                     return self.invalidate(collected, "ACL2 exited before the completion marker")
                 if (suspect and not resent and time.monotonic() - last_line >= quiet):
@@ -655,6 +670,10 @@ class Acl2:
                         self.process.stdin.write(sentinel)
                         self.process.stdin.flush()
                 continue
+            if self.protocol_error:
+                collected.append(self.protocol_error + "\n")
+                self.kill()
+                return "".join(collected), False
             if line is None:
                 return self.invalidate(collected, "ACL2 exited before the completion marker")
             last_line = time.monotonic()
@@ -692,7 +711,10 @@ class Acl2:
         if self.reader.is_alive():
             raise RuntimeError("proof-repl: output remains open after session termination")
         self._terminated = True
-        self.log.close()
+        # A failed output sink may fail again on close; process and pipe
+        # cleanup must still finish and let the server persist invalidation.
+        with contextlib.suppress(OSError):
+            self.log.close()
         if self.process.stdin is not None:
             # A graceful good-bye may leave a buffered sentinel whose reader
             # has already exited. Closing that pipe is still successful cleanup.
@@ -1332,14 +1354,16 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
             return 1
         bound = True
         server.listen(4)
-        if idle_seconds > 0:
-            server.settimeout(min(30.0, max(0.05, idle_seconds / 4)))
+        # Poll child/reader health even when automatic idle expiry is off.
+        # An unsolicited pump failure must close a previously ready endpoint.
+        server.settimeout(min(0.5, max(0.05, idle_seconds / 4))
+                          if idle_seconds > 0 else 0.5)
         while acl2.alive():
             try:
                 connection, _ = server.accept()
             except socket.timeout:
                 idle = time.time() - state["last_active"]
-                if idle >= idle_seconds:
+                if idle_seconds > 0 and idle >= idle_seconds:
                     state["ended"] = f"idle {int(idle)} s (deadline {idle_seconds:g} s)"
                     write_stop_note(directory, "idle", idle, idle_seconds, "its own idle timeout")
                     break
