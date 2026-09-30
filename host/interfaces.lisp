@@ -4922,3 +4922,9 @@
 (definterface fn-osm-emission-ack :class :common-lisp-compliant)
 
 (definterface fn-owner-page-file-issued-count :class :common-lisp-compliant)
+
+(definterface fn-omk-begin :class :common-lisp-compliant)
+
+(definterface fn-omk-tick :class :common-lisp-compliant)
+
+(definterface fn-omk-token-matchp :class :common-lisp-compliant)
