@@ -400,6 +400,58 @@ guaranteed only when the caller knows the article identity. Obligations
 continue to refer to the unchanged bytes commitment; recording per-kind
 subject-only versus byte-retention duties belongs to that follow-up.
 
+### 2.5 First-acceptance binding contract (PRF-1108; integration open)
+
+The original durable acceptance selects and stores an explicit comparison
+profile. The selection is ACL2's admission decision: the served submission's
+POST/transit kind and accepted carrier plan, or the BP receive decision.
+A later carrier and a caller-supplied profile never select another comparison.
+The current format requires a validated profile; a missing or unknown profile
+is a named binding refusal/corruption. D34/D38 provide no compatibility reader
+or inferred D25 fallback.
+
+| First accepted context | Later POST | Later NNTP transit or BP | Protected comparison while bytes remain |
+| --- | --- | --- | --- |
+| Local unsigned POST | Original D25 | Original D25 | Existing `fn-pb-same-articlep`: derive offered injection agent; if both inverses succeed compare exact source; otherwise compare exact complete payload. |
+| Received legacy article | Original relay-v1 | Original relay-v1 | Exact `fn-asj-project`; only complete Path/Xref fields are excluded. Injection-Date and Injection-Info remain protected. |
+| Accepted native kind-4 carrier, including carried evidence | Original native source | Original native source | Exact signed-source subject; signature/verdict evidence and authority remain separate. A carried row does not claim verification. |
+
+Every branch also checks the selected groups. Duplicate reception preserves
+the original served payload and original commitments. Distinct evidence and
+its reception provenance remain retained; another arrival does not replace
+the first binding. Existing Store content subjects continue to identify the
+stored payload. NNTP's SubmissionTaken already contains the relayed payload,
+so its existing bytes-subject must not be relabeled as a commitment to the
+original incoming octets. The reception record must also preserve that
+original-received-byte commitment before the local Path update.
+
+After reclaim the relay branch compares the offered typed relay-v1 commitment
+with the stored original typed commitment. D25 retains its source flag, agent,
+source digest and whole-payload digest: when the offered inverse succeeds
+under the retained agent, compare the retained source digest; otherwise
+compare the retained whole-payload digest. Native comparison uses its original
+selected native commitment, with carrier/statement evidence checked separately.
+Equal commitment means duplicate under that commitment comparison; it does
+not prove equality of removed bytes.
+
+The planned relay preservation theorem states: for a valid explicit frozen
+binding and its current-format tombstone, live and reclaimed duplicate/conflict
+decisions agree, or the exact protected projections differ while their
+selected commitments agree. Group mismatch remains conflict in both states.
+There is no universal hash-injectivity axiom. The cryptographic residual is
+A-CRYPTO's approximately 2^128 generic collision work for the selected
+256-bit BLAKE3 commitment. D25 additionally needs the actual injection-inverse
+and agent-selection correspondence; a branch mismatch cannot be hidden by
+calling it a collision. The native case must preserve its exact signed-source
+selection and its separate authority evidence.
+
+These are the binding integration requirements, not a claim about the current
+served comparator. FN-RCL2 field preservation (PRF-1089) has landed; immutable
+first-acceptance selection, its durable codec/catalog correspondence and
+conflict publication remain open under PRF-1108. A distinct current-format
+binding representation must carry them without truncating provenance or
+reducing any supported metadata profile.
+
 ## 3. Group policy on inbound transit
 
 The gate on a peer-transit article is `fn-pol-admitp`, evaluated against **this
