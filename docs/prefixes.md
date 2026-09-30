@@ -404,10 +404,9 @@ anything a book does not already decide.
 | `fn-rfh-` | `refusal-headroom` | Reference iteration over actual reserve/refuse subjects; exact finite identity consumption, without rescue preservation claim. |
 | `fn-nlpc-` | `legacy-parser-composition` | Arbitrary-source acceptance composition of the actual legacy byte machine and article parser; logical proof vocabulary |
 
+| `fn-oru-` | `operator-report-reader`, `tests/acl2/operator-report-reader-tests` | Fixed-prefix UTF-8 validation and validate/rewind/copy controller for the additive actual CLI report consumer; complete uncapped decoder acceptance refinement. Public selection/library/descriptor lifetime/runtime funding remain open. |
+| `fn-orr-` | `operator-report-reset` | Prior-report reset observation disposition; failure preserves retirement intent and answers uncertainty. |
+
 - `pgs-dcs-`: proof-only complete page/byte digest cursor semantics and progress
   (`pagestore-digest-cursor-semantics.lisp`); source spans and potentials never
   execute on the served path.
-
-| `fn-oru-` | `operator-report-reader`, `tests/acl2/operator-report-reader-tests` | Fixed-prefix UTF-8 validation and validate/rewind/copy controller for the additive actual CLI report consumer; complete uncapped decoder acceptance refinement. Public selection/library/descriptor lifetime/runtime funding remain open. |
-
-| `fn-orr-` | operator report reset disposition | `operator-report-reset` |
