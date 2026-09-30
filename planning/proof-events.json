@@ -17453,6 +17453,32 @@
         }
       ],
       "pending_subject": "Pure actual capture/recovery inverse dependency with full retained semantic fields. Actual producer capture/canonical writer/load payload alpha and complete live transition/owner installation bridges remain open; no full producer completion claim."
+    },
+    {
+      "id": "PRF-1115",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-osa-prepare-keeps-full-node-alpha"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osa-complete-keeps-full-node-alpha"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osa-canonical-history-keeps-complete-retained-alpha"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osa-canonical-history-keeps-frozen-index-fold"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osa-canonical-history-keeps-verdict-fold"
+        }
+      ],
+      "pending_subject": "Full actual canonical configured recovery and owner/controller composition remain open. Cited events are proved component boundaries over actual fn-node-prepare, fn-node-complete and fn-orm-capture, not a host-level completion claim."
     }
   ]
 }

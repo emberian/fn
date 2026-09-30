@@ -26,6 +26,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/defevent-tests \
 	books/acceptance \
 	books/acceptance-invariants \
+	books/snapshot-node-alpha \
+	tests/acl2/snapshot-node-alpha-tests \
+	books/snapshot-canonical-alpha \
+	tests/acl2/snapshot-canonical-alpha-tests \
 	tests/acl2/acceptance-tests \
 	books/wire \
 	books/wire-invariants \

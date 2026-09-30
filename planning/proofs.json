@@ -18051,6 +18051,33 @@
         "fn-bpnc-open-run-live-iff-both-completions-succeed",
         "fn-bpnc-retirement-stops-the-control-listener"
       ]
+    },
+    {
+      "id": "PRF-1115",
+      "title": "Full Store payload alpha across canonical snapshot remapping",
+      "statement": "The complete target is equality of fn-osa-store-alpha after actual fn-cpo-open-observed of fn-orm-capture rows and the ready source Store, under its unchanged full fn-osr-retainedp carry and the physical payload correspondence for ordinary and composite-held rows. This target is planned: configured replay, opening success, independent identity/consumer/topic fold congruence, and owner/controller composition remain open. Implemented components: fn-osa-node-alpha preserves every acceptance field (including accepted and pending referenced bytes), retention, stage and bindings. Actual fn-node-prepare and fn-node-complete preserve that full alpha across two valid nodes and arenas, with natural offered handles and equal offered bytes for prepare. fn-osa-row-alphas contains every fn-orm-retained-alpha field; actual fn-orm-capture preserves the complete row list alpha under fn-osa-payload-map-p, including the composite held payload that wire-only equality misses. Canonical remapping also preserves the actual frozen-index and retained-verdict folds. No pointer equality, replay-open premise, weakened retained relation or physical writer/load correspondence is claimed.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [
+        "PRF-1068"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/snapshot-node-alpha.lisp",
+        "books/snapshot-canonical-alpha.lisp",
+        "tests/acl2/snapshot-node-alpha-tests.lisp",
+        "tests/acl2/snapshot-canonical-alpha-tests.lisp",
+        "specs/checkpoint.md"
+      ],
+      "progress_note": "Pure source components; clean source replay and exact costs are recorded in LANEDUMP.md. The canonical configured recovery target remains open. The producer owns physical writer/load remapping and upcoming record12/held16 binding preservation. No certification, image or native qualification claimed.",
+      "events": [
+        "fn-osa-prepare-keeps-full-node-alpha",
+        "fn-osa-complete-keeps-full-node-alpha",
+        "fn-osa-canonical-history-keeps-complete-retained-alpha",
+        "fn-osa-canonical-history-keeps-frozen-index-fold",
+        "fn-osa-canonical-history-keeps-verdict-fold"
+      ]
     }
   ]
 }

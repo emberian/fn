@@ -340,3 +340,18 @@ separate from the Store statement keytable. Canonical row handles and paused
 checkpoint summaries do not become identical to live fields by assertion.
 Existing publication assumptions connect verified bytes to checkpoint tables;
 this carry adds no new assumption and does not replace that boundary.
+
+The canonical recovery target PRF-1115 remains open. Its node abstraction
+substitutes referenced bytes for accepted and pending payload handles while
+preserving every other acceptance field, retention, stage and archive binding.
+Actual node prepare and completion preserve this full abstraction across valid
+nodes with corresponding bytes. The canonical history abstraction includes
+every retained row field and both ordinary and composite-held payload bytes;
+remapping preserves it under the physical payload map, together with frozen
+index and verdict folds. The latter map is still owed by the producer's actual
+writer/load path. These component theorems neither establish configured-open
+success after remapping nor replace the unchanged full retained Store relation.
+The complete Store abstraction additionally contains configuration, frontier,
+identity/key state, verdict/index state, consumer and topic state. Its equality
+through actual configured recovery, then the owner/controller, is the remaining
+composition work. No production path evaluates these proof-only histories.
