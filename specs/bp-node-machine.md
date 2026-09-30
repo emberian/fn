@@ -5185,3 +5185,15 @@ No supported operation allowance/profile is installed: the public
 `fn-owner-bp-checkpoint-turn` returns `:bp-runtime-unavailable` before registry
 lookup or semantic allocation. Native installation, effect observations,
 charged workspace and whole checkpoint reopen remain open.
+
+The cold-reopen header reader now consumes one byte per turn and yields by
+quantum. `fn-bpfr-checkpoint-prefix-refinement` connects the actual writer's
+`fn-bpck-prefix` to the exact fourteen-byte header decision, retaining untouched
+input and requiring a positive u64 payload count, natural supported bound and
+fitted frame length. Literal interrupted CK7 and complete hypothesis-removal
+witnesses accompany the quantum and prefix boundaries. Malformed magic or
+observed file length refuses. The terminal status is `:integrity-required`: it
+confers no digest, recovered-state or publication authority. Incremental source
+evidence is `planning/evidence/bp-bounded-checkpoint-header-20260930/manifest.json`.
+Registered charged integrity workspace, selected runtime/profile installation
+and actual bounded native reopen remain open.
