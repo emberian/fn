@@ -61,3 +61,54 @@
                   (fn-scs-summary
                    (nth 0 (mv-list 3 (fn-hsz-remap *hszt-row* *hszt-carries* '(1 2))))))))))
 
+
+; Root-only remap: exact old root and canonical width change, shared tail.
+(assert-event
+ (let ((h *hszt-row*) (handle 256) (encoded (car (fn-scs-summary *hszt-row*))))
+   (and (not (fn-scc-octet-listp (nthcdr 5 h)))
+        (atom (nth 4 h)) (atom handle)
+        (equal encoded (car (fn-scs-summary h)))
+        (equal (nth 1 (mv-list 2 (fn-hsz-remap-root h encoded handle)))
+               (car (fn-scs-summary (nth 0 (mv-list 2 (fn-hsz-remap-root h encoded handle))))))
+        (equal (nthcdr 5 (nth 0 (mv-list 2 (fn-hsz-remap-root h encoded handle))))
+               (nthcdr 5 h)))))
+
+; Remove the non-octet suffix premise: compact octets change opcode/shape.
+(assert-event
+ (let* ((h '(1 2 3 4 5 6)) (handle 256) (encoded (car (fn-scs-summary h))))
+   (and (fn-scc-octet-listp (nthcdr 5 h)) (atom (nth 4 h)) (atom handle)
+        (equal encoded (car (fn-scs-summary h)))
+        (not (equal (nth 1 (mv-list 2 (fn-hsz-remap-root h encoded handle)))
+                     (car (fn-scs-summary
+                           (nth 0 (mv-list 2 (fn-hsz-remap-root h encoded handle))))))))))
+
+; Logical malformed-payload case, outside the executable guard: old leaf not atom.
+(assert-event (with-guard-checking :none
+ (let* ((h (update-nth 4 '(1 2) *hszt-row*)) (handle 256)
+        (encoded (car (fn-scs-summary h))))
+   (and (not (fn-scc-octet-listp (nthcdr 5 h)))
+        (not (atom (nth 4 h))) (atom handle)
+        (equal encoded (car (fn-scs-summary h)))
+        (not (equal (nth 1 (mv-list 2 (fn-hsz-remap-root h encoded handle)))
+                     (car (fn-scs-summary
+                           (nth 0 (mv-list 2 (fn-hsz-remap-root h encoded handle)))))))))))
+
+; Logical malformed replacement, outside the executable guard: new leaf not atom.
+(assert-event (with-guard-checking :none
+ (let* ((h *hszt-row*) (handle '(1 2)) (encoded (car (fn-scs-summary h))))
+   (and (not (fn-scc-octet-listp (nthcdr 5 h)))
+        (atom (nth 4 h)) (not (atom handle))
+        (equal encoded (car (fn-scs-summary h)))
+        (not (equal (nth 1 (mv-list 2 (fn-hsz-remap-root h encoded handle)))
+                     (car (fn-scs-summary
+                           (nth 0 (mv-list 2 (fn-hsz-remap-root h encoded handle)))))))))))
+
+; Corrupted root carry; all structural/leaf hypotheses retained.
+(assert-event
+ (let ((h *hszt-row*) (handle 256) (encoded 99999))
+   (and (not (fn-scc-octet-listp (nthcdr 5 h)))
+        (atom (nth 4 h)) (atom handle)
+        (not (equal encoded (car (fn-scs-summary h))))
+        (not (equal (nth 1 (mv-list 2 (fn-hsz-remap-root h encoded handle)))
+                     (car (fn-scs-summary
+                           (nth 0 (mv-list 2 (fn-hsz-remap-root h encoded handle))))))))))

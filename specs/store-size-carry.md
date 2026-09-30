@@ -36,6 +36,16 @@ logical cases outside the executable guard. The separately planned mandatory
 binding field must add one field and carry to this companion when its actual
 held constructor changes; slot 4 remains the payload handle.
 
+`fn-hsz-remap-root` uses the actual root's encoded length and the old/new
+payload scalar widths. Its keystone requires an exact root size, scalar old
+and new payloads, and a non-octet suffix after slot 4. That suffix prevents
+compact-octet collapse at any reconstructed ancestor. The function preserves
+an arbitrary trailing binding field and needs no retained per-field carries.
+Its witnesses include a genuine 255-to-256 width crossing, the octet-collapse
+counterexample and independently corrupted old/new leaf shapes and root size.
+This is not yet the actual pool admission delta: the caller must install and
+maintain that exact old root size and apply its required row padding.
+
 `books/identity-context-size.lisp` carries summaries for the six fields of the
 actual `fn-stxk-context`. Its snapshot/verdict companions call the original
 transition exactly once. A snapshot generation change selects the same snapshot

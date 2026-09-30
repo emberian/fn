@@ -17772,7 +17772,7 @@
     {
       "id": "PRF-1057",
       "title": "Issued cold page reads retain identity and worker ownership through cancellation and late completion",
-      "statement": "Host/native/extent.lisp fnn-extent-complete-read calls fn-pio-complete. Publication requires its exact immutable token (process-local read ID, original CID, file incarnation ID, offset, length, expected trailer), phase issued and successful full commitment check, and settles once. fn-pio-cancel retains token and unsettled ownership even after deadline/client loss. fnn-extent-close calls fn-pio-file-clear-p over carried valid ownership rows: every issued/cancelled worker naming a retired file prevents close independently of the arena-reader generation gate. Duplicate/stale completions cannot publish or settle twice. Host OS/thread/mutex/table fidelity is A-HOST; observed worker death and join (or definite failed launch) is required before settlement. Incarnation allocator fn-pio-file-issue derives process-local identities and successive admitted allocations are distinct; a failed open spends its name and invalid carried counter refuses rather than resetting. No funded read-pool admission or memory bound is claimed; repeated detached workers remain P12 open. The operator-funded local file namespace can exhaust before open without wrapping or refunding a spent name; admitted resource-pool tokens establish the identical owned read row and use the ledger’s single counter. These are partial algebra/lifetime subjects; supported profile installation, retained runtime storage and legacy large-frame streaming remain open.",
+      "statement": "Host/native/extent.lisp fnn-extent-complete-read calls fn-pio-complete. Publication requires its exact immutable token (process-local read ID, original CID, file incarnation ID, offset, length, expected trailer), phase issued and successful full commitment check, and settles once. fn-pio-cancel retains token and unsettled ownership even after deadline/client loss. fnn-extent-close calls fn-pio-file-clear-p over carried valid ownership rows: every issued/cancelled worker naming a retired file prevents close independently of the arena-reader generation gate. Duplicate/stale completions cannot publish or settle twice. Host OS/thread/mutex/table fidelity is A-HOST; observed worker death and join (or definite failed launch) is required before settlement. Incarnation allocator fn-pio-file-issue derives process-local identities and successive admitted allocations are distinct; a failed open spends its name and invalid carried counter refuses rather than resetting. No funded read-pool admission or memory bound is claimed; repeated detached workers remain P12 open. The operator-funded local file namespace can exhaust before open without wrapping or refunding a spent name; admitted resource-pool tokens establish the identical owned read row and use the ledger\u2019s single counter. These are partial algebra/lifetime subjects; supported profile installation, retained runtime storage and legacy large-frame streaming remain open.",
       "milestone": "M5",
       "requirements": [
         "STO-017"
@@ -18504,7 +18504,7 @@
     {
       "id": "PRF-1113",
       "title": "Compositional canonical Store tree sizes and held handle remapping",
-      "statement": "The size carry contains exact canonical encoded octets, octet-list length or nil, and scalar octet membership. Cons construction preserves this correspondence from both child correspondences, including compact octet-list collapse. A new fixed held-record spine composes supplied field carries; payload handle remapping changes its scalar width and reconstructs the exact canonical size. Subjects fn-scs-cons, fn-scs-spine, fn-scs-octets, fn-hsz-make and fn-hsz-remap are constructor/decoder dependencies, currently unreachable-in-composition from the host: no live maintained-size admission or funded checkpoint claim.",
+      "statement": "The size carry contains exact canonical encoded octets, octet-list length or nil, and scalar octet membership. Cons construction preserves this correspondence from both child correspondences, including compact octet-list collapse. A new fixed held-record spine composes supplied field carries; payload handle remapping changes its scalar width and reconstructs the exact canonical size. Subjects fn-scs-cons, fn-scs-spine, fn-scs-octets, fn-hsz-make fn-hsz-remap and fn-hsz-remap-root are constructor/decoder dependencies, currently unreachable-in-composition from the host: no live maintained-size admission or funded checkpoint claim. Root-only remapping preserves the exact old root size plus the new-minus-old scalar width when the suffix after the payload is not an octet list; it retains arbitrary trailing fields without per-field retained metadata.",
       "milestone": "M5",
       "requirements": [
         "STO-020"
@@ -18517,7 +18517,8 @@
         "fn-scs-spine-preserves-canonical-size",
         "fn-scs-octets-establishes-canonical-size",
         "fn-hsz-make-preserves-canonical-size",
-        "fn-hsz-remap-preserves-canonical-size"
+        "fn-hsz-remap-preserves-canonical-size",
+        "fn-hsz-remap-root-preserves-canonical-size"
       ],
       "evidence": [
         "books/store-tree-size.lisp",

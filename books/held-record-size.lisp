@@ -74,3 +74,86 @@
                               fn-record-internals fn-held-internals))))
 
 (in-theory (disable fn-hsz-make fn-hsz-remap))
+
+; Root-only payload remapping for the checkpoint pool. A non-octet suffix
+; after the payload ensures none of the five reconstructed cons cells can
+; collapse to the octet-list opcode. The mandatory binding tail is preserved.
+(defun fn-hsz-remap-root (h encoded handle)
+  (declare (xargs :guard (and (true-listp h) (< 4 (len h))
+                              (natp (nth 4 h)) (natp encoded) (natp handle))))
+  (mv (update-nth 4 handle h)
+      (+ encoded (- (fn-scs-atom-size (nth 4 h)))
+         (fn-scs-atom-size handle))))
+
+(local
+ (defthm fn-hsz-non-octet-cons-size
+   (implies (not (fn-scc-octet-listp d))
+            (and (not (fn-scc-octet-listp (cons a d)))
+                 (equal (car (fn-scs-summary (cons a d)))
+                        (+ 1 (car (fn-scs-summary a))
+                           (car (fn-scs-summary d))))))
+   :hints (("Goal"
+            :use ((:instance fn-scs-cons-preserves-canonical-size
+                              (x a) (y d) (a (fn-scs-summary a))
+                              (d (fn-scs-summary d))))
+            :in-theory (e/d (fn-scs-cons fn-scs-summary fn-scc-octet-listp)
+                             (fn-scs-cons-preserves-canonical-size
+                              fn-scc-program fn-scc-atom-octets
+                              fn-scc-encode-is-program))))))
+
+(local
+ (defthm fn-hsz-octet-list-of-nthcdr
+   (implies (fn-scc-octet-listp h)
+            (fn-scc-octet-listp (nthcdr n h)))
+   :hints (("Goal" :in-theory (enable nthcdr fn-scc-octet-listp)))))
+
+(local
+ (defthm fn-hsz-non-octet-spine-size
+   (implies (and (consp h) (not (fn-scc-octet-listp (cdr h))))
+            (equal (car (fn-scs-summary h))
+                   (+ 1 (car (fn-scs-summary (car h)))
+                      (car (fn-scs-summary (cdr h))))))
+   :hints (("Goal" :use ((:instance fn-hsz-non-octet-cons-size
+                                     (a (car h)) (d (cdr h))))))))
+
+(local
+ (defthm fn-hsz-root-update-size
+   (implies (and (natp n) (< n (len h))
+                 (not (fn-scc-octet-listp (nthcdr (+ 1 n) h))))
+            (and (not (fn-scc-octet-listp (update-nth n x h)))
+                 (equal (car (fn-scs-summary (update-nth n x h)))
+                        (+ (car (fn-scs-summary h))
+                           (- (car (fn-scs-summary (nth n h))))
+                           (car (fn-scs-summary x))))))
+   :hints (("Goal" :induct (nth n h)
+            :in-theory (enable nthcdr update-nth))
+           ("Subgoal *1/3"
+            :use ((:instance fn-hsz-octet-list-of-nthcdr (h (cdr h))))))))
+
+(local
+ (defthm fn-hsz-nthcdr-past-length
+   (implies (and (natp n) (< (len h) n))
+            (equal (nthcdr n h) nil))
+   :hints (("Goal" :induct (nthcdr n h) :in-theory (enable nthcdr)))))
+
+(local
+ (defthm fn-hsz-atom-size-of-summary
+   (implies (atom x)
+            (equal (fn-scs-atom-size x) (car (fn-scs-summary x))))
+   :hints (("Goal" :use fn-scs-atom-establishes-summary
+            :in-theory (e/d (fn-scs-atom)
+                             (fn-scs-atom-size fn-scs-atom-establishes-summary))))))
+
+(defthm fn-hsz-remap-root-preserves-canonical-size
+  (implies (and (not (fn-scc-octet-listp (nthcdr 5 h)))
+                (atom (nth 4 h)) (atom handle)
+                (equal encoded (car (fn-scs-summary h))))
+           (equal (mv-nth 1 (fn-hsz-remap-root h encoded handle))
+                  (car (fn-scs-summary
+                        (mv-nth 0 (fn-hsz-remap-root h encoded handle))))))
+  :hints (("Goal"
+           :use ((:instance fn-hsz-root-update-size (n 4) (x handle))
+                 (:instance fn-hsz-nthcdr-past-length (n 5)))
+           :in-theory (e/d (fn-hsz-remap-root)
+                            (fn-hsz-root-update-size fn-scs-atom-size)))))
+(in-theory (disable fn-hsz-remap-root))
