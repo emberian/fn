@@ -6368,8 +6368,8 @@
         "HST-040"
       ],
       "steps": [
-        "Capture exact immutable source and lease names; census final64B blockcount before digest begin.",
-        "Tick empty,64B,1024B,1024+64B and2048+64B word streams, yielding between split search, block and parent phases.",
+        "Capture exact immutable source and lease names; census final64-byte blockcount before digest begin.",
+        "Tick empty,64-byte,1,024-byte,1024+64-byte and2048+64-byte word streams, yielding between split search, block and parent phases.",
         "Compare terminal natural to the existing actual pgs-x-words-digest; mutate source and separately corrupt continuation depth.",
         "After general refinement/progress/allocation proofs, wire into the disk-backed two-pass preparation controller and run matching producer/image evidence."
       ],

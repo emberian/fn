@@ -18044,7 +18044,7 @@
     {
       "id": "PRF-1087",
       "title": "Resumable page-word BLAKE3 terminal correspondence and bounded work",
-      "statement": "The library core pgs-dc-step advances one fixed64-octet block or one pending CV compression per tick, retaining a fixed representation stack and captured source/lease names. Planned terminal keystone equates the finished digest with the actual pgs-x-words-digest through pgs-x-words-digest-is-blake3, for a correctly sequenced immutable word stream and the supported codec/runtime domain; also planned: maintained representation/stream invariants, strict progress, supported-domain stack sufficiency and actual allocation demand. No digest standard or cryptographic assumption is inferred from the algorithm correspondence.",
+      "statement": "The library core pgs-dc-step advances one fixed 64-octet block or one pending CV compression per tick, retaining a fixed representation stack and captured source/lease names. Planned terminal keystone equates the finished digest with the actual pgs-x-words-digest through pgs-x-words-digest-is-blake3, for a correctly sequenced immutable word stream and the supported codec/runtime domain; also planned: maintained representation/stream invariants, strict progress, supported-domain stack sufficiency and actual allocation demand. No digest standard or cryptographic assumption is inferred from the algorithm correspondence.",
       "milestone": "M5",
       "requirements": [
         "STO-035",
@@ -18061,7 +18061,7 @@
         "planning/page-digest-cursor-contract.md",
         "planning/evidence/page-digest-cursor-source-2026-09-30.md"
       ],
-      "progress_note": "Executable fixed stobj, streaming block core and optional immutable pgs-mem reader are guard-verified in a protected source REPL. Literal empty,64B knownvector,1024B chunk,uneven parent/threechunk comparisons to the existing model, actual pgs-x-words-digest comparison, source mutation and corrupted-depth tests pass. General terminal refinement, invariant/progress and concrete allocation proof remain open. No host caller, manifest, image or native evidence, no producer/admission claim. Final fresh pdc7 admits22book forms and15test top-level forms,1.21ACL2 seconds/707379steps; raw logs/source hashes committed. Scope remains source library only."
+      "progress_note": "Executable fixed stobj, streaming block core and optional immutable pgs-mem reader are guard-verified in a protected source REPL. Literal empty,64-byte knownvector,1,024-byte chunk,uneven parent/threechunk comparisons to the existing model, actual pgs-x-words-digest comparison, source mutation and corrupted-depth tests pass. General terminal refinement, invariant/progress and concrete allocation proof remain open. No host caller, manifest, image or native evidence, no producer/admission claim. Final fresh pdc7 admits22 book forms and15 test top-level forms,1.21 ACL2 seconds / 707,379 steps; raw logs/source hashes committed. Scope remains source library only."
     }
   ]
 }

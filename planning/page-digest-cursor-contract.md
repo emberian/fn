@@ -6,7 +6,7 @@ no standard-conformance, collision-resistance, producer, admission or publicatio
 claim.
 
 `pgs-dc-begin(sel, base, nb, capture, lease, pgs-digest)` captures scalar names
-and exact known64B blockcount. `pgs-dc-step(block16-u32, pgs-digest)` is the
+and exact known 64-byte blockcount. `pgs-dc-step(block16-u32, pgs-digest)` is the
 streaming core. When `pgs-dc-needs-block` is true the producer supplies exactly
 one fixed block at `pgs-dc-next-word-offset`. Other phases take no input.
 `pgs-dc-read-demand` bounds the optional word-reader request by eight.
@@ -15,8 +15,8 @@ Both return `(mv status pgs-digest)`; `pgs-dc-result` returns the terminal diges
 natural. Source arrays never change; there is no whole-input `fn-octets-pg`.
 
 The disk-backed two-pass builder's census knows final N data pages, T table
-pages and M directory pages before emission. Page digests use NB256; directory
-uses NB256*M with current-format u32 M. Sequential DFS leaves therefore need
+pages and M directory pages before emission. Page digests use NB = 256; directory
+uses NB = 256*M with current-format u32 M. Sequential DFS leaves therefore need
 one bounded emission buffer, with no random source access or full directory
 retention. Root/controller still owns pin and lease identity/lifetime.
 
@@ -102,7 +102,7 @@ before its outer continuation; right costs one parent-return. The empty outer
 continuation costs return-to-root + root-to-done (two). Root costs one; done
 zero. This potential never runs in the producer. Domain induction proves the
 fixed stack sufficient: children fit the next lower power-of-two chunk bound;
-u64 word spans need at most57levels, current u32 directory M at most36.
+u64 word spans need at most57 levels, current u32 directory M at most 36.
 
 The source increment admits guarded execution, preserved capture/lease and
 actual reader demand <=8, plus literal comparisons including external blocks and
