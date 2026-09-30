@@ -1171,7 +1171,7 @@
         "PRF-021"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-node-invariants.lisp",
         "tests/acl2/store-node-composite-index-tests.lisp",
@@ -9645,7 +9645,7 @@
         "PRF-242"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-recover-stream.lisp",
         "tests/acl2/store-recover-stream-tests.lisp",
@@ -10461,7 +10461,7 @@
         "PRF-261"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-recover-stream.lisp",
         "tests/acl2/store-recover-stream-tests.lisp",
@@ -11138,7 +11138,7 @@
         "A-HOST",
         "A-DURABLE-EXTENT"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-arena-seal-extent-payload",
         "fn-arena-extent-get{correspondence}",
@@ -11207,7 +11207,7 @@
         "A-HOST",
         "A-DURABLE-EXTENT"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/payload-arena-extent.lisp",
         "books/payload-arena-extent-logic.lisp",
@@ -11892,7 +11892,7 @@
         "PRF-294"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-intern-once.lisp",
         "books/payload-extent.lisp",
@@ -11994,7 +11994,7 @@
         "A-DURABLE-EXTENT",
         "A-DURABLE-LZ"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/payload-lz-record.lisp",
         "books/payload-lz-replay.lisp",
@@ -14877,7 +14877,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/owner-inspect-group.lisp",
         "tests/acl2/owner-inspect-group-tests.lisp",
@@ -15544,7 +15544,7 @@
         "PRF-326"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/payload-lz-dicts.lisp",
         "books/payload-lz-dict-1.lisp",
@@ -16748,7 +16748,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "title": "The live arena's off-mutex readers pin a generation; a retirement is released only when every live reader pinned after it (row A6, the generation pin)",
       "statement": "Subject (books/arena-reader-pins.lisp): fn-arpn-step, which the host calls for every event of the arena readers' generation state (host/native/io.lisp fnn-arena-pins-step under its own lock; fnn-arena-pin/-unpin around a checkpoint publication's thread, host/native/owner.lisp fnn-owner-maybe-publish and fnn-owner-publish-captured; fnn-arena-retire and fnn-arena-release-due in the COMPLETE's reseat, fnn-log-reseat-fenced; fnn-arena-stamp/-clear-p for the installing reclaim pass). The state is (CUR PINS PEND): the current generation, the live pins as a strictly ascending table of (G . N) with every G <= CUR (fn-arpn-okp, established by fn-arpn-initial and preserved by every event: fn-arpn-step-preserves-okp), and the pending retirements (S . ITEMS). A :pin answers CUR (fn-arpn-pin-answers-the-generation); a :retire stamps CUR, which is at or above every live pin, and advances the generation (fn-arpn-retire-stamp-covers-every-live-pin; fn-arpn-step-generation-never-decreases). KEYSTONE fn-arpn-release-postdates-every-live-pin: every retirement :release answers was pending and its stamp is below every live pin, so no reader live at the retirement is live at its release; fn-arpn-release-keeps-every-covered-retirement: a retirement some live reader is pinned at or below stays pending. Generalizes the single off-mutex reader count (*fnn-arena-off-mutex-readers*, removed): an old retirement is released as soon as the readers older than it end, whatever newer readers run.",
       "evidence": [
@@ -17753,7 +17753,7 @@
         "PRF-1020"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/response-plan-pins.lisp",
         "tests/acl2/response-plan-pins-tests.lisp",
@@ -18231,7 +18231,7 @@
         "PRF-1061"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/statement-recover-stream.lisp",
         "host/native/io.lisp",

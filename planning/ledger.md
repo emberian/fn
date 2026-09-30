@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1951 |
 | Certification roots in the Makefile | 1866 |
 | Books inside the root closure | 1934 |
-| `defthm` and `defthmd` events | 30081 |
+| `defthm` and `defthmd` events | 30080 |
 | `defun` events | 19172 |
 | Functions with verified guards | 3525 |
 | Functions declared `:verify-guards nil` and never verified | 2328 |
@@ -645,7 +645,7 @@ that `make certify` requests.
 | `books/nntp-reclaimed.lisp` | root | 13 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/nntp-responses.lisp` | root | 31 | 176 | 165/0/11/0 | 0 | 0 | 0 |
 | `books/nntp-search-scope.lisp` | root | 12 | 1 | 0/1/0/0 | 0 | 0 | 1 |
-| `books/nntp-session.lisp` | root | 14 | 40 | 35/0/5/0 | 0 | 0 | 3 |
+| `books/nntp-session.lisp` | root | 13 | 40 | 35/0/5/0 | 0 | 0 | 3 |
 | `books/nntp-syntax.lisp` | root | 9 | 48 | 43/0/5/0 | 0 | 0 | 0 |
 | `books/nntp-verdict-effects.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-verdict.lisp` | root | 3 | 6 | 2/0/4/0 | 0 | 0 | 0 |
