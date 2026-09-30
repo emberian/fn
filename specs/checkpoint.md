@@ -583,3 +583,16 @@ COMMON-LISP names and NIL, and requires the authenticated provider's matching
 source-byte and capture/pass lifetime premise. Its cursor and semantic proofs
 are component source evidence under PRF-1102; full row decoding, metadata checks,
 resource funding and host composition remain open.
+
+The runtime arena lifecycle exclusion serializes destructive reset with owner
+startup and completed shutdown. ACL2's state-free `fn-pvl-runtime-step` decides
+from the observed quiescent/serving/draining phase. Serving and draining reset
+refuse before mutable ACL2 STATE or the arena is touched. The lifecycle mutex
+holds the actual arena association through quiescent core reset; owner capture,
+borrow and release take owner then lifecycle, and no lifecycle holder waits for
+an owner gate or worker join. Startup registers serving before committer/mux
+workers; stop marks draining; quiescence requires definite roster/cold/module
+cleanup and no active logical payload holder. Syncers remain in the service's
+join roster even if the committer fails. A module cleanup error retains draining.
+This is source sequencing evidence; the full admitted resource/source relation
+and canonical snapshot publication remain open under PRF-1133/HST-040.

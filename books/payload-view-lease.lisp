@@ -94,6 +94,45 @@
                   (not (fn-omk-at 2 next)))))
   :hints (("Goal" :in-theory (enable fn-pvl-reset fn-pvl-ledgerp
                                    fn-omk-at fn-omk-widthp))))
+; State-free runtime lifecycle decision. The native exclusion observes these
+; phases while holding the actual arena lifecycle mutex. JOINED is evidence
+; of completed shutdown, not a timeout; OWNED is the carried logical lease.
+(defun fn-pvl-runtime-step (phase event owned joined)
+  (declare (xargs :guard t))
+  (cond ((not (member-equal phase '(:quiescent :serving :draining)))
+         (list :refused phase))
+        ((eq event :reset)
+         (if (eq phase :quiescent) (list :allowed phase) (list :refused phase)))
+        ((eq event :start)
+         (if (and (eq phase :quiescent) (not owned))
+             (list :allowed :serving) (list :refused phase)))
+        ((eq event :capture)
+         (if (eq phase :serving) (list :allowed phase) (list :refused phase)))
+        ((eq event :borrow)
+         (if (member-equal phase '(:serving :draining))
+             (list :allowed phase) (list :refused phase)))
+        ((eq event :drain) (list :allowed :draining))
+        ((eq event :joined)
+         (if (and (eq phase :draining) joined (not owned))
+             (list :allowed :quiescent) (list :refused phase)))
+        (t (list :refused phase))))
+(defthm fn-pvl-runtime-reset-requires-quiescence
+  (iff (equal (car (fn-pvl-runtime-step phase :reset owned joined)) :allowed)
+       (equal phase :quiescent)))
+(defthm fn-pvl-runtime-unjoined-or-owned-cannot-retire
+  (implies (or (not joined) owned)
+           (equal (fn-pvl-runtime-step phase :joined owned joined)
+                  (list :refused phase))))
+(defthm fn-pvl-runtime-start-excludes-reset
+  (implies (equal (car (fn-pvl-runtime-step phase :start owned joined)) :allowed)
+           (equal (fn-pvl-runtime-step
+                   (cadr (fn-pvl-runtime-step phase :start owned joined))
+                   :reset nil nil)
+                  (list :refused :serving))))
+(defthm fn-pvl-runtime-refused-keeps-phase
+  (implies (equal (car (fn-pvl-runtime-step phase event owned joined)) :refused)
+           (equal (cadr (fn-pvl-runtime-step phase event owned joined)) phase)))
+(in-theory (disable fn-pvl-runtime-step))
 (in-theory (disable fn-pvl-tokenp fn-pvl-token-matchp fn-pvl-seed
                     fn-pvl-ledgerp fn-pvl-livep fn-pvl-acquire
                     fn-pvl-release fn-pvl-reset))

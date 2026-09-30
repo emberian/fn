@@ -43,3 +43,23 @@
                      (not (fn-pvl-livep *pvl-token* next)))))
 (assert-event (and (equal (car (fn-pvl-acquire *pvl-seed* 8 0 nil)) :refused)
                    (equal (fn-omk-at 2 (fn-pvl-acquire *pvl-seed* 8 0 nil)) *pvl-seed*)))
+
+; State-free phase exclusion and literal start-hypothesis removal.
+(assert-event
+ (and (equal (fn-pvl-runtime-step :quiescent :reset nil nil) '(:allowed :quiescent))
+      (equal (fn-pvl-runtime-step :serving :reset nil nil) '(:refused :serving))
+      (equal (fn-pvl-runtime-step :draining :reset nil nil) '(:refused :draining))))
+(assert-event
+ (let* ((phase :quiescent) (owned nil) (joined nil)
+        (start (fn-pvl-runtime-step phase :start owned joined)))
+   (and (equal (car start) :allowed)
+        (equal (fn-pvl-runtime-step (cadr start) :reset nil nil) '(:refused :serving)))))
+(assert-event
+ (let* ((phase :quiescent) (owned t) (joined nil)
+        (start (fn-pvl-runtime-step phase :start owned joined)))
+   (and (not (equal (car start) :allowed))
+        (not (equal (fn-pvl-runtime-step (cadr start) :reset nil nil) '(:refused :serving))))))
+(assert-event
+ (and (equal (fn-pvl-runtime-step :draining :joined t t) '(:refused :draining))
+      (equal (fn-pvl-runtime-step :draining :joined nil nil) '(:refused :draining))
+      (equal (fn-pvl-runtime-step :draining :joined nil t) '(:allowed :quiescent))))

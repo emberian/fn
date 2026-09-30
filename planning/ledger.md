@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1840 |
 | Certification roots in the Makefile | 1761 |
 | Books inside the root closure | 1836 |
-| `defthm` and `defthmd` events | 29166 |
-| `defun` events | 18887 |
+| `defthm` and `defthmd` events | 29170 |
+| `defun` events | 18888 |
 | Functions with verified guards | 3509 |
 | Functions declared `:verify-guards nil` and never verified | 2222 |
-| Functions left at the default with an explicit guard | 10331 |
+| Functions left at the default with an explicit guard | 10332 |
 | Functions left at the default with no guard | 2825 |
-| `assert-event` checks | 23937 |
+| `assert-event` checks | 23941 |
 | `must-fail` checks | 2517 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
@@ -28,7 +28,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
 | Include-hygiene warnings | 2528 |
-| Host-names warnings | 2160 |
+| Host-names warnings | 2162 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -794,7 +794,7 @@ that `make certify` requests.
 | `books/payload-lz-replay.lisp` | root | 14 | 8 | 2/0/6/0 | 0 | 0 | 1 |
 | `books/payload-lz-value.lisp` | root | 8 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/payload-view-arena.lisp` | closure | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/payload-view-lease.lisp` | closure | 6 | 8 | 0/0/8/0 | 0 | 0 | 0 |
+| `books/payload-view-lease.lisp` | closure | 10 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/peer-authored-accept.lisp` | root | 23 | 14 | 1/0/13/0 | 0 | 0 | 1 |
 | `books/peer-carriage-rows.lisp` | root | 41 | 14 | 1/0/13/0 | 0 | 0 | 0 |
 | `books/peer-carriage.lisp` | root | 47 | 22 | 0/1/20/1 | 0 | 0 | 4 |
@@ -1679,7 +1679,7 @@ that `make certify` requests.
 | `tests/acl2/payload-lz-append-tests.lisp` | root | 5 | 0 | 0/0/0/0 | 22 | 8 | 0 |
 | `tests/acl2/payload-lz-record-tests.lisp` | root | 11 | 0 | 0/0/0/0 | 14 | 10 | 0 |
 | `tests/acl2/payload-view-arena-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 5 | 0 | 0 |
-| `tests/acl2/payload-view-lease-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 0 | 0 |
+| `tests/acl2/payload-view-lease-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
 | `tests/acl2/peer-authored-accept-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 51 | 15 | 0 |
 | `tests/acl2/peer-carriage-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 121 | 22 | 0 |
 | `tests/acl2/peer-catchup-tests.lisp` | root | 1 | 8 | 0/1/0/7 | 44 | 9 | 0 |

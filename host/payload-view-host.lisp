@@ -44,3 +44,7 @@
     (if (not (eq (car answer) :reset)) (mv nil answer fn-arena state)
       (let ((state (f-put-global 'fn-owner-payload-view (fn-omk-at 2 answer) state)))
         (mv nil answer fn-arena state)))))
+
+(defun fn-owner-payload-view-owned-p (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (if (fn-omk-at 2 (fn-owner-payload-view-ledger state)) t nil)))
