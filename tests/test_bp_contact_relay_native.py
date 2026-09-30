@@ -30,17 +30,19 @@ class ByteRelay:
         self.target = None
         self.cut_next = False
         self.cut_after = None
+        self.observer = None
         self.stopped = threading.Event()
         self.workers = []
         self.thread = threading.Thread(target=self._accept, daemon=True)
         self.thread.start()
 
-    def route(self, port, cut_next=False, cut_after=None):
+    def route(self, port, cut_next=False, cut_after=None, observer=None):
         self.target = port
         self.cut_next = cut_next
         # Forward both ways, but sever both sides once the client has sent
         # CUT_AFTER octets: a transfer that started and never finished.
         self.cut_after = cut_after
+        self.observer = observer
 
     def _accept(self):
         while not self.stopped.is_set():
@@ -50,17 +52,17 @@ class ByteRelay:
                 continue
             except OSError:
                 break
-            target, cut, limit = self.target, self.cut_next, self.cut_after
+            target, cut, limit, observer = self.target, self.cut_next, self.cut_after, self.observer
             self.cut_next = False
             worker = threading.Thread(
-                target=self._exchange, args=(client, target, cut, limit),
+                target=self._exchange, args=(client, target, cut, limit, observer),
                 daemon=True
             )
             self.workers.append(worker)
             worker.start()
 
     @staticmethod
-    def _exchange(client, target, cut, limit=None):
+    def _exchange(client, target, cut, limit=None, observer=None):
         with client:
             if target is None:
                 return
@@ -97,10 +99,19 @@ class ByteRelay:
                         destination = upstream if source is client else client
                         if limit is not None and source is client:
                             if forwarded + len(data) >= limit:
+                                sent = False
                                 try:
                                     destination.sendall(data[:limit - forwarded])
+                                    forwarded = limit
+                                    sent = True
                                 except OSError:
                                     pass
+                                # Close both real sockets before reporting the cut.
+                                client.close()
+                                upstream.close()
+                                if observer is not None:
+                                    observer(event="byte-limit-severed", forwarded=forwarded,
+                                             send_succeeded=sent, limit=limit)
                                 return
                             forwarded += len(data)
                         try:
