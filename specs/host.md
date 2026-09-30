@@ -1749,9 +1749,10 @@ existing arena writer/load alpha refinements with the captured-view inverse.
 PRF-1081 replaces S7's old canonical re-interning component with the
 snapshot-specific `fn-orm-tick`. It changes only held payload handles,
 retaining frozen facts, context/verdict generation, local numbers,
-withdrawal, evidence and every other retained field; a composite keeps its
-original statement and remaps its held article separately. Its dispatcher
-examines at most fifteen outer cells, and its tick guard inspects only the
+withdrawal, evidence, the actual received/wire binding and every other
+retained field; a composite keeps its original statement and remaps its held
+article separately. The mandatory held16 dispatcher examines at most sixteen
+outer cells, and its tick guard inspects only the
 fixed-position natural handle. The valid captured suffix is a maintained
 proof invariant and is never revalidated per tick. Preparation advances
 one row or one reversal cell without reading payload bytes.
@@ -1764,6 +1765,13 @@ ordinary and composite-held rows before the inverse becomes a full restore
 claim. SCN-215 names the genuine producer/restore/cut scenario; current
 orphan/remap teeth are component evidence only. History/page preparation,
 funded capture/controller and matching native execution remain pending.
+The isolated old Store held16/record12 migration is source NOTREADY: its
+affected-root replay passes the corrected constructor arities, then refuses
+in an unchanged principal proof before admitting changed remap target forms.
+The record12 binding and full retained binding fixture are prepared, with the
+exact stopped replay evidence in
+`planning/evidence/snapshot-store-row16-source-2026-09-30/`. Existing low
+source-row16 component evidence does not qualify that old Store root.
 
 Snapshot capture admission calls `fn-osl-ready-acquire` (PRF-1074) on the
 carried `fn-sf-phase` field. A phase other than `:ready` refuses before changing

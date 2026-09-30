@@ -1,11 +1,13 @@
 (in-package "ACL2")
 (include-book "../../books/snapshot-row-remap")
 (include-book "../../books/codec-attach")
+(defconst *orm-binding*
+ (fn-ab-make :native-source (append *fn-ab-subject-head* (make-list 32 :initial-element 0))))
 (defconst *orm-wire*
   (list (fn-record-make 0 0 0 "<one@example>" '(1 2 3) '("fn.test")
-                        "p" "c" "r" 1 841000000)
+                        "p" "c" "r" 1 841000000 *orm-binding*)
         (fn-record-make 1 1 0 "<two@example>" '(4 5) '("fn.test")
-                        "p" "c" "r" 1 841000001)))
+                        "p" "c" "r" 1 841000001 *orm-binding*)))
 (defun orm-intern-with-orphan ()
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn-arena
@@ -38,9 +40,10 @@
       (equal (fn-held-facts *orm-new*) (fn-held-facts *orm-row*))
       (equal (fn-held-context *orm-new*) (fn-held-context *orm-row*))
       (equal (fn-held-numbers *orm-new*) (fn-held-numbers *orm-row*))
-      (equal (fn-held-withdrawn *orm-new*) (fn-held-withdrawn *orm-row*))))
+      (equal (fn-held-withdrawn *orm-new*) (fn-held-withdrawn *orm-row*))
+      (equal (fn-held-binding *orm-new*) *orm-binding*)))
 (assert-event
- (and (fn-store-event-p *orm-row*) (<= (len *orm-row*) 15)
+ (and (fn-store-event-p *orm-row*) (<= (len *orm-row*) 16)
       (fn-held-p *orm-row*) (natp 0) (fn-held-p *orm-new*)
       (equal (fn-held-wire *orm-new* '(1 2 3))
              (fn-held-wire *orm-row* '(1 2 3)))))

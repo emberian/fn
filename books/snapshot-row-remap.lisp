@@ -22,7 +22,7 @@
 ; malformed inputs cannot cause an unbounded recognizer in this function.
 (defun fn-orm-row (row handle)
   (declare (xargs :guard (natp handle)))
-  (cond ((fn-orm-spinep 15 row) (fn-orm-held row handle))
+  (cond ((fn-orm-spinep 16 row) (fn-orm-held row handle))
         ((and (consp row) (eq (car row) :hstxa))
          (fn-hstxa-make (fn-hstxa-stxa row)
                         (fn-orm-held (fn-hstxa-held row) handle)))
@@ -38,7 +38,7 @@
 (local
  (defthm fn-orm-valid-row-dispatch-by-definition
    (implies (fn-store-event-p row)
-            (and (equal (fn-orm-spinep 15 row) (fn-held-p row))
+            (and (equal (fn-orm-spinep 16 row) (fn-held-p row))
                  (equal (and (consp row) (equal (car row) :hstxa))
                         (fn-hstxa-p row))))
    :hints (("Goal" :do-not-induct t :in-theory
@@ -86,7 +86,7 @@
 
 (defun fn-orm-sealsp (row)
   (declare (xargs :guard t))
-  (or (fn-orm-spinep 15 row) (and (consp row) (eq (car row) :hstxa))))
+  (or (fn-orm-spinep 16 row) (and (consp row) (eq (car row) :hstxa))))
 (defun fn-orm-rowsp (rows)
   (declare (xargs :guard t))
   (if (consp rows)
@@ -141,8 +141,8 @@
                             fn-orm-capture revappend)
                            (fn-orm-row fn-orm-sealsp revappend-removal)))))
 
-(defthm fn-orm-store-event-has-at-most-fifteen-outer-cells
-  (implies (fn-store-event-p row) (<= (len row) 15))
+(defthm fn-orm-store-event-has-at-most-sixteen-outer-cells
+  (implies (fn-store-event-p row) (<= (len row) 16))
   :hints (("Goal" :do-not-induct t :in-theory
            (enable fn-store-event-p fn-held-p fn-held-shapep
                    fn-store-retention-event-p fn-stxe-p fn-stxe-shapep

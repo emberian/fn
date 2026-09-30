@@ -920,7 +920,7 @@
                   (fn-record-charge w) (fn-record-stamp w)
                   (fn-held-facts-of bytes)
                   (fn-held-context-of bytes keyring generation)
-                  nil nil)))
+                  nil nil (fn-row-binding w))))
 
 ; The intern is the row at the old count, and the seal.
 (defthm fn-cat-intern-list-is-row-at-count
