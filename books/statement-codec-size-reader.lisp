@@ -84,7 +84,8 @@
             (mv-nth 1 (fn-stmt-decode-items-sized-prechecked fuel octets item-budget))))
   :hints (("Goal" :induct (fn-stmt-decode-items-sized-prechecked fuel octets item-budget)
            :in-theory
-           (e/d (fn-stmt-decode-items-sized-prechecked fn-stmt-item-sizes-correspondsp)
+           (e/d (fn-stmt-decode-items-sized-prechecked fn-stmt-item-sizes-correspondsp
+                 fn-stmt-ok fn-stmt-error fn-stmt-okp fn-stmt-value)
                 (fn-stmt-sized-prechecked-projection-by-definition
                  fn-stmt-decode-items-prechecked fn-cbor-decode-prechecked
                  fn-cbor-decode-sized-prechecked)))))
