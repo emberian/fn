@@ -270,3 +270,24 @@
  (and (not (true-listp *osr-dotted-configs*))
       (not (fn-sn-open-okp *osr-dotted-open*))
       (not (fn-osr-retainedp (fn-sn-open-state *osr-dotted-open*)))))
+
+; Real live CONFIG publication preserves the full retained carry, while
+; changing capacity and appending the third durable configuration record.
+(defconst *osr-retained-config-change*
+  (fn-cfg-record-make 2 4 3 (list (fn-cfg-set-capacity 20)) *fn-cfg-default-stamp*))
+(make-event `(defconst *osr-retained-configured*
+  ',(fn-cpo-configure-durable *osr-retained-ready* *osr-retained-config-change*)))
+(assert-event
+ (and (fn-osr-retainedp *osr-retained-ready*)
+      (fn-osr-retainedp *osr-retained-configured*)
+      (equal (fn-sn-capacity *osr-retained-configured*) 20)
+      (equal (len (fn-sn-config-history *osr-retained-configured*)) 3)
+      (equal (fn-sn-verdicts *osr-retained-configured*)
+             (fn-sn-verdicts *osr-retained-ready*))))
+; Corrupted-state removal of the sole carried premise: the configuration
+; changes no statement generation and therefore cannot repair its corruption.
+(assert-event
+ (and (not (fn-osr-retainedp *osr-retained-wrong-generation*))
+      (not (fn-osr-retainedp
+            (fn-cpo-configure-durable *osr-retained-wrong-generation*
+                                      *osr-retained-config-change*)))))
