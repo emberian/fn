@@ -45,7 +45,9 @@ invented ticket-width bound appears in a byte tick.
   symbol-NIL tail. Generate canonical length header before payload emission.
 * Scalar/span/normalizer: invoke one existing child operation. Full symbol
   normalization returns canonical opcode/package while keeping its original
-  borrowed name span. Opcode0 NIL has no name payload. Old nonminimal length
+  borrowed name span. For opcode0 NIL, pass target count0 to the span child
+  while retaining the original source descriptor separately; it has no name
+  payload. Old nonminimal length
   prefixes are regenerated canonically.
 * Done: return prepared only after all tasks/children are empty.
 
