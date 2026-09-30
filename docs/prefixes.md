@@ -367,3 +367,6 @@ anything a book does not already decide.
 
 | `fn-novlp-` | `nov-line-projection` | Logical first-five normalized NOV projection of the actual article parser; component proof vocabulary, never a served scan |
 | `fn-nlv-` | `legacy-parser-validity` | Logical control projection and physical-line/body grammar proofs of the actual bounded legacy byte cursor; full malformed-header simulation remains open |
+
+| `fn-lpc-` | `legacy-parser-cursor`, `legacy-parser-reference`, `legacy-parser-header` | Bounded immutable-span legacy cursor and concrete arena/body facts refinement; full header equality remains open |
+| `fn-lpv-`, `fn-lpvt-`, `lpvt-` | `legacy-parser-values`, `tests/acl2/legacy-parser-values-tests` | Logical source-slice and unfolded value normalization invariants; never served materialization |
