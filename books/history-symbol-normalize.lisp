@@ -105,14 +105,16 @@
     0 0 nil))
 
 (defun fn-hdsn-next-candidate (c)
-  (declare (xargs :guard (fn-hdsn-statep c)))
+  (declare (xargs :guard (fn-hdsn-statep c)
+                  :guard-hints (("Goal" :in-theory (enable fn-hdsn-statep)))))
   (fn-hdsn-state (nth 0 c) (nth 1 c) (nth 2 c) (if (consp (nth 3 c)) (cdr (nth 3 c)) nil)
                   0 (+ 1 (nth 5 c)) nil))
 
 ; Result is (:done (opcode package)), (:need-byte offset serial), :continue
 ; or :refused. A read does not move state; its matching supply does.
 (defun fn-hdsn-tick (c)
-  (declare (xargs :guard (fn-hdsn-statep c)))
+  (declare (xargs :guard (fn-hdsn-statep c)
+                  :guard-hints (("Goal" :in-theory (enable fn-hdsn-statep)))))
   (let* ((candidates (nth 3 c)) (symbol (if (consp candidates) (car candidates) nil))
          (index (nth 4 c)) (count (nth 2 c)))
     (cond
@@ -132,7 +134,8 @@
 
 (defun fn-hdsn-supply (offset serial byte c)
   (declare (xargs :guard (and (fn-hdsn-statep c) (natp offset) (natp serial)
-                              (fn-scc-octetp byte))))
+                              (fn-scc-octetp byte))
+                  :guard-hints (("Goal" :in-theory (enable fn-hdsn-statep)))))
   (let* ((candidates (nth 3 c)) (symbol (if (consp candidates) (car candidates) nil))
          (index (nth 4 c)) (count (nth 2 c)))
     (if (and (not (nth 6 c)) (consp candidates) (symbolp symbol)
@@ -236,8 +239,38 @@
 
 (local
  (defthm fn-hdsn-nthcdr-length
-   (implies (true-listp xs) (equal (nthcdr (len xs) xs) nil))
-   :hints (("Goal" :induct (len xs) :in-theory (enable nthcdr len)))))
+   (implies (and (true-listp xs) (equal n (len xs)))
+            (equal (nthcdr n xs) nil))
+   :hints (("Goal" :induct (nthcdr n xs) :in-theory (enable nthcdr len)))))
+
+(local
+ (defthm fn-hdsn-find-mismatched-length-unfolds
+  (implies (and (consp candidates)
+                (not (equal (length name)
+                            (length (symbol-name (car candidates))))))
+           (equal (fn-hdsn-find name candidates index)
+                  (fn-hdsn-find name (cdr candidates) 0)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :expand ((fn-hdsn-find name candidates index))
+           :in-theory (disable fn-hdsn-find)))))
+
+(local
+ (defthm fn-hdsn-find-unfolds
+  (equal (fn-hdsn-find name candidates index)
+         (if (consp candidates)
+             (if (and (symbolp (car candidates))
+                      (equal (length name) (length (symbol-name (car candidates))))
+                      (equal (nthcdr (nfix index) (coerce name 'list))
+                             (nthcdr (nfix index)
+                                     (coerce (symbol-name (car candidates)) 'list))))
+                 (cons t (car candidates))
+               (fn-hdsn-find name (cdr candidates) 0))
+           nil))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :expand ((fn-hdsn-find name candidates index))
+           :in-theory (disable fn-hdsn-find)))))
 
 (defthm fn-hdsn-tick-preserves-denotation
   (implies (and (fn-hdsn-statep c) (stringp name)
@@ -246,13 +279,18 @@
                   (fn-hdsn-denote c name)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-hdsn-nthcdr-length (xs (coerce name 'list)))
+           :use (fn-hdsn-state-fields
+                 (:instance fn-hdsn-find-unfolds
+                            (candidates (nth 3 c)) (index (nth 4 c)))
+                 (:instance fn-hdsn-find-mismatched-length-unfolds
+                            (candidates (nth 3 c)) (index (nth 4 c)))
+                 (:instance fn-hdsn-nthcdr-length (xs (coerce name 'list)) (n (nth 2 c)))
                  (:instance fn-hdsn-nthcdr-length
-                            (xs (coerce (symbol-name (car (nth 3 c))) 'list))))
+                            (xs (coerce (symbol-name (car (nth 3 c))) 'list)) (n (nth 2 c))))
            :expand ((fn-hdsn-find name (nth 3 c) (nth 4 c)))
            :in-theory (e/d (fn-hdsn-tick fn-hdsn-next-candidate fn-hdsn-state
                             fn-hdsn-denote)
-                           (fn-hdsn-find member-symbol-name fn-hdsn-nthcdr-length)))))
+                           (fn-hdsn-find member-symbol-name fn-hdsn-nthcdr-length fn-hdsn-state-fields)))))
 
 (defthm fn-hdsn-done-is-denotation
   (implies (and (fn-hdsn-statep c) (stringp name)
@@ -261,13 +299,18 @@
            (equal (cadr (mv-nth 0 (fn-hdsn-tick c))) (fn-hdsn-denote c name)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-hdsn-nthcdr-length (xs (coerce name 'list)))
+           :use (fn-hdsn-state-fields
+                 (:instance fn-hdsn-find-unfolds
+                            (candidates (nth 3 c)) (index (nth 4 c)))
+                 (:instance fn-hdsn-find-mismatched-length-unfolds
+                            (candidates (nth 3 c)) (index (nth 4 c)))
+                 (:instance fn-hdsn-nthcdr-length (xs (coerce name 'list)) (n (nth 2 c)))
                  (:instance fn-hdsn-nthcdr-length
-                            (xs (coerce (symbol-name (car (nth 3 c))) 'list))))
+                            (xs (coerce (symbol-name (car (nth 3 c))) 'list)) (n (nth 2 c))))
            :expand ((fn-hdsn-find name (nth 3 c) (nth 4 c)))
            :in-theory (e/d (fn-hdsn-tick fn-hdsn-next-candidate fn-hdsn-state
                             fn-hdsn-denote)
-                           (fn-hdsn-find member-symbol-name fn-hdsn-nthcdr-length)))))
+                           (fn-hdsn-find member-symbol-name fn-hdsn-nthcdr-length fn-hdsn-state-fields)))))
 
 (local
  (defthm fn-hdsn-tail-step
@@ -285,6 +328,22 @@
                          (:instance code-char-char-code-is-identity (c y)))
             :in-theory (disable code-char-char-code-is-identity)))))
 
+(local
+ (defthm fn-hdsn-car-of-tail-unfolds
+  (equal (car (nthcdr n xs)) (nth n xs))
+  :hints (("Goal" :induct (nthcdr n xs) :in-theory (enable nth nthcdr)))))
+
+(local
+ (defthm fn-hdsn-equal-tails-have-equal-heads
+  (implies (equal (nthcdr n xs) (nthcdr n ys))
+           (equal (nth n xs) (nth n ys)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-hdsn-car-of-tail-unfolds)
+                 (:instance fn-hdsn-car-of-tail-unfolds (xs ys)))
+           :in-theory (union-theories (theory 'minimal-theory)
+                                      (executable-counterpart-theory :here))))))
+
 (defthm fn-hdsn-supply-preserves-denotation
   (implies (and (fn-hdsn-statep c) (stringp name)
                 (equal (length name) (nth 2 c))
@@ -295,7 +354,15 @@
                   (fn-hdsn-denote c name)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-hdsn-tail-step
+           :use (fn-hdsn-state-fields
+                 (:instance fn-hdsn-equal-tails-have-equal-heads
+                            (n (nth 4 c)) (xs (coerce name 'list))
+                            (ys (coerce (symbol-name (car (nth 3 c))) 'list)))
+                 (:instance fn-hdsn-find-unfolds
+                            (candidates (nth 3 c)) (index (nth 4 c)))
+                 (:instance fn-hdsn-find-unfolds
+                            (candidates (nth 3 c)) (index (+ 1 (nth 4 c))))
+                 (:instance fn-hdsn-tail-step
                             (index (nth 4 c)) (xs (coerce name 'list)))
                  (:instance fn-hdsn-tail-step
                             (index (nth 4 c))
@@ -304,7 +371,7 @@
                     (fn-hdsn-find name (nth 3 c) (+ 1 (nth 4 c))))
            :in-theory (e/d (fn-hdsn-supply fn-hdsn-next-candidate fn-hdsn-state
                             fn-hdsn-denote)
-                           (fn-hdsn-find member-symbol-name fn-hdsn-tail-step)))))
+                           (fn-hdsn-find member-symbol-name fn-hdsn-tail-step fn-hdsn-state-fields)))))
 
 (defun-nx fn-hdsn-coherent (c)
   (and (fn-hdsn-statep c) (fn-hdsn-imports-p (nth 3 c))
