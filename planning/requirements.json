@@ -1404,7 +1404,8 @@
         "PRF-074",
         "PRF-189",
         "PRF-206",
-        "PRF-904"
+        "PRF-904",
+        "PRF-1103"
       ],
       "verification": [
         "proof",
@@ -1421,7 +1422,8 @@
         "tests/evidence/2026-09-18-wildmat-storage.json",
         "planning/evidence/wave-realignment-2026-09-19.md",
         "books/nntp-xref.lisp",
-        "tests/test_native_reader_index.py"
+        "tests/test_native_reader_index.py",
+        "books/nov-line-projection.lisp"
       ],
       "implementation_note": "Actual recovered memberships feed LISTGROUP and filtered ACTIVE/NEWSGROUPS through ACL2. Independent client tests exact stored views. Complete reader/overview/profile guarantees remain open. LIST COUNTS (RFC 6048 section 2.2) answers each group's exact count from the pinned buckets (PRF-073), and a Message-ID retrieval answers the article's number in the selected group, or 0 (RFC 3977 section 6.2.1.2).",
       "keystones": [
