@@ -21,8 +21,7 @@
  :hints (("Goal" :in-theory (enable fn-ohr-carried-p fn-ohr-active-p))))
 
 (defthm fn-ohr-active-one-preserves-carried-row-domain
- (implies (and (fn-ohr-carried-p s fn-arena)
-               (member-eq (nth 2 s) '(:parse :emit)))
+ (implies (fn-ohr-carried-p s fn-arena)
   (let ((next (mv-nth 1 (fn-ohr-active-one s fn-arena))))
    (or (not next) (fn-ohr-carried-p next fn-arena))))
  :rule-classes nil
