@@ -1248,6 +1248,20 @@
                  (fn-sf-records-count (fn-sn-files s)) bytes debt event)
             fn-hist state)))))
 
+; Wire/history resource gate for the actual ACL2-constructed FNCE event.
+; This resource verdict alone does not authorize a trie mutation, frontier
+; allocation or publication: canonical/path/retired-root/quantum funding and
+; the maintained metadata producer must also be installed by the caller.
+(defun fn-owner-account-publication-verdict (event fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
+    (mv-let (debt fn-hist state) (fn-owner-record-debt fn-hist state)
+      (let ((s (fn-owner-store state)))
+        (mv nil (fn-cpb-authority-event-verdict-carried
+                 (fn-owner-profile-carry state) (fn-owner-store-profile state)
+                 (fn-sf-records-count (fn-sn-files s)) bytes debt event)
+            fn-hist state)))))
+
 ; The identity preflight's verdict on one ACL2-constructed EVENT (lane
 ; bp-retention-leftovers).  Its kind is the WIRE event's
 ; (`fn-wire-event-kind'; the row reading `fn-store-event-kind' answered NIL

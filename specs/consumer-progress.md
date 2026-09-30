@@ -1106,3 +1106,14 @@ planner boundaries discharge the selected-stage binding obligation; complete
 composition must also establish ordered keys, cursor coverage and watermarks.
 Canonical metadata/funding and atomic live/recovery publication remain separate
 mandatory obligations before any remote account becomes usable.
+
+The proposed actual `fn-owner-account-publication-verdict` calls the additive
+`fn-cpb-authority-event-verdict-carried` wire/history gate using the existing
+FNCE codec's scalar exact row charge. Existing CPE entry points stay separate.
+This source assembly is **NOTREADY** until its budget/Store book and literal
+49-octet begin /321-octet maximal row witnesses pass in a matching ACL2 world.
+The charge counts the persisted event payload, not its physical envelope or
+canonical heap. A successful wire resource verdict alone never authorizes an
+account path update, frontier allocation or adopted root: actual transient
+allocation, quantum, old/new/reversed/forward coexistence and retired graph
+funding, exact maintained metadata and atomic publication remain required.
