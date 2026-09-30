@@ -38,6 +38,12 @@
  :in-theory (e/d (fn-cab-eventp fn-cp-nth)
  (fn-cab-operationp fn-cac-u64p fn-cbor-at-mostp))))))
 
+(local (defthm fn-cab-at-most-is-length-bound
+ (implies (natp bound)
+ (equal (fn-cbor-at-mostp xs bound) (<= (len xs) bound)))
+ :hints (("Goal" :induct (fn-cbor-at-mostp xs bound)
+ :in-theory (enable fn-cbor-at-mostp)))))
+
 (local (defthm fn-cab-encode-coordinates-read
  (implies (fn-cab-eventp event)
  (equal (fn-cac-read-fields (nthcdr 6 (fn-cab-encode event)) '(:u64 :u64 :u64))
@@ -58,7 +64,7 @@
  :hints (("Goal" :do-not-induct t
  :use (fn-cab-encode-bound fn-cab-encode-octets fn-cab-event-reconstruct)
  :in-theory (e/d (fn-cab-decode-exact fn-cab-eventp fn-cab-operationp
- fn-cp-nth fn-cab-octet-ceiling fn-record-at-most-is-length-bound)
+ fn-cp-nth fn-cab-octet-ceiling fn-cab-at-most-is-length-bound)
  (fn-cab-event-reconstruct fn-cab-encode fn-cac-read-fields fn-cac-fields-encode
  fn-cac-fields-validp fn-cac-u64p fn-cab-decisionp fn-cbor-at-mostp fn-cbor-octet-listp
  take nthcdr fn-cab-encode-octets)))))
