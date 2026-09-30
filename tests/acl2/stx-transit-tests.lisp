@@ -209,9 +209,23 @@
 (assert-event (fn-stx-delta-freshp (nth 0 *stxt-v1*) (nth 2 *stxt-v1*)))
 (assert-event (equal (nth 1 *stxt-v1*) (fn-lace-merge (nth 0 *stxt-v1*) (nth 2 *stxt-v1*))))
 (assert-event (equal (fn-lace-ids (nth 1 *stxt-v1*)) (list (fn-stmt-id *stxt-s1*))))
-(assert-event (iff (member-equal (fn-stmt-id *stxt-s1*) (fn-lace-ids (nth 1 *stxt-v1*)))
-                   (or (member-equal (fn-stmt-id *stxt-s1*) (fn-lace-ids (nth 0 *stxt-v1*)))
-                       (member-equal (fn-stmt-id *stxt-s1*) (fn-lace-ids (nth 2 *stxt-v1*))))))
+; PRF-021 fn-stx-transit-ids-are-union: accepted and fresh above, with
+; the complete membership-equivalence conclusion for this admitted id.
+(assert-event
+ (and (fn-stx-acceptedp *stxt-node-0* *stxt-node-1* *stxt-h1*)
+      (fn-stx-delta-freshp (nth 0 *stxt-v1*) (nth 2 *stxt-v1*))
+      (iff (member-equal (fn-stmt-id *stxt-s1*) (fn-lace-ids (nth 1 *stxt-v1*)))
+           (or (member-equal (fn-stmt-id *stxt-s1*) (fn-lace-ids (nth 0 *stxt-v1*)))
+               (member-equal (fn-stmt-id *stxt-s1*) (fn-lace-ids (nth 2 *stxt-v1*)))))))
+; Hypothesis removal: without durable acceptance the unchanged node has not
+; gained the offered id. Freshness is retained and the exact union fails.
+(assert-event
+ (and (not (fn-stx-acceptedp *stxt-node-0* *stxt-node-0* *stxt-h1*))
+      (fn-stx-delta-freshp (nth 0 *stxt-v1*) (nth 2 *stxt-v1*))
+      (not
+       (iff (member-equal (fn-stmt-id *stxt-s1*) (fn-lace-ids (nth 0 *stxt-v1*)))
+            (or (member-equal (fn-stmt-id *stxt-s1*) (fn-lace-ids (nth 0 *stxt-v1*)))
+                (member-equal (fn-stmt-id *stxt-s1*) (fn-lace-ids (nth 2 *stxt-v1*))))))))
 
 ; The `:have' path, exercised rather than assumed: the store grows, the lace's
 ; ids do not, and the freshness hypothesis of the bridge is FALSE on this run
@@ -686,11 +700,22 @@
 (defconst *stxt-commit*
   (fn-me-commit '(1 1 1) 0 '(2 2) :remove '(3 3)))
 (assert-event (fn-me-commitp *stxt-commit*))
+; PRF-025 fn-stx-commit-decode-is-a-commit: the encoded commit is accepted
+; by the actual decoder and its value is the complete well-formed commit.
 (assert-event (fn-stmt-okp (fn-stx-commit-decode-exact
                             (fn-stx-commit-encode *stxt-commit*))))
 (assert-event (equal (fn-stmt-value (fn-stx-commit-decode-exact
                                      (fn-stx-commit-encode *stxt-commit*)))
                      *stxt-commit*))
+(assert-event
+ (fn-me-commitp (fn-stmt-value (fn-stx-commit-decode-exact
+                               (fn-stx-commit-encode *stxt-commit*)))))
+; Omit the sole successful-decoding hypothesis: the empty external encoding
+; is refused, and its result value is not a commit. There are no retained
+; hypotheses to establish for this literal theorem.
+(assert-event (not (fn-stmt-okp (fn-stx-commit-decode-exact nil))))
+(must-fail-checked
+ (assert-event (fn-me-commitp (fn-stmt-value (fn-stx-commit-decode-exact nil)))))
 
 (make-event (list 'defconst '*stxt-commit-stmt-a*
                   (list 'quote (fn-stmt-sign *stxt-sk-a* *stxt-a* 3 1 nil :policy
