@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1822 |
-| Certification roots in the Makefile | 1754 |
-| Books inside the root closure | 1819 |
-| `defthm` and `defthmd` events | 29092 |
-| `defun` events | 18811 |
-| Functions with verified guards | 3510 |
-| Functions declared `:verify-guards nil` and never verified | 2209 |
-| Functions left at the default with an explicit guard | 10263 |
-| Functions left at the default with no guard | 2829 |
-| `assert-event` checks | 23855 |
+| Books read | 1830 |
+| Certification roots in the Makefile | 1762 |
+| Books inside the root closure | 1827 |
+| `defthm` and `defthmd` events | 29102 |
+| `defun` events | 18836 |
+| Functions with verified guards | 3511 |
+| Functions declared `:verify-guards nil` and never verified | 2217 |
+| Functions left at the default with an explicit guard | 10276 |
+| Functions left at the default with no guard | 2832 |
+| `assert-event` checks | 23869 |
 | `must-fail` checks | 2516 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 158 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 337 |
 | Enabled-projection warnings | 53 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2523 |
-| Host-names warnings | 2156 |
+| Include-hygiene warnings | 2524 |
+| Host-names warnings | 2162 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -526,12 +526,13 @@ that `make certify` requests.
 | `books/hybrid-store.lisp` | closure | 23 | 25 | 2/0/23/0 | 0 | 0 | 1 |
 | `books/ideal.lisp` | root | 9 | 16 | 0/2/14/0 | 0 | 0 | 7 |
 | `books/identity-invariants.lisp` | root | 43 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/identity-reserve-trace.lisp` | root | 6 | 2 | 0/2/0/0 | 0 | 0 | 0 |
+| `books/identity-reserve-trace.lisp` | root | 10 | 5 | 0/2/3/0 | 0 | 0 | 0 |
 | `books/identity-retain-carried.lisp` | root | 15 | 14 | 12/0/2/0 | 0 | 0 | 1 |
 | `books/identity.lisp` | root | 2 | 22 | 4/0/18/0 | 0 | 0 | 0 |
 | `books/image-world-dtn.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/image-world-store-test.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/image-world.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/incoming-octet-holder.lisp` | root | 3 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/index.lisp` | root | 35 | 26 | 24/0/2/0 | 0 | 0 | 3 |
 | `books/injection-info-params-invariants.lisp` | root | 82 | 4 | 0/0/4/0 | 0 | 0 | 2 |
 | `books/injection-info-params.lisp` | root | 1 | 11 | 0/0/11/0 | 0 | 0 | 0 |
@@ -691,6 +692,7 @@ that `make certify` requests.
 | `books/owner-host-relation-span.lisp` | root | 4 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-host-relation.lisp` | root | 141 | 2 | 0/0/2/0 | 0 | 0 | 10 |
 | `books/owner-identity-intern.lisp` | root | 5 | 5 | 1/1/3/0 | 0 | 0 | 0 |
+| `books/owner-identity-prepare.lisp` | root | 1 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/owner-identity-served.lisp` | root | 2 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/owner-injection-info.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-inspect-group.lisp` | root | 14 | 19 | 5/0/14/0 | 0 | 0 | 0 |
@@ -760,6 +762,7 @@ that `make certify` requests.
 | `books/page-read-executor.lisp` | root | 11 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/page-read-ledger.lisp` | root | 9 | 16 | 0/0/16/0 | 0 | 0 | 0 |
 | `books/page-read-ownership.lisp` | root | 12 | 11 | 0/0/11/0 | 0 | 0 | 0 |
+| `books/page-read-pool-state.lisp` | root | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `books/page-read-resources.lisp` | root | 7 | 11 | 0/0/11/0 | 0 | 0 | 1 |
 | `books/pagestore-digest-byte-cursor.lisp` | root | 3 | 6 | 1/0/4/1 | 0 | 0 | 0 |
 | `books/pagestore-digest-byte-refinement.lisp` | root | 16 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -847,6 +850,7 @@ that `make certify` requests.
 | `books/public-exposure.lisp` | root | 36 | 82 | 10/0/72/0 | 0 | 0 | 0 |
 | `books/reader-open-carried.lisp` | root | 6 | 8 | 1/0/7/0 | 0 | 0 | 1 |
 | `books/receipt-revocation.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/receive-octet-buffer.lisp` | root | 2 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/reclaim-admission.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/reclaim-instant.lisp` | root | 10 | 9 | 0/3/6/0 | 0 | 0 | 1 |
 | `books/reclaim-rule.lisp` | root | 7 | 7 | 0/0/7/0 | 0 | 0 | 1 |
@@ -1461,9 +1465,11 @@ that `make certify` requests.
 | `tests/acl2/hybrid-signature-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 14 | 0 |
 | `tests/acl2/hybrid-signature-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 16 | 4 | 0 |
 | `tests/acl2/hybrid-store-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 4 | 8 | 0 |
-| `tests/acl2/identity-reserve-trace-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
+| `tests/acl2/identity-reserve-trace-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 0 | 0 |
 | `tests/acl2/identity-retain-carried-tests.lisp` | root | 0 | 5 | 0/3/0/2 | 39 | 0 | 0 |
 | `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 0 | 0 |
+| `tests/acl2/incoming-octet-holder-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
+| `tests/acl2/incoming-pool-holder-tests.lisp` | root | 0 | 3 | 0/2/0/1 | 1 | 0 | 0 |
 | `tests/acl2/index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/injection-info-params-tests.lisp` | root | 0 | 5 | 0/0/3/2 | 48 | 14 | 0 |
 | `tests/acl2/injection-tests.lisp` | root | 0 | 11 | 0/0/0/11 | 156 | 10 | 0 |
@@ -1592,6 +1598,7 @@ that `make certify` requests.
 | `tests/acl2/owner-feed-txid-reuse-tests.lisp` | root | 0 | 8 | 0/0/3/5 | 8 | 0 | 0 |
 | `tests/acl2/owner-host-relation-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 49 | 0 | 0 |
 | `tests/acl2/owner-identity-intern-tests.lisp` | root | 0 | 3 | 0/2/0/1 | 19 | 1 | 0 |
+| `tests/acl2/owner-identity-prepare-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 3 | 0 | 0 |
 | `tests/acl2/owner-identity-served-tests.lisp` | root | 0 | 2 | 0/1/0/1 | 29 | 0 | 0 |
 | `tests/acl2/owner-injection-info-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 2 | 1 | 0 |
 | `tests/acl2/owner-inspect-group-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 24 | 0 | 0 |
@@ -1707,6 +1714,7 @@ that `make certify` requests.
 | `tests/acl2/reader-open-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 0 | 0 |
 | `tests/acl2/receipt-revocation-store-fixtures.lisp` | closure | 0 | 6 | 0/0/0/6 | 4 | 0 | 0 |
 | `tests/acl2/receipt-revocation-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 14 | 0 | 0 |
+| `tests/acl2/receive-octet-buffer-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 5 | 0 | 0 |
 | `tests/acl2/reclaim-admission-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 4 | 0 |
 | `tests/acl2/reclaim-article-subject-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/reclaim-instant-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 3 | 0 |
