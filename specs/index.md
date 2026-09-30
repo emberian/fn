@@ -165,3 +165,21 @@ resource custody remains outstanding. These PROGRAM entries still need coherent
 world admission, the composed invariant and installed runtime/native wiring;
 [boundary evidence](../planning/evidence/connection-owner-2026-09-30/README.md)
 distinguishes the guarded MIO helpers from the recording owner-body tests.
+
+An accepted view change finishes the separately issued replacement holder
+before closing the old holder. `fn-icr-repin-accept` performs that registry
+transition; it never closes the logical connection. `:repinned-held` retains
+the old token and its charge until outstanding aliases actually return. A
+definite refused selection instead aborts only the replacement reservation.
+The actual once-produced owner result must choose these branches under the
+owner gate; equality of versions or publication scalars is not acceptance.
+
+The accepted continuation preflights seven directory traversals. This is only
+its registry/reference/settlement work, not the cost of GROUP, LISTGROUP, RC
+construction or allocation. The reader must secure the offered query source
+before selection and preserve both exact sources across uncertain cuts. Its
+pending receipt must retain a tagged replacement-holder/offered-pin intent until
+the source switch or refusal is joined. Native activation, the complete source
+invariant and operation-derived runtime funding remain open.
+[Repin evidence](../planning/evidence/connection-repin-2026-09-30/README.md)
+records actual registry tests with two distinct synthetic publications.
