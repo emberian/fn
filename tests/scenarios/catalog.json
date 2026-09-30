@@ -6343,6 +6343,7 @@
         "Compare incremental txid/padding and directory/table verdicts with current logical codecs; check digest damage priority and literal hypothesis removals.",
         "Keep one I/O cursor across source passes; complete and release resource ID0, then reject the prior request after its serial advances. Cancel before completion without dropping pending ownership, and retain short-read uncertainty through release and cancellation.",
         "Execute actual root-directory-table-data hashes at distinct physical17/91/304; authenticate straddling directory entry341 across17/18; refuse directory digest/shape, table and data corruption. Check shortread ID0 retains uncertainty/borrow and repeat select increments serial while refusing stale completion.",
+        "Check actual begin/request/complete/release/cancel/join lifetime predicate, successful second-pass issue, malformed-state antecedent removals and explicit corrupted waiting-mode refusal.",
         "Planned: bind exact file incarnation and fresh buffer identity to root-directory-table-data authentication and demonstrate stale completion refusal."
       ],
       "expected": [
@@ -6359,9 +6360,10 @@
         "tests/acl2/history-page-reader-verdict-tests.lisp",
         "tests/acl2/history-page-reader-io-tests.lisp",
         "tests/acl2/history-auth-reader-tests.lisp",
-        "planning/evidence/history-auth-reader-source-2026-09-30.json"
+        "planning/evidence/history-auth-reader-source-2026-09-30.json",
+        "planning/evidence/history-auth-reader-lifetime-source-2026-09-30.json"
       ],
-      "execution_scope": "Exact authenticated-reader/digest-domain library source with sixteen literal theorem witnesses; universal composed invariant/authentication/refinement/progress and host integration remain open."
+      "execution_scope": "Exact auth/digest-domain library source:19 literal witnesses and I/O-only carried lifetime preservation; select/feed/digest trajectory, universal mapping/authentication/refinement/progress and host integration remain open."
     },
     {
       "id": "SCN-1006",

@@ -115,3 +115,11 @@ lemmas. A second logical selection preserves the pin and advances serials; an
 old completion cannot adopt a buffer. These source results do not close the
 universal composed authentication/invariant/refinement/progress theorem,
 physical funding or host activation. PRF-1107 stays planned with no events.
+
+`fn-hsr-auth-lifetimep` is logical proof vocabulary coupling the fixed outer
+modes to the nested I/O invariant. Begin establishes it, and request,
+completion, release, cancellation and joined failure preserve it. Completion
+and joined failure require both the outer and nested modes to be waiting;
+a deliberately corrupted mismatch refuses unchanged. This is the I/O subset
+of trajectory preservation. Selection, byte packing and digest phase transitions
+still require the combined stream/scanner/digest invariant.

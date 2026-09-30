@@ -35,6 +35,13 @@
                      (:free (a b) (fn-hsr-field j (cons a b))))
             :in-theory (enable fn-hsr-put fn-hsr-field)))))
 
+(local
+ (defthm fn-hsr-put-preserves-width
+   (implies (and (natp i) (natp k) (< i k) (fn-hsr-widthp c k))
+            (fn-hsr-widthp (fn-hsr-put i value c) k))
+   :hints (("Goal" :induct (fn-hsr-put-field-ind i k c)
+            :in-theory (enable fn-hsr-put fn-hsr-widthp)))))
+
 (defun fn-hsr-rootp (root)
   (declare (xargs :guard t))
   (and (fn-hsr-widthp root 6) (equal (fn-hsr-field 0 root) :pgs-commit)
@@ -70,6 +77,22 @@
        (member-eq (fn-hsr-field 16 c) '(:directory :table :data))
        (fn-hsr-tagp (fn-hsr-field 18 c))))
 
+; Logical lifetime coupling; never evaluated by a runtime guard.
+(defun fn-hsr-auth-lifetimep (c)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-hsr-auth-shapep c) (fn-hsr-io-invariantp (fn-hsr-field 1 c))
+       (let ((mode (fn-hsr-field 0 c)) (iomode (fn-hsr-field 0 (fn-hsr-field 1 c))))
+         (and (implies (member-eq mode '(:idle :need-read)) (equal iomode :idle))
+              (implies (equal mode :waiting) (equal iomode :waiting))
+              (implies (member-eq mode '(:digest :byte :release :verified)) (equal iomode :observed))
+              (implies (equal mode :uncertain) (equal iomode :uncertain))))))
+
+(local
+ (defthm fn-hsr-io-invariant-implies-shape
+   (implies (fn-hsr-io-invariantp c) (fn-hsr-io-shapep c))
+   :hints (("Goal" :in-theory (e/d (fn-hsr-io-invariantp)
+                                  (fn-hsr-io-shapep fn-hsr-field))))))
+
 (defun fn-hsr-auth-begin (root ticket epoch capture lease)
   ; ROOT is the captured selected checkpoint F binding, not bytes from page0.
   ; Root selection/self-check and physical incarnation pinning precede BEGIN.
@@ -94,6 +117,15 @@
            (enable fn-hsr-auth-begin fn-hsr-auth-shapep fn-hsr-io-begin
                    fn-hsr-io-invariantp fn-hsr-io-shapep fn-hsr-tagp
                    fn-hsr-widthp fn-hsr-field fn-hsr-prefixp fn-hrcur-wordp))))
+
+(defthm fn-hsr-auth-begin-establishes-lifetime
+  (implies (equal (mv-nth 0 (fn-hsr-auth-begin root ticket epoch capture lease)) :idle)
+           (fn-hsr-auth-lifetimep
+            (mv-nth 1 (fn-hsr-auth-begin root ticket epoch capture lease))))
+  :hints (("Goal" :use ((:instance fn-hsr-auth-begin-establishes-shape))
+           :in-theory
+           (e/d (fn-hsr-auth-lifetimep fn-hsr-auth-begin fn-hsr-io-begin fn-hsr-field)
+                (fn-hsr-auth-shapep fn-hsr-io-invariantp fn-hsr-auth-begin-establishes-shape)))))
 
 (defun fn-hsr-auth-open-phase (phase physical total count selected expected c pgs-digest-state)
   (declare (xargs :stobjs pgs-digest-state :guard t))
@@ -145,9 +177,53 @@
           (if (equal verdict :need-read)
               (fn-hsr-put 0 :waiting (fn-hsr-put 1 io c)) c)))))
 
+(local
+ (defthm fn-hsr-io-request-shape
+   (implies (fn-hsr-io-shapep c)
+            (fn-hsr-io-shapep (mv-nth 2 (fn-hsr-io-request phase physical logical c))))
+   :hints (("Goal" :in-theory
+            (enable fn-hsr-io-request fn-hsr-io-shapep fn-hsr-io-requestp
+                    fn-hsr-field fn-hsr-widthp)))))
+
+(defthm fn-hsr-auth-request-preserves-shape
+  (implies (fn-hsr-auth-shapep c)
+           (fn-hsr-auth-shapep (mv-nth 2 (fn-hsr-auth-request c))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-hsr-auth-request fn-hsr-auth-shapep)
+                (fn-hsr-put fn-hsr-field fn-hsr-io-request fn-hsr-io-shapep
+                 fn-hsr-rootp fn-hsr-tagp fn-hsr-prefixp fn-hrcur-wordp
+                 fn-hsr-scan-shapep floor mod)))))
+
+(defthm fn-hsr-auth-request-preserves-lifetime
+  (implies (fn-hsr-auth-lifetimep c)
+           (fn-hsr-auth-lifetimep (mv-nth 2 (fn-hsr-auth-request c))))
+  :hints (("Goal" :use
+           ((:instance fn-hsr-auth-request-preserves-shape)
+            (:instance fn-hsr-io-request-preserves-invariant
+             (c (fn-hsr-field 1 c)) (phase (fn-hsr-field 16 c))
+             (physical (+ (fn-hsr-field 4 c) (floor (fn-hsr-field 6 c) 2048)))
+             (logical (fn-hsr-field 3 c))))
+           :in-theory
+           (e/d (fn-hsr-auth-lifetimep fn-hsr-auth-request fn-hsr-io-request fn-hsr-field)
+                (fn-hsr-put fn-hsr-auth-shapep fn-hsr-io-shapep fn-hsr-io-invariantp
+                 floor mod fn-hsr-auth-request-preserves-shape
+                 fn-hsr-io-request-preserves-invariant)))))
+
+(local
+ (defthm fn-hsr-io-waiting-completion-shape-and-mode
+   (implies (and (fn-hsr-io-shapep c) (equal (fn-hsr-field 0 c) :waiting))
+            (let* ((completed (fn-hsr-io-complete request discovery-id count status c))
+                   (v (mv-nth 0 completed)) (next (mv-nth 1 completed)))
+              (and (fn-hsr-io-shapep next)
+                   (member-eq (fn-hsr-field 0 next) '(:waiting :observed :refused :uncertain))
+                   (equal (equal (fn-hsr-field 0 next) :observed) (equal v :observed)))))
+   :hints (("Goal" :in-theory
+            (enable fn-hsr-io-complete fn-hsr-io-shapep fn-hsr-field fn-hsr-widthp)))))
+
 (defun fn-hsr-auth-complete (request discovery-id count status c)
   (declare (xargs :guard t))
-  (if (not (and (fn-hsr-auth-shapep c) (equal (fn-hsr-field 0 c) :waiting)))
+  (if (not (and (fn-hsr-auth-shapep c) (equal (fn-hsr-field 0 c) :waiting)
+                (equal (fn-hsr-field 0 (fn-hsr-field 1 c)) :waiting)))
       (mv '(:refused :completion-state) c)
     (mv-let (verdict io)
       (fn-hsr-io-complete request discovery-id count status (fn-hsr-field 1 c))
@@ -157,6 +233,31 @@
             ((equal (fn-hsr-field 0 io) :waiting) (mv verdict c))
             (t (mv verdict (fn-hsr-put 0 (fn-hsr-field 0 io)
                             (fn-hsr-put 1 io (fn-hsr-put 17 verdict c)))))))))
+
+(defthm fn-hsr-auth-complete-preserves-shape
+  (implies (fn-hsr-auth-shapep c)
+           (fn-hsr-auth-shapep (mv-nth 1 (fn-hsr-auth-complete request discovery-id count status c))))
+  :hints (("Goal" :use
+           ((:instance fn-hsr-io-waiting-completion-shape-and-mode (c (fn-hsr-field 1 c))))
+           :in-theory
+           (e/d (fn-hsr-auth-complete fn-hsr-auth-shapep)
+                (fn-hsr-put fn-hsr-field fn-hsr-io-complete fn-hsr-io-shapep
+                 fn-hsr-rootp fn-hsr-tagp fn-hsr-prefixp fn-hrcur-wordp fn-hsr-scan-shapep
+                 fn-hsr-io-waiting-completion-shape-and-mode)))))
+
+(defthm fn-hsr-auth-complete-preserves-lifetime
+  (implies (fn-hsr-auth-lifetimep c)
+           (fn-hsr-auth-lifetimep
+            (mv-nth 1 (fn-hsr-auth-complete request discovery-id count status c))))
+  :hints (("Goal" :use
+           ((:instance fn-hsr-auth-complete-preserves-shape)
+            (:instance fn-hsr-io-complete-preserves-invariant (c (fn-hsr-field 1 c)))
+            (:instance fn-hsr-io-waiting-completion-shape-and-mode (c (fn-hsr-field 1 c))))
+           :in-theory
+           (e/d (fn-hsr-auth-lifetimep fn-hsr-auth-complete)
+                (fn-hsr-put fn-hsr-field fn-hsr-auth-shapep fn-hsr-io-shapep fn-hsr-io-invariantp
+                 fn-hsr-io-complete fn-hsr-io-waiting-completion-shape-and-mode
+                 fn-hsr-auth-complete-preserves-shape fn-hsr-io-complete-preserves-invariant)))))
 
 (defun fn-hsr-auth-byte-demand (c)
   (declare (xargs :guard t))
@@ -273,6 +374,13 @@
                   (t (mv-let (v next) (fn-hsr-auth-refuse :digest-invalid next)
                        (mv v next pgs-digest-state)))))))))))
 
+(local
+ (defthm fn-hsr-io-release-shape
+   (implies (fn-hsr-io-shapep c)
+            (fn-hsr-io-shapep (mv-nth 1 (fn-hsr-io-release discovery-id c))))
+   :hints (("Goal" :in-theory
+            (enable fn-hsr-io-release fn-hsr-io-shapep fn-hsr-field fn-hsr-widthp)))))
+
 (defun fn-hsr-auth-release (discovery-id c)
   (declare (xargs :guard t))
   (if (not (and (fn-hsr-auth-shapep c)
@@ -286,6 +394,31 @@
                                 (t (fn-hsr-field 0 c)))
                          (fn-hsr-put 1 io c)))))))
 
+(defthm fn-hsr-auth-release-preserves-shape
+  (implies (fn-hsr-auth-shapep c)
+           (fn-hsr-auth-shapep (mv-nth 1 (fn-hsr-auth-release discovery-id c))))
+  :hints (("Goal" :in-theory (e/d (fn-hsr-auth-release fn-hsr-auth-shapep)
+                (fn-hsr-io-release fn-hsr-io-shapep fn-hsr-field fn-hsr-put fn-hsr-rootp fn-hsr-tagp
+                 fn-hsr-prefixp fn-hsr-scan-shapep fn-hrcur-wordp)))))
+
+(defthm fn-hsr-auth-release-preserves-lifetime
+  (implies (fn-hsr-auth-lifetimep c)
+           (fn-hsr-auth-lifetimep (mv-nth 1 (fn-hsr-auth-release discovery-id c))))
+  :hints (("Goal" :use
+           ((:instance fn-hsr-auth-release-preserves-shape)
+            (:instance fn-hsr-io-release-preserves-invariant (c (fn-hsr-field 1 c))))
+           :in-theory
+           (e/d (fn-hsr-auth-lifetimep fn-hsr-auth-release fn-hsr-io-release fn-hsr-field)
+                (fn-hsr-put fn-hsr-auth-shapep fn-hsr-io-shapep fn-hsr-io-invariantp
+                 fn-hsr-auth-release-preserves-shape fn-hsr-io-release-preserves-invariant)))))
+
+(local
+ (defthm fn-hsr-io-cancel-shape
+   (implies (fn-hsr-io-shapep c)
+            (fn-hsr-io-shapep (mv-nth 1 (fn-hsr-io-cancel c))))
+   :hints (("Goal" :in-theory
+            (enable fn-hsr-io-cancel fn-hsr-io-shapep fn-hsr-field fn-hsr-widthp)))))
+
 (defun fn-hsr-auth-cancel (c)
   (declare (xargs :guard t))
   (if (not (fn-hsr-auth-shapep c)) (mv '(:refused :cancel-state) c)
@@ -296,14 +429,51 @@
                                      (t :refused))
                               (fn-hsr-put 1 io (fn-hsr-put 17 verdict c)))))))
 
+(defthm fn-hsr-auth-cancel-preserves-shape
+  (implies (fn-hsr-auth-shapep c)
+           (fn-hsr-auth-shapep (mv-nth 1 (fn-hsr-auth-cancel c))))
+  :hints (("Goal" :in-theory (e/d (fn-hsr-auth-cancel fn-hsr-auth-shapep)
+                (fn-hsr-io-cancel fn-hsr-io-shapep fn-hsr-field fn-hsr-put fn-hsr-rootp fn-hsr-tagp
+                 fn-hsr-prefixp fn-hsr-scan-shapep fn-hrcur-wordp)))))
+
+(defthm fn-hsr-auth-cancel-preserves-lifetime
+  (implies (fn-hsr-auth-lifetimep c)
+           (fn-hsr-auth-lifetimep (mv-nth 1 (fn-hsr-auth-cancel c))))
+  :hints (("Goal" :use
+           ((:instance fn-hsr-auth-cancel-preserves-shape)
+            (:instance fn-hsr-io-cancel-preserves-invariant (c (fn-hsr-field 1 c))))
+           :in-theory
+           (e/d (fn-hsr-auth-lifetimep fn-hsr-auth-cancel fn-hsr-io-cancel fn-hsr-field)
+                (fn-hsr-put fn-hsr-auth-shapep fn-hsr-io-shapep fn-hsr-io-invariantp
+                 fn-hsr-auth-cancel-preserves-shape fn-hsr-io-cancel-preserves-invariant)))))
+
 (defun fn-hsr-auth-joined-failure (request outcome c)
   (declare (xargs :guard t))
-  (if (not (and (fn-hsr-auth-shapep c) (equal (fn-hsr-field 0 c) :waiting)))
+  (if (not (and (fn-hsr-auth-shapep c) (equal (fn-hsr-field 0 c) :waiting)
+                (equal (fn-hsr-field 0 (fn-hsr-field 1 c)) :waiting)))
       (mv '(:refused :join-state) c)
     (mv-let (verdict io) (fn-hsr-io-joined-failure request outcome (fn-hsr-field 1 c))
       (if (equal (fn-hsr-field 0 io) :waiting) (mv verdict c)
         (mv verdict (fn-hsr-put 0 (fn-hsr-field 0 io)
                                 (fn-hsr-put 1 io (fn-hsr-put 17 verdict c))))))))
+
+(defthm fn-hsr-auth-joined-failure-preserves-shape
+  (implies (fn-hsr-auth-shapep c)
+           (fn-hsr-auth-shapep (mv-nth 1 (fn-hsr-auth-joined-failure request outcome c))))
+  :hints (("Goal" :in-theory (e/d (fn-hsr-auth-joined-failure fn-hsr-auth-shapep fn-hsr-io-joined-failure fn-hsr-io-shapep fn-hsr-field fn-hsr-widthp)
+                (fn-hsr-put fn-hsr-rootp fn-hsr-tagp
+                 fn-hsr-prefixp fn-hsr-scan-shapep fn-hrcur-wordp)))))
+
+(defthm fn-hsr-auth-joined-failure-preserves-lifetime
+  (implies (fn-hsr-auth-lifetimep c)
+           (fn-hsr-auth-lifetimep (mv-nth 1 (fn-hsr-auth-joined-failure request outcome c))))
+  :hints (("Goal" :use
+           ((:instance fn-hsr-auth-joined-failure-preserves-shape)
+            (:instance fn-hsr-io-joined-failure-preserves-invariant (c (fn-hsr-field 1 c))))
+           :in-theory
+           (e/d (fn-hsr-auth-lifetimep fn-hsr-auth-joined-failure fn-hsr-io-joined-failure fn-hsr-field)
+                (fn-hsr-put fn-hsr-auth-shapep fn-hsr-io-shapep fn-hsr-io-invariantp
+                 fn-hsr-auth-joined-failure-preserves-shape fn-hsr-io-joined-failure-preserves-invariant)))))
 
 (defun fn-hsr-auth-verified-byte-demand (offset c)
   (declare (xargs :guard t))
