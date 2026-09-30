@@ -131,5 +131,23 @@
     "scope": "Proper source admission and conditional exact BP emit-prefix to terminal frame trailer; four joint attachments discharged. No certification, stage-file source-effect/trajectory preservation, runtime funding, scheduler/native activation or full interrupted slice qualification.",
     "logs": "build/proof-repl/bpck-trailer6",
     "session_stopped": true
+  },
+  "digest_host_action_increment": {
+    "source_hashes": {
+      "books/bp-node-checkpoint-digest.lisp": "c15c876b74f957d2e8090f87737c83dcda7bacd198edd26d47483bfebcc9e2f0",
+      "tests/acl2/bp-node-checkpoint-trailer-tests.lisp": "10d99c6f9b6ccbdf9821608a1e75127be536544af8d2d1d80e122338fb91ca43"
+    },
+    "session": "bpck-digest-join",
+    "root_forms": 10,
+    "acl2_seconds": 31.37,
+    "prover_steps": 10458143,
+    "host_called_subject": "fn-bpck-digest-action",
+    "caller": "host/native/bp-checkpoint-writer.lisp",
+    "theorem": "fn-bpck-digest-action-terminal-is-exact-frame-trailer",
+    "literal_teeth": 5,
+    "literal_steps": 2727,
+    "scope": "Conditional terminal source boundary; literal actual source turns stop before abstract terminal result evaluation. Actual stage-file read-effect/trajectory invariant preservation and native scheduling/funding/publication/restart remain open.",
+    "session_stopped": true,
+    "logs": "build/proof-repl/bpck-digest-join"
   }
 }

@@ -2,7 +2,7 @@
 ; prefix writing; the digest reads bounded ranges from that same descriptor.
 ; The capture is a BP stage/token, never a Store or arena payload lease.
 (in-package "ACL2")
-(include-book "bp-node-checkpoint-job")
+(include-book "bp-node-checkpoint-trailer")
 (include-book "pagestore-digest-byte-cursor")
 (set-verify-guards-eagerness 0)
 
@@ -32,7 +32,7 @@
                  (equal (pgs-dc-lease pgs-digest-state) (fn-bpn-nth 1 job))))
       '(:uncertain :capture))
      ((equal (pgs-dc-mode pgs-digest-state) :done)
-      (list :trailer (pgs-dcb-result-octets pgs-digest-state)))
+      (list :trailer (fn-bpck-frame-result job pgs-digest-state)))
      ((posp (pgs-dcb-read-demand total pgs-digest-state))
       (list :read (pgs-dcb-next-byte-offset pgs-digest-state)
             (pgs-dcb-read-demand total pgs-digest-state)))
@@ -61,5 +61,16 @@
 (verify-guards fn-bpck-digest-start)
 (verify-guards fn-bpck-digest-action)
 (verify-guards fn-bpck-digest-step)
+
+(defthm fn-bpck-digest-action-terminal-is-exact-frame-trailer
+  (implies (and (fn-bpck-frame-digest-invariantp job pgs-digest-state)
+                (equal (pgs-dc-mode pgs-digest-state) :done))
+           (equal (fn-bpck-digest-action job pgs-digest-state)
+                  (list :trailer (fn-frame-trailer (fn-bpck-frame-prefix job)))))
+  :hints (("Goal" :use fn-bpck-frame-result-is-exact-frame-trailer
+                  :in-theory (e/d (fn-bpck-digest-action
+                                   fn-bpck-frame-digest-invariantp)
+                                  (fn-bpck-frame-prefix pgs-dcs-invariantp))))
+  :rule-classes nil)
 
 (in-theory (disable fn-bpck-digest-start fn-bpck-digest-action fn-bpck-digest-step))
