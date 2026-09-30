@@ -90,7 +90,14 @@
   (implies (and (fn-cbor-octet-listp (fn-asj-project w))
                 (<= (len (fn-asj-project w)) *fn-cbor-max-uint*))
            (fn-cbor-octet-listp (fn-asj-preimage w)))
-  :hints (("Goal" :in-theory (e/d (fn-asj-preimage) (fn-asj-project))))))
+  ; Frame and CBOR deliberately close these representation lemmas on export.
+  ; Name the two facts this preimage needs instead of relying on include order.
+  :hints (("Goal" :in-theory
+           (e/d (fn-asj-preimage fn-cbor-octet-listp fn-cbor-octetp
+                 fn-frame-octet-listp-of-append)
+                (fn-asj-project fn-cbor-u32-bytes))
+           :use ((:instance fn-cbor-u32-bytes-are-octets
+                            (n (len (fn-asj-project w)))))))))
 (verify-guards fn-asj-subject
   :hints (("Goal" :in-theory (enable fn-id-digestp))))
 
