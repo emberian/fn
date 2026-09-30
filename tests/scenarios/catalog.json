@@ -5934,7 +5934,7 @@
         "HST-035"
       ],
       "steps": [
-        "`store init`, `store post` one article, `app-journal workflow-init`, `workflow-enqueue` work-a, `bp-obligation undertake`; `operator CONFIG carry JOURNAL list`, `inspect work-a`, `inspect work-z`; `pause work-a` twice; `bp-obligation request work-a`; `resume work-a` twice; `pause *`, `resume *`; `drop work-a peer retired`; `drop work-a x`; `resume work-a`; `bp-obligation request work-a`."
+        "`store init`, a matching DEFAULT production owner `operator CONFIG post` of one article, capture NNTP ARTICLE and core `store inspect`, stop the owner before FNWF, `app-journal workflow-init`, `workflow-enqueue` work-a, `bp-obligation undertake`; `operator CONFIG carry JOURNAL list`, `inspect work-a`, `inspect work-z`; `pause work-a` twice; `bp-obligation request work-a`; `resume work-a` twice; `pause *`, `resume *`; `drop work-a peer retired`; `drop work-a x`; `resume work-a`; `bp-obligation request work-a`."
       ],
       "expected": [
         "list and inspect print work-a with its Message-ID, pinned=yes hold=none; inspect work-z is refused unknown-work; the second pause is refused already-paused; the request while paused exits 1 naming reason=carry-paused and the journal's records are unchanged; the second resume is refused; after the drop list shows hold=dropped reason=peer retired and still pinned=yes; a second drop is refused already-dropped, a resume dropped; the request exits 1 naming reason=carry-dropped with nothing written."
@@ -5951,8 +5951,10 @@
       },
       "evidence": [
         "tests/test_bp_obligation_native.py",
-        "planning/evidence/operations-2026-09-28.md"
-      ]
+        "planning/evidence/operations-2026-09-28.md",
+        "tests/evidence/bp-production-fixtures-2026-09-30.md"
+      ],
+      "execution_scope": "Production fixture source now uses tests/bp_producer.py: DEFAULT operator post, captured NNTP ARTICLE and core stored source, owner stopped before FNWF. Matching native validation of the changed fixture remains pending; older evidence is not transferred to these bytes."
     },
     {
       "id": "SCN-206",
@@ -5980,7 +5982,7 @@
         "HST-035"
       ],
       "steps": [
-        "`store init`, `store post` two articles, `app-journal workflow-init`, `workflow-enqueue` work-a and work-b, `bp-obligation undertake` work-a; `operator CONFIG carry JOURNAL drop work-a peer retired`; `drop work-a --abandon peer gone`; `drop work-a --abandon again`; `drop work-b --abandon never undertaken`; `drop work-z --abandon x`; in a fresh setup `drop work-a --abandon peer gone` under FN_NATIVE_POST_FAULT=frontier-reserved:kill, `inspect work-a`, `pause work-b`, `resume work-b`."
+        "`store init`, a matching DEFAULT production owner `operator CONFIG post` of two articles, capture NNTP ARTICLE and core `store inspect`, stop the owner before FNWF, `app-journal workflow-init`, `workflow-enqueue` work-a and work-b, `bp-obligation undertake` work-a; `operator CONFIG carry JOURNAL drop work-a peer retired`; `drop work-a --abandon peer gone`; `drop work-a --abandon again`; `drop work-b --abandon never undertaken`; `drop work-z --abandon x`; in a fresh setup `drop work-a --abandon peer gone` under FN_NATIVE_POST_FAULT=frontier-reserved:kill, `inspect work-a`, `pause work-b`, `resume work-b`."
       ],
       "expected": [
         "after the drop work-a is pinned=yes hold=dropped; after the waiver it is pinned=no hold=waived with waived-by=uid:N waiver=peer gone and bp-obligation status says pinned=no; the second waiver is refused already-waived, work-b's not-held and work-z's unknown-work, with no carry record written; after the cut the carry journal holds the waiver and work-a is still pinned (hold=waived); the next writable open prints BP carry recovered waiver release work=work-a and work-a is pinned=no; the one after recovers nothing."
@@ -5997,8 +5999,10 @@
       },
       "evidence": [
         "tests/test_bp_obligation_native.py",
-        "planning/evidence/operations-2026-09-28.md"
-      ]
+        "planning/evidence/operations-2026-09-28.md",
+        "tests/evidence/bp-production-fixtures-2026-09-30.md"
+      ],
+      "execution_scope": "Production fixture source now uses tests/bp_producer.py: DEFAULT operator post, captured NNTP ARTICLE and core stored source, owner stopped before FNWF. Matching native validation of the changed fixture remains pending; older evidence is not transferred to these bytes."
     },
     {
       "id": "SCN-201",

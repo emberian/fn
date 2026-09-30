@@ -6,15 +6,17 @@ import unittest
 from tests.native_harness import (
     EXIT, ROOT, Acl2Session, Node, environment, free_port, native_image,
     requires, run, scratch, start)
+from tests.bp_producer import post_articles
 
 # specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a
 # connection lost after it existed is EXIT.INTERRUPTED (connection-local:
 # the job stays and is re-offered; no recovery); EXIT.UNCERTAIN stays the fence.
 LOST = EXIT.INTERRUPTED
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
+PRODUCER = native_image("FN_NATIVE_HOST")
 
 
-@requires(IMAGE)
+@requires(IMAGE, PRODUCER)
 class NativeBpApplicationTests(unittest.TestCase):
     def setUp(self):
         self.temp = scratch(self, "fn-native-bp-app-")
@@ -129,13 +131,10 @@ class NativeBpApplicationTests(unittest.TestCase):
         workflow = self.temp / "sender-workflow"
         initialized = self.invoke("store", sender_store, "init", "fn.test")
         self.assertEqual(initialized.returncode, EXIT.OK, initialized.stderr.decode())
-        payload = self.temp / "sender-article"
-        payload.write_bytes(self.article)
-        posted = self.invoke(
-            "store", sender_store, "post", self.msgid.decode("ascii"),
-            payload, "-", "-", "fn.test",
-        )
-        self.assertEqual(posted.returncode, EXIT.OK, posted.stderr.decode())
+        self.article = post_articles(self, PRODUCER, sender_store,
+                                     [(self.msgid, self.article)])[self.msgid]
+        self.request_path.write_bytes(self.request_for(
+            self.article, self.msgid, b"work-native-bp"))
         workflow_init = self.invoke(
             "app-journal", "workflow-init", sender_store, workflow,
             "dtn://sender/", "dtn://receiver/", "native-policy",

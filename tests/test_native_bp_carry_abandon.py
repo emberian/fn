@@ -12,12 +12,14 @@ open, and the waiver replays unchanged after every restart
 import os
 import unittest
 
-from tests.native_harness import EXIT, native_image, requires, run, scratch, environment
+from tests.native_harness import EXIT, article, native_image, requires, run, scratch, environment
+from tests.bp_producer import post_articles
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
+PRODUCER = native_image("FN_NATIVE_HOST")
 
 
-@requires(IMAGE)
+@requires(IMAGE, PRODUCER)
 class NativeBpCarryAbandonTests(unittest.TestCase):
     def setUp(self):
         self.tmp = scratch(self, "fn-native-bp-carry-abandon-")
@@ -27,14 +29,11 @@ class NativeBpCarryAbandonTests(unittest.TestCase):
         self.config.write_text('[store]\npath = "{}"\n'.format(self.store), encoding="ascii")
         self.msgid = "<native-abandon@example.invalid>"
         self.other = "<native-abandon-b@example.invalid>"
-        steps = [("store", self.store, "init", "fn.test")]
-        for msgid, name in ((self.msgid, "a"), (self.other, "b")):
-            payload = self.tmp / ("article-" + name)
-            payload.write_text(
-                f"Message-ID: {msgid}\r\nNewsgroups: fn.test\r\n\r\nbody\r\n",
-                encoding="ascii")
-            steps.append(("store", self.store, "post", msgid, payload, "-", "-", "fn.test"))
-        steps += [("app-journal", "workflow-init", self.store, self.journal,
+        initialized = self.invoke("store", self.store, "init", "fn.test")
+        self.assertEqual(initialized.returncode, EXIT.OK, initialized.stderr)
+        post_articles(self, PRODUCER, self.store,
+                      [(msgid, article(msgid)) for msgid in (self.msgid, self.other)])
+        steps = [("app-journal", "workflow-init", self.store, self.journal,
                    "dtn://fn-a/", "dtn://fn-b/", "policy-a", "authority-a",
                    "3600000", "incarnation-a", "authorization-a"),
                   ("app-journal", "workflow-enqueue", self.store, self.journal,

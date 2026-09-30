@@ -17,6 +17,7 @@ from tests.native_harness import (
     EXIT, Node, acl2_nat, acl2_octets, acl2_result, environment, free_port, native_image,
     requires, run, scratch, start)
 from tests.test_bp_contact_relay_native import ByteRelay
+from tests.bp_producer import post_articles
 
 # specs/host.md "BP run classes" (books/bp-run-class.lisp, PRF-131): a
 # connection lost after it existed is EXIT.INTERRUPTED (connection-local:
@@ -35,9 +36,10 @@ IMAGE = native_image("FN_NATIVE_BP_NODE_HOST", DEVELOPER)
 # The DTN image omits the NNTP surface; a Store's groups are read back through
 # the reader port of an image that has it (the default developer image).
 READER_IMAGE = native_image("FN_NATIVE_READER_HOST", DEVELOPER)
+PRODUCER = native_image("FN_NATIVE_HOST")
 
 
-@requires(IMAGE)
+@requires(IMAGE, PRODUCER)
 class NativeBpNodeTests(unittest.TestCase):
     def setUp(self):
         self.tmp = scratch(self, "fn-bp-node-a3-")
@@ -63,8 +65,8 @@ class NativeBpNodeTests(unittest.TestCase):
         for store in (self.receiver_store, self.sender_store):
             initialized = self.invoke("store", store, "init", "fn.test")
             self.assertEqual(initialized.returncode, EXIT.OK, initialized.stderr)
-        self.author_request()
         self.prepare_sender_obligation()
+        self.author_request()
 
     def invoke(self, *args, env=None, timeout=120):
         return run([IMAGE, "--fn", *args], cwd=ROOT, env=environment(env), timeout=timeout)
@@ -79,13 +81,11 @@ class NativeBpNodeTests(unittest.TestCase):
             self.request_path.write_bytes(bridge.bp_request(fields, self.article))
 
     def prepare_sender_obligation(self):
-        article_path = self.tmp / "sender-article"
-        article_path.write_bytes(self.article)
-        posted = self.invoke(
-            "store", self.sender_store, "post", self.msgid.decode(),
-            article_path, "-", "-", "fn.test",
-        )
-        self.assertEqual(posted.returncode, EXIT.OK, posted.stderr)
+        unrelated_id = b"<bp-node-unrelated@example.invalid>"
+        injected = post_articles(self, PRODUCER, self.sender_store,
+                                 [(self.msgid, self.article),
+                                  (unrelated_id, self.article.replace(self.msgid, unrelated_id))])
+        self.article = injected[self.msgid]
         for args in (
             ("app-journal", "workflow-init", self.sender_store,
              self.sender_workflow, "dtn://sender/", "dtn://receiver/",
@@ -100,13 +100,7 @@ class NativeBpNodeTests(unittest.TestCase):
         ):
             result = self.invoke(*args)
             self.assertEqual(result.returncode, EXIT.OK, result.stderr)
-        unrelated_id = b"<bp-node-unrelated@example.invalid>"
-        unrelated_article = self.article.replace(self.msgid, unrelated_id)
-        unrelated_path = self.tmp / "unrelated-article"
-        unrelated_path.write_bytes(unrelated_article)
         for args in (
-            ("store", self.sender_store, "post", unrelated_id.decode(),
-             unrelated_path, "-", "-", "fn.test"),
             ("app-journal", "workflow-enqueue", self.sender_store,
              self.sender_workflow, 2, 0, "work-unrelated",
              unrelated_id.decode(), "forward-unrelated", "dtn://receiver/",

@@ -4,7 +4,7 @@ PRF-127; SCN-073).
 
 Topology, loopback, every process started and stopped by PID:
 
-    fn A (`store post`, `bp-obligation request`)
+    fn A (served NNTP POST, `bp-obligation request`)
         --> dtn7 relay (sled store) --[byte relay]--> fn B (`bp-node serve`)
 
 A is the injecting node (path identity sender.bp.gate.invalid) and B the

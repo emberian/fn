@@ -4,9 +4,11 @@ import time
 import unittest
 
 from tests.native_harness import (
-    EXIT, ROOT, environment, free_port, native_image, requires, run, scratch, start)
+    EXIT, ROOT, article, environment, free_port, native_image, requires, run, scratch, start)
+from tests.bp_producer import post_articles
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
+PRODUCER = native_image("FN_NATIVE_HOST")
 
 
 class NativeBpObligationBoundaryTests(unittest.TestCase):
@@ -16,7 +18,7 @@ class NativeBpObligationBoundaryTests(unittest.TestCase):
         self.assertNotIn("(fnn-owner-action\n                       'fn-owner-workflow-forward-pinnedp", host)
 
 
-@requires(IMAGE)
+@requires(IMAGE, PRODUCER)
 class NativeBpObligationTests(unittest.TestCase):
     def setUp(self):
         self.tmp = scratch(self, "fn-native-bp-obligation-")
@@ -24,16 +26,9 @@ class NativeBpObligationTests(unittest.TestCase):
         self.journal = self.tmp / "workflow"
         self.payload = self.tmp / "article"
         self.msgid = "<native-obligation@example.invalid>"
-        self.payload.write_text(
-            f"Message-ID: {self.msgid}\r\nNewsgroups: fn.test\r\n\r\nbody\r\n",
-            encoding="ascii",
-        )
+        self.payload.write_bytes(article(self.msgid))
         self.assertEqual(self.invoke("store", self.store, "init", "fn.test").returncode, EXIT.OK)
-        posted = self.invoke(
-            "store", self.store, "post", self.msgid, self.payload,
-            "-", "-", "fn.test",
-        )
-        self.assertEqual(posted.returncode, EXIT.OK, posted.stderr)
+        post_articles(self, PRODUCER, self.store, [(self.msgid, self.payload.read_bytes())])
         initialized = self.invoke(
             "app-journal", "workflow-init", self.store, self.journal,
             "dtn://fn-a/", "dtn://fn-b/", "policy-a", "authority-a",
@@ -198,7 +193,7 @@ class NativeBpObligationTests(unittest.TestCase):
 
 
 
-@requires(IMAGE)
+@requires(IMAGE, PRODUCER)
 class NativeBpCarryVerbTests(unittest.TestCase):
     """PKT-869 (HST-035, SCN-201): the operator's verbs over BP carry.
     `operator CONFIG carry JOURNAL list|inspect|pause|resume|drop' over one
@@ -216,12 +211,11 @@ class NativeBpCarryVerbTests(unittest.TestCase):
         self.config.write_text('[store]\npath = "{}"\n'.format(self.store), encoding="ascii")
         payload = self.tmp / "article"
         self.msgid = "<native-carry@example.invalid>"
-        payload.write_text(
-            f"Message-ID: {self.msgid}\r\nNewsgroups: fn.test\r\n\r\nbody\r\n",
-            encoding="ascii")
-        for args in (("store", self.store, "init", "fn.test"),
-                     ("store", self.store, "post", self.msgid, payload, "-", "-", "fn.test"),
-                     ("app-journal", "workflow-init", self.store, self.journal,
+        payload.write_bytes(article(self.msgid))
+        initialized = self.invoke("store", self.store, "init", "fn.test")
+        self.assertEqual(initialized.returncode, EXIT.OK, initialized.stderr)
+        post_articles(self, PRODUCER, self.store, [(self.msgid, payload.read_bytes())])
+        for args in (("app-journal", "workflow-init", self.store, self.journal,
                       "dtn://fn-a/", "dtn://fn-b/", "policy-a", "authority-a",
                       "3600000", "incarnation-a", "authorization-a"),
                      ("app-journal", "workflow-enqueue", self.store, self.journal,
