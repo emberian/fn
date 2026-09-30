@@ -12,6 +12,8 @@
          (st (fn-owner-recovery-global 'fn-store-sn state))
          (files (fn-sn-files st))
          (epoch (fn-owner-canonical-epoch state)))
+    (if (not (fn-rsa-metap (fn-store-sco-recovery-source-value state)))
+        (value '(:unavailable :verified-source))
     (if (not (eq (fn-sf-phase files) :ready)) (value '(:unavailable :recovery-store))
       (let ((count (fn-sf-records-count files)) (frontier (fn-sf-frontier files)))
         ; Configurations and the recovered log kernel can advance the final
@@ -36,4 +38,4 @@
                     (if (not (eq installed :installed)) (value '(:unavailable :canonical-carry))
                       (let ((state (f-put-global 'fn-owner-recovery-source next state)))
                         (value (list :installed source)))))))))))))
-)
+))

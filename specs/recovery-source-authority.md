@@ -49,3 +49,10 @@ recording barrier tests cover both reset-first and start/capture-first schedules
 plus actual entry ordering; their STATE/nursery/loader adapters are explicit
 doubles. Exact source admission is in
 `planning/evidence/recovery-reset-source-2026-09-30/coordinate.json`.
+
+Current loader metadata availability also gates token readout, every observe and
+final installation. Repeating decoder finish without an active load clears
+metadata without a new generation; the old token then refuses with unchanged
+STATE. Every new decode entry advances the generation. No graph equality is
+used to establish either fence. The exact source and recording scope are in
+`planning/evidence/recovery-source-live-metadata-2026-09-30/coordinate.json`.
