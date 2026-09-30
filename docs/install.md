@@ -14,8 +14,9 @@ reach safely. Words you may not know are in
 
 - A Linux machine (x86-64, with systemd) or an OpenBSD 7.9 machine (amd64).
 - On Linux: glibc 2.36 or later (Debian 12, Ubuntu 24.04 or newer) and
-  OpenSSL 3.0 or later. A minimal Debian 12 lacks three packages the steps
-  below use: `apt install libssl3 openssl sudo`. On OpenBSD, nothing
+  OpenSSL 3.0 or later. Ubuntu 22.04 is unsupported by the distributed binary
+  because its glibc is below the 2.36 floor. A minimal Debian 12 lacks three packages
+  the steps below use: `apt install libssl3 openssl sudo`. On OpenBSD, nothing
   extra.
 - Root access, for the install and the service.
 - A disk that really saves data when asked. Read

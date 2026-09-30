@@ -1024,7 +1024,8 @@
   (list name method (fn-wrq-chars-octets (coerce path 'list)) capability model))
 
 (defconst *fn-web-routes*
-  (list (fn-web-row :style       :get  "/style.css" :none      'fn-wss-style)
+  (list (fn-web-row :health      :get  "/health"    :none      'fn-whl-answer)
+        (fn-web-row :style       :get  "/style.css" :none      'fn-wss-style)
         (fn-web-row :signin-form :get  "/signin"    :none      'fn-wss-signin-form)
         (fn-web-row :signin      :post "/signin"    :pre       'fn-wss-signin)
         (fn-web-row :redeem-form :get  "/redeem"    :none      'fn-wss-redeem-form)

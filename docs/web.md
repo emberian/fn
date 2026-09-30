@@ -151,3 +151,21 @@ have read, moderation, and your own check of a signed article
 (`fn-verify` in `clients/` does that). The design and its proofs are in
 [the client specification](../specs/human-client.md) (WEB-005) and
 [the engineers' reference](operator-internals.md#the-friends-web-reader).
+
+## Check readiness over the network
+
+`GET /health` on the configured web listener answers in the running node,
+without an account, a reader connection or a second image process. `HEAD /health` returns the same status and Content-Length with no body. A ready
+node answers `200` and `ready` followed by a newline; a stalled or full disk,
+or a deferred checkpoint publication, answers `503` with `unavailable disk`
+or `unavailable checkpoint`. A missing or malformed observation answers
+`503` with `unobserved`. Replies are plain text, at most 23 body octets, and
+carry `Cache-Control: no-store`.
+
+This is the current owner's disk/checkpoint readiness check. A slow barrier
+follows the existing health policy and remains clear until it stalls. It
+walks no history, groups or peers. Use the operator's `health` command for
+the complete namespace, profile, route, peer and receipt diagnostics.
+The endpoint uses the web listener's existing TLS and request limits;
+other methods on this path are refused. This readiness policy is fn's,
+not a requirement imposed by HTTP.

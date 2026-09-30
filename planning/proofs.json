@@ -2632,7 +2632,7 @@
     {
       "id": "PRF-054",
       "title": "The native service log says what the reply says, one line per event",
-      "statement": "fn-olog-served-post-line-says-accepted-iff-durable: the line host/owner-host.lisp fn-owner-outcome renders for a served submission begins with the word accepted exactly when fn-own-outcome-completion of the host's word is :durable, the completion fn-own-outcome renders into the 240; a host word alone never makes it say accepted. fn-olog-control-post-line-says-the-control-result: the control line's first word is the word of fn-own-control-outcome-result, the value the control reply carries. fn-olog-served-post-line-is-one-line, fn-olog-control-post-line-is-one-line and fn-olog-connection-line-is-one-line: no line contains CR or LF, whatever octets the Message-ID, agent or peer name held. fn-olog-staging-cleanup-line-is-one-line: the line host/native/io.lisp fnn-log-staging-cleanup renders for an error fnn-publish's best-effort staging cleanup swallowed after the record is durable contains no CR or LF, whatever the stage path or the OS error text held; that the host writes it exactly once per swallowed error is measured by the NNTP probe's record-stage-unlinked EIO row, not proved. Covered scope: the rendered octets; that host/native/owner.lisp fnn-owner-log writes them and one LF to the file run opened append-only is measured by tests/test_native_profile.py, not proved. bp-app-refusal-line-says-refused-iff-refused: the BP application receiver's line for a transfer it did not accept (host/native/bp-app.lisp fnn-bpapp-deliver, through host/bp-native-app-host.lisp fn-owner-app-refusal-log) begins with refused exactly when the receiver answered :refused or :clock-unusable, so a busy owner reads deferred and an unknown word uncertain; fn-olog-bp-app-refusal-line-is-one-line: that line holds no CR or LF, and it carries the application planner's reason field. Covered scope: the rendered octets; that host/native/owner.lisp fnn-owner-log writes them and one LF to the file run opened append-only is measured by tests/test_native_profile.py, not proved.",
+      "statement": "fn-olog-served-post-line-says-accepted-iff-durable: the line host/owner-host.lisp fn-owner-outcome renders for a served submission begins with the word accepted exactly when fn-own-outcome-completion of the host's word is :durable, the completion fn-own-outcome renders into the 240; a host word alone never makes it say accepted. fn-olog-control-post-line-says-the-control-result: the control line's first word is the word of fn-own-control-outcome-result, the value the control reply carries. fn-olog-served-post-line-is-one-line, fn-olog-control-post-line-is-one-line and fn-olog-connection-line-is-one-line: no line contains CR or LF, whatever octets the Message-ID, agent or peer name held. fn-olog-staging-cleanup-line-is-one-line: the line host/native/io.lisp fnn-log-staging-cleanup renders for an error fnn-publish's best-effort staging cleanup swallowed after the record is durable contains no CR or LF, whatever the stage path or the OS error text held; that the host writes it exactly once per swallowed error is measured by the NNTP probe's record-stage-unlinked EIO row, not proved. Covered scope: the rendered octets; that host/native/owner.lisp fnn-owner-log writes them and one LF to the file run opened append-only is measured by tests/test_native_profile.py, not proved. bp-app-refusal-line-says-refused-iff-refused: the BP application receiver's line for a transfer it did not accept (host/native/bp-app.lisp fnn-bpapp-deliver, through host/bp-native-app-host.lisp fn-owner-app-refusal-log) begins with refused exactly when the receiver answered :refused or :clock-unusable, so a busy owner reads deferred and an unknown word uncertain; fn-olog-bp-app-refusal-line-is-one-line: that line holds no CR or LF, and it carries the application planner's reason field. Covered scope: the rendered octets; that host/native/owner.lisp fnn-owner-log writes them and one LF to the file run opened append-only is measured by tests/test_native_profile.py, not proved. Q10d: fn-olog-socket-connection-line-is-one-line covers the actual accepted socket line called by fn-owner-exposure-open (host/native/mux.lisp fnn-mux-admit). The client-address field is ACL2-projected from the fixed-width kernel family/address observation; validation/rendering inspect at most 4/16 octets. IPv4 dotted decimal and IPv6 eight expanded lowercase groups, malformed/absent unobserved. The socket observer truth and physical log writes remain measured, not proved.",
       "milestone": "M3",
       "requirements": [
         "HST-002"
@@ -2648,13 +2648,14 @@
         "planning/evidence/manifests/certify-20260926T092407Z-1115236.json",
         "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
       ],
-      "progress_note": "Lane t6b-profile, 2026-09-22: the keystones have no hypotheses; tests/acl2/owner-log-tests.lisp evaluates each renderer on a real injected decision and a real control decision, and its must-fails name the weaker statements a host-word log would satisfy (the line echoes the host word; the control line uses the served classification) with the refuting owner evaluated beside each.",
+      "progress_note": "Lane t6b-profile, 2026-09-22: the keystones have no hypotheses; tests/acl2/owner-log-tests.lisp evaluates each renderer on a real injected decision and a real control decision, and its must-fails name the weaker statements a host-word log would satisfy (the line echoes the host word; the control line uses the served classification) with the refuting owner evaluated beside each. Q10d clean hbox oa61-socket-log-h3 admitted 134/134 owner-log-tests forms, 36/36 named events exact, owner-log in one local encapsulate, 13.00 seconds/4,116,600 prover steps; stopped. Source interface/read/books/bare default 46/46 zero findings; ledger/current and strict reach green. These are source checks, not certification. Matching test_native_profile remains runner-owned.",
       "events": [
         "fn-olog-served-post-line-says-accepted-iff-durable",
         "fn-olog-control-post-line-says-the-control-result",
         "fn-olog-served-post-line-is-one-line",
         "fn-olog-control-post-line-is-one-line",
-        "fn-olog-connection-line-is-one-line"
+        "fn-olog-connection-line-is-one-line",
+        "fn-olog-socket-connection-line-is-one-line"
       ]
     },
     {
@@ -12446,7 +12447,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/web-request.lisp",
         "tests/acl2/web-request-tests.lisp",
@@ -12479,7 +12480,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/web-render.lisp",
         "books/web-render-keystones.lisp",
@@ -17575,7 +17576,7 @@
     {
       "id": "PRF-1050",
       "title": "Snapshot blessing is accepted exactly when the completion marker, read-only open and node-secret observations hold; every failure names its first missing observation",
-      "statement": "Host-called fn-osn-bless-word in host/native/io.lisp fnn-command-store-bless-snapshot. KEYSTONE fn-osn-bless-word-blessed-exactly-when: blessed iff markerp and open=:ok and keysp; missing marker answers :snapshot-incomplete, otherwise non-ok open answers :open-refused, otherwise missing key answers :no-node-secret. fn-osn-absent-marker-never-opens makes the absent-marker result independent of an open observation; host checks fn-osn-bless-open-needed before opening. This proves the decision over supplied observations, not the snapshot producer's capture, freshness, or the disk/key implementations.",
+      "statement": "Host-called fn-osn-bless-word in host/native/io.lisp fnn-command-store-bless-snapshot. KEYSTONE fn-osn-bless-word-blessed-exactly-when: blessed iff markerp and open=:ok and keysp; missing marker answers :snapshot-incomplete, otherwise non-ok open answers :open-refused, otherwise missing key answers :no-node-secret. fn-osn-absent-marker-never-opens makes the absent-marker result independent of an open observation; host checks fn-osn-bless-open-needed before opening. This proves the decision over supplied observations, not the snapshot producer's capture, freshness, or the disk/key implementations. Scope excludes arbitrary core/store faults and uncertain I/O during observation: rejected durable metadata is the store-profile decoder fault, not an open-refused observation.",
       "milestone": "M5",
       "requirements": [
         "HST-039"
@@ -17587,7 +17588,7 @@
         "books/owner-snapshot-request.lisp",
         "tests/acl2/owner-snapshot-request-tests.lisp"
       ],
-      "progress_note": "Claim inherited from operability-12. S7a host wiring completed by gpt61-operability; native observation pending union image. No running snapshot producer claim."
+      "progress_note": "Claim inherited from operability-12. S7a host wiring completed by gpt61-operability; native observation pending union image. No running snapshot producer claim. E739 matching historical native module executed 2 with one passing and one stale malformed-config refusal expectation. Runtime decoder distinction retained; source fixture/spec corrected, matching execution still pending."
     },
     {
       "id": "PRF-1044",
@@ -18703,6 +18704,38 @@
         "specs/checkpoint.md"
       ],
       "progress_note": "Protected source REPL admissions only, no certificate or qualified image. Producer/encoder consume the tagged node API. Numeric residual theorem was weakened after proving cursor shape and upper octet bound redundant to its algebra; execution still requires a valid cursor and octet. General decoder inverse is not established by the finite compatibility witnesses."
+    },
+    {
+      "id": "PRF-1100",
+      "title": "Bounded network readiness from the running owner",
+      "statement": "The actual host-called fn-web-step health observation branch preserves its sessions, responds with 200 or 503 and at most 23 body octets. fn-whl-answer composed with fn-whl-observe succeeds only when current scheduler space is observed, existing operator disk health is clear, and checkpoint publication is not deferred. Malformed/unobserved values remain 503, not fabricated ready. Fixed disk/checkpoint observations and a constant vocabulary replace full report walks. Source guards and literal reached scheduler/parsed HTTP positive and hypothesis-removal witnesses; physical statvfs truth and host process behavior remain measured, not proved. Named host callers: host/web-host.lisp fn-web-host-step and fn-web-host-health-observe, from host/native/web-host.lisp fnn-web-request under owner serialization. This is local readiness, not all ten operator health states.",
+      "milestone": "M6",
+      "requirements": [
+        "WEB-005"
+      ],
+      "depends_on": [
+        "PRF-339",
+        "PRF-358",
+        "PRF-359"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-whl-success-requires-observed-clear-owner",
+        "fn-whl-answer-body-is-bounded",
+        "fn-web-health-step-preserves-sessions-and-bounds-body"
+      ],
+      "evidence": [
+        "books/web-health.lisp",
+        "books/web-session.lisp",
+        "books/web-session-keystones.lisp",
+        "tests/acl2/web-health-tests.lisp",
+        "tests/acl2/web-session-tests.lisp",
+        "host/web-host.lisp",
+        "host/native/web-host.lisp",
+        "tests/test_native_web.py"
+      ],
+      "progress_note": "Clean persvati source roots: oa61-health web-health-tests 25/25; oa61-web-health-ready web-session-tests 125/125 forms, including parsed GET/HEAD/POST, reached unavailable states and literal composed hypothesis-removal teeth; 60/60 named events match the file. Full dependencies loaded in local encapsulates; 18.09 s and 9,881,238 prover steps. Both sessions stopped. Source admission is not committed certification. Matching plain/TLS native web tests remain runner-owned; no lane image/native campaign."
     }
   ]
 }

@@ -1607,10 +1607,13 @@
         "books/bp-node-listener-control.lisp",
         "tests/acl2/bp-node-listener-control-tests.lisp",
         "host/native/bp-listener-control.lisp",
-        "planning/evidence/bp-listener-control-2026-09-29.md"
+        "planning/evidence/bp-listener-control-2026-09-29.md",
+        "books/owner-log.lisp",
+        "tests/acl2/owner-log-tests.lisp",
+        "tests/test_native_profile.py"
       ],
       "implementation_note": "Logical single-owner serialization is implemented. The frozen03 native runtime exercises concurrent uncertainty fencing and worker lifetime, with FNFD intent reconciliation after independent restart. Full concurrent backpressure, stale completion and production two-peer lifecycle composition remain open. The integrated control endpoint uses an adjacent persistent lease and worker-owned final socket close, with bounded accept polling for orderly SIGTERM. Scoped native collision, repeated-signal and lost-reply/restart tests passed. U18's active-client ceiling, absolute frame deadline and linear bounded accumulation are now integrated with scoped native slow-drip and excess-client witnesses; complete concurrent host refinement and the combined Linux image remain open.",
-      "note": "Bounded protocol effects and scoped native mutex/worker runtime evidence are recorded separately. Frozen03 supersedes the historical owner-does-not-certify blocker; it does not establish complete serialization, backpressure or crash correspondence for every later native module."
+      "note": "Bounded protocol effects and scoped native mutex/worker runtime evidence are recorded separately. Frozen03 supersedes the historical owner-does-not-certify blocker; it does not establish complete serialization, backpressure or crash correspondence for every later native module. Q10d accepted socket service log carries ACL2-projected client-address with fixed-width validation; source increment only until matching qualification."
     },
     {
       "id": "HST-003",
@@ -5131,7 +5134,8 @@
         "PRF-338",
         "PRF-339",
         "PRF-340",
-        "PRF-353"
+        "PRF-353",
+        "PRF-1100"
       ],
       "verification": [
         "proof",
@@ -5152,9 +5156,11 @@
         "tests/acl2/web-render-tests.lisp",
         "tests/acl2/web-session-tests.lisp",
         "tests/test_native_web.py",
-        "planning/evidence/web-native-2026-09-28.md"
+        "planning/evidence/web-native-2026-09-28.md",
+        "books/web-health.lisp",
+        "tests/acl2/web-health-tests.lisp"
       ],
-      "implementation_note": "Replaces tools/fn_reader.py and tools/fn_web.py (a second implementation of the boundary in Python) with the node's own face; lane web-native-2 packaged it (install.sh --reader, WEB-004) and retired the Python readers."
+      "implementation_note": "Replaces tools/fn_reader.py and tools/fn_web.py (a second implementation of the boundary in Python) with the node's own face; lane web-native-2 packaged it (install.sh --reader, WEB-004) and retired the Python readers. Q10d source continuation adds GET/HEAD /health as fixed disk/checkpoint readiness from the running owner, without login/NNTP connection or a second image process; 200 only observed ready, otherwise 503, at most 23 body octets. Full operator health scope is separate; matching native/certification pending."
     },
     {
       "id": "STO-036",
@@ -5676,7 +5682,8 @@
         "host/native/io.lisp",
         "tests/test_native_snapshot_bless.py"
       ],
-      "implementation_note": "S7a checker implemented; native evidence pending matching union image. S7 running producer remains separate, unfinished."
+      "implementation_note": "S7a checker implemented; native evidence pending matching union image. S7 running producer remains separate, unfinished.",
+      "note": " The three normal blessing refusal observations do not exhaust runtime failures. Rejected/corrupted durable metadata remains a fault (exit 4); sealed foreign-format/lineage open refusals stay distinct, and uncertain I/O is not flattened into refusal."
     },
     {
       "id": "OBJ-008",

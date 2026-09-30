@@ -963,6 +963,10 @@ journalctl -u fn -n 20
 Without a service it is on the screen, or in `log/fn.log` when `fn.toml`
 names a `[log] path`. A program that starts fn and keeps its error output
 in a file must show that file: the reason is there.
+Each accepted NNTP socket has one connection line with `client-address`,
+the observed source IP address (IPv6 is expanded lowercase hexadecimal).
+Malformed or unavailable observations read `unobserved`; this field is
+independent of the peer record's name.
 
 `health` and `status` say so too. When nothing runs where the node should
 (its control socket does not answer and nothing holds the store), `health`

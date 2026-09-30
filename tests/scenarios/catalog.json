@@ -6250,10 +6250,10 @@
         "HST-039"
       ],
       "steps": [
-        "Copy a stopped three-article store; explicitly supply the producer completion observation marker; bless, start the copy and retrieve each article. Remove marker or key, corrupt the key or profile; preserve first-failure refusal. Diverge copied stores and install a foreign checkpoint; blessing refuses its lineage."
+        "Copy a stopped three-article store; explicitly supply the producer completion observation marker; bless, start the copy and retrieve each article. Remove marker or key, corrupt the key or profile; preserve first-failure refusal for known missing/open observations and durable corruption as fault. Diverge copied stores and install a foreign checkpoint; blessing refuses its lineage."
       ],
       "expected": [
-        "Blessed iff the marker, own read-only open and node-secret observations hold; accepted exit 0, named refusal exit 1. Missing marker omits open even with malformed profile. A complete older own-lineage copy remains accepted (no freshness guarantee)."
+        "Blessed iff the marker, own read-only open and node-secret observations hold; accepted exit 0, named refusal exit 1. Missing marker omits open even with malformed profile. A complete older own-lineage copy remains accepted (no freshness guarantee). Rejected durable config.json remains fault exit 4 with the decoder message, never open-refused; known sealed format/lineage open refusals stay exit 1."
       ],
       "implementation": {
         "test": "tests.test_native_snapshot_bless",
@@ -6264,9 +6264,10 @@
         "native": true
       },
       "evidence": [
-        "tests/test_native_snapshot_bless.py"
+        "tests/test_native_snapshot_bless.py",
+        "planning/evidence/operator-snapshot-e739-harvest-2026-09-29.md"
       ],
-      "scope_note": "Stopped-copy fixtures explicitly supply SNAPSHOT. No running snapshot producer or atomic-capture claim."
+      "scope_note": "Stopped-copy fixtures explicitly supply SNAPSHOT. No running snapshot producer or atomic-capture claim. E739 historical module executed 2, one pass/one fixture mismatch: malformed config expected REFUSED 1 but actual existing decoder FAULT 4. Fixture corrected to authoritative store-profile boundary; matching execution pending."
     },
     {
       "id": "SCN-216",
@@ -6651,6 +6652,70 @@
         "planning/history-decode-contract.md"
       ],
       "execution_scope": "Source component tests only. General stream inverse, page-source authentication, integrated native caller and full producer remain open."
+    },
+    {
+      "id": "SCN-1012",
+      "title": "Network readiness on the existing owner without a second image process",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "WEB-005"
+      ],
+      "steps": [
+        "Start one scratch native owner with web listener and required authentication.",
+        "Without account or cookies, repeat GET /health and issue HEAD /health on the same owner process.",
+        "Drive reached scheduler full/stalled/slow and deferred/unobserved health observations through the model and parsed HTTP flow."
+      ],
+      "expected": [
+        "Observed ready returns 200 and ready newline; Content-Type plain text, no-store, no cookies, body at most 23 octets.",
+        "HEAD has identical status and Content-Length with empty body; owner PID remains alive/unchanged.",
+        "Full/stalled/deferred/unobserved return 503 by the named observation; slow remains clear under existing health policy.",
+        "No reader open/send, session change or full store/feed report allocation in the composed health step."
+      ],
+      "implementation": {
+        "test": "tests.test_native_web",
+        "cases": [
+          "test_health_is_bounded_readiness_in_the_running_owner_without_login"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "tests/test_native_web.py",
+        "tests/acl2/web-health-tests.lisp",
+        "tests/acl2/web-session-tests.lisp"
+      ],
+      "execution_scope": "Source scheduler and HTTP flow admission only so far. Matching plain/TLS native union and committed certification are pending; unchanged PID alone is not a process-spawn trace."
+    },
+    {
+      "id": "SCN-1021",
+      "title": "Accepted socket service log carries its observed client address once",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "HST-002"
+      ],
+      "steps": [
+        "Start a scratch native owner with configured service log.",
+        "Complete a served POST and a control POST through the existing native profile workflow.",
+        "Inspect the accepted reader connection lines in the same log."
+      ],
+      "expected": [
+        "Each accepted socket line contains exactly one client-address field for actual loopback 127.0.0.1.",
+        "Model IPv4 and expanded IPv6 observations render exactly; malformed observations read unobserved.",
+        "Every complete rendered line contains no CR or LF, even with corrupted peer/address input."
+      ],
+      "implementation": {
+        "test": "tests.test_native_profile",
+        "cases": [
+          "test_posts_land_in_the_configured_log_and_name_the_path_identity"
+        ],
+        "native": true
+      },
+      "evidence": [
+        "tests/test_native_profile.py",
+        "tests/acl2/owner-log-tests.lisp"
+      ],
+      "execution_scope": "Source increment and narrow ACL2 admission pending; matching image/native profile execution is sole-runner owned. Kernel observation truth is outside the logical renderer proof."
     }
   ]
 }

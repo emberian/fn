@@ -1466,7 +1466,8 @@
 
 (definterface fn-owner-exposure-open
   :class ::program
-  :kinds ((peer-octets fn-cbor-octet-listp)))
+  :kinds ((peer-octets fn-cbor-octet-listp))
+  :keystones ((fn-olog-socket-connection-line-is-one-line :via fn-olog-socket-connection-line)))
 
 (definterface fn-owner-exposure-release
   :class ::program)
@@ -3185,7 +3186,8 @@
   :class ::program)
 
 (definterface fn-web-host-step
-  :class ::program)
+  :class ::program
+  :keystones ((fn-web-health-step-preserves-sessions-and-bounds-body :via fn-web-step)))
 
 (definterface fn-web-req-clen
   :class ::common-lisp-compliant)
@@ -4804,3 +4806,7 @@
 ; Source: books/stx-keyring-records.lisp, guard T.
 (definterface fn-stxk-initial-context
   :class :common-lisp-compliant)
+; Q10d bounded observation for the owner's web readiness route.
+(definterface fn-web-host-health-observe
+  :class :program
+  :keystones ((fn-whl-success-requires-observed-clear-owner :via fn-whl-observe)))

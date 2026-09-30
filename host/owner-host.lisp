@@ -4082,9 +4082,9 @@
     (if (fn-exp-open-id r)
         (let* ((state (fn-owner-install-effects (fn-exp-open-effects r) state))
                (state (f-put-global 'fn-owner-log-line
-                                    (fn-olog-connection-line
+                                    (fn-olog-socket-connection-line
                                      (fn-owner-core state) id
-                                     (and peer peer-octets))
+                                     (and peer peer-octets) family address)
                                     state)))
           (value (fn-exp-open-id r)))
       (let* ((state (f-put-global 'fn-owner-effects nil state))
