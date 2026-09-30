@@ -1,0 +1,22 @@
+; Actual selected-row lookup precedes every scalar arena observation.
+(in-package "ACL2")
+(include-book "../books/index-backing-provider")
+(include-book "../books/query-payload-scalar")
+(include-book "../books/query-payload-state")
+(defun fn-miq-selected-payload-length (selected fuel fn-mio$c fn-arena state)
+  (declare (xargs :stobjs (fn-mio$c fn-arena state) :guard (natp fuel)))
+  (mv-let (word held grant left)
+    (fn-miq-selected-read selected fuel fn-mio$c)
+    (cond ((not (eq word :selected)) (mv word nil left))
+          ((not (and (natp left) (<= left fuel))) (mv :invalid-selected-carry nil fuel))
+          (t (fn-qps-selected-length selected held grant
+                              (fn-owner-query-payload-ledger state) left fn-arena)))))
+(defun fn-miq-selected-payload-byte (selected index fuel fn-mio$c fn-arena state)
+  (declare (xargs :stobjs (fn-mio$c fn-arena state)
+                  :guard (and (natp index) (natp fuel))))
+  (mv-let (word held grant left)
+    (fn-miq-selected-read selected fuel fn-mio$c)
+    (cond ((not (eq word :selected)) (mv word nil left))
+          ((not (and (natp left) (<= left fuel))) (mv :invalid-selected-carry nil fuel))
+          (t (fn-qps-selected-byte selected held grant
+                            (fn-owner-query-payload-ledger state) index left fn-arena)))))
