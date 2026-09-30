@@ -988,6 +988,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nov-decimal-window-tests \
 	books/nov-byte-window \
 	tests/acl2/nov-byte-window-tests \
+	books/nov-row-facts \
+	tests/acl2/nov-row-facts-tests \
 	books/nov-column-window \
 	tests/acl2/nov-column-window-tests \
 	books/served-catalog \
