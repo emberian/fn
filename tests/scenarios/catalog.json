@@ -6320,7 +6320,8 @@
         "Assert complete literal new-field/fold/header traversal premises and conclusions; remove every retained line-step premise and both traversal premises separately, including corrupted source-span state and malformed physical continuations.",
         "Assert the literal full actual arena-tick NOV equation on octet sources, including five first/repeated/folded fields, invalid folds, opaque body NUL and tombstones. Remove the sole octet-domain premise with non-octet opaque body input; affirm negative-handle equality after removing that redundant premise. Check complete tombstone prefix antecedents and remove natural position and sufficient bytes independently.",
         "Check full literal actual tick scalar/source-width and returned quantum-width conclusions; remove every retained carried-state, ready, source-bound and quantum premise individually. Separate corrupted carried state from malformed grammar and run the actual stobj tick at quanta 1, 3 and complete length.",
-        "Assert literal exact-prefix init, actual fuel1 continuation/source binding and terminal complete-feed statements; remove every retained premise separately. Corrupt magic carry independently of source substitution, confirm a bad header still yields before EOF, and execute repeated actual stobj ticks through valid/invalid sources and one terminal no-op."
+        "Assert literal exact-prefix init, actual fuel1 continuation/source binding and terminal complete-feed statements; remove every retained premise separately. Corrupt magic carry independently of source substitution, confirm a bad header still yields before EOF, and execute repeated actual stobj ticks through valid/invalid sources and one terminal no-op.",
+        "Assert full literal actual tick ABI scalar conclusion under exact supported descriptor, payload-length binding, carried invariant and ready guard. Remove each premise independently, using closed logical source-length constructors for width-bound removals so enormous lists are never allocated. Distinguish ABI representation from source admission/profile authorization."
       ],
       "expected": [
         "Each tick consumes and reports at most its fuel, preserves handle and pin and makes bounded progress. No final tick walks or copies the full source or field.",
@@ -6353,7 +6354,10 @@
         "planning/evidence/legacy-parser-scalars-source.md",
         "books/legacy-parser-continuation.lisp",
         "tests/acl2/legacy-parser-continuation-tests.lisp",
-        "planning/evidence/legacy-parser-continuation-source.md"
+        "planning/evidence/legacy-parser-continuation-source.md",
+        "books/legacy-parser-physical-widths.lisp",
+        "tests/acl2/legacy-parser-physical-widths-tests.lisp",
+        "planning/evidence/legacy-parser-physical-widths-source.md"
       ]
     },
     {

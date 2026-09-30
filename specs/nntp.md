@@ -1943,6 +1943,16 @@ catalog equation; the predicate itself is never evaluated on the served path.
 Actual consumer reply refinement and runtime funding remain separate obligations.
 
 
+The exact selected physical predicate `fn-crw-supportedp` bounds its payload
+length by `2^63 - 33`, reserving the descriptor's 32-byte integrity trailer
+within signed `off_t`. A cursor begun with that exact payload length carries
+the length binding across actual ticks. Under supported descriptor, binding,
+scalar carry and ready guard, the actual tick's source scalars fit that ABI.
+This representation theorem neither caps stored sources at the article grammar
+ceiling nor substitutes for the physical descriptor/arena authorization provider,
+installed profile admission, compiled numeric workspace or allocator proof.
+
+
 ## Public exposure (NNT-031)
 
 NNT-031: A reader port facing strangers admits, paces and closes connections within operator limits ACL2 decides, and an unauthenticated session under the none policy reaches no reader or posting command
