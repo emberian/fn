@@ -504,6 +504,55 @@ def book_path(book: str) -> Path:
     raise SystemExit(f"proof-repl: no book or file {book!r}")
 
 
+def attachment_events(text: str) -> bool:
+    """Find attach-stobj only at literal embedded-event positions.
+
+    Definitions, hints, quoted data and event generators are not traversed.
+    Unknown generated events remain governed by the existing loader contract.
+    """
+    def event(form: str) -> bool:
+        stripped = form.strip()
+        if not (stripped.startswith("(") and stripped.endswith(")")):
+            return False
+        inner = stripped[1:-1]
+        children = spans(inner)
+        if not children:
+            return False
+        head = inner[slice(*children[0])].lower()
+        if head == "attach-stobj":
+            return True
+        if head == "encapsulate":
+            start = 2  # signatures are data
+        elif head in ("local", "progn", "progn!"):
+            start = 1
+        elif head == "with-prover-time-limit":
+            start = 2
+        else:
+            return False
+        return any(event(inner[begin:end]) for begin, end in children[start:])
+    return any(event(form) for form in forms(text))
+
+
+def attachment_source_refusal(graph: dict[str, list[str]], order: list[str]) -> str | None:
+    """DFS source replay cannot preserve an interspersed attachment boundary."""
+    if not order:
+        return None
+    try:
+        attached = [name for name in graph
+                    if attachment_events((ROOT / f"{name}.lisp").read_text(encoding="utf-8"))]
+    except (OSError, UnicodeError) as error:
+        return f"proof-repl: cannot check attachment source order: {error}"
+
+    if not attached:
+        return None
+    return ("proof-repl: refusing source dependency replay across attach-stobj in "
+            + ", ".join(sorted(attached))
+            + "; dependency DFS and include hoisting can introduce the generic "
+              "before its attachment. Use the exact compatible certified attachment "
+              "book in the fixture's declared include order, without --source-deps, "
+              "--ld or --ld-missing. No ACL2 source world was launched.")
+
+
 # --- a book's local include graph ------------------------------------------------
 
 def include_graph(root: Path, book: str) -> dict[str, list[str]]:
@@ -1211,6 +1260,12 @@ def load_book(acl2: Acl2, book: str, state: dict, load_timeout: float,
     source = ROOT / f"{book}.lisp"
     text = source.read_text(encoding="utf-8")
     where = "" if record else f"{book}: "
+    if attachment_events(text) and (encapsulate or skip):
+        state["stopped_at"] = where + "attach-stobj source-order preflight"
+        state["error"] = ("refusing source attachment replay with include hoisting or "
+                          "preloaded source dependencies; use a compatible certified "
+                          "attachment include in declared order")
+        return False
     hard = max(load_timeout, (limit or 0) * 1.5 + 30)
     output, timed_out = acl2.send(f'(set-cbd "{source.parent}/")', load_timeout)
     if timed_out or errored(output):
@@ -1691,6 +1746,9 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
                 acl2=acl2), required
 
     from_source = dependents_of(graph, wanted) - {book}
+    refusal = attachment_source_refusal(graph, dependency_order(graph, from_source, book))
+    if refusal:
+        return False, refusal, []
     try:
         report, required = attempt(from_source, purge=False)
         if report is not None and report.artifact_set is None:
@@ -1723,6 +1781,10 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
         if (report is not None and report.artifact_set is None
                 and report.action != "install-partial" and auto == "ld"):
             from_source |= dependents_of(graph, report.uncached) - {book}
+            refusal = attachment_source_refusal(
+                graph, dependency_order(graph, from_source, book))
+            if refusal:
+                return False, "\n".join(printed + [refusal]), []
             printed.append("proof-repl: loading from source (proofs run in the session): "
                            + ", ".join(dependency_order(graph, from_source, book)))
             report, required = attempt(from_source, purge=False)
@@ -1742,6 +1804,9 @@ def install_closure(book: str, ld=(), auto: str | None = None, jobs: int = 4,
     except (OSError, subprocess.TimeoutExpired) as error:
         return False, f"proof-repl: certificate acquisition failed: {error}", []
     order = dependency_order(graph, from_source, book)
+    refusal = attachment_source_refusal(graph, order)
+    if refusal:
+        return False, "\n".join(printed + [refusal]), []
     if report is None:
         printed.append("no dependencies to install")
     else:
