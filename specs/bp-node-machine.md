@@ -5232,3 +5232,16 @@ retain their previous behavior. The paired source-algebra fixtures and increment
 proper source admission are recorded in
 `planning/evidence/bp-checkpoint-initial-custody-20260930/manifest.json`; this
 is not authority for the new indexed controller job or native installation.
+
+### Registered checkpoint prefix I/O continuation
+
+The internal registered prefix driver derives the pending job token from the
+controller row. A turn persists the exact bounded emit bytes, source offset and
+next revision before exposing its I/O action. Its observation turn rejects stale
+job/revision callbacks before changing state; an unknown primitive result keeps
+the advanced encoder cursor and marks stage debt uncertain. The actual registered
+fixture includes open, delayed observation refusal, definite open, bounded emit
+and unknown write, retaining frozen CURRENT and the exact resource claim.
+Evidence: `planning/evidence/bp-checkpoint-prefix-registered-20260930/manifest.json`.
+This internal source composition remains unhooked until actual operation/stage
+allowances and native callback installation are qualified.
