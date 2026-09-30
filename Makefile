@@ -598,11 +598,18 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/cold-read-layout-tests \
 	books/page-read-ownership \
 	tests/acl2/page-read-ownership-tests \
+	books/page-read-pool-state \
+	books/page-read-binding-revision \
+	tests/acl2/page-read-binding-revision-tests \
 	books/query-payload-grants \
 	tests/acl2/query-payload-grants-tests \
 	books/query-payload-state \
 	books/query-payload-scalar \
 	tests/acl2/query-payload-scalar-tests \
+	books/query-payload-length-boundary \
+	tests/acl2/query-payload-length-boundary-tests \
+	books/query-payload-byte-boundary \
+	tests/acl2/query-payload-byte-boundary-tests \
 	books/index-query-resources \
 	tests/acl2/index-query-resources-tests \
 	books/index-backing-chunks \
@@ -742,6 +749,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-job-offer-tests \
 	books/bp-controller-checkpoint-capture \
 	tests/acl2/bp-controller-checkpoint-capture-tests \
+	books/bp-digest-install-stored-plan \
+	tests/acl2/bp-digest-install-stored-plan-tests \
 	books/bp-node-job-cursor \
 	tests/acl2/bp-node-job-cursor-tests \
 	books/bp-node-run-class \
@@ -1478,11 +1487,18 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/arena-reader-pins-tests \
 	books/page-read-ownership \
 	tests/acl2/page-read-ownership-tests \
+	books/page-read-pool-state \
+	books/page-read-binding-revision \
+	tests/acl2/page-read-binding-revision-tests \
 	books/query-payload-grants \
 	tests/acl2/query-payload-grants-tests \
 	books/query-payload-state \
 	books/query-payload-scalar \
 	tests/acl2/query-payload-scalar-tests \
+	books/query-payload-length-boundary \
+	tests/acl2/query-payload-length-boundary-tests \
+	books/query-payload-byte-boundary \
+	tests/acl2/query-payload-byte-boundary-tests \
 	books/index-query-resources \
 	tests/acl2/index-query-resources-tests \
 	books/index-backing-chunks \
