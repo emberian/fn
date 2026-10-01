@@ -121,6 +121,23 @@ host/native/bp.lisp installs `fn-bpn-receive' here, which is what makes the
 bundle, its lifetime and hop count are decided, and its ADU is what lands in
 the journal.  Nothing else binds this.")
 
+(defvar *fnn-tcl-deliver-counted* nil
+  "Dormant received-source callback (conn xfer-id octets cumulative-count).
+Only the qualified BP received-source installer may bind it. Callback presence
+is not a resource grant. ACL2 selects count from the held final END ACK; no
+host byte count or complete-source scan occurs. Old callback remains separate.")
+
+(defun fnn-tcl-deliver-transfer (conn xfer-id octets)
+  (cond
+    (*fnn-tcl-deliver-counted*
+     (let ((counted (fnn-core 'fn-tcl-final-held-count (fnn-tclc-held conn) xfer-id)))
+       (unless (eq (fnn-core 'fn-tcl-final-count-ready-p counted) t)
+         (fnn-fault "TCPCL received-source count lacks its held final ACK"))
+       (funcall *fnn-tcl-deliver-counted* conn xfer-id octets
+                (fnn-core 'fn-tcl-final-count-value counted))))
+    (*fnn-tcl-deliver* (funcall *fnn-tcl-deliver* conn xfer-id octets))
+    (t (fnn-tcl-stage conn xfer-id octets))))
+
 (defconstant +fnn-tcl-spool-lock+ ".spool.lock")
 
 (defun fnn-tcl-spool-entry-kind (path)
@@ -281,10 +298,7 @@ and faults without following or deleting anything."
          ;; contain earlier machine output from the same drive batch. ACL2
          ;; selects the entire outbound message list after the callback.
          (let* ((result (handler-case
-                            (if *fnn-tcl-deliver*
-                                (funcall *fnn-tcl-deliver*
-                                         conn (second event) (third event))
-                              (fnn-tcl-stage conn (second event) (third event)))
+                            (fnn-tcl-deliver-transfer conn (second event) (third event))
                           (fnn-store-indeterminate (e)
                             (fnn-tcl-drop conn)
                             (incf (fnn-tclc-uncertain conn))
