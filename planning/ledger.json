@@ -1970,6 +1970,7 @@
     "tests/acl2/bpsec-target-spine-tests",
     "tests/acl2/bpsec-asb-control-tests",
     "tests/acl2/bpsec-asb-position-tests",
+    "tests/acl2/bpsec-head-invariant-tests",
     "tests/acl2/bpsec-target-cursor-tests",
     "tests/acl2/bpsec-target-tests",
     "tests/acl2/post-identity-source-cursor-source-complete-tests",
@@ -2083,26 +2084,26 @@
     "tests/acl2/substrate-commit-codec-gap-tests"
   ],
   "totals": {
-    "books": 2272,
-    "books_in_root_closure": 2216,
-    "roots": 2079,
-    "theorems": 32680,
-    "functions": 21021,
-    "assert_events": 24551,
+    "books": 2275,
+    "books_in_root_closure": 2219,
+    "roots": 2080,
+    "theorems": 32709,
+    "functions": 21025,
+    "assert_events": 24568,
     "must_fails": 2519,
     "prover_refusals": 0,
     "encapsulates": 168,
     "guards": {
       "verified": 3740,
       "declared-off": 2550,
-      "default-guarded": 11716,
+      "default-guarded": 11720,
       "default-unguarded": 3015
     },
-    "suspect_theorems": 1298,
+    "suspect_theorems": 1299,
     "export_hygiene_warnings": 382,
     "enabled_projection_warnings": 79,
     "teeth_form_warnings": 275,
-    "include_hygiene_warnings": 2911,
+    "include_hygiene_warnings": 2917,
     "host_names_warnings": 2569,
     "hand_written_record_warnings": 19
   },
@@ -8596,6 +8597,35 @@
       "read_error": null
     },
     {
+      "book": "books/bpsec-asb-head-invariant.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 23,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bpsec-asb",
+        "bpsec-head-invariant"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-bps-headslot-current-profile-by-definition"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/bpsec-asb-position.lisp",
       "in_root_closure": true,
       "is_root": false,
@@ -8683,6 +8713,32 @@
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 21,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bpsec-head"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bpsec-head-invariant.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 6,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -8907,9 +8963,11 @@
       "includes": [
         "bpsec-asb",
         "bpsec-asb-control",
+        "bpsec-asb-head-invariant",
         "bpsec-asb-position",
         "bpsec-asb-quanta",
         "bpsec-asb-spine",
+        "bpsec-head-invariant",
         "bpsec-operation",
         "bpsec-provider-model",
         "bpsec-target",
@@ -46798,6 +46856,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/bpsec-head-invariant-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 17,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 7,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bpsec-asb-head-invariant"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/bpsec-operation-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -68499,6 +68583,16 @@
       ]
     },
     {
+      "theorem": "fn-bps-headslot-current-profile-by-definition",
+      "book": "books/bpsec-asb-head-invariant.lisp",
+      "line": 36,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
+        "definition-restated: the conclusion is the body of fn-bps-asb-head-profilep",
+        "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
       "theorem": "fn-bps-op-foreign-completion-preserves-rightful-state-by-definition",
       "book": "books/bpsec-operation.lisp",
       "line": 161,
@@ -84718,6 +84812,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/bpsec-asb-head-invariant.lisp",
+        "line": 4,
+        "include": "bpsec-asb",
+        "included": "books/bpsec-asb.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec-asb-head-invariant.lisp",
+        "line": 5,
+        "include": "bpsec-head-invariant",
+        "included": "books/bpsec-head-invariant.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/bpsec-asb-position.lisp",
         "line": 4,
         "include": "bpsec-asb",
@@ -84740,6 +84848,13 @@
       },
       {
         "book": "books/bpsec-asb.lisp",
+        "line": 4,
+        "include": "bpsec-head",
+        "included": "books/bpsec-head.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec-head-invariant.lisp",
         "line": 4,
         "include": "bpsec-head",
         "included": "books/bpsec-head.lisp",
@@ -84862,6 +84977,20 @@
         "line": 13,
         "include": "bpsec-asb-position",
         "included": "books/bpsec-asb-position.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec.lisp",
+        "line": 14,
+        "include": "bpsec-head-invariant",
+        "included": "books/bpsec-head-invariant.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bpsec.lisp",
+        "line": 15,
+        "include": "bpsec-asb-head-invariant",
+        "included": "books/bpsec-asb-head-invariant.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -95089,6 +95218,13 @@
         "line": 2,
         "include": "../../books/bpsec-asb",
         "included": "books/bpsec-asb.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bpsec-head-invariant-tests.lisp",
+        "line": 2,
+        "include": "../../books/bpsec-asb-head-invariant",
+        "included": "books/bpsec-asb-head-invariant.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

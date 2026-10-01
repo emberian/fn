@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 2272 |
-| Certification roots in the Makefile | 2079 |
-| Books inside the root closure | 2216 |
-| `defthm` and `defthmd` events | 32680 |
-| `defun` events | 21021 |
+| Books read | 2275 |
+| Certification roots in the Makefile | 2080 |
+| Books inside the root closure | 2219 |
+| `defthm` and `defthmd` events | 32709 |
+| `defun` events | 21025 |
 | Functions with verified guards | 3740 |
 | Functions declared `:verify-guards nil` and never verified | 2550 |
-| Functions left at the default with an explicit guard | 11716 |
+| Functions left at the default with an explicit guard | 11720 |
 | Functions left at the default with no guard | 3015 |
-| `assert-event` checks | 24551 |
+| `assert-event` checks | 24568 |
 | `must-fail` checks | 2519 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 168 |
-| Theorems flagged SUSPECT by shape | 1298 |
+| Theorems flagged SUSPECT by shape | 1299 |
 | Export-hygiene warnings | 382 |
 | Enabled-projection warnings | 79 |
 | Teeth-form warnings | 275 |
-| Include-hygiene warnings | 2911 |
+| Include-hygiene warnings | 2917 |
 | Host-names warnings | 2569 |
 | Hand-written-record warnings | 19 |
 
@@ -317,10 +317,12 @@ that `make certify` requests.
 | `books/bp-workflow-transport-invariants.lisp` | root | 32 | 2 | 0/0/2/0 | 0 | 0 | 3 |
 | `books/bp-workflow.lisp` | root | 2 | 113 | 4/0/109/0 | 0 | 0 | 0 |
 | `books/bpsec-asb-control.lisp` | closure | 22 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/bpsec-asb-head-invariant.lisp` | closure | 23 | 1 | 0/0/1/0 | 0 | 0 | 1 |
 | `books/bpsec-asb-position.lisp` | closure | 37 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/bpsec-asb-quanta.lisp` | closure | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bpsec-asb-spine.lisp` | closure | 18 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/bpsec-asb.lisp` | closure | 3 | 21 | 0/0/21/0 | 0 | 0 | 0 |
+| `books/bpsec-head-invariant.lisp` | closure | 6 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/bpsec-head.lisp` | closure | 3 | 6 | 0/0/6/0 | 3 | 0 | 0 |
 | `books/bpsec-model.lisp` | closure | 0 | 26 | 0/0/26/0 | 0 | 0 | 0 |
 | `books/bpsec-operation.lisp` | root | 5 | 14 | 0/0/14/0 | 0 | 0 | 1 |
@@ -1614,6 +1616,7 @@ that `make certify` requests.
 | `tests/acl2/bpsec-asb-quanta-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 8 | 0 | 0 |
 | `tests/acl2/bpsec-asb-spine-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 6 | 0 | 0 |
 | `tests/acl2/bpsec-asb-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 14 | 0 | 0 |
+| `tests/acl2/bpsec-head-invariant-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 17 | 0 | 0 |
 | `tests/acl2/bpsec-operation-tests.lisp` | root | 0 | 7 | 0/0/7/0 | 21 | 0 | 0 |
 | `tests/acl2/bpsec-target-cursor-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 12 | 0 | 0 |
 | `tests/acl2/bpsec-target-spine-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 6 | 0 | 0 |
@@ -2511,6 +2514,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bprv-make-pending-fields` | `books/bp-receiver-evolving-node-invariants.lisp` | 427 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bprv-node-make-state-fields` | `books/bp-receiver-evolving-node-invariants.lisp` | 418 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bprv-replay-ok-node` | `books/bp-receiver-evolving-node-invariants.lisp` | 694 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-bps-headslot-current-profile-by-definition` | `books/bpsec-asb-head-invariant.lisp` | 36 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-bps-asb-head-profilep; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-bps-op-foreign-completion-preserves-rightful-state-by-definition` | `books/bpsec-operation.lisp` | 161 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bps-op-complete and the conclusion is that arm's value |
 | `fn-bpsc-invalid-releases-no-contact-event-by-definition` | `books/bp-contact-service.lisp` | 64 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpsc-contact-event and the conclusion is that arm's value |
 | `fn-bpsr-adu-octets-of-unsigned` | `books/bp-signed-receipt.lisp` | 121 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpsr-adu-octets and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-bpsr-adu-octets and the conclusion is that branch's value |

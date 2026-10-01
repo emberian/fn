@@ -17892,6 +17892,46 @@
           "kind": "theorem",
           "name": "fn-bps-asb-step-preserves-source-range",
           "pending_subject": "Actual ASB natural source-range invariant component; ghost predicate never served. Immutable provider bytes/lifetime, full grammar/span/window refinement and installed BP caller remain open; source admission only."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-head-start-establishes-profile",
+          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-head-feed-preserves-profile",
+          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-head-feed-ready-is-typed-uint64",
+          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-head-drive-preserves-profile",
+          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-head-drive-ready-is-typed-uint64",
+          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-start-establishes-head-profile",
+          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-drive-preserves-head-profile",
+          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bps-asb-step-preserves-head-profile",
+          "pending_subject": "Actual ASB nested CBOR-head profile and primitive typed-ready component. Ghost predicates never served revalidation; remaining ASB grammar/span/window refinement, immutable provider and actual BP caller/crypto gate remain open. Proper-local source admission is not normal certification."
         }
       ]
     },

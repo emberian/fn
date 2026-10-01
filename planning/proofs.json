@@ -19122,9 +19122,13 @@
         "books/bpsec-asb-position.lisp",
         "tests/acl2/bpsec-asb-position-tests.lisp",
         "planning/evidence/bpsec-asb-position-source-2026-09-30.json",
-        "planning/evidence/bpsec-asb-range-source-2026-09-30.json"
+        "planning/evidence/bpsec-asb-range-source-2026-09-30.json",
+        "books/bpsec-head-invariant.lisp",
+        "books/bpsec-asb-head-invariant.lisp",
+        "tests/acl2/bpsec-head-invariant-tests.lisp",
+        "planning/evidence/bpsec-head-invariant-source-2026-09-30.json"
       ],
-      "progress_note": "Source-only proper-local admission at exact w28 fced dependency coordinate; six component bounds/suffix events admitted after a repaired corrupted-cursor guard failure and proof hints. No normal manifest, immutable runtime provider, full refinement or native security gate. Added actual ASB complete cursor/consumed-prefix/suffix quantum-composition source; fresh proper-local14fixtureforms23.40s7930504steps (includes four new source dependencies), all literal outcomes and guard-world audit pass. Full window/provider/grammar refinement remains open. Fixed exact34-field cursor spine established/preserved by actual start/drive/step; final fresh12fixtureforms23.33s6971684steps includes4proper-local dependencies, guard-world+five literal scenarios pass. Ghost predicate never served; mutable grammar/span/provider invariants remain open. First mutable grammar-control field invariant established/preserved by actual start/drive/step, final fresh13forms24.40s7372339steps includes4proper-local dependencies; guard-world+six literal scenarios pass. Complete remaining mutable grammar/span/provider invariants remain open. Actual ASB drive/step preserve readonly source fields and advance offset by exactly consumed prefix under the numeric offset premise. Fresh 14 forms, 19.37 s, 7,414,473 steps including four proper-local source dependencies; guard-world and seven literal scenarios pass. Provider byte equality, pinned lifetime and remaining full grammar/span/window refinement remain open. Natural source-range invariant established by start and preserved by actual drive/step; fresh 19 forms, 15.66 s, 7,450,078 steps including four proper-local dependencies. Complete range witnesses and each omitted start coordinate pass; full grammar/span/provider refinement remains open.",
+      "progress_note": "Source-only proper-local admission at exact w28 fced dependency coordinate; six component bounds/suffix events admitted after a repaired corrupted-cursor guard failure and proof hints. No normal manifest, immutable runtime provider, full refinement or native security gate. Added actual ASB complete cursor/consumed-prefix/suffix quantum-composition source; fresh proper-local14fixtureforms23.40s7930504steps (includes four new source dependencies), all literal outcomes and guard-world audit pass. Full window/provider/grammar refinement remains open. Fixed exact34-field cursor spine established/preserved by actual start/drive/step; final fresh12fixtureforms23.33s6971684steps includes4proper-local dependencies, guard-world+five literal scenarios pass. Ghost predicate never served; mutable grammar/span/provider invariants remain open. First mutable grammar-control field invariant established/preserved by actual start/drive/step, final fresh13forms24.40s7372339steps includes4proper-local dependencies; guard-world+six literal scenarios pass. Complete remaining mutable grammar/span/provider invariants remain open. Actual ASB drive/step preserve readonly source fields and advance offset by exactly consumed prefix under the numeric offset premise. Fresh 14 forms, 19.37 s, 7,414,473 steps including four proper-local source dependencies; guard-world and seven literal scenarios pass. Provider byte equality, pinned lifetime and remaining full grammar/span/window refinement remain open. Natural source-range invariant established by start and preserved by actual drive/step; fresh 19 forms, 15.66 s, 7,450,078 steps including four proper-local dependencies. Complete range witnesses and each omitted start coordinate pass; full grammar/span/provider refinement remains open. Actual CBOR-head active profile and supported-major/uint64 READY result established/preserved; nested head field invariant composes through actual ASB start/drive/step. Fresh 26 forms, 21.96 s, 11,268,241 steps including five proper-local source dependencies; literal uint64/partial/refused/unsupported/parser witnesses and guard audit pass. Remaining grammar/span/window/provider/native gate remains open.",
       "events": [
         "fn-bps-head-drive-consumes-at-most-quantum",
         "fn-bps-head-drive-consumes-at-most-window",
@@ -19145,7 +19149,15 @@
         "fn-bps-asb-step-offset-is-consumed-prefix",
         "fn-bps-asb-start-establishes-source-range",
         "fn-bps-asb-drive-preserves-source-range",
-        "fn-bps-asb-step-preserves-source-range"
+        "fn-bps-asb-step-preserves-source-range",
+        "fn-bps-head-start-establishes-profile",
+        "fn-bps-head-feed-preserves-profile",
+        "fn-bps-head-feed-ready-is-typed-uint64",
+        "fn-bps-head-drive-preserves-profile",
+        "fn-bps-head-drive-ready-is-typed-uint64",
+        "fn-bps-asb-start-establishes-head-profile",
+        "fn-bps-asb-drive-preserves-head-profile",
+        "fn-bps-asb-step-preserves-head-profile"
       ]
     },
     {
