@@ -18778,10 +18778,6 @@
         {
           "kind": "theorem",
           "name": "fn-rv-prs-gate-is-a-funded-root"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rv-credit-ledger-funded-iff"
         }
       ]
     },
