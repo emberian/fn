@@ -4654,6 +4654,14 @@
   :class :program
   :direct "Image-build declaration lint over the loaded world; no client data or served decision")
 
+; Actual world ABI/guard and creator-EXEC checks at image installation.
+(definterface fn-di-raw-guarded-problem
+  :class :program
+  :direct "Image-build exact guard and stobj ABI validation over the exported ACL2 world")
+(definterface fn-di-raw-guarded-target
+  :class :program
+  :direct "Image-build resolution of actual compiled callback or registered creator EXEC")
+
 ; Serialized BP listener installation and actual owner configuration control.
 (definterface fn-bplc-step
   :class ::common-lisp-compliant
