@@ -609,6 +609,18 @@
 ; source is not a suffix (the tooth of that theorem's new hypothesis).
 (assert-event (not (fn-inj-suffixp *it-tin-post*
                                    (fn-inj-decision-octets *it-tin-post-d*))))
+;; Reachable positive witness of fn-inj-injected-article-retains-the-source-octets:
+;; a post with no Path is injected, supplies no Path, and survives verbatim
+;; as the suffix of the injected octets.
+(defconst *it-tin-no-path*
+  (it-lines (list "From: ember <ember@example.org>" "Subject: no path"
+                  "Newsgroups: fn.letters" "Date: Tue, 22 Sep 2026 21:26:21 +0000"
+                  "Message-ID: <tin.2@example.org>" "" "body")))
+(assert-event
+ (let ((d (fn-inj-decide *it-tin-no-path* *it-lab-cfg* *it-lab-obs*)))
+   (and (fn-inj-injectedp d)
+        (not (fn-inj-supplies-pathp *it-tin-no-path*))
+        (fn-inj-suffixp *it-tin-no-path* (fn-inj-decision-octets d)))))
 (must-fail-checked
  (defthm it-suffix-without-the-no-path-hypothesis
    (implies (fn-inj-injectedp (fn-inj-decide source config observation))

@@ -1,3 +1,7 @@
+; PARKED (lane figure-and-contract, 2026-10-01): no served code reads this
+; view, so the owner no longer maintains it (books/owner-obligation-state.lisp)
+; and it is out of the image; a Makefile root keeps it certified until W9's
+; bounded pilot re-adds it WITH its reader and its heap-figure term.
 ; W9: maintained total active obligations and per-immutable-subject count/charge.
 ; Build is initialization/off-mutex reconstruction only. Reads never refresh.
 (in-package "ACL2")

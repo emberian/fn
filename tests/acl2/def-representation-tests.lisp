@@ -38,16 +38,55 @@
     (mv-let (out drt-held)
       (let* ((drt-held (drt-held-append '(7 (104 105) t) drt-held))
              (drt-held (drt-held-append '(9 (1 2 3) nil) drt-held))
-             (drt-held (drt-held-set-msgid 0 '(200 201) drt-held)))
-        (mv (list (drt-held-count drt-held)
-                  (drt-held-get-id 0 drt-held) (drt-held-get-msgid 0 drt-held)
-                  (drt-held-get-flag 0 drt-held)
-                  (drt-held-get-id 1 drt-held) (drt-held-get-msgid 1 drt-held)
-                  (drt-held-get-flag 1 drt-held))
+             (drt-held (drt-held-set-msgid 0 '(200 201) drt-held))
+             (before (list (drt-held-count drt-held)
+                           (drt-held-get-id 0 drt-held) (drt-held-get-msgid 0 drt-held)
+                           (drt-held-get-flag 0 drt-held)
+                           (drt-held-get-id 1 drt-held) (drt-held-get-msgid 1 drt-held)
+                           (drt-held-get-flag 1 drt-held)))
+             ; The clear, then a fresh append: the pool and the columns restart at 0.
+             (drt-held (drt-held-clear drt-held))
+             (cleared (drt-held-count drt-held))
+             (drt-held (drt-held-append '(3 (5) t) drt-held)))
+        (mv (list before cleared (drt-held-count drt-held)
+                  (drt-held-get-id 0 drt-held) (drt-held-get-msgid 0 drt-held))
             drt-held))
       out)))
 
-(assert! (equal (drt-held-run) '(2 7 (200 201) t 9 (1 2 3) nil)))
+(assert! (equal (drt-held-run) '((2 7 (200 201) t 9 (1 2 3) nil) 0 1 3 (5))))
+
+; The admitted foundation and the instance share a package.
+(assert-event (equal (symbol-package-name 'drt-held$c)
+                     (symbol-package-name 'drt-held)))
+
+; A non-ACL2 witness detects fixed-ACL2 interning without a new defpkg
+; portcullis. Check actual expansion trees for record, scalar and generic.
+(program)
+(defun drt-find-foundation (events)
+  (cond ((atom events) nil)
+        ((eq (car events) 'defstobj) (cadr events))
+        (t (or (drt-find-foundation (car events))
+               (drt-find-foundation (cdr events))))))
+(logic)
+
+(assert-event
+ (equal (symbol-package-name
+         (drt-find-foundation (rep-named-events :drt-package '((id :u64)) nil nil nil nil)))
+        (symbol-package-name :drt-package)))
+(assert-event
+ (equal (symbol-package-name
+         (drt-find-foundation (rep-named-events :drt-package '((id :u64)) t nil nil nil)))
+        (symbol-package-name :drt-package)))
+(assert-event
+ (equal (symbol-package-name
+         (drt-find-foundation (rep-named-events :drt-package '((id :u64)) t t nil nil)))
+        (symbol-package-name :drt-package)))
+
+; Relocation distinguishes generated references from unchanged user data.
+(assert-event
+ (equal (rep-package-events '(drt-package$c (quote drt-package$c))
+                            '(probe$c (quote drt-package$c)) :drt-package)
+        '(:drt-package$c (quote drt-package$c))))
 
 ; -----------------------------------------------------------------------------
 ; 2. The scalar pilot: the arena's logical view.
@@ -60,12 +99,31 @@
     (mv-let (out drt-pay)
       (let* ((drt-pay (drt-pay-append '(1 2 3) drt-pay))
              (drt-pay (drt-pay-append '(4) drt-pay))
-             (drt-pay (drt-pay-set 0 '(9 9) drt-pay)))
-        (mv (list (drt-pay-count drt-pay) (drt-pay-get 0 drt-pay) (drt-pay-get 1 drt-pay))
-            drt-pay))
+             (drt-pay (drt-pay-set 0 '(9 9) drt-pay))
+             (before (list (drt-pay-count drt-pay) (drt-pay-get 0 drt-pay) (drt-pay-get 1 drt-pay)))
+             (drt-pay (drt-pay-clear drt-pay)))
+        (mv (list before (drt-pay-count drt-pay)) drt-pay))
       out)))
 
-(assert! (equal (drt-pay-run) '(2 (9 9) (4))))
+(assert! (equal (drt-pay-run) '((2 (9 9) (4)) 0)))
+
+; DRT-PAY-COUNT{CORRESPONDENCE}: both hypotheses and its exact conclusion
+; at a reachable one-payload foundation, built from the canonical empty.
+(defconst *drt-pay-witness-c*
+  (adt-append-c *drt-pay-schema* '((1 2 3)) (adt-empty-c *drt-pay-schema*)))
+(defconst *drt-pay-witness-a* '((1 2 3)))
+
+(assert-event
+ (and (drt-pay$corr *drt-pay-witness-c* *drt-pay-witness-a*)
+      (drt-pay$ap *drt-pay-witness-a*)))
+; As in the seeded :into witness, THM permits the concrete stobj's logical
+; value and evaluates the ground assertion; no implication hides a premise.
+(assert-event
+ (thm (and (drt-pay$corr *drt-pay-witness-c* *drt-pay-witness-a*)
+           (drt-pay$ap *drt-pay-witness-a*)
+           (equal (drt-pay$c-count-of *drt-pay-witness-c*)
+                  (drt-pay$a-count *drt-pay-witness-a*))))
+ :stobjs-out :auto)
 
 ; The same program over the logical value: the list of payloads.
 (assert! (equal (let* ((a (append (append nil (list '(1 2 3))) (list '(4))))
@@ -109,17 +167,19 @@
     (mv-let (out drt-gen)
       (let* ((drt-gen (drt-gen-append '(1 2 3) drt-gen))
              (drt-gen (drt-gen-append '(4) drt-gen))
-             (drt-gen (drt-gen-set 1 '(5 6) drt-gen)))
-        (mv (list (drt-gen-count drt-gen) (drt-gen-get 0 drt-gen) (drt-gen-get 1 drt-gen)
-                  (drt-gen-total 0 drt-gen))
-            drt-gen))
+             (drt-gen (drt-gen-set 1 '(5 6) drt-gen))
+             (before (list (drt-gen-count drt-gen) (drt-gen-get 0 drt-gen) (drt-gen-get 1 drt-gen)
+                           (drt-gen-total 0 drt-gen)))
+             (drt-gen (drt-gen-clear drt-gen)))
+        (mv (list before (drt-gen-count drt-gen) (drt-gen-total 0 drt-gen)) drt-gen))
       out)))
 
-(assert! (equal (drt-gen-run) '(2 (1 2 3) (5 6) 5)))
+(assert! (equal (drt-gen-run) '((2 (1 2 3) (5 6) 5) 0 0)))
 
 ; The generic's exports mean the list operations, as the implementation's do.
 (defthm drt-gen-count-is-len (equal (drt-gen-count a) (len a)))
 (defthm drt-gen-get-is-nth (equal (drt-gen-get i a) (nth i a)))
+(defthm drt-gen-clear-is-nil (equal (drt-gen-clear a) nil))
 
 ; -----------------------------------------------------------------------------
 ; 4. Teeth.

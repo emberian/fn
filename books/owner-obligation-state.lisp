@@ -1,14 +1,18 @@
-; Actual owner installation and effects for W9's carried projections.
-; Initialization/reclaim put a reconstructed view at their own boundary;
-; an ordinary install applies exactly one ledger delta, never a rebuild.
+; The owner's installation of a configuration, and W9's obligation view
+; PARKED (lane figure-and-contract, 2026-10-01, the coordinator's decision
+; (B)).  The view (books/retention-obligation-view.lisp: a count and a
+; subject trie over the retention pins) was rebuilt at every open and
+; reclaim and updated at every install, and no served code read it: the
+; admission captured it only as a token-tagged tuple.  The heap figure
+; charged it 546,341,504 octets at the small profile.  The operator paid
+; memory for work that bought nothing, so it is parked until its reader
+; lands; W9's bounded pilot (ratified 2026-09-30) re-adds an obligation view
+; WITH its reader and its heap-figure term together.  Until the host's
+; captures and puts of the global go (after stage 0), the global keeps its
+; name and no install writes it: it reads NIL.
 (in-package "ACL2")
 (include-book "state-globals")
 (include-book "owner-config")
-(include-book "retention-obligation-view")
-
-(defun fn-rov-oc-ledger (oc)
-  (declare (xargs :guard t))
-  (fn-node-retention (fn-sn-node (fn-own-store (fn-ocfg-owner oc)))))
 
 (defun fn-owner-obligation-view (state)
   (declare (xargs :stobjs state :guard t))
@@ -16,129 +20,55 @@
       (f-get-global 'fn-owner-obligation-view state)
     nil))
 
-(defun fn-owner-obligation-view-put (view state)
-  (declare (xargs :stobjs state :guard t))
-  (f-put-global 'fn-owner-obligation-view view state))
-
-(defun fn-rov-owner-ledger (state)
-  (declare (xargs :stobjs state :guard t))
-  (if (boundp-global 'fn-owner state)
-      (fn-rov-oc-ledger (f-get-global 'fn-owner state))
-    nil))
-
-(defun fn-rov-owner-correspondp (state)
-  (declare (xargs :stobjs state :guard t :verify-guards nil))
-  (and (boundp-global 'fn-owner state)
-       (fn-rov-correspondp (fn-owner-obligation-view state)
-                          (fn-retain-pins (fn-rov-owner-ledger state)))))
-
-; This is the exact host-called function, moved from owner-host. Owner
-; effects remain one global put. The second global stores the delta view.
-(defun fn-owner-install-ocfg (oc state)
-  (declare (xargs :stobjs state :guard t))
-  (let* ((view (fn-rov-update (fn-rov-owner-ledger state)
-                            (fn-rov-oc-ledger oc)
-                            (fn-owner-obligation-view state)))
-         (state (fn-owner-obligation-view-put view state)))
-    (f-put-global 'fn-owner oc state)))
-
-(defthm fn-owner-obligation-view-of-put
-  (equal (fn-owner-obligation-view (fn-owner-obligation-view-put view state)) view))
-
-(defthm fn-owner-obligation-view-put-preserves-state-p1
-  (implies (state-p1 state)
-           (state-p1 (fn-owner-obligation-view-put view state))))
-
 (defthm fn-owner-obligation-view-of-other-global-put
   (implies (not (equal key 'fn-owner-obligation-view))
            (equal (fn-owner-obligation-view (f-put-global key value state))
                   (fn-owner-obligation-view state))))
+
+; This is the exact host-called function, moved from owner-host. Owner
+; effects are one global put.
+(defun fn-owner-install-ocfg (oc state)
+  (declare (xargs :stobjs state :guard t))
+  (f-put-global 'fn-owner oc state))
+
+; Cold open's install: the same put (it installed a rebuilt view beside
+; the owner before the park).
+(defun fn-owner-install-open-ocfg (oc state)
+  (declare (xargs :stobjs state :guard t))
+  (fn-owner-install-ocfg oc state))
 
 (defthm fn-owner-installed-ocfg-effect
   (equal (f-get-global 'fn-owner (fn-owner-install-ocfg oc state)) oc))
 (defthm fn-owner-installed-owner-bound
   (boundp-global 'fn-owner (fn-owner-install-ocfg oc state)))
 
-(defthm fn-owner-installed-view-effect
-  (equal (fn-owner-obligation-view (fn-owner-install-ocfg oc state))
-         (fn-rov-update (fn-rov-owner-ledger state) (fn-rov-oc-ledger oc)
-                        (fn-owner-obligation-view state))))
-
 (defthm fn-owner-installed-other-global-effect
-  (implies (and (not (equal key 'fn-owner))
-                (not (equal key 'fn-owner-obligation-view)))
+  (implies (not (equal key 'fn-owner))
            (equal (f-get-global key (fn-owner-install-ocfg oc state))
                   (f-get-global key state))))
+
+(defthm fn-owner-installed-other-global-bound
+  (implies (not (equal key 'fn-owner))
+           (equal (boundp-global key (fn-owner-install-ocfg oc state))
+                  (boundp-global key state))))
+
+; The park's frame: no install touches the obligation view.
+(defthm fn-owner-install-keeps-the-obligation-view
+  (equal (fn-owner-obligation-view (fn-owner-install-ocfg oc state))
+         (fn-owner-obligation-view state)))
 
 (defthm fn-owner-installed-state-p1
   (implies (state-p1 state) (state-p1 (fn-owner-install-ocfg oc state))))
 
-(defthm fn-rov-owner-installed-ledger
-  (equal (fn-rov-owner-ledger (fn-owner-install-ocfg oc state)) (fn-rov-oc-ledger oc)))
-
-; The conditional lemma is an effects boundary, not the claim that every
-; writer meets it. Each actual caller must prove its installed ledger's
-; transition and the carried relation at entry.
-(defthm fn-rov-owner-install-preserves-correspondence
-  (implies (fn-rov-correspondp
-            (fn-rov-update (fn-rov-owner-ledger state) (fn-rov-oc-ledger oc)
-                           (fn-owner-obligation-view state))
-            (fn-retain-pins (fn-rov-oc-ledger oc)))
-           (fn-rov-owner-correspondp (fn-owner-install-ocfg oc state))))
-
-(defthm fn-rov-owner-install-unchanged-ledger
-  (implies (and (fn-rov-owner-correspondp state)
-                (equal (fn-rov-oc-ledger oc) (fn-rov-owner-ledger state)))
-           (fn-rov-owner-correspondp (fn-owner-install-ocfg oc state)))
-  :hints (("Goal" :in-theory (disable fn-owner-install-ocfg)
-           :use ((:instance fn-rov-owner-install-preserves-correspondence)))))
-
-; Cold/open and off-mutex reclaim install a supplied reconstruction. The
-; pure effects below make the atomic pair explicit; an ordinary transition
-; does not call this function.
-(defun fn-owner-install-rebuilt-ocfg (oc view state)
-  (declare (xargs :stobjs state :guard t))
-  (let ((state (fn-owner-obligation-view-put view state)))
-    (f-put-global 'fn-owner oc state)))
-
-(defun fn-owner-install-open-ocfg (oc state)
-  (declare (xargs :stobjs state
-                  :guard (fn-retain-obligation-listp
-                          (fn-retain-pins (fn-rov-oc-ledger oc)))))
-  (fn-owner-install-rebuilt-ocfg
-   oc (fn-rov-build (fn-retain-pins (fn-rov-oc-ledger oc))) state))
-
-(defthm fn-owner-rebuilt-ocfg-effect
-  (equal (f-get-global 'fn-owner (fn-owner-install-rebuilt-ocfg oc view state)) oc))
-(defthm fn-owner-rebuilt-owner-bound
-  (boundp-global 'fn-owner (fn-owner-install-rebuilt-ocfg oc view state)))
-(defthm fn-owner-rebuilt-view-effect
-  (equal (fn-owner-obligation-view (fn-owner-install-rebuilt-ocfg oc view state)) view))
-(defthm fn-owner-rebuilt-other-global-effect
-  (implies (and (not (equal key 'fn-owner))
-                (not (equal key 'fn-owner-obligation-view)))
-           (equal (f-get-global key (fn-owner-install-rebuilt-ocfg oc view state))
-                  (f-get-global key state))))
-(defthm fn-owner-rebuilt-state-p1
-  (implies (state-p1 state)
-           (state-p1 (fn-owner-install-rebuilt-ocfg oc view state))))
-(defthm fn-rov-owner-rebuilt-ledger
-  (equal (fn-rov-owner-ledger (fn-owner-install-rebuilt-ocfg oc view state))
-         (fn-rov-oc-ledger oc)))
-(defthm fn-rov-owner-rebuilt-establishes-correspondence
-  (implies (fn-rov-correspondp view (fn-retain-pins (fn-rov-oc-ledger oc)))
-           (fn-rov-owner-correspondp (fn-owner-install-rebuilt-ocfg oc view state))))
-(defthm fn-rov-owner-open-establishes-correspondence
-  (fn-rov-owner-correspondp (fn-owner-install-open-ocfg oc state))
-  :hints (("Goal" :in-theory (disable fn-owner-install-rebuilt-ocfg)
-           :use ((:instance fn-rov-owner-rebuilt-establishes-correspondence
-                    (view (fn-rov-build (fn-retain-pins (fn-rov-oc-ledger oc)))))))))
+(defthm fn-owner-open-ocfg-effect
+  (equal (f-get-global 'fn-owner (fn-owner-install-open-ocfg oc state)) oc))
 (defthm fn-owner-open-state-p1
   (implies (state-p1 state) (state-p1 (fn-owner-install-open-ocfg oc state))))
 (defthm fn-owner-open-owner-bound
   (boundp-global 'fn-owner (fn-owner-install-open-ocfg oc state)))
+(defthm fn-owner-open-keeps-the-obligation-view
+  (equal (fn-owner-obligation-view (fn-owner-install-open-ocfg oc state))
+         (fn-owner-obligation-view state)))
 
-(in-theory (disable fn-rov-oc-ledger fn-owner-obligation-view
-                    fn-owner-obligation-view-put fn-rov-owner-ledger
-                    fn-rov-owner-correspondp fn-owner-install-ocfg
-                    fn-owner-install-rebuilt-ocfg fn-owner-install-open-ocfg))
+(in-theory (disable fn-owner-obligation-view fn-owner-install-ocfg
+                    fn-owner-install-open-ocfg))

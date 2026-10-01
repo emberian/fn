@@ -37,6 +37,7 @@
 ; exactly when the specification (`fn-xpy-spec', which recomputes each
 ; window from the articles themselves) expires it.
 (in-package "ACL2")
+(include-book "def-loop")
 (include-book "expiry-policy")
 (include-book "store-reclaim-pack")
 (include-book "relay-checks")
@@ -54,37 +55,12 @@
 ; walk stops there; the body is never read.
 ;; The loop twin (depth_check: one control-stack frame per octet otherwise;
 ;; batch BB fix-forward for lane expiry): the prefix kept in reverse in ACC.
-(defun fn-xpy-header-block-loop (bytes acc)
-  (declare (xargs :guard (true-listp acc)))
-  (if (consp bytes)
-      (if (and (equal (car bytes) 13)
-               (consp (cdr bytes)) (equal (cadr bytes) 10)
-               (consp (cddr bytes)) (equal (caddr bytes) 13)
-               (consp (cdddr bytes)) (equal (cadddr bytes) 10))
-          (revappend acc (list 13 10 13 10))
-        (fn-xpy-header-block-loop (cdr bytes) (cons (car bytes) acc)))
-    (revappend acc nil)))
-
-(defun fn-xpy-header-block (bytes)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-       (if (consp bytes)
-           (if (and (equal (car bytes) 13)
-                    (consp (cdr bytes)) (equal (cadr bytes) 10)
-                    (consp (cddr bytes)) (equal (caddr bytes) 13)
-                    (consp (cdddr bytes)) (equal (cadddr bytes) 10))
-               (list 13 10 13 10)
-             (cons (car bytes) (fn-xpy-header-block (cdr bytes))))
-         nil)
-       :exec (fn-xpy-header-block-loop bytes nil)))
-
-(local
- (defthm fn-xpy-header-block-loop-is-revappend
-   (equal (fn-xpy-header-block-loop bytes acc)
-          (revappend acc (fn-xpy-header-block bytes)))
-   :hints (("Goal" :induct (fn-xpy-header-block-loop bytes acc)))))
-
-(verify-guards fn-xpy-header-block)
+(def-loop fn-xpy-header-block (bytes)
+  :shape :map
+  :over bytes
+  :stop (and (equal (car bytes) 13) (consp (cdr bytes)) (equal (cadr bytes) 10) (consp (cddr bytes)) (equal (caddr bytes) 13) (consp (cdddr bytes)) (equal (cadddr bytes) 10))
+  :stop-value (list 13 10 13 10)
+  :body (car bytes))
 
 ; The Expires: header's instant on the acceptance stamp's clock -- seconds
 ; since 2000-01-01T00:00:00Z, the DTN epoch of books/clock.lisp and

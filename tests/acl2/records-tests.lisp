@@ -20,6 +20,7 @@
 ; Exact byte/string conversion has no host reader path or textual alias.
 (assert-event (equal (fn-record-string-octets "<a>") '(60 97 62)))
 (assert-event (equal (fn-record-octets-string '(60 97 62)) "<a>"))
+(assert-event (fn-record-ascii-stringp "<a>"))
 (assert-event (not (fn-record-ascii-stringp
                     (coerce (list (code-char 128)) 'string))))
 

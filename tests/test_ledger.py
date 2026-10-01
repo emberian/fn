@@ -53,6 +53,42 @@ def tree_from(sources: dict[str, str], roots: list[str] | None = None) -> ledger
                        hosts)
 
 
+class DefLoopBridgeTests(unittest.TestCase):
+    def check_bridge(self, declaration, expected):
+        events = ledger.def_loop_expansion(ledger.read_forms(declaration)[0])
+        theorems = [event[1] if ledger.head(event) == "local" else event
+                    for event in events]
+        statements = [event[2] for event in theorems
+                      if ledger.head(event) == "defthm"]
+        self.assertEqual(statements, ledger.read_forms(expected))
+
+    def test_map(self):
+        self.check_bridge(
+            "(def-loop pairs (xs extra) :shape :map :elt e :body (cons e extra))",
+            "(equal (pairs-loop xs extra acc) (revappend acc (pairs xs extra)))")
+
+    def test_take(self):
+        self.check_bridge(
+            "(def-loop first (n xs) :shape :take :count n :over xs "
+            ":body (car xs) :acc seed :loop first-walk)",
+            "(equal (first-walk n xs seed) (revappend seed (first n xs)))")
+
+    def test_sum(self):
+        self.check_bridge(
+            "(def-loop count-ints (xs) :shape :sum :elt e "
+            ":body (if (integerp e) 1 0) :acc total)",
+            "(implies (acl2-numberp total) "
+            "(equal (count-ints-loop xs total) (+ total (count-ints xs))))")
+
+    def test_into(self):
+        self.check_bridge(
+            "(def-loop write-octets (xs buffer extra) :shape :into :into buffer "
+            ":write put-octet :map octets-of :body (car xs))",
+            "(implies (true-listp buffer) "
+            "(equal (write-octets xs buffer extra) "
+            "(append buffer (octets-of xs extra))))")
+
+
 class ReaderTests(unittest.TestCase):
     def test_comments_strings_and_block_comments_are_not_code(self):
         forms = ledger.read_forms('''

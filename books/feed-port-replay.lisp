@@ -180,7 +180,8 @@
                                     (f (fn-own-feed-entry-feed
                                         (fn-own-feed-entry-of peer tbl)))))
            :in-theory (e/d (fn-own-feed-port-tick-peer
-                            fn-own-feed-port-result fn-own-feed-port-records
+                            fn-own-feed-port-result fn-own-feed-port-result-counted
+                            fn-own-feed-port-records
                             fn-feed-live-records fn-feed-live-next)
                            (fn-own-feed-port-peer fn-feedp
                             fn-feed-replay fn-feed-durable-projection
