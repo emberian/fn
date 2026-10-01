@@ -991,6 +991,37 @@ now has additive ASB source in `books/bpsec-model.lisp`,
 `books/bpsec-head.lisp` and `books/bpsec-asb.lisp` (REP-017, PRF-1178).
 This does not add a security gate to the served BP admission path.
 
+SCN-1077 now records an actual receiver primitive component in
+`host/native/bpsec-crypto.lisp`, using the same pinned OpenSSL pair as TLS
+inside HST-004. Streaming HMAC-SHA256/384/512 returns actual bytes and width;
+ACL2 must perform the expected-result comparison. AES-GCM128/256 first-pass
+updates immediately cleanse each temporary plaintext window; final tag
+verification reports authentication or bad tag and exposes no plaintext.
+There is no whole-object plaintext RAM accumulation. Cancel, fault and
+nonlocal escape cleanse the bounded current window and free its context;
+this is no physical charge refund or persistence observation.
+
+The component tests compare literal RFC 4231 sections4.2/4.7, RFC9173
+AppendixA and selected NIST CAVP decrypt inputs, outputs and negative results
+at chunks1/7/64. A test-only FFI observer captures the library's temporary
+plaintext before the production path cleanses it; there is no production
+observer or eager plaintext callback. RFC9173's short HMAC keys and A.3
+primary-IPPT representation remain diagnostic fixtures, separate from the
+normative sections3.5/3.7 profile; A.4 repeated key/IV is receiver diagnostics
+only, never a production encryption example (reported erratum7002).
+Unsupported primitives and unavailable/fault conditions are separate from
+authentication failure. The exact source/library hashes live in
+`planning/evidence/bpsec-crypto-2026-09-30/manifest.json`.
+
+This source is not loaded by an installed image. ACL2 suite/key planning,
+canonical input and primitive-result provenance through an actual issuer,
+registered immutable ciphertext retention/pin, current policy/key lease and
+charged runtime custody remain open. A later bounded decryption pass must
+read the SAME source token and original block-number/data extent as the
+authentication pass; an equal native-supplied tuple or guessed byte array
+cannot grant replay. No BCB verified completion or application admission is
+produced by first-pass authentication.
+
 REP-017: BPSec ASB parsing preserves the exact received sequence through
 bounded immutable windows under the operator's supported profile. Structural
 validity, unsupported interpretation, cryptographic results and host

@@ -7478,6 +7478,36 @@
         "planning/evidence/bpsec-operation-source-2026-09-30.json"
       ],
       "execution_scope": "Literal ACL2 component/source fixtures; actual immutable registry, provider, current lease, cryptographic realizer and native gate remain open."
+    },
+    {
+      "id": "SCN-1077",
+      "title": "Real receiver BPSec primitive vectors retain exact descriptor and bounded temporary output",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "HST-004",
+        "REP-018"
+      ],
+      "steps": [
+        "Load the actual pinned OpenSSL provider and run published RFC4231 Cases1/6, RFC9173 AppendixA diagnostics and sixteen literal NIST CAVP decrypt rows at chunk sizes1/7/64.",
+        "Record actual library-generated HMAC bytes and actual temporary GCM plaintext under a test-only FFI observer; compare exact independent literal bytes and authentication results.",
+        "Mutate tag/AAD and truncate ciphertext; separately invoke bad physical widths, unavailable symbol, unsupported algorithm, invalid buffers, primitive fault and post-write nonlocal escape.",
+        "Check every first-pass GCM update returns no plaintext, immediately cleanses the temporary bounded window, and frees context on final/cancel/fault/escape."
+      ],
+      "expected": [
+        "Known literal primitive outputs/authentication results agree across selected streaming schedules.",
+        "The descriptor returned is exactly the one retained by the primitive handle; this does not prove descriptor issuance or current authority.",
+        "Bad authentication, unsupported algorithm and unavailable/fault conditions remain distinct; no host HMAC comparison or completion is created.",
+        "First-pass GCM stores no whole plaintext and exposes no plaintext. Production second-pass release stays unavailable until the same immutable ciphertext pin/current key/source grant exists."
+      ],
+      "evidence": [
+        "host/native/bpsec-crypto.lisp",
+        "tests/native_bpsec_crypto.lisp",
+        "tests/fixtures/bpsec/nist-gcm-decrypt.json",
+        "planning/evidence/bpsec-crypto-2026-09-30/manifest.json",
+        "tests/fixtures/bpsec/nist-gcm-decrypt.lisp"
+      ],
+      "execution_scope": "Actual SBCL/OpenSSL primitive component only at the recorded source/library hashes. Test descriptors are explicitly unissued; no native image, installer, source/key/policy grant, replay authorization, persistence or application acceptance. RFC9173 short keys/A.3 IPPT and A.4 reused nonce are frozen diagnostics, not normative profile admission."
     }
   ]
 }
