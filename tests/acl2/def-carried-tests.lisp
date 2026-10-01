@@ -418,6 +418,43 @@
       (and (null msg) (eq s 'r15-b)
            (equal ret '(mv-nth '1 (r15-tick r15-b)))))))))
 
+; r16-F1: the single-congruent-slot row admitted, its generated statement
+; pinned, and a reachable witness of it on a live congruent instance.
+(encapsulate ()
+ (local
+  (encapsulate ()
+   (defstobj r16-a (r16-an :type integer :initially 0))
+   (defstobj r16-b (r16-bn :type integer :initially 0) :congruent-to r16-a)
+   (defun r16-r (r16-a) (declare (xargs :stobjs r16-a)) (< 0 (r16-an r16-a)))
+   (defun r16-open (r16-a) (declare (xargs :stobjs r16-a)) (update-r16-an 1 r16-a))
+   (defun r16-tick (r16-b)
+     (declare (xargs :stobjs r16-b))
+     (let ((r16-b (update-r16-bn 1 r16-b))) (mv 7 r16-b)))
+   (defthm r16-open-r (r16-r (r16-open r16-a)))
+   (defthm r16-tick-r (r16-r (mv-nth 1 (r16-tick r16-b))))
+   (definterface r16-open :class :common-lisp-compliant)
+   (definterface r16-tick :class :common-lisp-compliant)
+   (def-carried r16-carried
+     :invariant r16-r
+     :established ((r16-open r16-open-r))
+     :transitions ((r16-tick r16-tick-r))
+     :trace nil)
+   (assert-event
+    (equal (getpropc 'r16-carried-r16-tick-carries 'theorem nil (w state))
+           '(implies (if (r16-r r16-b) (r16-bp r16-b) 'nil)
+                     (r16-r (mv-nth '1 (r16-tick r16-b))))))
+   (defun r16-witness ()
+     (declare (xargs :guard t))
+     (with-local-stobj r16-b
+       (mv-let (ok r16-b)
+         (let* ((r16-b (r16-open r16-b))
+                (before (and (r16-r r16-b) (r16-bp r16-b))))
+           (mv-let (v r16-b)
+             (r16-tick r16-b)
+             (mv (and before (equal v 7) (r16-r r16-b)) r16-b)))
+         ok)))
+   (assert-event (r16-witness) :msg "r16-carried-r16-tick-carries: witness"))))
+
 ; ---------------------------------------------------------------------------
 ; 4. The review findings: each exploit a must-fail with its refusal.
 
@@ -779,8 +816,9 @@
 ; both as the carried hypothesis and as a conjunct of bump's guard; this
 ; witness drops both (the guard copy is the same literal, so dropping one
 ; alone removes nothing).  The retained (fn-cdt-stp st) and (natp 0) hold,
-; the dropped literal fails, and so does the conclusion.  The same state
-; fails the bridge's single hypothesis and its conclusion.
+; the dropped literal fails, and so does the conclusion.  (At n = -5 the
+; bridge's conclusion still HOLDS; the bridge's removal witness is the zero
+; state below, which fails its single hypothesis and its conclusion.)
 (thm
  (let ((st '(-5 nil)))
    (and (fn-cdt-stp st) (natp 0) (not (fn-cdt-relp st))
